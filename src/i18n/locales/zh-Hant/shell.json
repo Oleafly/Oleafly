@@ -841,7 +841,8 @@
     "search": "搜尋專案",
     "sourceControl": "原始檔控制",
     "withShortcut": "{{label}}（{{shortcut}}）",
-    "notes": "筆記"
+    "notes": "筆記",
+    "more": "更多檢視"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",
@@ -1073,7 +1074,7 @@
       "integrations": "整合",
       "shortcuts": "鍵盤快捷鍵",
       "research": "研究",
-      "logs": "Logs"
+      "logs": "記錄檔"
     },
     "search": {
       "empty": "沒有相符的設定",
@@ -1091,7 +1092,7 @@
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 代管，Computer Use，桌面應用程式，Cua，MCP，引用，帳號，連線",
         "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤",
         "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "記錄檔，錯誤，警告，當機，建置，診斷，疑難排解，匯出記錄檔，偵錯，log，logs，app.log"
       },
       "label": "搜尋設定",
       "results_other": "{{count}} 個分區相符"

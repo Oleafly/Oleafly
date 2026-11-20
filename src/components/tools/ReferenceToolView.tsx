@@ -18,7 +18,7 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
@@ -827,6 +827,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                 </label>
                 <div className="mt-1.5 flex gap-2">
                   <Input
+                    {...SEARCH_INPUT}
                     id="reference-lookup-input"
                     value={query}
                     placeholder={content.queryPlaceholder}

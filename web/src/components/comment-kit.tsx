@@ -1,16 +1,24 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { type CommentKit, type CommentKitLabels, CommentKitProvider, QUICK_REACTIONS } from "@/components/ui/comments/comment-kit";
-import { type CommentPresence, useFresh } from "@/components/ui/comments/comment-presence";
+import {
+  type CommentPresenceFeed,
+  createPresenceFeed,
+  type PresenceView,
+  presenceView,
+  useFresh,
+  usePublishPresence,
+} from "@/components/ui/comments/comment-presence";
 import { type CommentMember, mergeMentionPeople } from "@/components/ui/comments/mentions";
 import { peerHue } from "@/features/collab/live/peer-hue";
+import { useNow } from "@/hooks/use-now";
 import type { WebPeer } from "../protocol";
 import { useWeb } from "../store";
 import { useActions } from "./context";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { failureKey } from "./errors";
-import { dateTime, relativeTime, useNow } from "./format";
+import { dateTime, relativeTime } from "./format";
 
 const REACTIONS = { quick: QUICK_REACTIONS };
 
@@ -26,49 +34,35 @@ interface ActivePeer {
 
 const activeAt = (entry: ActivePeer) => entry.at;
 
-function useActivePeers(): ActivePeer[] {
+function usePeerPresence(): PresenceView {
   const self = useWeb((state) => state.me?.accountId ?? null);
-  const peers = useWeb((state) => state.peers);
+  const peers = useWeb(useShallow((state) => state.peers.filter((peer) => peer.activity && peer.accountId !== self)));
   const activityAt = useWeb((state) => state.activityAt);
-  const entries = useMemo(
-    () =>
-      peers
-        .filter((peer) => peer.activity && peer.accountId !== self)
-        .map((peer) => ({ peer, at: activityAt[peer.deviceId] ?? 0 })),
-    [peers, activityAt, self],
-  );
-  return useFresh(entries, activeAt);
-}
-
-function usePresenceOf(): (peer: WebPeer) => CommentPresence {
   const people = useWeb((state) => state.people);
-  return (peer) => ({ id: peer.accountId, name: people[peer.accountId]?.name || peer.name || "", imageUrl: people[peer.accountId]?.avatarUrl });
-}
-
-function unique(list: readonly CommentPresence[]): CommentPresence[] {
-  return [...new Map(list.filter((person) => person.name).map((person) => [person.id, person])).values()];
-}
-
-export function useWebReplying(): (threadId: string) => readonly CommentPresence[] {
-  const active = useActivePeers();
-  const presenceOf = usePresenceOf();
-  return useMemo(() => {
-    const byThread = new Map<string, CommentPresence[]>();
-    for (const { peer } of active) {
-      const thread = peer.activity?.kind === "reply" ? peer.activity.threadId : null;
-      if (thread) byThread.set(thread, [...(byThread.get(thread) ?? []), presenceOf(peer)]);
-    }
-    return (threadId: string) => unique(byThread.get(threadId) ?? []);
-  }, [active, presenceOf]);
-}
-
-export function useWebTyping(): readonly CommentPresence[] {
-  const active = useActivePeers();
-  const presenceOf = usePresenceOf();
+  const entries = useMemo(() => peers.map((peer) => ({ peer, at: activityAt[peer.deviceId] ?? 0 })), [peers, activityAt]);
+  const fresh = useFresh(entries, activeAt);
   return useMemo(
-    () => unique(active.filter(({ peer }) => peer.activity?.kind === "chat").map(({ peer }) => presenceOf(peer))),
-    [active, presenceOf],
+    () =>
+      presenceView(
+        fresh.flatMap(({ peer }) =>
+          peer.activity
+            ? [
+                {
+                  person: { id: peer.accountId, name: people[peer.accountId]?.name || peer.name || "", imageUrl: people[peer.accountId]?.avatarUrl },
+                  kind: peer.activity.kind,
+                  threadId: peer.activity.threadId,
+                },
+              ]
+            : [],
+        ),
+      ),
+    [fresh, people],
   );
+}
+
+function PeerPresence({ feed }: Readonly<{ feed: CommentPresenceFeed }>) {
+  usePublishPresence(feed, usePeerPresence());
+  return null;
 }
 
 export function useWebMentionMembers(): CommentMember[] {
@@ -103,7 +97,7 @@ export function WebCommentKit({
   const reactions = useWeb((state) => state.features.reactions);
   const moderate = useWeb((state) => state.role === "owner" && state.connection === "online");
   const members = useWebMentionMembers();
-  const replyingIn = useWebReplying();
+  const [presence] = useState(createPresenceFeed);
   const kit = useMemo<CommentKit>(() => {
     const names = new Intl.ListFormat(i18n.language, { type: "conjunction" });
     return {
@@ -184,8 +178,13 @@ export function WebCommentKit({
       reactions: reactions ? REACTIONS : undefined,
       moderate,
       activity: (scope, active) => actions.setActivity(scope, active),
-      replyingIn,
+      presence,
     };
-  }, [t, i18n.language, overrides, now, people, self, reactions, maxLength, moderate, members, actions, replyingIn]);
-  return <CommentKitProvider value={kit}>{children}</CommentKitProvider>;
+  }, [t, i18n.language, overrides, now, people, self, reactions, maxLength, moderate, members, actions, presence]);
+  return (
+    <CommentKitProvider value={kit}>
+      <PeerPresence feed={presence} />
+      {children}
+    </CommentKitProvider>
+  );
 }

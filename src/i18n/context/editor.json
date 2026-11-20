@@ -21,7 +21,6 @@
     "blockquote": "Inserts a quoted block",
     "linkPlaceholder": "Example URL shown in an empty link field",
     "imagePlaceholder": "Example image path shown in an empty image field",
-    "apply": "Confirms the value typed in the link or image popover",
     "preview": "Mode button for an HTML file that shows the rendered page instead of its source"
   },
   "contextMenu": {
@@ -192,6 +191,11 @@
       },
       "inline": {
         "edit": "Small button that opens the exact inline LaTeX for editing"
+      },
+      "figure": {
+        "imageOutside": "Shown in place of an image in the visual editor when its path points outside the project folder, which the editor never reads. The path is shown under it",
+        "imageUnreadable": "Shown in place of an image in the visual editor when the file is in the project but is too large or could not be read. The path is shown under it",
+        "imageAltText": "Line under a missing image in the visual editor that repeats the image's alternative text, the description written for readers who can't see it"
       }
     },
     "quarto": {
@@ -218,6 +222,9 @@
   },
   "bibList": {
     "etAl": "Short author list in a bibliography row: the first author followed by the usual abbreviation for and others",
+    "matchCount_one": "Count above the list of entries in a .bib file while a search hides some of them, such as 0 of 1 reference. The plural follows the total",
+    "matchCount_other": "Count above the list of entries in a .bib file while a search hides some of them, such as 1 of 6 references. The plural follows the total",
+    "clearSearch": "Button and tooltip that empty the search field above the list of entries in a .bib file",
     "search": "Placeholder of the search field above the list of entries in a .bib file"
   },
   "deck": {

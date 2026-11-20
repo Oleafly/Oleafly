@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { parseDelimited } from "@oleafly/conversion-registry/table";
 import { BlockFileTooLargeError } from "@/components/notes/note-blocks";
@@ -11,10 +11,24 @@ import {
   type TableResult,
   tableDelimiter,
 } from "@/components/notes/table-data";
-import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
+import { ErrorState, LoadingState } from "@/components/ui/empty";
+import { useAsyncTask } from "@/hooks/use-async-task";
+import { logError } from "@/lib/log";
+import { projectFileSizes, readProjectBytes } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 
-type Loaded = { key: string } & ({ result: TableResult } | { error: string });
+function overTableLimit(text: string): boolean {
+  if (text.length > TABLE_MAX_BYTES) return true;
+  return text.length * 3 > TABLE_MAX_BYTES && new TextEncoder().encode(text).length > TABLE_MAX_BYTES;
+}
+
+async function readWorkbook(projectId: string, path: string): Promise<TableResult> {
+  const size = (await projectFileSizes(projectId, [path]))[path];
+  if (size !== undefined && size > TABLE_MAX_BYTES) throw new BlockFileTooLargeError();
+  const bytes = new Uint8Array(await readProjectBytes(projectId, path));
+  if (bytes.length > TABLE_MAX_BYTES) throw new BlockFileTooLargeError();
+  return buildTable(await readSpreadsheetRows(bytes, null));
+}
 
 function SheetResult({ result }: Readonly<{ result: TableResult }>) {
   if (!result.ok) return <p className="p-6 text-sm text-muted-foreground">{problemText(result.problem)}</p>;
@@ -26,43 +40,30 @@ function SheetResult({ result }: Readonly<{ result: TableResult }>) {
 }
 
 function TextSheet({ path }: Readonly<{ path: string }>) {
-  const content = useFilesStore((state) => state.files[path]?.content);
+  const { t } = useTranslation(["notes"]);
+  const content = useDeferredValue(useFilesStore((state) => state.files[path]?.content));
   const result = useMemo(() => {
-    if (content === undefined) return null;
+    if (content === undefined || overTableLimit(content)) return null;
     const delimiter = tableDelimiter(/\.tsv$/iu.test(path) ? "tsv" : "csv", content);
     return buildTable(parseDelimited(content, { delimiter, limit: TABLE_MAX_ROWS + 2, trim: false }));
   }, [content, path]);
+  if (content !== undefined && !result) return <ErrorState className="p-6" message={t(($) => $.notes.blocks.table.tooLarge)} />;
   return result ? <SheetResult result={result} /> : null;
 }
 
 function WorkbookSheet({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common"]);
-  const key = `${projectId}\n${path}`;
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const workbook = useAsyncTask<TableResult>((error) => {
+    if (!(error instanceof BlockFileTooLargeError)) void logError("open a spreadsheet", error);
+    return tableErrorText(error, { kind: "file", path, format: "spreadsheet", sheet: null, thousands: false });
+  });
+  const { run } = workbook;
   useEffect(() => {
-    let live = true;
-    const source = { kind: "file", path, format: "spreadsheet", sheet: null, thousands: false } as const;
-    const read = async (): Promise<TableResult> => {
-      const bytes = base64ToUint8Array(await readFileBase64(projectId, path));
-      if (bytes.length > TABLE_MAX_BYTES) throw new BlockFileTooLargeError();
-      return buildTable(await readSpreadsheetRows(bytes, null));
-    };
-    read().then(
-      (result) => {
-        if (live) setLoaded({ key, result });
-      },
-      (error: unknown) => {
-        if (live) setLoaded({ key, error: tableErrorText(error, source) });
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [key, path, projectId]);
-  const shown = loaded?.key === key ? loaded : null;
-  if (!shown) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
-  if ("error" in shown) return <p className="p-6 text-sm text-destructive">{shown.error}</p>;
-  return <SheetResult result={shown.result} />;
+    void run(() => readWorkbook(projectId, path));
+  }, [path, projectId, run]);
+  if (workbook.error !== null) return <ErrorState className="p-6" message={workbook.error} />;
+  if (!workbook.result) return <LoadingState className="p-6" label={t(($) => $.common.state.loading)} />;
+  return <SheetResult result={workbook.result} />;
 }
 
 export function SheetFilePreview({
@@ -70,5 +71,6 @@ export function SheetFilePreview({
   path,
   workbook = false,
 }: Readonly<{ projectId: string; path: string; workbook?: boolean }>) {
-  return workbook ? <WorkbookSheet projectId={projectId} path={path} /> : <TextSheet path={path} />;
+  const key = `${projectId}\n${path}`;
+  return workbook ? <WorkbookSheet key={key} projectId={projectId} path={path} /> : <TextSheet key={key} path={path} />;
 }

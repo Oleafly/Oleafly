@@ -1,6 +1,6 @@
 import type { OverleafStopReason } from "@oleafly/backend-port";
 import { useMemo } from "react";
-import { Cloud, CloudAlert, CloudDownload, CloudUpload, Files, FileWarning, FolderInput, History, Lock, Type, X } from "lucide-react";
+import { Cloud, CloudAlert, CloudDownload, CloudUpload, Files, FileWarning, FolderInput, History, Lock, Type } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Progress } from "@/components/ui/progress";
@@ -18,8 +18,10 @@ import { cn } from "@/lib/utils";
 import type { CollabLiveKeptFile, CollabLocalCopyOffer, CollabUploadFile } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
+import { DismissButton } from "./DismissButton";
 import { type DownloadProgress, useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
+import { NoticeGroup } from "./NoticeGroup";
 import { type OverleafStopped, useOverleafNotices } from "./overleaf-notices";
 import { PathMessage } from "./PathMessage";
 
@@ -31,15 +33,6 @@ const NO_DOWNLOADS: Readonly<Record<string, DownloadProgress>> = {};
 const LIMITS: ReadonlySet<OverleafStopReason> = new Set(["too_long", "too_large", "too_many_ranges"]);
 const MAX_COMMENTS = 500;
 const MAX_TRACKED_CHANGES = 2000;
-
-function Dismiss({ tone, onDismiss }: Readonly<{ tone: WorkspaceBannerTone; onDismiss: () => void }>) {
-  const { t } = useTranslation(["collab"]);
-  return (
-    <WorkspaceBannerButton tone={tone} aria-label={t(($) => $.collab.files.dismiss)} onClick={onDismiss}>
-      <X aria-hidden className="size-3.5" />
-    </WorkspaceBannerButton>
-  );
-}
 
 function TransferLine({
   text,
@@ -146,7 +139,7 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
     <WorkspaceBanner tone="warning" data-testid="collab-upload-too-large">
       <FileWarning aria-hidden className="size-3.5 shrink-0" />
       <PathMessage paths={[file.path]}>{message}</PathMessage>
-      <Dismiss tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
+      <DismissButton tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
     </WorkspaceBanner>
   );
 }
@@ -172,7 +165,7 @@ function ProjectTooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
           {retrying ? <Spinner size="xs" /> : null}
           {t(($) => $.collab.files.retry)}
         </WorkspaceBannerButton>
-        <Dismiss tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
+        <DismissButton tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
       </span>
     </WorkspaceBanner>
   );
@@ -198,7 +191,7 @@ function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: stri
         <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
       )}
       <PathMessage paths={file.copy ? [file.path, file.copy] : [file.path]}>{message}</PathMessage>
-      <Dismiss tone={tone} onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
+      <DismissButton tone={tone} onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
     </WorkspaceBanner>
   );
 }
@@ -241,93 +234,134 @@ function BroughtInRow({ name }: Readonly<{ name: string }>) {
     <WorkspaceBanner tone="primary" data-testid="collab-local-copy-done">
       <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
       <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.files.broughtIn, { name })}</p>
-      <Dismiss tone="primary" onDismiss={() => useFileNotices.getState().dismissBroughtIn()} />
+      <DismissButton tone="primary" onDismiss={() => useFileNotices.getState().dismissBroughtIn()} />
     </WorkspaceBanner>
   );
 }
 
-function StoppedActions({ path, retry = true }: Readonly<{ path: string; retry?: boolean }>) {
+function StoppedButtons({ path, retry }: Readonly<{ path: string; retry: boolean }>) {
   const { t } = useTranslation(["collab"]);
   const busy = useOverleafNotices((state) => state.resolving !== null);
-  const failed = useOverleafNotices((state) => state.failed === path);
   return (
     <>
-      <span className="flex shrink-0 items-center gap-1">
-        {retry ? (
-          <WorkspaceBannerButton
-            tone="warning"
-            disabled={busy}
-            onClick={() => void useOverleafNotices.getState().tryLiveAgain(path)}
-          >
-            {t(($) => $.collab.overleafBanners.tryLiveAgain)}
-          </WorkspaceBannerButton>
-        ) : null}
+      {retry ? (
         <WorkspaceBannerButton
           tone="warning"
           disabled={busy}
-          onClick={() => void useOverleafNotices.getState().keepCopy(path)}
+          onClick={() => void useOverleafNotices.getState().tryLiveAgain(path)}
         >
-          {t(($) => $.collab.overleafBanners.keepMineAsCopy)}
+          {t(($) => $.collab.overleafBanners.tryLiveAgain)}
         </WorkspaceBannerButton>
-      </span>
-      {failed ? (
-        <WorkspaceBannerAlert>
-          {t(($) => $.collab.overleafBanners.stoppedActionFailed, { file: basename(path) })}
-        </WorkspaceBannerAlert>
       ) : null}
+      <WorkspaceBannerButton
+        tone="warning"
+        disabled={busy}
+        onClick={() => void useOverleafNotices.getState().keepCopy(path)}
+      >
+        {t(($) => $.collab.overleafBanners.keepMineAsCopy)}
+      </WorkspaceBannerButton>
     </>
   );
 }
 
-function FaultRow({ stopped }: Readonly<{ stopped: OverleafStopped }>) {
+function StoppedAlert({ path }: Readonly<{ path: string }>) {
   const { t } = useTranslation(["collab"]);
-  const file = basename(stopped.path);
-  const unsupported = stopped.reason === "unsupported";
-  let message: string;
-  if (unsupported) message = t(($) => $.collab.overleafBanners.faultUnsupported, { file });
-  else if (stopped.reason === "unavailable") message = t(($) => $.collab.overleafBanners.faultUnavailable, { file });
-  else message = t(($) => $.collab.overleafBanners.faultRefused, { file });
+  const failed = useOverleafNotices((state) => state.failed === path);
+  if (!failed) return null;
   return (
-    <WorkspaceBanner tone="warning" data-testid="overleaf-fault-row">
-      <CloudAlert aria-hidden className="size-3.5 shrink-0" />
-      <PathMessage paths={[stopped.path]}>{message}</PathMessage>
-      <StoppedActions path={stopped.path} retry={!unsupported} />
-    </WorkspaceBanner>
+    <WorkspaceBannerAlert>
+      {t(($) => $.collab.overleafBanners.stoppedActionFailed, { file: basename(path) })}
+    </WorkspaceBannerAlert>
   );
 }
 
-function LimitRow({ stopped }: Readonly<{ stopped: OverleafStopped }>) {
+type StoppedKind = "refused" | "unavailable" | "unsupported" | "too_long" | "too_large" | "too_many_ranges";
+
+const STOPPED_KINDS: readonly StoppedKind[] = ["refused", "unavailable", "unsupported", "too_long", "too_large", "too_many_ranges"];
+
+const KIND_OF: Readonly<Partial<Record<OverleafStopReason, StoppedKind>>> = {
+  unavailable: "unavailable",
+  unsupported: "unsupported",
+  too_long: "too_long",
+  too_large: "too_large",
+  too_many_ranges: "too_many_ranges",
+};
+
+function StoppedRows({ stopped }: Readonly<{ stopped: readonly OverleafStopped[] }>) {
   const { t } = useTranslation(["collab"]);
-  const file = basename(stopped.path);
-  let message: string;
-  if (stopped.reason === "too_long") message = t(($) => $.collab.overleafBanners.limitTooLong, { file });
-  else if (stopped.reason === "too_large") message = t(($) => $.collab.overleafBanners.limitTooLarge, { file });
-  else {
-    message = t(($) => $.collab.overleafBanners.limitTooManyRanges, {
-      file,
-      comments: formatNumber(MAX_COMMENTS),
-      changes: formatNumber(MAX_TRACKED_CHANGES),
-    });
-  }
-  return (
-    <WorkspaceBanner tone="warning" data-testid="overleaf-limit-row">
-      <FileWarning aria-hidden className="size-3.5 shrink-0" />
-      <PathMessage paths={[stopped.path]}>{message}</PathMessage>
-      <StoppedActions path={stopped.path} />
-    </WorkspaceBanner>
-  );
+  const message = (kind: StoppedKind, file: string): string => {
+    switch (kind) {
+      case "unsupported":
+        return t(($) => $.collab.overleafBanners.faultUnsupported, { file });
+      case "unavailable":
+        return t(($) => $.collab.overleafBanners.faultUnavailable, { file });
+      case "too_long":
+        return t(($) => $.collab.overleafBanners.limitTooLong, { file });
+      case "too_large":
+        return t(($) => $.collab.overleafBanners.limitTooLarge, { file });
+      case "too_many_ranges":
+        return t(($) => $.collab.overleafBanners.limitTooManyRanges, {
+          file,
+          comments: formatNumber(MAX_COMMENTS),
+          changes: formatNumber(MAX_TRACKED_CHANGES),
+        });
+      case "refused":
+        return t(($) => $.collab.overleafBanners.faultRefused, { file });
+    }
+  };
+  return STOPPED_KINDS.map((kind) => {
+    const limit = LIMITS.has(kind);
+    return (
+      <NoticeGroup
+        key={kind}
+        tone="warning"
+        testId={limit ? "overleaf-limit-row" : "overleaf-fault-row"}
+        icon={
+          limit ? (
+            <FileWarning aria-hidden className="size-3.5 shrink-0" />
+          ) : (
+            <CloudAlert aria-hidden className="size-3.5 shrink-0" />
+          )
+        }
+        message={(file) => message(kind, file)}
+        items={stopped
+          .filter((entry) => (KIND_OF[entry.reason] ?? "refused") === kind)
+          .map((entry) => ({
+            key: entry.path,
+            path: entry.path,
+            name: basename(entry.path),
+            actions: <StoppedButtons path={entry.path} retry={kind !== "unsupported"} />,
+            alert: <StoppedAlert path={entry.path} />,
+          }))}
+      />
+    );
+  });
 }
 
-function ExternalRow({ path }: Readonly<{ path: string }>) {
+function ExternalRows({ paths }: Readonly<{ paths: readonly string[] }>) {
   const { t } = useTranslation(["collab"]);
+  const dismiss = (path: string) => useOverleafNotices.getState().dismissExternal(path);
   return (
-    <WorkspaceBanner tone="primary" data-testid="overleaf-external-row">
-      <History aria-hidden className="size-3.5 shrink-0 text-primary" />
-      <PathMessage paths={[path]}>
-        {t(($) => $.collab.overleafBanners.externalChange, { file: basename(path) })}
-      </PathMessage>
-      <Dismiss tone="primary" onDismiss={() => useOverleafNotices.getState().dismissExternal(path)} />
-    </WorkspaceBanner>
+    <NoticeGroup
+      tone="primary"
+      testId="overleaf-external-row"
+      icon={<History aria-hidden className="size-3.5 shrink-0 text-primary" />}
+      message={(file) => t(($) => $.collab.overleafBanners.externalChange, { file })}
+      actions={
+        <DismissButton
+          tone="primary"
+          onDismiss={() => {
+            for (const path of paths) dismiss(path);
+          }}
+        />
+      }
+      items={paths.map((path) => ({
+        key: path,
+        path,
+        name: basename(path),
+        actions: <DismissButton tone="primary" onDismiss={() => dismiss(path)} />,
+      }))}
+    />
   );
 }
 
@@ -339,7 +373,7 @@ function ReplacedRow({ path }: Readonly<{ path: string }>) {
       <PathMessage paths={[path]}>
         {t(($) => $.collab.overleafBanners.charactersReplaced, { file: basename(path) })}
       </PathMessage>
-      <Dismiss tone="warning" onDismiss={() => useOverleafNotices.getState().dismissReplaced()} />
+      <DismissButton tone="warning" onDismiss={() => useOverleafNotices.getState().dismissReplaced()} />
     </WorkspaceBanner>
   );
 }
@@ -351,7 +385,7 @@ function NotAllowedRow({ paths }: Readonly<{ paths: readonly string[] }>) {
     <WorkspaceBanner tone="warning" data-testid="collab-tree-not-allowed">
       <Lock aria-hidden className="size-3.5 shrink-0" />
       <PathMessage paths={paths}>{t(($) => $.collab.overleafTree.notAllowed, { files })}</PathMessage>
-      <Dismiss tone="warning" onDismiss={() => useFileNotices.getState().dismissNotAllowed()} />
+      <DismissButton tone="warning" onDismiss={() => useFileNotices.getState().dismissNotAllowed()} />
     </WorkspaceBanner>
   );
 }
@@ -363,7 +397,7 @@ function KeptAwayRow({ paths }: Readonly<{ paths: readonly string[] }>) {
     <WorkspaceBanner tone="primary" data-testid="collab-tree-kept-away">
       <Cloud aria-hidden className="size-3.5 shrink-0 text-primary" />
       <PathMessage paths={paths}>{t(($) => $.collab.overleafTree.keptAway, { files })}</PathMessage>
-      <Dismiss tone="primary" onDismiss={() => useFileNotices.getState().dismissKeptAway()} />
+      <DismissButton tone="primary" onDismiss={() => useFileNotices.getState().dismissKeptAway()} />
     </WorkspaceBanner>
   );
 }
@@ -449,16 +483,8 @@ export function FileNoticesBanner() {
       {notices.kept.map((file) => (
         <KeptRow key={file.id} file={file} name={(file.by ? names.get(file.by) : undefined) || someone} />
       ))}
-      {overleaf.stopped.map((stopped) =>
-        LIMITS.has(stopped.reason) ? (
-          <LimitRow key={stopped.path} stopped={stopped} />
-        ) : (
-          <FaultRow key={stopped.path} stopped={stopped} />
-        ),
-      )}
-      {overleaf.external.map((path) => (
-        <ExternalRow key={path} path={path} />
-      ))}
+      <StoppedRows stopped={overleaf.stopped} />
+      <ExternalRows paths={overleaf.external} />
       {overleaf.replaced ? <ReplacedRow path={overleaf.replaced} /> : null}
     </div>
   );

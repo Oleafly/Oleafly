@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, ToolCase } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { openTool } from "@/features/open-tool";
 import { intentProps } from "@/lib/preloadable";
@@ -178,6 +178,7 @@ export function LatexToolsView() {
             <div className="relative w-full lg:w-96">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                {...SEARCH_INPUT}
                 aria-label={t(($) => $.researchTools.tools.searchAria)}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}

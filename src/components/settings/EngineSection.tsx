@@ -51,6 +51,7 @@ import { openTypstUpgrade } from "@/components/typst-upgrade/open";
 import { newerInstalledTypstVersions, projectTypstVersion } from "@/components/typst-upgrade/versions";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { NotebookEngineTab } from "@/components/settings/NotebookEngineTab";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { NOTEBOOK_TOOL_LABELS, notebookToolForSettingsTarget } from "@/store/notebook-toolchain";
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
@@ -145,7 +146,9 @@ function MarkdownEngineTab() {
   );
 }
 
-type EngineTab = "latex" | "typst" | "markdown" | "quarto" | "calepin";
+const ENGINE_TABS = ["latex", "typst", "markdown", "quarto", "calepin"] as const;
+
+type EngineTab = (typeof ENGINE_TABS)[number];
 
 function engineTabForTarget(target: string | null): EngineTab | null {
   if (target === TYPST_SETTINGS_TARGET) return "typst";
@@ -468,13 +471,13 @@ export function EngineSection() {
   const [distros, setDistros] = useState<TexDistribution[]>([]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
-  const [tab, setTab] = useState<EngineTab>(() => engineTabForTarget(scrollTarget) ?? "latex");
+  const [tab, setTab] = useSettingsTab("engine", () => engineTabForTarget(scrollTarget) ?? "latex", ENGINE_TABS);
   useEffect(() => {
     const target = engineTabForTarget(scrollTarget);
     if (!target) return;
     setTab(target);
     setScrollTarget(null);
-  }, [scrollTarget, setScrollTarget]);
+  }, [scrollTarget, setScrollTarget, setTab]);
 
   useEffect(() => {
     void refresh().then(() => refreshPackages());
@@ -537,7 +540,7 @@ export function EngineSection() {
   return (
     <Tabs
       value={tab}
-      onValueChange={(value) => setTab(value as EngineTab)}
+      onValueChange={setTab}
       className="flex flex-col gap-5"
     >
       <TabsList scrollable aria-label={t(($) => $.settings.engine.sectionName)} className="self-start">

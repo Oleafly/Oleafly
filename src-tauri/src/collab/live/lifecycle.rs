@@ -15,8 +15,8 @@ use super::live_disk::writer_loop;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
 use super::session::{
-    active_for, guard, io, live_for, lock, not_live, Active, Live, LiveDisk, WriterSignal, ACTIVE,
-    FRESH_JOINS, LIFECYCLE,
+    active_for, cancel_start, guard, io, live_for, lock, not_live, Active, Live, LiveDisk,
+    WriterSignal, ACTIVE, FRESH_JOINS, LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
 use crate::collab::commands::signed_out;
@@ -201,6 +201,7 @@ async fn finish(live: Live) {
 }
 
 pub(super) async fn stop_any() {
+    cancel_start(None);
     let previous = guard(&ACTIVE).take();
     if let Some(live) = previous {
         finish(live).await;
@@ -213,6 +214,7 @@ pub fn finish_for_quit(wait: Duration) {
     tauri::async_runtime::block_on(async move {
         let started = Instant::now();
         let _lifecycle = tokio::time::timeout(wait, LIFECYCLE.lock()).await.ok();
+        cancel_start(None);
         let Some(live) = guard(&ACTIVE).take() else {
             return;
         };
@@ -235,6 +237,7 @@ pub fn finish_for_quit(wait: Duration) {
 
 pub async fn stop(project_id: &str) {
     let _lifecycle = LIFECYCLE.lock().await;
+    cancel_start(Some(project_id));
     let previous = {
         let mut slot = guard(&ACTIVE);
         if slot
@@ -294,9 +297,25 @@ pub fn reconnect_now() -> bool {
 }
 
 pub fn window_focused(focused: bool) {
-    if let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() {
-        live.set_focused(focused);
+    let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() else {
+        return;
+    };
+    if focused {
+        live.set_focused(true);
+        return;
     }
+    let Some(app) = live.mirror.disk.host.app() else {
+        live.set_focused(false);
+        return;
+    };
+    tauri::async_runtime::spawn(async move {
+        use tauri::Manager as _;
+        let elsewhere = app
+            .webview_windows()
+            .values()
+            .any(|window| window.is_focused().unwrap_or(false));
+        live.set_focused(elsewhere);
+    });
 }
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);

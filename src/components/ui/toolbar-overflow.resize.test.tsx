@@ -4,6 +4,13 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ICON_BUTTON_WIDTH, type ToolbarControl, useFittedCount } from "./toolbar-overflow";
 
+const reactDom = vi.hoisted(() => ({ flushSync: vi.fn() }));
+vi.mock("react-dom", async (load) => {
+  const actual = await load<typeof import("react-dom")>();
+  reactDom.flushSync.mockImplementation(actual.flushSync);
+  return { ...actual, flushSync: reactDom.flushSync };
+});
+
 const originals = {
   clientWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth"),
   scrollWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth"),
@@ -91,6 +98,15 @@ describe("useFittedCount while its container is resized", () => {
     expect(renders).toBeGreaterThan(0);
     expect(screen.getAllByTestId("shown").length).toBeLessThan(6);
     resizeTo(400);
+    expect(screen.getAllByTestId("shown")).toHaveLength(6);
+  });
+
+  it("lets React schedule the new layout instead of committing inside the observer callback", () => {
+    render(<Bar />);
+    reactDom.flushSync.mockClear();
+    resizeTo(120);
+    resizeTo(400);
+    expect(reactDom.flushSync).not.toHaveBeenCalled();
     expect(screen.getAllByTestId("shown")).toHaveLength(6);
   });
 

@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, FileCode2, FolderOpen } from 
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadingState } from "@/components/ui/empty";
 import { openProjectLocation } from "@/lib/open-location";
 import { logError } from "@/lib/log";
@@ -295,10 +296,9 @@ export function TypstMigrationDialog() {
         />
         {!latex && <p className="mt-2 text-xs text-destructive">{t(($) => $.shell.typstMigration.notLatex)}</p>}
         {phase.kind === "failed" && (
-          <div className="mt-3 flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-            <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-            <span>{failureMessage(phase.code, phase.message)}</span>
-          </div>
+          <InlineAlert icon={AlertCircle} bordered className="mt-3">
+            {failureMessage(phase.code, phase.message)}
+          </InlineAlert>
         )}
       </div>
     );

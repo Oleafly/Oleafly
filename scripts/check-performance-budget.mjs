@@ -216,7 +216,17 @@ const limits = {
   // paste choice, paper export and the live-post setting), 15,569 bytes in all.
   // The entry measures 4,994,041 bytes, and the combined graph 27,231,970
   // bytes on macOS.
-  totalJavaScript: 27_245_000,
+  // +22 KB, on top of 27,245,000, for 0.4.13's manual-test fixes, the figure
+  // layer for PDF dark mode, the sidebar's More menu and the logging that
+  // tells errors from warnings and notes. CI measured 27,237,617 bytes before
+  // them and 27,259,437 after, and macOS 27,259,966 with the last log fixes.
+  // +40 KB, on top of 27,275,000, for the fixes from the 0.4.13 audit: one
+  // grouped row per kind of live-editing notice, the frame host that notes and
+  // decks now share, typing presence kept out of the comment kit, start
+  // refusals shown on the live button, the windowed Logs list and five new
+  // strings in every locale. macOS measured 27,259,966 bytes before them and
+  // 27,300,271 after.
+  totalJavaScript: 27_315_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.

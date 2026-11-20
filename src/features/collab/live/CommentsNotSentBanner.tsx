@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { MessageSquareOff, X } from "lucide-react";
+import { MessageSquareOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
@@ -9,6 +9,7 @@ import { useFilesStore } from "@/store/files";
 import { CommentQuote } from "@/components/ui/comments/comment-quote";
 import { useComments } from "../comments/comments-store";
 import { useCommentQuoteLabels } from "../comments/desktop-comment-kit";
+import { DismissButton } from "./DismissButton";
 import { useCollabLiveStore } from "./live-store";
 
 export function notSentText(comments: readonly CollabCommentNotSent[]): string {
@@ -84,9 +85,7 @@ export function CommentsNotSentBanner() {
           </WorkspaceBannerButton>
         </span>
       ) : null}
-      <WorkspaceBannerButton tone="neutral" aria-label={t(($) => $.common.actions.close)} onClick={dismiss}>
-        <X aria-hidden className="size-3.5" />
-      </WorkspaceBannerButton>
+      <DismissButton tone="neutral" label={t(($) => $.common.actions.close)} onDismiss={dismiss} />
       {written && open ? (
         <ul
           id={listId}

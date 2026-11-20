@@ -108,6 +108,29 @@ describe("new comment arrivals", () => {
   });
 });
 
+describe("scrolling a long list", () => {
+  it("finds the first item on screen without measuring every item above it", () => {
+    const items = Array.from({ length: 400 }, (_, index) => ({ id: `m${index}`, mine: false, at: 0 }));
+    render(<List items={items} />);
+    const box = document.querySelector(".overflow-y-auto") as HTMLElement;
+    const offset = 12_000;
+    Object.defineProperty(box, "scrollTop", { configurable: true, get: () => offset });
+    box.getBoundingClientRect = () => ({ top: 0, bottom: 300 }) as DOMRect;
+    let reads = 0;
+    document.querySelectorAll("[data-comment-entry]").forEach((row, index) => {
+      (row as HTMLElement).getBoundingClientRect = () => {
+        reads += 1;
+        return { top: index * 60 - offset, bottom: index * 60 + 60 - offset } as DOMRect;
+      };
+    });
+    act(() => {
+      fireEvent.scroll(box);
+    });
+    expect(reads).toBeGreaterThan(0);
+    expect(reads).toBeLessThan(30);
+  });
+});
+
 describe("thread filter", () => {
   it.each([
     ["open", false, true],

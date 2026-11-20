@@ -1,9 +1,9 @@
 ---
-name: PDF to LaTeX
+name: pdf-to-latex
 description: Finish rebuilding a PDF as an editable LaTeX project after the app's importer has made its first pass. Reconstructs sectioning, math, tables, figures, and the bibliography one section at a time, verifying each against the original and keeping a progress log so the work survives across chats.
 license: MIT
 compatibility: For LaTeX projects created by the app's PDF importer. Layout checks need a vision model and the PDF page capture setting. The original PDF must be attached, or a text extractor on PATH.
-allowed-tools: read_file, search_project, list_files, project_map, replace_in_file, write_file, create_file, rename_file, compile, get_log, get_pdf_text, verify_pdf_pages, run_command, verify_citation, literature_search, update_todos, load_skill, read_skill_file
+allowed-tools: read_file search_project list_files project_map replace_in_file write_file create_file rename_file compile get_log get_pdf_text verify_pdf_pages run_command verify_citation literature_search update_todos load_skill read_skill_file
 metadata:
   version: "1.0.0"
   skill-author: Oleafly

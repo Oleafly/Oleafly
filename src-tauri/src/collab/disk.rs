@@ -63,6 +63,16 @@ pub fn as_text(bytes: &[u8]) -> Option<String> {
         .map(|text| lf_text(text).into_owned())
 }
 
+pub fn read_text(root: &Path, relative: &str) -> Option<(String, String)> {
+    let target = safe_target(root, relative)?;
+    if std::fs::metadata(&target).ok()?.len() > MAX_TEXT_BYTES as u64 {
+        return None;
+    }
+    let bytes = std::fs::read(target).ok()?;
+    let text = as_text(&bytes)?;
+    Some((text, sha256_hex(&bytes)))
+}
+
 pub fn lf_text(text: &str) -> Cow<'_, str> {
     if text.contains('\r') {
         Cow::Owned(text.replace("\r\n", "\n").replace('\r', "\n"))

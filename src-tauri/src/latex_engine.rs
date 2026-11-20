@@ -203,7 +203,7 @@ fn tex_utility_command(program: &Path, args: &[String]) -> Result<tokio::process
     use std::process::Stdio;
 
     #[cfg(windows)]
-    let mut command = if oleafly_core::engine_spec::is_windows_batch_script(program) {
+    let mut command = if oleafly_sandbox::cmdline::is_windows_batch_script(program) {
         let line = script_command_line(program, args)?;
         let mut command = tokio::process::Command::new("cmd.exe");
         command

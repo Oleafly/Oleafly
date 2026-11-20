@@ -9,7 +9,7 @@ use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::projects::ProjectRole;
 use people::{
     beside, connect, grant, large_change, longest_stall, next_frame, seeded, send_update,
-    share_project, stage, subscribe, Person, Socket, Stage, LONGEST_STALL,
+    shared_with_alice, stage, subscribe, Person, Socket, Stage, LONGEST_STALL,
 };
 use polling::opened;
 use reqwest::StatusCode;
@@ -19,25 +19,6 @@ static ONE_AT_A_TIME: Mutex<()> = Mutex::const_new(());
 
 async fn alone() -> MutexGuard<'static, ()> {
     ONE_AT_A_TIME.lock().await
-}
-
-async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(
-            &stage.server,
-            &stage.bob,
-            project,
-            &stage.alice,
-            ProjectRole::Editor
-        )
-        .await
-        .status(),
-        StatusCode::OK
-    );
-    project
 }
 
 async fn granted(stage: &Stage, project: SharedProjectId, name: &str, role: ProjectRole) -> Person {

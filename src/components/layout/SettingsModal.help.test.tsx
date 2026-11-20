@@ -172,7 +172,7 @@ describe("Settings Help & About support callout", () => {
     render(<SettingsModal />);
 
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
-      "w-[min(1040px,94vw)]",
+      "w-[min(1180px,94vw)]",
       "min-w-[min(640px,94vw)]",
       "[--settings-height:min(900px,88vh)]",
       "h-(--settings-height)",

@@ -211,6 +211,17 @@ fn save_switches(
     write_atomic(&file, &bytes)
 }
 
+pub(crate) fn reactions_allowed(switches: CommentSwitches) -> Result<(), CollabError> {
+    if switches.server && switches.reactions {
+        return Ok(());
+    }
+    Err(refused(
+        403,
+        "reactions_off",
+        "reactions are turned off on this server",
+    ))
+}
+
 fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
     CommentsStatus {
         server_allowed: switches.server,
@@ -469,6 +480,7 @@ pub(crate) fn react_in(
     now: i64,
 ) -> Result<CommentThread, CollabError> {
     who.may_write()?;
+    reactions_allowed(who.switches)?;
     let doc = live.comment_doc();
     let reacted = if on {
         doc.react_to_comment(file_id, thread, message, emoji, who.account, now)
@@ -1056,7 +1068,7 @@ mod tests {
             who: Commenter {
                 account: AccountId::new_v7(),
                 role: ProjectRole::Owner,
-                switches: CommentSwitches::default(),
+                switches: REACTING,
             },
         };
         let bob = Side {
@@ -1068,10 +1080,52 @@ mod tests {
             who: Commenter {
                 account: AccountId::new_v7(),
                 role: ProjectRole::Editor,
-                switches: CommentSwitches::default(),
+                switches: REACTING,
             },
         };
         (alice, bob, intro)
+    }
+
+    const REACTING: CommentSwitches = CommentSwitches {
+        server: true,
+        project: true,
+        reactions: true,
+    };
+
+    #[test]
+    fn a_reaction_is_refused_while_reactions_are_off_on_the_server() {
+        let (alice, _bob, intro) = sides();
+        let mut live = alice.live.lock().unwrap();
+        let thread = create_at(
+            &mut live,
+            &alice.who,
+            "chapters/intro.tex",
+            0,
+            5,
+            None,
+            "Quick?",
+            &[],
+            1,
+        )
+        .unwrap();
+        let off = Commenter {
+            switches: CommentSwitches::default(),
+            ..alice.who
+        };
+        let refused = react_in(
+            &mut live,
+            &off,
+            &intro,
+            thread.id,
+            thread.messages[0].id,
+            "👍",
+            true,
+            2,
+        )
+        .unwrap_err();
+        assert_eq!(command_error(refused).code, "forbidden");
+        let listed = threads_at(live.doc(), "chapters/intro.tex").unwrap();
+        assert!(listed[0].messages[0].reactions.is_empty());
     }
 
     fn member(account: AccountId, name: &str) -> CommentMember {

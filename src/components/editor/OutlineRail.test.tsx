@@ -24,7 +24,13 @@ vi.mock("@/lib/aux-numbers", () => ({
   currentAuxToc: () => aux.toc,
   subscribeAuxNumbers: () => () => undefined,
 }));
+vi.mock("@/lib/index/outline-numbers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/index/outline-numbers")>();
+  return { ...actual, latexHeadingNumbers: vi.fn(actual.latexHeadingNumbers) };
+});
 
+import { DocumentOutline } from "@/components/layout/DocumentOutline";
+import { latexHeadingNumbers } from "@/lib/index/outline-numbers";
 import { OUTLINE_RAIL_MIN_EDITOR_WIDTH, OutlineRail, railMarks } from "./OutlineRail";
 
 const copy = enWorkspace.outline;
@@ -174,6 +180,7 @@ describe("OutlineRail", () => {
     fireEvent.click(screen.getByRole("button", { name: copy.title }));
 
     const outline = await screen.findByRole("dialog", { name: copy.title });
+    expect(outline).toHaveAttribute("data-align", "center");
     const current = within(outline).getByRole("button", { name: "1 Introduction, page 1" });
     await waitFor(() => expect(current).toHaveFocus());
     expect(within(outline).getByText("main.tex")).toBeInTheDocument();
@@ -188,5 +195,80 @@ describe("OutlineRail", () => {
       range: { from: 300, to: 310 },
       source: "outline",
     });
+  });
+});
+
+const NUMBERED_TOC: AuxToc = {
+  projectId: "p1",
+  mainDocument: "main.tex",
+  entries: [
+    { level: 2, number: "1", title: "Introduction", page: "1" },
+    { level: 2, number: "2", title: "Background", page: "3" },
+    { level: 3, number: "2.1", title: "Prior work", page: "4" },
+    { level: 2, number: "3", title: "Conclusion", page: "9" },
+  ],
+};
+
+const NUMBERED_TEXTS = {
+  "main.tex": `${" ".repeat(100)}\\section{Introduction}${" ".repeat(379)}\\input{ch1}${" ".repeat(389)}\\section{Conclusion}`,
+  "ch1.tex": `\\section{Background}${" ".repeat(280)}\\subsection{Prior work}`,
+};
+
+function reindex() {
+  act(() => {
+    useIndexStore.setState({ index: indexOf(THESIS, [["main.tex", 500, "ch1.tex"]]) as never });
+  });
+}
+
+describe("OutlineRail numbering", () => {
+  it("works out heading numbers only while the outline is open", async () => {
+    aux.toc = NUMBERED_TOC;
+    mount("main.tex", { texts: NUMBERED_TEXTS });
+    await waitFor(() => expect(marks()).toHaveLength(4));
+    reindex();
+    expect(latexHeadingNumbers).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: copy.title }));
+    const outline = await screen.findByRole("dialog", { name: copy.title });
+    expect(within(outline).getByRole("button", { name: "1 Introduction, page 1" })).toBeInTheDocument();
+    expect(latexHeadingNumbers).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(latexHeadingNumbers).mock.calls[0][0].documentSections).toHaveLength(4);
+
+    fireEvent.keyDown(outline, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: copy.title })).toBeNull());
+    vi.mocked(latexHeadingNumbers).mockClear();
+    reindex();
+    expect(latexHeadingNumbers).not.toHaveBeenCalled();
+  });
+
+  it("works the numbers out once for the rail and the sidebar outline together", async () => {
+    aux.toc = NUMBERED_TOC;
+    mount("main.tex", { texts: NUMBERED_TEXTS });
+    cleanup();
+    render(
+      <>
+        <OutlineRail />
+        <DocumentOutline />
+      </>,
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "1 Introduction" })).toBeInTheDocument());
+    fireEvent.click(within(screen.getByTestId("outline-rail")).getByRole("button", { name: copy.title }));
+    const outline = await screen.findByRole("dialog", { name: copy.title });
+    expect(within(outline).getByRole("button", { name: "1 Introduction, page 1" })).toBeInTheDocument();
+    expect(latexHeadingNumbers).toHaveBeenCalledTimes(1);
+
+    vi.mocked(latexHeadingNumbers).mockClear();
+    reindex();
+    expect(screen.getByRole("button", { name: "1 Introduction" })).toBeInTheDocument();
+    expect(latexHeadingNumbers).toHaveBeenCalledTimes(1);
+  });
+
+  it("works out no numbers for a collapsed sidebar outline", () => {
+    aux.toc = NUMBERED_TOC;
+    useIndexStore.setState({ index: indexOf(THESIS, [["main.tex", 500, "ch1.tex"]]) as never, texts: NUMBERED_TEXTS });
+    useFilesStore.setState({ projectId: "p1", activePath: "main.tex", mainDoc: "main.tex", files: {}, tree: [] } as never);
+    render(<DocumentOutline collapsed onCollapsedChange={() => undefined} />);
+    reindex();
+    expect(latexHeadingNumbers).not.toHaveBeenCalled();
   });
 });

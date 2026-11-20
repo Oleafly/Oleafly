@@ -38,6 +38,21 @@ describe("Popover", () => {
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
+  it.each([
+    [undefined, "start"],
+    ["left", "start"],
+    ["center", "center"],
+    ["right", "end"],
+  ] as const)("lines the panel up with its trigger when aligned %s", (align, placed) => {
+    render(
+      <Popover trigger="…" ariaLabel="Options" contentAriaLabel="Option list" side="left" align={align}>
+        <PopoverItem onClick={vi.fn()}>{"Rename"}</PopoverItem>
+      </Popover>,
+    );
+    open();
+    expect(screen.getByRole("dialog", { name: "Option list" })).toHaveAttribute("data-align", placed);
+  });
+
   it("stays open on clicks inside when it holds a form", async () => {
     render(
       <Popover trigger="…" ariaLabel="Options" contentAriaLabel="Filters" closeOnClick={false}>

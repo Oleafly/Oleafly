@@ -4,6 +4,23 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const FORCE_DISCONNECT_DELAY: Duration = Duration::from_secs(10);
+pub(crate) const LONGEST_SERVER_WAIT: Duration = Duration::from_secs(300);
+const LONGEST_ID: usize = 128;
+
+pub fn plain_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= LONGEST_ID && id.bytes().all(|byte| byte.is_ascii_alphanumeric())
+}
+
+pub(crate) fn plain(id: String) -> Option<String> {
+    plain_id(&id).then_some(id)
+}
+
+fn server_wait(seconds: f64) -> Option<Duration> {
+    (seconds >= 0.0).then(|| {
+        Duration::try_from_secs_f64(seconds)
+            .map_or(LONGEST_SERVER_WAIT, |wait| wait.min(LONGEST_SERVER_WAIT))
+    })
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct PublicId(pub String);
@@ -60,11 +77,19 @@ fn id_text(value: &Value) -> Option<String> {
         .map(str::to_string)
         .or_else(|| text(value, "_id"))
         .or_else(|| text(value, "id"))
+        .and_then(plain)
+}
+
+fn doc_text(value: &Value, key: &str) -> Option<DocId> {
+    text(value, key).and_then(plain).map(DocId)
 }
 
 impl AppliedUpdate {
     pub fn from_value(update: &Value, doc: Option<&DocId>) -> Option<AppliedUpdate> {
-        let doc = text(update, "doc").map(DocId).or_else(|| doc.cloned())?;
+        let doc = match text(update, "doc") {
+            Some(named) => DocId(plain(named)?),
+            None => doc.cloned()?,
+        };
         let meta = update.get("meta").unwrap_or(&Value::Null);
         Some(AppliedUpdate {
             doc,
@@ -111,7 +136,7 @@ impl PeerPosition {
             user_id: text(user, "user_id"),
             name: Some(name.trim().to_string()).filter(|name| !name.is_empty()),
             email: text(user, "email"),
-            doc: cursor.and_then(|cursor| text(cursor, "doc_id")).map(DocId),
+            doc: cursor.and_then(|cursor| doc_text(cursor, "doc_id")),
             row: cursor
                 .and_then(|cursor| cursor.get("row"))
                 .and_then(Value::as_u64),
@@ -127,7 +152,7 @@ impl PeerPosition {
             user_id: text(value, "user_id"),
             name: text(value, "name"),
             email: text(value, "email"),
-            doc: text(value, "doc_id").map(DocId),
+            doc: doc_text(value, "doc_id"),
             row: value.get("row").and_then(Value::as_u64),
             column: value.get("column").and_then(Value::as_u64),
         })
@@ -227,12 +252,13 @@ pub enum ProjectEvent {
 impl ProjectEvent {
     fn from_wire(name: &str, args: &[Value]) -> Option<ProjectEvent> {
         let first = || args.first().and_then(Value::as_str).map(str::to_string);
+        let doc = || first().and_then(plain).map(DocId);
         Some(match name {
-            "rootDocUpdated" => ProjectEvent::RootDoc(DocId(first()?)),
+            "rootDocUpdated" => ProjectEvent::RootDoc(doc()?),
             "compilerUpdated" => ProjectEvent::Compiler(first()?),
             "imageNameUpdated" => ProjectEvent::Image(first()?),
             "spellCheckLanguageUpdated" => ProjectEvent::SpellLanguage(first()?),
-            "mainBibliographyDocUpdated" => ProjectEvent::MainBibliography(DocId(first()?)),
+            "mainBibliographyDocUpdated" => ProjectEvent::MainBibliography(doc()?),
             "projectNameUpdated" => ProjectEvent::Name(first()?),
             "projectRenamedOrDeletedByExternalSource" => ProjectEvent::DeletedOrRenamedExternally,
             _ => return None,
@@ -309,9 +335,9 @@ impl ServerEvent {
                 .unwrap_or_else(unknown),
             "otUpdateError" => {
                 let details = args.get(1).unwrap_or(&Value::Null);
-                match text(details, "doc_id") {
+                match doc_text(details, "doc_id") {
                     Some(doc) => ServerEvent::UpdateError {
-                        doc: DocId(doc),
+                        doc,
                         message: first
                             .as_str()
                             .map(str::to_string)
@@ -335,8 +361,7 @@ impl ServerEvent {
                 delay: args
                     .get(1)
                     .and_then(Value::as_f64)
-                    .filter(|seconds| seconds.is_finite() && *seconds >= 0.0)
-                    .map(Duration::from_secs_f64)
+                    .and_then(server_wait)
                     .unwrap_or(FORCE_DISCONNECT_DELAY),
             },
             _ => TreeEvent::from_wire(name, args)
@@ -457,6 +482,84 @@ mod tests {
                 delay: FORCE_DISCONNECT_DELAY
             }
         );
+    }
+
+    #[test]
+    fn a_forced_disconnect_waits_no_longer_than_the_cap() {
+        for (seconds, expected) in [
+            (json!(1e20), LONGEST_SERVER_WAIT),
+            (json!(1e12), LONGEST_SERVER_WAIT),
+            (json!(u64::MAX), LONGEST_SERVER_WAIT),
+            (json!(f64::MAX), LONGEST_SERVER_WAIT),
+            (json!(0), Duration::ZERO),
+            (json!(-5), FORCE_DISCONNECT_DELAY),
+            (json!("soon"), FORCE_DISCONNECT_DELAY),
+        ] {
+            assert_eq!(
+                event("forceDisconnect", json!(["Maintenance", seconds])),
+                ServerEvent::ForceDisconnect {
+                    message: "Maintenance".into(),
+                    delay: expected
+                },
+                "{seconds}"
+            );
+        }
+    }
+
+    #[test]
+    fn ids_that_are_not_plain_never_become_entities_or_documents() {
+        let long = "a".repeat(129);
+        for hostile in [
+            "../journal",
+            "..",
+            "/etc/passwd",
+            "C:\\Users\\x",
+            "a/b",
+            "a\\b",
+            "a.b",
+            "",
+            long.as_str(),
+        ] {
+            assert!(!plain_id(hostile), "{hostile}");
+            let unknown = |name: &str| ServerEvent::Unknown { name: name.into() };
+            for (name, args) in [
+                (
+                    "reciveNewDoc",
+                    json!(["f", { "_id": hostile, "name": "a.tex" }]),
+                ),
+                (
+                    "reciveNewDoc",
+                    json!([hostile, { "_id": "d", "name": "a.tex" }]),
+                ),
+                (
+                    "reciveNewFile",
+                    json!(["f", { "_id": hostile, "name": "a.png" }]),
+                ),
+                (
+                    "reciveNewFolder",
+                    json!(["f", { "id": hostile, "name": "figs" }]),
+                ),
+                ("reciveEntityRename", json!([hostile, "b.tex"])),
+                ("reciveEntityMove", json!(["d", hostile])),
+                ("removeEntity", json!([hostile, "editor"])),
+                ("rootDocUpdated", json!([hostile])),
+                ("mainBibliographyDocUpdated", json!([hostile])),
+                ("otUpdateApplied", json!([{ "doc": hostile, "v": 1 }])),
+                ("otUpdateError", json!(["x", { "doc_id": hostile }])),
+            ] {
+                assert_eq!(event(name, args), unknown(name), "{name} {hostile}");
+            }
+            let moved = event(
+                "clientTracking.clientUpdated",
+                json!([{ "id": "P.2", "doc_id": hostile, "row": 1 }]),
+            );
+            assert!(
+                matches!(&moved, ServerEvent::PeerMoved(peer) if peer.doc.is_none()),
+                "{moved:?}"
+            );
+        }
+        assert!(plain_id(&"a".repeat(128)));
+        assert!(plain_id("6af9683d2fdfc01466e1ed43"));
     }
 
     #[test]

@@ -5,6 +5,7 @@
   "windows": ["update"],
   "permissions": [
     "core:default",
+    "notification:allow-is-permission-granted",
     "core:webview:allow-set-webview-zoom",
     "core:window:allow-close",
     "core:window:allow-set-focus",

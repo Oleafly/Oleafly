@@ -1986,9 +1986,7 @@ fn turned_down_custom_effort(
             status: 400 | 422,
             ..
         }
-    ) && oleafly_agent::provider::catalog_entry(&resolved.provider_id).is_none()
-        && oleafly_agent::effective_effort(resolved, request.effort)
-            .is_some_and(|effort| effort != oleafly_agent::Effort::Off)
+    ) && oleafly_agent::sends_custom_effort(resolved, request.effort)
 }
 
 /// Whether the next step would send the model's thinking back to it: the

@@ -519,7 +519,9 @@
         "instructions": "Instructions",
         "instructionsHint": "Leave this blank to create a minimal instruction scaffold.",
         "instructionsPlaceholder": "List when to use this skill and the steps the assistant should follow.",
-        "namePlaceholder": "Claim Checker",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Saved as {{name}}. Skill names use lowercase letters, numbers and hyphens, so other agents can load them too.",
+        "nameNeedsLatin": "Add some letters a to z or numbers. Skill names use lowercase letters, numbers and hyphens, so other agents can load them too.",
         "requiredAll": "Name, description, and instructions are required.",
         "requiredBasics": "Name and description are required.",
         "submitCreate": "Create"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Use {{name}} in this project",
       "validateAria": "Validate {{name}}",
       "shadowNote": "A newer Oleafly version of this skill is available.",
+      "nameNote": "Other agents only load skills named in lowercase letters, numbers and hyphens.",
+      "renameAction": "Rename to {{name}}",
       "replaceAction": "Use the Oleafly version",
       "replaceTitle": "Replace your copy of {{name}}?",
       "replaceBody": "Your copy moves to a backup folder. Nothing is deleted.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sidebar accent",
         "sidebarAccentForeground": "Sidebar accent text",
         "sidebarBorder": "Sidebar border",
-        "sidebarForeground": "Sidebar text"
+        "sidebarForeground": "Sidebar text",
+        "pdfDarkPage": "Dark PDF page",
+        "pdfDarkText": "Dark PDF text"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",
         "label": "PDF dark mode"
+      },
+      "darkColors": {
+        "label": "Dark page colors",
+        "description": "PDF dark mode draws pages in these colors. They follow your theme until you pick your own, and they're kept with the light or dark theme you're using now."
       },
       "hoverPreview": {
         "description": "Show the last compiled page when you hover over a project in the library.",

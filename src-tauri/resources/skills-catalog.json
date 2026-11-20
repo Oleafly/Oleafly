@@ -4,7 +4,7 @@
   "packs": [
     {
       "id": "research-core",
-      "version": "2026.10.19.fa83f292",
+      "version": "2026.10.19.084bb10a",
       "kind": "bundled"
     }
   ],
@@ -26,7 +26,7 @@
     },
     {
       "id": "desktop-apps",
-      "name": "Computer Use",
+      "name": "desktop-apps",
       "description": "Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.",
       "phase": "tooling",
       "license": "MIT",
@@ -82,12 +82,12 @@
     },
     {
       "id": "import-refine",
-      "name": "Import refine",
+      "name": "import-refine",
       "description": "Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, a Typst conf template, broken math, or citations that arrived as plain text.",
       "phase": "tooling",
       "license": "MIT",
       "version": "1.1.0",
-      "bytes": 26104,
+      "bytes": 26091,
       "files": 2,
       "pack": "research-core"
     },
@@ -119,12 +119,12 @@
     },
     {
       "id": "oleafly-data-analysis",
-      "name": "Data analysis",
+      "name": "oleafly-data-analysis",
       "description": "Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.",
       "phase": "authoring",
       "license": "MIT",
       "version": "1.0.1",
-      "bytes": 27548,
+      "bytes": 27544,
       "files": 3,
       "pack": "research-core"
     },
@@ -141,23 +141,23 @@
     },
     {
       "id": "oleafly-figure-prep",
-      "name": "Figure prep",
+      "name": "oleafly-figure-prep",
       "description": "Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a CeTZ or fletcher figure in Typst, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.",
       "phase": "figures",
       "license": "MIT",
       "version": "1.1.1",
-      "bytes": 22315,
+      "bytes": 22323,
       "files": 3,
       "pack": "research-core"
     },
     {
       "id": "oleafly-latex-build",
-      "name": "Build and fix",
+      "name": "oleafly-latex-build",
       "description": "Drive Oleafly's compile, diagnose, fix loop until the document builds clean. Use when a compile fails, when the log shows undefined control sequence, missing package or file not found, missing $ inserted, runaway argument, undefined citation or reference, a font that will not load, overfull hbox warnings, a bibliography that will not resolve, a Typst error, or when the user says it will not compile, the PDF is stale, or asks why the build is different on another machine.",
       "phase": "tooling",
       "license": "MIT",
-      "version": "1.1.1",
-      "bytes": 29094,
+      "version": "1.1.2",
+      "bytes": 31727,
       "files": 3,
       "pack": "research-core"
     },
@@ -174,12 +174,12 @@
     },
     {
       "id": "oleafly-manuscript-scaffold",
-      "name": "Manuscript scaffold",
+      "name": "oleafly-manuscript-scaffold",
       "description": "Build a venue-shaped manuscript skeleton inside the open Oleafly project. Use when the user wants to start a paper, set up a NeurIPS, ICML, ICLR, ACL, CVPR or AAAI submission, an IEEE or ACM conference paper, an Elsevier or Springer journal article, a PLOS, Nature or medical manuscript, an arXiv preprint or a thesis chapter, or asks for main.tex plus sections and a bibliography, or wants an existing draft reshaped to a venue layout.",
       "phase": "authoring",
       "license": "MIT",
       "version": "1.0.1",
-      "bytes": 22475,
+      "bytes": 22483,
       "files": 5,
       "pack": "research-core"
     },
@@ -244,8 +244,8 @@
       "description": "Turn the manuscript in the open project into a talk deck or a conference poster and compile it in place. Use when asked for slides, a presentation, a Beamer deck, a defense talk, a conference poster, or a PowerPoint version of a paper, when a deck has to be built for a 15 minute slot or a 45 minute seminar, or when a poster needs the right size and font scale for a printed board.",
       "phase": "communication",
       "license": "MIT",
-      "version": "1.0.1",
-      "bytes": 35989,
+      "version": "1.0.2",
+      "bytes": 36160,
       "files": 8,
       "pack": "research-core"
     },
@@ -262,12 +262,12 @@
     },
     {
       "id": "openresearch",
-      "name": "OpenResearch (orx)",
+      "name": "openresearch",
       "description": "Search literature and drive OpenResearch experiments through the local orx CLI, then record every run in the project so the results reach the manuscript. Use when the user mentions orx, OpenResearch, an experiment tree, a run id, or wants an experiment launched, polled, or written up.",
       "phase": "research",
       "license": "MIT",
       "version": "1.1.0",
-      "bytes": 21637,
+      "bytes": 21620,
       "files": 3,
       "pack": "research-core"
     },
@@ -288,12 +288,12 @@
     },
     {
       "id": "pdf-to-latex",
-      "name": "PDF to LaTeX",
+      "name": "pdf-to-latex",
       "description": "Finish rebuilding a PDF as an editable LaTeX project after the app's importer has made its first pass. Reconstructs sectioning, math, tables, figures, and the bibliography one section at a time, verifying each against the original and keeping a progress log so the work survives across chats.",
       "phase": "tooling",
       "license": "MIT",
       "version": "1.0.0",
-      "bytes": 20996,
+      "bytes": 20979,
       "files": 3,
       "pack": "research-core"
     },
@@ -494,7 +494,7 @@
     },
     {
       "id": "template-generate",
-      "name": "Reusable template",
+      "name": "template-generate",
       "description": "Turn the current document into a reusable Oleafly template that follows the template pack authoring rules. Use when the user says make this a template, save this layout, reuse this format for future papers, build a starter for my group, or asks how to add a template to the New Project gallery or how to package a class or style for reuse.",
       "phase": "tooling",
       "license": "MIT",

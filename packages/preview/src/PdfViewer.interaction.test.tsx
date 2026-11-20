@@ -33,6 +33,10 @@ const harness = vi.hoisted(() => ({
   observerCallbacks: [] as IntersectionObserverCallback[],
   linkServices: [] as Array<{ viewer: PdfLinkViewerAdapter | null }>,
   renderCalls: [] as Array<{ pageNumber: number; rotation: number; optionalContentConfigPromise: unknown }>,
+  imagePasses: [] as number[],
+  imageTasks: [] as Array<{ onContinue?: unknown }>,
+  images: new Map<number, number[]>(),
+  renderGate: null as Gate | null,
   pageCleanup: [] as number[],
   getPageCalls: [] as number[],
   textLayerGate: null as Gate | null,
@@ -63,6 +67,10 @@ const harness = vi.hoisted(() => ({
     this.observerCallbacks = [];
     this.linkServices = [];
     this.renderCalls = [];
+    this.imagePasses = [];
+    this.imageTasks = [];
+    this.images = new Map();
+    this.renderGate = null;
     this.pageCleanup = [];
     this.getPageCalls = [];
     this.textLayerGate = null;
@@ -140,11 +148,14 @@ vi.mock("pdfjs-dist", () => {
     readonly convertToViewportPoint = harness.noViewportConversion
       ? undefined
       : (x: number, y: number) => [x * this.scale, (this.spec.height - y) * this.scale];
+
+    readonly convertToPdfPoint = (x: number, y: number) => [x / this.scale, this.spec.height - y / this.scale];
   }
 
   const makePage = (pageNumber: number) => {
     const spec = harness.pages[pageNumber - 1];
-    return {
+    const pdfPage = {
+      imageCoordinates: null as Float32Array | null,
       rotate: 0,
       getViewport: ({ scale, rotation = 0 }: { scale: number; rotation?: number }) =>
         new MockViewport(spec, scale, rotation),
@@ -153,16 +164,27 @@ vi.mock("pdfjs-dist", () => {
       render: ({
         viewport,
         optionalContentConfigPromise,
+        recordImages,
       }: {
         viewport: MockViewport;
         optionalContentConfigPromise: unknown;
+        recordImages?: boolean;
       }) => {
+        if (recordImages) {
+          harness.imagePasses.push(pageNumber);
+          pdfPage.imageCoordinates ??= Float32Array.from(harness.images.get(pageNumber) ?? []);
+        }
         harness.renderCalls.push({
           pageNumber,
           rotation: viewport.rotation,
           optionalContentConfigPromise,
         });
-        return { promise: Promise.resolve(), cancel: () => {} };
+        const task: { promise: Promise<void>; cancel: () => void; onContinue?: unknown } = {
+          promise: harness.renderGate?.promise ?? Promise.resolve(),
+          cancel: () => {},
+        };
+        if (recordImages) harness.imageTasks.push(task);
+        return task;
       },
       getAnnotations: () => Promise.resolve([]),
       getStructTree: () => {
@@ -176,6 +198,7 @@ vi.mock("pdfjs-dist", () => {
         harness.pageCleanup.push(pageNumber);
       },
     };
+    return pdfPage;
   };
 
   return {
@@ -1175,6 +1198,86 @@ describe("PdfViewer screen reader mode", () => {
     expect(pageWrap(1).querySelector(".pdf-screen-reader-layer")).toHaveTextContent("First page");
     expect(pageWrap(1)).toHaveClass("rounded-xl");
     expect(pageWrap(1).dataset.pdfScreenReader).toBe("true");
+  });
+});
+
+describe("PdfViewer dark mode", () => {
+  it("marks the page colors on the document and drops them in the reading layer", async () => {
+    harness.pages = [page("First page")];
+    const { rerender } = renderViewer({ pageColors: "dark" });
+    await pageTextRendered(1);
+
+    expect(renderer()).toHaveAttribute("data-pdf-colors", "dark");
+    expect(renderer()).toHaveClass("group/pdf");
+    expect(pageWrap(1).parentElement).toBe(renderer());
+
+    rerender({ pageColors: "light" });
+    expect(renderer()).toHaveAttribute("data-pdf-colors", "light");
+
+    rerender({ pageColors: "dark", screenReaderMode: true });
+    expect(renderer()).not.toHaveAttribute("data-pdf-colors");
+
+    rerender({ pageColors: undefined });
+    expect(renderer()).not.toHaveAttribute("data-pdf-colors");
+  });
+
+  it("asks pdf.js where the figures are only while the page colors are on", async () => {
+    harness.pages = [page("First page"), page("Second page")];
+    const { rerender } = renderViewer();
+    await pageTextRendered(1);
+    expect(harness.imagePasses).toEqual([]);
+
+    rerender({ pageColors: "dark" });
+    await waitFor(() => expect(harness.imagePasses).toContain(1));
+    const passes = harness.imagePasses.length;
+
+    rerender({ pageColors: "light" });
+    rerender({ pageColors: "dark" });
+    await pageTextRendered(1);
+    expect(harness.imagePasses.filter((pageNumber) => pageNumber === 1).length).toBeLessThanOrEqual(passes);
+  });
+
+  it("still finds the figures of a page that was drawing when the page colors came on", async () => {
+    harness.pages = [page("First page")];
+    harness.renderGate = harness.gate();
+    const { rerender } = renderViewer();
+    await waitFor(() => expect(harness.renderCalls).toHaveLength(1));
+    rerender({ pageColors: "dark" });
+    await act(() => Promise.resolve());
+    expect(harness.imagePasses).toEqual([]);
+
+    harness.renderGate.resolve();
+    await waitFor(() => expect(harness.imagePasses).toEqual([1]));
+  });
+
+  it("queues the figure passes behind the page renders instead of starting them all at once", async () => {
+    harness.pages = [page("First page"), page("Second page")];
+    const { rerender } = renderViewer();
+    await pageTextRendered(1);
+    rerender({ pageColors: "dark" });
+    await waitFor(() => expect(harness.imageTasks.length).toBeGreaterThan(0));
+    for (const task of harness.imageTasks) expect(task.onContinue).toBeTypeOf("function");
+  });
+
+  it("draws the figures above the page colors and frees them when the colors go off", async () => {
+    harness.pages = [page("First page")];
+    harness.images.set(1, [0.1, 0.5, 0.1, 0.25, 0.6, 0.5]);
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: (_x: number, _y: number, width: number, height: number) => ({
+        data: new Uint8ClampedArray(width * height * 4),
+      }),
+    } as never);
+    const { rerender } = renderViewer({ pageColors: "dark" });
+    await waitFor(() => expect(pageWrap(1).querySelectorAll("canvas.pdf-figure")).toHaveLength(1));
+    const figure = pageWrap(1).querySelector<HTMLCanvasElement>("canvas.pdf-figure");
+
+    rerender({ pageColors: undefined });
+    expect(pageWrap(1).querySelector("canvas.pdf-figure")).toBeNull();
+    expect(figure?.width).toBe(0);
+
+    rerender({ pageColors: "dark" });
+    await waitFor(() => expect(pageWrap(1).querySelectorAll("canvas.pdf-figure")).toHaveLength(1));
   });
 });
 

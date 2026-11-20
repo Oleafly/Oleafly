@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type WebApi, type WebProjectDetail } from "./api";
 import { OfflineError, ProjectController } from "./controller";
 import { resetWebState, useWeb } from "./store";
+import { forgetTabs, tabKey, tabScope } from "./tab-storage";
 import { FakeServer, hello, ManualTimers, TEST_FILES } from "./testing/fake-socket";
 
 const DETAIL: WebProjectDetail = {
@@ -331,7 +332,38 @@ describe("ProjectController", () => {
     expect(useWeb.getState().outbox).toEqual([]);
     const sent = after.server.current.sent.filter((frame) => frame.t === "comment" || frame.t === "chat");
     expect(sent.map((frame) => ("body" in frame ? frame.body : null))).toEqual(["First", "Second", "Third"]);
-    expect(sessionStorage.getItem("oleafly.web.outbox.v1.p1")).toBeNull();
+    expect(sessionStorage.getItem(tabKey("outbox", tabScope("me", "p1")))).toBeNull();
+  });
+
+  it("never shows or sends one account's queued text to the next account in the same tab", async () => {
+    const before = await started("owner");
+    before.server.current.drop();
+    await before.controller.sendChat("Only for me");
+    const thread = { id: "t1", fileId: "f-main", anchor: { quote: "", range: null }, createdBy: "ana", createdAt: 1, resolved: null, messages: [], verified: true };
+    await before.controller.replyComment(thread, "Also mine");
+    expect(useWeb.getState().outbox).toHaveLength(2);
+    before.controller.stop();
+    expect(sessionStorage.length).toBeGreaterThan(0);
+    resetWebState({ me: { accountId: "other", name: "Other", avatarUrl: null, login: null, email: null } });
+    const server = new FakeServer();
+    const next = new ProjectController("p1", {
+      api: fakeApi(),
+      socketUrl: "wss://collab.test/web/ws?project=p1",
+      createSocket: server.factory,
+      setTimer: new ManualTimers().setTimer,
+      random: () => 0.5,
+      settleMs: 10,
+      instance: "t2",
+    });
+    await next.start();
+    server.current.emit(hello("owner"));
+    await flush();
+    expect(useWeb.getState().outbox).toEqual([]);
+    expect(server.current.frames("chat")).toEqual([]);
+    expect(server.current.frames("comment")).toEqual([]);
+    next.stop();
+    forgetTabs();
+    expect(sessionStorage.length).toBe(0);
   });
 
   it("shares a reply or chat activity with the presence and clears it", async () => {
@@ -837,6 +869,21 @@ describe("outbox and presence wire fields", () => {
     context.server.current.emit({ t: "presence", peers: [peer(2), other(2)] });
     expect(useWeb.getState().activityAt["d-ana"]).toBe(6_000);
     now.mockRestore();
+  });
+
+  it("keeps the typing peer and the activity stamps as they were when only someone else's cursor moved", async () => {
+    const context = await started("owner");
+    const peer = (seq: number) => ({ deviceId: "d-ana", accountId: "ana", name: "Ana", fileId: null, anchor: null, head: null, activity: { kind: "reply", threadId: "t1" }, seq });
+    const other = (seq: number) => ({ deviceId: "d-bo", accountId: "bo", name: "Bo", fileId: "f-main", anchor: seq, head: seq, activity: null, seq });
+    context.server.current.emit({ t: "presence", peers: [peer(1), other(1)] });
+    const { peers, activityAt } = useWeb.getState();
+    context.server.current.emit({ t: "presence", peers: [peer(1), other(2)] });
+    expect(useWeb.getState().activityAt).toBe(activityAt);
+    expect(useWeb.getState().peers[0]).toBe(peers[0]);
+    expect(useWeb.getState().peers[1]).not.toBe(peers[1]);
+    const moved = useWeb.getState().peers;
+    context.server.current.emit({ t: "presence", peers: [peer(1), other(2)] });
+    expect(useWeb.getState().peers).toBe(moved);
   });
 });
 

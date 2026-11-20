@@ -844,7 +844,8 @@
     "search": "Projede Ara",
     "sourceControl": "Kaynak Denetimi",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notlar"
+    "notes": "Notlar",
+    "more": "Diğer görünümler"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} üzerinde {{login}}",
@@ -1089,7 +1090,7 @@
       "integrations": "Tümleştirmeler",
       "shortcuts": "Klavye Kısayolları",
       "research": "Araştırma",
-      "logs": "Logs"
+      "logs": "Günlükler"
     },
     "search": {
       "empty": "Eşleşen ayar yok",
@@ -1107,7 +1108,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git barındırma, Computer Use, masaüstü uygulamaları, Cua, MCP, atıflar, hesaplar, bağlantılar",
         "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye",
         "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "günlük, günlükler, hatalar, uyarılar, çökmeler, derlemeler, tanılama, sorun giderme, günlükleri dışa aktar, app.log, hata ayıklama, log, logs"
       },
       "label": "Ayarlarda ara",
       "results_one": "{{count}} bölüm eşleşiyor",

@@ -16,8 +16,8 @@ export interface TextEdit {
 }
 
 const WORD = /[\p{L}\p{N}_]/u;
-const URL_AT = /^https?:\/\/[^\s<>"'`]+/u;
-const TRAILING = /[.,;:!?)\]}'"]+$/u;
+const URL_AT = /https?:\/\/[^\s<>"'`]+/uy;
+const TRAILING = new Set(".,;:!?)]}'\"");
 const BULLET = /^[-*] (.*)$/u;
 const ORDERED = /^(\d{1,9})\. (.*)$/u;
 
@@ -90,10 +90,13 @@ function matchAt(text: string, index: number): Match | null {
     }
   }
   if (char === "h" && !isWord(text[index - 1])) {
-    const found = URL_AT.exec(text.slice(index));
+    URL_AT.lastIndex = index;
+    const found = URL_AT.exec(text);
     if (found) {
-      const href = found[0].replace(TRAILING, "");
-      if (href.length > "https://".length) return { node: { kind: "link", href, text: href }, end: index + href.length };
+      let end = index + found[0].length;
+      while (end > index && TRAILING.has(text[end - 1])) end -= 1;
+      const href = text.slice(index, end);
+      if (href.length > "https://".length) return { node: { kind: "link", href, text: href }, end };
     }
   }
   return null;

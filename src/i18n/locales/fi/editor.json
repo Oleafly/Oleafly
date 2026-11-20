@@ -166,7 +166,6 @@
       "purple": "Violetti"
     },
     "imageFile": "Kuvatiedosto",
-    "apply": "Käytä",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Jaettu",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF:n lataus epäonnistui: {{detail}}",
     "imageLoadFailed": "Kuvan lataus epäonnistui: {{detail}}",
     "imageUnreadable": "Tätä tiedostoa ei voi näyttää kuvana. Se voi olla vioittunut, tai se ei ehkä ole kuva.",
+    "imageTooLarge": "Tämä kuva on suurempi kuin {{limit}}, joten sitä ei näytetä tässä.",
     "imageFit": "Sovita ikkunaan",
     "htmlPreviewFailed": "Sivun esikatselu epäonnistui: {{detail}}",
     "binaryFile": "Binääritiedosto. Esikatselua ei ole.",
@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Kuvaa ei löytynyt",
+        "imageOutside": "Projektin ulkopuolisia kuvia ei näytetä",
+        "imageUnreadable": "Kuvaa ei voitu näyttää",
+        "imageAltText": "Vaihtoehtoinen teksti: {{alt}}",
         "imageLoading": "Ladataan kuvaa…",
         "imageAlt": "Kuvan tiedosto {{path}}",
         "width": "Leveys",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} viite",
     "count_other": "{{count}} viitettä",
+    "matchCount_one": "{{shown}}/{{total}} viitteestä",
+    "matchCount_other": "{{shown}}/{{total}} viitteestä",
+    "clearSearch": "Tyhjennä haku",
     "empty": "Tiedostossa ei ole vielä lähteitä.",
     "etAl": "{{author}} ym.",
     "noMatch": "Haku ei vastaa yhtään lähdettä.",

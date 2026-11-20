@@ -1,5 +1,6 @@
 import { Command } from "cmdk";
 import type { ComponentProps, ReactNode, Ref } from "react";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export const COMMAND_ITEM =
@@ -50,8 +51,9 @@ export function CommandDialogShell({
             value={query}
             onValueChange={onQueryChange}
             autoFocus
+            {...SEARCH_INPUT}
             placeholder={placeholder}
-            className="flex h-12 w-full bg-transparent text-sm placeholder:text-muted-foreground"
+            className="flex h-12 w-full bg-transparent text-sm placeholder:text-muted-foreground placeholder-shown:text-ellipsis"
           />
           {trailing}
         </div>

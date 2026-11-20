@@ -3,13 +3,16 @@ import { act, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { historyOwnerAt } from "@/lib/field-history";
 import { useFilesStore } from "@/store/files";
 
 type Change = (elements: readonly { id: string; version: number }[], appState: Record<string, unknown>, files: Record<string, unknown>) => void;
 
 const excalidraw = vi.hoisted(() => ({
   props: [] as Record<string, unknown>[],
+  history: [] as string[],
   api: { updateScene: vi.fn(), addFiles: vi.fn(), getAppState: () => ({ viewBackgroundColor: "#fff", gridModeEnabled: false }) },
+  hash: vi.fn((elements: readonly { version: number }[]) => elements.reduce((sum, element) => sum + element.version, 0)),
 }));
 
 vi.mock("@excalidraw/excalidraw/index.css", () => ({}));
@@ -28,14 +31,20 @@ vi.mock("@excalidraw/excalidraw", () => {
     CaptureUpdateAction: { NEVER: "NEVER" },
     MainMenu,
     languages: [{ code: "en" }, { code: "de-DE" }],
-    hashElementsVersion: (elements: readonly { version: number }[]) => elements.reduce((sum, element) => sum + element.version, 0),
+    hashElementsVersion: excalidraw.hash,
     restoreElements: (elements: unknown[]) => elements,
     serializeAsJSON: (elements: unknown[], appState: { viewBackgroundColor?: string }) =>
       JSON.stringify({ type: "excalidraw", elements, appState: { viewBackgroundColor: appState.viewBackgroundColor } }),
     Excalidraw: (props: Record<string, unknown> & { excalidrawAPI: (api: unknown) => void; children: ReactNode }) => {
       excalidraw.props.push(props);
       props.excalidrawAPI(excalidraw.api);
-      return <div data-testid="excalidraw">{props.children}</div>;
+      return (
+        <div data-testid="excalidraw">
+          {props.children}
+          <button type="button" data-testid="button-undo" onClick={() => excalidraw.history.push("undo")} />
+          <button type="button" data-testid="button-redo" onClick={() => excalidraw.history.push("redo")} />
+        </div>
+      );
     },
   };
 });
@@ -64,6 +73,7 @@ function open(content: string | undefined) {
 beforeEach(() => {
   vi.useFakeTimers();
   excalidraw.props = [];
+  excalidraw.history = [];
   excalidraw.api.updateScene.mockReset();
   excalidraw.api.addFiles.mockReset();
 });
@@ -123,6 +133,32 @@ describe("BoardFileView", () => {
     expect(excalidraw.api.updateScene).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a change still waiting to be saved when the file changes outside the board", () => {
+    const setContent = open(DRAWING);
+    render(<BoardFileView projectId="p1" path={PATH} />);
+    act(() => latest().onChange([{ id: "a", version: 1 }], VIEW, {}));
+    act(() => latest().onChange([{ id: "a", version: 2 }], VIEW, {}));
+    const outside = JSON.stringify({ type: "excalidraw", elements: [{ id: "b", version: 1 }], appState: {}, files: {} });
+    act(() => useFilesStore.setState({ files: { [PATH]: { content: outside, dirty: false, edits: 1 } } } as never));
+    expect(setContent).toHaveBeenCalledTimes(1);
+    expect(JSON.parse((setContent.mock.calls[0] as unknown as [string, string])[1]).elements).toEqual([{ id: "a", version: 2 }]);
+    expect(excalidraw.api.updateScene).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(setContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the scene once per pause, not on every pointer move", () => {
+    const setContent = open(DRAWING);
+    render(<BoardFileView projectId="p1" path={PATH} />);
+    act(() => latest().onChange([{ id: "a", version: 1 }], VIEW, {}));
+    excalidraw.hash.mockClear();
+    for (let move = 0; move < 20; move += 1) act(() => latest().onChange([{ id: "a", version: 1 }], { ...VIEW, scrollX: move }, {}));
+    expect(excalidraw.hash).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(300));
+    expect(excalidraw.hash).toHaveBeenCalledTimes(1);
+    expect(setContent).not.toHaveBeenCalled();
+  });
+
   it("reopens a board where it was left", () => {
     open(DRAWING);
     const { unmount } = render(<BoardFileView projectId="p1" path={PATH} />);
@@ -135,6 +171,21 @@ describe("BoardFileView", () => {
         appState: expect.objectContaining({ scrollX: 120, scrollY: -30, zoom: { value: 2 } }),
       }),
     );
+  });
+
+  it("owns undo and redo while focus is on the canvas, through the board's own history", () => {
+    open(DRAWING);
+    const { unmount } = render(<BoardFileView projectId="p1" path={PATH} />);
+    const canvas = screen.getByTestId("excalidraw");
+    canvas.tabIndex = 0;
+    canvas.focus();
+    const history = historyOwnerAt(document.activeElement);
+    history?.(false);
+    history?.(true);
+    expect(excalidraw.history).toEqual(["undo", "redo"]);
+    expect(historyOwnerAt(document.body)).toBeNull();
+    unmount();
+    expect(historyOwnerAt(canvas)).toBeNull();
   });
 
   it("shows a board it cannot read instead of replacing it", () => {

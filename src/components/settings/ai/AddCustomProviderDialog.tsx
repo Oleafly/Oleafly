@@ -5,7 +5,7 @@ import { i18n } from "@/i18n";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import {
   Dialog,
@@ -285,6 +285,7 @@ export function AddCustomProviderDialog({
               {t(($) => $.settings.ai.customProvider.idLabel)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id="custom-provider-id"
               data-testid="custom-provider-id"
               value={form.id}
@@ -324,6 +325,7 @@ export function AddCustomProviderDialog({
               {t(($) => $.settings.ai.customProvider.baseUrlLabel)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id="custom-provider-baseurl"
               data-testid="custom-provider-baseurl"
               value={form.baseURL}

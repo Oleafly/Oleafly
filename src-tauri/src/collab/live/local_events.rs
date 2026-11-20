@@ -28,10 +28,7 @@ fn saved_disk(project_id: &str) -> DiskState {
 
 pub(crate) fn known_content(project_id: &str) -> KnownContent {
     if let Some(live) = live_for(project_id) {
-        let hashes = match &live {
-            Live::Server(active) => guard(&active.local.disk).hashes.clone(),
-            Live::Overleaf(live) => live.with_disk(|disk| disk.hashes.clone()),
-        };
+        let hashes = guard(&live.local().disk).hashes.clone();
         return KnownContent {
             live: Some(live),
             hashes,
@@ -67,8 +64,7 @@ pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<Strin
             .collect()
     };
     match live_for(project_id) {
-        Some(Live::Server(active)) => files(&guard(&active.local.disk)),
-        Some(Live::Overleaf(live)) => live.with_disk(files),
+        Some(live) => files(&guard(&live.local().disk)),
         None => files(&saved_disk(project_id)),
     }
 }
@@ -105,43 +101,26 @@ impl KnownContent {
     }
 }
 
+pub fn wants_local_events(project_id: &str) -> bool {
+    crate::collab::registry::is_shared(project_id)
+        || live_for(project_id).is_some_and(|live| live.overleaf().is_some())
+}
+
 pub fn app_wrote(project_id: &str, path: &str) {
-    let paths = vec![path.to_owned()];
-    match live_for(project_id) {
-        Some(Live::Server(active)) => {
-            tauri::async_runtime::spawn(async move {
-                let _ = active.import_paths(Some(paths)).await;
-            });
-        }
-        Some(Live::Overleaf(live)) => {
-            tauri::async_runtime::spawn(async move {
-                let _ = live.import_paths(Some(paths)).await;
-            });
-        }
-        None => {}
+    if let Some(live) = live_for(project_id) {
+        live.import_later(Some(vec![path.to_owned()]));
     }
 }
 
 pub async fn resume(project_id: &str, decision: SyncDecision) -> Result<(), CollabError> {
     match live_for(project_id).ok_or_else(not_live)? {
         Live::Server(active) => active.decide(decision).await,
-        Live::Overleaf(_) => Err(not_live()),
+        Live::Overleaf(_) => Ok(()),
     }
 }
 
 pub fn folder_changed(change: &FolderChange) {
-    let only = (!change.rescan).then(|| change.paths.clone());
-    match live_for(&change.project_id) {
-        Some(Live::Server(active)) => {
-            tauri::async_runtime::spawn(async move {
-                let _ = active.import_paths(only).await;
-            });
-        }
-        Some(Live::Overleaf(live)) => {
-            tauri::async_runtime::spawn(async move {
-                let _ = live.import_paths(only).await;
-            });
-        }
-        None => {}
+    if let Some(live) = live_for(&change.project_id) {
+        live.import_later((!change.rescan).then(|| change.paths.clone()));
     }
 }

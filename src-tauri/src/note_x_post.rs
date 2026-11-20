@@ -1,11 +1,8 @@
-//! Reads a post on X for the static card a note keeps (fenced `x-post` block): author, handle,
-//! date and text, from X's public oEmbed endpoint. No X script runs in the app; the live post
-//! is shown only in the isolated note video page.
-
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use oleafly_agent::tools::web::public_https_client;
+use oleafly_agent::tools::web::{public_https_client, read_limited};
+use oleafly_online::html::decode_entities;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
@@ -44,7 +41,6 @@ fn client() -> Result<&'static reqwest::Client, String> {
     Ok(CLIENT.get_or_init(|| client))
 }
 
-/// The canonical address and id of a post on X or Twitter, or `None` for any other link.
 pub fn post_of(link: &str) -> Option<(String, String)> {
     let url = Url::parse(link.trim()).ok()?;
     if url.scheme() != "https" {
@@ -71,54 +67,6 @@ pub fn post_of(link: &str) -> Option<(String, String)> {
         && user.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
     let id_ok = !id.is_empty() && id.len() <= 20 && id.chars().all(|c| c.is_ascii_digit());
     (user_ok && id_ok).then(|| (format!("https://x.com/{user}/status/{id}"), id.to_string()))
-}
-
-fn decode_entities(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find('&') {
-        out.push_str(&rest[..start]);
-        rest = &rest[start..];
-        let Some(end) = rest[..rest.len().min(12)].find(';') else {
-            out.push('&');
-            rest = &rest[1..];
-            continue;
-        };
-        let entity = &rest[1..end];
-        let decoded = match entity {
-            "amp" => Some('&'),
-            "lt" => Some('<'),
-            "gt" => Some('>'),
-            "quot" => Some('"'),
-            "apos" | "#39" => Some('\''),
-            "nbsp" => Some(' '),
-            "mdash" => Some('—'),
-            "ndash" => Some('–'),
-            "hellip" => Some('…'),
-            _ => entity
-                .strip_prefix("#x")
-                .or_else(|| entity.strip_prefix("#X"))
-                .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-                .or_else(|| {
-                    entity
-                        .strip_prefix('#')
-                        .and_then(|dec| dec.parse::<u32>().ok())
-                })
-                .and_then(char::from_u32),
-        };
-        match decoded {
-            Some(character) => {
-                out.push(character);
-                rest = &rest[end + 1..];
-            }
-            None => {
-                out.push('&');
-                rest = &rest[1..];
-            }
-        }
-    }
-    out.push_str(rest);
-    out
 }
 
 fn strip_tags(html: &str) -> String {
@@ -151,7 +99,6 @@ fn clean(text: &str) -> String {
     joined.chars().take(MAX_TEXT).collect::<String>() + "…"
 }
 
-/// The post's text and date from oEmbed's blockquote: `<p …>text</p>&mdash; Name (@handle) <a …>date</a>`.
 fn text_and_date(html: &str) -> (String, String) {
     let text = html
         .find("<p")
@@ -197,6 +144,12 @@ fn post_from(url: String, id: String, embed: OEmbed) -> NoteXPost {
 
 #[tauri::command]
 pub async fn note_x_post(url: String) -> Result<NoteXPost, String> {
+    tauri::async_runtime::spawn(read_post(url))
+        .await
+        .map_err(|error| format!("Reading the post stopped: {error}"))?
+}
+
+async fn read_post(url: String) -> Result<NoteXPost, String> {
     let (canonical, id) =
         post_of(&url).ok_or_else(|| "This is not a link to a post on X.".to_string())?;
     let mut query = Url::parse(OEMBED).map_err(|error| error.to_string())?;
@@ -209,20 +162,24 @@ pub async fn note_x_post(url: String) -> Result<NoteXPost, String> {
         .get(query)
         .send()
         .await
-        .map_err(|error| format!("X did not answer: {error}"))?;
+        .map_err(|error| format!("X did not answer: {}", error.without_url()))?;
+    Ok(post_from(canonical, id, embed_of(response).await?))
+}
+
+async fn embed_of(response: reqwest::Response) -> Result<OEmbed, String> {
     if !response.status().is_success() {
         return Err(format!(
             "X could not show this post ({}).",
             response.status()
         ));
     }
-    let body = response.bytes().await.map_err(|error| error.to_string())?;
-    if body.len() > MAX_BYTES {
+    let (body, cut) = read_limited(response, MAX_BYTES)
+        .await
+        .map_err(|error| format!("X did not answer: {}", error.without_url()))?;
+    if cut {
         return Err("X sent more than a post.".to_string());
     }
-    let embed: OEmbed = serde_json::from_slice(&body)
-        .map_err(|error| format!("X sent something unexpected: {error}"))?;
-    Ok(post_from(canonical, id, embed))
+    serde_json::from_slice(&body).map_err(|error| format!("X sent something unexpected: {error}"))
 }
 
 #[cfg(test)]
@@ -284,6 +241,34 @@ mod tests {
     }
 
     #[test]
+    fn entities_right_before_cjk_text_and_emoji_decode_without_breaking_a_character() {
+        let html = concat!(
+            "<blockquote><p lang=\"ja\">&lt;お知らせ&gt; ヒト&amp;モノ &#39;引用&#39;です",
+            "<br>&amp;😀 終わり &gt;👍🏽&lt; 東京&quot;駅&quot;</p>",
+            "&mdash; 山田 (@yamada) <a href=\"https://x.com/yamada/status/1\">2026年11月19日</a></blockquote>"
+        );
+        let (text, date) = text_and_date(html);
+        assert_eq!(
+            text,
+            "<お知らせ> ヒト&モノ '引用'です\n&😀 終わり >👍🏽< 東京\"駅\""
+        );
+        assert_eq!(date, "2026年11月19日");
+        for tail in [
+            "&lt;お知らせ",
+            "&gt;ヒトモノ",
+            "&amp;🎉🎉🎉🎉",
+            "&#39;引用引用",
+            "&お知らせです",
+        ] {
+            let decoded = strip_tags(tail);
+            assert!(
+                decoded.ends_with(tail.rsplit(';').next().unwrap()),
+                "{tail}"
+            );
+        }
+    }
+
+    #[test]
     fn leaves_unknown_entities_and_stray_ampersands_alone() {
         assert_eq!(
             decode_entities("a & b &unknown; &#60;c&#62; &"),
@@ -304,6 +289,61 @@ mod tests {
         assert_eq!(handle_of("https://twitter.com/jack"), "jack");
         assert_eq!(handle_of("https://twitter.com/ja<ck"), "");
         assert_eq!(handle_of("not a url"), "");
+    }
+
+    async fn answer_from(body: axum::body::Body, status: u16) -> reqwest::Response {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .unwrap();
+        let address = listener.local_addr().unwrap();
+        let body = std::sync::Arc::new(std::sync::Mutex::new(Some(body)));
+        let reply = axum::Router::new().fallback(move || {
+            let body = body.lock().unwrap().take().unwrap_or_default();
+            async move {
+                axum::response::Response::builder()
+                    .status(status)
+                    .body(body)
+                    .unwrap()
+            }
+        });
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, reply).await;
+        });
+        reqwest::get(format!("http://{address}/oembed"))
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn an_endless_reply_is_cut_off_while_it_is_read() {
+        let endless =
+            futures_util::stream::repeat_with(|| Ok::<_, std::io::Error>(vec![b' '; 8192]));
+        let response = answer_from(axum::body::Body::from_stream(endless), 200).await;
+        let read = tokio::time::timeout(Duration::from_secs(20), embed_of(response))
+            .await
+            .expect("the reply is read only up to the cap");
+        assert_eq!(read.err().as_deref(), Some("X sent more than a post."));
+    }
+
+    #[tokio::test]
+    async fn a_reply_that_is_not_a_post_ends_as_an_error_the_card_can_show() {
+        let gone = answer_from(axum::body::Body::from("{}"), 404).await;
+        let error = embed_of(gone).await.err().unwrap();
+        assert!(
+            error.starts_with("X could not show this post (404"),
+            "{error}"
+        );
+        let broken = answer_from(axum::body::Body::from("not json"), 200).await;
+        let error = embed_of(broken).await.err().unwrap();
+        assert!(error.starts_with("X sent something unexpected"), "{error}");
+        let post = answer_from(
+            axum::body::Body::from(
+                r#"{"author_name":"A","author_url":"https://x.com/a","html":"<p>&amp;日本</p>"}"#,
+            ),
+            200,
+        )
+        .await;
+        assert_eq!(embed_of(post).await.unwrap().html, "<p>&amp;日本</p>");
     }
 
     #[tokio::test]

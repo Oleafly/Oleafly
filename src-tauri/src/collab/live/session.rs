@@ -87,6 +87,7 @@ pub(super) struct Upkeep {
     pub(super) figures_closed: AtomicBool,
     pub(super) owed: Mutex<super::owed::OwedTries>,
     pub(super) unannounced: Mutex<BTreeSet<String>>,
+    pub(super) logged: Mutex<BTreeSet<&'static str>>,
 }
 
 #[derive(Clone)]
@@ -116,6 +117,41 @@ impl Live {
             Live::Server(_) => None,
         }
     }
+
+    pub(super) fn local(&self) -> &LiveDisk {
+        match self {
+            Live::Server(active) => &active.local,
+            Live::Overleaf(live) => &live.mirror.disk,
+        }
+    }
+
+    pub(super) fn hold_dir(&self) -> PathBuf {
+        match self {
+            Live::Server(active) => active.hold_dir(),
+            Live::Overleaf(live) => live.hold_dir(),
+        }
+    }
+
+    pub(super) fn kick(&self) {
+        let _ = self.local().writer.send(WriterSignal::Kick);
+    }
+
+    pub(super) async fn import_paths(&self, only: Option<Vec<String>>) -> Result<(), CollabError> {
+        match self {
+            Live::Server(active) => active.import_paths(only).await,
+            Live::Overleaf(live) => live.import_paths(only).await,
+        }
+    }
+
+    pub(super) fn import_later(self, only: Option<Vec<String>>) {
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = self.import_paths(only).await {
+                self.local().log_once("import", || {
+                    format!("could not send local changes: {error}")
+                });
+            }
+        });
+    }
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Live>>> = LazyLock::new(|| Mutex::new(None));
@@ -123,6 +159,23 @@ pub(super) static LIFECYCLE: LazyLock<tokio::sync::Mutex<()>> =
     LazyLock::new(|| tokio::sync::Mutex::new(()));
 pub(super) static FRESH_JOINS: LazyLock<Mutex<BTreeSet<String>>> =
     LazyLock::new(|| Mutex::new(BTreeSet::new()));
+
+pub(super) struct Starting {
+    pub(super) project_id: String,
+    pub(super) joined: Arc<tokio::sync::Mutex<()>>,
+    pub(super) wanted: bool,
+}
+
+pub(super) static STARTING: LazyLock<Mutex<Option<Starting>>> = LazyLock::new(|| Mutex::new(None));
+
+pub(super) fn cancel_start(project_id: Option<&str>) {
+    if let Some(starting) = guard(&STARTING)
+        .as_mut()
+        .filter(|starting| project_id.is_none_or(|id| id == starting.project_id))
+    {
+        starting.wanted = false;
+    }
+}
 
 pub(super) fn guard<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
@@ -160,6 +213,27 @@ pub(super) fn io(error: impl std::fmt::Display) -> CollabError {
 }
 
 impl Active {
+    #[cfg(test)]
+    pub(super) fn assembled(
+        local: LiveDisk,
+        document_dir: PathBuf,
+        live: SharedLive,
+        handle: LiveHandle,
+        link: LiveLink,
+    ) -> Active {
+        Active {
+            local,
+            document_dir,
+            live,
+            handle,
+            link,
+            account_id: AccountId::new_v7(),
+            quiet_merge: AtomicBool::new(false),
+            waiting: AtomicBool::new(false),
+            last_status: Mutex::new(LiveStatus::Connecting),
+        }
+    }
+
     pub(super) fn kick(&self) {
         let _ = self.local.writer.send(WriterSignal::Kick);
     }
@@ -309,6 +383,10 @@ pub fn announce_renames(host: &dyn LiveHost, project_id: &str, renamed: &[(Strin
 }
 
 impl LiveWriter for Active {
+    fn disk(&self) -> &LiveDisk {
+        &self.local
+    }
+
     async fn write_pass(self: Arc<Self>, urgent: bool) -> Result<Vec<String>, CollabError> {
         self.write_out_paced(urgent).await
     }
@@ -319,6 +397,39 @@ impl LiveWriter for Active {
 }
 
 impl LiveDisk {
+    pub(super) fn log_once(&self, kind: &'static str, message: impl FnOnce() -> String) {
+        if !guard(&self.upkeep.logged).insert(kind) {
+            return;
+        }
+        let _ = crate::project::append_app_log(format!(
+            "Live editing in project {}: {}",
+            self.project_id,
+            message()
+        ));
+    }
+
+    #[cfg(test)]
+    pub(super) fn assembled(
+        project_id: &str,
+        root: PathBuf,
+        disk_file: PathBuf,
+        disk: DiskState,
+        bases: WrittenTexts,
+        host: Arc<dyn LiveHost>,
+        writer: UnboundedSender<WriterSignal>,
+    ) -> LiveDisk {
+        LiveDisk {
+            project_id: project_id.to_owned(),
+            root,
+            disk_file,
+            disk: Mutex::new(disk),
+            bases: Mutex::new(bases),
+            host,
+            writer,
+            upkeep: Upkeep::default(),
+        }
+    }
+
     pub(super) fn note_unannounced(
         &self,
         typed_here: &BTreeSet<String>,

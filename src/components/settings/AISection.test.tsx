@@ -31,7 +31,8 @@ const captured = vi.hoisted(() => ({
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-vi.mock("@/lib/ollama", () => ({
+vi.mock("@/lib/ollama", async (importOriginal) => ({
+  ollamaUnreachable: (await importOriginal<typeof import("@/lib/ollama")>()).ollamaUnreachable,
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModels: vi.fn().mockResolvedValue([]),
   ollamaInstalled: vi.fn().mockResolvedValue(false),

@@ -166,7 +166,6 @@
       "purple": "紫色"
     },
     "imageFile": "影像檔案",
-    "apply": "套用",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "分割",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "無法載入 PDF：{{detail}}",
     "imageLoadFailed": "無法載入影像：{{detail}}",
     "imageUnreadable": "無法將此檔案顯示為圖片。它可能已損毀，或者根本不是圖片。",
+    "imageTooLarge": "這張圖片大於 {{limit}}，因此不在這裡顯示。",
     "imageFit": "符合視窗",
     "htmlPreviewFailed": "無法預覽頁面：{{detail}}",
     "binaryFile": "二進位檔案。無法預覽。",
@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "找不到影像",
+        "imageOutside": "不會顯示專案以外的影像",
+        "imageUnreadable": "無法顯示此影像",
+        "imageAltText": "替代文字：{{alt}}",
         "imageLoading": "載入影像中…",
         "imageAlt": "圖片 {{path}}",
         "width": "寬度",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} 筆參考文獻",
+    "matchCount_other": "{{shown}} / {{total}} 筆參考文獻",
+    "clearSearch": "清除搜尋",
     "empty": "此檔案還沒有參考文獻。",
     "etAl": "{{author}} 等",
     "noMatch": "沒有符合搜尋的參考文獻。",

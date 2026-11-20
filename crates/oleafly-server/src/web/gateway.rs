@@ -301,6 +301,7 @@ async fn run(
         account: caller.account_id,
         frames,
         control: ticket.signal.clone(),
+        role: None,
     };
     let opened = Session::open(
         &state, caller, key, public_key, project, ticket.id, sink, member,

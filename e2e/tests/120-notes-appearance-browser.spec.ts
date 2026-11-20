@@ -123,8 +123,7 @@ async function choose(page: Page, trigger: string, option: string) {
 }
 
 const SETTINGS = '[role="dialog"][aria-label="Settings"]';
-const NARROW_SETTINGS = 1040;
-const WIDE_SETTINGS = Math.min(1380, 1440 * 0.94);
+const SETTINGS_WIDTH = 1180;
 
 function settingsWidth(page: Page) {
   return page.locator(SETTINGS).evaluate((dialog) => dialog.getBoundingClientRect().width);
@@ -176,16 +175,6 @@ function columns(page: Page) {
       optionsTop: options.top,
     };
   });
-}
-
-function expectEased(widths: readonly number[], from: number, to: number) {
-  expect(widths.at(-1)).toBeCloseTo(to, 0);
-  const low = Math.min(from, to) + 1;
-  const high = Math.max(from, to) - 1;
-  expect(widths.some((width) => width > low && width < high)).toBe(true);
-  for (let index = 1; index < widths.length; index++) {
-    expect(Math.sign(to - from) * (widths[index] - widths[index - 1])).toBeGreaterThanOrEqual(-0.5);
-  }
 }
 
 test("adds, removes and turns off text replacement pairs in the Notes tab", async ({ page }) => {
@@ -258,7 +247,8 @@ for (const browserType of [chromium, webkit]) {
       await expect(page.getByTestId("settings-row-notes-highlight")).toHaveCount(0);
       expect(await page.evaluate(() => localStorage.getItem("oleafly.notes.fontSize"))).toBe("18");
 
-      await expect(page.getByTestId("settings-appearance-notes")).toHaveAttribute("data-layout", "beside");
+      const beside = await columns(page);
+      expect(beside.preview.x).toBeGreaterThan(beside.options.x + beside.options.width);
       const placement = (where: "middle" | "end") =>
         page.getByTestId("settings-body").evaluate((body, where) => {
           body.scrollTo({ top: where === "end" ? body.scrollHeight : body.scrollHeight / 2 });
@@ -326,7 +316,7 @@ for (const browserType of [chromium, webkit]) {
     }
   });
 
-  test(`${browserType.name()}: widens Settings for a preview beside the options and keeps the preview still while options change`, async () => {
+  test(`${browserType.name()}: keeps Settings one size on every section and tab, with the preview beside the options and still while options change`, async () => {
     const installed = existsSync(browserType.executablePath());
     if (!installed && process.env.CI && browserType.name() !== "webkit") {
       throw new Error(`${browserType.name()} is not installed for Playwright on this CI runner`);
@@ -337,22 +327,23 @@ for (const browserType of [chromium, webkit]) {
     try {
       const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
       await setup(page);
-      await expect(page.getByTestId("settings-appearance-notes")).toHaveAttribute("data-layout", "beside");
-      await expect.poll(() => settingsWidth(page)).toBeCloseTo(WIDE_SETTINGS, 0);
-      expect(await settingsTransition(page)).toEqual({ property: "width", duration: "0.2s", easing: "cubic-bezier(0, 0, 0.2, 1)" });
+      await expect.poll(() => settingsWidth(page)).toBeCloseTo(SETTINGS_WIDTH, 0);
+      expect((await settingsTransition(page)).duration).toBe("0s");
 
+      const steady = widthFrames(page, 800);
       await page.getByTestId("appearance-tab-app").click();
-      await expect.poll(() => settingsWidth(page)).toBeCloseTo(NARROW_SETTINGS, 0);
-      const widening = widthFrames(page, 600);
       await page.getByTestId("appearance-tab-notes").click();
-      const frames = await widening;
-      expectEased(frames.map((frame) => frame.width), NARROW_SETTINGS, WIDE_SETTINGS);
+      await page.getByTestId("settings-section-general").click();
+      await page.getByTestId("settings-section-appearance").click();
+      await page.getByTestId("appearance-tab-notes").click();
+      const frames = await steady;
       for (const frame of frames) {
         expect(frame).toMatchObject({
           sidebarOffset: frames[0].sidebarOffset,
           sidebarWidth: frames[0].sidebarWidth,
           headerHeight: frames[0].headerHeight,
         });
+        expect(frame.width).toBeCloseTo(SETTINGS_WIDTH, 0);
       }
 
       const start = await columns(page);
@@ -373,17 +364,6 @@ for (const browserType of [chromium, webkit]) {
       expect(after.preview).toEqual(before.preview);
       expect(after.options).toEqual(before.options);
 
-      const narrowing = widthFrames(page, 600);
-      await page.getByTestId("appearance-tab-app").click();
-      expectEased((await narrowing).map((frame) => frame.width), WIDE_SETTINGS, NARROW_SETTINGS);
-      await page.getByTestId("appearance-tab-notes").click();
-      await expect.poll(() => settingsWidth(page)).toBeCloseTo(WIDE_SETTINGS, 0);
-      await page.getByTestId("settings-section-general").click();
-      await expect.poll(() => settingsWidth(page)).toBeCloseTo(NARROW_SETTINGS, 0);
-
-      await page.getByTestId("settings-section-appearance").click();
-      await page.getByTestId("appearance-tab-notes").click();
-      await expect.poll(() => settingsWidth(page)).toBeCloseTo(WIDE_SETTINGS, 0);
       await page.getByTestId("settings-close").click();
       await expect(page.locator(SETTINGS)).toHaveCount(0);
       const reopened = await page.evaluate(
@@ -404,13 +384,13 @@ for (const browserType of [chromium, webkit]) {
         SETTINGS,
       );
       expect(reopened.length).toBeGreaterThan(0);
-      for (const width of reopened) expect(width).toBeCloseTo(WIDE_SETTINGS, 0);
+      for (const width of reopened) expect(width).toBeCloseTo(SETTINGS_WIDTH, 0);
     } finally {
       await browser.close();
     }
   });
 
-  test(`${browserType.name()}: changes the Settings width at once under reduced motion and keeps one column in a narrow window`, async () => {
+  test(`${browserType.name()}: keeps one column with the preview on top in a narrow window, at the same Settings size on every tab`, async () => {
     const installed = existsSync(browserType.executablePath());
     if (!installed && process.env.CI && browserType.name() !== "webkit") {
       throw new Error(`${browserType.name()} is not installed for Playwright on this CI runner`);
@@ -419,27 +399,13 @@ for (const browserType of [chromium, webkit]) {
     test.skip(!installed, "Browser executable is not installed");
     const browser = await browserType.launch();
     try {
-      const still = await browser.newPage({ viewport: { width: 1440, height: 950 }, reducedMotion: "reduce" });
-      await setup(still);
-      await still.getByTestId("appearance-tab-app").click();
-      await expect.poll(() => settingsWidth(still)).toBeCloseTo(NARROW_SETTINGS, 0);
-      const jump = widthFrames(still, 400);
-      await still.getByTestId("appearance-tab-notes").click();
-      const widths = (await jump).map((frame) => frame.width);
-      expect(widths.filter((width) => width > NARROW_SETTINGS + 1 && width < WIDE_SETTINGS - 1)).toEqual([]);
-      expect(widths.at(-1)).toBeCloseTo(WIDE_SETTINGS, 0);
-      expect((await settingsTransition(still)).property).toBe("none");
-      await still.close();
-
       const small = await browser.newPage({ viewport: { width: 1100, height: 850 } });
       await setup(small);
-      await expect(small.getByTestId("settings-appearance-notes")).toHaveAttribute("data-layout", "stacked");
       const fallback = await columns(small);
       expect(fallback.previewBottom).toBeLessThanOrEqual(fallback.optionsTop);
       expect(fallback.preview.width).toBeCloseTo(fallback.options.width + 8, 0);
       const onNotes = await settingsWidth(small);
       expect(onNotes).toBeCloseTo(1100 * 0.94, 0);
-      expect((await settingsTransition(small)).duration).toBe("0s");
       await small.getByTestId("appearance-tab-app").click();
       expect(await settingsWidth(small)).toBe(onNotes);
     } finally {

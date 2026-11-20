@@ -11,7 +11,7 @@ import {
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,
@@ -171,6 +171,7 @@ function OllamaHostControls({
       </div>
       {showHost && (
         <Input
+          {...LITERAL_INPUT}
           type="text"
           value={host}
           onChange={(e) => onHostChange(e.target.value)}

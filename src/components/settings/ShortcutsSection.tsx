@@ -10,6 +10,7 @@ import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { useSettingsStore } from "@/store/settings";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { QuickCaptureSettings } from "@/components/settings/QuickCaptureSettings";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import {
   NATIVE_MENU_SHORTCUTS,
   nativeAccelerator,
@@ -484,8 +485,11 @@ function ApplicationShortcutRow({
   );
 }
 
+const SHORTCUT_TABS: readonly string[] = ["application", ...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))];
+
 export function ShortcutsSection() {
   const { t } = useTranslation(["common", "settings"]);
+  const [chosenTab, setTab] = useSettingsTab("shortcuts", "application", SHORTCUT_TABS);
   const resetAll = useShortcutStore((state) => state.resetAll);
   const resetEditorKeys = useEditorKeymapStore((state) => state.resetAll);
   const bindingsChanged = useShortcutStore((state) =>
@@ -498,6 +502,7 @@ export function ShortcutsSection() {
   const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].filter(
     (category) => notesEnabled || category !== "notes",
   );
+  const tab = categories.find((category) => category === chosenTab) ?? "application";
   const shown = shortcutDefinitionsInEffect(notesEnabled);
   const appShortcuts = shown.filter((definition) => definition.scope !== "notes");
   const noteShortcuts = shown.filter((definition) => definition.scope === "notes");
@@ -509,7 +514,7 @@ export function ShortcutsSection() {
           {t(($) => $.settings.shortcuts.intro)}
         </p>
       </div>
-      <Tabs defaultValue="application" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="application" data-testid="shortcuts-tab-application">
             {t(($) => $.settings.shortcuts.tabs.application)}

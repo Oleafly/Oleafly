@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   resume: vi.fn(async () => undefined),
   members: vi.fn(async () => [] as unknown[]),
   logError: vi.fn(),
+  logWarning: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -56,7 +57,7 @@ vi.mock("@/lib/overleaf-live", () => ({
   onOverleafLiveMembers: listener("overleaf-members"),
   onOverleafLiveTree: listener("overleaf-tree"),
 }));
-vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: mocks.logWarning }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.toast }));
 vi.mock("@/store/files", async () => {
   const { create } = await import("zustand");
@@ -74,6 +75,7 @@ vi.mock("@/store/files", async () => {
 });
 
 import { overleafLiveActions, useCollabEditorGate, useLiveBackend } from "@/lib/collab-live-bridge";
+import { collabLiveStart, collabLiveStop, collabShareInfo } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
@@ -135,6 +137,18 @@ describe("live editing with Overleaf", () => {
     expect(mocks.start).toHaveBeenCalledWith(PROJECT);
     expect(useCollabLiveStore.getState()).toMatchObject({ backend: "overleaf", overleaf: link(), role: "editor" });
     expect(useLiveBackend.getState()).toMatchObject({ projectId: PROJECT, backend: "overleaf", overleaf: link() });
+  });
+
+  it("keeps the role Overleaf sent while the start was still answering", async () => {
+    let answer: (info: { role: "viewer"; account_id: string; device_id: string }) => void = () => undefined;
+    mocks.start.mockImplementation(() => new Promise((resolve) => (answer = resolve)));
+    begin();
+    await settle();
+    expect(mocks.start).toHaveBeenCalledWith(PROJECT);
+    mocks.handlers.role?.({ projectId: PROJECT, role: "owner", tracking: false, restricted: false, deletedExternally: false });
+    answer({ ...INFO, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().role).toBe("owner");
   });
 
   it("stays local for an Overleaf project with no session, and goes live once you sign in", async () => {
@@ -295,6 +309,108 @@ describe("live editing with Overleaf", () => {
     await settle();
     expect(mocks.resume).toHaveBeenCalledWith(PROJECT);
     expect(mocks.start).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["live_elsewhere", "failed"],
+    ["collab_shared", "failed"],
+    ["access_ended", "access_ended"],
+    ["failed", "failed"],
+    ["conflict", "failed"],
+    ["forbidden", "access_ended"],
+  ] as const)("stops trying for good when the start is refused with %s, and says why", async (code, reason) => {
+    vi.useFakeTimers();
+    try {
+      mocks.start.mockRejectedValue({ code, message: "refused" });
+      begin();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(useCollabEditorGate.getState().connecting).toBe(false);
+      expect(useCollabLiveStore.getState()).toMatchObject({
+        refused: code,
+        ended: reason,
+        status: { state: "ended", reason },
+      });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mocks.start).toHaveBeenCalledTimes(1);
+      expect([...mocks.logError.mock.calls, ...mocks.logWarning.mock.calls]).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      mocks.start.mockReset();
+    }
+  });
+
+  it("keeps trying a start that fails for now, lets the person edit between tries and logs it once", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.start
+        .mockRejectedValueOnce({ code: "unreachable", message: "offline" })
+        .mockRejectedValueOnce({ code: "unreachable", message: "offline" })
+        .mockResolvedValueOnce(INFO);
+      begin();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mocks.start).toHaveBeenCalledTimes(1);
+      expect(useCollabEditorGate.getState().connecting).toBe(false);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(mocks.start).toHaveBeenCalledTimes(2);
+      expect(useCollabEditorGate.getState().connecting).toBe(false);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(mocks.start).toHaveBeenCalledTimes(3);
+      expect(useCollabLiveStore.getState()).toMatchObject({ backend: "overleaf", ended: null, refused: null });
+      expect(mocks.logError.mock.calls.filter(([scope]) => scope === "collab live start")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays quiet about a start the app cancelled, and doesn't try it again", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.start.mockRejectedValueOnce({ code: "not_found", message: "this project is not live" });
+      begin();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(useCollabEditorGate.getState().connecting).toBe(false);
+      expect(useCollabLiveStore.getState()).toMatchObject({ ended: null, refused: null });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mocks.start).toHaveBeenCalledTimes(1);
+      expect(mocks.logError).not.toHaveBeenCalled();
+      expect(mocks.logWarning).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("goes live on the server for a project shared there too, even when the link answers first", async () => {
+    let answer: (share: unknown) => void = () => undefined;
+    vi.mocked(collabShareInfo).mockReturnValueOnce(new Promise((resolve) => (answer = resolve)) as never);
+    vi.mocked(collabLiveStart).mockResolvedValueOnce(INFO as never);
+    vi.mocked(collabLiveStop).mockResolvedValueOnce(undefined as never);
+    begin();
+    await settle();
+    expect(useCollabLiveStore.getState().overleaf).toEqual(link());
+    expect(mocks.start).not.toHaveBeenCalled();
+    answer({
+      project_id: PROJECT,
+      server_id: "server",
+      server_name: "Smith Lab",
+      server_url: "https://collab.uni.edu",
+      shared_project_id: "shared-1",
+      role: "editor",
+      link: "https://collab.uni.edu/p/shared-1",
+      account_id: "alice",
+    });
+    await settle();
+    expect(collabLiveStart).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.start).not.toHaveBeenCalled();
+    expect(useCollabLiveStore.getState().backend).toBe("server");
+    expect(useLiveBackend.getState().overleaf).toBeNull();
+  });
+
+  it("keeps the role the service gave when the share lookup runs again", async () => {
+    begin();
+    await settle();
+    mocks.handlers.role?.({ projectId: PROJECT, role: "owner", tracking: false, restricted: false, deletedExternally: false });
+    await useCollabLiveStore.getState().refreshShare();
+    expect(useCollabLiveStore.getState().role).toBe("owner");
   });
 
   it("logs background failures and never toasts them", async () => {

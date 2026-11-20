@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { AlertCircle, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -28,14 +29,9 @@ export function IntegrationError({
   children,
 }: Readonly<{ id?: string; children: ReactNode }>) {
   return (
-    <div
-      id={id}
-      role="alert"
-      className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
-    >
-      <AlertCircle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-      <span>{children}</span>
-    </div>
+    <InlineAlert id={id} icon={AlertCircle} bordered>
+      {children}
+    </InlineAlert>
   );
 }
 
@@ -110,6 +106,7 @@ export function IntegrationKeyField({
   return (
     <div className="mt-4 flex gap-2">
       <Input
+        {...LITERAL_INPUT}
         type={type}
         data-testid={inputTestId}
         value={value}

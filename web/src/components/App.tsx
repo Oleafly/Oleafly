@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
 import type { WebApi, WebMe } from "../api";
+import { forgetTabs } from "../tab-storage";
 import { AppHeader } from "./AppHeader";
 import { navigate, useProjectParam } from "./navigation";
 import { ProjectList } from "./ProjectList";
@@ -30,6 +31,10 @@ export function App({ api }: Readonly<{ api: WebApi }>) {
     );
   }, [api]);
   useEffect(load, [load]);
+
+  useEffect(() => {
+    if (account.status === "signed-out") forgetTabs();
+  }, [account.status]);
 
   const signOut = useCallback(() => {
     setSignOutFailed(false);

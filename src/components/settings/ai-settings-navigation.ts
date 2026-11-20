@@ -1,4 +1,6 @@
-export type AiSettingsTab = "providers" | "agents" | "instructions" | "personas" | "skills" | "mcp" | "tools";
+export const AI_SETTINGS_TABS = ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"] as const;
+
+type AiSettingsTab = (typeof AI_SETTINGS_TABS)[number];
 
 export interface AiSettingsDestination {
   tab: AiSettingsTab;

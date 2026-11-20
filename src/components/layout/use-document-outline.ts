@@ -7,7 +7,7 @@ import {
 } from "@oleafly/latex";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
-import { currentAuxToc, subscribeAuxNumbers } from "@/lib/aux-numbers";
+import { currentAuxToc, subscribeAuxNumbers, type AuxToc } from "@/lib/aux-numbers";
 import { documentSourcePaths } from "@/lib/document-sources";
 import {
   headingTitlesByLabel,
@@ -16,7 +16,13 @@ import {
   type OutlineItem,
   type OutlineWalk,
 } from "@/lib/index/outline";
-import { latexHeadingMarks, type HeadingMark } from "@/lib/index/outline-numbers";
+import {
+  headingMarksOf,
+  latexHeadingNumbers,
+  type HeadingMark,
+  type HeadingNumbers,
+  type LatexHeadingNumbersInput,
+} from "@/lib/index/outline-numbers";
 import type { ProjectIndex } from "@/lib/index/types";
 import { activeOutlineIndex } from "@/lib/outline-active";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
@@ -24,7 +30,7 @@ import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
-export type OutlineScope = "file" | "document";
+type OutlineScope = "file" | "document";
 
 export interface DocumentOutlineModel {
   readonly root: string | null;
@@ -38,6 +44,25 @@ const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> =
 const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
 const NO_MARKS: readonly (HeadingMark | null)[] = [];
 const NO_WALK: OutlineWalk = { items: [], trails: [] };
+
+let sharedNumbers: Readonly<{
+  index: ProjectIndex;
+  toc: AuxToc;
+  texts: Readonly<Record<string, string>>;
+  viewer: string;
+  numbers: HeadingNumbers;
+}> | null = null;
+
+function documentNumbers(input: LatexHeadingNumbersInput): HeadingNumbers {
+  const { index, toc, texts, viewer } = input;
+  const last = sharedNumbers;
+  if (last?.index === index && last.toc === toc && last.texts === texts && last.viewer === viewer) {
+    return last.numbers;
+  }
+  const numbers = latexHeadingNumbers(input);
+  sharedNumbers = { index, toc, texts, viewer, numbers };
+  return numbers;
+}
 
 export function outlineRoot(
   scope: OutlineScope,
@@ -91,7 +116,7 @@ function displayTitle(
   return item.title;
 }
 
-export function useDocumentOutline(scope: OutlineScope): DocumentOutlineModel {
+export function useDocumentOutline(scope: OutlineScope, numbered: boolean): DocumentOutlineModel {
   const index = useIndexStore((state) => state.index);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
@@ -137,18 +162,21 @@ export function useDocumentOutline(scope: OutlineScope): DocumentOutlineModel {
   const auxToc = useSyncExternalStore(subscribeAuxNumbers, currentAuxToc);
   const marks = useMemo(
     () =>
-      index && activePath && auxToc?.projectId === projectId && auxToc.mainDocument === mainDoc
-        ? latexHeadingMarks({
+      numbered && index && activePath && auxToc?.projectId === projectId && auxToc.mainDocument === mainDoc
+        ? headingMarksOf(
             items,
-            viewer: activePath,
-            toc: auxToc,
-            index,
-            texts: useIndexStore.getState().texts,
-            extraSections,
-            render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
-          })
+            documentNumbers({
+              viewer: activePath,
+              toc: auxToc,
+              index,
+              texts: useIndexStore.getState().texts,
+              extraSections,
+              render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
+              documentSections: root === mainDoc ? items : undefined,
+            }),
+          )
         : NO_MARKS,
-    [activePath, auxToc, extraSections, headingsByLabel, index, items, latexMacros, mainDoc, projectId],
+    [activePath, auxToc, extraSections, headingsByLabel, index, items, latexMacros, mainDoc, numbered, projectId, root],
   );
 
   const reading = useEditorViewportSelection((anchor) => activeOutlineIndex(walk.items, anchor, walk.trails));

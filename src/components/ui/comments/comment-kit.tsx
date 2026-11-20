@@ -1,6 +1,6 @@
 import { createContext, useContext, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { CommentComposerLabels } from "./comment-composer";
-import type { CommentPresence, PresenceLabels } from "./comment-presence";
+import type { CommentPresenceFeed, PresenceLabels } from "./comment-presence";
 import type { CommentQuoteLabels } from "./comment-quote";
 import type { CommentMember } from "./mentions";
 
@@ -75,7 +75,7 @@ export interface CommentKit {
   reactions?: CommentReactions;
   moderate?: boolean;
   activity?: (scope: CommentActivityScope, active: boolean) => void;
-  replyingIn?: (threadId: string) => readonly CommentPresence[];
+  presence?: CommentPresenceFeed;
 }
 
 export const QUICK_REACTIONS = ["👍", "🎉", "❤️", "😄", "👀", "🚀"] as const;

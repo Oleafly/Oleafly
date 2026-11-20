@@ -1,11 +1,11 @@
 import type { EditorState, Extension } from "@codemirror/state";
+import { isBackslashEscaped } from "@oleafly/latex";
 import {
   inLatexIgnoredRegion,
   latexMaskedSlice,
   mathContextAt,
 } from "./latex-lexical";
 import {
-  escapedIn,
   isScriptDigit,
   isScriptLetter,
   isScriptSign,
@@ -56,7 +56,7 @@ function latexTextArgumentOpen(text: string): boolean {
   for (let index = text.length - 1; index >= 0; index -= 1) {
     const character = text[index];
     if (character !== "{" && character !== "}") continue;
-    if (escapedIn(text, index)) continue;
+    if (isBackslashEscaped(text, index)) continue;
     if (character === "}") {
       depth += 1;
       continue;

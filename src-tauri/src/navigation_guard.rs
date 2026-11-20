@@ -1,3 +1,6 @@
+use std::collections::{HashMap, HashSet};
+use std::sync::{Mutex, OnceLock, PoisonError};
+
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime, Url, Webview};
 
@@ -5,6 +8,7 @@ struct Origins {
     app: Vec<Url>,
     artifact: Option<Url>,
     video_page: Option<Url>,
+    html_preview: Option<Url>,
     players: Vec<(Url, &'static str)>,
 }
 
@@ -18,19 +22,23 @@ fn dev_url<R: Runtime>(webview: &Webview<R>) -> Option<Url> {
 
 impl Origins {
     fn of<R: Runtime>(webview: &Webview<R>) -> Self {
-        Self::new(dev_url(webview), crate::note_video::origin())
+        Self::current(dev_url(webview))
     }
 
-    fn new(dev: Option<Url>, video_page: Option<&str>) -> Self {
-        let app = if cfg!(any(windows, target_os = "android")) {
-            "http://tauri.localhost"
-        } else {
-            "tauri://localhost"
-        };
+    fn current(dev: Option<Url>) -> Self {
+        Self::new(
+            dev,
+            crate::note_video::origin(),
+            crate::html_preview::origin().as_deref(),
+        )
+    }
+
+    fn new(dev: Option<Url>, video_page: Option<&str>, html_preview: Option<&str>) -> Self {
         Self {
-            app: Url::parse(app).ok().into_iter().chain(dev).collect(),
+            app: packaged_app().into_iter().chain(dev).collect(),
             artifact: Url::parse(&crate::artifact_frame::frame_origin()).ok(),
             video_page: video_page.and_then(|origin| Url::parse(origin).ok()),
+            html_preview: html_preview.and_then(|origin| Url::parse(origin).ok()),
             players: crate::note_video::PLAYERS
                 .iter()
                 .filter_map(|(origin, path)| Url::parse(origin).ok().map(|origin| (origin, *path)))
@@ -40,6 +48,12 @@ impl Origins {
 
     fn app_document(&self, url: &Url) -> bool {
         self.app.iter().any(|origin| same_origin(url, origin))
+    }
+
+    fn html_page(&self, url: &Url) -> bool {
+        self.html_preview
+            .as_ref()
+            .is_some_and(|origin| same_origin(url, origin))
     }
 
     fn video(&self, url: &Url) -> bool {
@@ -55,6 +69,34 @@ impl Origins {
     }
 }
 
+fn packaged_app() -> Option<Url> {
+    let app = if cfg!(any(windows, target_os = "android")) {
+        "http://tauri.localhost"
+    } else {
+        "tauri://localhost"
+    };
+    Url::parse(app).ok()
+}
+
+fn page_origin(dev: Option<Url>) -> String {
+    let Some(page) = dev.or_else(packaged_app) else {
+        return String::new();
+    };
+    let host = page.host_str().unwrap_or_default();
+    match page.port() {
+        Some(port) => format!("{}://{host}:{port}", page.scheme()),
+        None => format!("{}://{host}", page.scheme()),
+    }
+}
+
+static APP_PAGE_ORIGIN: OnceLock<String> = OnceLock::new();
+
+pub(crate) fn with_app_page_origin(script: &str) -> String {
+    let origin = APP_PAGE_ORIGIN.get_or_init(|| page_origin(None));
+    let literal = serde_json::to_string(origin).unwrap_or_else(|_| "\"\"".to_owned());
+    script.replace("\"__OLEAFLY_APP_ORIGIN__\"", &literal)
+}
+
 fn same_origin(url: &Url, origin: &Url) -> bool {
     url.scheme() == origin.scheme()
         && url
@@ -67,9 +109,11 @@ fn same_origin(url: &Url, origin: &Url) -> bool {
 fn allowed(url: &Url, origins: &Origins) -> bool {
     match url.scheme() {
         "about" => matches!(url.path(), "blank" | "srcdoc"),
-        "blob" => Url::parse(url.path()).is_ok_and(|inner| origins.app_document(&inner)),
+        "blob" => Url::parse(url.path())
+            .is_ok_and(|inner| origins.app_document(&inner) || origins.html_page(&inner)),
         _ => {
             origins.app_document(url)
+                || origins.html_page(url)
                 || origins
                     .artifact
                     .as_ref()
@@ -83,10 +127,71 @@ fn guards(label: &str) -> bool {
     !label.starts_with(crate::overleaf::SIGN_IN_LABEL_PREFIX)
 }
 
-pub(crate) fn plugin<R: Runtime>() -> TauriPlugin<R> {
-    let builder = Builder::new("oleafly-navigation-guard").on_navigation(|webview, url| {
-        !guards(webview.label()) || allowed(url, &Origins::of(webview))
+fn destination(url: &Url) -> String {
+    let origin = url.origin();
+    if origin.is_tuple() {
+        origin.ascii_serialization()
+    } else {
+        format!("a {}: address", url.scheme())
+    }
+}
+
+const LOGGED_PER_WEBVIEW: usize = 64;
+
+#[derive(Default)]
+struct Blocked {
+    seen: HashSet<String>,
+    full: bool,
+}
+
+fn first_block(label: &str, url: &Url) -> Option<String> {
+    static SEEN: Mutex<Option<HashMap<String, Blocked>>> = Mutex::new(None);
+    let target = destination(url);
+    let mut seen = SEEN.lock().unwrap_or_else(PoisonError::into_inner);
+    let blocked = seen
+        .get_or_insert_with(HashMap::new)
+        .entry(label.to_owned())
+        .or_default();
+    if blocked.seen.contains(&target) || blocked.full {
+        return None;
+    }
+    if blocked.seen.len() == LOGGED_PER_WEBVIEW {
+        blocked.full = true;
+        return Some(format!(
+            "Navigation guard kept the {label} webview from loading {LOGGED_PER_WEBVIEW} places; further blocked navigations there are not logged"
+        ));
+    }
+    blocked.seen.insert(target.clone());
+    Some(format!(
+        "Navigation guard kept the {label} webview from loading {target}"
+    ))
+}
+
+fn log(line: String) {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _ = crate::project::append_app_log(line);
     });
+}
+
+pub(crate) fn plugin<R: Runtime>() -> TauriPlugin<R> {
+    let builder = Builder::new("oleafly-navigation-guard")
+        .setup(|app, _| {
+            let dev = tauri::is_dev()
+                .then(|| app.config().build.dev_url.clone())
+                .flatten();
+            let _ = APP_PAGE_ORIGIN.set(page_origin(dev));
+            Ok(())
+        })
+        .on_navigation(|webview, url| {
+            let label = webview.label();
+            let allow = !guards(label) || allowed(url, &Origins::of(webview));
+            if !allow {
+                if let Some(line) = first_block(label, url) {
+                    log(line);
+                }
+            }
+            allow
+        });
     #[cfg(windows)]
     let builder = builder.on_webview_ready(|webview| frames::guard(&webview));
     #[cfg(target_os = "macos")]
@@ -104,7 +209,7 @@ mod frames {
     use webview2_com::{take_pwstr, NavigationStartingEventHandler};
     use windows_core::PWSTR;
 
-    use super::{allowed, dev_url, guards, Origins};
+    use super::{allowed, dev_url, first_block, guards, log, Origins};
 
     pub(super) fn guard<R: Runtime>(webview: &Webview<R>) {
         if !guards(webview.label()) {
@@ -113,6 +218,7 @@ mod frames {
         let dev = dev_url(webview);
         let label = webview.label().to_string();
         let installed = webview.with_webview(move |platform| {
+            let frame_label = label.clone();
             let handler = NavigationStartingEventHandler::create(Box::new(move |_, args| {
                 let Some(args) = args else {
                     return Ok(());
@@ -120,10 +226,16 @@ mod frames {
                 let mut uri = PWSTR::null();
                 // SAFETY: `args` is the live event argument WebView2 passed to this handler, and `uri` is an out pointer that `take_pwstr` frees.
                 unsafe { args.Uri(&mut uri)? };
-                let origins = Origins::new(dev.clone(), crate::note_video::origin());
-                let allow = take_pwstr(uri)
-                    .parse::<tauri::Url>()
-                    .is_ok_and(|url| allowed(&url, &origins));
+                let origins = Origins::current(dev.clone());
+                let target = take_pwstr(uri).parse::<tauri::Url>().ok();
+                let allow = target.as_ref().is_some_and(|url| allowed(url, &origins));
+                if let Some(line) = target
+                    .as_ref()
+                    .filter(|_| !allow)
+                    .and_then(|url| first_block(&frame_label, url))
+                {
+                    log(line);
+                }
                 // SAFETY: as above; cancelling is valid for every FrameNavigationStarting event.
                 unsafe { args.SetCancel(!allow) }
             }));
@@ -148,12 +260,6 @@ mod frames {
             ));
         }
     }
-
-    fn log(line: String) {
-        tauri::async_runtime::spawn_blocking(move || {
-            let _ = crate::project::append_app_log(line);
-        });
-    }
 }
 
 #[cfg(test)]
@@ -165,11 +271,16 @@ mod tests {
     }
 
     const VIDEO_PAGE: &str = "http://127.0.0.1:43123";
+    const HTML_PREVIEW: &str = "http://127.0.0.1:52011";
 
     #[test]
     fn only_app_documents_artifact_frames_video_players_and_local_documents_may_load() {
-        let packaged = Origins::new(None, Some(VIDEO_PAGE));
-        let dev = Origins::new(Some(url("http://localhost:1420")), Some(VIDEO_PAGE));
+        let packaged = Origins::new(None, Some(VIDEO_PAGE), Some(HTML_PREVIEW));
+        let dev = Origins::new(
+            Some(url("http://localhost:1420")),
+            Some(VIDEO_PAGE),
+            Some(HTML_PREVIEW),
+        );
         let windows = cfg!(any(windows, target_os = "android"));
         let cases: &[(&str, bool, bool)] = &[
             ("tauri://localhost/", !windows, !windows),
@@ -239,6 +350,17 @@ mod tests {
             ("http://[::1]:43123/video", false, false),
             ("blob:http://127.0.0.1:43123/5a0e6c1e", false, false),
             (
+                "http://127.0.0.1:52011/0123456789abcdef0123456789abcdef/web/index.html?v=3",
+                true,
+                true,
+            ),
+            ("http://127.0.0.1:52011/", true, true),
+            ("blob:http://127.0.0.1:52011/5a0e6c1e", true, true),
+            ("http://127.0.0.1:52012/token/index.html", false, false),
+            ("https://127.0.0.1:52011/token/index.html", false, false),
+            ("http://localhost:52011/token/index.html", false, false),
+            ("http://[::1]:52011/token/index.html", false, false),
+            (
                 "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&start=5",
                 true,
                 true,
@@ -307,15 +429,88 @@ mod tests {
     }
 
     #[test]
-    fn the_video_page_is_allowed_only_once_its_server_has_a_port() {
-        let before = Origins::new(None, None);
+    fn the_video_page_and_html_previews_are_allowed_only_once_their_servers_have_a_port() {
+        let before = Origins::new(None, None, None);
         assert!(!allowed(&url("http://127.0.0.1:43123/video"), &before));
+        assert!(!allowed(
+            &url("http://127.0.0.1:52011/token/index.html"),
+            &before
+        ));
         assert!(allowed(
             &url("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"),
             &before
         ));
-        let after = Origins::new(None, Some(VIDEO_PAGE));
+        let after = Origins::new(None, Some(VIDEO_PAGE), Some(HTML_PREVIEW));
         assert!(allowed(&url("http://127.0.0.1:43123/video"), &after));
+        assert!(allowed(
+            &url("http://127.0.0.1:52011/token/index.html"),
+            &after
+        ));
+    }
+
+    #[test]
+    fn a_blocked_destination_is_logged_once_per_webview_without_its_path() {
+        let secret = url("https://blocked-once.example/c?d=secret");
+        let line = first_block("main", &secret).unwrap();
+        assert_eq!(
+            line,
+            "Navigation guard kept the main webview from loading https://blocked-once.example"
+        );
+        assert_eq!(
+            first_block("main", &url("https://blocked-once.example/other")),
+            None
+        );
+        assert!(first_block("preview", &secret).is_some());
+        assert_eq!(
+            first_block("main", &url("data:text/html,secret")).as_deref(),
+            Some("Navigation guard kept the main webview from loading a data: address")
+        );
+    }
+
+    #[test]
+    fn a_page_cycling_through_fresh_origins_is_logged_a_bounded_number_of_times() {
+        let lines: Vec<String> = (0..1000)
+            .filter_map(|index| {
+                first_block(
+                    "flooded",
+                    &url(&format!("https://host-{index}.flood.example/")),
+                )
+            })
+            .collect();
+        assert_eq!(lines.len(), LOGGED_PER_WEBVIEW + 1);
+        assert_eq!(
+            lines[0],
+            "Navigation guard kept the flooded webview from loading https://host-0.flood.example"
+        );
+        assert_eq!(
+            lines.last().unwrap(),
+            &format!("Navigation guard kept the flooded webview from loading {LOGGED_PER_WEBVIEW} places; further blocked navigations there are not logged")
+        );
+        assert_eq!(
+            first_block("flooded", &url("https://host-0.flood.example/")),
+            None
+        );
+        assert!(first_block("other-flooded", &url("https://host-0.flood.example/")).is_some());
+    }
+
+    #[test]
+    fn frames_post_only_to_the_origin_the_app_page_loads_from() {
+        let packaged = if cfg!(any(windows, target_os = "android")) {
+            "http://tauri.localhost"
+        } else {
+            "tauri://localhost"
+        };
+        assert_eq!(page_origin(None), packaged);
+        assert_eq!(
+            page_origin(Some(url("http://localhost:1420/"))),
+            "http://localhost:1420"
+        );
+        let script =
+            with_app_page_origin(r#"parent.postMessage(message, "__OLEAFLY_APP_ORIGIN__");"#);
+        assert_eq!(
+            script,
+            format!(r#"parent.postMessage(message, "{packaged}");"#)
+        );
     }
 
     #[test]

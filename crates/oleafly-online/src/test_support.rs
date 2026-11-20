@@ -153,6 +153,55 @@ impl FixtureServer {
     }
 }
 
+pub const STREAM_CHUNK: usize = 64 * 1024;
+
+pub async fn streaming_server(
+    declared: Option<u64>,
+    chunks: Option<usize>,
+    every: std::time::Duration,
+) -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        while let Ok((mut stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                if read_message(&mut stream).await.is_none() {
+                    return;
+                }
+                let framing = match declared {
+                    Some(length) => format!("Content-Length: {length}"),
+                    None => "Transfer-Encoding: chunked".to_string(),
+                };
+                let head = format!("HTTP/1.1 200 OK\r\n{framing}\r\nConnection: close\r\n\r\n");
+                if stream.write_all(head.as_bytes()).await.is_err() {
+                    return;
+                }
+                let mut block = vec![b'2'; STREAM_CHUNK];
+                if declared.is_none() {
+                    block = [
+                        format!("{STREAM_CHUNK:x}\r\n").into_bytes(),
+                        block,
+                        b"\r\n".to_vec(),
+                    ]
+                    .concat();
+                }
+                let mut sent = 0;
+                while chunks.is_none_or(|chunks| sent < chunks) {
+                    tokio::time::sleep(every).await;
+                    if stream.write_all(&block).await.is_err() {
+                        return;
+                    }
+                    sent += 1;
+                }
+                if declared.is_none() {
+                    let _ = stream.write_all(b"0\r\n\r\n").await;
+                }
+            });
+        }
+    });
+    base
+}
+
 fn escape(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('"', "&quot;")

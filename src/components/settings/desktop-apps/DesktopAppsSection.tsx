@@ -6,7 +6,7 @@ import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -324,11 +324,9 @@ function AllowedSites({ settings, saving, siteError, site, onSiteChange, onSubmi
         }}
       >
         <Input
+          {...LITERAL_INPUT}
           type="text"
           inputMode="url"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
           value={site}
           disabled={saving}
           onChange={(event) => onSiteChange(event.target.value)}

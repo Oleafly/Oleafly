@@ -847,7 +847,8 @@
     "search": "Buscar no projeto",
     "sourceControl": "Controle de versão",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notas"
+    "notes": "Notas",
+    "more": "Mais visualizações"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} em {{host}}",
@@ -1123,7 +1124,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hospedagem Git, Computer Use, aplicativos de desktop, Cua, MCP, citações, contas, conexões",
         "shortcuts": "atalhos de teclado, atalhos, teclas, teclado",
         "research": "pesquisa tarefas orçamento notificações manter ativo experimentos execuções research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "logs, log, erros, avisos, falhas, travamentos, compilações, builds, diagnóstico, solução de problemas, exportar logs, app.log, depuração"
       },
       "label": "Buscar nas configurações",
       "results_one": "{{count}} seção corresponde",

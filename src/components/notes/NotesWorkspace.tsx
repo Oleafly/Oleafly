@@ -396,7 +396,6 @@ function OutlineView() {
   return <NoteOutline noteId={actions.focusedNoteId} onOpenHeading={actions.openNoteHeading} />;
 }
 
-/** Whether a note is the shared note that is live, in a project whose comments are on. */
 function useNoteComments(noteId: string | null): boolean {
   const live = useCollabLiveNote((state) => noteId !== null && state.noteId === noteId);
   const shown = useCommentsRail((rail) => rail.visible);

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link2, X } from "lucide-react";
 import { useLinkInbox } from "@/components/collab/link-inbox";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { InlineAlert } from "../feedback";
 import { pastedProjectLink } from "../links/app-link";
@@ -61,11 +61,11 @@ export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
           {t(($) => $.collab.library.openLink.label)}
         </label>
         <Input
+          {...LITERAL_INPUT}
           id={inputId}
           data-modal-initial-focus
           value={link}
           autoComplete="off"
-          spellCheck={false}
           placeholder={t(($) => $.collab.library.openLink.placeholder)}
           onChange={(event) => {
             setLink(event.target.value);

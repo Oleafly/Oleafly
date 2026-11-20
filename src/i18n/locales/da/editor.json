@@ -166,7 +166,6 @@
       "purple": "Lilla"
     },
     "imageFile": "Billedfil",
-    "apply": "Anvend",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Opdel",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Kunne ikke indlæse PDF'en: {{detail}}",
     "imageLoadFailed": "Kunne ikke indlæse billedet: {{detail}}",
     "imageUnreadable": "Filen kan ikke vises som billede. Den kan være beskadiget, eller den er måske ikke et billede.",
+    "imageTooLarge": "Billedet er større end {{limit}}, så det vises ikke her.",
     "imageFit": "Tilpas til vinduet",
     "htmlPreviewFailed": "Kunne ikke vise siden: {{detail}}",
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Billedet blev ikke fundet",
+        "imageOutside": "Billeder uden for projektet vises ikke",
+        "imageUnreadable": "Billedet kunne ikke vises",
+        "imageAltText": "Alternativ tekst: {{alt}}",
         "imageLoading": "Indlæser billedet…",
         "imageAlt": "Figurbillede {{path}}",
         "width": "Bredde",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} reference",
     "count_other": "{{count}} referencer",
+    "matchCount_one": "{{shown}} af {{total}} reference",
+    "matchCount_other": "{{shown}} af {{total}} referencer",
+    "clearSearch": "Ryd søgningen",
     "empty": "Filen har ingen referencer endnu.",
     "etAl": "{{author}} et al.",
     "noMatch": "Ingen referencer matcher din søgning.",

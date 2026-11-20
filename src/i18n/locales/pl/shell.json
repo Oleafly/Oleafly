@@ -850,7 +850,8 @@
     "search": "Szukaj w projekcie",
     "sourceControl": "Kontrola wersji",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notatki"
+    "notes": "Notatki",
+    "more": "Więcej widoków"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",
@@ -1121,7 +1122,7 @@
       "integrations": "Integracje",
       "shortcuts": "Skróty klawiaturowe",
       "research": "Badania",
-      "logs": "Logs"
+      "logs": "Dzienniki"
     },
     "search": {
       "empty": "Brak pasujących ustawień",
@@ -1139,7 +1140,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
         "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura",
         "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "dziennik, dzienniki, logi, błędy, ostrzeżenia, awarie, kompilacje, diagnostyka, rozwiązywanie problemów, eksport dzienników, app.log, debugowanie, log, logs"
       },
       "label": "Szukaj w ustawieniach",
       "results_one": "{{count}} sekcja pasuje",

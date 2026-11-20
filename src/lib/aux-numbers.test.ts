@@ -9,10 +9,16 @@ const readBuildArtifactMock = vi.hoisted(() =>
   vi.fn<(projectId: string, name: string) => Promise<string | null>>(async () => null),
 );
 
+const logWarningMock = vi.hoisted(() => vi.fn(async (_scope: string, _detail: unknown) => undefined));
+
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   readFileContent: readFileContentMock,
   readBuildArtifact: readBuildArtifactMock,
+}));
+vi.mock("@/lib/log", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  logWarning: logWarningMock,
 }));
 
 import {
@@ -100,9 +106,9 @@ describe("parseAuxLabels", () => {
     expect(map.get("good")).toEqual({ number: "5", page: "6" });
   });
 
-  it("slices the input head at 1 MB", () => {
+  it("slices the input head at 8 MB", () => {
     const early = "\\newlabel{early}{{1}{1}}\n";
-    const padding = "%".repeat(1024 * 1024);
+    const padding = "%".repeat(8 * 1024 * 1024);
     const late = "\n\\newlabel{late}{{2}{2}}\n";
     const map = parseAuxLabels(early + padding + late);
     expect(map.has("early")).toBe(true);
@@ -299,6 +305,38 @@ describe("currentAuxToc", () => {
     clearAuxNumbers();
     expect(currentAuxToc()).toBeNull();
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("refreshAuxNumbers on a long document", () => {
+  it("numbers the headings of every included chapter", async () => {
+    const chapters = Array.from({ length: 40 }, (_, index) => `chapters/ch${index + 1}.aux`);
+    serveAuxFiles({
+      [ENTRY_AUX]: chapters.map((name) => `\\@input{${name}}`).join("\n"),
+      ...Object.fromEntries(
+        chapters.map((name, index) => [
+          name,
+          `${"%".repeat(40_000)}\n${tocLine("chapter", String.raw`\numberline {${index + 1}}Chapter ${index + 1}`)}\n`,
+        ]),
+      ),
+    });
+    seedFilesStore("p1", "main.tex");
+    await refreshAuxNumbers("p1", "main.tex", "out-1");
+    const entries = currentAuxToc()?.entries ?? [];
+    expect(entries).toHaveLength(40);
+    expect(entries.at(-1)).toEqual({ level: 1, number: "40", title: "Chapter 40", page: "1" });
+    expect(logWarningMock).not.toHaveBeenCalled();
+  });
+
+  it("says in the log when the aux files are too large to read in full", async () => {
+    const chapters = Array.from({ length: 3 }, (_, index) => `chapters/ch${index + 1}.aux`);
+    serveAuxFiles({
+      [ENTRY_AUX]: chapters.map((name) => `\\@input{${name}}`).join("\n"),
+      ...Object.fromEntries(chapters.map((name) => [name, "%".repeat(3 * 1024 * 1024)])),
+    });
+    seedFilesStore("p1", "main.tex");
+    await refreshAuxNumbers("p1", "main.tex", "out-1");
+    expect(logWarningMock).toHaveBeenCalledWith("read the aux files", expect.stringContaining("later headings"));
   });
 });
 

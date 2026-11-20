@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-use super::events::{EntityId, TreeEvent};
+use super::events::{plain, EntityId, TreeEvent};
 use crate::error::OnlineError;
 use crate::sync::check_remote_paths_on;
 
@@ -78,65 +78,164 @@ pub struct OverleafTree {
     nodes: BTreeMap<EntityId, OverleafNode>,
     pending: Vec<Pending>,
     local: BTreeMap<EntityId, Local>,
+    children: BTreeMap<EntityId, BTreeSet<EntityId>>,
+    placed: BTreeMap<EntityId, BTreeSet<EntityId>>,
+    named: BTreeMap<EntityId, BTreeMap<String, BTreeSet<EntityId>>>,
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
     value.get(key).and_then(Value::as_str).map(str::to_string)
 }
 
+fn entity_of(entry: &Value) -> Option<EntityId> {
+    text(entry, "_id").and_then(plain).map(EntityId)
+}
+
+fn take_out<K: Ord>(map: &mut BTreeMap<K, BTreeSet<EntityId>>, key: &K, id: &EntityId) {
+    if let Some(ids) = map.get_mut(key) {
+        ids.remove(id);
+        if ids.is_empty() {
+            map.remove(key);
+        }
+    }
+}
+
 impl OverleafTree {
     pub fn from_root_folder(root_folder: &Value) -> Option<OverleafTree> {
         let root = root_folder.as_array()?.first()?;
         let mut tree = OverleafTree::default();
-        let id = EntityId(text(root, "_id")?);
+        let id = entity_of(root)?;
         tree.root = Some(id.clone());
-        tree.read_folder(root, id, None)?;
+        tree.read_folder(root, id, None);
         Some(tree)
     }
 
-    fn read_folder(
-        &mut self,
-        folder: &Value,
-        id: EntityId,
-        parent: Option<EntityId>,
-    ) -> Option<()> {
-        self.nodes.insert(
-            id.clone(),
-            OverleafNode {
-                id: id.clone(),
-                name: text(folder, "name").unwrap_or_default(),
-                parent,
-                kind: NodeKind::Folder,
-                hash: None,
-            },
-        );
+    fn read_folder(&mut self, folder: &Value, id: EntityId, parent: Option<EntityId>) {
+        self.insert_node(OverleafNode {
+            id: id.clone(),
+            name: text(folder, "name").unwrap_or_default(),
+            parent,
+            kind: NodeKind::Folder,
+            hash: None,
+        });
         let entries = |key: &str| {
             folder
                 .get(key)
                 .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default()
+                .into_iter()
+                .flatten()
         };
         for (key, kind) in [("docs", NodeKind::Doc), ("fileRefs", NodeKind::File)] {
             for entry in entries(key) {
-                let child = EntityId(text(&entry, "_id")?);
-                self.nodes.insert(
-                    child.clone(),
-                    OverleafNode {
-                        id: child,
-                        name: text(&entry, "name")?,
-                        parent: Some(id.clone()),
-                        kind,
-                        hash: text(&entry, "hash"),
-                    },
-                );
+                let (Some(child), Some(name)) = (entity_of(entry), text(entry, "name")) else {
+                    continue;
+                };
+                self.insert_node(OverleafNode {
+                    id: child,
+                    name,
+                    parent: Some(id.clone()),
+                    kind,
+                    hash: text(entry, "hash"),
+                });
             }
         }
         for child in entries("folders") {
-            let child_id = EntityId(text(&child, "_id")?);
-            self.read_folder(&child, child_id, Some(id.clone()))?;
+            if let Some(child_id) = entity_of(child) {
+                self.read_folder(child, child_id, Some(id.clone()));
+            }
         }
-        Some(())
+    }
+
+    fn index(&mut self, id: &EntityId) {
+        let Some(node) = self.nodes.get(id) else {
+            return;
+        };
+        let server = node.parent.clone();
+        let shown = self.shown(node);
+        if let Some(parent) = server {
+            self.children.entry(parent).or_default().insert(id.clone());
+        }
+        if let Some(Local::Placed { parent, .. }) = self.local.get(id) {
+            self.placed
+                .entry(parent.clone())
+                .or_default()
+                .insert(id.clone());
+        }
+        if let Some((Some(parent), name)) = shown {
+            self.named
+                .entry(parent)
+                .or_default()
+                .entry(name)
+                .or_default()
+                .insert(id.clone());
+        }
+    }
+
+    fn unindex(&mut self, id: &EntityId) {
+        let Some(node) = self.nodes.get(id) else {
+            return;
+        };
+        let server = node.parent.clone();
+        let shown = self.shown(node);
+        if let Some(parent) = server {
+            take_out(&mut self.children, &parent, id);
+        }
+        if let Some(Local::Placed { parent, .. }) = self.local.get(id) {
+            let parent = parent.clone();
+            take_out(&mut self.placed, &parent, id);
+        }
+        if let Some((Some(parent), name)) = shown {
+            if let Some(names) = self.named.get_mut(&parent) {
+                take_out(names, &name, id);
+                if names.is_empty() {
+                    self.named.remove(&parent);
+                }
+            }
+        }
+    }
+
+    fn reindex(&mut self) {
+        self.children.clear();
+        self.placed.clear();
+        self.named.clear();
+        let ids: Vec<EntityId> = self.nodes.keys().cloned().collect();
+        for id in &ids {
+            self.index(id);
+        }
+    }
+
+    fn insert_node(&mut self, node: OverleafNode) {
+        let id = node.id.clone();
+        self.unindex(&id);
+        self.nodes.insert(id.clone(), node);
+        self.index(&id);
+    }
+
+    fn change_node(&mut self, id: &EntityId, change: impl FnOnce(&mut OverleafNode)) {
+        self.unindex(id);
+        if let Some(node) = self.nodes.get_mut(id) {
+            change(node);
+        }
+        self.index(id);
+    }
+
+    fn remove_node(&mut self, id: &EntityId) {
+        self.unindex(id);
+        self.nodes.remove(id);
+        self.local.remove(id);
+    }
+
+    fn set_local(&mut self, id: &EntityId, local: Option<Local>) {
+        self.unindex(id);
+        match local {
+            Some(local) => {
+                self.local.insert(id.clone(), local);
+            }
+            None => {
+                self.local.remove(id);
+            }
+        }
+        self.index(id);
     }
 
     pub fn root(&self) -> Option<&EntityId> {
@@ -213,17 +312,11 @@ impl OverleafTree {
             .nodes
             .get(id)
             .is_some_and(|node| node.parent.as_ref() == Some(parent) && node.name == name);
-        if same {
-            self.local.remove(id);
-        } else {
-            self.local.insert(
-                id.clone(),
-                Local::Placed {
-                    parent: parent.clone(),
-                    name: name.to_string(),
-                },
-            );
-        }
+        let placed = (!same).then(|| Local::Placed {
+            parent: parent.clone(),
+            name: name.to_string(),
+        });
+        self.set_local(id, placed);
         let after = self.located(&moving);
         changes_between(before, after)
     }
@@ -233,7 +326,7 @@ impl OverleafTree {
             return Vec::new();
         }
         let before = self.located(&self.below(id));
-        self.local.insert(id.clone(), Local::Hidden);
+        self.set_local(id, Some(Local::Hidden));
         changes_between(before, Vec::new())
     }
 
@@ -242,15 +335,35 @@ impl OverleafTree {
             return Vec::new();
         }
         let before = self.located(&self.below(id));
-        self.local.remove(id);
+        self.set_local(id, None);
         let after = self.located(&self.below(id));
         changes_between(before, after)
     }
 
     pub fn id_at(&self, path: &str) -> Option<&EntityId> {
-        self.nodes.keys().find(|id| {
-            Some(&**id) != self.root.as_ref() && self.path_of(id).as_deref() == Some(path)
-        })
+        let root = self.root.as_ref()?;
+        let mut found: Option<&EntityId> = None;
+        let mut waiting = vec![(root, 0)];
+        while let Some((folder, from)) = waiting.pop() {
+            let Some(names) = self.named.get(folder) else {
+                continue;
+            };
+            let rest = &path[from..];
+            let named = |name: &str| {
+                names
+                    .get(name)
+                    .into_iter()
+                    .flatten()
+                    .filter(|id| *id != root)
+            };
+            if let Some(id) = named(rest).next() {
+                found = Some(found.map_or(id, |known| known.min(id)));
+            }
+            for (at, _) in rest.match_indices('/') {
+                waiting.extend(named(&rest[..at]).map(|id| (id, from + at + 1)));
+            }
+        }
+        found
     }
 
     pub fn nodes(&self) -> Vec<OverleafNode> {
@@ -279,24 +392,31 @@ impl OverleafTree {
         check_remote_paths_on(&self.paths(), true)
     }
 
-    fn parent_in(&self, node: &OverleafNode, server: bool) -> Option<EntityId> {
-        match (server, self.local.get(&node.id)) {
-            (false, Some(Local::Placed { parent, .. })) => Some(parent.clone()),
-            _ => node.parent.clone(),
+    fn children_in(&self, parent: &EntityId, server: bool) -> BTreeSet<EntityId> {
+        let mut children: BTreeSet<EntityId> = self
+            .children
+            .get(parent)
+            .into_iter()
+            .flatten()
+            .filter(|child| server || !matches!(self.local.get(*child), Some(Local::Placed { .. })))
+            .cloned()
+            .collect();
+        if !server {
+            children.extend(self.placed.get(parent).into_iter().flatten().cloned());
         }
+        children
     }
 
     fn below_in(&self, id: &EntityId, server: bool) -> Vec<EntityId> {
         let mut found = vec![id.clone()];
+        let mut seen = BTreeSet::from([id.clone()]);
         let mut index = 0;
-        while index < found.len() && found.len() <= self.nodes.len() {
-            let parent = found[index].clone();
-            found.extend(
-                self.nodes
-                    .values()
-                    .filter(|node| self.parent_in(node, server).as_ref() == Some(&parent))
-                    .map(|node| node.id.clone()),
-            );
+        while index < found.len() {
+            for child in self.children_in(&found[index], server) {
+                if seen.insert(child.clone()) {
+                    found.push(child);
+                }
+            }
             index += 1;
         }
         found
@@ -386,16 +506,13 @@ impl OverleafTree {
         if self.nodes.contains_key(id) || !self.is_folder(folder) {
             return Vec::new();
         }
-        self.nodes.insert(
-            id.clone(),
-            OverleafNode {
-                id: id.clone(),
-                name: name.to_string(),
-                parent: Some(folder.clone()),
-                kind,
-                hash,
-            },
-        );
+        self.insert_node(OverleafNode {
+            id: id.clone(),
+            name: name.to_string(),
+            parent: Some(folder.clone()),
+            kind,
+            hash,
+        });
         let Some(path) = self.path_of(id) else {
             return Vec::new();
         };
@@ -430,9 +547,7 @@ impl OverleafTree {
         }
         let moving = self.below(id);
         let before = self.located(&moving);
-        if let Some(node) = self.nodes.get_mut(id) {
-            change(node);
-        }
+        self.change_node(id, change);
         before
             .into_iter()
             .filter_map(|(moved, from, kind)| {
@@ -453,17 +568,16 @@ impl OverleafTree {
         }
         let removed = self.below_in(id, true);
         let mut affected = self.below(id);
+        let shown: BTreeSet<EntityId> = affected.iter().cloned().collect();
         affected.extend(
             removed
                 .iter()
-                .filter(|entity| !affected.contains(entity))
-                .cloned()
-                .collect::<Vec<_>>(),
+                .filter(|entity| !shown.contains(*entity))
+                .cloned(),
         );
         let gone = self.located(&affected);
         for entity in &removed {
-            self.nodes.remove(entity);
-            self.local.remove(entity);
+            self.remove_node(entity);
         }
         let mut gone = gone
             .into_iter()
@@ -496,6 +610,7 @@ impl OverleafTree {
                     Local::Hidden => true,
                 }
         });
+        fresh.reindex();
         let after = fresh.located_all();
         flushed.extend(changes_between(before, after));
         *self = fresh;

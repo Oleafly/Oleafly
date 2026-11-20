@@ -194,16 +194,22 @@ const supportsCitations = () => projectSupportsCitations() && activeUsesEngineSo
 const supportsSyncTeX = () => engineLoaded() && engineSyncsPath(engine(), useFilesStore.getState().activePath);
 const activeFormattingProfile = () =>
   formattingProfileForPath(engine(), engineLoaded(), useFilesStore.getState().activePath);
-let focusOutsidePalette: Element | null = null;
+let focusOutsidePalette: WeakRef<Element> | null = null;
 const rememberFocus = (event: FocusEvent) => {
-  if (event.target instanceof Element && !event.target.closest("[cmdk-dialog]")) focusOutsidePalette = event.target;
+  if (event.target instanceof Element && !event.target.closest("[cmdk-dialog]")) {
+    focusOutsidePalette = new WeakRef(event.target);
+  }
 };
 const shown = (element: Element) => element.isConnected && !element.closest("[hidden], [inert]");
+const focusedOutsidePalette = (): Element | null => {
+  const element = focusOutsidePalette?.deref() ?? null;
+  return element && shown(element) ? element : null;
+};
 const dialogInFront = () =>
-  focusOutsidePalette !== null && shown(focusOutsidePalette) && focusOutsidePalette.closest('[role="dialog"], [role="alertdialog"]') !== null;
+  Boolean(focusedOutsidePalette()?.closest('[role="dialog"], [role="alertdialog"]'));
 const noteWritable = (editor: Editor) => !editor.isDestroyed && editor.isEditable && shown(editor.view.dom);
 const noteEditorInFocus = (): Editor | null => {
-  const dom = focusOutsidePalette?.closest<TiptapEditorHTMLElement>(".ProseMirror");
+  const dom = focusedOutsidePalette()?.closest<TiptapEditorHTMLElement>(".ProseMirror");
   if (!dom?.editor || noteHistoryAt(dom) === null) return null;
   return noteWritable(dom.editor) ? dom.editor : null;
 };

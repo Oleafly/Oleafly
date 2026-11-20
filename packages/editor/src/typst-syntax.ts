@@ -1,3 +1,5 @@
+export { isBackslashEscaped as isTypstEscaped } from "@oleafly/latex";
+
 const IDENTIFIER_START = /[\p{L}\p{Nl}_]/u;
 const IDENTIFIER_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}-]|\u200C|\u200D/u;
 const LABEL_START = /[\p{L}\p{M}\p{N}\p{Pc}]/u;
@@ -53,14 +55,6 @@ export function trimTypstReference(name: string): string {
 export function typstReferenceEnd(text: string, from: number): number {
   const end = runEnd(text, from, LABEL_START, LABEL_CONTINUE);
   return from + trimTypstReference(text.slice(from, end)).length;
-}
-
-export function isTypstEscaped(text: string, offset: number): boolean {
-  let backslashes = 0;
-  for (let cursor = offset - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
 }
 
 function closesAutolinkBracket(character: string, brackets: string[]): boolean {

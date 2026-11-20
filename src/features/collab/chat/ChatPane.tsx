@@ -5,8 +5,10 @@ import { useShallow } from "zustand/react/shallow";
 import { useChatRail } from "@/components/collab/chat-rail";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
-import { presenceText, TypingLine } from "@/components/ui/comments/comment-presence";
-import { chatGroups, type CommentEntry, CommentItem } from "@/components/ui/comments/comment-thread";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
+import { presenceText, TypingLine, useChatTyping } from "@/components/ui/comments/comment-presence";
+import { chatGroups } from "@/components/ui/comments/comment-bubble";
+import { CommentItem } from "@/components/ui/comments/comment-item";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,14 +16,14 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
 import { formatNumber } from "@/lib/intl";
 import type { CollabChatMessage, CollabPerson } from "@/lib/tauri";
-import { CommentComposer } from "../comments/CommentComposer";
 import { useComments } from "../comments/comments-store";
 import { DesktopCommentKit, useMentionMembers } from "../comments/desktop-comment-kit";
 import { commentFailure } from "../comments/refusals";
+import { entryFor, useAuthorNames } from "../comments/ThreadCard";
 import { collabErrorMessage } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
-import { sendPresenceActivity, useChatTyping } from "../live/peer-activity";
+import { sendPresenceActivity } from "../live/peer-activity";
 import { canChatProjectRole } from "../roles";
 import {
   chatDraft,
@@ -66,36 +68,37 @@ const MessageRow = memo(function MessageRow({
   reactions: boolean;
   continued: boolean;
 }>) {
-  const { t } = useTranslation(["collab"]);
-  const entry: CommentEntry = {
-    id: message.id,
-    author: {
-      id: message.author,
-      name: message.verified
-        ? person?.display_name || t(($) => $.collab.toolbar.unknownPerson)
-        : t(($) => $.collab.comments.unverifiedAuthor),
-      imageUrl: person?.avatar_url,
-      verified: message.verified,
-    },
-    at: message.at,
-    editedAt: null,
-    deleted: message.deleted,
-    body: message.body,
-    mentions: message.mentions ?? [],
-    reactions: message.reactions ?? [],
-    delivery: message.pending && !message.deleted ? { state: "waiting" } : undefined,
-  };
+  const names = useAuthorNames();
   return (
     <CommentItem
       variant="bubble"
       continued={continued}
-      entry={entry}
+      entry={entryFor(message, person, names)}
       canWrite={canPost}
       canReact={canPost && reactions}
       actions={CHAT_ACTIONS}
     />
   );
 });
+
+function ChatTypingLine() {
+  const { t } = useTranslation(["collab"]);
+  const typing = useChatTyping();
+  return (
+    <TypingLine
+      people={typing}
+      label={presenceText(
+        {
+          one: (name) => t(($) => $.collab.chat.typingOne, { name }),
+          two: (first, second) => t(($) => $.collab.chat.typingTwo, { first, second }),
+          many: (count) => t(($) => $.collab.chat.typingMany, { number: formatNumber(count) }),
+        },
+        typing.map((person) => person.name),
+      )}
+      className="px-3 pb-1"
+    />
+  );
+}
 
 export function ChatPane() {
   const projectId = useChat((state) => state.projectId);
@@ -131,7 +134,6 @@ function ProjectChat() {
   const placed = useRef(0);
   const now = useNow(TICK_MS);
   const members = useMentionMembers();
-  const typing = useChatTyping();
   const people = useMemo(
     () => new Map(live.members.map((member) => [member.person.account_id, member.person])),
     [live.members],
@@ -334,18 +336,7 @@ function ProjectChat() {
         >
           {body()}
         </CommentScrollArea>
-        <TypingLine
-          people={typing}
-          label={presenceText(
-            {
-              one: (name) => t(($) => $.collab.chat.typingOne, { name }),
-              two: (first, second) => t(($) => $.collab.chat.typingTwo, { first, second }),
-              many: (count) => t(($) => $.collab.chat.typingMany, { number: formatNumber(count) }),
-            },
-            typing.map((person) => person.name),
-          )}
-          className="px-3 pb-1"
-        />
+        <ChatTypingLine />
         {reveal !== null && !revealLoaded && !loadFailed ? (
           <output className="flex items-center gap-2 px-3 pb-2 text-xs text-muted-foreground">
             <Spinner size="xs" />
@@ -366,9 +357,6 @@ function ProjectChat() {
               label={t(($) => $.collab.chat.label)}
               placeholder={t(($) => $.collab.chat.placeholder)}
               submitLabel={t(($) => $.collab.chat.send)}
-              maxLength={CHAT_LIMIT}
-              members={members}
-              self={live.self}
               onSubmit={sendChat}
               onActivity={chatActivity}
             />

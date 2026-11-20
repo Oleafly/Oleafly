@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { CodeBlock } from "@/components/ui/code-block";
 import { SectionHeading } from "@/components/ui/section-heading";
 import {
@@ -113,13 +113,13 @@ function MathpixCard() {
             }}
           >
             <Input
+              {...LITERAL_INPUT}
               data-testid="mathpix-app-id"
               value={appId}
               onChange={(event) => setAppId(event.target.value)}
               aria-label={t(($) => $.settings.ai.tools.mathpix.appIdLabel)}
               placeholder={t(($) => $.settings.ai.tools.mathpix.appIdLabel)}
               autoComplete="off"
-              spellCheck={false}
               className="h-9 w-40"
             />
             <Input

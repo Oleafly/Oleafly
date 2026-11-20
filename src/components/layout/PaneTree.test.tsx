@@ -113,7 +113,7 @@ describe("PaneTreeGroup", () => {
 
   it("gives the default panels their sizes and limits and lets the document take the rest", () => {
     renderTree(DEFAULT_PANE_LAYOUT);
-    expect(panel("sidebar").dataset).toMatchObject({ min: "250px", max: "65%", size: "15%", behavior: "preserve-pixel-size" });
+    expect(panel("sidebar").dataset).toMatchObject({ min: "266px", max: "65%", size: "15%", behavior: "preserve-pixel-size" });
     expect(panel("assistant").dataset).toMatchObject({ min: "22%", max: "55%", collapsible: "true", size: "28%" });
     expect(panel("editorpdf").dataset).toMatchObject({ size: "", behavior: "" });
     expect(panel("editor").dataset).toMatchObject({ min: "15%", size: "" });
@@ -165,7 +165,7 @@ describe("PaneTreeGroup", () => {
     const nested = movePane(DEFAULT_PANE_LAYOUT, "assistant", { kind: "pane", pane: "pdf", side: "right" });
     renderTree(nested);
     expect(Number.parseFloat(panel("assistant").dataset.min ?? "")).toBeCloseTo((480 / 1188) * 100, 3);
-    expect(Number.parseFloat(panel("sidebar").dataset.size ?? "")).toBeCloseTo((340 / 1188) * 100, 3);
+    expect(Number.parseFloat(panel("sidebar").dataset.size ?? "")).toBeCloseTo((266 / 1188) * 100, 3);
   });
 
   it("lets a pane that is alone in its group take the whole group", () => {

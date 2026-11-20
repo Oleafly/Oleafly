@@ -5,12 +5,12 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH, type Page } from './sdk';
 import { type StepController, StepHost } from './step-context';
 const PAGES_PER_FRAME = 2;
 const SETTLE_TIMEOUT_MS = 15000;
+export type SlideWarmup = 'all' | 'neighbours';
 type Props = {
     pages: Page[];
     index: number;
     design?: DesignSystem;
-    includeCurrent?: boolean;
-    onDone?: () => void;
+    warmup?: SlideWarmup;
 };
 function nextFrame(): Promise<void> {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -34,36 +34,49 @@ function saveDataEnabled(): boolean {
     }).connection;
     return connection?.saveData === true;
 }
-function computeWarmupOrder(pages: Page[], index: number, includeCurrent: boolean): number[] {
-    if (saveDataEnabled())
+function computeWarmupOrder(total: number, index: number, warmup: SlideWarmup): number[] {
+    if (saveDataEnabled() || total === 0)
         return [];
-    const start = Math.max(0, Math.min(pages.length - 1, index));
+    const start = Math.max(0, Math.min(total - 1, index));
+    if (warmup === 'neighbours')
+        return [start + 1, start - 1].filter((page) => page >= 0 && page < total);
     const result: number[] = [];
-    for (let step = includeCurrent ? 0 : 1; step < pages.length; step++) {
-        result.push((start + step) % pages.length);
+    for (let step = 1; step < total; step++) {
+        result.push((start + step) % total);
     }
     return result;
 }
-export function SlidePreloadLayer({ pages, index, design, includeCurrent = false, onDone }: Props) {
+export function SlidePreloadLayer({ pages, index, design, warmup = 'all' }: Readonly<Props>) {
     const [deck, setDeck] = useState(pages);
-    const [order, setOrder] = useState<number[]>(() => computeWarmupOrder(pages, index, includeCurrent));
+    const [order, setOrder] = useState<number[]>(() => computeWarmupOrder(pages.length, index, warmup));
     const [mountedCount, setMountedCount] = useState(0);
     const [done, setDone] = useState(order.length === 0);
+    const [warmed, setWarmed] = useState<ReadonlySet<number>>(() => new Set());
+    const [warmedAround, setWarmedAround] = useState(index);
     const rootRef = useRef<HTMLDivElement | null>(null);
     const controllerRef = useRef<StepController | null>(null);
-    if (deck !== pages) {
-        const nextOrder = computeWarmupOrder(pages, index, includeCurrent);
-        setDeck(pages);
-        setOrder(nextOrder);
+    const start = (known: ReadonlySet<number>) => {
+        const next = computeWarmupOrder(pages.length, index, warmup).filter((page) => !known.has(page));
+        setWarmedAround(index);
+        setOrder(next);
         setMountedCount(0);
-        setDone(nextOrder.length === 0);
+        setDone(next.length === 0);
+    };
+    if (deck !== pages) {
+        setDeck(pages);
+        if (pages.length !== deck.length) {
+            setWarmed(new Set());
+            start(new Set());
+        }
+        else if (!done) {
+            start(warmed);
+        }
     }
-    const onDoneRef = useRef(onDone);
-    onDoneRef.current = onDone;
-    useEffect(() => {
-        if (done)
-            onDoneRef.current?.();
-    }, [done]);
+    else if (done && warmup === 'neighbours' && warmedAround !== index) {
+        const shown = new Set([...warmed, warmedAround]);
+        setWarmed(shown);
+        start(shown);
+    }
     useEffect(() => {
         if (done || mountedCount >= order.length)
             return;
@@ -85,16 +98,23 @@ export function SlidePreloadLayer({ pages, index, design, includeCurrent = false
                 root ? waitForImages(root) : Promise.resolve(),
             ]);
         };
-        const timeout = new Promise<void>((resolve) => setTimeout(resolve, SETTLE_TIMEOUT_MS));
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, SETTLE_TIMEOUT_MS);
+        });
         const finish = () => {
-            if (!cancelled)
-                setDone(true);
+            clearTimeout(timer);
+            if (cancelled)
+                return;
+            setWarmed((known) => new Set([...known, ...order]));
+            setDone(true);
         };
         Promise.race([settle(), timeout]).then(finish, finish);
         return () => {
             cancelled = true;
+            clearTimeout(timer);
         };
-    }, [done, mountedCount, order.length]);
+    }, [done, mountedCount, order]);
     if (done)
         return null;
     return (<div ref={rootRef} aria-hidden data-osd-freeze-motion="" style={{

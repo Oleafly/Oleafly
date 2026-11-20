@@ -539,6 +539,21 @@ describe("writing comments", () => {
     expect(mocks.collabCommentReply).not.toHaveBeenCalled();
   });
 
+  it("logs a write that failed for an unexpected reason, and not one the server refused or lost to the network", async () => {
+    start();
+    await shown();
+    const thread = commentThread("t1", null);
+    mocks.collabCommentReply.mockRejectedValueOnce(new Error("disk full"));
+    await expect(replyToThread(thread, "Hi")).rejects.toThrow("disk full");
+    expect(mocks.logError).toHaveBeenCalledWith("collab comment reply", expect.objectContaining({ message: "disk full" }));
+    mocks.logError.mockClear();
+    mocks.collabCommentReply.mockRejectedValueOnce(refusal("comment_not_live"));
+    await expect(replyToThread(thread, "Hi")).rejects.toMatchObject({ code: "comment_not_live" });
+    mocks.collabCommentReply.mockRejectedValueOnce(refusal("unreachable"));
+    await expect(replyToThread(thread, "Hi")).rejects.toMatchObject({ code: "unreachable" });
+    expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
   it("does nothing when there is no draft to create", async () => {
     start();
     await shown();

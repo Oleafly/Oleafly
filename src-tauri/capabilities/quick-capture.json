@@ -5,6 +5,7 @@
   "windows": ["quick-capture"],
   "permissions": [
     "core:default",
+    "notification:allow-is-permission-granted",
     "core:webview:allow-set-webview-zoom",
     "core:window:allow-hide",
     "core:window:allow-set-focus",

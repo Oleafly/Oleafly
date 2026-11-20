@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import { sshConfigHosts, type ComputeTarget, type SshConfigHost } from "./compute-api";
 
@@ -64,14 +63,6 @@ export function ComputeSshImportDialog({
       });
     return () => {
       live = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
     };
   }, []);
 

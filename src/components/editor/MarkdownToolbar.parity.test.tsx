@@ -9,7 +9,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
-import type { EditorMode } from "@/components/editor/EditorToolbar";
+import type { EditorMode } from "@/lib/wysiwyg-mode";
 
 vi.mock("@oleafly/preview", () => ({
   registerPdfView: vi.fn(),

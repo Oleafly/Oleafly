@@ -127,7 +127,7 @@
     "expandHeading": "{{title}} uitklappen",
     "expandAll": "Alle koppen uitklappen",
     "onPage": "{{heading}}, pagina {{page}}",
-    "page": "p.{{page}}",
+    "page": "blz. {{page}}",
     "title": "Overzicht"
   },
   "panelError": {

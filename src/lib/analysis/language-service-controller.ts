@@ -66,6 +66,7 @@ import {
   useProjectAnalysisStore,
   type ProjectAnalysisStoreApi,
 } from "@/store/project-analysis";
+import { isMarkdownPath } from "@/lib/wysiwyg-mode";
 import { useIndexStore } from "@/store/project-index";
 
 export type LanguageServiceEngineId =
@@ -348,7 +349,6 @@ const IPC_UNAVAILABLE_ANALYSIS_REASON: AnalysisReason = {
 
 const LATEX_DOCUMENT = /\.(?:tex|ltx|latex|sty|cls)$/i;
 const TYPST_DOCUMENT = /\.typ$/i;
-const MARKDOWN_DOCUMENT = /\.(?:md|markdown)$/i;
 const BIBTEX_DOCUMENT = /\.bib$/i;
 
 export function languageServiceKindForEngine(
@@ -379,7 +379,7 @@ function localOnlyReason(
   path: string,
 ): AnalysisReason | null {
   if (BIBTEX_DOCUMENT.test(path)) return BIBTEX_LOCAL_ONLY_ANALYSIS_REASON;
-  if (engineId === "markdown" && MARKDOWN_DOCUMENT.test(path)) {
+  if (engineId === "markdown" && isMarkdownPath(path)) {
     return MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON;
   }
   return null;

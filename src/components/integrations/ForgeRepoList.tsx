@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, Lock, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
@@ -152,6 +152,7 @@ export function ForgeRepoList({
       <div className="flex items-center gap-2 rounded-md border px-3 transition-colors">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
+          {...SEARCH_INPUT}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t(($) => $.library.github.searchPlaceholder)}

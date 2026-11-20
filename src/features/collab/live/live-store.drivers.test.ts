@@ -77,6 +77,7 @@ function driverFor(kind: LiveBackendDriver["kind"], project: string, calls: stri
     }),
     refresh: vi.fn(async () => {}),
     resumable: () => false,
+    refusal: () => null,
   };
 }
 
@@ -138,6 +139,30 @@ describe("live backend drivers", () => {
     stop();
     stop = null;
     expect(liveOnOverleaf(ON_SERVER)).toBe(false);
+  });
+
+  it("moves a live project to the driver it wants now, stopping the one it started on", async () => {
+    const calls: string[] = [];
+    const server = { ...driverFor("server", ON_OVERLEAF, calls), wants: (state: CollabLiveStoreState) => state.projectId === ON_OVERLEAF && state.share !== null };
+    const overleaf = { ...driverFor("overleaf", ON_OVERLEAF, calls), wants: (state: CollabLiveStoreState) => state.projectId === ON_OVERLEAF && state.share === null };
+    openProject(ON_OVERLEAF);
+    stop = startCollabLive({ drivers: [server, overleaf] });
+    await settle();
+    useCollabLiveStore.setState({
+      share: {
+        project_id: ON_OVERLEAF,
+        server_id: "server",
+        server_name: "Smith Lab",
+        server_url: "https://collab.uni.edu",
+        shared_project_id: "shared-1",
+        role: "editor",
+        link: "https://collab.uni.edu/p/shared-1",
+        account_id: "server-account",
+      },
+    });
+    await settle();
+    expect(calls).toEqual([`overleaf start ${ON_OVERLEAF}`, `overleaf stop ${ON_OVERLEAF}`, `server start ${ON_OVERLEAF}`]);
+    expect(useCollabLiveStore.getState().backend).toBe("server");
   });
 
   it("switching projects stops the previous driver first", async () => {

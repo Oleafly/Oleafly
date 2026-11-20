@@ -21,10 +21,10 @@ import {
   type ScriptedBlockProps,
   START_GRACE_MS,
   staticHtml,
-  tokenOf,
   WATCHDOG_MS,
 } from "./ArtifactFrame";
 import { framePolicy, STATIC_POLICY } from "./artifact-runtime/frame-document";
+import { tokenOf } from "./artifact-runtime/frame-host";
 import { blockHash, blockTrusted, forgetNoteBlocks, setBlockTrusted } from "./block-trust";
 import "./tests/setup";
 

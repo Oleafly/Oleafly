@@ -6,11 +6,13 @@ mod state;
 mod tests;
 mod tree_worker;
 
-use std::path::PathBuf;
+use std::future::Future;
+use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
+use futures_util::FutureExt;
 use oleafly_ot::{DocOpened, DocSink, OtError, TextOperation};
 use serde::Serialize;
 use tokio::sync::Notify;
@@ -23,6 +25,7 @@ use super::tree_queue::{LocalFile, Queued, TreeChange, TreeRefusal};
 use super::DocId;
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
+use crate::locked;
 use crate::realtime::connection::{connect_tuned, Carrier, Connection, RealtimeError, Tuning};
 use crate::realtime::events::{EntityId, ProjectEvent, PublicId, Rejection};
 use crate::realtime::project::{Member, ProjectState, Role};
@@ -54,6 +57,9 @@ pub trait LivePort: Send + Sync + 'static {
     fn uploaded(&self, _path: &str, _tag: &str, _hash: Option<&str>) {}
     fn project_flags(&self, _restricted: bool, _deleted_externally: bool) {}
     fn members_changed(&self) {}
+    fn local_file_size(&self, _path: &str) -> Option<u64> {
+        None
+    }
     fn local_file(&self, _path: &str) -> Option<LocalFile> {
         None
     }
@@ -266,13 +272,40 @@ struct Shared {
     activity: Mutex<Activity>,
     link: Mutex<Link>,
     server: String,
-}
-
-fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+    delivery: Mutex<()>,
 }
 
 impl Shared {
+    fn new(
+        state: state::State,
+        journal: Journal,
+        session: SessionHandle,
+        port: Arc<dyn LivePort>,
+        server: String,
+    ) -> Shared {
+        let now = tokio::time::Instant::now();
+        Shared {
+            state: Mutex::new(state),
+            journal: Mutex::new(journal),
+            sign_in: Mutex::new(None),
+            session: Mutex::new(session),
+            wake: Notify::new(),
+            tree_wake: Notify::new(),
+            nudge: Notify::new(),
+            nudged: AtomicBool::new(false),
+            stopping: AtomicBool::new(false),
+            port,
+            activity: Mutex::new(Activity {
+                last: now,
+                typed: now,
+                focused: true,
+            }),
+            link: Mutex::new(Link::default()),
+            server,
+            delivery: Mutex::new(()),
+        }
+    }
+
     fn lock(&self) -> MutexGuard<'_, state::State> {
         locked(&self.state)
     }
@@ -329,39 +362,84 @@ impl Shared {
     }
 
     fn with<T>(&self, work: impl FnOnce(&mut state::State) -> T) -> T {
-        let (value, notices) = {
+        let (value, notices, delivery) = {
             let mut state = self.lock();
             let value = work(&mut state);
             state.report_pending(false);
             state.report_docs();
-            (value, std::mem::take(&mut state.notices))
+            let notices = std::mem::take(&mut state.notices);
+            let delivery = notices
+                .iter()
+                .any(|notice| matches!(notice, state::Notice::Editor(..)))
+                .then(|| locked(&self.delivery));
+            (value, notices, delivery)
         };
+        let notices = state::deliver_to_editors(notices);
+        drop(delivery);
         state::deliver(self.port.as_ref(), notices);
         value
     }
 
-    fn write_journal(&self, batch: &state::JournalBatch) -> Result<(), String> {
-        let mut journal = self.journal();
-        if let Some(manifest) = &batch.manifest {
-            journal.set_manifest(manifest.clone());
-        }
-        for (doc, record) in &batch.docs {
-            journal.put(doc, record.clone());
-        }
-        if let Some(changes) = &batch.tree {
-            journal.set_tree_queue(changes.clone());
-        }
-        journal.flush()
-    }
-
     fn persist(&self, forced: bool) {
         let now = Instant::now();
-        let Some(batch) = self.with(|state| state.take_journal_batch(now, forced)) else {
+        let mut journal = self.journal();
+        let Some(mut batch) = self.lock().take_journal_batch(now, forced) else {
             return;
         };
-        let result = self.write_journal(&batch);
+        let result = write_batch(&mut journal, &mut batch);
+        drop(journal);
         self.with(|state| state.journal_result(batch, result, now));
     }
+
+    fn journal_failed(&self, reason: String) {
+        let batch = state::JournalBatch::default();
+        self.with(|state| state.journal_result(batch, Err(reason), Instant::now()));
+    }
+}
+
+fn write_batch(journal: &mut Journal, batch: &mut state::JournalBatch) -> Result<(), String> {
+    if let Some(manifest) = &batch.manifest {
+        journal.set_manifest(manifest.clone());
+    }
+    for (doc, record) in &mut batch.docs {
+        journal.put(doc, record.take());
+    }
+    if let Some(changes) = &batch.tree {
+        journal.set_tree_queue(changes.clone());
+    }
+    journal.flush()
+}
+
+async fn off_runtime<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> T {
+    match tokio::task::spawn_blocking(work).await {
+        Ok(value) => value,
+        Err(error) => std::panic::resume_unwind(error.into_panic()),
+    }
+}
+
+async fn persist_soon(shared: &Arc<Shared>, forced: bool) {
+    if !shared.lock().journal_ready(Instant::now(), forced) {
+        return;
+    }
+    let shared = Arc::clone(shared);
+    off_runtime(move || shared.persist(forced)).await;
+}
+
+fn panic_reason(panic: &(dyn std::any::Any + Send)) -> String {
+    panic
+        .downcast_ref::<&str>()
+        .map(|reason| (*reason).to_string())
+        .or_else(|| panic.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "an unknown fault".into())
+}
+
+async fn watched(shared: Arc<Shared>, work: impl Future<Output = ()> + Send) {
+    let Err(panic) = AssertUnwindSafe(work).catch_unwind().await else {
+        return;
+    };
+    let reason = format!("live editing stopped on a fault: {}", panic_reason(&*panic));
+    shared.with(|state| state.end(LiveEnd::Failed(reason)));
+    persist_soon(&shared, true).await;
 }
 
 pub struct OverleafSession {
@@ -415,7 +493,6 @@ async fn first_connect(
     match attempt {
         Ok((connection, join)) => {
             journal.remember_join(join.response.clone());
-            let _ = journal.flush();
             let project = ProjectState::from_join(join.response).map_err(|unsupported| {
                 OnlineError::new(OnlineErrorKind::Unrecognized).detail(format!("{unsupported:?}"))
             })?;
@@ -437,6 +514,11 @@ impl OverleafSession {
         port.state(LiveState::Connecting);
         let page = Arc::new(ProjectPage::unloaded(&config.project_id)?);
         let (project, connection) = first_connect(&config, &page, &mut journal).await?;
+        let (journal, flushed) = off_runtime(move || {
+            let flushed = journal.flush();
+            (journal, flushed)
+        })
+        .await;
         let account = Account {
             user_id: config.session.user_id().to_string(),
             email: config.session.email().to_string(),
@@ -447,26 +529,17 @@ impl OverleafSession {
         if let Some(connection) = &connection {
             state.connected(connection.public_id().clone(), state::now_ms());
         }
-        let now = tokio::time::Instant::now();
-        let shared = Arc::new(Shared {
-            state: Mutex::new(state),
-            journal: Mutex::new(journal),
-            sign_in: Mutex::new(None),
-            session: Mutex::new(config.session.clone()),
-            wake: Notify::new(),
-            tree_wake: Notify::new(),
-            nudge: Notify::new(),
-            nudged: AtomicBool::new(false),
-            stopping: AtomicBool::new(false),
+        let server = config.http.url("");
+        let shared = Arc::new(Shared::new(
+            state,
+            journal,
+            config.session.clone(),
             port,
-            activity: Mutex::new(Activity {
-                last: now,
-                typed: now,
-                focused: true,
-            }),
-            link: Mutex::new(Link::default()),
-            server: config.http.url(""),
-        });
+            server,
+        ));
+        if let Err(reason) = flushed {
+            shared.journal_failed(reason);
+        }
         if let Some(connection) = &connection {
             shared.linked(
                 connection.carrier().wire_name(),
@@ -485,8 +558,8 @@ impl OverleafSession {
             config.tuning.clone(),
         );
         let driver = driver::Driver::new(Arc::clone(&shared), connection, page, config);
-        let handle = tokio::spawn(driver.run());
-        let tree = tokio::spawn(worker.run());
+        let handle = tokio::spawn(watched(Arc::clone(&shared), driver.run()));
+        let tree = tokio::spawn(watched(Arc::clone(&shared), worker.run()));
         Ok(Arc::new(OverleafSession {
             shared,
             driver: Mutex::new(Some(handle)),
@@ -500,7 +573,11 @@ impl OverleafSession {
     }
 
     pub fn open(&self, path: &str, sink: DocSink) -> Option<DocOpened> {
-        let opened = self.shared.with(|state| state.open(path, sink));
+        let needs_disk = self.shared.lock().needs_disk_at(path);
+        let on_disk = needs_disk
+            .then(|| self.shared.port.disk_text(path))
+            .flatten();
+        let opened = self.shared.with(|state| state.open(path, sink, on_disk));
         self.poke();
         opened
     }
@@ -521,7 +598,11 @@ impl OverleafSession {
         doc: &DocId,
         edit: impl FnOnce(&str) -> Option<TextOperation>,
     ) -> Result<bool, LiveError> {
-        let result = self.shared.with(|state| state.local_edit_with(doc, edit));
+        let path = self.shared.lock().path_without_text(doc);
+        let on_disk = path.and_then(|path| self.shared.port.disk_text(&path));
+        let result = self
+            .shared
+            .with(|state| state.local_edit_with(doc, edit, on_disk));
         self.shared.touched(true);
         self.poke();
         result
@@ -621,6 +702,7 @@ impl OverleafSession {
         result
     }
 
+    #[cfg(any(test, feature = "test-support"))]
     pub fn kept_away(&self) -> Vec<String> {
         self.shared.lock().kept_away()
     }
@@ -669,7 +751,8 @@ impl OverleafSession {
         self.poke();
     }
 
-    pub fn journal_dir(&self) -> PathBuf {
+    #[cfg(test)]
+    pub fn journal_dir(&self) -> std::path::PathBuf {
         self.shared.journal().dir().to_path_buf()
     }
 

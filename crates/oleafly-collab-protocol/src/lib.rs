@@ -18,4 +18,5 @@ pub mod projects;
 pub mod published;
 pub mod reactions;
 pub mod roles;
+pub mod schema;
 pub mod snapshots;

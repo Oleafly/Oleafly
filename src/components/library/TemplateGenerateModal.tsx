@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates";
 import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Kbd } from "@/components/ui/kbd";
 import { MODAL_PANEL_SURFACE, modalOverlayClassName } from "@/components/ui/modal-shell";
 import { Textarea } from "@/components/ui/textarea";
@@ -382,9 +383,9 @@ export function TemplateGenerateModal({
             </div>
 
             {error && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <InlineAlert bordered size="sm" className="p-3">
                 {error}
-              </div>
+              </InlineAlert>
             )}
 
             <div>

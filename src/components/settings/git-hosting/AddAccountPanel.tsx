@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { IntegrationError } from "@/components/settings/IntegrationCard";
 import { DeviceCodeCard } from "@/components/settings/git-hosting/DeviceCodeCard";
@@ -251,6 +251,7 @@ export function AddAccountPanel({
         </span>
         <span className="flex gap-2">
           <Input
+            {...LITERAL_INPUT}
             id={`${fieldId}-server`}
             data-testid="git-hosting-server-url"
             value={address}

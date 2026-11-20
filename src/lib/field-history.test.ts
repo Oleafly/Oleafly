@@ -2,10 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   historyCommand,
+  historyOwnerAt,
   inPlainField,
   inVisualForm,
   inWidgetControl,
   installPlainFieldHistory,
+  ownHistory,
   visualFormHistory,
 } from "./field-history";
 
@@ -136,5 +138,30 @@ describe("Visual-mode forms", () => {
 
     expect(inWidgetControl(search)).toBe(false);
     expect(inWidgetControl(null)).toBe(false);
+  });
+});
+
+describe("surfaces that own their history", () => {
+  it("finds the closest owner of an element and forgets it once released", () => {
+    const outer = document.createElement("div");
+    const inner = document.createElement("div");
+    const canvas = document.createElement("div");
+    inner.append(canvas);
+    outer.append(inner);
+    const outerRun = vi.fn();
+    const innerRun = vi.fn();
+    const releaseOuter = ownHistory(outer, outerRun);
+    const releaseInner = ownHistory(inner, innerRun);
+    expect(historyOwnerAt(canvas)).toBe(innerRun);
+    expect(historyOwnerAt(outer)).toBe(outerRun);
+    expect(historyOwnerAt(null)).toBeNull();
+    const replaced = vi.fn();
+    const releaseReplaced = ownHistory(inner, replaced);
+    releaseInner();
+    expect(historyOwnerAt(canvas)).toBe(replaced);
+    releaseReplaced();
+    expect(historyOwnerAt(canvas)).toBe(outerRun);
+    releaseOuter();
+    expect(historyOwnerAt(canvas)).toBeNull();
   });
 });

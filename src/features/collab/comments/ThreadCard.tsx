@@ -2,15 +2,11 @@ import { memo, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { CommentQuoteState } from "@/components/ui/comments/comment-quote";
 import { mentionedIn } from "@/components/ui/comments/mentions";
-import {
-  type CommentEntry,
-  type CommentMessageActions,
-  CommentThread,
-  type CommentThreadActions,
-  type CommentThreadModel,
-} from "@/components/ui/comments/comment-thread";
+import { type CommentEntry, type CommentMessageActions, messageEntry } from "@/components/ui/comments/comment-entry";
+import { CommentThread, type CommentThreadActions, type CommentThreadModel } from "@/components/ui/comments/comment-thread";
 import { useShallow } from "zustand/react/shallow";
 import type {
+  CollabChatMessage,
   CollabCommentMember,
   CollabCommentMessage,
   CollabCommentNotSent,
@@ -67,30 +63,34 @@ export function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
   next.focus();
 }
 
-function useEntryOf(context: ThreadContext): (message: CollabCommentMessage) => CommentEntry {
+export interface AuthorNames {
+  unknown: string;
+  unverified: string;
+}
+
+export function useAuthorNames(): AuthorNames {
   const { t } = useTranslation(["collab"]);
   const unknown = t(($) => $.collab.toolbar.unknownPerson);
   const unverified = t(($) => $.collab.comments.unverifiedAuthor);
-  return (message) => {
-    const person = message.verified ? context.people.get(message.author) : undefined;
-    return {
-      id: message.id,
-      author: {
-        id: message.author,
-        name: message.verified ? person?.display_name || unknown : unverified,
-        imageUrl: person?.avatar_url,
-        verified: message.verified,
-      },
-      at: message.at,
-      editedAt: message.editedAt,
-      deleted: message.deleted,
-      removed: message.removed === true,
-      body: message.body,
-      mentions: message.mentions,
-      reactions: message.reactions ?? [],
-      delivery: message.pending && !message.deleted ? { state: "waiting" } : undefined,
-    };
-  };
+  return useMemo(() => ({ unknown, unverified }), [unknown, unverified]);
+}
+
+export function entryFor(
+  message: CollabCommentMessage | CollabChatMessage,
+  person: CollabPerson | undefined,
+  names: AuthorNames,
+): CommentEntry {
+  return messageEntry(message, {
+    id: message.author,
+    name: message.verified ? person?.display_name || names.unknown : names.unverified,
+    imageUrl: person?.avatar_url,
+    verified: message.verified,
+  });
+}
+
+function useEntryOf(context: ThreadContext): (message: CollabCommentMessage) => CommentEntry {
+  const names = useAuthorNames();
+  return (message) => entryFor(message, message.verified ? context.people.get(message.author) : undefined, names);
 }
 
 export function selfAuthor(context: Pick<ThreadContext, "self" | "people">, fallback: string): CommentEntry["author"] {

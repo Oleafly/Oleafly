@@ -844,7 +844,8 @@
     "search": "Projekt durchsuchen",
     "sourceControl": "Versionsverwaltung",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notizen"
+    "notes": "Notizen",
+    "more": "Weitere Ansichten"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} auf {{host}}",
@@ -1089,7 +1090,7 @@
       "integrations": "Integrationen",
       "shortcuts": "Tastenkürzel",
       "research": "Forschung",
-      "logs": "Logs"
+      "logs": "Protokolle"
     },
     "search": {
       "empty": "Keine passenden Einstellungen",
@@ -1107,7 +1108,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-Hosting, Computer Use, Desktop-Apps, Cua, MCP, Zitationen, Zitate, Konten, Verbindungen",
         "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur",
         "research": "forschung aufgaben budget benachrichtigungen wach halten experimente läufe research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "Log, Logs, Protokoll, Protokolle, Fehler, Warnungen, Abstürze, Builds, Diagnose, Fehlersuche, Protokolle exportieren, app.log, Debug"
       },
       "label": "Einstellungen durchsuchen",
       "results_one": "{{count}} Bereich passt",

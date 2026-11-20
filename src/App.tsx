@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { lazy, preloadIntent, startWarming, warmDeferred } from "@/lib/preloadable";
-import { logError } from "@/lib/log";
+import { logWarning } from "@/lib/log";
 import { createPortal } from "react-dom";
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
@@ -125,6 +125,7 @@ import { isTerminalTarget } from "@/lib/terminal-keys";
 import { terminalOwnsKey } from "@/lib/terminal-shortcut-guard";
 import {
   historyCommand,
+  historyOwnerAt,
   inPlainField,
   inVisualForm,
   runFieldHistory,
@@ -394,9 +395,9 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 
 function runMenuHistory(redo: boolean): void {
   const active = document.activeElement as HTMLElement | null;
-  const noteHistory = inPlainField(active) ? null : noteHistoryAt(active);
-  if (noteHistory) {
-    noteHistory(redo);
+  const ownHistory = inPlainField(active) ? null : (noteHistoryAt(active) ?? historyOwnerAt(active));
+  if (ownHistory) {
+    ownHistory(redo);
     return;
   }
   const richText = separateRichTextEditor(active);
@@ -654,7 +655,7 @@ function AppContent() {
   }, [accentColor]);
 
   useEffect(() => {
-    void applyCommentColor(commentColor);
+    applyCommentColor(commentColor);
   }, [commentColor]);
 
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
@@ -811,11 +812,11 @@ function AppContent() {
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
       const focused = document.activeElement;
-      const noteHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : noteHistoryAt(focused);
-      if (noteHistory) {
+      const ownHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : (noteHistoryAt(focused) ?? historyOwnerAt(focused));
+      if (ownHistory) {
         e.preventDefault();
         e.stopPropagation();
-        noteHistory(isRedo);
+        ownHistory(isRedo);
         return;
       }
       if (!useFilesStore.getState().projectId || projectCovered()) return;
@@ -1302,7 +1303,7 @@ function leaveNotes(): void {
 
 export default function App() {
   const projectId = useFilesStore((state) => state.projectId);
-  useEffect(() => startWarming((error) => void logError("load a view ahead of time", error)), []);
+  useEffect(() => startWarming((error) => void logWarning("load a view ahead of time", error)), []);
   useEffect(() => {
     const stopSettings = useSettingsStore.subscribe((state, previous) => {
       if (state.settingsOpen && !previous.settingsOpen) preloadIntent("settings");

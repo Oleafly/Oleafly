@@ -230,7 +230,7 @@ pub(crate) fn seed_from_pack_in(
         let Ok(current) = tree_sha256(&destination) else {
             continue;
         };
-        if current != recorded.tree_sha256 {
+        if current != recorded.tree_sha256 && current != entry.tree_sha256 {
             continue;
         }
         let _ = install_pack_skill(skills, pack_root, manifest, entry);

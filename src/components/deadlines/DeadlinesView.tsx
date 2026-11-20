@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -757,6 +758,7 @@ export function DeadlinesView() {
               <div className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm">
                 <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
                 <Input
+                  {...SEARCH_INPUT}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t(($) => $.library.deadlines.searchPlaceholder)}
@@ -864,10 +866,9 @@ export function DeadlinesView() {
               </div>
 
               {error && (
-                <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <InlineAlert icon={AlertTriangle} bordered size="sm" className="mt-3 gap-2.5 px-3.5 py-2.5">
                   {t(($) => $.library.deadlines.loadFailed)}
-                </div>
+                </InlineAlert>
               )}
             </div>
           </section>

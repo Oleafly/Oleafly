@@ -517,7 +517,9 @@
         "instructions": "지침",
         "instructionsHint": "비워 두면 최소한의 지침 뼈대를 만듭니다.",
         "instructionsPlaceholder": "이 스킬을 언제 쓸지와 어시스턴트가 따라야 할 단계를 적으세요.",
-        "namePlaceholder": "주장 검증기",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "{{name}}(으)로 저장됩니다. 스킬 이름에는 반각 영문 소문자(a-z), 숫자, 하이픈만 쓸 수 있습니다. 그래야 다른 에이전트도 불러올 수 있습니다.",
+        "nameNeedsLatin": "반각 영문 소문자(a-z)나 숫자를 입력하세요. 스킬 이름에는 반각 영문 소문자, 숫자, 하이픈만 쓸 수 있습니다. 그래야 다른 에이전트도 불러올 수 있습니다.",
         "requiredAll": "이름, 설명, 지침은 필수입니다.",
         "requiredBasics": "이름과 설명은 필수입니다.",
         "submitCreate": "만들기"
@@ -604,6 +606,8 @@
       "useInProjectAria": "이 프로젝트에서 {{name}} 사용",
       "validateAria": "{{name}} 검증",
       "shadowNote": "이 스킬의 더 새로운 Oleafly 버전이 있습니다.",
+      "nameNote": "다른 에이전트는 반각 영문 소문자, 숫자, 하이픈으로만 이름을 지은 스킬만 불러옵니다.",
+      "renameAction": "{{name}}(으)로 이름 바꾸기",
       "replaceAction": "Oleafly 버전 사용",
       "replaceTitle": "내 {{name}} 사본을 바꿀까요?",
       "replaceBody": "내 사본은 백업 폴더로 옮겨집니다. 삭제되는 것은 없습니다.",
@@ -748,7 +752,9 @@
         "sidebarAccent": "사이드바 강조",
         "sidebarAccentForeground": "사이드바 강조 글자",
         "sidebarBorder": "사이드바 테두리",
-        "sidebarForeground": "사이드바 글자"
+        "sidebarForeground": "사이드바 글자",
+        "pdfDarkPage": "PDF 어두운 모드 배경",
+        "pdfDarkText": "PDF 어두운 모드 글자"
       }
     },
     "editor": {
@@ -996,6 +1002,10 @@
       "darkMode": {
         "description": "기본적으로 PDF 색상을 반전합니다. 미리보기 도구 모음에서 색상을 바꿀 수 있습니다.",
         "label": "PDF 어두운 모드"
+      },
+      "darkColors": {
+        "label": "어두운 페이지 색상",
+        "description": "PDF 어두운 모드는 이 색상으로 페이지를 그립니다. 직접 고르기 전에는 테마를 따르며, 지금 사용하는 밝은 테마 또는 어두운 테마별로 따로 저장됩니다."
       },
       "hoverPreview": {
         "description": "라이브러리에서 프로젝트 위에 마우스를 올리면 마지막으로 컴파일한 페이지를 보여 줍니다.",
@@ -2629,61 +2639,61 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "로그 검색",
+    "searchPlaceholder": "로그 검색",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "수준",
+      "all": "전체",
+      "warning": "경고",
+      "error": "오류"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "정보",
+      "warning": "경고",
+      "error": "오류"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "내보내기",
+      "openFolder": "로그 폴더 열기",
+      "clear": "지우기"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "오늘",
+      "yesterday": "어제"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "최신순",
+    "privateDetails": "비공개 항목이며 내보낼 때 제외됩니다",
+    "copyEntry": "항목 복사",
+    "copied": "복사됨",
+    "loading": "로그를 읽는 중",
+    "loadFailed": "로그를 읽지 못했습니다.",
+    "retry": "다시 시도",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "로그 항목 없음",
+      "description": "빌드와 오류가 발생하면 여기에 표시됩니다."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "\"{{query}}\"에 해당하는 항목이 없습니다",
+      "levelTitle": "이 수준의 항목이 없습니다",
+      "description": "다른 검색어나 수준을 시도해 보세요.",
+      "clearSearch": "검색 지우기",
+      "showAll": "모든 수준 표시"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "모든 로그를 지울까요?",
+      "confirm": "로그 지우기",
+      "description_other": "이 컴퓨터의 항목 {{count}}개와 로그 파일이 모두 삭제됩니다. 이미 내보낸 로그는 저장한 위치에 그대로 남습니다."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "로그를 {{name}}에 저장했습니다.",
+      "exportFailed": "로그를 내보내지 못했습니다.",
+      "clearFailed": "로그를 지우지 못했습니다.",
+      "revealFailed": "로그 폴더를 열지 못했습니다."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip 압축 파일"
     },
-    "count_other": "{{count}} entries",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_other": "항목 {{count}}개",
+    "filteredCount_other": "항목 {{count}}개 중 {{shown}}개"
   }
 }

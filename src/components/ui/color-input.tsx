@@ -10,7 +10,7 @@ const ColorInput = React.forwardRef<
     ref={ref}
     type="color"
     className={cn(
-      "size-7 cursor-pointer overflow-hidden rounded-full border bg-background p-0 shadow-none [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0",
+      "size-7 cursor-pointer overflow-hidden rounded-full border border-foreground/30 bg-background p-0 shadow-none [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0",
       className,
     )}
     {...props}

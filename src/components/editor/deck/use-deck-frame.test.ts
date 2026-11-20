@@ -22,6 +22,9 @@ vi.mock("@/lib/tauri", () => ({
   readFileBase64: tauri.read,
 }));
 
+const log = vi.hoisted(() => ({ logError: vi.fn(async () => undefined), logWarning: vi.fn(async () => undefined) }));
+vi.mock("@/lib/log", () => log);
+
 const RUNTIME_URL = `oleafly-artifact://localhost/runtime/${"ab".repeat(32)}.js`;
 const FIRST = "oleafly-artifact://localhost/first-token";
 const SECOND = "oleafly-artifact://localhost/second-token";
@@ -185,7 +188,9 @@ describe("useDeckFrame", () => {
     expect(html).toContain(RUNTIME_URL);
     expect(html).toContain(inlineJson(CODE));
     expect(html).toContain(inlineJson({ ...frameMessages(), noSlides: enEditor.deck.noSlides }));
-    expect(html).toContain(JSON.stringify({ mode: "present", page: 2, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(html).toContain(
+      JSON.stringify({ mode: "present", page: 2, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
     expect(channelOf(html)).toMatch(/^[0-9a-f]{24}$/u);
   });
 
@@ -236,7 +241,9 @@ describe("useDeckFrame", () => {
     expect(result.current.url).toBeNull();
     await advance(0);
     expect(result.current.url).toBe(SECOND);
-    expect(htmlOf(1)).toContain(JSON.stringify({ mode: "page", page: 0, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(htmlOf(1)).toContain(
+      JSON.stringify({ mode: "page", page: 0, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
 
     unmount();
     expect(tauri.close).toHaveBeenLastCalledWith("second-token");
@@ -267,6 +274,7 @@ describe("useDeckFrame", () => {
     expect(result.current.failure).toContain("The runtime is missing");
     expect(result.current.url).toBeNull();
     expect(tauri.open).not.toHaveBeenCalled();
+    expect(log.logError).toHaveBeenCalledExactlyOnceWith(`open the slide deck ${DECK}`, cause);
   });
 
   it("keeps quiet about a failure that arrives after the deck unmounted", async () => {
@@ -279,6 +287,7 @@ describe("useDeckFrame", () => {
     await advance(0);
     expect(result.current.failure).toBeNull();
     expect(tauri.close).not.toHaveBeenCalled();
+    expect(log.logError).not.toHaveBeenCalled();
   });
 
   it("takes the deck's port only from its own sandboxed frame and on its own channel", async () => {
@@ -308,7 +317,64 @@ describe("useDeckFrame", () => {
     expect(first.postMessage).toHaveBeenCalledOnce();
   });
 
-  it("follows the slides, position and errors the deck reports, and reopens on the slide it reached", async () => {
+  it("ignores what a replaced frame's port still sends", async () => {
+    const { result } = openDeck();
+    await advance(0);
+    const channel = channelOf(htmlOf(0));
+    const port = offerPort(channel, { source: attachFrame(result.current).contentWindow });
+    attachFrame(result.current);
+    post(port, { channel, type: "deck", pages: 3, notes: [], title: null });
+    expect(result.current.info).toBeNull();
+  });
+
+  it("passes theme changes to the running deck", async () => {
+    const { result } = openDeck();
+    await advance(0);
+    const channel = channelOf(htmlOf(0));
+    const port = offerPort(channel, { source: attachFrame(result.current).contentWindow });
+    await act(async () => {
+      document.documentElement.classList.add("dark");
+      await Promise.resolve();
+    });
+    expect(port.postMessage).toHaveBeenCalledExactlyOnceWith({ channel, type: "theme", theme: "dark" });
+    expect(tauri.open).toHaveBeenCalledOnce();
+  });
+
+  it("hands app shortcuts the focused deck did not use back to the app, only after a real key press", async () => {
+    const { result } = openDeck();
+    await advance(0);
+    const channel = channelOf(htmlOf(0));
+    const iframe = attachFrame(result.current);
+    const port = offerPort(channel, { source: iframe.contentWindow });
+    const received: KeyboardEvent[] = [];
+    const onKey = (event: KeyboardEvent) => received.push(event);
+    window.addEventListener("keydown", onKey);
+    const save = { channel, type: "key", key: "s", code: "KeyS", ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
+    try {
+      post(port, save);
+      expect(received).toHaveLength(0);
+
+      iframe.tabIndex = 0;
+      iframe.focus();
+      expect(document.activeElement).toBe(iframe);
+      post(port, { ...save, ctrlKey: false });
+      post(port, { ...save, channel: "other" });
+      expect(received).toHaveLength(0);
+      post(port, save);
+      expect(received).toHaveLength(1);
+      expect(received[0]).toMatchObject({ key: "s", code: "KeyS", ctrlKey: true, shiftKey: false, bubbles: true });
+      expect(received[0].target).toBe(iframe);
+
+      Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: false } });
+      post(port, save);
+      expect(received).toHaveLength(1);
+    } finally {
+      window.removeEventListener("keydown", onKey);
+      Reflect.deleteProperty(navigator, "userActivation");
+    }
+  });
+
+  it("follows the slides, position and errors the deck reports, and reopens on the slide and step it reached", async () => {
     const { result } = openDeck();
     await advance(0);
     const channel = channelOf(htmlOf(0));
@@ -335,7 +401,18 @@ describe("useDeckFrame", () => {
     expect(port.close).toHaveBeenCalledOnce();
     expect(result.current.info).toBeNull();
     await advance(0);
-    expect(htmlOf(1)).toContain(JSON.stringify({ mode: "edit", page: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(htmlOf(1)).toContain(
+      JSON.stringify({ mode: "edit", page: 1, revealed: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
+  });
+
+  it("starts partway through a slide when asked to", async () => {
+    const { result } = openDeck({ startPage: 2, startRevealed: 1 });
+    expect(result.current.position).toEqual({ page: 2, revealed: 1, steps: 0 });
+    await advance(0);
+    expect(htmlOf(0)).toContain(
+      JSON.stringify({ mode: "edit", page: 2, revealed: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
   });
 
   it("closes the port and stops listening once the deck unmounts", async () => {

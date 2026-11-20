@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabLiveKeptFile, CollabUploadFile } from "@/lib/tauri";
 import { BOB, BOB_ID, collabError, projectMember, shareInfo } from "../tests/fixtures";
@@ -283,8 +284,8 @@ describe("FileNoticesBanner", () => {
 
 describe("FileNoticesBanner on an Overleaf project", () => {
   it("says Overleaf turned down a change and offers to try live again or keep a copy", async () => {
-    const tryLiveAgain = vi.fn(async () => {});
-    const keepCopy = vi.fn(async () => {});
+    const tryLiveAgain = vi.fn(async () => true);
+    const keepCopy = vi.fn(async () => true);
     render(<FileNoticesBanner />);
     stop([{ path: "sections/intro.tex", reason: "bad_hash" }], { tryLiveAgain, keepCopy });
     expect(screen.getByTestId("overleaf-fault-row")).toHaveTextContent(fill(banners.faultRefused, { file: "intro.tex" }));
@@ -351,6 +352,28 @@ describe("FileNoticesBanner on an Overleaf project", () => {
     for (const button of screen.getAllByRole("button", { name: copy.dismiss })) await userEvent.click(button);
     expect(screen.queryByTestId("overleaf-external-row")).toBeNull();
     expect(screen.queryByTestId("overleaf-replaced-row")).toBeNull();
+  });
+
+  it("puts files stopped for the same reason on one row, with each file's actions in its list", async () => {
+    const tryLiveAgain = vi.fn(async () => true);
+    render(<FileNoticesBanner />);
+    stop(
+      [
+        { path: "a.tex", reason: "refused" },
+        { path: "b.tex", reason: "bad_hash" },
+        { path: "c.tex", reason: "too_long" },
+      ],
+      { tryLiveAgain },
+    );
+    const fault = screen.getByTestId("overleaf-fault-row");
+    expect(screen.getAllByTestId("overleaf-fault-row")).toHaveLength(1);
+    expect(fault).toHaveTextContent(fill(banners.faultRefused, { file: "a.tex and b.tex" }));
+    expect(screen.getByTestId("overleaf-limit-row")).toHaveTextContent(fill(banners.limitTooLong, { file: "c.tex" }));
+    await userEvent.click(screen.getAllByRole("button", { name: enCommon.actions.showMore })[0]);
+    const items = screen.getAllByTestId("overleaf-fault-row-item");
+    expect(items).toHaveLength(2);
+    await userEvent.click(within(items[1]).getByRole("button", { name: banners.tryLiveAgain }));
+    expect(tryLiveAgain).toHaveBeenCalledWith("b.tex");
   });
 
   it("shows nothing for another project's Overleaf notices", () => {

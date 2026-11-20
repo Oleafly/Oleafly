@@ -246,6 +246,7 @@ where
     )
     .await
     .map_err(|_| AgentError::Timeout)?
+    .map_err(|error| crate::effort::explain_turned_down_effort(resolved, req.effort, error))
 }
 
 async fn stream_completion_inner<F>(

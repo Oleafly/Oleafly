@@ -18,6 +18,8 @@ export function bumpEditorCursorRevision(): void {
   cursorMoved.emit();
 }
 
+const TYPED_EVENTS = ["input", "delete", "undo", "redo"] as const;
+
 let selectionRevision = 0;
 let selectionTyped = false;
 const selectionMoved = createEmitter();
@@ -51,7 +53,7 @@ export function cursorSignalExtension() {
     const outlineChanged = typstOutlineChanged(update);
     if (!update.selectionSet && !update.docChanged && !outlineChanged) return;
     if (update.selectionSet || update.docChanged) {
-      bumpEditorSelectionRevision(update.transactions.some((tr) => tr.isUserEvent("input.type") || tr.isUserEvent("input.paste") || tr.isUserEvent("delete")));
+      bumpEditorSelectionRevision(update.transactions.some((tr) => TYPED_EVENTS.some((event) => tr.isUserEvent(event))));
     }
     const head = update.state.selection.main.head;
     const line = update.state.doc.lineAt(head);

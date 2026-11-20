@@ -1,19 +1,17 @@
 import {
-  type ComponentType,
   forwardRef,
   isValidElement,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import type { DesignSystem } from "./design";
-import { SlidePageProvider } from "./page-context";
-import { PreviewStepHost } from "./preview-step-host";
 import type { Page, SlideMeta } from "./sdk";
 import { SlideCanvas } from "./slide-canvas";
-import { SlidePreloadLayer } from "./slide-preload-layer";
+import { SlidePreloadLayer, type SlideWarmup } from "./slide-preload-layer";
 import { SlideTransitionLayer } from "./slide-transition-layer";
 import type { EntryDirection, StepAggregate, StepController } from "./step-context";
 import type { SlideTransition } from "./transition";
@@ -42,9 +40,11 @@ export interface DeckStageHandle {
 export interface DeckStageProps {
   readonly deck: DeckModule;
   readonly page: number;
+  readonly revealed?: number;
   readonly onPositionChange?: (position: DeckPosition) => void;
   readonly flat?: boolean;
   readonly keyboard?: boolean;
+  readonly preload?: SlideWarmup;
 }
 
 function isPage(value: unknown): value is Page {
@@ -74,14 +74,20 @@ export function clampPage(page: number, total: number): number {
 
 const FORWARD = new Set(["ArrowRight", "ArrowDown", " ", "PageDown", "Enter"]);
 const BACKWARD = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace"]);
+const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
+
+export function typingInto(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(EDITABLE) !== null;
+}
 
 export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function DeckStage(
-  { deck, page, onPositionChange, flat = false, keyboard = false },
+  { deck, page, revealed, onPositionChange, flat = false, keyboard = false, preload = "neighbours" },
   ref,
 ) {
   const total = deck.pages.length;
   const [index, setIndex] = useState(() => clampPage(page, total));
-  const [entryDirection, setEntryDirection] = useState<EntryDirection>("jump");
+  const [entryDirection, setEntryDirection] = useState<EntryDirection>(revealed === undefined ? "jump" : "forward");
+  const resumeSteps = useRef(revealed ?? 0);
   const [aggregate, setAggregate] = useState<StepAggregate>({ revealed: 0, stepCount: 0 });
   const stepControllerRef = useRef<StepController | null>(null);
   const reducedMotion = usePrefersReducedMotion();
@@ -117,6 +123,11 @@ export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function De
     show(indexRef.current - 1);
   }, [show]);
 
+  useLayoutEffect(() => {
+    let remaining = resumeSteps.current;
+    while (remaining > 0 && stepControllerRef.current?.advance()) remaining -= 1;
+  }, []);
+
   useImperativeHandle(ref, () => ({ next, previous, goto: show }), [next, previous, show]);
 
   const onAggregate = useCallback((value: StepAggregate) => {
@@ -134,7 +145,7 @@ export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function De
   useEffect(() => {
     if (!keyboard) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || typingInto(event.target)) return;
       if (FORWARD.has(event.key)) {
         event.preventDefault();
         next();
@@ -165,21 +176,8 @@ export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function De
         entryDirection={entryDirection}
         onStepAggregateChange={onAggregate}
       />
-      <SlidePreloadLayer pages={deck.pages} index={index} design={deck.design} />
+      <SlidePreloadLayer pages={deck.pages} index={index} design={deck.design} warmup={preload} />
     </SlideCanvas>
   );
 });
 
-export function DeckThumbnail({ deck, page }: Readonly<{ deck: DeckModule; page: number }>) {
-  const Component: ComponentType | undefined = deck.pages[page];
-  if (!Component) return null;
-  return (
-    <SlideCanvas flat freezeMotion design={deck.design}>
-      <SlidePageProvider index={page} total={deck.pages.length}>
-        <PreviewStepHost revealed={Number.POSITIVE_INFINITY}>
-          <Component />
-        </PreviewStepHost>
-      </SlidePageProvider>
-    </SlideCanvas>
-  );
-}

@@ -5,11 +5,12 @@ use reqwest::header::ACCEPT;
 use serde_json::Value;
 
 use super::connection::{connect, Carrier};
-use super::events::{AccessEvent, DocId, ProjectEvent, PublicId};
+use super::events::{plain, AccessEvent, DocId, ProjectEvent, PublicId};
 use super::page::ProjectPage;
 use super::tree::{OverleafTree, PathChange};
-use crate::client::Http;
+use crate::client::{self, Http, SMALL_BODY_BYTES};
 use crate::error::{OnlineError, OnlineErrorKind};
+use crate::locked;
 use crate::session::{Session, SessionHandle};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -158,10 +159,13 @@ impl Members {
             )
             .await?;
         http.classify(&response)?;
-        let body: Value = response
-            .json()
+        let unrecognized =
+            |detail: String| OnlineError::new(OnlineErrorKind::Unrecognized).detail(detail);
+        let body = client::read_capped(response, SMALL_BODY_BYTES)
             .await
-            .map_err(|error| OnlineError::new(OnlineErrorKind::Unrecognized).detail(error))?;
+            .map_err(|error| unrecognized(error.to_string()))?;
+        let body: Value =
+            serde_json::from_slice(&body).map_err(|error| unrecognized(error.to_string()))?;
         let listed = body
             .get("members")
             .and_then(Value::as_array)
@@ -212,6 +216,25 @@ fn trimmed(project: &Value, key: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+fn doc_of(project: &Value, key: &str) -> Option<DocId> {
+    trimmed(project, key).and_then(plain).map(DocId)
+}
+
+impl ProjectSettings {
+    fn of(
+        compiler: Option<String>,
+        root_doc: Option<&DocId>,
+        image: Option<&str>,
+        tree: &OverleafTree,
+    ) -> ProjectSettings {
+        ProjectSettings {
+            compiler,
+            main_doc: root_doc.and_then(|doc| tree.path_of(&doc.into())),
+            tex_live: image.and_then(tex_live_year),
+        }
+    }
 }
 
 impl ProjectState {
@@ -269,8 +292,8 @@ impl ProjectState {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             name: trimmed(project, "name").unwrap_or_default(),
-            root_doc: trimmed(project, "rootDoc_id").map(DocId),
-            main_bibliography: trimmed(project, "mainBibliographyDoc_id").map(DocId),
+            root_doc: doc_of(project, "rootDoc_id"),
+            main_bibliography: doc_of(project, "mainBibliographyDoc_id"),
             compiler: trimmed(project, "compiler"),
             image: trimmed(project, "imageName"),
             spell_language: trimmed(project, "spellCheckLanguage"),
@@ -300,14 +323,12 @@ impl ProjectState {
     }
 
     pub fn settings(&self) -> ProjectSettings {
-        ProjectSettings {
-            compiler: self.compiler.clone(),
-            main_doc: self
-                .root_doc
-                .as_ref()
-                .and_then(|doc| self.tree.path_of(&doc.into())),
-            tex_live: self.image.as_deref().and_then(tex_live_year),
-        }
+        ProjectSettings::of(
+            self.compiler.clone(),
+            self.root_doc.as_ref(),
+            self.image.as_deref(),
+            &self.tree,
+        )
     }
 
     pub fn apply_project(&mut self, event: &ProjectEvent) {
@@ -383,11 +404,7 @@ pub struct CapabilityCache {
 
 impl CapabilityCache {
     pub fn get(&self, origin: &str) -> Option<Capabilities> {
-        self.by_origin
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(origin)
-            .copied()
+        locked(&self.by_origin).get(origin).copied()
     }
 
     pub async fn refresh(
@@ -413,10 +430,7 @@ impl CapabilityCache {
             .unwrap_or(known.chat)
         };
         let found = Capabilities { review, chat };
-        self.by_origin
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(http.origin.clone(), found);
+        locked(&self.by_origin).insert(http.origin.clone(), found);
         found
     }
 }
@@ -460,66 +474,16 @@ pub async fn fetch_project(
 }
 
 pub fn settings_from_project(project: &Value) -> ProjectSettings {
-    let text = |key: &str| {
-        project
-            .get(key)
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string)
-    };
-    let main_doc = text("rootDoc_id").and_then(|root| {
-        project
-            .get("rootFolder")
-            .and_then(Value::as_array)
-            .and_then(|folders| folders.first())
-            .and_then(|folder| find_doc_path(folder, &root, ""))
-    });
-    ProjectSettings {
-        compiler: text("compiler"),
-        main_doc,
-        tex_live: text("imageName").and_then(|image| tex_live_year(&image)),
-    }
-}
-
-pub fn find_doc_path(folder: &Value, doc_id: &str, prefix: &str) -> Option<String> {
-    let id_of = |entry: &Value| {
-        entry
-            .get("_id")
-            .or_else(|| entry.get("id"))
-            .and_then(Value::as_str)
-            .map(str::to_string)
-    };
-    let name_of = |entry: &Value| {
-        entry
-            .get("name")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-    };
-    for doc in folder
-        .get("docs")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        if id_of(doc).as_deref() == Some(doc_id) {
-            return name_of(doc).map(|name| format!("{prefix}{name}"));
-        }
-    }
-    for child in folder
-        .get("folders")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        let Some(name) = name_of(child) else {
-            continue;
-        };
-        if let Some(found) = find_doc_path(child, doc_id, &format!("{prefix}{name}/")) {
-            return Some(found);
-        }
-    }
-    None
+    let tree = project
+        .get("rootFolder")
+        .and_then(OverleafTree::from_root_folder)
+        .unwrap_or_default();
+    ProjectSettings::of(
+        trimmed(project, "compiler"),
+        doc_of(project, "rootDoc_id").as_ref(),
+        trimmed(project, "imageName").as_deref(),
+        &tree,
+    )
 }
 
 pub fn tex_live_year(image: &str) -> Option<String> {

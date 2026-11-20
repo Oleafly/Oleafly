@@ -16,13 +16,24 @@ import {
 } from "@/components/settings/IntegrationBrandIcons";
 import { intended, lazy } from "@/lib/preloadable";
 import { useSettingsStore } from "@/store/settings";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
+
+const INTEGRATIONS_TABS = [
+  "git-hosting",
+  "overleaf",
+  "alphaxiv",
+  "zotero",
+  "citation-search",
+  "oleafly-mcp",
+  "desktop-apps",
+] as const;
 
 const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), { warm: () => intended("settings") });
 
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useState("git-hosting");
-  const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(false);
+  const [tab, setTab] = useSettingsTab("integrations", "git-hosting", INTEGRATIONS_TABS);
+  const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(tab === "oleafly-mcp");
   const scrollTarget = useSettingsStore(
     (state) => state.settingsScrollTarget,
   );
@@ -53,7 +64,7 @@ export function IntegrationsSection() {
       setOleaflyMcpVisited(true);
       setScrollTarget(null);
     }
-  }, [settingsOpen, scrollTarget, setScrollTarget]);
+  }, [settingsOpen, scrollTarget, setScrollTarget, setTab]);
 
   return (
     <Tabs

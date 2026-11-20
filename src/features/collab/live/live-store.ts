@@ -6,7 +6,7 @@ import {
   useCollabLiveNote,
   useLiveBackend,
 } from "@/lib/collab-live-bridge";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { overleafLiveMembers, type OverleafLiveProject } from "@/lib/overleaf-live";
 import type { OverleafLiveAccountChanged } from "@oleafly/backend-port";
 import type {
@@ -117,6 +117,8 @@ function roleNoticeKind(role: CollabProjectRole): RoleNoticeKind | null {
   return "viewer";
 }
 
+export type StartRefusal = CollabLiveEndedReason | "cancelled";
+
 export interface LiveBackendDriver {
   kind: "server" | "overleaf";
   wants(state: CollabLiveStoreState): boolean;
@@ -124,14 +126,17 @@ export interface LiveBackendDriver {
   stop(projectId: string): Promise<void>;
   refresh(projectId: string): Promise<void>;
   resumable(reason: CollabLiveEndedReason): boolean;
+  refusal(code: CollabErrorCode): StartRefusal | null;
 }
 
-export type LiveBackend = LiveBackendDriver["kind"];
+type LiveBackend = LiveBackendDriver["kind"];
 
 export interface CollabLiveStoreState {
   projectId: string | null;
   backend: LiveBackend | null;
   share: CollabShareInfo | null;
+  shareChecked: boolean;
+  refused: CollabErrorCode | null;
   overleaf: OverleafLiveProject | null;
   role: CollabProjectRole | null;
   selfId: string | null;
@@ -198,6 +203,8 @@ function emptyLive(projectId: string | null): LiveData {
     projectId,
     backend: null,
     share: null,
+    shareChecked: false,
+    refused: null,
     overleaf: null,
     role: null,
     selfId: null,
@@ -276,10 +283,16 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
         share = await collabShareInfo(projectId);
       } catch (error) {
         void logError("collab share info", error);
+        if (request === shareRequest && get().projectId === projectId && !get().shareChecked) set({ shareChecked: true });
         return;
       }
       if (request !== shareRequest || get().projectId !== projectId) return;
-      set((state) => ({ share, role: share ? (state.role ?? share.role) : null }));
+      set((state) => {
+        let role: CollabProjectRole | null = null;
+        if (share) role = state.role ?? share.role;
+        else if (state.backend === "overleaf") role = state.role;
+        return { share, shareChecked: true, role };
+      });
     },
     refreshMembers: async () => {
       const projectId = get().projectId;
@@ -317,20 +330,16 @@ interface LiveRun {
   deviceId: string | null;
   release: (() => void) | null;
   retry: ReturnType<typeof setTimeout> | null;
+  heardRole: boolean;
 }
 
 const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 
-const START_REFUSALS: ReadonlySet<CollabErrorCode> = new Set([
-  "signed_out",
-  "server_removed",
-  "unauthorized",
-  "not_found",
-  "server_unknown",
-]);
+const TOLD_ELSEWHERE: ReadonlySet<CollabLiveEndedReason> = new Set(["signed_out", "server_removed"]);
 
-function refusalReason(code: CollabErrorCode): CollabLiveEndedReason {
-  return code === "server_removed" || code === "server_unknown" ? "server_removed" : "signed_out";
+function sameShown(previous: CollabLiveSyncState | null, next: CollabLiveSyncState): boolean {
+  if (previous?.state !== next.state || next.state === "offline") return false;
+  return next.state !== "ended" || (previous.state === "ended" && previous.reason === next.reason);
 }
 
 function holdEditors(projectId: string): void {
@@ -389,21 +398,29 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (run.ready) void run.driver.stop(run.projectId).catch((error) => logError("collab live stop", error));
   };
 
-  const refuseStart = (projectId: string, code: CollabErrorCode) => {
+  const refuseStart = (projectId: string, reason: CollabLiveEndedReason, code: CollabErrorCode, error: unknown) => {
     releaseEditors(projectId);
     resumable = true;
+    const told = TOLD_ELSEWHERE.has(reason);
+    if (!told) void (code === "failed" ? logError : logWarning)("collab live start refused", error);
     const state = store.getState();
-    if (refusalReason(code) !== "server_removed" && state.status?.state === "ended") return;
-    const reason = refusalReason(code);
-    store.setState({ status: { state: "ended", reason }, ended: reason, peers: {} });
+    if (reason !== "server_removed" && state.status?.state === "ended") return;
+    store.setState({ status: { state: "ended", reason }, ended: reason, peers: {}, refused: told ? null : code });
+  };
+
+  const startCancelled = (run: LiveRun) => {
+    if (live !== run) return;
+    releaseEditors(run.projectId);
+    if (current() === run.projectId) store.setState({ status: { state: "ended", reason: "stopped" } });
   };
 
   const goLive = async (projectId: string, driver: LiveBackendDriver, attempt = 0) => {
-    const run: LiveRun = { projectId, driver, ready: false, deviceId: null, release: null, retry: null };
+    const run: LiveRun = { projectId, driver, ready: false, deviceId: null, release: null, retry: null, heardRole: false };
     live = run;
     resumable = false;
     holdEditors(projectId);
-    if (store.getState().backend !== driver.kind) store.setState({ backend: driver.kind });
+    const before = store.getState();
+    if (before.backend !== driver.kind || before.refused !== null) store.setState({ backend: driver.kind, refused: null });
     let info: CollabLiveInfo;
     try {
       await useFilesStore
@@ -425,12 +442,18 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const startFailed = (run: LiveRun, error: unknown, attempt: number) => {
     if (disposed) return;
     const code = collabErrorCode(error);
-    if (START_REFUSALS.has(code)) {
+    const refusal = run.driver.refusal(code);
+    if (refusal === "cancelled") {
+      startCancelled(run);
+      return;
+    }
+    if (refusal !== null) {
       if (live === run) live = null;
-      if (live === null && current() === run.projectId) refuseStart(run.projectId, code);
+      if (live === null && current() === run.projectId) refuseStart(run.projectId, refusal, code, error);
       return;
     }
     if (live !== run) return;
+    releaseEditors(run.projectId);
     if (attempt === 0) void logError("collab live start", error);
     retryStart(run, attempt);
   };
@@ -452,12 +475,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
     run.deviceId = info.device_id;
     releaseEditors(run.projectId);
-    store.setState({ role: info.role, selfId: info.account_id });
+    const role = run.heardRole ? (store.getState().role ?? info.role) : info.role;
+    store.setState({ role, selfId: info.account_id });
     void store.getState().refreshMembers();
     run.release =
       hooks.started?.({
         projectId: run.projectId,
-        role: info.role,
+        role,
         accountId: info.account_id,
         deviceId: info.device_id,
       }) ?? null;
@@ -500,11 +524,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
     const back = payload.status.state === "online" && store.getState().status?.state !== "online";
-    store.setState((state) => ({
-      status: heldStatus(state.status, payload.status),
-      pending: payload.pending,
-      projectFull: back ? false : state.projectFull,
-    }));
+    store.setState((state) => {
+      const next = heldStatus(state.status, payload.status);
+      const status = sameShown(state.status, next) ? state.status : next;
+      const projectFull = back ? false : state.projectFull;
+      if (status === state.status && payload.pending === state.pending && projectFull === state.projectFull) return state;
+      return { status, pending: payload.pending, projectFull };
+    });
     if (payload.status.state !== "ended") return;
     releaseEditors(payload.projectId);
     store.setState({ pendingPaths: [], storedAsFiles: [] });
@@ -529,6 +555,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onRole = (payload: CollabLiveRole) => {
     if (payload.projectId !== current()) return;
+    if (live?.projectId === payload.projectId) live.heardRole = true;
     const state = store.getState();
     const before = state.role;
     const changed = before !== payload.role;
@@ -712,7 +739,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (disposed || !state.projectId) return;
     const driver = driverFor(state);
     if (state.share === previous.share && driver === driverFor(previous)) return;
-    if (driver && !state.ended && live?.projectId !== state.projectId) {
+    if (driver && !state.ended && (live?.projectId !== state.projectId || live.driver !== driver)) {
+      stopLive();
       void goLive(state.projectId, driver);
     } else if (!driver && live) {
       stopLive();
@@ -735,18 +763,19 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const publishBackend = (state: CollabLiveStoreState) => {
     const backend = state.status?.state === "ended" ? null : state.backend;
+    const overleaf = state.share === null ? state.overleaf : null;
     const published = useLiveBackend.getState();
     if (
       published.projectId !== state.projectId ||
       published.backend !== backend ||
-      published.overleaf !== state.overleaf ||
+      published.overleaf !== overleaf ||
       published.pendingPaths !== state.pendingPaths ||
       published.storedAsFiles !== state.storedAsFiles
     ) {
       useLiveBackend.setState({
         projectId: state.projectId,
         backend,
-        overleaf: state.overleaf,
+        overleaf,
         pendingPaths: state.pendingPaths,
         storedAsFiles: state.storedAsFiles,
       });

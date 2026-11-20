@@ -13,8 +13,8 @@ use crate::error::{OnlineError, OnlineErrorKind};
 use crate::html;
 use crate::session;
 
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const READ_TIMEOUT: Duration = Duration::from_secs(60);
+pub(crate) const SMALL_BODY_BYTES: usize = 1024 * 1024;
 const UPLOAD_FLOOR: Duration = Duration::from_secs(60);
 const UPLOAD_BYTES_PER_SECOND: u64 = 32 * 1024;
 pub const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -57,7 +57,7 @@ fn build_client(
     read_timeout: Option<Duration>,
 ) -> Result<reqwest::Client, OnlineError> {
     let builder = reqwest::Client::builder()
-        .connect_timeout(CONNECT_TIMEOUT)
+        .connect_timeout(oleafly_net::CONNECT_TIMEOUT)
         .user_agent(user_agent)
         .redirect(reqwest::redirect::Policy::none());
     let builder = match read_timeout {
@@ -90,7 +90,63 @@ fn upload_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
 }
 
 pub fn upload_timeout(size: u64) -> Duration {
-    UPLOAD_FLOOR + Duration::from_secs(size / UPLOAD_BYTES_PER_SECOND)
+    UPLOAD_FLOOR + transfer_time(size)
+}
+
+pub(crate) fn transfer_time(size: u64) -> Duration {
+    Duration::from_secs(size / UPLOAD_BYTES_PER_SECOND)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum BodyError {
+    TooLarge(usize),
+    Read(String),
+}
+
+impl std::fmt::Display for BodyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BodyError::TooLarge(limit) => write!(f, "the reply is larger than {limit} bytes"),
+            BodyError::Read(detail) => f.write_str(detail),
+        }
+    }
+}
+
+pub(crate) async fn read_counted(
+    response: Response,
+    limit: usize,
+    mut arrived: impl FnMut(usize),
+) -> Result<Vec<u8>, BodyError> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(BodyError::TooLarge(limit));
+    }
+    let mut stream = response.bytes_stream();
+    let mut body = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| BodyError::Read(error.to_string()))?;
+        if body.len().saturating_add(chunk.len()) > limit {
+            return Err(BodyError::TooLarge(limit));
+        }
+        body.extend_from_slice(&chunk);
+        arrived(chunk.len());
+    }
+    Ok(body)
+}
+
+pub(crate) async fn read_capped(response: Response, limit: usize) -> Result<Vec<u8>, BodyError> {
+    read_counted(response, limit, |_| {}).await
+}
+
+pub(crate) fn lossy_text(body: Vec<u8>) -> String {
+    String::from_utf8(body)
+        .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned())
+}
+
+pub(crate) async fn text_capped(response: Response, limit: usize) -> Result<String, BodyError> {
+    read_capped(response, limit).await.map(lossy_text)
 }
 
 pub(crate) fn expired() -> OnlineError {

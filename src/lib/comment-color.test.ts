@@ -1,8 +1,44 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { warmAccent } from "./comment-accent";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ACCENTS } from "@/store/settings";
 import { applyCommentColor, COMMENT_COLOR_STORAGE_KEY, readCommentColor } from "./comment-color";
+import { applyTheme } from "./theme";
+
+const CHROMIUM_OKLCH: Readonly<Record<string, string>> = {
+  "#2563eb": "oklch(0.54613 0.215194 262.885)",
+  "#0b8842": "oklch(0.549554 0.144704 150.98)",
+  "#7c3aed": "oklch(0.54132 0.246582 293.015)",
+  "#db2777": "oklch(0.591651 0.218003 0.589081)",
+  "#ea580c": "oklch(0.646079 0.194351 41.1136)",
+  "#0d9488": "oklch(0.600217 0.103809 184.7)",
+  "oklch(0.205 0 0)": "oklch(0.205 0 0)",
+  "oklch(0.922 0 0)": "oklch(0.922 0 0)",
+  "#f5c518": "oklch(0.841946 0.168387 90.416)",
+  "#f59e0b": "oklch(0.768595 0.16468 70.0701)",
+  "#eab308": "oklch(0.795245 0.161679 86.0336)",
+  yellow: "oklch(0.967983 0.210997 109.756)",
+  "hsl(45 93% 47%)": "oklch(0.785773 0.159791 85.296)",
+  "lch(80% 80 85)": "oklch(0.824104 0.167131 91.117)",
+  "color(display-p3 1 0.8 0)": "oklch(0.86754 0.204634 89.2576)",
+  "color(display-p3 0.2 0.4 0.95)": "oklch(0.566037 0.23194 261.862)",
+  "color(xyz-d50 0.62 0.66 0.08)": "oklch(0.863646 0.177966 101.168)",
+  "oklab(0.85 0 0.17)": "oklch(0.85 0.17 90)",
+  "oklch(0.8 0.15 85 / 0.5)": "oklch(0.8 0.15 85 / 0.5)",
+  "oklch(80% 0.15 85)": "oklch(0.8 0.15 85)",
+  "oklch(0.5 0 none)": "oklch(0.5 0 none)",
+  "not-a-color": "rgb(255, 255, 255)",
+};
+
+function mixesLikeChromium() {
+  const real = window.getComputedStyle;
+  vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+    const style = real(element, pseudo);
+    if (!(element instanceof HTMLSpanElement) || element.parentElement !== document.documentElement) return style;
+    const primary = document.documentElement.style.getPropertyValue("--primary").trim();
+    return { ...style, color: CHROMIUM_OKLCH[primary] ?? "" } as CSSStyleDeclaration;
+  });
+}
 
 afterEach(() => {
   localStorage.clear();
@@ -24,101 +60,78 @@ describe("comment highlight color", () => {
     expect(document.documentElement.dataset.commentColor).toBeUndefined();
   });
 
-  it("applies the stored color when none is passed, as a new window does", () => {
+  it("keeps the color the settings chose when the theme is applied again", () => {
     localStorage.setItem(COMMENT_COLOR_STORAGE_KEY, "graphite");
-    applyCommentColor();
-    expect(document.documentElement.dataset.commentColor).toBe("graphite");
+    applyCommentColor("leaf");
+    applyTheme("dark");
+    applyTheme("light");
+    expect(document.documentElement.dataset.commentColor).toBe("leaf");
   });
 });
 
 describe("accent comment colour", () => {
-  afterEach(() => {
-    document.documentElement.style.removeProperty("--primary");
-  });
+  beforeEach(mixesLikeChromium);
 
-  it.each([
-    ["#f5c518", undefined],
-    ["#f59e0b", undefined],
-    ["oklch(0.8 0.15 85)", undefined],
-    ["#2563eb", "accent"],
-    ["oklch(0.205 0 0)", "accent"],
-  ])("follows the accent %s unless it is yellow or amber", async (primary, expected) => {
-    document.documentElement.style.setProperty("--primary", primary);
-    await applyCommentColor("accent");
-    expect(document.documentElement.dataset.commentColor).toBe(expected);
-  });
-});
-
-describe("accent comment colour after review", () => {
   afterEach(() => {
     document.documentElement.style.removeProperty("--primary");
     vi.restoreAllMocks();
   });
 
+  it.each(ACCENTS.map((accent) => accent.color))("follows the built-in accent %s", (primary) => {
+    document.documentElement.style.setProperty("--primary", primary);
+    applyCommentColor("accent");
+    expect(document.documentElement.dataset.commentColor).toBe("accent");
+  });
+
+  it.each([
+    ["#f5c518", undefined],
+    ["#f59e0b", undefined],
+    ["#2563eb", "accent"],
+    ["oklch(0.205 0 0)", "accent"],
+    ["oklch(0.922 0 0)", "accent"],
+  ])("follows the accent %s unless it is yellow or amber", (primary, expected) => {
+    document.documentElement.style.setProperty("--primary", primary);
+    applyCommentColor("accent");
+    expect(document.documentElement.dataset.commentColor).toBe(expected);
+  });
+
   it("checks the accent again when the theme changes it while the app is open", async () => {
     document.documentElement.style.setProperty("--primary", "#2563eb");
-    await applyCommentColor("accent");
+    applyCommentColor("accent");
     expect(document.documentElement.dataset.commentColor).toBe("accent");
     document.documentElement.style.setProperty("--primary", "#eab308");
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(document.documentElement.dataset.commentColor).toBeUndefined();
-    await applyCommentColor("leaf");
+    applyCommentColor("leaf");
     document.documentElement.style.setProperty("--primary", "#2563eb");
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(document.documentElement.dataset.commentColor).toBe("leaf");
   });
 
-  it("never shows the accent before it has been checked", () => {
+  it("never shows a yellow accent, even for a moment", () => {
     document.documentElement.style.setProperty("--primary", "#eab308");
-    const done = applyCommentColor("accent");
+    applyCommentColor("accent");
     expect(document.documentElement.dataset.commentColor).toBeUndefined();
-    return done;
   });
-
-  it.each(["rgb(234 179 8)", "rgb(234, 179, 8)", "hsl(45 93% 47%)", "hsla(45, 93%, 47%, 1)", "lch(80% 80 85)", "oklch(80% 0.15 85)"])(
-    "treats %s as yellow",
-    (color) => {
-      expect(warmAccent(color)).toBe(true);
-    },
-  );
 
   it.each([
+    "yellow",
+    "hsl(45 93% 47%)",
+    "lch(80% 80 85)",
     "color(display-p3 1 0.8 0)",
-    "color(display-p3 0.96 0.62 0.04)",
-    "color(rec2020 0.9 0.7 0.1)",
-    "color(a98-rgb 0.9 0.75 0.1)",
-    "color(prophoto-rgb 0.8 0.7 0.2)",
-    "color(srgb-linear 0.8 0.5 0)",
-    "color(xyz 0.6 0.65 0.1)",
     "color(xyz-d50 0.62 0.66 0.08)",
-  ])("treats the wide-gamut %s as yellow", (color) => {
-    expect(warmAccent(color)).toBe(true);
-  });
-
-  it.each(["color(display-p3 1 0.8 none)", "lab(80 none 80)", "oklab(0.85 none 0.17)", "oklch(80% 0.15 85 / none)", "rgb(234 179 none)"])(
-    "reads a none channel as 0, as the browser draws it, so %s is still yellow",
-    (color) => {
-      expect(warmAccent(color)).toBe(true);
-    },
-  );
-
-  it.each(["color(display-p3 0.2 0.4 0.95)", "color(rec2020 0.25 0.35 0.9)", "color(srgb-linear 0.05 0.1 0.8)"])("keeps the wide-gamut %s", (color) => {
-    expect(warmAccent(color)).toBe(false);
-  });
-
-  it.each(["rgb(37 99 235)", "hsl(220 83% 53%)", "lch(45% 70 290)", "#ea580c"])("keeps %s", (color) => {
-    expect(warmAccent(color)).toBe(false);
-  });
-
-  it("asks the browser what a named colour is", async () => {
-    document.documentElement.style.setProperty("--primary", "yellow");
-    const real = window.getComputedStyle;
-    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
-      const style = real(element, pseudo);
-      if (!(element instanceof HTMLElement) || element.style.color !== "var(--primary)") return style;
-      return { ...style, color: "rgb(255, 255, 0)", getPropertyValue: style.getPropertyValue.bind(style) } as CSSStyleDeclaration;
-    });
-    await applyCommentColor("accent");
+    "oklab(0.85 0 0.17)",
+    "oklch(0.8 0.15 85 / 0.5)",
+    "oklch(80% 0.15 85)",
+  ])("treats %s as yellow, as the browser converts it", (primary) => {
+    document.documentElement.style.setProperty("--primary", primary);
+    applyCommentColor("accent");
     expect(document.documentElement.dataset.commentColor).toBeUndefined();
+  });
+
+  it.each(["color(display-p3 0.2 0.4 0.95)", "oklch(0.5 0 none)", "not-a-color"])("keeps %s", (primary) => {
+    document.documentElement.style.setProperty("--primary", primary);
+    applyCommentColor("accent");
+    expect(document.documentElement.dataset.commentColor).toBe("accent");
   });
 });

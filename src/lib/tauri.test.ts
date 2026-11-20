@@ -16,6 +16,7 @@ import {
   createFile,
   deleteFile,
   importPathsIntoProject,
+  isMissingCompiledPdf,
   onProjectWriteFailure,
   readFileContent,
   renameFile,
@@ -26,6 +27,17 @@ import {
 
 beforeEach(() => {
   mocks.invoke.mockReset();
+});
+
+describe("compiled PDF bridge", () => {
+  it("tells a project that has no PDF yet apart from a PDF that failed to load", () => {
+    expect(isMissingCompiledPdf("no compiled PDF: this project has not been compiled")).toBe(true);
+    expect(isMissingCompiledPdf("no compiled PDF: No such file or directory (os error 2)")).toBe(true);
+    expect(isMissingCompiledPdf(new Error("no compiled PDF: this project has not been compiled"))).toBe(true);
+    expect(isMissingCompiledPdf(new Error("InvalidPDFException: Invalid PDF structure."))).toBe(false);
+    expect(isMissingCompiledPdf("project is busy")).toBe(false);
+    expect(isMissingCompiledPdf(undefined)).toBe(false);
+  });
 });
 
 describe("model listing bridge", () => {

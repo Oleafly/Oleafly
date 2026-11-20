@@ -36,6 +36,7 @@
     "copy_needs_folder": "Bare mapper som er åpnet der de ligger, kan kopieres til biblioteket.",
     "not_removable": "Bare mapper som er åpnet der de ligger, kan fjernes fra Oleafly.",
     "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Stasjonen har kanskje ingen papirkurv.",
+    "trash_in_use": "Oleafly kunne ikke flytte {{path}} til papirkurven fordi en annen app har den åpen. Lukk den der, og prøv igjen.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flytt eller gi den nytt navn først.",
     "folder_read_only": "Oleafly kan ikke gjøre denne endringen fordi {{name}} eller mappen den ligger i, er skrivebeskyttet. Kopier mappen du åpnet, til biblioteket og rediger den der.",
     "shared_settings_viewer": "Lesere kan ikke endre innstillingene for et delt prosjekt."

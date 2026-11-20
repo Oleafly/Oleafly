@@ -224,6 +224,8 @@
     "overleaf_linked": "Questo progetto è collegato a Overleaf. Scollegalo per condividerlo su un Oleafly Server.",
     "collab_shared": "Questo progetto è condiviso su un Oleafly Server. Smetti di condividerlo lì per modificarlo dal vivo con Overleaf.",
     "live_elsewhere": "Questo progetto è dal vivo in un'altra finestra di Oleafly. Interrompi lì la modifica dal vivo, poi riprova.",
+    "access_ended": "Non hai più accesso a questo progetto, quindi non può essere modificato dal vivo. La tua copia resta su questo computer. Chiedi al proprietario di condividerlo di nuovo con te.",
+    "failed": "La modifica dal vivo non è partita a causa di un errore. Le tue modifiche restano su questo computer. Aspetta un momento, poi scegli Riavvia la sincronizzazione.",
     "overleaf_unsent": "Alcune modifiche non sono ancora arrivate su Overleaf. Riprendi la modifica dal vivo per inviarle, poi scollega il progetto.",
     "suggestion_not_found": "Quel suggerimento non c'è più. Forse qualcuno l'ha accettato o rifiutato.",
     "suggestion_not_yours": "Solo chi ha fatto questo suggerimento può ritirarlo.",
@@ -554,7 +556,8 @@
     "trustAgain": "Chiunque aggiungi a questo progetto può modificarne i file, quindi Oleafly ti chiede di considerarlo di nuovo affidabile su questo computer prima di eseguire per esso agenti, comandi del terminale o lo shell escape.",
     "projectNotesShared": "Le note del progetto sono condivise con tutti i membri di questo progetto. Le note personali restano private.",
     "personalNotesPrivate": "Le note personali restano private. Vengono condivise solo le note nella cartella delle note del progetto.",
-    "unlinkOverleaf": "Scollega da Overleaf"
+    "unlinkOverleaf": "Scollega da Overleaf",
+    "unlinkOverleafDescription": "La modifica dal vivo si interrompe per questo progetto. La tua copia resta su questo computer e i tuoi coautori mantengono il progetto online così com'è."
   },
   "manage": {
     "sharedOn": "Condiviso su {{server}}",

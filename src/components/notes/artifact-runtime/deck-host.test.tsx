@@ -30,7 +30,7 @@ function compile(code: string, options: TransformOptions): string {
   const transforms: ("jsx" | "typescript" | "imports")[] = ["jsx"];
   if (options.typescript) transforms.push("typescript");
   if (options.imports) transforms.push("imports");
-  return transform(code, { transforms, jsxRuntime: options.jsx, production: true }).code;
+  return transform(code, { transforms, jsxRuntime: options.jsx, production: true, filePath: options.filePath }).code;
 }
 
 function runner(tailwindSource = "") {
@@ -107,6 +107,31 @@ describe("runDeck", () => {
     stop();
   });
 
+  it("hands the app the shortcuts the deck does not use, but not keys typed into a field or plain keys", () => {
+    document.body.innerHTML = '<div id="root"></div><input aria-label="Answer" />';
+    act(() => {
+      runner()(DECK, MESSAGES, { mode: "edit", page: 0, assets: {} });
+    });
+    const { sent, stop } = collect();
+    const press = (target: EventTarget, init: KeyboardEventInit) =>
+      act(() => {
+        target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+      });
+    press(window, { key: "s", code: "KeyS", ctrlKey: true });
+    press(window, { key: "Control", code: "ControlLeft", ctrlKey: true });
+    press(window, { key: "x" });
+    press(document.querySelector("input") as HTMLInputElement, { key: "z", code: "KeyZ", ctrlKey: true });
+    const handled = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true });
+    handled.preventDefault();
+    act(() => {
+      window.dispatchEvent(handled);
+    });
+    expect(sent.filter((message) => message.type === "key")).toEqual([
+      { type: "key", key: "s", code: "KeyS", ctrlKey: true, metaKey: false, altKey: false, shiftKey: false },
+    ]);
+    stop();
+  });
+
   it("styles decks with Tailwind and gives each slide the whole canvas", () => {
     document.body.innerHTML = '<div id="root"></div>';
     const started = vi.fn();
@@ -125,16 +150,35 @@ describe("runDeck", () => {
     expect(layer?.parentElement?.style.height).toBe("100%");
   });
 
-  it("explains a deck that does not compile or has no slides", () => {
+  it("explains a deck that does not compile or has no slides, naming its file", () => {
     document.body.innerHTML = '<div id="root"></div>';
     const { sent, stop } = collect();
     act(() => {
-      runner()("export default [", MESSAGES, { mode: "edit", page: 0, assets: {} });
+      runner()("export default [", MESSAGES, { mode: "edit", page: 0, assets: {}, file: "slides/demo/index.tsx" });
     });
     expect(sent.at(-1)).toMatchObject({ type: "error", title: "Syntax problem" });
+    expect(sent.at(-1)?.detail).toContain("slides/demo/index.tsx");
+    expect(document.querySelector("[data-artifact-error]")?.textContent).toContain("slides/demo/index.tsx");
     host({ type: "source", code: "export const notes = [];" });
     expect(sent.at(-1)).toMatchObject({ type: "error", title: "No slides" });
     expect(document.querySelector("[data-artifact-error]")).not.toBeNull();
+    stop();
+  });
+
+  it("opens partway through a slide and comes back there once a broken edit is fixed", () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const { sent, stop } = collect();
+    const assets = { "./assets/logo.png": "data:image/png;base64,AA==" };
+    act(() => {
+      runner()(DECK, MESSAGES, { mode: "edit", page: 1, revealed: 1, assets });
+    });
+    expect(sent.at(-1)).toMatchObject({ type: "position", page: 1, revealed: 1, steps: 2 });
+
+    host({ type: "source", code: "export default [" });
+    expect(sent.at(-1)).toMatchObject({ type: "error" });
+    host({ type: "source", code: DECK });
+    expect(sent.at(-1)).toMatchObject({ type: "position", page: 1, revealed: 1, steps: 2 });
+    expect(document.body.textContent).toContain("Second slide");
     stop();
   });
 

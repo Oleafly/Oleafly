@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-react";
 import { type ComponentProps, type KeyboardEvent, type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
@@ -150,7 +150,7 @@ export function FindBar({
             <Input
               ref={findRef}
               value={value}
-              spellCheck={false}
+              {...SEARCH_INPUT}
               placeholder={placeholder}
               aria-label={inputLabel}
               onChange={(event) => onValueChange(event.target.value)}
@@ -174,7 +174,7 @@ export function FindBar({
               <Input
                 ref={replaceRef}
                 value={replace.value}
-                spellCheck={false}
+                {...SEARCH_INPUT}
                 placeholder={replace.label}
                 aria-label={replace.label}
                 onChange={(event) => replace.onValueChange(event.target.value)}

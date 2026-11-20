@@ -3587,7 +3587,7 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(mocks.createSkill).toHaveBeenCalledOnce());
     expect(mocks.createSkill).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: expect.stringMatching(/Review This Proof/u),
+        name: "review-this-proof",
         description: expect.stringContaining("Review this proof carefully"),
         instructions: expect.stringContaining("Replace this scaffold"),
       }),

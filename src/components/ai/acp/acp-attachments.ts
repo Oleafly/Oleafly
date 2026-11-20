@@ -6,7 +6,9 @@ import type { AcpImage, AcpPromptFile, AcpPromptInput, AcpSession } from "@/lib/
 import { attachmentRead } from "@/lib/attachments";
 import { bytesToBase64 } from "@/lib/base64";
 import { composerMentionPaths } from "@/lib/composer-tokens";
+import { basename } from "@/lib/path-utils";
 import type { FileEntry } from "@/lib/tauri";
+import { withoutFunctionKeyText } from "@oleafly/wysiwyg/function-key-text";
 import type { AcpPromptDraft, AcpSelection } from "@/store/acp-sessions";
 
 export const PROMPT_BUDGET = 1024 * 1024 - 1024;
@@ -79,9 +81,10 @@ export async function toPromptInput(
   tree: readonly FileEntry[] | null,
 ): Promise<AcpPromptInput> {
   if (draft.attachments.some((item) => item.status !== "ready")) throw new AcpPromptError("notReady");
+  const text = withoutFunctionKeyText(draft.text);
   const images = draft.attachments.filter((item) => item.kind === "image");
   if (images.length > 0 && !session.capabilities.image) throw new AcpPromptError("imagesUnsupported");
-  const mentioned = tree ? promptMentions(draft.text, tree) : [...draft.mentions];
+  const mentioned = tree ? promptMentions(text, tree) : [...draft.mentions];
   const files: AcpPromptFile[] = [];
   for (const item of draft.attachments) {
     if (item.kind === "image") continue;
@@ -94,28 +97,24 @@ export async function toPromptInput(
       path: selection.path,
       text: selection.text.slice(0, MAX_SELECTION_CHARS),
     })),
-    ...(await noteLinkSelections(draft.text)).map((selection) => ({ ...selection, text: selection.text.slice(0, MAX_SELECTION_CHARS) })),
+    ...(await noteLinkSelections(text)).map((selection) => ({ ...selection, text: selection.text.slice(0, MAX_SELECTION_CHARS) })),
   ];
   if (draft.attachments.length + mentioned.length + selections.length > MAX_ACP_ATTACHMENTS) {
     throw new AcpPromptError("tooMany");
   }
-  const textBytes = byteLength(draft.text);
+  const textBytes = byteLength(text);
   if (textBytes > MAX_TEXT_BYTES) throw new AcpPromptError("tooLarge");
   const selectionBytes = selections.reduce((total, selection) => total + byteLength(selection.text), 0);
   const prepared = images.length > 0
     ? await prepareImages(images, imageByteBudget(textBytes, selectionBytes, images.length))
     : [];
   return {
-    text: draft.text,
+    text,
     images: prepared,
     files,
     selections,
     skillId: draft.skill?.id ?? null,
   };
-}
-
-function basename(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 export function selectionLabel(doc: Text, from: number, to: number, name: string): string {

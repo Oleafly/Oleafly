@@ -9,30 +9,11 @@ use oleafly_collab_protocol::snapshots::ProjectPeer;
 use oleafly_server::test_support::{seed_member, seed_person, PersonSeed, TestDevice};
 use people::{
     call, connect, first_snapshot, grant, next_frame, raw_envelope, read, send_update,
-    share_project, signed_by, stage, subscribe, Person, Socket, Stage, SNAPSHOT_PEER,
+    shared_with_alice, signed_by, stage, subscribe, Person, Socket, Stage, SNAPSHOT_PEER,
 };
 use reqwest::{Method, StatusCode};
 
 const ALICE_PEER: u64 = 1_001;
-
-async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(
-            &stage.server,
-            &stage.bob,
-            project,
-            &stage.alice,
-            ProjectRole::Editor
-        )
-        .await
-        .status(),
-        StatusCode::OK
-    );
-    project
-}
 
 fn base() -> LoroDoc {
     let doc = LoroDoc::new();

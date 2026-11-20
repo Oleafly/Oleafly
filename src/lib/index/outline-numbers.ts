@@ -5,7 +5,7 @@ import { outlineFromIndex, type ExtraOutlineSection, type OutlineItem } from "./
 import { maskComments } from "./parse-file";
 import type { ProjectIndex } from "./types";
 
-export interface NumberingHeading {
+interface NumberingHeading {
   readonly level: number;
   readonly keys: readonly string[];
 }
@@ -208,14 +208,18 @@ function omittedOutlineItems(
   return omitted;
 }
 
-export interface LatexHeadingMarksInput {
-  readonly items: readonly OutlineItem[];
+export interface LatexHeadingNumbersInput {
   readonly viewer: string;
   readonly toc: AuxToc;
   readonly index: ProjectIndex;
   readonly texts: Readonly<Record<string, string>>;
   readonly extraSections?: (file: string) => readonly ExtraOutlineSection[];
   readonly render: (tex: string) => string;
+  readonly documentSections?: readonly OutlineItem[];
+}
+
+interface LatexHeadingMarksInput extends LatexHeadingNumbersInput {
+  readonly items: readonly OutlineItem[];
 }
 
 export interface HeadingMark {
@@ -223,23 +227,35 @@ export interface HeadingMark {
   readonly page: string | null;
 }
 
-export function latexHeadingMarks({
-  items,
+export type HeadingNumbers = ReadonlyMap<string, HeadingMark>;
+
+const NO_NUMBERS: HeadingNumbers = new Map();
+
+export function headingMarksOf(items: readonly OutlineItem[], numbers: HeadingNumbers): (HeadingMark | null)[] {
+  return items.map((item) => (item.kind === "section" ? (numbers.get(sourceKey(item)) ?? null) : null));
+}
+
+export function latexHeadingMarks({ items, ...input }: LatexHeadingMarksInput): (HeadingMark | null)[] {
+  return headingMarksOf(items, latexHeadingNumbers(input));
+}
+
+export function latexHeadingNumbers({
   viewer,
   toc,
   index,
   texts,
   extraSections,
   render,
-}: LatexHeadingMarksInput): (HeadingMark | null)[] {
+  documentSections,
+}: LatexHeadingNumbersInput): HeadingNumbers {
   const scope = index.unitScope;
   const included = scope ? null : new Set(documentSourcePaths(index, toc.mainDocument));
   const compiled = (file: string) =>
     scope ? scope.sharesScope(toc.mainDocument, file) : (included?.has(file) ?? false);
-  if (!compiled(viewer) || toc.entries.length === 0) return items.map(() => null);
-  const documentItems = outlineFromIndex(index, toc.mainDocument, extraSections).filter(
-    (item) => item.kind === "section",
-  );
+  if (!compiled(viewer) || toc.entries.length === 0) return NO_NUMBERS;
+  const documentItems =
+    documentSections ??
+    outlineFromIndex(index, toc.mainDocument, extraSections).filter((item) => item.kind === "section");
   const maskedTexts = new Map<string, string>();
   const headingHead = (item: OutlineItem) => {
     const raw = texts[item.file];
@@ -286,7 +302,5 @@ export function latexHeadingMarks({
     const { number, page } = remainingEntries[entry];
     marksBySource.set(sourceKey(documentItems[heading]), { number, page });
   });
-  return items.map((item) =>
-    item.kind === "section" ? (marksBySource.get(sourceKey(item)) ?? null) : null,
-  );
+  return marksBySource;
 }

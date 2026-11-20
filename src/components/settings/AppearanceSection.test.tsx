@@ -150,6 +150,24 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: true, hoverPreview: true });
   });
 
+  it("sets the dark PDF page colors for the theme in use", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.pdf }));
+
+    const row = screen.getByTestId("settings-row-pdf-dark-colors");
+    expect(row).toHaveTextContent(appearance.preview.darkColors.label);
+    const page = screen.getByLabelText(
+      appearance.customTheme.tokenInputDark.replace("{{token}}", appearance.customTheme.tokens.pdfDarkPage),
+    );
+    fireEvent.change(page, { target: { value: "#282c34" } });
+    fireEvent.blur(page, { target: { value: "#282c34" } });
+
+    await waitFor(() => expect(readThemeCustomization().dark["pdf-dark-page"]).toBe("#282c34"));
+    expect(document.documentElement.style.getPropertyValue("--pdf-dark-page")).toBe("#282c34");
+    expect(readThemeCustomization().light).toEqual({});
+  });
+
   it("fits the tab strip to its tabs while keeping it scrollable", async () => {
     render(<AppearanceSection />);
 

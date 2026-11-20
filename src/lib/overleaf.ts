@@ -71,7 +71,7 @@ export function overleafSignInWithBrowser(server: string | null | undefined, bro
   return invoke<OverleafStatus>("overleaf_sign_in_with_browser", { server: serverArg(server), browser });
 }
 
-export interface OverleafSignOut extends OverleafStatus {
+interface OverleafSignOut extends OverleafStatus {
   unsent?: CollabUnsentProject[];
 }
 

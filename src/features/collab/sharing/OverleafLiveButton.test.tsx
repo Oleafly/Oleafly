@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: vi.fn(async () => true) }));
+vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}), logWarning: vi.fn(async () => {}) }));
+vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabLiveReconnectNow: vi.fn(async () => undefined),
@@ -24,18 +25,20 @@ vi.mock("@/lib/overleaf-live", async (importOriginal) => ({
 }));
 vi.mock("@/lib/clipboard", () => ({ writeClipboardText: vi.fn(async () => undefined) }));
 
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { installOverleafLiveActions } from "@/lib/collab-live-bridge";
 import { writeClipboardText } from "@/lib/clipboard";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
+import { notifyError } from "@/lib/toast";
 import { useOverleafNotices } from "../live/overleaf-notices";
 import type { OverleafLiveProject } from "@/lib/overleaf-live";
 import type { CollabLiveSyncState } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
-import { useCollabLiveStore } from "../live/live-store";
+import { type CollabLiveStoreState, useCollabLiveStore } from "../live/live-store";
 import { OverleafLiveButton } from "./OverleafLiveButton";
 
 const live = enShell.overleafLive;
+const storeGoLiveAgain = useCollabLiveStore.getState().goLiveAgain;
 const pause = vi.fn();
 const resume = vi.fn(async () => undefined);
 
@@ -43,7 +46,7 @@ function link(change: Partial<OverleafLiveProject> = {}): OverleafLiveProject {
   return { server: "https://www.overleaf.com", remoteId: "ov1", signedIn: true, paused: false, ...change };
 }
 
-function show(state: Partial<{ backend: "overleaf" | null; status: CollabLiveSyncState | null; pending: number; overleaf: OverleafLiveProject }>) {
+function show(state: Partial<CollabLiveStoreState>) {
   useCollabLiveStore.setState({ projectId: "p1", backend: "overleaf", status: { state: "online" }, pending: 0, overleaf: link(), ...state });
   render(<OverleafLiveButton />);
 }
@@ -60,8 +63,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
   pause.mockReset();
-  resume.mockClear();
+  resume.mockReset();
+  vi.mocked(notifyError).mockClear();
   installOverleafLiveActions({ pause, resume, unlink: vi.fn() });
+  useCollabLiveStore.setState({ share: null, ended: null, refused: null, goLiveAgain: storeGoLiveAgain });
 });
 
 describe("OverleafLiveButton", () => {
@@ -120,11 +125,74 @@ describe("OverleafLiveButton", () => {
     expect(openSettingsAt).toHaveBeenCalledWith("integrations");
   });
 
-  it("opens the project on Overleaf", async () => {
+  it("opens the project on Overleaf through the checked system browser", async () => {
     show({});
     const user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: live.open }));
-    expect(openExternal).toHaveBeenCalledWith("https://www.overleaf.com/project/ov1");
+    expect(openInSystemBrowser).toHaveBeenCalledWith("https://www.overleaf.com/project/ov1");
+  });
+
+  it("says when pausing or resuming didn't work", async () => {
+    pause.mockRejectedValueOnce({ code: "internal", message: "journal busy" });
+    show({});
+    let user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: live.pause }));
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("pause overleaf live editing", expect.anything()));
+    cleanup();
+    resume.mockRejectedValueOnce({ code: "internal", message: "journal busy" });
+    show({ backend: null, status: null, overleaf: link({ paused: true }) });
+    user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: live.resume }));
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("resume overleaf live editing", expect.anything()));
+  });
+
+  it("shows nothing for a project shared on an Oleafly Server, even with a link", () => {
+    show({
+      share: {
+        project_id: "p1",
+        server_id: "server",
+        server_name: "Smith Lab",
+        server_url: "https://collab.uni.edu",
+        shared_project_id: "shared-1",
+        role: "editor",
+        link: "https://collab.uni.edu/p/shared-1",
+        account_id: "alice",
+      },
+      backend: "server",
+    });
+    expect(screen.queryByTestId("overleaf-live-button")).toBeNull();
+  });
+
+  it.each(["live_elsewhere", "collab_shared", "access_ended", "failed"] as const)(
+    "says why going live was refused with %s",
+    async (code) => {
+      const reason = code === "access_ended" ? "access_ended" : "failed";
+      show({ status: { state: "ended", reason }, ended: reason, refused: code });
+      await openMenu();
+      const notes = screen.getAllByTestId("overleaf-live-status-note").map((note) => note.textContent);
+      expect(notes).toContain(enCollab.errors[code]);
+    },
+  );
+
+  it("offers to go live again after a start stopped with an error", async () => {
+    const goLiveAgain = vi.fn();
+    show({ status: { state: "ended", reason: "failed" }, ended: "failed", refused: "live_elsewhere", goLiveAgain });
+    const user = await openMenu();
+    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(enCollab.sync.failed);
+    await user.click(screen.getByRole("menuitem", { name: enCollab.activity.goLiveAgain }));
+    expect(goLiveAgain).toHaveBeenCalledOnce();
+  });
+
+  it("ticks once a second only while it counts down to the next try", async () => {
+    const ticking = vi.spyOn(window, "setInterval");
+    show({});
+    await openMenu();
+    expect(ticking.mock.calls.filter(([, every]) => every === 1_000)).toHaveLength(0);
+    cleanup();
+    show({ status: { state: "offline", retry_in_ms: 8_000 } });
+    await openMenu();
+    expect(ticking.mock.calls.filter(([, every]) => every === 1_000).length).toBeGreaterThan(0);
+    ticking.mockRestore();
   });
 
   it("reconnects now while offline, and only then", async () => {

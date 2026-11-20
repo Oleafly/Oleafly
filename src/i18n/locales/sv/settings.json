@@ -519,7 +519,9 @@
         "instructions": "Instruktioner",
         "instructionsHint": "Lämna tomt för att skapa ett minimalt instruktionsskelett.",
         "instructionsPlaceholder": "Beskriv när färdigheten ska användas och vilka steg assistenten ska följa.",
-        "namePlaceholder": "Påståendekontroll",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Sparad som {{name}}. Färdighetsnamn består av små bokstäver, siffror och bindestreck, så att andra agenter också kan läsa in dem.",
+        "nameNeedsLatin": "Lägg till några bokstäver från a till z eller siffror. Färdighetsnamn består av små bokstäver, siffror och bindestreck, så att andra agenter också kan läsa in dem.",
         "requiredAll": "Namn, beskrivning och instruktioner krävs.",
         "requiredBasics": "Namn och beskrivning krävs.",
         "submitCreate": "Skapa"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Använd {{name}} i det här projektet",
       "validateAria": "Validera {{name}}",
       "shadowNote": "En nyare Oleafly-version av den här färdigheten finns.",
+      "nameNote": "Andra agenter läser bara in färdigheter vars namn består av små bokstäver, siffror och bindestreck.",
+      "renameAction": "Byt namn till {{name}}",
       "replaceAction": "Använd Oleaflys version",
       "replaceTitle": "Vill du ersätta din kopia av {{name}}?",
       "replaceBody": "Din kopia flyttas till en mapp för säkerhetskopior. Inget raderas.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sidofältets accent",
         "sidebarAccentForeground": "Text på sidofältets accent",
         "sidebarBorder": "Sidofältets ram",
-        "sidebarForeground": "Sidofältets text"
+        "sidebarForeground": "Sidofältets text",
+        "pdfDarkPage": "Mörk PDF-sida",
+        "pdfDarkText": "Mörk PDF-text"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
         "label": "Mörkt läge för PDF"
+      },
+      "darkColors": {
+        "label": "Färger för mörk sida",
+        "description": "Mörkt läge för PDF ritar sidorna i de här färgerna. De följer ditt tema tills du väljer egna, och de sparas tillsammans med det ljusa eller mörka tema du använder nu."
       },
       "hoverPreview": {
         "description": "Visa den senast kompilerade sidan när du håller muspekaren över ett projekt i biblioteket.",
@@ -2652,64 +2662,64 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Sök i loggar",
+    "searchPlaceholder": "Sök i loggar",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Nivå",
+      "all": "Alla",
+      "warning": "Varningar",
+      "error": "Fel"
     },
     "level": {
       "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "warning": "Varning",
+      "error": "Fel"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Exportera",
+      "openFolder": "Öppna loggmappen",
+      "clear": "Rensa"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "I dag",
+      "yesterday": "I går"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Nyast först",
+    "privateDetails": "Privat, utelämnas vid export",
+    "copyEntry": "Kopiera post",
+    "copied": "Kopierat",
+    "loading": "Läser loggarna",
+    "loadFailed": "Det gick inte att läsa loggarna.",
+    "retry": "Försök igen",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Inga loggposter",
+      "description": "Byggen och fel visas här när de inträffar."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Inga poster matchar \"{{query}}\"",
+      "levelTitle": "Inga poster på den här nivån",
+      "description": "Prova en annan sökning eller nivå.",
+      "clearSearch": "Rensa sökningen",
+      "showAll": "Visa alla nivåer"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Rensa alla loggar?",
+      "confirm": "Rensa loggar",
+      "description_one": "Det här raderar {{count}} post och loggfilen på den här datorn. Loggar som du redan har exporterat ligger kvar där du sparade dem.",
+      "description_other": "Det här raderar alla {{count}} poster och loggfilen på den här datorn. Loggar som du redan har exporterat ligger kvar där du sparade dem."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Loggarna sparades i {{name}}.",
+      "exportFailed": "Det gick inte att exportera loggarna.",
+      "clearFailed": "Det gick inte att rensa loggarna.",
+      "revealFailed": "Det gick inte att öppna loggmappen."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip-arkiv"
     },
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_one": "{{count}} post",
+    "count_other": "{{count}} poster",
+    "filteredCount_one": "{{shown}} av {{count}} post",
+    "filteredCount_other": "{{shown}} av {{count}} poster"
   }
 }

@@ -9,7 +9,7 @@ use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
 use super::live_disk::Mirrored;
-use super::live_tree::{LiveTree, Mirror, TreeAnswer, TreeRead, TreeRequest};
+use super::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use super::session::{guard, Upkeep, WriterSignal};
 use super::{
     LiveDisk, LiveHost, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
@@ -117,14 +117,14 @@ impl LiveTree for FakeTree {
         &self,
         previous: &mut Layout,
         _hashes: &BTreeMap<String, String>,
-    ) -> Result<Option<Mirror>, CollabError> {
+    ) -> Result<Option<Outgoing>, CollabError> {
         let mut room = guard(&self.0);
         let work = std::mem::take(&mut room.work);
         if work.is_empty() {
             return Ok(None);
         }
         let drawn = LiveDisk::draw(&*room, &work, previous)?;
-        Ok(Some(Mirror {
+        Ok(Some(Outgoing {
             work,
             next: drawn.next,
             texts: drawn.texts,

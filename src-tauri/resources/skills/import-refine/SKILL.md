@@ -1,9 +1,9 @@
 ---
-name: Import refine
+name: import-refine
 description: Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, a Typst conf template, broken math, or citations that arrived as plain text.
 license: MIT
 compatibility: Works on LaTeX and Typst projects created by the Word, Markdown, and PDF importers. Needs a working compile (Tectonic, latexmk, or Typst). Nothing external.
-allowed-tools: read_file, search_project, project_map, list_files, replace_in_file, write_file, create_file, compile, get_log, get_pdf_text, verify_pdf_pages, update_todos, load_skill, read_skill_file
+allowed-tools: read_file search_project project_map list_files replace_in_file write_file create_file compile get_log get_pdf_text verify_pdf_pages update_todos load_skill read_skill_file
 metadata:
   version: "1.1.0"
   skill-author: Oleafly

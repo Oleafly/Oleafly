@@ -18,7 +18,7 @@ import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { LATEX_ENGINE } from "@/lib/document-engine";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
@@ -292,6 +292,7 @@ export function PreviewWindow({
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
+    pdfPageColors,
     page,
     setPage,
     numPages,
@@ -810,11 +811,6 @@ export function PreviewWindow({
       data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
       className="isolate h-full overflow-auto focus-visible:bg-accent/20"
-      style={
-        inverted && !screenReaderMode
-          ? { filter: "invert(1) hue-rotate(180deg)" }
-          : undefined
-      }
     >
       {htmlBuiltAt !== null && <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />}
       {htmlBuiltAt === null && (previewDocument ? (
@@ -840,6 +836,8 @@ export function PreviewWindow({
             scale={scale}
             layout={layout}
             screenReaderMode={screenReaderMode}
+            pageColors={pdfPageColors}
+            reportWarning={logWarning}
             searchQuery={searchOpen ? deferredSearch : ""}
             onLoadStateChange={handlePdfLoadState}
             onSearchStateChange={setSearchState}

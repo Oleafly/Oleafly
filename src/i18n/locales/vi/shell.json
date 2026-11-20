@@ -841,7 +841,8 @@
     "search": "Tìm trong dự án",
     "sourceControl": "Quản lý mã nguồn",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Ghi chú"
+    "notes": "Ghi chú",
+    "more": "Thêm chế độ xem"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} trên {{host}}",
@@ -1073,7 +1074,7 @@
       "integrations": "Tích hợp",
       "shortcuts": "Phím tắt",
       "research": "Nghiên cứu",
-      "logs": "Logs"
+      "logs": "Nhật ký"
     },
     "search": {
       "empty": "Không có cài đặt nào khớp",
@@ -1091,7 +1092,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, dịch vụ Git, Computer Use, ứng dụng máy tính, Cua, MCP, trích dẫn, tài khoản, kết nối",
         "shortcuts": "phím tắt, tổ hợp phím, phím, bàn phím",
         "research": "tác vụ nghiên cứu, hạn mức, thông báo, giữ máy thức, thử nghiệm, lần chạy",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "nhật ký, log, logs, lỗi, cảnh báo, sự cố, build, chẩn đoán, khắc phục sự cố, xuất nhật ký, app.log, gỡ lỗi, debug"
       },
       "label": "Tìm trong cài đặt",
       "results_other": "{{count}} mục khớp"

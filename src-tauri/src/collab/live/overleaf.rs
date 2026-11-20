@@ -40,7 +40,7 @@ use super::live_tree::LiveTree;
 use super::payloads::{LiveInfo, OverleafMember, OverleafPerson, StatusPayload};
 use super::session::{guard, io, LiveDisk, WriterSignal};
 use super::write::WriteOutcome;
-use crate::collab::disk::{lf_text, DiskState};
+use crate::collab::disk::{lf_text, read_text, DiskState};
 use crate::overleaf::OverleafLink;
 
 const QUIT_SETTLE: Duration = Duration::from_millis(1_500);
@@ -48,8 +48,6 @@ const FLUSH_WAIT: Duration = Duration::from_secs(10);
 const INDEX_FILE: &str = "materializer-index.json";
 pub(crate) const IMPORT_BASES: &str = "import-bases.json";
 
-/// Tests set this to store the started session late, the way a loaded machine does,
-/// so work the session reports while it joins has to wait for it.
 #[cfg(test)]
 pub(crate) static STORE_SESSION_LATE_MS: std::sync::atomic::AtomicU64 =
     std::sync::atomic::AtomicU64::new(0);
@@ -60,19 +58,18 @@ pub(crate) struct Mirror {
     role: Mutex<Option<(ProjectRole, bool)>>,
     flags: Mutex<(bool, bool)>,
     status: Mutex<(LiveStatus, u64)>,
-    sinks: Mutex<BTreeMap<DocId, DocSink>>,
+    sinks: Mutex<BTreeMap<DocId, (u64, DocSink)>>,
     kept: Mutex<Vec<super::kept::KeptFile>>,
     session: OnceLock<Weak<OverleafSession>>,
     blobs: Mutex<binaries::BlobMap>,
     deletes: Mutex<Deletes>,
     replaced: Mutex<BTreeSet<DocId>>,
     removing: Mutex<BTreeSet<String>>,
-    restorable: Mutex<BTreeMap<String, String>>,
     adopted: Mutex<BTreeSet<String>>,
     stored_as_files: Mutex<Vec<String>>,
-    /// Work for documents the mirror can't name yet, kept while the session starts
-    /// (`None` once it has started). See `AppOverleafPort::with_path`.
     waiting: Mutex<Option<Vec<port::Waiting>>>,
+    names: Mutex<tree::Names>,
+    too_large: Mutex<BTreeSet<String>>,
 }
 
 #[derive(Default)]
@@ -104,10 +101,11 @@ impl Mirror {
             deletes: Mutex::new(Deletes::default()),
             replaced: Mutex::new(BTreeSet::new()),
             removing: Mutex::new(BTreeSet::new()),
-            restorable: Mutex::new(BTreeMap::new()),
             adopted: Mutex::new(adopted),
             stored_as_files: Mutex::new(Vec::new()),
             waiting: Mutex::new(Some(Vec::new())),
+            names: Mutex::new(tree::Names::default()),
+            too_large: Mutex::new(BTreeSet::new()),
         }
     }
 
@@ -118,10 +116,8 @@ impl Mirror {
             .map(|placed| placed.path.clone());
         mirrored.or_else(|| {
             let session = self.session.get()?.upgrade()?;
-            oleafly_collab::materialize::layout(&tree::file_nodes(&session.nodes()))
-                .into_iter()
-                .find(|(id, _)| *id == doc.0)
-                .map(|(_, placed)| placed.path)
+            self.files(&session.nodes());
+            self.laid_path(&doc.0)
         })
     }
 
@@ -168,21 +164,15 @@ impl Mirror {
     }
 
     fn adopt_file_text(&self, path: &str) -> Option<String> {
-        let (text, hash) = read_text(&self.disk.root, path)?;
+        let (text, hash) = self.read_exact(path)?;
         guard(&self.disk.bases).record(path, &text);
         guard(&self.disk.disk).hashes.insert(path.to_owned(), hash);
         Some(text)
     }
 
     fn mirrored_text(&self, path: &str) -> Option<String> {
-        if let Some(text) = guard(&self.disk.bases).latest(path) {
-            return Some(text.clone());
-        }
-        let target = crate::collab::disk::safe_target(&self.disk.root, path)?;
-        let bytes = std::fs::read(target).ok()?;
-        String::from_utf8(bytes)
-            .ok()
-            .map(|text| lf_text(&text).into_owned())
+        let recorded = guard(&self.disk.bases).latest(path).cloned();
+        recorded.or_else(|| self.read_exact(path).map(|(text, _)| text))
     }
 
     async fn flush(&self) {
@@ -196,6 +186,7 @@ impl Mirror {
 enum Edit {
     Live,
     NotLive,
+    ReadOnly,
 }
 
 pub struct OverleafLive {
@@ -218,40 +209,131 @@ pub(crate) struct Parts {
 
 struct FirstBases {
     imported: BTreeMap<String, String>,
-    git: Option<PathBuf>,
+    git: BTreeMap<String, String>,
 }
 
 impl FirstBases {
-    fn load(mirror_dir: &Path, git: Option<PathBuf>) -> FirstBases {
-        let imported = std::fs::read(mirror_dir.join(IMPORT_BASES))
+    fn load(mirror_dir: &Path, git: Option<&Path>, wanted: &[String]) -> FirstBases {
+        let imported: BTreeMap<String, String> = std::fs::read(mirror_dir.join(IMPORT_BASES))
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
+        let missing: Vec<&str> = wanted
+            .iter()
+            .filter(|path| !imported.contains_key(*path))
+            .map(String::as_str)
+            .collect();
+        let git = git.map_or_else(BTreeMap::new, |repo| git_bases(repo, &missing));
         FirstBases { imported, git }
     }
 
     fn base_of(&self, path: &str) -> Option<String> {
-        if let Some(text) = self.imported.get(path) {
-            return Some(text.clone());
-        }
-        let repo = self.git.as_ref()?;
-        let blob = format!("{}:{path}", oleafly_online::sync::BASE_REF);
-        let output = crate::git::run_mirror_git(repo, &["cat-file", "blob", &blob]).ok()?;
-        if !output.status.success() {
-            return None;
-        }
-        crate::collab::disk::as_text(&output.stdout)
+        self.imported
+            .get(path)
+            .or_else(|| self.git.get(path))
+            .cloned()
     }
+}
+
+const GIT_ARGS_BUDGET: usize = 16 * 1024;
+
+fn git_bases(repo: &Path, wanted: &[&str]) -> BTreeMap<String, String> {
+    let mut bases = BTreeMap::new();
+    if wanted.is_empty() {
+        return bases;
+    }
+    let base_ref = oleafly_online::sync::BASE_REF;
+    let listed =
+        match crate::git::run_mirror_git(repo, &["ls-tree", "-r", "-z", "--name-only", base_ref]) {
+            Ok(listed) if listed.status.success() => listed.stdout,
+            _ => return bases,
+        };
+    let present: BTreeSet<&str> = listed
+        .split(|byte| *byte == 0)
+        .filter_map(|path| std::str::from_utf8(path).ok())
+        .collect();
+    let mut batch: Vec<&str> = Vec::new();
+    let mut length = 0;
+    let wanted: Vec<&str> = wanted
+        .iter()
+        .copied()
+        .filter(|path| present.contains(path))
+        .collect();
+    for (index, path) in wanted.iter().enumerate() {
+        batch.push(path);
+        length += path.len() + 1;
+        if length >= GIT_ARGS_BUDGET || index + 1 == wanted.len() {
+            read_git_texts(repo, base_ref, &std::mem::take(&mut batch), &mut bases);
+            length = 0;
+        }
+    }
+    bases
+}
+
+fn read_git_texts(
+    repo: &Path,
+    base_ref: &str,
+    paths: &[&str],
+    into: &mut BTreeMap<String, String>,
+) {
+    let mut args = vec!["archive", "--format=tar", base_ref, "--"];
+    args.extend_from_slice(paths);
+    let archive = match crate::git::run_mirror_git(repo, &args) {
+        Ok(output) if output.status.success() => output.stdout,
+        Ok(output) => {
+            let _ = crate::project::append_app_log(format!(
+                "Live editing could not read the last synced text from {}: {}",
+                repo.display(),
+                crate::git::git_failure_text(&output)
+            ));
+            return;
+        }
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Live editing could not read the last synced text from {}: {error}",
+                repo.display()
+            ));
+            return;
+        }
+    };
+    let mut tar = tar::Archive::new(archive.as_slice());
+    let Ok(entries) = tar.entries() else {
+        return;
+    };
+    for mut entry in entries.flatten() {
+        if !entry.header().entry_type().is_file() {
+            continue;
+        }
+        let Some(path) = entry
+            .path()
+            .ok()
+            .and_then(|path| path.to_str().map(|path| path.replace('\\', "/")))
+        else {
+            continue;
+        };
+        let mut bytes = Vec::new();
+        if std::io::Read::read_to_end(&mut entry, &mut bytes).is_ok() {
+            if let Some(text) = crate::collab::disk::as_text(&bytes) {
+                into.insert(path, text);
+            }
+        }
+    }
+}
+
+fn text_files(scan: crate::collab::disk::Scan) -> Vec<String> {
+    scan.files
+        .into_iter()
+        .filter(|(_, size)| *size <= crate::collab::disk::MAX_TEXT_BYTES as u64)
+        .map(|(path, _)| path)
+        .collect()
 }
 
 pub(crate) fn record_import_bases(mirror_dir: &Path, root: &Path) -> std::io::Result<()> {
     let scan = crate::collab::disk::scan_folder(root).map_err(std::io::Error::other)?;
-    let mut texts = BTreeMap::new();
-    for (path, _) in scan.files {
-        if let Some((text, _)) = read_text(root, &path) {
-            texts.insert(path, text);
-        }
-    }
+    let texts: BTreeMap<String, String> = text_files(scan)
+        .into_iter()
+        .filter_map(|path| Some((path.clone(), read_text(root, &path)?.0)))
+        .collect();
     std::fs::create_dir_all(mirror_dir)?;
     let bytes = serde_json::to_vec(&texts).map_err(std::io::Error::other)?;
     oleafly_core::atomic::write_atomic_private(&mirror_dir.join(IMPORT_BASES), &bytes)
@@ -271,20 +353,17 @@ pub(crate) fn mirror_dir(
         .join(project_id))
 }
 
-fn read_text(root: &Path, path: &str) -> Option<(String, String)> {
-    let target = crate::collab::disk::safe_target(root, path)?;
-    let bytes = std::fs::read(&target).ok()?;
-    let text = crate::collab::disk::as_text(&bytes)?;
-    Some((text, crate::collab::disk::sha256_hex(&bytes)))
-}
-
 struct GoLive {
     bases: WrittenTexts,
     seeds: Vec<Seed>,
     adopted: BTreeSet<String>,
 }
 
-fn go_live_bases(root: &Path, disk: &mut DiskState, first: Option<&FirstBases>) -> GoLive {
+fn go_live_bases(
+    root: &Path,
+    disk: &mut DiskState,
+    first: Option<(&Path, Option<&Path>)>,
+) -> GoLive {
     let mut found = GoLive {
         bases: WrittenTexts::default(),
         seeds: Vec::new(),
@@ -293,7 +372,9 @@ fn go_live_bases(root: &Path, disk: &mut DiskState, first: Option<&FirstBases>) 
     let Ok(scan) = crate::collab::disk::scan_folder(root) else {
         return found;
     };
-    for (path, _) in scan.files {
+    let files = text_files(scan);
+    let first = first.map(|(mirror_dir, git)| FirstBases::load(mirror_dir, git, &files));
+    for path in files {
         let Some((text, hash)) = read_text(root, &path) else {
             continue;
         };
@@ -301,7 +382,7 @@ fn go_live_bases(root: &Path, disk: &mut DiskState, first: Option<&FirstBases>) 
         if known.as_ref().is_some_and(|known| *known != hash) {
             continue;
         }
-        if let Some(first) = first {
+        if let Some(first) = &first {
             let base = first.base_of(&path);
             if base.as_deref() != Some(text.as_str()) {
                 found.seeds.push(Seed {
@@ -381,7 +462,11 @@ pub(crate) fn refuse_overleaf_linked(
     project_id: &str,
     card_on: bool,
 ) -> Result<(), CollabError> {
-    match live_backend_for(paths, project_id, card_on)? {
+    let live = matches!(
+        super::session::live_for(project_id),
+        Some(super::session::Live::Overleaf(_))
+    );
+    match live_backend_for(paths, project_id, card_on || live)? {
         Some(Backend::Overleaf(_) | Backend::Both) => Err(overleaf_linked()),
         Some(Backend::Server) | None => Ok(()),
     }
@@ -427,8 +512,8 @@ impl OverleafLive {
                 let first = disk
                     .hashes
                     .is_empty()
-                    .then(|| FirstBases::load(&mirror_dir, git_mirror));
-                let found = go_live_bases(&root, &mut disk, first.as_ref());
+                    .then_some((mirror_dir.as_path(), git_mirror.as_deref()));
+                let found = go_live_bases(&root, &mut disk, first);
                 let blobs = binaries::BlobMap::load(&mirror_dir);
                 Ok::<_, std::io::Error>((disk, found, blobs))
             })
@@ -496,7 +581,7 @@ impl OverleafLive {
         self.session
             .tree_queue()
             .iter()
-            .filter_map(port::upload_row)
+            .filter_map(|queued| port::upload_row(&self.mirror, queued))
             .collect()
     }
 
@@ -505,7 +590,8 @@ impl OverleafLive {
     }
 
     pub(crate) fn dismiss_upload(&self, path: &str) {
-        self.session.dismiss_tree(path);
+        self.refresh_names();
+        self.session.dismiss_tree(&self.mirror.engine_path(path));
     }
 
     pub(crate) fn reconnect_now(&self) {
@@ -513,7 +599,7 @@ impl OverleafLive {
     }
 
     pub(crate) fn presence(&self, path: Option<&str>, cursor: Option<u32>) {
-        let doc = path.and_then(|path| self.session.doc_at(path));
+        let doc = path.and_then(|path| self.doc_at(path));
         let at = doc.zip(cursor.and_then(|cursor| usize::try_from(cursor).ok()));
         self.session.presence(at);
     }
@@ -555,16 +641,8 @@ impl OverleafLive {
         self.mirror.hold_dir()
     }
 
-    pub(crate) fn kick(&self) {
-        self.mirror.kick();
-    }
-
-    pub(crate) fn with_disk<T>(&self, work: impl FnOnce(&DiskState) -> T) -> T {
-        work(&guard(&self.mirror.disk.disk))
-    }
-
     pub(crate) fn doc_at(&self, path: &str) -> Option<DocId> {
-        tree::doc_at(&self.session.nodes(), path)
+        self.mirror.doc_at(path)
     }
 
     pub(crate) fn text_at(&self, path: &str) -> Option<String> {
@@ -572,8 +650,17 @@ impl OverleafLive {
     }
 
     pub(crate) fn open(&self, path: &str, sink: DocSink) -> Option<DocOpened> {
-        let opened = self.session.open(path, Arc::clone(&sink))?;
-        guard(&self.mirror.sinks).insert(DocId(opened.file_id.clone()), sink);
+        self.refresh_names();
+        let doc = self.doc_at(path)?;
+        let opened = self
+            .session
+            .open(&self.mirror.engine_path(path), Arc::clone(&sink))?;
+        if opened.file_id != doc.0 {
+            self.session
+                .close(&DocId(opened.file_id.clone()), opened.session);
+            return None;
+        }
+        guard(&self.mirror.sinks).insert(doc, (opened.session, sink));
         Some(opened)
     }
 
@@ -593,7 +680,10 @@ impl OverleafLive {
     pub(crate) fn close(&self, file_id: &str, session: u64) {
         let doc = DocId(file_id.to_owned());
         self.session.close(&doc, session);
-        guard(&self.mirror.sinks).remove(&doc);
+        let mut sinks = guard(&self.mirror.sinks);
+        if sinks.get(&doc).is_some_and(|(open, _)| *open == session) {
+            sinks.remove(&doc);
+        }
     }
 
     fn edit_toward(
@@ -619,6 +709,7 @@ impl OverleafLive {
         match edited {
             Ok(_) => Ok(Edit::Live),
             Err(LiveError::Stopped) => Ok(Edit::NotLive),
+            Err(LiveError::NotWritable) => Ok(Edit::ReadOnly),
             Err(error) => Err(live_error(error)),
         }
     }
@@ -636,11 +727,20 @@ impl OverleafLive {
             });
         };
         let text = lf_text(text);
-        if self.edit_toward(&doc, path, base, &text)? == Edit::NotLive {
-            return Ok(WriteOutcome {
-                handled: false,
-                reason: None,
-            });
+        match self.edit_toward(&doc, path, base, &text)? {
+            Edit::Live => {}
+            Edit::NotLive => {
+                return Ok(WriteOutcome {
+                    handled: false,
+                    reason: None,
+                })
+            }
+            Edit::ReadOnly => {
+                return Ok(WriteOutcome {
+                    handled: false,
+                    reason: Some(super::write::READ_ONLY.to_owned()),
+                })
+            }
         }
         self.mirror.mark([doc.0], false);
         self.mirror.flush().await;
@@ -658,6 +758,7 @@ impl OverleafLive {
         self.mirror.flush().await;
         self.close_figures();
         self.session.stop().await;
+        self.mirror.save_blobs();
         self.mirror.disk.announce_written();
         crate::folder_watch::release_live(self.project_id());
     }
@@ -668,6 +769,8 @@ impl OverleafLive {
         self.session.stop().await;
         let left = within.saturating_sub(started.elapsed());
         let _ = tokio::time::timeout(left, self.mirror.flush()).await;
+        self.close_figures();
+        self.mirror.save_blobs();
         self.mirror.disk.announce_written();
         crate::folder_watch::release_live(self.project_id());
     }
@@ -685,6 +788,7 @@ impl OverleafLive {
         if !self.mirror.disk.root.is_dir() {
             return Ok(Vec::new());
         }
+        self.mirror.save_blobs();
         let (mut previous, hashes, owed) = self.mirror.disk.snapshot();
         let Some(mirror) = self.read_out(&mut previous, &hashes)? else {
             return Ok(Vec::new());
@@ -713,6 +817,10 @@ impl OverleafLive {
 }
 
 impl LiveWriter for OverleafLive {
+    fn disk(&self) -> &LiveDisk {
+        &self.mirror.disk
+    }
+
     async fn write_pass(self: Arc<Self>, urgent: bool) -> Result<Vec<String>, CollabError> {
         self.write_out(urgent).await
     }

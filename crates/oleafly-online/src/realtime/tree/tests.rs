@@ -1,6 +1,6 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use serde_json::json;
+use serde_json::{json, Value};
 
 use super::{NodeKind, OverleafTree, PathChange};
 use crate::realtime::events::{EntityId, TreeEvent};
@@ -183,4 +183,104 @@ fn a_repair_keeps_the_overlay() {
         .any(|change| matches!(change, PathChange::Removed { path, .. } if path == "sections")));
     assert_eq!(tree.id_at("mine.tex"), Some(&entity("notes")));
     assert!(!tree.is_local(&entity("main")));
+}
+
+#[test]
+fn entries_with_hostile_or_missing_ids_are_skipped_and_the_rest_loads() {
+    let long = "a".repeat(129);
+    let tree = OverleafTree::from_root_folder(&json!([{
+        "_id": "root",
+        "name": "rootFolder",
+        "docs": [
+            { "_id": "main", "name": "main.tex" },
+            { "_id": "../journal", "name": "up.tex" },
+            { "_id": "/etc/passwd", "name": "absolute.tex" },
+            { "_id": "a/b", "name": "slash.tex" },
+            { "_id": "a\\b", "name": "backslash.tex" },
+            { "_id": "", "name": "empty.tex" },
+            { "_id": long, "name": "long.tex" },
+            { "name": "no-id.tex" },
+            { "_id": "nameless" },
+        ],
+        "fileRefs": [
+            { "_id": "C:\\Users\\x", "name": "drive.png" },
+            { "_id": "plot", "name": "plot.png" },
+        ],
+        "folders": [
+            { "_id": "../up", "name": "up", "docs": [{ "_id": "inside", "name": "inside.tex" }] },
+            { "_id": "sections", "name": "sections", "docs": [{ "_id": "intro", "name": "intro.tex" }] },
+        ],
+    }]))
+    .unwrap();
+    assert_eq!(
+        tree.paths(),
+        vec!["main.tex", "plot.png", "sections/intro.tex"]
+    );
+    for skipped in [
+        "../journal",
+        "/etc/passwd",
+        "a/b",
+        "a\\b",
+        "",
+        long.as_str(),
+        "nameless",
+        "C:\\Users\\x",
+        "../up",
+        "inside",
+    ] {
+        assert!(tree.server_node(&entity(skipped)).is_none(), "{skipped}");
+    }
+    assert!(
+        OverleafTree::from_root_folder(&json!([{ "_id": "../root", "name": "rootFolder" }]))
+            .is_none()
+    );
+}
+
+#[test]
+fn lookups_in_a_large_tree_go_through_the_index() {
+    let parts: Vec<Value> = (0..100)
+        .map(|part| {
+            json!({
+                "_id": format!("f{part}"),
+                "name": format!("part{part}"),
+                "docs": (0..100)
+                    .map(|doc| json!({ "_id": format!("d{part}x{doc}"), "name": format!("{doc}.tex") }))
+                    .collect::<Vec<_>>(),
+                "fileRefs": [],
+                "folders": [],
+            })
+        })
+        .collect();
+    let mut tree = OverleafTree::from_root_folder(&json!([{
+        "_id": "root",
+        "name": "rootFolder",
+        "docs": [],
+        "fileRefs": [],
+        "folders": [{ "_id": "all", "name": "all", "docs": [], "fileRefs": [], "folders": parts }],
+    }]))
+    .unwrap();
+    let started = Instant::now();
+    assert_eq!(
+        tree.place(&entity("all"), &entity("root"), "moved").len(),
+        10_101
+    );
+    for part in 0..100 {
+        for doc in 0..100 {
+            let id = entity(&format!("d{part}x{doc}"));
+            assert_eq!(
+                tree.id_at(&format!("moved/part{part}/{doc}.tex")),
+                Some(&id)
+            );
+            assert_eq!(tree.id_at(&format!("all/part{part}/{doc}.tex")), None);
+        }
+    }
+    assert_eq!(tree.hide(&entity("all")).len(), 10_101);
+    assert_eq!(tree.id_at("moved/part0/0.tex"), None);
+    assert_eq!(tree.clear_local(&entity("all")).len(), 10_101);
+    assert_eq!(tree.id_at("all/part99/99.tex"), Some(&entity("d99x99")));
+    assert!(
+        started.elapsed() < Duration::from_secs(10),
+        "{:?}",
+        started.elapsed()
+    );
 }

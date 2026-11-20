@@ -31,16 +31,24 @@ export function EffortSelector({
   const levelLabel = (level: EffortLevel) => t(($) => $.ai.effort.levels[level]);
   const current = value !== undefined && choices.includes(value) ? value : undefined;
   const shown = current ? levelLabel(current) : t(($) => $.ai.effort.auto);
+  const name = t(($) => $.ai.effort.ariaLabel, { level: shown });
   return (
     <span className="ai-composer-effort inline-flex shrink-0">
       <DropdownMenu>
-        <Tooltip label={t(($) => $.ai.effort.tooltip)}>
+        <Tooltip
+          label={
+            <>
+              <span className="block">{name}</span>
+              <span className="block font-normal">{t(($) => $.ai.effort.tooltip)}</span>
+            </>
+          }
+        >
           <DropdownMenuTrigger asChild disabled={disabled}>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={t(($) => $.ai.effort.ariaLabel, { level: shown })}
+              aria-label={name}
               data-testid="ai-effort-selector"
               className="ai-composer-effort-trigger h-7 shrink-0 gap-1 px-2 text-muted-foreground hover:text-foreground data-[state=open]:bg-accent"
             >

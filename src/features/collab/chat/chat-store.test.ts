@@ -223,6 +223,17 @@ describe("replies that arrive after the chat moved on", () => {
   });
 });
 
+function serverList(list: readonly CollabChatMessage[], answers = Number.POSITIVE_INFINITY) {
+  let asked = 0;
+  mocks.collabChatList.mockImplementation(async (_project: string, before: string | null, limit: number) => {
+    asked += 1;
+    if (asked > answers) return [];
+    const found = before === null ? -1 : list.findIndex((entry) => entry.id === before);
+    const end = found < 0 ? list.length : found;
+    return list.slice(Math.max(0, end - limit), end);
+  });
+}
+
 describe("older messages", () => {
   it("asks for one older page at a time and stops at the first message", async () => {
     mocks.collabChatList.mockResolvedValueOnce(fullPage);
@@ -263,13 +274,51 @@ describe("older messages", () => {
     await loadOlderChat();
     expect(ids()).toHaveLength(2 * CHAT_PAGE);
     const latest = message("new", "Just sent", AT + CHAT_PAGE * 1_000);
-    mocks.collabChatList.mockResolvedValueOnce([...fullPage.slice(1), latest]);
+    serverList([message("first", "First ever", AT - 3_600_000), ...olderPage, ...fullPage, latest]);
     await loadChat();
-    expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", null, CHAT_PAGE);
+    expect(mocks.collabChatList).toHaveBeenCalledWith("paper", null, 3 * CHAT_PAGE);
     expect(ids()).toHaveLength(2 * CHAT_PAGE + 1);
     expect(ids()[0]).toBe("o0");
     expect(ids().at(-1)).toBe("new");
     expect(useChat.getState().hasOlder).toBe(true);
+  });
+
+  it("shows a reaction, a deletion and a clear on messages in the older pages someone has opened", async () => {
+    const list = Array.from({ length: 3 * CHAT_PAGE }, (_, index) => message(`m${index}`, `Message ${index}`, AT + index * 1_000));
+    serverList(list);
+    await begin();
+    await loadOlderChat();
+    expect(ids()).toHaveLength(2 * CHAT_PAGE);
+    const oldest = ids()[0];
+    const changed = list.map((entry, index) => {
+      if (entry.id === oldest) return { ...entry, reactions: [{ emoji: "👍", by: [BOB_ID] }] };
+      if (index === CHAT_PAGE + 3) return { ...entry, body: "", deleted: true };
+      return entry;
+    });
+    serverList([...changed, message("late", "Just sent", AT + 10_000_000)]);
+    await loadChat();
+    const shown = useChat.getState().messages;
+    expect(shown).toHaveLength(2 * CHAT_PAGE + 1);
+    expect(shown[0].reactions).toEqual([{ emoji: "👍", by: [BOB_ID] }]);
+    expect(shown.find((entry) => entry.id === `m${CHAT_PAGE + 3}`)?.deleted).toBe(true);
+    serverList(changed.map((entry) => ({ ...entry, body: "", deleted: true })));
+    await loadChat();
+    expect(useChat.getState().messages.filter((entry) => entry.id !== "late").every((entry) => entry.deleted)).toBe(true);
+    expect(useChat.getState()).toMatchObject({ hasOlder: true, cursor: oldest });
+  });
+
+  it("walks back to the oldest opened page when one request can't bring every opened message", async () => {
+    const list = Array.from({ length: 6 * CHAT_PAGE }, (_, index) => message(`m${index}`, `Message ${index}`, AT + index * 1_000));
+    serverList(list);
+    await begin();
+    for (let page = 0; page < 4; page += 1) await loadOlderChat();
+    expect(ids()).toHaveLength(5 * CHAT_PAGE);
+    const oldest = ids()[0];
+    serverList(list.map((entry) => (entry.id === oldest ? { ...entry, reactions: [{ emoji: "🎉", by: [BOB_ID] }] } : entry)));
+    await loadChat();
+    expect(useChat.getState().messages[0].reactions).toEqual([{ emoji: "🎉", by: [BOB_ID] }]);
+    expect(ids()).toHaveLength(5 * CHAT_PAGE);
+    expect(useChat.getState().cursor).toBe(oldest);
   });
 
   it("starts over from the newest page when it no longer meets the loaded messages", async () => {
@@ -283,17 +332,6 @@ describe("older messages", () => {
 });
 
 describe("older pages after the second review", () => {
-  function serverList(list: readonly CollabChatMessage[], answers = Number.POSITIVE_INFINITY) {
-    let asked = 0;
-    mocks.collabChatList.mockImplementation(async (_project: string, before: string | null, limit: number) => {
-      asked += 1;
-      if (asked > answers) return [];
-      const found = before === null ? -1 : list.findIndex((entry) => entry.id === before);
-      const end = found < 0 ? list.length : found;
-      return list.slice(Math.max(0, end - limit), end);
-    });
-  }
-
   it("pages by place in the list, so a message with an early time can't hold the cursor still", async () => {
     const list = [
       ...Array.from({ length: 119 }, (_, index) => message(`m${index}`, `Message ${index}`, AT + index * 1_000)),

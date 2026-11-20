@@ -7,7 +7,37 @@ use serde::{Deserialize, Serialize};
 use crate::ids::AccountId;
 
 pub const MAX_EMOJI_CHARS: usize = 16;
+pub const MAX_REACTIONS_PER_PERSON: usize = 20;
+pub const MAX_REACTION_KEYS: usize = 10_000;
 const SEPARATOR: char = '|';
+const KEYCAP: char = '\u{20E3}';
+const EMOJI_STYLE: char = '\u{FE0F}';
+const KEYCAP_BASES: &str = "0123456789#*";
+const PICTURES: [(char, char); 18] = [
+    ('\u{00A9}', '\u{00A9}'),
+    ('\u{00AE}', '\u{00AE}'),
+    ('\u{203C}', '\u{203C}'),
+    ('\u{2049}', '\u{2049}'),
+    ('\u{2122}', '\u{2122}'),
+    ('\u{2139}', '\u{2139}'),
+    ('\u{2190}', '\u{21FF}'),
+    ('\u{2300}', '\u{23FF}'),
+    ('\u{24C2}', '\u{24C2}'),
+    ('\u{25A0}', '\u{25FF}'),
+    ('\u{2600}', '\u{27BF}'),
+    ('\u{2900}', '\u{297F}'),
+    ('\u{2B00}', '\u{2BFF}'),
+    ('\u{3030}', '\u{3030}'),
+    ('\u{303D}', '\u{303D}'),
+    ('\u{3297}', '\u{3297}'),
+    ('\u{3299}', '\u{3299}'),
+    ('\u{1F000}', '\u{1FAFF}'),
+];
+const JOINERS: [(char, char); 3] = [
+    ('\u{200D}', '\u{200D}'),
+    ('\u{FE0E}', '\u{FE0F}'),
+    ('\u{E0020}', '\u{E007F}'),
+];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Reaction {
@@ -51,13 +81,43 @@ impl fmt::Display for ReactionKey<'_> {
     }
 }
 
+fn within(character: char, ranges: &[(char, char)]) -> bool {
+    ranges
+        .iter()
+        .any(|(first, last)| (*first..=*last).contains(&character))
+}
+
 pub fn is_emoji(emoji: &str) -> bool {
     let count = emoji.chars().count();
-    count > 0
-        && count <= MAX_EMOJI_CHARS
-        && emoji.chars().all(|character| {
-            character != SEPARATOR && !character.is_whitespace() && !character.is_control()
-        })
+    if count == 0 || count > MAX_EMOJI_CHARS {
+        return false;
+    }
+    if let Some(base) = emoji.strip_suffix(KEYCAP) {
+        let mut base = base.strip_suffix(EMOJI_STYLE).unwrap_or(base).chars();
+        return matches!(
+            (base.next(), base.next()),
+            (Some(character), None) if KEYCAP_BASES.contains(character)
+        );
+    }
+    emoji.chars().any(|character| within(character, &PICTURES))
+        && emoji
+            .chars()
+            .all(|character| within(character, &PICTURES) || within(character, &JOINERS))
+}
+
+pub fn reactions_counted<'a>(
+    keys: impl IntoIterator<Item = &'a str>,
+    account: AccountId,
+) -> HashMap<&'a str, usize> {
+    let mut counted: HashMap<&str, usize> = HashMap::new();
+    for key in keys
+        .into_iter()
+        .filter_map(ReactionKey::parse)
+        .filter(|key| key.account == account)
+    {
+        *counted.entry(key.message).or_default() += 1;
+    }
+    counted
 }
 
 pub fn grouped<M: Ord + Hash>(
@@ -128,8 +188,34 @@ mod tests {
     }
 
     #[test]
-    fn an_emoji_is_short_and_has_no_spaces_bars_or_control_characters() {
-        for emoji in ["👍", "🎉", "👨‍👩‍👧‍👦", "❤️", "+1", "🇳🇴"] {
+    fn an_emoji_is_a_short_run_of_pictographs_with_their_joiners_and_modifiers() {
+        for emoji in [
+            "👍",
+            "🎉",
+            "❤️",
+            "😄",
+            "👀",
+            "🚀",
+            "👨‍👩‍👧‍👦",
+            "👍🏽",
+            "🫱🏻‍🫲🏿",
+            "👩🏻‍❤️‍💋‍👨🏼",
+            "🏳️‍🌈",
+            "🇳🇴",
+            "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+            "1️⃣",
+            "#️⃣",
+            "*⃣",
+            "©️",
+            "™️",
+            "↔️",
+            "⌚",
+            "〰️",
+            "㊙️",
+            "🙂‍↔️",
+            "🐦‍🔥",
+            "🫩",
+        ] {
             assert!(is_emoji(emoji), "{emoji}");
         }
         for emoji in [
@@ -137,13 +223,44 @@ mod tests {
             " ",
             "👍 ",
             "a|b",
+            "👍|👍",
             "\n",
             "\u{7}",
-            &"x".repeat(MAX_EMOJI_CHARS + 1),
+            "+1",
+            "ok",
+            "lol",
+            "thumbs up",
+            "a👍",
+            "1",
+            "12⃣",
+            "x⃣",
+            "\u{200D}",
+            "\u{FE0F}",
+            &"x".repeat(MAX_EMOJI_CHARS),
+            &"👍".repeat(MAX_EMOJI_CHARS + 1),
         ] {
             assert!(!is_emoji(emoji), "{emoji:?}");
         }
-        assert!(is_emoji(&"x".repeat(MAX_EMOJI_CHARS)));
+        assert!(is_emoji(&"👍".repeat(MAX_EMOJI_CHARS)));
+    }
+
+    #[test]
+    fn reactions_are_counted_per_person_and_message() {
+        let keys = [
+            format!("m1|👍|{}", account(1)),
+            format!("m1|🎉|{}", account(1)),
+            format!("m2|👍|{}", account(1)),
+            format!("m1|👍|{}", account(2)),
+            format!("m1|word|{}", account(1)),
+        ];
+        let keys = || keys.iter().map(String::as_str);
+        let first = reactions_counted(keys(), account(1));
+        assert_eq!(first, HashMap::from([("m1", 2), ("m2", 1)]));
+        assert_eq!(
+            reactions_counted(keys(), account(2)),
+            HashMap::from([("m1", 1)])
+        );
+        assert!(reactions_counted(keys(), account(3)).is_empty());
     }
 
     #[test]

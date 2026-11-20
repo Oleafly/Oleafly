@@ -23,7 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import {
   Select,
@@ -740,6 +740,7 @@ export function LiteratureSearchPanel() {
       >
         <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
         <Input
+          {...SEARCH_INPUT}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t(($) => $.researchTools.literature.queryPlaceholder)}

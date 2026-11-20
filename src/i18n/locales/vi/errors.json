@@ -36,6 +36,7 @@
     "copy_needs_folder": "Chỉ các thư mục được mở tại chỗ mới có thể được sao chép vào thư viện.",
     "not_removable": "Chỉ các thư mục được mở tại chỗ mới có thể bị xoá khỏi Oleafly.",
     "trash_unavailable": "Oleafly không thể chuyển {{path}} vào Thùng rác. Ổ đĩa có thể không có Thùng rác.",
+    "trash_in_use": "Oleafly không thể chuyển {{path}} vào Thùng rác vì một ứng dụng khác đang mở tệp này. Hãy đóng tệp ở đó rồi thử lại.",
     "linked_replace_folder": "{{path}} là một thư mục, nên Oleafly sẽ không thay thế nó. Hãy di chuyển hoặc đổi tên trước.",
     "folder_read_only": "Oleafly không thể thực hiện thay đổi này vì {{name}} hoặc thư mục của nó chỉ đọc. Hãy sao chép thư mục bạn đã mở vào thư viện và sửa ở đó.",
     "shared_settings_viewer": "Người xem không thể thay đổi cài đặt của dự án chia sẻ."

@@ -187,8 +187,6 @@ function asTags(state: DelimiterState, inline: InlineRun, start: number, end: nu
 
 const EDGE_SPACE = /[ \t]/u;
 
-// A run that starts or ends with spaces (a mark reopened after a nested one closed, "== three") moves those spaces
-// outside its delimiters, as the serializer's expelEnclosingWhitespace means, so the delimiters can still open and close.
 function expelledSpaces(state: DelimiterState, start: number, end: number, delimiter: string): [number, number] {
   const length = delimiter.length;
   let inner = start + length;

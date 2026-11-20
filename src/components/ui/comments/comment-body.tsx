@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { memo, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { type CommentInline, parseComment } from "./comment-markdown";
 import { type CommentMember, mentionSegments } from "./mentions";
@@ -57,7 +57,7 @@ function Inline({
   });
 }
 
-export function CommentBody({
+export const CommentBody = memo(function CommentBody({
   body,
   members,
   className,
@@ -100,4 +100,4 @@ export function CommentBody({
       })}
     </div>
   );
-}
+});

@@ -1,7 +1,11 @@
+use std::collections::HashSet;
+
 use loro::event::{ContainerDiff, Diff};
 use loro::{Container, ContainerID, LoroDoc, LoroList, LoroMap, LoroValue, ValueOrContainer};
 use oleafly_collab_protocol::ids::{AccountId, ChatMessageId};
 use oleafly_collab_protocol::reactions::Reaction;
+use oleafly_collab_protocol::schema::{AT, AUTHOR, BODY, DELETED, ID, MENTIONS, STAMPED};
+pub use oleafly_collab_protocol::schema::{CHAT, CHAT_REACTIONS};
 use serde::{Deserialize, Serialize};
 
 use crate::comments::{
@@ -12,18 +16,9 @@ use crate::doc::ProjectDoc;
 use crate::reactions::checked_emoji;
 use crate::CollabError;
 
-pub const CHAT: &str = "chat";
-pub const CHAT_REACTIONS: &str = "chat_reactions";
 pub const MAX_CHAT_CHARS: usize = 4_000;
 pub const MAX_CHAT_PAGE: usize = 200;
-const ID: &str = "id";
-const AUTHOR: &str = "author";
-const AT: &str = "at";
-const BODY: &str = "body";
-const DELETED: &str = "deleted";
-const MENTIONS: &str = "mentions";
 const WRITTEN: [&str; 5] = [ID, AUTHOR, AT, BODY, MENTIONS];
-const STAMPED: [&str; 3] = [ID, AUTHOR, AT];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -152,32 +147,49 @@ impl ProjectDoc {
     }
 
     fn chat_entry(&self, id: ChatMessageId) -> Result<Found, CollabError> {
-        self.chat_entries()
-            .into_iter()
-            .find(|found| found.message.id == id)
+        let list = self.chat_list();
+        let judge = self.judge();
+        (0..list.len())
+            .find_map(|index| {
+                let Some(ValueOrContainer::Container(Container::Map(map))) = list.get(index) else {
+                    return None;
+                };
+                let named = matches!(
+                    map.get(ID),
+                    Some(ValueOrContainer::Value(LoroValue::String(found)))
+                        if found.as_str().parse::<ChatMessageId>().ok() == Some(id)
+                );
+                if !named {
+                    return None;
+                }
+                chat_of(&map, &judge).map(|message| Found { map, message })
+            })
             .ok_or_else(chat_gone)
     }
 
     pub fn chat_messages(&self, before: Option<ChatMessageId>, limit: usize) -> Vec<ChatMessage> {
-        let mut reactions = crate::reactions::read(&self.chat_reactions(), &self.judge());
         let messages: Vec<ChatMessage> = self
             .chat_entries()
             .into_iter()
-            .map(|found| {
-                let mut message = found.message;
-                if !message.deleted {
-                    message.reactions = reactions
-                        .remove(&message.id.to_string())
-                        .unwrap_or_default();
-                }
-                message
-            })
+            .map(|found| found.message)
             .collect();
         let end = before
             .and_then(|before| messages.iter().position(|message| message.id == before))
             .unwrap_or(messages.len());
         let limit = limit.clamp(1, MAX_CHAT_PAGE);
-        messages[end.saturating_sub(limit)..end].to_vec()
+        let mut page = messages[end.saturating_sub(limit)..end].to_vec();
+        let shown: HashSet<String> = page
+            .iter()
+            .filter(|message| !message.deleted)
+            .map(|message| message.id.to_string())
+            .collect();
+        let mut reactions = crate::reactions::read(&self.chat_reactions(), &self.judge(), &shown);
+        for message in page.iter_mut().filter(|message| !message.deleted) {
+            message.reactions = reactions
+                .remove(&message.id.to_string())
+                .unwrap_or_default();
+        }
+        page
     }
 
     pub fn send_chat(
@@ -530,6 +542,64 @@ mod tests {
         assert_eq!(
             reactions_of(&owner),
             vec![vec![reaction("👋", &[account(2)])]]
+        );
+    }
+
+    const PICKED: [&str; 21] = [
+        "👍", "🎉", "❤️", "😄", "👀", "🚀", "🍕", "👋", "🙏", "🔥", "✅", "💯", "🤔", "😂", "🥳",
+        "👏", "🙌", "😮", "😢", "🇳🇴", "1️⃣",
+    ];
+
+    #[test]
+    fn one_person_adds_at_most_twenty_reactions_to_a_message() {
+        let (mut owner, _) = pair();
+        let first = owner.send_chat(account(1), 1, "vote", &[]).unwrap();
+        let second = owner.send_chat(account(1), 2, "again", &[]).unwrap();
+        for (at, emoji) in (0_i64..).zip(&PICKED[..20]) {
+            owner
+                .react_to_chat(first.id, emoji, account(1), at)
+                .unwrap();
+        }
+        assert!(matches!(
+            owner.react_to_chat(first.id, PICKED[20], account(1), 30),
+            Err(CollabError::Api { code, .. }) if code == "invalid"
+        ));
+        owner.react_to_chat(first.id, "👍", account(1), 31).unwrap();
+        owner
+            .react_to_chat(second.id, PICKED[20], account(1), 32)
+            .unwrap();
+        owner.unreact_to_chat(first.id, "👍", account(1)).unwrap();
+        owner
+            .react_to_chat(first.id, PICKED[20], account(1), 33)
+            .unwrap();
+        assert_eq!(reactions_of(&owner)[0].len(), 20);
+    }
+
+    #[test]
+    fn a_full_reactions_map_takes_no_new_reaction_and_a_page_reads_only_its_own() {
+        let (mut owner, _) = pair();
+        let sent = owner.send_chat(account(1), 1, "hello", &[]).unwrap();
+        let reactions = owner.loro().get_map(CHAT_REACTIONS);
+        for _ in 0..oleafly_collab_protocol::reactions::MAX_REACTION_KEYS {
+            let elsewhere = ChatMessageId::new_v7();
+            reactions
+                .insert(&format!("{elsewhere}|👍|{}", account(2)), 1)
+                .unwrap();
+        }
+        owner.loro().commit();
+        assert_eq!(reactions_of(&owner), vec![Vec::new()]);
+        assert!(matches!(
+            owner.react_to_chat(sent.id, "👍", account(1), 2),
+            Err(CollabError::Api { code, .. }) if code == "invalid"
+        ));
+        reactions
+            .delete(reactions.keys().next().unwrap().as_ref())
+            .unwrap();
+        owner.loro().commit();
+        owner.react_to_chat(sent.id, "👍", account(1), 3).unwrap();
+        assert_eq!(
+            reactions_of(&owner),
+            vec![vec![reaction("👍", &[account(1)])]]
         );
     }
 

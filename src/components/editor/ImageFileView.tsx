@@ -1,15 +1,43 @@
-import { ImageOff, Maximize, Minus, Plus } from "lucide-react";
+import { ImageOff, Maximize } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FloatingBar } from "@/components/ui/floating-bar";
-import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { ErrorState, LoadingState } from "@/components/ui/empty";
+import { ZoomBar } from "@/components/ui/zoom-bar";
+import { useAsyncTask } from "@/hooks/use-async-task";
+import { formatBytes } from "@/lib/format-bytes";
 import { imageMime } from "@/lib/image-mime";
+import { logError, logWarning } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
-import { readFileBase64 } from "@/lib/tauri";
+import { base64ToUint8Array, projectFileSizes, readFileBase64, readProjectBytes } from "@/lib/tauri";
 
 export const IMAGE_MIN_SCALE = 0.1;
 export const IMAGE_MAX_SCALE = 8;
 export const IMAGE_ZOOM_STEP = 1.25;
+export const IMAGE_DIRECT_READ_BYTES = 8 * 1024 * 1024;
+export const IMAGE_MAX_BYTES = 64 * 1024 * 1024;
+
+class ImageTooLargeError extends Error {}
+
+async function readImage(projectId: string, path: string): Promise<Blob> {
+  const size = (await projectFileSizes(projectId, [path]))[path];
+  if (size !== undefined && size > IMAGE_MAX_BYTES) throw new ImageTooLargeError();
+  const bytes: ArrayBuffer =
+    size !== undefined && size > IMAGE_DIRECT_READ_BYTES
+      ? (base64ToUint8Array(await readFileBase64(projectId, path)).buffer as ArrayBuffer)
+      : await readProjectBytes(projectId, path);
+  return new Blob([bytes], { type: imageMime(path) });
+}
+
+function useObjectUrl(blob: Blob | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!blob) return;
+    const next = URL.createObjectURL(blob);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [blob]);
+  return url;
+}
 
 interface ImageView {
   readonly scale: number | null;
@@ -24,10 +52,19 @@ export function clampImageScale(scale: number): number {
 }
 
 export function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
+  return <ImageViewer key={`${projectId}\n${path}`} projectId={projectId} path={path} />;
+}
+
+function ImageViewer({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor", "preview"]);
   const key = `${projectId}\n${path}`;
-  const [src, setSrc] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const read = useAsyncTask<Blob>((error) => {
+    if (error instanceof ImageTooLargeError) return t(($) => $.editor.shell.imageTooLarge, { limit: formatBytes(IMAGE_MAX_BYTES) });
+    void logError("open an image", error);
+    return t(($) => $.editor.shell.imageLoadFailed, { detail: String(error) });
+  });
+  const { run } = read;
+  const src = useObjectUrl(read.result);
   const [undecodable, setUndecodable] = useState(false);
   const [scale, setScale] = useState<number | null>(() => views.get(key)?.scale ?? null);
   const [fit, setFit] = useState(1);
@@ -38,21 +75,8 @@ export function ImageFileView({ projectId, path }: Readonly<{ projectId: string;
   scaleRef.current = scale;
 
   useEffect(() => {
-    let cancelled = false;
-    setSrc(null);
-    setErr(null);
-    setUndecodable(false);
-    readFileBase64(projectId, path)
-      .then((b64) => {
-        if (!cancelled) setSrc(`data:${imageMime(path)};base64,${b64}`);
-      })
-      .catch((error) => {
-        if (!cancelled) setErr(String(error));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, path]);
+    void run(() => readImage(projectId, path));
+  }, [path, projectId, run]);
 
   const remember = useCallback(() => {
     views.set(key, { scale: scaleRef.current, top: scroller?.scrollTop ?? 0, left: scroller?.scrollLeft ?? 0 });
@@ -100,12 +124,8 @@ export function ImageFileView({ projectId, path }: Readonly<{ projectId: string;
     scroller.scrollLeft = saved.left;
   }, [key, natural, scale, scroller]);
 
-  if (err) {
-    return (
-      <div className="p-6 text-sm text-destructive">{t(($) => $.editor.shell.imageLoadFailed, { detail: err })}</div>
-    );
-  }
-  if (!src) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
+  if (read.error !== null) return <ErrorState className="p-6" message={read.error} />;
+  if (!src) return <LoadingState className="p-6" label={t(($) => $.common.state.loading)} />;
   if (undecodable) {
     return (
       <div
@@ -125,7 +145,10 @@ export function ImageFileView({ projectId, path }: Readonly<{ projectId: string;
       ref={imageRef}
       src={src}
       alt={basename(path)}
-      onError={() => setUndecodable(true)}
+      onError={() => {
+        setUndecodable(true);
+        void logWarning("show an image", path);
+      }}
       onLoad={(event) => {
         setNatural(event.currentTarget.naturalWidth);
         measureFit();
@@ -144,45 +167,25 @@ export function ImageFileView({ projectId, path }: Readonly<{ projectId: string;
           <div className="grid min-h-full w-max min-w-full place-items-center p-4">{image}</div>
         )}
       </div>
-      <FloatingBar
+      <ZoomBar
         aria-label={basename(path)}
         className="absolute bottom-4 right-4"
         onMouseDown={(event) => event.preventDefault()}
-      >
-        <TooltipIconButton
-          label={t(($) => $.preview.zoom.out)}
-          side="top"
-          className="rounded-full"
-          disabled={shown <= IMAGE_MIN_SCALE}
-          onClick={() => step(-1)}
-        >
-          <Minus aria-hidden />
-        </TooltipIconButton>
-        <output
-          aria-label={t(($) => $.preview.zoom.percentLabel, { percent })}
-          className="min-w-12 text-center text-xs font-medium tabular-nums"
-        >
-          {t(($) => $.preview.zoom.percent, { percent })}
-        </output>
-        <TooltipIconButton
-          label={t(($) => $.preview.zoom.in)}
-          side="top"
-          className="rounded-full"
-          disabled={shown >= IMAGE_MAX_SCALE}
-          onClick={() => step(1)}
-        >
-          <Plus aria-hidden />
-        </TooltipIconButton>
-        <TooltipIconButton
-          label={t(($) => $.editor.shell.imageFit)}
-          side="top"
-          className="rounded-full"
-          disabled={scale === null}
-          onClick={() => zoomTo(null)}
-        >
-          <Maximize aria-hidden />
-        </TooltipIconButton>
-      </FloatingBar>
+        size="sm"
+        value={shown}
+        min={IMAGE_MIN_SCALE}
+        max={IMAGE_MAX_SCALE}
+        onStep={step}
+        onReset={() => zoomTo(null)}
+        resetLabel={t(($) => $.editor.shell.imageFit)}
+        resetIcon={<Maximize aria-hidden />}
+        resetDisabled={scale === null}
+        labels={{
+          zoomOut: t(($) => $.preview.zoom.out),
+          zoomIn: t(($) => $.preview.zoom.in),
+          value: t(($) => $.preview.zoom.percentLabel, { percent }),
+        }}
+      />
     </div>
   );
 }

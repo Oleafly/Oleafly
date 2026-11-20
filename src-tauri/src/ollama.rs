@@ -526,6 +526,17 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_server_that_is_not_running_is_reported_the_way_settings_expects() {
+        let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", closed.local_addr().unwrap());
+        drop(closed);
+        let Err(error) = fetch_tags(&http_client().unwrap(), &base).await else {
+            panic!("a closed port answered");
+        };
+        assert_eq!(error, format!("Ollama not reachable at {base}"));
+    }
+
+    #[tokio::test]
     async fn tags_with_capabilities_need_no_show_requests() {
         let fixture = serve(|method, path, _| match (method, path) {
             ("GET", "/api/tags") => Some((

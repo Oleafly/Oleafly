@@ -100,6 +100,27 @@ describe("theme customization schema", () => {
       .toThrow("larger than 128 KiB");
   });
 
+  it("carries a theme's dark PDF page colors per mode", () => {
+    const imported = parseThemeCustomizationImport(
+      JSON.stringify({
+        cssVars: {
+          light: { "pdf-dark-page": "#1e1e1e" },
+          dark: { "pdf-dark-page": "#282c34", "pdf-dark-text": "#abb2bf" },
+        },
+      }),
+    );
+    expect(imported.skippedTokens).toEqual([]);
+    expect(imported.customization.light).toEqual({ "pdf-dark-page": "#1e1e1e" });
+    expect(imported.customization.dark).toEqual({ "pdf-dark-page": "#282c34", "pdf-dark-text": "#abb2bf" });
+    expect(JSON.parse(serializeThemeCustomization(imported.customization)).cssVars.dark).toEqual({
+      "pdf-dark-page": "#282c34",
+      "pdf-dark-text": "#abb2bf",
+    });
+    applyThemeCustomization("dark", imported.customization);
+    expect(document.documentElement.style.getPropertyValue("--pdf-dark-page")).toBe("#282c34");
+    expect(document.documentElement.style.getPropertyValue("--pdf-dark-text")).toBe("#abb2bf");
+  });
+
   it("rejects unknown tokens and executable stylesheet features", () => {
     expect(() => validateThemeCustomization({ light: { injected: "#fff" }, dark: {} })).toThrow("Unsupported theme token");
     expect(() => validateCustomCss("@import url(https://example.test/theme.css)"))

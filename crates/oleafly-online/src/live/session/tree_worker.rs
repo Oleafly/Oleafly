@@ -1,15 +1,19 @@
+use std::pin::pin;
 use std::sync::Arc;
 use std::time::Duration;
 
 use super::pacing::JoinPacer;
 use super::state::{name_of, parent_of, Finished, Job};
-use super::{SessionTuning, Shared};
+use super::{persist_soon, SessionTuning, Shared};
 use crate::live::rest::{RestError, TreeRest};
 use crate::live::tree_queue::{stays_a_file, TreeChange, TreeFailure, MAX_UPLOAD_BYTES};
 use crate::realtime::events::{EntityId, TreeEvent};
 use crate::session::SessionHandle;
 
 const LONGEST_RETRY: Duration = Duration::from_secs(60);
+const SHORTEST_RATE_WAIT: Duration = Duration::from_secs(1);
+const LONGEST_RATE_WAIT: Duration = Duration::from_secs(15 * 60);
+const STOP_GRACE: Duration = Duration::from_secs(2);
 const ALREADY_THERE: &str = "already exists";
 
 enum Outcome {
@@ -35,6 +39,28 @@ pub(super) struct TreeWorker {
 
 fn already_there(error: &RestError) -> bool {
     matches!(error, RestError::Refused { status: 400, message } if message.to_ascii_lowercase().contains(ALREADY_THERE))
+}
+
+async fn stopped(shared: &Shared) {
+    loop {
+        let notified = shared.tree_wake.notified();
+        if shared.is_stopping() {
+            return;
+        }
+        notified.await;
+    }
+}
+
+async fn until_stopped<T>(
+    shared: &Shared,
+    work: impl std::future::Future<Output = T>,
+) -> Option<T> {
+    let mut work = pin!(work);
+    tokio::select! {
+        done = work.as_mut() => return Some(done),
+        () = stopped(shared) => {}
+    }
+    tokio::time::timeout(STOP_GRACE, work).await.ok()
 }
 
 impl TreeWorker {
@@ -83,14 +109,18 @@ impl TreeWorker {
                 self.pause(self.tuning.tick).await;
                 continue;
             };
-            self.shared.persist(true);
+            persist_soon(&self.shared, true).await;
             let session = self.shared.session();
-            match self.perform(&session, &job).await {
+            let shared = Arc::clone(&self.shared);
+            let Some(outcome) = until_stopped(&shared, self.perform(&session, &job)).await else {
+                return;
+            };
+            match outcome {
                 Outcome::Finished(finished) => {
                     self.failures = 0;
                     self.shared
                         .with(|state| state.finish_tree_job(&job, finished));
-                    self.shared.persist(true);
+                    persist_soon(&self.shared, true).await;
                 }
                 Outcome::Later(wait) => self.hold(wait).await,
             }
@@ -112,7 +142,11 @@ impl TreeWorker {
                 Finished::Failed(TreeFailure::Refused(message)).into()
             }
             RestError::NotAllowed => Finished::Failed(TreeFailure::NotAllowed).into(),
-            RestError::RateLimited(wait) => Outcome::Later(wait.unwrap_or(self.tuning.rate_floor)),
+            RestError::TooLarge => Finished::Failed(TreeFailure::TooLarge).into(),
+            RestError::RateLimited(wait) => Outcome::Later(
+                wait.map_or(self.tuning.rate_floor, |wait| wait.max(SHORTEST_RATE_WAIT))
+                    .min(LONGEST_RATE_WAIT),
+            ),
             RestError::SignedOut
             | RestError::Lost(_)
             | RestError::Unreachable(_)
@@ -228,7 +262,20 @@ impl TreeWorker {
             .flatten()
     }
 
+    async fn too_large(&self, path: &str) -> bool {
+        let port = Arc::clone(&self.shared.port);
+        let path = path.to_string();
+        tokio::task::spawn_blocking(move || port.local_file_size(&path))
+            .await
+            .ok()
+            .flatten()
+            .is_some_and(|size| size > MAX_UPLOAD_BYTES)
+    }
+
     async fn new_doc(&mut self, session: &SessionHandle, path: &str) -> Outcome {
+        if self.too_large(path).await {
+            return Finished::Failed(TreeFailure::TooLarge).into();
+        }
         let Some(text) = self.read_text(path).await else {
             return Finished::Dropped.into();
         };
@@ -265,6 +312,9 @@ impl TreeWorker {
     }
 
     async fn upload(&mut self, session: &SessionHandle, path: &str) -> Outcome {
+        if self.too_large(path).await {
+            return Finished::Failed(TreeFailure::TooLarge).into();
+        }
         let port = Arc::clone(&self.shared.port);
         let wanted = path.to_string();
         let Some(file) = tokio::task::spawn_blocking(move || port.local_file(&wanted))

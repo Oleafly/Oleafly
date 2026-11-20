@@ -190,6 +190,7 @@ import { toast } from "@/lib/toast";
 import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
+import { withoutFunctionKeyText } from "@oleafly/wysiwyg/function-key-text";
 import { isProviderConfigured, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import { rememberedModel } from "./scope-model-memory";
 import {
@@ -2116,7 +2117,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
   pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking, customProviders };
 
   const send = useCallback(async (
-    text: string,
+    typed: string,
     queued?: QueuedFollowUp,
     options?: {
       approvedPlan?: boolean;
@@ -2124,6 +2125,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       web?: boolean;
     },
   ) => {
+    const text = withoutFunctionKeyText(typed);
     const { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking, customProviders } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);

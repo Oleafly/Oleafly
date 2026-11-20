@@ -11,13 +11,27 @@ import {
 } from "@/lib/overleaf-live";
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
-import type { CollabLiveStoreState, LiveBackendDriver } from "./live-store";
+import type { CollabErrorCode } from "@/lib/tauri";
+import type { CollabLiveStoreState, LiveBackendDriver, StartRefusal } from "./live-store";
 import { useCollabLiveStore } from "./live-store";
 import { startOverleafNotices } from "./overleaf-notices";
 import { startOverleafTree } from "./overleaf-tree";
 
-export function wantsOverleaf(state: CollabLiveStoreState): boolean {
+const REFUSALS: Readonly<Partial<Record<CollabErrorCode, StartRefusal>>> = {
+  signed_out: "signed_out",
+  unauthorized: "signed_out",
+  not_found: "cancelled",
+  access_ended: "access_ended",
+  failed: "failed",
+  live_elsewhere: "failed",
+  collab_shared: "failed",
+  conflict: "failed",
+  forbidden: "access_ended",
+};
+
+function wantsOverleaf(state: CollabLiveStoreState): boolean {
   const link = state.overleaf;
+  if (!state.shareChecked || state.share !== null) return false;
   return link !== null && !link.paused && (link.signedIn || state.status?.state === "signed_out");
 }
 
@@ -46,6 +60,7 @@ export function overleafDriver(): LiveBackendDriver {
     stop: (projectId) => overleafLiveStop(projectId),
     refresh: (projectId) => loadOverleaf(projectId),
     resumable: (reason) => reason === "signed_out",
+    refusal: (code) => REFUSALS[code] ?? null,
   };
 }
 

@@ -282,6 +282,15 @@ describe("the send queue", () => {
     expect(useAcpSessionsStore.getState().queues.s).toEqual([]);
   });
 
+  it("steers without the characters macOS gives function keys", async () => {
+    reset([session("s", { status: "running", capabilities: { ...session("s").capabilities, steering: true } })]);
+    mocks.acpSteer.mockResolvedValue("injected");
+    const store = useAcpSessionsStore.getState();
+    const id = store.enqueue("s", draft("Also check the figures\uF72B"));
+    await store.steerQueued("p", "s", id);
+    expect(mocks.acpSteer).toHaveBeenCalledWith("p", "s", "Also check the figures");
+  });
+
   it("keeps a steered message queued when the agent needs a new turn", async () => {
     reset([session("s", { status: "running", capabilities: { ...session("s").capabilities, steering: true } })]);
     mocks.acpSteer.mockResolvedValue("promptRequired");

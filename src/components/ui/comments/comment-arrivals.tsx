@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { inPlainField } from "@/lib/field-history";
+import { scrollBehavior } from "@/lib/reduced-motion";
 
 export interface CommentArrival {
   id: string;
@@ -54,6 +55,16 @@ export function newArrivals(
     .map((item) => item.id);
 }
 
+export function threadArrivals(
+  threads: readonly { messages: readonly { id: string; author: string; at: number }[] }[],
+  self: string | null,
+  group?: string,
+): CommentArrival[] {
+  return threads.flatMap((thread) =>
+    thread.messages.map((message) => ({ id: message.id, mine: message.author === self, at: message.at, group })),
+  );
+}
+
 function groupsOf(items: readonly CommentArrival[]): Set<string> {
   return new Set(items.flatMap((item) => (item.group === undefined ? [] : [item.group])));
 }
@@ -61,10 +72,6 @@ function groupsOf(items: readonly CommentArrival[]): Set<string> {
 function scrolled(from: number, element: HTMLElement): number {
   const settled = Math.min(from, Math.max(0, element.scrollHeight - element.clientHeight));
   return Math.abs(element.scrollTop - settled) <= 1 ? 0 : element.scrollTop - from;
-}
-
-function reducedMotion(): boolean {
-  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 }
 
 interface Anchor {
@@ -202,14 +209,10 @@ function itemOf(element: Element, container: Element): Element {
   return item;
 }
 
-function itemBefore(item: Element, container: Element): Element | null {
-  for (let node: Element | null = item; node && node !== container; node = node.parentElement) {
-    for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
-      if (sibling.matches(ITEMS)) return sibling;
-      const inner = sibling.querySelectorAll(ITEMS);
-      const last = inner.item(inner.length - 1);
-      if (last) return itemOf(last, container);
-    }
+function itemBefore(items: NodeListOf<Element>, from: number, item: Element, container: Element): Element | null {
+  for (let index = Math.min(from, items.length - 1); index >= 0; index -= 1) {
+    const candidate = items[index];
+    if (!item.contains(candidate)) return itemOf(candidate, container);
   }
   return null;
 }
@@ -246,34 +249,51 @@ function onScreen(container: HTMLElement, element: HTMLElement): boolean {
   return rect.bottom > box.top && rect.top < box.bottom;
 }
 
-function anchorsIn(container: HTMLElement): Anchor[] {
-  if (container.scrollTop <= 0) return [];
-  const box = container.getBoundingClientRect();
-  const found: Anchor[] = [];
-  let straddling: Element | null = null;
-  for (const element of container.querySelectorAll(ITEMS)) {
-    const rect = element.getBoundingClientRect();
-    if (rect.top >= box.top) {
-      found.push({ element, top: rect.top - box.top, bottom: rect.bottom - box.top });
-      if (rect.top >= box.bottom) break;
-    } else if (found.length === 0 && rect.bottom > box.top) straddling = element;
+function firstStartingBelow(items: NodeListOf<Element>, top: number): number {
+  let low = 0;
+  let high = items.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (items[middle].getBoundingClientRect().top >= top) high = middle;
+    else low = middle + 1;
   }
-  if (found.length > 0) return found;
-  let element = straddling;
-  for (let inner = element; inner; ) {
-    element = inner;
-    const child = Array.from(inner.children).find((next) => next.getBoundingClientRect().bottom > box.top);
-    inner = child && child.getBoundingClientRect().top < box.top ? child : null;
-    if (child && !inner) element = child;
+  return low;
+}
+
+function lastReachingBelow(items: NodeListOf<Element>, top: number): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) if (items[index].getBoundingClientRect().bottom > top) return index;
+  return -1;
+}
+
+function innermostAcross(element: Element, top: number): Element {
+  let found = element;
+  for (let inner: Element | null = element; inner; ) {
+    found = inner;
+    const child: Element | undefined = Array.from(inner.children).find((next) => next.getBoundingClientRect().bottom > top);
+    inner = child && child.getBoundingClientRect().top < top ? child : null;
+    if (child && !inner) found = child;
   }
-  if (!element) return [];
-  const rect = element.getBoundingClientRect();
-  return [{ element, top: rect.top - box.top, bottom: rect.bottom - box.top }];
+  return found;
 }
 
 function aimAt(container: HTMLElement): Aim {
-  const anchors = anchorsIn(container);
-  return { anchors, above: anchors[0] ? itemBefore(itemOf(anchors[0].element, container), container) : null };
+  if (container.scrollTop <= 0) return { anchors: [], above: null };
+  const box = container.getBoundingClientRect();
+  const items = container.querySelectorAll(ITEMS);
+  const anchors: Anchor[] = [];
+  const at = (element: Element) => {
+    const rect = element.getBoundingClientRect();
+    anchors.push({ element, top: rect.top - box.top, bottom: rect.bottom - box.top });
+    return rect;
+  };
+  let from = firstStartingBelow(items, box.top);
+  for (let index = from; index < items.length; index += 1) if (at(items[index]).top >= box.bottom) break;
+  if (anchors.length === 0) {
+    from = lastReachingBelow(items, box.top);
+    if (from < 0) return { anchors, above: null };
+    at(innermostAcross(items[from], box.top));
+  }
+  return { anchors, above: itemBefore(items, from, itemOf(anchors[0].element, container), container) };
 }
 
 function placeOf(container: HTMLElement): Place {
@@ -530,7 +550,7 @@ export function CommentScrollArea({
               type="button"
               size="sm"
               className="pointer-events-auto h-7 gap-1.5 rounded-full bg-foreground text-[0.78125rem] font-medium text-background shadow-md hover:bg-foreground/90 focus-visible:bg-foreground/80 [&_svg]:size-[0.8125rem]"
-              onClick={() => target.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" })}
+              onClick={() => target.scrollIntoView({ block: "center", behavior: scrollBehavior() })}
             >
               <Icon aria-hidden />
               {label(waiting.length)}

@@ -272,6 +272,7 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTypstFormsStore } from "@/store/typst-forms";
 import { setWysiwygEditor } from "@/components/editor/wysiwyg/controller";
+import { ownHistory } from "@/lib/field-history";
 import { registerNoteEditor } from "@/lib/open-note-editors";
 import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
 import { useNoteTabsStore } from "@/store/note-tabs";
@@ -386,8 +387,6 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.useRealTimers();
-  // App starts lazy imports (the preview window restore) on every render; let
-  // them land while the mocks are in place, not after the file is torn down.
   await vi.dynamicImportSettled();
   document.documentElement.removeAttribute("style");
 });
@@ -844,6 +843,38 @@ describe("native events", () => {
     expect(mocks.editorRedo).not.toHaveBeenCalled();
     stop();
     root.remove();
+  });
+
+  it("sends undo from a whiteboard's canvas and the Edit menu to the board's own history", async () => {
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true });
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const board = document.createElement("div");
+    const canvas = document.createElement("div");
+    canvas.tabIndex = 0;
+    const label = document.createElement("textarea");
+    board.append(canvas, label);
+    document.body.append(board);
+    const run = vi.fn();
+    const stop = ownHistory(board, run);
+    canvas.focus();
+    const undo = keydown(canvas, { key: "z", metaKey: true });
+    keydown(canvas, { key: "z", metaKey: true, shiftKey: true });
+    emit("menu://undo", null);
+    label.focus();
+    keydown(label, { key: "z", metaKey: true });
+    expect(undo.defaultPrevented).toBe(true);
+    expect(run.mock.calls).toEqual([[false], [true], [false]]);
+    expect(execCommand.mock.calls).toEqual([["undo"]]);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    expect(mocks.editorRedo).not.toHaveBeenCalled();
+    stop();
+    canvas.focus();
+    keydown(canvas, { key: "z", metaKey: true });
+    expect(run).toHaveBeenCalledTimes(3);
+    expect(mocks.editorUndo).toHaveBeenCalledTimes(1);
+    board.remove();
   });
 
   it("keeps menu history in the Markdown visual editor on the document", async () => {

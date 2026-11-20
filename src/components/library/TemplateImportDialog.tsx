@@ -4,7 +4,7 @@ import { ChevronLeft, FileText, Search, X } from "lucide-react";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT, LITERAL_INPUT } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
@@ -390,13 +390,13 @@ export function TemplateImportDialog({
         </label>
         <div className="flex items-center gap-2">
           <Input
+            {...LITERAL_INPUT}
             id={linkId}
             data-modal-initial-focus
             data-testid="template-import-link-input"
             value={link}
             disabled={busy}
             inputMode="url"
-            spellCheck={false}
             placeholder={t(($) => $.library.customTemplates.import.linkPlaceholder)}
             onChange={(event) => setLink(event.target.value)}
             className="flex-1"
@@ -650,6 +650,7 @@ function AccountProjects({
           className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
+          {...SEARCH_INPUT}
           id={searchId}
           data-modal-initial-focus
           data-testid="template-import-account-search"

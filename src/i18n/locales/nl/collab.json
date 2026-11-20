@@ -224,6 +224,8 @@
     "overleaf_linked": "Dit project is gekoppeld aan Overleaf. Ontkoppel het om het op een Oleafly Server te delen.",
     "collab_shared": "Dit project wordt gedeeld op een Oleafly Server. Stop daar met delen om het live met Overleaf te bewerken.",
     "live_elsewhere": "Dit project is live in een ander Oleafly-venster. Stop daar met live bewerken en probeer het dan opnieuw.",
+    "access_ended": "Je hebt geen toegang meer tot dit project, dus het kan niet live worden bewerkt. Je kopie blijft op deze computer staan. Vraag de eigenaar om het opnieuw met je te delen.",
+    "failed": "Live bewerken kon niet starten door een fout. Je wijzigingen blijven op deze computer staan. Wacht even en kies dan Opnieuw synchroniseren.",
     "overleaf_unsent": "Een deel van je wijzigingen is nog niet bij Overleaf aangekomen. Hervat het live bewerken om ze te versturen en ontkoppel daarna.",
     "suggestion_not_found": "Die suggestie bestaat niet meer. Misschien heeft iemand haar al geaccepteerd of geweigerd.",
     "suggestion_not_yours": "Alleen wie deze suggestie heeft gedaan, kan haar intrekken.",
@@ -554,7 +556,8 @@
     "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert.",
     "projectNotesShared": "De notities van het project worden gedeeld met iedereen in dit project. Persoonlijke notities blijven privé.",
     "personalNotesPrivate": "Persoonlijke notities blijven privé. Alleen notities in de notitiemap van het project worden gedeeld.",
-    "unlinkOverleaf": "Ontkoppelen van Overleaf"
+    "unlinkOverleaf": "Ontkoppelen van Overleaf",
+    "unlinkOverleafDescription": "Live bewerken stopt voor dit project. Je kopie blijft op deze computer staan en je medeauteurs houden het online project zoals het is."
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",

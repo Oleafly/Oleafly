@@ -3,6 +3,7 @@ import { Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { watchSize } from "./comment-resize";
 
 export type CommentQuoteState = "anchored" | "outdated" | "detached" | "pending";
 
@@ -20,10 +21,7 @@ function useClamped(text: string, expanded: boolean) {
     if (!element || expanded) return;
     const measure = () => setClamped(text !== "" && element.scrollHeight > element.clientHeight + 1);
     measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
+    return watchSize(element, measure);
   }, [text, expanded]);
   return [ref, clamped] as const;
 }

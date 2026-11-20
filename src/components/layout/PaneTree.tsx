@@ -19,24 +19,24 @@ import {
 } from "react-resizable-panels";
 import { KeptAliveSlot } from "@/components/layout/KeptAliveSlot";
 import {
-  FILE_SIDEBAR_MIN_WIDTH,
   assistantMinimumWidth,
+  fileSidebarWidth,
   sidebarMinimumPercent,
   sidebarPanelGroupWidth,
 } from "@/lib/assistant-layout";
 import {
   PANEL_STYLE,
   expandedSize,
-  hasStoredPanelLayout,
   panelLimitProps,
   percent,
   useDismissiblePanelLayout,
+  useOpenAtDefaultWidth,
   useSeparatorKeyboard,
-  useSteadyPanelWidth,
   type DismissiblePanel,
   type PanelLimits,
 } from "@/lib/panel-layout";
 import { cn } from "@/lib/utils";
+import { useFilesStore } from "@/store/files";
 import { workspacePanelId } from "@/lib/workspace-layout";
 import {
   isLeaf,
@@ -51,6 +51,7 @@ import {
   type PaneShown,
   type PaneSplit,
   type SplitDirection,
+  usePaneLayoutStore,
 } from "@/store/pane-layout";
 
 export interface PaneTreeConfig {
@@ -69,7 +70,6 @@ const PaneTreeContext = createContext<PaneTreeConfig | null>(null);
 
 export const PaneTreeProvider = PaneTreeContext.Provider;
 
-const SIDEBAR_DEFAULT_PX = 340;
 const TERMINAL_MIN_SIZE = 10;
 const SPLIT_LIMITS: Readonly<Record<string, PanelLimits>> = { horizontal: { minSize: 25 }, document: {} };
 
@@ -88,12 +88,17 @@ function VHandle({ id, onKeyDownCapture }: Readonly<{ id: string; onKeyDownCaptu
       style={{ cursor: "col-resize" }}
       className="resize-handle-col group relative flex w-1.5 shrink-0 select-none bg-background"
     >
-      <span className={cn("absolute inset-0 flex items-center justify-center", "transition-colors hover:bg-accent/40")}>
+      <span
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-colors",
+          "group-hover:bg-accent/40 group-data-[separator=hover]:bg-accent/40 group-data-[separator=active]:bg-accent/40",
+        )}
+      >
         <span
           className={cn(
             "pointer-events-none h-10 w-1 rounded-full bg-border opacity-0 transition-[opacity,background-color]",
-            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=active]:opacity-100",
-            "group-hover:bg-ring group-data-[separator=active]:bg-ring",
+            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=hover]:opacity-100 group-data-[separator=active]:opacity-100",
+            "group-hover:bg-ring group-data-[separator=hover]:bg-ring group-data-[separator=active]:bg-ring",
           )}
         />
       </span>
@@ -171,31 +176,14 @@ function useMeasuredSize(row: boolean, appFontSize: number): [(element: HTMLDivE
   const [size, setSize] = useState(0);
   useEffect(() => {
     if (!element) return;
-    let frame = 0;
-    let measuredOnce = false;
-    // The first size applies at once. A later one applies on the next frame, after the panel
-    // library has handled the same resize: a toolbar that settles its row with flushSync inside
-    // its own ResizeObserver callback commits pending updates there, and a size committed then
-    // rewrote the layout before the library kept the file tree's pixel width, so the tree grew
-    // and shrank with the window.
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
       if (!rect) return;
       const measured = row ? rect.width : rect.height;
-      if (!measured) return;
-      cancelAnimationFrame(frame);
-      if (!measuredOnce) {
-        measuredOnce = true;
-        setSize(measured);
-        return;
-      }
-      frame = requestAnimationFrame(() => setSize(measured));
+      if (measured) setSize(measured);
     });
     observer.observe(element);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [element, row]);
   return [setElement, row ? sidebarPanelGroupWidth(size, appFontSize) : size];
 }
@@ -263,15 +251,26 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
   );
   useEffect(() => () => reportSplitSizes(node.id, null), [node.id]);
   const holdsSidebar = row && rendered.some((child) => isLeaf(child) && child.pane === "sidebar");
-  const sidebarDefault = share(SIDEBAR_DEFAULT_PX, groupPx, 15, 65);
-  const storedAtMount = useMemo(() => (groupId ? hasStoredPanelLayout(groupId) : false), [groupId]);
-  useSteadyPanelWidth({
+  const sidebarWidth = fileSidebarWidth(config.appFontSize);
+  const sidebarDefault = share(sidebarWidth, groupPx, 15, 65);
+  const { projectId } = config;
+  const firstOpening = useCallback(
+    () => projectId === null || usePaneLayoutStore.getState().takeSidebarOpening(projectId),
+    [projectId],
+  );
+  useOpenAtDefaultWidth({
     panelRef: sidebarRef,
-    active: holdsSidebar,
+    open: holdsSidebar,
     groupWidth: groupPx,
     defaultSize: sidebarDefault,
-    applyDefault: !storedAtMount,
+    firstOpening,
   });
+  useEffect(() => {
+    if (!root) return;
+    return () => {
+      if (useFilesStore.getState().projectId !== projectId) usePaneLayoutStore.getState().forgetSidebarOpening();
+    };
+  }, [projectId, root]);
   const fill = rendered.reduce<PaneNode | undefined>(
     (best, child) => (best === undefined || shareOf(child) > shareOf(best) ? child : best),
     undefined,
@@ -295,7 +294,7 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
         id={id}
         defaultSize={defaultSize === undefined ? undefined : percent(defaultSize)}
         {...panelLimitProps(limits[id] ?? {})}
-        {...(pane === "sidebar" && row ? { minSize: `${FILE_SIDEBAR_MIN_WIDTH}px` } : {})}
+        {...(pane === "sidebar" && row ? { minSize: `${sidebarWidth}px` } : {})}
         {...(row && holdsSidebarWidth(child) ? { groupResizeBehavior: "preserve-pixel-size" as const } : {})}
         style={PANEL_STYLE}
         className={cn(

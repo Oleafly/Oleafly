@@ -166,7 +166,6 @@
       "purple": "紫色"
     },
     "imageFile": "图片文件",
-    "apply": "应用",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "分屏",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "加载 PDF 失败：{{detail}}",
     "imageLoadFailed": "加载图片失败：{{detail}}",
     "imageUnreadable": "无法将此文件显示为图片。它可能已损坏，或者根本不是图片。",
+    "imageTooLarge": "此图片大于 {{limit}}，因此不在这里显示。",
     "imageFit": "适合窗口",
     "htmlPreviewFailed": "预览页面失败：{{detail}}",
     "binaryFile": "二进制文件，无法预览。",
@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "未找到图片",
+        "imageOutside": "不显示项目以外的图片",
+        "imageUnreadable": "无法显示此图片",
+        "imageAltText": "替代文本：{{alt}}",
         "imageLoading": "正在加载图片…",
         "imageAlt": "图片 {{path}}",
         "width": "宽度",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} 条参考文献",
+    "matchCount_other": "{{shown}} / {{total}} 条参考文献",
+    "clearSearch": "清除搜索",
     "empty": "此文件还没有参考文献。",
     "etAl": "{{author}} 等",
     "noMatch": "没有与搜索匹配的参考文献。",

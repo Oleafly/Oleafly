@@ -757,6 +757,10 @@ export function NewProjectDialog({
             <Input
               ref={searchRef}
               data-testid="template-search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("dialog.searchPlaceholder")}
@@ -999,6 +1003,7 @@ export function NewProjectDialog({
         aria-modal="true"
         aria-labelledby="new-project-title"
         data-testid="template-gallery"
+        data-modal-surface=""
         data-tour="project-template-gallery"
         data-tour-stage={step === 1 ? "templates" : "details"}
         data-tour-template-selected={selected ? "true" : "false"}

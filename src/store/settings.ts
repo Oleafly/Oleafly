@@ -94,7 +94,7 @@ export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
 export type OverleafDeletes = "ask" | "always" | "never";
-export type FileMarkers = "icons" | "badges";
+type FileMarkers = "icons" | "badges";
 export type GrammarDialect =
   | "american"
   | "british"
@@ -837,6 +837,12 @@ export function appZoomLevel(value: unknown): number {
   return APP_ZOOM_LEVELS.includes(level) ? level : 100;
 }
 
+export const APP_ZOOM_STORAGE_KEY = "oleafly.appZoom";
+
+export function storedAppZoom(): number {
+  return appZoomLevel(ls(APP_ZOOM_STORAGE_KEY, "100"));
+}
+
 export const APP_ICONS = [
   { id: "classic", src: "/app-icon/classic.png", quill: ["#34B44A"] },
   { id: "pastel", src: "/app-icon/pastel.png", quill: ["#67E8F9", "#A78BFA", "#F472B6", "#FBBF24"] },
@@ -1004,8 +1010,12 @@ interface SettingsState {
   setSearchOpen: (v: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
-  settingsInitialSection: string;
-  setSettingsInitialSection: (v: string) => void;
+  settingsInitialSection: string | null;
+  setSettingsInitialSection: (v: string | null) => void;
+  settingsLastSection: string;
+  rememberSettingsSection: (section: string) => void;
+  settingsLastTabs: Readonly<Record<string, string>>;
+  rememberSettingsTab: (section: string, tab: string) => void;
   settingsInitialAppearanceTab: string | null;
   setSettingsInitialAppearanceTab: (v: string | null) => void;
   openSettingsAt: (section: string, appearanceTab?: string | null) => void;
@@ -1411,7 +1421,7 @@ export const SECTION_SETTINGS = {
     terminalConfirmClose: "oleafly.terminal.confirmClose",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
-    appZoom: "oleafly.appZoom",
+    appZoom: APP_ZOOM_STORAGE_KEY,
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
     editorCjkFontFamily: "oleafly.editor.cjkFont",
@@ -1803,10 +1813,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,
-  setSettingsOpen: (v) => set({ settingsOpen: v }),
-  settingsInitialSection: "general",
+  setSettingsOpen: (v) => set(v ? { settingsOpen: true } : { settingsOpen: false, settingsInitialSection: null }),
+  settingsInitialSection: null,
   setSettingsInitialSection: (v) =>
-    set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
+    set({ settingsInitialSection: v === null || SETTINGS_SECTIONS.has(v) ? v : "general" }),
+  settingsLastSection: "general",
+  rememberSettingsSection: (section) => {
+    if (get().settingsLastSection !== section) set({ settingsLastSection: section });
+  },
+  settingsLastTabs: {},
+  rememberSettingsTab: (section, tab) => {
+    const tabs = get().settingsLastTabs;
+    if (tabs[section] !== tab) set({ settingsLastTabs: { ...tabs, [section]: tab } });
+  },
   settingsInitialAppearanceTab: null,
   setSettingsInitialAppearanceTab: (v) => set({ settingsInitialAppearanceTab: v }),
   openSettingsAt: (section, appearanceTab = null) => {
@@ -2031,10 +2050,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appZoom: appZoomLevel(ls("oleafly.appZoom", "100")),
+  appZoom: storedAppZoom(),
   setAppZoom: (v) => {
     const level = appZoomLevel(v);
-    saveLs("oleafly.appZoom", String(level));
+    saveLs(APP_ZOOM_STORAGE_KEY, String(level));
     set({ appZoom: level });
   },
   editorUsesAppFont: ls("oleafly.editor.useAppFont", "0") === "1",

@@ -457,7 +457,7 @@ impl OverleafDoc {
                 return Ok(Applied::Ignored);
             }
             if update.v > self.version {
-                self.known = self.known.max(update.v + 1);
+                self.known = self.known.max(update.v.saturating_add(1));
                 return Err(DocError::Gap {
                     expected: self.version,
                     got: update.v,
@@ -490,7 +490,7 @@ impl OverleafDoc {
             .op
             .apply(&self.confirmed)
             .map_err(|_| DocError::OutOfStep)?;
-        self.version += 1;
+        self.version = self.version.saturating_add(1);
         self.known = self.known.max(self.version);
         Ok(Applied::Acknowledged)
     }
@@ -518,7 +518,7 @@ impl OverleafDoc {
             self.local = step.apply(&self.local).map_err(|_| DocError::OutOfStep)?;
             editor = editor.compose(&step).map_err(|_| DocError::OutOfStep)?;
         }
-        self.version += 1;
+        self.version = self.version.saturating_add(1);
         self.known = self.known.max(self.version);
         if editor.is_noop() {
             return Ok(Applied::Ignored);

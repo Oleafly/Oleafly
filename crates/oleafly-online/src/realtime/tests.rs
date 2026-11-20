@@ -527,20 +527,14 @@ async fn writes_back_a_rotated_session_cookie() {
     let rotated = handle.cookie();
     assert_ne!(sid(&rotated), Some(alice.session.clone()));
     assert_eq!(sid(&rotated), Some(rig.mock.user("alice").session));
-    let stored = session::load(&store, &rig.mock.base).unwrap().unwrap();
-    assert_eq!(stored.cookie, rotated);
-    assert_eq!(stored.user_id, alice.id);
+    let stored = || session::load(&store, &rig.mock.base).unwrap().unwrap();
+    eventually(|| stored().cookie == rotated).await;
+    assert_eq!(stored().user_id, alice.id);
     connection.close().await;
     let (again, join) = connect(&rig.http, &handle, &page, &BOTH).await.unwrap();
     assert_eq!(join.response["permissionsLevel"], "owner");
     assert_ne!(sid(&handle.cookie()), sid(&rotated));
-    assert_eq!(
-        session::load(&store, &rig.mock.base)
-            .unwrap()
-            .unwrap()
-            .cookie,
-        handle.cookie()
-    );
+    eventually(|| stored().cookie == handle.cookie()).await;
     again.close().await;
 }
 

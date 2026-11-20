@@ -3,7 +3,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { AlertTriangle, Check, CircleSlash } from "lucide-react";
 import type { ZoteroConnectionReport, ZoteroLibraryStatus } from "@oleafly/backend-port";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -250,6 +250,7 @@ function AccountPanel({ t }: Readonly<{ t: Translate }>) {
           }}
         >
           <Input
+            {...LITERAL_INPUT}
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             placeholder={t(($) => $.settings.integrations.zotero.userIdPlaceholder)}

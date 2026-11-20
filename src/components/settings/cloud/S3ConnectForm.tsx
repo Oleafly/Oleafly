@@ -2,7 +2,7 @@ import { CloudProviderLogo } from "@/components/settings/cloud/CloudProviderLogo
 import { IntegrationError } from "@/components/settings/IntegrationCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
@@ -119,20 +119,20 @@ export function S3ConnectForm({ onCancel }: Readonly<{ onCancel: () => void }>) 
         </Field>
         <Field id={`${id}-region`} label={t(($) => $.cloud.s3.region)}>
           <Input
+            {...LITERAL_INPUT}
             id={`${id}-region`}
             value={region}
             autoComplete="off"
-            spellCheck={false}
             onChange={(event) => setRegion(event.target.value)}
             className="h-8"
           />
         </Field>
         <Field id={`${id}-bucket`} label={t(($) => $.cloud.s3.bucket)}>
           <Input
+            {...LITERAL_INPUT}
             id={`${id}-bucket`}
             value={bucket}
             autoComplete="off"
-            spellCheck={false}
             onChange={(event) => setBucket(event.target.value)}
             className="h-8"
           />
@@ -144,20 +144,20 @@ export function S3ConnectForm({ onCancel }: Readonly<{ onCancel: () => void }>) 
           className="sm:col-span-2"
         >
           <Input
+            {...LITERAL_INPUT}
             id={`${id}-prefix`}
             value={prefix}
             autoComplete="off"
-            spellCheck={false}
             onChange={(event) => setPrefix(event.target.value)}
             className="h-8"
           />
         </Field>
         <Field id={`${id}-key`} label={t(($) => $.cloud.s3.accessKeyId)}>
           <Input
+            {...LITERAL_INPUT}
             id={`${id}-key`}
             value={accessKeyId}
             autoComplete="off"
-            spellCheck={false}
             onChange={(event) => setAccessKeyId(event.target.value)}
             className="h-8"
           />

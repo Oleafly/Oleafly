@@ -3,11 +3,10 @@ import { isTauri } from "@tauri-apps/api/core";
 import { create } from "zustand";
 import { Contained } from "@/components/Contained";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
-import { APP_ZOOM_LEVELS, appZoomLevel, useSettingsStore } from "@/store/settings";
+import { APP_ZOOM_LEVELS, APP_ZOOM_STORAGE_KEY, appZoomLevel, storedAppZoom, useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
 import { lazy } from "@/lib/preloadable";
 
-export const APP_ZOOM_STORAGE_KEY = "oleafly.appZoom";
 export const DEFAULT_APP_ZOOM = 100;
 
 export const useAppZoomFeedback = create<{ shown: number }>(() => ({ shown: 0 }));
@@ -16,14 +15,6 @@ const AppZoomIndicator = lazy(
   () => import("@/components/layout/AppZoomIndicator").then((module) => ({ default: module.AppZoomIndicator })),
   { warm: true },
 );
-
-export function storedAppZoom(): number {
-  try {
-    return appZoomLevel(localStorage.getItem(APP_ZOOM_STORAGE_KEY) ?? DEFAULT_APP_ZOOM);
-  } catch {
-    return DEFAULT_APP_ZOOM;
-  }
-}
 
 export function steppedAppZoom(current: number, direction: 1 | -1): number {
   const index = APP_ZOOM_LEVELS.indexOf(appZoomLevel(current));

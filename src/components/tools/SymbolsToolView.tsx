@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookOpenText, Copy, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
   ToolPane,
@@ -289,6 +289,7 @@ export function SymbolsToolView() {
             <div className="relative">
               <Search aria-hidden className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
               <Input
+                {...SEARCH_INPUT}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t(($) => $.researchTools.symbols.searchPlaceholder)}

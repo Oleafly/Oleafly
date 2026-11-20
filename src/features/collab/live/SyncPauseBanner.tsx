@@ -9,7 +9,6 @@ import { AccessChangeBanner } from "./AccessChangeBanner";
 import { CommentsNotSentBanner } from "./CommentsNotSentBanner";
 import { FileNoticesBanner } from "./FileNoticesBanner";
 import { useCollabLiveStore } from "./live-store";
-import { OverleafAccessBanner } from "./OverleafAccessBanner";
 import { OverleafBanners } from "./OverleafBanners";
 import { ProjectFullBanner } from "./ProjectFullBanner";
 import { useSyncPauseStore } from "./sync-pause";
@@ -72,8 +71,7 @@ export function CollabBanners() {
     return (
       <>
         <OverleafBanners />
-        <AccessChangeBanner roleChangesOnly />
-        <OverleafAccessBanner />
+        <AccessChangeBanner />
         <FileNoticesBanner />
       </>
     );

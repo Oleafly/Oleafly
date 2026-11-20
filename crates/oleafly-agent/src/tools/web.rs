@@ -324,7 +324,7 @@ impl WebClient {
     }
 }
 
-pub(crate) async fn read_limited(
+pub async fn read_limited(
     mut response: reqwest::Response,
     max: usize,
 ) -> std::result::Result<(Vec<u8>, bool), reqwest::Error> {

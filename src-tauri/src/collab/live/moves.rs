@@ -5,7 +5,7 @@ use std::sync::{LazyLock, Mutex};
 use oleafly_collab::doc::{NodeKind, NodeParent, Trashed};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout, Placed};
-use oleafly_collab::{write_atomic, CollabError};
+use oleafly_collab::{load_binding, write_atomic, CollabError};
 use serde::{Deserialize, Serialize};
 
 use super::super::disk::{safe_target, DiskState};
@@ -48,7 +48,7 @@ fn covers(parent: &str, path: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
-fn moved_to(from: &str, to: &str, path: &str) -> String {
+pub(super) fn moved_to(from: &str, to: &str, path: &str) -> String {
     format!("{to}{}", &path[from.len()..])
 }
 
@@ -67,7 +67,7 @@ fn on_disk(
         .map(|(id, _, _)| id.clone()))
 }
 
-fn paths_under(disk: &DiskState, path: &str) -> BTreeSet<String> {
+pub(super) fn paths_under(disk: &DiskState, path: &str) -> BTreeSet<String> {
     disk.layout
         .values()
         .map(|placed| placed.path.clone())
@@ -366,7 +366,7 @@ pub(super) fn removed_notices(
     })
 }
 
-fn remembered(file: &Path) -> Vec<RemovedFile> {
+pub(super) fn remembered(file: &Path) -> Vec<RemovedFile> {
     std::fs::read(file)
         .ok()
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
@@ -414,12 +414,24 @@ fn forget_notices(file: &Path, ids: &BTreeSet<String>) {
     }
 }
 
-fn forget_notice(file: &Path, id: &str) {
+pub(super) fn forget_notice(file: &Path, id: &str) {
     forget_notices(file, &BTreeSet::from([id.to_owned()]));
 }
 
 fn notices_in(state: &CollabState, project_id: &str) -> Result<PathBuf, CollabError> {
-    Ok(state.paths()?.project_dir(project_id)?.join(NOTICES_FILE))
+    if let Some(live) = live_for(project_id) {
+        return Ok(live.local().notices_file());
+    }
+    let paths = state.paths()?;
+    if load_binding(paths, project_id)?.is_none() {
+        if let Some(link) =
+            crate::overleaf::overleaf_link_of(project_id).map_err(CollabError::Io)?
+        {
+            let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
+            return Ok(super::overleaf::mirror_dir(&data, &link, project_id)?.join(NOTICES_FILE));
+        }
+    }
+    Ok(paths.project_dir(project_id)?.join(NOTICES_FILE))
 }
 
 pub(crate) fn lost_notices(
@@ -456,26 +468,7 @@ impl Active {
                 removed,
             )
         };
-        let back = self.local.came_back(previous, told.as_ref());
-        if let Some(payload) = &told {
-            remember_lost(&self.local.notices_file(), payload);
-        }
-        if !back.is_empty() {
-            forget_notices(&self.local.notices_file(), &back);
-        }
-        let payload = match told {
-            Some(payload) => Some(payload),
-            None if !back.is_empty() => Some(RemovedPayload {
-                project_id: self.local.project_id.clone(),
-                files: Vec::new(),
-                restored: Vec::new(),
-            }),
-            None => None,
-        };
-        if let Some(mut payload) = payload {
-            payload.restored = back.into_iter().collect();
-            self.local.host.removed(payload);
-        }
+        self.local.tell_removed(previous, told);
     }
 
     fn settle_structure(&self) {
@@ -569,7 +562,8 @@ pub(crate) fn renaming<R>(
 ) -> Result<R, String> {
     match live_for(project_id) {
         Some(Live::Server(active)) => active.rename_with(from, work, landed),
-        Some(Live::Overleaf(_)) | None => work(),
+        Some(Live::Overleaf(live)) => live.rename_with(from, work, landed),
+        None => work(),
     }
 }
 
@@ -580,13 +574,41 @@ pub(crate) fn deleting<R>(
 ) -> Result<R, String> {
     match live_for(project_id) {
         Some(Live::Server(active)) => active.delete_with(path, work),
-        Some(Live::Overleaf(_)) | None => work(),
+        Some(live @ Live::Overleaf(_)) => {
+            let outcome = work()?;
+            live.import_later(Some(vec![path.to_owned()]));
+            Ok(outcome)
+        }
+        None => work(),
     }
 }
 
 impl LiveDisk {
     pub(super) fn notices_file(&self) -> PathBuf {
         self.disk_file.with_file_name(NOTICES_FILE)
+    }
+
+    pub(super) fn tell_removed(&self, previous: &Layout, told: Option<RemovedPayload>) {
+        let back = self.came_back(previous, told.as_ref());
+        if let Some(payload) = &told {
+            remember_lost(&self.notices_file(), payload);
+        }
+        if !back.is_empty() {
+            forget_notices(&self.notices_file(), &back);
+        }
+        let payload = match told {
+            Some(payload) => Some(payload),
+            None if !back.is_empty() => Some(RemovedPayload {
+                project_id: self.project_id.clone(),
+                files: Vec::new(),
+                restored: Vec::new(),
+            }),
+            None => None,
+        };
+        if let Some(mut payload) = payload {
+            payload.restored = back.into_iter().collect();
+            self.host.removed(payload);
+        }
     }
 
     fn came_back(&self, previous: &Layout, told: Option<&RemovedPayload>) -> BTreeSet<String> {
@@ -616,7 +638,7 @@ impl LiveDisk {
         back
     }
 
-    fn note_own(&self, path: &str, present: bool) {
+    pub(super) fn note_own(&self, path: &str, present: bool) {
         let Some(target) = safe_target(&self.root, path) else {
             return;
         };
@@ -632,11 +654,10 @@ impl LiveDisk {
 mod tests {
     use std::collections::BTreeMap;
     use std::path::PathBuf;
-    use std::sync::atomic::AtomicBool;
     use std::sync::{Arc, Mutex};
 
     use oleafly_collab::doc::ProjectDoc;
-    use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
+    use oleafly_collab::sync::{spawn_live, LiveLink, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
@@ -646,13 +667,11 @@ mod tests {
     use super::super::super::disk::{exists_exact, move_path, sha256_hex};
     use super::super::{
         apply_local_import, apply_to_disk, initial_bases, read_local_changes, DiskPass, LiveDisk,
-        LiveHost, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
-        RolePayload, StatusPayload,
+        LiveHost,
     };
     use super::*;
     use crate::collab::state::CollabState;
     use crate::collab::tree::{trash_list, trash_restore};
-    use crate::folder_watch::FolderChange;
 
     struct Peer {
         dir: tempfile::TempDir,
@@ -1235,13 +1254,6 @@ mod tests {
     struct Heard(Mutex<Vec<RemovedPayload>>);
 
     impl LiveHost for Heard {
-        fn status(&self, _: StatusPayload) {}
-        fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
-        fn presence(&self, _: PresencePayload) {}
-        fn presence_left(&self, _: PresenceLeftPayload) {}
-        fn folder_changed(&self, _: FolderChange) {}
-        fn new_device(&self, _: NewDevicePayload) {}
         fn removed(&self, payload: RemovedPayload) {
             guard(&self.0).push(payload);
         }
@@ -1295,26 +1307,22 @@ mod tests {
             let (events, _events) = mpsc::unbounded_channel();
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
-            Arc::new(Active {
-                local: LiveDisk {
-                    project_id: "moving".to_owned(),
-                    root: root.clone(),
-                    disk_file: project_dir.join("materializer-index.json"),
-                    disk: Mutex::new(disk),
-                    bases: Mutex::new(bases),
-                    host: Arc::clone(&host) as Arc<dyn LiveHost>,
-                    writer,
-                    upkeep: Default::default(),
-                },
-                document_dir: dir.path().join("document"),
-                live: shared,
+            let local = LiveDisk::assembled(
+                "moving",
+                root.clone(),
+                project_dir.join("materializer-index.json"),
+                disk,
+                bases,
+                Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+            );
+            Arc::new(Active::assembled(
+                local,
+                dir.path().join("document"),
+                shared,
                 handle,
                 link,
-                account_id: AccountId::new_v7(),
-                quiet_merge: AtomicBool::new(false),
-                waiting: AtomicBool::new(false),
-                last_status: Mutex::new(LiveStatus::Connecting),
-            })
+            ))
         });
         Rig {
             root,

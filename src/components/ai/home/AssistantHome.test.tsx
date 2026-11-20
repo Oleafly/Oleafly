@@ -206,6 +206,33 @@ describe("AssistantHome", () => {
     expect(screen.queryByTestId("assistant-home-chips")).not.toBeInTheDocument();
   });
 
+  it("fades the slider's edges only where chips run past them", () => {
+    render(
+      <AssistantHome
+        skills={[skill("alpha"), skill("beta"), skill("gamma"), skill("delta"), skill("epsilon")]}
+        onPickSkill={vi.fn()}
+      />,
+    );
+    const slider = screen.getByTestId("assistant-home-chips");
+    expect(slider).not.toHaveAttribute("data-overflow-start");
+    expect(slider).not.toHaveAttribute("data-overflow-end");
+
+    Object.defineProperty(slider, "scrollWidth", { configurable: true, value: 400 });
+    Object.defineProperty(slider, "clientWidth", { configurable: true, value: 200 });
+    act(() => {
+      fireEvent.scroll(slider);
+    });
+    expect(slider).toHaveAttribute("data-overflow-end");
+    expect(slider).not.toHaveAttribute("data-overflow-start");
+
+    slider.scrollLeft = 200;
+    act(() => {
+      fireEvent.scroll(slider);
+    });
+    expect(slider).toHaveAttribute("data-overflow-start");
+    expect(slider).not.toHaveAttribute("data-overflow-end");
+  });
+
   it("drifts the slider on its own and holds still while the pointer is on it", () => {
     const frames: FrameRequestCallback[] = [];
     const raf = vi

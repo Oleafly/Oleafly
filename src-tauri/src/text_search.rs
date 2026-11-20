@@ -20,7 +20,7 @@ const MAX_FILES: usize = 20_000;
 const MAX_SCANNED_BYTES: usize = 256 << 20;
 const MAX_LINES_PER_FILE: usize = 50;
 const PREVIEW_CHARS: usize = 200;
-const BINARY_PROBE: usize = 8192;
+pub(crate) const BINARY_PROBE: usize = 8192;
 const DEADLINE: Duration = Duration::from_secs(8);
 const PATH_WEIGHT: f64 = 10.0;
 const SKIPPED_EXTENSIONS: [&str; 14] = [
@@ -267,10 +267,14 @@ fn read_text(path: &Path) -> Option<String> {
         return None;
     }
     let bytes = std::fs::read(path).ok()?;
-    if bytes[..bytes.len().min(BINARY_PROBE)].contains(&0) {
+    if looks_binary(&bytes) {
         return None;
     }
     Some(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
+    bytes[..bytes.len().min(BINARY_PROBE)].contains(&0)
 }
 
 fn preview(line: &str, ranges: &[(usize, usize)]) -> (String, Vec<[u32; 2]>) {

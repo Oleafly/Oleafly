@@ -5,7 +5,7 @@ import { Package, Search } from "lucide-react";
 import { create } from "zustand";
 import { i18n } from "@/i18n";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
@@ -142,6 +142,7 @@ export function PackagesDialog<P, C>({
         <div className="flex items-center gap-2 rounded-md bg-muted/30 py-1 pl-2.5 pr-1 dark:bg-background">
           <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
           <Input
+            {...SEARCH_INPUT}
             data-modal-initial-focus
             value={query}
             onChange={(event) => setQuery(event.target.value)}

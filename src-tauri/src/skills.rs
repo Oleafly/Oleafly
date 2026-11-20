@@ -12,6 +12,7 @@ pub(crate) const MAX_PACK_ENTRIES: usize = 50_000;
 pub(crate) const MAX_PACK_DEPTH: usize = 32;
 const MAX_STATE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_NAME_CHARS: usize = 100;
+const MAX_SPEC_NAME_CHARS: usize = 64;
 const MAX_DESCRIPTION_CHARS: usize = 2_000;
 const MAX_FRONTMATTER_VALUE_CHARS: usize = 1_000;
 const MAX_FRONTMATTER_ITEM_CHARS: usize = 100;
@@ -188,7 +189,6 @@ pub struct CreateSkillInput {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSkillInput {
-    pub name: String,
     pub description: String,
     pub instructions: String,
 }
@@ -1265,23 +1265,14 @@ fn record_for(root: &Path, skills: &Path, id: &str) -> Result<SkillRecord, Strin
 }
 
 fn slugify(name: &str) -> String {
-    let mut slug = String::new();
-    let mut separator = false;
-    for character in name.chars() {
-        if character.is_ascii_alphanumeric() {
-            if separator && !slug.is_empty() {
-                slug.push('-');
-            }
-            separator = false;
-            slug.push(character.to_ascii_lowercase());
-        } else {
-            separator = true;
-        }
-        if slug.len() >= 64 {
-            break;
-        }
-    }
-    let slug = slug.trim_matches('-');
+    let mut slug = name
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+        .to_ascii_lowercase();
+    slug.truncate(MAX_SPEC_NAME_CHARS);
+    let slug = slug.trim_end_matches('-');
     if slug.is_empty() {
         "skill".to_string()
     } else {
@@ -1295,7 +1286,12 @@ fn unique_skill_id(skills: &Path, name: &str) -> Result<String, String> {
         let id = if number == 1 {
             base.clone()
         } else {
-            format!("{base}-{number}")
+            let suffix = format!("-{number}");
+            let room = MAX_SPEC_NAME_CHARS - suffix.len();
+            format!(
+                "{}{suffix}",
+                base[..base.len().min(room)].trim_end_matches('-')
+            )
         };
         match std::fs::symlink_metadata(skills.join(&id)) {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(id),
@@ -1319,6 +1315,16 @@ fn render_skill_markdown(
         description,
         instructions,
     )
+}
+
+fn frontmatter_mapping(markdown: &str) -> serde_norway::Mapping {
+    split_frontmatter(markdown)
+        .ok()
+        .and_then(|(frontmatter, _)| {
+            serde_norway::from_str::<serde_norway::Value>(&frontmatter).ok()
+        })
+        .and_then(|value| value.as_mapping().cloned())
+        .unwrap_or_default()
 }
 
 fn render_skill_markdown_with_mapping(
@@ -1579,7 +1585,17 @@ pub fn add(root: &Path, pack_root: Option<&Path>, source: &Path) -> Result<Skill
             &mut CopyBudget::default(),
         )?;
         let staged_markdown = read_skill_markdown(&staging).map_err(|error| error.message)?;
-        parse_skill_markdown(&staged_markdown).map_err(|error| error.message)?;
+        let staged = parse_skill_markdown(&staged_markdown).map_err(|error| error.message)?;
+        if staged.name != id {
+            let renamed = render_skill_markdown_with_mapping(
+                frontmatter_mapping(&staged_markdown),
+                &id,
+                &staged.description,
+                &staged.instructions,
+            )?;
+            crate::sandbox::atomic_write(&staging.join("SKILL.md"), renamed.as_bytes())
+                .map_err(|error| format!("Could not write SKILL.md: {error}"))?;
+        }
         disable_id(root, &id)?;
         std::fs::rename(&staging, skills.join(&id))
             .map_err(|error| format!("Could not install the skill: {error}"))?;
@@ -1607,9 +1623,14 @@ pub fn create(
         .as_deref()
         .filter(|instructions| !instructions.trim().is_empty())
         .unwrap_or(DEFAULT_INSTRUCTIONS);
-    let markdown = render_skill_markdown(&input.name, &input.description, instructions)?;
-    let document = parse_skill_markdown(&markdown).map_err(|error| error.message)?;
-    let id = unique_skill_id(&skills, &document.name)?;
+    parse_skill_markdown(&render_skill_markdown(
+        &input.name,
+        &input.description,
+        instructions,
+    )?)
+    .map_err(|error| error.message)?;
+    let id = unique_skill_id(&skills, &input.name)?;
+    let markdown = render_skill_markdown(&id, &input.description, instructions)?;
     let directory = skills.join(&id);
     std::fs::create_dir(&directory)
         .map_err(|error| format!("Could not create the skill folder: {error}"))?;
@@ -1624,6 +1645,13 @@ pub fn create(
     record_for(root, &skills, &id)
 }
 
+pub fn preview_id(root: &Path, name: &str) -> Result<String, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    unique_skill_id(&root.join("skills"), name)
+}
+
 pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
@@ -1632,18 +1660,10 @@ pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRec
     let directory = secure_skill_directory(&skills, id)?;
     let mapping = read_skill_markdown(&directory)
         .ok()
-        .and_then(|markdown| split_frontmatter(&markdown).ok())
-        .and_then(|(frontmatter, _)| {
-            serde_norway::from_str::<serde_norway::Value>(&frontmatter).ok()
-        })
-        .and_then(|value| value.as_mapping().cloned())
+        .map(|markdown| frontmatter_mapping(&markdown))
         .unwrap_or_default();
-    let markdown = render_skill_markdown_with_mapping(
-        mapping,
-        &input.name,
-        &input.description,
-        &input.instructions,
-    )?;
+    let markdown =
+        render_skill_markdown_with_mapping(mapping, id, &input.description, &input.instructions)?;
     let _ = read_state(root)?;
     crate::sandbox::atomic_write(&directory.join("SKILL.md"), markdown.as_bytes())
         .map_err(|error| format!("Could not update SKILL.md: {error}"))?;
@@ -2150,6 +2170,14 @@ pub async fn skills_create(
 }
 
 #[tauri::command]
+pub async fn preview_skill_id(name: String) -> Result<String, String> {
+    off_ui_thread("preview the skill id", move || {
+        preview_id(&crate::paths::oleafly_root()?, &name)
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn skills_update(id: String, input: UpdateSkillInput) -> Result<SkillRecord, String> {
     off_ui_thread("update the skill", move || {
         update(&crate::paths::oleafly_root()?, &id, input)
@@ -2316,7 +2344,7 @@ mod tests {
                         tier: Some("native".into()),
                         phase: Some("research".into()),
                         license: Some("MIT".into()),
-                        tree_sha256: String::new(),
+                        tree_sha256: tree_sha256(&self.dir.path().join(id)).unwrap_or_default(),
                         files: None,
                         bytes: None,
                         origin: Some(PackOrigin {
@@ -2913,6 +2941,42 @@ mod tests {
     }
 
     #[test]
+    fn a_bundled_copy_edited_to_match_the_new_pack_takes_the_new_pack() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        pack.write_skill(
+            "paper-lookup",
+            &valid_skill(
+                "Paper Lookup",
+                "A bundled research skill.",
+                "Follow the steps.",
+            ),
+        );
+        pack.write_manifest("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let fixed = valid_skill(
+            "paper-lookup",
+            "A bundled research skill.",
+            "Follow the steps.",
+        );
+        std::fs::write(
+            skills_root(root.path()).join("paper-lookup/SKILL.md"),
+            &fixed,
+        )
+        .unwrap();
+
+        pack.write_skill("paper-lookup", &fixed);
+        pack.write_manifest("2026.10.01", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let adopted = record(&records, "paper-lookup");
+        assert_eq!(adopted.name, "paper-lookup");
+        assert!(!adopted.update_available);
+        assert_eq!(adopted.pack_version.as_deref(), Some("2026.10.01"));
+    }
+
+    #[test]
     fn a_forced_update_replaces_a_modified_bundled_skill() {
         let root = tempfile::tempdir().unwrap();
         let pack = Pack::new("2026.09.04", &["paper-lookup"]);
@@ -3101,6 +3165,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(created.id, "methods-coach");
+        assert_eq!(created.name, "methods-coach");
         assert!(!created.enabled);
         assert!(read_state(root.path())
             .unwrap()
@@ -3133,6 +3198,11 @@ mod tests {
         let added = add(root.path(), None, &source).unwrap();
 
         assert_eq!(added.id, "imported-review");
+        assert_eq!(added.name, "imported-review");
+        assert_eq!(
+            added.description,
+            "Review a manuscript with a saved checklist."
+        );
         assert!(matches!(added.validation, SkillValidation::Valid));
         assert!(!added.enabled);
         assert_eq!(added.source, SkillSource::User);
@@ -3144,7 +3214,64 @@ mod tests {
             .unwrap(),
             "Check the claims.\n"
         );
-        assert!(source.join("SKILL.md").exists());
+        assert!(std::fs::read_to_string(source.join("SKILL.md"))
+            .unwrap()
+            .contains("name: Imported Review"));
+    }
+
+    #[test]
+    fn long_names_become_spec_length_folder_names() {
+        let root = tempfile::tempdir().unwrap();
+        let long_name = format!("{} Review", "Methods".repeat(10));
+        let input = || CreateSkillInput {
+            name: long_name.clone(),
+            description: "Check a methods section.".into(),
+            instructions: None,
+        };
+
+        let first = create(root.path(), None, input()).unwrap();
+        let second = create(root.path(), None, input()).unwrap();
+
+        assert_eq!(first.id.len(), 64);
+        assert_eq!(first.name, first.id);
+        assert!(second.id.len() <= 64);
+        assert!(second.id.ends_with("-2"));
+        assert_eq!(second.name, second.id);
+    }
+
+    #[test]
+    fn the_previewed_id_is_the_id_create_saves_and_previewing_creates_nothing() {
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("data");
+        let input = |name: &str| CreateSkillInput {
+            name: name.into(),
+            description: "Check a methods section.".into(),
+            instructions: None,
+        };
+
+        assert_eq!(
+            preview_id(&data, "Methods Coach!").unwrap(),
+            "methods-coach"
+        );
+        assert_eq!(preview_id(&data, "***").unwrap(), "skill");
+        assert!(!data.exists());
+
+        let first = create(&data, None, input("Methods Coach!")).unwrap();
+        assert_eq!(first.id, "methods-coach");
+        let previewed = preview_id(&data, "methods coach").unwrap();
+        assert_eq!(previewed, "methods-coach-2");
+        assert!(!data.join("skills").join(&previewed).exists());
+        assert_eq!(
+            create(&data, None, input("methods coach")).unwrap().id,
+            previewed
+        );
+
+        let long = format!("{} Review", "Methods".repeat(10));
+        let long_preview = preview_id(&data, &long).unwrap();
+        assert_eq!(create(&data, None, input(&long)).unwrap().id, long_preview);
+        let second_long = preview_id(&data, &long).unwrap();
+        assert!(second_long.ends_with("-2") && second_long.len() <= 64);
+        assert_eq!(create(&data, None, input(&long)).unwrap().id, second_long);
     }
 
     #[test]
@@ -3331,7 +3458,6 @@ mod tests {
             root.path(),
             "draft",
             UpdateSkillInput {
-                name: "Draft Reviewer".into(),
                 description: "Review a draft one section at a time.".into(),
                 instructions: "Read one section, report issues, then continue.".into(),
             },
@@ -3340,7 +3466,7 @@ mod tests {
 
         assert_eq!(updated.id, "draft");
         assert!(matches!(updated.validation, SkillValidation::Valid));
-        assert_eq!(updated.name, "Draft Reviewer");
+        assert_eq!(updated.name, "draft");
     }
 
     #[test]
@@ -3356,7 +3482,6 @@ mod tests {
             root.path(),
             "draft",
             UpdateSkillInput {
-                name: "Draft Reviewer".into(),
                 description: "Review a draft one section at a time.".into(),
                 instructions: "Read one section, report issues, then continue.".into(),
             },
@@ -3397,7 +3522,6 @@ mod tests {
             root.path(),
             "draft",
             UpdateSkillInput {
-                name: "Changed".into(),
                 description: "This change must not land.".into(),
                 instructions: "Do not write these instructions.".into(),
             },
@@ -3468,7 +3592,6 @@ mod tests {
                     root.path(),
                     id,
                     UpdateSkillInput {
-                        name: "Outside".into(),
                         description: "Must stay outside.".into(),
                         instructions: "Do not write this file.".into(),
                     },
@@ -3503,6 +3626,77 @@ mod tests {
         assert!(skills_root(root.path())
             .join("paper-lookup/SKILL.md")
             .is_file());
+    }
+
+    #[test]
+    fn the_shipped_pack_matches_its_skills_and_names_them_by_the_spec() {
+        let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/skills");
+        let manifest = crate::skills_pack::read_pack_manifest(&pack_root)
+            .unwrap()
+            .unwrap();
+        for entry in &manifest.skills {
+            let directory = pack_root.join(&entry.id);
+            let markdown = std::fs::read_to_string(directory.join("SKILL.md")).unwrap();
+            let name = parse_skill_markdown(&markdown).unwrap().name;
+            let follows_spec = name.len() <= 64
+                && name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+                && !name.starts_with('-')
+                && !name.ends_with('-')
+                && !name.contains("--");
+            assert!(
+                follows_spec && name == entry.id,
+                "{}: name is {name:?}",
+                entry.id
+            );
+            assert_eq!(entry.name.as_deref(), Some(name.as_str()), "{}", entry.id);
+            let document = parse_skill_markdown(&markdown).unwrap();
+            assert!(document.description.chars().count() <= 1024, "{}", entry.id);
+            assert!(
+                document
+                    .compatibility
+                    .as_deref()
+                    .is_none_or(|text| text.chars().count() <= 500),
+                "{}",
+                entry.id
+            );
+            let tools = yaml_field(&frontmatter_mapping(&markdown), "allowed-tools")
+                .and_then(serde_norway::Value::as_str)
+                .map(str::to_owned);
+            assert!(
+                tools.is_none_or(|tools| !tools.contains(',')),
+                "{}: allowed-tools is space-separated",
+                entry.id
+            );
+            assert_eq!(
+                tree_sha256(&directory).unwrap(),
+                entry.tree_sha256,
+                "{} changed without `pnpm skills:pack`",
+                entry.id
+            );
+        }
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../resources/skills-catalog.json")).unwrap();
+        assert_eq!(
+            catalog["packs"][0]["version"].as_str(),
+            Some(manifest.version.as_str()),
+            "skills-catalog.json is behind pack.json; run `pnpm skills:catalog`"
+        );
+        for entry in &manifest.skills {
+            let listed = catalog["skills"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|skill| skill["id"] == entry.id.as_str())
+                .unwrap_or_else(|| panic!("{} is missing from skills-catalog.json", entry.id));
+            assert_eq!(
+                listed["name"].as_str(),
+                entry.name.as_deref(),
+                "{}",
+                entry.id
+            );
+        }
     }
 
     #[test]

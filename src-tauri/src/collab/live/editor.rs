@@ -149,18 +149,17 @@ pub fn doc_close(project_id: &str, file_id: &str, session: u64) {
     }
 }
 
+const MAX_PRESENCE_PATH: usize = 256;
+
 pub fn presence_set(
     project_id: &str,
     path: Option<String>,
     cursor: Option<u32>,
     anchor: Option<u32>,
 ) {
+    let path = path.filter(|path| path.len() <= MAX_PRESENCE_PATH);
     match live_for(project_id) {
-        Some(Live::Server(active)) => {
-            active
-                .handle
-                .place_presence(path.filter(|path| path.len() <= 256), cursor, anchor)
-        }
+        Some(Live::Server(active)) => active.handle.place_presence(path, cursor, anchor),
         Some(Live::Overleaf(live)) => live.presence(path.as_deref(), cursor),
         None => {}
     }

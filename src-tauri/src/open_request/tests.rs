@@ -499,6 +499,132 @@ fn a_claim_that_outlasts_validation_times_out_and_forgets_the_request() {
     assert!(intake.pending().is_empty());
 }
 
+fn ready_file(folder: &str, file: &str) -> Result<ValidatedFolder, Refusal> {
+    Ok(ValidatedFolder {
+        canonical: PathBuf::from(folder),
+        identity: None,
+        file: Some(file.into()),
+    })
+}
+
+fn arrive_settled(intake: &OpenIntake, files: &[(&str, &str)]) -> Vec<String> {
+    files
+        .iter()
+        .map(|(folder, file)| {
+            let token = intake.enqueue(
+                vec![LaunchTarget::Folder(Path::new(folder).join(file))],
+                OpenSource::Os,
+            )[0]
+            .token
+            .clone();
+            intake.settle(&token, ready_file(folder, file));
+            token
+        })
+        .collect()
+}
+
+#[test]
+fn several_files_of_the_newest_folder_are_all_handed_out_in_order() {
+    let intake = OpenIntake::default();
+    let arrived = arrive_settled(
+        &intake,
+        &[
+            ("/srv/old", "x.tex"),
+            ("/srv/paper", "main.tex"),
+            ("/srv/other", "y.tex"),
+            ("/srv/paper", "refs.bib"),
+        ],
+    );
+    let batch = block_on(intake.batch(Duration::from_millis(50)));
+    assert_eq!(tokens(&batch), [arrived[1].clone(), arrived[3].clone()]);
+    for token in [&arrived[1], &arrived[3]] {
+        assert!(matches!(
+            block_on(intake.claim(token, &anyone(), Duration::from_millis(50))),
+            Claim::Ready(ValidatedFolder { file: Some(_), .. })
+        ));
+    }
+    assert!(intake.pending().is_empty());
+    assert!(block_on(intake.batch(Duration::from_millis(50))).is_empty());
+}
+
+#[test]
+fn a_burst_of_different_folders_hands_out_only_the_newest() {
+    let intake = OpenIntake::default();
+    let arrived = arrive_settled(
+        &intake,
+        &[
+            ("/srv/alpha", "a.tex"),
+            ("/srv/beta", "b.tex"),
+            ("/srv/gamma", "c.tex"),
+        ],
+    );
+    let batch = block_on(intake.batch(Duration::from_millis(50)));
+    assert_eq!(tokens(&batch), [arrived[2].clone()]);
+    assert!(matches!(
+        block_on(intake.claim(&arrived[2], &anyone(), Duration::from_millis(50))),
+        Claim::Ready(_)
+    ));
+    assert!(intake.pending().is_empty());
+}
+
+#[test]
+fn a_refused_newest_request_is_handed_out_alone() {
+    let intake = OpenIntake::default();
+    arrive_settled(&intake, &[("/srv/paper", "main.tex")]);
+    let refused = intake.enqueue(
+        vec![LaunchTarget::Refused {
+            name: "bad".into(),
+            error: OpenFolderError::NotAbsolute,
+        }],
+        OpenSource::Os,
+    );
+    let batch = block_on(intake.batch(Duration::from_millis(50)));
+    assert_eq!(tokens(&batch), [refused[0].token.clone()]);
+}
+
+#[test]
+fn a_batch_waits_for_a_file_of_the_same_folder_that_is_still_being_checked() {
+    let intake = Arc::new(OpenIntake::default());
+    let first = intake.enqueue(vec![folder("/srv/paper/main.tex")], OpenSource::Os)[0]
+        .token
+        .clone();
+    let second = arrive_settled(&intake, &[("/srv/paper", "refs.bib")]);
+    let settler = Arc::clone(&intake);
+    let settled = first.clone();
+    let worker = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(60));
+        settler.settle(&settled, ready_file("/srv/paper", "main.tex"));
+    });
+    let batch = block_on(intake.batch(Duration::from_secs(5)));
+    worker.join().unwrap();
+    assert_eq!(tokens(&batch), [first, second[0].clone()]);
+}
+
+#[test]
+fn a_batch_gives_up_on_a_check_that_never_ends_and_forgets_it() {
+    let intake = OpenIntake::default();
+    let stuck = intake.enqueue(vec![folder("/srv/paper/main.tex")], OpenSource::Os)[0]
+        .token
+        .clone();
+    let settled = arrive_settled(&intake, &[("/srv/paper", "refs.bib")]);
+    let batch = block_on(intake.batch(Duration::from_millis(40)));
+    assert_eq!(tokens(&batch), settled);
+    assert_eq!(tokens(&intake.pending()), settled);
+    intake.settle(&stuck, ready_file("/srv/paper", "main.tex"));
+    assert_eq!(tokens(&intake.pending()), settled);
+}
+
+#[test]
+fn a_batch_does_not_wait_for_an_older_request_from_elsewhere() {
+    let intake = OpenIntake::default();
+    intake.enqueue(vec![folder("/Volumes/offline/x.tex")], OpenSource::Os);
+    let newest = arrive_settled(&intake, &[("/srv/paper", "main.tex")]);
+    let started = std::time::Instant::now();
+    let batch = block_on(intake.batch(Duration::from_secs(5)));
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert_eq!(tokens(&batch), newest);
+}
+
 #[test]
 fn browse_scopes_are_opaque_tickets_that_resolve_back_to_their_folder() {
     let intake = OpenIntake::default();

@@ -14,6 +14,7 @@ export interface TransformOptions {
   jsx: "automatic" | "classic";
   typescript: boolean;
   imports: boolean;
+  filePath?: string;
 }
 
 export interface RuntimeDeps {
@@ -42,6 +43,7 @@ export interface ArtifactRuntime {
     code: string,
     messages: RuntimeMessages,
     extras?: Readonly<Record<string, RuntimeModule>>,
+    filePath?: string,
   ) => RuntimeModule | { error: { title: string; detail: string } };
 }
 
@@ -281,18 +283,19 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
       .render(React.createElement(Boundary, null, React.createElement(component as ReactTypes.ComponentType)));
   };
 
-  const compileModule: ArtifactRuntime["compileModule"] = (code, messages, extras = {}) => {
+  const compileModule: ArtifactRuntime["compileModule"] = (code, messages, extras, filePath) => {
     let compiled: string;
     try {
       compiled = deps.transform(code.replaceAll("import.meta.url", '""'), {
         jsx: "automatic",
         typescript: true,
         imports: true,
+        filePath,
       });
     } catch (error) {
       return { error: { title: messages.compileError, detail: errorText(error) } };
     }
-    extraModules = extras;
+    extraModules = extras ?? {};
     try {
       return loadModule(compiled);
     } catch (error) {

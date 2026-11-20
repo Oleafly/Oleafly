@@ -7,9 +7,8 @@ import { FileText, Settings2 } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar, WysiwygModeSwitch, type EditorMode } from "./EditorToolbar";
+import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
-import { isDeckPath } from "./deck/deck-path";
 import { present } from "@/features/presentation/launch";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { TypstToolbar } from "./TypstToolbar";
@@ -43,8 +42,15 @@ import {
   formattingProfileForPath,
   pathUsesEngineSource,
 } from "@/lib/document-engine";
-import { useVisualModeStore } from "@/store/visual-mode";
-import { getMarkdownSplitSize, setMarkdownSplitSize, type MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
+import { fileMode, setActiveFileMode, useFileMode, useVisualModeStore } from "@/store/visual-mode";
+import {
+  type EditorMode,
+  getMarkdownSplitSize,
+  isMarkdownPath,
+  type MarkdownSplitLayout,
+  setMarkdownSplitSize,
+  sourcePreviewKind,
+} from "@/lib/wysiwyg-mode";
 import {
   PANEL_STYLE,
   panelLimitProps,
@@ -106,16 +112,6 @@ function openFileKind(activePath: string | null) {
   };
 }
 
-type SourcePreview = "html" | "bib" | "sheet" | "deck";
-
-function sourcePreviewKind(path: string | null): SourcePreview | null {
-  if (!path) return null;
-  if (isDeckPath(path)) return "deck";
-  if (/\.html?$/iu.test(path)) return "html";
-  if (/\.bib$/iu.test(path)) return "bib";
-  return /\.(?:csv|tsv)$/iu.test(path) ? "sheet" : null;
-}
-
 const DeckView = lazy(() =>
   Promise.all([loadNamespace("notes"), import("./deck/DeckView")]).then(([, module]) => ({
     default: module.DeckView,
@@ -127,11 +123,6 @@ const SheetFilePreview = lazy(() =>
     default: module.SheetFilePreview,
   })),
 );
-
-function markdownModeFor(split: boolean, visual: boolean): "both" | "visual" | "code" {
-  if (split) return "both";
-  return visual ? "visual" : "code";
-}
 
 function shownNoteView({
   projectId,
@@ -214,7 +205,7 @@ export function Editor() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
-  const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
+  const isMarkdownFile = isMarkdownPath(activePath);
   const sourcePreview = sourcePreviewKind(activePath);
   const notesOn = useSettingsStore((s) => s.notes);
   const noteTab = useNoteTabsStore((s) => (notesOn ? activeNoteTab(s, projectId) : null));
@@ -234,18 +225,19 @@ export function Editor() {
   const showMarkdownToolbar = !zen && toolbarProfile === "markdown";
   const showTypstToolbar = !zen && toolbarProfile === "typst";
 
-  const wysiwyg = useVisualModeStore((s) => s.enabled);
-  const markdownSplitEnabled = useVisualModeStore((s) => s.markdownSplit);
+  const fileViewMode = useFileMode(activePath);
+  const wysiwyg = fileViewMode === "visual";
   const markdownSplitLayout = useVisualModeStore((s) => s.markdownSplitLayout);
   const loadVisualMode = useVisualModeStore((s) => s.loadProject);
-  useEffect(() => {
+  useLayoutEffect(() => {
     loadVisualMode(projectId);
   }, [projectId, loadVisualMode]);
-  const setWysiwyg = useCallback((next: boolean) => {
-    useVisualModeStore.getState().setEnabled(next);
-  }, []);
-  const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
-  const markdownSplit = (isMarkdownFile || sourcePreview !== null) && markdownSplitEnabled;
+  useEffect(() => {
+    if (projectId && activePath) useVisualModeStore.getState().remember(activePath);
+  }, [projectId, activePath]);
+  const toggleWysiwyg = () => setActiveFileMode(wysiwyg ? "code" : "visual");
+  const splitCapable = isMarkdownFile || sourcePreview !== null;
+  const markdownSplit = splitCapable && fileViewMode === "both";
   const stackMarkdownSplit = markdownSplitLayout === "stacked";
   const markdownSourceSize = getMarkdownSplitSize(projectId);
   const saveMarkdownSplitSize = useCallback((layout: Layout) => {
@@ -257,25 +249,27 @@ export function Editor() {
   const markdownGroupRef = useRef<GroupImperativeHandle>(null);
   const markdownSplitHitArea = useSeparatorHitArea(0.25);
   const onMarkdownSeparatorKeyDown = useSeparatorKeyboard(markdownGroupRef, MARKDOWN_SPLIT_LIMITS);
-  const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
-  const previewOnly = wysiwyg && sourcePreview !== null && !markdownSplit;
+  const markdownVisual = wysiwyg && isMarkdownFile;
+  const previewOnly = wysiwyg && sourcePreview !== null;
   const sourceHidden = markdownVisual || previewOnly;
-  const markdownMode = markdownModeFor(markdownSplit, sourceHidden);
   const changeDocumentMode = (mode: EditorMode, layout?: MarkdownSplitLayout) => {
     if (markdownVisual) flushWysiwygPendingEdits();
-    const visualMode = useVisualModeStore.getState();
-    if (layout) visualMode.setMarkdownSplitLayout(layout);
-    visualMode.setMarkdownSplit(mode === "both");
-    if (mode !== "both") setWysiwyg(mode === "visual");
+    if (layout) useVisualModeStore.getState().setMarkdownSplitLayout(layout);
+    setActiveFileMode(mode);
   };
   const showBreadcrumbs =
     !zen &&
     !isDiagramMainFile && /\.(?:tex|latex|ltx|typ)$/iu.test(activePath ?? "");
 
   useEffect(() => {
-    setWysiwygVisibilityController(setWysiwyg);
+    setWysiwygVisibilityController((visible) => {
+      const path = useFilesStore.getState().activePath;
+      if ((fileMode(useVisualModeStore.getState(), path) === "visual") !== visible) {
+        setActiveFileMode(visible ? "visual" : "code");
+      }
+    });
     return () => setWysiwygVisibilityController(null);
-  }, [setWysiwyg]);
+  }, []);
 
   const revealSource = (from: number) => {
     if (!activePath) return;
@@ -295,6 +289,7 @@ export function Editor() {
           <BibReferenceList path={activePath} onReveal={revealSource} />
         ) : sourcePreview === "deck" ? (
           <DeckView
+            key={activePath}
             projectId={projectId}
             path={activePath}
             onPresent={(mode, page) =>
@@ -509,7 +504,7 @@ export function Editor() {
             <MarkdownToolbar
               wysiwyg={markdownVisual}
               onToggleWysiwyg={isMarkdownFile ? toggleWysiwyg : undefined}
-              mode={isMarkdownFile ? markdownMode : undefined}
+              mode={isMarkdownFile ? fileViewMode : undefined}
               splitLayout={markdownSplitLayout}
               onModeChange={isMarkdownFile ? changeDocumentMode : undefined}
               showProjectInfo={markdownIsEngineSource}
@@ -522,7 +517,7 @@ export function Editor() {
               wysiwyg={previewOnly}
               onToggle={toggleWysiwyg}
               secondLabel={t(($) => $.editor.toolbar.preview)}
-              mode={markdownMode}
+              mode={fileViewMode}
               splitLayout={markdownSplitLayout}
               onModeChange={changeDocumentMode}
             />

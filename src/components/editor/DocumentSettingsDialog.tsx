@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getEditorView } from "@/components/editor/cm/controller";
@@ -265,6 +265,7 @@ export function DocumentSettingsDialog({ onClose }: Readonly<{ onClose: () => vo
     } else {
       control = (
         <Input
+          {...LITERAL_INPUT}
           id={id}
           value={value}
           disabled={locked}

@@ -4,6 +4,7 @@ import { EditorView, keymap, lineNumbers, placeholder as cmPlaceholder } from "@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { recompileShortcutBinding } from "@/components/editor/cm/recompile-shortcut";
 import { editorTheme } from "@/components/editor/cm/theme";
+import { functionKeyTextInput } from "@/lib/function-key-text";
 
 interface CodeFieldProps {
   value: string;
@@ -45,6 +46,7 @@ export function CodeField({
             : [
                 history(),
                 keymap.of([recompileShortcutBinding, ...defaultKeymap, ...historyKeymap]),
+                functionKeyTextInput,
               ]),
           language(),
           editorTheme(),

@@ -1,3 +1,5 @@
+import { isBackslashEscaped } from "./tex-text";
+
 export type ImportCompatLevel = "info" | "warning" | "blocker";
 
 export type ImportCompatAction =
@@ -171,12 +173,8 @@ export function needsShellEscapeFinding(id: string): boolean {
 
 const MAX_SCAN_CHARS = 512 * 1024;
 
-/** True if `tex[i]` starts a TeX line comment (`%` not escaped by `\`). */
 function isCommentPercent(tex: string, i: number): boolean {
-  if (tex[i] !== "%") return false;
-  let backslashes = 0;
-  for (let j = i - 1; j >= 0 && tex[j] === "\\"; j -= 1) backslashes += 1;
-  return backslashes % 2 === 0;
+  return tex[i] === "%" && !isBackslashEscaped(tex, i);
 }
 
 export function stripLineComments(tex: string): string {

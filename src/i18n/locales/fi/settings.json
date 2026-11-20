@@ -519,7 +519,9 @@
         "instructions": "Ohjeet",
         "instructionsHint": "Jätä tämä tyhjäksi, niin syntyy pelkistetty ohjerunko.",
         "instructionsPlaceholder": "Kerro, milloin tätä taitoa käytetään ja mitä vaiheita avustajan tulee noudattaa.",
-        "namePlaceholder": "Väitteiden tarkistaja",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Tallennetaan nimellä: {{name}}. Taidon nimessä käytetään pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä, jotta muut agentit voivat ladata sen.",
+        "nameNeedsLatin": "Lisää kirjaimia a-z tai numeroita. Taidon nimessä käytetään pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä (ei ä, ö tai å), jotta muut agentit voivat ladata sen.",
         "requiredAll": "Nimi, kuvaus ja ohjeet ovat pakollisia.",
         "requiredBasics": "Nimi ja kuvaus ovat pakollisia.",
         "submitCreate": "Luo"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Käytä taitoa {{name}} tässä projektissa",
       "validateAria": "Tarkista {{name}}",
       "shadowNote": "Tästä taidosta on saatavilla uudempi Oleafly-versio.",
+      "nameNote": "Muut agentit lataavat vain taitoja, joiden nimessä on pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä.",
+      "renameAction": "Nimeä uudelleen: {{name}}",
       "replaceAction": "Käytä Oleaflyn versiota",
       "replaceTitle": "Korvataanko oma kopiosi taidosta {{name}}?",
       "replaceBody": "Kopiosi siirretään varmuuskopiokansioon. Mitään ei poisteta.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sivupalkin korostus",
         "sidebarAccentForeground": "Sivupalkin korostuksen teksti",
         "sidebarBorder": "Sivupalkin reunus",
-        "sidebarForeground": "Sivupalkin teksti"
+        "sidebarForeground": "Sivupalkin teksti",
+        "pdfDarkPage": "PDF:n tumma sivu",
+        "pdfDarkText": "PDF:n tumma teksti"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Käännä PDF:n värit oletuksena. Värit voi silti vaihtaa esikatselun työkalupalkista.",
         "label": "PDF:n tumma tila"
+      },
+      "darkColors": {
+        "label": "Tumman sivun värit",
+        "description": "PDF:n tumma tila piirtää sivut näillä väreillä. Ne seuraavat teemaasi, kunnes valitset omat, ja ne tallentuvat sille vaaleelle tai tummalle teemalle, jota käytät nyt."
       },
       "hoverPreview": {
         "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",
@@ -2652,64 +2662,64 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Hae lokeista",
+    "searchPlaceholder": "Hae lokeista",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Taso",
+      "all": "Kaikki",
+      "warning": "Varoitukset",
+      "error": "Virheet"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "Tieto",
+      "warning": "Varoitus",
+      "error": "Virhe"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Vie",
+      "openFolder": "Avaa lokikansio",
+      "clear": "Tyhjennä"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "Tänään",
+      "yesterday": "Eilen"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Uusimmat ensin",
+    "privateDetails": "Yksityinen, jätetään pois viennistä",
+    "copyEntry": "Kopioi merkintä",
+    "copied": "Kopioitu",
+    "loading": "Luetaan lokeja",
+    "loadFailed": "Lokien lukeminen epäonnistui.",
+    "retry": "Yritä uudelleen",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Ei lokimerkintöjä",
+      "description": "Käännökset ja virheet näkyvät tässä sitä mukaa kuin niitä tapahtuu."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Ei merkintöjä haulle \"{{query}}\"",
+      "levelTitle": "Ei merkintöjä tällä tasolla",
+      "description": "Kokeile toista hakua tai tasoa.",
+      "clearSearch": "Tyhjennä haku",
+      "showAll": "Näytä kaikki tasot"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Tyhjennetäänkö kaikki lokit?",
+      "confirm": "Tyhjennä lokit",
+      "description_one": "Tämä poistaa {{count}} merkinnän ja lokitiedoston tästä tietokoneesta. Jo viedyt lokit säilyvät siellä, minne ne tallensit.",
+      "description_other": "Tämä poistaa kaikki {{count}} merkintää ja lokitiedoston tästä tietokoneesta. Jo viedyt lokit säilyvät siellä, minne ne tallensit."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Lokit tallennettu: {{name}}",
+      "exportFailed": "Lokien vienti epäonnistui.",
+      "clearFailed": "Lokien tyhjennys epäonnistui.",
+      "revealFailed": "Lokikansion avaaminen epäonnistui."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip-arkisto"
     },
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_one": "{{count}} merkintä",
+    "count_other": "{{count}} merkintää",
+    "filteredCount_one": "{{shown}} / {{count}} merkintä",
+    "filteredCount_other": "{{shown}} / {{count}} merkintää"
   }
 }

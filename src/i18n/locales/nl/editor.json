@@ -166,7 +166,6 @@
       "purple": "Paars"
     },
     "imageFile": "Afbeeldingsbestand",
-    "apply": "Toepassen",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Splitsen",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Laden van de PDF is mislukt: {{detail}}",
     "imageLoadFailed": "Laden van de afbeelding is mislukt: {{detail}}",
     "imageUnreadable": "Dit bestand kan niet als afbeelding worden getoond. Het is misschien beschadigd, of het is geen afbeelding.",
+    "imageTooLarge": "Deze afbeelding is groter dan {{limit}} en wordt hier daarom niet getoond.",
     "imageFit": "Passend in venster",
     "htmlPreviewFailed": "Voorbeeld van de pagina is mislukt: {{detail}}",
     "binaryFile": "Binair bestand. Geen voorbeeld beschikbaar.",
@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Afbeelding niet gevonden",
+        "imageOutside": "Afbeeldingen buiten het project worden niet getoond",
+        "imageUnreadable": "Deze afbeelding kon niet worden getoond",
+        "imageAltText": "Alternatieve tekst: {{alt}}",
         "imageLoading": "Afbeelding laden…",
         "imageAlt": "Figuurafbeelding {{path}}",
         "width": "Breedte",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} referentie",
     "count_other": "{{count}} referenties",
+    "matchCount_one": "{{shown}} van {{total}} referentie",
+    "matchCount_other": "{{shown}} van {{total}} referenties",
+    "clearSearch": "Zoekopdracht wissen",
     "empty": "Dit bestand heeft nog geen referenties.",
     "etAl": "{{author}} e.a.",
     "noMatch": "Geen referenties komen overeen met je zoekopdracht.",

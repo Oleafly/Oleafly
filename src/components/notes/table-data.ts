@@ -1,5 +1,6 @@
 import { delimiterOf, parseDelimited } from "@oleafly/conversion-registry/table";
 import type { SortDirection } from "@/components/ui/table";
+import { formatNumber } from "@/lib/intl";
 import { dataUrlBytes, dataUrlText, type NoteFile, splitBlockOptions } from "./note-blocks";
 import { notePath } from "./note-path";
 
@@ -304,6 +305,15 @@ export function filterRows(table: TableData, query: string): number[] {
   return all.filter((index) => text[index].includes(needle));
 }
 
+function scaledMean(indices: readonly number[], keys: readonly SortKey[], count: number): number {
+  let mean = 0;
+  for (const index of indices) {
+    const value = keys[index];
+    if (typeof value === "number") mean += value / count;
+  }
+  return mean;
+}
+
 export function summarizeColumn(
   table: TableData,
   indices: readonly number[],
@@ -330,5 +340,78 @@ export function summarizeColumn(
       maxText = table.rows[index][column].trim();
     }
   }
-  return count === 0 ? null : { count, mean: sum / count, min, max, minText, maxText };
+  if (count === 0) return null;
+  const mean = Number.isFinite(sum) ? sum / count : scaledMean(indices, keys, count);
+  return { count, mean, min, max, minText, maxText };
+}
+
+export interface NumberShape {
+  readonly decimals: number;
+  readonly significant: number;
+  readonly grouped: boolean;
+}
+
+export const TABLE_NUMBER_DIGITS = 15;
+const SCIENTIFIC_FROM = 1e21;
+const SCIENTIFIC_BELOW = 1e-6;
+
+export function numberShape(text: string): NumberShape {
+  let fraction = 0;
+  let significant = 0;
+  let afterPoint = false;
+  let grouped = false;
+  let exponent = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === "e" || char === "E") {
+      exponent = Number(text.slice(index + 1)) || 0;
+      break;
+    }
+    if (char === ",") grouped = true;
+    else if (char === ".") afterPoint = true;
+    else if (char >= "0" && char <= "9") {
+      if (afterPoint) fraction += 1;
+      if (significant > 0 || char !== "0") significant += 1;
+    }
+  }
+  return { decimals: Math.max(0, fraction - exponent), significant: Math.max(1, significant), grouped };
+}
+
+export function columnShape(table: TableData, column: number): NumberShape {
+  let decimals = 0;
+  let significant = 1;
+  let grouped = false;
+  for (const row of table.rows) {
+    const cell = row[column];
+    if (cell.trim() === "") continue;
+    const shape = numberShape(cell);
+    decimals = Math.max(decimals, shape.decimals);
+    significant = Math.max(significant, shape.significant);
+    grouped ||= shape.grouped;
+  }
+  return { decimals, significant, grouped };
+}
+
+export function formatTableNumber(value: number, shape: NumberShape, pad = true): string {
+  if (!Number.isFinite(value)) return formatNumber(value);
+  const size = Math.abs(value);
+  const whole = size < 1 ? 0 : Math.floor(Math.log10(size)) + 1;
+  const wanted = Math.max(0, shape.decimals);
+  const digits = Math.min(wanted, Math.max(0, TABLE_NUMBER_DIGITS - whole));
+  const rounded = Number(value.toFixed(digits)) || 0;
+  const shown = Math.abs(rounded);
+  const fixed = shown === 0 ? value === 0 || digits === wanted : shown >= SCIENTIFIC_BELOW && shown < SCIENTIFIC_FROM;
+  if (fixed) {
+    return formatNumber(rounded, {
+      useGrouping: shape.grouped,
+      minimumFractionDigits: pad ? digits : 0,
+      maximumFractionDigits: digits,
+    });
+  }
+  const significant = Math.min(TABLE_NUMBER_DIGITS, Math.max(1, shape.significant));
+  return formatNumber(value, {
+    notation: "scientific",
+    minimumSignificantDigits: pad ? significant : 1,
+    maximumSignificantDigits: significant,
+  });
 }

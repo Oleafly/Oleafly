@@ -335,7 +335,6 @@ async fn force_disconnect_shows_message_and_counts_down() {
         port.seen().maintenance == vec![("Back <b>soon</b>".to_string(), Duration::from_secs(1))]
     })
     .await;
-    live.reconnect_now();
     tab.type_end(&live, " later");
     reconnected(&rig, &before).await;
     assert!(started.elapsed() >= Duration::from_millis(900));

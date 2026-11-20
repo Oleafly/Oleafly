@@ -328,6 +328,23 @@ fn sharing_an_overleaf_linked_project_is_refused_while_the_card_is_on() {
 }
 
 #[test]
+fn a_project_live_on_the_service_refuses_sharing_whatever_the_page_says() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let refused = refuse_overleaf_linked(&collab_paths(), &rig.project_id, false).unwrap_err();
+        assert_eq!(code(refused), "overleaf_linked");
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
 fn unsent_overleaf_work_refuses_sharing_even_with_the_card_off() {
     let library = TempLibrary::new();
     let project = imported_project();

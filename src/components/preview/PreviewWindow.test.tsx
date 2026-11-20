@@ -30,7 +30,7 @@ vi.mock("@/lib/tauri", () => ({
   pdfSyncNoteSaved: async () => {},
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
-vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: vi.fn() }));
 vi.mock("@/lib/notebook-commands", () => ({
   openCompiledHtml: mocks.openCompiledHtml,
   compiledHtmlPreviewUrl: mocks.compiledHtmlPreviewUrl,

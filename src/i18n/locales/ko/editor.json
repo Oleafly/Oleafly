@@ -166,7 +166,6 @@
       "purple": "보라색"
     },
     "imageFile": "이미지 파일",
-    "apply": "적용",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "분할",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF를 불러오지 못했습니다: {{detail}}",
     "imageLoadFailed": "이미지를 불러오지 못했습니다: {{detail}}",
     "imageUnreadable": "이 파일은 이미지로 표시할 수 없습니다. 손상되었거나 이미지가 아닐 수 있습니다.",
+    "imageTooLarge": "이 이미지는 {{limit}}보다 커서 여기에 표시되지 않습니다.",
     "imageFit": "창에 맞추기",
     "htmlPreviewFailed": "페이지를 미리 보지 못했습니다: {{detail}}",
     "binaryFile": "바이너리 파일입니다. 미리보기를 제공하지 않습니다.",
@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "이미지를 찾을 수 없음",
+        "imageOutside": "프로젝트 밖의 이미지는 표시되지 않음",
+        "imageUnreadable": "이 이미지를 표시할 수 없음",
+        "imageAltText": "대체 텍스트: {{alt}}",
         "imageLoading": "이미지를 불러오는 중…",
         "imageAlt": "그림 이미지 {{path}}",
         "width": "너비",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "참고문헌 {{count}}건",
+    "matchCount_other": "참고문헌 {{total}}건 중 {{shown}}건",
+    "clearSearch": "검색 지우기",
     "empty": "이 파일에는 아직 참고문헌이 없습니다.",
     "etAl": "{{author}} 외",
     "noMatch": "검색과 일치하는 참고문헌이 없습니다.",

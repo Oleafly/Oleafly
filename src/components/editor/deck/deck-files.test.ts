@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const tauri = vi.hoisted(() => ({ readFileBase64: vi.fn() }));
 vi.mock("@/lib/tauri", () => tauri);
+const log = vi.hoisted(() => ({ logWarning: vi.fn(async () => undefined) }));
+vi.mock("@/lib/log", () => log);
 
 import { deckAssetImports, readDeckAssets, resolveDeckImport } from "./deck-files";
 import { isDeckPath } from "./deck-path";
 
-beforeEach(() => tauri.readFileBase64.mockReset());
+beforeEach(() => {
+  tauri.readFileBase64.mockReset();
+  log.logWarning.mockClear();
+});
 
 describe("isDeckPath", () => {
   it("matches the index file of a folder under slides", () => {
@@ -31,6 +36,12 @@ describe("resolveDeckImport", () => {
     expect(resolveDeckImport("slides/talk/index.tsx", "../../../secret.png")).toBeNull();
     expect(resolveDeckImport("slides/talk/index.tsx", "@assets/../../x.png")).toBeNull();
     expect(resolveDeckImport("slides/talk/index.tsx", "../../")).toBeNull();
+  });
+
+  it("reads Windows separators and drops empty and current-folder parts", () => {
+    expect(resolveDeckImport("slides/talk/index.tsx", ".\\figures\\plot.png")).toBe("slides/talk/figures/plot.png");
+    expect(resolveDeckImport("index.tsx", "./cover.png")).toBe("cover.png");
+    expect(resolveDeckImport("slides/talk/index.tsx", "@assets//./logo.svg")).toBe("assets/logo.svg");
   });
 });
 
@@ -64,5 +75,6 @@ describe("readDeckAssets", () => {
     );
     expect(assets).toEqual({ "./cover.png": "data:image/png;base64,AAAA" });
     expect(tauri.readFileBase64).toHaveBeenCalledWith("p1", "slides/talk/cover.png");
+    expect(log.logWarning).toHaveBeenCalledExactlyOnceWith("read the slide image slides/talk/missing.png", expect.any(Error));
   });
 });

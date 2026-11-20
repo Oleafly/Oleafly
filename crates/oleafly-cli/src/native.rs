@@ -2239,7 +2239,11 @@ pub(crate) async fn run_command_with_stdin(
 ) -> Result<(String, ExitStatus)> {
     let executable = launch.executable;
     let mut command = tokio::process::Command::new(executable);
-    engine_spec::add_wrapper_safe_args(command.as_std_mut(), executable, launch.arguments);
+    oleafly_sandbox::cmdline::add_wrapper_safe_args(
+        command.as_std_mut(),
+        executable,
+        launch.arguments,
+    );
     command
         .current_dir(launch.working_directory)
         .env("NoDefaultCurrentDirectoryInExePath", "1")

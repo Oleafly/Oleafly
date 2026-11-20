@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/ai.json" with { type: "json" };
 import { EffortSelector } from "./EffortSelector";
@@ -24,6 +24,20 @@ describe("EffortSelector", () => {
     expect(screen.getByTestId("ai-effort-selector")).toHaveAccessibleName(
       en.effort.ariaLabel.replace("{{level}}", en.effort.auto),
     );
+  });
+
+  it("names the active level in its tooltip, so the level shows when the composer hides the label", () => {
+    vi.useFakeTimers();
+    try {
+      render(<EffortSelector choices={["low", "medium", "high"]} value="medium" onChange={vi.fn()} />);
+      fireEvent.mouseEnter(screen.getByTestId("ai-effort-selector").parentElement as Element);
+      act(() => vi.advanceTimersByTime(400));
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip).toHaveTextContent(en.effort.ariaLabel.replace("{{level}}", en.effort.levels.medium));
+      expect(tooltip).toHaveTextContent(en.effort.tooltip);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("picks a level and goes back to Auto", async () => {

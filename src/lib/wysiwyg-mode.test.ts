@@ -1,22 +1,39 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { getWysiwygMode, setWysiwygMode, getMarkdownSplitSize, setMarkdownSplitSize, getMarkdownSplitLayout, setMarkdownSplitLayout } from "./wysiwyg-mode";
+import {
+  getKindModes,
+  getMarkdownSplitLayout,
+  getMarkdownSplitSize,
+  saveKindModes,
+  setMarkdownSplitLayout,
+  setMarkdownSplitSize,
+  sourcePreviewKind,
+  viewKind,
+} from "./wysiwyg-mode";
 
 describe("wysiwyg-mode", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it("defaults to false for a project that has never toggled", () => {
-    expect(getWysiwygMode("proj-1")).toBe(false);
+  it("sorts files into the kinds that keep a mode of their own", () => {
+    expect(viewKind("slides/talk/index.tsx")).toBe("deck");
+    expect(viewKind("src/index.tsx")).toBe("source");
+    expect(viewKind("site/Page.HTM")).toBe("html");
+    expect(viewKind("refs.bib")).toBe("bib");
+    expect(viewKind("data/runs.tsv")).toBe("sheet");
+    expect(viewKind("README.markdown")).toBe("markdown");
+    expect(viewKind("report.qmd")).toBe("source");
+    expect(viewKind("main.typ")).toBe("source");
+    expect(sourcePreviewKind(null)).toBeNull();
+    expect(sourcePreviewKind("main.tex")).toBeNull();
   });
 
-  it("persists true/false per project id", () => {
-    setWysiwygMode("proj-1", true);
-    expect(getWysiwygMode("proj-1")).toBe(true);
-    expect(getWysiwygMode("proj-2")).toBe(false);
-    setWysiwygMode("proj-1", false);
-    expect(getWysiwygMode("proj-1")).toBe(false);
+  it("keeps the mode of each kind per project", () => {
+    expect(getKindModes("proj-1")).toEqual({});
+    saveKindModes("proj-1", { source: "visual", sheet: "code" });
+    expect(getKindModes("proj-1")).toEqual({ source: "visual", sheet: "code" });
+    expect(getKindModes("proj-2")).toEqual({});
   });
 
   it("restores split sizes per project and rejects invalid stored sizes", () => {

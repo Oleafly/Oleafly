@@ -52,6 +52,25 @@ function near(actual: number, expected: number) {
 }
 
 test.describe("project pane layout", () => {
+  test("opens a project's sidebar at the width of seven view icons, whatever width was saved", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(`${BASE_URL}/e2e/pane-layout-harness.html`);
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem(
+        "react-resizable-panels:oleafly.workspace.p1.horizontal:sidebar:editorpdf:assistant",
+        JSON.stringify({ sidebar: 65, editorpdf: 5, assistant: 30 }),
+      );
+    });
+    const errors = await open(page);
+    await expect.poll(async () => (await widths(page, ["sidebar"]))[0]).toBe(266);
+    await run(page, `h.settings.setState({ showTree: false });`);
+    await expect(page.locator("#sidebar")).toHaveCount(0);
+    await run(page, `h.settings.setState({ showTree: true });`);
+    await expect.poll(async () => (await widths(page, ["sidebar"]))[0]).toBe(266);
+    expect(errors).toEqual([]);
+  });
+
   test("keeps the sizes the user dragged when a pane moves away and back", async ({ page }) => {
     const errors = await open(page);
     await dragSeparator(page, "h-tree", 80, 0);
@@ -71,14 +90,15 @@ test.describe("project pane layout", () => {
 
   test("resizes the two panes on either side of a separator after a reorder in the same row", async ({ page }) => {
     const errors = await open(page);
+    await page.setViewportSize({ width: 2000, height: 900 });
     await run(page, `h.panes.getState().move("sidebar", { kind: "pane", pane: "assistant", side: "right" });`);
     await expect(page.locator("#sep-assistant-sidebar")).toBeVisible();
     const [document, assistant, sidebar] = await widths(page, ["editorpdf", "assistant", "sidebar"]);
-    await dragSeparator(page, "sep-assistant-sidebar", 60, 0);
+    await dragSeparator(page, "sep-assistant-sidebar", -60, 0);
     const [documentAfter, assistantAfter, sidebarAfter] = await widths(page, ["editorpdf", "assistant", "sidebar"]);
     near(documentAfter ?? 0, document ?? 0);
-    near(assistantAfter ?? 0, (assistant ?? 0) + 60);
-    near((sidebarAfter ?? 0) + 60, sidebar ?? 0);
+    near((assistantAfter ?? 0) + 60, assistant ?? 0);
+    near(sidebarAfter ?? 0, (sidebar ?? 0) + 60);
     expect(errors).toEqual([]);
   });
 

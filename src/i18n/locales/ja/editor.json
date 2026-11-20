@@ -166,7 +166,6 @@
       "purple": "紫"
     },
     "imageFile": "画像ファイル",
-    "apply": "適用",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "分割",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF を読み込めませんでした: {{detail}}",
     "imageLoadFailed": "画像を読み込めませんでした: {{detail}}",
     "imageUnreadable": "このファイルは画像として表示できません。破損しているか、画像ではない可能性があります。",
+    "imageTooLarge": "この画像は {{limit}} を超えているため、ここには表示されません。",
     "imageFit": "ウィンドウに合わせる",
     "htmlPreviewFailed": "ページをプレビューできませんでした: {{detail}}",
     "binaryFile": "バイナリファイルです。プレビューはできません。",
@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "画像が見つかりません",
+        "imageOutside": "プロジェクト外の画像は表示されません",
+        "imageUnreadable": "この画像を表示できませんでした",
+        "imageAltText": "代替テキスト: {{alt}}",
         "imageLoading": "画像を読み込み中…",
         "imageAlt": "図の画像 {{path}}",
         "width": "幅",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} 件の文献",
+    "matchCount_other": "{{total}} 件中 {{shown}} 件の文献",
+    "clearSearch": "検索をクリア",
     "empty": "このファイルにはまだ参考文献がありません。",
     "etAl": "{{author}} ほか",
     "noMatch": "検索に一致する参考文献はありません。",

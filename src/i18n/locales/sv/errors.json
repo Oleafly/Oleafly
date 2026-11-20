@@ -36,6 +36,7 @@
     "copy_needs_folder": "Bara mappar som öppnats där de ligger kan kopieras till biblioteket.",
     "not_removable": "Bara mappar som öppnats där de ligger kan tas bort från Oleafly.",
     "trash_unavailable": "Oleafly kunde inte flytta {{path}} till papperskorgen. Enheten kanske inte har någon papperskorg.",
+    "trash_in_use": "Oleafly kunde inte flytta {{path}} till papperskorgen eftersom en annan app har den öppen. Stäng den där och försök igen.",
     "linked_replace_folder": "{{path}} är en mapp, så Oleafly ersätter den inte. Flytta eller byt namn på den först.",
     "folder_read_only": "Oleafly kan inte göra den här ändringen eftersom {{name}} eller mappen den ligger i är skrivskyddad. Kopiera mappen du öppnade till biblioteket och redigera den där.",
     "shared_settings_viewer": "Läsare kan inte ändra inställningarna för ett delat projekt."

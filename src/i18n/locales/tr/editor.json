@@ -166,7 +166,6 @@
       "purple": "Mor"
     },
     "imageFile": "Görsel dosyası",
-    "apply": "Uygula",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/grafik.png",
     "split": "Böl",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF yüklenemedi: {{detail}}",
     "imageLoadFailed": "Görsel yüklenemedi: {{detail}}",
     "imageUnreadable": "Bu dosya görüntü olarak gösterilemiyor. Dosya bozuk olabilir ya da bir görüntü olmayabilir.",
+    "imageTooLarge": "Bu görsel {{limit}} boyutundan büyük olduğu için burada gösterilmiyor.",
     "imageFit": "Pencereye sığdır",
     "htmlPreviewFailed": "Sayfa önizlenemedi: {{detail}}",
     "binaryFile": "İkili dosya. Önizleme yok.",
@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Görsel bulunamadı",
+        "imageOutside": "Proje dışındaki görseller gösterilmez",
+        "imageUnreadable": "Bu görsel gösterilemedi",
+        "imageAltText": "Alternatif metin: {{alt}}",
         "imageLoading": "Görsel yükleniyor…",
         "imageAlt": "Şekil görseli {{path}}",
         "width": "Genişlik",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} kaynak",
     "count_other": "{{count}} kaynak",
+    "matchCount_one": "{{shown}}/{{total}} kaynak",
+    "matchCount_other": "{{shown}}/{{total}} kaynak",
+    "clearSearch": "Aramayı temizle",
     "empty": "Bu dosyada henüz kaynak yok.",
     "etAl": "{{author}} vd.",
     "noMatch": "Aramanızla eşleşen kaynak yok.",

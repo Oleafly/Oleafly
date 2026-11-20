@@ -50,8 +50,9 @@ async function freshDocument(
 async function openVisual(page: Page) {
   await page.click('[aria-label="Switch to WYSIWYG view"]');
   await page.waitForFunction(
-    `import("/src/store/visual-mode.ts").then(
-      ({ useVisualModeStore }) => useVisualModeStore.getState().enabled === true
+    `Promise.all([import("/src/store/visual-mode.ts"), import("/src/store/files.ts")]).then(
+      ([{ fileMode, useVisualModeStore }, { useFilesStore }]) =>
+        fileMode(useVisualModeStore.getState(), useFilesStore.getState().activePath) === "visual"
     )`,
     10_000,
   );
@@ -63,8 +64,9 @@ async function openVisual(page: Page) {
 async function openSource(page: Page) {
   await page.click('[aria-label="Switch to source view"]');
   await page.waitForFunction(
-    `import("/src/store/visual-mode.ts").then(
-      ({ useVisualModeStore }) => useVisualModeStore.getState().enabled === false
+    `Promise.all([import("/src/store/visual-mode.ts"), import("/src/store/files.ts")]).then(
+      ([{ fileMode, useVisualModeStore }, { useFilesStore }]) =>
+        fileMode(useVisualModeStore.getState(), useFilesStore.getState().activePath) === "code"
     )`,
     10_000,
   );

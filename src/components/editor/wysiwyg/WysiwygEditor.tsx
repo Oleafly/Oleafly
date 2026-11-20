@@ -29,7 +29,7 @@ import {
   type MarkdownSourceSnapshot,
 } from "@oleafly/wysiwyg";
 import { useFilesStore } from "@/store/files";
-import { useVisualModeStore } from "@/store/visual-mode";
+import { setActiveFileMode } from "@/store/visual-mode";
 import { useDictionary } from "@/lib/dictionary";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { useSettingsStore } from "@/store/settings";
@@ -71,11 +71,7 @@ import { markdownMathRanges } from "./markdown-source";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 import { publishVisualEditorHistory } from "@/components/editor/history-signal";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
-
-function isMarkdownPath(path: string): boolean {
-  const p = path.toLowerCase();
-  return p.endsWith(".md") || p.endsWith(".markdown");
-}
+import { isMarkdownPath } from "@/lib/wysiwyg-mode";
 
 const FLUSH_DEBOUNCE_MS = 300;
 const FOLLOW_REMOTE_MS = 150;
@@ -520,7 +516,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
           className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-sm text-muted-foreground"
         >
           <span>{t(($) => $.editor.visual.sharedReadOnly)}</span>
-          <Button type="button" variant="outline" size="xs" onClick={() => useVisualModeStore.getState().setEnabled(false)}>
+          <Button type="button" variant="outline" size="xs" onClick={() => setActiveFileMode("code")}>
             {t(($) => $.editor.toolbar.switchToSource)}
           </Button>
         </output>

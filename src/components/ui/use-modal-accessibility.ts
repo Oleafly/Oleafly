@@ -1,16 +1,22 @@
-import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coordinator";
 
 export { modalCoordinator as appModalCoordinator } from "@oleafly/templates/modal-coordinator";
 
-export function useModalLayer(open: boolean): void {
+export function useModalLayer(open: boolean, restoreFocus = false): () => boolean {
+  const idRef = useRef<symbol | null>(null);
   useEffect(() => {
     if (!open) return;
-    const id = modalCoordinator.add(null);
+    const opener = restoreFocus && document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const id = modalCoordinator.add(opener);
+    idRef.current = id;
     return () => {
-      modalCoordinator.remove(id);
+      if (idRef.current === id) idRef.current = null;
+      const restore = modalCoordinator.remove(id);
+      if (restoreFocus) restore?.focus({ preventScroll: true });
     };
-  }, [open]);
+  }, [open, restoreFocus]);
+  return useCallback(() => idRef.current !== null && !modalCoordinator.isTop(idRef.current), []);
 }
 
 const FOCUSABLE = [

@@ -297,6 +297,53 @@ impl Queue {
             .position(|request| request.token == token)
     }
 
+    fn arrivals(&self) -> impl Iterator<Item = &OpenRequest> {
+        self.waiting
+            .iter()
+            .filter(|request| request.source != OpenSource::Picker)
+    }
+
+    fn waiting_on_validation(&self) -> bool {
+        let Some(newest) = self.arrivals().last() else {
+            return false;
+        };
+        if newest.unsettled() {
+            return true;
+        }
+        let Some(folder) = newest.folder() else {
+            return false;
+        };
+        self.arrivals().any(|request| {
+            request.unsettled()
+                && request
+                    .requested
+                    .as_deref()
+                    .is_some_and(|path| path == folder || path.parent() == Some(folder))
+        })
+    }
+
+    fn batch(&self) -> Vec<PendingOpen> {
+        let Some(newest) = self.arrivals().last() else {
+            return Vec::new();
+        };
+        let folder = newest.folder();
+        self.arrivals()
+            .filter(|request| {
+                request.token == newest.token || (folder.is_some() && request.folder() == folder)
+            })
+            .map(OpenRequest::pending)
+            .collect()
+    }
+
+    fn forget_unsettled(&mut self) {
+        let newest = self.arrivals().last().map(|request| request.token.clone());
+        self.waiting.retain(|request| {
+            request.source == OpenSource::Picker
+                || Some(&request.token) == newest.as_ref()
+                || !request.unsettled()
+        });
+    }
+
     fn take(&mut self, index: usize) -> Option<OpenRequest> {
         let request = self.waiting.remove(index)?;
         if request.source != OpenSource::Picker {
@@ -430,6 +477,26 @@ impl OpenIntake {
             .filter(|request| request.source != OpenSource::Picker)
             .map(OpenRequest::pending)
             .collect()
+    }
+
+    pub(crate) async fn batch(&self, timeout: Duration) -> Vec<PendingOpen> {
+        let deadline = tokio::time::Instant::now() + timeout;
+        loop {
+            let settled = self.settled.notified();
+            tokio::pin!(settled);
+            settled.as_mut().enable();
+            {
+                let mut queue = self.queue();
+                if !queue.waiting_on_validation() {
+                    return queue.batch();
+                }
+                if tokio::time::Instant::now() >= deadline {
+                    queue.forget_unsettled();
+                    return queue.batch();
+                }
+            }
+            let _ = tokio::time::timeout_at(deadline, settled).await;
+        }
     }
 
     pub(crate) fn begin_validation(&self) -> Vec<(String, PathBuf)> {
@@ -600,6 +667,17 @@ impl OpenIntake {
 }
 
 impl OpenRequest {
+    fn unsettled(&self) -> bool {
+        matches!(self.stage, Stage::Validating(_) | Stage::Checking)
+    }
+
+    fn folder(&self) -> Option<&Path> {
+        match &self.stage {
+            Stage::Ready(folder) => Some(folder.canonical.as_path()),
+            _ => None,
+        }
+    }
+
     fn pending(&self) -> PendingOpen {
         PendingOpen {
             token: self.token.clone(),
@@ -890,7 +968,7 @@ fn deliver<R: Runtime>(app: &AppHandle<R>, router: &dyn WindowRouter, arrival: &
 pub async fn pending_open_requests(
     intake: tauri::State<'_, OpenIntake>,
 ) -> Result<Vec<PendingOpen>, String> {
-    Ok(intake.pending())
+    Ok(intake.batch(CLAIM_TIMEOUT).await)
 }
 
 fn caller<R: Runtime>(webview: &tauri::Webview<R>, session: Option<u64>) -> Caller {

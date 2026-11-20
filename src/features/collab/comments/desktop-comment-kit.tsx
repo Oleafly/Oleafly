@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { EmojiChooser } from "@/components/editor/emoji-chooser";
 import type { CommentComposerLabels } from "@/components/ui/comments/comment-composer";
@@ -9,13 +9,15 @@ import {
   CommentKitProvider,
   QUICK_REACTIONS,
 } from "@/components/ui/comments/comment-kit";
+import { type CommentPresenceFeed, createPresenceFeed, usePublishPresence } from "@/components/ui/comments/comment-presence";
 import type { CommentQuoteLabels } from "@/components/ui/comments/comment-quote";
 import { type CommentMember, mergeMentionPeople } from "@/components/ui/comments/mentions";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { writeClipboardText } from "@/lib/clipboard";
 import { formatDateTime, formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabPerson, CollabProjectRole } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
-import { sendPresenceActivity, usePresentAccounts, useReplying } from "../live/peer-activity";
+import { sendPresenceActivity, usePeerPresence, usePresentAccounts } from "../live/peer-activity";
 import { peerHue } from "../live/peer-hue";
 import { commentFailure, commentRetryable } from "./refusals";
 
@@ -23,8 +25,9 @@ function DestructiveConfirm(props: Readonly<CommentConfirmProps>) {
   return <ConfirmationDialog {...props} destructive />;
 }
 
-async function copyText(text: string): Promise<void> {
-  await navigator.clipboard.writeText(text);
+function PeerPresence({ feed }: Readonly<{ feed: CommentPresenceFeed }>) {
+  usePublishPresence(feed, usePeerPresence());
+  return null;
 }
 
 const REACTIONS = {
@@ -115,7 +118,7 @@ export function DesktopCommentKit({
   const { t } = useTranslation(["collab", "common"]);
   const quote = useCommentQuoteLabels();
   const composer = useCommentComposerLabels();
-  const replyingIn = useReplying();
+  const [presence] = useState(createPresenceFeed);
   const kit = useMemo<CommentKit>(
     () => ({
       labels: {
@@ -183,13 +186,18 @@ export function DesktopCommentKit({
       maxLength,
       nameOf: (accountId) => people.get(accountId)?.display_name || t(($) => $.collab.toolbar.unknownPerson),
       listNames: (names) => formatList(names, { type: "conjunction" }),
-      copyText,
+      copyText: writeClipboardText,
       reactions: reactions ? REACTIONS : undefined,
       moderate,
       activity: sendPresenceActivity,
-      replyingIn,
+      presence,
     }),
-    [t, quote, composer, overrides, now, members, self, people, reactions, maxLength, moderate, replyingIn],
+    [t, quote, composer, overrides, now, members, self, people, reactions, maxLength, moderate, presence],
   );
-  return <CommentKitProvider value={kit}>{children}</CommentKitProvider>;
+  return (
+    <CommentKitProvider value={kit}>
+      <PeerPresence feed={presence} />
+      {children}
+    </CommentKitProvider>
+  );
 }

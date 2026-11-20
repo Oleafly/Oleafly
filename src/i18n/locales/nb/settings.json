@@ -519,7 +519,9 @@
         "instructions": "Instruksjoner",
         "instructionsHint": "La dette stå tomt for å lage et minimalt instruksjonsskjelett.",
         "instructionsPlaceholder": "Skriv når denne ferdigheten skal brukes, og hvilke steg assistenten skal følge.",
-        "namePlaceholder": "Påstandssjekker",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Lagret som {{name}}. Navn på ferdigheter bruker små bokstaver, tall og bindestreker, slik at andre agenter også kan laste dem.",
+        "nameNeedsLatin": "Legg til noen bokstaver fra a til z eller tall. Navn på ferdigheter bruker små bokstaver, tall og bindestreker, slik at andre agenter også kan laste dem.",
         "requiredAll": "Navn, beskrivelse og instruksjoner er påkrevd.",
         "requiredBasics": "Navn og beskrivelse er påkrevd.",
         "submitCreate": "Lag"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Bruk {{name}} i dette prosjektet",
       "validateAria": "Valider {{name}}",
       "shadowNote": "En nyere Oleafly-versjon av denne ferdigheten er tilgjengelig.",
+      "nameNote": "Andre agenter laster bare ferdigheter med navn i små bokstaver, tall og bindestreker.",
+      "renameAction": "Gi nytt navn til {{name}}",
       "replaceAction": "Bruk Oleafly-versjonen",
       "replaceTitle": "Vil du erstatte kopien din av {{name}}?",
       "replaceBody": "Kopien din flyttes til en mappe for sikkerhetskopier. Ingenting slettes.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Aksent i sidepanelet",
         "sidebarAccentForeground": "Aksenttekst i sidepanelet",
         "sidebarBorder": "Kantlinje i sidepanelet",
-        "sidebarForeground": "Tekst i sidepanelet"
+        "sidebarForeground": "Tekst i sidepanelet",
+        "pdfDarkPage": "Mørk PDF-side",
+        "pdfDarkText": "Mørk PDF-tekst"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Inverter fargene i PDF-en som standard. Du kan fortsatt bytte farger fra verktøylinjen i forhåndsvisningen.",
         "label": "Mørk modus for PDF"
+      },
+      "darkColors": {
+        "label": "Farger for mørk side",
+        "description": "Mørk modus for PDF tegner sidene i disse fargene. De følger temaet ditt til du velger egne, og de lagres sammen med det lyse eller mørke temaet du bruker nå."
       },
       "hoverPreview": {
         "description": "Vis den sist kompilerte siden når du holder pekeren over et prosjekt i biblioteket.",
@@ -2652,64 +2662,64 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Søk i logger",
+    "searchPlaceholder": "Søk i logger",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Nivå",
+      "all": "Alle",
+      "warning": "Advarsler",
+      "error": "Feil"
     },
     "level": {
       "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "warning": "Advarsel",
+      "error": "Feil"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Eksporter",
+      "openFolder": "Åpne loggmappen",
+      "clear": "Tøm"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "I dag",
+      "yesterday": "I går"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Nyeste først",
+    "privateDetails": "Privat, utelatt ved eksport",
+    "copyEntry": "Kopier oppføring",
+    "copied": "Kopiert",
+    "loading": "Leser loggene",
+    "loadFailed": "Kunne ikke lese loggene.",
+    "retry": "Prøv igjen",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Ingen loggoppføringer",
+      "description": "Bygg og feil vises her etter hvert som de skjer."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Ingen oppføringer samsvarer med \"{{query}}\"",
+      "levelTitle": "Ingen oppføringer på dette nivået",
+      "description": "Prøv et annet søk eller nivå.",
+      "clearSearch": "Tøm søket",
+      "showAll": "Vis alle nivåer"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Tøm alle logger?",
+      "confirm": "Tøm logger",
+      "description_one": "Dette sletter {{count}} oppføring og loggfilen på denne datamaskinen. Logger du allerede har eksportert, blir liggende der du lagret dem.",
+      "description_other": "Dette sletter alle {{count}} oppføringer og loggfilen på denne datamaskinen. Logger du allerede har eksportert, blir liggende der du lagret dem."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Loggene ble lagret i {{name}}.",
+      "exportFailed": "Kunne ikke eksportere loggene.",
+      "clearFailed": "Kunne ikke tømme loggene.",
+      "revealFailed": "Kunne ikke åpne loggmappen."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip-arkiv"
     },
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_one": "{{count}} oppføring",
+    "count_other": "{{count}} oppføringer",
+    "filteredCount_one": "{{shown}} av {{count}} oppføring",
+    "filteredCount_other": "{{shown}} av {{count}} oppføringer"
   }
 }

@@ -1,21 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { DEFAULT_OVERLEAF_SERVER } from "@/lib/overleaf";
+import { serverHost } from "@/lib/overleaf-live";
 import { cn } from "@/lib/utils";
 import { useOverleafImportStore } from "@/store/overleaf-import";
 
 export const LINK_BUTTON =
   "rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
-
-export function serverHost(server: string): string {
-  try {
-    return new URL(server).host;
-  } catch {
-    return server;
-  }
-}
 
 export function OverleafServerField({
   disabled = false,
@@ -41,6 +34,7 @@ export function OverleafServerField({
         }}
       >
         <Input
+          {...LITERAL_INPUT}
           data-testid="overleaf-server-input"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

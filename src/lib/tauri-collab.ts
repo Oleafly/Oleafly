@@ -121,6 +121,8 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "overleaf_linked",
   "collab_shared",
   "live_elsewhere",
+  "access_ended",
+  "failed",
   "overleaf_unsent",
   "owner_away",
   "wrong_server",

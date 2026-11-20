@@ -16,6 +16,7 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export type ScriptMark = "^" | "_";
 
@@ -52,14 +53,6 @@ export function isScriptSign(character: string | undefined): boolean {
   return character === "+" || character === "-";
 }
 
-export function escapedIn(text: string, index: number): boolean {
-  let backslashes = 0;
-  while (backslashes < index && text[index - 1 - backslashes] === "\\") {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
-}
-
 function scriptMark(character: string): ScriptMark | null {
   return character === "^" || character === "_" ? character : null;
 }
@@ -87,7 +80,7 @@ function groupBody(body: string): boolean {
 
 function escapedAt(state: EditorState, pos: number): boolean {
   const from = Math.max(0, pos - ESCAPE_WINDOW);
-  return escapedIn(state.sliceDoc(from, pos), pos - from);
+  return isBackslashEscaped(state.sliceDoc(from, pos), pos - from);
 }
 
 class ScriptGroup extends RangeValue {
@@ -257,7 +250,7 @@ function groupStartIn(
   let depth = 0;
   for (let index = last; index >= 0; index -= 1) {
     const character = text[index];
-    if (escapedIn(text, index)) continue;
+    if (isBackslashEscaped(text, index)) continue;
     if (character === syntax.close) depth += 1;
     if (character !== syntax.open) continue;
     depth -= 1;
@@ -271,7 +264,7 @@ function wordStartIn(text: string, last: number): number {
   let start = last;
   while (start > 0 && isScriptLetter(text[start - 1])) start -= 1;
   const command =
-    start > 0 && text[start - 1] === "\\" && !escapedIn(text, start - 1);
+    start > 0 && text[start - 1] === "\\" && !isBackslashEscaped(text, start - 1);
   return command ? start - 1 : last;
 }
 
@@ -284,7 +277,7 @@ function tokenStartBefore(
   const text = state.sliceDoc(from, end);
   const last = text.length - 1;
   const start =
-    text[last] === syntax.close && !escapedIn(text, last)
+    text[last] === syntax.close && !isBackslashEscaped(text, last)
       ? groupStartIn(text, last, syntax)
       : wordStartIn(text, last);
   return start === null ? null : from + start;

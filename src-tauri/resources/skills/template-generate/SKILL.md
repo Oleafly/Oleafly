@@ -1,5 +1,5 @@
 ---
-name: Reusable template
+name: template-generate
 description: Turn the current document into a reusable Oleafly template that follows the template pack authoring rules. Use when the user says make this a template, save this layout, reuse this format for future papers, build a starter for my group, or asks how to add a template to the New Project gallery or how to package a class or style for reuse.
 license: MIT
 compatibility: Needs an open Oleafly project. Installing the finished template into the gallery uses an approval-gated shell command to copy a folder into the user's data directory.

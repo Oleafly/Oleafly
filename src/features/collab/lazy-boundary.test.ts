@@ -37,7 +37,7 @@ describe("collaboration stays out of the startup bundle", () => {
   });
 
   it("opens the admin console window only through the gated collaboration slot", () => {
-    const main = read("src/main.tsx");
+    const main = read("src/WindowContent.tsx");
     expect(main).toMatch(/^import \{ AdminConsoleSlot \} from "@\/components\/collab\/CollabSlots";$/m);
     expect(main).toMatch(/<AdminConsoleSlot \/>/);
     expect(main).not.toMatch(/AdminConsoleWindow/);

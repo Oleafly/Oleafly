@@ -7,10 +7,11 @@ import { noteStoredAsFiles } from "./live-store";
 
 const NONE: readonly string[] = [];
 
-export interface OverleafTreeState {
+interface OverleafTreeState {
   projectId: string | null;
   asking: readonly string[];
   deciding: boolean;
+  failed: boolean;
   decide: (onOverleaf: boolean) => Promise<void>;
 }
 
@@ -18,20 +19,30 @@ export const useOverleafTree = create<OverleafTreeState>((set, get) => ({
   projectId: null,
   asking: NONE,
   deciding: false,
+  failed: false,
   decide: async (onOverleaf) => {
     const { projectId, asking, deciding } = get();
     if (!projectId || asking.length === 0 || deciding) return;
-    set({ deciding: true });
+    set({ deciding: true, failed: false });
     try {
       await overleafLiveDelete(projectId, [...asking], onOverleaf);
       set((state) => ({ asking: state.asking.filter((path) => !asking.includes(path)) }));
     } catch (error) {
       void logError("answer a delete on Overleaf", error);
+      set({ failed: true });
     } finally {
       set({ deciding: false });
     }
   },
 }));
+
+function ask(projectId: string, paths: readonly string[], failed: boolean): void {
+  useOverleafTree.setState((state) => ({
+    projectId,
+    asking: withPaths(state.projectId === projectId ? state.asking : NONE, paths),
+    failed: failed || (state.projectId === projectId && state.failed),
+  }));
+}
 
 export function receiveOverleafTree(notice: OverleafTreeNotice): void {
   if (notice.kind === "stored_as_files") {
@@ -44,15 +55,13 @@ export function receiveOverleafTree(notice: OverleafTreeNotice): void {
   }
   const policy = useSettingsStore.getState().overleafDeletes;
   if (policy !== "ask") {
-    overleafLiveDelete(notice.projectId, notice.paths, policy === "always").catch((error) =>
-      logError("answer a delete on Overleaf", error),
-    );
+    overleafLiveDelete(notice.projectId, notice.paths, policy === "always").catch((error: unknown) => {
+      void logError("answer a delete on Overleaf", error);
+      ask(notice.projectId, notice.paths, true);
+    });
     return;
   }
-  useOverleafTree.setState((state) => ({
-    projectId: notice.projectId,
-    asking: withPaths(state.projectId === notice.projectId ? state.asking : NONE, notice.paths),
-  }));
+  ask(notice.projectId, notice.paths, false);
 }
 
 export function startOverleafTree(): () => void {

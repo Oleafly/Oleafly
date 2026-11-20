@@ -36,6 +36,7 @@
     "copy_needs_folder": "Kitaplığa yalnızca bulundukları yerde açılan klasörler kopyalanabilir.",
     "not_removable": "Oleafly'den yalnızca bulundukları yerde açılan klasörler kaldırılabilir.",
     "trash_unavailable": "Oleafly, {{path}} öğesini Çöp Sepeti'ne veya Geri Dönüşüm Kutusu'na taşıyamadı. Sürücüde bunlardan biri olmayabilir.",
+    "trash_in_use": "Başka bir uygulama açık tuttuğu için Oleafly, {{path}} öğesini Geri Dönüşüm Kutusu'na taşıyamadı. Orada kapatıp yeniden deneyin.",
     "linked_replace_folder": "{{path}} bir klasör olduğu için Oleafly onu değiştirmez. Önce taşıyın veya yeniden adlandırın.",
     "folder_read_only": "{{name}} veya bulunduğu klasör salt okunur olduğu için Oleafly bu değişikliği yapamıyor. Açtığınız klasörü kitaplığa kopyalayın ve orada düzenleyin.",
     "shared_settings_viewer": "Görüntüleyenler paylaşılan bir projenin ayarlarını değiştiremez."

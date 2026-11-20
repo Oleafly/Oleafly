@@ -4,7 +4,7 @@ import { EmojiChooser } from "@/components/editor/emoji-chooser";
 import { useBookColorLabels } from "@/components/library/Book";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ui/color-swatch";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -74,6 +74,7 @@ function LineIconGrid({ selected, onSelect }: Readonly<{ selected: string | unde
   return (
     <div className="flex h-72 flex-col gap-2">
       <Input
+        {...SEARCH_INPUT}
         autoFocus
         aria-label={t(($) => $.notes.icons.search)}
         placeholder={t(($) => $.notes.icons.search)}

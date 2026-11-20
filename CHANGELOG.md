@@ -7,15 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.13] - 2026-11-18
+
+### Thanks
+
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #435, "feat: number LaTeX headings in the outline", #463, "test(collab): isolate live pump tests", and #469, "test: run Rust tests with `nextest`".
+- Jianx ([@Jianxinnn](https://github.com/Jianxinnn)) for #493, "fix: resolve local images in Markdown visual editor".
+- Marlon Luís de Col ([@marlondecol](https://github.com/marlondecol)) for #437, "Add built-in llama.cpp provider support".
+- nahuelcostac ([@nahuelcostac](https://github.com/nahuelcostac)) for #458, "Add real-time co-editing with an online LaTeX service".
+- ForbesHu ([@ForbesHu](https://github.com/ForbesHu)) for #466, "Support auto curly brackets for super- and sub-scripts".
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #489, "PDF dark mode: pure-black inverted page is harsh, make it theme-aware (e.g. One Dark) or configurable".
+- Andre Farias ([@andrefarias1](https://github.com/andrefarias1)) for #452, "Compile fails on Windows before LaTeX starts: injected latexmk Perl code breaks on `/^\\glossaryentry/` ("Unterminated \g... pattern in regex")".
+- gangaveg88-png ([@gangaveg88-png](https://github.com/gangaveg88-png)) for #474, "Quarto engine not showing".
+- Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)) for #488, "Bundled skill names violate Agent Skills naming rules and trigger Pi startup warnings".
+
 ### Added
 
 - Edit a project from your online LaTeX service live with your coauthors while they keep using its web editor. Typing, new files and renames reach both sides within a second or so, you can see where each person is working, and if the connection drops you keep typing and it all catches up when you're back. No Git token is needed. If your account signs in with Google, your institution or a passkey, use Sign in with your browser. It's experimental: turn it on in Settings › Experimentation.
 - Double-click a `.tex`, `.typ` or `.md` file in Finder, File Explorer or a Linux file manager and it opens in Oleafly, in a tab inside a project for its folder. Oleafly also becomes the default app for these files, on macOS and Linux the first time it runs and on Windows when it's installed. If you already picked another app for one of them, that app stays the default.
-- You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you.
+- You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you, and so does the chat, along with how to turn it off.
 - **Add custom provider** in Settings > AI has a llama.cpp preset. Pick it and it fills in `http://localhost:9931/v1`, where `llama-server` listens by default. Leave the key empty unless you started the server with `--api-key`. When you click Add provider, Oleafly checks that the server is running and loads its models.
 - When you zoom the app with a shortcut or from the command palette, a small bar at the bottom of the window shows the new zoom level. Use its − and + buttons to zoom out or in, or Reset (Cmd+0 or Ctrl+0) to go back to 100%. It goes away after two seconds, unless the pointer is resting on it.
 - The source editor has an outline rail halfway down its right edge: a short mark for each heading, with the section you're reading highlighted. Hover over it or click it to see the outline, with section numbers and the PDF page of each heading from the last compile, and pick a heading to go there. In a project split across files, it shows the whole document from any file the main document includes.
-- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save.
+- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save. Links to other sites open in your browser. The preview can't open hidden files and folders in the project, and it loads nothing from other websites, so a page that pulls scripts or fonts from a CDN shows without them.
 - The source editor highlights HTML, JavaScript, TypeScript, JSX, TSX, Python, R, Julia and SCSS files. Before, they showed as plain text.
 - `.bib` files have a Preview mode too: a searchable list of the references in the file, with title, authors, year and venue. Pick one to see its entry in the source beside the list.
 - CSV and TSV files open as a table in Preview, with filtering, sorting by column and a summary of each number column, and Excel or OpenDocument spreadsheets (`.xlsx`, `.xls`, `.ods`) open straight into that table instead of as unreadable text.
@@ -23,30 +37,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A PDF you open from the file tree has the same toolbar as the compiled PDF preview: page numbers, zoom and fit, search, the PDF's outline, page layout, rotation, dark mode and full screen. It opens fitted to the width and remembers the page you were on.
 - Slide decks written in TSX open in the editor. A deck lives at `slides/<name>/index.tsx` in the Open Slide format, so decks you already have work unchanged. Preview or Split shows the slides as you type, with their steps, transitions and images from the project, and the speaker notes for the slide on screen sit underneath. Present a deck from the start, from the current slide or with the presenter view, as you would a PDF. The arrow keys play each step before moving on to the next slide.
 - Whiteboards. Name a file `something.excalidraw` and it opens in the editor as an Excalidraw canvas, where you can sketch diagrams and figures by hand. What you draw is saved to the file a moment after you stop, and changes made to the file from outside show up on the board. The board follows the app's theme and language, works offline with its handwriting fonts built in, and opens where you left it while the app is running.
+- The outline numbers LaTeX headings from the last successful compile. Starred headings stay unnumbered, and after an edit a number can be out of date or missing until you compile again.
+- Settings has a Logs section, between Experimentation and Help. It lists what the app recorded, newest first and grouped by day, with a search box and tabs for warnings and errors. Click an entry to see everything it recorded and copy it. You can export the logs to a zip, open the log folder or clear them. Entries now survive a restart, and project IDs, file names and prompts are never written to disk or included in an export. When the same error comes in a burst, it's recorded once, followed by a line saying how many more came in the next 10 seconds. A build that stops on errors in your document shows as a warning, so the Errors tab keeps to failures in Oleafly and its engines. Reloading the window doesn't log errors for views that were still loading, and a PDF that a stopped build left half-written is skipped rather than reported as broken.
+- In LaTeX math, typing a second letter or digit after `^` or `_` wraps the script in braces: `x^10` becomes `x^{10}` and `x_ij` becomes `x_{ij}`. More letters and digits go inside the braces, and anything else steps past the closing one. In Typst only a leading sign is grouped, so `x^-1` becomes `x^(-1)`. Turn it off in Settings > Appearance > Editor > Brace subscripts and superscripts.
+- The Markdown toolbar in Code mode has the same buttons as Visual mode and writes the same Markdown. When the pane is narrow, groups of buttons fold into a ⋯ menu.
+- Underline, strikethrough, highlight, text colour, superscript and subscript in Markdown now show up when you build a PDF.
+- Notes have a selection menu, an emoji picker and code blocks.
+- You can comment on a shared note while it's live, the way you comment on a project file. Select text and pick Add comment, or open Comments next to Outline and Info. Comments are never written into the note's Markdown.
+- Paste a link to a post on X into a note and pick Embed post. The note keeps the post as an `x-post` block with its author, date and text, so it reads the same offline and in other Markdown apps. The card shows the saved post, and Show live post loads the real one. Nothing is requested from X while a note is open unless you turn on Load X posts automatically in the Notes appearance settings.
 
 ### Changed
 
+- Settings opens where you left it: the last section and tab you looked at, until you quit. A link to a setting still opens that setting.
+- A project opens with the sidebar just wide enough for seven view icons, and the sidebar comes back at that width each time you show it. When more views are turned on than fit, the last spot holds a More button with the rest, in the order you arranged them, and widening the sidebar brings them back onto the rail.
 - File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
+- PDF dark mode draws pages in your theme's colors instead of pure black. In the dark theme a page takes the theme's panel color and panel text color, so a theme like One Dark gets a page that matches it. Only the pages change now: the space around them, search highlights and messages keep the app's colors, and the light frame dark mode used to leave around each page is gone.
+- In PDF dark mode, photos, screenshots and other pictures on a page keep their own colors instead of turning into negatives. Text and charts drawn as lines and shapes still follow the dark page. A scanned page, which is one big picture, goes dark as before.
+- You can pick the dark page and text colors under the PDF dark mode switch in Settings > Appearance > PDF Preview. They're in Theme customization too, so a theme file can set them as `pdf-dark-page` and `pdf-dark-text`, and the light and dark themes each keep their own pair. A light page with dark text gives you a tinted page, such as sepia, instead of an inverted one.
+- The collaboration server copies its database to `<db>.before-upgrade` before it upgrades it.
 
 ### Fixed
 
-- Local images in Markdown's visual editor now resolve from the project again after the document is reopened. If an image isn't in the project, its place shows "Image not found" instead of staying blank.
+- The HTML output of a Quarto or Markdown document shows in the preview again. Since 0.4.12 the panel stayed blank.
+- Opening a project with the preview closed no longer stretches the sidebar across most of the window.
+- Switching Import from Overleaf between list and grid no longer switches the Home library too. The import keeps its own choice, and its rows light up under the pointer.
+- In the dark theme, every dialog has the same background as Settings. Import from Overleaf and the other dialogs were darker than the rest.
+- Each file keeps its own view. Switching one file to Visual, Preview or Split no longer switches the next file you open.
+- On a Mac, pressing End, Home, Page Up, Page Down or a function key could leave a box character in a note, the chat box or a text field. It doesn't anymore, and any that got in are removed before a message is sent.
+- Pressing Escape in a dialog opened from Settings, such as Create skill or Add custom provider, closes that dialog and leaves Settings open.
+- Search, filter, name and address fields stop autocorrecting and capitalizing what you type on a Mac.
+- The editor's tab bar scrolls to the tab you open, and when tabs don't fit it fades at the edge instead of cutting a file name off.
+- The Ask AI button for a selection on the first line sits below the line instead of covering the bar above the editor.
+- Sync PDF on compiles works in the detached preview window. The window couldn't read or change the setting.
+- Settings keeps one size when you switch to Appearance > Notes instead of growing wider.
+- After you switch the app's language, the spelling dictionary shows its name in the new language straight away.
+- The app log no longer grows without limit. Past 8 MB it moves to `app.log.1` and starts again, and lines written at the same moment stay on their own lines.
+- Local images in Markdown's visual editor now resolve from the project again after the document is reopened. If an image is missing, its place says which file it looked for instead of staying blank, and an image outside the project says it isn't shown.
 - In a narrow chat panel, the approval mode button no longer spills over the button next to it.
 - A long model name in a dropdown ends in an ellipsis instead of pushing the dropdown out of its card. A model that a server lists by its file path, as llama.cpp does for a model started with `-m`, shows the file name instead of the whole path.
 - When cloud sync left two versions of a note and you kept one, the other was
   deleted for good, although the dialog said it went to the Recycle Bin. It
   now goes to this computer's trash, so you can still get it back.
 - New research project now offers Quarto and Calepin alongside LaTeX, Typst and Markdown. A Quarto project starts from a `main.qmd` that builds its PDF through Typst, so you don't need TeX installed. Names with `@`, `*` or `{{< >}}` also show up as typed in Markdown and Quarto titles. Before, an `@` became a citation, and in Quarto that could stop the build.
-
-### Added
-
-- Show matched LaTeX outline headings with numbers from the last successful
-  compile. Starred headings remain unnumbered; edits may leave numbers stale
-  or missing until recompilation.
+- On Windows with TeX Live, every latexmk build stopped before LaTeX ran, and the error card said the compiler stopped without naming a problem. Builds work again. Documents that use glossaries-extra with bib2gls, such as the novathesis template, now build as well, and when latexmk itself can't start, the card shows its message.
+- On Windows, a command the assistant runs keeps its quoted arguments together, so `git commit -m "fix"` no longer splits into separate words. Reveal in Explorer works for a path with a comma in it, and an export from a folder whose name contains `;` finds its images.
+- The built-in skills follow the Agent Skills naming rules, so tools such as Pi no longer warn about nine of them at startup. Those nine now show their short names in Settings, such as `oleafly-latex-build` for Build and fix.
+- Existing installs now get the latest Build and fix skill and the slides and posters skill. Before, only a new install had the updated versions.
+- A skill you create, add from a folder or record from a chat now gets a name other agents accept, made of lowercase letters, numbers and hyphens and matching its folder. Create skill shows that name under the field as you type. Oleafly links your skills into Claude Code, Codex and other agents on this computer, and they warn about or skip names like "Claim Checker", so a skill you made before this shows a note in Settings with a button that renames it.
+- If you had already fixed a built-in skill's name by hand, it now takes the new version on its own. Before, it offered an update that warned it would discard your edits.
+- `oleaflyc skills list` now says where each skill came from. It used to report every skill, built-in ones included, as your own.
 
 ### Security
 
 - The collaboration server now sends email with lettre 0.11.24. Version 0.11.23 had six security advisories (RUSTSEC-2026-0560 to RUSTSEC-2026-0565). An attacker on the network could forge the mail server's replies over STARTTLS or an unencrypted connection, and a bare line break in a message let a sender inject SMTP commands. Mail to an address with a quoted local part could reach someone else, and a malformed reply or display name made the mail code panic or buffer a reply without limit.
+- On a collaboration server, editors can no longer change another member's comment. Reactions must be an emoji, with at most 20 per person per message, and a mention list stops at 100 names.
+- A log export without private details now also removes home folder paths, URL queries and tokens.
 
 ## [0.4.12] - 2026-11-12
 
@@ -4836,7 +4881,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.12...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.13...HEAD
+[0.4.13]: https://github.com/Oleafly/Oleafly/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10

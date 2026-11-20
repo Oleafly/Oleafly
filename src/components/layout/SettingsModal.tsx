@@ -127,8 +127,8 @@ import {
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { DictionaryLocalePicker } from "@/components/settings/DictionaryLocalePicker";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
-import { SettingsWidthContext, useRoomySettings } from "@/components/settings/settings-width";
 import { CheckpointToggles } from "@/components/settings/CheckpointToggles";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -309,6 +309,14 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
 function availableNav(researchTasks: boolean) {
   return NAV.filter((item) => item.id !== "research" || researchTasks);
 }
+
+const DATA_TABS = ["local", "cloud"] as const;
+
+function openingSection(requested: string | null): Section {
+  const wanted = requested ?? useSettingsStore.getState().settingsLastSection;
+  const available = availableNav(useResearchTasksFlagStore.getState().enabled);
+  return available.find((item) => item.id === wanted)?.id ?? "general";
+}
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -380,8 +388,10 @@ export function SettingsModal() {
   const forgeStatus = useForgeAccountsStore((s) => s.status);
   const forgeAccountCount = useForgeAccountsStore((s) => s.accounts.length);
 
-  const [section, setSection] = useState<Section>("general");
-  const [dataTab, setDataTab] = useState("local");
+  const [section, setSection] = useState<Section>(() =>
+    openingSection(useSettingsStore.getState().settingsInitialSection),
+  );
+  const [dataTab, setDataTab] = useSettingsTab("data", "local", DATA_TABS);
   const settingsNavRequest = useCloudStore((s) => s.navRequest);
   const requestSettingsNav = useCloudStore((s) => s.requestNav);
   useEffect(() => {
@@ -393,7 +403,7 @@ export function SettingsModal() {
       setSection("general");
     }
     requestSettingsNav(null);
-  }, [settingsNavRequest, requestSettingsNav]);
+  }, [settingsNavRequest, requestSettingsNav, setDataTab]);
   useEffect(() => {
     loadNamespace("settingsFile").catch((error: unknown) => void logError("load settings file strings", error));
   }, []);
@@ -437,11 +447,8 @@ export function SettingsModal() {
   const closeSettings = () => {
     if (useTourStore.getState().activeTourId === "settings") return;
     setOpen(false);
-    useSettingsStore.getState().setSettingsInitialSection("general");
   };
   const settingsBodyRef = useScrollTopOnChange(section);
-  const [wide, setWide] = useState(false);
-  const roomy = useRoomySettings();
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -474,13 +481,13 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const available = availableNav(useResearchTasksFlagStore.getState().enabled);
-    const next = available.some((item) => item.id === settingsInitialSection)
-      ? (settingsInitialSection as Section)
-      : "general";
-    setSection(next);
-    libraryRoot().then(setLibRoot).catch(() => {});
+    setSection(openingSection(settingsInitialSection));
+    libraryRoot().then(setLibRoot).catch((error: unknown) => void logError("read the library folder", error));
   }, [open, settingsInitialSection]);
+
+  useEffect(() => {
+    if (open) useSettingsStore.getState().rememberSettingsSection(section);
+  }, [open, section]);
 
   const templateLinkSerial = useTemplateLinkStore((s) => s.serial);
   const seenTemplateLink = useRef(templateLinkSerial);
@@ -1351,16 +1358,12 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        animateWidth={roomy}
-        className={cn(
-          "flex h-(--settings-height) min-h-[min(540px,88vh)] min-w-[min(640px,94vw)] overflow-hidden [--settings-height:min(900px,88vh)]",
-          wide ? "w-[min(1380px,94vw)]" : "w-[min(1040px,94vw)]",
-        )}
+        className="flex h-(--settings-height) w-[min(1180px,94vw)] min-h-[min(540px,88vh)] min-w-[min(640px,94vw)] overflow-hidden [--settings-height:min(900px,88vh)]"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
           data-tour="settings-navigation-panel"
-          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
+          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3 dark:bg-transparent"
         >
           <div
             data-tour="settings-navigation"
@@ -1407,7 +1410,7 @@ export function SettingsModal() {
               ? `${TOUR_SECTION_TARGETS[section]}-panel`
               : undefined
           }
-          className="flex min-w-0 flex-1 flex-col bg-muted/30"
+          className="flex min-w-0 flex-1 flex-col bg-muted/30 dark:bg-transparent"
         >
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-5">
             <h2
@@ -1427,7 +1430,7 @@ export function SettingsModal() {
               <X className="size-4" />
             </Button>
           </div>
-          <SettingsWidthContext.Provider value={setWide}>{renderSettingsBody()}</SettingsWidthContext.Provider>
+          {renderSettingsBody()}
         </div>
       </ModalShell>
       <ConfirmationDialog

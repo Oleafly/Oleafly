@@ -191,7 +191,6 @@ function sameNoteDoc(left: ProseMirrorNode, right: ProseMirrorNode): boolean {
   return left.eq(right) || serializeNoteMarkdown(left.toJSON()) === serializeNoteMarkdown(right.toJSON());
 }
 
-/** Starts a comment on the selection of a shared note that is live, for roles that can comment. */
 function NoteCommentButton({ noteId }: Readonly<{ noteId: string }>) {
   const { t } = useTranslation(["notes"]);
   const canCompose = useCommentsRail((rail) => rail.visible && rail.canCompose);

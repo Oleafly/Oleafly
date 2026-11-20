@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
-import { liveOnOverleaf, overleafLiveActions, useLiveBackend } from "@/lib/collab-live-bridge";
+import { liveOnOverleaf, useLiveBackend } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { overleafTokenPage, type SyncSide } from "@/lib/overleaf-sync";
@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useOverleafSyncStore } from "@/store/overleaf-sync";
 import { FileList } from "./FileList";
+import { resumeLive } from "./use-pause-live";
 
 const AUTO_SYNC_EVERY = 3 * 60_000;
 const QUIET_AFTER_TYPING = 15_000;
@@ -181,14 +182,7 @@ export function OverleafSyncButton() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {gitWhilePaused ? (
-            <DropdownMenuItem
-              data-testid="overleaf-live-resume"
-              onSelect={() => {
-                overleafLiveActions()
-                  ?.resume(projectId)
-                  .catch((error) => void logError("resume overleaf live editing", error));
-              }}
-            >
+            <DropdownMenuItem data-testid="overleaf-live-resume" onSelect={() => resumeLive(projectId)}>
               <Play className="size-4 text-muted-foreground" />
               {t(($) => $.shell.overleafLive.resume)}
             </DropdownMenuItem>

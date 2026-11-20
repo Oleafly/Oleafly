@@ -2,13 +2,14 @@ import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldQuestion } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { CommentByline, commentCardClass } from "@/components/ui/comments/comment-thread";
+import { CommentByline } from "@/components/ui/comments/comment-byline";
+import { commentCardClass } from "@/components/ui/comments/comment-thread";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { CollabCommentThread, CollabSuggestion } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import { CommentComposer } from "../comments/CommentComposer";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
 import { commentFailure } from "../comments/refusals";
 import { EmbeddedThread, moveFocus, type ThreadContext } from "../comments/ThreadCard";
 import { InlineAlert } from "../feedback";
@@ -207,8 +208,6 @@ export const SuggestionCard = memo(function SuggestionCard({
             label={t(($) => $.collab.comments.replyLabel)}
             placeholder={t(($) => $.collab.comments.replyPlaceholder)}
             submitLabel={t(($) => $.collab.comments.send)}
-            members={context.members}
-            self={context.self}
             onSubmit={(body) => replyToSuggestion(suggestion, body)}
           />
         ) : null}

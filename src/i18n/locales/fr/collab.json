@@ -224,6 +224,8 @@
     "overleaf_linked": "Ce projet est lié à Overleaf. Supprimez le lien pour le partager sur un Oleafly Server.",
     "collab_shared": "Ce projet est partagé sur un Oleafly Server. Arrêtez de le partager là-bas pour le modifier en direct avec Overleaf.",
     "live_elsewhere": "Ce projet est en direct dans une autre fenêtre Oleafly. Arrêtez l'édition en direct dans cette fenêtre, puis réessayez.",
+    "access_ended": "Vous n'avez plus accès à ce projet, il ne peut donc pas être modifié en direct. Votre copie reste sur cet ordinateur. Demandez au propriétaire de le partager de nouveau avec vous.",
+    "failed": "L'édition en direct n'a pas pu démarrer à cause d'une erreur. Vos modifications restent sur cet ordinateur. Patientez un instant, puis choisissez Relancer la synchronisation.",
     "overleaf_unsent": "Certaines modifications ne sont pas encore parvenues à Overleaf. Reprenez l'édition en direct pour les envoyer, puis supprimez le lien.",
     "suggestion_not_found": "Cette suggestion n'existe plus. Quelqu'un l'a peut-être acceptée ou refusée.",
     "suggestion_not_yours": "Seule la personne qui a fait cette suggestion peut la retirer.",
@@ -554,7 +556,8 @@
     "trustAgain": "Toute personne que vous ajoutez à ce projet peut modifier ses fichiers, donc Oleafly vous demande de lui faire de nouveau confiance sur cet ordinateur avant d'exécuter pour lui des agents, des commandes du terminal ou le shell escape.",
     "projectNotesShared": "Les notes du projet sont partagées avec tous les membres de ce projet. Les notes personnelles restent privées.",
     "personalNotesPrivate": "Les notes personnelles restent privées. Seules les notes du dossier de notes du projet sont partagées.",
-    "unlinkOverleaf": "Supprimer le lien avec Overleaf"
+    "unlinkOverleaf": "Supprimer le lien avec Overleaf",
+    "unlinkOverleafDescription": "L'édition en direct s'arrête pour ce projet. Votre copie reste sur cet ordinateur, et vos coauteurs gardent le projet en ligne tel quel."
   },
   "manage": {
     "sharedOn": "Partagé sur {{server}}",

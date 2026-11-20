@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
 import { createEmitter } from "@/lib/emitter";
+import { errorStartsWith } from "@/lib/error-prefix";
 import type { OpenedFolder } from "@/lib/folder-detection";
 import type { SearchMode } from "@/lib/search-modes";
 
@@ -214,6 +215,10 @@ export const getProjectEngine = (projectId: string) =>
 
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
+
+export function isMissingCompiledPdf(error: unknown): boolean {
+  return errorStartsWith(error, "no compiled PDF");
+}
 
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
@@ -696,7 +701,6 @@ export interface NoteLinkPreview {
 
 export const noteLinkPreview = (url: string) => invoke<NoteLinkPreview>("note_link_preview", { url });
 
-/** A post on X read through X's public oEmbed endpoint, for a note's static card. */
 export interface NoteXPost {
   url: string;
   id: string;
@@ -1369,6 +1373,8 @@ export const skillsShareTargets = () =>
 
 export const skillsShareSync = (enabled: boolean) =>
   invoke<SkillShareTarget[]>("skills_share_sync", { enabled });
+
+export const previewSkillId = (name: string) => invoke<string>("preview_skill_id", { name });
 
 export const readDeadlines = () => invoke<string>("read_deadlines");
 

@@ -15,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { groupSkills, type SkillGroup } from "@/lib/skill-groups";
 import { isSkillAvailable, type SkillEntry } from "@/lib/skills";
+import { SIDEWAYS_FADE, useScrollEdges } from "@/hooks/use-sideways-scroll";
 import { cn } from "@/lib/utils";
 import { useMarquee } from "./use-marquee";
 
@@ -128,6 +129,7 @@ function AssistantHomeView({
     onPickSkill(skill);
   };
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [slider, setSlider] = useState<HTMLDivElement | null>(null);
   const groupIcon = GROUP_ICONS[active?.key ?? "user"] ?? Sparkles;
   const shelf: ShelfEntry[] = [
     ...(showSkills ? chips : []).map((skill) => ({
@@ -153,6 +155,7 @@ function AssistantHomeView({
   ];
 
   const marquee = useMarquee(sliderRef, shelf.length > 1);
+  useScrollEdges(slider, shelf.length > 0);
 
   return (
     <div
@@ -256,43 +259,40 @@ function AssistantHomeView({
       ) : null}
 
       {shelf.length > 0 ? (
-        <div className="relative w-full">
-          <div
-            ref={sliderRef}
-            data-testid="assistant-home-chips"
-            data-marquee={marquee.running ? "running" : "paused"}
-            className="no-scrollbar flex w-full items-center gap-2 overflow-x-auto px-0.5 py-1"
-            {...marquee.handlers}
-          >
-            {shelf.map((entry, index) => {
-              const chipTone = tone(cards.length + index);
-              const Icon = entry.icon;
-              return (
-                <button
-                  key={entry.key}
-                  type="button"
-                  data-testid={entry.testId}
-                  data-locked={entry.locked ? "true" : undefined}
-                  title={entry.title}
-                  onClick={entry.onSelect}
-                  className={cn(
-                    "flex shrink-0 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-sm transition-shadow hover:shadow-md",
-                    chipTone.border,
-                  )}
-                >
-                  {Icon ? <Icon aria-hidden className={cn("size-3.5", chipTone.icon)} /> : null}
-                  <span className="whitespace-nowrap">{entry.label}</span>
-                  {entry.locked ? (
-                    <Lock aria-hidden className="size-3 text-muted-foreground/70" />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-sidebar to-transparent"
-          />
+        <div
+          ref={(node) => {
+            sliderRef.current = node;
+            setSlider(node);
+          }}
+          data-testid="assistant-home-chips"
+          data-marquee={marquee.running ? "running" : "paused"}
+          className={cn("no-scrollbar flex w-full items-center gap-2 overflow-x-auto px-0.5 py-1", SIDEWAYS_FADE)}
+          {...marquee.handlers}
+        >
+          {shelf.map((entry, index) => {
+            const chipTone = tone(cards.length + index);
+            const Icon = entry.icon;
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                data-testid={entry.testId}
+                data-locked={entry.locked ? "true" : undefined}
+                title={entry.title}
+                onClick={entry.onSelect}
+                className={cn(
+                  "flex shrink-0 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-sm transition-shadow hover:shadow-md",
+                  chipTone.border,
+                )}
+              >
+                {Icon ? <Icon aria-hidden className={cn("size-3.5", chipTone.icon)} /> : null}
+                <span className="whitespace-nowrap">{entry.label}</span>
+                {entry.locked ? (
+                  <Lock aria-hidden className="size-3 text-muted-foreground/70" />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 

@@ -6,7 +6,7 @@ import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { ColorSwatch } from "@/components/ui/color-swatch";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -74,7 +74,8 @@ import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
-import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
+import { ThemeCustomization, ThemeTokenField, useThemeTokenEditor } from "@/components/settings/ThemeCustomization";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -1383,6 +1384,27 @@ function TerminalAppearanceTab() {
   );
 }
 
+function PdfDarkColorsRow() {
+  const { t } = useTranslation(["common", "settings"]);
+  const editor = useThemeTokenEditor();
+  return (
+    <SettingsRow
+      testId="settings-row-pdf-dark-colors"
+      label={t(($) => $.settings.appearance.preview.darkColors.label)}
+      description={t(($) => $.settings.appearance.preview.darkColors.description)}
+      details={
+        <div className="mt-2 space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ThemeTokenField editor={editor} mode={editor.theme} token="pdf-dark-page" />
+            <ThemeTokenField editor={editor} mode={editor.theme} token="pdf-dark-text" />
+          </div>
+          {editor.message ? <output className="block text-xs text-muted-foreground">{editor.message}</output> : null}
+        </div>
+      }
+    />
+  );
+}
+
 function PdfPreviewTab() {
   const { t } = useTranslation(["common", "settings"]);
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
@@ -1398,6 +1420,7 @@ function PdfPreviewTab() {
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
       />
+      <PdfDarkColorsRow />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.preview.hoverPreview.label)}
         description={t(($) => $.settings.appearance.preview.hoverPreview.description)}
@@ -1548,6 +1571,7 @@ function FileManagementTab() {
         <div id="hidden-files-panel" className="border-t p-4">
         <form onSubmit={submitPattern} className="flex gap-2">
           <Input
+            {...LITERAL_INPUT}
             value={pattern}
             onChange={(event) => setPattern(event.target.value)}
             placeholder={t(($) => $.settings.appearance.files.hidden.placeholder)}
@@ -1597,8 +1621,10 @@ function FileManagementTab() {
   );
 }
 
+const APPEARANCE_TAB_IDS: readonly AppearanceTabId[] = APPEARANCE_TABS.map((tab) => tab.id);
+
 function isAppearanceTab(value: unknown, notesEnabled: boolean): value is AppearanceTabId {
-  return APPEARANCE_TABS.some((tab) => tab.id === value && (tab.id !== "notes" || notesEnabled));
+  return APPEARANCE_TAB_IDS.includes(value as AppearanceTabId) && (value !== "notes" || notesEnabled);
 }
 
 export function AppearanceSection() {
@@ -1606,8 +1632,10 @@ export function AppearanceSection() {
   const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
   const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
   const notesEnabled = useSettingsStore((state) => state.notes);
-  const [chosenTab, setChosenTab] = useState<AppearanceTabId>(() =>
-    isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app",
+  const [chosenTab, setChosenTab] = useSettingsTab<AppearanceTabId>(
+    "appearance",
+    () => (isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app"),
+    APPEARANCE_TAB_IDS,
   );
   const activeTab = chosenTab === "notes" && !notesEnabled ? "app" : chosenTab;
   const tabs = APPEARANCE_TABS.filter((tab) => tab.id !== "notes" || notesEnabled);
@@ -1615,7 +1643,7 @@ export function AppearanceSection() {
     if (!isAppearanceTab(requestedTab, notesEnabled)) return;
     setChosenTab(requestedTab);
     setRequestedTab(null);
-  }, [notesEnabled, requestedTab, setRequestedTab]);
+  }, [notesEnabled, requestedTab, setRequestedTab, setChosenTab]);
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );
@@ -1628,7 +1656,7 @@ export function AppearanceSection() {
     <div className="space-y-4">
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setChosenTab(value as AppearanceTabId)}
+        onValueChange={setChosenTab}
         className="space-y-4"
       >
         <TabsList scrollable data-testid="appearance-tab-strip">

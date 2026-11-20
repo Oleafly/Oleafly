@@ -82,25 +82,37 @@ impl Profile {
     }
 
     pub fn remove(mut self) -> bool {
-        self.release()
-    }
-
-    fn release(&mut self) -> bool {
-        let Some(lock) = self.lock.take() else {
-            return true;
-        };
-        let removed = remove_tree(&self.dir);
-        drop(lock);
-        if removed {
-            let _ = std::fs::remove_file(&self.lock_path);
+        match self.lock.take() {
+            Some(lock) => release(&self.dir, &self.lock_path, lock),
+            None => true,
         }
-        removed
     }
+}
+
+fn release(dir: &Path, lock_path: &Path, lock: File) -> bool {
+    let removed = remove_tree(dir);
+    drop(lock);
+    if removed {
+        let _ = std::fs::remove_file(lock_path);
+    }
+    removed
 }
 
 impl Drop for Profile {
     fn drop(&mut self) {
-        self.release();
+        let Some(lock) = self.lock.take() else {
+            return;
+        };
+        let (dir, lock_path) = (self.dir.clone(), self.lock_path.clone());
+        let cleanup = move || release(&dir, &lock_path, lock);
+        match tokio::runtime::Handle::try_current() {
+            Ok(runtime) => {
+                runtime.spawn_blocking(cleanup);
+            }
+            Err(_) => {
+                cleanup();
+            }
+        }
     }
 }
 

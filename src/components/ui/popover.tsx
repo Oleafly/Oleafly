@@ -14,11 +14,12 @@ import { cn } from "@/lib/utils";
 const NESTED_POPUP = '[role="listbox"], [data-radix-popper-content-wrapper]';
 const HOVER_OPEN_MS = 250;
 const HOVER_CLOSE_MS = 200;
+const CONTENT_ALIGN = { left: "start", center: "center", right: "end" } as const;
 
 interface PopoverProps {
   trigger: ReactNode;
   children: ReactNode;
-  align?: "left" | "right";
+  align?: keyof typeof CONTENT_ALIGN;
   side?: "top" | "right" | "bottom" | "left";
   className?: string;
   triggerClassName?: string;
@@ -158,7 +159,7 @@ export function Popover({
             ref={contentRef}
             aria-label={contentAriaLabel}
             side={side}
-            align={align === "right" ? "end" : "start"}
+            align={CONTENT_ALIGN[align]}
             sideOffset={4}
             collisionPadding={12}
             onClick={closeOnClick ? settleClosed : undefined}

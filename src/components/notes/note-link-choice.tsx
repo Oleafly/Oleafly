@@ -8,7 +8,7 @@ import { type KeyboardEvent, useEffect, useId, useReducer, useRef, useState } fr
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { allowRemoteImage } from "@/lib/remote-image";
 import { safeHttpUrl } from "@/lib/system-browser";
 import { caretAfterDrawnBlock } from "./block-views";
@@ -191,6 +191,7 @@ function BookmarkAddress({ editor, choice }: Readonly<{ editor: Editor; choice: 
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1">
         <Input
+          {...LITERAL_INPUT}
           ref={input}
           aria-label={t(($) => $.notes.toolbar.linkAddress)}
           aria-invalid={invalid || undefined}

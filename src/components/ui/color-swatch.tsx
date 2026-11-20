@@ -3,6 +3,8 @@ import { Check } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+export const SWATCH_EDGE = "border border-foreground/30 bg-clip-padding";
+
 const SWATCH_SIZE = { sm: "size-5", md: "size-7", lg: "size-8" } as const;
 const DOT_SIZE = { xs: "size-2", sm: "size-3", md: "size-3.5" } as const;
 
@@ -35,8 +37,9 @@ export function ColorSwatch({
         aria-pressed={pressed}
         style={{ backgroundColor: color, ...style }}
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full border transition-transform hover:scale-110 focus-visible:border-2 focus-visible:border-foreground motion-reduce:transition-none",
-          pressed ? "border-foreground" : "border-border",
+          "flex shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:border-2 focus-visible:border-foreground motion-reduce:transition-none",
+          SWATCH_EDGE,
+          pressed && "border-foreground",
           SWATCH_SIZE[size],
           className,
         )}

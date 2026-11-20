@@ -8,7 +8,9 @@ import { PdfStateMessage } from "@/components/preview/PdfStateMessage";
 import { PdfShowToolbarButton, PdfToolbarControls } from "@/components/preview/PdfToolbarControls";
 import { PdfViewerOverlay } from "@/components/preview/PdfViewerOverlay";
 import { usePdfReader } from "@/components/preview/use-pdf-reader";
+import { LoadingState } from "@/components/ui/empty";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
+import { logError, logWarning } from "@/lib/log";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
@@ -30,12 +32,14 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
     const request = latestRead.current;
     readFileBase64(projectId, path)
       .then((b64) => {
-        if (request === latestRead.current) {
-          setPdf({ bytes: base64ToUint8Array(b64), identity: `${projectId}\n${path}\n${request}` });
-        }
+        if (request !== latestRead.current) return;
+        setErr(null);
+        setPdf({ bytes: base64ToUint8Array(b64), identity: `${projectId}\n${path}\n${request}` });
       })
-      .catch((error) => {
-        if (request === latestRead.current) setErr(String(error));
+      .catch((error: unknown) => {
+        if (request !== latestRead.current) return;
+        void logError("open a PDF", error);
+        setErr(String(error));
       });
   }, [projectId, path]);
 
@@ -83,7 +87,7 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
       </div>
     );
   }
-  if (!pdf) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
+  if (!pdf) return <LoadingState className="p-6" label={t(($) => $.common.state.loading)} />;
 
   const load = reader.pdfLoadState;
   const overlay = load.documentIdentity === pdf.identity && load.status !== "ready" && load.status !== "idle";
@@ -167,7 +171,6 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
           data-select-all-scope
           aria-label={t(($) => $.preview.viewer.scrollArea)}
           className="isolate h-full overflow-auto focus-visible:bg-accent/20"
-          style={reader.inverted && !reader.screenReaderMode ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
         >
           <PdfViewer
             key={pdf.identity}
@@ -179,6 +182,8 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
             scale={reader.scale}
             layout={reader.layout}
             screenReaderMode={reader.screenReaderMode}
+            pageColors={reader.pdfPageColors}
+            reportWarning={logWarning}
             searchQuery={reader.searchOpen ? reader.deferredSearch : ""}
             onLoadStateChange={(next) => {
               if (next.documentIdentity === pdf.identity) reader.markLoadState(next);

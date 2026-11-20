@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use super::{unpack, CodecError, Piece};
+use super::{bounded, unpack, CodecError, Piece};
 
 pub const MAX_COMMENTS: usize = 500;
 pub const MAX_CHANGES: usize = 2_000;
@@ -54,7 +54,7 @@ fn packed_units(value: &Value) -> Result<Option<Vec<u16>>, CodecError> {
 fn position(value: &Value) -> Result<usize, CodecError> {
     value
         .as_u64()
-        .map(|at| at as usize)
+        .and_then(bounded)
         .ok_or_else(|| CodecError::Malformed("a range has no position".into()))
 }
 

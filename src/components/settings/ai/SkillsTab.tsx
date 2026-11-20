@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,24 +21,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList } from "@/lib/intl";
+import { logWarning } from "@/lib/log";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { previewSkillId } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import {
   addSkill,
   createSkill,
+  followsSkillNameRules,
   isSkillAvailable,
   mergeToggledSkillRecord,
   removeSkill,
   setSkillEnabled,
   setSkillProjectEnabled,
+  skillNameFrom,
   SKILLS_QUERY_KEY,
   skillsQueryKey,
   replaceSkillWithBuiltin,
@@ -51,7 +56,6 @@ import {
   type SkillEntry,
   type SkillProjectOverride,
   type SkillToggleScope,
-  type UpdateSkillInput,
 } from "@/lib/skills";
 import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
 import { cn } from "@/lib/utils";
@@ -100,6 +104,40 @@ function tierLine(skill: SkillEntry): string {
   return i18n.t(($) => $.settings.ai.skills.tier.user);
 }
 
+const PREVIEW_DELAY_MS = 150;
+
+function savedNameHint(typed: string, shown: string, saved: string | null, hasLetters: boolean): string | null {
+  if (!typed) return null;
+  if (!hasLetters) return i18n.t(($) => $.settings.ai.skills.editor.nameNeedsLatin);
+  if (saved === null || shown === saved) return null;
+  return i18n.t(($) => $.settings.ai.skills.editor.nameSavedAs, { name: saved });
+}
+
+function usePreviewSkillId(name: string): string | null {
+  const settled = useDebouncedValue(name, PREVIEW_DELAY_MS, (value) => value === "");
+  const [preview, setPreview] = useState<{ name: string; id: string } | null>(null);
+
+  useEffect(() => {
+    if (!settled) {
+      setPreview(null);
+      return;
+    }
+    let active = true;
+    previewSkillId(settled)
+      .then((id) => {
+        if (active) setPreview({ name: settled, id });
+      })
+      .catch((error) => {
+        void logWarning("preview skill id", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, [settled]);
+
+  return name && preview?.name === name ? preview.id : null;
+}
+
 function SkillEditorDialog({
   target,
   onOpenChange,
@@ -120,7 +158,7 @@ function SkillEditorDialog({
     setForm(
       editing
         ? {
-            name: editing.name,
+            name: editing.id,
             description: editing.description,
             instructions: editing.instructions,
           }
@@ -130,9 +168,15 @@ function SkillEditorDialog({
     setError("");
   }, [editing, target]);
 
+  const typedName = form.name.trim();
+  const nameHasLetters = editing !== null || skillNameFrom(typedName) !== "";
+  const previewed = usePreviewSkillId(target === "create" && nameHasLetters ? typedName : "");
+  const savedName = editing ? editing.id : previewed;
+  const nameHint = savedNameHint(typedName, editing?.name ?? typedName, savedName, nameHasLetters);
+
   const submit = async () => {
     const next = {
-      name: form.name.trim(),
+      name: typedName,
       description: form.description.trim(),
       instructions: form.instructions.trim(),
     };
@@ -142,6 +186,10 @@ function SkillEditorDialog({
           ? t(($) => $.settings.ai.skills.editor.requiredAll)
           : t(($) => $.settings.ai.skills.editor.requiredBasics),
       );
+      return;
+    }
+    if (!nameHasLetters) {
+      setError(t(($) => $.settings.ai.skills.editor.nameNeedsLatin));
       return;
     }
     setBusy(true);
@@ -179,11 +227,20 @@ function SkillEditorDialog({
               {t(($) => $.common.labels.name)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id="skill-name"
               value={form.name}
+              disabled={editing !== null}
+              aria-describedby={nameHint ? "skill-name-hint" : undefined}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               placeholder={t(($) => $.settings.ai.skills.editor.namePlaceholder)}
+              className="font-mono"
             />
+            {nameHint ? (
+              <p id="skill-name-hint" className="text-xs text-muted-foreground">
+                {nameHint}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <label
@@ -325,6 +382,7 @@ function SkillCard({
   onToggleFiles,
   onUpdate,
   onReplace,
+  onRename,
   onValidate,
   onEdit,
   onRemove,
@@ -339,6 +397,7 @@ function SkillCard({
   onToggleFiles: (skillId: string) => void;
   onUpdate: (skill: SkillEntry) => void;
   onReplace: (skill: SkillEntry) => void;
+  onRename: (skill: SkillEntry) => void;
   onValidate: (skillId: string) => void;
   onEdit: (skill: SkillEntry) => void;
   onRemove: (skill: SkillEntry) => void;
@@ -353,27 +412,58 @@ function SkillCard({
     skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
   ].filter((value): value is string => Boolean(value));
   const isUserSkill = skill.source === "user";
+  const needsRename = isUserSkill && !invalid && !followsSkillNameRules(skill.name, skill.id);
   const projectAvailable = isSkillAvailable(skill);
   const changedForProject = projectScope && projectAvailable !== skill.enabled;
+  const renderSkillNotice = (kind: "shadow" | "name", note: string, action: ReactNode) => (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <p className="min-w-0 grow basis-56 text-xs text-muted-foreground" data-testid={`skill-${kind}-note-${skill.id}`}>
+        {note}
+      </p>
+      <div className="ms-auto shrink-0">{action}</div>
+    </div>
+  );
+
+  const renderSkillNotices = () =>
+    skill.shadowsBundled || needsRename ? (
+      <div className="mt-2 space-y-2">
+        {skill.shadowsBundled
+          ? renderSkillNotice(
+              "shadow",
+              t(($) => $.settings.ai.skills.shadowNote),
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid={`skill-replace-${skill.id}`}
+                disabled={busy}
+                onClick={() => onReplace(skill)}
+              >
+                {t(($) => $.settings.ai.skills.replaceAction)}
+              </Button>,
+            )
+          : null}
+        {needsRename
+          ? renderSkillNotice(
+              "name",
+              t(($) => $.settings.ai.skills.nameNote),
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid={`skill-rename-${skill.id}`}
+                disabled={busy}
+                onClick={() => onRename(skill)}
+              >
+                {t(($) => $.settings.ai.skills.renameAction, { name: skill.id })}
+              </Button>,
+            )
+          : null}
+      </div>
+    ) : null;
+
   const renderSkillActions = () => (
     <div className="mt-2 flex items-center justify-end gap-1">
-      {skill.shadowsBundled ? (
-        <span className="mr-auto text-xs text-muted-foreground" data-testid={`skill-shadow-note-${skill.id}`}>
-          {t(($) => $.settings.ai.skills.shadowNote)}
-        </span>
-      ) : null}
-      {skill.shadowsBundled ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          data-testid={`skill-replace-${skill.id}`}
-          disabled={busy}
-          onClick={() => onReplace(skill)}
-        >
-          {t(($) => $.settings.ai.skills.replaceAction)}
-        </Button>
-      ) : null}
       {skill.updateAvailable ? (
         <Button
           type="button"
@@ -560,6 +650,7 @@ function SkillCard({
         </p>
       ) : null}
 
+      {renderSkillNotices()}
       {renderSkillActions()}
     </div>
   );
@@ -627,6 +718,15 @@ export function SkillsTab() {
     }
   };
 
+  const renameSkill = async (skill: SkillEntry) => {
+    const record = await runRecordMutation(skill.id, () =>
+      updateSkill(skill.id, { description: skill.description, instructions: skill.instructions }),
+    );
+    if (record) {
+      setMessage({ ok: true, text: t(($) => $.settings.ai.skills.messages.saved, { name: record.name }) });
+    }
+  };
+
   const runSkillValidation = (skillId: string) => {
     void runRecordMutation(skillId, () => validateSkill(skillId));
   };
@@ -675,8 +775,10 @@ export function SkillsTab() {
         };
         record = await createSkill(input);
       } else if (editor) {
-        const input: UpdateSkillInput = form;
-        record = await updateSkill(editor.id, input);
+        record = await updateSkill(editor.id, {
+          description: form.description,
+          instructions: form.instructions,
+        });
       } else {
         return t(($) => $.settings.ai.skills.messages.editorClosed);
       }
@@ -868,6 +970,7 @@ export function SkillsTab() {
                     onToggleFiles={toggleFiles}
                     onUpdate={setUpdateTarget}
                     onReplace={setReplaceTarget}
+                    onRename={(skill) => void renameSkill(skill)}
                     onValidate={runSkillValidation}
                     onEdit={setEditor}
                     onRemove={setRemoveTarget}

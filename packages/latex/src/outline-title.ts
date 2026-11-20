@@ -4,7 +4,7 @@ import {
   type LatexDefinitions,
   type LatexWrapperSection,
 } from "./latex-definitions";
-import { decodeLatexAccents } from "./tex-text";
+import { decodeLatexAccents, isBackslashEscaped } from "./tex-text";
 
 const SIMPLE_TEXT_COMMAND_NAMES: ReadonlySet<string> = new Set([
   "emph",
@@ -110,15 +110,7 @@ function maskComments(text: string): string {
     .map((line) => {
       for (let index = 0; index < line.length; index += 1) {
         if (line[index] !== "%") continue;
-        let slashes = 0;
-        for (
-          let cursor = index - 1;
-          cursor >= 0 && line[cursor] === "\\";
-          cursor -= 1
-        ) {
-          slashes += 1;
-        }
-        if (slashes % 2 === 0) {
+        if (!isBackslashEscaped(line, index)) {
           return `${line.slice(0, index)}${" ".repeat(line.length - index)}`;
         }
       }
@@ -282,41 +274,86 @@ function expandProjectMacros(
   return result;
 }
 
+const SHIELDED = "{}$~\\";
+const SHIELD_BASE = 0xfdd0;
+const SHIELD = /[﷐-﷔]/gu;
+const LITERAL_COMMAND = /\\(textbackslash|textasciitilde|textasciicircum)(?![\p{L}@])(?:\s*\{\s*\})?/gu;
+const LITERAL_OF: Readonly<Record<string, string>> = {
+  textbackslash: "\\",
+  textasciitilde: "~",
+  textasciicircum: "^",
+};
+const ESCAPED_SPECIAL = /\\([%$&#_{}])/gu;
+const TEXT_SYMBOL = /\\([A-Za-z]+)(?![\p{L}@])(?:\s*\{\s*\})?/gu;
+const TEXT_SYMBOLS: Readonly<Record<string, string>> = {
+  BibTeX: "BibTeX",
+  LaTeX: "LaTeX",
+  LaTeXe: "LaTeX2ε",
+  LuaLaTeX: "LuaLaTeX",
+  LuaTeX: "LuaTeX",
+  TeX: "TeX",
+  XeLaTeX: "XeLaTeX",
+  XeTeX: "XeTeX",
+  dots: "…",
+  ldots: "…",
+  textellipsis: "…",
+  textemdash: "—",
+  textendash: "–",
+};
+
+function shield(char: string): string {
+  const at = SHIELDED.indexOf(char);
+  return at < 0 ? char : String.fromCodePoint(SHIELD_BASE + at);
+}
+
+function shieldLiterals(text: string): string {
+  return text
+    .replace(LITERAL_COMMAND, (_whole, name: string) => shield(LITERAL_OF[name] ?? ""))
+    .replace(ESCAPED_SPECIAL, (_whole, char: string) => shield(char));
+}
+
+function unshield(text: string): string {
+  return text.replace(SHIELD, (char) => SHIELDED[(char.codePointAt(0) ?? SHIELD_BASE) - SHIELD_BASE]);
+}
+
+function replaceTextSymbols(text: string): string {
+  return text
+    .replace(TEXT_SYMBOL, (whole, name: string) => TEXT_SYMBOLS[name] ?? whole)
+    .replace(/\\(?:centering|protect|relax|xspace)\b/gu, "")
+    .replace(/\\(?:,|;|:|!|\s|-)/gu, (control) => (control === String.raw`\-` ? "" : " "))
+    .replace(/\\pm\b/gu, "±")
+    .replace(/\\times\b/gu, "×")
+    .replace(/\\to\b/gu, "→");
+}
+
 export function renderLatexOutlineTitle(
   source: string,
   macros: ReadonlyMap<string, string> = new Map(),
   headingsByLabel: ReadonlyMap<string, string> = new Map(),
 ): string {
   const named = source.replace(NAME_REFERENCE, (_whole, label: string) => headingsByLabel.get(label.trim()) ?? label.trim());
-  let result = decodeLatexAccents(expandProjectMacros(named, macros)).replace(MATH_DELIMITERS, "");
+  let result = decodeLatexAccents(shieldLiterals(expandProjectMacros(named, macros))).replace(MATH_DELIMITERS, "");
   let previous = "";
   while (result !== previous) {
     previous = result;
     result = stripSimpleTextCommands(result).replace(COLOURED_TEXT, "$1");
   }
-  result = stripFontSwitches(
-    result.replace(COLOUR_SWITCH, "").replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1"),
+  result = replaceTextSymbols(
+    stripFontSwitches(result.replace(COLOUR_SWITCH, "").replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1")),
   );
   previous = "";
   while (result !== previous) {
     previous = result;
     result = unwrapPlainGroups(result);
   }
-  return result
-    .replace(/\\LaTeX(?:\s*\{\s*\})?/gu, "LaTeX")
-    .replace(/\\TeX(?:\s*\{\s*\})?/gu, "TeX")
-    .replace(/\\textasciitilde\s*\{\s*\}/gu, "~")
-    .replace(/\\textasciicircum\s*\{\s*\}/gu, "^")
-    .replace(/\\textbackslash\s*\{\s*\}/gu, "\\")
-    .replace(/\\(?:centering|protect|relax|xspace)\b/gu, "")
-    .replace(/\\(?:,|;|:|!|\s)/gu, " ")
-    .replace(/\\pm\b/gu, "±")
-    .replace(/\\times\b/gu, "×")
-    .replace(/\\to\b/gu, "→")
-    .replace(/\\([%$&#_{}])/gu, "$1")
-    .replace(/\{\s*\}/gu, "")
-    .replaceAll("~", " ")
-    .replace(/``|''/gu, '"')
+  return unshield(
+    result
+      .replace(/\{\s*\}/gu, "")
+      .replaceAll("~", " ")
+      .replaceAll("---", "—")
+      .replaceAll("--", "–")
+      .replace(/``|''/gu, '"'),
+  )
     .replace(/\s+/gu, " ")
     .trim();
 }

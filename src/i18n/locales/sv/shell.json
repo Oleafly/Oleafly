@@ -844,7 +844,8 @@
     "search": "Sök i projektet",
     "sourceControl": "Versionshantering",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Anteckningar"
+    "notes": "Anteckningar",
+    "more": "Fler vyer"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",
@@ -1089,7 +1090,7 @@
       "integrations": "Integrationer",
       "shortcuts": "Kortkommandon",
       "research": "Forskning",
-      "logs": "Logs"
+      "logs": "Loggar"
     },
     "search": {
       "empty": "Inga inställningar matchar",
@@ -1107,7 +1108,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-värdtjänster, Computer Use, skrivbordsappar, Cua, MCP, citeringar, konton, anslutningar",
         "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord",
         "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "logg, loggar, log, logs, fel, varningar, krascher, byggen, diagnostik, felsökning, exportera loggar, app.log, debug"
       },
       "label": "Sök i inställningar",
       "results_one": "{{count}} avsnitt matchar",

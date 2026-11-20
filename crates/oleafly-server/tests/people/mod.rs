@@ -195,6 +195,23 @@ pub async fn share_project(server: &TestServer, owner: &Person, title: &str) -> 
     read(call(server, Method::POST, &commit, owner.token(), None).await).await
 }
 
+pub async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
+    shared_with_alice_as(stage, ProjectRole::Editor).await
+}
+
+pub async fn shared_with_alice_as(stage: &Stage, role: ProjectRole) -> SharedProjectId {
+    let project = share_project(&stage.server, &stage.bob, "Thesis")
+        .await
+        .project_id;
+    assert_eq!(
+        grant(&stage.server, &stage.bob, project, &stage.alice, role)
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    project
+}
+
 pub async fn grant(
     server: &TestServer,
     owner: &Person,

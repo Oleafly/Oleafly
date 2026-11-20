@@ -1,8 +1,8 @@
 import { ChangeSet, type EditorSelection, EditorState, type Extension, Prec, StateEffect, StateField, type Text, Transaction, type TransactionSpec } from "@codemirror/state";
 import type { EditorView, KeyBinding } from "@codemirror/view";
-import { ViewPlugin, keymap } from "@codemirror/view";
+import { keymap } from "@codemirror/view";
 import type { Mark } from "@tiptap/pm/model";
-import { reportEditorError } from "@oleafly/editor";
+import { lazyExtension, lazyExtensionFilled, reportEditorError } from "@oleafly/editor";
 import type { EngineFormattingAction } from "@/lib/document-engine";
 import { sameEditorKey, useEditorKeymapStore } from "@/store/editor-keymap";
 import type { MarkdownTarget } from "./markdown-model";
@@ -34,7 +34,7 @@ const pendingField = StateField.define<Held | null>({
   create: () => null,
   update(value, tr) {
     for (const effect of tr.effects) if (effect.is(pendingTyping)) return { ...effect.value, doc: tr.newDoc };
-    if (!value || (tr.reconfigured && !tr.effects.some((effect) => effect.is(StateEffect.appendConfig)))) return null;
+    if (!value || (tr.reconfigured && !tr.effects.some((effect) => effect.is(lazyExtensionFilled)))) return null;
     if (tr.isUserEvent("input.type.compose")) {
       let inside = true;
       const end = value.composed ?? value.to;
@@ -196,21 +196,15 @@ function format(key: string, ...acts: Act[]): KeyBinding {
   };
 }
 
+const handoffExtras = lazyExtension(async () => {
+  if (!(await loadEngine())) throw new Error("the Markdown toolbar did not load");
+  return (await import("./markdown-typing")).handoffExtras;
+});
+
 export const markdownFormatKeymap: Extension = [
   pendingField,
   typingThroughModel,
-  ViewPlugin.define((view) => {
-    let live = true;
-    void loadEngine().then(async (loaded) => {
-      const extras = loaded && (await import("./markdown-typing")).handoffExtras;
-      if (extras && live) view.dispatch({ effects: StateEffect.appendConfig.of(extras) });
-    });
-    return {
-      destroy() {
-        live = false;
-      },
-    };
-  }),
+  handoffExtras(),
   Prec.high(
     keymap.of([
       format("Mod-b", (target) => target.bold()),

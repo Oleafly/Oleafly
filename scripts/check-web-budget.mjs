@@ -9,7 +9,10 @@ const limits = {
   startupJavaScript: 460_000,
   // +30 KB for the shared comment kit (threads, reactions, mentions and the
   // offline outbox) after merging main: 7,586,079 bytes measured.
-  totalJavaScript: 7_600_000,
+  // +12 KB for 0.4.13's manual-test fixes, the figure layer that keeps
+  // pictures in their own colors in PDF dark mode, and the sidebar's More
+  // menu: 7,591,288 bytes before them, 7,603,699 after.
+  totalJavaScript: 7_615_000,
   wasm: {
     oleafly_synctex: 360_000,
   },

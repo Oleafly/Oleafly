@@ -61,7 +61,7 @@ function useCloudAttention(): boolean {
   useEffect(() => {
     let shown = "";
     return useSettingsStore.subscribe((settings, previous) => {
-      if (!settings.settingsOpen || previous.settingsOpen || settings.settingsInitialSection !== "general") return;
+      if (!settings.settingsOpen || previous.settingsOpen || settings.settingsInitialSection !== null) return;
       if (useTourStore.getState().activeTourId !== null) return;
       const key = attentionKey();
       if (key === "" || key === shown) return;

@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render as renderPlain, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentMember } from "@/lib/tauri";
-import { CommentComposer } from "./CommentComposer";
+import { DesktopCommentKit } from "./desktop-comment-kit";
 
 const copy = enCollab.comments;
 const MEMBERS: CollabCommentMember[] = [
@@ -16,16 +18,16 @@ const MEMBERS: CollabCommentMember[] = [
   { accountId: "dana", displayName: "Dana Ito", login: null },
 ];
 
-function compose(onSubmit: (body: string) => Promise<void> = vi.fn(async () => undefined)) {
-  render(
-    <CommentComposer
-      label={copy.replyLabel}
-      submitLabel={copy.reply}
-      members={MEMBERS}
-      self="alice"
-      onSubmit={onSubmit}
-    />,
+function render(node: ReactNode) {
+  return renderPlain(
+    <DesktopCommentKit now={0} self="alice" members={MEMBERS} people={new Map()} reactions={false}>
+      {node}
+    </DesktopCommentKit>,
   );
+}
+
+function compose(onSubmit: (body: string) => Promise<void> = vi.fn(async () => undefined)) {
+  render(<CommentComposer label={copy.replyLabel} submitLabel={copy.reply} onSubmit={onSubmit} />);
   return screen.getByRole("textbox", { name: copy.replyLabel });
 }
 
@@ -46,8 +48,6 @@ describe("comment composer", () => {
         label={copy.newLabel}
         submitLabel={copy.send}
         autoFocus
-        members={MEMBERS}
-        self="alice"
         onSubmit={vi.fn(async () => undefined)}
         onCancel={onCancel}
       />,
@@ -75,8 +75,6 @@ describe("comment composer", () => {
         submitLabel={enCommon.actions.save}
         initial="Checked twice"
         autoFocus
-        members={MEMBERS}
-        self="alice"
         onSubmit={vi.fn(async () => undefined)}
         onCancel={onCancel}
       />,

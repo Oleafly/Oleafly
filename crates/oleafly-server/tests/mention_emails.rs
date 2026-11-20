@@ -539,6 +539,20 @@ async fn people_outside_the_project_and_removed_members_are_not_emailed() {
     })
     .await;
     assert!(mention_emails(&stage.server, &smtp).await.is_empty());
+    let noted: i64 = stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            Ok(conn.query_row(
+                "SELECT COUNT(*) FROM mention_emails WHERE recipient_id = ?1",
+                [carol.to_string()],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(noted, 0, "nothing is kept for someone outside the project");
     bob.send(&stage.bob, project, |doc| {
         start_thread(
             doc,
@@ -702,19 +716,32 @@ async fn a_copy_of_a_message_that_claims_its_author_never_withdraws_their_email(
     tokio::time::timeout(WAIT, state.mentions.settled())
         .await
         .unwrap();
+    let copy = |doc: &LoroDoc| {
+        write_message(
+            &messages_of(doc, &thread),
+            &message,
+            account(&stage.alice),
+            "",
+            &[],
+        );
+    };
+    let mut checked = Writer::open(&stage, &mallory, project, 32).await;
+    checked.catch_up(&update);
+    checked.refusing = true;
+    checked.send(&mallory, project, copy).await;
+    let budget = state.snapshots.budget();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..budget
+    });
     let mut copier = Writer::open(&stage, &mallory, project, 31).await;
     copier.catch_up(&update);
-    copier
-        .send(&mallory, project, |doc| {
-            write_message(
-                &messages_of(doc, &thread),
-                &message,
-                account(&stage.alice),
-                "",
-                &[],
-            );
-        })
-        .await;
+    copier.send(&mallory, project, copy).await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    state.snapshots.set_budget(budget);
+    state.mentions.wake(state, project);
     let sent = mention_emails(&stage.server, &smtp).await;
     assert_eq!(sent.len(), 1, "{sent:?}");
     assert!(
@@ -1782,13 +1809,22 @@ async fn a_mention_emails_exactly_when_the_app_shows_its_thread() {
             emailed: &[],
         },
         Case {
-            name: "another editor rewrites the creator's comment before the creator deletes",
+            name: "another editor can't rewrite the creator's comment and the creator deletes",
             steps: &[
                 Start(Alice, "@Bob a1", &[Bob]),
-                Rewrite(Mallory, Alice, "@Bob not a1"),
+                Refused(&Rewrite(Mallory, Alice, "@Bob not a1")),
                 Delete(Alice),
             ],
             emailed: &[],
+        },
+        Case {
+            name: "an editor rewrites their own reply",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                Reply(Carol, "c1", &[]),
+                Rewrite(Carol, Carol, "c1 again"),
+            ],
+            emailed: &[(Bob, &["@Bob a1"])],
         },
         Case {
             name: "the creator takes their delete back",

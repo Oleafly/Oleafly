@@ -156,7 +156,10 @@
       "changedForProject": "Small note under a skill toggle when this project uses a different on or off state than the All projects setting.",
       "editor": {
         "instructions": "Field label for the body of SKILL.md, the steps the assistant follows.",
-        "submitCreate": "Button that creates the new skill."
+        "submitCreate": "Button that creates the new skill.",
+        "namePlaceholder": "Example skill name in the name field. Keep it as is: skill names must be lowercase English letters, numbers and hyphens.",
+        "nameSavedAs": "Shown under the skill name field when the typed name will be saved in a different form. {{name}} is the saved name, such as claim-checker.",
+        "nameNeedsLatin": "Shown when the typed skill name has no letters a to z or digits, for example a name typed only in Chinese or Cyrillic."
       },
       "groups": {
         "shelf": "Heading over skills installed from the downloadable domain catalog.",
@@ -185,7 +188,9 @@
         "bundled": "Badge on a skill that ships inside the app.",
         "catalog": "Badge on a skill downloaded from the domain catalog."
       },
-      "updateAction": "Button that replaces an installed skill with a newer bundled version."
+      "updateAction": "Button that replaces an installed skill with a newer bundled version.",
+      "nameNote": "Shown on a user's skill whose name has spaces, capitals or other characters that other AI agents reject.",
+      "renameAction": "Button that renames the skill to its folder name. {{name}} is that name, such as claim-checker."
     },
     "tools": {
       "tabLabel": "Settings tab for the model the conversion tools use, not the tools the assistant calls",
@@ -226,7 +231,9 @@
         "popover": "Label for the floating popover surface color token.",
         "primary": "Label for the primary action color token.",
         "ring": "Label for the color token used on the keyboard focus ring.",
-        "secondary": "Label for the secondary surface color token."
+        "secondary": "Label for the secondary surface color token.",
+        "pdfDarkPage": "Label for the color token used as the page background when a PDF is shown in dark mode.",
+        "pdfDarkText": "Label for the color token used for text and line art when a PDF is shown in dark mode."
       }
     },
     "files": {
@@ -332,7 +339,13 @@
         "disabledHint": "Tooltip on a disabled editor font control while the editor follows the app font."
       }
     },
-    "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."
+    "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name.",
+    "preview": {
+      "darkColors": {
+        "label": "Heading above two color pickers that set the page and text colors used when PDF dark mode is on.",
+        "description": "Help text under that heading. 'Light or dark theme' refers to the app's own light and dark appearance."
+      }
+    }
   },
   "citations": {
     "braveSearch": {

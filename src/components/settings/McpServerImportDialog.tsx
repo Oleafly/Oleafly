@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import {
@@ -184,15 +183,6 @@ export function McpServerImportDialog({
       setImporting(false);
     }
   };
-
-  useEffect(() => {
-    if (!open) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
-    };
-  }, [open]);
 
   return (
     <Dialog

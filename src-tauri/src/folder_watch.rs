@@ -868,9 +868,19 @@ fn watch_project_as(
     let outer_sink = Arc::clone(&sink);
     let sink: ChangeSink = Arc::new(move |change: FolderChange| {
         crate::linked_registry::note_changed(&change.project_id);
-        if let Some(guard) = &change_guard {
-            let verdict = guard.inspect(&change);
-            crate::collab::live::outside_change(&change, verdict, pause_host.as_ref());
+        match &change_guard {
+            Some(guard) => {
+                let verdict = guard.inspect(&change);
+                crate::collab::live::outside_change(&change, verdict, pause_host.as_ref());
+            }
+            None if crate::collab::live::wants_local_events(&change.project_id) => {
+                crate::collab::live::outside_change(
+                    &change,
+                    oleafly_collab::MassChangeVerdict::Apply,
+                    pause_host.as_ref(),
+                );
+            }
+            None => {}
         }
         sink(change);
     });

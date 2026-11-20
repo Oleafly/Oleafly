@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { Bold, Code, Italic, Link, Strikethrough, Underline } from "lucide-react";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Divider, IconBtn } from "@/components/editor/EditorToolbar";
 import {
@@ -15,7 +15,8 @@ import {
   textColorOf,
   ToolbarPopover,
 } from "@/components/editor/rich-text-controls";
-import { type BubbleAnchor, type BubbleBox, bubblePlace } from "./note-bubble";
+import { useMeasuredBox } from "@/components/ui/selection-placement";
+import { type BubbleAnchor, bubblePlace } from "./note-bubble";
 
 const MARKS = [
   { id: "bold", icon: Bold, label: "bold" },
@@ -36,8 +37,7 @@ export function NoteSelectionMenu({
   children,
 }: Readonly<{ editor: Editor; anchor: BubbleAnchor; onHold: (held: boolean) => void; children: ReactNode }>) {
   const { t } = useTranslation(["notes", "editor"]);
-  const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState<BubbleBox | undefined>(undefined);
+  const [ref, box] = useMeasuredBox<HTMLDivElement>();
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -46,13 +46,7 @@ export function NoteSelectionMenu({
       formatting: formats(current),
     }),
   });
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const next = { width: element.offsetWidth, height: element.offsetHeight };
-    setBox((current) => (current?.width === next.width && current.height === next.height ? current : next));
-  });
-  const place = bubblePlace(anchor, { width: window.innerWidth }, box);
+  const place = bubblePlace(anchor, { width: window.innerWidth }, box ?? undefined);
   const back = returnFocus(editor);
   const hold = (open: boolean) => {
     onHold(open);

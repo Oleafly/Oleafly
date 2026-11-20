@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
+import { applyLocale } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
 
@@ -218,5 +219,19 @@ describe("spelling dictionary picker", () => {
     );
     expect(mocks.installDictionary).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().dictionaryLocale).toBe("en_US");
+  });
+
+  it("names the language in the new UI language as soon as it changes", async () => {
+    render(<DictionaryLocalePicker />);
+    const control = await screen.findByRole("combobox", { name: copy.ariaLabel });
+    expect(control).toHaveTextContent("English (United States)");
+
+    try {
+      await act(() => applyLocale("de"));
+      expect(screen.getByTestId("dictionary-locale-select")).toHaveTextContent("Englisch (Vereinigte Staaten)");
+    } finally {
+      await act(() => applyLocale("en"));
+    }
+    expect(screen.getByTestId("dictionary-locale-select")).toHaveTextContent("English (United States)");
   });
 });

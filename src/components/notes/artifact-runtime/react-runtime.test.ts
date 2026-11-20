@@ -22,6 +22,14 @@ describe("artifact runtime bundle", () => {
     expect(classic).not.toContain("require(");
   });
 
+  it("names the file a syntax error is in, or the artifact when it has no file", () => {
+    const options = { jsx: "automatic", typescript: true, imports: true } as const;
+    expect(() => transformCode("export default [", { ...options, filePath: "slides/demo/index.tsx" })).toThrow(
+      /slides\/demo\/index\.tsx/u,
+    );
+    expect(() => transformCode("export default [", options)).toThrow(/Artifact\.tsx/u);
+  });
+
   it("offers every bundled module with an ES default", () => {
     for (const [name, load] of Object.entries(RUNTIME_MODULES)) {
       const module = load();

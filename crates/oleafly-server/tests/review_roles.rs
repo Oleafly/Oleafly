@@ -1,6 +1,7 @@
 mod people;
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use loro::{ExportMode, LoroDoc, LoroList, LoroMap, LoroValue};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
@@ -13,6 +14,7 @@ use oleafly_collab_protocol::poll::{
 };
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectSummary};
 use oleafly_server::role_guard::{RoleRule, RoleVerdict};
+use oleafly_server::snapshots::Budget;
 use oleafly_server::test_support::challenge_nonce;
 use oleafly_server::test_support::suggestions::{
     file_text, remove_suggestion, suggest_delete, suggest_insert,
@@ -771,4 +773,85 @@ async fn a_change_checked_once_is_judged_again_when_its_rule_changes_before_it_i
         checked(off).await.expect("a check").verdict,
         RoleVerdict::ChangesComments
     );
+}
+
+#[tokio::test]
+async fn an_editor_keeps_typing_while_a_commenters_check_waits_for_a_snapshot_build() {
+    let stage = stage().await;
+    let shared = shared_with(&stage, &stage.alice, ProjectRole::Commenter).await;
+    let carol = seeded(&stage.server, "Carol").await;
+    assert_eq!(
+        grant(
+            &stage.server,
+            &stage.bob,
+            shared.project,
+            &carol,
+            ProjectRole::Editor
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    let mut commenter = Writer::open(&stage, &stage.alice, shared.project, 51, &shared.known).await;
+    let mut editor = Writer::open(&stage, &carol, shared.project, 52, &shared.known).await;
+    let state = stage.server.state();
+    let (held, _) = state
+        .snapshots
+        .current(&state.db, shared.project)
+        .await
+        .expect("a read")
+        .expect("the project fits the budget");
+    let budget = state.snapshots.budget();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 2 * held.reserved_bytes() - 1,
+        ..budget
+    });
+    let build = state
+        .snapshots
+        .hold_build(shared.project)
+        .expect("no build was running");
+    let before = commenter.doc.oplog_vv();
+    comment_as(&commenter.doc, "f1/t1", &account(&stage.alice));
+    commenter.doc.commit();
+    let comment = commenter
+        .doc
+        .export(ExportMode::updates(&before))
+        .expect("update");
+    send_update(
+        &mut commenter.socket,
+        &raw_envelope(&stage.alice, shared.project, &comment),
+    )
+    .await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let typed = tokio::time::timeout(
+        Duration::from_secs(5),
+        editor.send(&carol, shared.project, |doc| {
+            file_text(doc, FILE).insert(0, "Oh ").unwrap();
+        }),
+    )
+    .await
+    .expect("the editor's typing was answered while the comment waited");
+    assert!(stored(&typed.0), "{typed:?}");
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        state.comment_guard.forget(&state.snapshots, shared.project),
+    )
+    .await
+    .expect("the waiting check holds no lock");
+    drop(build);
+    drop(held);
+    state.snapshots.set_budget(budget);
+    let answered = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            match next_frame(&mut commenter.socket).await.expect("a reply") {
+                ServerFrame::Update { .. }
+                | ServerFrame::Presence { .. }
+                | ServerFrame::AccessChanged { .. } => {}
+                reply => return reply,
+            }
+        }
+    })
+    .await
+    .expect("the comment is answered once the build is done");
+    assert!(stored(&answered), "{answered:?}");
 }

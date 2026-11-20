@@ -189,6 +189,7 @@ fn room_member(
             account,
             frames,
             control,
+            role: None,
         },
         received,
         controls,

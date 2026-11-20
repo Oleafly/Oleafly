@@ -1,13 +1,18 @@
 import * as XLSX from "xlsx";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { applyLocale } from "@/i18n";
 import { BlockFileTooLargeError } from "./note-blocks";
 import {
   buildTable,
   columnKeyCache,
   columnKeys,
+  columnShape,
   detectTypes,
   filterRows,
+  formatTableNumber,
   loadTableFile,
+  type NumberShape,
+  numberShape,
   parseBoolean,
   parseDate,
   parseNumber,
@@ -18,6 +23,7 @@ import {
   summarizeColumn,
   TABLE_MAX_COLUMNS,
   TABLE_MAX_ROWS,
+  TABLE_NUMBER_DIGITS,
   type TableData,
   TableFileError,
   tableDelimiter,
@@ -324,5 +330,91 @@ describe("sorting, filtering and summaries", () => {
       maxText: "2.5e1",
     });
     expect(summarizeColumn(data, [1], keys, 1)).toBeNull();
+  });
+
+  it("averages numbers whose sum would overflow", () => {
+    const huge = table(["n"], [["1.5e308"], ["1.7e308"], ["1.6e308"]]);
+    const summary = summarizeColumn(huge, [0, 1, 2], columnKeys(huge, 0), 0);
+    expect(summary?.mean).toBeCloseTo(1.6e308, -300);
+    expect(Number.isFinite(summary?.mean)).toBe(true);
+    const mixed = table(["n"], [["1.7e308"], ["-1.7e308"], ["1.7e308"]]);
+    expect(summarizeColumn(mixed, [0, 1, 2], columnKeys(mixed, 0), 0)?.mean).toBeCloseTo(1.7e308 / 3, -300);
+  });
+});
+
+describe("number shapes", () => {
+  it("reads the decimals, significant digits and grouping a number is written with", () => {
+    expect(numberShape("42")).toEqual({ decimals: 0, significant: 2, grouped: false });
+    expect(numberShape(" -2.50 ")).toEqual({ decimals: 2, significant: 3, grouped: false });
+    expect(numberShape("0.00120")).toEqual({ decimals: 5, significant: 3, grouped: false });
+    expect(numberShape("1,234,567.8")).toEqual({ decimals: 1, significant: 8, grouped: true });
+    expect(numberShape("1.5e-7")).toEqual({ decimals: 8, significant: 2, grouped: false });
+    expect(numberShape("2.5E+3")).toEqual({ decimals: 0, significant: 2, grouped: false });
+    expect(numberShape("−0")).toEqual({ decimals: 0, significant: 1, grouped: false });
+  });
+
+  it("takes the most precise cell of a column and skips empty ones", () => {
+    const mixed = table(["a", "b"], [["1", "x"], ["2.5", ""], ["", "y"], ["3.125", "z"]]);
+    expect(columnShape(mixed, 0)).toEqual({ decimals: 3, significant: 4, grouped: false });
+    const grouped = buildTable([["n"], ["1,000"], ["25"]], true);
+    if (!grouped.ok) throw new Error("bad table");
+    expect(columnShape(grouped.table, 0)).toEqual({ decimals: 0, significant: 4, grouped: true });
+    expect(columnShape(table(["n"], [[""]]), 0)).toEqual({ decimals: 0, significant: 1, grouped: false });
+  });
+});
+
+describe("formatTableNumber", () => {
+  const shape = (decimals: number, significant = 3, grouped = false): NumberShape => ({ decimals, significant, grouped });
+
+  afterEach(async () => {
+    await applyLocale("en");
+  });
+
+  it("rounds to the precision it is given and keeps whole numbers whole", () => {
+    expect(formatTableNumber(2.916_753, shape(2), false)).toBe("2.92");
+    expect(formatTableNumber(2.916_753, shape(3), false)).toBe("2.917");
+    expect(formatTableNumber(3, shape(1), false)).toBe("3");
+    expect(formatTableNumber(2017.5, shape(1), false)).toBe("2017.5");
+    expect(formatTableNumber(2.5, shape(2))).toBe("2.50");
+    expect(formatTableNumber(7, shape(0))).toBe("7");
+  });
+
+  it("writes negative numbers and never a negative zero", () => {
+    expect(formatTableNumber(-1.875, shape(3), false)).toBe("-1.875");
+    expect(formatTableNumber(-4, shape(0))).toBe("-4");
+    expect(formatTableNumber(0.1 + 0.2 - 0.3, shape(2), false)).toBe("0");
+    expect(formatTableNumber(-1e-17, shape(2))).toBe("0.00");
+  });
+
+  it("groups thousands only when the column does", () => {
+    expect(formatTableNumber(1_234_567.25, shape(2), false)).toBe("1234567.25");
+    expect(formatTableNumber(1_234_567.25, shape(2, 3, true), false)).toBe("1,234,567.25");
+  });
+
+  it("switches to scientific notation for huge and tiny magnitudes", () => {
+    expect(formatTableNumber(1e300, shape(0, 2), false)).toBe("1E300");
+    expect(formatTableNumber(-2.5e22, shape(0, 2))).toBe("-2.5E22");
+    expect(formatTableNumber(2e-7, shape(9, 3), false)).toBe("2E-7");
+    expect(formatTableNumber(1.5e-7, shape(8, 2))).toBe("1.5E-7");
+    expect(formatTableNumber(1.5e-300, shape(301, 2))).toBe("1.5E-300");
+    expect(formatTableNumber(0.000_2, shape(5), false)).toBe("0.0002");
+  });
+
+  it("stops at fifteen significant digits", () => {
+    expect(formatTableNumber(0.1 + 0.2, shape(20, 20), false)).toBe("0.3");
+    expect(formatTableNumber(123_456_789.123_456_78, shape(TABLE_NUMBER_DIGITS), false)).toBe("123456789.123457");
+  });
+
+  it("shows infinity and NaN the way the locale writes them", () => {
+    expect(formatTableNumber(Number.POSITIVE_INFINITY, shape(2))).toBe("∞");
+    expect(formatTableNumber(Number.NEGATIVE_INFINITY, shape(2))).toBe("-∞");
+    expect(formatTableNumber(Number.NaN, shape(2))).toBe("NaN");
+  });
+
+  it("uses the app language's separators", async () => {
+    await applyLocale("de");
+    expect(formatTableNumber(2.916_753, shape(2), false)).toBe("2,92");
+    expect(formatTableNumber(1_234_567.5, shape(1, 3, true))).toBe("1.234.567,5");
+    expect(formatTableNumber(1.5e-7, shape(8, 2))).toBe("1,5E-7");
   });
 });

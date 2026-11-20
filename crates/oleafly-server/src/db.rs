@@ -39,6 +39,7 @@ const MIGRATIONS: [&str; 21] = [
 ];
 
 const READERS: usize = 4;
+const BEFORE_UPGRADE: &str = "before-upgrade";
 
 const GROUP_LIMIT: usize = 64;
 
@@ -120,6 +121,7 @@ impl Db {
                 path.display()
             )));
         }
+        copy_before_upgrading(&connection, path);
         let mut db = Db::prepare(connection)?;
         db.readers = (0..READERS)
             .map(|_| open_reader(path))
@@ -274,6 +276,59 @@ fn in_one_read<T>(
 ) -> Result<T, ServerError> {
     let transaction = conn.transaction_with_behavior(TransactionBehavior::Deferred)?;
     f(&transaction)
+}
+
+fn upgrade_copy(path: &Path) -> Option<std::path::PathBuf> {
+    let name = path.file_name()?.to_str()?;
+    Some(path.with_file_name(format!("{name}.{BEFORE_UPGRADE}")))
+}
+
+fn copy_before_upgrading(connection: &Connection, path: &Path) {
+    let Ok(current) = connection.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
+    else {
+        return;
+    };
+    let known = i64::try_from(MIGRATIONS.len()).unwrap_or(i64::MAX);
+    if current == 0 || current >= known {
+        return;
+    }
+    let Some(copy) = upgrade_copy(path) else {
+        tracing::warn!(
+            "Could not copy the database before upgrading it from schema version {current} to {known}, because its file name {} is not plain text. Back it up yourself before going back to an earlier Oleafly Server.",
+            path.display()
+        );
+        return;
+    };
+    let partial = copy.with_file_name(format!(
+        "{}.partial",
+        copy.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+    ));
+    let _ = std::fs::remove_file(&partial);
+    let copied = partial
+        .to_str()
+        .ok_or_else(|| "the copy's path is not plain text".to_string())
+        .and_then(|target| {
+            connection
+                .execute("VACUUM INTO ?1", [target])
+                .map_err(|error| error.to_string())
+        })
+        .and_then(|_| std::fs::rename(&partial, &copy).map_err(|error| error.to_string()));
+    match copied {
+        Ok(()) => tracing::info!(
+            "Copied the database at schema version {current} to {} before upgrading it to version {known}. To go back to the earlier Oleafly Server, stop this one and put that copy in place of {}.",
+            copy.display(),
+            path.display()
+        ),
+        Err(error) => {
+            let _ = std::fs::remove_file(&partial);
+            tracing::warn!(
+                "Could not copy the database to {} before upgrading it from schema version {current} to {known}: {error}. Back it up yourself before going back to an earlier Oleafly Server.",
+                copy.display()
+            );
+        }
+    }
 }
 
 fn migrate(connection: &mut Connection) -> Result<(), ServerError> {
@@ -709,6 +764,49 @@ mod tests {
         assert_eq!(again, id);
         assert_eq!(mode, "wal");
         assert_eq!(schema, SCHEMA_VERSION);
+        assert!(
+            !upgrade_copy(&path).unwrap().exists(),
+            "a database made new or already up to date is not copied"
+        );
+    }
+
+    #[test]
+    fn an_upgrade_keeps_one_copy_of_the_database_as_it_was() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("oleafly-server.sqlite3");
+        let copy = upgrade_copy(&path).unwrap();
+        let older = |version: usize, title: &str| {
+            let _ = std::fs::remove_file(&path);
+            let mut conn = Connection::open(&path).unwrap();
+            conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+            migrated_to(&mut conn, version);
+            conn.execute_batch(&format!(
+                "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES ('a1', '{title}', 'member', 1, 1);"
+            ))
+            .unwrap();
+        };
+        let kept = |file: &Path| {
+            let conn = Connection::open(file).unwrap();
+            let name: String = conn
+                .query_row("SELECT display_name FROM accounts", [], |row| row.get(0))
+                .unwrap();
+            (version(&conn), name)
+        };
+        older(SCHEMA_VERSION as usize - 1, "Ada");
+        drop(Db::open(&path).unwrap());
+        assert_eq!(kept(&copy), (SCHEMA_VERSION - 1, "Ada".to_owned()));
+        assert_eq!(kept(&path), (SCHEMA_VERSION, "Ada".to_owned()));
+        drop(Db::open(&path).unwrap());
+        assert_eq!(kept(&copy), (SCHEMA_VERSION - 1, "Ada".to_owned()));
+        older(SCHEMA_VERSION as usize - 2, "Bo");
+        drop(Db::open(&path).unwrap());
+        assert_eq!(kept(&copy), (SCHEMA_VERSION - 2, "Bo".to_owned()));
+        let left: Vec<String> = std::fs::read_dir(directory.path())
+            .unwrap()
+            .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+            .filter(|name| name.contains(BEFORE_UPGRADE))
+            .collect();
+        assert_eq!(left, ["oleafly-server.sqlite3.before-upgrade"]);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

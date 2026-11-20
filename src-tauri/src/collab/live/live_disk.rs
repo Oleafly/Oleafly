@@ -12,7 +12,7 @@ use oleafly_collab::CollabError;
 use super::disk_pass::{apply_to_disk, DiskPass, LeftAlone};
 use super::import::{name_of, parent_of, placed_now, scan_local};
 use super::kept::KeptPayload;
-use super::live_tree::{LiveTree, Mirror, TreeAnswer, TreeRead, TreeRequest};
+use super::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use super::session::{guard, io, WriterSignal};
 use super::sync_hold;
 use super::unwritten::Settled;
@@ -39,6 +39,7 @@ pub(super) struct Drawn {
 }
 
 pub(super) trait LiveWriter: Send + Sync + 'static {
+    fn disk(&self) -> &LiveDisk;
     fn write_pass(
         self: Arc<Self>,
         urgent: bool,
@@ -68,10 +69,18 @@ pub(super) async fn writer_loop<W: LiveWriter>(
         let Some(owner) = owner.upgrade() else {
             return;
         };
-        if let Ok(reread) = Arc::clone(&owner).write_pass(!waiters.is_empty()).await {
-            if !reread.is_empty() {
-                let _ = owner.import_pass(reread).await;
+        match Arc::clone(&owner).write_pass(!waiters.is_empty()).await {
+            Ok(reread) if !reread.is_empty() => {
+                if let Err(error) = Arc::clone(&owner).import_pass(reread).await {
+                    owner.disk().log_once("reread", || {
+                        format!("could not send files changed while they were written: {error}")
+                    });
+                }
             }
+            Ok(_) => {}
+            Err(error) => owner.disk().log_once("write", || {
+                format!("could not write the shared files to disk: {error}")
+            }),
         }
         for done in waiters {
             let _ = done.send(());
@@ -131,19 +140,31 @@ impl LiveDisk {
         let free = |named: &str| !taken.contains(&named.to_lowercase());
         let name = name_of(path);
         let hash = sha256_hex(bytes);
+        let beside = |named: &str| {
+            parent.map_or_else(|| named.to_owned(), |parent| format!("{parent}/{named}"))
+        };
+        let kept_before = |named: &str| {
+            safe_target(&self.root, &beside(named))
+                .and_then(|target| std::fs::read(target).ok())
+                .is_some_and(|kept| sha256_hex(&kept) == hash)
+        };
         let named = author
             .and_then(|author| materialize::credited_name(name, author, &hash, free))
             .or_else(|| {
                 [SHORT_HASH, 12, hash.len()]
                     .into_iter()
                     .map(|length| tagged(name, &hash[..length]))
-                    .find(|named| free(named))
+                    .find(|named| free(named) || kept_before(named))
             })
             .ok_or_else(|| CollabError::Io(format!("no free name to keep a copy of {path}")))?;
-        let copy = parent.map_or_else(|| named.clone(), |parent| format!("{parent}/{named}"));
+        let copy = beside(&named);
         let target = safe_target(&self.root, &copy)
             .ok_or_else(|| CollabError::Io(format!("no place to keep a copy of {path}")))?;
-        oleafly_collab::write_atomic(&target, bytes)?;
+        if free(&named) {
+            oleafly_collab::write_atomic(&target, bytes)?;
+            crate::folder_watch::note_own_write(&target);
+        }
+        guard(&self.disk).hashes.insert(copy.clone(), hash);
         Ok(copy)
     }
 
@@ -196,10 +217,10 @@ impl LiveDisk {
         hold_dir: &Path,
         previous: &Layout,
         owed: &[String],
-        mirror: Mirror,
+        mirror: Outgoing,
         urgent: bool,
     ) -> Result<Mirrored, CollabError> {
-        let Mirror {
+        let Outgoing {
             work,
             next,
             mut texts,

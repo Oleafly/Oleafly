@@ -1,4 +1,5 @@
 import { scanMathExpressions } from "@oleafly/editor";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export interface EnclosingMath {
   body: string;
@@ -25,12 +26,6 @@ function stripStar(env: string): string {
   return env.endsWith("*") ? env.slice(0, -1) : env;
 }
 
-function isEscaped(text: string, index: number): boolean {
-  let slashes = 0;
-  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) slashes++;
-  return slashes % 2 === 1;
-}
-
 interface OpenBegin {
   env: string;
   bodyFrom: number;
@@ -45,7 +40,7 @@ function findUnclosedBegin(
   const slice = text.slice(windowStart, offset);
   for (const match of slice.matchAll(BEGIN_END_RE)) {
     const at = windowStart + (match.index ?? 0);
-    if (isEscaped(text, at)) continue;
+    if (isBackslashEscaped(text, at)) continue;
     const env = match[2];
     if (!MATH_ENVIRONMENTS.has(stripStar(env))) continue;
     if (match[1] === "begin") {
@@ -82,10 +77,10 @@ function findMatchingEnd(
     const nextEnd = text.indexOf(endToken, cursor);
     if (nextEnd < 0 || nextEnd >= limit) return null;
     if (nextBegin >= 0 && nextBegin < nextEnd) {
-      if (!isEscaped(text, nextBegin)) depth++;
+      if (!isBackslashEscaped(text, nextBegin)) depth++;
       cursor = nextBegin + beginToken.length;
     } else {
-      if (!isEscaped(text, nextEnd) && --depth === 0) return nextEnd;
+      if (!isBackslashEscaped(text, nextEnd) && --depth === 0) return nextEnd;
       cursor = nextEnd + endToken.length;
     }
   }

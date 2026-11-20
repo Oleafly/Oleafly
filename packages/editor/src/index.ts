@@ -18,6 +18,7 @@ export {
 } from "./color-roles";
 export { syntaxTags } from "./syntax-colors";
 export { languageForPath } from "./languages";
+export { lazyExtension, lazyExtensionFilled } from "./lazy-extension";
 export {
   createCompletionRequestGuard,
   completionRequestIsCurrent,

@@ -10,6 +10,10 @@ use loro::{
 };
 use oleafly_collab_protocol::ids::{AccountId, ChatMessageId, CommentId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectStatus;
+use oleafly_collab_protocol::schema::{
+    AT, AUTHOR, BODY, CHAT, COMMENTS, CREATED_BY, DELETED, END, ID, MAX_MENTIONS, MENTIONS,
+    MESSAGES, QUOTE, REMOVED, START, TRASH_ID, TREE,
+};
 use rusqlite::{params, Connection};
 use tokio::sync::Notify;
 
@@ -34,19 +38,8 @@ const MAX_ATTEMPTS: i64 = 5;
 const RETRY: Duration = Duration::from_secs(60);
 const KEPT_CHARS: usize = 2_000;
 
-const WATCHED_KEYS: [&[u8]; 5] = [
-    b"\x08mentions",
-    b"\x07deleted",
-    b"\x04body",
-    b"\x0acreated_by",
-    b"\x07removed",
-];
-const COMMENTS: &str = "comments";
-const CHAT: &str = "chat";
-const MESSAGES: &str = "messages";
-const TREE: &str = "tree";
-const TRASH: &str = "~trash";
-const WRITTEN: [&str; 3] = ["author", "body", "mentions"];
+const WATCHED_KEYS: [&str; 5] = [MENTIONS, DELETED, BODY, CREATED_BY, REMOVED];
+const WRITTEN: [&str; 3] = [AUTHOR, BODY, MENTIONS];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Found {
@@ -85,9 +78,14 @@ pub struct DeletedThread {
 }
 
 pub fn may_mention(payload: &[u8]) -> bool {
-    WATCHED_KEYS
-        .iter()
-        .any(|key| payload.windows(key.len()).any(|window| window == *key))
+    WATCHED_KEYS.iter().any(|key| {
+        let Ok(length) = u8::try_from(key.len()) else {
+            return false;
+        };
+        payload
+            .windows(key.len() + 1)
+            .any(|window| window[0] == length && &window[1..] == key.as_bytes())
+    })
 }
 
 fn text_of(value: Option<&LoroValue>) -> Option<String> {
@@ -101,15 +99,13 @@ fn accounts_of(value: Option<&LoroValue>) -> Vec<AccountId> {
     let Some(LoroValue::List(items)) = value else {
         return Vec::new();
     };
-    let mut accounts = Vec::new();
-    for item in items.iter() {
-        if let Some(account) = text_of(Some(item)).and_then(|text| text.parse().ok()) {
-            if !accounts.contains(&account) {
-                accounts.push(account);
-            }
-        }
-    }
-    accounts
+    let mut seen = HashSet::new();
+    items
+        .iter()
+        .filter_map(|item| text_of(Some(item))?.parse::<AccountId>().ok())
+        .filter(|account| seen.insert(*account))
+        .take(MAX_MENTIONS)
+        .collect()
 }
 
 struct Message {
@@ -130,20 +126,20 @@ fn is_deleted(value: Option<&LoroValue>) -> bool {
 }
 
 fn taken_back(fields: &LoroMapValue, chat: bool) -> bool {
-    is_deleted(fields.get("deleted")) || (!chat && is_deleted(fields.get("removed")))
+    is_deleted(fields.get(DELETED)) || (!chat && is_deleted(fields.get(REMOVED)))
 }
 
 fn shown_author(fields: &LoroMapValue, chat: bool) -> Option<AccountId> {
-    let id = text_of(fields.get("id"))?;
+    let id = text_of(fields.get(ID))?;
     let shaped = if chat {
         id.parse::<ChatMessageId>().is_ok()
     } else {
-        id.parse::<CommentId>().is_ok() && matches!(fields.get("at"), Some(LoroValue::I64(_)))
+        id.parse::<CommentId>().is_ok() && matches!(fields.get(AT), Some(LoroValue::I64(_)))
     };
     if !shaped {
         return None;
     }
-    text_of(fields.get("author"))?.parse().ok()
+    text_of(fields.get(AUTHOR))?.parse().ok()
 }
 
 fn answers(item: &LoroValue, creator: AccountId) -> bool {
@@ -162,12 +158,12 @@ fn read_message(map: &LoroMap, chat: bool) -> Option<Read> {
     let LoroValue::Map(fields) = map.get_deep_value() else {
         return None;
     };
-    let id = text_of(fields.get("id"))?;
+    let id = text_of(fields.get(ID))?;
     let Some(author) = shown_author(&fields, chat) else {
         return Some(Read::Gone(id));
     };
     let mut writers = Vec::new();
-    for key in WRITTEN.into_iter().chain(["deleted"]) {
+    for key in WRITTEN.into_iter().chain([DELETED]) {
         if let Some(peer) = map.get_last_editor(key) {
             if !writers.contains(&peer) {
                 writers.push(peer);
@@ -184,7 +180,7 @@ fn read_message(map: &LoroMap, chat: bool) -> Option<Read> {
             body: String::new(),
         }));
     }
-    let mentions = accounts_of(fields.get("mentions"));
+    let mentions = accounts_of(fields.get(MENTIONS));
     if !mentions.is_empty()
         && WRITTEN
             .into_iter()
@@ -197,7 +193,7 @@ fn read_message(map: &LoroMap, chat: bool) -> Option<Read> {
         author,
         mentions,
         writers,
-        body: text_of(fields.get("body")).unwrap_or_default(),
+        body: text_of(fields.get(BODY)).unwrap_or_default(),
     }))
 }
 
@@ -260,7 +256,7 @@ impl Files {
             };
             let id = text_of(fields.get("id")).unwrap_or_default();
             let name = text_of(fields.get("name")).unwrap_or_default();
-            nodes.insert(node.id, (name, parent, id == TRASH));
+            nodes.insert(node.id, (name, parent, id == TRASH_ID));
             if !id.is_empty() {
                 ids.insert(id, node.id);
             }
@@ -269,7 +265,7 @@ impl Files {
     }
 
     fn holds(&self, file_id: &str) -> bool {
-        file_id != TRASH && self.ids.contains_key(file_id)
+        file_id != TRASH_ID && self.ids.contains_key(file_id)
     }
 
     fn path(&self, file_id: &str) -> Option<String> {
@@ -338,7 +334,7 @@ fn thread_in(key: &str, value: ValueOrContainer, touched: &Touched<'_>, scan: &m
     let Some(ValueOrContainer::Container(Container::List(messages))) = thread.get(MESSAGES) else {
         return;
     };
-    let quote = text_of(value_of(&thread, "quote").as_ref()).unwrap_or_default();
+    let quote = text_of(value_of(&thread, QUOTE).as_ref()).unwrap_or_default();
     let maps: Vec<LoroMap> = (0..messages.len())
         .filter_map(|index| match messages.get(index) {
             Some(ValueOrContainer::Container(Container::Map(map))) => Some(map),
@@ -346,16 +342,16 @@ fn thread_in(key: &str, value: ValueOrContainer, touched: &Touched<'_>, scan: &m
         })
         .collect();
     let creator: Option<AccountId> =
-        text_of(value_of(&thread, "created_by").as_ref()).and_then(|text| text.parse().ok());
+        text_of(value_of(&thread, CREATED_BY).as_ref()).and_then(|text| text.parse().ok());
     let Some(creator) = creator.filter(|_| {
         thread_id.parse::<CommentId>().is_ok()
             && touched.files.holds(file_id)
-            && anchored(&thread, "start")
-            && anchored(&thread, "end")
+            && anchored(&thread, START)
+            && anchored(&thread, END)
     }) else {
         scan.gone.extend(
             maps.iter()
-                .filter_map(|map| text_of(value_of(map, "id").as_ref()))
+                .filter_map(|map| text_of(value_of(map, ID).as_ref()))
                 .map(|message_id| Gone {
                     file_id: file_id.to_string(),
                     thread_id: thread_id.to_string(),
@@ -365,8 +361,8 @@ fn thread_in(key: &str, value: ValueOrContainer, touched: &Touched<'_>, scan: &m
         );
         return;
     };
-    let deleted = is_deleted(value_of(&thread, "deleted").as_ref()).then(|| DeletedThread {
-        by: thread.get_last_editor("deleted"),
+    let deleted = is_deleted(value_of(&thread, DELETED).as_ref()).then(|| DeletedThread {
+        by: thread.get_last_editor(DELETED),
         creator,
         answered: match messages.get_deep_value() {
             LoroValue::List(items) => items.iter().any(|item| answers(item, creator)),
@@ -380,7 +376,7 @@ fn thread_in(key: &str, value: ValueOrContainer, touched: &Touched<'_>, scan: &m
                 .any(|container| changed.contains(container))
                 || maps.iter().any(|map| changed.contains(&map.id()))
         }
-        None => changed.contains(&thread.id()) && thread.get_last_editor("deleted").is_some(),
+        None => changed.contains(&thread.id()) && thread.get_last_editor(DELETED).is_some(),
     };
     let mut gone = Vec::new();
     for map in &maps {
@@ -402,7 +398,7 @@ fn thread_in(key: &str, value: ValueOrContainer, touched: &Touched<'_>, scan: &m
     let shown: HashSet<String> = maps
         .iter()
         .filter_map(|map| match map.get_deep_value() {
-            LoroValue::Map(fields) => shown_author(&fields, false).and(text_of(fields.get("id"))),
+            LoroValue::Map(fields) => shown_author(&fields, false).and(text_of(fields.get(ID))),
             _ => None,
         })
         .collect();
@@ -811,13 +807,8 @@ async fn give_back(
     }
 }
 
-fn reachable(
-    conn: &Connection,
-    project: SharedProjectId,
-    person: AccountId,
-) -> Result<bool, ServerError> {
-    Ok(projects::role_of(conn, project, person)?.is_some()
-        && notify::is_active(conn, person)?
+fn reachable(conn: &Connection, person: AccountId) -> Result<bool, ServerError> {
+    Ok(notify::is_active(conn, person)?
         && preferences::mentions(conn, person)?
         && !notify::verified_emails(conn, person)?.is_empty())
 }
@@ -893,10 +884,11 @@ fn record(
         };
         withdraw(conn, project, item, still_mentioned)?;
         for recipient in still_mentioned {
-            if *recipient == item.author {
+            if *recipient == item.author || projects::role_of(conn, project, *recipient)?.is_none()
+            {
                 continue;
             }
-            if !reachable(conn, project, *recipient)? {
+            if !reachable(conn, *recipient)? {
                 conn.execute(
                     "INSERT OR IGNORE INTO mention_emails (project_id, message_id, recipient_id, author_id, file_id, thread_id, noticed_at, due_at, sent_at, chat) \
                      SELECT ?1, ?2, id, ?4, ?5, ?6, ?7, ?7, ?7, ?8 FROM accounts WHERE id = ?3",
@@ -1609,6 +1601,27 @@ mod tests {
                 .unwrap();
         });
         assert!(may_mention(&handed));
+    }
+
+    #[test]
+    fn a_mention_list_is_read_once_per_person_and_no_further_than_the_cap() {
+        let people: Vec<String> = (0..MAX_MENTIONS * 2)
+            .map(|index| format!("01920000-0000-7000-8000-{index:012x}"))
+            .collect();
+        let mut listed: Vec<LoroValue> = Vec::new();
+        for person in &people {
+            listed.push(LoroValue::from(person.as_str()));
+            listed.push(LoroValue::from(person.as_str()));
+            listed.push(LoroValue::from("not an account"));
+        }
+        let read = accounts_of(Some(&LoroValue::from(listed)));
+        assert_eq!(read.len(), MAX_MENTIONS);
+        let expected: Vec<AccountId> = people[..MAX_MENTIONS]
+            .iter()
+            .map(|person| person.parse().unwrap())
+            .collect();
+        assert_eq!(read, expected);
+        assert!(accounts_of(Some(&LoroValue::from("not a list"))).is_empty());
     }
 
     #[test]

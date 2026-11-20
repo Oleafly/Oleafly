@@ -1065,6 +1065,15 @@ describe("ChatCore composer, drafts and attachments", () => {
     await completeRun(0, "Used them.");
   });
 
+  it("sends and saves the message without the characters macOS gives function keys", async () => {
+    await renderChat();
+    sendFromComposer("Say hello in five words.\uF72B");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(mocks.runs[0].options.messages).toEqual([{ role: "user", content: "Say hello in five words." }]);
+    expect(savedMessages().at(-2)?.content).toBe("Say hello in five words.");
+    await completeRun(0, "Hello there, how are you?");
+  });
+
   it("mentions a project file dropped on the composer", async () => {
     useFilesStore.setState({
       tree: [

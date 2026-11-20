@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 import {
   DEFAULT_LOCALE,
   isLocalePreference,
+  isSupportedLocale,
   LOCALE_INFO,
   resolvePreference,
   SUPPORTED_LOCALES,
@@ -29,6 +30,9 @@ export const i18n = createInstance();
 i18n.use(initReactI18next);
 
 let current: SupportedLocale = DEFAULT_LOCALE;
+i18n.on("languageChanged", (language: string) => {
+  if (isSupportedLocale(language)) current = language;
+});
 let target: SupportedLocale = DEFAULT_LOCALE;
 const requestedNamespaces = new Set<string>();
 const localeApplied = createEmitter<[locale: SupportedLocale]>();

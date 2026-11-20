@@ -79,7 +79,7 @@ import {
   type AnalysisReasonKey,
 } from "@/lib/analysis/reason";
 import { i18n } from "@/i18n";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn, shortcut } from "@/lib/utils";
@@ -732,6 +732,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
+    pdfPageColors,
     page,
     setPage,
     numPages,
@@ -1278,11 +1279,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
       className="isolate h-full overflow-auto bg-sidebar focus-visible:bg-sidebar-accent/40"
-      style={
-        inverted && !screenReaderMode
-          ? { filter: "invert(1) hue-rotate(180deg)" }
-          : undefined
-      }
     >
       <ErrorBoundary
         resetKey={`${viewer.identity}:${pdfReloadGeneration}`}
@@ -1306,6 +1302,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           layout={layout}
           expectText={!isImage}
           screenReaderMode={screenReaderMode && !isImage}
+          pageColors={pdfPageColors}
+          reportWarning={logWarning}
           searchQuery={searchOpen ? deferredSearch : ""}
           onLoadStateChange={handlePdfLoadState}
           onSearchStateChange={setSearchState}

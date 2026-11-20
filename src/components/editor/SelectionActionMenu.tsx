@@ -6,6 +6,7 @@ import { requestComment, useCommentsRail } from "@/components/collab/comments-ra
 import { useCollabReady } from "@/components/collab/CollabSlots";
 import { Input } from "@/components/ui/input";
 import { MenuRow } from "@/components/ui/menu-row";
+import { placeAboveSelection, useMeasuredBox } from "@/components/ui/selection-placement";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { handoffToAssistant } from "@/features/assistant-handoff";
@@ -60,6 +61,28 @@ const ACTIONS: Action[] = [
 const PILL =
   "flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg";
 
+const MENU_GAP = 12;
+const EMPTY_BOX = { width: 0, height: 0 };
+
+interface Rect {
+  readonly top: number;
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+}
+
+interface Anchor extends Rect {
+  readonly bounds: Rect;
+}
+
+function rectOf({ top, bottom, left, right }: Rect): Rect {
+  return { top, bottom, left, right };
+}
+
+function sameRect(a: Rect, b: Rect): boolean {
+  return a.top === b.top && a.bottom === b.bottom && a.left === b.left && a.right === b.right;
+}
+
 function CommentPill({ onDone }: Readonly<{ onDone: () => void }>) {
   const { t } = useTranslation(["collab"]);
   return (
@@ -83,17 +106,17 @@ export function SelectionActionMenu() {
   const collabReady = useCollabReady();
   const canCompose = useCommentsRail((state) => state.canCompose);
   const canComment = collabReady && canCompose;
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [instruction, setInstruction] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerRef, box] = useMeasuredBox<HTMLDivElement>();
   const instructionRef = useRef<HTMLInputElement>(null);
   const canCommentRef = useRef(canComment);
   canCommentRef.current = canComment;
-  const posRef = useRef(pos);
-  posRef.current = pos;
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
   const textRef = useRef(text);
   textRef.current = text;
   const expandedRef = useRef(expanded);
@@ -101,9 +124,9 @@ export function SelectionActionMenu() {
 
   useEffect(() => {
     const hide = (collapse: boolean) => {
-      if (posRef.current !== null) {
-        posRef.current = null;
-        setPos(null);
+      if (anchorRef.current !== null) {
+        anchorRef.current = null;
+        setAnchor(null);
       }
       if (collapse && expandedRef.current) {
         expandedRef.current = false;
@@ -143,12 +166,11 @@ export function SelectionActionMenu() {
         textRef.current = selected;
         setText(selected);
       }
-      const top = coords.top - 36;
-      const left = coords.left;
-      if (posRef.current?.top !== top || posRef.current.left !== left) {
-        const next = { top, left };
-        posRef.current = next;
-        setPos(next);
+      const next = { ...rectOf(coords), bounds: rectOf(v.scrollDOM.getBoundingClientRect()) };
+      const current = anchorRef.current;
+      if (!current || !sameRect(current, next) || !sameRect(current.bounds, next.bounds)) {
+        anchorRef.current = next;
+        setAnchor(next);
       }
     };
     document.addEventListener("selectionchange", update);
@@ -159,16 +181,17 @@ export function SelectionActionMenu() {
       window.removeEventListener("mouseup", update);
       window.removeEventListener("keyup", update);
     };
-  }, []);
+  }, [containerRef]);
 
   useEffect(() => {
     if (expanded) instructionRef.current?.focus({ preventScroll: true });
   }, [expanded]);
 
-  if (!pos) return null;
+  if (!anchor) return null;
+  const pos = placeAboveSelection(anchor, anchor.bounds, box ?? EMPTY_BOX, MENU_GAP);
 
   const close = () => {
-    setPos(null);
+    setAnchor(null);
     setExpanded(false);
     setInstruction("");
   };

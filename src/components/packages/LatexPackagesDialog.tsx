@@ -4,7 +4,7 @@ import { Check, Copy, Download, ExternalLink, Plus } from "lucide-react";
 import { i18n } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { getEditorView } from "@/components/editor/cm/controller";
@@ -218,6 +218,7 @@ function LatexPackageRow({ pkg, context }: Readonly<{ pkg: LatexPackageEntry; co
       <div className="flex flex-wrap items-center gap-1.5">
         {!documentClass && (
           <Input
+            {...LITERAL_INPUT}
             value={options}
             onChange={(event) => setOptions(event.target.value)}
             placeholder={t(($) => $.editor.latexPackages.options)}

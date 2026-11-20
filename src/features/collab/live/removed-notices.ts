@@ -16,6 +16,7 @@ import {
 import { overleafLiveRestore } from "@/lib/overleaf-live";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
+import { followProject } from "./follow-project";
 import { useCollabLiveStore } from "./live-store";
 
 export interface RemovedNotice {
@@ -183,13 +184,7 @@ export function startRemovedNotices(): () => void {
     void logError("collab removed listen", error);
     return () => {};
   });
-  let projectId = useFilesStore.getState().projectId;
-  openProject(projectId);
-  const stopFiles = useFilesStore.subscribe((state) => {
-    if (state.projectId === projectId) return;
-    projectId = state.projectId;
-    openProject(projectId);
-  });
+  const stopFiles = followProject(useFilesStore, openProject);
   const stopEnded = useCollabLiveStore.subscribe((state, previous) => {
     if (state.ended === previous.ended || state.ended === null || state.projectId === null) return;
     if (LOCAL_COPY.has(state.ended)) void followLocalCopies([state.projectId]);

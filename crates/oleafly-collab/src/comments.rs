@@ -9,33 +9,19 @@ use loro::{
 use oleafly_collab_protocol::ids::{AccountId, CommentId};
 use oleafly_collab_protocol::markup::code_spans;
 use oleafly_collab_protocol::reactions::Reaction;
+pub use oleafly_collab_protocol::schema::COMMENTS;
+use oleafly_collab_protocol::schema::{
+    AT, AUTHOR, BODY, CREATED_AT, CREATED_BY, DELETED, EDITED_AT, END, ID, MAX_MENTIONS, MENTIONS,
+    MESSAGES, QUOTE, REACTIONS, REMOVED, RESOLVED, STAMPED, START, SUGGESTION,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::doc::ProjectDoc;
 use crate::reactions::checked_emoji;
 use crate::CollabError;
 
-pub const COMMENTS: &str = "comments";
 pub const MAX_BODY_CHARS: usize = 20_000;
 pub const MAX_QUOTE_CHARS: usize = 2_000;
-const START: &str = "start";
-const END: &str = "end";
-const QUOTE: &str = "quote";
-const CREATED_BY: &str = "created_by";
-const CREATED_AT: &str = "created_at";
-const RESOLVED: &str = "resolved";
-const DELETED: &str = "deleted";
-const MESSAGES: &str = "messages";
-const ID: &str = "id";
-const AUTHOR: &str = "author";
-const AT: &str = "at";
-const BODY: &str = "body";
-const EDITED_AT: &str = "edited_at";
-const MENTIONS: &str = "mentions";
-const SUGGESTION: &str = "suggestion";
-const REACTIONS: &str = "reactions";
-const REMOVED: &str = "removed";
-const STAMPED: [&str; 3] = [ID, AUTHOR, AT];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -248,7 +234,12 @@ fn with_reactions(messages: &mut [CommentMessage], thread: &LoroMap, judge: &Jud
     let Some(map) = reactions_map(thread) else {
         return;
     };
-    let mut found = crate::reactions::read(&map, judge);
+    let shown: HashSet<String> = messages
+        .iter()
+        .filter(|message| !message.deleted)
+        .map(|message| message.id.to_string())
+        .collect();
+    let mut found = crate::reactions::read(&map, judge, &shown);
     if found.is_empty() {
         return;
     }
@@ -508,13 +499,13 @@ fn quoted(text: &str, from: usize, to: usize) -> Option<String> {
 }
 
 pub(crate) fn unique(accounts: &[AccountId]) -> Vec<AccountId> {
-    let mut seen = Vec::new();
-    for account in accounts {
-        if !seen.contains(account) {
-            seen.push(*account);
-        }
-    }
-    seen
+    let mut seen = HashSet::new();
+    accounts
+        .iter()
+        .copied()
+        .filter(|account| seen.insert(*account))
+        .take(MAX_MENTIONS)
+        .collect()
 }
 
 pub(crate) fn mention_value(mentions: &[AccountId]) -> LoroValue {
@@ -2025,7 +2016,7 @@ mod tests {
         let alice = AccountId::new_v7();
         let thread = start_thread(&mut owner, &main, "fox", alice, "Fox?");
         let long = "x".repeat(oleafly_collab_protocol::reactions::MAX_EMOJI_CHARS + 1);
-        for emoji in ["", "a b", "👍|👍", "\n", "\u{7}", long.as_str()] {
+        for emoji in ["", "a b", "👍|👍", "\n", "\u{7}", "+1", "ok", long.as_str()] {
             let error = owner
                 .react_to_comment(&main, thread.id, thread.messages[0].id, emoji, alice, 1)
                 .unwrap_err();

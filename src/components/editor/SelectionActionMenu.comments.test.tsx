@@ -27,6 +27,7 @@ function editorView(readOnly = false) {
       extensions: EditorState.readOnly.of(readOnly),
     }),
     coordsAtPos: () => ({ top: 120, left: 40, bottom: 136, right: 90 }),
+    scrollDOM: { getBoundingClientRect: () => ({ top: 0, bottom: 600, left: 0, right: 800 }) },
   };
 }
 

@@ -224,6 +224,8 @@
     "overleaf_linked": "此專案已連結 Overleaf。要在 Oleafly Server 上分享，請先取消連結。",
     "collab_shared": "此專案已在 Oleafly Server 上分享。要與 Overleaf 即時編輯，請先在那裡停止分享。",
     "live_elsewhere": "這個專案正在另一個 Oleafly 視窗中即時編輯。請先在那裡停止即時編輯，然後再試。",
+    "access_ended": "你已無法存取這個專案，因此不能即時編輯。你的副本會保留在這台電腦上。請擁有者重新與你共享。",
+    "failed": "由於發生錯誤，即時編輯未能開始。你的變更會保留在這台電腦上。請稍候片刻，然後選擇「重新同步」。",
     "overleaf_unsent": "部分變更尚未同步到 Overleaf。請先恢復即時編輯以傳送這些變更，然後再取消連結。",
     "suggestion_not_found": "這個建議已經不存在。可能已有人接受或拒絕了它。",
     "suggestion_not_yours": "只有提出這個建議的人才能撤回它。",
@@ -554,7 +556,8 @@
     "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。",
     "projectNotesShared": "專案筆記會分享給這個專案的每個人，個人筆記則只有你看得到。",
     "personalNotesPrivate": "個人筆記只有你看得到。只有專案筆記資料夾中的筆記會被分享。",
-    "unlinkOverleaf": "取消與 Overleaf 的連結"
+    "unlinkOverleaf": "取消與 Overleaf 的連結",
+    "unlinkOverleafDescription": "這個專案的即時編輯將會停止。你的副本會保留在這台電腦上，共同作者的線上專案維持不變。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",

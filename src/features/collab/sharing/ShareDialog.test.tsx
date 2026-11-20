@@ -471,9 +471,27 @@ describe("ShareDialog for a project linked to Overleaf", () => {
     openDialog();
     const notice = await screen.findByTestId("collab-share-overleaf-linked");
     expect(within(notice).getByText(enCollab.errors.overleaf_linked)).toBeInTheDocument();
-    await userEvent.setup().click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    const user = userEvent.setup();
+    await user.click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toHaveTextContent(share.unlinkOverleafDescription);
+    expect(mocks.unlinkOverleaf).not.toHaveBeenCalled();
+    await user.click(within(confirm).getByRole("button", { name: share.unlinkOverleaf }));
     expect(mocks.unlinkOverleaf).toHaveBeenCalledWith("grant");
     await waitFor(() => expect(screen.queryByTestId("collab-share-overleaf-linked")).toBeNull());
+  });
+
+  it("keeps the link when the unlink question is cancelled", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    useLiveBackend.setState({ projectId: "grant", backend: null, overleaf: linked });
+    openDialog();
+    const notice = await screen.findByTestId("collab-share-overleaf-linked");
+    const user = userEvent.setup();
+    await user.click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(mocks.unlinkOverleaf).not.toHaveBeenCalled();
+    expect(screen.getByTestId("collab-share-overleaf-linked")).toBeInTheDocument();
   });
 
   it("says why when unsent Overleaf work stops the unlink", async () => {
@@ -482,8 +500,23 @@ describe("ShareDialog for a project linked to Overleaf", () => {
     useLiveBackend.setState({ projectId: "grant", backend: null, overleaf: linked });
     openDialog();
     const notice = await screen.findByTestId("collab-share-overleaf-linked");
-    await userEvent.setup().click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    const user = userEvent.setup();
+    await user.click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: share.unlinkOverleaf }));
     expect(await within(notice).findByText(enCollab.errors.overleaf_unsent)).toBeInTheDocument();
+  });
+
+  it("fails the unlink instead of reporting it done when live editing isn't running", async () => {
+    uninstall();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    useLiveBackend.setState({ projectId: "grant", backend: null, overleaf: linked });
+    openDialog();
+    const notice = await screen.findByTestId("collab-share-overleaf-linked");
+    const user = userEvent.setup();
+    await user.click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: share.unlinkOverleaf }));
+    expect(await within(notice).findByText(enCollab.errors.internal)).toBeInTheDocument();
+    expect(screen.getByTestId("collab-share-overleaf-linked")).toBeInTheDocument();
   });
 
   it("tells the server sharing step whether live editing with Overleaf is on", async () => {

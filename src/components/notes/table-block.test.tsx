@@ -74,10 +74,47 @@ describe("TableView", () => {
     expect(screen.getByText("5 rows")).toBeInTheDocument();
     const summary = container.querySelector("tfoot") as HTMLElement;
     expect(within(summary).getByText(copy.count).nextElementSibling).toHaveTextContent("4");
-    expect(within(summary).getByText(copy.mean).nextElementSibling).toHaveTextContent("3.875");
+    expect(within(summary).getByText(copy.mean).nextElementSibling).toHaveTextContent("3.88");
     expect(within(summary).getByText(copy.min).nextElementSibling).toHaveTextContent("-4");
     expect(within(summary).getByText(copy.max).nextElementSibling).toHaveTextContent("10");
     expect(container.querySelector("table")).toHaveAttribute("aria-rowcount", "7");
+  });
+
+  it("puts each summary figure on its own line, in the same order in every column", () => {
+    const { container } = render(<TableView table={tableOf("a,b,c\n1,0.25,x\n22,1.125,y\n333,-7,z")} />);
+    const cells = [...container.querySelectorAll("tfoot td")];
+    expect(cells).toHaveLength(3);
+    for (const cell of cells.slice(0, 2)) {
+      const list = cell.querySelector("dl") as HTMLElement;
+      expect(list).toHaveClass("grid", "grid-cols-[auto_1fr]");
+      expect([...list.querySelectorAll("dt")].map((term) => term.textContent)).toEqual([copy.count, copy.mean, copy.min, copy.max]);
+      for (const value of list.querySelectorAll("dd")) expect(value).toHaveClass("whitespace-nowrap", "text-right", "tabular-nums");
+    }
+    expect(cells[2]).toBeEmptyDOMElement();
+    const [integers, decimals] = cells.map((cell) => [...cell.querySelectorAll("dd")].map((value) => value.textContent));
+    expect(integers).toEqual(["3", "118.7", "1", "333"]);
+    expect(decimals).toEqual(["3", "-1.875", "-7", "1.125"]);
+  });
+
+  it("shows the exact figure behind a rounded one in a tooltip", () => {
+    vi.useFakeTimers();
+    const { container, unmount } = render(<TableView table={tableOf("n\n1.10\n2.25\n3.5")} />);
+    try {
+      const summary = container.querySelector("tfoot") as HTMLElement;
+      const mean = within(summary).getByText(copy.mean).nextElementSibling as HTMLElement;
+      const min = within(summary).getByText(copy.min).nextElementSibling as HTMLElement;
+      expect(mean).toHaveTextContent("2.283");
+      expect(min).toHaveTextContent("1.10");
+      expect(min).not.toHaveAttribute("data-tooltip");
+      mean.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }));
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(screen.getByRole("tooltip")).toHaveTextContent("2.28333333333333");
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
   });
 
   it("tints the sticky header and summary row with the note colour and keeps the body plain", () => {

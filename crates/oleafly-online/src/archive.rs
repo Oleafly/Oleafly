@@ -560,8 +560,9 @@ mod tests {
             "imageName": "texlive-full:2025.1",
             "rootDoc_id": "m",
             "rootFolder": [{
+                "_id": "root",
                 "docs": [{ "_id": "n", "name": "notes.tex" }],
-                "folders": [{ "name": "paper", "docs": [{ "_id": "m", "name": "main.tex" }] }]
+                "folders": [{ "_id": "p", "name": "paper", "docs": [{ "_id": "m", "name": "main.tex" }] }]
             }]
         })
     }

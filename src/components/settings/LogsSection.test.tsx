@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LogEntry } from "@/lib/tauri";
@@ -12,8 +12,10 @@ const mocks = vi.hoisted(() => ({
   exportLogArchive: vi.fn(async (_dest: string) => undefined),
   pickSavePath: vi.fn(),
   logError: vi.fn(async (_scope: string, _error: unknown) => undefined),
+  logWarning: vi.fn(async (_scope: string, _error: unknown) => undefined),
   writeText: vi.fn(async (_text: string) => undefined),
   toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
+  highlighted: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -23,10 +25,21 @@ vi.mock("@/lib/tauri", () => ({
   exportLogArchive: mocks.exportLogArchive,
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
-vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: mocks.logWarning }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
+vi.mock("@/components/ui/highlighted", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/highlighted")>();
+  return {
+    ...actual,
+    Highlighted: (props: Parameters<typeof actual.Highlighted>[0]) => {
+      mocks.highlighted(props.text);
+      return actual.Highlighted(props);
+    },
+  };
+});
 
 import { loadNamespace } from "@/i18n";
+import { UNMEASURED_ROW_COUNT } from "@/hooks/use-row-window";
 import { LogsSection } from "./LogsSection";
 
 const NOW = new Date(2026, 10, 15, 12, 0, 0);
@@ -143,13 +156,14 @@ describe("LogsSection", () => {
     await screen.findByText("build failed");
 
     await user.type(screen.getByRole("searchbox", { name: "Search logs" }), "BUILD");
+    expect(await screen.findByText("2 of 5 entries")).toBeInTheDocument();
     const marks = document.querySelectorAll("mark");
     expect([...marks].map((mark) => mark.textContent)).toEqual(["build", "build"]);
     expect(screen.getByRole("tab", { name: /All/ })).toHaveTextContent("2");
-    expect(screen.getByText("2 of 5 entries")).toBeInTheDocument();
 
     await user.clear(screen.getByRole("searchbox", { name: "Search logs" }));
     await user.type(screen.getByRole("searchbox", { name: "Search logs" }), "8f2c");
+    expect(await screen.findByText("1 of 5 entries")).toBeInTheDocument();
     expect(screen.getByText("compiled output not shared")).toBeInTheDocument();
     expect(document.querySelectorAll("mark")).toHaveLength(0);
   });
@@ -159,7 +173,7 @@ describe("LogsSection", () => {
     await screen.findByText("build failed");
 
     await user.type(screen.getByRole("searchbox", { name: "Search logs" }), "zotero");
-    expect(screen.getByText('No entries match "zotero"')).toBeInTheDocument();
+    expect(await screen.findByText('No entries match "zotero"')).toBeInTheDocument();
     expect(screen.getByText("0 of 5 entries")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear search" }));
     expect(screen.getByRole("searchbox", { name: "Search logs" })).toHaveValue("");
@@ -188,8 +202,9 @@ describe("LogsSection", () => {
 
     await user.click(screen.getByRole("button", { name: "Copy entry" }));
     expect(mocks.writeText).toHaveBeenCalledWith(
-      `${new Date(TODAY + 2 * HOUR).toISOString()} error build failed\nengine=tectonic\nerrors=3\nmain_file=main.tex`,
+      `${new Date(TODAY + 2 * HOUR).toISOString()} error build failed\nengine=tectonic\nerrors=3`,
     );
+    expect(mocks.writeText.mock.calls.flat().join("\n")).not.toContain("main.tex");
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
 
     await user.click(button);
@@ -313,5 +328,137 @@ describe("LogsSection", () => {
     second.unmount();
     reject(new Error("late"));
     await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read log entries", expect.any(Error)));
+  });
+});
+
+function manyEntries(count: number): LogEntry[] {
+  return Array.from({ length: count }, (_, index) =>
+    entry({ ts_ms: TODAY + index * 1_000, message: `step ${index}`, safe: { index } }),
+  );
+}
+
+function withTimers(toFake: ("setTimeout" | "clearTimeout" | "setInterval" | "clearInterval")[]) {
+  vi.useFakeTimers({ toFake: ["Date", ...toFake] });
+  vi.setSystemTime(NOW);
+  return () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  };
+}
+
+describe("LogsSection with a full log", () => {
+  it("renders a bounded window of rows out of 2,000 entries", async () => {
+    renderSection(manyEntries(2_000));
+    expect(await screen.findByText(/^2,?000 entries$/)).toBeInTheDocument();
+    const rows = screen.getAllByRole("button", { expanded: false });
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThanOrEqual(UNMEASURED_ROW_COUNT);
+    expect(rows[0]).toHaveTextContent("step 1999");
+  });
+
+  it("leaves the rows alone while the search is typed and filters once it settles", async () => {
+    const restore = withTimers(["setTimeout", "clearTimeout"]);
+    try {
+      mocks.readLogEntries.mockResolvedValue(manyEntries(2_000));
+      render(<LogsSection />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.getByText(/^2,?000 entries$/)).toBeInTheDocument();
+      mocks.highlighted.mockClear();
+
+      const search = screen.getByRole("searchbox", { name: "Search logs" });
+      for (const end of [1, 2, 3, 4, 5, 6, 7]) {
+        fireEvent.change(search, { target: { value: "step 19".slice(0, end) } });
+      }
+      expect(search).toHaveValue("step 19");
+      expect(mocks.highlighted).not.toHaveBeenCalled();
+      expect(screen.getByText(/^2,?000 entries$/)).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(screen.getByText(/^111 of 2,?000 entries$/)).toBeInTheDocument();
+      expect(mocks.highlighted.mock.calls.length).toBeLessThanOrEqual(UNMEASURED_ROW_COUNT);
+      expect(mocks.highlighted.mock.calls.every(([text]) => String(text).includes("step 19"))).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
+  it("re-renders only the row that opens", async () => {
+    const { user } = renderSection(manyEntries(50));
+    const button = await rowButton("step 49");
+    mocks.highlighted.mockClear();
+    await user.click(button);
+    expect(mocks.highlighted.mock.calls.map(([text]) => text)).toEqual(["step 49"]);
+  });
+});
+
+describe("LogsSection refresh", () => {
+  it("shows entries written while the section is open, and keeps the list when nothing changed", async () => {
+    const restore = withTimers(["setInterval", "clearInterval"]);
+    try {
+      renderSection([entry({ ts_ms: TODAY + HOUR, message: "first entry" })]);
+      expect(await screen.findByText("first entry")).toBeInTheDocument();
+
+      mocks.highlighted.mockClear();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(mocks.readLogEntries).toHaveBeenCalledTimes(2);
+      expect(mocks.highlighted).not.toHaveBeenCalled();
+
+      mocks.readLogEntries.mockResolvedValue([
+        entry({ ts_ms: TODAY + HOUR, message: "first entry" }),
+        entry({ ts_ms: TODAY + 2 * HOUR, level: "error", message: "build failed" }),
+      ]);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(screen.getByText("build failed")).toBeInTheDocument();
+      expect(screen.getByText("2 entries")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("logs one warning for a run of failed refreshes and keeps the entries", async () => {
+    const restore = withTimers(["setInterval", "clearInterval"]);
+    try {
+      renderSection();
+      expect(await screen.findByText("build failed")).toBeInTheDocument();
+      mocks.readLogEntries.mockRejectedValue(new Error("ring locked"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000);
+      });
+      expect(mocks.logWarning).toHaveBeenCalledTimes(1);
+      expect(mocks.logWarning).toHaveBeenCalledWith("refresh log entries", expect.any(Error));
+      expect(screen.getByText("build failed")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("does not bring back entries a refresh read before the logs were cleared", async () => {
+    const restore = withTimers(["setInterval", "clearInterval"]);
+    try {
+      const { user } = renderSection();
+      expect(await screen.findByText("build failed")).toBeInTheDocument();
+      let finish: (entries: LogEntry[]) => void = () => {};
+      mocks.readLogEntries.mockReturnValueOnce(new Promise<LogEntry[]>((done) => (finish = done)));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      await user.click(screen.getByRole("button", { name: "Clear" }));
+      await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /Clear logs/ }));
+      expect(await screen.findByText("No log entries")).toBeInTheDocument();
+      await act(async () => {
+        finish(ENTRIES);
+      });
+      expect(screen.getByText("No log entries")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 });

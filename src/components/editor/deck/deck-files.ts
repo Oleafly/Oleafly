@@ -1,24 +1,17 @@
 import { imageMime, isImagePath } from "@/lib/image-mime";
+import { logWarning } from "@/lib/log";
 import { dirname } from "@/lib/path-utils";
+import { normalizeProjectPath } from "@/lib/project-intelligence/source";
 import { readFileBase64 } from "@/lib/tauri";
 
 const ASSET_IMPORT = /\bfrom\s*["']((?:\.{1,2}\/|@assets\/)[^"']+)["']/gu;
 const MAX_ASSETS = 64;
 
 export function resolveDeckImport(deckPath: string, specifier: string): string | null {
-  const base = specifier.startsWith("@assets/") ? "assets" : dirname(deckPath);
-  const relative = specifier.startsWith("@assets/") ? specifier.slice("@assets/".length) : specifier;
-  const parts = base === "." || base === "" ? [] : base.split("/");
-  for (const part of relative.split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (parts.length === 0) return null;
-      parts.pop();
-    } else {
-      parts.push(part);
-    }
-  }
-  return parts.length > 0 ? parts.join("/") : null;
+  const shared = specifier.startsWith("@assets/");
+  const base = shared ? "assets" : dirname(deckPath);
+  const relative = shared ? specifier.slice("@assets/".length) : specifier;
+  return normalizeProjectPath(base === "." || base === "" ? relative : `${base}/${relative}`);
 }
 
 export function deckAssetImports(deckPath: string, code: string): Map<string, string> {
@@ -40,7 +33,8 @@ export async function readDeckAssets(
     [...imports].map(async ([specifier, path]) => {
       try {
         return [specifier, `data:${imageMime(path)};base64,${await readFileBase64(projectId, path)}`] as const;
-      } catch {
+      } catch (cause) {
+        void logWarning(`read the slide image ${path}`, cause);
         return null;
       }
     }),

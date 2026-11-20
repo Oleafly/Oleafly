@@ -92,7 +92,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   CONTROL_GAP,
@@ -267,6 +267,7 @@ function CitationSearch({ value, onChange }: Readonly<{ value: string; onChange:
     <div className="flex items-center gap-2 border-b px-2 pb-1">
       <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
       <Input
+        {...SEARCH_INPUT}
         data-citation-search
         value={value}
         onChange={(event) => onChange(event.target.value)}

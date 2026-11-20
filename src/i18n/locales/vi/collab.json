@@ -224,6 +224,8 @@
     "overleaf_linked": "Dự án này đã liên kết với Overleaf. Hãy hủy liên kết để chia sẻ dự án trên Oleafly Server.",
     "collab_shared": "Dự án này đang được chia sẻ trên Oleafly Server. Hãy ngừng chia sẻ ở đó để chỉnh sửa trực tiếp với Overleaf.",
     "live_elsewhere": "Dự án này đang được chỉnh sửa trực tiếp trong một cửa sổ Oleafly khác. Hãy dừng chỉnh sửa trực tiếp ở đó rồi thử lại.",
+    "access_ended": "Bạn không còn quyền truy cập dự án này nên không thể chỉnh sửa trực tiếp. Bản sao của bạn vẫn ở trên máy tính này. Hãy đề nghị chủ sở hữu chia sẻ lại cho bạn.",
+    "failed": "Không thể bắt đầu chỉnh sửa trực tiếp vì có lỗi. Các thay đổi của bạn vẫn ở trên máy tính này. Hãy đợi một lát rồi chọn Bật trực tiếp lại.",
     "overleaf_unsent": "Một số thay đổi chưa đến được Overleaf. Hãy tiếp tục chỉnh sửa trực tiếp để gửi chúng, rồi bỏ liên kết.",
     "suggestion_not_found": "Đề xuất đó đã bị gỡ. Có thể ai đó đã chấp nhận hoặc từ chối.",
     "suggestion_not_yours": "Chỉ người tạo đề xuất này mới có thể rút lại.",
@@ -554,7 +556,8 @@
     "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó.",
     "projectNotesShared": "Ghi chú của dự án được chia sẻ với mọi người trong dự án này. Ghi chú cá nhân vẫn là riêng tư.",
     "personalNotesPrivate": "Ghi chú cá nhân vẫn là riêng tư. Chỉ những ghi chú trong thư mục ghi chú của dự án mới được chia sẻ.",
-    "unlinkOverleaf": "Bỏ liên kết khỏi Overleaf"
+    "unlinkOverleaf": "Bỏ liên kết khỏi Overleaf",
+    "unlinkOverleafDescription": "Chỉnh sửa trực tiếp sẽ dừng cho dự án này. Bản sao của bạn vẫn ở trên máy tính này, còn các đồng tác giả vẫn giữ nguyên dự án trực tuyến."
   },
   "manage": {
     "sharedOn": "Được chia sẻ trên {{server}}",

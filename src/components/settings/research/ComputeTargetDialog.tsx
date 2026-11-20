@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,11 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import {
@@ -209,14 +208,6 @@ export function ComputeTargetDialog({
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
-    };
-  }, []);
-
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const id = (field: string) => `${prefix}-${field}`;
   const message = (field: TargetField) => {
@@ -299,10 +290,10 @@ export function ComputeTargetDialog({
               {draft.perTask ? null : (
                 <Field id={id("space")} label={t(($) => $.researchTools.compute.form.space)} error={message("space")}>
                   <Input
+                    {...LITERAL_INPUT}
                     id={id("space")}
                     value={draft.space}
                     maxLength={63}
-                    spellCheck={false}
                     onChange={(event) => set("space", event.target.value)}
                     {...invalid("space")}
                   />
@@ -310,10 +301,10 @@ export function ComputeTargetDialog({
               )}
               <Field id={id("image")} label={t(($) => $.researchTools.compute.form.image)} error={message("image")}>
                 <Input
+                  {...LITERAL_INPUT}
                   id={id("image")}
                   value={draft.image}
                   maxLength={200}
-                  spellCheck={false}
                   onChange={(event) => set("image", event.target.value)}
                   {...invalid("image")}
                 />
@@ -328,11 +319,10 @@ export function ComputeTargetDialog({
                 error={message("host")}
               >
                 <Input
+                  {...LITERAL_INPUT}
                   id={id("host")}
                   value={draft.host}
                   maxLength={253}
-                  spellCheck={false}
-                  autoCapitalize="off"
                   onChange={(event) => set("host", event.target.value)}
                   {...invalid("host")}
                 />
@@ -345,11 +335,10 @@ export function ComputeTargetDialog({
                   error={message("user")}
                 >
                   <Input
+                    {...LITERAL_INPUT}
                     id={id("user")}
                     value={draft.user}
                     maxLength={64}
-                    spellCheck={false}
-                    autoCapitalize="off"
                     onChange={(event) => set("user", event.target.value)}
                     {...invalid("user")}
                   />
@@ -373,10 +362,10 @@ export function ComputeTargetDialog({
                 error={message("remoteRoot")}
               >
                 <Input
+                  {...LITERAL_INPUT}
                   id={id("remoteRoot")}
                   value={draft.remoteRoot}
                   maxLength={200}
-                  spellCheck={false}
                   placeholder={".oleafly-runs"}
                   onChange={(event) => set("remoteRoot", event.target.value)}
                   {...invalid("remoteRoot")}
@@ -395,10 +384,10 @@ export function ComputeTargetDialog({
                       error={message("time")}
                     >
                       <Input
+                        {...LITERAL_INPUT}
                         id={id("time")}
                         value={draft.time}
                         maxLength={16}
-                        spellCheck={false}
                         onChange={(event) => set("time", event.target.value)}
                         {...invalid("time")}
                       />
@@ -409,10 +398,10 @@ export function ComputeTargetDialog({
                       error={message("partition")}
                     >
                       <Input
+                        {...LITERAL_INPUT}
                         id={id("partition")}
                         value={draft.partition}
                         maxLength={64}
-                        spellCheck={false}
                         onChange={(event) => set("partition", event.target.value)}
                         {...invalid("partition")}
                       />
@@ -423,20 +412,20 @@ export function ComputeTargetDialog({
                       error={message("account")}
                     >
                       <Input
+                        {...LITERAL_INPUT}
                         id={id("account")}
                         value={draft.account}
                         maxLength={64}
-                        spellCheck={false}
                         onChange={(event) => set("account", event.target.value)}
                         {...invalid("account")}
                       />
                     </Field>
                     <Field id={id("qos")} label={t(($) => $.researchTools.compute.form.qos)} error={message("qos")}>
                       <Input
+                        {...LITERAL_INPUT}
                         id={id("qos")}
                         value={draft.qos}
                         maxLength={64}
-                        spellCheck={false}
                         onChange={(event) => set("qos", event.target.value)}
                         {...invalid("qos")}
                       />

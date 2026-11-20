@@ -1,7 +1,9 @@
 import { i18n } from "@/i18n";
+import { logError } from "@/lib/log";
 import type { CollabCommentErrorCode } from "@/lib/tauri";
 import { isCollabCommentError } from "@/lib/tauri-collab";
-import { collabErrorText } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
+import { COMMENTS_REFUSED_OUTRIGHT } from "./refused-outright";
 
 const REFUSALS: Readonly<Record<CollabCommentErrorCode, () => string>> = {
   comment_not_live: () => i18n.t(($) => $.collab.comments.refusals.notLive),
@@ -25,10 +27,20 @@ export function commentFailure(error: unknown): string {
   return collabErrorText(error);
 }
 
-const REFUSED_OUTRIGHT: ReadonlySet<CollabCommentErrorCode> = new Set(["comment_off_server", "comment_off_project", "comment_viewer"]);
+const REFUSED_OUTRIGHT: ReadonlySet<CollabCommentErrorCode> = new Set(COMMENTS_REFUSED_OUTRIGHT);
 
 export function refusedOutright(error: unknown): boolean {
   return isCollabCommentError(error) && REFUSED_OUTRIGHT.has(error.code);
+}
+
+export async function reported<T>(scope: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const code = isCollabCommentError(error) ? null : collabErrorCode(error);
+    if (code === "internal" || code === "server") void logError(scope, error);
+    throw error;
+  }
 }
 
 export function commentRetryable(error: unknown): boolean {

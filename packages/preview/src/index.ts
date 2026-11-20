@@ -9,6 +9,7 @@ export {
   type PdfSearchState,
   type PdfSearchStatus,
   type PdfOutlineState,
+  type PdfPageColors,
 } from "./PdfViewer";
 export type { PdfOutlineItem } from "./pdfOutline";
 export * from "./messages";

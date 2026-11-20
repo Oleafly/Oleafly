@@ -1,3 +1,6 @@
+import { COMMENTS_REFUSED_OUTRIGHT } from "@/features/collab/comments/refused-outright";
+import { readTab, writeTab } from "./tab-storage";
+
 export type OutboxKind = "create" | "reply" | "chat";
 
 export interface OutboxItem {
@@ -18,22 +21,13 @@ export interface OutboxItem {
   after: string | null;
 }
 
-const PREFIX = "oleafly.web.outbox.v1.";
-const REFUSED_OUTRIGHT: ReadonlySet<string> = new Set(["comment_off_server", "comment_off_project", "comment_viewer", "chat_role"]);
+const REFUSED_OUTRIGHT: ReadonlySet<string> = new Set([...COMMENTS_REFUSED_OUTRIGHT, "chat_role"]);
 
 export function refusedOutright(code: string): boolean {
   return REFUSED_OUTRIGHT.has(code);
 }
 
 const KINDS: ReadonlySet<string> = new Set(["create", "reply", "chat"]);
-
-function storage(): Storage | null {
-  try {
-    return typeof sessionStorage === "undefined" ? null : sessionStorage;
-  } catch {
-    return null;
-  }
-}
 
 function text(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -70,34 +64,22 @@ function parseItem(value: unknown): OutboxItem | null {
   };
 }
 
-export function loadOutbox(projectId: string): OutboxItem[] {
-  const raw = storage()?.getItem(PREFIX + projectId);
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((value) => parseItem(value) ?? []);
-  } catch {
-    return [];
-  }
+export function loadOutbox(scope: string): OutboxItem[] {
+  const parsed = readTab("outbox", scope);
+  return Array.isArray(parsed) ? parsed.flatMap((value) => parseItem(value) ?? []) : [];
 }
 
-export function saveOutbox(projectId: string, items: readonly OutboxItem[]): void {
-  const store = storage();
-  if (!store) return;
-  try {
-    if (items.length === 0) store.removeItem(PREFIX + projectId);
-    else store.setItem(PREFIX + projectId, JSON.stringify(items));
-  } catch {
-    return;
-  }
+export function saveOutbox(scope: string, items: readonly OutboxItem[]): void {
+  writeTab("outbox", scope, items.length === 0 ? null : JSON.stringify(items));
 }
 
-let made = 0;
+function randomId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 export function outboxId(): string {
-  made += 1;
-  return `outbox-${Date.now().toString(36)}-${made}`;
+  return `outbox-${randomId()}`;
 }
 
 export function outboxItem(kind: OutboxKind, body: string, place: Partial<OutboxItem> = {}): OutboxItem {

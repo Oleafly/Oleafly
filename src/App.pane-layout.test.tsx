@@ -447,8 +447,6 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  // App starts lazy imports (the preview window restore) on every render; let
-  // them land while the mocks are in place, not after the file is torn down.
   await vi.dynamicImportSettled();
   vi.restoreAllMocks();
   usePaneLayoutStore.setState({ layout: DEFAULT_PANE_LAYOUT });
@@ -475,6 +473,26 @@ function widePanels() {
     return this.hasAttribute("data-panel") ? 1000 : this.hasAttribute("data-separator") ? 6 : 0;
   });
 }
+
+describe("column dividers", () => {
+  it("show their grip and tint for the panel library's hover and drag states, not only CSS hover", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    const divider = await waitFor(() => {
+      const element = document.getElementById("h-assistant");
+      expect(element).not.toBeNull();
+      return element as HTMLElement;
+    });
+    const tint = divider.firstElementChild as HTMLElement;
+    const grip = tint.firstElementChild as HTMLElement;
+    for (const state of ["hover", "active"]) {
+      expect(tint).toHaveClass(`group-data-[separator=${state}]:bg-accent/40`);
+      expect(grip).toHaveClass(`group-data-[separator=${state}]:opacity-100`, `group-data-[separator=${state}]:bg-ring`);
+    }
+    expect(grip).toHaveClass("group-focus-visible:opacity-100");
+  });
+});
 
 describe("released storage keys, panel ids and separator ids", () => {
   it("reads the sizes the released app saved and writes them back under the same keys", async () => {

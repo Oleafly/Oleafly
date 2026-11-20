@@ -847,7 +847,8 @@
     "search": "Cerca nel progetto",
     "sourceControl": "Controllo del codice",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Note"
+    "notes": "Note",
+    "more": "Altre viste"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} su {{host}}",
@@ -1105,7 +1106,7 @@
       "integrations": "Integrazioni",
       "shortcuts": "Scorciatoie da tastiera",
       "research": "Ricerca",
-      "logs": "Logs"
+      "logs": "Log"
     },
     "search": {
       "empty": "Nessuna impostazione corrisponde",
@@ -1123,7 +1124,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, app desktop, Cua, MCP, citazioni, account, connessioni",
         "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera",
         "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "log, errori, avvisi, arresti anomali, crash, compilazioni, build, diagnostica, risoluzione dei problemi, esporta i log, app.log, debug"
       },
       "label": "Cerca nelle impostazioni",
       "results_one": "{{count}} sezione corrisponde",

@@ -46,7 +46,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/download-blob", () => ({ downloadBytes: mocks.downloadBytes }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+vi.mock("@/lib/log", () => ({ logError: vi.fn(), logWarning: vi.fn() }));
 vi.mock("@/features/presentation/launch", () => ({ present: mocks.present }));
 vi.mock("@/lib/toast", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

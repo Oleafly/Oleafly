@@ -1,6 +1,8 @@
 import { ShieldQuestion } from "lucide-react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, type AvatarSize } from "@/components/ui/avatar";
+import type { CommentAuthor } from "@/components/ui/comments/comment-entry";
 import { peerHue } from "@/features/collab/live/peer-hue";
 import { cn } from "@/lib/utils";
 import { useWeb } from "../store";
@@ -9,11 +11,28 @@ export function usePersonName(): (accountId: string, verified?: boolean) => stri
   const { t } = useTranslation(["web"]);
   const people = useWeb((state) => state.people);
   const self = useWeb((state) => state.me?.accountId ?? null);
-  return (accountId, verified = true) => {
-    if (!verified) return t(($) => $.web.people.unverified);
-    if (accountId && accountId === self) return t(($) => $.web.people.you);
-    return people[accountId]?.name || t(($) => $.web.people.someone);
-  };
+  return useCallback(
+    (accountId: string, verified = true) => {
+      if (!verified) return t(($) => $.web.people.unverified);
+      if (accountId && accountId === self) return t(($) => $.web.people.you);
+      return people[accountId]?.name || t(($) => $.web.people.someone);
+    },
+    [t, people, self],
+  );
+}
+
+export function useMessageAuthor(): (message: { author: string; verified: boolean }) => CommentAuthor {
+  const nameOf = usePersonName();
+  const people = useWeb((state) => state.people);
+  return useCallback(
+    (message: { author: string; verified: boolean }): CommentAuthor => ({
+      id: message.author,
+      name: nameOf(message.author, message.verified),
+      imageUrl: message.verified ? (people[message.author]?.avatarUrl ?? null) : null,
+      verified: message.verified,
+    }),
+    [nameOf, people],
+  );
 }
 
 export function PersonAvatar({

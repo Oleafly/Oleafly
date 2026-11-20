@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModelCapabilityChips, ModelTrustBadge } from "@/components/ai/ModelSelector";
@@ -426,6 +426,7 @@ export function ModelManager({
       <div className="pt-1">
         <div className="flex gap-2">
           <Input
+            {...LITERAL_INPUT}
             type="text"
             value={newId}
             onChange={(e) => {

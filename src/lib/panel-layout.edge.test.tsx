@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   collapsePanel,
   expandPanel,
-  hasStoredPanelLayout,
   keyboardResizeLayout,
   migrateLegacyPanelLayout,
   panelExpandSizesKey,
@@ -50,14 +49,6 @@ afterEach(() => {
 });
 
 describe("storage that refuses access", () => {
-  it("reports no stored layout when storage cannot be listed", () => {
-    vi.spyOn(Storage.prototype, "key").mockImplementation(() => {
-      throw new Error("denied");
-    });
-    localStorage.setItem(panelLayoutKey("g", ["a", "b"]), JSON.stringify({ a: 50, b: 50 }));
-    expect(hasStoredPanelLayout("g")).toBe(false);
-  });
-
   it("still collapses and reopens panels when sizes cannot be saved or read", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota");

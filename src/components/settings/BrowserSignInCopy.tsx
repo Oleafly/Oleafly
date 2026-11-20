@@ -132,6 +132,7 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
       });
       imported = summary.imported;
     } catch (error) {
+      void logError("copy browser cookies", error);
       setCopyError(describeError(error));
       setCopying(false);
       return;

@@ -1134,6 +1134,10 @@ fn sidecar(program: &str) -> Option<PathBuf> {
 fn pandoc_for(test: &str) -> Option<PathBuf> {
     let found = sidecar("pandoc");
     if found.is_none() {
+        assert!(
+            std::env::var_os("CI").is_none(),
+            "{test}: CI fetches pandoc into src-tauri/binaries, and it is missing"
+        );
         eprintln!("{test}: skipped, no pandoc in src-tauri/binaries or on PATH");
     }
     found
@@ -2530,41 +2534,4 @@ fn an_ascii_owned_build_folder_keeps_its_own_name() {
         latexmk_owned_path_text(unix, false, &never).as_deref(),
         Some("/home/jörg/.oleafly/linked/p/build")
     );
-}
-
-#[test]
-fn a_bare_argument_a_script_wrapper_would_respell_is_quoted_on_windows() {
-    for (arg, quoted) in [
-        (
-            "-outdir=C:/Users/O'Brien/build",
-            "\"-outdir=C:/Users/O'Brien/build\"",
-        ),
-        ("./fig[1].tex", "\"./fig[1].tex\""),
-        ("-r", ""),
-        ("./main.tex", ""),
-        ("C:/a b/O'Brien.tex", ""),
-        ("say\"what'", ""),
-        ("C:\\it's\\", "\"C:\\it's\\\\\""),
-    ] {
-        assert_eq!(wrapper_safe_arg(arg).unwrap_or_default(), quoted, "{arg}");
-    }
-    assert!(is_windows_batch_script(Path::new("C:/tl/bin/tlmgr.BAT")));
-    assert!(is_windows_batch_script(Path::new("quarto.cmd")));
-    assert!(!is_windows_batch_script(Path::new("C:/tl/bin/latexmk.exe")));
-}
-
-#[test]
-fn wrapper_safe_args_keep_every_argument_in_order() {
-    let mut command = std::process::Command::new("latexmk");
-    add_wrapper_safe_args(
-        &mut command,
-        Path::new("latexmk"),
-        &["-norc", "./O'Neil.tex", "a b"],
-    );
-    let args: Vec<_> = command.get_args().collect();
-    if cfg!(windows) {
-        assert_eq!(args, ["-norc", "\"./O'Neil.tex\"", "a b"]);
-    } else {
-        assert_eq!(args, ["-norc", "./O'Neil.tex", "a b"]);
-    }
 }

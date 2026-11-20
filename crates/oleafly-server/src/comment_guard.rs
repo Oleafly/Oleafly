@@ -9,6 +9,7 @@ use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::console::CommentChangeWhileOff;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_collab_protocol::schema::COMMENTS;
 use rusqlite::{params, Connection};
 use serde_json::json;
 use tokio::sync::{Mutex, Notify};
@@ -23,7 +24,6 @@ use crate::security_log::{self, NewSecurityEvent};
 use crate::snapshots::{self, Budgeted, Current, Keep, Replay, Snapshots};
 use crate::state::AppState;
 
-pub const COMMENTS: &str = "comments";
 const IDLE: Duration = Duration::from_secs(15 * 60);
 const MAX_SLOTS: usize = 1_024;
 const BUSY_TRIES: u32 = 20;
@@ -47,6 +47,7 @@ pub enum Verdict {
 
 struct Slot {
     turn: Mutex<()>,
+    editors: Mutex<()>,
     used: std::sync::Mutex<Instant>,
 }
 
@@ -583,6 +584,7 @@ impl CommentGuard {
         let slot = slots.entry(project).or_insert_with(|| {
             Arc::new(Slot {
                 turn: Mutex::new(()),
+                editors: Mutex::new(()),
                 used: std::sync::Mutex::new(now),
             })
         });
@@ -607,11 +609,10 @@ impl CommentGuard {
         reach: &Reach,
     ) -> Result<Verdict, ServerError> {
         let slot = self.slot(project);
-        let _turn = slot.turn.lock().await;
         let current = self
-            .current(db, snapshots, project, reach, true, true)
+            .current(&slot, db, snapshots, project, reach, true, true)
             .await?;
-        let Some((replay, seq)) = current else {
+        let Some((_turn, replay, seq)) = current else {
             return Ok(Verdict::Unchecked);
         };
         let (verdict, replay) = tokio::task::spawn_blocking(move || {
@@ -644,12 +645,11 @@ impl CommentGuard {
         #[cfg(feature = "test-support")]
         self.pass_role_gate().await;
         let slot = self.slot(project);
-        let _turn = slot.turn.lock().await;
         let patient = rule.role != ProjectRole::Editor;
         let current = self
-            .current(db, snapshots, project, reach, false, patient)
+            .current(&slot, db, snapshots, project, reach, false, patient)
             .await?;
-        let Some((replay, seq)) = current else {
+        let Some((_turn, replay, seq)) = current else {
             return Ok(RoleVerdict::Unchecked.into());
         };
         let (judged, replay) = tokio::task::spawn_blocking(move || {
@@ -677,9 +677,9 @@ impl CommentGuard {
         project: SharedProjectId,
         payload: Vec<u8>,
         reach: &Reach,
-    ) -> Result<bool, ServerError> {
+    ) -> Result<Option<bool>, ServerError> {
         let slot = self.slot(project);
-        let _turn = slot.turn.lock().await;
+        let _lane = slot.editors.lock().await;
         let kept = snapshots.take_kept(Keep::EditorChecks, project);
         let current = match snapshots.caught_up(db, project, kept).await? {
             Some(current) if !holds(current.0.doc(), reach) => Some(current),
@@ -689,7 +689,7 @@ impl CommentGuard {
             },
         };
         let Some((replay, seq)) = current else {
-            return Ok(false);
+            return Ok(None);
         };
         let (spared, replay) = tokio::task::spawn_blocking(move || {
             (role_guard::spares_comments(replay.doc(), &payload), replay)
@@ -699,52 +699,50 @@ impl CommentGuard {
         match spared {
             Some(spared) => {
                 snapshots.keep(Keep::EditorChecks, project, replay, seq);
-                Ok(spared)
+                Ok(Some(spared))
             }
             None => {
                 snapshots.free([replay]);
-                Ok(false)
+                Ok(Some(false))
             }
         }
     }
 
-    async fn current(
+    #[allow(clippy::too_many_arguments)]
+    async fn current<'s>(
         &self,
+        slot: &'s Slot,
         db: &Db,
         snapshots: &Snapshots,
         project: SharedProjectId,
         reach: &Reach,
         warn: bool,
         patient: bool,
-    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
-        let kept = snapshots.take_kept(Keep::CommentChecks, project);
-        match snapshots.caught_up(db, project, kept).await? {
-            Some(current) if !holds(current.0.doc(), reach) => Ok(Some(current)),
-            _ => self.read_for(db, snapshots, project, warn, patient).await,
-        }
-    }
-
-    async fn read_for(
-        &self,
-        db: &Db,
-        snapshots: &Snapshots,
-        project: SharedProjectId,
-        warn: bool,
-        patient: bool,
-    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+    ) -> Result<Option<(tokio::sync::MutexGuard<'s, ()>, Budgeted, u64)>, ServerError> {
         let mut waited_for_build = false;
         for _ in 0..BUSY_TRIES {
+            let turn = slot.turn.lock().await;
+            let kept = snapshots.take_kept(Keep::CommentChecks, project);
+            if let Some((replay, seq)) = snapshots.caught_up(db, project, kept).await? {
+                if !holds(replay.doc(), reach) {
+                    return Ok(Some((turn, replay, seq)));
+                }
+            }
             match snapshots.read_current(db, project).await? {
-                Current::Read(replay, head) => return Ok(Some((replay, head))),
+                Current::Read(replay, head) => return Ok(Some((turn, replay, head))),
                 Current::Busy if !patient => return Ok(None),
-                Current::Busy => match snapshots.build_running(project) {
-                    Some(mut finished) if !waited_for_build => {
-                        waited_for_build = true;
-                        let _ =
-                            tokio::time::timeout(BUILD_WAIT, finished.wait_for(|done| *done)).await;
+                Current::Busy => {
+                    drop(turn);
+                    match snapshots.build_running(project) {
+                        Some(mut finished) if !waited_for_build => {
+                            waited_for_build = true;
+                            let _ =
+                                tokio::time::timeout(BUILD_WAIT, finished.wait_for(|done| *done))
+                                    .await;
+                        }
+                        _ => tokio::time::sleep(BUSY_PAUSE).await,
                     }
-                    _ => tokio::time::sleep(BUSY_PAUSE).await,
-                },
+                }
                 Current::TooLarge { .. } | Current::Missing if !warn => return Ok(None),
                 Current::TooLarge { needed, allowed } => {
                     self.warn(project, &format!(
@@ -807,8 +805,11 @@ impl CommentGuard {
 
     pub async fn forget(&self, snapshots: &Snapshots, project: SharedProjectId) {
         let slot = self.slot(project);
-        let _turn = slot.turn.lock().await;
-        snapshots.forget_kept(Keep::CommentChecks, project);
+        {
+            let _turn = slot.turn.lock().await;
+            snapshots.forget_kept(Keep::CommentChecks, project);
+        }
+        let _lane = slot.editors.lock().await;
         snapshots.forget_kept(Keep::EditorChecks, project);
     }
 }

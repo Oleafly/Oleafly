@@ -11,6 +11,7 @@ import { recompileShortcutBinding } from "@/components/editor/cm/recompile-short
 import { editorTheme } from "@/components/editor/cm/theme";
 import { cn } from "@/lib/utils";
 import { describeError } from "@/lib/app-error";
+import { functionKeyTextInput } from "@/lib/function-key-text";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
 import { useApprovalModeStore } from "@/store/approval-mode";
 import { useFilesStore } from "@/store/files";
@@ -85,6 +86,7 @@ export function ApprovalsFileEditor() {
           lineNumbers(),
           history(),
           keymap.of([recompileShortcutBinding, ...defaultKeymap, ...historyKeymap]),
+          functionKeyTextInput,
           StreamLanguage.define(toml),
           editorTheme(),
           EditorView.updateListener.of((update) => {

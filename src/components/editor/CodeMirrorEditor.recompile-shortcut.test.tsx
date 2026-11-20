@@ -71,7 +71,7 @@ beforeEach(() => {
   recompiles = 0;
   window.addEventListener("keydown", countRecompile);
   useShortcutStore.getState().resetAll();
-  useVisualModeStore.setState({ enabled: false });
+  useVisualModeStore.setState({ projectId: null, kinds: {}, files: {} });
   useSettingsStore.setState({ spellcheck: false, harper: false });
   useFilesStore.setState({
     projectId: "project",
@@ -85,7 +85,7 @@ afterEach(() => {
   cleanup();
   window.removeEventListener("keydown", countRecompile);
   useShortcutStore.getState().resetAll();
-  useVisualModeStore.setState({ enabled: false });
+  useVisualModeStore.setState({ projectId: null, kinds: {}, files: {} });
   useFilesStore.setState({ projectId: null, activePath: null, openTabs: [], files: {}, tree: [] });
 });
 
@@ -116,7 +116,7 @@ describe("recompile shortcut in the source editor", () => {
   });
 
   it("does not insert a blank line in LaTeX visual mode", async () => {
-    useVisualModeStore.setState({ enabled: true });
+    useVisualModeStore.setState({ kinds: { source: "visual" } });
     await mount("main.tex");
     await waitFor(() => expect(view().dom.classList.contains("ofl-visual-parsed")).toBe(true), {
       timeout: 10_000,

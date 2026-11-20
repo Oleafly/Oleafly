@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use oleafly_online::client::Http;
+use oleafly_online::html;
 use oleafly_online::live::journal::Journal;
 use oleafly_online::live::session::{
     DocStopReason, LiveEnd, LivePeer, LivePort, LiveState, MergeReview, OverleafSession,
@@ -121,10 +122,8 @@ struct Web {
     csrf: String,
 }
 
-fn csrf_in(html: &str) -> Option<String> {
-    let start = html.find("name=\"ol-csrfToken\" content=\"")? + 29;
-    let end = html[start..].find('"')? + start;
-    Some(html[start..end].to_string())
+fn csrf_in(page: &str) -> Option<String> {
+    html::meta_text(&html::meta_tags(page), "ol-csrfToken")
 }
 
 impl Web {

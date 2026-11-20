@@ -81,9 +81,30 @@ export interface CreateSkillInput {
 }
 
 export interface UpdateSkillInput {
-  name: string;
   description: string;
   instructions: string;
+}
+
+const SKILL_NAME_MAX = 64;
+
+export function skillNameFrom(text: string): string {
+  const name = text
+    .split(/[^A-Za-z0-9]+/u)
+    .filter(Boolean)
+    .join("-")
+    .toLowerCase()
+    .slice(0, SKILL_NAME_MAX);
+  return withoutTrailingDashes(name);
+}
+
+function withoutTrailingDashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "-") end -= 1;
+  return text.slice(0, end);
+}
+
+export function followsSkillNameRules(name: string, id: string): boolean {
+  return name === id && name.length <= SKILL_NAME_MAX && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name);
 }
 
 export interface SkillDraftSource {
@@ -539,15 +560,7 @@ function compactText(value: string, max: number): string {
 }
 
 function draftName(goal: string): string {
-  const words = goal
-    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 3);
-  const name = words
-    .map((word) => `${word.charAt(0).toLocaleUpperCase()}${word.slice(1)}`)
-    .join(" ");
-  return takeCodePoints(name || "Recorded Skill", 100);
+  return skillNameFrom(goal.split(/[^A-Za-z0-9]+/u).filter(Boolean).slice(0, 3).join(" ")) || "recorded-skill";
 }
 
 function assistantProcedureSteps(content: string): string[] {

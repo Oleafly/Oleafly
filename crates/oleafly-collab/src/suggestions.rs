@@ -6,6 +6,11 @@ use loro::{
     Container, ContainerID, ContainerTrait, Index, LoroMap, LoroText, LoroValue, ValueOrContainer,
 };
 use oleafly_collab_protocol::ids::{AccountId, CommentId, DeviceId, SuggestionId};
+pub use oleafly_collab_protocol::schema::SUGGESTIONS;
+use oleafly_collab_protocol::schema::{
+    ANCHOR, AUTHOR, CREATED_AT, DELETE, DEVICE, END, FILE_ID, IDS, INSERT, KIND, START, TEXT,
+    THREAD_ID,
+};
 use oleafly_ot::{utf16_len, Component, TextOperation};
 use serde::{Deserialize, Serialize};
 
@@ -13,21 +18,7 @@ use crate::comments::{number_of, parsed, string_of, CommentThread};
 use crate::doc::ProjectDoc;
 use crate::CollabError;
 
-pub const SUGGESTIONS: &str = "suggestions";
 pub const MAX_DELETED_CHARS: usize = 20_000;
-const FILE_ID: &str = "file_id";
-const KIND: &str = "kind";
-const AUTHOR: &str = "author";
-const DEVICE: &str = "device";
-const CREATED_AT: &str = "created_at";
-const START: &str = "start";
-const END: &str = "end";
-const ANCHOR: &str = "anchor";
-const TEXT: &str = "text";
-const THREAD_ID: &str = "thread_id";
-const IDS: &str = "ids";
-const INSERT: &str = "insert";
-const DELETE: &str = "delete";
 const AUTHOR_KEYS: [&str; 10] = [
     FILE_ID, KIND, AUTHOR, DEVICE, CREATED_AT, START, END, ANCHOR, TEXT, IDS,
 ];

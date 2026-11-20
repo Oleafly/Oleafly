@@ -12,6 +12,7 @@
 
 import { LATEX_SECTION_LEVELS } from "@oleafly/latex";
 import { createEmitter } from "@/lib/emitter";
+import { logWarning } from "@/lib/log";
 import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { readBuildArtifact } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
@@ -37,8 +38,8 @@ export interface AuxToc {
 }
 
 const ENTRY_AUX = "_oleafly_entry.aux";
-const MAX_AUX_CHARS = 1024 * 1024;
-const MAX_AUX_FILES = 20;
+const MAX_AUX_CHARS = 8 * 1024 * 1024;
+const MAX_AUX_FILES = 200;
 
 interface AuxCache {
   projectId: string;
@@ -94,14 +95,6 @@ function readBalancedGroup(
   return null;
 }
 
-/**
- * Parses `\newlabel{NAME}{{NUMBER}{PAGE}...}` lines from aux-file content.
- *
- * Tolerates `\relax` tails, hyperref's extra payload groups, and nested braces
- * inside NUMBER (balance-aware, not a naive regex). Skips cleveref's shadow
- * records (names ending in `@cref`), ignores malformed lines, and slices the
- * input head at 1 MB.
- */
 function skipTabsAndSpaces(text: string, from: number): number {
   let i = from;
   while (i < text.length && (text[i] === " " || text[i] === "\t")) i++;
@@ -270,6 +263,7 @@ async function collectAuxChain(projectId: string): Promise<{
   let totalChars = 0;
   let filesRead = 0;
   let entryRead = false;
+  let cut = false;
   while (queue.length > 0 && filesRead < MAX_AUX_FILES && totalChars < MAX_AUX_CHARS) {
     const name = queue.shift() as string;
     const raw = await readAuxFile(projectId, name);
@@ -277,11 +271,18 @@ async function collectAuxChain(projectId: string): Promise<{
     filesRead++;
     if (name === ENTRY_AUX) entryRead = true;
     const remaining = MAX_AUX_CHARS - totalChars;
+    cut ||= raw.length > remaining;
     const content = raw.length > remaining ? raw.slice(0, remaining) : raw;
     totalChars += content.length;
     files.set(name, content);
     mergeAuxLabels(merged, content);
     enqueueAuxInputs(content, visited, queue);
+  }
+  if (cut || queue.length > 0) {
+    void logWarning(
+      "read the aux files",
+      `stopped after ${filesRead} files and ${totalChars} characters, so later headings and labels have no numbers`,
+    );
   }
   return { merged, files, entryRead };
 }

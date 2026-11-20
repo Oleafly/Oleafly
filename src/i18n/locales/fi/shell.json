@@ -844,7 +844,8 @@
     "search": "Hae projektista",
     "sourceControl": "Versionhallinta",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Muistiinpanot"
+    "notes": "Muistiinpanot",
+    "more": "Lisää näkymiä"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} palvelussa {{host}}",
@@ -1089,7 +1090,7 @@
       "integrations": "Integraatiot",
       "shortcuts": "Pikanäppäimet",
       "research": "Tutkimus",
-      "logs": "Logs"
+      "logs": "Lokit"
     },
     "search": {
       "empty": "Ei vastaavia asetuksia",
@@ -1107,7 +1108,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, Computer Use, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
         "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö",
         "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "loki, lokit, virheet, varoitukset, kaatumiset, käännökset, diagnostiikka, vianmääritys, vie lokit, app.log, debug, log, logs"
       },
       "label": "Hae asetuksista",
       "results_one": "{{count}} osio vastaa hakua",

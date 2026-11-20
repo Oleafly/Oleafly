@@ -1,7 +1,8 @@
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/empty";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { cn, isMac, modKey } from "@/lib/utils";
 
 export const COMMENT_SHORTCUT = [modKey, isMac ? "⌥" : "Alt", "M"] as const;
@@ -53,4 +54,13 @@ export function CommentsEmpty({
 
 export function CommentsFootnote({ children }: Readonly<{ children: ReactNode }>) {
   return <p className="border-t border-sidebar-border px-3 py-2 text-[0.6875rem] text-muted-foreground">{children}</p>;
+}
+
+export function CommentsOfflineQueue({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <WorkspaceBanner tone="neutral" role="status" data-testid="comments-offline-queue">
+      <WifiOff aria-hidden className="size-3.5 shrink-0" />
+      <p className="min-w-0 flex-1">{children}</p>
+    </WorkspaceBanner>
+  );
 }

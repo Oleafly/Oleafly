@@ -230,7 +230,7 @@ fn windows_terminal_word(word: &str) -> OsString {
 
 fn windows_words_pass_through(words: &[String]) -> bool {
     let batch = words.first().is_some_and(|program| {
-        oleafly_core::engine_spec::is_windows_batch_script(Path::new(program))
+        oleafly_sandbox::cmdline::is_windows_batch_script(Path::new(program))
     });
     words.iter().all(|word| {
         !word.is_empty()

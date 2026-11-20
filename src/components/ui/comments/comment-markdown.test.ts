@@ -16,6 +16,20 @@ describe("comment Markdown subset", () => {
     ]);
   });
 
+  it("reads a link with a long run of punctuation in one pass", () => {
+    const dots = ".".repeat(40_000);
+    const started = performance.now();
+    const link = parseInline(`see http://x${dots}y and http://zz${dots}`);
+    expect(performance.now() - started).toBeLessThan(150);
+    expect(link).toEqual([
+      { kind: "text", text: "see " },
+      { kind: "link", href: `http://x${dots}y`, text: `http://x${dots}y` },
+      { kind: "text", text: " and " },
+      { kind: "link", href: "http://zz", text: "http://zz" },
+      { kind: "text", text: dots },
+    ]);
+  });
+
   it("leaves snake_case, lone markers and other schemes as text", () => {
     expect(parseInline("snake_case_name ** x ** ~~ `` javascript:alert(1) 2*3")).toEqual([
       { kind: "text", text: "snake_case_name ** x ** ~~ `` javascript:alert(1) 2*3" },

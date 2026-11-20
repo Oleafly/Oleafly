@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/core";
+import type { HistoryRun } from "@/lib/field-history";
 import type { SaveFailure } from "@/store/save-flush-error";
 
 export const NOTE_FLUSH_MS = 4_000;
@@ -8,15 +9,13 @@ export interface NoteSaveJob {
   timedOut: () => string;
 }
 
-export type NoteHistoryCommand = (redo: boolean) => void;
-
 export interface OpenNoteEditor extends NoteSaveJob {
   editor: Editor;
   root: HTMLElement | null;
   text: () => string;
   flush: () => Promise<string | null>;
   busy: () => boolean;
-  history: NoteHistoryCommand;
+  history: HistoryRun;
 }
 
 interface TrackedSave {
@@ -131,7 +130,7 @@ export async function flushOpenNotes(waitMs: number = NOTE_FLUSH_MS): Promise<Sa
   });
 }
 
-export function noteHistoryAt(element: Element | null): NoteHistoryCommand | null {
+export function noteHistoryAt(element: Element | null): HistoryRun | null {
   if (!element) return null;
   for (const handles of editors.values()) {
     for (const handle of handles) {

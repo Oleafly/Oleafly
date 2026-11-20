@@ -1,7 +1,9 @@
 import type { OverleafConnectionDetails } from "@oleafly/backend-port";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { logWarning } from "@/lib/log";
 import { withoutTrailingSlashes } from "@/lib/path-utils";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import type { CollabLiveInfo, CollabProjectMember } from "@/lib/tauri";
 
 export interface OverleafLiveProject {
@@ -50,11 +52,22 @@ export function onOverleafLiveMembers(handler: (projectId: string) => void): Pro
   return listen<{ projectId: string }>("overleaf-live-members", ({ payload }) => handler(payload.projectId));
 }
 
-export function overleafProjectPage(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
-  return `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
+export function serverHost(server: string): string {
+  try {
+    return new URL(server).host;
+  } catch {
+    return server;
+  }
 }
 
-export type OverleafTreeNoticeKind = "delete_asked" | "not_allowed" | "kept_away" | "stored_as_files";
+export async function openOverleafProject(link: Pick<OverleafLiveProject, "server" | "remoteId">): Promise<void> {
+  const page = `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
+  if (!(await openInSystemBrowser(page))) {
+    void logWarning("open the project's online page", `the system browser didn't open ${serverHost(link.server)}`);
+  }
+}
+
+type OverleafTreeNoticeKind = "delete_asked" | "not_allowed" | "kept_away" | "stored_as_files";
 
 export interface OverleafTreeNotice {
   projectId: string;
@@ -62,7 +75,7 @@ export interface OverleafTreeNotice {
   paths: string[];
 }
 
-export const OVERLEAF_LIVE_TREE_EVENT = "overleaf-live-tree";
+const OVERLEAF_LIVE_TREE_EVENT = "overleaf-live-tree";
 
 export const onOverleafLiveTree = (handler: (notice: OverleafTreeNotice) => void): Promise<UnlistenFn> =>
   listen<OverleafTreeNotice>(OVERLEAF_LIVE_TREE_EVENT, ({ payload }) => handler(payload));

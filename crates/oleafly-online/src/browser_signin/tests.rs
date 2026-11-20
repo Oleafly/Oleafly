@@ -707,3 +707,26 @@ async fn installed_browsers_sign_in_against_a_local_server() {
         );
     }
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_profile_dropped_on_an_async_task_is_cleaned_up_off_that_task() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = tempfile::tempdir().unwrap();
+    let profile = Profile::create(root.path()).unwrap();
+    let dir = profile.dir().to_path_buf();
+    let stuck = dir.join("Default");
+    std::fs::create_dir_all(&stuck).unwrap();
+    std::fs::write(stuck.join("Cookies"), b"session").unwrap();
+    std::fs::set_permissions(&stuck, std::fs::Permissions::from_mode(0o500)).unwrap();
+    let started = std::time::Instant::now();
+    drop(profile);
+    let dropped = started.elapsed();
+    std::fs::set_permissions(&stuck, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(dropped < Duration::from_millis(150), "{dropped:?}");
+    let waited = std::time::Instant::now();
+    while dir.exists() {
+        assert!(waited.elapsed() < Duration::from_secs(10));
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}

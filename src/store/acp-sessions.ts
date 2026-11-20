@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
+import { withoutFunctionKeyText } from "@oleafly/wysiwyg/function-key-text";
 import { registerAttachmentHolder, useComposerDrafts } from "@/store/composer-drafts";
 import {
   acpBufferReply, acpCatalog, acpDisconnect, acpError, acpEvents, acpPrompt, acpPromptDelivered, acpSessions,
@@ -585,7 +586,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     }));
     mark(true);
     try {
-      const outcome = await acpSteer(acpSlotProject(projectId), sessionId, item.text);
+      const outcome = await acpSteer(acpSlotProject(projectId), sessionId, withoutFunctionKeyText(item.text));
       if (outcome === "injected") {
         get().removeQueued(sessionId, id);
       } else {

@@ -844,7 +844,8 @@
     "search": "Search Project",
     "sourceControl": "Source Control",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notes"
+    "notes": "Notes",
+    "more": "More views"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} on {{host}}",

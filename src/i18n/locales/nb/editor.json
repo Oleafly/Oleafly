@@ -166,7 +166,6 @@
       "purple": "Lilla"
     },
     "imageFile": "Bildefil",
-    "apply": "Bruk",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Delt",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Kunne ikke laste PDF-en: {{detail}}",
     "imageLoadFailed": "Kunne ikke laste bildet: {{detail}}",
     "imageUnreadable": "Filen kan ikke vises som bilde. Den kan være skadet, eller den er kanskje ikke et bilde.",
+    "imageTooLarge": "Dette bildet er større enn {{limit}}, så det vises ikke her.",
     "imageFit": "Tilpass vinduet",
     "htmlPreviewFailed": "Kunne ikke forhåndsvise siden: {{detail}}",
     "binaryFile": "Binærfil. Ingen forhåndsvisning tilgjengelig.",
@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Fant ikke bildet",
+        "imageOutside": "Bilder utenfor prosjektet vises ikke",
+        "imageUnreadable": "Kunne ikke vise bildet",
+        "imageAltText": "Alternativ tekst: {{alt}}",
         "imageLoading": "Laster bildet…",
         "imageAlt": "Figurbilde {{path}}",
         "width": "Bredde",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} referanse",
     "count_other": "{{count}} referanser",
+    "matchCount_one": "{{shown}} av {{total}} referanse",
+    "matchCount_other": "{{shown}} av {{total}} referanser",
+    "clearSearch": "Tøm søket",
     "empty": "Filen har ingen referanser ennå.",
     "etAl": "{{author}} mfl.",
     "noMatch": "Ingen referanser samsvarer med søket.",

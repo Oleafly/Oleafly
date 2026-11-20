@@ -14,7 +14,7 @@ use super::{eventually, project, tuning, Rig, Tab, MAIN, NOTES, WAIT};
 use crate::live::journal::Journal;
 use crate::live::rest::TreeRest;
 use crate::live::tree_queue::{
-    LocalFile, QueueState, Queued, TreeChange, TreeFailure, TreeRefusal,
+    LocalFile, QueueState, Queued, TreeChange, TreeFailure, TreeRefusal, MAX_UPLOAD_BYTES,
 };
 use crate::live::{DocId, PublicId};
 use crate::realtime::codec;
@@ -36,12 +36,14 @@ struct Seen {
     trees: Vec<Vec<PathChange>>,
     states: Vec<LiveState>,
     order: Vec<String>,
+    read: Vec<String>,
 }
 
 #[derive(Default)]
 struct TreePort {
     texts: Mutex<BTreeMap<String, String>>,
     files: Mutex<BTreeMap<String, Vec<u8>>>,
+    sizes: Mutex<BTreeMap<String, u64>>,
     folder: Option<PathBuf>,
     seen: Mutex<Seen>,
 }
@@ -140,7 +142,12 @@ impl LivePort for TreePort {
             .push((path.to_string(), tag.to_string(), hash.map(str::to_string)));
     }
 
+    fn local_file_size(&self, path: &str) -> Option<u64> {
+        self.sizes.lock().unwrap().get(path).copied()
+    }
+
     fn local_file(&self, path: &str) -> Option<LocalFile> {
+        self.seen().read.push(path.to_string());
         let bytes = match self.files.lock().unwrap().get(path) {
             Some(bytes) => bytes.clone(),
             None => self.texts.lock().unwrap().get(path)?.clone().into_bytes(),
@@ -450,6 +457,106 @@ async fn a_refused_upload_shows_retry() {
     queue_empty(&port).await;
     assert_eq!(path_of(&live, "plot.png"), Some(NodeKind::File));
     assert_eq!(requests(&rig, "POST", "/upload"), 2);
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_file_over_the_limit_is_refused_without_being_read() {
+    let rig = Rig::start(project()).await;
+    let port = TreePort::new();
+    let live = live_as(&rig, "alice", &port, quick()).await;
+    port.file("huge.png", PNG);
+    port.sizes
+        .lock()
+        .unwrap()
+        .insert("huge.png".into(), MAX_UPLOAD_BYTES + 1);
+    live.change_tree(TreeChange::Upload {
+        path: "huge.png".into(),
+    })
+    .unwrap();
+    eventually("the upload shows as too large", || {
+        port.queue().iter().any(|queued| {
+            queued.state
+                == QueueState::Failed {
+                    failure: TreeFailure::TooLarge,
+                }
+        })
+    })
+    .await;
+    assert!(port.seen().read.is_empty(), "{:?}", port.seen().read);
+    assert_eq!(requests(&rig, "POST", "/upload"), 0);
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn stop_does_not_wait_for_a_slow_rest_call() {
+    let rig = Rig::start(project()).await;
+    let port = TreePort::new();
+    let live = live_as(&rig, "alice", &port, quick()).await;
+    let route = format!("/project/{}/doc", rig.mock.project_id());
+    rig.mock
+        .plan_fault(Some("POST"), &route, Fault::Delay(Duration::from_secs(60)));
+    port.text("slow.tex", "Slow");
+    let change = TreeChange::NewDoc {
+        path: "slow.tex".into(),
+    };
+    live.change_tree(change.clone()).unwrap();
+    eventually("the create is on its way", || {
+        requests(&rig, "POST", "/doc") == 1
+    })
+    .await;
+    let stopping = Instant::now();
+    live.stop().await;
+    let waited = stopping.elapsed();
+    assert!(waited < Duration::from_secs(10), "{waited:?}");
+    drop(live);
+    let journal = rig.journal("alice").await;
+    assert!(
+        journal
+            .tree_queue()
+            .iter()
+            .any(|queued| queued.is_waiting() && queued.change == change),
+        "{:?}",
+        journal.tree_queue()
+    );
+}
+
+#[tokio::test]
+async fn a_refused_new_doc_never_fills_a_coauthors_doc_at_that_path() {
+    let rig = Rig::start(project()).await;
+    let port = TreePort::new();
+    let live = live_as(&rig, "alice", &port, quick()).await;
+    let route = format!("/project/{}/doc", rig.mock.project_id());
+    rig.mock.plan_fault(
+        Some("POST"),
+        &route,
+        Fault::Reply(400, "invalid name".into()),
+    );
+    port.text("appendix.tex", "Alice's appendix");
+    live.change_tree(TreeChange::NewDoc {
+        path: "appendix.tex".into(),
+    })
+    .unwrap();
+    eventually("the create shows as failed", || {
+        port.queue().iter().any(|queued| !queued.is_waiting())
+    })
+    .await;
+    let (rest, bob) = as_bob(&rig).await;
+    let root = EntityId(rig.mock.root_folder_id());
+    let made = rest.create_doc(&bob, &root, "appendix.tex").await.unwrap();
+    let doc = DocId(made.0);
+    eventually("alice sees bob's doc", || {
+        live.doc_at("appendix.tex").as_ref() == Some(&doc)
+    })
+    .await;
+    assert!(live.settle(WAIT).await);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        rig.updates_for(&doc).is_empty(),
+        "{:?}",
+        rig.updates_for(&doc)
+    );
+    assert_eq!(rig.mock.doc_text(&doc.0), "");
     live.stop().await;
 }
 

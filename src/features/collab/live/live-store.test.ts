@@ -250,18 +250,44 @@ describe("collab live store", () => {
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
   });
 
-  it("tries again when live editing fails to start and stays read-only meanwhile", async () => {
+  it("tries again when live editing fails to start, read-only only while a try runs", async () => {
     vi.useFakeTimers();
-    mocks.collabLiveStart.mockRejectedValueOnce(new Error("busy"));
+    let finish: (value: unknown) => void = () => {};
+    mocks.collabLiveStart
+      .mockRejectedValueOnce(new Error("busy"))
+      .mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
     expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
-    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
     await vi.advanceTimersByTimeAsync(1_000);
     await settle();
     expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    finish({ role: "editor", account_id: ALICE, device_id: "device-me" });
+    await settle();
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("keeps the same status, and tells nobody, while a repeated status shows nothing new", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending: 0 });
+    const first = useCollabLiveStore.getState().status;
+    const told = vi.fn();
+    const unsubscribe = useCollabLiveStore.subscribe(told);
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending: 0 });
+    expect(told).not.toHaveBeenCalled();
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending: 2 });
+    expect(useCollabLiveStore.getState()).toMatchObject({ status: { state: "online" }, pending: 2 });
+    expect(useCollabLiveStore.getState().status).toBe(first);
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "offline", retry_in_ms: 1_000 }, pending: 2 });
+    const offline = useCollabLiveStore.getState().status;
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "offline", retry_in_ms: 1_000 }, pending: 2 });
+    expect(useCollabLiveStore.getState().status).not.toBe(offline);
+    unsubscribe();
   });
 
   it("logs a start that keeps failing once, not on every retry", async () => {
@@ -382,7 +408,7 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
     useCollabLiveStore.setState({ share: null });
     await settle();
     expect(collabProjectReadOnly(PROJECT)).toBe(false);

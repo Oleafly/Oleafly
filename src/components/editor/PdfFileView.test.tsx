@@ -13,6 +13,7 @@ interface FakeViewerProps {
   rotation: number;
   password?: string;
   searchQuery: string;
+  pageColors?: string;
   onLoadStateChange: (state: { status: string; documentIdentity: string; message?: string }) => void;
   onPageChange: (page: number, total: number) => void;
 }
@@ -43,6 +44,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   readFileBase64: tauri.readFileBase64,
 }));
+const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/log")>()), ...log }));
 vi.mock("@/components/pdf/PdfViewer", () => ({
   PdfViewer: forwardRef(function FakePdfViewer(props: FakeViewerProps, ref) {
     useImperativeHandle(ref, () => ({
@@ -67,6 +70,7 @@ vi.mock("@/components/pdf/PdfViewer", () => ({
         data-identity={documentIdentity}
         data-password={props.password ?? ""}
         data-search={props.searchQuery}
+        data-page-colors={props.pageColors ?? "none"}
       />
     );
   }),
@@ -162,6 +166,19 @@ describe("PdfFileView", () => {
     expect(await screen.findByTestId("pdf-viewer")).toBeInTheDocument();
   });
 
+  it("logs a failed read and drops the error once a later read of the file works", async () => {
+    Object.assign(globalThis, { isTauri: true });
+    tauri.readFileBase64.mockRejectedValueOnce("busy").mockResolvedValueOnce(PDF);
+    render(<PdfFileView projectId="p1" path="paper.pdf" />);
+    expect(await screen.findByText(enEditor.shell.pdfLoadFailed.replace("{{detail}}", "busy"))).toBeInTheDocument();
+    expect(log.logError).toHaveBeenCalledWith("open a PDF", "busy");
+    await waitFor(() => expect(events.listeners.has("pdf-sync:written")).toBe(true));
+
+    act(() => events.listeners.get("pdf-sync:written")?.({ payload: { projectId: "p1", path: "paper.pdf" } }));
+    expect(await screen.findByTestId("pdf-viewer")).toBeInTheDocument();
+    expect(screen.queryByText(enEditor.shell.pdfLoadFailed.replace("{{detail}}", "busy"))).toBeNull();
+  });
+
   it("fits a newly opened PDF to the width", async () => {
     const frames: FrameRequestCallback[] = [];
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
@@ -255,17 +272,18 @@ describe("PdfFileView", () => {
     await waitFor(() => expect(screen.getByTestId("pdf-viewer")).toHaveAttribute("data-search", ""));
   });
 
-  it("inverts the page colours, except in reader view", async () => {
+  it("draws dark pages without filtering the view around them, except in reader view", async () => {
     tauri.readFileBase64.mockResolvedValue(PDF);
     render(<PdfFileView projectId="p1" path="paper.pdf" />);
-    await screen.findByTestId("pdf-viewer");
-    expect(scrollArea().style.filter).toBe("");
+    const pdf = await screen.findByTestId("pdf-viewer");
+    expect(pdf).toHaveAttribute("data-page-colors", "none");
 
     fireEvent.click(screen.getByRole("button", { name: actions.invert }));
-    expect(scrollArea().style.filter).toBe("invert(1) hue-rotate(180deg)");
+    expect(pdf).toHaveAttribute("data-page-colors", "dark");
+    expect(scrollArea().style.filter).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: actions.readerView }));
-    expect(scrollArea().style.filter).toBe("");
+    expect(pdf).toHaveAttribute("data-page-colors", "none");
   });
 
   it("hides the toolbar in fullscreen until the reader asks for it back", async () => {

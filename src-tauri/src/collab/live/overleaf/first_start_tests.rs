@@ -206,7 +206,6 @@ fn a_git_linked_first_start_merges_with_a_coauthors_edit() {
     });
 }
 
-/// Stores the started session late for one test, and back on time after it.
 struct LateSession;
 
 impl LateSession {
@@ -313,9 +312,6 @@ fn a_hooks_git_variables_never_reach_the_repository_the_rig_builds() {
         "a git command wrote into the hook's repository"
     );
     assert!(repo.join(".git").is_dir());
-    let first = super::FirstBases {
-        imported: Default::default(),
-        git: Some(repo),
-    };
+    let first = super::FirstBases::load(dir.path(), Some(&repo), &[MAIN.to_owned()]);
     assert_eq!(first.base_of(MAIN).as_deref(), Some(IMPORTED));
 }

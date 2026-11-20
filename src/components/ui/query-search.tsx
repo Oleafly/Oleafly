@@ -35,6 +35,7 @@ import {
 } from "@oleafly/search-query";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   buildSuggestions,
@@ -494,8 +495,7 @@ export function QuerySearch<T>({
           aria-expanded={open || Boolean(results?.open)}
           aria-controls={open && options.length > 0 ? listId : resultsListId}
           aria-activedescendant={open ? activeDescendant : results?.activeId}
-          autoComplete="off"
-          spellCheck={false}
+          {...SEARCH_INPUT}
           placeholder={placeholder}
           value={value}
           onChange={(event) => {
@@ -516,7 +516,7 @@ export function QuerySearch<T>({
             setActiveId(null);
           }}
           onKeyDown={onKeyDown}
-          className="relative h-full w-full min-w-0 rounded-[inherit] bg-transparent py-0 pl-10 pr-2 text-sm text-transparent caret-foreground placeholder:text-muted-foreground selection:bg-primary/25 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+          className="relative h-full w-full min-w-0 rounded-[inherit] bg-transparent py-0 pl-10 pr-2 text-sm text-transparent caret-foreground placeholder-shown:text-ellipsis placeholder:text-muted-foreground selection:bg-primary/25 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
         />
       </div>
       <div className={cn("flex shrink-0 items-center gap-0.5", trailing ? "pr-1" : "pr-2")}>

@@ -1,5 +1,5 @@
 ---
-name: Build and fix
+name: oleafly-latex-build
 description: Drive Oleafly's compile, diagnose, fix loop until the document builds clean. Use when a compile fails, when the log shows undefined control sequence, missing package or file not found, missing $ inserted, runaway argument, undefined citation or reference, a font that will not load, overfull hbox warnings, a bibliography that will not resolve, a Typst error, or when the user says it will not compile, the PDF is stale, or asks why the build is different on another machine.
 license: MIT
 compatibility: Needs an open Oleafly project on any of the four engines (Tectonic, latexmk, Typst, Markdown). No external tools are required.

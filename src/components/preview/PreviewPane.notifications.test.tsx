@@ -100,7 +100,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.notifyError }));
-vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: vi.fn() }));
 
 import { PreviewPane } from "./PreviewPane";
 import { sessionZoomByProject } from "./preview-zoom";

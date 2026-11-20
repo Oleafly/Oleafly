@@ -376,7 +376,7 @@ describe("MarkdownToolbar", () => {
     const field = popoverField(toolbar.linkUrl);
     expect(field).toHaveAttribute("placeholder", toolbar.linkPlaceholder);
     fireEvent.change(field, { target: { value: "https://example.org" } });
-    fireEvent.click(screen.getByText(toolbar.apply));
+    fireEvent.keyDown(field, { key: "Enter" });
     expect(view.state.doc.toString()).toBe("Hello [world](https://example.org)\n");
 
     act(() => view.dispatch({ selection: { anchor: 9 } }));
@@ -396,7 +396,7 @@ describe("MarkdownToolbar", () => {
     expect(field).toHaveValue("");
     expect(field).toHaveAttribute("placeholder", toolbar.imagePlaceholder);
     fireEvent.change(field, { target: { value: "figures/scan.png" } });
-    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    fireEvent.keyDown(field, { key: "Enter" });
 
     expect(view.state.doc.toString()).toBe("Hello world\n\n![](figures/scan.png)\n");
   });

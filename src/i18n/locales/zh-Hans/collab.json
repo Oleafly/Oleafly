@@ -224,6 +224,8 @@
     "overleaf_linked": "此项目已关联 Overleaf。要在 Oleafly Server 上共享，请先取消关联。",
     "collab_shared": "此项目已在 Oleafly Server 上共享。要与 Overleaf 实时编辑，请先在那里停止共享。",
     "live_elsewhere": "此项目正在另一个 Oleafly 窗口中实时编辑。请先在那里停止实时编辑，然后再试。",
+    "access_ended": "你已无法访问此项目，因此不能实时编辑。你的副本会保留在这台电脑上。请让所有者重新与你共享。",
+    "failed": "由于出错，实时编辑未能开始。你的更改会保留在这台电脑上。请稍等片刻，然后选择“重新同步”。",
     "overleaf_unsent": "部分更改尚未同步到 Overleaf。请先恢复实时编辑以发送这些更改，然后再取消关联。",
     "suggestion_not_found": "该建议已不存在。可能已有人接受或拒绝了它。",
     "suggestion_not_yours": "只有提出这条建议的人才能撤回它。",
@@ -554,7 +556,8 @@
     "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。",
     "projectNotesShared": "项目笔记会与此项目中的所有人共享，个人笔记仍然只有你能看到。",
     "personalNotesPrivate": "个人笔记仍然只有你能看到。只有项目笔记文件夹中的笔记会被共享。",
-    "unlinkOverleaf": "取消与 Overleaf 的关联"
+    "unlinkOverleaf": "取消与 Overleaf 的关联",
+    "unlinkOverleafDescription": "此项目的实时编辑将停止。你的副本会保留在这台电脑上，合著者的在线项目保持不变。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",

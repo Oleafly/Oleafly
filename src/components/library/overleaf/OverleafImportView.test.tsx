@@ -81,7 +81,7 @@ beforeEach(() => {
   files.refreshProjects.mockClear();
   localStorage.clear();
   resetStore();
-  useSettingsStore.getState().setHomeProjectLayout("list");
+  useOverleafImportStore.getState().setLayout("list");
   api.overleafStatus.mockResolvedValue(signedIn);
   api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: PROJECTS });
 });
@@ -279,7 +279,8 @@ describe("OverleafImportView", () => {
     expect(useOverleafImportStore.getState().selected).toEqual([]);
   });
 
-  it("shows projects as books in the grid layout", async () => {
+  it("shows projects as books in the grid layout, and its view switch leaves Home alone", async () => {
+    useOverleafImportStore.getState().setLayout("grid");
     useSettingsStore.getState().setHomeProjectLayout("grid");
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-import-view");
@@ -297,7 +298,9 @@ describe("OverleafImportView", () => {
     fireEvent.click(select);
     expect(within(screen.getByTestId("overleaf-project-c3")).getByText("Imported")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "List view" }));
-    expect(useSettingsStore.getState().homeProjectLayout).toBe("list");
+    expect(useOverleafImportStore.getState().layout).toBe("list");
+    expect(localStorage.getItem("oleafly.overleaf.importLayout")).toBe("list");
+    expect(useSettingsStore.getState().homeProjectLayout).toBe("grid");
   });
 
   it("explains an empty account and signs out", async () => {

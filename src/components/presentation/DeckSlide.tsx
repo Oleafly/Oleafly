@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { DeckFrameMode } from "@/components/notes/artifact-runtime/frame-document";
+import { SandboxedFrame } from "@/components/notes/artifact-runtime/frame-host";
 import { type DeckCommand, type DeckInfo, useDeckFrame } from "@/components/editor/deck/use-deck-frame";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { cn } from "@/lib/utils";
 
 export interface DeckSlideProps {
@@ -17,6 +20,7 @@ export interface DeckSlideProps {
 }
 
 export function DeckSlide({ projectId, path, code, page, mode, label, className, onInfo, onPage, commands }: DeckSlideProps) {
+  const { t } = useTranslation(["preview"]);
   const deck = useDeckFrame({ projectId, path, code, mode, startPage: page - 1 });
   const { info, position, send } = deck;
   const onInfoRef = useRef(onInfo);
@@ -47,20 +51,24 @@ export function DeckSlide({ projectId, path, code, page, mode, label, className,
     if (ready.current && shownPage.current !== page - 1) send({ type: "goto", page: page - 1 });
   }, [page, send]);
 
+  const frame = deck.url ? (
+    <SandboxedFrame
+      ref={deck.frameRef}
+      src={deck.url}
+      onLoad={deck.onLoad}
+      title={label}
+      className="pointer-events-none size-full border-0 bg-transparent"
+    />
+  ) : null;
   return (
     <div className={cn("relative min-h-0 min-w-0", className)}>
-      {deck.url ? (
-        <iframe
-          ref={deck.frameRef}
-          src={deck.url}
-          onLoad={() => deck.url && deck.onLoad(deck.url)}
-          sandbox="allow-scripts"
-          allow=""
-          referrerPolicy="no-referrer"
-          title={label}
-          className="pointer-events-none size-full border-0 bg-transparent"
-        />
-      ) : null}
+      {deck.failure ? (
+        <div className="flex size-full items-center justify-center p-6">
+          <InlineAlert className="max-w-md text-center">{t(($) => $.preview.presentation.failed)}</InlineAlert>
+        </div>
+      ) : (
+        frame
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Children, Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Children, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   SlidersHorizontal,
   GitFork,
@@ -33,6 +33,7 @@ import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { applyRailOrder, useRailOrder } from "@/components/layout/rail-order";
 import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
+import { CONTROL_GAP, ICON_BUTTON_WIDTH, MENU_ACTIVE, MENU_ICON, ToolbarOverflow, type ToolbarControl } from "@/components/ui/toolbar-overflow";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup,
   DropdownMenuRadioItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -57,6 +58,44 @@ const RAIL_TAB_SHORTCUT: Record<string, string> = {
   refs: shortcut("Shift-F12"),
 };
 
+const RAIL_DIVIDER_WIDTH = 5;
+
+function RailDivider() {
+  return <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-border" />;
+}
+
+function useRailBadge(tab: RailTabContribution): number {
+  return tab.useBadge?.() ?? 0;
+}
+
+const ACTIVITY_DOT = "pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary";
+
+function HiddenViewDot({ tab }: Readonly<{ tab: RailTabContribution }>) {
+  return useRailBadge(tab) > 0 ? <span data-testid="rail-more-badge" aria-hidden className={ACTIVITY_DOT} /> : null;
+}
+
+function RailMenuItem({
+  tab,
+  ctx,
+  active,
+  onSelect,
+}: Readonly<{ tab: RailTabContribution; ctx: AppContext; active: boolean; onSelect: () => void }>) {
+  const { t } = useTranslation(["shell"]);
+  const badge = useRailBadge(tab);
+  const Icon = tab.icon;
+  return (
+    <DropdownMenuItem onSelect={onSelect} className={cn("gap-2", active && MENU_ACTIVE)}>
+      <Icon aria-hidden className={MENU_ICON} />
+      <span className="min-w-0 flex-1 truncate">{railTabLabel(tab, ctx)}</span>
+      {badge > 0 && (
+        <Badge size="sm" aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}>
+          {badge > 99 ? "99+" : badge}
+        </Badge>
+      )}
+    </DropdownMenuItem>
+  );
+}
+
 function ViewButton({
   tab,
   ctx,
@@ -73,7 +112,7 @@ function ViewButton({
   onSelect: () => void;
 }>) {
   const { t } = useTranslation(["shell"]);
-  const badge = tab.useBadge?.() ?? 0;
+  const badge = useRailBadge(tab);
   const Icon = tab.icon;
   const hotkey = RAIL_TAB_SHORTCUT[tab.id];
   const label = railTabLabel(tab, ctx);
@@ -101,6 +140,7 @@ function ViewButton({
 }
 
 export function SidebarViews() {
+  const { t } = useTranslation(["shell"]);
   const railTab = useSettingsStore((s) => s.railTab);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -151,21 +191,42 @@ export function SidebarViews() {
   const tabs = applyRailOrder(railSections(ctx).flat(), order);
   const reorder = useStripReorder(order, setOrder);
 
+  const controls: ToolbarControl[] = tabs.map((tab, i) => ({
+    id: tab.id,
+    width: ICON_BUTTON_WIDTH + (i > 0 ? RAIL_DIVIDER_WIDTH + CONTROL_GAP : 0),
+    active: railTab === tab.id,
+    render: () => (
+      <>
+        {i > 0 && <RailDivider />}
+        <ViewButton
+          tab={tab}
+          ctx={ctx}
+          active={railTab === tab.id}
+          dragging={reorder.dragging}
+          drag={reorder.item(tab.id)}
+          onSelect={() => select(tab.id as RailTab)}
+        />
+      </>
+    ),
+    renderMenu: () => (
+      <RailMenuItem tab={tab} ctx={ctx} active={railTab === tab.id} onSelect={() => select(tab.id as RailTab)} />
+    ),
+  }));
+
   return (
-    <div {...reorder.strip} data-tour="project-sidebar" className="relative flex items-center gap-0.5">
-      {tabs.map((tab, i) => (
-        <Fragment key={tab.id}>
-          {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
-          <ViewButton
-            tab={tab}
-            ctx={ctx}
-            active={railTab === tab.id}
-            dragging={reorder.dragging}
-            drag={reorder.item(tab.id)}
-            onSelect={() => select(tab.id as RailTab)}
-          />
-        </Fragment>
-      ))}
+    <div {...reorder.strip} data-tour="project-sidebar" className="relative flex h-full min-w-0 flex-1 items-center">
+      <ToolbarOverflow
+        controls={controls}
+        label={t(($) => $.shell.rail.more)}
+        className="h-full"
+        showAllUntilMeasured
+        moreBadge={(hidden) =>
+          hidden.map((control) => {
+            const tab = tabs.find((candidate) => candidate.id === control.id);
+            return tab ? <HiddenViewDot key={tab.id} tab={tab} /> : null;
+          })
+        }
+      />
       {reorder.indicator}
     </div>
   );
@@ -257,7 +318,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
               <span
                 data-testid="rail-terminal-activity"
                 aria-hidden
-                className="pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary"
+                className={ACTIVITY_DOT}
               />
               <span id={terminalActivityId} className="sr-only">
                 {t(($) => $.workspace.terminal.activity)}

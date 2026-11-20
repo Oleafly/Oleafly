@@ -287,12 +287,12 @@ describe("Settings search", () => {
     expect(visibleSections()).toContain("settings-section-appearance");
   });
 
-  it("starts empty again after Settings closes without closeSettings and reopens on the same section", async () => {
+  it("starts empty again after Settings closes without closeSettings and reopens where the search left it", async () => {
     renderSettings();
     typeQuery("zotero");
     await waitFor(() => expect(visibleSections()).toEqual(["settings-section-integrations"]));
     act(() => useSettingsStore.getState().setSettingsOpen(false));
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
+    expect(useSettingsStore.getState().settingsInitialSection).toBeNull();
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
     const everySection = SETTINGS_SEARCH_SECTIONS.filter(
@@ -300,7 +300,7 @@ describe("Settings search", () => {
     ).map((id) => `settings-section-${id}`);
     await waitFor(() => expect(visibleSections()).toEqual(expect.arrayContaining(everySection)));
     expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();
-    expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("settings-section-integrations")).toHaveAttribute("aria-current", "page");
   });
 
   it("starts empty again when Settings is sent to another section while it is open", async () => {
