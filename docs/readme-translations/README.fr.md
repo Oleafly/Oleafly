@@ -14,7 +14,7 @@
 
 **Un éditeur LaTeX, Typst et Markdown collaboratif en temps réel pour la recherche.**
 
-Oleafly est un éditeur puissant pour rédiger des articles de recherche et des thèses en LaTeX, Typst et Markdown. La source, le PDF, les citations, les figures, les vérifications et l'historique Git d'un projet sont réunis au même endroit. Écrivez avec vos coauteurs en temps réel, gardez vos projets synchronisés entre vos ordinateurs et intégrez Claude Code, Codex ou le modèle de votre choix au projet.
+Oleafly est un espace de travail gratuit et open source pour la rédaction scientifique. Il comprend un environnement de développement agentique pour le bureau sur macOS, Windows et Linux, un serveur hébergé par votre laboratoire pour la collaboration en direct, un outil en ligne de commande pour les compilations locales et la CI, et une vue web pour les coauteurs dans le navigateur. Il compile LaTeX, Typst et Markdown sans aucune configuration et garde chaque projet comme un dépôt Git avec des points de restauration automatiques. La boîte à outils de recherche comprend plus de 1 700 modèles, Zotero, BibTeX, des calculateurs statistiques, la recherche dans arXiv, Semantic Scholar, Crossref, PubMed et OpenAlex, et les vérifications Preflight des références rompues, des figures manquantes, des fuites qui lèvent l'anonymat d'une évaluation et du PDF/UA. Collaborez en temps réel sur le serveur, qui s'installe en une seule commande, avec des curseurs partagés, des commentaires, un chat, des modifications suivies, des rôles et la fusion hors ligne. Claude Code, Codex et 13 autres agents IA travaillent dans votre projet, chaque modification étant un diff que vous examinez, et les tâches de recherche expérimentales mènent une revue de littérature ou une passe de révision en arrière-plan dans des worktrees isolés, dans la limite d'un budget que vous fixez. La CLI (`check`, `lint`, `mcp`, `ask`, `agent run`, `daemon`) ouvre tout cela aux terminaux et à la CI.
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>Télécharger gratuitement</strong></a>
@@ -27,12 +27,16 @@ Gratuit pour toujours · Open source · Aucun compte Oleafly · Aucun suivi
 </div>
 
 <div align="center">
-  <img src="../assets/readme/hero-collab.png" alt="Oleafly avec un article de recherche LaTeX ouvert : l'arborescence des fichiers, le plan et la structure à gauche, la source avec les curseurs de cinq coauteurs et des commentaires surlignés, et le PDF compilé" width="100%" />
+  <img src="../assets/readme/oleafly-overview.png" alt="Comment Oleafly s'articule : Oleafly Desktop et Oleafly CLI sur votre ordinateur, Oleafly Server sur la machine de votre laboratoire avec Oleafly Web dans le navigateur, et les agents IA, les outils de références, Overleaf, la synchronisation cloud et les hébergeurs Git auxquels Desktop se connecte" width="100%" />
 </div>
 
 ## Pourquoi Oleafly
 
-Tout ici est gratuit, y compris ce que d'autres éditeurs réservent à leurs offres payantes : la collaboration en temps réel avec autant de coauteurs que vous en invitez, l'historique complet des versions, la synchronisation Git et GitHub, Zotero, la vérification grammaticale et l'IA.
+Depuis des années, la rédaction scientifique se loue. Votre travail de recherche se trouve sur le serveur de quelqu'un d'autre, et ce dont un chercheur a le plus besoin est réservé à une offre payante. Avec Oleafly, vous obtenez tout cela gratuitement. Cela comprend la collaboration en temps réel avec autant de coauteurs que vous en invitez, l'historique complet des versions, la synchronisation avec n'importe quel hébergeur Git, Zotero, la vérification grammaticale et des agents IA avec votre propre connexion ou votre propre clé, sur un serveur que votre laboratoire héberge. Il n'exige aucun compte, n'envoie aucune télémétrie et fonctionne hors ligne.
+
+<p align="center">
+  <img src="../assets/readme/hero-collab.png" alt="Oleafly avec un article de recherche LaTeX ouvert : l'arborescence des fichiers, le plan et la structure à gauche, la source avec les curseurs de sept coauteurs et des commentaires surlignés, et le PDF compilé" width="100%" />
+</p>
 
 - Écrivez avec vos coauteurs en temps réel, avec des curseurs et des commentaires partagés, sur un serveur que votre laboratoire installe en une seule commande.
 - Un éditeur conçu pour les longs documents : la complétion des labels, des citations et des commandes, la détection des erreurs en direct, un plan de tout le projet, les raccourcis Vim et Emacs, un mode visuel et une palette consultable de 236 symboles LaTeX.
@@ -43,18 +47,21 @@ Tout ici est gratuit, y compris ce que d'autres éditeurs réservent à leurs of
 - Les vérifications orthographiques et grammaticales, adaptées à l'écriture académique, s'exécutent sur votre ordinateur.
 - Avant la soumission, Preflight repère les références rompues, les figures manquantes, les polices non incorporées, les lacunes d'accessibilité et tout ce qui lèverait l'anonymat d'une évaluation.
 - Dessinez des figures qui restent du code TikZ, Typst ou Mermaid, et partez de plus de 1 700 modèles pour articles, thèses, présentations, posters et CV.
-- Importez depuis Word, un PDF, une source arXiv, un dépôt Git ou un compte LaTeX en ligne.
+- Les PDF, les images, les feuilles de calcul, les fichiers `.bib`, les pages HTML, les présentations et les tableaux blancs s'ouvrent dans le projet, chacun dans sa propre visionneuse.
+- Importez depuis Word, un PDF, une source arXiv, un dépôt Git ou un compte Overleaf.
+- Des coauteurs encore sur un service LaTeX en ligne comme Overleaf ? Modifiez le même projet en direct avec eux depuis Oleafly pendant qu'ils restent dans son éditeur web. La modification en direct est expérimentale et désactivée par défaut. Activez-la dans Paramètres > Expérimentation.
 - La commande `oleafly` compile, vérifie et synchronise vos projets depuis n'importe quel terminal ou job de CI, avec les mêmes compilateurs et réglages que l'application.
 - La synchronisation cloud garde vos projets sur chaque ordinateur que vous utilisez, et vous pouvez continuer à écrire hors ligne.
-- Claude Code, Codex et 12 autres agents travaillent dans votre projet, ou connectez n'importe quel modèle, y compris les modèles locaux. L'IA est facultative, et chaque modification qu'elle apporte est un diff que vous pouvez examiner et annuler.
-- Les tâches de recherche mènent une revue de littérature, un audit des preuves ou une passe de révision dans une copie séparée du projet pendant que vous continuez à écrire, et vous choisissez les fichiers modifiés à conserver. Elles sont expérimentales et désactivées par défaut. Paramètres > Expérimentation permet de les activer.
+- Claude Code, Codex et 13 autres agents travaillent dans votre projet, ou connectez n'importe quel modèle, y compris les modèles locaux. L'IA est facultative, et chaque modification qu'elle apporte est un diff que vous pouvez examiner et annuler.
+- Les tâches de recherche mènent une revue de littérature, un audit des preuves ou une passe de révision dans une copie séparée du projet pendant que vous continuez à écrire, et vous choisissez les fichiers modifiés à conserver. Elles sont expérimentales et désactivées par défaut. Activez-les dans Paramètres > Expérimentation.
+- Notes garde vos notes de recherche sous forme de fichiers Markdown à côté de vos projets, avec des liens, des étiquettes, des tâches et un calendrier. Notes est aussi expérimental et désactivé par défaut.
 
 ## Écrivez ensemble, en direct
 
 Partagez un projet sur l'Oleafly Server de votre laboratoire et tout le monde modifie les mêmes fichiers en même temps. Vous voyez le curseur et la sélection de chacun, qui est en ligne et ce qui a changé pendant votre absence. Cliquez sur l'avatar d'une personne pour aller à la ligne sur laquelle elle travaille.
 
 <p align="center">
-  <img src="../assets/readme/live-comments.png" alt="Deux coauteurs modifiant le même fichier LaTeX dans Oleafly, avec leurs curseurs, leurs avatars et le panneau des personnes et de l'activité" width="100%" />
+  <img src="../assets/readme/live-comments.png" alt="Fils de commentaires à côté de la source LaTeX dans Oleafly, avec des réponses, des mentions et les curseurs des coauteurs dans le fichier" width="100%" />
 </p>
 
 - Commentez n'importe quelle sélection en LaTeX, Typst ou Markdown, puis répondez, mentionnez quelqu'un, résolvez ou rouvrez la discussion. Un coauteur mentionné reçoit un seul e-mail et peut désactiver ces notifications.
@@ -64,6 +71,21 @@ Partagez un projet sur l'Oleafly Server de votre laboratoire et tout le monde mo
 - Chaque projet a un propriétaire, des éditeurs, des relecteurs, des commentateurs et des lecteurs. Les modifications des relecteurs deviennent des suggestions, et les propriétaires et les éditeurs peuvent aussi passer en mode Suggestion. Les invités ajoutés par e-mail ne voient que les projets auxquels ils ont été invités.
 - Chaque projet partagé a un chat et un historique où vous pouvez comparer des versions, en restaurer une ou lui donner un nom.
 - Les coauteurs peuvent ouvrir un projet partagé dans leur navigateur quand l'accès par navigateur est activé sur le serveur, et lire le PDF de la dernière compilation.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-chat.png" alt="Chat du projet dans Oleafly à côté de la source LaTeX partagée, avec des mentions et des réactions" width="100%" />
+      <h3>Discutez dans le chat du projet</h3>
+      Chaque projet partagé a son propre chat avec des mentions et des réactions, pour que la conversation reste à côté du fichier concerné.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-people.png" alt="Panneau Collaboration en direct d'Oleafly listant les personnes d'un projet, leurs rôles et le fichier que chacune a ouvert" width="100%" />
+      <h3>Voyez qui est là</h3>
+      Le panneau Collaboration en direct liste tous les participants du projet, leur rôle et le fichier que chacun a ouvert. Sous la liste, un fil montre l'activité récente.
+    </td>
+  </tr>
+</table>
 
 ### Hébergez le serveur vous-même
 
@@ -78,7 +100,7 @@ C'est un seul binaire Rust qui utilise SQLite, conserve les fichiers sur disque 
 Les administrateurs disposent dans Oleafly d'une console pour les utilisateurs, les règles d'accès, les projets, les e-mails et le journal de sécurité. Chaque appareil signe ses modifications, et le serveur construit chaque instantané à partir de cet historique signé au lieu de faire confiance aux fichiers envoyés.
 
 <p align="center">
-  <img src="../assets/readme/server-admin.png" alt="Console d'administration d'Oleafly Server montrant les utilisateurs, les règles d'accès et le journal de sécurité" width="100%" />
+  <img src="../assets/readme/server-admin.png" alt="Console d'administration d'Oleafly Server listant les utilisateurs du serveur et leurs rôles" width="100%" />
 </p>
 
 Consultez le [guide du serveur](https://github.com/Oleafly/oleafly-server) pour l'installation, les sauvegardes et la liste complète de qui peut faire quoi.
@@ -87,10 +109,10 @@ Consultez le [guide du serveur](https://github.com/Oleafly/oleafly-server) pour 
 
 Activez la synchronisation cloud et les projets de votre bibliothèque ainsi que les réglages de l'application vous suivent d'un ordinateur à l'autre. Chaque téléchargement est vérifié par rapport à son enregistrement avant de remplacer un fichier, et un fichier ouvert avec des modifications non enregistrées n'est jamais écrasé.
 
-Vous pouvez synchroniser avec Dropbox, avec Google Drive ou avec votre propre bucket sur Amazon S3, Google Cloud Storage, MinIO ou un autre service compatible S3.
+Vous pouvez synchroniser avec Dropbox, avec Google Drive ou avec votre propre bucket sur Amazon S3, Google Cloud Storage, MinIO ou un autre service compatible S3. Choisissez-en un dans Paramètres > Stockage des données > Synchronisation cloud. La même page contient une barre qui montre ce que contient le dossier de données d'Oleafly et ce qui prend de la place.
 
 <p align="center">
-  <img src="../assets/readme/cloud-sync-dropbox.png" alt="Paramètres de synchronisation cloud d'Oleafly avec la carte Dropbox et la liste de ce qui est synchronisé" width="100%" />
+  <img src="../assets/readme/cloud-sync-dropbox.png" alt="Paramètres de synchronisation cloud d'Oleafly avec Dropbox, Google Drive et un stockage compatible S3, et la liste de ce qui est synchronisé" width="100%" />
 </p>
 
 - Quand deux ordinateurs modifient le même fichier, les deux versions sont conservées, chacune nommée d'après l'ordinateur qui l'a écrite.
@@ -104,8 +126,10 @@ Vous quittez un éditeur LaTeX en ligne ? Connectez-vous une fois à votre compt
 
 Avec un jeton Git de ce compte, Oleafly peut garder un projet importé synchronisé dans les deux sens, pour que les coauteurs qui restent en ligne continuent à travailler comme aujourd'hui. La synchronisation bidirectionnelle utilise l'intégration Git du service lui-même, qui nécessite une offre payante ou universitaire sur le compte du propriétaire du projet.
 
+La modification en direct va plus loin et n'a pas besoin de jeton Git. Activez-la et vous travaillez en même temps que les coauteurs restés en ligne sur le même projet : la saisie, les nouveaux fichiers et les renommages arrivent des deux côtés en une seconde environ, et vous voyez où chacun travaille. Si votre connexion tombe, continuez à taper et tout se rattrape à votre retour. Si votre compte se connecte avec Google, votre établissement ou une clé d'accès, utilisez Se connecter avec votre navigateur. La modification en direct est expérimentale. Activez-la dans Paramètres > Expérimentation.
+
 <p align="center">
-  <img src="../assets/readme/import-dialog.png" alt="Boîte de dialogue Importer un projet d'Oleafly avec des options pour les fichiers locaux, arXiv, GitHub et un compte LaTeX en ligne" width="100%" />
+  <img src="../assets/readme/import-dialog.png" alt="Boîte de dialogue Importer un projet d'Oleafly avec des options pour les fichiers locaux, arXiv, un dépôt Git et Overleaf" width="100%" />
 </p>
 
 Vous pouvez aussi partir d'un ZIP de projet, d'un dépôt GitHub, d'un document Word, d'un paquet de sources arXiv ou d'un PDF qu'Oleafly reconstruit en LaTeX modifiable. Ou ouvrir un dossier là où il se trouve déjà.
@@ -115,8 +139,23 @@ Vous pouvez aussi partir d'un ZIP de projet, d'un dépôt GitHub, d'un document 
 Choisissez un agent dans le catalogue et il travaille dans votre projet, avec la source, le PDF et le journal de compilation à portée de main. Chaque agent se connecte avec son propre compte et utilise son propre modèle. Oleafly lui fournit le projet et les outils qui l'entourent.
 
 <p align="center">
-  <img src="../assets/readme/ai-agents.png" alt="Un agent IA dans Oleafly révisant une section d'un article LaTeX, avec la modification proposée affichée sous forme de diff" width="100%" />
+  <img src="../assets/readme/ai-agents.png" alt="Claude Code dans Oleafly révisant un paragraphe d'un article LaTeX, avec la modification affichée sous forme de diff" width="100%" />
 </p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/oleafly-assistant.png" alt="Oleafly Assistant ouvert à côté de la source LaTeX, avec des skills de recherche pour démarrer" width="100%" />
+      <h3>Oleafly Assistant</h3>
+      L'assistant intégré fonctionne avec un fournisseur que vous connectez ou avec un modèle local. Il s'ouvre sur des skills de recherche regroupées par tâche : recherche, rédaction, figures, relecture et soumission.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/cli-agents.png" alt="Onglet CLI Agent d'Oleafly avec Claude Code sélectionné, à côté de la source et du PDF" width="100%" />
+      <h3>Agents CLI</h3>
+      Choisissez Claude Code, Codex, Gemini CLI ou un autre agent dans la rangée au-dessus de la zone de message. Il travaille à côté de votre source et du PDF compilé.
+    </td>
+  </tr>
+</table>
 
 <div align="center">
 <table>
@@ -146,10 +185,12 @@ Choisissez un agent dans le catalogue et il travaille dans votre projet, avec la
 
 <p align="center"><sub>Ces marques identifient des outils compatibles et restent la propriété de leurs détenteurs respectifs. Elles n'impliquent aucun parrainage.</sub></p>
 
-Vous préférez un assistant de chat ? Connectez un fournisseur hébergé, n'importe quel endpoint compatible OpenAI ou un modèle Ollama local.
+Vous préférez un assistant de chat ? Connectez un fournisseur hébergé, n'importe quel endpoint compatible OpenAI ou un modèle local dans Ollama, llama.cpp ou Lemonade.
 
 - Chaque modification de fichier est un diff. Approuvez-les une par une, laissez l'assistant travailler seul ou définissez des règles par outil, et annulez un seul fichier ou tout un tour.
 - Le mode Plan cartographie le projet avant que quoi que ce soit ne soit écrit.
+- Pas de clé API ? Paper Review, les modifications dans le texte, Fix with AI et les outils d'image et d'équation peuvent s'exécuter sur un agent CLI auquel vous êtes déjà connecté.
+- Les agents peuvent utiliser les applications de bureau et les sites web que vous autorisez, comme le formulaire de soumission d'une revue ou un logiciel de statistiques. Cela passe par Cua Driver, que vous installez vous-même.
 - Une revue de littérature ou une passe de révision peut s'exécuter dans son propre worktree Git pendant que vous continuez à écrire. Vous choisissez les fichiers modifiés à conserver.
 - L'application inclut 39 skills de recherche, dont l'exploration de la littérature, les travaux connexes, la vérification des affirmations et les lettres de réponse aux évaluateurs. `npx skills add Oleafly/Oleafly` les installe aussi dans Claude Code, Codex et d'autres agents.
 - Un serveur MCP local permet à un client IA externe d'utiliser les mêmes outils de projet. Il n'écoute que sur 127.0.0.1.
@@ -163,7 +204,7 @@ L'IA est facultative. L'éditeur, le compilateur, le PDF, les citations, la rele
 Tectonic, Typst et Pandoc sont fournis avec l'application, donc un nouveau projet compile sans rien installer. Quand un projet a besoin d'une distribution TeX complète, passez-le à latexmk avec TeX Live, MacTeX, MiKTeX ou un TinyTeX qu'Oleafly installe pour vous.
 
 <p align="center">
-  <img src="../assets/readme/editor-and-pdf.png" alt="Éditeur source d'Oleafly et PDF compilé côte à côte, avec un diagnostic de compilation lié à sa ligne source" width="100%" />
+  <img src="../assets/readme/editor-and-pdf.png" alt="Éditeur source d'Oleafly et PDF compilé côte à côte, avec l'arborescence des fichiers et le plan du document" width="100%" />
 </p>
 
 - Cliquez dans le PDF pour aller à la source, et inversement. LaTeX utilise SyncTeX, et Typst 0.13 ou plus récent utilise Tinymist.
@@ -173,30 +214,37 @@ Tectonic, Typst et Pandoc sont fournis avec l'application, donc un nouveau proje
 - Les vérifications orthographiques et grammaticales s'exécutent en local et sont adaptées à l'écriture académique.
 - XeLaTeX, LuaLaTeX, et upLaTeX ou pLaTeX pour les documents en japonais.
 - Les documents Quarto et Calepin exécutent leur code R, Python ou Julia dès que vous autorisez le code pour le projet. Oleafly peut télécharger l'un ou l'autre de ces outils pour vous.
+- Un document Markdown peut produire un article, un rapport, un livre, une présentation, un poster, une lettre ou un CV. Définissez `type:` dans son front matter.
+
+<p align="center">
+  <img src="../assets/readme/pdf-viewer.png" alt="Visionneuse PDF d'Oleafly avec deux pages côte à côte et un terme recherché surligné sur la page" width="100%" />
+</p>
+
+La visionneuse PDF propose la recherche, un plan du document, les affichages une page et deux pages, et l'ajustement à la largeur ou à la hauteur.
 
 ## Citations, figures, vérifications et modèles
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/citations.png" alt="Citation d'une entrée Zotero en tapant @ dans l'éditeur Oleafly" width="100%" />
+      <img src="../assets/readme/citations.png" alt="Citation d'une référence en tapant @ dans l'éditeur Oleafly" width="100%" />
       <h3>Citez depuis Zotero pendant la saisie</h3>
       Tapez <code>@</code> puis une partie d'un auteur, d'un titre ou d'une année pour citer depuis votre bibliothèque Zotero. Oleafly n'ajoute que cette entrée au <code>.bib</code> du projet. Citation Search couvre arXiv, Semantic Scholar, Crossref, PubMed et OpenAlex.
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/diagrams.png" alt="Diagram Composer d'Oleafly avec un canevas et le code TikZ côte à côte" width="100%" />
+      <img src="../assets/readme/diagrams.png" alt="Diagram Composer d'Oleafly avec un diagramme TikZ sur le canevas" width="100%" />
       <h3>Dessinez des figures qui restent du code</h3>
       Diagram Composer dessine sur un canevas et écrit du TikZ, du fletcher pour Typst ou du Mermaid. Modifiez le dessin ou le code, et l'autre suit.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/preflight.png" alt="Preflight d'Oleafly listant des résultats sur les références, les figures et l'accessibilité" width="100%" />
+      <img src="../assets/readme/preflight.png" alt="Preflight d'Oleafly avec un score de soumission et une liste de problèmes d'accessibilité" width="100%" />
       <h3>Vérifiez avant de soumettre</h3>
       Preflight trouve les références rompues, les figures manquantes, les polices non incorporées, les lacunes d'accessibilité et tout ce qui révélerait les auteurs lors d'une évaluation anonyme. Il propose des profils pour arXiv, IEEE, ACM, les revues et les thèses.
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/templates.png" alt="Galerie de modèles Oleafly avec des aperçus rendus d'articles, de thèses et de présentations" width="100%" />
+      <img src="../assets/readme/templates.png" alt="Galerie de modèles Oleafly avec des aperçus rendus de modèles d'articles de revue" width="100%" />
       <h3>Partez de plus de 1 700 modèles</h3>
       Articles, thèses, présentations Beamer, posters, CV et articles au style de revues ou de conférences, chacun avec un aperçu rendu avant que vous ne créiez le projet.
     </td>
@@ -208,12 +256,85 @@ Tectonic, Typst et Pandoc sont fournis avec l'application, donc un nouveau proje
 Chaque projet est un dossier ordinaire avec un dépôt Git ordinaire. Indexez, comparez, faites des commits, push, pull et publiez sur GitHub, GitLab, Gitea, Forgejo, Codeberg ou votre propre serveur depuis le panneau Source Control, ou utilisez votre propre terminal, car rien ne lui est caché. Les points de restauration enregistrent un instantané local après chaque compilation réussie, pour que vous puissiez revenir en arrière sans faire de commit.
 
 <p align="center">
-  <img src="../assets/readme/git-history.png" alt="Panneau Source Control d'Oleafly avec un diff, un graphe des branches et les contrôles de commit" width="100%" />
+  <img src="../assets/readme/git-history.png" alt="Panneau Source Control d'Oleafly avec un diff, le graphe des commits et les contrôles de commit" width="100%" />
 </p>
 
 Un dock de terminal se trouve sous l'éditeur, avec jusqu'à dix onglets par projet. Cmd-cliquez (Ctrl-clic) sur un chemin de fichier dans sa sortie pour l'ouvrir à cette ligne.
 
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/terminal.png" alt="Dock de terminal sous l'éditeur Oleafly affichant l'état Git et le graphe des commits" width="100%" />
+      <h3>Un terminal sous l'éditeur</h3>
+      Lancez Git, un script de compilation ou la commande <code>oleafly</code> dans le dossier du projet sans quitter la fenêtre.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/versioning.png" alt="Boîte de dialogue Versioning d'Oleafly listant une version enregistrée pour chaque compilation, chacune avec un bouton Restaurer" width="100%" />
+      <h3>Une version après chaque compilation</h3>
+      Versioning garde un instantané de la source après chaque compilation réussie. Restaurez n'importe lequel d'un clic, sans commit.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/git-hosting.png" alt="Paramètres d'hébergement Git d'Oleafly avec GitHub, GitLab, Codeberg et un autre serveur au choix" width="100%" />
+      <h3>Votre hébergeur Git, ou votre propre serveur</h3>
+      Connectez-vous à GitHub, GitLab ou Codeberg, ou ajoutez l'adresse d'un serveur Gitea ou Forgejo que vous faites tourner. Ensuite, faites push, pull et publiez depuis le panneau Source Control.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/local-storage.png" alt="Paramètres de stockage des données d'Oleafly montrant l'espace pris par les projets, les PDF, l'historique Git et les données de l'application" width="100%" />
+      <h3>Voyez où va l'espace</h3>
+      Les paramètres montrent l'espace que prennent sur le disque vos projets, vos PDF, l'historique Git et les données propres à l'application. Les projets supprimés attendent dans une Corbeille.
+    </td>
+  </tr>
+</table>
+
 La commande `oleafly` travaille sur les mêmes projets depuis n'importe quel terminal : compiler, recompiler à chaque modification, vérifier avant la soumission, synchroniser avec un service LaTeX en ligne ou lancer l'agent Oleafly sans ouvrir l'application. Chaque commande peut afficher du JSON avec des codes de sortie stables pour les scripts et la CI. Consultez le [guide de la ligne de commande](../cli.md).
+
+## Des notes pour votre recherche
+
+Notes est une base de connaissances à côté de vos projets. Chaque note est un fichier Markdown qui vous appartient, modifié dans un éditeur riche avec des encadrés, des tableaux, des graphiques, des diagrammes, des mathématiques, des liens et des rétroliens, des étiquettes, et des tâches avec échéances. Notes est expérimental et désactivé par défaut. Activez-le dans Paramètres > Expérimentation.
+
+<p align="center">
+  <img src="../assets/readme/notes.png" alt="Oleafly Notes avec deux notes côte à côte, un graphique et un tableau dans l'une et une liste de tâches dans l'autre, et un calendrier et des étiquettes dans la barre latérale" width="100%" />
+</p>
+
+- Les notes s'ouvrent en onglets que vous pouvez scinder et ancrer. Notes Home les liste avec une recherche, des étiquettes, une liste de tâches et un calendrier.
+- Une note peut partir d'un modèle et vivre dans un projet sous `notes/<Title>.md`.
+- Partagez une note via le serveur de votre laboratoire pour la modifier à plusieurs, et commentez une sélection comme dans un fichier de projet.
+- L'assistant ou un agent CLI peut suggérer des modifications à une note. Vous acceptez ou rejetez chacune sur place.
+- La capture rapide est une petite fenêtre flottante pour une idée que vous voulez garder.
+- Collez un lien vers une publication sur X et la note garde l'auteur, la date et le texte de la publication.
+
+## Personnalisez Oleafly
+
+Oleafly suit le réglage clair ou sombre de votre système, ou vous en choisissez un. Choisissez une couleur d'accent, l'emplacement du dock Home et ce qui est dessiné derrière vos projets. L'éditeur a sa propre police, son thème, ses couleurs et ses raccourcis clavier, et Notes affiche un aperçu en direct pendant que vous changez sa police et son espacement.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-app.png" alt="Paramètres d'apparence d'Oleafly avec l'emplacement du dock, le motif d'arrière-plan, la couleur d'accent et le mode clair ou sombre" width="100%" />
+      <h3>Accent, dock et arrière-plan</h3>
+      Six couleurs d'accent, un dock à gauche, en bas ou à droite, et des points, une grille ou rien derrière vos projets.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-notes.png" alt="Paramètres d'apparence des notes d'Oleafly avec le choix de la police et un aperçu en direct d'une note" width="100%" />
+      <h3>Une typographie à votre goût</h3>
+      Choisissez une police, une taille et un espacement pour vos notes et regardez l'aperçu changer en même temps.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/dark-theme.png" alt="Oleafly en thème sombre avec la source LaTeX à côté du PDF compilé" width="100%" />
+      <h3>Clair ou sombre</h3>
+      Changez depuis la barre d'outils, ou laissez Oleafly suivre votre système.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/notes-dark.png" alt="Oleafly Notes en thème sombre avec un graphique, un tableau et une liste de tâches" width="100%" />
+      <h3>Le sombre aussi dans Notes</h3>
+      Les graphiques, les tableaux et les encadrés d'une note sont dessinés pour le sombre comme pour le clair.
+    </td>
+  </tr>
+</table>
 
 ## Et bien plus encore
 
@@ -309,10 +430,15 @@ Le pack inclus `research-core` fournit 39 skills. Les noms ci-dessous sont les i
 <summary>Détails de l'éditeur</summary>
 
 - Une palette consultable de 236 symboles LaTeX, qui insère les noms Typst dans les fichiers Typst.
+- Un rail de plan au bord droit de l'éditeur marque chaque titre et la section que vous lisez. Ouvrez-le pour voir les numéros de section et la page PDF de chaque titre d'après la dernière compilation.
+- Des visionneuses pour les autres fichiers d'un projet : un PDF avec la barre d'outils d'aperçu complète, des images zoomables, des feuilles CSV et Excel sous forme de tableau triable, une liste consultable pour les fichiers `.bib` et un aperçu en direct pour le HTML.
+- Les présentations écrites en TSX s'affichent en aperçu pendant que vous tapez et se présentent comme un PDF. Un fichier nommé `something.excalidraw` s'ouvre comme un tableau blanc sur lequel vous pouvez dessiner.
+- Double-cliquez sur un fichier `.tex`, `.typ` ou `.md` dans votre gestionnaire de fichiers et il s'ouvre dans Oleafly.
 - Raccourcis Vim et Emacs, onglets multi-fichiers, pliage du code, recherche et remplacement dans tout le projet, et comptage des mots.
 - Renommez ou déplacez un fichier, et Oleafly met à jour les chemins qui le désignent.
 - Thèmes pour le mode clair et le mode sombre, n'importe quelle police installée, couleurs syntaxiques modifiables et mode Zen.
-- L'interface est disponible en 21 langues.
+- Les icônes de fichier sont colorées selon le type de fichier. Passez à de courts badges de type comme TEX ou PDF dans Paramètres > Apparence > Projet.
+- L'interface est disponible en 22 langues.
 - Palette de commandes sur Cmd+K (Ctrl+K), et un seul champ de recherche pour les projets, documents, paramètres et outils sur Cmd+Shift+F (Ctrl+Shift+F).
 
 </details>
@@ -327,7 +453,7 @@ Le pack inclus `research-core` fournit 39 skills. Les noms ci-dessous sont les i
 | Plateforme | Paquet | Télécharger |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![Télécharger pour macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| macOS · Intel | DMG (`x64`) | [Télécharger pour macOS (Intel)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [![Télécharger pour macOS (Intel)](../assets/readme/download-glass-macos-intel.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI ou EXE | [![Télécharger pour Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage, DEB ou RPM | [![Télécharger pour Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage, DEB ou RPM | [![Télécharger pour Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
@@ -353,7 +479,7 @@ Oui. La rédaction, la compilation, le PDF, la relecture, Preflight, Git et les 
 <details>
 <summary>Qu'est-ce qui passe par le réseau ?</summary>
 
-Seulement ce que vous demandez : le partage avec votre serveur, la synchronisation cloud, la recherche bibliographique et de DOI, GitHub, les fournisseurs IA hébergés, les serveurs MCP que vous connectez et les téléchargements facultatifs de moteurs, de paquets et de modèles. Les versions publiées vérifient aussi la présence d'une mise à jour au démarrage de l'application. Un modèle Ollama local garde le trafic IA sur votre ordinateur.
+Seulement ce que vous demandez : le partage avec votre serveur, la synchronisation cloud, un service LaTeX en ligne depuis lequel vous importez ou que vous modifiez en direct, la recherche bibliographique et de DOI, votre hébergeur Git, les fournisseurs IA hébergés, les serveurs MCP que vous connectez et les téléchargements facultatifs de moteurs, de paquets et de modèles. Les versions publiées vérifient aussi la présence d'une mise à jour au démarrage de l'application. Un modèle local garde le trafic IA sur votre ordinateur.
 
 </details>
 
@@ -387,7 +513,29 @@ Oui, c'est le principe. Oleafly Server tourne sur votre propre machine ou votre 
 
 ## Communauté et assistance
 
+Merci à toutes les personnes qui ont envoyé une pull request, et à celles dont les issues ont façonné le plus de versions.
+
+<p>
+<a href="https://github.com/palmtenor" title="Teng Qin (palmtenor)"><img src="../assets/readme/contributors/palmtenor.svg" width="44" height="44" alt="palmtenor" /></a>
+<a href="https://github.com/wahidmounir" title="wahidmounir"><img src="../assets/readme/contributors/wahidmounir.svg" width="44" height="44" alt="wahidmounir" /></a>
+<a href="https://github.com/Jianxinnn" title="Jianx (Jianxinnn)"><img src="../assets/readme/contributors/Jianxinnn.svg" width="44" height="44" alt="Jianxinnn" /></a>
+<a href="https://github.com/multics" title="Not AI (multics)"><img src="../assets/readme/contributors/multics.svg" width="44" height="44" alt="multics" /></a>
+<a href="https://github.com/um1chc5" title="Vũ Vương An (um1chc5)"><img src="../assets/readme/contributors/um1chc5.svg" width="44" height="44" alt="um1chc5" /></a>
+<a href="https://github.com/a-green-hand-jack" title="Jack Wu (a-green-hand-jack)"><img src="../assets/readme/contributors/a-green-hand-jack.svg" width="44" height="44" alt="a-green-hand-jack" /></a>
+<a href="https://github.com/DEENUU1" title="Kacper Włodarczyk (DEENUU1)"><img src="../assets/readme/contributors/DEENUU1.svg" width="44" height="44" alt="DEENUU1" /></a>
+<a href="https://github.com/mvanhorn" title="Matt Van Horn (mvanhorn)"><img src="../assets/readme/contributors/mvanhorn.svg" width="44" height="44" alt="mvanhorn" /></a>
+<a href="https://github.com/vincencwolff" title="Alexander Wolff (vincencwolff)"><img src="../assets/readme/contributors/vincencwolff.svg" width="44" height="44" alt="vincencwolff" /></a>
+<a href="https://github.com/ssbodda-powern" title="ssbodda-powern"><img src="../assets/readme/contributors/ssbodda-powern.svg" width="44" height="44" alt="ssbodda-powern" /></a>
+<a href="https://github.com/Fravoj3" title="Fravoj3"><img src="../assets/readme/contributors/Fravoj3.svg" width="44" height="44" alt="Fravoj3" /></a>
+<a href="https://github.com/Entrery901" title="Pavel Entrery (Entrery901)"><img src="../assets/readme/contributors/Entrery901.svg" width="44" height="44" alt="Entrery901" /></a>
+<a href="https://github.com/CherryYang05" title="Minyang Bao (CherryYang05)"><img src="../assets/readme/contributors/CherryYang05.svg" width="44" height="44" alt="CherryYang05" /></a>
+<a href="https://github.com/MaverickJohn026" title="MaverickJohn026"><img src="../assets/readme/contributors/MaverickJohn026.svg" width="44" height="44" alt="MaverickJohn026" /></a>
+<a href="https://github.com/marlondecol" title="Marlon Luís de Col (marlondecol)"><img src="../assets/readme/contributors/marlondecol.svg" width="44" height="44" alt="marlondecol" /></a>
+</p>
+
 Rejoignez la [communauté Oleafly sur Discord](https://oleafly.com/discord) pour poser vos questions, obtenir de l'aide sur une compilation récalcitrante, montrer ce que vous écrivez et voter pour ce qui sera développé ensuite. C'est gratuit et ouvert à tout le monde. Si vous préférez GitHub, signalez un bug ou demandez une fonctionnalité dans les [Issues GitHub](https://github.com/Oleafly/Oleafly/issues).
+
+Oleafly ne collecte aucune télémétrie, donc personne ne sait qui l'utilise tant que vous ne le dites pas. Vous y rédigez votre thèse ou les articles de votre laboratoire ? Dites bonjour dans [Qui utilise Oleafly ?](https://github.com/Oleafly/Oleafly/discussions/502).
 
 Oleafly est développé par [Prajwal Murthy](https://github.com/prajwal-svm) et des contributeurs. Les contributions au code, aux modèles, à la documentation et aux retours sont les bienvenues. Consultez le [guide de contribution](../../CONTRIBUTING.md) pour participer.
 

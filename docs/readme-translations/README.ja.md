@@ -14,7 +14,7 @@
 
 **リアルタイムで共同編集できる、研究のためのLaTeX、Typst、Markdownエディタ。**
 
-Oleaflyは、LaTeX、Typst、Markdownで研究論文や学位論文を書くための高機能なエディタです。プロジェクトのソース、PDF、引用、図、チェック、Git履歴がすべて1か所にまとまります。共著者とリアルタイムで執筆し、複数のコンピューター間でプロジェクトを同期し、Claude Code、Codex、または好きなモデルをプロジェクトで使えます。
+Oleaflyは、科学研究の執筆のための、無料でオープンソースのワークスペースです。macOS、Windows、Linux向けのエージェント型開発環境のデスクトップアプリ、研究室がホストしてリアルタイム共同編集に使うサーバー、ローカルビルドとCI向けのコマンドラインツール、共著者がブラウザで使うウェブビューが含まれます。LaTeX、Typst、Markdownをセットアップなしでコンパイルし、すべてのプロジェクトを自動Checkpoints付きのGitリポジトリとして保持します。研究ツールとして、1,700以上のテンプレート、Zotero、BibTeX、統計計算ツール、arXiv、Semantic Scholar、Crossref、PubMed、OpenAlexをまたぐ検索、壊れた参照、欠落した図、匿名査読で著者が分かってしまう箇所、PDF/UAを調べるPreflightチェックがあります。1つのコマンドでインストールできるサーバーで、共有カーソル、コメント、チャット、変更の追跡、ロール、オフラインマージを使ってリアルタイムに共同作業できます。Claude Code、Codexとほか13のAIエージェントがプロジェクト内で動作し、すべての編集は確認できる差分になります。試験的なリサーチタスクは、文献レビューや改訂作業を、自分で決めた予算の範囲内で、分離されたworktreeを使ってバックグラウンドで実行します。CLI（`check`、`lint`、`mcp`、`ask`、`agent run`、`daemon`）を使えば、これらすべてをターミナルやCIから使えます。
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>無料でダウンロード</strong></a>
@@ -27,12 +27,16 @@ Oleaflyは、LaTeX、Typst、Markdownで研究論文や学位論文を書くた�
 </div>
 
 <div align="center">
-  <img src="../assets/readme/hero-collab.png" alt="LaTeXの研究論文を開いたOleafly。左にファイルツリー、アウトライン、構造があり、5人の共著者のカーソルとハイライトされたコメントが入ったソースと、コンパイル済みのPDFが並んでいる" width="100%" />
+  <img src="../assets/readme/oleafly-overview.png" alt="Oleaflyの全体像。自分のコンピューター上のOleafly DesktopとOleafly CLI、研究室のマシン上のOleafly Serverとブラウザ上のOleafly Web、そしてDesktopが接続するAIエージェント、参考文献ツール、Overleaf、クラウド同期、Gitホスト" width="100%" />
 </div>
 
 ## Oleaflyを選ぶ理由
 
-ここにあるものはすべて無料です。ほかのエディタでは有料プラン向けになっている機能も含まれます。招待した共著者が何人でも使えるリアルタイム共同編集、完全なバージョン履歴、GitとGitHubの同期、Zotero、文法チェック、AIです。
+長年、研究の執筆は借りるものでした。研究の成果は他人のサーバーに置かれ、研究者にいちばん必要な機能は有料プランの向こうにあります。Oleaflyなら、それがすべて無料で手に入ります。招待した共著者が何人でも使えるリアルタイム共同編集、完全なバージョン履歴、任意のGitホストとの同期、Zotero、文法チェック、そして自分のサインインまたはキーで使うAIエージェントを、研究室が運用するサーバー上で使えます。アカウントは不要で、テレメトリーは送信せず、オフラインでも動作します。
+
+<p align="center">
+  <img src="../assets/readme/hero-collab.png" alt="LaTeXの研究論文を開いたOleafly。左にファイルツリー、アウトライン、構造があり、7人の共著者のカーソルとハイライトされたコメントが入ったソースと、コンパイル済みのPDFが並んでいる" width="100%" />
+</p>
 
 - 研究室が1つのコマンドで立ち上げたサーバー上で、共有カーソルとコメントを使いながら共著者とリアルタイムで執筆できます。
 - 長い文書のために作られたエディタです。ラベル、引用、コマンドの補完、リアルタイムのエラーチェック、プロジェクト全体のアウトライン、VimとEmacsのキーバインド、ビジュアルモード、検索できる236個のLaTeX記号パレットを備えています。
@@ -43,18 +47,21 @@ Oleaflyは、LaTeX、Typst、Markdownで研究論文や学位論文を書くた�
 - 学術的な文章向けに調整されたスペルチェックと文法チェックが、自分のコンピューター上で動作します。
 - Preflightは、投稿前に壊れた参照、欠落した図、埋め込まれていないフォント、アクセシビリティの不備、匿名査読で著者が分かってしまう箇所を見つけます。
 - TikZ、Typst、Mermaidのコードのまま残る図を描けます。論文、学位論文、スライド、ポスター、履歴書向けの1,700以上のテンプレートから始めることもできます。
-- Word、PDF、arXivソース、Gitリポジトリ、オンラインのLaTeXエディタのアカウントからインポートできます。
+- PDF、画像、スプレッドシート、`.bib`ファイル、HTMLページ、スライド、ホワイトボードをプロジェクト内で開けます。それぞれ専用のビューアーで表示されます。
+- Word、PDF、arXivソース、Gitリポジトリ、Overleafアカウントからインポートできます。
+- 共著者がまだOverleafのようなオンラインのLaTeXサービスにいますか？相手がそのウェブエディタに残ったまま、Oleaflyから同じプロジェクトをリアルタイムに一緒に編集できます。リアルタイム編集は試験的な機能で、デフォルトではオフです。「設定」>「実験的な機能」でオンにします。
 - `oleafly`コマンドを使うと、どのターミナルやCIジョブからでも、アプリと同じコンパイラーと設定でプロジェクトのビルド、チェック、同期ができます。
 - クラウド同期で、使っているすべてのコンピューターにプロジェクトが揃い、オフラインでも執筆を続けられます。
-- Claude Code、Codex、ほか12のエージェントがプロジェクト内で動作します。ローカルモデルを含む任意のモデルを接続することもできます。AIは任意で、AIによる変更はすべて確認して元に戻せる差分になります。
+- Claude Code、Codex、ほか13のエージェントがプロジェクト内で動作します。ローカルモデルを含む任意のモデルを接続することもできます。AIは任意で、AIによる変更はすべて確認して元に戻せる差分になります。
 - リサーチタスクでは、執筆を続けている間に文献レビュー、根拠の監査、改訂作業をプロジェクトの別のコピーで実行し、残す変更ファイルを自分で選べます。試験的な機能で、デフォルトではオフです。「設定」>「実験的な機能」でオンにできます。
+- Notesは、リサーチノートをMarkdownファイルとしてプロジェクトの横に保管します。リンク、タグ、タスク、カレンダーも使えます。こちらも試験的な機能で、デフォルトではオフです。
 
 ## リアルタイムで一緒に書く
 
 プロジェクトを研究室のOleafly Serverで共有すると、全員が同じファイルを同時に編集できます。各メンバーのカーソルと選択範囲、オンライン中の人、離れている間に変わった内容が表示されます。アバターをクリックすると、その人が作業している行へ移動します。
 
 <p align="center">
-  <img src="../assets/readme/live-comments.png" alt="Oleaflyで同じLaTeXファイルを編集する2人の共著者。それぞれのカーソル、アバター、メンバーとアクティビティのペインが表示されている" width="100%" />
+  <img src="../assets/readme/live-comments.png" alt="Oleaflyで、LaTeXソースの横に表示されたコメントスレッド。返信、メンション、ファイル内の共著者のカーソルが見える" width="100%" />
 </p>
 
 - LaTeX、Typst、Markdownの任意の選択範囲にコメントし、返信、メンション、解決、再オープンができます。メンションされた共著者にはメールが1通届き、このメールはオフにできます。
@@ -64,6 +71,21 @@ Oleaflyは、LaTeX、Typst、Markdownで研究論文や学位論文を書くた�
 - 各プロジェクトにはオーナー、編集者、レビュアー、コメント投稿者、閲覧者がいます。レビュアーの編集は提案になり、オーナーと編集者も提案モードに切り替えられます。メールで招待されたゲストには、招待されたプロジェクトだけが表示されます。
 - 各共有プロジェクトにはチャットと履歴があり、履歴ではバージョンを比較したり、復元したり、名前を付けたりできます。
 - サーバーでブラウザアクセスが有効になっていれば、共著者は共有プロジェクトをブラウザで開き、最新のコンパイルで作られたPDFを読めます。
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-chat.png" alt="共有されたLaTeXソースの横に表示されたOleaflyのプロジェクトチャット。メンションとリアクションが付いている" width="100%" />
+      <h3>プロジェクトチャットで相談する</h3>
+      共有プロジェクトにはそれぞれ専用のチャットがあり、メンションとリアクションが使えるので、会話はその対象のファイルの隣に残ります。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-people.png" alt="プロジェクトのメンバー、ロール、それぞれが開いているファイルを一覧表示するOleaflyのリアルタイム共同編集パネル" width="100%" />
+      <h3>誰がいるかを見る</h3>
+      リアルタイム共同編集パネルには、プロジェクトにいる全員、そのロール、各自が開いているファイルが表示されます。一覧の下には最近のアクティビティのフィードがあります。
+    </td>
+  </tr>
+</table>
 
 ### サーバーを自分で運用する
 
@@ -78,7 +100,7 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 管理者はOleaflyのコンソールで、ユーザー、アクセスルール、プロジェクト、メール、セキュリティログを管理できます。各デバイスは自分の変更に署名し、サーバーはアップロードをそのまま信頼するのではなく、署名された履歴から各スナップショットを組み立てます。
 
 <p align="center">
-  <img src="../assets/readme/server-admin.png" alt="ユーザー、アクセスルール、セキュリティログを表示するOleafly Serverの管理コンソール" width="100%" />
+  <img src="../assets/readme/server-admin.png" alt="サーバーのユーザーとそのロールを一覧表示するOleafly Serverの管理コンソール" width="100%" />
 </p>
 
 セットアップ、バックアップ、誰が何をできるかの一覧については、[サーバーガイド](https://github.com/Oleafly/oleafly-server)を読んでください。
@@ -87,10 +109,10 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 
 クラウド同期をオンにすると、ライブラリのプロジェクトとアプリの設定が、あるコンピューターから次のコンピューターへ引き継がれます。ダウンロードしたものは、ファイルを置き換える前に必ず記録と照合され、未保存の変更がある開いたファイルが上書きされることはありません。
 
-同期先にはDropbox、Google Drive、またはAmazon S3、Google Cloud Storage、MinIOなどのS3互換サービスにある自分のバケットを選べます。
+同期先にはDropbox、Google Drive、またはAmazon S3、Google Cloud Storage、MinIOなどのS3互換サービスにある自分のバケットを選べます。「設定」>「データストレージ」>「クラウド同期」から1つ選びます。同じページには、Oleaflyのデータフォルダーに何が入っていて何が容量を使っているかを示すバーがあります。
 
 <p align="center">
-  <img src="../assets/readme/cloud-sync-dropbox.png" alt="Dropboxのカードと同期される項目の一覧を表示するOleaflyのクラウド同期設定" width="100%" />
+  <img src="../assets/readme/cloud-sync-dropbox.png" alt="Dropbox、Google Drive、S3互換ストレージと、同期される項目の一覧を表示するOleaflyのクラウド同期設定" width="100%" />
 </p>
 
 - 2台のコンピューターで同じファイルを編集した場合は両方のバージョンが残り、それぞれ書き込んだコンピューターの名前が付きます。
@@ -104,8 +126,10 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 
 そのアカウントのGitトークンがあれば、Oleaflyはインポートしたプロジェクトを双方向に同期できるので、オンラインで作業を続ける共著者はこれまでどおりの方法で作業できます。双方向同期はそのサービス自身のGit連携を使うため、プロジェクトのオーナーのアカウントに有料プランまたは大学向けプランが必要です。
 
+リアルタイム編集はさらに進んだ機能で、Gitトークンは不要です。オンにすると、あなたとオンラインに残った共著者が同じプロジェクトで同時に作業できます。入力、新しいファイル、名前の変更は1秒ほどで双方に届き、それぞれが作業している場所も見えます。接続が切れても入力を続けられ、つながったときに追いつきます。アカウントがGoogle、所属機関、パスキーでサインインする場合は、「ブラウザでサインイン」を使います。リアルタイム編集は試験的な機能です。「設定」>「実験的な機能」でオンにします。
+
 <p align="center">
-  <img src="../assets/readme/import-dialog.png" alt="ローカルファイル、arXiv、GitHub、オンラインのLaTeXエディタのアカウントの選択肢を表示するOleaflyのプロジェクトのインポートダイアログ" width="100%" />
+  <img src="../assets/readme/import-dialog.png" alt="ローカルファイル、arXiv、Gitリポジトリ、Overleafの選択肢を表示するOleaflyのプロジェクトのインポートダイアログ" width="100%" />
 </p>
 
 プロジェクトのZIP、GitHubリポジトリ、Word文書、arXivのソースバンドル、またはOleaflyが編集可能なLaTeXとして再構成するPDFから始めることもできます。フォルダを今ある場所のまま開くこともできます。
@@ -115,8 +139,23 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 カタログからエージェントを選ぶと、ソース、PDF、コンパイルログにすぐ手が届く状態で、プロジェクトの中で作業します。各エージェントは自分のアカウントでサインインし、自分のモデルを使います。Oleaflyはプロジェクトとその周りのツールを提供します。
 
 <p align="center">
-  <img src="../assets/readme/ai-agents.png" alt="LaTeX論文の節を修正するOleaflyのAIエージェント。提案された変更は差分として表示されている" width="100%" />
+  <img src="../assets/readme/ai-agents.png" alt="LaTeX論文の段落を修正するOleafly内のClaude Code。変更は差分として表示されている" width="100%" />
 </p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/oleafly-assistant.png" alt="LaTeXソースの横に開いたOleafly Assistant。開始用のリサーチskillが並んでいる" width="100%" />
+      <h3>Oleafly Assistant</h3>
+      内蔵のアシスタントは、接続したプロバイダーまたはローカルモデルで動作します。開くと、リサーチ、原稿作成、図、レビュー、投稿というタスク別にまとめられたリサーチskillが表示されます。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/cli-agents.png" alt="Claude Codeを選択した状態のOleaflyのCLI Agentタブ。ソースとPDFの横に表示されている" width="100%" />
+      <h3>CLIエージェント</h3>
+      メッセージ欄の上の行から、Claude Code、Codex、Gemini CLI、またはほかのエージェントを選びます。ソースとコンパイル済みのPDFの横で作業します。
+    </td>
+  </tr>
+</table>
 
 <div align="center">
 <table>
@@ -146,10 +185,12 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 
 <p align="center"><sub>これらのマークは対応するツールを示すもので、各所有者に帰属します。推奨や承認を意味するものではありません。</sub></p>
 
-チャット形式のアシスタントを使いたいですか？ホスト型プロバイダー、任意のOpenAI互換エンドポイント、またはローカルのOllamaモデルを接続できます。
+チャット形式のアシスタントを使いたいですか？ホスト型プロバイダー、任意のOpenAI互換エンドポイント、またはOllama、llama.cpp、Lemonadeのローカルモデルを接続できます。
 
 - ファイルの変更はすべて差分になります。1つずつ承認するか、アシスタントに任せて作業させるか、ツールごとにルールを設定でき、1ファイル単位でもターン全体でも元に戻せます。
 - Planモードでは、何かを書き込む前にプロジェクトの全体像を把握します。
+- APIキーがない場合は、すでにサインインしているCLIエージェントで、Paper Review、インライン編集、Fix with AI、画像と数式のツールを実行できます。
+- エージェントは、許可したデスクトップアプリやウェブサイトを使えます。たとえば、ジャーナルの投稿フォームや統計パッケージです。Cua Driver経由で動作し、これは自分でインストールします。
 - 執筆を続けている間に、文献レビューや改訂作業を専用のGit worktreeで実行できます。残す変更ファイルは自分で選びます。
 - 文献調査、関連研究、主張の検証、査読者への回答書など、39個のリサーチskillがアプリに同梱されています。`npx skills add Oleafly/Oleafly`で、Claude Code、Codexなどのエージェントにもインストールできます。
 - ローカルMCPサーバーを使うと、外部のAIクライアントも同じプロジェクトツールを使えます。待ち受けるのは127.0.0.1だけです。
@@ -163,7 +204,7 @@ AIは任意です。エディタ、コンパイラ、PDF、引用、校正、チ
 Tectonic、Typst、Pandocはアプリに同梱されているので、新しいプロジェクトは何もインストールせずにコンパイルできます。プロジェクトに完全なTeXディストリビューションが必要な場合は、TeX Live、MacTeX、MiKTeX、またはOleaflyがインストールするTinyTeXを使うlatexmkに切り替えます。
 
 <p align="center">
-  <img src="../assets/readme/editor-and-pdf.png" alt="Oleaflyのソースエディタとコンパイル済みPDFを並べた画面。コンパイル診断がソースの行にリンクされている" width="100%" />
+  <img src="../assets/readme/editor-and-pdf.png" alt="Oleaflyのソースエディタとコンパイル済みPDFを並べた画面。ファイルツリーと文書のアウトラインも表示されている" width="100%" />
 </p>
 
 - PDFをクリックするとソースへ移動し、ソースからPDFへ戻ることもできます。LaTeXではSyncTeXを、Typst 0.13以降ではTinymistを使います。
@@ -173,30 +214,37 @@ Tectonic、Typst、Pandocはアプリに同梱されているので、新しい�
 - スペルチェックと文法チェックはローカルで動作し、学術的な文章向けに調整されています。
 - XeLaTeX、LuaLaTeX、日本語文書向けのupLaTeXまたはpLaTeXに対応。
 - QuartoとCalepinの文書は、プロジェクトでコードを許可すると、R、Python、Juliaのコードを実行します。どちらのツールもOleaflyがダウンロードできます。
+- Markdown文書は、論文、レポート、書籍、スライド、ポスター、レター、履歴書としてビルドできます。front matterに`type:`を設定します。
+
+<p align="center">
+  <img src="../assets/readme/pdf-viewer.png" alt="2ページを並べて表示し、検索語がページ上でハイライトされているOleaflyのPDFビューアー" width="100%" />
+</p>
+
+PDFビューアーには、検索、文書のアウトライン、1ページ表示と2ページ表示、幅や高さに合わせる表示があります。
 
 ## 引用、図、チェック、テンプレート
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/citations.png" alt="Oleaflyのエディタで@を入力してZoteroの項目を引用しているところ" width="100%" />
+      <img src="../assets/readme/citations.png" alt="Oleaflyのエディタで@を入力して文献を引用しているところ" width="100%" />
       <h3>入力しながらZoteroから引用する</h3>
       <code>@</code>に続けて著者、タイトル、年の一部を入力すると、Zoteroライブラリから引用できます。Oleaflyはプロジェクトの<code>.bib</code>にその項目だけを追加します。Citation SearchはarXiv、Semantic Scholar、Crossref、PubMed、OpenAlexを検索できます。
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/diagrams.png" alt="キャンバスとTikZコードを並べて表示するOleaflyのDiagram Composer" width="100%" />
+      <img src="../assets/readme/diagrams.png" alt="OleaflyのDiagram Composer。キャンバスにTikZの図が描かれている" width="100%" />
       <h3>コードのまま残る図を描く</h3>
       Diagram Composerはキャンバス上で図を描き、TikZ、Typst向けのfletcher、またはMermaidのコードを書き出します。図とコードのどちらを変えても、もう一方が追従します。
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/preflight.png" alt="参照、図、アクセシビリティの指摘を一覧表示するOleaflyのPreflight" width="100%" />
+      <img src="../assets/readme/preflight.png" alt="投稿スコアとアクセシビリティの指摘の一覧を表示するOleaflyのPreflight" width="100%" />
       <h3>投稿前にチェックする</h3>
       Preflightは、壊れた参照、欠落した図、埋め込まれていないフォント、アクセシビリティの不備、匿名査読で著者が分かってしまう箇所を見つけます。arXiv、IEEE、ACM、ジャーナル、学位論文向けのプロファイルがあります。
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/templates.png" alt="論文、学位論文、スライドのレンダリング済みプレビューを表示するOleaflyのテンプレートギャラリー" width="100%" />
+      <img src="../assets/readme/templates.png" alt="ジャーナル論文テンプレートのレンダリング済みプレビューを表示するOleaflyのテンプレートギャラリー" width="100%" />
       <h3>1,700以上のテンプレートから始める</h3>
       論文、学位論文、Beamerの発表スライド、ポスター、履歴書、投稿先スタイルの論文があり、プロジェクトを作成する前にそれぞれのレンダリング済みプレビューを確認できます。
     </td>
@@ -208,12 +256,85 @@ Tectonic、Typst、Pandocはアプリに同梱されているので、新しい�
 すべてのプロジェクトは、普通のGitリポジトリを持つ普通のフォルダーです。Source Controlパネルから、ステージ、差分表示、コミット、push、pull、GitHub、GitLab、Gitea、Forgejo、Codeberg、または自分のサーバーへの公開ができます。ターミナルから隠しているものは何もないので、自分のターミナルを使うこともできます。Checkpointsはコンパイルが成功するたびにローカルスナップショットを保存するので、コミットを作らずに以前の状態に戻せます。
 
 <p align="center">
-  <img src="../assets/readme/git-history.png" alt="差分、ブランチグラフ、コミット操作を表示するOleaflyのSource Controlパネル" width="100%" />
+  <img src="../assets/readme/git-history.png" alt="差分、コミットグラフ、コミット操作を表示するOleaflyのSource Controlパネル" width="100%" />
 </p>
 
 エディタの下にはターミナルドックがあり、1プロジェクトにつき最大10個のタブを開けます。出力内のファイルパスをCmd+クリック（Ctrl+クリック）すると、そのファイルを該当する行で開けます。
 
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/terminal.png" alt="Gitの状態とコミットグラフを表示している、Oleaflyのエディタの下のターミナルドック" width="100%" />
+      <h3>エディタの下のターミナル</h3>
+      ウィンドウを離れずに、プロジェクトフォルダーでGit、ビルドスクリプト、<code>oleafly</code>コマンドを実行できます。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/versioning.png" alt="コンパイルごとに保存されたバージョンを、それぞれの復元ボタンとともに一覧表示するOleaflyのVersioningダイアログ" width="100%" />
+      <h3>コンパイルのたびにバージョンを保存</h3>
+      Versioningは、コンパイルが成功するたびにソースのスナップショットを保存します。どれでもワンクリックで復元でき、コミットは必要ありません。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/git-hosting.png" alt="GitHub、GitLab、Codeberg、ほかのサーバーから選べるOleaflyのGitホスティング設定" width="100%" />
+      <h3>好きなGitホスト、または自分のサーバー</h3>
+      GitHub、GitLab、Codebergにサインインするか、自分で運用するGiteaまたはForgejoサーバーのアドレスを追加します。その後は、Source Controlパネルからpush、pull、公開ができます。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/local-storage.png" alt="プロジェクト、PDF、Git履歴、アプリデータがそれぞれどれだけの容量を使っているかを表示するOleaflyのデータストレージ設定" width="100%" />
+      <h3>容量の行き先を見る</h3>
+      設定には、プロジェクト、PDF、Git履歴、アプリ自身のデータがディスク上でどれだけの容量を使っているかが表示されます。削除したプロジェクトはゴミ箱で待機します。
+    </td>
+  </tr>
+</table>
+
 `oleafly`コマンドを使えば、どのターミナルからでも同じプロジェクトを扱えます。ビルド、変更のたびの再ビルド、投稿前のチェック、オンラインのLaTeXサービスとの同期に加えて、アプリを開かずにOleaflyのエージェントを実行することもできます。どのコマンドも、スクリプトやCI向けに安定した終了コード付きのJSONを出力できます。詳しくは[コマンドラインガイド](../cli.md)をご覧ください。
+
+## 研究のためのNotes
+
+Notesは、プロジェクトの横にあるナレッジベースです。各ノートは自分が所有するMarkdownファイルで、コールアウト、表、グラフ、図、数式、リンクとバックリンク、タグ、期限付きのタスクを備えたリッチエディタで編集します。Notesは試験的な機能で、デフォルトではオフです。「設定」>「実験的な機能」でオンにします。
+
+<p align="center">
+  <img src="../assets/readme/notes.png" alt="2つのノートを並べて表示するOleaflyのNotes。一方にグラフと表、もう一方にタスクリストがあり、サイドバーにカレンダーとタグが表示されている" width="100%" />
+</p>
+
+- ノートはタブとして開き、分割やドックへの配置ができます。Notes Homeには、検索、タグ、タスクリスト、カレンダーとともにノートが一覧表示されます。
+- ノートはテンプレートから始めることもでき、`notes/<Title>.md`としてプロジェクトの中に置けます。
+- ノートを研究室のサーバーで共有すると一緒に編集でき、プロジェクトのファイルと同じように選択範囲にコメントできます。
+- アシスタントやCLIエージェントは、ノートへの変更を提案できます。1つずつその場で承認または却下します。
+- クイックキャプチャは、残しておきたい考えを書き留めるための小さなフローティングウィンドウです。
+- Xの投稿へのリンクを貼ると、ノートに投稿の作者、日付、本文が保存されます。
+
+## Oleaflyを自分好みにする
+
+Oleaflyはシステムのライトモードまたはダークモードの設定に従います。自分で選ぶこともできます。アクセントカラー、Homeドックの位置、プロジェクトの背後に描くものを選べます。エディタには専用のフォント、テーマ、色、キーバインドがあり、Notesでは書体と間隔を変えるとライブプレビューが表示されます。
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-app.png" alt="ドックの位置、背景パターン、アクセントカラー、ライトまたはダークを選べるOleaflyの外観設定" width="100%" />
+      <h3>アクセント、ドック、背景</h3>
+      6色のアクセントカラー、左、下、右から選べるドック、プロジェクトの背後に表示するドット、グリッド、または何もなしを選べます。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-notes.png" alt="書体の選択肢とノートのライブプレビューを表示するOleaflyのノート外観設定" width="100%" />
+      <h3>好みの書体</h3>
+      ノートの書体、サイズ、間隔を選ぶと、変更に合わせてプレビューが変わります。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/dark-theme.png" alt="ダークテーマのOleafly。LaTeXソースとコンパイル済みPDFが並んでいる" width="100%" />
+      <h3>ライトとダーク</h3>
+      ツールバーから切り替えるか、Oleaflyにシステムの設定に従わせます。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/notes-dark.png" alt="ダークテーマのOleafly Notes。グラフ、表、タスクリストが表示されている" width="100%" />
+      <h3>Notesもダーク</h3>
+      ノートのグラフ、表、コールアウトは、ライトだけでなくダーク向けにも描画されます。
+    </td>
+  </tr>
+</table>
 
 ## ほかにもたくさん
 
@@ -309,10 +430,15 @@ skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです�
 <summary>エディタの詳細</summary>
 
 - 検索できる236個のLaTeX記号パレット。Typstファイルでは記号のTypst名を挿入します。
+- エディタの右端にあるアウトラインレールは、各見出しと今読んでいる節を示します。開くと、節番号と、直近のコンパイルに基づく各見出しのPDFページが表示されます。
+- プロジェクト内のほかのファイル用のビューア。フルのプレビューツールバー付きのPDF、拡大できる画像、並べ替えできる表としてのCSVとExcelのシート、検索できる`.bib`ファイルの一覧、HTMLのライブプレビューです。
+- TSXで書いたスライドは、入力しながらプレビューされ、PDFのようにプレゼンできます。`something.excalidraw`という名前のファイルは、スケッチできるホワイトボードとして開きます。
+- ファイルマネージャーで`.tex`、`.typ`、`.md`ファイルをダブルクリックすると、Oleaflyで開きます。
 - VimとEmacsのキーバインド、複数ファイルのタブ、折りたたみ、プロジェクト全体の検索と置換、単語数。
 - ファイルの名前を変更したり移動したりすると、Oleaflyはそのファイルを指すパスを更新します。
 - ライトモードとダークモードのテーマ、インストール済みの任意のフォント、編集できる構文の色、Zenモード。
-- インターフェースは21言語で利用できます。
+- ファイルアイコンはファイルの種類ごとに色分けされます。「設定」>「外観」>「プロジェクト」で、TEXやPDFのような短い種類バッジに切り替えられます。
+- インターフェースは22言語で利用できます。
 - Cmd+K（Ctrl+K）でコマンドパレットを、Cmd+Shift+F（Ctrl+Shift+F）でプロジェクト、文書、設定、ツールをまとめて検索できる検索ボックスを開けます。
 
 </details>
@@ -327,7 +453,7 @@ skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです�
 | プラットフォーム | パッケージ | ダウンロード |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![macOS（Apple Silicon）をダウンロード](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| macOS · Intel | DMG (`x64`) | [macOS（Intel）をダウンロード](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [![macOS（Intel）をダウンロード](../assets/readme/download-glass-macos-intel.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSIまたはEXE | [![Windowsをダウンロード](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage、DEB、またはRPM | [![Linux（x86_64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage、DEB、またはRPM | [![Linux（ARM64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
@@ -353,7 +479,7 @@ Oleaflyのアカウントは必要ありません。何にもサインインせ�
 <details>
 <summary>ネットワークに送られるものは何ですか？</summary>
 
-自分で求めたものだけです。サーバーとの共有、クラウド同期、文献とDOIの検索、GitHub、ホスト型AIプロバイダー、接続したMCPサーバー、任意で行うエンジン・パッケージ・テンプレートのダウンロードです。また、リリースビルドはアプリの起動時に更新を確認します。ローカルのOllamaモデルを使えば、AIとの通信はコンピューター内に留まります。
+自分で求めたものだけです。サーバーとの共有、クラウド同期、インポートやリアルタイム編集に使うオンラインのLaTeXサービス、文献とDOIの検索、使っているGitホスト、ホスト型AIプロバイダー、接続したMCPサーバー、任意で行うエンジン・パッケージ・テンプレートのダウンロードです。また、リリースビルドはアプリの起動時に更新を確認します。ローカルモデルを使えば、AIとの通信はコンピューター内に留まります。
 
 </details>
 
@@ -387,7 +513,29 @@ Oleaflyのアカウントは必要ありません。何にもサインインせ�
 
 ## コミュニティとサポート
 
+プルリクエストを送ってくれたすべての人と、Issueでいちばん多くのリリースを形づくってくれた人たちに感謝します。
+
+<p>
+<a href="https://github.com/palmtenor" title="Teng Qin (palmtenor)"><img src="../assets/readme/contributors/palmtenor.svg" width="44" height="44" alt="palmtenor" /></a>
+<a href="https://github.com/wahidmounir" title="wahidmounir"><img src="../assets/readme/contributors/wahidmounir.svg" width="44" height="44" alt="wahidmounir" /></a>
+<a href="https://github.com/Jianxinnn" title="Jianx (Jianxinnn)"><img src="../assets/readme/contributors/Jianxinnn.svg" width="44" height="44" alt="Jianxinnn" /></a>
+<a href="https://github.com/multics" title="Not AI (multics)"><img src="../assets/readme/contributors/multics.svg" width="44" height="44" alt="multics" /></a>
+<a href="https://github.com/um1chc5" title="Vũ Vương An (um1chc5)"><img src="../assets/readme/contributors/um1chc5.svg" width="44" height="44" alt="um1chc5" /></a>
+<a href="https://github.com/a-green-hand-jack" title="Jack Wu (a-green-hand-jack)"><img src="../assets/readme/contributors/a-green-hand-jack.svg" width="44" height="44" alt="a-green-hand-jack" /></a>
+<a href="https://github.com/DEENUU1" title="Kacper Włodarczyk (DEENUU1)"><img src="../assets/readme/contributors/DEENUU1.svg" width="44" height="44" alt="DEENUU1" /></a>
+<a href="https://github.com/mvanhorn" title="Matt Van Horn (mvanhorn)"><img src="../assets/readme/contributors/mvanhorn.svg" width="44" height="44" alt="mvanhorn" /></a>
+<a href="https://github.com/vincencwolff" title="Alexander Wolff (vincencwolff)"><img src="../assets/readme/contributors/vincencwolff.svg" width="44" height="44" alt="vincencwolff" /></a>
+<a href="https://github.com/ssbodda-powern" title="ssbodda-powern"><img src="../assets/readme/contributors/ssbodda-powern.svg" width="44" height="44" alt="ssbodda-powern" /></a>
+<a href="https://github.com/Fravoj3" title="Fravoj3"><img src="../assets/readme/contributors/Fravoj3.svg" width="44" height="44" alt="Fravoj3" /></a>
+<a href="https://github.com/Entrery901" title="Pavel Entrery (Entrery901)"><img src="../assets/readme/contributors/Entrery901.svg" width="44" height="44" alt="Entrery901" /></a>
+<a href="https://github.com/CherryYang05" title="Minyang Bao (CherryYang05)"><img src="../assets/readme/contributors/CherryYang05.svg" width="44" height="44" alt="CherryYang05" /></a>
+<a href="https://github.com/MaverickJohn026" title="MaverickJohn026"><img src="../assets/readme/contributors/MaverickJohn026.svg" width="44" height="44" alt="MaverickJohn026" /></a>
+<a href="https://github.com/marlondecol" title="Marlon Luís de Col (marlondecol)"><img src="../assets/readme/contributors/marlondecol.svg" width="44" height="44" alt="marlondecol" /></a>
+</p>
+
 [Discord の Oleafly コミュニティ](https://oleafly.com/discord)に参加して、質問したり、うまく通らないビルドの相談をしたり、執筆中の原稿を見せたり、次に作る機能へ投票したりできます。無料で、どなたでも参加できます。GitHub を使いたい場合は、バグ報告や機能の要望を [GitHub Issues](https://github.com/Oleafly/Oleafly/issues)に送ってください。
+
+Oleaflyはテレメトリーを収集しないので、あなたが名乗り出るまで、誰が使っているか分かりません。学位論文や研究室の論文をOleaflyで書いていますか？[Oleaflyを使っているのは誰？](https://github.com/Oleafly/Oleafly/discussions/502)で、ぜひ一言どうぞ。
 
 Oleaflyは[Prajwal Murthy](https://github.com/prajwal-svm)とコントリビューターによって開発されています。コード、テンプレート、ドキュメントへの貢献やフィードバックを歓迎します。参加するには[コントリビューションガイド](../../CONTRIBUTING.md)を読んでください。
 

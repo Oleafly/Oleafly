@@ -14,7 +14,7 @@
 
 **محرر تعاوني مباشر للبحث العلمي، يعمل باستخدام LaTeX وTypst وMarkdown.**
 
-Oleafly محرر قوي لكتابة الأوراق البحثية والأطروحات باستخدام LaTeX وTypst وMarkdown. يجتمع مصدر المشروع وPDF والاستشهادات والأشكال والفحوصات وسجل Git في مكان واحد. اكتب مع مؤلفيك المشاركين في الوقت الفعلي، وأبقِ مشروعاتك متزامنة بين حواسيبك، وأدخل Claude Code أو Codex أو أي نموذج تفضّله إلى المشروع.
+Oleafly مساحة عمل مجانية ومفتوحة المصدر لكتابة الأبحاث العلمية. تضم بيئة تطوير قائمة على الوكلاء لسطح المكتب على macOS وWindows وLinux، وخادمًا يستضيفه مختبرك للتعاون المباشر، وأداة سطر أوامر للبناء المحلي وCI، وواجهة ويب للمؤلفين المشاركين في المتصفح. يجمّع LaTeX وTypst وMarkdown دون أي إعداد، ويحفظ كل مشروع كمستودع Git مع نقاط تحقق تلقائية. تضم أدوات البحث أكثر من 1,700 قالب، وZotero، وBibTeX، وحاسبات إحصائية، وبحثًا في arXiv وSemantic Scholar وCrossref وPubMed وOpenAlex، وفحوصات Preflight للمراجع المعطوبة والأشكال المفقودة وتسريب هوية المؤلفين في المراجعة المجهولة وPDF/UA. تعاون في الوقت الفعلي على الخادم الذي يُثبَّت بأمر واحد، مع مؤشرات مشتركة وتعليقات ومحادثة وتغييرات متتبَّعة وأدوار ودمج دون اتصال. يعمل Claude Code وCodex و13 وكيلًا آخر للذكاء الاصطناعي في مشروعك، وكل تعديل فرقٌ تراجعه، وتُجري مهام بحث تجريبية مراجعة أدبيات أو جولة تنقيح في الخلفية داخل Git worktrees معزولة، ضمن ميزانية تحددها. وتتيح أداة سطر الأوامر (`check` و`lint` و`mcp` و`ask` و`agent run` و`daemon`) كل ذلك للطرفيات وCI.
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>تنزيل مجاني</strong></a>
@@ -27,12 +27,16 @@ Oleafly محرر قوي لكتابة الأوراق البحثية والأطر�
 </div>
 
 <div align="center">
-  <img src="../assets/readme/hero-collab.png" alt="Oleafly مع ورقة بحثية بصيغة LaTeX مفتوحة: شجرة الملفات والمخطط والبنية على اليسار، والمصدر مع مؤشرات خمسة مؤلفين مشاركين وتعليقات مميّزة، وملف PDF المجمّع" width="100%" />
+  <img src="../assets/readme/oleafly-overview.png" alt="كيف يترابط Oleafly: Oleafly Desktop وOleafly CLI على حاسوبك، وOleafly Server على جهاز مختبرك مع Oleafly Web في المتصفح، ووكلاء الذكاء الاصطناعي وأدوات المراجع وOverleaf والمزامنة السحابية ومضيفات Git التي يتصل بها Desktop" width="100%" />
 </div>
 
 ## لماذا Oleafly
 
-كل ما هنا مجاني، بما في ذلك ما تحتفظ به محررات أخرى للخطط المدفوعة: التعاون في الوقت الفعلي مع أي عدد تدعوه من المؤلفين المشاركين، وسجل الإصدارات الكامل، والمزامنة مع Git وGitHub، وZotero، والتدقيق النحوي، والذكاء الاصطناعي.
+كتابة الأبحاث تُستأجَر منذ سنوات. عملك البحثي موجود على خادم شخص آخر، وأكثر ما يحتاج إليه الباحث محجوب خلف خطة مدفوعة. مع Oleafly تحصل على ذلك كله مجانًا. ويشمل ذلك التعاون في الوقت الفعلي مع أي عدد تدعوه من المؤلفين المشاركين، وسجل الإصدارات الكامل، والمزامنة مع أي مضيف Git، وZotero، والتدقيق النحوي، ووكلاء الذكاء الاصطناعي بتسجيل دخولك أو مفتاحك، على خادم يشغّله مختبرك. لا يحتاج إلى حساب، ولا يرسل بيانات استخدام، ويعمل دون اتصال.
+
+<p align="center">
+  <img src="../assets/readme/hero-collab.png" alt="Oleafly مع ورقة بحثية بصيغة LaTeX مفتوحة: شجرة الملفات والمخطط والبنية على اليسار، والمصدر مع مؤشرات سبعة مؤلفين مشاركين وتعليقات مميّزة، وملف PDF المجمّع" width="100%" />
+</p>
 
 - اكتب مع مؤلفيك المشاركين في الوقت الفعلي، بمؤشرات وتعليقات مشتركة، على خادم يُعدّه مختبرك بأمر واحد.
 - محرر مصنوع للمستندات الطويلة: إكمال للتسميات والاستشهادات والأوامر، وفحص مباشر للأخطاء، ومخطط للمشروع كله، ومفاتيح Vim وEmacs، ووضع مرئي، ولوحة قابلة للبحث تضم 236 رمزًا من رموز LaTeX.
@@ -43,18 +47,21 @@ Oleafly محرر قوي لكتابة الأوراق البحثية والأطر�
 - يعمل على حاسوبك تدقيق إملائي ونحوي مضبوط للكتابة الأكاديمية.
 - يكتشف Preflight قبل التقديم المراجع المعطوبة، والأشكال المفقودة، والخطوط التي لم تُضمَّن، وثغرات إمكانية الوصول، وأي شيء قد يكشف هوية المؤلفين في مراجعة مجهولة.
 - ارسم أشكالًا تبقى شيفرة TikZ أو Typst أو Mermaid، وابدأ من أكثر من 1,700 قالب للأوراق والأطروحات والشرائح والملصقات والسير الذاتية.
-- استورد من Word، أو ملف PDF، أو مصدر arXiv، أو مستودع Git، أو حساب LaTeX على الإنترنت.
+- تُفتح ملفات PDF والصور وجداول البيانات وملفات `.bib` وصفحات HTML وعروض الشرائح والسبورات البيضاء داخل المشروع، ولكل نوع عارضه الخاص.
+- استورد من Word، أو ملف PDF، أو مصدر arXiv، أو مستودع Git، أو حساب Overleaf.
+- هل لا يزال مؤلفوك المشاركون على خدمة LaTeX على الإنترنت مثل Overleaf؟ حرّر المشروع نفسه معهم مباشرة من Oleafly بينما يبقون في محرر الخدمة على الويب. التحرير المباشر تجريبي ومعطّل افتراضيًا. فعّله من Settings > Experimentation.
 - يبني الأمر `oleafly` مشاريعك ويفحصها ويزامنها من أي طرفية أو مهمة CI، بالمترجمات والإعدادات نفسها التي يستخدمها التطبيق.
 - تُبقي المزامنة السحابية مشروعاتك على كل حاسوب تستخدمه، ويمكنك مواصلة الكتابة دون اتصال.
-- يعمل Claude Code وCodex و12 وكيلًا آخر داخل مشروعك، أو يمكنك وصل أي نموذج، بما في ذلك النماذج المحلية. الذكاء الاصطناعي اختياري، وكل تغيير يجريه فرقٌ يمكنك مراجعته والتراجع عنه.
-- تُجري مهام البحث مراجعة أدبيات أو تدقيق أدلة أو جولة تنقيح في نسخة منفصلة من المشروع بينما تواصل الكتابة، وتختار أنت الملفات المتغيرة التي تحتفظ بها. وهي تجريبية ومعطّلة افتراضيًا؛ فعّلها من Settings > Experimentation.
+- يعمل Claude Code وCodex و13 وكيلًا آخر داخل مشروعك، أو يمكنك وصل أي نموذج، بما في ذلك النماذج المحلية. الذكاء الاصطناعي اختياري، وكل تغيير يجريه فرقٌ يمكنك مراجعته والتراجع عنه.
+- تُجري مهام البحث مراجعة أدبيات أو تدقيق أدلة أو جولة تنقيح في نسخة منفصلة من المشروع بينما تواصل الكتابة، وتختار أنت الملفات المتغيرة التي تحتفظ بها. وهي تجريبية ومعطّلة افتراضيًا. فعّلها من Settings > Experimentation.
+- تحفظ Notes ملاحظاتك البحثية كملفات Markdown بجانب مشروعاتك، مع روابط ووسوم ومهام وتقويم. وهي تجريبية ومعطّلة افتراضيًا أيضًا.
 
 ## كتابة مشتركة في الوقت الفعلي
 
 شارك مشروعًا على Oleafly Server الخاص بمختبرك، فيحرر الجميع الملفات نفسها في آن واحد. ترى مؤشر كل شخص وتحديده، ومن المتصل الآن، وما تغيّر أثناء غيابك. انقر على الصورة الرمزية لأي شخص للانتقال إلى السطر الذي يعمل عليه.
 
 <p align="center">
-  <img src="../assets/readme/live-comments.png" alt="مؤلفان مشاركان يحرران ملف LaTeX نفسه في Oleafly، مع مؤشراتهما وصورهما الرمزية ولوحة الأشخاص والنشاط" width="100%" />
+  <img src="../assets/readme/live-comments.png" alt="سلاسل تعليقات بجانب مصدر LaTeX في Oleafly، مع ردود وإشارات إلى الأشخاص ومؤشرات المؤلفين المشاركين في الملف" width="100%" />
 </p>
 
 - علّق على أي تحديد في LaTeX أو Typst أو Markdown، ثم رُدّ، أو اذكر شخصًا، أو أغلق التعليق بوصفه محلولًا، أو أعد فتحه. يتلقى المؤلف المشارك المذكور رسالة بريد إلكتروني واحدة، ويمكنه إيقاف هذه الرسائل.
@@ -64,6 +71,21 @@ Oleafly محرر قوي لكتابة الأوراق البحثية والأطر�
 - لكل مشروع مالك ومحررون ومراجعون ومعلّقون ومشاهدون. تصبح تعديلات المراجعين اقتراحات، ويمكن للمالكين والمحررين أيضًا التبديل إلى وضع الاقتراح. ولا يرى الضيوف المدعوون بالبريد الإلكتروني إلا المشروعات التي دُعوا إليها.
 - لكل مشروع مشترك محادثة، وسجل يمكنك فيه مقارنة الإصدارات، أو استعادة أحدها، أو تسميته.
 - يمكن للمؤلفين المشاركين فتح مشروع مشترك في متصفحهم عندما يكون الوصول عبر المتصفح مفعّلًا على الخادم، وقراءة PDF من آخر تجميع.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-chat.png" alt="محادثة المشروع في Oleafly بجانب مصدر LaTeX المشترك، مع إشارات وردود فعل" width="100%" />
+      <h3>ناقش الأمر في محادثة المشروع</h3>
+      لكل مشروع مشترك محادثة خاصة به، مع إشارات وردود فعل، فيبقى النقاش بجانب الملف الذي يخصه.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/live-people.png" alt="لوحة Live collaboration في Oleafly تسرد الأشخاص على المشروع وأدوارهم والملف المفتوح عند كل منهم" width="100%" />
+      <h3>اعرف من هنا</h3>
+      تسرد لوحة Live collaboration كل من في المشروع، ودوره، والملف المفتوح عند كل شخص. وتحت القائمة موجز بالنشاط الأخير.
+    </td>
+  </tr>
+</table>
 
 ### شغّل الخادم بنفسك
 
@@ -78,7 +100,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 يحصل المشرفون على وحدة تحكم داخل Oleafly لإدارة الأشخاص وقواعد الوصول والمشروعات والبريد الإلكتروني وسجل الأمان. يوقّع كل جهاز تغييراته، ويبني الخادم كل لقطة من ذلك السجل الموقّع بدل الوثوق بالملفات المرفوعة.
 
 <p align="center">
-  <img src="../assets/readme/server-admin.png" alt="وحدة تحكم المشرف في Oleafly Server تعرض الأشخاص وقواعد الوصول وسجل الأمان" width="100%" />
+  <img src="../assets/readme/server-admin.png" alt="وحدة تحكم المشرف في Oleafly Server تعرض الأشخاص على الخادم وأدوارهم" width="100%" />
 </p>
 
 اقرأ [دليل الخادم](https://github.com/Oleafly/oleafly-server) لمعرفة الإعداد والنسخ الاحتياطي والقائمة الكاملة لما يستطيع كل شخص فعله.
@@ -87,10 +109,10 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 فعّل المزامنة السحابية، فتنتقل معك مشروعات مكتبتك وإعدادات التطبيق من حاسوب إلى آخر. يُتحقق من كل تنزيل مقابل سجله قبل أن يحل محل ملف، ولا يُكتب أبدًا فوق ملف مفتوح لديك يحتوي على تغييرات غير محفوظة.
 
-يمكنك المزامنة مع Dropbox أو Google Drive أو مع حاوية خاصة بك على Amazon S3 أو Google Cloud Storage أو MinIO أو أي خدمة أخرى متوافقة مع S3.
+يمكنك المزامنة مع Dropbox أو Google Drive أو مع حاوية خاصة بك على Amazon S3 أو Google Cloud Storage أو MinIO أو أي خدمة أخرى متوافقة مع S3. اختر واحدة من Settings > Data storage > Cloud sync. وفي الصفحة نفسها شريط يبيّن ما يحتويه مجلد بيانات Oleafly وما يشغل المساحة.
 
 <p align="center">
-  <img src="../assets/readme/cloud-sync-dropbox.png" alt="إعدادات المزامنة السحابية في Oleafly مع بطاقة Dropbox وقائمة بما تجري مزامنته" width="100%" />
+  <img src="../assets/readme/cloud-sync-dropbox.png" alt="إعدادات المزامنة السحابية في Oleafly مع Dropbox وGoogle Drive وتخزين متوافق مع S3، وقائمة بما تجري مزامنته" width="100%" />
 </p>
 
 - عندما يحرر حاسوبان الملف نفسه، يُحتفظ بالنسختين، وتحمل كل نسخة اسم الحاسوب الذي كتبها.
@@ -104,8 +126,10 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 باستخدام رمز Git من ذلك الحساب، يستطيع Oleafly إبقاء المشروع المستورد متزامنًا في الاتجاهين، فيواصل المؤلفون المشاركون الذين يبقون على المحرر عبر الإنترنت العمل كما يفعلون الآن. تستخدم المزامنة في الاتجاهين تكامل Git الخاص بالخدمة نفسها، وهو يحتاج إلى خطة مدفوعة أو جامعية في حساب مالك المشروع.
 
+التحرير المباشر يذهب أبعد من ذلك ولا يحتاج إلى رمز Git. فعّله فتعمل أنت والمؤلفون المشاركون الذين يبقون على الإنترنت على المشروع نفسه في آن واحد: تصل الكتابة والملفات الجديدة وعمليات إعادة التسمية إلى الطرفين خلال ثانية أو نحو ذلك، وترى أين يعمل كل شخص. وإذا انقطع اتصالك فواصل الكتابة، وسيلحق بك التحرير عند عودتك. وإذا كان حسابك يسجّل الدخول عبر Google أو مؤسستك أو مفتاح مرور، فاستخدم Sign in with your browser. التحرير المباشر تجريبي. فعّله من Settings > Experimentation.
+
 <p align="center">
-  <img src="../assets/readme/import-dialog.png" alt="نافذة استيراد مشروع في Oleafly مع خيارات للملفات المحلية وarXiv وGitHub وحساب LaTeX على الإنترنت" width="100%" />
+  <img src="../assets/readme/import-dialog.png" alt="نافذة استيراد مشروع في Oleafly مع خيارات للملفات المحلية وarXiv ومستودع Git وOverleaf" width="100%" />
 </p>
 
 يمكنك أيضًا البدء من ملف ZIP لمشروع، أو مستودع GitHub، أو مستند Word، أو حزمة مصدر arXiv، أو PDF يعيد Oleafly بناءه بصيغة LaTeX قابلة للتحرير. أو افتح مجلدًا في مكانه الحالي.
@@ -115,8 +139,23 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 اختر وكيلًا من الكتالوج، فيعمل في مشروعك والمصدر وPDF وسجل التجميع في متناوله. يسجّل كل وكيل الدخول بحسابه الخاص ويستخدم نموذجه الخاص. ويوفر له Oleafly المشروع والأدوات المحيطة به.
 
 <p align="center">
-  <img src="../assets/readme/ai-agents.png" alt="وكيل ذكاء اصطناعي في Oleafly ينقّح قسمًا من ورقة LaTeX، مع عرض التغيير المقترح كفرق" width="100%" />
+  <img src="../assets/readme/ai-agents.png" alt="Claude Code في Oleafly ينقّح فقرة من ورقة LaTeX، مع عرض التغيير كفرق" width="100%" />
 </p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/oleafly-assistant.png" alt="Oleafly Assistant مفتوح بجانب مصدر LaTeX، مع مهارات بحثية للبدء منها" width="100%" />
+      <h3>Oleafly Assistant</h3>
+      يعمل المساعد المدمج على مزوّد تصله أو على نموذج محلي. ويفتح بمهارات بحثية مجمّعة حسب المهمة: البحث، والتأليف، والأشكال، والمراجعة، والتقديم.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/cli-agents.png" alt="تبويب CLI Agent في Oleafly مع اختيار Claude Code، بجانب المصدر وPDF" width="100%" />
+      <h3>وكلاء CLI</h3>
+      اختر Claude Code أو Codex أو Gemini CLI أو وكيلًا آخر من الصف فوق مربع الرسالة. يعمل بجانب مصدرك وPDF المجمّع.
+    </td>
+  </tr>
+</table>
 
 <div align="center">
 <table>
@@ -146,10 +185,12 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 <p align="center"><sub>تحدد هذه العلامات الأدوات المتوافقة، وتبقى ملكًا لأصحابها. ولا تعني تأييدًا.</sub></p>
 
-هل تفضّل مساعد محادثة؟ صِل مزودًا مستضافًا، أو أي نقطة نهاية متوافقة مع OpenAI، أو نموذج Ollama محليًا.
+هل تفضّل مساعد محادثة؟ صِل مزودًا مستضافًا، أو أي نقطة نهاية متوافقة مع OpenAI، أو نموذجًا محليًا في Ollama أو llama.cpp أو Lemonade.
 
 - كل تغيير في ملف هو فرق. وافق على كل تغيير، أو دع المساعد يعمل بمفرده، أو اضبط قواعد لكل أداة، وتراجع عن ملف واحد أو عن دور كامل.
 - يرسم وضع التخطيط خريطة للمشروع قبل كتابة أي شيء.
+- لا تملك مفتاح API؟ يمكن تشغيل Paper Review والتعديلات المضمّنة وFix with AI وأدوات الصور والمعادلات على وكيل CLI سجّلت الدخول إليه بالفعل.
+- يمكن للوكلاء استخدام تطبيقات سطح المكتب ومواقع الويب التي تسمح بها، مثل نموذج التقديم في مجلة أو برنامج إحصاء. ويعمل ذلك عبر Cua Driver، وتثبّته بنفسك.
 - يمكن تشغيل مراجعة أدبيات أو جولة تنقيح في Git worktree خاص بها بينما تواصل الكتابة. وتختار أنت الملفات المتغيرة التي تحتفظ بها.
 - يأتي التطبيق مع 39 مهارة بحثية، منها مسح الأدبيات، والأعمال ذات الصلة، والتحقق من الادعاءات، ورسائل الرد على المراجعين. يثبّتها الأمر `npx skills add Oleafly/Oleafly` في Claude Code وCodex ووكلاء آخرين أيضًا.
 - يتيح خادم MCP محلي لعميل ذكاء اصطناعي خارجي استخدام أدوات المشروع نفسها. ولا يستمع إلا على 127.0.0.1.
@@ -163,7 +204,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 تأتي Tectonic وTypst وPandoc مع التطبيق، لذلك يُجمَّع المشروع الجديد من دون تثبيت أي شيء. وعندما يحتاج المشروع إلى توزيعة TeX كاملة، حوّله إلى latexmk مع TeX Live أو MacTeX أو MiKTeX، أو مع TinyTeX يثبّته Oleafly لك.
 
 <p align="center">
-  <img src="../assets/readme/editor-and-pdf.png" alt="محرر المصدر في Oleafly وPDF المجمّع جنبًا إلى جنب، مع تشخيص تجميع مرتبط بسطر المصدر" width="100%" />
+  <img src="../assets/readme/editor-and-pdf.png" alt="محرر المصدر في Oleafly وPDF المجمّع جنبًا إلى جنب، مع شجرة الملفات ومخطط المستند" width="100%" />
 </p>
 
 - انقر في PDF للانتقال إلى المصدر، ثم عُد مرة أخرى. يستخدم LaTeX لذلك SyncTeX، ويستخدم Typst 0.13 أو أحدث Tinymist.
@@ -173,30 +214,37 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 - يعمل التدقيق الإملائي والنحوي محليًا، وهو مضبوط للكتابة الأكاديمية.
 - XeLaTeX وLuaLaTeX، وupLaTeX أو pLaTeX للمستندات اليابانية.
 - تشغّل مستندات Quarto وCalepin شيفرة R أو Python أو Julia الموجودة فيها بعد أن تسمح بالشيفرة في المشروع. ويستطيع Oleafly تنزيل أيٍّ من الأداتين لك.
+- يمكن بناء مستند Markdown كمقالة أو تقرير أو كتاب أو شرائح أو ملصق أو رسالة أو سيرة ذاتية. اضبط `type:` في ترويسة الملف.
+
+<p align="center">
+  <img src="../assets/readme/pdf-viewer.png" alt="عارض PDF في Oleafly مع صفحتين جنبًا إلى جنب وعبارة بحث مميّزة في الصفحة" width="100%" />
+</p>
+
+يضم عارض PDF بحثًا ومخطط المستند وعرض صفحة واحدة أو صفحتين وملاءمة العرض أو الارتفاع.
 
 ## الاستشهادات والأشكال والفحوصات والقوالب
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/citations.png" alt="الاستشهاد بمدخل من Zotero بكتابة @ في محرر Oleafly" width="100%" />
+      <img src="../assets/readme/citations.png" alt="الاستشهاد بمرجع بكتابة @ في محرر Oleafly" width="100%" />
       <h3>استشهد من Zotero أثناء الكتابة</h3>
       اكتب <code>@</code> وجزءًا من اسم مؤلف أو عنوان أو سنة لتستشهد من مكتبة Zotero الخاصة بك. ولا يضيف Oleafly إلى ملف <code>.bib</code> في المشروع إلا ذلك المدخل. ويغطي Citation Search كلًا من arXiv وSemantic Scholar وCrossref وPubMed وOpenAlex.
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/diagrams.png" alt="Diagram Composer في Oleafly مع لوحة رسم وشيفرة TikZ جنبًا إلى جنب" width="100%" />
+      <img src="../assets/readme/diagrams.png" alt="Diagram Composer في Oleafly مع رسم TikZ على اللوحة" width="100%" />
       <h3>ارسم أشكالًا تبقى شيفرة</h3>
       يرسم Diagram Composer على لوحة ويكتب TikZ، أو fletcher لـ Typst، أو Mermaid. غيّر الرسم أو الشيفرة، فيتبعه الآخر.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="../assets/readme/preflight.png" alt="Preflight في Oleafly يسرد نتائج المراجع والأشكال وإمكانية الوصول" width="100%" />
+      <img src="../assets/readme/preflight.png" alt="Preflight في Oleafly مع درجة جاهزية للتقديم وقائمة بثغرات إمكانية الوصول" width="100%" />
       <h3>افحص قبل أن تقدّم</h3>
       يعثر Preflight على المراجع المعطوبة، والأشكال المفقودة، والخطوط التي لم تُضمَّن، وثغرات إمكانية الوصول، وأي شيء قد يكشف هوية المؤلفين في مراجعة مجهولة. ولديه ملفات تعريف لـ arXiv وIEEE وACM والمجلات والأطروحات.
     </td>
     <td width="50%" valign="top">
-      <img src="../assets/readme/templates.png" alt="معرض قوالب Oleafly مع معاينات مرسومة للأوراق والأطروحات والشرائح" width="100%" />
+      <img src="../assets/readme/templates.png" alt="معرض قوالب Oleafly مع معاينات مرسومة لقوالب مقالات المجلات" width="100%" />
       <h3>ابدأ من أكثر من 1,700 قالب</h3>
       مقالات وأطروحات وعروض Beamer وملصقات وسير ذاتية وأوراق على نمط جهات النشر، ولكل منها معاينة مرسومة قبل أن تنشئ المشروع.
     </td>
@@ -208,12 +256,85 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 كل مشروع مجلد عادي فيه مستودع Git عادي. جهّز الملفات، واعرض الفروق، وأنشئ commit، وادفع واسحب وانشر إلى GitHub أو GitLab أو Gitea أو Forgejo أو Codeberg أو خادمك الخاص من لوحة التحكم بالمصدر، أو استخدم طرفيتك الخاصة، فلا شيء مخفي عنها. وتحفظ نقاط التحقق لقطة محلية بعد كل تجميع ناجح، لذلك يمكنك العودة إلى حالة سابقة من دون إنشاء commit.
 
 <p align="center">
-  <img src="../assets/readme/git-history.png" alt="لوحة التحكم بالمصدر في Oleafly مع فرق ورسم للفروع وعناصر التحكم في commits" width="100%" />
+  <img src="../assets/readme/git-history.png" alt="لوحة التحكم بالمصدر في Oleafly مع فرق ورسم commits البياني وعناصر التحكم فيها" width="100%" />
 </p>
 
 توجد طرفية أسفل المحرر بما يصل إلى عشر علامات تبويب لكل مشروع. انقر مع الضغط على Cmd (أو Ctrl) على مسار ملف في مخرجاتها لفتحه عند ذلك السطر.
 
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/terminal.png" alt="لوحة الطرفية أسفل محرر Oleafly تعرض حالة Git ورسم commits البياني" width="100%" />
+      <h3>طرفية أسفل المحرر</h3>
+      شغّل Git أو نصًا برمجيًا للبناء أو الأمر <code>oleafly</code> في مجلد المشروع دون مغادرة النافذة.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/versioning.png" alt="نافذة Versioning في Oleafly تسرد إصدارًا محفوظًا لكل تجميع، ولكل منها زر Restore" width="100%" />
+      <h3>إصدار بعد كل تجميع</h3>
+      يحفظ Versioning لقطة من المصدر بعد كل تجميع ناجح. استعد أيًّا منها بنقرة واحدة، دون الحاجة إلى commit.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/git-hosting.png" alt="إعدادات استضافة Git في Oleafly مع GitHub وGitLab وCodeberg وخادم آخر للاختيار منها" width="100%" />
+      <h3>مضيف Git الخاص بك، أو خادمك</h3>
+      سجّل الدخول إلى GitHub أو GitLab أو Codeberg، أو أضف عنوان خادم Gitea أو Forgejo تشغّله. ثم ادفع واسحب وانشر من لوحة التحكم بالمصدر.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/local-storage.png" alt="إعدادات Data Storage في Oleafly تبيّن المساحة التي تشغلها المشروعات وملفات PDF وسجل Git وبيانات التطبيق" width="100%" />
+      <h3>اعرف أين تذهب المساحة</h3>
+      تبيّن الإعدادات المساحة التي تشغلها مشروعاتك وملفات PDF وسجل Git وبيانات التطبيق نفسه على القرص. وتنتظر المشروعات المحذوفة في سلة المهملات.
+    </td>
+  </tr>
+</table>
+
 يعمل الأمر `oleafly` على المشاريع نفسها من أي طرفية: البناء، وإعادة البناء عند كل تغيير، والفحص قبل الإرسال، والمزامنة مع خدمة LaTeX على الإنترنت، أو تشغيل وكيل Oleafly من دون فتح التطبيق. ويمكن لكل أمر أن يطبع JSON مع رموز خروج ثابتة للنصوص البرمجية وCI. راجع [دليل سطر الأوامر](../cli.md).
+
+## ملاحظات لبحثك
+
+Notes قاعدة معرفة بجانب مشروعاتك. كل ملاحظة ملف Markdown تملكه، تحرّره في محرر غني يدعم مربعات التنبيه والجداول والرسوم البيانية والمخططات والرياضيات والروابط والروابط العكسية والوسوم والمهام مع مواعيد استحقاق. Notes تجريبية ومعطّلة افتراضيًا. فعّلها من Settings > Experimentation.
+
+<p align="center">
+  <img src="../assets/readme/notes.png" alt="Notes في Oleafly مع ملاحظتين جنبًا إلى جنب، رسم بياني وجدول في إحداهما وقائمة مهام في الأخرى، وتقويم ووسوم في الشريط الجانبي" width="100%" />
+</p>
+
+- تُفتح الملاحظات في علامات تبويب يمكنك تقسيمها وتثبيتها. ويسردها Notes Home مع البحث والوسوم وقائمة مهام وتقويم.
+- يمكن أن تبدأ الملاحظة من قالب وتقيم داخل مشروع باسم `notes/<Title>.md`.
+- شارك ملاحظة عبر خادم مختبرك لتحريرها معًا، وعلّق على تحديد كما تفعل في ملف مشروع.
+- يمكن للمساعد أو لوكيل CLI أن يقترح تغييرات على ملاحظة. وتقبل كل تغيير أو ترفضه في مكانه.
+- الالتقاط السريع نافذة عائمة صغيرة لفكرة تريد الاحتفاظ بها.
+- الصق رابط منشور على X فتحتفظ الملاحظة بكاتب المنشور وتاريخه ونصه.
+
+## اجعل Oleafly على طريقتك
+
+يتبع Oleafly إعداد نظامك الفاتح أو الداكن، أو تختار أنت. اختر لونًا مميزًا، ومكان Home dock، وما يُرسم خلف مشروعاتك. وللمحرر خطه وسمته وألوانه واختصارات مفاتيحه، وتعرض Notes معاينة مباشرة أثناء تغيير خطها وتباعدها.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-app.png" alt="إعدادات Appearance في Oleafly مع موضع dock ونمط الخلفية واللون المميز والوضع الفاتح أو الداكن" width="100%" />
+      <h3>اللون المميز وdock والخلفية</h3>
+      ستة ألوان مميزة، وdock على اليسار أو الأسفل أو اليمين، ونقاط أو شبكة أو لا شيء خلف مشروعاتك.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/appearance-notes.png" alt="إعدادات مظهر الملاحظات في Oleafly مع خيارات الخط ومعاينة مباشرة لملاحظة" width="100%" />
+      <h3>خط يناسبك</h3>
+      اختر الخط والحجم والتباعد لملاحظاتك وشاهد المعاينة تتغير أثناء ذلك.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/dark-theme.png" alt="Oleafly بالسمة الداكنة مع مصدر LaTeX بجانب PDF المجمّع" width="100%" />
+      <h3>فاتح أو داكن</h3>
+      بدّل من شريط الأدوات، أو دع Oleafly يتبع نظامك.
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/notes-dark.png" alt="Notes في Oleafly بالسمة الداكنة مع رسم بياني وجدول وقائمة مهام" width="100%" />
+      <h3>الوضع الداكن في Notes أيضًا</h3>
+      تُرسم الرسوم البيانية والجداول ومربعات التنبيه في الملاحظة للوضع الداكن كما للفاتح.
+    </td>
+  </tr>
+</table>
 
 ## والمزيد أيضًا
 
@@ -309,10 +430,15 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 <summary>تفاصيل المحرر</summary>
 
 - لوحة قابلة للبحث تضم 236 رمزًا من رموز LaTeX، وتُدرج أسماء Typst في ملفات Typst.
+- يشير شريط مخطط على الحافة اليمنى للمحرر إلى كل عنوان والقسم الذي تقرؤه. افتحه لترى أرقام الأقسام ورقم صفحة PDF لكل عنوان من آخر تجميع.
+- عارضات للملفات الأخرى في المشروع: PDF مع شريط المعاينة الكامل، وصور قابلة للتكبير، وأوراق CSV وExcel كجدول قابل للفرز، وقائمة قابلة للبحث لملفات `.bib`، ومعاينة مباشرة لـ HTML.
+- تُعاين عروض الشرائح المكتوبة بـ TSX أثناء الكتابة وتُعرض مثل PDF. ويُفتح الملف المسمى `something.excalidraw` كسبورة يمكنك الرسم عليها.
+- انقر مرتين على ملف `.tex` أو `.typ` أو `.md` في مدير الملفات فيُفتح في Oleafly.
 - اختصارات مفاتيح Vim وEmacs، وعلامات تبويب لملفات متعددة، وطيّ الشيفرة، والبحث والاستبدال في المشروع كله، وعدّ الكلمات.
 - أعد تسمية ملف أو انقله، وسيحدّث Oleafly المسارات التي تشير إليه.
 - سمات للوضعين الفاتح والداكن، وأي خط مثبت، وألوان صياغة قابلة للتعديل، ووضع Zen.
-- الواجهة متاحة بـ 21 لغة.
+- ألوان أيقونات الملفات حسب نوع الملف. بدّل إلى شارات نوع قصيرة مثل TEX أو PDF من Settings > Appearance > Project.
+- الواجهة متاحة بـ 22 لغة.
 - لوحة الأوامر عبر Cmd+K (Ctrl+K)، ومربع بحث واحد للمشروعات والمستندات والإعدادات والأدوات عبر Cmd+Shift+F (Ctrl+Shift+F).
 
 </details>
@@ -327,7 +453,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 | المنصة | الحزمة | التنزيل |
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![تنزيل لـ macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| macOS · Intel | DMG (`x64`) | [تنزيل لـ macOS (Intel)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Intel | DMG (`x64`) | [![تنزيل لـ macOS (Intel)](../assets/readme/download-glass-macos-intel.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI أو EXE | [![تنزيل لـ Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · x86_64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Linux · ARM64 | AppImage أو DEB أو RPM | [![تنزيل لـ Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
@@ -353,7 +479,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 <details>
 <summary>ما الذي يمر عبر الشبكة؟</summary>
 
-ما تطلبه فقط: المشاركة مع خادمك، والمزامنة السحابية، والبحث في الأدبيات وبيانات DOI، وGitHub، ومزودو الذكاء الاصطناعي المستضافون، وخوادم MCP التي تصلها، والتنزيلات الاختيارية للمحركات والحزم والقوالب. وتتحقق الإصدارات الرسمية أيضًا من وجود تحديث عند بدء التطبيق. ويبقي نموذج Ollama المحلي حركة الذكاء الاصطناعي على حاسوبك.
+ما تطلبه فقط: المشاركة مع خادمك، والمزامنة السحابية، وخدمة LaTeX على الإنترنت التي تستورد منها أو تحرر معها مباشرة، والبحث في الأدبيات وبيانات DOI، ومضيف Git الخاص بك، ومزودو الذكاء الاصطناعي المستضافون، وخوادم MCP التي تصلها، والتنزيلات الاختيارية للمحركات والحزم والقوالب. وتتحقق الإصدارات الرسمية أيضًا من وجود تحديث عند بدء التطبيق. ويبقي نموذج محلي حركة الذكاء الاصطناعي على حاسوبك.
 
 </details>
 
@@ -387,7 +513,29 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 ## المجتمع والدعم
 
+شكرًا لكل من أرسل pull request، وللأشخاص الذين أثّرت مشكلاتهم في أكبر عدد من الإصدارات.
+
+<p>
+<a href="https://github.com/palmtenor" title="Teng Qin (palmtenor)"><img src="../assets/readme/contributors/palmtenor.svg" width="44" height="44" alt="palmtenor" /></a>
+<a href="https://github.com/wahidmounir" title="wahidmounir"><img src="../assets/readme/contributors/wahidmounir.svg" width="44" height="44" alt="wahidmounir" /></a>
+<a href="https://github.com/Jianxinnn" title="Jianx (Jianxinnn)"><img src="../assets/readme/contributors/Jianxinnn.svg" width="44" height="44" alt="Jianxinnn" /></a>
+<a href="https://github.com/multics" title="Not AI (multics)"><img src="../assets/readme/contributors/multics.svg" width="44" height="44" alt="multics" /></a>
+<a href="https://github.com/um1chc5" title="Vũ Vương An (um1chc5)"><img src="../assets/readme/contributors/um1chc5.svg" width="44" height="44" alt="um1chc5" /></a>
+<a href="https://github.com/a-green-hand-jack" title="Jack Wu (a-green-hand-jack)"><img src="../assets/readme/contributors/a-green-hand-jack.svg" width="44" height="44" alt="a-green-hand-jack" /></a>
+<a href="https://github.com/DEENUU1" title="Kacper Włodarczyk (DEENUU1)"><img src="../assets/readme/contributors/DEENUU1.svg" width="44" height="44" alt="DEENUU1" /></a>
+<a href="https://github.com/mvanhorn" title="Matt Van Horn (mvanhorn)"><img src="../assets/readme/contributors/mvanhorn.svg" width="44" height="44" alt="mvanhorn" /></a>
+<a href="https://github.com/vincencwolff" title="Alexander Wolff (vincencwolff)"><img src="../assets/readme/contributors/vincencwolff.svg" width="44" height="44" alt="vincencwolff" /></a>
+<a href="https://github.com/ssbodda-powern" title="ssbodda-powern"><img src="../assets/readme/contributors/ssbodda-powern.svg" width="44" height="44" alt="ssbodda-powern" /></a>
+<a href="https://github.com/Fravoj3" title="Fravoj3"><img src="../assets/readme/contributors/Fravoj3.svg" width="44" height="44" alt="Fravoj3" /></a>
+<a href="https://github.com/Entrery901" title="Pavel Entrery (Entrery901)"><img src="../assets/readme/contributors/Entrery901.svg" width="44" height="44" alt="Entrery901" /></a>
+<a href="https://github.com/CherryYang05" title="Minyang Bao (CherryYang05)"><img src="../assets/readme/contributors/CherryYang05.svg" width="44" height="44" alt="CherryYang05" /></a>
+<a href="https://github.com/MaverickJohn026" title="MaverickJohn026"><img src="../assets/readme/contributors/MaverickJohn026.svg" width="44" height="44" alt="MaverickJohn026" /></a>
+<a href="https://github.com/marlondecol" title="Marlon Luís de Col (marlondecol)"><img src="../assets/readme/contributors/marlondecol.svg" width="44" height="44" alt="marlondecol" /></a>
+</p>
+
 انضم إلى [مجتمع Oleafly على Discord](https://oleafly.com/discord) لطرح الأسئلة، وطلب المساعدة في عملية بناء مستعصية، وعرض ما تكتبه، والتصويت على ما سيُبنى لاحقًا. المجتمع مجاني ومفتوح للجميع. هل تفضّل GitHub؟ أبلغ عن خطأ أو اطلب ميزة في [مشكلات GitHub](https://github.com/Oleafly/Oleafly/issues).
+
+لا يجمع Oleafly أي بيانات استخدام، فلا يعرف أحد من يستخدمه حتى تقول أنت. هل تكتب أطروحتك أو أوراق مختبرك به؟ قل مرحبًا في [من يستخدم Oleafly؟](https://github.com/Oleafly/Oleafly/discussions/502).
 
 يبني Oleafly [Prajwal Murthy](https://github.com/prajwal-svm) والمساهمون. نرحب بالمساهمات في الكود والقوالب والوثائق والملاحظات. اقرأ [دليل المساهمة](../../CONTRIBUTING.md) للمشاركة.
 
