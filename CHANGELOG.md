@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Add custom provider** in Settings > AI has a llama.cpp preset. Pick it and it fills in `http://localhost:9931/v1`, where `llama-server` listens by default. Leave the key empty unless you started the server with `--api-key`. When you click Add provider, Oleafly checks that the server is running and loads its models.
 - When you zoom the app with a shortcut or from the command palette, a small bar at the bottom of the window shows the new zoom level. Use its − and + buttons to zoom out or in, or Reset (Cmd+0 or Ctrl+0) to go back to 100%. It goes away after two seconds, unless the pointer is resting on it.
 - The source editor has an outline rail halfway down its right edge: a short mark for each heading, with the section you're reading highlighted. Hover over it or click it to see the outline, with section numbers and the PDF page of each heading from the last compile, and pick a heading to go there. In a project split across files, it shows the whole document from any file the main document includes.
-- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save. Links to other sites open in your browser.
+- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save. Links to other sites open in your browser. The preview can't open hidden files and folders in the project, and it loads nothing from other websites, so a page that pulls scripts or fonts from a CDN shows without them.
 - The source editor highlights HTML, JavaScript, TypeScript, JSX, TSX, Python, R, Julia and SCSS files. Before, they showed as plain text.
 - `.bib` files have a Preview mode too: a searchable list of the references in the file, with title, authors, year and venue. Pick one to see its entry in the source beside the list.
 - CSV and TSV files open as a table in Preview, with filtering, sorting by column and a summary of each number column, and Excel or OpenDocument spreadsheets (`.xlsx`, `.xls`, `.ods`) open straight into that table instead of as unreadable text.
@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF dark mode draws pages in your theme's colors instead of pure black. In the dark theme a page takes the theme's panel color and panel text color, so a theme like One Dark gets a page that matches it. Only the pages change now: the space around them, search highlights and messages keep the app's colors, and the light frame dark mode used to leave around each page is gone.
 - In PDF dark mode, photos, screenshots and other pictures on a page keep their own colors instead of turning into negatives. Text and charts drawn as lines and shapes still follow the dark page. A scanned page, which is one big picture, goes dark as before.
 - You can pick the dark page and text colors under the PDF dark mode switch in Settings > Appearance > PDF Preview. They're in Theme customization too, so a theme file can set them as `pdf-dark-page` and `pdf-dark-text`, and the light and dark themes each keep their own pair. A light page with dark text gives you a tinted page, such as sepia, instead of an inverted one.
+- The collaboration server copies its database to `<db>.before-upgrade` before it upgrades it.
 
 ### Fixed
 
@@ -89,6 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - The collaboration server now sends email with lettre 0.11.24. Version 0.11.23 had six security advisories (RUSTSEC-2026-0560 to RUSTSEC-2026-0565). An attacker on the network could forge the mail server's replies over STARTTLS or an unencrypted connection, and a bare line break in a message let a sender inject SMTP commands. Mail to an address with a quoted local part could reach someone else, and a malformed reply or display name made the mail code panic or buffer a reply without limit.
+- On a collaboration server, editors can no longer change another member's comment. Reactions must be an emoji, with at most 20 per person per message, and a mention list stops at 100 names.
+- A log export without private details now also removes home folder paths, URL queries and tokens.
 
 ## [0.4.12] - 2026-11-12
 
