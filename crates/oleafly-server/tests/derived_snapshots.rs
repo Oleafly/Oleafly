@@ -13,7 +13,7 @@ use oleafly_server::projects;
 use oleafly_server::test_support::{test_config, MockS3, MockS3Fault, TestDevice};
 use people::{
     call, connect, create_project, first_snapshot, grant, next_frame, put_bytes, send_update,
-    share_project, signed_by, stage, stage_with, subscribe, text_of, Person, Socket, Stage,
+    shared_with_alice, signed_by, stage, stage_with, subscribe, text_of, Person, Socket, Stage,
     SNAPSHOT_TEXT,
 };
 use reqwest::{Method, StatusCode};
@@ -29,25 +29,6 @@ fn snapshot_often(stage: &Stage) {
             build_after: 1,
             keep_updates: 1,
         });
-}
-
-async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(
-            &stage.server,
-            &stage.bob,
-            project,
-            &stage.alice,
-            ProjectRole::Editor
-        )
-        .await
-        .status(),
-        StatusCode::OK
-    );
-    project
 }
 
 struct Writer {

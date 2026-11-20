@@ -1621,12 +1621,10 @@ function FileManagementTab() {
   );
 }
 
-function isAppearanceTabId(value: unknown): value is AppearanceTabId {
-  return APPEARANCE_TABS.some((tab) => tab.id === value);
-}
+const APPEARANCE_TAB_IDS: readonly AppearanceTabId[] = APPEARANCE_TABS.map((tab) => tab.id);
 
 function isAppearanceTab(value: unknown, notesEnabled: boolean): value is AppearanceTabId {
-  return isAppearanceTabId(value) && (value !== "notes" || notesEnabled);
+  return APPEARANCE_TAB_IDS.includes(value as AppearanceTabId) && (value !== "notes" || notesEnabled);
 }
 
 export function AppearanceSection() {
@@ -1637,7 +1635,7 @@ export function AppearanceSection() {
   const [chosenTab, setChosenTab] = useSettingsTab<AppearanceTabId>(
     "appearance",
     () => (isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app"),
-    isAppearanceTabId,
+    APPEARANCE_TAB_IDS,
   );
   const activeTab = chosenTab === "notes" && !notesEnabled ? "app" : chosenTab;
   const tabs = APPEARANCE_TABS.filter((tab) => tab.id !== "notes" || notesEnabled);

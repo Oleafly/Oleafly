@@ -33,7 +33,16 @@ const SCANNED_PAGE_COVERAGE = 0.8;
 
 const PROBE_LONGEST_SIDE_PX = 256;
 
+export const MAX_PDF_FIGURES_PER_PAGE = 32;
+
+interface TrimmedFigures {
+  readonly figures: readonly PdfFigure[];
+  readonly pixelsPerUnit: number;
+}
+
 const figuresByPage = new WeakMap<object, readonly PdfFigure[]>();
+
+const trimmedByPage = new WeakMap<object, TrimmedFigures>();
 
 export function knowsPdfFigures(page: object): boolean {
   return figuresByPage.has(page);
@@ -69,10 +78,9 @@ export function rememberPdfFigures(
   return true;
 }
 
-export function pdfFigureBoxes(page: object, viewport: PdfFigureViewport): PdfFigureBox[] {
-  const figures = figuresByPage.get(page);
+function figureBoxes(figures: readonly PdfFigure[], viewport: PdfFigureViewport): PdfFigureBox[] | null {
   const toViewport = viewport.convertToViewportPoint;
-  if (!figures || !toViewport || viewport.width <= 0 || viewport.height <= 0) return [];
+  if (!toViewport || viewport.width <= 0 || viewport.height <= 0) return null;
   const boxes: PdfFigureBox[] = [];
   let coverage = 0;
   for (const figure of figures) {
@@ -86,10 +94,39 @@ export function pdfFigureBoxes(page: object, viewport: PdfFigureViewport): PdfFi
       bottom: Math.min(1, Math.max(...ys)),
     };
     if (box.right <= box.left || box.bottom <= box.top) continue;
+    if (boxes.length === MAX_PDF_FIGURES_PER_PAGE) return null;
     coverage += (box.right - box.left) * (box.bottom - box.top);
     boxes.push(box);
   }
-  return coverage >= SCANNED_PAGE_COVERAGE ? [] : boxes;
+  return coverage >= SCANNED_PAGE_COVERAGE ? null : boxes;
+}
+
+export function pdfFigureBoxes(page: object, viewport: PdfFigureViewport): PdfFigureBox[] {
+  const figures = figuresByPage.get(page);
+  return (figures && figureBoxes(figures, viewport)) ?? [];
+}
+
+function pdfExtent(viewport: PdfFigureViewport, toX: number, toY: number): number {
+  const toPdf = viewport.convertToPdfPoint;
+  if (!toPdf) return 0;
+  const [x0, y0] = toPdf.call(viewport, 0, 0);
+  const [x1, y1] = toPdf.call(viewport, toX, toY);
+  return Math.hypot(x1 - x0, y1 - y0);
+}
+
+function pixelsPerUnit(viewport: PdfFigureViewport, canvas: { width: number }): number {
+  const extent = pdfExtent(viewport, viewport.width, 0);
+  return extent > 0 ? canvas.width / extent : 0;
+}
+
+function inPdfSpace(box: PdfFigureBox, viewport: PdfFigureViewport): PdfFigure | null {
+  const toPdf = viewport.convertToPdfPoint;
+  if (!toPdf) return null;
+  const point = (x: number, y: number): PdfPoint => {
+    const [pdfX, pdfY] = toPdf.call(viewport, x * viewport.width, y * viewport.height);
+    return [pdfX, pdfY];
+  };
+  return [point(box.left, box.top), point(box.left, box.bottom), point(box.right, box.top)];
 }
 
 const EDGE_SEARCH_PX = 3;
@@ -158,47 +195,112 @@ function percent(fraction: number): string {
   return `${fraction * 100}%`;
 }
 
+const WHOLE_PAGE: Omit<PdfFigureSource, "canvas"> = { left: 0, top: 0, width: 1, height: 1 };
+
+const NO_INSET = { x: 0, y: 0 };
+
+function pixelRect(box: PdfFigureBox, source: PdfFigureSource): PixelRect | null {
+  const { canvas } = source;
+  const toX = (fraction: number) => ((fraction - source.left) / source.width) * canvas.width;
+  const toY = (fraction: number) => ((fraction - source.top) / source.height) * canvas.height;
+  const rect = {
+    x: Math.max(0, Math.round(toX(box.left))),
+    y: Math.max(0, Math.round(toY(box.top))),
+    right: Math.min(canvas.width, Math.round(toX(box.right))),
+    bottom: Math.min(canvas.height, Math.round(toY(box.bottom))),
+  };
+  return rect.right > rect.x && rect.bottom > rect.y ? rect : null;
+}
+
+function usable(source: PdfFigureSource): boolean {
+  return source.canvas.width > 0 && source.canvas.height > 0 && source.width > 0 && source.height > 0;
+}
+
+function trimPdfFigures(boxes: readonly PdfFigureBox[], canvas: HTMLCanvasElement): PdfFigureBox[] {
+  const source = { canvas, ...WHOLE_PAGE };
+  if (boxes.length === 0 || !usable(source)) return [];
+  const context = canvas.getContext("2d");
+  const read: ReadPixels | null = context ? (x, y, width, height) => context.getImageData(x, y, width, height).data : null;
+  const trimmed: PdfFigureBox[] = [];
+  for (const box of boxes) {
+    const rounded = pixelRect(box, source);
+    if (!rounded) continue;
+    const { x, y, right, bottom } = read ? trimPaperEdges(rounded, read, canvas) : rounded;
+    if (right <= x || bottom <= y) continue;
+    trimmed.push({ left: x / canvas.width, top: y / canvas.height, right: right / canvas.width, bottom: bottom / canvas.height });
+  }
+  return trimmed;
+}
+
 export function paintPdfFigures(
   boxes: readonly PdfFigureBox[],
   source: PdfFigureSource,
   after: Element,
+  inset: { x: number; y: number } = NO_INSET,
 ): HTMLCanvasElement[] {
+  if (!usable(source)) return [];
   const { canvas } = source;
-  if (canvas.width <= 0 || canvas.height <= 0 || source.width <= 0 || source.height <= 0) return [];
-  const sourceContext = canvas.getContext("2d");
-  const read: ReadPixels | null = sourceContext
-    ? (x, y, width, height) => sourceContext.getImageData(x, y, width, height).data
-    : null;
-  const painted: HTMLCanvasElement[] = [];
+  const rects: PixelRect[] = [];
   for (const box of boxes) {
-    const toX = (fraction: number) => ((fraction - source.left) / source.width) * canvas.width;
-    const toY = (fraction: number) => ((fraction - source.top) / source.height) * canvas.height;
-    const rounded = {
-      x: Math.max(0, Math.round(toX(box.left))),
-      y: Math.max(0, Math.round(toY(box.top))),
-      right: Math.min(canvas.width, Math.round(toX(box.right))),
-      bottom: Math.min(canvas.height, Math.round(toY(box.bottom))),
-    };
-    if (rounded.right <= rounded.x || rounded.bottom <= rounded.y) continue;
-    const { x, y, right, bottom } = read ? trimPaperEdges(rounded, read, canvas) : rounded;
-    const width = right - x;
-    const height = bottom - y;
-    if (width <= 0 || height <= 0) continue;
-    const figure = document.createElement("canvas");
-    const context = figure.getContext("2d");
-    if (!context) continue;
-    figure.className = PDF_FIGURE_CLASSES;
-    figure.setAttribute("role", "presentation");
-    figure.setAttribute("aria-hidden", "true");
-    figure.width = width;
-    figure.height = height;
-    context.drawImage(canvas, x, y, width, height, 0, 0, width, height);
-    figure.style.left = percent(source.left + (x / canvas.width) * source.width);
-    figure.style.top = percent(source.top + (y / canvas.height) * source.height);
-    figure.style.width = percent((width / canvas.width) * source.width);
-    figure.style.height = percent((height / canvas.height) * source.height);
-    painted.push(figure);
+    const rect = pixelRect(
+      { left: box.left + inset.x, top: box.top + inset.y, right: box.right - inset.x, bottom: box.bottom - inset.y },
+      source,
+    );
+    if (rect) rects.push(rect);
   }
-  after.after(...painted);
-  return painted;
+  if (rects.length === 0) return [];
+  const x = Math.min(...rects.map((rect) => rect.x));
+  const y = Math.min(...rects.map((rect) => rect.y));
+  const width = Math.max(...rects.map((rect) => rect.right)) - x;
+  const height = Math.max(...rects.map((rect) => rect.bottom)) - y;
+  const figure = document.createElement("canvas");
+  const context = figure.getContext("2d");
+  if (!context) return [];
+  figure.className = PDF_FIGURE_CLASSES;
+  figure.setAttribute("role", "presentation");
+  figure.setAttribute("aria-hidden", "true");
+  figure.width = width;
+  figure.height = height;
+  for (const rect of rects) {
+    const across = rect.right - rect.x;
+    const down = rect.bottom - rect.y;
+    context.drawImage(canvas, rect.x, rect.y, across, down, rect.x - x, rect.y - y, across, down);
+  }
+  figure.style.left = percent(source.left + (x / canvas.width) * source.width);
+  figure.style.top = percent(source.top + (y / canvas.height) * source.height);
+  figure.style.width = percent((width / canvas.width) * source.width);
+  figure.style.height = percent((height / canvas.height) * source.height);
+  after.after(figure);
+  return [figure];
+}
+
+function trimmedFor(page: object, viewport: PdfFigureViewport, canvas: HTMLCanvasElement): PdfFigureBox[] {
+  const resolution = pixelsPerUnit(viewport, canvas);
+  const kept = trimmedByPage.get(page);
+  if (kept && kept.pixelsPerUnit >= resolution) return figureBoxes(kept.figures, viewport) ?? [];
+  const boxes = trimPdfFigures(pdfFigureBoxes(page, viewport), canvas);
+  const figures = boxes.map((box) => inPdfSpace(box, viewport));
+  if (resolution > 0 && figures.every((figure) => figure !== null)) {
+    trimmedByPage.set(page, { figures: figures as PdfFigure[], pixelsPerUnit: resolution });
+  }
+  return boxes;
+}
+
+export function paintPdfPageFigures(page: object, viewport: PdfFigureViewport, canvas: HTMLCanvasElement): HTMLCanvasElement[] {
+  if (!knowsPdfFigures(page)) return [];
+  return paintPdfFigures(trimmedFor(page, viewport, canvas), { canvas, ...WHOLE_PAGE }, canvas);
+}
+
+export function paintPdfDetailFigures(
+  page: object,
+  viewport: PdfFigureViewport,
+  source: PdfFigureSource,
+  after: Element,
+): HTMLCanvasElement[] {
+  const kept = trimmedByPage.get(page);
+  if (!kept) return paintPdfFigures(pdfFigureBoxes(page, viewport), source, after);
+  const across = kept.pixelsPerUnit * pdfExtent(viewport, viewport.width, 0);
+  const down = kept.pixelsPerUnit * pdfExtent(viewport, 0, viewport.height);
+  const inset = { x: across > 0 ? 1 / across : 0, y: down > 0 ? 1 / down : 0 };
+  return paintPdfFigures(figureBoxes(kept.figures, viewport) ?? [], source, after, inset);
 }

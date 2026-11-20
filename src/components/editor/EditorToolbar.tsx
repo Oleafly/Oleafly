@@ -224,17 +224,20 @@ export function btnControl(
   Icon: LucideIcon,
   label: string,
   onClick: () => void,
-  tooltip?: string
+  extra: { active?: boolean; disabled?: boolean; tooltip?: string; flagsMore?: boolean } = {},
 ): ToolbarControl {
   return {
     id,
     width: ICON_BUTTON_WIDTH,
+    active: extra.flagsMore ?? extra.active,
     render: () => (
-      <IconBtn onClick={onClick} title={tooltip ?? label}>
+      <IconBtn onClick={onClick} title={extra.tooltip ?? label} active={extra.active} disabled={extra.disabled}>
         <Icon className="size-4" />
       </IconBtn>
     ),
-    renderMenu: () => <ToolbarMenuItem key={id} icon={Icon} label={label} onSelect={onClick} />,
+    renderMenu: () => (
+      <ToolbarMenuItem key={id} icon={Icon} label={label} disabled={extra.disabled} checked={extra.active} onSelect={onClick} />
+    ),
   };
 }
 
@@ -392,14 +395,14 @@ export function EditorToolbar({
         Bold,
         t(($) => $.editor.toolbar.bold),
         insertBold,
-        t(($) => $.editor.toolbar.boldWithShortcut, { shortcut: shortcut("⌘B") }),
+        { tooltip: t(($) => $.editor.toolbar.boldWithShortcut, { shortcut: shortcut("⌘B") }) },
       ),
       btnControl(
         "italic",
         Italic,
         t(($) => $.editor.toolbar.italic),
         insertItalic,
-        t(($) => $.editor.toolbar.italicWithShortcut, { shortcut: shortcut("⌘I") }),
+        { tooltip: t(($) => $.editor.toolbar.italicWithShortcut, { shortcut: shortcut("⌘I") }) },
       ),
       btnControl("underline", Underline, t(($) => $.editor.toolbar.underline), insertUnderline),
       dividerControl("divider-2"),
@@ -451,21 +454,21 @@ export function EditorToolbar({
         Rows3,
         t(($) => $.editor.toolbar.alignEnvironment),
         insertAlign,
-        t(($) => $.editor.toolbar.insertAlignEnvironment),
+        { tooltip: t(($) => $.editor.toolbar.insertAlignEnvironment) },
       ),
       btnControl(
         "equation",
         Sigma,
         t(($) => $.editor.toolbar.equationEnvironment),
         insertEquation,
-        t(($) => $.editor.toolbar.insertEquationEnvironment),
+        { tooltip: t(($) => $.editor.toolbar.insertEquationEnvironment) },
       ),
       btnControl(
         "fraction",
         Divide,
         t(($) => $.editor.toolbar.fraction),
         insertFraction,
-        t(($) => $.editor.toolbar.insertFraction),
+        { tooltip: t(($) => $.editor.toolbar.insertFraction) },
       ),
       dividerControl("divider-5"),
       toolbarPicker("symbols", ICON_BUTTON_WIDTH, (menuRow) => <SymbolPicker menuRow={menuRow} />),

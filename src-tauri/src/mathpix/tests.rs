@@ -458,6 +458,7 @@ async fn a_cancel_during_polling_stops_the_wait_promptly() {
         }
     })
     .await;
+    let api = Api::for_tests(&server.base);
     let cancelled = Arc::new(AtomicBool::new(false));
     let stop = Arc::clone(&cancelled);
     tokio::spawn(async move {
@@ -465,7 +466,7 @@ async fn a_cancel_during_polling_stops_the_wait_promptly() {
         stop.store(true, Ordering::SeqCst);
     });
     let started = std::time::Instant::now();
-    let error = Api::for_tests(&server.base)
+    let error = api
         .pdf_wait(&keys(), "ID5", &cancelled, &|_| {})
         .await
         .unwrap_err();

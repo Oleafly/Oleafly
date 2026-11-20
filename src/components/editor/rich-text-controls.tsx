@@ -59,7 +59,7 @@ export function alignmentOf(editor: Editor): TextAlign {
   return "left";
 }
 
-const TASK_MARKER = /^\[[ xX]\](?:\s|$)/u;
+export const TASK_MARKER = /^\[[ xX]\](?=\s|$)/u;
 
 interface AlignedBlock {
   pos: number;
@@ -179,15 +179,15 @@ export function currentLinkHref(editor: Editor): string {
   return editor.isActive("link") && typeof href === "string" ? href : "";
 }
 
-export function applyLink(editor: Editor, value: string): boolean {
-  if (!value) return editor.chain().focus().extendMarkRange("link").unsetLink().run();
+export function applyLink(editor: Editor, href: string, text = href): boolean {
+  if (!href) return editor.chain().focus().extendMarkRange("link").unsetLink().run();
   const { empty } = editor.state.selection;
-  if (!empty || editor.isActive("link")) return editor.chain().focus().extendMarkRange("link").setLink({ href: value }).run();
-  if (!editor.can().setLink({ href: value })) return false;
+  if (!empty || editor.isActive("link")) return editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+  if (!editor.can().setLink({ href })) return false;
   return editor
     .chain()
     .focus()
-    .insertContent({ type: "text", text: value, marks: [{ type: "link", attrs: { href: value } }] })
+    .insertContent({ type: "text", text, marks: [{ type: "link", attrs: { href } }] })
     .unsetMark("link")
     .run();
 }

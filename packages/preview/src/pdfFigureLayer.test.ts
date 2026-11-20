@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   knowsPdfFigures,
+  MAX_PDF_FIGURES_PER_PAGE,
+  paintPdfDetailFigures,
   paintPdfFigures,
+  paintPdfPageFigures,
   pdfFigureBoxes,
   pdfFigureProbeScale,
   rememberPdfFigures,
@@ -178,5 +181,109 @@ describe("PDF figure layer", () => {
   it("probes at a small, fixed size whatever the page", () => {
     expect(pdfFigureProbeScale({ width: 612, height: 792 }) * 792).toBeCloseTo(256);
     expect(pdfFigureProbeScale({ width: 0, height: 0 })).toBe(1);
+  });
+});
+
+describe("PDF figure layer cost", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  function stubContexts(ink?: { x: number; y: number; right: number; bottom: number }) {
+    const drawImage = vi.fn();
+    const getImageData = vi.fn((x: number, y: number, width: number, height: number) => ({
+      data: ink ? paperWithInk(ink, x, y, width, height) : new Uint8ClampedArray(width * height * 4),
+    }));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage, getImageData } as never);
+    return { drawImage, getImageData };
+  }
+
+  function sized(width: number, height: number): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    document.body.append(canvas);
+    return canvas;
+  }
+
+  function grid(count: number): number[][] {
+    return Array.from({ length: count }, (_, index) => {
+      const left = (index % 25) / 25;
+      const top = Math.floor(index / 25) / 25;
+      return imageAt(left, top, left + 0.02, top + 0.02);
+    });
+  }
+
+  function countCanvases(): () => number {
+    const created = vi.spyOn(document, "createElement");
+    return () => created.mock.calls.filter(([tag]) => tag === "canvas").length;
+  }
+
+  it("leaves a page of hundreds of small images to the page colors, with no layer and no reads", () => {
+    const pdf = page(...grid(500));
+    rememberPdfFigures(pdf, viewport(1), { width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    const base = sized(1200, 1600);
+    const detail = sized(1200, 1600);
+    const { getImageData } = stubContexts();
+    const canvases = countCanvases();
+    expect(paintPdfPageFigures(pdf, viewport(2), base)).toEqual([]);
+    expect(paintPdfDetailFigures(pdf, viewport(2), { canvas: detail, left: 0, top: 0, width: 0.5, height: 0.5 }, base)).toEqual([]);
+    expect(canvases()).toBe(0);
+    expect(getImageData).not.toHaveBeenCalled();
+    expect(pdfFigureBoxes(pdf, viewport(1))).toEqual([]);
+  });
+
+  it("draws a page with as many figures as it allows into one layer, reading four edges of each once", () => {
+    const pdf = page(...grid(MAX_PDF_FIGURES_PER_PAGE));
+    rememberPdfFigures(pdf, viewport(1), { width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    const base = sized(1200, 1600);
+    const { drawImage, getImageData } = stubContexts();
+    const canvases = countCanvases();
+    const layers = paintPdfPageFigures(pdf, viewport(2), base);
+    expect(layers).toHaveLength(1);
+    expect(canvases()).toBe(1);
+    expect(drawImage).toHaveBeenCalledTimes(MAX_PDF_FIGURES_PER_PAGE);
+    expect(getImageData).toHaveBeenCalledTimes(4 * MAX_PDF_FIGURES_PER_PAGE);
+    expect(base.nextElementSibling).toBe(layers[0]);
+  });
+
+  it("puts every figure of a page on one layer at its own place", () => {
+    const pdf = page(imageAt(0.1, 0.1, 0.3, 0.2), imageAt(0.5, 0.6, 0.9, 0.8));
+    rememberPdfFigures(pdf, viewport(1), { width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    const base = sized(1000, 1000);
+    const { drawImage } = stubContexts();
+    const [layer] = paintPdfFigures(pdfFigureBoxes(pdf, viewport(1)), { canvas: base, left: 0, top: 0, width: 1, height: 1 }, base);
+    expect([layer.width, layer.height]).toEqual([800, 700]);
+    expect(drawImage).toHaveBeenCalledWith(base, 100, 100, 200, 100, 0, 0, 200, 100);
+    expect(drawImage).toHaveBeenCalledWith(base, 500, 600, 400, 200, 400, 500, 400, 200);
+    expect([layer.style.left, layer.style.top, layer.style.width, layer.style.height]).toEqual(["10%", "10%", "80%", "70%"]);
+  });
+
+  it("reuses the trimmed edges for the detail canvas without reading it", () => {
+    const pdf = page(imageAt(0.1, 0.25, 0.6, 0.5));
+    rememberPdfFigures(pdf, viewport(1), { width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    const base = sized(1200, 1600);
+    const { drawImage, getImageData } = stubContexts({ x: 121, y: 401, right: 719, bottom: 799 });
+    paintPdfPageFigures(pdf, viewport(2), base);
+    expect(drawImage).toHaveBeenCalledWith(base, 121, 401, 598, 398, 0, 0, 598, 398);
+    const reads = getImageData.mock.calls.length;
+    expect(reads).toBe(4);
+
+    const detail = sized(1200, 1600);
+    for (let pass = 0; pass < 3; pass++) {
+      paintPdfDetailFigures(pdf, viewport(2), { canvas: detail, left: 0, top: 0, width: 0.5, height: 0.5 }, base);
+    }
+    expect(getImageData).toHaveBeenCalledTimes(reads);
+    expect(drawImage).toHaveBeenLastCalledWith(detail, 244, 804, 956, 792, 0, 0, 956, 792);
+  });
+
+  it("trims a page again only when it is drawn sharper than before", () => {
+    const pdf = page(imageAt(0.1, 0.25, 0.6, 0.5));
+    rememberPdfFigures(pdf, viewport(1), { width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    const { getImageData } = stubContexts();
+    paintPdfPageFigures(pdf, viewport(2), sized(1200, 1600));
+    paintPdfPageFigures(pdf, viewport(2), sized(1200, 1600));
+    paintPdfPageFigures(pdf, viewport(1, 90), sized(800, 600));
+    expect(getImageData).toHaveBeenCalledTimes(4);
+    paintPdfPageFigures(pdf, viewport(3), sized(1800, 2400));
+    expect(getImageData).toHaveBeenCalledTimes(8);
   });
 });

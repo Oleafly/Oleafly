@@ -55,7 +55,7 @@ import { collabErrorCode } from "../errors";
 import { canCommentProjectRole } from "../roles";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
-import { commentFailure, refusedOutright } from "./refusals";
+import { commentFailure, refusedOutright, reported } from "./refusals";
 import {
   commentDraftIn,
   editorComments,
@@ -515,7 +515,6 @@ function othersWrote(before: readonly CollabCommentThread[], after: readonly Col
   });
 }
 
-/** The file a shared note keeps its text in, while that note is the live project. */
 function notePath(projectId: string): string | null {
   if (useCollabLiveNote.getState().noteId !== projectId) return null;
   return useFilesStore.getState().projects.find((project) => project.id === projectId)?.main_doc ?? NOTE_FILE;
@@ -649,7 +648,7 @@ export async function createThread(body: string): Promise<void> {
   if (!draft) return;
   let thread: CollabCommentThread;
   try {
-    thread = await createAtEditor(projectId, draft, body);
+    thread = await reported("collab comment create", () => createAtEditor(projectId, draft, body));
   } catch (error) {
     if (!refusedOutright(error)) throw error;
     refuse({ threadId: "", fileId: "", body, reason: commentFailure(error), quote: draft.quote, path: draft.path });
@@ -668,7 +667,10 @@ export async function createThread(body: string): Promise<void> {
 
 export async function replyToThread(thread: CollabCommentThread, body: string): Promise<void> {
   try {
-    const message = await collabCommentReply(requireProject(), thread.fileId, thread.id, body, commentMembers());
+    const projectId = requireProject();
+    const message = await reported("collab comment reply", () =>
+      collabCommentReply(projectId, thread.fileId, thread.id, body, commentMembers()),
+    );
     patchThread(thread.id, (current) => withMessage(current, message));
   } catch (error) {
     if (!refusedOutright(error)) throw error;
@@ -677,12 +679,16 @@ export async function replyToThread(thread: CollabCommentThread, body: string): 
 }
 
 export async function editMessage(thread: CollabCommentThread, messageId: string, body: string): Promise<void> {
-  const message = await collabCommentEdit(requireProject(), thread.fileId, thread.id, messageId, body, commentMembers());
+  const projectId = requireProject();
+  const message = await reported("collab comment edit", () =>
+    collabCommentEdit(projectId, thread.fileId, thread.id, messageId, body, commentMembers()),
+  );
   patchThread(thread.id, (current) => withMessage(current, message));
 }
 
 export async function deleteMessage(thread: CollabCommentThread, messageId: string): Promise<void> {
-  await collabCommentDelete(requireProject(), thread.fileId, thread.id, messageId);
+  const projectId = requireProject();
+  await reported("collab comment delete", () => collabCommentDelete(projectId, thread.fileId, thread.id, messageId));
   patchThread(thread.id, (current) => ({
     ...current,
     messages: current.messages.map((entry) => (entry.id === messageId ? { ...entry, body: "", deleted: true } : entry)),
@@ -690,7 +696,8 @@ export async function deleteMessage(thread: CollabCommentThread, messageId: stri
 }
 
 export async function removeMessage(thread: CollabCommentThread, messageId: string): Promise<void> {
-  await collabCommentRemove(requireProject(), thread.fileId, thread.id, messageId);
+  const projectId = requireProject();
+  await reported("collab comment remove", () => collabCommentRemove(projectId, thread.fileId, thread.id, messageId));
   patchThread(thread.id, (current) => ({
     ...current,
     messages: current.messages.map((entry) =>
@@ -700,7 +707,8 @@ export async function removeMessage(thread: CollabCommentThread, messageId: stri
 }
 
 export async function resolveThread(thread: CollabCommentThread): Promise<void> {
-  const next = await collabCommentResolve(requireProject(), thread.fileId, thread.id);
+  const projectId = requireProject();
+  const next = await reported("collab comment resolve", () => collabCommentResolve(projectId, thread.fileId, thread.id));
   patchThread(thread.id, () => next);
 }
 
@@ -710,17 +718,22 @@ export async function reactToComment(
   emoji: string,
   on: boolean,
 ): Promise<void> {
-  const next = await collabCommentReact(requireProject(), thread.fileId, thread.id, messageId, emoji, on);
+  const projectId = requireProject();
+  const next = await reported("collab comment react", () =>
+    collabCommentReact(projectId, thread.fileId, thread.id, messageId, emoji, on),
+  );
   patchThread(thread.id, () => next);
 }
 
 export async function reopenThread(thread: CollabCommentThread): Promise<void> {
-  const next = await collabCommentReopen(requireProject(), thread.fileId, thread.id);
+  const projectId = requireProject();
+  const next = await reported("collab comment reopen", () => collabCommentReopen(projectId, thread.fileId, thread.id));
   patchThread(thread.id, () => next);
 }
 
 export async function deleteThread(thread: CollabCommentThread): Promise<void> {
-  await collabCommentThreadDelete(requireProject(), thread.fileId, thread.id);
+  const projectId = requireProject();
+  await reported("collab comment thread delete", () => collabCommentThreadDelete(projectId, thread.fileId, thread.id));
   patchThread(thread.id, () => null);
 }
 
@@ -765,7 +778,6 @@ function sameNoteView(left: NoteCommentView, right: NoteCommentView): boolean {
   return left.spans === right.spans && left.selected === right.selected && left.draft === right.draft;
 }
 
-/** Draws the open thread list in the shared note that is live, and clears the note it leaves. */
 function noteMarks(): { sync: () => void; clear: () => void } {
   let shown: { surface: NoteCommentSurface; view: NoteCommentView } | null = null;
   const clear = () => {

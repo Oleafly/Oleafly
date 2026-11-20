@@ -718,7 +718,7 @@ fn shell_command(
     #[cfg(windows)]
     let mut c = {
         let mut c = tokio::process::Command::new("cmd.exe");
-        c.args(["/S", "/C"])
+        c.args(oleafly_sandbox::cmdline::CMD_SWITCHES)
             .raw_arg(oleafly_sandbox::cmdline::cmd_tail(command)?);
         c
     };
@@ -957,6 +957,17 @@ mod tests {
         let plain = shell_command(script, &crate::terminal::env::CliEnv::default()).unwrap();
         let envs: Vec<_> = plain.as_std().get_envs().collect();
         assert!(envs.is_empty(), "{envs:?}");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_windows_shell_skips_autorun_commands_like_the_cli() {
+        let command = shell_command("echo hi", &crate::terminal::env::CliEnv::default()).unwrap();
+        let args: Vec<_> = command.as_std().get_args().collect();
+        assert_eq!(
+            args[..3],
+            oleafly_sandbox::cmdline::CMD_SWITCHES.map(std::ffi::OsStr::new)
+        );
     }
 
     #[cfg(not(windows))]

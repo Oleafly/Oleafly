@@ -418,53 +418,6 @@ pub fn latexmk_owned_path_text(
     latexmk_absolute_path_text(&shortened, windows).filter(|text| text.is_ascii())
 }
 
-pub fn wrapper_safe_arg(arg: &str) -> Option<String> {
-    const RESPELLED_BARE: [char; 7] = ['\'', '[', ']', '{', '}', '*', '?'];
-    let needs_quotes =
-        arg.contains(RESPELLED_BARE) && !arg.contains(['"', ' ', '\t', '\n', '\r', '\0']);
-    needs_quotes.then(|| {
-        let trailing = arg.len() - arg.trim_end_matches('\\').len();
-        format!("\"{arg}{}\"", "\\".repeat(trailing))
-    })
-}
-
-pub fn is_windows_batch_script(program: &Path) -> bool {
-    program
-        .extension()
-        .and_then(OsStr::to_str)
-        .is_some_and(|extension| {
-            extension.eq_ignore_ascii_case("bat") || extension.eq_ignore_ascii_case("cmd")
-        })
-}
-
-pub fn add_wrapper_safe_args<S: AsRef<OsStr>>(
-    command: &mut std::process::Command,
-    program: &Path,
-    args: &[S],
-) {
-    let quote = cfg!(windows) && !is_windows_batch_script(program);
-    for arg in args {
-        let arg = arg.as_ref();
-        match arg.to_str().and_then(wrapper_safe_arg).filter(|_| quote) {
-            Some(quoted) => push_raw_arg(command, quoted),
-            None => {
-                command.arg(arg);
-            }
-        }
-    }
-}
-
-#[cfg(windows)]
-fn push_raw_arg(command: &mut std::process::Command, text: String) {
-    use std::os::windows::process::CommandExt;
-    command.raw_arg(text);
-}
-
-#[cfg(not(windows))]
-fn push_raw_arg(command: &mut std::process::Command, text: String) {
-    command.arg(text);
-}
-
 pub fn validate_latexmk_path_characters(path: &str) -> crate::Result<()> {
     let safe = path.chars().all(|character| {
         if !character.is_ascii() {

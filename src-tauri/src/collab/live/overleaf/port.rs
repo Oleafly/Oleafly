@@ -20,7 +20,7 @@ use oleafly_ot::DocMessage;
 
 use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
-use crate::collab::disk::{safe_target, sha256_hex};
+use crate::collab::disk::{exists_exact, safe_target, sha256_hex};
 use crate::collab::live::kept::{KeptFile, KeptKind, KeptPayload};
 use crate::collab::live::payloads::{
     AccountChangedPayload, DocPendingPayload, OverleafMembersPayload, PresenceLeftPayload,
@@ -34,7 +34,6 @@ pub(crate) struct AppOverleafPort {
     mirror: Arc<Mirror>,
 }
 
-/// Work for a document whose path the mirror doesn't know yet (see `with_path`).
 pub(crate) type Waiting = Box<dyn FnOnce(&AppOverleafPort) + Send>;
 
 impl AppOverleafPort {
@@ -59,6 +58,13 @@ impl AppOverleafPort {
         .map(|(_, meta)| meta)
     }
 
+    fn local_target(&self, path: &str) -> Option<std::path::PathBuf> {
+        let path = self.mirror.disk_path(path);
+        exists_exact(&self.mirror.disk.root, &path)
+            .then(|| safe_target(&self.mirror.disk.root, &path))
+            .flatten()
+    }
+
     fn notice(&self, notice: OverleafNotice) {
         self.mirror
             .disk
@@ -69,34 +75,40 @@ impl AppOverleafPort {
             });
     }
 
-    /// Runs `work` with the document's path. The session reports merges, reviews and
-    /// faults while it joins, before the mirror holds the session it would name a new
-    /// file from; such work waits for `started` instead of being dropped. After that, a
-    /// document with no path is gone and its work is skipped.
     fn with_path(&self, doc: &DocId, work: impl FnOnce(&AppOverleafPort, String) + Send + 'static) {
+        self.with_path_else(doc, move |port, path| {
+            if let Some(path) = path {
+                work(port, path);
+            }
+        });
+    }
+
+    fn with_path_else(
+        &self,
+        doc: &DocId,
+        work: impl FnOnce(&AppOverleafPort, Option<String>) + Send + 'static,
+    ) {
         if let Some(path) = self.mirror.path_of(doc) {
-            work(self, path);
+            work(self, Some(path));
             return;
         }
         let mut waiting = guard(&self.mirror.waiting);
         if let Some(queue) = waiting.as_mut() {
             let doc = doc.clone();
             queue.push(Box::new(move |port: &AppOverleafPort| {
-                if let Some(path) = port.mirror.path_of(&doc) {
-                    work(port, path);
-                }
+                let path = port.mirror.path_of(&doc);
+                work(port, path);
             }));
             return;
         }
         drop(waiting);
-        // The session was stored between the first look and the lock.
-        if let Some(path) = self.mirror.path_of(doc) {
-            work(self, path);
-        }
+        work(self, self.mirror.path_of(doc));
     }
 
-    /// The session is in place: run the work that waited for a document's path.
     pub(crate) fn started(&self) {
+        if let Some(session) = self.mirror.session.get().and_then(std::sync::Weak::upgrade) {
+            self.mirror.files(&session.nodes());
+        }
         let queue = guard(&self.mirror.waiting).take().unwrap_or_default();
         for work in queue {
             work(self);
@@ -125,8 +137,20 @@ impl AppOverleafPort {
     }
 
     fn keep(&self, doc: &DocId, text: String) {
-        let id = doc.0.clone();
-        self.with_path(doc, move |port, path| port.keep_at(id, path, &text));
+        let kept = doc.clone();
+        self.with_path_else(doc, move |port, path| {
+            match path.or_else(|| port.mirror.last_path(&kept)) {
+                Some(path) => port.keep_at(kept.0, path, &text),
+                None => {
+                    let _ = crate::project::append_app_log(format!(
+                        "Live editing could not keep {} characters of unsent text of document {} in project {}: the service no longer lists it and it had no known path",
+                        text.chars().count(),
+                        kept.0,
+                        port.mirror.disk.project_id
+                    ));
+                }
+            }
+        });
     }
 
     fn keep_at(&self, id: String, path: String, text: &str) {
@@ -140,7 +164,8 @@ impl AppOverleafPort {
             }),
             Err(error) => {
                 let _ = crate::project::append_app_log(format!(
-                    "Live editing could not keep unsent text of {path} in project {}: {error}",
+                    "Live editing could not keep {} characters of unsent text of {path} (document {id}) in project {}: {error}",
+                    text.chars().count(),
                     self.mirror.disk.project_id
                 ));
             }
@@ -266,6 +291,11 @@ pub(super) fn announce_role(mirror: &Mirror, role: ProjectRole, tracking: bool) 
 
 impl LivePort for AppOverleafPort {
     fn state(&self, state: LiveState) {
+        if let LiveState::Ended(LiveEnd::Failed(reason)) = &state {
+            self.mirror.disk.log_once("ended", || {
+                format!("the session ended with an error: {reason}")
+            });
+        }
         self.announce_kept();
         let (status, pending) = status_of(&state);
         self.mirror.set_status(status, pending);
@@ -273,6 +303,9 @@ impl LivePort for AppOverleafPort {
 
     fn role(&self, role: Role, tracking: bool) {
         self.announce_kept();
+        if matches!(role, Role::Owner | Role::Editor) {
+            guard(&self.mirror.deletes).refused.clear();
+        }
         let role = project_role(role);
         *guard(&self.mirror.role) = Some((role, tracking));
         announce_role(&self.mirror, role, tracking);
@@ -303,6 +336,7 @@ impl LivePort for AppOverleafPort {
             .collect();
         guard(&self.mirror.removing).retain(|id| !replaced.iter().any(|old| old.0 == *id));
         guard(&self.mirror.replaced).extend(replaced);
+        guard(&self.mirror.names).follow(&changes);
         self.place_early_moves(&changes);
         self.mirror.mark(std::iter::empty(), true);
     }
@@ -355,7 +389,7 @@ impl LivePort for AppOverleafPort {
             other => stop_reason(&other),
         };
         let sink = guard(&self.mirror.sinks).remove(doc);
-        if let Some(sink) = sink {
+        if let Some((_, sink)) = sink {
             sink(DocMessage::Detached {
                 reason: reason.clone(),
             });
@@ -479,26 +513,35 @@ impl LivePort for AppOverleafPort {
     }
 
     fn disk_text(&self, path: &str) -> Option<String> {
-        self.mirror.mirrored_text(path)
+        self.mirror.mirrored_text(&self.mirror.disk_path(path))
     }
 
     fn local_file(&self, path: &str) -> Option<LocalFile> {
-        let target = safe_target(&self.mirror.disk.root, path)?;
-        let bytes = std::fs::read(target).ok()?;
+        let bytes = std::fs::read(self.local_target(path)?).ok()?;
         Some(LocalFile {
             tag: sha256_hex(&bytes),
             bytes,
         })
     }
 
+    fn local_file_size(&self, path: &str) -> Option<u64> {
+        std::fs::metadata(self.local_target(path)?)
+            .ok()
+            .filter(std::fs::Metadata::is_file)
+            .map(|metadata| metadata.len())
+    }
+
     fn never_online(&self, path: &str) -> bool {
-        oleafly_online::sync::never_online(&self.mirror.disk.root, path)
+        oleafly_online::sync::never_online(&self.mirror.disk.root, &self.mirror.disk_path(path))
     }
 
     fn tree_queue(&self, changes: Vec<Queued>) {
         self.mirror.disk.host.uploads(UploadsPayload {
             project_id: self.mirror.disk.project_id.clone(),
-            files: changes.iter().filter_map(upload_row).collect(),
+            files: changes
+                .iter()
+                .filter_map(|queued| upload_row(&self.mirror, queued))
+                .collect(),
         });
     }
 
@@ -509,7 +552,7 @@ impl LivePort for AppOverleafPort {
     }
 
     fn adopt_file_text(&self, path: &str) -> Option<String> {
-        self.mirror.adopt_file_text(path)
+        self.mirror.adopt_file_text(&self.mirror.disk_path(path))
     }
 
     fn doc_pending(&self, doc: &DocId, pending: bool) {
@@ -524,7 +567,7 @@ impl LivePort for AppOverleafPort {
     }
 }
 
-pub(super) fn upload_row(queued: &Queued) -> Option<UploadFile> {
+pub(super) fn upload_row(mirror: &Mirror, queued: &Queued) -> Option<UploadFile> {
     let state = match &queued.state {
         QueueState::Waiting => match queued.change {
             TreeChange::NewDoc { .. } | TreeChange::Upload { .. } => UploadState::Waiting,
@@ -536,7 +579,7 @@ pub(super) fn upload_row(queued: &Queued) -> Option<UploadFile> {
         QueueState::Failed { .. } => UploadState::Failed,
     };
     Some(UploadFile {
-        path: queued.change.path().to_owned(),
+        path: mirror.disk_path(queued.change.path()),
         state,
         size: 0,
         limit: None,

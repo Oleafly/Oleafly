@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use axum::extract::ws::Utf8Bytes;
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
+use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
 use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
 use tokio::sync::Notify;
@@ -223,6 +224,7 @@ pub struct RoomMember {
     pub account: AccountId,
     pub frames: Outbox,
     pub control: UnboundedSender<SocketControl>,
+    pub role: Option<ProjectRole>,
 }
 
 #[derive(Default)]
@@ -271,6 +273,28 @@ impl Rooms {
         self.lock()
             .get(&project)
             .is_some_and(|room| room.iter().any(|entry| entry.connection == connection))
+    }
+
+    pub fn role_seen(
+        &self,
+        project: SharedProjectId,
+        connection: u64,
+    ) -> Option<Option<ProjectRole>> {
+        self.lock()
+            .get(&project)?
+            .iter()
+            .find(|entry| entry.connection == connection)
+            .map(|entry| entry.role)
+    }
+
+    pub fn saw_role(&self, project: SharedProjectId, connection: u64, role: ProjectRole) {
+        if let Some(entry) = self
+            .lock()
+            .get_mut(&project)
+            .and_then(|room| room.iter_mut().find(|entry| entry.connection == connection))
+        {
+            entry.role = Some(role);
+        }
     }
 
     pub fn broadcast(&self, project: SharedProjectId, except: Option<u64>, frame: &ServerFrame) {
@@ -416,6 +440,7 @@ mod tests {
                 account,
                 frames,
                 control,
+                role: None,
             },
             received,
             controls,

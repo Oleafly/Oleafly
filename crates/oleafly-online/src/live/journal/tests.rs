@@ -252,6 +252,55 @@ fn unsent_on_lists_each_project_with_its_unsent_paths_without_taking_locks() {
 }
 
 #[test]
+fn a_doc_id_that_is_not_plain_never_creates_overwrites_or_removes_a_file() {
+    let data = tempfile::tempdir().unwrap();
+    let mut journal = open(data.path(), None).unwrap();
+    let dir = journal.dir().to_path_buf();
+    let outside = dir.parent().unwrap().to_path_buf();
+    std::fs::create_dir_all(dir.join("sub")).unwrap();
+    let sentinels = [
+        outside.join("escape.json"),
+        dir.join("sub").join("inner.json"),
+        dir.join("project.json"),
+    ];
+    for sentinel in &sentinels {
+        std::fs::write(sentinel, "sentinel").unwrap();
+    }
+    let ids = [
+        "../escape".to_string(),
+        outside.join("escape").to_string_lossy().into_owned(),
+        "sub/inner".to_string(),
+        "sub\\inner".to_string(),
+        String::new(),
+        "a".repeat(200),
+        "project".to_string(),
+        "Project".to_string(),
+        "PROJECT".to_string(),
+    ];
+    let mut before = walk(data.path());
+    before.sort();
+    for id in &ids {
+        journal.put(&DocId(id.clone()), Some(record("Hello there")));
+    }
+    journal.flush().unwrap();
+    for id in &ids {
+        journal.put(&DocId(id.clone()), None);
+    }
+    journal.flush().unwrap();
+    for sentinel in &sentinels {
+        assert_eq!(
+            std::fs::read_to_string(sentinel).unwrap(),
+            "sentinel",
+            "{sentinel:?}"
+        );
+    }
+    let mut after = walk(data.path());
+    after.sort();
+    assert_eq!(after, before);
+    assert!(journal.docs().is_empty());
+}
+
+#[test]
 fn a_queued_tree_change_survives_reopening_and_counts_as_unsent() {
     use crate::live::tree_queue::{QueueState, Queued, TreeChange};
     let data = tempfile::tempdir().unwrap();

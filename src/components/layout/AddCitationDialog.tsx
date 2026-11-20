@@ -16,6 +16,7 @@ import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { Spinner } from "@/components/ui/spinner";
@@ -270,10 +271,9 @@ export function AddCitationDialog() {
         )}
 
         {status === "error" && (
-          <div className="flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
+          <InlineAlert icon={AlertCircle} bordered size="sm">
+            {error}
+          </InlineAlert>
         )}
 
         {status === "hits" && (
@@ -338,10 +338,9 @@ export function AddCitationDialog() {
               </div>
             )}
             {error && (
-              <div className="mt-2 flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-                <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-                <span>{error}</span>
-              </div>
+              <InlineAlert icon={AlertCircle} bordered className="mt-2">
+                {error}
+              </InlineAlert>
             )}
           </div>
         )}

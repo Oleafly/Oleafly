@@ -21,7 +21,6 @@
     "blockquote": "Inserts a quoted block",
     "linkPlaceholder": "Example URL shown in an empty link field",
     "imagePlaceholder": "Example image path shown in an empty image field",
-    "apply": "Confirms the value typed in the link or image popover",
     "preview": "Mode button for an HTML file that shows the rendered page instead of its source"
   },
   "contextMenu": {

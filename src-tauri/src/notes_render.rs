@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -178,12 +178,22 @@ fn disk_read(dir: &Path, key: &str) -> Option<String> {
     Some(svg)
 }
 
+fn writing() -> MutexGuard<'static, BTreeSet<PathBuf>> {
+    static WRITING: Mutex<BTreeSet<PathBuf>> = Mutex::new(BTreeSet::new());
+    WRITING.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
 fn disk_write(dir: &Path, key: &str, svg: &str, entries: usize, bytes: u64) -> Result<(), String> {
     let path = disk_path(dir, key).ok_or("This render cache key is not valid.")?;
-    std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
-    crate::sandbox::atomic_write(&path, svg.as_bytes())?;
-    prune(dir, &path, entries, bytes);
-    Ok(())
+    writing().insert(path.clone());
+    let written = std::fs::create_dir_all(dir)
+        .map_err(|error| error.to_string())
+        .and_then(|()| crate::sandbox::atomic_write(&path, svg.as_bytes()));
+    if written.is_ok() {
+        prune(dir, &path, entries, bytes);
+    }
+    writing().remove(&path);
+    written
 }
 
 fn prune(dir: &Path, written: &Path, entries: usize, bytes: u64) {
@@ -208,7 +218,7 @@ fn prune(dir: &Path, written: &Path, entries: usize, bytes: u64) {
         if count <= entries && total <= bytes {
             break;
         }
-        if path != written && std::fs::remove_file(&path).is_ok() {
+        if path != written && !writing().contains(&path) && std::fs::remove_file(&path).is_ok() {
             count -= 1;
             total = total.saturating_sub(len);
         }
@@ -383,6 +393,24 @@ mod tests {
             left(&key("prune-big")),
             "a write keeps the entry it wrote even when its clock is behind"
         );
+    }
+
+    #[test]
+    fn a_prune_never_deletes_a_file_another_write_is_still_making() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = SystemTime::now() - Duration::from_secs(600);
+        let fresh = dir.path().join(format!("{}.svg", key("in-flight")));
+        std::fs::write(&fresh, "fresh").unwrap();
+        touch(&fresh, old);
+        let other = dir.path().join(format!("{}.svg", key("settled")));
+        std::fs::write(&other, "settled").unwrap();
+        touch(&other, old);
+        writing().insert(fresh.clone());
+        disk_write(dir.path(), &key("prune-race"), "0123456789", 1, 1_000).unwrap();
+        writing().remove(&fresh);
+        assert!(fresh.is_file(), "an in-flight write keeps its file");
+        assert!(!other.is_file());
+        assert!(!writing().contains(&dir.path().join(format!("{}.svg", key("prune-race")))));
     }
 
     #[test]

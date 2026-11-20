@@ -35,6 +35,15 @@ rounded pill with the toolbar role, made of frosted glass (`GLASS_PANEL` from
 `lib/utils`) so the content underneath shows through, blurred, in both themes. The caller places it and gives it an
 `aria-label`; its buttons are `rounded-full` `TooltipIconButton`s.
 
+Zoom controls are a `ZoomBar` from `ui/zoom-bar.tsx`: a `FloatingBar` with a
+minus button, the level as a percentage, a plus button and a reset. `value` is
+the level as a fraction, kept between `min` and `max`. The bar calls
+`onStep(-1)`, `onStep(1)` and `onReset`. The reset shows `resetLabel` as text,
+or uses it as the tooltip when you pass `resetIcon`. Button labels come in
+through `labels`, because the bar has no strings of its own. `size="sm"` makes
+the level text smaller, as in the image viewer; the app zoom bar uses the
+default.
+
 A file or folder icon is a `FileIcon` or `FolderIcon` from
 `files/fileIcon.tsx`, and a type badge (`TEX`, `PDF`) is a `FileBadge` from the
 same file. Related kinds share a colour token (`--color-file-source`,
@@ -66,6 +75,12 @@ button. All three take `size="compact"` for sidebars and cards. The same file
 has `EmptyIntro`, the eyebrow, heading and body that the research tools show
 before the first search, and the older `Empty`, `EmptyMedia`, `EmptyTitle` and
 `EmptyDescription` pieces for large empty pages.
+
+An error line under a form or an action is an `InlineAlert` from
+`ui/inline-alert.tsx`: red text on a red tint that screen readers announce as
+an alert. Pass `icon` (a Lucide icon) to show one before the message,
+`bordered` for the framed version dialogs use, and `size="sm"` when it sits
+next to larger text. Don't write those classes by hand.
 
 A faint background behind a page comes from one of three patterns, each an
 absolutely placed SVG that ignores the pointer, so its parent needs
@@ -121,7 +136,9 @@ whatever does not fit. Menu forms are `ToolbarMenuItem` (an action, or a
 check item when it has `checked`, tinted `bg-primary/10` while it is on, greyed out with `disabled`), `ToolbarSubMenu` (tinted the same way with `active`), `ToolbarDropdown` (a
 popover on the bar and a submenu in the menu) and `toolbarPicker`, which hosts
 a popover picker such as the table or symbol picker as a menu row. A dropdown
-button on the bar itself is a `ToolbarMenuButton`. A toolbar is one row and
+button on the bar itself is a `ToolbarMenuButton`. `moreBadge` puts a mark on
+the More button for the controls folded into it; the sidebar uses it for a dot
+when a hidden view has something pending. A toolbar is one row and
 doesn't wrap; the Markdown toolbar, below, is the one exception. List the
 controls most important first, as whole groups
 with their leading divider (`groupControl` in `EditorToolbar.tsx` joins single
@@ -385,6 +402,11 @@ dialogs. Its `layer` prop picks one of three stacking levels: `dialog` for
 most dialogs, `raised` for one that opens over Settings, and `nested` for a
 dialog opened from inside another.
 
+Every modal has the same surface. `DialogContent`, `ModalShell` and the New
+Project dialog carry `data-modal-surface`, which is `#181818` in the dark
+theme. Popovers and menus keep `--popover` (`#121212`). A new modal that
+draws its own panel adds the attribute. Don't tint the panel underneath it.
+
 A `Dialog` is on the same modal stack as `ModalShell`. A dialog opened from
 Settings, or from another dialog, gets Escape, Tab and outside clicks to
 itself, and the one underneath stays open until its turn comes. When a
@@ -454,7 +476,8 @@ the summary, Reopen moves under it. Times and other small meta text use `foregro
 which clears 4.5:1 on the grey rail. The exact edit time sits in
 the "· edited" Tooltip as a plain date and time, without the board's "Edited"
 prefix, because the label already says it.
-`CommentComposer` is a bordered box with the text on top and one row under
+`CommentComposer` takes its labels, members, length limit and error text from
+the kit. It is a bordered box with the text on top and one row under
 it: the format buttons (B, I, S, code, list, and @ where people can be
 mentioned) that wrap the selection in the same Markdown, Cancel on transient
 composers, and the round ArrowUp send button (Check when saving an edit). The
@@ -502,13 +525,16 @@ and a "New" badge until they have been on screen for 4 s, shows a floating
 "N new" pill while they are out of view, and with `stickToBottom` follows a
 chat that is scrolled to the end. `TypingLine` (`comment-presence.tsx`) is the
 "is replying"/"is typing" line with avatars and three dots that stop under
-reduced motion; the kit's `activity` and `replyingIn` carry it, and a composer
+reduced motion; the kit's `activity` and `presence` feed carry it. A thread
+reads its own repliers with `useReplyingIn(threadId)` and chat reads
+`useChatTyping()`, so someone typing never redraws the other threads. A composer
 reports `onActivity` while it has text, refreshing every 2 s and stopping 6 s
 after the last keystroke, on blur, send or cancel. `CommentFilterMenu`
 (`comment-filter.tsx`) is the Open / Resolved / All menu with counts.
 `CommentsEmpty` (`comment-empty.tsx`) is the compact `EmptyState` with the
 message-bubble tile, `CommentKeys` the ⌘ ⌥ M keycaps (Ctrl Alt M off macOS)
-and `CommentsFootnote` the grey note under the list for viewers. Mention
+and `CommentsFootnote` the grey note under the list for viewers.
+`CommentsOfflineQueue` is the banner for comments still waiting to be sent. Mention
 options show a role and a green "here now" dot: `mergeMentionPeople` lists the
 people here first, then other members, then non-members.
 
@@ -539,6 +565,12 @@ command. `useAsyncTask`, `useDebouncedValue` and `useDocSearch` sit in the
 same folder. `useMediaQuery` in `lib/media-query.ts` follows a CSS media
 query, and `useReducedMotion` in `lib/reduced-motion.ts` follows the system's
 reduced motion setting.
+
+A menu that floats over selected text gets its position from
+`placeAboveSelection(anchor, bounds, box)` in `ui/selection-placement.ts`. The
+menu goes above the selection if it fits inside `bounds` and below it if it
+doesn't, and it never leaves `bounds` sideways. `useMeasuredBox` in the same
+file returns a ref for the menu and the menu's size after each render.
 
 For plain functions, `lib/path-utils.ts` has `basename` and `dirname` for both
 slash styles, `lib/base64.ts` encodes bytes and text, `lib/format-bytes.ts`

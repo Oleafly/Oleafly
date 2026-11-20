@@ -176,31 +176,14 @@ function useMeasuredSize(row: boolean, appFontSize: number): [(element: HTMLDivE
   const [size, setSize] = useState(0);
   useEffect(() => {
     if (!element) return;
-    let frame = 0;
-    let measuredOnce = false;
-    // The first size applies at once. A later one applies on the next frame, after the panel
-    // library has handled the same resize: a toolbar that settles its row with flushSync inside
-    // its own ResizeObserver callback commits pending updates there, and a size committed then
-    // rewrote the layout before the library kept the file tree's pixel width, so the tree grew
-    // and shrank with the window.
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
       if (!rect) return;
       const measured = row ? rect.width : rect.height;
-      if (!measured) return;
-      cancelAnimationFrame(frame);
-      if (!measuredOnce) {
-        measuredOnce = true;
-        setSize(measured);
-        return;
-      }
-      frame = requestAnimationFrame(() => setSize(measured));
+      if (measured) setSize(measured);
     });
     observer.observe(element);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [element, row]);
   return [setElement, row ? sidebarPanelGroupWidth(size, appFontSize) : size];
 }

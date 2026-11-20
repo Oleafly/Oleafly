@@ -151,9 +151,7 @@ pub struct SyncClaim {
 
 impl Drop for SyncClaim {
     fn drop(&mut self) {
-        let mut running = RUNNING
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut running = crate::locked(&RUNNING);
         if let Some(set) = running.as_mut() {
             set.remove(&self.key);
         }
@@ -164,18 +162,14 @@ pub fn claim(paths: &SyncPaths) -> Result<SyncClaim, OnlineError> {
     paths.check_location()?;
     let key = paths.dir.clone();
     {
-        let mut running = RUNNING
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut running = crate::locked(&RUNNING);
         let set = running.get_or_insert_with(HashSet::new);
         if !set.insert(key.clone()) {
             return Err(OnlineError::new(OnlineErrorKind::SyncBusy));
         }
     }
     let release = || {
-        let mut running = RUNNING
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut running = crate::locked(&RUNNING);
         if let Some(set) = running.as_mut() {
             set.remove(&paths.dir);
         }

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -8,10 +9,10 @@ use oleafly_ot::{utf16_len, DocMessage, DocSink, OtError, TextOperation};
 use serde_json::{json, Value};
 
 use super::catch_up::History;
-use super::state::{iso_time, JoinKind, State};
+use super::state::{iso_time, JoinKind, Notice, State};
 use super::{
     Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
-    OverleafSession, SessionConfig, SessionTuning, SignedIn, UnsentDoc,
+    OverleafSession, Seed, SessionConfig, SessionTuning, SignedIn, UnsentDoc,
 };
 use crate::client::Http;
 use crate::live::doc::DocFault;
@@ -21,7 +22,7 @@ use crate::live::join::parse_join;
 use crate::live::journal::{journal_dir, DocRecord, Journal, ProjectManifest, SCHEMA};
 use crate::live::{AppliedUpdate, DocId, PublicId};
 use crate::realtime::connection::Carrier;
-use crate::realtime::events::ProjectEvent;
+use crate::realtime::events::{EntityId, ProjectEvent, TreeEvent, LONGEST_SERVER_WAIT};
 use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::PathChange;
 use crate::session::{Session, SessionHandle};
@@ -84,7 +85,11 @@ struct Seen {
 struct Port {
     disk: Mutex<BTreeMap<String, String>>,
     seen: Mutex<Seen>,
+    gives_way: AtomicBool,
+    slow_disk: AtomicBool,
 }
+
+const SLOW_DISK: Duration = Duration::from_millis(800);
 
 impl Port {
     fn new(files: &[(&str, &str)]) -> Arc<Port> {
@@ -139,6 +144,7 @@ impl LivePort for Port {
     fn tree_changed(&self, _changes: Vec<PathChange>) {}
 
     fn peer(&self, peer: LivePeer) {
+        assert!(!self.gives_way.load(Ordering::SeqCst), "the port gave way");
         self.seen().peers.push(peer);
     }
 
@@ -161,6 +167,9 @@ impl LivePort for Port {
     }
 
     fn disk_text(&self, path: &str) -> Option<String> {
+        if self.slow_disk.load(Ordering::SeqCst) {
+            std::thread::sleep(SLOW_DISK);
+        }
         self.disk.lock().unwrap().get(path).cloned()
     }
 
@@ -1639,6 +1648,119 @@ async fn stop_keeps_unsent_work_in_the_journal() {
 }
 
 #[tokio::test]
+async fn a_driver_that_dies_ends_the_session_as_failed() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let _tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
+    port.gives_way.store(true, Ordering::SeqCst);
+    let mut bob = rig.mock.peer("bob");
+    bob.join(&main.0);
+    bob.emit(
+        "clientTracking.updatePosition",
+        vec![json!({ "row": 0, "column": 1, "doc_id": main.0 })],
+    );
+    eventually("the session ends as failed", || {
+        matches!(port.ended(), Some(LiveEnd::Failed(_)))
+    })
+    .await;
+    let ended = port.ended();
+    assert!(
+        matches!(&ended, Some(LiveEnd::Failed(reason)) if reason.contains("the port gave way")),
+        "{ended:?}"
+    );
+    live.stop().await;
+}
+
+#[test]
+fn editor_messages_reach_the_sink_in_the_order_they_were_made() {
+    let Watcher {
+        state,
+        port,
+        _dir,
+        _journal,
+    } = watcher(&[]);
+    let session = SessionHandle::new(
+        "http://localhost:8080",
+        Session {
+            cookie: String::new(),
+            user_id: "alice".into(),
+            email: "alice@example.com".into(),
+            saved_by: None,
+        },
+        None,
+    );
+    let port = port as Arc<dyn LivePort>;
+    let shared = Arc::new(super::Shared::new(
+        state,
+        _journal,
+        session,
+        port,
+        "http://localhost:8080".into(),
+    ));
+    let received: Arc<Mutex<Vec<u64>>> = Arc::default();
+    let sink: DocSink = {
+        let received = Arc::clone(&received);
+        Arc::new(move |message| {
+            if let DocMessage::Ack { rev, .. } = message {
+                if rev == 1 {
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+                received.lock().unwrap().push(rev);
+            }
+        })
+    };
+    let ack = |rev| DocMessage::Ack { rev, length: 0 };
+    let (made, first_made) = std::sync::mpsc::channel();
+    let first = {
+        let (shared, sink) = (Arc::clone(&shared), Arc::clone(&sink));
+        std::thread::spawn(move || {
+            shared.with(|state| {
+                state.notices.push(Notice::Editor(sink, ack(1)));
+                made.send(()).unwrap();
+            });
+        })
+    };
+    first_made.recv().unwrap();
+    shared.with(|state| {
+        state
+            .notices
+            .push(Notice::Editor(Arc::clone(&sink), ack(2)))
+    });
+    first.join().unwrap();
+    assert_eq!(*received.lock().unwrap(), vec![1, 2]);
+}
+
+#[tokio::test]
+async fn a_long_forced_disconnect_is_clamped_and_a_nudge_cuts_it_short() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
+    let before = rig.connection_of("alice").unwrap();
+    rig.mock.force_disconnect("maintenance", 3_600);
+    eventually("the session waits offline", || port.went_offline()).await;
+    let shown = port.seen().maintenance[0].1;
+    assert!(shown <= LONGEST_SERVER_WAIT, "{shown:?}");
+    live.reconnect_now();
+    eventually("alice is back on a new connection", || {
+        rig.connection_of("alice").is_some_and(|now| now != before)
+            && rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    tab.type_end(&live, " back");
+    assert!(live.settle(WAIT).await);
+    assert_eq!(rig.mock.doc_text(&main.0), "Hello back");
+    live.stop().await;
+}
+
+#[tokio::test]
 async fn presence_goes_out_and_peers_come_in() {
     let rig = Rig::start(project()).await;
     rig.seed("alice", 0).await;
@@ -1797,6 +1919,105 @@ fn an_unknown_doc_type_stops_only_that_doc() {
 }
 
 #[test]
+fn a_doc_id_that_cannot_name_a_journal_file_is_never_joined_or_journaled() {
+    let evil = DocId("../../escape".into());
+    let plain = DocId("aaaaaaaaaaaaaaaaaaaaaaaa".into());
+    let mut state = watcher(&[(plain.0.clone(), "plain.tex".into())]);
+    state.tree_event(&TreeEvent::NewDoc {
+        folder: EntityId("f0".into()),
+        id: EntityId(evil.0.clone()),
+        name: "evil.tex".into(),
+    });
+    let sentinel = state._journal.dir().join(format!("{}.json", evil.0));
+    std::fs::write(&sentinel, "sentinel").unwrap();
+    let sink: DocSink = Arc::new(|_| {});
+    let opened = state
+        .open("evil.tex", Arc::clone(&sink), None)
+        .expect("the tree took the id, so the session must refuse it itself");
+    state
+        .open("plain.tex", sink, None)
+        .expect("the plain doc opens");
+    state
+        .editor_change(&evil, opened.rev, insertion(0, 0, "typed"))
+        .unwrap();
+    let joins = state.next_joins(Instant::now(), 8);
+    assert_eq!(joins, vec![(plain.clone(), JoinKind::Fresh)]);
+    let batch = state.take_journal_batch(Instant::now(), true);
+    let docs = batch.map(|batch| batch.docs).unwrap_or_default();
+    assert!(docs.iter().all(|(doc, _)| *doc != evil), "{docs:?}");
+    for (doc, record) in docs {
+        state._journal.put(&doc, record);
+    }
+    state._journal.flush().unwrap();
+    assert_eq!(std::fs::read_to_string(&sentinel).unwrap(), "sentinel");
+    state.deliver();
+    let stopped = state.port.seen().stopped.clone();
+    assert!(
+        stopped.iter().any(|(doc, reason)| *doc == evil
+            && matches!(reason, DocStopReason::Fault(DocFault::Unsupported(_)))),
+        "{stopped:?}"
+    );
+}
+
+#[test]
+fn a_seed_with_characters_the_service_cannot_take_says_so() {
+    let doc = DocId("aaaaaaaaaaaaaaaaaaaaaaaa".into());
+    let mut state = watcher(&[(doc.0.clone(), "a.tex".into())]);
+    state.seed(vec![Seed {
+        path: "a.tex".into(),
+        base: None,
+        local: "Hi 😀".into(),
+    }]);
+    state.deliver();
+    assert_eq!(state.port.seen().replaced, vec![doc.clone()]);
+    assert_eq!(state.text(&doc).as_deref(), Some("Hi \u{FFFD}\u{FFFD}"));
+}
+
+#[test]
+fn only_the_latest_connection_ids_are_kept_as_our_own() {
+    let mut state = watcher(&[]);
+    for round in 0..40 {
+        state.connected(PublicId(format!("P.{round}")), 0);
+    }
+    let own = state.own_ids();
+    assert!(own.len() <= 16, "{}", own.len());
+    assert_eq!(own.last(), Some(&PublicId("P.39".into())));
+}
+
+#[test]
+fn a_call_that_timed_out_gets_more_time_on_the_next_try() {
+    let base = Duration::from_secs(30);
+    assert_eq!(super::driver::patience(base, 0), base);
+    assert_eq!(super::driver::patience(base, 1), base * 2);
+    assert_eq!(super::driver::patience(base, 3), base * 8);
+    assert_eq!(super::driver::patience(base, 99), base * 16);
+}
+
+#[tokio::test]
+async fn opening_a_doc_reads_the_disk_without_holding_the_session() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let notes = rig.id(NOTES);
+    assert_eq!(live.text(&notes), None);
+    port.slow_disk.store(true, Ordering::SeqCst);
+    let opener = {
+        let live = Arc::clone(&live);
+        std::thread::spawn(move || live.open(NOTES, Arc::new(|_| {})))
+    };
+    std::thread::sleep(SLOW_DISK / 4);
+    let asked = Instant::now();
+    let _ = live.text(&notes);
+    let waited = asked.elapsed();
+    let opened = opener.join().unwrap();
+    port.slow_disk.store(false, Ordering::SeqCst);
+    assert_eq!(opened.map(|opened| opened.text), Some("Notes".to_string()));
+    assert!(waited < SLOW_DISK / 2, "{waited:?}");
+    live.stop().await;
+}
+
+#[test]
 fn tracked_change_timestamps_are_iso_utc() {
     assert_eq!(iso_time(0), "1970-01-01T00:00:00.000Z");
     assert_eq!(iso_time(951_782_400_000), "2000-02-29T00:00:00.000Z");
@@ -1842,7 +2063,10 @@ fn replay_event(
         }
         DocEvent::Sent { v, update } => {
             let op = replayed_op(state, doc, &update);
-            assert!(state.local_edit_with(doc, |_| Some(op)).unwrap(), "{label}");
+            assert!(
+                state.local_edit_with(doc, |_| Some(op), None).unwrap(),
+                "{label}"
+            );
             let now = Instant::now() + Duration::from_secs(10 * step as u64);
             let sent = state.next_sends(now);
             assert_eq!(sent.len(), 1, "{label}");

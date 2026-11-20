@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 use tauri::plugin::{Builder, TauriPlugin};
@@ -136,13 +136,35 @@ fn destination(url: &Url) -> String {
     }
 }
 
+const LOGGED_PER_WEBVIEW: usize = 64;
+
+#[derive(Default)]
+struct Blocked {
+    seen: HashSet<String>,
+    full: bool,
+}
+
 fn first_block(label: &str, url: &Url) -> Option<String> {
-    static SEEN: Mutex<Option<HashSet<(String, String)>>> = Mutex::new(None);
+    static SEEN: Mutex<Option<HashMap<String, Blocked>>> = Mutex::new(None);
     let target = destination(url);
     let mut seen = SEEN.lock().unwrap_or_else(PoisonError::into_inner);
-    seen.get_or_insert_with(HashSet::new)
-        .insert((label.to_owned(), target.clone()))
-        .then(|| format!("Navigation guard kept the {label} webview from loading {target}"))
+    let blocked = seen
+        .get_or_insert_with(HashMap::new)
+        .entry(label.to_owned())
+        .or_default();
+    if blocked.seen.contains(&target) || blocked.full {
+        return None;
+    }
+    if blocked.seen.len() == LOGGED_PER_WEBVIEW {
+        blocked.full = true;
+        return Some(format!(
+            "Navigation guard kept the {label} webview from loading {LOGGED_PER_WEBVIEW} places; further blocked navigations there are not logged"
+        ));
+    }
+    blocked.seen.insert(target.clone());
+    Some(format!(
+        "Navigation guard kept the {label} webview from loading {target}"
+    ))
 }
 
 fn log(line: String) {
@@ -443,6 +465,32 @@ mod tests {
             first_block("main", &url("data:text/html,secret")).as_deref(),
             Some("Navigation guard kept the main webview from loading a data: address")
         );
+    }
+
+    #[test]
+    fn a_page_cycling_through_fresh_origins_is_logged_a_bounded_number_of_times() {
+        let lines: Vec<String> = (0..1000)
+            .filter_map(|index| {
+                first_block(
+                    "flooded",
+                    &url(&format!("https://host-{index}.flood.example/")),
+                )
+            })
+            .collect();
+        assert_eq!(lines.len(), LOGGED_PER_WEBVIEW + 1);
+        assert_eq!(
+            lines[0],
+            "Navigation guard kept the flooded webview from loading https://host-0.flood.example"
+        );
+        assert_eq!(
+            lines.last().unwrap(),
+            &format!("Navigation guard kept the flooded webview from loading {LOGGED_PER_WEBVIEW} places; further blocked navigations there are not logged")
+        );
+        assert_eq!(
+            first_block("flooded", &url("https://host-0.flood.example/")),
+            None
+        );
+        assert!(first_block("other-flooded", &url("https://host-0.flood.example/")).is_some());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, render } from "@testing-library/react";
-import { createRef, forwardRef, memo } from "react";
+import { createRef, forwardRef, memo, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultDesign } from "./design";
 import type { Page } from "./sdk";
@@ -10,7 +10,6 @@ import {
   type DeckPosition,
   DeckStage,
   type DeckStageHandle,
-  DeckThumbnail,
   readDeckModule,
 } from "./stage";
 import { Step, Steps } from "./step-context";
@@ -40,7 +39,11 @@ function canvas(): HTMLElement {
   return el;
 }
 
-function stageAt(deck: DeckModule, page = 0, props: { keyboard?: boolean; flat?: boolean; revealed?: number } = {}) {
+function stageAt(
+  deck: DeckModule,
+  page = 0,
+  props: { keyboard?: boolean; flat?: boolean; revealed?: number; preload?: "all" | "neighbours" } = {},
+) {
   const ref = createRef<DeckStageHandle>();
   const positions: DeckPosition[] = [];
   const onPositionChange = (position: DeckPosition) => positions.push(position);
@@ -318,6 +321,61 @@ describe("DeckStage", () => {
     expect(shown()).toBe("Intro");
   });
 
+  it("leaves keys typed into a field on a slide to the field", () => {
+    const Form: Page = () => <input />;
+    stageAt(deckOf([Form, Closing]), 0, { keyboard: true });
+    const field = document.querySelector("input") as HTMLInputElement;
+    for (const key of [" ", "Enter", "Backspace", "ArrowRight", "Home"]) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+      act(() => {
+        field.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(document.querySelector("[data-osd-current-page] input")).not.toBeNull();
+  });
+
+  it("warms only the slides beside the current one, and an edit of the same deck remounts none of them", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 16));
+    let mounts = 0;
+    const slides = () =>
+      Array.from({ length: 100 }, (_, page) => {
+        const Slide: Page = () => {
+          useEffect(() => {
+            mounts += 1;
+          }, []);
+          return <p>{`Slide ${page}`}</p>;
+        };
+        return Slide;
+      });
+    const settle = async () => {
+      for (let round = 0; round < 4; round++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(50);
+        });
+      }
+    };
+    try {
+      const stage = stageAt(deckOf(slides()), 50);
+      await settle();
+      const opened = mounts;
+      expect(opened).toBe(3);
+      for (let edit = 0; edit < 5; edit++) {
+        stage.rerender(deckOf(slides()), 50);
+        await settle();
+      }
+      expect(mounts - opened).toBe(5);
+
+      mounts = 0;
+      stageAt(deckOf(slides()), 0, { preload: "all" });
+      for (let round = 0; round < 15; round++) await settle();
+      expect(mounts).toBeGreaterThanOrEqual(100);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("leaves the keyboard alone by default", () => {
     stageAt(deckOf([Intro, Closing]));
 
@@ -360,23 +418,5 @@ describe("DeckStage", () => {
     render(<DeckStage ref={ref} deck={deckOf([Intro, Closing])} page={0} />);
     act(() => ref.current?.next());
     expect(shown()).toBe("Closing");
-  });
-});
-
-describe("DeckThumbnail", () => {
-  it("draws a frozen page with every step shown", () => {
-    const { container } = render(<DeckThumbnail deck={deckOf([Intro, Listing])} page={1} />);
-
-    expect([...container.querySelectorAll("[data-osd-step]")].map((el) => el.getAttribute("data-osd-step"))).toEqual([
-      "revealed",
-      "revealed",
-    ]);
-    expect(canvas()).toHaveAttribute("data-osd-freeze-motion", "");
-    expect(container.querySelector("[aria-hidden]")).not.toBeNull();
-  });
-
-  it("draws nothing for a page the deck does not have", () => {
-    const { container } = render(<DeckThumbnail deck={deckOf([Intro])} page={3} />);
-    expect(container).toBeEmptyDOMElement();
   });
 });

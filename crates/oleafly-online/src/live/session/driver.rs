@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::pin::pin;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use futures_util::FutureExt;
@@ -10,13 +10,26 @@ use serde_json::{json, Value};
 
 use super::pacing::{JoinPacer, Wait};
 use super::state::{now_ms, Handshake, JoinKind, State};
-use super::{catch_up, LiveEnd, SessionConfig, Shared};
+use super::{catch_up, off_runtime, persist_soon, LiveEnd, SessionConfig, Shared};
 use crate::error::OnlineErrorKind;
 use crate::live::join::parse_join;
 use crate::live::DocId;
+use crate::locked;
 use crate::realtime::connection::{connect_tuned, Connection, JoinProject, RealtimeError};
-use crate::realtime::events::{PeerPosition, Rejection, ServerEvent};
+use crate::realtime::events::{PeerPosition, Rejection, ServerEvent, LONGEST_SERVER_WAIT};
 use crate::realtime::ProjectPage;
+
+const PATIENCE_DOUBLINGS: u32 = 4;
+
+pub(super) fn patience(call_timeout: Duration, timeouts: u32) -> Duration {
+    call_timeout.saturating_mul(1 << timeouts.min(PATIENCE_DOUBLINGS))
+}
+
+#[derive(Default)]
+struct Slow {
+    call: String,
+    timeouts: u32,
+}
 
 enum Asked {
     Reply(Vec<Value>),
@@ -107,6 +120,7 @@ pub(super) struct Driver {
     joined_once: bool,
     users_asked: bool,
     project_checked: Option<tokio::time::Instant>,
+    slow: Mutex<Slow>,
 }
 
 impl Driver {
@@ -142,6 +156,7 @@ impl Driver {
             joined_once,
             users_asked: false,
             project_checked: None,
+            slow: Mutex::default(),
         }
     }
 
@@ -161,7 +176,7 @@ impl Driver {
         }
         while let Some(mut connection) = self.connection.take() {
             let pumped = self.pump(&mut connection).await;
-            self.write_journal(true);
+            self.write_journal(true).await;
             match pumped {
                 Pumped::Over => connection.close().await,
                 Pumped::Lost(wait) => {
@@ -181,7 +196,7 @@ impl Driver {
                 }
             }
         }
-        self.finish();
+        self.finish().await;
     }
 
     async fn come_back(&mut self, wait: Wait) {
@@ -235,7 +250,10 @@ impl Driver {
                 return pumped;
             }
             match self.wait(connection).await {
-                Woke::Event(event) => self.event(event),
+                Woke::Event(event) => {
+                    self.event(event);
+                    self.drain(connection);
+                }
                 Woke::Closed => return Pumped::Lost(Wait::NOW),
                 Woke::Idle => {}
             }
@@ -318,10 +336,12 @@ impl Driver {
         let every = self.config.tuning.peer_reemit;
         self.shared
             .with(|state| state.reemit_peers(Instant::now(), every));
-        self.write_journal(false);
+        self.write_journal(false).await;
         self.shared.with(|state| {
             let changes = state.project.tree.due(Instant::now());
-            state.tree_changed(changes);
+            if !changes.is_empty() {
+                state.tree_changed(changes);
+            }
         });
         self.legacy_check().await;
         self.refresh().await;
@@ -347,17 +367,42 @@ impl Driver {
             if self.stopping() {
                 return None;
             }
-            self.write_journal(false);
+            self.write_journal(false).await;
         }
     }
 
     async fn ask(&self, connection: &Connection, name: &'static str, args: Vec<Value>) -> Asked {
-        let timeout = self.config.tuning.call_timeout;
-        let call = tokio::time::timeout(timeout, connection.call(name, args));
-        match self.guard(call).await {
+        let call = format!(
+            "{name} {}",
+            args.first().map(Value::to_string).unwrap_or_default()
+        );
+        let timeouts = {
+            let slow = locked(&self.slow);
+            if slow.call == call {
+                slow.timeouts
+            } else {
+                0
+            }
+        };
+        let timeout = patience(self.config.tuning.call_timeout, timeouts);
+        let asked = tokio::time::timeout(timeout, connection.call(name, args));
+        match self.guard(asked).await {
             None => Asked::Stopping,
-            Some(Ok(Ok(reply))) => Asked::Reply(reply),
-            Some(_) => Asked::Lost,
+            Some(Ok(Ok(reply))) => {
+                let mut slow = locked(&self.slow);
+                if slow.call == call {
+                    *slow = Slow::default();
+                }
+                Asked::Reply(reply)
+            }
+            Some(Err(_)) => {
+                *locked(&self.slow) = Slow {
+                    call,
+                    timeouts: timeouts.saturating_add(1),
+                };
+                Asked::Lost
+            }
+            Some(Ok(Err(_))) => Asked::Lost,
         }
     }
 
@@ -425,7 +470,7 @@ impl Driver {
         if updates.is_empty() {
             return Step::Go;
         }
-        self.write_journal(true);
+        self.write_journal(true).await;
         for update in updates {
             let args = vec![json!(update.doc), update.payload()];
             match self.ask(connection, "applyOtUpdate", args).await {
@@ -474,8 +519,9 @@ impl Driver {
             }
             ServerEvent::ReconnectGracefully => self.graceful(),
             ServerEvent::ForceDisconnect { message, delay } => {
+                let delay = delay.min(LONGEST_SERVER_WAIT);
                 self.shared.with(|state| state.maintenance(message, delay));
-                self.reconnect_after = Some(Wait::held(delay));
+                self.reconnect_after = Some(Wait::after(delay));
             }
             ServerEvent::Rejected(rejection) => self.rejected(rejection),
             ServerEvent::PeersRefresh => self.shared.with(State::presence_asked),
@@ -488,7 +534,8 @@ impl Driver {
             let within = self
                 .page
                 .max_reconnect_gracefully()
-                .unwrap_or(self.config.tuning.drain_within);
+                .unwrap_or(self.config.tuning.drain_within)
+                .min(LONGEST_SERVER_WAIT);
             self.drain_by = Some(tokio::time::Instant::now() + within);
         }
     }
@@ -513,8 +560,8 @@ impl Driver {
         self.shared.with(|state| state.end(end));
     }
 
-    fn write_journal(&self, forced: bool) {
-        self.shared.persist(forced);
+    async fn write_journal(&self, forced: bool) {
+        persist_soon(&self.shared, forced).await;
     }
 
     async fn catch_up(&mut self) {
@@ -595,8 +642,11 @@ impl Driver {
             }
             self.pacer.record(tokio::time::Instant::now());
             match self.connect().await? {
-                Ok((connection, join)) => match self.rejoined(&connection, join) {
-                    Handshake::Joined => return Some(connection),
+                Ok((connection, join)) => match self.rejoined(&connection, &join) {
+                    Handshake::Joined => {
+                        self.save_join(join).await;
+                        return Some(connection);
+                    }
                     Handshake::Ended => return None,
                     Handshake::Unreadable => {
                         let error = RealtimeError::Malformed("the project handshake".into());
@@ -610,13 +660,15 @@ impl Driver {
 
     async fn hold(&self, wait: Wait) -> Option<()> {
         let started = tokio::time::Instant::now();
-        self.guard(tokio::time::sleep_until(started + wait.held))
-            .await?;
+        self.guard(tokio::time::sleep_until(
+            started + wait.held.min(LONGEST_SERVER_WAIT),
+        ))
+        .await?;
         let nudged = self.shared.nudge.notified();
         if self.shared.nudged.swap(false, Ordering::SeqCst) {
             return Some(());
         }
-        let rest = tokio::time::sleep_until(started + wait.after);
+        let rest = tokio::time::sleep_until(started + wait.after.min(LONGEST_SERVER_WAIT));
         self.guard(async {
             tokio::select! {
                 () = rest => {}
@@ -684,14 +736,14 @@ impl Driver {
         .await
     }
 
-    fn rejoined(&mut self, connection: &Connection, join: JoinProject) -> Handshake {
+    fn rejoined(&mut self, connection: &Connection, join: &JoinProject) -> Handshake {
         let public_id = connection.public_id().clone();
         self.shared
             .linked(connection.carrier().wire_name(), public_id.clone());
         let response = join.response.clone();
         let handshake = self
             .shared
-            .with(|state| state.rejoined(public_id, join.response));
+            .with(|state| state.rejoined(public_id, response));
         if handshake == Handshake::Joined {
             self.users_asked = false;
             self.connected_at = Instant::now();
@@ -699,14 +751,24 @@ impl Driver {
             self.legacy_checked = false;
             self.joined_once = true;
             self.shared.nudged.store(false, Ordering::SeqCst);
-            let mut journal = self.shared.journal();
-            journal.remember_join(response);
-            let _ = journal.flush();
         }
         handshake
     }
 
-    fn finish(&self) {
+    async fn save_join(&self, join: JoinProject) {
+        let shared = Arc::clone(&self.shared);
+        let saved = off_runtime(move || {
+            let mut journal = shared.journal();
+            journal.remember_join(join.response);
+            journal.flush()
+        })
+        .await;
+        if let Err(reason) = saved {
+            self.shared.journal_failed(reason);
+        }
+    }
+
+    async fn finish(&self) {
         self.shared.with(|state| {
             let changes = state.project.tree.flush();
             state.tree_changed(changes);
@@ -717,6 +779,6 @@ impl Driver {
             };
             state.end(end);
         });
-        self.write_journal(true);
+        self.write_journal(true).await;
     }
 }

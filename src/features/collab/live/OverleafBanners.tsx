@@ -1,14 +1,17 @@
 import { GitMerge, LogOut, TriangleAlert, Unplug, UserRoundCog, Wrench } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { VersionPickDialog } from "@/components/cloud/VersionPickDialog";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
-import { serverHost } from "@/components/library/overleaf/OverleafServerField";
 import { Button } from "@/components/ui/button";
-import { ModalShell } from "@/components/ui/modal-shell";
-import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { WorkspaceBanner, WorkspaceBannerAlert, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { useNow } from "@/hooks/use-now";
+import { decodeXmlEntities, stripTags } from "@/lib/citation/text";
+import { serverHost } from "@/lib/overleaf-live";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "./live-store";
+import { NoticeGroup } from "./NoticeGroup";
 import { OverleafDeleteDialog } from "./OverleafDeleteDialog";
 import { type OverleafMerge, type OverleafReview, useOverleafNotices } from "./overleaf-notices";
 
@@ -49,7 +52,7 @@ function AccountChangedBanner() {
         {t(($) => $.collab.files.dismiss)}
       </WorkspaceBannerButton>
       {listed ? (
-        <ul className="basis-full space-y-0.5 pb-1 select-text">
+        <ul className="max-h-48 basis-full space-y-0.5 overflow-y-auto pb-1 select-text">
           {files.map((file) => (
             <li key={file.id} className="truncate">
               {t(($) => $.collab.overleafBanners.keptAs, { file: file.path, copy: file.copy })}
@@ -61,17 +64,18 @@ function AccountChangedBanner() {
   );
 }
 
-function MaintenanceBanner() {
+type Maintenance = NonNullable<ReturnType<typeof useOverleafNotices.getState>["maintenance"]>;
+
+function MaintenanceCountdown({ maintenance }: Readonly<{ maintenance: Maintenance }>) {
   const { t } = useTranslation(["collab"]);
-  const maintenance = useOverleafNotices((state) => state.maintenance);
   const now = useNow(1_000);
-  if (!maintenance) return null;
   const seconds = Math.max(0, Math.ceil((maintenance.until - now) / 1_000));
+  const message = decodeXmlEntities(stripTags(maintenance.message));
   return (
     <WorkspaceBanner tone="warning" data-testid="overleaf-maintenance-banner">
       <Wrench aria-hidden className="size-3.5 shrink-0" />
       <p className="min-w-0 flex-1 select-text">
-        {t(($) => $.collab.overleafBanners.maintenance, { message: maintenance.message })}{" "}
+        {t(($) => $.collab.overleafBanners.maintenance, { message })}{" "}
         {seconds > 0
           ? t(($) => $.collab.overleafBanners.maintenanceWait, { seconds })
           : t(($) => $.collab.overleafBanners.reconnecting)}
@@ -80,24 +84,50 @@ function MaintenanceBanner() {
   );
 }
 
+function MaintenanceBanner() {
+  const maintenance = useOverleafNotices((state) => state.maintenance);
+  return maintenance ? <MaintenanceCountdown maintenance={maintenance} /> : null;
+}
+
 function MergedRows({ onShow }: Readonly<{ onShow: (shown: Shown) => void }>) {
   const { t } = useTranslation(["collab"]);
   const merged = useOverleafNotices((state) => state.merged);
   const dismiss = useOverleafNotices((state) => state.dismissMerged);
-  return merged.map((entry) => (
-    <WorkspaceBanner key={entry.path} tone="primary" data-testid="overleaf-merged-row">
-      <GitMerge aria-hidden className="size-3.5 shrink-0 text-primary" />
-      <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.overleafBanners.merged, { path: entry.path })}</p>
-      <span className="flex shrink-0 items-center gap-1">
-        <WorkspaceBannerButton tone="primary" onClick={() => onShow({ kind: "merged", entry })}>
-          {t(($) => $.collab.overleafBanners.showChanges)}
+  if (merged.length === 0) return null;
+  const dismissLabel = t(($) => $.collab.files.dismiss);
+  return (
+    <NoticeGroup
+      tone="primary"
+      testId="overleaf-merged-row"
+      icon={<GitMerge aria-hidden className="size-3.5 shrink-0 text-primary" />}
+      message={(path) => t(($) => $.collab.overleafBanners.merged, { path })}
+      actions={
+        <WorkspaceBannerButton
+          tone="primary"
+          onClick={() => {
+            for (const entry of merged) dismiss(entry.path);
+          }}
+        >
+          {dismissLabel}
         </WorkspaceBannerButton>
-        <WorkspaceBannerButton tone="primary" onClick={() => dismiss(entry.path)}>
-          {t(($) => $.collab.files.dismiss)}
-        </WorkspaceBannerButton>
-      </span>
-    </WorkspaceBanner>
-  ));
+      }
+      items={merged.map((entry) => ({
+        key: entry.path,
+        path: entry.path,
+        name: entry.path,
+        actions: (
+          <>
+            <WorkspaceBannerButton tone="primary" onClick={() => onShow({ kind: "merged", entry })}>
+              {t(($) => $.collab.overleafBanners.showChanges)}
+            </WorkspaceBannerButton>
+            <WorkspaceBannerButton tone="primary" onClick={() => dismiss(entry.path)}>
+              {dismissLabel}
+            </WorkspaceBannerButton>
+          </>
+        ),
+      }))}
+    />
+  );
 }
 
 function ReviewRows({ onShow }: Readonly<{ onShow: (shown: Shown) => void }>) {
@@ -106,100 +136,103 @@ function ReviewRows({ onShow }: Readonly<{ onShow: (shown: Shown) => void }>) {
   const resolving = useOverleafNotices((state) => state.resolving);
   const failed = useOverleafNotices((state) => state.failed);
   const resolve = useOverleafNotices((state) => state.resolve);
-  return reviews.map((entry) => (
-    <WorkspaceBanner key={entry.path} tone="warning" data-testid="overleaf-review-row">
-      <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-      <div className="min-w-0 flex-1 select-text">
-        <p>{t(($) => $.collab.overleafBanners.review, { path: entry.path })}</p>
-        {failed === entry.path ? (
-          <p role="alert" className="font-semibold">
-            {t(($) => $.collab.overleafBanners.resolveFailed)}
-          </p>
-        ) : null}
-      </div>
-      <span className="flex shrink-0 items-center gap-1">
-        <WorkspaceBannerButton tone="warning" onClick={() => onShow({ kind: "review", entry })}>
-          {t(($) => $.collab.overleafBanners.compare)}
-        </WorkspaceBannerButton>
-        <WorkspaceBannerButton
-          tone="warning"
-          disabled={resolving !== null}
-          onClick={() => void resolve(entry.path, "theirs")}
-        >
-          {t(($) => $.collab.overleafBanners.useTheirs)}
-        </WorkspaceBannerButton>
-        <WorkspaceBannerButton
-          tone="warning"
-          disabled={resolving !== null}
-          onClick={() => void resolve(entry.path, "mine")}
-        >
-          {t(($) => $.collab.overleafBanners.useMine)}
-        </WorkspaceBannerButton>
-      </span>
-    </WorkspaceBanner>
-  ));
+  return (
+    <NoticeGroup
+      tone="warning"
+      testId="overleaf-review-row"
+      icon={<TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
+      message={(path) => t(($) => $.collab.overleafBanners.review, { path })}
+      items={reviews.map((entry) => ({
+        key: entry.path,
+        path: entry.path,
+        name: entry.path,
+        actions: (
+          <>
+            <WorkspaceBannerButton tone="warning" onClick={() => onShow({ kind: "review", entry })}>
+              {t(($) => $.collab.overleafBanners.compare)}
+            </WorkspaceBannerButton>
+            <WorkspaceBannerButton
+              tone="warning"
+              disabled={resolving !== null}
+              onClick={() => void resolve(entry.path, "theirs")}
+            >
+              {t(($) => $.collab.overleafBanners.useTheirs)}
+            </WorkspaceBannerButton>
+          </>
+        ),
+        alert:
+          failed === entry.path ? (
+            <WorkspaceBannerAlert>{t(($) => $.collab.overleafBanners.resolveFailed)}</WorkspaceBannerAlert>
+          ) : null,
+      }))}
+    />
+  );
 }
 
 function UnsteadyRows() {
   const { t } = useTranslation(["collab"]);
   const unsteady = useOverleafNotices((state) => state.unsteady);
   const dismiss = useOverleafNotices((state) => state.dismissUnsteady);
-  return unsteady.map((path) => (
-    <WorkspaceBanner key={path} tone="warning" data-testid="overleaf-unsteady-row">
-      <Unplug aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.overleafBanners.unsteady, { path })}</p>
-      <WorkspaceBannerButton tone="warning" onClick={() => dismiss(path)}>
-        {t(($) => $.collab.files.dismiss)}
-      </WorkspaceBannerButton>
-    </WorkspaceBanner>
-  ));
+  if (unsteady.length === 0) return null;
+  const dismissLabel = t(($) => $.collab.files.dismiss);
+  return (
+    <NoticeGroup
+      tone="warning"
+      testId="overleaf-unsteady-row"
+      icon={<Unplug aria-hidden className="size-3.5 shrink-0" />}
+      message={(path) => t(($) => $.collab.overleafBanners.unsteady, { path })}
+      actions={
+        <WorkspaceBannerButton
+          tone="warning"
+          onClick={() => {
+            for (const path of unsteady) dismiss(path);
+          }}
+        >
+          {dismissLabel}
+        </WorkspaceBannerButton>
+      }
+      items={unsteady.map((path) => ({
+        key: path,
+        path,
+        name: path,
+        actions: (
+          <WorkspaceBannerButton tone="warning" onClick={() => dismiss(path)}>
+            {dismissLabel}
+          </WorkspaceBannerButton>
+        ),
+      }))}
+    />
+  );
 }
 
 function CompareDialog({ shown, onClose }: Readonly<{ shown: Shown; onClose: () => void }>) {
-  const { t } = useTranslation(["collab", "common"]);
-  const titleId = useId();
-  const descriptionId = useId();
+  const { t } = useTranslation(["collab"]);
   const resolve = useOverleafNotices((state) => state.resolve);
   const resolving = useOverleafNotices((state) => state.resolving);
+  const failed = useOverleafNotices((state) => state.failed === shown.entry.path);
   const { path } = shown.entry;
   const merged = shown.kind === "merged";
   const [oldText, newText] = merged ? [shown.entry.before, shown.entry.after] : [shown.entry.mine, shown.entry.theirs];
-  const keep = (choice: "mine" | "theirs") => void resolve(path, choice).then(onClose);
+  const keep = (choice: "mine" | "theirs") =>
+    void resolve(path, choice).then((done) => {
+      if (done) onClose();
+    });
   return (
-    <ModalShell
-      open
-      portal
-      onClose={onClose}
-      closeLabel={t(($) => $.common.actions.close)}
-      width="2xl"
-      labelledBy={titleId}
-      describedBy={descriptionId}
-      className="flex max-h-[85vh] flex-col gap-3 p-5"
-    >
-      <h2 id={titleId} className="text-sm font-semibold">
-        {merged
+    <VersionPickDialog
+      title={
+        merged
           ? t(($) => $.collab.overleafBanners.mergedTitle, { path })
-          : t(($) => $.collab.overleafBanners.reviewTitle, { path })}
-      </h2>
-      <p id={descriptionId} className="text-xs leading-relaxed text-muted-foreground">
-        {merged
+          : t(($) => $.collab.overleafBanners.reviewTitle, { path })
+      }
+      description={
+        merged
           ? t(($) => $.collab.overleafBanners.mergedDescription)
-          : t(($) => $.collab.overleafBanners.reviewDescription)}
-      </p>
-      <div className="h-80 min-h-0 overflow-hidden rounded-md border">
-        <InlineDiffPreview
-          path={path}
-          oldText={oldText}
-          newText={newText}
-          ariaLabel={t(($) => $.collab.overleafBanners.diffLabel)}
-          className="h-full"
-        />
-      </div>
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onClose} data-modal-initial-focus>
-          {t(($) => $.common.actions.close)}
-        </Button>
-        {merged ? null : (
+          : t(($) => $.collab.overleafBanners.reviewDescription)
+      }
+      alert={failed ? <InlineAlert>{t(($) => $.collab.overleafBanners.resolveFailed)}</InlineAlert> : null}
+      onClose={onClose}
+      actions={
+        merged ? null : (
           <>
             <Button type="button" variant="outline" size="sm" disabled={resolving !== null} onClick={() => keep("theirs")}>
               {t(($) => $.collab.overleafBanners.useTheirs)}
@@ -208,9 +241,17 @@ function CompareDialog({ shown, onClose }: Readonly<{ shown: Shown; onClose: () 
               {t(($) => $.collab.overleafBanners.useMine)}
             </Button>
           </>
-        )}
-      </div>
-    </ModalShell>
+        )
+      }
+    >
+      <InlineDiffPreview
+        path={path}
+        oldText={oldText}
+        newText={newText}
+        ariaLabel={t(($) => $.collab.overleafBanners.diffLabel)}
+        className="h-full"
+      />
+    </VersionPickDialog>
   );
 }
 

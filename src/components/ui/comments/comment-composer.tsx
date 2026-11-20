@@ -5,9 +5,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Listbox, ListboxOption } from "@/components/ui/listbox";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, isMac, modKey } from "@/lib/utils";
+import { useCommentKit } from "./comment-kit";
 import { insertAtCaret, type TextEdit, toggleBullets, wrapSelection } from "./comment-markdown";
 import { type CommentMember, insertMention, matchMembers, mentionQuery } from "./mentions";
 
@@ -47,19 +49,12 @@ export interface CommentComposerProps {
   label: string;
   submitLabel: string;
   submitIcon?: LucideIcon;
-  labels: CommentComposerLabels;
-  describeError: (error: unknown) => string;
-  canRetry?: (error: unknown) => boolean;
   placeholder?: string;
   initial?: string;
   sending?: Promise<void>;
   autoFocus?: boolean;
   compact?: boolean;
   mentionButton?: boolean;
-  maxLength?: number;
-  members: readonly CommentMember[];
-  self: string | null;
-  hue?: (accountId: string) => number;
   onSubmit: (body: string) => Promise<void>;
   onCancel?: () => void;
   onActivity?: (active: boolean) => void;
@@ -112,27 +107,15 @@ function MentionList({
   onHover: (index: number) => void;
 }>) {
   return (
-    <div
-      id={id}
-      role="listbox"
-      aria-label={label}
-      className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-    >
+    <Listbox id={id} aria-label={label} className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full">
       {options.map((member, index) => (
-        <button
+        <ListboxOption
           key={member.accountId}
           id={`${id}-${index}`}
-          type="button"
-          role="option"
-          aria-selected={index === active}
-          tabIndex={-1}
-          onMouseEnter={() => onHover(index)}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onPick(member)}
-          className={cn(
-            "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs transition-colors",
-            index === active && "bg-accent text-accent-foreground",
-          )}
+          selected={index === active}
+          onHighlight={() => onHover(index)}
+          onChoose={() => onPick(member)}
+          className="px-2 py-1 text-xs"
         >
           <span className="relative shrink-0">
             <Avatar person={{ id: member.accountId, name: member.displayName, hue: hue?.(member.accountId) }} size="xs" />
@@ -148,9 +131,9 @@ function MentionList({
             <span className="truncate font-medium">{member.displayName}</span>
             <MentionDetail member={member} hereNow={hereNow} />
           </span>
-        </button>
+        </ListboxOption>
       ))}
-    </div>
+    </Listbox>
   );
 }
 
@@ -196,23 +179,17 @@ export function CommentComposer({
   label,
   submitLabel,
   submitIcon: SubmitIcon = ArrowUp,
-  labels,
-  describeError,
-  canRetry,
   placeholder,
   initial = "",
   sending,
   autoFocus = false,
   compact = false,
   mentionButton = false,
-  maxLength,
-  members,
-  self,
-  hue,
   onSubmit,
   onCancel,
   onActivity,
 }: Readonly<CommentComposerProps>) {
+  const { labels, describeError, canRetry, maxLength, members, self, hue } = useCommentKit();
   const [body, setBody] = useState(initial);
   const [caret, setCaret] = useState(initial.length);
   const [dismissed, setDismissed] = useState<number | null>(null);

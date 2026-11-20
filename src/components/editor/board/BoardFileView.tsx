@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { PdfStateMessage } from "@/components/preview/PdfStateMessage";
 import { LoadingState } from "@/components/ui/empty";
 import { ownHistory } from "@/lib/field-history";
+import { logWarning } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { type Theme, useAppTheme } from "@/lib/theme";
@@ -73,7 +74,10 @@ export function BoardFileView({ projectId, path }: BoardFileViewProps) {
   const [opened, setOpened] = useState<{ path: string; scene: BoardScene | null } | null>(null);
 
   useEffect(() => {
-    if (content !== undefined && opened?.path !== path) setOpened({ path, scene: readBoardScene(content) });
+    if (content === undefined || opened?.path === path) return;
+    const scene = readBoardScene(content);
+    if (!scene) void logWarning("open a board", path);
+    setOpened({ path, scene });
   }, [content, opened?.path, path]);
 
   if (!opened || opened.path !== path) {
@@ -128,28 +132,32 @@ function Board({ projectId, path, scene, readOnly, theme, langCode }: BoardProps
     } as const;
   }, [cameraKey, scene]);
 
-  const flush = useCallback(() => {
+  const flush = useCallback((): boolean => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     const edit = pending.current;
     pending.current = null;
     const files = useFilesStore.getState();
-    if (!edit || files.projectId !== projectId) return;
+    if (!edit || files.projectId !== projectId) return false;
+    const key = changeKey(edit);
+    if (key === savedKey.current) return false;
+    savedKey.current = key;
     const json = serializeAsJSON(edit.elements, edit.appState, edit.files, "local");
     written.current = json;
     files.setContent(path, json);
+    return true;
   }, [path, projectId]);
 
-  useEffect(() => flush, [flush]);
+  useEffect(() => () => void flush(), [flush]);
 
   const onChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
       rememberBoardCamera(cameraKey, { scrollX: appState.scrollX, scrollY: appState.scrollY, zoom: appState.zoom });
       const edit = { elements, appState, files };
-      const key = changeKey(edit);
-      if (savedKey.current === null) savedKey.current = key;
-      if (key === savedKey.current) return;
-      savedKey.current = key;
+      if (savedKey.current === null) {
+        savedKey.current = changeKey(edit);
+        return;
+      }
       if (readOnly) return;
       pending.current = edit;
       if (timer.current !== null) window.clearTimeout(timer.current);
@@ -160,12 +168,16 @@ function Board({ projectId, path, scene, readOnly, theme, langCode }: BoardProps
 
   useEffect(() => {
     if (content === undefined || content === written.current || !api.current) return;
+    if (flush()) {
+      void logWarning("keep board edits over an outside change", path);
+      return;
+    }
     const next = readBoardScene(content);
-    if (!next) return;
+    if (!next) {
+      void logWarning("read a changed board", path);
+      return;
+    }
     written.current = content;
-    pending.current = null;
-    if (timer.current !== null) window.clearTimeout(timer.current);
-    timer.current = null;
     savedKey.current = null;
     const files = Object.values(next.files);
     if (files.length > 0) api.current.addFiles(files);
@@ -178,7 +190,7 @@ function Board({ projectId, path, scene, readOnly, theme, langCode }: BoardProps
       },
       captureUpdate: CaptureUpdateAction.NEVER,
     });
-  }, [content]);
+  }, [content, flush, path]);
 
   const setApi = useCallback((value: ExcalidrawImperativeAPI) => {
     api.current = value;

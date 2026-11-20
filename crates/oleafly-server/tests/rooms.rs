@@ -10,30 +10,15 @@ use oleafly_server::blobs::sha256_hex;
 use oleafly_server::test_support::{test_config, TestDevice};
 use people::{
     call, connect, connect_understanding, envelope, grant, next_frame, put_bytes, send_frame,
-    send_update, share_project, signed_by, stage, stage_with, subscribe, told_of_removal, Stage,
+    send_update, share_project, shared_with_alice_as, signed_by, stage, stage_with, subscribe,
+    told_of_removal,
 };
 use reqwest::{Method, StatusCode};
-
-async fn shared_with_alice(
-    stage: &Stage,
-    role: ProjectRole,
-) -> oleafly_collab_protocol::ids::SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(&stage.server, &stage.bob, project, &stage.alice, role)
-            .await
-            .status(),
-        StatusCode::OK
-    );
-    project
-}
 
 #[tokio::test]
 async fn an_update_is_acknowledged_and_reaches_the_others() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     assert_eq!(
@@ -78,7 +63,7 @@ async fn an_update_is_acknowledged_and_reaches_the_others() {
 #[tokio::test]
 async fn a_late_subscriber_catches_up_from_the_backlog() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let first = envelope(&stage.bob, project, b"one");
@@ -109,7 +94,7 @@ async fn a_late_subscriber_catches_up_from_the_backlog() {
 #[tokio::test]
 async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -178,7 +163,7 @@ async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
 #[tokio::test]
 async fn a_viewer_cannot_change_the_project() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Viewer).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     assert!(matches!(
         subscribe(&mut alice, project, 0).await,
@@ -200,7 +185,7 @@ async fn a_viewer_cannot_change_the_project() {
 #[tokio::test]
 async fn a_change_signed_by_another_key_is_refused() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let thief = TestDevice::generate();
@@ -241,7 +226,7 @@ async fn changes_need_an_open_project_and_access() {
 #[tokio::test]
 async fn removing_someone_tells_them_and_the_room() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -307,7 +292,7 @@ async fn removing_someone_tells_them_and_the_room() {
 #[tokio::test]
 async fn a_new_role_reaches_the_person_while_they_are_connected() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut alice, project, 0).await;
     grant(
@@ -336,7 +321,7 @@ async fn a_new_role_reaches_the_person_while_they_are_connected() {
 #[tokio::test]
 async fn stopping_sharing_tells_everyone_in_the_room() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -363,7 +348,7 @@ async fn stopping_sharing_tells_everyone_in_the_room() {
 #[tokio::test]
 async fn closing_a_connection_tells_the_room() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -381,7 +366,7 @@ async fn closing_a_connection_tells_the_room() {
 #[tokio::test]
 async fn hiding_tells_the_room_the_person_left_and_keeps_them_subscribed() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -440,7 +425,7 @@ async fn a_compacted_log_asks_for_the_snapshot_first() {
             build_after: 1,
             keep_updates: 1,
         });
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     for payload in [b"one".as_slice(), b"two", b"three"] {
@@ -479,7 +464,7 @@ async fn a_compacted_log_asks_for_the_snapshot_first() {
 #[tokio::test]
 async fn a_flood_of_cursor_updates_is_thinned_and_never_pushes_anyone_off() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Viewer).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -544,7 +529,7 @@ async fn a_change_past_the_project_size_limit_is_refused_and_says_why() {
     let mut config = test_config();
     config.limits.max_project_mb = 1;
     let stage = stage_with(config).await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut alice, project, 0).await;
     let text = vec![b'a'; 400 * 1024];
@@ -569,7 +554,7 @@ async fn files_never_stop_typing_and_a_full_change_log_says_the_project_is_full(
     config.limits.max_project_mb = 1;
     config.limits.max_file_mb = 1;
     let stage = stage_with(config).await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let figure = vec![7u8; 900 * 1024];
     let stored = put_bytes(
         &stage.server,
@@ -615,7 +600,7 @@ async fn files_never_stop_typing_and_a_full_change_log_says_the_project_is_full(
 #[tokio::test]
 async fn leaving_after_a_burst_of_cursor_updates_still_clears_the_cursor() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Viewer).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     let mut alice = connect(&stage.server, &stage.alice).await;
     subscribe(&mut bob, project, 0).await;
@@ -682,7 +667,7 @@ async fn cursor_seen_by(
 #[tokio::test]
 async fn a_leave_from_a_new_connection_clears_a_cursor_an_older_one_showed() {
     let stage = stage().await;
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut before = connect(&stage.server, &stage.alice).await;

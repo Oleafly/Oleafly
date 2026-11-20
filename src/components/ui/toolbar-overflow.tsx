@@ -10,7 +10,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -155,12 +154,21 @@ function scaledWidth(width: number): number {
   return (width * 16) / rootFontSize();
 }
 
+function fitKey(items: readonly ToolbarFitItem[]): string {
+  return items
+    .map((item) => `${item.width}/${item.tools ?? 1}/${item.collapsed ? `${item.collapsed.width}/${item.collapsed.tools ?? 1}` : "-"}`)
+    .join(" ");
+}
+
 export function useFittedCount(controls: readonly ToolbarControl[], showAllUntilMeasured = false) {
   const [availableWidth, setAvailableWidth] = useState(Number.POSITIVE_INFINITY);
   const observerRef = useRef<ResizeObserver | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
-  const steps = fitSteps(controls);
-  const fitted = useRef({ controls, availableWidth, trimmed: 0 });
+  const key = fitKey(controls);
+  const ladder = useRef<{ key: string; steps: ToolbarFit[] } | null>(null);
+  if (ladder.current?.key !== key) ladder.current = { key, steps: fitSteps(controls) };
+  const steps = ladder.current.steps;
+  const fitted = useRef({ controls, steps, availableWidth, trimmed: 0 });
   const ref = useCallback((element: HTMLDivElement | null) => {
     observerRef.current?.disconnect();
     observerRef.current = null;
@@ -169,18 +177,17 @@ export function useFittedCount(controls: readonly ToolbarControl[], showAllUntil
     const recompute = () => {
       const width = showAllUntilMeasured && element.clientWidth === 0 ? Number.POSITIVE_INFINITY : element.clientWidth;
       const current = fitted.current;
-      const ladder = fitSteps(current.controls);
       const unchanged =
         current.trimmed === 0 &&
         Number.isFinite(current.availableWidth) &&
-        fitIndex(current.controls, ladder, scaledWidth(width)) ===
-          fitIndex(current.controls, ladder, scaledWidth(current.availableWidth)) &&
+        fitIndex(current.controls, current.steps, scaledWidth(width)) ===
+          fitIndex(current.controls, current.steps, scaledWidth(current.availableWidth)) &&
         element.scrollWidth <= width + 1;
       if (!unchanged) setAvailableWidth(width);
     };
     recompute();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => flushSync(recompute));
+    const observer = new ResizeObserver(recompute);
     observer.observe(element);
     observerRef.current = observer;
   }, [showAllUntilMeasured]);
@@ -189,7 +196,7 @@ export function useFittedCount(controls: readonly ToolbarControl[], showAllUntil
   const trimmed = trim.signature === signature ? trim.count : 0;
   const index = Math.min(steps.length - 1, fitIndex(controls, steps, scaledWidth(availableWidth)) + trimmed);
   const { visible, collapsed } = steps[index];
-  fitted.current = { controls, availableWidth, trimmed };
+  fitted.current = { controls, steps, availableWidth, trimmed };
 
   useLayoutEffect(() => {
     const element = elementRef.current;
@@ -226,10 +233,12 @@ export function ToolbarMenuButton({
   onContentFocus,
   className,
   contentClassName,
+  badge,
   children,
 }: Readonly<{
   label: string;
   icon: ReactNode;
+  badge?: ReactNode;
   active?: boolean;
   chevron?: boolean;
   align?: "start" | "end";
@@ -272,10 +281,11 @@ export function ToolbarMenuButton({
             onClick={(event) => {
               if (event.detail === 0) change(!shown);
             }}
-            className={cn(TOOLBAR_TRIGGER_CLASS, !chevron && "w-7 px-0", active && MENU_ACTIVE)}
+            className={cn(TOOLBAR_TRIGGER_CLASS, !chevron && "w-7 px-0", active && MENU_ACTIVE, badge !== undefined && "relative")}
           >
             {icon}
             {chevron && <ChevronDown aria-hidden className="size-3" />}
+            {badge}
           </button>
         </DropdownMenuTrigger>
       </Tooltip>
@@ -482,6 +492,7 @@ export function ToolbarOverflow({
   onOpenChange,
   onCloseAutoFocus,
   pushMenu,
+  moreBadge,
   showAllUntilMeasured,
   className,
   ...rest
@@ -489,6 +500,7 @@ export function ToolbarOverflow({
   {
     controls: readonly ToolbarControl[];
     label: string;
+    moreBadge?: (hidden: readonly ToolbarControl[]) => ReactNode;
     separated?: boolean;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -514,6 +526,7 @@ export function ToolbarOverflow({
           chevron={false}
           align="end"
           active={hidden.some((control) => control.active)}
+          badge={moreBadge?.(hidden)}
           open={open}
           onOpenChange={onOpenChange}
           onCloseAutoFocus={onCloseAutoFocus}

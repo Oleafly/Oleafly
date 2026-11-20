@@ -62,7 +62,6 @@ export interface NoteCommentSpan extends NoteCommentRange {
   resolved: boolean;
 }
 
-/** Comment threads to draw in a shared note, in offsets into the note's Markdown. */
 export interface NoteCommentView {
   spans: readonly NoteCommentSpan[];
   selected: string | null;
@@ -93,10 +92,6 @@ export interface NoteLiveEditor {
 
 export type NoteCommentOpenedFrom = "marker" | "text";
 
-/**
- * A shared note that is live in an editor, as the comments store sees it: its document session
- * (revisioned like a project file's), and the editor that draws its threads.
- */
 export interface NoteCommentSurface {
   readonly projectId: string;
   readonly path: string;
@@ -147,7 +142,6 @@ export function openNoteComment(threadId: string, from: NoteCommentOpenedFrom): 
   noteCommentOpener?.(threadId, from);
 }
 
-/** Asks the Notes workspace to show its comments panel; the count changes on every request. */
 export const useNoteCommentsRequest = create<{ count: number }>(() => ({ count: 0 }));
 
 export function requestNoteComments(): void {
@@ -289,6 +283,11 @@ export interface OverleafLiveActions {
 
 let overleafActions: OverleafLiveActions | null = null;
 
+const notRunning = () =>
+  Promise.reject<never>({ code: "internal", message: "live editing with the online service isn't running" });
+
+const NOT_RUNNING: OverleafLiveActions = { pause: notRunning, resume: notRunning, unlink: notRunning };
+
 export function installOverleafLiveActions(next: OverleafLiveActions): () => void {
   overleafActions = next;
   return () => {
@@ -296,8 +295,8 @@ export function installOverleafLiveActions(next: OverleafLiveActions): () => voi
   };
 }
 
-export function overleafLiveActions(): OverleafLiveActions | null {
-  return overleafActions;
+export function overleafLiveActions(): OverleafLiveActions {
+  return overleafActions ?? NOT_RUNNING;
 }
 
 export function liveOnOverleaf(projectId: string | null): boolean {

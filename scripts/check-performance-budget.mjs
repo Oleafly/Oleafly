@@ -220,7 +220,13 @@ const limits = {
   // layer for PDF dark mode, the sidebar's More menu and the logging that
   // tells errors from warnings and notes. CI measured 27,237,617 bytes before
   // them and 27,259,437 after, and macOS 27,259,966 with the last log fixes.
-  totalJavaScript: 27_275_000,
+  // +40 KB, on top of 27,275,000, for the fixes from the 0.4.13 audit: one
+  // grouped row per kind of live-editing notice, the frame host that notes and
+  // decks now share, typing presence kept out of the comment kit, start
+  // refusals shown on the live button, the windowed Logs list and five new
+  // strings in every locale. macOS measured 27,259,966 bytes before them and
+  // 27,300,271 after.
+  totalJavaScript: 27_315_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import { Button } from "@/components/ui/button";
-import { ModalShell } from "@/components/ui/modal-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { decodeAppError } from "@/lib/app-error";
 import { diskHash } from "@/lib/disk-hash";
@@ -12,6 +11,7 @@ import { deleteFile, existingProjectFiles, readFileContent } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
+import { VersionPickDialog } from "./VersionPickDialog";
 
 export interface ConflictCopy {
   projectId: string;
@@ -29,8 +29,6 @@ interface Versions {
 export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ conflict: ConflictCopy; onClose: () => void }>) {
   const { t } = useTranslation(["cloud", "common"]);
   const { projectId, mainDoc, copies } = conflict;
-  const titleId = useId();
-  const descriptionId = useId();
   const [remaining, setRemaining] = useState<readonly string[] | null>(null);
   const [versions, setVersions] = useState<Versions | "failed" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -147,37 +145,23 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
   };
 
   return (
-    <ModalShell
-      open
-      portal
+    <VersionPickDialog
+      title={t(($) => $.cloud.conflictCopy.title, { name: conflict.title })}
+      description={t(($) => $.cloud.conflictCopy.description)}
+      detail={copy !== null && <p className="select-text break-all font-mono text-[0.6875rem] text-muted-foreground">{copy}</p>}
       onClose={onClose}
-      closeLabel={t(($) => $.common.actions.close)}
-      width="2xl"
-      labelledBy={titleId}
-      describedBy={descriptionId}
-      className="flex max-h-[85vh] flex-col gap-3 p-5"
+      actions={
+        <>
+          <Button type="button" variant="outline" size="sm" disabled={!ready} onClick={() => void keep(false)}>
+            {t(($) => $.cloud.conflictCopy.keepMine)}
+          </Button>
+          <Button type="button" size="sm" disabled={!ready} onClick={() => void keep(true)}>
+            {t(($) => $.cloud.conflictCopy.useCopy)}
+          </Button>
+        </>
+      }
     >
-      <h2 id={titleId} className="text-sm font-semibold">
-        {t(($) => $.cloud.conflictCopy.title, { name: conflict.title })}
-      </h2>
-      <p id={descriptionId} className="text-xs leading-relaxed text-muted-foreground">
-        {t(($) => $.cloud.conflictCopy.description)}
-      </p>
-      {copy !== null && <p className="select-text break-all font-mono text-[0.6875rem] text-muted-foreground">{copy}</p>}
-      <div data-conflict-diff className="h-80 min-h-0 overflow-hidden rounded-md border">
-        {body()}
-      </div>
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onClose} data-modal-initial-focus>
-          {t(($) => $.common.actions.close)}
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={!ready} onClick={() => void keep(false)}>
-          {t(($) => $.cloud.conflictCopy.keepMine)}
-        </Button>
-        <Button type="button" size="sm" disabled={!ready} onClick={() => void keep(true)}>
-          {t(($) => $.cloud.conflictCopy.useCopy)}
-        </Button>
-      </div>
-    </ModalShell>
+      {body()}
+    </VersionPickDialog>
   );
 }

@@ -32,7 +32,7 @@ beforeEach(() => {
   log.logError.mockClear();
   useFilesStore.setState({ projectId: PROJECT });
   useSettingsStore.setState({ overleafDeletes: "ask" });
-  useOverleafTree.setState({ projectId: null, asking: [], deciding: false });
+  useOverleafTree.setState({ projectId: null, asking: [], deciding: false, failed: false });
 });
 
 describe("Overleaf delete question", () => {
@@ -65,6 +65,19 @@ describe("Overleaf delete question", () => {
     await waitFor(() => expect(log.logError).toHaveBeenCalledOnce());
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("a.tex");
     expect(useOverleafTree.getState()).toMatchObject({ asking: ["a.tex"], deciding: false });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "That didn't go through for a.tex. Wait a moment, then click it again.",
+    );
+  });
+
+  it("asks after all when a setting's answer can't be sent", async () => {
+    live.overleafLiveDelete.mockRejectedValueOnce(new Error("offline"));
+    useSettingsStore.setState({ overleafDeletes: "always" });
+    receiveOverleafTree({ projectId: PROJECT, kind: "delete_asked", paths: ["old.tex"] });
+    render(<OverleafDeleteDialog />);
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("old.tex");
+    expect(log.logError).toHaveBeenCalledOnce();
+    expect(screen.getByRole("alert")).toHaveTextContent("That didn't go through for old.tex.");
   });
 
   it("follows the Always and Never settings without asking", () => {

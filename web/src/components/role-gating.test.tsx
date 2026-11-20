@@ -618,6 +618,20 @@ describe("web pane review fixes", () => {
     expect(openThreadCount({ [MAIN.fileId]: [thread()] }, {})).toBe(1);
   });
 
+  it("counts the Comments tab once per change of threads, not on every store update", () => {
+    let reads = 0;
+    const threads = {
+      get [MAIN.fileId]() {
+        reads += 1;
+        return [thread()];
+      },
+    };
+    const suggestions = {};
+    expect(openThreadCount(threads, suggestions)).toBe(1);
+    expect(openThreadCount(threads, suggestions)).toBe(1);
+    expect(reads).toBe(1);
+  });
+
   it("leaves a suggestion's discussion out of the comment counts", () => {
     withRole("commenter", {
       threads: { [MAIN.fileId]: [thread()] },

@@ -14,10 +14,13 @@ import {
   type OverleafSignInBrowser,
   type OverleafStatus,
 } from "@/lib/overleaf";
+import { readString, removeKey, writeString } from "@/lib/local-storage";
 import { logError } from "@/lib/log";
+import type { HomeProjectLayout } from "@/store/settings";
 import type { CollabUnsentProject } from "@oleafly/backend-port";
 
 const SERVER_KEY = "oleafly.overleaf.server";
+const LAYOUT_KEY = "oleafly.overleaf.importLayout";
 
 export type OverleafPhase = "idle" | "checking" | "signed-out" | "signing-in" | "loading" | "ready" | "error";
 
@@ -40,6 +43,8 @@ interface OverleafImportState {
   progress: Record<string, OverleafRowProgress>;
   importing: boolean;
   run: string[] | null;
+  layout: HomeProjectLayout;
+  setLayout(layout: HomeProjectLayout): void;
   setServer(server: string): void;
   refreshStatus(): Promise<void>;
   open(): Promise<void>;
@@ -56,20 +61,16 @@ interface OverleafImportState {
 }
 
 function readServer(): string {
-  try {
-    return globalThis.localStorage?.getItem(SERVER_KEY)?.trim() || DEFAULT_OVERLEAF_SERVER;
-  } catch {
-    return DEFAULT_OVERLEAF_SERVER;
-  }
+  return readString(SERVER_KEY)?.trim() || DEFAULT_OVERLEAF_SERVER;
+}
+
+function readLayout(): HomeProjectLayout {
+  return readString(LAYOUT_KEY) === "grid" ? "grid" : "list";
 }
 
 function writeServer(server: string): void {
-  try {
-    if (server === DEFAULT_OVERLEAF_SERVER) globalThis.localStorage?.removeItem(SERVER_KEY);
-    else globalThis.localStorage?.setItem(SERVER_KEY, server);
-  } catch {
-    return;
-  }
+  if (server === DEFAULT_OVERLEAF_SERVER) removeKey(SERVER_KEY);
+  else writeString(SERVER_KEY, server);
 }
 
 function selectable(projects: readonly OverleafProject[], ids: Iterable<string>): string[] {
@@ -128,6 +129,12 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   progress: {},
   importing: false,
   run: null,
+  layout: readLayout(),
+
+  setLayout(layout) {
+    writeString(LAYOUT_KEY, layout);
+    set({ layout });
+  },
 
   setServer(server) {
     const next = server.trim() || DEFAULT_OVERLEAF_SERVER;

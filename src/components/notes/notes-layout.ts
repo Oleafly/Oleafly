@@ -170,7 +170,6 @@ export function toggleSideView(layout: WorkspaceLayout, viewId: string, focused:
   return openView(layout, viewId, view, { groupId: stage.id, zone: "right" }, SIDE_SHARE);
 }
 
-/** Opens a side view if it is closed; an open one stays as it is. */
 export function showSideView(layout: WorkspaceLayout, viewId: string, focused: string | null): WorkspaceLayout {
   return viewId in layout.views ? layout : toggleSideView(layout, viewId, focused);
 }

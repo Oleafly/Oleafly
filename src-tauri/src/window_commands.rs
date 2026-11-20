@@ -145,6 +145,13 @@ mod tests {
     #[test]
     fn the_main_window_reaches_every_command() {
         assert!(allowed("main", "main", "term_open"));
+        assert!(allowed("main", "main", "preview_skill_id"));
+        assert!(!allowed(
+            "quick-capture",
+            "quick-capture",
+            "preview_skill_id"
+        ));
+        assert!(!allowed("preview", "preview", "preview_skill_id"));
         assert!(allowed("main", "main", "write_bytes_file"));
         assert!(allowed("main", "main", "a_command_added_later"));
     }

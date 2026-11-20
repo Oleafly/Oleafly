@@ -94,7 +94,7 @@ export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
 export type OverleafDeletes = "ask" | "always" | "never";
-export type FileMarkers = "icons" | "badges";
+type FileMarkers = "icons" | "badges";
 export type GrammarDialect =
   | "american"
   | "british"
@@ -837,6 +837,12 @@ export function appZoomLevel(value: unknown): number {
   return APP_ZOOM_LEVELS.includes(level) ? level : 100;
 }
 
+export const APP_ZOOM_STORAGE_KEY = "oleafly.appZoom";
+
+export function storedAppZoom(): number {
+  return appZoomLevel(ls(APP_ZOOM_STORAGE_KEY, "100"));
+}
+
 export const APP_ICONS = [
   { id: "classic", src: "/app-icon/classic.png", quill: ["#34B44A"] },
   { id: "pastel", src: "/app-icon/pastel.png", quill: ["#67E8F9", "#A78BFA", "#F472B6", "#FBBF24"] },
@@ -1415,7 +1421,7 @@ export const SECTION_SETTINGS = {
     terminalConfirmClose: "oleafly.terminal.confirmClose",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
-    appZoom: "oleafly.appZoom",
+    appZoom: APP_ZOOM_STORAGE_KEY,
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
     editorCjkFontFamily: "oleafly.editor.cjkFont",
@@ -2044,10 +2050,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appZoom: appZoomLevel(ls("oleafly.appZoom", "100")),
+  appZoom: storedAppZoom(),
   setAppZoom: (v) => {
     const level = appZoomLevel(v);
-    saveLs("oleafly.appZoom", String(level));
+    saveLs(APP_ZOOM_STORAGE_KEY, String(level));
     set({ appZoom: level });
   },
   editorUsesAppFont: ls("oleafly.editor.useAppFont", "0") === "1",

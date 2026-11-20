@@ -224,6 +224,8 @@
     "overleaf_linked": "이 프로젝트는 Overleaf에 연결되어 있습니다. Oleafly Server에서 공유하려면 연결을 해제하세요.",
     "collab_shared": "이 프로젝트는 Oleafly Server에서 공유되고 있습니다. Overleaf와 실시간으로 편집하려면 그곳에서 공유를 중지하세요.",
     "live_elsewhere": "이 프로젝트는 다른 Oleafly 창에서 실시간 편집 중입니다. 그 창에서 실시간 편집을 중지한 뒤 다시 시도하세요.",
+    "access_ended": "더 이상 이 프로젝트에 접근할 수 없어 실시간으로 편집할 수 없습니다. 내 사본은 이 컴퓨터에 남습니다. 소유자에게 다시 공유해 달라고 요청하세요.",
+    "failed": "오류 때문에 실시간 편집을 시작하지 못했습니다. 변경 내용은 이 컴퓨터에 남습니다. 잠시 기다린 뒤 동기화 다시 시작을 선택하세요.",
     "overleaf_unsent": "일부 변경 사항이 아직 Overleaf에 도착하지 않았습니다. 실시간 편집을 다시 시작해 보낸 다음 연결을 해제하세요.",
     "suggestion_not_found": "이미 없는 제안입니다. 다른 사람이 수락하거나 거부했을 수 있습니다.",
     "suggestion_not_yours": "이 제안은 제안한 사람만 철회할 수 있습니다.",
@@ -554,7 +556,8 @@
     "trustAgain": "이 프로젝트에 추가한 사람은 누구나 파일을 바꿀 수 있으므로, Oleafly는 이 컴퓨터에서 에이전트, 터미널 명령, shell escape를 실행하기 전에 이 프로젝트를 다시 신뢰할지 묻습니다.",
     "projectNotesShared": "프로젝트의 노트는 이 프로젝트에 참여한 모든 사람과 공유됩니다. 개인 노트는 비공개로 유지됩니다.",
     "personalNotesPrivate": "개인 노트는 비공개로 유지됩니다. 프로젝트의 노트 폴더에 있는 노트만 공유됩니다.",
-    "unlinkOverleaf": "Overleaf 연결 해제"
+    "unlinkOverleaf": "Overleaf 연결 해제",
+    "unlinkOverleafDescription": "이 프로젝트의 실시간 편집이 중지됩니다. 내 사본은 이 컴퓨터에 남고, 공동 저자의 온라인 프로젝트는 그대로 유지됩니다."
   },
   "manage": {
     "sharedOn": "{{server}}에서 공유 중",

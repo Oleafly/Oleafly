@@ -380,13 +380,11 @@ function TurnedOffFindings({
   );
 }
 
-function isDictionaryTab(value: string): value is "global" | "projects" {
-  return value === "global" || value === "projects";
-}
+const DICTIONARY_TABS = ["global", "projects"] as const;
 
 export function ProofreadingDictionarySection() {
   const { t } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useSettingsTab("dictionary", "global", isDictionaryTab);
+  const [tab, setTab] = useSettingsTab("dictionary", "global", DICTIONARY_TABS);
   const global = useDictionary((state) => state.global);
   const ignored = useDictionary((state) => state.ignored);
   const ignore = useDictionary((state) => state.ignore);

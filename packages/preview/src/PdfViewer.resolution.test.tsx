@@ -20,6 +20,7 @@ const harness = vi.hoisted(() => ({
   mediaQueries: [] as string[],
   mediaListeners: [] as Array<() => void>,
   textGate: null as Promise<void> | null,
+  images: [] as number[],
   reset() {
     this.observerCallbacks = [];
     this.renderCalls = [];
@@ -27,6 +28,7 @@ const harness = vi.hoisted(() => ({
     this.mediaQueries = [];
     this.mediaListeners = [];
     this.textGate = null;
+    this.images = [];
   },
 }));
 
@@ -72,10 +74,19 @@ vi.mock("pdfjs-dist", () => {
     clone({ scale = this.scale }: { scale?: number; dontFlip?: boolean } = {}) {
       return new MockViewport(scale);
     }
+
+    convertToViewportPoint(x: number, y: number) {
+      return [x * this.scale, (792 - y) * this.scale];
+    }
+
+    convertToPdfPoint(x: number, y: number) {
+      return [x / this.scale, 792 - y / this.scale];
+    }
   }
 
   const makePage = (pageNumber: number) => ({
     rotate: 0,
+    imageCoordinates: null as Float32Array | null,
     getViewport: ({ scale }: { scale: number }) => new MockViewport(scale),
     getTextContent: async () => {
       if (harness.textGate) await harness.textGate;
@@ -84,15 +95,18 @@ vi.mock("pdfjs-dist", () => {
         styles: { f: { vertical: false } },
       };
     },
-    render: ({
+    render(this: { imageCoordinates: Float32Array | null }, {
       viewport,
       transform,
       canvas,
+      recordImages,
     }: {
       viewport: MockViewport;
       transform?: number[];
       canvas: HTMLCanvasElement;
-    }) => {
+      recordImages?: boolean;
+    }) {
+      if (recordImages) this.imageCoordinates ??= Float32Array.from(harness.images);
       harness.renderCalls.push({
         pageNumber,
         scale: viewport.scale,
@@ -225,9 +239,9 @@ function detailReady(scene: Scene): Promise<void> {
   return waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"), { timeout: 3_000 });
 }
 
-async function openPage(scale: number, viewport: [number, number]): Promise<Scene> {
+async function openPage(scale: number, viewport: [number, number], pageColors?: "dark"): Promise<Scene> {
   const data = new Uint8Array([1]);
-  const view = render(<PdfViewer data={data} scale={scale} expectText={false} />);
+  const view = render(<PdfViewer data={data} scale={scale} expectText={false} pageColors={pageColors} />);
   const renderer = view.getByTestId("pdf-renderer");
   const scrollParent = renderer.parentElement as HTMLElement;
   // The geometry has to be in place before the first paint. The detail pass
@@ -351,6 +365,35 @@ describe("PdfViewer raster resolution", () => {
     expect(second.height).toBe(0);
     expect(scene.wrap.dataset.pdfDetail).toBeUndefined();
     expect(scene.base()).not.toBeNull();
+  });
+
+  it("gives each detail canvas its figures without reading it back", async () => {
+    harness.images = [0.1, 0.5, 0.1, 0.05, 0.6, 0.5];
+    const readFrom: HTMLCanvasElement[] = [];
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(function (this: HTMLCanvasElement) {
+      const canvas = this;
+      return {
+        drawImage: vi.fn(),
+        getImageData: (_x: number, _y: number, width: number, height: number) => {
+          readFrom.push(canvas);
+          return { data: new Uint8ClampedArray(width * height * 4) };
+        },
+      } as never;
+    });
+    const scene = await openPage(2.5, [800, 600], "dark");
+    await detailReady(scene);
+    const first = scene.detail()!;
+    await waitFor(() => expect(scene.wrap.querySelectorAll(":scope > canvas.pdf-figure")).toHaveLength(2));
+    const reads = readFrom.length;
+    expect(reads).toBe(4);
+    expect(readFrom.every((canvas) => canvas === scene.base())).toBe(true);
+
+    scene.place(0, -400);
+    scroll(scene.scrollParent);
+    await waitFor(() => expect(scene.detail()).not.toBe(first));
+    await detailReady(scene);
+    expect(scene.wrap.querySelectorAll(":scope > canvas.pdf-figure")).toHaveLength(2);
+    expect(readFrom).toHaveLength(reads);
   });
 
   it("snaps the detail area to whole device pixels at a fractional ratio", async () => {

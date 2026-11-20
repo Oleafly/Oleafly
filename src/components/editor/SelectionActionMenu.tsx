@@ -1,4 +1,4 @@
-import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeftRight, ArrowUp, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
 import { isImeEnter } from "@/components/ai/composer/ime";
@@ -6,6 +6,7 @@ import { requestComment, useCommentsRail } from "@/components/collab/comments-ra
 import { useCollabReady } from "@/components/collab/CollabSlots";
 import { Input } from "@/components/ui/input";
 import { MenuRow } from "@/components/ui/menu-row";
+import { placeAboveSelection, useMeasuredBox } from "@/components/ui/selection-placement";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { handoffToAssistant } from "@/features/assistant-handoff";
@@ -61,6 +62,7 @@ const PILL =
   "flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg";
 
 const MENU_GAP = 12;
+const EMPTY_BOX = { width: 0, height: 0 };
 
 interface Rect {
   readonly top: number;
@@ -71,21 +73,6 @@ interface Rect {
 
 interface Anchor extends Rect {
   readonly bounds: Rect;
-}
-
-interface Size {
-  readonly width: number;
-  readonly height: number;
-}
-
-export function selectionMenuPosition(anchor: Anchor, size: Size): { top: number; left: number } {
-  const { bounds } = anchor;
-  const above = anchor.top - MENU_GAP - size.height;
-  const preferred = above >= bounds.top ? above : anchor.bottom + MENU_GAP;
-  return {
-    top: Math.max(bounds.top, Math.min(preferred, bounds.bottom - size.height)),
-    left: Math.max(bounds.left, Math.min(anchor.left, bounds.right - size.width)),
-  };
 }
 
 function rectOf({ top, bottom, left, right }: Rect): Rect {
@@ -120,12 +107,11 @@ export function SelectionActionMenu() {
   const canCompose = useCommentsRail((state) => state.canCompose);
   const canComment = collabReady && canCompose;
   const [anchor, setAnchor] = useState<Anchor | null>(null);
-  const [size, setSize] = useState<Size>({ width: 0, height: 0 });
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [instruction, setInstruction] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerRef, box] = useMeasuredBox<HTMLDivElement>();
   const instructionRef = useRef<HTMLInputElement>(null);
   const canCommentRef = useRef(canComment);
   canCommentRef.current = canComment;
@@ -195,22 +181,14 @@ export function SelectionActionMenu() {
       window.removeEventListener("mouseup", update);
       window.removeEventListener("keyup", update);
     };
-  }, []);
+  }, [containerRef]);
 
   useEffect(() => {
     if (expanded) instructionRef.current?.focus({ preventScroll: true });
   }, [expanded]);
 
-  useLayoutEffect(() => {
-    const box = containerRef.current;
-    if (!box) return;
-    const width = box.offsetWidth;
-    const height = box.offsetHeight;
-    setSize((current) => (current.width === width && current.height === height ? current : { width, height }));
-  });
-
   if (!anchor) return null;
-  const pos = selectionMenuPosition(anchor, size);
+  const pos = placeAboveSelection(anchor, anchor.bounds, box ?? EMPTY_BOX, MENU_GAP);
 
   const close = () => {
     setAnchor(null);

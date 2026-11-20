@@ -8,7 +8,7 @@ interface MarkdownNode {
 const PLAIN_TAG = /^<(u|mark|sup|sub|strong|em|del)>$/u;
 const COLOR_SPAN = /^<span data-text-color="[^"<>]*"(?: style="color: ?([^";<>]+);?")?>$/u;
 const SAFE_COLOR = /^(?:#[\da-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)|[a-z]{3,20})$/iu;
-const OPEN_FENCE = /^:{3,}[ \t]*(?:\{[ \t]*\.(left|center|right|justify)[ \t]*\}|(left|center|right|justify))[ \t]*(?::+[ \t]*)?(?:\n|$)/u;
+export const ALIGN_FENCE_OPEN = /^ {0,3}:{3,}[ \t]*(?:\{[ \t]*\.(left|center|right|justify)[ \t]*\}|(left|center|right|justify))[ \t]*(?::+[ \t]*)?(?:\r?\n|$)/u;
 const CLOSE_FENCE = /(?:^|\n):{3,}[ \t]*$/u;
 const FLOW_PARENTS = new Set(["root", "blockquote", "listItem", "footnoteDefinition", "alignedBlocks"]);
 const TEXT_BLOCKS = new Set(["paragraph", "heading"]);
@@ -67,7 +67,7 @@ function withText(node: MarkdownNode, at: number, value: string): MarkdownNode |
 
 function opening(node: MarkdownNode): { align: string; rest: MarkdownNode | null } | null {
   const first = node.type === "paragraph" ? node.children?.[0] : undefined;
-  const fence = first?.type === "text" ? OPEN_FENCE.exec(first.value ?? "") : null;
+  const fence = first?.type === "text" ? ALIGN_FENCE_OPEN.exec(first.value ?? "") : null;
   if (!first || !fence) return null;
   return { align: fence[1] ?? fence[2], rest: withText(node, 0, (first.value ?? "").slice(fence[0].length)) };
 }

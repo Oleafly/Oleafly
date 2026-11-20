@@ -28,15 +28,11 @@ const INTEGRATIONS_TABS = [
   "desktop-apps",
 ] as const;
 
-function isIntegrationsTab(value: string): value is (typeof INTEGRATIONS_TABS)[number] {
-  return (INTEGRATIONS_TABS as readonly string[]).includes(value);
-}
-
 const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), { warm: () => intended("settings") });
 
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useSettingsTab("integrations", "git-hosting", isIntegrationsTab);
+  const [tab, setTab] = useSettingsTab("integrations", "git-hosting", INTEGRATIONS_TABS);
   const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(tab === "oleafly-mcp");
   const scrollTarget = useSettingsStore(
     (state) => state.settingsScrollTarget,

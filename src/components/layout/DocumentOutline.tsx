@@ -113,7 +113,7 @@ export function DocumentOutline({
     onCollapsedChange?.(next);
   };
 
-  const { items, marks, activeIndex, title } = useDocumentOutline("file");
+  const { items, marks, activeIndex, title } = useDocumentOutline("file", !collapsed);
   const itemIds = useMemo(() => headingIds(items), [items]);
   const collapsibleHeadingIds = useMemo(() => {
     const collapsible = new Set<string>();

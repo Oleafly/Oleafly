@@ -10,18 +10,25 @@ import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { watchVisibility } from "@/hooks/use-near-viewport";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
-import { artifactFrameClose, artifactFrameOpen, artifactFrameRuntimeUrl } from "@/lib/tauri";
+import { artifactFrameRuntimeUrl } from "@/lib/tauri";
 import {
   type FrameMessages,
   type FrameTheme,
   frameChannel,
   htmlFrameDocument,
-  isPortOffer,
   prepareHtml,
   readFrameMessage,
   reactFrameDocument,
   staticFrameDocument,
 } from "./artifact-runtime/frame-document";
+import {
+  openFrameDocument,
+  SandboxedFrame,
+  tokenOf,
+  useFrameDocument,
+  useFramePort,
+  useFrameTheme,
+} from "./artifact-runtime/frame-host";
 import {
   type BlockKey,
   blockHash,
@@ -47,7 +54,7 @@ export const INITIAL_HEIGHT = 160;
 export const RUNAWAY_STEPS = 3;
 const SOURCE_LINES = 12;
 const NOTICE_URLS = 4;
-const SANDBOXED_ORIGIN = "null";
+
 
 let runtimeAddress: Promise<string> | null = null;
 
@@ -104,20 +111,6 @@ function holdLive(entry: LiveFrame): () => void {
   return () => liveFrames.delete(entry);
 }
 
-function readTheme(): FrameTheme {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
-}
-
-function subscribeTheme(listener: () => void): () => void {
-  const observer = new MutationObserver(listener);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-  return () => observer.disconnect();
-}
-
-function useTheme(): FrameTheme {
-  return useSyncExternalStore(subscribeTheme, readTheme, readTheme);
-}
-
 export function frameMessages(): FrameMessages {
   return {
     unknownImport: i18n.t(($) => $.notes.blocks.artifact.unknownImport, { name: "{{name}}" }),
@@ -143,10 +136,6 @@ export async function buildFrame(kind: ScriptedKind, source: string, theme: Fram
 
 export function nextHeight(reported: number): number {
   return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(reported)));
-}
-
-export function tokenOf(url: string): string {
-  return url.slice(url.lastIndexOf("/") + 1);
 }
 
 export function staticHtml(source: string): string {
@@ -191,12 +180,11 @@ interface FrameViewProps {
   frameRef: RefObject<HTMLIFrameElement | null>;
   label: string;
   height: number;
-  theme: FrameTheme;
   onLoaded: (url: string) => void;
   onReload: () => void;
 }
 
-function FrameView({ stalled, failure, frame, frameRef, label, height, theme, onLoaded, onReload }: Readonly<FrameViewProps>) {
+function FrameView({ stalled, failure, frame, frameRef, label, height, onLoaded, onReload }: Readonly<FrameViewProps>) {
   const { t } = useTranslation(["notes"]);
   if (stalled) {
     return (
@@ -218,17 +206,14 @@ function FrameView({ stalled, failure, frame, frameRef, label, height, theme, on
   }
   if (!frame) return <p className="py-3 text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.starting)}</p>;
   return (
-    <iframe
+    <SandboxedFrame
       ref={frameRef}
       src={frame.url}
-      onLoad={() => onLoaded(frame.url)}
-      sandbox="allow-scripts"
-      allow=""
-      referrerPolicy="no-referrer"
-      loading="lazy"
+      onLoad={onLoaded}
+      lazy
       title={t(($) => $.notes.blocks.artifact.frameTitle, { label })}
       className="block w-full rounded-md border-0 bg-transparent"
-      style={{ height, colorScheme: theme }}
+      style={{ height }}
     />
   );
 }
@@ -241,7 +226,7 @@ export interface ArtifactFrameProps {
 }
 
 export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<ArtifactFrameProps>) {
-  const theme = useTheme();
+  const theme = useFrameTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const guardRef = useRef(guard);
@@ -253,7 +238,6 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
   const [parked, setParked] = useState(false);
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const port = useRef<MessagePort | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const lastBeat = useRef(0);
   const openedAt = useRef(0);
@@ -264,10 +248,8 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
   const [seen, setSeen] = useState(() => typeof IntersectionObserver === "undefined");
   const [reopened, setReopened] = useState(0);
   const lastReopened = useRef(0);
-  const loadedUrl = useRef<string | null>(null);
-  const loadedView = useRef<Window | null>(null);
   const left = useRef(false);
-  const released = useRef<string | null>(null);
+  const { loaded: loadedDocument, release } = useFrameDocument(frameRef);
 
   const park = useCallback(() => {
     setSeen(false);
@@ -288,12 +270,9 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
           if (!live) return;
           const key = guardRef.current;
           settle.current = key ? markBlockStarting(key) : null;
-          const url = await artifactFrameOpen(built.html);
+          const url = await openFrameDocument(built.html, () => live);
+          if (!url) return;
           token = tokenOf(url);
-          if (!live) {
-            void artifactFrameClose(token).catch(() => undefined);
-            return;
-          }
           left.current = false;
           openedAt.current = performance.now();
           lastBeat.current = openedAt.current + START_GRACE_MS;
@@ -310,22 +289,16 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
       window.clearTimeout(timer);
       settle.current?.();
       settle.current = null;
-      if (token && token !== released.current) void artifactFrameClose(token).catch(() => undefined);
+      release(token);
     };
-  }, [kind, source, channel, stalled, seen, reopened]);
+  }, [kind, source, channel, stalled, seen, reopened, release]);
 
   useEffect(() => (frame ? holdLive({ shown: () => visible.current, park }) : undefined), [frame, park]);
 
   const loaded = (url: string) => {
-    const view = frameRef.current?.contentWindow ?? null;
-    if (loadedUrl.current !== url) {
-      loadedUrl.current = url;
-      loadedView.current = view;
-      released.current = tokenOf(url);
-      void artifactFrameClose(released.current).catch(() => undefined);
-      return;
-    }
-    if (view !== null && view !== loadedView.current) {
+    const load = loadedDocument(url);
+    if (load === "first") return;
+    if (load === "replaced") {
       setReopened((value) => value + 1);
       return;
     }
@@ -334,45 +307,25 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
     setFrame(null);
   };
 
-  useEffect(() => {
-    const onFrameMessage = (view: Window, event: MessageEvent) => {
-      if (left.current || frameRef.current?.contentWindow !== view) return;
-      const message = readFrameMessage(event.data, channel);
-      if (!message) return;
-      if (message.type === "beat") {
-        lastBeat.current = performance.now();
-        if (lastBeat.current - openedAt.current >= SETTLED_MS) settle.current?.();
-        return;
-      }
-      const next = nextHeight(message.height);
-      const delta = next - heightRef.current;
-      if (delta > 0 && growth.current.count >= RUNAWAY_STEPS) return;
-      if (delta > 0 && Math.abs(delta - growth.current.delta) <= 1) growth.current.count += 1;
-      else growth.current = { delta, count: 0 };
-      if (growth.current.count >= RUNAWAY_STEPS) return;
-      heightRef.current = next;
-      setHeight(next);
-    };
-    const onPortOffer = (event: MessageEvent) => {
-      const view = frameRef.current?.contentWindow;
-      if (event.origin !== SANDBOXED_ORIGIN || left.current || !view || event.source !== view) return;
-      const offered = event.ports[0];
-      if (!offered || !isPortOffer(event.data, channel)) return;
-      port.current?.close();
-      port.current = offered;
-      offered.onmessage = (message) => onFrameMessage(view, message);
-    };
-    window.addEventListener("message", onPortOffer);
-    return () => {
-      window.removeEventListener("message", onPortOffer);
-      port.current?.close();
-      port.current = null;
-    };
-  }, [channel]);
+  const onFrameMessage = (data: unknown) => {
+    const message = readFrameMessage(data, channel);
+    if (!message) return;
+    if (message.type === "beat") {
+      lastBeat.current = performance.now();
+      if (lastBeat.current - openedAt.current >= SETTLED_MS) settle.current?.();
+      return;
+    }
+    const next = nextHeight(message.height);
+    const delta = next - heightRef.current;
+    if (delta > 0 && growth.current.count >= RUNAWAY_STEPS) return;
+    if (delta > 0 && Math.abs(delta - growth.current.delta) <= 1) growth.current.count += 1;
+    else growth.current = { delta, count: 0 };
+    if (growth.current.count >= RUNAWAY_STEPS) return;
+    heightRef.current = next;
+    setHeight(next);
+  };
 
-  useEffect(() => {
-    port.current?.postMessage({ channel, type: "theme", theme });
-  }, [theme, channel]);
+  useFramePort({ frameRef, channel, theme, onMessage: onFrameMessage, accept: () => !left.current });
 
   useEffect(() => {
     const target = wrapRef.current;
@@ -434,7 +387,6 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
         frameRef={frameRef}
         label={label}
         height={height}
-        theme={theme}
         onLoaded={loaded}
         onReload={reload}
       />
@@ -445,7 +397,7 @@ export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<Ar
 
 function StaticPreview({ kind, source, label }: Readonly<{ kind: ScriptedKind; source: string; label: string }>) {
   const { t } = useTranslation(["notes"]);
-  const theme = useTheme();
+  const theme = useFrameTheme();
   const html = useMemo(() => (kind === "html" ? staticFrameDocument(staticHtml(source), theme) : ""), [kind, source, theme]);
   if (kind === "html") {
     return (

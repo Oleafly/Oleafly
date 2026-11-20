@@ -103,18 +103,6 @@ function withoutTrailingDashes(text: string): string {
   return text.slice(0, end);
 }
 
-export function availableSkillName(text: string, taken: ReadonlySet<string>): string {
-  const base = skillNameFrom(text) || "skill";
-  let name = base;
-  let number = 2;
-  while (taken.has(name)) {
-    const suffix = `-${number}`;
-    name = `${withoutTrailingDashes(base.slice(0, SKILL_NAME_MAX - suffix.length))}${suffix}`;
-    number += 1;
-  }
-  return name;
-}
-
 export function followsSkillNameRules(name: string, id: string): boolean {
   return name === id && name.length <= SKILL_NAME_MAX && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name);
 }

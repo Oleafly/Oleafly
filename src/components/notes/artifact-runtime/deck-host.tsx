@@ -1,5 +1,5 @@
 import * as DeckApi from "@oleafly/deck";
-import { type DeckModule, DeckStage, type DeckStageHandle, readDeckModule } from "@oleafly/deck/stage";
+import { type DeckModule, DeckStage, type DeckStageHandle, readDeckModule, typingInto } from "@oleafly/deck/stage";
 import { useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { type ArtifactRuntime, errorPanel, esm, type RuntimeMessages, type RuntimeModule } from "./runtime-core";
@@ -32,8 +32,17 @@ type HostCommand =
 export const HOST_EVENT = "oleafly:host";
 export const FRAME_EVENT = "oleafly:frame";
 
+const MODIFIER_KEYS = new Set(["Alt", "AltGraph", "Control", "Meta", "Shift"]);
+
 function send(message: Record<string, unknown>): void {
   window.dispatchEvent(new CustomEvent(FRAME_EVENT, { detail: message }));
+}
+
+function handBackShortcut(event: KeyboardEvent): void {
+  if (event.defaultPrevented || !(event.ctrlKey || event.metaKey || event.altKey)) return;
+  if (MODIFIER_KEYS.has(event.key) || event.getModifierState("AltGraph") || typingInto(event.target)) return;
+  const { key, code, ctrlKey, metaKey, altKey, shiftKey } = event;
+  send({ type: "key", key, code, ctrlKey, metaKey, altKey, shiftKey });
 }
 
 export function assetModules(assets: Readonly<Record<string, string>>): Record<string, RuntimeModule> {
@@ -80,6 +89,7 @@ function DeckApp({
       revealed={revealed}
       flat={mode !== "edit"}
       keyboard={mode === "edit"}
+      preload={mode === "present" ? "all" : "neighbours"}
       onPositionChange={(position) => send({ type: "position", ...position })}
     />
   );
@@ -151,6 +161,7 @@ export function createDeckRunner(runtime: ArtifactRuntime) {
       else if (command.type === "previous") stageRef.current?.previous();
       else stageRef.current?.goto(command.page);
     });
+    window.addEventListener("keydown", handBackShortcut);
     load(code);
   };
 }

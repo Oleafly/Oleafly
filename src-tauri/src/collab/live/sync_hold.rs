@@ -9,9 +9,9 @@ use oleafly_collab::{evaluate, write_atomic, CollabError, MassChangeThreshold, M
 use oleafly_ot::TextOperation;
 use serde::{Deserialize, Serialize};
 
-use super::super::disk::{as_text, exists_exact, safe_target, sha256_hex, written_as, DiskState};
+use super::super::disk::{exists_exact, read_text, sha256_hex, written_as, DiskState};
 use super::super::guard::{PauseReason, SyncPauseHost, SyncPaused};
-use super::{by_path, guard, live_for, lock, Active, Live, LocalImport, WrittenTexts};
+use super::{by_path, guard, live_for, lock, Active, LocalImport, WrittenTexts};
 use crate::folder_watch::FolderChange;
 
 const HOLD_FILE: &str = "sync-hold.json";
@@ -188,12 +188,6 @@ impl Hold {
 
 fn rebase(base: &str, changed: &str, onto: &str) -> Option<TextOperation> {
     oleafly_ot::rebase(base, changed, onto).map(|rebased| rebased.operation)
-}
-
-fn read_text(root: &Path, path: &str) -> Option<String> {
-    safe_target(root, path)
-        .and_then(|target| std::fs::read(target).ok())
-        .and_then(|bytes| as_text(&bytes))
 }
 
 fn recorded(bases: &WrittenTexts, disk: &DiskState, path: &str) -> Option<String> {
@@ -584,7 +578,8 @@ pub(super) fn apply_kept_edits(
         let Some((id, NodeKind::Text, _)) = placed.get(&edit.path) else {
             continue;
         };
-        if read_text(root, &edit.path).as_deref() != Some(edit.text.as_str()) {
+        if read_text(root, &edit.path).map(|(text, _)| text).as_deref() != Some(edit.text.as_str())
+        {
             continue;
         }
         let current = live.doc().text(id)?;
@@ -612,6 +607,31 @@ pub(super) fn apply_kept_edits(
     }
     hold.save(dir)?;
     Ok(changed)
+}
+
+pub(super) fn release_kept(
+    dir: &Path,
+    edits: Vec<KeptEdit>,
+) -> Vec<(String, String, String, String)> {
+    if edits.is_empty() {
+        return Vec::new();
+    }
+    let _lock = hold_lock();
+    let mut hold = Hold::load(dir);
+    let released = edits
+        .into_iter()
+        .map(|edit| {
+            hold.forget(dir, &edit.path);
+            (edit.path, edit.text, edit.hash, edit.kept.disk)
+        })
+        .collect();
+    if let Err(error) = hold.save(dir) {
+        let _ = crate::project::append_app_log(format!(
+            "Live editing could not update the held changes in {}: {error}",
+            dir.display()
+        ));
+    }
+    released
 }
 
 #[derive(Default)]
@@ -690,7 +710,9 @@ pub(super) fn shape(
                 let Some(base) = load_text(dir, &path) else {
                     continue;
                 };
-                if read_text(root, &path).as_deref() != Some(base.disk.as_str()) {
+                if read_text(root, &path).map(|(text, _)| text).as_deref()
+                    != Some(base.disk.as_str())
+                {
                     shaped.conflicts.push(path);
                     continue;
                 }
@@ -840,20 +862,13 @@ fn catch_up_here(
     Ok((to_upload, renamed))
 }
 
-fn live_hold_dir(live: &Live) -> PathBuf {
-    match live {
-        Live::Server(active) => active.hold_dir(),
-        Live::Overleaf(live) => live.hold_dir(),
-    }
-}
-
 pub(crate) fn outside_change(
     change: &FolderChange,
     verdict: MassChangeVerdict,
     host: &dyn SyncPauseHost,
 ) {
     let Some(dir) = live_for(&change.project_id)
-        .map(|live| live_hold_dir(&live))
+        .map(|live| live.hold_dir())
         .or_else(|| collab_dir(&change.project_id))
     else {
         return;
@@ -882,7 +897,7 @@ fn announce_in(dir: &Path, project_id: &str, host: &dyn SyncPauseHost) {
 
 pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
     let dir = live_for(project_id)
-        .map(|live| live_hold_dir(&live))
+        .map(|live| live.hold_dir())
         .or_else(|| collab_dir(project_id));
     if let Some(dir) = dir {
         announce_in(&dir, project_id, host);
@@ -890,44 +905,31 @@ pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
 }
 
 pub(crate) fn root_returned(project_id: &str) {
-    match live_for(project_id) {
-        Some(Live::Server(active)) => active.kick(),
-        Some(Live::Overleaf(live)) => live.kick(),
-        None => {}
+    if let Some(live) = live_for(project_id) {
+        live.kick();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        initial_bases, lock, LiveDisk, LiveHost, MergedPayload, NewDevicePayload,
-        PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal,
-    };
+    use super::super::{initial_bases, lock, LiveDisk, LiveHost, WriterSignal};
     use super::*;
     use crate::collab::guard::{PauseReason, SyncPaused};
     use crate::collab::state::CollabState;
     use crate::collab::testing::RecordedPauses;
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
     use oleafly_collab::materialize;
-    use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
+    use oleafly_collab::sync::{spawn_live, LiveLink, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
-    use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
+    use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
-    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::{Arc, Mutex};
     use tokio::sync::mpsc::{self, UnboundedReceiver};
 
     struct Quiet;
 
-    impl LiveHost for Quiet {
-        fn status(&self, _: StatusPayload) {}
-        fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
-        fn presence(&self, _: PresencePayload) {}
-        fn presence_left(&self, _: PresenceLeftPayload) {}
-        fn folder_changed(&self, _: FolderChange) {}
-        fn new_device(&self, _: NewDevicePayload) {}
-    }
+    impl LiveHost for Quiet {}
 
     struct Rig {
         dir: tempfile::TempDir,
@@ -1005,26 +1007,22 @@ mod tests {
         let (writer, writer_rx) = mpsc::unbounded_channel();
         let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
         let collab = collab_of(&dir);
-        let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "held".to_owned(),
-                root: root.clone(),
-                disk_file: collab.join("materializer-index.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(bases),
-                host: Arc::new(Quiet),
-                writer,
-                upkeep: Default::default(),
-            },
-            document_dir: collab.join("document"),
-            live: shared,
+        let local = LiveDisk::assembled(
+            "held",
+            root.clone(),
+            collab.join("materializer-index.json"),
+            disk,
+            bases,
+            Arc::new(Quiet),
+            writer,
+        );
+        let active = Arc::new(Active::assembled(
+            local,
+            collab.join("document"),
+            shared,
             handle,
             link,
-            account_id: AccountId::new_v7(),
-            quiet_merge: AtomicBool::new(false),
-            waiting: AtomicBool::new(false),
-            last_status: Mutex::new(LiveStatus::Connecting),
-        });
+        ));
         Rig {
             dir,
             root,

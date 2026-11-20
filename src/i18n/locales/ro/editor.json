@@ -166,7 +166,6 @@
       "purple": "Mov"
     },
     "imageFile": "Fișier imagine",
-    "apply": "Aplică",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figuri/grafic.png",
     "split": "Împărțit",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF-ul nu a putut fi încărcat: {{detail}}",
     "imageLoadFailed": "Imaginea nu a putut fi încărcată: {{detail}}",
     "imageUnreadable": "Acest fișier nu poate fi afișat ca imagine. Poate fi deteriorat sau poate nu este o imagine.",
+    "imageTooLarge": "Această imagine depășește {{limit}}, așa că nu este afișată aici.",
     "imageFit": "Potrivește în fereastră",
     "htmlPreviewFailed": "Pagina nu a putut fi previzualizată: {{detail}}",
     "binaryFile": "Fișier binar. Nu există previzualizare.",

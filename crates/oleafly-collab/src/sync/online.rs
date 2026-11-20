@@ -145,8 +145,6 @@ async fn serve_wire(
     if !lock(project).peers_vouched() {
         seed_peers(link, project, events, retry).await;
     }
-    // A project's owner never changes, so a reconnect does not ask again: the extra round trip
-    // only delayed going back online.
     let owner_known = lock(project).owner().is_some();
     if !owner_known {
         learn_owner(link, project).await;

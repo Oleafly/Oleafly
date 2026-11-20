@@ -1,19 +1,19 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCheck, FileText, MessageSquare, MessageSquareDiff, Unlink, WifiOff } from "lucide-react";
+import { CheckCheck, FileText, MessageSquare, MessageSquareDiff, Unlink } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { getEditorDocumentPath, getEditorView } from "@oleafly/editor";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type CommentArrival, CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
-import { CommentKeys, CommentsEmpty, CommentsFootnote, withKeys } from "@/components/ui/comments/comment-empty";
+import { type CommentArrival, CommentScrollArea, threadArrivals } from "@/components/ui/comments/comment-arrivals";
+import { CommentKeys, CommentsEmpty, CommentsFootnote, CommentsOfflineQueue, withKeys } from "@/components/ui/comments/comment-empty";
 import { type CommentFilter, CommentFilterMenu, keepsThread } from "@/components/ui/comments/comment-filter";
 import { CommentQuote, type CommentQuoteState } from "@/components/ui/comments/comment-quote";
-import { type CommentEntry, CommentThread } from "@/components/ui/comments/comment-thread";
+import type { CommentEntry } from "@/components/ui/comments/comment-entry";
+import { CommentThread } from "@/components/ui/comments/comment-thread";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
@@ -37,7 +37,7 @@ import {
   type FileSuggestions,
   type SuggestionsState,
 } from "../suggestions/suggestions-store";
-import { CommentComposer } from "./CommentComposer";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
 import { DesktopCommentKit, useCommentQuoteLabels, useMentionMembers } from "./desktop-comment-kit";
 import { commentSpansIn } from "./editor-comments";
 import {
@@ -134,12 +134,6 @@ function shownTally(tally: Tally, filter: CommentFilter): number {
 }
 
 const NO_ITEMS: readonly CommentArrival[] = [];
-
-function arrivalsOf(threads: readonly CollabCommentThread[], self: string | null, group?: string): CommentArrival[] {
-  return threads.flatMap((thread) =>
-    thread.messages.map((message) => ({ id: message.id, mine: message.author === self, at: message.at, group })),
-  );
-}
 
 function pendingCount(threads: readonly CollabCommentThread[]): number {
   return threads.reduce(
@@ -662,12 +656,7 @@ function OfflineQueue({ count }: Readonly<{ count: number }>) {
     count === 1
       ? t(($) => $.collab.comments.offlineQueuedOne)
       : t(($) => $.collab.comments.offlineQueued, { number: formatNumber(count) });
-  return (
-    <WorkspaceBanner tone="neutral" role="status" data-testid="comments-offline-queue">
-      <WifiOff aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1">{text}</p>
-    </WorkspaceBanner>
-  );
+  return <CommentsOfflineQueue>{text}</CommentsOfflineQueue>;
 }
 
 function ResolveAll({
@@ -786,11 +775,15 @@ export function CommentsPane() {
   const activeSuggestions = review.path !== null && review.path === activePath ? review.suggestions : NO_SUGGESTIONS;
   const linked = useMemo(() => linkedThreads(activeSuggestions), [activeSuggestions]);
   const ordered = useMemo(() => byDocument(state.threads), [state.threads]);
-  const shown = ordered.filter((thread) => keepsThread(state.filter, thread.resolved !== null) && !linked.has(thread.id));
-  const gone = useMemo(() => new Set(state.emptied), [state.emptied]);
-  const isDetached = (thread: CollabCommentThread) => thread.anchor.range === null || gone.has(thread.id);
-  const anchored = shown.filter((thread) => !isDetached(thread));
-  const detached = shown.filter(isDetached);
+  const shown = useMemo(
+    () => ordered.filter((thread) => keepsThread(state.filter, thread.resolved !== null) && !linked.has(thread.id)),
+    [ordered, state.filter, linked],
+  );
+  const { anchored, detached } = useMemo(() => {
+    const gone = new Set(state.emptied);
+    const isDetached = (thread: CollabCommentThread) => thread.anchor.range === null || gone.has(thread.id);
+    return { anchored: shown.filter((thread) => !isDetached(thread)), detached: shown.filter(isDetached) };
+  }, [shown, state.emptied]);
   const activeItems = useMemo(() => reviewItems(anchored, activeSuggestions), [anchored, activeSuggestions]);
   const tallies = useMemo(
     () => otherFileTallies(commentsOn, state, review, activePath),
@@ -835,9 +828,9 @@ export function CommentsPane() {
     () =>
       commentsOn
         ? [
-            ...arrivalsOf(state.threads, live.self),
+            ...threadArrivals(state.threads, live.self),
             ...Object.entries(state.elsewhere).flatMap(([path, loaded]) =>
-              loaded.phase === "ready" ? arrivalsOf(loaded.threads, live.self, path) : [],
+              loaded.phase === "ready" ? threadArrivals(loaded.threads, live.self, path) : [],
             ),
           ]
         : NO_ITEMS,
@@ -919,8 +912,6 @@ export function CommentsPane() {
                 submitLabel={t(($) => $.collab.comments.send)}
                 autoFocus
                 mentionButton
-                members={mentionMembers}
-                self={live.self}
                 onSubmit={postThread}
                 onCancel={dropDraft}
               />

@@ -310,9 +310,7 @@ function availableNav(researchTasks: boolean) {
   return NAV.filter((item) => item.id !== "research" || researchTasks);
 }
 
-function isDataTab(value: string): value is "local" | "cloud" {
-  return value === "local" || value === "cloud";
-}
+const DATA_TABS = ["local", "cloud"] as const;
 
 function openingSection(requested: string | null): Section {
   const wanted = requested ?? useSettingsStore.getState().settingsLastSection;
@@ -393,7 +391,7 @@ export function SettingsModal() {
   const [section, setSection] = useState<Section>(() =>
     openingSection(useSettingsStore.getState().settingsInitialSection),
   );
-  const [dataTab, setDataTab] = useSettingsTab("data", "local", isDataTab);
+  const [dataTab, setDataTab] = useSettingsTab("data", "local", DATA_TABS);
   const settingsNavRequest = useCloudStore((s) => s.navRequest);
   const requestSettingsNav = useCloudStore((s) => s.requestNav);
   useEffect(() => {
@@ -1365,7 +1363,7 @@ export function SettingsModal() {
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
           data-tour="settings-navigation-panel"
-          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
+          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3 dark:bg-transparent"
         >
           <div
             data-tour="settings-navigation"
@@ -1412,7 +1410,7 @@ export function SettingsModal() {
               ? `${TOUR_SECTION_TARGETS[section]}-panel`
               : undefined
           }
-          className="flex min-w-0 flex-1 flex-col bg-muted/30"
+          className="flex min-w-0 flex-1 flex-col bg-muted/30 dark:bg-transparent"
         >
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-5">
             <h2

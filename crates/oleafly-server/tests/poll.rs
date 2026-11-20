@@ -26,7 +26,7 @@ use oleafly_server::test_support::{challenge_nonce, test_app, test_app_with, Tes
 use oleafly_server::transfers::UploadTiming;
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, subscribe, told_of_removal, Stage,
+    shared_with_alice_as, signed_by, stage, subscribe, told_of_removal, Stage,
 };
 use polling::{open, open_with, opened, poll_url, Poller};
 use reqwest::{Method, StatusCode};
@@ -41,19 +41,6 @@ fn quick(stage: &Stage) {
         .state()
         .polls
         .set_timing(Duration::from_millis(300), Duration::from_secs(30));
-}
-
-async fn shared_with_alice(stage: &Stage, role: ProjectRole) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(&stage.server, &stage.bob, project, &stage.alice, role)
-            .await
-            .status(),
-        StatusCode::OK
-    );
-    project
 }
 
 fn update(envelope: &oleafly_collab_protocol::envelope::Envelope) -> ClientFrame {
@@ -76,7 +63,7 @@ fn here(cursor: u32) -> PresenceState {
 async fn a_change_over_long_poll_is_acknowledged_and_reaches_a_socket_peer() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let (alice, frames) = open(&stage.server, &stage.alice, project, 0).await;
@@ -114,7 +101,7 @@ async fn a_change_over_long_poll_is_acknowledged_and_reaches_a_socket_peer() {
 async fn socket_changes_reach_a_long_poll_peer_in_order() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
@@ -146,7 +133,7 @@ async fn socket_changes_reach_a_long_poll_peer_in_order() {
 async fn opening_late_catches_up_from_the_backlog() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let first = envelope(&stage.bob, project, b"one");
@@ -191,7 +178,7 @@ async fn a_compacted_log_asks_for_the_snapshot_before_opening() {
             keep_updates: 1,
         });
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     for payload in [b"one".as_slice(), b"two", b"three"] {
@@ -234,7 +221,7 @@ async fn a_compacted_log_asks_for_the_snapshot_before_opening() {
 async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
@@ -260,7 +247,7 @@ async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
 async fn presence_and_leaving_travel_between_socket_and_long_poll() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
@@ -340,7 +327,7 @@ async fn presence_and_leaving_travel_between_socket_and_long_poll() {
 async fn a_viewer_cannot_change_the_project_over_long_poll() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Viewer).await;
     let (alice, frames) = open(&stage.server, &stage.alice, project, 0).await;
     assert!(matches!(
         frames.as_slice(),
@@ -366,7 +353,7 @@ async fn a_viewer_cannot_change_the_project_over_long_poll() {
 async fn badly_signed_or_misaddressed_changes_are_refused() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     let thief = TestDevice::generate();
     let forged = signed_by(&stage.alice, &thief, project, b"forged");
@@ -408,7 +395,7 @@ async fn badly_signed_or_misaddressed_changes_are_refused() {
 async fn a_change_too_large_is_refused_like_on_the_socket() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     let huge = envelope(&stage.alice, project, &vec![7u8; 8 * 1024 * 1024 + 1]);
     assert!(matches!(
@@ -443,7 +430,7 @@ async fn opening_without_access_reads_as_not_found() {
 async fn opening_needs_a_valid_session_and_proof_of_the_device_key() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let server = &stage.server;
     let unsigned = reqwest::Client::new()
         .get(poll_url(server, project))
@@ -519,7 +506,7 @@ async fn opening_needs_a_valid_session_and_proof_of_the_device_key() {
 async fn signing_the_device_out_ends_its_long_poll() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     let path = format!("/api/v1/devices/{}", stage.alice.tokens.device_id);
     assert_eq!(
@@ -546,7 +533,7 @@ async fn signing_the_device_out_ends_its_long_poll() {
 async fn suspending_someone_tells_their_long_poll_why() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     let path = format!("/api/v1/admin/members/{}", stage.alice.tokens.account_id);
     assert_eq!(
@@ -573,7 +560,7 @@ async fn suspending_someone_tells_their_long_poll_why() {
 async fn removing_someone_tells_their_long_poll_and_the_room() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
@@ -641,7 +628,7 @@ async fn removing_someone_tells_their_long_poll_and_the_room() {
 async fn a_new_role_and_stopping_sharing_reach_a_long_poll() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     grant(
         &stage.server,
@@ -682,7 +669,7 @@ async fn a_quiet_long_poll_expires_and_the_room_is_told() {
         .state()
         .polls
         .set_timing(Duration::from_millis(200), Duration::from_millis(400));
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
@@ -708,7 +695,7 @@ async fn polling_keeps_a_long_poll_alive() {
         .state()
         .polls
         .set_timing(Duration::from_millis(100), Duration::from_millis(1_500));
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     let until = Instant::now() + Duration::from_millis(3_500);
     while Instant::now() < until {
@@ -722,7 +709,7 @@ async fn polling_keeps_a_long_poll_alive() {
 async fn closing_a_long_poll_tells_the_room_at_once() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
@@ -754,7 +741,7 @@ async fn closing_a_long_poll_tells_the_room_at_once() {
 async fn reopening_replaces_the_older_long_poll_of_the_same_device() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let stale = opened(&stage.server, &stage.alice, project).await;
@@ -784,7 +771,7 @@ async fn reopening_replaces_the_older_long_poll_of_the_same_device() {
 async fn a_batch_the_client_missed_is_sent_again() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
@@ -813,7 +800,7 @@ async fn a_batch_the_client_missed_is_sent_again() {
 async fn a_waiting_poll_comes_back_empty_after_the_hold() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     let cursor = alice.cursor.clone();
     let started = Instant::now();
@@ -832,7 +819,7 @@ async fn a_newer_poll_replaces_one_that_is_waiting() {
         .state()
         .polls
         .set_timing(Duration::from_secs(20), Duration::from_secs(30));
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let alice = Arc::new(tokio::sync::Mutex::new(
@@ -884,7 +871,7 @@ async fn a_newer_poll_replaces_one_that_is_waiting() {
 async fn requests_without_the_session_key_find_nothing() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     assert_eq!(
         alice.get(&alice.cursor, "not-the-key").await.status(),
@@ -897,7 +884,7 @@ async fn requests_without_the_session_key_find_nothing() {
             .status(),
         StatusCode::NOT_FOUND
     );
-    let other = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let other = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let wrong_project = Poller {
         base: alice.base.clone(),
         project: other,
@@ -916,7 +903,7 @@ async fn posted_frames_whose_body_stops_arriving_end_after_the_upload_time() {
         grace: Duration::from_millis(500),
         min_rate: u64::MAX,
     });
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     let address = stage.server.url().trim_start_matches("http://").to_owned();
     let mut stream = tokio::net::TcpStream::connect(&address)
@@ -979,7 +966,7 @@ async fn answer_to(posted: &mut tokio::net::TcpStream) -> String {
 async fn a_long_poll_reads_one_post_at_a_time() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     let stalled = start_post(&stage, project, &alice.key, 1_000).await;
     let deadline = Instant::now() + WAIT;
@@ -1058,7 +1045,7 @@ async fn an_account_has_at_most_eight_posts_read_at_once_across_its_long_polls()
 async fn a_large_post_waits_for_room_in_the_transfer_budget_before_it_is_read() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let alice = opened(&stage.server, &stage.alice, project).await;
     let transfers = &stage.server.state().transfers;
     transfers.set_budget(2 * 1024 * 1024);
@@ -1080,7 +1067,7 @@ async fn a_large_post_waits_for_room_in_the_transfer_budget_before_it_is_read() 
 async fn a_leave_over_a_new_long_poll_clears_a_cursor_a_socket_of_the_device_showed() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let mut socket = connect(&stage.server, &stage.alice).await;
@@ -1117,7 +1104,7 @@ async fn a_leave_over_a_new_long_poll_clears_a_cursor_a_socket_of_the_device_sho
 async fn a_device_signed_out_while_its_long_poll_opens_is_told_its_session_ended() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let state = stage.server.state();
     let pause = state.polls.pause_next_open();
     let device = stage.alice.tokens.device_id;
@@ -1148,7 +1135,7 @@ async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
         .state()
         .polls
         .set_revocation_check(Duration::from_millis(100));
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut alice = opened(&stage.server, &stage.alice, project).await;
     let device = stage.alice.tokens.device_id;
     stage
@@ -1180,7 +1167,7 @@ async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
 async fn a_long_poll_that_falls_far_behind_is_dropped_and_can_catch_up() {
     let stage = stage().await;
     quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let project = shared_with_alice_as(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;
     let alice = opened(&stage.server, &stage.alice, project).await;

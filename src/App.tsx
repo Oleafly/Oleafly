@@ -655,7 +655,7 @@ function AppContent() {
   }, [accentColor]);
 
   useEffect(() => {
-    void applyCommentColor(commentColor);
+    applyCommentColor(commentColor);
   }, [commentColor]);
 
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);

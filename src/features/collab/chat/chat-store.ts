@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { useChatRail } from "@/components/collab/chat-rail";
-import { logError } from "@/lib/log";
-import type { CollabChatChanged, CollabChatMessage, CollabErrorCode, CollabReaction } from "@/lib/tauri";
+import { logError, logWarning } from "@/lib/log";
+import { withPending } from "@/components/ui/comments/comment-reactions";
+import type { CollabChatChanged, CollabChatMessage, CollabErrorCode } from "@/lib/tauri";
 import {
   collabChatClear,
   collabChatDelete,
@@ -13,6 +14,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";
 import { commentMembers } from "../comments/comments-store";
+import { reported } from "../comments/refusals";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
 
@@ -29,6 +31,7 @@ export interface ChatState {
 }
 
 export const CHAT_PAGE = 50;
+const REFRESH_PAGE = 200;
 const RELOAD_DELAY_MS = 150;
 
 function blank(projectId: string | null): ChatState {
@@ -58,16 +61,37 @@ function chatOpen(): boolean {
 
 let loadToken = 0;
 
+async function shownBefore(
+  projectId: string,
+  newest: readonly CollabChatMessage[],
+  cursor: string,
+  known: ReadonlySet<string>,
+  current: () => boolean,
+): Promise<CollabChatMessage[]> {
+  const found: CollabChatMessage[] = [];
+  let before = newest[0]?.id;
+  for (let page = 0; before && page <= Math.ceil(known.size / REFRESH_PAGE) && current(); page += 1) {
+    const older = await collabChatList(projectId, before, REFRESH_PAGE);
+    found.push(...older.filter((message) => known.has(message.id)));
+    if (older.length === 0 || older.some((message) => message.id === cursor)) break;
+    before = older[0].id;
+  }
+  return found;
+}
+
 export async function loadChat(): Promise<void> {
   const { projectId } = useChat.getState();
   if (!projectId) return;
   const token = ++loadToken;
-  if (useChat.getState().phase !== "ready") useChat.setState({ phase: "loading", error: null });
+  const current = () => token === loadToken && useChat.getState().projectId === projectId;
+  const shown = useChat.getState();
+  if (shown.phase !== "ready") useChat.setState({ phase: "loading", error: null });
+  const limit = shown.messages.length === 0 ? CHAT_PAGE : Math.min(REFRESH_PAGE, shown.messages.length + CHAT_PAGE);
   let listed: CollabChatMessage[];
   try {
-    listed = await collabChatList(projectId, null, CHAT_PAGE);
+    listed = await collabChatList(projectId, null, limit);
   } catch (error) {
-    if (token !== loadToken || useChat.getState().projectId !== projectId) return;
+    if (!current()) return;
     const code = collabErrorCode(error);
     if (code === "not_found") {
       useChat.setState({ messages: [], phase: "ready", error: null, hasOlder: false, cursor: null });
@@ -77,11 +101,24 @@ export async function loadChat(): Promise<void> {
     useChat.setState({ phase: "failed", error: code });
     return;
   }
-  if (token !== loadToken || useChat.getState().projectId !== projectId) return;
+  if (!current()) return;
+  const { messages, cursor } = useChat.getState();
+  const known = new Set(messages.map((message) => message.id));
+  let older: CollabChatMessage[] = [];
+  if (cursor && listed.some((message) => known.has(message.id)) && !listed.some((message) => message.id === cursor)) {
+    try {
+      older = await shownBefore(projectId, listed, cursor, known, current);
+    } catch (error) {
+      void logWarning("collab chat refresh older", error);
+    }
+    if (!current()) return;
+  }
   useChat.setState((state) => {
     const known = new Set(state.messages.map((message) => message.id));
     const joins = listed.some((message) => known.has(message.id));
-    const next = joins ? merged(state.messages, listed) : chronological(listed);
+    const start = joins ? listed.findIndex((message) => message.id === state.cursor) : -1;
+    const fresh = start > 0 ? listed.slice(start) : listed;
+    const next = joins ? merged(state.messages, older, fresh) : chronological(listed);
     return {
       messages: same(state.messages, next) ? state.messages : next,
       phase: "ready",
@@ -158,7 +195,7 @@ export function showPendingChat(projectId: string | null): () => void {
 }
 
 async function postChat(projectId: string, body: string): Promise<void> {
-  const message = await collabChatSend(projectId, body, commentMembers());
+  const message = await reported("collab chat send", () => collabChatSend(projectId, body, commentMembers()));
   if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({ messages: merged(state.messages, [message]) }));
 }
@@ -181,44 +218,30 @@ export async function sendChat(body: string): Promise<void> {
 
 export async function deleteChat(id: string): Promise<void> {
   const projectId = requireProject();
-  await collabChatDelete(projectId, id);
+  await reported("collab chat delete", () => collabChatDelete(projectId, id));
   if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({
     messages: state.messages.map((message) => (message.id === id ? { ...message, body: "", deleted: true } : message)),
   }));
 }
 
-export function withReaction(
-  reactions: readonly CollabReaction[],
-  emoji: string,
-  self: string,
-  on: boolean,
-): CollabReaction[] {
-  const listed = reactions.some((reaction) => reaction.emoji === emoji);
-  const next = reactions.map((reaction) => {
-    if (reaction.emoji !== emoji) return reaction;
-    const others = reaction.by.filter((id) => id !== self);
-    return { emoji, by: on ? [...others, self] : others };
-  });
-  if (on && !listed) next.push({ emoji, by: [self] });
-  return next.filter((reaction) => reaction.by.length > 0);
-}
-
 export async function reactToChat(id: string, emoji: string, on: boolean): Promise<void> {
   const projectId = requireProject();
-  await collabChatReact(projectId, id, emoji, on);
+  await reported("collab chat react", () => collabChatReact(projectId, id, emoji, on));
   const self = useCollabLiveStore.getState().share?.account_id;
   if (useChat.getState().projectId !== projectId || !self) return;
   useChat.setState((state) => ({
     messages: state.messages.map((message) =>
-      message.id === id ? { ...message, reactions: withReaction(message.reactions ?? [], emoji, self, on) } : message,
+      message.id === id
+        ? { ...message, reactions: withPending(message.reactions ?? [], { [emoji]: on }, self).map(({ emoji: shown, by }) => ({ emoji: shown, by: [...by] })) }
+        : message,
     ),
   }));
 }
 
 export async function clearChat(): Promise<void> {
   const projectId = requireProject();
-  await collabChatClear(projectId);
+  await reported("collab chat clear", () => collabChatClear(projectId));
   if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({
     messages: state.messages.map((message) => ({ ...message, body: "", deleted: true })),

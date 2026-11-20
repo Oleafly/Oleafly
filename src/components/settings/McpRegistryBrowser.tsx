@@ -3,6 +3,7 @@ import { ChevronRight, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { describeError } from "@/lib/app-error";
 import {
@@ -84,7 +85,7 @@ export function McpRegistryBrowser({ onReview }: Readonly<McpRegistryBrowserProp
           {t(($) => $.common.actions.search)}
         </Button>
       </form>
-      {error ? <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p> : null}
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
       {result?.servers.length === 0 ? <output className="block text-xs text-muted-foreground">{t(($) => $.settings.mcp.registry.noResults)}</output> : null}
       {result?.warnings.length ? (
         <ul role="status" className="m-0 list-none space-y-1 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">

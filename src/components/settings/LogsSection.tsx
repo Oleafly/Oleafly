@@ -1,17 +1,19 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Copy, Download, FolderOpen, Lock, Logs, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { EmptyState, LoadingState } from "@/components/ui/empty";
+import { EmptyMedia, EmptyState, LoadingState } from "@/components/ui/empty";
 import { Highlighted } from "@/components/ui/highlighted";
 import { SearchField } from "@/components/ui/search-field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { formatDate, formatNumber, formatTime } from "@/lib/intl";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { basename } from "@/lib/path-utils";
 import {
@@ -32,6 +34,7 @@ type Field = readonly [string, string];
 interface LogRow {
   key: string;
   entry: LogEntry;
+  lower: string;
   fields: Field[];
   privateFields: Field[];
   haystack: string;
@@ -42,6 +45,8 @@ interface LogGroup {
   label: string;
   rows: LogRow[];
 }
+
+type ListItem = Readonly<{ group: LogGroup; row?: LogRow }>;
 
 type LoadState =
   | { status: "loading" }
@@ -60,6 +65,10 @@ const ROW_GRID = "grid grid-cols-[6rem_4.5rem_minmax(0,1fr)_0.875rem] items-cent
 
 const DAY_MS = 86_400_000;
 
+const SEARCH_DELAY_MS = 150;
+
+const REFRESH_MS = 5_000;
+
 function fieldsOf(value: unknown): Field[] {
   if (value === null || value === undefined) return [];
   if (typeof value !== "object" || Array.isArray(value)) return [["value", stringValue(value)]];
@@ -70,9 +79,8 @@ function stringValue(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-function matchRanges(text: string, query: string): [number, number][] {
+function matchRanges(lower: string, query: string): [number, number][] {
   if (!query) return [];
-  const lower = text.toLowerCase();
   const ranges: [number, number][] = [];
   let at = lower.indexOf(query);
   while (at !== -1) {
@@ -86,28 +94,43 @@ function fieldText(fields: readonly Field[]): string {
   return fields.map(([key, value]) => `${key}=${value}`).join("  ");
 }
 
-function entryText(entry: LogEntry): string {
-  const lines = [`${new Date(entry.ts_ms).toISOString()} ${entry.level} ${entry.message}`];
-  for (const [key, value] of [...fieldsOf(entry.safe), ...fieldsOf(entry.sensitive)]) {
-    lines.push(`${key}=${value}`);
-  }
-  return lines.join("\n");
+function entryText(row: LogRow): string {
+  const { entry } = row;
+  return [
+    `${new Date(entry.ts_ms).toISOString()} ${entry.level} ${entry.message}`,
+    ...row.fields.map(([key, value]) => `${key}=${value}`),
+  ].join("\n");
 }
 
 function toRows(entries: readonly LogEntry[]): LogRow[] {
+  const seen = new Map<number, number>();
   return entries
-    .map((entry, index) => {
+    .map((entry) => {
+      const repeat = seen.get(entry.ts_ms) ?? 0;
+      seen.set(entry.ts_ms, repeat + 1);
       const fields = fieldsOf(entry.safe);
       const privateFields = fieldsOf(entry.sensitive);
       return {
-        key: `${entry.ts_ms}-${index}`,
+        key: `${entry.ts_ms}-${repeat}`,
         entry,
+        lower: entry.message.toLowerCase(),
         fields,
         privateFields,
         haystack: `${entry.message} ${fieldText(fields)} ${fieldText(privateFields)}`.toLowerCase(),
       };
     })
     .reverse();
+}
+
+function sameEntries(left: readonly LogEntry[], right: readonly LogEntry[]): boolean {
+  const last = left.at(-1);
+  const next = right.at(-1);
+  return (
+    left.length === right.length &&
+    left[0]?.ts_ms === right[0]?.ts_ms &&
+    last?.ts_ms === next?.ts_ms &&
+    last?.message === next?.message
+  );
 }
 
 function dayStart(value: number): number {
@@ -150,7 +173,7 @@ function LogDetails({ row }: Readonly<{ row: LogRow }>) {
             <FieldList fields={row.privateFields} />
           </div>
         ) : null}
-        <Button type="button" variant="outline" size="xs" onClick={() => void copy(entryText(row.entry))}>
+        <Button type="button" variant="outline" size="xs" onClick={() => void copy(entryText(row))}>
           <Copy aria-hidden />
           {copied ? t(($) => $.settings.logs.copied) : t(($) => $.settings.logs.copyEntry)}
         </Button>
@@ -159,7 +182,7 @@ function LogDetails({ row }: Readonly<{ row: LogRow }>) {
   );
 }
 
-function LogRowView({
+const LogRowView = memo(function LogRowView({
   row,
   query,
   open,
@@ -173,7 +196,7 @@ function LogRowView({
         type="button"
         aria-expanded={open}
         onClick={() => onToggle(row.key)}
-        className={cn(ROW_GRID, "w-full py-2 text-left text-xs transition-colors hover:bg-accent/40 focus-visible:bg-accent/40")}
+        className={cn(ROW_GRID, "h-8 w-full text-left text-xs transition-colors hover:bg-accent/40 focus-visible:bg-accent/40")}
       >
         <span className="whitespace-nowrap font-mono text-[0.6875rem] text-muted-foreground">
           {formatTime(entry.ts_ms, { timeStyle: "medium" })}
@@ -184,7 +207,7 @@ function LogRowView({
           </Badge>
         </span>
         <span className="min-w-0 truncate">
-          <Highlighted text={entry.message} ranges={matchRanges(entry.message, query)} />
+          <Highlighted text={entry.message} ranges={matchRanges(row.lower, query)} />
           {row.fields.length > 0 ? (
             <span className="ml-2.5 font-mono text-[0.6875rem] text-muted-foreground">{fieldText(row.fields)}</span>
           ) : null}
@@ -197,6 +220,52 @@ function LogRowView({
       {open ? <LogDetails row={row} /> : null}
     </div>
   );
+});
+
+function LogList({
+  items,
+  query,
+  expanded,
+  onToggle,
+}: Readonly<{ items: readonly ListItem[]; query: string; expanded: string | null; onToggle: (key: string) => void }>) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const rows = useRowWindow({ count: items.length, scrollRef, listRef });
+  const slice = items.slice(rows.start, rows.end);
+  const lifted = slice[0]?.row ? rows.rowHeight : 0;
+  const sections: { group: LogGroup; rows: LogRow[] }[] = [];
+  for (const item of slice) {
+    if (sections.at(-1)?.group !== item.group) sections.push({ group: item.group, rows: [] });
+    if (item.row) sections.at(-1)?.rows.push(item.row);
+  }
+  return (
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={listRef}
+        style={{ paddingTop: Math.max(0, rows.paddingTop - lifted), paddingBottom: rows.paddingBottom }}
+      >
+        {sections.map((section) => (
+          <section key={section.group.key} aria-label={section.group.label}>
+            <div
+              {...{ [ROW_WINDOW_ITEM]: "" }}
+              className="sticky top-0 z-10 box-content flex h-8 items-center border-b bg-card px-3 text-[0.6875rem] font-medium text-muted-foreground"
+            >
+              {section.group.label}
+            </div>
+            {section.rows.map((row) => (
+              <LogRowView
+                key={row.key}
+                row={row}
+                query={query && row.lower.includes(query) ? query : ""}
+                open={expanded === row.key}
+                onToggle={onToggle}
+              />
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function LogsSection() {
@@ -206,8 +275,10 @@ export function LogsSection() {
   const [level, setLevel] = useState<LevelFilter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const reads = useRef(0);
 
   const loading = state.status === "loading";
+  const ready = state.status === "ready";
 
   useEffect(() => {
     if (!loading) return;
@@ -225,19 +296,59 @@ export function LogsSection() {
     };
   }, [loading]);
 
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    let busy = false;
+    let warned = false;
+    const refresh = () => {
+      if (busy || document.visibilityState === "hidden") return;
+      busy = true;
+      const read = reads.current;
+      readLogEntries()
+        .then((next) => {
+          warned = false;
+          if (!active || read !== reads.current) return;
+          setState((current) =>
+            current.status === "ready" && sameEntries(current.entries, next) ? current : { status: "ready", entries: next },
+          );
+        })
+        .catch((error) => {
+          if (warned) return;
+          warned = true;
+          void logWarning("refresh log entries", error);
+        })
+        .finally(() => {
+          busy = false;
+        });
+    };
+    const timer = window.setInterval(refresh, REFRESH_MS);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [ready]);
+
   const entries = state.status === "ready" ? state.entries : [];
   const rows = useMemo(() => toRows(entries), [entries]);
-  const needle = query.trim().toLowerCase();
+  const needle = useDebouncedValue(query.trim().toLowerCase(), SEARCH_DELAY_MS, (value) => value === "");
   const searched = useMemo(
     () => (needle ? rows.filter((row) => row.haystack.includes(needle)) : rows),
     [rows, needle],
   );
-  const counts: Record<LevelFilter, number> = {
-    all: searched.length,
-    warning: searched.filter((row) => row.entry.level === "warning").length,
-    error: searched.filter((row) => row.entry.level === "error").length,
-  };
-  const visible = level === "all" ? searched : searched.filter((row) => row.entry.level === level);
+  const counts = useMemo<Record<LevelFilter, number>>(() => {
+    let warning = 0;
+    let error = 0;
+    for (const row of searched) {
+      if (row.entry.level === "warning") warning += 1;
+      else if (row.entry.level === "error") error += 1;
+    }
+    return { all: searched.length, warning, error };
+  }, [searched]);
+  const visible = useMemo(
+    () => (level === "all" ? searched : searched.filter((row) => row.entry.level === level)),
+    [searched, level],
+  );
 
   const groups = useMemo(() => {
     const today = dayStart(Date.now());
@@ -255,6 +366,11 @@ export function LogsSection() {
     }
     return byDay;
   }, [visible, t]);
+
+  const items = useMemo(
+    () => groups.flatMap((group): ListItem[] => [{ group }, ...group.rows.map((row) => ({ group, row }))]),
+    [groups],
+  );
 
   const total = entries.length;
   const hasEntries = total > 0;
@@ -285,6 +401,7 @@ export function LogsSection() {
 
   const clearAll = async () => {
     setConfirmClear(false);
+    reads.current += 1;
     try {
       await clearLogs();
       setExpanded(null);
@@ -295,9 +412,9 @@ export function LogsSection() {
     }
   };
 
-  const toggleRow = (key: string) => {
+  const toggleRow = useCallback((key: string) => {
     setExpanded((current) => (current === key ? null : key));
-  };
+  }, []);
 
   const resetFilters = () => {
     setQuery("");
@@ -322,9 +439,9 @@ export function LogsSection() {
         <EmptyState
           className="flex-1 p-8"
           icon={
-            <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-muted-foreground">
+            <EmptyMedia>
               <Logs aria-hidden className="size-5" />
-            </span>
+            </EmptyMedia>
           }
           title={t(($) => $.settings.logs.empty.title)}
           description={t(($) => $.settings.logs.empty.description)}
@@ -348,26 +465,7 @@ export function LogsSection() {
         </EmptyState>
       );
     }
-    return (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {groups.map((group) => (
-          <section key={group.key} aria-label={group.label}>
-            <div className="sticky top-0 z-10 border-b bg-card px-3 py-1.5 text-[0.6875rem] font-medium text-muted-foreground">
-              {group.label}
-            </div>
-            {group.rows.map((row) => (
-              <LogRowView
-                key={row.key}
-                row={row}
-                query={needle}
-                open={expanded === row.key}
-                onToggle={toggleRow}
-              />
-            ))}
-          </section>
-        ))}
-      </div>
-    );
+    return <LogList items={items} query={needle} expanded={expanded} onToggle={toggleRow} />;
   };
 
   return (

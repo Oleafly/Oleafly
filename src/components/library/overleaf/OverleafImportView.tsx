@@ -20,7 +20,6 @@ import { projectModifiedLabel } from "@/lib/project-format";
 import { cn, isLinux } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useOverleafImportStore, type OverleafRowProgress } from "@/store/overleaf-import";
-import { useSettingsStore } from "@/store/settings";
 
 type Filter = "all" | "owned" | "shared";
 type LibraryTranslate = ReturnType<typeof useTranslation<["library"]>>["t"];
@@ -188,8 +187,8 @@ function PickerToolbar({
   total: number;
 }>) {
   const { t } = useTranslation(["library"]);
-  const layout = useSettingsStore((state) => state.homeProjectLayout);
-  const setLayout = useSettingsStore((state) => state.setHomeProjectLayout);
+  const layout = useOverleafImportStore((state) => state.layout);
+  const setLayout = useOverleafImportStore((state) => state.setLayout);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-48 flex-1">
@@ -284,7 +283,7 @@ function ProjectArea({
   onOpenProject: (projectId: string) => void;
 }>) {
   const { t } = useTranslation(["library"]);
-  const layout = useSettingsStore((state) => state.homeProjectLayout);
+  const layout = useOverleafImportStore((state) => state.layout);
   const selected = useOverleafImportStore((state) => state.selected);
   const progress = useOverleafImportStore((state) => state.progress);
   const importing = useOverleafImportStore((state) => state.importing);
@@ -498,6 +497,7 @@ const ProjectRow = memo(function ProjectRow({ project, mode, checked, named, pro
       className={cn(
         "flex items-center gap-3 px-3 py-2 transition-colors [contain-intrinsic-size:auto_3rem] [content-visibility:auto]",
         picking && checked && "bg-accent/60",
+        picking && !checked && onToggle && !busy && "hover:bg-accent/35",
       )}
     >
       {picking ? (
@@ -572,7 +572,7 @@ function ImportRun({
   onDone,
 }: Readonly<{ onOpenProject: (projectId: string) => void; onDone: () => void }>) {
   const { t } = useTranslation(["library"]);
-  const layout = useSettingsStore((state) => state.homeProjectLayout);
+  const layout = useOverleafImportStore((state) => state.layout);
   const run = useOverleafImportStore((state) => state.run);
   const projects = useOverleafImportStore((state) => state.projects);
   const progress = useOverleafImportStore((state) => state.progress);

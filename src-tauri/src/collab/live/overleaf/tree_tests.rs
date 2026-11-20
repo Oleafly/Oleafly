@@ -5,7 +5,7 @@ use oleafly_online::client::Http;
 use oleafly_online::live::rest::TreeRest;
 use oleafly_online::realtime::events::EntityId;
 use oleafly_online::realtime::tree::NodeKind;
-use oleafly_online::realtime::ProjectPage;
+use oleafly_online::realtime::{DocId, ProjectPage};
 use oleafly_online::session::SessionHandle;
 use oleafly_online::test_support::mock_overleaf::{MockProject, MockUser, Privilege};
 use oleafly_ot::DocMessage;
@@ -14,6 +14,7 @@ use super::rig::{eventually, run, session_of, FirstStart, OverleafRig, Place};
 use super::TreeNoticeKind;
 use crate::collab::disk::sha256_hex;
 use crate::collab::live::kept::KeptKind;
+use crate::collab::live::session::guard;
 use crate::collab::live::uploads::DownloadProgress;
 
 const MAIN: &str = "main.tex";
@@ -1128,11 +1129,11 @@ fn a_coauthors_rename_before_the_first_draw_moves_my_local_file() {
             .await
             .unwrap();
         eventually("the session sees the rename", || {
-            rig.live.doc_at("renamed.tex").is_some()
+            rig.live.session.doc_at("renamed.tex").is_some()
         })
         .await;
         std::fs::rename(&hidden, &rig.root).unwrap();
-        rig.live.kick();
+        rig.live.mirror.kick();
         disk_matches(&rig, "renamed.tex", b"Notes, mine\n").await;
         disk_gone(&rig, NOTES).await;
         eventually("my local edit reaches the server", || {
@@ -1176,6 +1177,411 @@ fn a_server_file_never_overwrites_a_local_text_file_of_the_same_name_at_first_st
         })
         .await;
         assert_eq!(rig.read(&copy().unwrap()), LOCAL);
+        rig.finish().await;
+    });
+}
+
+async fn watched(rig: &OverleafRig) -> u64 {
+    let token = crate::folder_watch::watch_project(
+        &rig.project_id,
+        Arc::new(|_| {}),
+        Some(crate::folder_watch::WatchMode::Poll(Duration::from_millis(
+            50,
+        ))),
+    )
+    .unwrap()
+    .expect("the project is watched");
+    tokio::time::sleep(Duration::from_millis(250)).await;
+    token
+}
+
+#[test]
+fn outside_creates_edits_renames_and_deletes_reach_the_service_through_the_watcher() {
+    let library = crate::collab::testing::TempLibrary::new();
+    run(async {
+        let rig = ready(OverleafRig::start_at(project(), DISK, Place::Library).await).await;
+        let token = watched(&rig).await;
+        let main = rig.doc(MAIN);
+        let notes = rig.doc(NOTES);
+
+        put(&rig, "appendix.tex", b"Appendix text\n").await;
+        eventually("the new file is on the server with its text", || {
+            rig.mock
+                .entity_id("appendix.tex")
+                .is_some_and(|id| rig.mock.doc_text(&id) == "Appendix text\n")
+        })
+        .await;
+
+        put(&rig, MAIN, b"Hello from outside\n").await;
+        eventually("the outside edit is on the server", || {
+            rig.mock.doc_text(&main) == "Hello from outside\n"
+        })
+        .await;
+
+        tokio::fs::rename(rig.root.join(NOTES), rig.root.join("chapter.tex"))
+            .await
+            .unwrap();
+        eventually("the server renamed the same doc", || {
+            rig.mock.entity_id("chapter.tex").as_deref() == Some(notes.as_str())
+        })
+        .await;
+        assert_eq!(calls(&rig, "POST", &format!("/doc/{notes}/rename")), 1);
+
+        tokio::fs::remove_file(rig.root.join(INTRO)).await.unwrap();
+        eventually("the delete is asked about", || {
+            told(&rig).contains(&TreeNoticeKind::DeleteAsked {
+                paths: vec![INTRO.to_owned()],
+            })
+        })
+        .await;
+        assert!(rig.mock.entity_id(INTRO).is_some());
+
+        crate::folder_watch::stop(&rig.project_id, Some(token));
+        settle(&rig).await;
+        assert_eq!(calls(&rig, "POST", "/doc"), 1);
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
+fn the_apps_own_writes_renames_and_deletes_reach_the_service_without_the_watcher() {
+    let library = crate::collab::testing::TempLibrary::new();
+    run(async {
+        let rig = ready(OverleafRig::start_at(project(), DISK, Place::Library).await).await;
+        let notes = rig.doc(NOTES);
+        let target = rig.root.join("ai.tex");
+        let id = rig.project_id.clone();
+        crate::project::write_project_bytes(&id, &target, "ai.tex", b"Written by a tool\n")
+            .unwrap();
+        eventually("the app's new file is on the server", || {
+            rig.mock
+                .entity_id("ai.tex")
+                .is_some_and(|id| rig.mock.doc_text(&id) == "Written by a tool\n")
+        })
+        .await;
+
+        let renamed = crate::project::rename_file_blocking(
+            id.clone(),
+            NOTES.to_owned(),
+            "chapter.tex".to_owned(),
+            None,
+            None,
+        );
+        assert!(renamed.is_ok(), "{renamed:?}");
+        eventually("the server renamed the same doc", || {
+            rig.mock.entity_id("chapter.tex").as_deref() == Some(notes.as_str())
+        })
+        .await;
+        settle(&rig).await;
+        assert_eq!(calls(&rig, "POST", &format!("/doc/{notes}/rename")), 1);
+        assert_eq!(calls(&rig, "DELETE", &format!("/doc/{notes}")), 0);
+
+        let deleted = crate::project::delete_file(id, INTRO.to_owned(), None, Some(true));
+        assert!(deleted.is_ok(), "{deleted:?}");
+        eventually("the delete is asked about", || {
+            told(&rig).contains(&TreeNoticeKind::DeleteAsked {
+                paths: vec![INTRO.to_owned()],
+            })
+        })
+        .await;
+        assert_eq!(calls(&rig, "POST", "/doc"), 1);
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+const RENAMED: [(&str, &str); 3] = [
+    ("what?.tex", "Asked"),
+    ("aux.tex", "Aux"),
+    ("Notes.tex", "Capital"),
+];
+
+async fn renamed_docs(rig: &OverleafRig) -> Vec<(String, String)> {
+    let bob = bob(rig).await;
+    let mut peer = rig.mock.peer("bob");
+    let mut made = Vec::new();
+    for (name, text) in RENAMED {
+        let id = bob
+            .rest
+            .create_doc(&bob.session, &bob.root, name)
+            .await
+            .unwrap();
+        peer.join(&id.0);
+        peer.type_at(&id.0, 0, text);
+        made.push((id.0, laid_at(rig, name).await));
+    }
+    made
+}
+
+async fn laid_at(rig: &OverleafRig, name: &str) -> String {
+    let started = std::time::Instant::now();
+    loop {
+        let laid = rig.mock.entity_id(name).and_then(|id| {
+            guard(&rig.live.mirror.disk.disk)
+                .layout
+                .get(&id)
+                .map(|placed| placed.path.clone())
+        });
+        if let Some(path) = laid.filter(|path| rig.root.join(path).is_file()) {
+            return path;
+        }
+        assert!(
+            started.elapsed() < super::rig::WAIT,
+            "{name} was never drawn"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[test]
+fn documents_renamed_on_disk_open_live_and_send_presence() {
+    run(async {
+        for (index, (name, text)) in RENAMED.into_iter().enumerate() {
+            let rig = ready(OverleafRig::start(project(), DISK).await).await;
+            let (doc, path) = renamed_docs(&rig).await.swap_remove(index);
+            assert_ne!(path, name, "{name} kept its service name on disk");
+            disk_matches(&rig, &path, text.as_bytes()).await;
+            let tab = rig.open(&path);
+            assert_eq!(tab.file_id, doc, "{path} opened another document");
+            assert_eq!(tab.text, text);
+            eventually("the doc is joined", || {
+                rig.mock
+                    .received("joinDoc")
+                    .iter()
+                    .any(|sent| sent.args.first() == Some(&serde_json::json!(doc)))
+            })
+            .await;
+            crate::collab::live::editor::presence_set(
+                &rig.project_id,
+                Some(path.clone()),
+                Some(1),
+                Some(1),
+            );
+            eventually("the position names the document", || {
+                rig.mock
+                    .received("clientTracking.updatePosition")
+                    .iter()
+                    .any(|sent| sent.args[0]["doc_id"] == serde_json::json!(doc))
+            })
+            .await;
+            rig.finish().await;
+        }
+    });
+}
+
+#[test]
+fn the_service_never_gets_another_files_text_through_a_name_that_differs_by_case() {
+    use oleafly_online::live::session::LivePort as _;
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let made = renamed_docs(&rig).await;
+        let capital = &made[2].1;
+        disk_matches(&rig, capital, b"Capital").await;
+        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        assert_eq!(port.disk_text("Notes.tex").as_deref(), Some("Capital"));
+        assert_eq!(port.disk_text(NOTES).as_deref(), Some("Notes\n"));
+        assert_eq!(
+            port.local_file("Notes.tex").map(|file| file.bytes),
+            Some(b"Capital".to_vec())
+        );
+        assert_eq!(port.local_file_size("Notes.tex"), Some(7));
+        assert_eq!(port.disk_text("NOTES.TEX"), None);
+        assert_eq!(port.local_file("NOTES.TEX"), None);
+        assert_eq!(port.local_file_size("NOTES.TEX"), None);
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_flush_while_a_removal_settles_still_writes_the_typing() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let notes = rig.doc(NOTES);
+        let mut peer = rig.mock.peer("bob");
+        peer.join(&notes);
+        let bob = bob(&rig).await;
+        bob.rest
+            .delete(&bob.session, NodeKind::Doc, &entity(&rig, INTRO))
+            .await
+            .unwrap();
+        eventually("the removal settles", || rig.live.session.tree_settling()).await;
+        peer.type_at(&notes, 0, "More ");
+        eventually("the typing arrived", || {
+            rig.live.session.text(&DocId(notes.clone())).as_deref() == Some("More Notes\n")
+        })
+        .await;
+        assert!(rig.live.session.tree_settling());
+        rig.live.flush().await;
+        assert_eq!(
+            on_disk(&rig, NOTES).await.as_deref(),
+            Some(&b"More Notes\n"[..])
+        );
+        rig.finish().await;
+    });
+}
+
+#[cfg(unix)]
+#[test]
+fn a_figure_whose_local_copy_cannot_be_kept_is_retried_until_both_are_kept() {
+    use std::os::unix::fs::PermissionsExt as _;
+    run(async {
+        let rig =
+            ready(OverleafRig::start(project().file("figures/plot.png", PNG), DISK).await).await;
+        disk_matches(&rig, "figures/plot.png", PNG).await;
+        settle(&rig).await;
+        put(&rig, "figures/plot.png", MINE).await;
+        let folder = rig.root.join("figures");
+        let mode = |bits| std::fs::Permissions::from_mode(bits);
+        std::fs::set_permissions(&folder, mode(0o555)).unwrap();
+        let theirs = b"\x89PNG\r\n\x1a\ntheirs";
+        let bob = bob(&rig).await;
+        bob.rest
+            .upload(&bob.session, &entity(&rig, "figures"), "plot.png", theirs)
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(800)).await;
+        assert_eq!(
+            on_disk(&rig, "figures/plot.png").await.as_deref(),
+            Some(MINE)
+        );
+        std::fs::set_permissions(&folder, mode(0o755)).unwrap();
+        disk_matches(&rig, "figures/plot.png", theirs).await;
+        let kept_copy = || {
+            rig.host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.clone())
+                .find(|file| file.path == "figures/plot.png")
+                .and_then(|file| file.copy)
+        };
+        eventually("my figure is kept beside", || kept_copy().is_some()).await;
+        disk_matches(&rig, &kept_copy().expect("my figure was kept beside"), MINE).await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn unsent_text_of_a_document_with_no_path_is_kept_beside_its_last_path() {
+    use oleafly_online::live::session::{LivePort as _, MergeReview};
+    use oleafly_online::realtime::tree::PathChange;
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        guard(&rig.live.mirror.names).follow(&[PathChange::Removed {
+            id: EntityId("gone".to_owned()),
+            path: "sections/gone.tex".to_owned(),
+            kind: NodeKind::Doc,
+        }]);
+        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        port.merged(
+            &DocId("gone".to_owned()),
+            MergeReview::Kept {
+                text: "Words not sent\n".to_owned(),
+            },
+        );
+        let kept = guard(&rig.live.mirror.kept)
+            .iter()
+            .find(|file| file.path == "sections/gone.tex")
+            .and_then(|file| file.copy.clone())
+            .expect("the unsent text was kept");
+        assert!(kept.starts_with("sections/gone ("), "{kept}");
+        assert_eq!(rig.read(&kept), "Words not sent\n");
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn closing_an_older_tab_keeps_the_newer_tab_of_the_same_document() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let sink: oleafly_ot::DocSink = Arc::new(|_| {});
+        let older = rig.live.open(NOTES, Arc::clone(&sink)).unwrap();
+        let newer = rig.live.open(NOTES, sink).unwrap();
+        rig.live.close(&older.file_id, older.session);
+        let doc = DocId(newer.file_id.clone());
+        assert!(guard(&rig.live.mirror.sinks)
+            .get(&doc)
+            .is_some_and(|(session, _)| *session == newer.session));
+        rig.live.close(&newer.file_id, newer.session);
+        assert!(!guard(&rig.live.mirror.sinks).contains_key(&doc));
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_viewers_save_is_refused_as_read_only() {
+    run(async {
+        let rig = ready(OverleafRig::start_as(project(), DISK, "vera").await).await;
+        eventually("notes is drawn", || rig.live.doc_at(NOTES).is_some()).await;
+        let outcome = rig.live.write_text(NOTES, None, "Changed\n").await.unwrap();
+        assert!(!outcome.handled);
+        assert_eq!(outcome.reason.as_deref(), Some("read_only"));
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn restoring_without_a_kept_copy_or_onto_a_file_says_why() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let refused = rig.live.restore("nothing.tex").await.unwrap_err();
+        assert!(
+            matches!(&refused, oleafly_collab::CollabError::Api { code, .. } if code == "not_found"),
+            "{refused:?}"
+        );
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn quitting_stops_fetching_figures() {
+    use crate::collab::live::downloads::FigureHost as _;
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        rig.live.quit(Duration::from_secs(2)).await;
+        assert!(rig.live.figures_closed());
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_refusal_is_told_again_once_the_role_has_allowed_editing_in_between() {
+    use oleafly_collab_protocol::projects::ProjectRole;
+    run(async {
+        let rig = ready(OverleafRig::start_as(project(), DISK, "vera").await).await;
+        let refusals = |rig: &OverleafRig| {
+            told(rig)
+                .into_iter()
+                .filter(|kind| {
+                    matches!(kind, TreeNoticeKind::NotAllowed { paths } if paths == &["mine.tex".to_owned()])
+                })
+                .count()
+        };
+        let role_is = |rig: &OverleafRig, wanted: ProjectRole| {
+            rig.host
+                .roles
+                .lock()
+                .unwrap()
+                .last()
+                .is_some_and(|last| last.role == wanted)
+        };
+        put(&rig, "mine.tex", b"Mine\n").await;
+        import(&rig, &["mine.tex"]).await;
+        import(&rig, &["mine.tex"]).await;
+        assert_eq!(refusals(&rig), 1);
+        rig.mock
+            .set_privilege("vera", Some(Privilege::ReadAndWrite));
+        eventually("vera can edit", || role_is(&rig, ProjectRole::Editor)).await;
+        rig.mock.set_privilege("vera", Some(Privilege::ReadOnly));
+        eventually("vera only views again", || {
+            role_is(&rig, ProjectRole::Viewer)
+        })
+        .await;
+        put(&rig, "mine.tex", b"Mine, again\n").await;
+        import(&rig, &["mine.tex"]).await;
+        assert_eq!(refusals(&rig), 2);
         rig.finish().await;
     });
 }

@@ -1,10 +1,6 @@
-const AI_SETTINGS_TABS = ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"] as const;
+export const AI_SETTINGS_TABS = ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"] as const;
 
-export type AiSettingsTab = (typeof AI_SETTINGS_TABS)[number];
-
-export function isAiSettingsTab(value: string): value is AiSettingsTab {
-  return (AI_SETTINGS_TABS as readonly string[]).includes(value);
-}
+type AiSettingsTab = (typeof AI_SETTINGS_TABS)[number];
 
 export interface AiSettingsDestination {
   tab: AiSettingsTab;

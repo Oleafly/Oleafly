@@ -127,7 +127,11 @@ pub(super) trait FigureHost: LiveTree + Sized + 'static {
     fn local(&self) -> &LiveDisk;
     fn figure_hold_dir(&self) -> PathBuf;
     fn fetch_figure(&self, path: &str, hash: &str) -> BoxFuture<'static, Option<Vec<u8>>>;
-    fn figure_conflict(self: Arc<Self>, path: String, bytes: Bytes) -> BoxFuture<'static, ()>;
+    fn figure_conflict(
+        self: Arc<Self>,
+        path: String,
+        bytes: Bytes,
+    ) -> BoxFuture<'static, Option<UnwrittenReason>>;
     fn figure_placed(&self, _path: &str, _hash: &str, _content: &str) {}
 
     fn want_figures(self: &Arc<Self>, wanted: Vec<(String, String)>) {
@@ -263,9 +267,18 @@ impl FigureHost for Active {
         Box::pin(async move { fetch(&link, &hash).await })
     }
 
-    fn figure_conflict(self: Arc<Self>, path: String, _bytes: Bytes) -> BoxFuture<'static, ()> {
+    fn figure_conflict(
+        self: Arc<Self>,
+        path: String,
+        _bytes: Bytes,
+    ) -> BoxFuture<'static, Option<UnwrittenReason>> {
         Box::pin(async move {
-            let _ = self.import_paths(Some(vec![path])).await;
+            if let Err(error) = self.import_paths(Some(vec![path.clone()])).await {
+                self.local.log_once("figure conflict", || {
+                    format!("could not send the local version of {path}: {error}")
+                });
+            }
+            None
         })
     }
 }
@@ -284,14 +297,27 @@ async fn place_figure<H: FigureHost>(
         !host.figures_closed() && figures.wanted.get(path).map(String::as_str) == Some(hash)
     };
     let content = fetched.as_ref().map(|bytes| sha256_hex(bytes));
-    let placed = match (wanted, &fetched, &content) {
+    let mut placed = match (wanted, &fetched, &content) {
         (false, _, _) => Placed::Dropped,
-        (true, Some(bytes), Some(content)) => match host.figure_held_now(path) {
-            Some(reason) => Placed::Failed(reason),
-            None => host.write_figure(path, hash, bytes, content),
-        },
+        (true, Some(bytes), Some(content)) => {
+            let (writer, bytes) = (Arc::clone(host), Arc::clone(bytes));
+            let (wanted, hash, content) = (path.to_owned(), hash.to_owned(), content.clone());
+            tauri::async_runtime::spawn_blocking(move || match writer.figure_held_now(&wanted) {
+                Some(reason) => Placed::Failed(reason),
+                None => writer.write_figure(&wanted, &hash, &bytes, &content),
+            })
+            .await
+            .unwrap_or(Placed::Failed(UnwrittenReason::Other))
+        }
         (true, _, _) => Placed::Failed(UnwrittenReason::NotDownloaded),
     };
+    if matches!(placed, Placed::Conflict) {
+        let conflict =
+            Arc::clone(host).figure_conflict(path.to_owned(), fetched.clone().unwrap_or_default());
+        if let Some(reason) = conflict.await {
+            placed = Placed::Failed(reason);
+        }
+    }
     if wanted {
         let mut figures = guard(&local.upkeep.figures);
         if figures.wanted.get(path).map(String::as_str) == Some(hash) {
@@ -320,13 +346,7 @@ async fn place_figure<H: FigureHost>(
             failed: vec![(path.to_owned(), reason)],
             ..Settled::default()
         },
-        Placed::Conflict => {
-            Arc::clone(host)
-                .figure_conflict(path.to_owned(), fetched.unwrap_or_default())
-                .await;
-            return;
-        }
-        Placed::Dropped => return,
+        Placed::Conflict | Placed::Dropped => return,
     };
     if let Some(content) = &content {
         host.figure_placed(path, hash, content);

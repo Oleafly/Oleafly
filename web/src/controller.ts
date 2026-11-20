@@ -16,11 +16,12 @@ import { projectFileFor } from "./compile/target";
 import { diffOperation, editsFromOperation, TextOperation } from "@/features/collab/live/ot";
 import { type GatewayListener, OfflineError, RefusedError, type SocketFactory, WebGateway } from "./gateway";
 import { changesBetween, FileOverlays, mapRange, type OverlaySnapshot, type PlacedRange } from "./overlays";
-import type { ChatFrame, CollabEditMode, CollabSuggestion, CommentFrame, SuggestionFrame, WebFile } from "./protocol";
+import type { ChatFrame, CollabEditMode, CollabSuggestion, CommentFrame, SuggestionFrame, WebFile, WebPeer } from "./protocol";
 import { abilitiesFor, effectiveMode } from "./roles";
 import { WebDocumentSession } from "./session";
 import { type OutboxItem, loadOutbox, outboxItem, refusedOutright, saveOutbox } from "./outbox";
 import { type CommentDraft, latestChat, mergePeople, patchCompile, useWeb } from "./store";
+import { tabScope } from "./tab-storage";
 import { forgetUnsent, readUnsent, type UnsentTyping, writeUnsent } from "./unsent";
 
 export { OfflineError };
@@ -223,6 +224,24 @@ function located(session: WebDocumentSession, kept: QuotedText, target: QueuedPl
   return found && confirmedRange(session, found);
 }
 
+function samePeer(left: WebPeer, right: WebPeer): boolean {
+  return (
+    left.seq === right.seq &&
+    left.accountId === right.accountId &&
+    left.name === right.name &&
+    left.fileId === right.fileId &&
+    left.anchor === right.anchor &&
+    left.head === right.head &&
+    left.activity?.kind === right.activity?.kind &&
+    left.activity?.threadId === right.activity?.threadId
+  );
+}
+
+function sameNumbers(left: Readonly<Record<string, number>>, right: Readonly<Record<string, number>>): boolean {
+  const keys = Object.keys(right);
+  return keys.length === Object.keys(left).length && keys.every((key) => left[key] === right[key]);
+}
+
 function remember(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value);
@@ -244,6 +263,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
   readonly gateway: WebGateway;
   readonly compiler: CompileRunner;
   private readonly projectId: string;
+  private readonly scope: string;
   private readonly options: ControllerOptions;
   private readonly entries = new Map<string, Entry>();
   private readonly overlayListeners = new Set<() => void>();
@@ -269,8 +289,9 @@ export class ProjectController implements ProjectActions, EditorBridge {
 
   constructor(projectId: string, options: ControllerOptions) {
     this.projectId = projectId;
+    this.scope = tabScope(useWeb.getState().me?.accountId ?? "", projectId);
     this.options = options;
-    this.kept = { ...readUnsent(projectId) };
+    this.kept = { ...readUnsent(this.scope) };
     this.saved = new Set(Object.keys(this.kept));
     this.gateway = new WebGateway({
       url: options.socketUrl,
@@ -299,7 +320,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
       projectId: this.projectId,
       connection: "connecting",
       end: null,
-      outbox: loadOutbox(this.projectId),
+      outbox: loadOutbox(this.scope),
     });
     try {
       const detail = await this.options.api.project(this.projectId);
@@ -600,7 +621,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
 
   private setOutbox(items: readonly OutboxItem[]): void {
     useWeb.setState({ outbox: items });
-    saveOutbox(this.projectId, items);
+    saveOutbox(this.scope, items);
   }
 
   private enqueue(item: OutboxItem): void {
@@ -752,7 +773,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     this.saves.clear();
     this.kept = {};
     this.saved.clear();
-    forgetUnsent(this.projectId);
+    forgetUnsent(this.scope);
   }
 
   private queueSave(fileId: string): void {
@@ -767,7 +788,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     const session = this.entries.get(fileId)?.session;
     if (!session || fileId in this.kept) return;
     if (!session.unconfirmed || session.phase === "closed") {
-      if (this.saved.delete(fileId)) writeUnsent(this.projectId, fileId, null);
+      if (this.saved.delete(fileId)) writeUnsent(this.scope, fileId, null);
       return;
     }
     const base = session.confirmed();
@@ -780,7 +801,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     }
     const inflight = after === base ? null : flight;
     this.saved.add(fileId);
-    writeUnsent(this.projectId, fileId, {
+    writeUnsent(this.scope, fileId, {
       base,
       inflight,
       rest: diffOperation(after, session.text()).toWire(),
@@ -1078,21 +1099,27 @@ export class ProjectController implements ProjectActions, EditorBridge {
         this.requeueReturned();
         void this.sendOutbox();
       },
-      presence: (peers) => {
+      presence: (frame) => {
         const state = useWeb.getState();
-        const before = new Map(state.peers.map((peer) => [peer.deviceId, peer.seq]));
-        if (peers.some((peer) => !before.has(peer.deviceId))) this.gateway.announce();
+        const before = new Map(state.peers.map((peer) => [peer.deviceId, peer]));
+        if (frame.some((peer) => !before.has(peer.deviceId))) this.gateway.announce();
         const now = Date.now();
+        const kept = frame.map((peer) => {
+          const known = before.get(peer.deviceId);
+          return known && samePeer(known, peer) ? known : peer;
+        });
+        const peers = kept.length === state.peers.length && kept.every((peer, index) => peer === state.peers[index]) ? state.peers : kept;
+        const activityAt = Object.fromEntries(
+          peers
+            .filter((peer) => peer.activity)
+            .map((peer) => [
+              peer.deviceId,
+              before.get(peer.deviceId)?.seq === peer.seq ? (state.activityAt[peer.deviceId] ?? now) : now,
+            ]),
+        );
         useWeb.setState({
           peers,
-          activityAt: Object.fromEntries(
-            peers
-              .filter((peer) => peer.activity)
-              .map((peer) => [
-                peer.deviceId,
-                before.get(peer.deviceId) === peer.seq ? (state.activityAt[peer.deviceId] ?? now) : now,
-              ]),
-          ),
+          activityAt: sameNumbers(state.activityAt, activityAt) ? state.activityAt : activityAt,
           people: mergePeople(
             state.people,
             peers.map((peer) =>

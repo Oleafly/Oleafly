@@ -14,14 +14,14 @@ import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { isOutlineDocument } from "./cm/outline-rail-clearance";
 
-export const OUTLINE_RAIL_MAX_MARKS = 32;
+const OUTLINE_RAIL_MAX_MARKS = 32;
 export const OUTLINE_RAIL_MIN_EDITOR_WIDTH = 360;
 
 const MARK_WIDTH = ["w-3.5", "w-2.5", "w-1.5"] as const;
 const CURRENT_ROW = '[data-outline-rail-list] [aria-current="location"]';
 const ROW_INDENT = ["pl-2", "pl-6", "pl-10"] as const;
 
-export interface RailMarks {
+interface RailMarks {
   readonly depths: readonly number[];
   readonly shown: readonly number[];
   readonly markOf: readonly number[];
@@ -134,11 +134,17 @@ function OutlineRailList({
 export function OutlineRail() {
   const { t } = useTranslation(["workspace"]);
   const activePath = useFilesStore((state) => state.activePath);
-  const outline = useDocumentOutline("document");
+  const [open, setOpen] = useState(false);
+  const outline = useDocumentOutline("document", open);
   const frame = useEditorFrame();
   const { depths, shown, markOf } = useMemo(() => railMarks(outline.items), [outline.items]);
+  const hidden = !activePath || !isOutlineDocument(activePath) || frame.narrow || shown.length < 2;
 
-  if (!activePath || !isOutlineDocument(activePath) || frame.narrow || shown.length < 2) return null;
+  useEffect(() => {
+    if (hidden) setOpen(false);
+  }, [hidden]);
+
+  if (hidden) return null;
   const currentMark = outline.activeIndex < 0 ? -1 : markOf[outline.activeIndex];
   const label = t(($) => $.workspace.outline.title);
 
@@ -150,6 +156,8 @@ export function OutlineRail() {
     >
       <Popover
         openOnHover
+        open={open}
+        onOpenChange={setOpen}
         side="left"
         align="center"
         ariaLabel={label}

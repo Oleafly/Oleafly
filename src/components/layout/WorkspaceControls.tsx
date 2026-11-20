@@ -68,6 +68,12 @@ function useRailBadge(tab: RailTabContribution): number {
   return tab.useBadge?.() ?? 0;
 }
 
+const ACTIVITY_DOT = "pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary";
+
+function HiddenViewDot({ tab }: Readonly<{ tab: RailTabContribution }>) {
+  return useRailBadge(tab) > 0 ? <span data-testid="rail-more-badge" aria-hidden className={ACTIVITY_DOT} /> : null;
+}
+
 function RailMenuItem({
   tab,
   ctx,
@@ -209,7 +215,18 @@ export function SidebarViews() {
 
   return (
     <div {...reorder.strip} data-tour="project-sidebar" className="relative flex h-full min-w-0 flex-1 items-center">
-      <ToolbarOverflow controls={controls} label={t(($) => $.shell.rail.more)} className="h-full" showAllUntilMeasured />
+      <ToolbarOverflow
+        controls={controls}
+        label={t(($) => $.shell.rail.more)}
+        className="h-full"
+        showAllUntilMeasured
+        moreBadge={(hidden) =>
+          hidden.map((control) => {
+            const tab = tabs.find((candidate) => candidate.id === control.id);
+            return tab ? <HiddenViewDot key={tab.id} tab={tab} /> : null;
+          })
+        }
+      />
       {reorder.indicator}
     </div>
   );
@@ -301,7 +318,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
               <span
                 data-testid="rail-terminal-activity"
                 aria-hidden
-                className="pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary"
+                className={ACTIVITY_DOT}
               />
               <span id={terminalActivityId} className="sr-only">
                 {t(($) => $.workspace.terminal.activity)}

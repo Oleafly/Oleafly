@@ -55,6 +55,20 @@ describe("Dialog inside another modal", () => {
     expect(closeOuter).toHaveBeenCalledTimes(1);
   });
 
+  it("marks every kit modal with the shared modal surface", async () => {
+    const user = userEvent.setup();
+    render(<Nested onCloseOuter={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Create skill" }));
+    await screen.findByRole("dialog", { name: "New skill" });
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    const modals = [
+      screen.getByRole("dialog", { name: "Settings", hidden: true }),
+      screen.getByRole("dialog", { name: "New skill", hidden: true }),
+      await screen.findByRole("alertdialog", { name: "Discard the skill?", hidden: true }),
+    ];
+    for (const modal of modals) expect(modal).toHaveAttribute("data-modal-surface");
+  });
+
   it("puts focus back on the control that opened it", async () => {
     const user = userEvent.setup();
     render(<Nested onCloseOuter={vi.fn()} />);

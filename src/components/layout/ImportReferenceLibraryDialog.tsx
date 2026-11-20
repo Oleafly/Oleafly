@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, Download, Settings2, Upload } from "lucide-react";
 import { ZoteroBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   Dialog,
   DialogContent,
@@ -338,13 +339,9 @@ export function ImportReferenceLibraryDialog({
           </SourceCard>
         </div>
         {error ? (
-          <div
-            role="alert"
-            className="flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
-          >
-            <AlertCircle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-            <span>{error}</span>
-          </div>
+          <InlineAlert icon={AlertCircle} bordered>
+            {error}
+          </InlineAlert>
         ) : null}
         <p className="text-center text-xs text-muted-foreground">
           {t(($) => $.references.import.duplicateNote)}

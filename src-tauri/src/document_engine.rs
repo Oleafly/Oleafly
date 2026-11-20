@@ -3700,7 +3700,7 @@ fn supervised_command(
     use std::process::Stdio;
     let mut command = tokio::process::Command::new(path);
     command.no_console();
-    oleafly_core::engine_spec::add_wrapper_safe_args(command.as_std_mut(), path, args);
+    oleafly_sandbox::cmdline::add_wrapper_safe_args(command.as_std_mut(), path, args);
     command
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;

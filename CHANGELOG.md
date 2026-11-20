@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The HTML output of a Quarto or Markdown document shows in the preview again. Since 0.4.12 the panel stayed blank.
 - Opening a project with the preview closed no longer stretches the sidebar across most of the window.
+- Switching Import from Overleaf between list and grid no longer switches the Home library too. The import keeps its own choice, and its rows light up under the pointer.
+- In the dark theme, every dialog has the same background as Settings. Import from Overleaf and the other dialogs were darker than the rest.
 - Each file keeps its own view. Switching one file to Visual, Preview or Split no longer switches the next file you open.
 - On a Mac, pressing End, Home, Page Up, Page Down or a function key could leave a box character in a note, the chat box or a text field. It doesn't anymore, and any that got in are removed before a message is sent.
 - Pressing Escape in a dialog opened from Settings, such as Create skill or Add custom provider, closes that dialog and leaves Settings open.

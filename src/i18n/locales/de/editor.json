@@ -166,7 +166,6 @@
       "purple": "Lila"
     },
     "imageFile": "Bilddatei",
-    "apply": "Übernehmen",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Geteilt",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF konnte nicht geladen werden: {{detail}}",
     "imageLoadFailed": "Bild konnte nicht geladen werden: {{detail}}",
     "imageUnreadable": "Diese Datei lässt sich nicht als Bild anzeigen. Sie ist vielleicht beschädigt oder gar kein Bild.",
+    "imageTooLarge": "Dieses Bild ist größer als {{limit}} und wird deshalb hier nicht angezeigt.",
     "imageFit": "An Fenster anpassen",
     "htmlPreviewFailed": "Seite konnte nicht angezeigt werden: {{detail}}",
     "binaryFile": "Binärdatei. Keine Vorschau verfügbar.",

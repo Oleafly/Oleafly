@@ -198,6 +198,7 @@ async fn open(
         account,
         frames: frames.clone(),
         control: ticket.signal.clone(),
+        role: None,
     };
     let cursors = CursorGate::new();
     let peer = Peer {

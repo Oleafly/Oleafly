@@ -36,6 +36,7 @@
     "copy_needs_folder": "Nur direkt am Speicherort geöffnete Ordner können in die Bibliothek kopiert werden.",
     "not_removable": "Nur direkt am Speicherort geöffnete Ordner können aus Oleafly entfernt werden.",
     "trash_unavailable": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Das Laufwerk hat möglicherweise keinen.",
+    "trash_in_use": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben, weil eine andere App die Datei geöffnet hat. Schließen Sie sie dort und versuchen Sie es erneut.",
     "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um.",
     "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
     "shared_settings_viewer": "Betrachter können die Einstellungen eines geteilten Projekts nicht ändern."

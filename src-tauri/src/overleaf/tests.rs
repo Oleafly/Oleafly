@@ -166,7 +166,7 @@ fn importing_downloads_each_project_and_carries_its_settings() {
             "compiler": "xelatex",
             "imageName": "texlive-full:2025.1",
             "rootDoc_id": "m",
-            "rootFolder": [{ "docs": [{ "_id": "n", "name": "notes.tex" }], "folders": [{ "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }] }] }]
+            "rootFolder": [{ "_id": "root", "docs": [{ "_id": "n", "name": "notes.tex" }], "folders": [{ "_id": "t", "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }] }] }]
         });
         let socket = socket_handler(project, Arc::new(Mutex::new(0)));
         let fixture = serve(Arc::new(move |request: &Request| {
@@ -267,7 +267,7 @@ fn importing_keeps_a_project_whose_files_all_sit_in_one_folder_as_it_is_online()
         let project = json!({
             "compiler": "pdflatex",
             "rootDoc_id": "m",
-            "rootFolder": [{ "docs": [], "folders": [{ "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }], "folders": [{ "name": "chapters", "docs": [{ "_id": "i", "name": "intro.tex" }] }] }] }]
+            "rootFolder": [{ "_id": "root", "docs": [], "folders": [{ "_id": "t", "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }], "folders": [{ "_id": "c", "name": "chapters", "docs": [{ "_id": "i", "name": "intro.tex" }] }] }] }]
         });
         let socket = socket_handler(project, Arc::new(Mutex::new(0)));
         let fixture = serve(Arc::new(move |request: &Request| {
@@ -638,7 +638,7 @@ fn an_account_project_is_saved_as_a_template_with_its_main_file_and_compiler() {
         let project = json!({
             "compiler": "xelatex",
             "rootDoc_id": "m",
-            "rootFolder": [{ "docs": [{ "_id": "n", "name": "notes.tex" }], "folders": [{ "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }] }] }]
+            "rootFolder": [{ "_id": "root", "docs": [{ "_id": "n", "name": "notes.tex" }], "folders": [{ "_id": "t", "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }] }] }]
         });
         let socket = socket_handler(project, Arc::new(Mutex::new(0)));
         let fixture = serve(Arc::new(move |request: &Request| {

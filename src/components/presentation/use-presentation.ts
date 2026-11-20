@@ -11,6 +11,7 @@ import {
   type SlideAction,
 } from "@/features/presentation/navigation";
 import type { SlideDocument } from "@/features/presentation/pdf-slides";
+import { logWarning } from "@/lib/log";
 
 export type PresentationDeck =
   | { readonly status: "loading" }
@@ -40,8 +41,10 @@ export function usePresentationDeck(params: PresentationParams | null): Presenta
         (code) => {
           if (!disposed) setDeck({ status: "deck", path, code });
         },
-        () => {
-          if (!disposed) setDeck({ status: "failed" });
+        (cause: unknown) => {
+          if (disposed) return;
+          void logWarning(`open the slide deck ${path} to present`, cause);
+          setDeck({ status: "failed" });
         },
       );
       return () => {
@@ -61,8 +64,10 @@ export function usePresentationDeck(params: PresentationParams | null): Presenta
           return;
         }
         setDeck({ status: "ready", document: opened });
-      } catch {
-        if (!disposed) setDeck({ status: "failed" });
+      } catch (cause) {
+        if (disposed) return;
+        void logWarning("open the PDF to present", cause);
+        setDeck({ status: "failed" });
       }
     })();
     return () => {

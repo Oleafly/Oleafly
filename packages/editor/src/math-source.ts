@@ -1,4 +1,5 @@
 import { typstAutolinkEnd } from "./typst-syntax";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export type MathSourceFormat = "latex" | "markdown" | "typst";
 export type MathDelimiter = "$" | "$$" | "\\(" | "\\[";
@@ -30,12 +31,6 @@ const OPEN_INLINE = String.raw`\(` as MathDelimiter;
 const CLOSE_INLINE = String.raw`\)`;
 const OPEN_DISPLAY = String.raw`\[` as MathDelimiter;
 const CLOSE_DISPLAY = String.raw`\]`;
-
-function isEscaped(text: string, index: number): boolean {
-  let slashes = 0;
-  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) slashes++;
-  return slashes % 2 === 1;
-}
 
 function startsAtLinePrefix(text: string, index: number): boolean {
   const lineStart = text.lastIndexOf("\n", index - 1) + 1;
@@ -98,7 +93,7 @@ function afterMarkdownLinkDestination(
   for (let cursor = openingParen + 1; cursor < limit; cursor++) {
     const char = text[cursor];
     if (char === "\n") return cursor;
-    if (isEscaped(text, cursor)) continue;
+    if (isBackslashEscaped(text, cursor)) continue;
     if (char === "(") depth++;
     if (char === ")" && --depth === 0) return cursor + 1;
   }
@@ -126,7 +121,7 @@ function afterLatexVerb(
   limit: number,
 ): number | null {
   const match = /^\\verb\*?/u.exec(text.slice(index));
-  if (!match || isEscaped(text, index)) return null;
+  if (!match || isBackslashEscaped(text, index)) return null;
   const delimiterIndex = index + match[0].length;
   const delimiter = text[delimiterIndex];
   if (!delimiter || /\s/u.test(delimiter)) return null;
@@ -143,7 +138,7 @@ function afterLatexVerbatim(
     /^\\begin\{(verbatim\*?|Verbatim|lstlisting|minted)\}/u.exec(
       text.slice(index),
     );
-  if (!match || isEscaped(text, index)) return null;
+  if (!match || isBackslashEscaped(text, index)) return null;
   const environment = match[1];
   const close = text.indexOf(
     `\\end{${environment}}`,
@@ -189,7 +184,7 @@ function isInLatexComment(
     text.lastIndexOf("\n", index - 1) + 1,
   );
   for (let cursor = lineStart; cursor < index; cursor++) {
-    if (text[cursor] === "%" && !isEscaped(text, cursor)) return true;
+    if (text[cursor] === "%" && !isBackslashEscaped(text, cursor)) return true;
   }
   return false;
 }
@@ -237,7 +232,7 @@ function findClosingDelimiter(
     );
     if (
       !protectedDelimiter &&
-      !isEscaped(text, found) &&
+      !isBackslashEscaped(text, found) &&
       (format !== "latex" || !isInLatexComment(text, found, start)) &&
       closesMath(text, found, close, format)
     ) {
@@ -265,7 +260,7 @@ function markdownSkipEnd(
   const fence =
     text[cursor] === "`" || text[cursor] === "~" ? fenceAt(text, cursor) : null;
   if (fence) return afterMarkdownFence(text, cursor, to, fence);
-  if (text[cursor] === "`" && !isEscaped(text, cursor)) {
+  if (text[cursor] === "`" && !isBackslashEscaped(text, cursor)) {
     return afterInlineCode(text, cursor, to);
   }
   if (text[cursor] === "]" && text[cursor + 1] === "(") {
@@ -280,7 +275,7 @@ function latexSkipEnd(
   cursor: number,
   to: number,
 ): number | null {
-  if (text[cursor] === "%" && !isEscaped(text, cursor)) {
+  if (text[cursor] === "%" && !isBackslashEscaped(text, cursor)) {
     const lineEnd = text.indexOf("\n", cursor + 1);
     return lineEnd < 0 || lineEnd >= to ? to : lineEnd + 1;
   }
@@ -310,7 +305,7 @@ function mathOpenerKindAt(
 ): number {
   if (
     text.startsWith("$$", cursor) &&
-    !isEscaped(text, cursor) &&
+    !isBackslashEscaped(text, cursor) &&
     text[cursor - 1] !== "$" &&
     text[cursor + 2] !== "$"
   ) {
@@ -318,7 +313,7 @@ function mathOpenerKindAt(
   }
   if (
     text[cursor] === "$" &&
-    !isEscaped(text, cursor) &&
+    !isBackslashEscaped(text, cursor) &&
     text[cursor - 1] !== "$" &&
     text[cursor + 1] !== "$" &&
     (format !== "markdown" || markdownDollarCanOpen(text, cursor))
@@ -326,10 +321,10 @@ function mathOpenerKindAt(
     return 1;
   }
   if (pandoc) return 0;
-  if (text.startsWith(OPEN_INLINE, cursor) && !isEscaped(text, cursor)) {
+  if (text.startsWith(OPEN_INLINE, cursor) && !isBackslashEscaped(text, cursor)) {
     return 3;
   }
-  if (text.startsWith(OPEN_DISPLAY, cursor) && !isEscaped(text, cursor)) {
+  if (text.startsWith(OPEN_DISPLAY, cursor) && !isBackslashEscaped(text, cursor)) {
     return 4;
   }
   return 0;

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import { editorCommandKeymap, setEditorErrorReporter } from "@oleafly/editor";
+import { editorCommandKeymap, latexLanguage, setEditorErrorReporter } from "@oleafly/editor";
 import { WYSIWYG_EXTENSIONS, createMarkdownSourceSnapshot, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
@@ -202,6 +202,21 @@ describe("formatting shortcuts in a Markdown file", () => {
     await import("./markdown-model");
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(view.state.doc.toString()).toBe("A word b.");
+  });
+});
+
+describe("the typing hand-off extras", () => {
+  it("leave with the Markdown file when a LaTeX file takes its place", async () => {
+    const fileTools = new Compartment();
+    const listeners = (state: EditorState) => state.facet(EditorView.updateListener).length;
+    const latex = latexLanguage();
+    const freshLatex = listeners(EditorState.create({ extensions: fileTools.of(latex) }));
+    const view = new EditorView({ state: EditorState.create({ doc: "A word b.", extensions: fileTools.of(markdownFormatKeymap) }), parent: document.body });
+    views.push(view);
+    const before = listeners(view.state);
+    await vi.waitFor(() => expect(listeners(view.state)).toBeGreaterThan(before));
+    view.dispatch({ effects: fileTools.reconfigure(latex) });
+    expect(listeners(view.state)).toBe(freshLatex);
   });
 });
 

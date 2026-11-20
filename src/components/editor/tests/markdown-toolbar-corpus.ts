@@ -265,10 +265,6 @@ export function acceptsOutsideEdit(source: string, after: string, visual: { base
   return visual.baseline !== source && editOf(source, after) === editOf(visual.baseline, visual.acted);
 }
 
-/**
- * The typed key is local when it changes nothing outside its span, or when the words stay what plain typing
- * gives and only markup around them moved (a delimiter mended, the key inside the mark at the caret).
- */
 export function typedLocally(acted: string, typed: string, selection: { from: number; to: number }, key: string): boolean {
   if (editedOutside(acted, typed, selection) === null) return true;
   if (wordsOf(typed) === wordsOf(acted.slice(0, selection.from) + key + acted.slice(selection.to))) return true;

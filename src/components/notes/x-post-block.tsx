@@ -21,7 +21,6 @@ const FIELD_NAMES: ReadonlySet<string> = new Set(FIELDS);
 const FRAME_ORIGIN = /^http:\/\/127\.0\.0\.1:\d{1,5}$/u;
 const POST_PATH = /^\/(\w{1,15})\/status(?:es)?\/(\d{1,20})(?:\/|$)/u;
 
-/** A post on X as a note keeps it: enough to read it offline and in other Markdown apps. */
 export interface XPost {
   url: string;
   id: string;
@@ -31,7 +30,6 @@ export interface XPost {
   text: string;
 }
 
-/** The canonical address and id of a post on X or Twitter, or null for any other link. */
 export function xPostLink(link: string): { url: string; id: string } | null {
   let url: URL;
   try {
@@ -90,7 +88,6 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** Reads the post from X and hands the block source to `apply`; a failure leaves the link card as it is. */
 export function xPostGone(error: unknown): boolean {
   return typeof error === "string" && /^X could not show this post \((?:404|410)\b/u.test(error);
 }

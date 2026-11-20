@@ -7,9 +7,9 @@ const webview = vi.hoisted(() => ({ tauri: false, setZoom: vi.fn(async (_scale: 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => webview.tauri, invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ setZoom: webview.setZoom }) }));
 
-import { useSettingsStore } from "@/store/settings";
+import { APP_ZOOM_STORAGE_KEY, storedAppZoom, useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
-import { AppZoom, APP_ZOOM_STORAGE_KEY, applyAppZoom, steppedAppZoom, storedAppZoom, zoomApp } from "./app-zoom";
+import { AppZoom, applyAppZoom, steppedAppZoom, zoomApp } from "./app-zoom";
 
 function key(init: KeyboardEventInit) {
   const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });

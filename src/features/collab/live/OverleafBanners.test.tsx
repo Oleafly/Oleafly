@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { overleafLiveResolve } from "@/lib/overleaf-live";
 import { useCollabLiveStore } from "./live-store";
 import { OverleafBanners } from "./OverleafBanners";
@@ -105,23 +106,40 @@ describe("OverleafBanners", () => {
     expect(screen.queryByTestId("overleaf-account-changed-banner")).not.toBeInTheDocument();
   });
 
-  it("shows the server's maintenance message as plain text with a countdown", () => {
-    notices({ maintenance: { message: "Back <b>soon</b>", until: Date.now() + 30_000 } });
+  it("shows the server's maintenance message as plain text, without its markup, with a countdown", () => {
+    notices({ maintenance: { message: "Back <b>soon</b> &amp; faster", until: Date.now() + 30_000 } });
     render(<OverleafBanners />);
     const banner = screen.getByTestId("overleaf-maintenance-banner");
-    expect(banner).toHaveTextContent("Overleaf says: Back <b>soon</b>");
+    expect(banner).toHaveTextContent("Overleaf says: Back soon & faster");
     expect(banner).toHaveTextContent(banners.maintenanceWait.replace("{{seconds}}", "30"));
     expect(banner.querySelector("b")).toBeNull();
   });
 
-  it("needs_review actions settle the doc either way", async () => {
+  it("runs no countdown timer without a maintenance message", () => {
+    const ticking = vi.spyOn(window, "setInterval");
+    notices({ merged: [{ path: "main.tex", before: "a", after: "ab" }] });
+    render(<OverleafBanners />);
+    expect(ticking.mock.calls.filter(([, every]) => every === 1_000)).toHaveLength(0);
+    ticking.mockRestore();
+  });
+
+  it("needs_review actions settle the doc either way, with Use mine only after comparing", async () => {
     notices({ reviews: [REVIEW, { ...REVIEW, path: "intro.tex" }] });
     render(<OverleafBanners />);
-    const [first, second] = screen.getAllByTestId("overleaf-review-row");
-    expect(first).toHaveTextContent(banners.review.replace("{{path}}", "main.tex"));
-    await userEvent.click(within(first).getByRole("button", { name: banners.useMine }));
+    const row = screen.getByTestId("overleaf-review-row");
+    expect(row).toHaveTextContent(banners.review.replace("{{path}}", "main.tex and intro.tex"));
+    expect(within(row).queryByRole("button", { name: banners.useMine })).toBeNull();
+    await userEvent.click(within(row).getByRole("button", { name: enCommon.actions.showMore }));
+    const [first, second] = screen.getAllByTestId("overleaf-review-row-item");
+    expect(first).toHaveTextContent("main.tex");
+    expect(second).toHaveTextContent("intro.tex");
+    await userEvent.click(within(first).getByRole("button", { name: banners.compare }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: banners.useMine }));
     expect(overleafLiveResolve).toHaveBeenCalledWith("p1", "main.tex", "mine");
-    await userEvent.click(within(second).getByRole("button", { name: banners.useTheirs }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const left = screen.getByTestId("overleaf-review-row");
+    expect(left).toHaveTextContent(banners.review.replace("{{path}}", "intro.tex"));
+    await userEvent.click(within(left).getByRole("button", { name: banners.useTheirs }));
     expect(overleafLiveResolve).toHaveBeenCalledWith("p1", "intro.tex", "theirs");
     expect(screen.queryAllByTestId("overleaf-review-row")).toHaveLength(0);
   });
@@ -131,10 +149,37 @@ describe("OverleafBanners", () => {
     notices({ reviews: [REVIEW] });
     render(<OverleafBanners />);
     const row = screen.getByTestId("overleaf-review-row");
-    await userEvent.click(within(row).getByRole("button", { name: banners.useMine }));
+    expect(within(row).queryByRole("button", { name: banners.useMine })).toBeNull();
+    await userEvent.click(within(row).getByRole("button", { name: banners.useTheirs }));
     const alert = await within(row).findByRole("alert");
     expect(alert).toHaveTextContent(banners.resolveFailed);
     expect(alert.parentElement).toHaveTextContent(banners.review.replace("{{path}}", "main.tex"));
+  });
+
+  it("keeps the comparison open and says so when a choice could not be applied", async () => {
+    vi.mocked(overleafLiveResolve).mockRejectedValueOnce(new Error("refused"));
+    notices({ reviews: [REVIEW] });
+    render(<OverleafBanners />);
+    await userEvent.click(screen.getByRole("button", { name: banners.compare }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: banners.useMine }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(banners.resolveFailed);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+  });
+
+  it("puts many merged files on one row and lists them when asked", async () => {
+    const paths = ["a.tex", "b.tex", "c.tex", "d.tex", "e.tex"];
+    notices({ merged: paths.map((path) => ({ path, before: "x", after: "xy" })) });
+    render(<OverleafBanners />);
+    const rows = screen.getAllByTestId("overleaf-merged-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent(banners.merged.replace("{{path}}", "a.tex, b.tex, c.tex and 2 more"));
+    expect(screen.queryAllByTestId("overleaf-merged-row-item")).toHaveLength(0);
+    await userEvent.click(within(rows[0]).getByRole("button", { name: enCommon.actions.showMore }));
+    expect(screen.getAllByTestId("overleaf-merged-row-item")).toHaveLength(5);
+    await userEvent.click(within(rows[0]).getByRole("button", { name: enCommon.actions.showLess }));
+    await userEvent.click(within(rows[0]).getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByTestId("overleaf-merged-row")).toBeNull();
   });
 
   it("compares both copies before choosing", async () => {

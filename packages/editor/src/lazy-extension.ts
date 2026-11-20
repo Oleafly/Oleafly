@@ -1,5 +1,7 @@
-import { Compartment, type Extension } from "@codemirror/state";
+import { Compartment, type Extension, StateEffect } from "@codemirror/state";
 import { ViewPlugin } from "@codemirror/view";
+
+export const lazyExtensionFilled = StateEffect.define<null>();
 
 export function lazyExtension(load: () => Promise<Extension>): () => Extension {
   let loaded: Extension | null = null;
@@ -22,7 +24,7 @@ export function lazyExtension(load: () => Promise<Extension>): () => Extension {
     let live = true;
     start().then(
       (extension) => {
-        if (live) view.dispatch({ effects: slot.reconfigure(extension) });
+        if (live) view.dispatch({ effects: [slot.reconfigure(extension), lazyExtensionFilled.of(null)] });
       },
       () => undefined,
     );

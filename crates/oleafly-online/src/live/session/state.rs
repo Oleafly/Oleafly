@@ -16,7 +16,7 @@ use super::{
 use crate::live::doc::{Applied, DocError, DocFault, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
 use crate::live::join::{JoinFailure, JoinedDoc};
-use crate::live::journal::{DocRecord, Journal, ProjectManifest, WRITE_EVERY};
+use crate::live::journal::{plain_doc_id, DocRecord, Journal, ProjectManifest, WRITE_EVERY};
 use crate::live::tree_queue::Queued;
 use crate::live::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 use crate::realtime::events::{AccessEvent, EntityId, ProjectEvent};
@@ -31,6 +31,7 @@ pub(super) use tree::{name_of, parent_of, Finished, Job};
 const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
 const JOURNAL_BACKOFF_MAX: Duration = Duration::from_secs(5);
 const UNSTEADY_WITHIN: Duration = Duration::from_secs(10 * 60);
+const OWN_KEPT: usize = 16;
 
 pub(super) enum Notice {
     State(LiveState),
@@ -59,6 +60,17 @@ pub(super) enum Notice {
     },
     External(DocId),
     Replaced(DocId),
+}
+
+pub(super) fn deliver_to_editors(notices: Vec<Notice>) -> Vec<Notice> {
+    let mut rest = Vec::with_capacity(notices.len());
+    for notice in notices {
+        match notice {
+            Notice::Editor(sink, message) => sink(message),
+            other => rest.push(other),
+        }
+    }
+    rest
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
@@ -198,6 +210,7 @@ pub(super) enum JoinKind {
     From(u64),
 }
 
+#[derive(Default)]
 pub(super) struct JournalBatch {
     pub(super) manifest: Option<ProjectManifest>,
     pub(super) docs: Vec<(DocId, Option<DocRecord>)>,
@@ -437,6 +450,9 @@ impl State {
         if !self.own.contains(&public_id) {
             self.own.push(public_id.clone());
         }
+        if self.own.len() > OWN_KEPT {
+            self.own.remove(0);
+        }
         self.current = Some(public_id);
         self.connected_wall_ms = wall_ms;
         self.broadcasts.clear();
@@ -612,13 +628,16 @@ impl State {
         let seeded = seed.base.is_none().then(|| seed_hash(&seed.local));
         let base = seed.base.unwrap_or_default();
         let mut known = OverleafDoc::provisional(doc.clone(), base.clone());
-        if known.local(diff(&base, &seed.local)).is_err() {
+        let Ok(correction) = known.local(diff(&base, &seed.local)) else {
             return;
-        }
+        };
         slot.doc = Some(known);
         slot.dirty = true;
         if seeded.is_some() {
             self.mark_unbased(doc, seeded);
+        }
+        if correction.is_some() {
+            self.replaced(doc);
         }
         self.want(doc);
     }
@@ -701,7 +720,7 @@ impl State {
                 break;
             };
             self.queued.remove(&doc);
-            picked.extend(self.join_kind(&doc).map(|kind| (doc, kind)));
+            picked.extend(self.joinable(doc));
         }
         let Some((batch, every)) = self.pace else {
             return picked;
@@ -711,9 +730,21 @@ impl State {
         }
         self.next_paced = Some(now + every);
         for doc in self.take_paced(batch) {
-            picked.extend(self.join_kind(&doc).map(|kind| (doc, kind)));
+            picked.extend(self.joinable(doc));
         }
         picked
+    }
+
+    fn joinable(&mut self, doc: DocId) -> Option<(DocId, JoinKind)> {
+        let kind = self.join_kind(&doc)?;
+        if plain_doc_id(&doc.0) {
+            return Some((doc, kind));
+        }
+        self.fault(
+            &doc,
+            DocFault::Unsupported("a document id that can't name a journal file".into()),
+        );
+        None
     }
 
     fn take_paced(&mut self, batch: usize) -> Vec<DocId> {
@@ -755,12 +786,19 @@ impl State {
         }
     }
 
-    pub(super) fn open(&mut self, path: &str, sink: DocSink) -> Option<DocOpened> {
+    pub(super) fn needs_disk_at(&self, path: &str) -> bool {
+        self.doc_at(path)
+            .is_some_and(|doc| self.with_text(&doc, |_| ()).is_none())
+    }
+
+    pub(super) fn open(
+        &mut self,
+        path: &str,
+        sink: DocSink,
+        on_disk: Option<String>,
+    ) -> Option<DocOpened> {
         let doc = self.doc_at(path)?;
-        let text = self
-            .text(&doc)
-            .or_else(|| self.port.disk_text(path))
-            .unwrap_or_default();
+        let text = self.text(&doc).or(on_disk).unwrap_or_default();
         self.next_session += 1;
         let session = self.next_session;
         let channel = EditorChannel::new(text.clone());
@@ -793,17 +831,30 @@ impl State {
     }
 
     pub(super) fn text(&self, doc: &DocId) -> Option<String> {
+        self.with_text(doc, str::to_string)
+    }
+
+    pub(super) fn with_text<T>(&self, doc: &DocId, read: impl FnOnce(&str) -> T) -> Option<T> {
         let slot = self.slots.get(doc)?;
         if let Some(held) = slot.held.as_ref().filter(|_| slot.phase == Phase::Held) {
-            return Some(held.local_text.clone());
+            return Some(read(&held.local_text));
         }
         if let Some(known) = &slot.doc {
-            return Some(known.text().to_string());
+            return Some(read(known.text()));
         }
         if let Some(record) = &slot.resume {
-            return Some(record.local_text.clone());
+            return Some(read(&record.local_text));
         }
-        slot.editor.as_ref().map(|editor| editor.channel.text())
+        slot.editor
+            .as_ref()
+            .map(|editor| read(&editor.channel.text()))
+    }
+
+    pub(super) fn path_without_text(&self, doc: &DocId) -> Option<String> {
+        self.with_text(doc, |_| ())
+            .is_none()
+            .then(|| self.path_of(doc))
+            .flatten()
     }
 
     fn reset_editor(&mut self, doc: &DocId) {
@@ -951,6 +1002,7 @@ impl State {
         &mut self,
         doc: &DocId,
         edit: impl FnOnce(&str) -> Option<TextOperation>,
+        on_disk: Option<String>,
     ) -> Result<bool, LiveError> {
         if self.ended.is_some() {
             return Err(LiveError::Ended);
@@ -965,13 +1017,7 @@ impl State {
         if phase == Some(Phase::Held) || self.mode() == SendMode::Hold {
             return Err(LiveError::NotWritable);
         }
-        let before = self
-            .text(doc)
-            .or_else(|| {
-                let path = self.path_of(doc)?;
-                self.port.disk_text(&path)
-            })
-            .unwrap_or_default();
+        let before = self.text(doc).or(on_disk).unwrap_or_default();
         let Some(op) = edit(&before).filter(|op| !op.is_noop()) else {
             return Ok(false);
         };
@@ -1204,7 +1250,10 @@ impl State {
         let mut known = match (self.take_base(doc), seeded) {
             (Some(known), Some(seeded)) if seeded == seed_hash(&text) => {
                 self.mark_unbased(doc, None);
-                let based = on_server_text(doc, known, &text);
+                let (based, corrected) = on_server_text(doc, known, &text);
+                if corrected {
+                    self.replaced(doc);
+                }
                 self.rebase_onto(doc, based, version, text, format)
             }
             (Some(known), Some(_)) => self.hold_unbased(doc, &known, version, text, format),
@@ -1426,11 +1475,18 @@ impl State {
 
     pub(super) fn retry(&mut self, doc: &DocId) -> Result<(), LiveError> {
         let mine = self.stopped_text(doc)?;
+        let mut corrected = false;
         if let Some(known) = self.slots.get_mut(doc).and_then(|slot| slot.doc.as_mut()) {
             let op = diff(known.text(), &mine);
             if !op.is_noop() {
-                known.local(op).map_err(|_| LiveError::NotWritable)?;
+                corrected = known
+                    .local(op)
+                    .map_err(|_| LiveError::NotWritable)?
+                    .is_some();
             }
+        }
+        if corrected {
+            self.replaced(doc);
         }
         self.restart(doc);
         Ok(())
@@ -1646,6 +1702,11 @@ impl State {
         self.slots.get(doc)?.doc.as_ref()
     }
 
+    #[cfg(test)]
+    pub(super) fn own_ids(&self) -> &[PublicId] {
+        &self.own
+    }
+
     pub(super) fn legacy_from(
         &mut self,
         paths: &BTreeSet<String>,
@@ -1669,25 +1730,29 @@ impl State {
             || self.slots.values().any(|slot| slot.dirty)
     }
 
-    pub(super) fn take_journal_batch(
-        &mut self,
-        now: Instant,
-        forced: bool,
-    ) -> Option<JournalBatch> {
+    pub(super) fn journal_ready(&self, now: Instant, forced: bool) -> bool {
         if !self.journal_due() {
-            return None;
+            return false;
         }
         let waiting = self
             .journal_written
             .is_some_and(|written| now < written + WRITE_EVERY);
         let backing_off = self.journal_retry.is_some_and(|(at, _)| now < at);
-        if !forced && (waiting || backing_off) {
+        forced || !(waiting || backing_off)
+    }
+
+    pub(super) fn take_journal_batch(
+        &mut self,
+        now: Instant,
+        forced: bool,
+    ) -> Option<JournalBatch> {
+        if !self.journal_ready(now, forced) {
             return None;
         }
         let tree = &self.project.tree;
         let mut docs = Vec::new();
         for (doc, slot) in &mut self.slots {
-            if std::mem::take(&mut slot.dirty) {
+            if std::mem::take(&mut slot.dirty) && plain_doc_id(&doc.0) {
                 let path = tree.path_of(&EntityId::from(doc));
                 let record = slot.record().map(|mut record| {
                     record.path = path.or(record.path.take());
@@ -1739,18 +1804,16 @@ impl State {
 }
 
 fn seed_hash(text: &str) -> String {
-    ring::digest::digest(&ring::digest::SHA256, text.as_bytes())
-        .as_ref()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    oleafly_core::encoding::hex_lower(
+        ring::digest::digest(&ring::digest::SHA256, text.as_bytes()).as_ref(),
+    )
 }
 
-fn on_server_text(doc: &DocId, known: OverleafDoc, server: &str) -> OverleafDoc {
+fn on_server_text(doc: &DocId, known: OverleafDoc, server: &str) -> (OverleafDoc, bool) {
     let mut based = OverleafDoc::provisional(doc.clone(), server.to_string());
     match based.local(diff(server, known.text())) {
-        Ok(_) => based,
-        Err(_) => known,
+        Ok(correction) => (based, correction.is_some()),
+        Err(_) => (known, false),
     }
 }
 

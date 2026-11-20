@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ClipboardCopy, ExternalLink, LogIn, Pause, Play, RefreshCw, UserPlus } from "lucide-react";
+import { ClipboardCopy, ExternalLink, LogIn, Pause, Play, RefreshCw, RotateCcw, UserPlus } from "lucide-react";
 import { PauseLiveDialog } from "@/components/layout/overleaf-sync/PauseLiveDialog";
-import { usePauseLive } from "@/components/layout/overleaf-sync/use-pause-live";
+import { resumeLive, usePauseLive } from "@/components/layout/overleaf-sync/use-pause-live";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,55 +16,70 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
 import { writeClipboardText } from "@/lib/clipboard";
-import { overleafLiveActions } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
-import { overleafLiveConnectionDetails, overleafProjectPage, type OverleafLiveProject } from "@/lib/overleaf-live";
+import { openOverleafProject, overleafLiveConnectionDetails } from "@/lib/overleaf-live";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
+import { collabErrorMessage } from "../errors";
 import { type CollabLiveStoreState, useCollabLiveStore } from "../live/live-store";
 import { useOverleafNotices } from "../live/overleaf-notices";
 import { SyncStateIcon, useQuietDrop, useSyncWords } from "./sync-display";
 import { type SyncState, syncState } from "./sync-state";
 
-export function overleafSyncState(state: CollabLiveStoreState): SyncState {
+function overleafSyncState(state: CollabLiveStoreState): SyncState {
   if (state.overleaf?.paused) return "paused";
   if (state.backend !== "overleaf" && !state.overleaf?.signedIn) return "signedOut";
   return syncState(state.status, state.pending);
 }
 
-function useRetryIn(): number | null {
+function useRetryUntil(): number | null {
   const status = useCollabLiveStore((live) => live.status);
   const [until, setUntil] = useState<number | null>(null);
-  const now = useNow(1_000);
   useEffect(() => {
     setUntil(status?.state === "offline" ? Date.now() + status.retry_in_ms : null);
   }, [status]);
-  if (until === null) return null;
-  const seconds = Math.round((until - now) / 1_000);
-  return seconds > 0 ? seconds : null;
+  return until;
 }
 
-function useOverleafWords(state: SyncState): { words: string; plain: string; notes: string[] } {
+function useOverleafWords(state: SyncState): { words: string; plain: string; notes: string[]; retryUntil: number | null } {
   const { t } = useTranslation(["shell"]);
   const pending = useCollabLiveStore((live) => live.pending);
+  const refused = useCollabLiveStore((live) => live.refused);
   const slowAck = useOverleafNotices((notices) => notices.slowAck);
-  const retryIn = useRetryIn();
+  const until = useRetryUntil();
   const plain = useSyncWords(state, pending);
   const words = useLiveWords(state, plain);
   const notes: string[] = [];
-  const dropped = state === "offline" || state === "reconnecting";
-  if (dropped && retryIn !== null) notes.push(t(($) => $.shell.overleafLive.reconnectingIn, { seconds: retryIn }));
+  if (refused) notes.push(collabErrorMessage(refused));
   if (slowAck) notes.push(t(($) => $.shell.overleafLive.notConfirmed));
-  return { words, plain, notes };
+  const dropped = state === "offline" || state === "reconnecting";
+  return { words, plain, notes, retryUntil: dropped ? until : null };
 }
 
-function StatusNotes({ notes }: Readonly<{ notes: string[] }>) {
-  return notes.map((note) => (
-    <span key={note} data-testid="overleaf-live-status-note" className="block">
-      {note}
+function RetryNote({ until }: Readonly<{ until: number }>) {
+  const { t } = useTranslation(["shell"]);
+  const now = useNow(1_000);
+  const seconds = Math.round((until - now) / 1_000);
+  if (seconds <= 0) return null;
+  return (
+    <span data-testid="overleaf-live-status-note" className="block">
+      {t(($) => $.shell.overleafLive.reconnectingIn, { seconds })}
     </span>
-  ));
+  );
+}
+
+function StatusNotes({ notes, retryUntil }: Readonly<{ notes: string[]; retryUntil: number | null }>) {
+  return (
+    <>
+      {retryUntil === null ? null : <RetryNote until={retryUntil} />}
+      {notes.map((note) => (
+        <span key={note} data-testid="overleaf-live-status-note" className="block">
+          {note}
+        </span>
+      ))}
+    </>
+  );
 }
 
 function copyDetails(projectId: string, copied: string, failed: string) {
@@ -86,25 +100,16 @@ function useLiveWords(state: SyncState, words: string): string {
   return words;
 }
 
-function openPage(link: OverleafLiveProject) {
-  openExternal(overleafProjectPage(link)).catch((error) => void logError("open overleaf project page", error));
-}
-
 export function OverleafLiveButton() {
-  const { t } = useTranslation(["shell"]);
+  const { t } = useTranslation(["shell", "collab"]);
   const projectId = useCollabLiveStore((state) => state.projectId);
-  const link = useCollabLiveStore((state) => state.overleaf);
+  const link = useCollabLiveStore((state) => (state.share === null ? state.overleaf : null));
   const live = useCollabLiveStore((state) => state.backend === "overleaf" && state.status?.state !== "ended");
+  const failed = useCollabLiveStore((state) => state.backend === "overleaf" && state.ended === "failed");
   const state = useQuietDrop(useCollabLiveStore(overleafSyncState));
-  const { words, plain, notes } = useOverleafWords(state);
+  const { words, plain, notes, retryUntil } = useOverleafWords(state);
   const { unsent, busy, pause, keepLive } = usePauseLive();
   if (!projectId || !link) return null;
-
-  const resume = () => {
-    overleafLiveActions()
-      ?.resume(projectId)
-      .catch((error) => void logError("resume overleaf live editing", error));
-  };
 
   return (
     <>
@@ -113,7 +118,7 @@ export function OverleafLiveButton() {
           label={
             <>
               {words}
-              <StatusNotes notes={notes} />
+              <StatusNotes notes={notes} retryUntil={retryUntil} />
             </>
           }
           side="bottom"
@@ -139,14 +144,23 @@ export function OverleafLiveButton() {
               <span data-testid="overleaf-live-status" className="block">
                 {state === "upToDate" ? plain : words}
               </span>
-              <StatusNotes notes={notes} />
+              <StatusNotes notes={notes} retryUntil={retryUntil} />
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {link.paused ? (
-            <DropdownMenuItem data-testid="overleaf-live-resume" onSelect={resume}>
+            <DropdownMenuItem data-testid="overleaf-live-resume" onSelect={() => resumeLive(projectId)}>
               <Play className="size-4 text-muted-foreground" />
               {t(($) => $.shell.overleafLive.resume)}
+            </DropdownMenuItem>
+          ) : null}
+          {failed && !link.paused ? (
+            <DropdownMenuItem
+              data-testid="overleaf-live-again"
+              onSelect={() => useCollabLiveStore.getState().goLiveAgain()}
+            >
+              <RotateCcw className="size-4 text-muted-foreground" />
+              {t(($) => $.collab.activity.goLiveAgain)}
             </DropdownMenuItem>
           ) : null}
           {live ? (
@@ -190,11 +204,11 @@ export function OverleafLiveButton() {
               {t(($) => $.shell.overleafLive.signIn)}
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem data-testid="overleaf-live-open" onSelect={() => openPage(link)}>
+          <DropdownMenuItem data-testid="overleaf-live-open" onSelect={() => void openOverleafProject(link)}>
             <ExternalLink className="size-4 text-muted-foreground" />
             {t(($) => $.shell.overleafLive.open)}
           </DropdownMenuItem>
-          <DropdownMenuItem data-testid="overleaf-live-share" onSelect={() => openPage(link)}>
+          <DropdownMenuItem data-testid="overleaf-live-share" onSelect={() => void openOverleafProject(link)}>
             <UserPlus className="size-4 text-muted-foreground" />
             {t(($) => $.shell.overleafLive.share)}
           </DropdownMenuItem>

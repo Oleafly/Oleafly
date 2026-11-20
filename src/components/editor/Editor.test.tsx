@@ -5,7 +5,7 @@ import { defaultKeymap } from "@codemirror/commands";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import common from "@/i18n/locales/en/common.json" with { type: "json" };
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
@@ -23,6 +23,8 @@ import { setWysiwygFlushController } from "./wysiwyg/controller";
 const tauri = vi.hoisted(() => ({
   readFileBase64: vi.fn(async () => "AAA="),
   base64ToUint8Array: vi.fn(() => new Uint8Array([1, 2, 3])),
+  projectFileSizes: vi.fn(async (_projectId: string, paths: readonly string[]) => Object.fromEntries(paths.map((path) => [path, 4]))),
+  readProjectBytes: vi.fn(async (_projectId: string, _path: string) => new Uint8Array([137, 80, 78, 71]).buffer),
 }));
 
 const native = vi.hoisted(() => ({
@@ -513,26 +515,44 @@ describe("Editor shell", () => {
     }
   });
 
-  it("renders an image tab as a data url and reports a read failure", async () => {
-    openFile("figures/plot.png");
-    render(<Editor />);
+  function withObjectUrls(): () => void {
+    const native = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    URL.createObjectURL = () => "blob:plot";
+    URL.revokeObjectURL = () => undefined;
+    return () => {
+      URL.createObjectURL = native.create;
+      URL.revokeObjectURL = native.revoke;
+    };
+  }
 
-    const image = (await screen.findByAltText("plot.png")) as HTMLImageElement;
-    expect(image.src).toContain("data:image/png;base64,AAA=");
+  it("renders an image tab from the file's bytes and reports a read failure", async () => {
+    const restore = withObjectUrls();
+    try {
+      openFile("figures/plot.png");
+      render(<Editor />);
 
-    cleanup();
-    tauri.readFileBase64.mockRejectedValueOnce(new Error("missing"));
-    openFile("figures/plot.png");
-    render(<Editor />);
+      const image = (await screen.findByAltText("plot.png")) as HTMLImageElement;
+      expect(image.src).toBe("blob:plot");
+      expect(tauri.readProjectBytes).toHaveBeenCalledWith(useFilesStore.getState().projectId, "figures/plot.png");
 
-    await waitFor(() =>
-      expect(
-        screen.getByText(shell.imageLoadFailed.replace("{{detail}}", "Error: missing")),
-      ).toBeInTheDocument(),
-    );
+      cleanup();
+      tauri.readProjectBytes.mockRejectedValueOnce(new Error("missing"));
+      openFile("figures/plot.png");
+      render(<Editor />);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(shell.imageLoadFailed.replace("{{detail}}", "Error: missing")),
+        ).toBeInTheDocument(),
+      );
+    } finally {
+      restore();
+    }
   });
 
   it("says so when an image file's bytes are not a picture", async () => {
+    const restore = withObjectUrls();
+    onTestFinished(restore);
     openFile("figures/plot.png");
     render(<Editor />);
 

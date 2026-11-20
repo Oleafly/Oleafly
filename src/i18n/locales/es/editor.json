@@ -166,7 +166,6 @@
       "purple": "Morado"
     },
     "imageFile": "Archivo de imagen",
-    "apply": "Aplicar",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Dividir",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "No se pudo cargar el PDF: {{detail}}",
     "imageLoadFailed": "No se pudo cargar la imagen: {{detail}}",
     "imageUnreadable": "Este archivo no se puede mostrar como imagen. Puede estar dañado o no ser una imagen.",
+    "imageTooLarge": "Esta imagen supera los {{limit}}, así que no se muestra aquí.",
     "imageFit": "Ajustar a la ventana",
     "htmlPreviewFailed": "No se pudo previsualizar la página: {{detail}}",
     "binaryFile": "Archivo binario. No hay vista previa disponible.",

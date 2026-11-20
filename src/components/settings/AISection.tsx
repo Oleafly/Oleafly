@@ -66,7 +66,7 @@ import { MATHPIX_TOOLS_PROVIDER } from "@/features/tools-ai/tools-choice";
 import { editableKeys, mergeKeyChanges, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
-import { aiSettingsDestination, isAiSettingsTab } from "./ai-settings-navigation";
+import { AI_SETTINGS_TABS, aiSettingsDestination } from "./ai-settings-navigation";
 import { useSettingsTab } from "./use-settings-tab";
 
 const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })), { warm: () => intended("settings") });
@@ -186,7 +186,7 @@ function resetProviderModelPreferences(
 
 export function AISection() {
   const { t, i18n } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useSettingsTab("ai", "providers", isAiSettingsTab);
+  const [tab, setTab] = useSettingsTab("ai", "providers", AI_SETTINGS_TABS);
   const [mcpMounted, setMcpMounted] = useState(tab === "mcp");
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [configLoaded, setConfigLoaded] = useState(false);

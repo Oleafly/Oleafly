@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
+import { DecorationSet } from "@tiptap/pm/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installNoteCommentOpener } from "@/lib/collab-live-bridge";
 import { NoteCommentMarks, noteCommentsOf, revealNoteComment, setNoteComments } from "./note-comment-marks";
@@ -105,6 +106,38 @@ describe("comment ranges in a shared note", () => {
     editor.commands.insertContent("!");
     const after = noteCommentsOf(editor.state).spans[0];
     expect(editor.state.doc.textBetween(after.from, after.to)).toBe("masks");
+  });
+
+  it("moves the tints with typing instead of drawing them again, and redraws once a block is split", () => {
+    const editor = build("The encoder masks patches.\n\nLower ratios help.\n");
+    setNoteComments(editor, {
+      spans: [
+        { id: "t1", resolved: false, ...rangeOf(editor, "masks") },
+        { id: "t2", resolved: false, ...rangeOf(editor, "ratios") },
+      ],
+      selected: null,
+      draft: null,
+    });
+    const drawn = vi.spyOn(DecorationSet, "create");
+    try {
+      for (const letter of "Now ") {
+        editor.commands.setTextSelection(1);
+        editor.commands.insertContent(letter);
+      }
+      editor.commands.setTextSelection(rangeOf(editor, "Lower").from);
+      editor.commands.insertContent("Much ");
+      expect(drawn).not.toHaveBeenCalled();
+      const tints = () => [...editor.view.dom.querySelectorAll<HTMLElement>("[data-note-comment]")].map((range) => range.textContent);
+      expect(tints()).toEqual(["masks", "ratios"]);
+      expect(editor.view.dom.querySelectorAll("[data-note-comment-marker]")).toHaveLength(2);
+      editor.commands.setTextSelection(rangeOf(editor, "masks").from);
+      editor.commands.splitBlock();
+      expect(drawn).toHaveBeenCalled();
+      expect(tints()).toEqual(["masks", "ratios"]);
+      expect(editor.view.dom.querySelectorAll("[data-note-comment-marker]")).toHaveLength(2);
+    } finally {
+      drawn.mockRestore();
+    }
   });
 
   it("skips an update that changes nothing", () => {

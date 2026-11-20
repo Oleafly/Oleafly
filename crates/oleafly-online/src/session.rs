@@ -318,6 +318,24 @@ struct HandleInner {
     session: Session,
     cookie: std::sync::Mutex<String>,
     store: Option<SecretStore>,
+    saving: std::sync::Mutex<()>,
+    save_due: std::sync::atomic::AtomicBool,
+}
+
+impl HandleInner {
+    fn cookie(&self) -> String {
+        crate::locked(&self.cookie).clone()
+    }
+
+    fn save_cookie(&self) {
+        let Some(store) = &self.store else {
+            return;
+        };
+        let _turn = crate::locked(&self.saving);
+        self.save_due
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        let _ = refresh_cookie(store, &self.base, &self.session, &self.cookie());
+    }
 }
 
 impl std::fmt::Debug for SessionHandle {
@@ -338,6 +356,8 @@ impl SessionHandle {
                 cookie: std::sync::Mutex::new(session.cookie.clone()),
                 session,
                 store,
+                saving: std::sync::Mutex::new(()),
+                save_due: std::sync::atomic::AtomicBool::new(false),
             }),
         }
     }
@@ -351,31 +371,38 @@ impl SessionHandle {
     }
 
     pub fn cookie(&self) -> String {
-        self.inner
-            .cookie
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone()
+        self.inner.cookie()
     }
 
     pub fn absorb<'a>(&self, set_cookies: impl IntoIterator<Item = &'a str>) -> bool {
-        let merged = {
-            let mut cookie = self
-                .inner
-                .cookie
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+        {
+            let mut cookie = crate::locked(&self.inner.cookie);
             let merged = merge_set_cookies(&cookie, set_cookies);
             if merged == *cookie {
                 return false;
             }
-            cookie.clone_from(&merged);
-            merged
-        };
-        if let Some(store) = &self.inner.store {
-            let _ = refresh_cookie(store, &self.inner.base, &self.inner.session, &merged);
+            *cookie = merged;
+        }
+        if self.inner.store.is_some()
+            && !self
+                .inner
+                .save_due
+                .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            let inner = std::sync::Arc::clone(&self.inner);
+            match tokio::runtime::Handle::try_current() {
+                Ok(runtime) => {
+                    runtime.spawn_blocking(move || inner.save_cookie());
+                }
+                Err(_) => inner.save_cookie(),
+            }
         }
         true
+    }
+
+    pub fn absorb_headers(&self, headers: &reqwest::header::HeaderMap) -> bool {
+        let lines = crate::client::set_cookie_lines(headers);
+        self.absorb(lines.iter().map(String::as_str))
     }
 }
 

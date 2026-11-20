@@ -71,11 +71,7 @@ import { markdownMathRanges } from "./markdown-source";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 import { publishVisualEditorHistory } from "@/components/editor/history-signal";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
-
-function isMarkdownPath(path: string): boolean {
-  const p = path.toLowerCase();
-  return p.endsWith(".md") || p.endsWith(".markdown");
-}
+import { isMarkdownPath } from "@/lib/wysiwyg-mode";
 
 const FLUSH_DEBOUNCE_MS = 300;
 const FOLLOW_REMOTE_MS = 150;

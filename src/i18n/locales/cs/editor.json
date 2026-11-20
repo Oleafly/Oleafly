@@ -166,7 +166,6 @@
       "purple": "Fialová"
     },
     "imageFile": "Soubor obrázku",
-    "apply": "Použít",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "obrazky/graf.png",
     "split": "Rozdělit",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Načtení PDF selhalo: {{detail}}",
     "imageLoadFailed": "Načtení obrázku selhalo: {{detail}}",
     "imageUnreadable": "Tento soubor nelze zobrazit jako obrázek. Může být poškozený, nebo to vůbec není obrázek.",
+    "imageTooLarge": "Tento obrázek je větší než {{limit}}, proto se tu nezobrazuje.",
     "imageFit": "Přizpůsobit oknu",
     "htmlPreviewFailed": "Náhled stránky selhal: {{detail}}",
     "binaryFile": "Binární soubor. Náhled není k dispozici.",

@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 37] = [
+const PASSED_THROUGH: [&str; 44] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -108,6 +108,13 @@ const PASSED_THROUGH: [&str; 37] = [
     "too_many_pages",
     "page_too_large",
     "page_taken_down",
+    "live_elsewhere",
+    "collab_shared",
+    "overleaf_linked",
+    "overleaf_unsent",
+    "access_ended",
+    "failed",
+    "unreachable",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -1697,7 +1704,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 36] = [
+    const NEW_CODES: [(u16, &str); 43] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1734,6 +1741,13 @@ mod tests {
         (429, "too_many_pages"),
         (413, "page_too_large"),
         (403, "page_taken_down"),
+        (409, "live_elsewhere"),
+        (409, "collab_shared"),
+        (409, "overleaf_linked"),
+        (409, "overleaf_unsent"),
+        (403, "access_ended"),
+        (500, "failed"),
+        (503, "unreachable"),
     ];
 
     #[test]

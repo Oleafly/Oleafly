@@ -531,7 +531,7 @@ pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&P
                 .as_ref()
                 .and_then(|vendor| cli_handoff(vendor, cli.as_ref()))
                 .is_some_and(|(_, value)| {
-                    oleafly_core::engine_spec::is_windows_batch_script(Path::new(&value))
+                    oleafly_sandbox::cmdline::is_windows_batch_script(Path::new(&value))
                 });
             launch.needs_local_folder = launch.batch || script_handoff;
             launch.env = launch_env(vendor.as_ref(), node.as_deref(), cli.as_ref(), &launch);

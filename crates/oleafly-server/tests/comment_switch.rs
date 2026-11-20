@@ -16,15 +16,14 @@ use oleafly_collab_protocol::poll::{
     understands_header, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER,
     POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
-use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_server::clock::Clock;
 use oleafly_server::comment_guard;
 use oleafly_server::snapshots::{read_cost, Budget, Keep};
 use oleafly_server::state::AppState;
 use oleafly_server::test_support::challenge_nonce;
 use people::{
-    call, connect, connect_understanding, first_snapshot, grant, next_frame, raw_envelope,
-    send_update, share_project, stage, subscribe, Person, Socket, Stage,
+    call, connect, connect_understanding, first_snapshot, next_frame, raw_envelope, send_update,
+    share_project, shared_with_alice, stage, subscribe, Person, Socket, Stage,
 };
 use reqwest::{Method, StatusCode};
 use serde_json::json;
@@ -118,25 +117,6 @@ fn resolve_thread(doc: &LoroDoc) {
 fn type_text(doc: &LoroDoc) {
     let text = doc.get_text("text");
     text.insert(text.len_unicode(), " more").expect("type");
-}
-
-async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(
-            &stage.server,
-            &stage.bob,
-            project,
-            &stage.alice,
-            ProjectRole::Editor
-        )
-        .await
-        .status(),
-        StatusCode::OK
-    );
-    project
 }
 
 async fn set_project_comments(stage: &Stage, project: SharedProjectId, on: bool) {
@@ -650,6 +630,45 @@ async fn with_comments_on_an_editor_comment_the_server_could_not_read_is_checked
             .await
             .is_empty(),
         "comments were on, so the thread is judged by the editor's rules"
+    );
+}
+
+#[tokio::test]
+async fn an_editor_comment_the_server_knows_it_cannot_check_is_refused_and_typing_still_saves() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let state = stage.server.state();
+    let mut writer = Writer::open(&stage, &stage.alice, project, 52).await;
+    let typed = writer.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(typed, ServerFrame::Ack { seq: 1, .. }),
+        "{typed:?}"
+    );
+    let snapshots = state
+        .config
+        .data_dir
+        .join("blobs")
+        .join("snapshots")
+        .join(project.to_string());
+    std::fs::remove_dir_all(&snapshots).expect("the project's snapshot is on disk");
+    let refused = writer.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(
+            &refused,
+            ServerFrame::Error {
+                code: FrameErrorCode::Internal,
+                ..
+            }
+        ),
+        "{refused:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(&stage).await, 0);
+    let mut typist = Writer::open(&stage, &stage.alice, project, 53).await;
+    let typed = typist.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(typed, ServerFrame::Ack { seq: 2, .. }),
+        "{typed:?}"
     );
 }
 

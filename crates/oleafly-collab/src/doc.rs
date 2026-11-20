@@ -17,10 +17,10 @@ mod tree;
 
 pub use tree::{LostRename, Trashed};
 
-const TREE: &str = "tree";
+pub use oleafly_collab_protocol::schema::TRASH_ID;
+use oleafly_collab_protocol::schema::{TEXT_PREFIX, TREE};
+
 const META: &str = "meta";
-const TEXT_PREFIX: &str = "text:";
-pub const TRASH_ID: &str = "~trash";
 const UPDATE_TIMEOUT_MS: f64 = 2_000.0;
 const LINE_ENDING: &str = "eol";
 const CRLF: &str = "crlf";

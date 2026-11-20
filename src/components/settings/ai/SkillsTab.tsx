@@ -25,15 +25,17 @@ import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList } from "@/lib/intl";
+import { logWarning } from "@/lib/log";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { previewSkillId } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import {
   addSkill,
-  availableSkillName,
   createSkill,
   followsSkillNameRules,
   isSkillAvailable,
@@ -102,21 +104,46 @@ function tierLine(skill: SkillEntry): string {
   return i18n.t(($) => $.settings.ai.skills.tier.user);
 }
 
-function savedNameHint(typed: string, shown: string, saved: string, hasLetters: boolean): string | null {
+const PREVIEW_DELAY_MS = 150;
+
+function savedNameHint(typed: string, shown: string, saved: string | null, hasLetters: boolean): string | null {
   if (!typed) return null;
   if (!hasLetters) return i18n.t(($) => $.settings.ai.skills.editor.nameNeedsLatin);
-  if (shown === saved) return null;
+  if (saved === null || shown === saved) return null;
   return i18n.t(($) => $.settings.ai.skills.editor.nameSavedAs, { name: saved });
+}
+
+function usePreviewSkillId(name: string): string | null {
+  const settled = useDebouncedValue(name, PREVIEW_DELAY_MS, (value) => value === "");
+  const [preview, setPreview] = useState<{ name: string; id: string } | null>(null);
+
+  useEffect(() => {
+    if (!settled) {
+      setPreview(null);
+      return;
+    }
+    let active = true;
+    previewSkillId(settled)
+      .then((id) => {
+        if (active) setPreview({ name: settled, id });
+      })
+      .catch((error) => {
+        void logWarning("preview skill id", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, [settled]);
+
+  return name && preview?.name === name ? preview.id : null;
 }
 
 function SkillEditorDialog({
   target,
-  takenNames,
   onOpenChange,
   onSubmit,
 }: Readonly<{
   target: EditorTarget;
-  takenNames: ReadonlySet<string>;
   onOpenChange: (open: boolean) => void;
   onSubmit: (form: EditorForm) => Promise<string | null>;
 }>) {
@@ -143,7 +170,8 @@ function SkillEditorDialog({
 
   const typedName = form.name.trim();
   const nameHasLetters = editing !== null || skillNameFrom(typedName) !== "";
-  const savedName = editing ? editing.id : availableSkillName(typedName, takenNames);
+  const previewed = usePreviewSkillId(target === "create" && nameHasLetters ? typedName : "");
+  const savedName = editing ? editing.id : previewed;
   const nameHint = savedNameHint(typedName, editing?.name ?? typedName, savedName, nameHasLetters);
 
   const submit = async () => {
@@ -964,7 +992,6 @@ export function SkillsTab() {
 
       <SkillEditorDialog
         target={editor}
-        takenNames={new Set(skills.map((skill) => skill.id))}
         onOpenChange={(open) => {
           if (!open) setEditor(null);
         }}

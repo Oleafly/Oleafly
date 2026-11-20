@@ -6,40 +6,19 @@ use futures_util::StreamExt;
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, SessionTokens};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
-use oleafly_collab_protocol::ids::SharedProjectId;
-use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::rate_limit::DEVICE_RECONNECT_BURST;
 use oleafly_server::rooms::MAX_QUEUED_BYTES;
 use oleafly_server::sockets::{LinkTiming, SocketLimits, MAX_SOCKETS_PER_DEVICE};
 use oleafly_server::test_support::{eventually, seed_person, PersonSeed, TestDevice, TestServer};
 use people::{
-    connect, envelope, grant, next_frame, send_frame, send_update, share_project, stage, subscribe,
-    Socket, Stage,
+    connect, envelope, next_frame, send_frame, send_update, shared_with_alice, stage, subscribe,
+    Socket,
 };
 use reqwest::StatusCode;
 use tokio_tungstenite::connect_async;
 
 const MEGABYTE: usize = 1 << 20;
-
-async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
-    let project = share_project(&stage.server, &stage.bob, "Thesis")
-        .await
-        .project_id;
-    assert_eq!(
-        grant(
-            &stage.server,
-            &stage.bob,
-            project,
-            &stage.alice,
-            ProjectRole::Editor
-        )
-        .await
-        .status(),
-        StatusCode::OK
-    );
-    project
-}
 
 async fn acknowledged(socket: &mut Socket) {
     loop {

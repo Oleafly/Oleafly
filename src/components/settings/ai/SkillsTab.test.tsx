@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -207,6 +207,7 @@ const mockPickOpenPath = vi.mocked(pickOpenPath);
 let records: SkillEntry[];
 let catalog: SkillCatalog;
 let shareTargets: SkillShareTarget[];
+let previewIds: Record<string, string>;
 
 function renderTab() {
   render(
@@ -222,6 +223,7 @@ describe("SkillsTab", () => {
     records = [RESEARCH_SKILL, METHODS_COACH, INVALID];
     catalog = { ...EMPTY_CATALOG };
     shareTargets = SHARE_TARGETS.map((target) => ({ ...target }));
+    previewIds = { "Claim Checker": "claim-checker", "claim-checker": "claim-checker", "Methods  Coach!": "methods-coach-2" };
     mockPickOpenPath.mockReset();
     mockListen.mockReset().mockResolvedValue(() => {});
     mockInvoke.mockReset().mockImplementation(async (command, args) => {
@@ -317,6 +319,12 @@ describe("SkillsTab", () => {
           ),
         };
         return undefined;
+      }
+      if (command === "preview_skill_id") {
+        const { name } = args as { name: string };
+        const id = previewIds[name];
+        if (!id) throw new Error(`No preview for ${name}`);
+        return id;
       }
       if (command === "skills_share_targets") return shareTargets;
       if (command === "skills_share_sync") {
@@ -620,7 +628,7 @@ describe("SkillsTab", () => {
     fireEvent.change(screen.getByLabelText(enCommon.labels.name), {
       target: { value: "Claim Checker" },
     });
-    expect(screen.getByText(fill(copy.editor.nameSavedAs, { name: "claim-checker" }))).toBeInTheDocument();
+    expect(await screen.findByText(fill(copy.editor.nameSavedAs, { name: "claim-checker" }))).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(enCommon.labels.description), {
       target: { value: "Check whether each claim has support." },
     });
@@ -651,10 +659,12 @@ describe("SkillsTab", () => {
     const name = screen.getByLabelText(enCommon.labels.name);
 
     fireEvent.change(name, { target: { value: "claim-checker" } });
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("preview_skill_id", { name: "claim-checker" }));
+    await act(async () => {});
     expect(screen.queryByText(fill(copy.editor.nameSavedAs, { name: "claim-checker" }))).toBeNull();
 
     fireEvent.change(name, { target: { value: "Methods  Coach!" } });
-    expect(screen.getByText(fill(copy.editor.nameSavedAs, { name: "methods-coach-2" }))).toBeInTheDocument();
+    expect(await screen.findByText(fill(copy.editor.nameSavedAs, { name: "methods-coach-2" }))).toBeInTheDocument();
 
     fireEvent.change(name, { target: { value: "论文检查" } });
     expect(screen.getByText(copy.editor.nameNeedsLatin)).toBeInTheDocument();
@@ -662,6 +672,36 @@ describe("SkillsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: copy.editor.submitCreate }));
     expect(await screen.findAllByText(copy.editor.nameNeedsLatin)).toHaveLength(2);
     expect(mockInvoke).not.toHaveBeenCalledWith("skills_create", expect.anything());
+  });
+
+  it("says the id the app will save, as the app works it out", async () => {
+    previewIds = { ...previewIds, "Claim Checker": "claim-checker-3" };
+    renderTab();
+    await screen.findByText("Paper Lookup");
+    fireEvent.click(screen.getByRole("button", { name: copy.createSkill }));
+    const name = screen.getByLabelText(enCommon.labels.name);
+
+    for (const value of ["C", "Cl", "Claim", "Claim Checker"]) fireEvent.change(name, { target: { value } });
+    expect(await screen.findByText(fill(copy.editor.nameSavedAs, { name: "claim-checker-3" }))).toBeInTheDocument();
+    expect(mockInvoke.mock.calls.filter(([command]) => command === "preview_skill_id")).toEqual([
+      ["preview_skill_id", { name: "Claim Checker" }],
+    ]);
+  });
+
+  it("shows no saved-as hint and logs a warning when the app cannot work out the id", async () => {
+    renderTab();
+    await screen.findByText("Paper Lookup");
+    fireEvent.click(screen.getByRole("button", { name: copy.createSkill }));
+
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), { target: { value: "Unknown Name" } });
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("log_frontend_entry", {
+        level: "warning",
+        message: expect.stringContaining("preview skill id"),
+      }),
+    );
+    expect(screen.queryByText(/^Saved as /)).toBeNull();
+    expect(screen.queryByText(copy.editor.nameNeedsLatin)).toBeNull();
   });
 
   it("offers to rename a user skill whose name other agents reject", async () => {

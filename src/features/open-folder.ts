@@ -123,8 +123,7 @@ export function drainOpenRequests(): Promise<void> {
           (request) => !handledTokens.has(request.token),
         );
         for (const request of fresh) handledTokens.add(request.token);
-        const newest = fresh.at(-1);
-        if (newest) await openPendingRequest(newest);
+        await openInOrder(fresh);
       } while (drainAgain);
     } catch (error) {
       void logError("open requested folders", error);
@@ -134,6 +133,20 @@ export function drainOpenRequests(): Promise<void> {
     }
   })();
   return draining;
+}
+
+const STOPS_A_BATCH: ReadonlySet<OpenFolderOutcome> = new Set(["declined", "blocked", "failed"]);
+
+async function openInOrder(batch: readonly PendingOpenRequest[]): Promise<void> {
+  for (const [index, request] of batch.entries()) {
+    if (!STOPS_A_BATCH.has(await openPendingRequest(request))) continue;
+    for (const skipped of batch.slice(index + 1)) {
+      await discardOpenRequest(skipped.token, session).catch((error) => {
+        void logError("drop a folder request", error);
+      });
+    }
+    return;
+  }
 }
 
 function startOpenSession(): Promise<void> {

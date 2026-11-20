@@ -166,7 +166,6 @@
       "purple": "Фіолетовий"
     },
     "imageFile": "Файл зображення",
-    "apply": "Застосувати",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Розділити",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Не вдалося завантажити PDF: {{detail}}",
     "imageLoadFailed": "Не вдалося завантажити зображення: {{detail}}",
     "imageUnreadable": "Цей файл не можна показати як зображення. Можливо, він пошкоджений або взагалі не є зображенням.",
+    "imageTooLarge": "Це зображення більше за {{limit}}, тому тут його не показано.",
     "imageFit": "За розміром вікна",
     "htmlPreviewFailed": "Не вдалося показати сторінку: {{detail}}",
     "binaryFile": "Двійковий файл. Перегляд недоступний.",

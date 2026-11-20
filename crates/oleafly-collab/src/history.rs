@@ -7,6 +7,7 @@ use loro::{
 };
 use oleafly_collab_protocol::crypto::{b64url_decode, b64url_encode};
 use oleafly_collab_protocol::ids::{AccountId, VersionId};
+use oleafly_collab_protocol::schema::{TEXT_PREFIX, TREE};
 use serde::Serialize;
 
 use crate::comments::{number_of, parsed, string_of};
@@ -20,8 +21,6 @@ pub const RESTORE_MESSAGE: &str = "restore";
 pub const MERGE_SECONDS: i64 = 60;
 const GAP_MS: i64 = 10 * 60 * 1000;
 const SPAN_MS: i64 = 60 * 60 * 1000;
-const TEXT_PREFIX: &str = "text:";
-const TREE: &str = "tree";
 const NAME: &str = "name";
 const FRONTIERS: &str = "frontiers";
 const BY: &str = "by";

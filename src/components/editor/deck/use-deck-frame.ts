@@ -1,13 +1,20 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { frameMessages, loadArtifactRuntime } from "@/components/notes/ArtifactFrame";
-import { type DeckFrameMode, deckFrameDocument, frameChannel, isPortOffer } from "@/components/notes/artifact-runtime/frame-document";
+import { type DeckFrameMode, deckFrameDocument, frameChannel } from "@/components/notes/artifact-runtime/frame-document";
+import {
+  frameHasUserFocus,
+  openFrameDocument,
+  tokenOf,
+  useFrameDocument,
+  useFramePort,
+  useFrameTheme,
+} from "@/components/notes/artifact-runtime/frame-host";
 import { i18n, loadNamespace } from "@/i18n";
 import { describeError } from "@/lib/app-error";
-import { artifactFrameClose, artifactFrameOpen } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import { deckAssetImports, readDeckAssets } from "./deck-files";
 
 export const DECK_UPDATE_DELAY_MS = 200;
-const SANDBOXED_ORIGIN = "null";
 
 export interface DeckInfo {
   readonly pages: number;
@@ -24,6 +31,15 @@ export interface DeckPosition {
 export interface DeckError {
   readonly title: string;
   readonly detail: string;
+}
+
+export interface DeckKey {
+  readonly key: string;
+  readonly code: string;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly altKey: boolean;
+  readonly shiftKey: boolean;
 }
 
 export type DeckCommand = { type: "next" } | { type: "previous" } | { type: "goto"; page: number };
@@ -48,12 +64,9 @@ export interface DeckFrameOptions {
   readonly startRevealed?: number;
 }
 
-function tokenOf(url: string): string {
-  return url.slice(url.lastIndexOf("/") + 1);
-}
-
-function theme(): "dark" | "light" {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+function forwardKey(frame: HTMLIFrameElement | null, key: DeckKey): void {
+  if (!frame || !frameHasUserFocus(frame)) return;
+  frame.dispatchEvent(new KeyboardEvent("keydown", { ...key, bubbles: true, cancelable: true }));
 }
 
 export function readDeckMessage(
@@ -63,6 +76,7 @@ export function readDeckMessage(
   | { type: "deck"; info: DeckInfo }
   | { type: "position"; position: DeckPosition }
   | { type: "error"; error: DeckError }
+  | { type: "key"; key: DeckKey }
   | null {
   if (typeof data !== "object" || data === null) return null;
   const record = data as Record<string, unknown>;
@@ -90,6 +104,17 @@ export function readDeckMessage(
   if (record.type === "error" && typeof record.title === "string") {
     return { type: "error", error: { title: record.title, detail: typeof record.detail === "string" ? record.detail : "" } };
   }
+  if (record.type === "key" && typeof record.key === "string" && typeof record.code === "string") {
+    const key = {
+      key: record.key,
+      code: record.code,
+      ctrlKey: record.ctrlKey === true,
+      metaKey: record.metaKey === true,
+      altKey: record.altKey === true,
+      shiftKey: record.shiftKey === true,
+    };
+    return key.ctrlKey || key.metaKey || key.altKey ? { type: "key", key } : null;
+  }
   return null;
 }
 
@@ -101,17 +126,35 @@ export function useDeckFrame({ projectId, path, code, mode, startPage, startReve
   const [position, setPosition] = useState<DeckPosition>({ page: startPage, revealed: startRevealed ?? 0, steps: 0 });
   const [error, setError] = useState<DeckError | null>(null);
   const [generation, setGeneration] = useState(0);
-  const [connection, setConnection] = useState(0);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const port = useRef<MessagePort | null>(null);
+  const theme = useFrameTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const codeRef = useRef(code);
   codeRef.current = code;
   const pageRef = useRef(startPage);
   const revealedRef = useRef(startRevealed);
   const sentCode = useRef<string | null>(null);
   const sentAssets = useRef(new Set<string>());
-  const loadedUrl = useRef<string | null>(null);
-  const loadedView = useRef<Window | null>(null);
+  const { loaded, release } = useFrameDocument(frameRef);
+
+  const onMessage = (data: unknown) => {
+    const read = readDeckMessage(data, channel);
+    if (!read) return;
+    if (read.type === "deck") {
+      setInfo(read.info);
+      setError(null);
+    } else if (read.type === "position") {
+      pageRef.current = read.position.page;
+      revealedRef.current = read.position.revealed;
+      setPosition(read.position);
+    } else if (read.type === "error") {
+      setError(read.error);
+    } else {
+      forwardKey(frameRef.current, read.key);
+    }
+  };
+  const { post, disconnect, connection } = useFramePort({ frameRef, channel, theme, onMessage });
 
   useEffect(() => {
     void generation;
@@ -133,69 +176,35 @@ export function useDeckFrame({ projectId, path, code, mode, startPage, startReve
         const messages = { ...frameMessages(), noSlides: i18n.t(($) => $.editor.deck.noSlides) };
         const html = deckFrameDocument(
           source,
-          { theme: theme(), channel, parentOrigin: window.location.origin, messages },
+          { theme: themeRef.current, channel, parentOrigin: window.location.origin, messages },
           runtime,
           { mode, page: pageRef.current, revealed: revealedRef.current, assets, file: path },
         );
-        const opened = await artifactFrameOpen(html);
+        const opened = await openFrameDocument(html, () => live);
+        if (!opened) return;
         token = tokenOf(opened);
-        if (!live) {
-          void artifactFrameClose(token).catch(() => undefined);
-          return;
-        }
         sentCode.current = source;
         sentAssets.current = new Set(Object.keys(assets));
         setUrl(opened);
       } catch (cause) {
-        if (live) setFailure(describeError(cause));
+        if (!live) return;
+        setFailure(describeError(cause));
+        void logError(`open the slide deck ${path}`, cause);
       }
     })();
     return () => {
       live = false;
-      port.current?.close();
-      port.current = null;
-      if (token && token !== tokenOf(loadedUrl.current ?? "")) void artifactFrameClose(token).catch(() => undefined);
+      disconnect();
+      release(token);
     };
-  }, [channel, generation, mode, path, projectId]);
+  }, [channel, generation, mode, path, projectId, disconnect, release]);
 
-  const onLoad = useCallback((next: string) => {
-    const view = frameRef.current?.contentWindow ?? null;
-    if (loadedUrl.current !== next) {
-      loadedUrl.current = next;
-      loadedView.current = view;
-      void artifactFrameClose(tokenOf(next)).catch(() => undefined);
-      return;
-    }
-    if (view !== loadedView.current) setGeneration((value) => value + 1);
-  }, []);
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const view = frameRef.current?.contentWindow;
-      if (event.origin !== SANDBOXED_ORIGIN || !view || event.source !== view) return;
-      const offered = event.ports[0];
-      if (!offered || !isPortOffer(event.data, channel)) return;
-      port.current?.close();
-      port.current = offered;
-      offered.onmessage = (message: MessageEvent) => {
-        const read = readDeckMessage(message.data, channel);
-        if (!read) return;
-        if (read.type === "deck") {
-          setInfo(read.info);
-          setError(null);
-        } else if (read.type === "position") {
-          pageRef.current = read.position.page;
-          revealedRef.current = read.position.revealed;
-          setPosition(read.position);
-        } else {
-          setError(read.error);
-        }
-      };
-      setConnection((value) => value + 1);
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [channel]);
+  const onLoad = useCallback(
+    (next: string) => {
+      if (loaded(next) === "replaced") setGeneration((value) => value + 1);
+    },
+    [loaded],
+  );
 
   useEffect(() => {
     void connection;
@@ -206,24 +215,18 @@ export function useDeckFrame({ projectId, path, code, mode, startPage, startReve
         const imports = deckAssetImports(path, code);
         const missing = new Map([...imports].filter(([specifier]) => !sentAssets.current.has(specifier)));
         const assets = missing.size > 0 ? await readDeckAssets(projectId, missing) : {};
-        if (!live || !port.current) return;
+        if (!live || !post({ type: "source", code, assets })) return;
         for (const specifier of Object.keys(assets)) sentAssets.current.add(specifier);
         sentCode.current = code;
-        port.current.postMessage({ channel, type: "source", code, assets });
       })();
     }, DECK_UPDATE_DELAY_MS);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [channel, code, connection, path, projectId]);
+  }, [code, connection, path, post, projectId]);
 
-  const send = useCallback(
-    (command: DeckCommand) => {
-      port.current?.postMessage({ channel, ...command });
-    },
-    [channel],
-  );
+  const send = useCallback((command: DeckCommand) => post(command), [post]);
 
   return { frameRef, url, failure, info, position, error, onLoad, send };
 }

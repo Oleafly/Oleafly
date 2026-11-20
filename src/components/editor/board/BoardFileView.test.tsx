@@ -12,6 +12,7 @@ const excalidraw = vi.hoisted(() => ({
   props: [] as Record<string, unknown>[],
   history: [] as string[],
   api: { updateScene: vi.fn(), addFiles: vi.fn(), getAppState: () => ({ viewBackgroundColor: "#fff", gridModeEnabled: false }) },
+  hash: vi.fn((elements: readonly { version: number }[]) => elements.reduce((sum, element) => sum + element.version, 0)),
 }));
 
 vi.mock("@excalidraw/excalidraw/index.css", () => ({}));
@@ -30,7 +31,7 @@ vi.mock("@excalidraw/excalidraw", () => {
     CaptureUpdateAction: { NEVER: "NEVER" },
     MainMenu,
     languages: [{ code: "en" }, { code: "de-DE" }],
-    hashElementsVersion: (elements: readonly { version: number }[]) => elements.reduce((sum, element) => sum + element.version, 0),
+    hashElementsVersion: excalidraw.hash,
     restoreElements: (elements: unknown[]) => elements,
     serializeAsJSON: (elements: unknown[], appState: { viewBackgroundColor?: string }) =>
       JSON.stringify({ type: "excalidraw", elements, appState: { viewBackgroundColor: appState.viewBackgroundColor } }),
@@ -130,6 +131,32 @@ describe("BoardFileView", () => {
 
     act(() => useFilesStore.setState({ files: { [PATH]: { content: "{broken", dirty: false, edits: 2 } } } as never));
     expect(excalidraw.api.updateScene).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a change still waiting to be saved when the file changes outside the board", () => {
+    const setContent = open(DRAWING);
+    render(<BoardFileView projectId="p1" path={PATH} />);
+    act(() => latest().onChange([{ id: "a", version: 1 }], VIEW, {}));
+    act(() => latest().onChange([{ id: "a", version: 2 }], VIEW, {}));
+    const outside = JSON.stringify({ type: "excalidraw", elements: [{ id: "b", version: 1 }], appState: {}, files: {} });
+    act(() => useFilesStore.setState({ files: { [PATH]: { content: outside, dirty: false, edits: 1 } } } as never));
+    expect(setContent).toHaveBeenCalledTimes(1);
+    expect(JSON.parse((setContent.mock.calls[0] as unknown as [string, string])[1]).elements).toEqual([{ id: "a", version: 2 }]);
+    expect(excalidraw.api.updateScene).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(setContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the scene once per pause, not on every pointer move", () => {
+    const setContent = open(DRAWING);
+    render(<BoardFileView projectId="p1" path={PATH} />);
+    act(() => latest().onChange([{ id: "a", version: 1 }], VIEW, {}));
+    excalidraw.hash.mockClear();
+    for (let move = 0; move < 20; move += 1) act(() => latest().onChange([{ id: "a", version: 1 }], { ...VIEW, scrollX: move }, {}));
+    expect(excalidraw.hash).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(300));
+    expect(excalidraw.hash).toHaveBeenCalledTimes(1);
+    expect(setContent).not.toHaveBeenCalled();
   });
 
   it("reopens a board where it was left", () => {

@@ -8,8 +8,8 @@ import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { Compartment, type Extension } from "@codemirror/state";
-import { ViewPlugin } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import { lazyExtension } from "./lazy-extension";
 import { latexLanguage } from "./latex";
 import { typstLanguage } from "./typst";
 import { bibtexLanguage } from "./bibtex";
@@ -46,31 +46,10 @@ function lazyLanguageForPath(path: string): LanguageDescription | null {
   return extension ? codeChunkLanguage(extension) : null;
 }
 
-function loadWhenShown(description: LanguageDescription): Extension {
-  if (description.support) return description.support;
-  const slot = new Compartment();
-  return [
-    slot.of([]),
-    ViewPlugin.define((view) => {
-      let shown = true;
-      description
-        .load()
-        .then((support) => {
-          if (shown) view.dispatch({ effects: slot.reconfigure(support) });
-        })
-        .catch(() => undefined);
-      return {
-        destroy() {
-          shown = false;
-        },
-      };
-    }),
-  ];
-}
-
 export function editorLanguageForPath(path: string): Extension {
   const ready = languageForPath(path);
   if (ready) return ready;
   const lazy = lazyLanguageForPath(path);
-  return lazy ? loadWhenShown(lazy) : [];
+  if (!lazy) return [];
+  return lazy.support ?? lazyExtension(() => lazy.load())();
 }

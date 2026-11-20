@@ -1,25 +1,24 @@
-import type { CollabCommentMessage, CollabCommentThread } from "@oleafly/backend-port";
-import { Check, Undo2, WifiOff, X } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import type { CollabCommentThread } from "@oleafly/backend-port";
+import { Check, Undo2, X } from "lucide-react";
+import { type CSSProperties, memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type CommentArrival, CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
+import { type CommentArrival, CommentScrollArea, threadArrivals } from "@/components/ui/comments/comment-arrivals";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
-import { CommentKeys, CommentsEmpty, CommentsFootnote, withKeys } from "@/components/ui/comments/comment-empty";
+import { CommentKeys, CommentsEmpty, CommentsFootnote, CommentsOfflineQueue, withKeys } from "@/components/ui/comments/comment-empty";
 import { type CommentFilter, CommentFilterMenu, keepsThread } from "@/components/ui/comments/comment-filter";
 import { useCommentAction, useCommentKit } from "@/components/ui/comments/comment-kit";
 import { CommentQuote } from "@/components/ui/comments/comment-quote";
+import { CommentByline } from "@/components/ui/comments/comment-byline";
+import { type CommentEntry, messageEntry } from "@/components/ui/comments/comment-entry";
 import {
-  CommentByline,
-  type CommentEntry,
   commentCardClass,
   CommentThread,
   type CommentThreadActions,
   type CommentThreadModel,
 } from "@/components/ui/comments/comment-thread";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { peerHue } from "@/features/collab/live/peer-hue";
 import { cn } from "@/lib/utils";
 import type { OutboxItem } from "../outbox";
@@ -30,7 +29,7 @@ import { WebCommentKit } from "./comment-kit";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useActions } from "./context";
 import { errorKey } from "./errors";
-import { PersonAvatar, usePersonName } from "./people";
+import { PersonAvatar, useMessageAuthor, usePersonName } from "./people";
 
 const COMMENT_LIMIT = 20_000;
 const NO_THREADS: readonly CollabCommentThread[] = [];
@@ -42,7 +41,7 @@ export function useOutboxEntry(): (item: OutboxItem) => CommentEntry {
   const actions = useActions();
   const self = useWeb((state) => state.me?.accountId ?? "");
   const imageUrl = useWeb((state) => state.people[self]?.avatarUrl ?? null);
-  return (item) => ({
+  return useCallback((item: OutboxItem): CommentEntry => ({
     id: item.id,
     author: { id: self, name: t(($) => $.web.people.you), imageUrl, verified: true },
     at: item.at,
@@ -59,7 +58,7 @@ export function useOutboxEntry(): (item: OutboxItem) => CommentEntry {
             retry: item.retry ? () => actions.retryOutbox(item.id) : undefined,
             discard: () => actions.discardOutbox(item.id),
           },
-  });
+  }), [t, actions, self, imageUrl]);
 }
 
 export function OutboxThread({ item }: Readonly<{ item: OutboxItem }>) {
@@ -92,28 +91,7 @@ const NO_ACTIONS: CommentThreadActions = {
   removeThread: nothingToDo,
 };
 
-function useEntryOf(): (message: CollabCommentMessage) => CommentEntry {
-  const nameOf = usePersonName();
-  const people = useWeb((state) => state.people);
-  return (message) => ({
-    id: message.id,
-    author: {
-      id: message.author,
-      name: nameOf(message.author, message.verified),
-      imageUrl: message.verified ? (people[message.author]?.avatarUrl ?? null) : null,
-      verified: message.verified,
-    },
-    at: message.at,
-    editedAt: message.editedAt,
-    deleted: message.deleted,
-    removed: message.removed === true,
-    body: message.body,
-    mentions: message.mentions,
-    reactions: message.reactions ?? [],
-  });
-}
-
-export function ThreadCard({
+export const ThreadCard = memo(function ThreadCard({
   thread,
   canWrite,
   embedded = false,
@@ -121,7 +99,7 @@ export function ThreadCard({
   const { t } = useTranslation(["web"]);
   const actions = useActions();
   const nameOf = usePersonName();
-  const entryOf = useEntryOf();
+  const authorOf = useMessageAuthor();
   const outboxEntry = useOutboxEntry();
   const outbox = useWeb((state) => state.outbox);
   const queued = useMemo(
@@ -137,7 +115,7 @@ export function ThreadCard({
     quote: thread.anchor.quote,
     quoteState: thread.anchor.range ? "anchored" : "detached",
     resolution: resolver === null ? null : t(($) => $.web.comments.resolvedBy, { name: resolver }),
-    messages: [...thread.messages.map(entryOf), ...queued.map(outboxEntry)],
+    messages: [...thread.messages.map((message) => messageEntry(message, authorOf(message))), ...queued.map(outboxEntry)],
     deletable: false,
   };
   const threadActions = useMemo<CommentThreadActions>(
@@ -169,7 +147,7 @@ export function ThreadCard({
     </CommentThread>
   );
   return embedded ? card : <li>{card}</li>;
-}
+});
 
 function SuggestionText({ suggestion, self }: Readonly<{ suggestion: CollabSuggestion; self: string | null }>) {
   const { t } = useTranslation(["web"]);
@@ -373,15 +351,8 @@ function DraftComposer() {
         label={t(($) => $.web.comments.newComment)}
         placeholder={t(($) => $.web.comments.placeholder)}
         submitLabel={kit.labels.send}
-        labels={kit.labels}
-        describeError={kit.describeError}
-        canRetry={kit.canRetry}
         mentionButton
         autoFocus
-        maxLength={kit.maxLength}
-        members={kit.members}
-        self={kit.self}
-        hue={kit.hue}
         onSubmit={(body) => actions.createComment(body)}
         onCancel={() => actions.cancelComment()}
       />
@@ -400,11 +371,7 @@ function filterCounts(
 }
 
 function arrivalsOf(threads: Readonly<Record<string, readonly CollabCommentThread[]>>, self: string | null): CommentArrival[] {
-  return Object.values(threads).flatMap((list) =>
-    list.flatMap((thread) =>
-      thread.messages.map((message) => ({ id: message.id, mine: message.author === self, at: message.at })),
-    ),
-  );
+  return Object.values(threads).flatMap((list) => threadArrivals(list, self));
 }
 
 function OfflineQueue() {
@@ -412,12 +379,7 @@ function OfflineQueue() {
   const offline = useWeb((state) => state.connection === "offline" || state.connection === "connecting");
   const waiting = useWeb((state) => state.outbox.filter((item) => item.kind !== "chat" && item.state === "waiting").length);
   if (!offline || waiting === 0) return null;
-  return (
-    <WorkspaceBanner tone="neutral" role="status" data-testid="comments-offline-queue">
-      <WifiOff aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1">{t(($) => $.web.comments.offlineQueued, { count: waiting })}</p>
-    </WorkspaceBanner>
-  );
+  return <CommentsOfflineQueue>{t(($) => $.web.comments.offlineQueued, { count: waiting })}</CommentsOfflineQueue>;
 }
 
 export function CommentsPane() {
@@ -519,9 +481,14 @@ export function CommentsPane() {
   );
 }
 
+let counted: { threads: unknown; suggestions: unknown; open: number } | null = null;
+
 export function openThreadCount(
   threads: Readonly<Record<string, readonly CollabCommentThread[]>>,
   suggestions: Readonly<Record<string, readonly CollabSuggestion[]>>,
 ): number {
-  return filterCounts(threads, suggestions).open;
+  if (counted?.threads !== threads || counted.suggestions !== suggestions) {
+    counted = { threads, suggestions, open: filterCounts(threads, suggestions).open };
+  }
+  return counted.open;
 }

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SidebarViews } from "@/components/layout/WorkspaceControls";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useGitStatusStore } from "@/store/git-status";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { ThemeProvider } from "@/lib/theme";
 import { registerRailTabs } from "@/contributions/tabs";
@@ -93,5 +94,22 @@ describe("sidebar views that don't fit", () => {
     fireEvent.click(last);
     expect(useSettingsStore.getState().railTab).not.toBe("files");
     expect(more.className).toContain("bg-primary/10");
+  });
+
+  it("marks More while a view folded into it has something pending", () => {
+    railWidth(70);
+    useGitStatusStore.setState({ count: 0 });
+    render(
+      <ThemeProvider>
+        <SidebarViews />
+      </ThemeProvider>,
+    );
+    expect(viewButtons()).not.toContain(enShell.rail.sourceControl);
+    expect(screen.queryByTestId("rail-more-badge")).toBeNull();
+    act(() => useGitStatusStore.setState({ count: 12 }));
+    const more = screen.getByRole("button", { name: enShell.rail.more });
+    expect(more).toContainElement(screen.getByTestId("rail-more-badge"));
+    act(() => useGitStatusStore.setState({ count: 0 }));
+    expect(screen.queryByTestId("rail-more-badge")).toBeNull();
   });
 });

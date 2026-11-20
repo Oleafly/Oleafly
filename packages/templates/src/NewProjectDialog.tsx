@@ -1003,6 +1003,7 @@ export function NewProjectDialog({
         aria-modal="true"
         aria-labelledby="new-project-title"
         data-testid="template-gallery"
+        data-modal-surface=""
         data-tour="project-template-gallery"
         data-tour-stage={step === 1 ? "templates" : "details"}
         data-tour-template-selected={selected ? "true" : "false"}

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { SandboxedFrame } from "@/components/notes/artifact-runtime/frame-host";
 import { PdfStateMessage } from "@/components/preview/PdfStateMessage";
 import { PRESENT_MODES, type PresentMode } from "@/components/preview/PdfToolbarControls";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
@@ -83,13 +84,10 @@ export function DeckView({ projectId, path, onPresent }: DeckViewProps) {
             <PdfStateMessage kind="error" title={t(($) => $.preview.presentation.failed)} detail={deck.failure} />
           </div>
         ) : deck.url ? (
-          <iframe
+          <SandboxedFrame
             ref={deck.frameRef}
             src={deck.url}
-            onLoad={() => deck.url && deck.onLoad(deck.url)}
-            sandbox="allow-scripts"
-            allow=""
-            referrerPolicy="no-referrer"
+            onLoad={deck.onLoad}
             title={label || t(($) => $.preview.presentation.windowTitle)}
             className="size-full border-0 bg-transparent"
           />

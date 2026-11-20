@@ -1645,6 +1645,13 @@ pub fn create(
     record_for(root, &skills, &id)
 }
 
+pub fn preview_id(root: &Path, name: &str) -> Result<String, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    unique_skill_id(&root.join("skills"), name)
+}
+
 pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
@@ -2158,6 +2165,14 @@ pub async fn skills_create(
     let pack_root = app_pack_root(&app);
     off_ui_thread("create the skill", move || {
         create(&crate::paths::oleafly_root()?, pack_root.as_deref(), input)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn preview_skill_id(name: String) -> Result<String, String> {
+    off_ui_thread("preview the skill id", move || {
+        preview_id(&crate::paths::oleafly_root()?, &name)
     })
     .await
 }
@@ -3222,6 +3237,41 @@ mod tests {
         assert!(second.id.len() <= 64);
         assert!(second.id.ends_with("-2"));
         assert_eq!(second.name, second.id);
+    }
+
+    #[test]
+    fn the_previewed_id_is_the_id_create_saves_and_previewing_creates_nothing() {
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("data");
+        let input = |name: &str| CreateSkillInput {
+            name: name.into(),
+            description: "Check a methods section.".into(),
+            instructions: None,
+        };
+
+        assert_eq!(
+            preview_id(&data, "Methods Coach!").unwrap(),
+            "methods-coach"
+        );
+        assert_eq!(preview_id(&data, "***").unwrap(), "skill");
+        assert!(!data.exists());
+
+        let first = create(&data, None, input("Methods Coach!")).unwrap();
+        assert_eq!(first.id, "methods-coach");
+        let previewed = preview_id(&data, "methods coach").unwrap();
+        assert_eq!(previewed, "methods-coach-2");
+        assert!(!data.join("skills").join(&previewed).exists());
+        assert_eq!(
+            create(&data, None, input("methods coach")).unwrap().id,
+            previewed
+        );
+
+        let long = format!("{} Review", "Methods".repeat(10));
+        let long_preview = preview_id(&data, &long).unwrap();
+        assert_eq!(create(&data, None, input(&long)).unwrap().id, long_preview);
+        let second_long = preview_id(&data, &long).unwrap();
+        assert!(second_long.ends_with("-2") && second_long.len() <= 64);
+        assert_eq!(create(&data, None, input(&long)).unwrap().id, second_long);
     }
 
     #[test]

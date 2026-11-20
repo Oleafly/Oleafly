@@ -32,12 +32,6 @@ export function imageWidthSuffix(text: string): { width: number; length: number 
   return match && width !== null ? { width, length: match[0].length } : null;
 }
 
-/**
- * A Pandoc attribute block after a figure, such as `{#fig-loss}` or
- * `{#fig:x .wide width=50%}`, stays whole on the image and is written back as
- * it was. A width inside it shows on the image and follows its width control;
- * a width the editor can't use keeps the image as source instead.
- */
 function imageAttributes(text: string): { block: string; width: number | null } | null {
   if (imageWidthSuffix(text)) return null;
   const block = ATTRIBUTE_BLOCK.exec(text)?.[0];

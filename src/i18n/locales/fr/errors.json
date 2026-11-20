@@ -36,6 +36,7 @@
     "copy_needs_folder": "Seuls les dossiers ouverts sur place peuvent être copiés dans la bibliothèque.",
     "not_removable": "Seuls les dossiers ouverts sur place peuvent être retirés d'Oleafly.",
     "trash_unavailable": "Oleafly n'a pas pu placer {{path}} dans la Corbeille. Ce disque n'en a peut-être pas.",
+    "trash_in_use": "Oleafly n'a pas pu placer {{path}} dans la Corbeille, car une autre application l'a ouvert. Fermez-le dans cette application, puis réessayez.",
     "linked_replace_folder": "{{path}} est un dossier, Oleafly ne le remplacera donc pas. Déplacez-le ou renommez-le d'abord.",
     "folder_read_only": "Oleafly ne peut pas effectuer cette modification, car {{name}} ou son dossier est en lecture seule. Copiez dans la bibliothèque le dossier que vous avez ouvert, puis modifiez la copie.",
     "shared_settings_viewer": "Les lecteurs ne peuvent pas modifier les paramètres d'un projet partagé."

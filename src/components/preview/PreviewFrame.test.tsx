@@ -37,7 +37,12 @@ const link = (url: string) => ({ type: PREVIEW_LINK_MESSAGE, url });
 afterEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
+  Reflect.deleteProperty(navigator, "userActivation");
 });
+
+function activation(isActive: boolean) {
+  Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive } });
+}
 
 describe("PreviewFrame", () => {
   it("opens a link the page hands over in the browser while the page has focus", async () => {
@@ -60,6 +65,18 @@ describe("PreviewFrame", () => {
     post(frame, "https://example.com/");
     post(frame, null);
     expect(browser.openInSystemBrowser).not.toHaveBeenCalled();
+  });
+
+  it("opens a link only right after the reader acted in the page, where the webview can tell", async () => {
+    browser.openInSystemBrowser.mockResolvedValue(true);
+    const frame = shown();
+    frame.focus();
+    activation(false);
+    post(frame, link("https://example.com/on-its-own"));
+    expect(browser.openInSystemBrowser).not.toHaveBeenCalled();
+    activation(true);
+    post(frame, link("https://example.com/clicked"));
+    await waitFor(() => expect(browser.openInSystemBrowser).toHaveBeenCalledExactlyOnceWith("https://example.com/clicked"));
   });
 
   it("opens nothing when the page asks without having focus", () => {

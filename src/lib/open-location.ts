@@ -3,6 +3,7 @@ import { isEditorNoteFile, projectNoteKey } from "@/lib/project-notes";
 import { isBinaryProjectPath } from "@/lib/project-paths";
 import { useFilesStore, type TabOpener } from "@/store/files";
 import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
+import { isMarkdownPath } from "@/lib/wysiwyg-mode";
 import { useSettingsStore } from "@/store/settings";
 import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 
@@ -23,7 +24,6 @@ export interface OpenLocationOptions {
 
 export const EDITOR_DOCUMENT_WAIT_MS = 4000;
 const VISUAL_SOURCE = /\.(?:tex|latex|ltx|md|markdown)$/i;
-const MARKDOWN = /\.(?:md|markdown)$/i;
 
 type EditorController = typeof import("@/components/editor/cm/controller");
 type ReadyView = NonNullable<Awaited<ReturnType<EditorController["waitForEditorDocument"]>>>;
@@ -62,7 +62,7 @@ export function keptVisualEditor(path: string): "codemirror" | "tiptap" | null {
   if (!useSettingsStore.getState().editorKeepVisualMode) return null;
   const mode = fileMode(useVisualModeStore.getState(), path);
   if (mode === "code") return null;
-  return MARKDOWN.test(path) && mode === "visual" ? "tiptap" : "codemirror";
+  return isMarkdownPath(path) && mode === "visual" ? "tiptap" : "codemirror";
 }
 
 /** Runs `show`, cancelling it when the jump goes stale or the editor takes too long. */

@@ -166,7 +166,6 @@
       "purple": "Paars"
     },
     "imageFile": "Afbeeldingsbestand",
-    "apply": "Toepassen",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Splitsen",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Laden van de PDF is mislukt: {{detail}}",
     "imageLoadFailed": "Laden van de afbeelding is mislukt: {{detail}}",
     "imageUnreadable": "Dit bestand kan niet als afbeelding worden getoond. Het is misschien beschadigd, of het is geen afbeelding.",
+    "imageTooLarge": "Deze afbeelding is groter dan {{limit}} en wordt hier daarom niet getoond.",
     "imageFit": "Passend in venster",
     "htmlPreviewFailed": "Voorbeeld van de pagina is mislukt: {{detail}}",
     "binaryFile": "Binair bestand. Geen voorbeeld beschikbaar.",

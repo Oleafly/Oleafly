@@ -166,7 +166,6 @@
       "purple": "Tím"
     },
     "imageFile": "Tệp ảnh",
-    "apply": "Áp dụng",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Chia đôi",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Không tải được PDF: {{detail}}",
     "imageLoadFailed": "Không tải được ảnh: {{detail}}",
     "imageUnreadable": "Không thể hiển thị tệp này dưới dạng hình ảnh. Tệp có thể bị hỏng hoặc không phải là hình ảnh.",
+    "imageTooLarge": "Hình ảnh này lớn hơn {{limit}} nên không được hiển thị ở đây.",
     "imageFit": "Vừa cửa sổ",
     "htmlPreviewFailed": "Không xem trước được trang: {{detail}}",
     "binaryFile": "Tệp nhị phân. Không có bản xem trước.",

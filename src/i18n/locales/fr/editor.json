@@ -166,7 +166,6 @@
       "purple": "Violet"
     },
     "imageFile": "Fichier image",
-    "apply": "Appliquer",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/graphique.png",
     "split": "Fractionner",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Échec du chargement du PDF : {{detail}}",
     "imageLoadFailed": "Échec du chargement de l'image : {{detail}}",
     "imageUnreadable": "Ce fichier ne peut pas être affiché comme image. Il est peut-être endommagé, ou ce n'est pas une image.",
+    "imageTooLarge": "Cette image dépasse {{limit}}, elle n'est donc pas affichée ici.",
     "imageFit": "Ajuster à la fenêtre",
     "htmlPreviewFailed": "Échec de l'aperçu de la page : {{detail}}",
     "binaryFile": "Fichier binaire. Aucun aperçu disponible.",

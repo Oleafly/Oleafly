@@ -224,6 +224,8 @@
     "overleaf_linked": "Bu proje Overleaf'e bağlı. Bir Oleafly Server'da paylaşmak için bağlantıyı kaldırın.",
     "collab_shared": "Bu proje bir Oleafly Server'da paylaşılıyor. Overleaf ile canlı düzenlemek için orada paylaşımı durdurun.",
     "live_elsewhere": "Bu proje başka bir Oleafly penceresinde canlı olarak açık. Canlı düzenlemeyi orada durdurun, sonra yeniden deneyin.",
+    "access_ended": "Bu projeye artık erişiminiz olmadığı için canlı olarak düzenlenemiyor. Kopyanız bu bilgisayarda kalır. Sahibinden projeyi sizinle yeniden paylaşmasını isteyin.",
+    "failed": "Canlı düzenleme bir hata nedeniyle başlatılamadı. Değişiklikleriniz bu bilgisayarda kalır. Biraz bekleyin, sonra Yeniden eşitle'yi seçin.",
     "overleaf_unsent": "Bazı değişiklikler henüz Overleaf'e ulaşmadı. Göndermek için canlı düzenlemeyi sürdürün, ardından bağlantıyı kaldırın.",
     "suggestion_not_found": "Bu öneri artık yok. Biri onu kabul etmiş ya da reddetmiş olabilir.",
     "suggestion_not_yours": "Bu öneriyi yalnızca öneriyi yapan kişi geri çekebilir.",
@@ -554,7 +556,8 @@
     "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister.",
     "projectNotesShared": "Projenin notları bu projedeki herkesle paylaşılır. Kişisel notlar gizli kalır.",
     "personalNotesPrivate": "Kişisel notlar gizli kalır. Yalnızca projenin notlar klasöründeki notlar paylaşılır.",
-    "unlinkOverleaf": "Overleaf bağlantısını kaldır"
+    "unlinkOverleaf": "Overleaf bağlantısını kaldır",
+    "unlinkOverleafDescription": "Bu projede canlı düzenleme durur. Kopyanız bu bilgisayarda kalır, ortak yazarlarınız da çevrimiçi projeyi olduğu gibi kullanmaya devam eder."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",

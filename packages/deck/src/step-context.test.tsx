@@ -2,7 +2,6 @@
 import { act, render, screen } from "@testing-library/react";
 import type { MutableRefObject, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PreviewStepHost } from "./preview-step-host";
 import { Step, type StepAggregate, type StepController, StepHost, Steps, useIsActivePage } from "./step-context";
 
 let reduceMotion = false;
@@ -239,22 +238,6 @@ describe("controlled StepHost", () => {
 
     view.rerender(host(<TwoGroups />, { controllerRef: ref, controlledRevealed: -2 }));
     expect(stepStates()).toEqual(["pending", "pending", "pending", "pending"]);
-  });
-
-  it("previews a slide with all or some of its steps shown", () => {
-    const view = render(
-      <PreviewStepHost revealed={Number.POSITIVE_INFINITY}>
-        <TwoGroups />
-      </PreviewStepHost>,
-    );
-    expect(stepStates()).toEqual(["revealed", "revealed", "revealed", "revealed"]);
-
-    view.rerender(
-      <PreviewStepHost revealed={2}>
-        <TwoGroups />
-      </PreviewStepHost>,
-    );
-    expect(stepStates()).toEqual(["revealed", "revealed", "pending", "pending"]);
   });
 });
 

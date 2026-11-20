@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
+use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -57,22 +59,30 @@ fn now_ticks() -> u64 {
     u64::try_from(clock().elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
+struct Arrived {
+    at: AtomicU64,
+    bytes: AtomicU64,
+}
+
 pub struct Counted {
     stream: TcpStream,
-    heard: Arc<std::sync::atomic::AtomicU64>,
+    heard: Arc<Arrived>,
 }
 
 impl Counted {
     fn new(stream: TcpStream) -> Counted {
         Counted {
             stream,
-            heard: Arc::new(std::sync::atomic::AtomicU64::new(now_ticks())),
+            heard: Arc::new(Arrived {
+                at: AtomicU64::new(now_ticks()),
+                bytes: AtomicU64::new(0),
+            }),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct Heard(Arc<std::sync::atomic::AtomicU64>);
+pub struct Heard(Arc<Arrived>);
 
 impl Heard {
     pub fn of(socket: &WebSocket) -> Option<Heard> {
@@ -85,8 +95,12 @@ impl Heard {
     }
 
     pub fn silent_for(&self) -> Duration {
-        let last = self.0.load(std::sync::atomic::Ordering::Relaxed);
+        let last = self.0.at.load(Ordering::Relaxed);
         Duration::from_millis(now_ticks().saturating_sub(last))
+    }
+
+    pub fn bytes(&self) -> u64 {
+        self.0.bytes.load(Ordering::Relaxed)
     }
 }
 
@@ -98,9 +112,13 @@ impl tokio::io::AsyncRead for Counted {
     ) -> std::task::Poll<std::io::Result<()>> {
         let before = buffer.filled().len();
         let read = std::pin::Pin::new(&mut self.stream).poll_read(context, buffer);
-        if buffer.filled().len() > before {
-            self.heard
-                .store(now_ticks(), std::sync::atomic::Ordering::Relaxed);
+        let arrived = buffer.filled().len().saturating_sub(before);
+        if arrived > 0 {
+            self.heard.at.store(now_ticks(), Ordering::Relaxed);
+            self.heard.bytes.fetch_add(
+                u64::try_from(arrived).unwrap_or(u64::MAX),
+                Ordering::Relaxed,
+            );
         }
         read
     }
@@ -134,6 +152,7 @@ pub async fn open_websocket(target: &Url, headers: HeaderMap) -> Result<WebSocke
     open_through(target, headers, Matcher::from_system).await
 }
 
+#[cfg(any(test, feature = "test-support"))]
 pub async fn open_websocket_through(
     target: &Url,
     headers: HeaderMap,
@@ -354,7 +373,35 @@ async fn through_proxy(proxy: &Intercept, host: &str, port: u16) -> std::io::Res
     }
 }
 
+type RootsFrom = (Option<OsString>, Option<OsString>);
+
+type BuiltTls = Option<(RootsFrom, Arc<rustls::ClientConfig>)>;
+
+fn roots_from() -> RootsFrom {
+    (
+        std::env::var_os("SSL_CERT_FILE"),
+        std::env::var_os("SSL_CERT_DIR"),
+    )
+}
+
 fn tls_config() -> Result<Arc<rustls::ClientConfig>, NetError> {
+    static BUILT: Mutex<BuiltTls> = Mutex::new(None);
+    let from = roots_from();
+    if let Some((seen, config)) = BUILT
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+    {
+        if *seen == from {
+            return Ok(Arc::clone(config));
+        }
+    }
+    let config = build_tls_config()?;
+    *BUILT.lock().unwrap_or_else(PoisonError::into_inner) = Some((from, Arc::clone(&config)));
+    Ok(config)
+}
+
+fn build_tls_config() -> Result<Arc<rustls::ClientConfig>, NetError> {
     let roots = root_store(rustls_native_certs::load_native_certs());
     let config = rustls::ClientConfig::builder_with_provider(Arc::new(
         rustls::crypto::ring::default_provider(),
@@ -445,6 +492,43 @@ mod tests {
     #[test]
     fn tls_config_builds_on_the_ring_provider() {
         assert!(tls_config().is_ok());
+    }
+
+    #[test]
+    fn the_tls_config_is_built_once_while_the_root_settings_stay_the_same() {
+        let first = tls_config().expect("a config");
+        let second = tls_config().expect("a config");
+        assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn heard_counts_the_bytes_a_socket_reads() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+        let address = listener.local_addr().expect("address");
+        tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                if let Ok(mut socket) = tokio_tungstenite::accept_async(stream).await {
+                    use futures_util::SinkExt;
+                    let _ = socket
+                        .send(tokio_tungstenite::tungstenite::Message::text(
+                            "x".repeat(4096),
+                        ))
+                        .await;
+                    let _ = socket.next().await;
+                }
+            }
+        });
+        let target = Url::parse(&format!("ws://{address}/socket")).expect("url");
+        let mut socket = open_websocket(&target, HeaderMap::new())
+            .await
+            .expect("a socket");
+        let heard = Heard::of(&socket).expect("a counted socket");
+        assert!(heard.bytes() > 0);
+        let message = socket.next().await.expect("a message").expect("text");
+        assert_eq!(message.len(), 4096);
+        assert!(heard.bytes() > 4096);
+        assert!(heard.silent_for() < Duration::from_secs(5));
+        let _ = socket.close(None).await;
     }
 
     #[test]

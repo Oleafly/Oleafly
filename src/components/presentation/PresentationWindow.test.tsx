@@ -6,6 +6,8 @@ vi.mock("@tauri-apps/api/event", async () => (await import("./presentation-test-
 vi.mock("@tauri-apps/api/window", async () => (await import("./presentation-test-harness")).windowModule);
 vi.mock("@/features/presentation/load", async () => (await import("./presentation-test-harness")).loadModule);
 vi.mock("@/features/presentation/pdf-slides", async () => (await import("./presentation-test-harness")).slidesModule);
+const log = vi.hoisted(() => ({ logWarning: vi.fn(async () => undefined) }));
+vi.mock("@/lib/log", () => log);
 
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { presentationHarness, presentationUrl } from "./presentation-test-harness";
@@ -92,8 +94,10 @@ describe("PresentationWindow", () => {
 
   it("explains when the PDF cannot be opened", async () => {
     presentationHarness.failLoad = true;
+    log.logWarning.mockClear();
     render(<PresentationWindow />);
     expect(await screen.findByText(copy.failed)).toBeInTheDocument();
+    expect(log.logWarning).toHaveBeenCalledWith("open the PDF to present", expect.anything());
     fireEvent.click(screen.getByRole("button", { name: copy.close }));
     expect(presentationHarness.close).toHaveBeenCalled();
   });

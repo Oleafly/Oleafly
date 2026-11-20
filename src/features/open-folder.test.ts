@@ -210,18 +210,63 @@ describe("open requests from the OS", () => {
     stop();
   });
 
-  it("opens only the newest folder of a burst", async () => {
+  it("opens every file the backend hands out for one folder, in order", async () => {
     mocks.pendingOpenRequests.mockResolvedValue([
-      request("b1", "alpha"),
-      request("b2", "beta"),
-      request("b3", "gamma"),
+      request("f1", "main.tex"),
+      request("f2", "refs.bib"),
+      request("f3", "intro.tex"),
     ]);
-    mocks.openFolderRequest.mockResolvedValue(opened(NOTES_ID));
+    mocks.openFolderRequest
+      .mockResolvedValueOnce({ ...opened(THESIS_ID), file: "main.tex" })
+      .mockResolvedValueOnce({ ...opened(THESIS_ID), file: "refs.bib" })
+      .mockResolvedValueOnce({ ...opened(THESIS_ID), file: "intro.tex" });
 
     await drainOpenRequests();
 
-    expect(mocks.openFolderRequest).toHaveBeenCalledTimes(1);
-    expect(mocks.openFolderRequest).toHaveBeenCalledWith("b3", SESSION);
+    expect(mocks.openFolderRequest.mock.calls).toEqual([
+      ["f1", SESSION],
+      ["f2", SESSION],
+      ["f3", SESSION],
+    ]);
+    expect(openProject).toHaveBeenCalledTimes(1);
+    expect(openFile.mock.calls).toEqual([["main.tex"], ["refs.bib"], ["intro.tex"]]);
+    expect(mocks.discardOpenRequest).not.toHaveBeenCalled();
+  });
+
+  it("keeps opening the other files of a folder after one is refused", async () => {
+    mocks.pendingOpenRequests.mockResolvedValue([request("g1", "gone.tex"), request("g2", "main.tex")]);
+    mocks.openFolderRequest
+      .mockRejectedValueOnce(
+        '@oleafly/error:{"code":"open_folder.request_expired","params":{},"detail":null}',
+      )
+      .mockResolvedValueOnce({ ...opened(THESIS_ID), file: "main.tex" });
+
+    await drainOpenRequests();
+
+    expect(mocks.openFolderRequest).toHaveBeenCalledTimes(2);
+    expect(openFile).toHaveBeenCalledWith("main.tex");
+  });
+
+  it("drops the rest of a folder's files when the switch is declined", async () => {
+    useFilesStore.setState({ projectId: NOTES_ID, projectName: "notes" });
+    useCompileStore.setState({ status: "compiling", stopCompile });
+    mocks.pendingOpenRequests.mockResolvedValue([
+      request("h1", "main.tex"),
+      request("h2", "refs.bib"),
+      request("h3", "intro.tex"),
+    ]);
+    mocks.prepareOpenRequest.mockResolvedValue({ project_id: THESIS_ID, display_name: "main.tex" });
+    const drained = drainOpenRequests();
+    await settled();
+    useOpenFolderFlowStore.getState().answer(false);
+    await drained;
+
+    expect(mocks.openFolderRequest).not.toHaveBeenCalled();
+    expect(mocks.discardOpenRequest.mock.calls).toEqual([
+      ["h1", SESSION],
+      ["h2", SESSION],
+      ["h3", SESSION],
+    ]);
   });
 
   it("releases the splash when a cold-start folder is refused and explains it in the library", async () => {

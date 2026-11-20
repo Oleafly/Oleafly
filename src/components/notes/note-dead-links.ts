@@ -156,7 +156,6 @@ export function rewriteDocLinks(view: EditorView, match: LinkMatch, fix: LinkFix
       return false;
     }
     if (node.type.name === "rawInline") {
-      // An image that shares its paragraph with text is kept as its Markdown source; fix the link inside it.
       const source = String(node.attrs.source ?? "");
       const rewritten = source.includes("oleafly://") ? rewriteNoteLinks(source, match, fix) : null;
       if (!rewritten || rewritten.count === 0) return false;

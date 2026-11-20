@@ -166,7 +166,6 @@
       "purple": "紫"
     },
     "imageFile": "画像ファイル",
-    "apply": "適用",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "分割",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF を読み込めませんでした: {{detail}}",
     "imageLoadFailed": "画像を読み込めませんでした: {{detail}}",
     "imageUnreadable": "このファイルは画像として表示できません。破損しているか、画像ではない可能性があります。",
+    "imageTooLarge": "この画像は {{limit}} を超えているため、ここには表示されません。",
     "imageFit": "ウィンドウに合わせる",
     "htmlPreviewFailed": "ページをプレビューできませんでした: {{detail}}",
     "binaryFile": "バイナリファイルです。プレビューはできません。",

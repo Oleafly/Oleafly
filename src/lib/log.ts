@@ -16,7 +16,8 @@ let leaving = false;
 function describe(e: unknown): string {
   if (e instanceof Error) {
     const detail = `${e.name}: ${e.message}`;
-    return e.stack ? `${detail}\n${e.stack}` : detail;
+    if (!e.stack) return detail;
+    return e.stack.startsWith(detail) ? e.stack : `${detail}\n${e.stack}`;
   }
   if (typeof e === "string") return e;
   try {

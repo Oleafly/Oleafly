@@ -2,8 +2,8 @@ import { isDeckPath } from "@/components/editor/deck/deck-path";
 import { readJson, readString, removeKey, writeJson, writeString } from "@/lib/local-storage";
 
 export type EditorMode = "code" | "visual" | "both";
-export type SourcePreview = "html" | "bib" | "sheet" | "deck";
-export type ViewKind = SourcePreview | "markdown" | "source";
+type SourcePreview = "html" | "bib" | "sheet" | "deck";
+type ViewKind = SourcePreview | "markdown" | "source";
 export type KindModes = Readonly<Partial<Record<ViewKind, EditorMode>>>;
 export type MarkdownSplitLayout = "stacked" | "split";
 
@@ -20,8 +20,12 @@ export function sourcePreviewKind(path: string | null): SourcePreview | null {
   return /\.(?:csv|tsv)$/iu.test(path) ? "sheet" : null;
 }
 
+export function isMarkdownPath(path: string | null | undefined): boolean {
+  return !!path && MARKDOWN_FILE.test(path);
+}
+
 export function viewKind(path: string): ViewKind {
-  return sourcePreviewKind(path) ?? (MARKDOWN_FILE.test(path) ? "markdown" : "source");
+  return sourcePreviewKind(path) ?? (isMarkdownPath(path) ? "markdown" : "source");
 }
 
 export function kindMode(kinds: KindModes, path: string): EditorMode {

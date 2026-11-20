@@ -763,7 +763,7 @@ export function CompileControlsView({
           <span
             aria-hidden
             data-testid="compile-coauthors-dot"
-            className="absolute right-1 top-1 size-1.5 rounded-full bg-amber-300"
+            className="absolute right-1 top-1 size-1.5 rounded-full bg-primary-foreground"
           />
         ) : null}
         <span data-toolbar-part="compile-label" aria-hidden={iconOnly || undefined}

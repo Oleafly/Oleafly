@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FileX2, X } from "lucide-react";
+import { FileX2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Spinner } from "@/components/ui/spinner";
@@ -8,6 +8,7 @@ import { basename } from "@/lib/path-utils";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
 import { canEditProjectRole } from "../roles";
+import { DismissButton } from "./DismissButton";
 import { useCollabLiveStore } from "./live-store";
 import { PathMessage } from "./PathMessage";
 import { type RemovedNotice, useRemovedNotices } from "./removed-notices";
@@ -49,13 +50,11 @@ function NoticeRow({
             {online ? t(($) => $.collab.removed.restoreOnline) : t(($) => $.collab.deleted.restore)}
           </WorkspaceBannerButton>
         ) : null}
-        <WorkspaceBannerButton
+        <DismissButton
           tone="warning"
-          aria-label={t(($) => $.collab.removed.dismiss)}
-          onClick={() => useRemovedNotices.getState().dismiss(notice.id)}
-        >
-          <X aria-hidden className="size-3.5" />
-        </WorkspaceBannerButton>
+          label={t(($) => $.collab.removed.dismiss)}
+          onDismiss={() => useRemovedNotices.getState().dismiss(notice.id)}
+        />
       </span>
       {failure ? (
         <WorkspaceBannerAlert>{collabErrorMessage(failure)}</WorkspaceBannerAlert>

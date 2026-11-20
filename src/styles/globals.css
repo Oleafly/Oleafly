@@ -212,8 +212,7 @@
   background-color: #121212;
 }
 
-.dark [data-testid="template-gallery"],
-.dark [data-testid="latex-tools-view"] {
+.dark [data-modal-surface] {
   background-color: #181818;
 }
 

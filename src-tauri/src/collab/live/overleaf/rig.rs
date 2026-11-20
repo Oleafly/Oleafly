@@ -17,8 +17,7 @@ use crate::collab::live::host::LiveHost;
 use crate::collab::live::kept::KeptPayload;
 use crate::collab::live::moves::RemovedPayload;
 use crate::collab::live::payloads::{
-    DocPendingPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
-    RolePayload, StatusPayload,
+    DocPendingPayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
 };
 use crate::collab::live::session::{guard, Live, ACTIVE};
 use crate::collab::live::uploads::{DownloadProgress, UploadsPayload};
@@ -54,7 +53,6 @@ impl LiveHost for Quiet {
     fn kept(&self, payload: KeptPayload) {
         self.kept.lock().unwrap().push(payload);
     }
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, payload: PresencePayload) {
         self.presence.lock().unwrap().push(payload);
     }
@@ -67,7 +65,6 @@ impl LiveHost for Quiet {
     fn folder_changed(&self, change: FolderChange) {
         self.changes.lock().unwrap().push(change);
     }
-    fn new_device(&self, _: NewDevicePayload) {}
     fn doc_pending(&self, payload: DocPendingPayload) {
         self.pending.lock().unwrap().push(payload);
     }

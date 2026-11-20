@@ -31,6 +31,23 @@ describe("app log", () => {
     });
   });
 
+  it("writes an error's headline once, whether or not its stack starts with it", async () => {
+    const chromium = new Error("Invalid PDF structure");
+    chromium.stack = "Error: Invalid PDF structure\n    at load (viewer.js:1:2)";
+    const webkit = new TypeError("undefined is not an object");
+    webkit.stack = "load@viewer.js:1:2";
+    await logWarning("viewer", chromium);
+    await logWarning("preview", webkit);
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "log_frontend_entry", {
+      level: "warning",
+      message: "viewer: Error: Invalid PDF structure\n    at load (viewer.js:1:2)",
+    });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "log_frontend_entry", {
+      level: "warning",
+      message: "preview: TypeError: undefined is not an object\nload@viewer.js:1:2",
+    });
+  });
+
   it("never throws when the log can't be written", async () => {
     mocks.invoke.mockRejectedValue(new Error("not allowed"));
     await expect(logError("a", "b")).resolves.toBeUndefined();

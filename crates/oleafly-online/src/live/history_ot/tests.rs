@@ -250,6 +250,55 @@ fn an_unknown_edit_operation_is_unsupported() {
 }
 
 #[test]
+fn a_tracked_change_whose_end_overflows_is_malformed() {
+    for (pos, length) in [(1, u64::MAX), (u64::MAX, 1), (u64::MAX, u64::MAX), (2, 2)] {
+        let snapshot = json!({
+            "content": "abc",
+            "trackedChanges": [{ "range": { "pos": pos, "length": length }, "tracking": reviewer() }],
+        });
+        assert!(
+            matches!(RawDoc::from_raw(&snapshot), Err(CodecError::Malformed(_))),
+            "{snapshot}"
+        );
+    }
+}
+
+#[test]
+fn server_lengths_that_cannot_fit_a_document_are_malformed() {
+    let huge = u64::MAX / 2;
+    for op in [
+        json!([huge, huge, huge]),
+        json!([{ "r": huge }, { "r": huge }, 1]),
+        json!([i64::MIN]),
+        json!([-1, i64::MIN]),
+        json!([{ "r": u64::MAX }]),
+    ] {
+        assert!(
+            matches!(RawOp::from_json(&op), Err(CodecError::Malformed(_))),
+            "{op}"
+        );
+    }
+    let ranges =
+        json!([{ "commentId": "c1", "ranges": [{ "pos": u64::MAX, "length": u64::MAX }] }]);
+    assert!(matches!(
+        edits_from_json(&ranges),
+        Err(CodecError::Malformed(_))
+    ));
+    let mut doc = doc("abc", &[]);
+    let wide = CommentRanges {
+        id: "c1".into(),
+        ranges: vec![(usize::MAX - 1, usize::MAX)],
+        resolved: false,
+    };
+    doc.edit_comments(&Edit::AddComment(wide));
+    let mut grow = RawOp::default();
+    grow.retain(3, None, None);
+    grow.insert("de".encode_utf16().collect(), None, None);
+    doc.apply(&grow).unwrap();
+    assert_eq!(doc.content().unwrap(), "abcde");
+}
+
+#[test]
 fn retain_with_comment_ids_and_content_hash_decode() {
     let edits = edits_from_json(&json!([{
         "textOperation": [3, { "r": 4, "commentIds": ["c1"] }, { "i": "x", "commentIds": ["c1"] }, 2],

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   signInWithBrowser: vi.fn(),
   signInWindow: vi.fn(),
   listProjects: vi.fn(),
+  logError: vi.fn(async (_scope: string, _error: unknown) => undefined),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -32,7 +33,7 @@ vi.mock("@/lib/overleaf", async (importOriginal) => ({
   overleafListProjects: mocks.listProjects,
 }));
 
-vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => undefined) }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 const copy = enSettings.integrations.cookies;
 const browserCopy = enSettings.integrations.overleaf;
@@ -135,6 +136,7 @@ describe("BrowserSignInCopy", () => {
     const confirmation = screen.getByRole("alertdialog", { name: copy.confirmTitle });
     expect(await within(confirmation).findByRole("alert")).toHaveTextContent("Keychain access was denied.");
     expect(mocks.signInWithCookies).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("copy browser cookies", expect.any(Error));
   });
 
   it("renders a button for the import panel", async () => {

@@ -98,6 +98,7 @@ export function ModalShell({
     "aria-labelledby": labelledBy,
     "aria-describedby": describedBy,
     "data-testid": testId,
+    "data-modal-surface": surface ? "" : undefined,
     tabIndex: -1,
     className: panelClassName,
   };

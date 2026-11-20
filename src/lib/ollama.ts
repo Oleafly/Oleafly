@@ -1,12 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+import { errorStartsWith } from "@/lib/error-prefix";
 
 // IPv4 loopback literal, not "localhost": Ollama binds 127.0.0.1 by default and
 // on Windows "localhost" can resolve to ::1 (IPv6) first and fail to connect.
 export const DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434";
 
 export function ollamaUnreachable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : error;
-  return typeof message === "string" && message.startsWith("Ollama not reachable at ");
+  return errorStartsWith(error, "Ollama not reachable at ");
 }
 
 export function listOllamaModels(host: string): Promise<string[]> {

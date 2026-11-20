@@ -1,16 +1,18 @@
 import { type Editor, Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
+import { AddMarkStep, RemoveMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { commentMarkStyle } from "@/components/ui/comments/comment-mark-styles";
 import { type NoteCommentRange, openNoteComment } from "@/lib/collab-live-bridge";
+import { cssText } from "@/lib/peer-colors";
+import { scrollBehavior } from "@/lib/reduced-motion";
 
 export interface PlacedComment extends NoteCommentRange {
   id: string;
   resolved: boolean;
 }
 
-/** Comment threads in editor positions. Drawn as decorations only: nothing is written into the note. */
 export interface PlacedComments {
   spans: readonly PlacedComment[];
   selected: string | null;
@@ -25,18 +27,8 @@ const NONE: PlacedComments = { spans: [], selected: null, draft: null };
 const commentKey = new PluginKey<CommentState>("noteCommentMarks");
 const SVG = "http://www.w3.org/2000/svg";
 
-function kebab(key: string): string {
-  return key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`);
-}
-
-function css(style: Record<string, string>): string {
-  return Object.entries(style)
-    .map(([key, value]) => `${kebab(key)}: ${value}`)
-    .join("; ");
-}
-
-const RANGE_STYLE = `${css(commentMarkStyle(false))}; border-radius: 2px 2px 0 0`;
-const ACTIVE_STYLE = css(commentMarkStyle(true));
+const RANGE_STYLE = `${cssText(commentMarkStyle(false))}; border-radius: 2px 2px 0 0`;
+const ACTIVE_STYLE = cssText(commentMarkStyle(true));
 
 function clamp(doc: ProseMirrorNode, pos: number): number {
   return Math.max(0, Math.min(Number.isFinite(pos) ? Math.trunc(pos) : 0, doc.content.size));
@@ -104,7 +96,6 @@ function markerElement(ids: readonly string[], active: boolean): HTMLElement {
   return root;
 }
 
-/** The open threads' ranges, and the threads that start in each top-level block. */
 function rangeDecorations(doc: ProseMirrorNode, value: PlacedComments): { ranges: Decoration[]; byBlock: Map<number, string[]> } {
   const ranges: Decoration[] = [];
   const byBlock = new Map<number, string[]>();
@@ -149,6 +140,20 @@ function decorationsFor(doc: ProseMirrorNode, value: PlacedComments): Decoration
   return decorations.length === 0 ? DecorationSet.empty : DecorationSet.create(doc, decorations);
 }
 
+function insideTextblocks(tr: Transaction): boolean {
+  return tr.steps.every((step, index) => {
+    if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) return true;
+    if (!(step instanceof ReplaceStep) || step.slice.openStart > 0 || step.slice.openEnd > 0) return false;
+    const doc = tr.docs[index];
+    const from = doc.resolve(step.from);
+    let inline = true;
+    step.slice.content.forEach((node) => {
+      inline &&= node.isInline;
+    });
+    return inline && from.parent.isTextblock && from.sameParent(doc.resolve(step.to));
+  });
+}
+
 function sameComments(left: PlacedComments, right: PlacedComments): boolean {
   if (left.selected !== right.selected) return false;
   if ((left.draft === null) !== (right.draft === null)) return false;
@@ -183,7 +188,7 @@ export function revealNoteComment(editor: Editor, threadId: string): boolean {
   const { from } = ordered(editor.state.doc, span);
   const { node } = editor.view.domAtPos(from);
   const element = node instanceof HTMLElement ? node : node.parentElement;
-  element?.scrollIntoView({ block: "center", behavior: "smooth" });
+  element?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   return true;
 }
 
@@ -213,7 +218,8 @@ export const NoteCommentMarks = Extension.create({
             if (next) return { ...next, decorations: decorationsFor(tr.doc, next) };
             if (!tr.docChanged || (value.spans.length === 0 && value.draft === null)) return value;
             const moved = mapped(value, tr);
-            return { ...moved, decorations: decorationsFor(tr.doc, moved) };
+            const decorations = insideTextblocks(tr) ? value.decorations.map(tr.mapping, tr.doc) : decorationsFor(tr.doc, moved);
+            return { ...moved, decorations };
           },
         },
         props: {

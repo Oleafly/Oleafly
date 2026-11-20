@@ -386,6 +386,7 @@ impl State {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "test-support"))]
     pub(in crate::live::session) fn kept_away(&self) -> Vec<String> {
         self.manifest.kept_away.clone()
     }
@@ -442,6 +443,11 @@ impl State {
         let Some(at) = at else {
             return;
         };
+        if let (TreeChange::NewDoc { path }, Finished::Failed(_) | Finished::Dropped) =
+            (&job.change, &finished)
+        {
+            self.tree_work.to_fill.remove(path);
+        }
         let dropped = finished == Finished::Dropped;
         match finished {
             Finished::Done | Finished::Dropped => {

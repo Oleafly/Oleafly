@@ -1172,3 +1172,62 @@ fn joins_the_model_cannot_read_are_unsupported() {
         assert_eq!(ProjectState::from_join(join).unwrap_err(), expected);
     }
 }
+
+#[tokio::test]
+async fn an_oversized_or_endless_member_list_is_refused() {
+    for declared in [Some(u64::MAX / 2), None] {
+        let base = crate::test_support::streaming_server(declared, None, Duration::ZERO).await;
+        let http = Http::new(&base, AGENT).unwrap();
+        let session = SessionHandle::new(
+            &base,
+            Session {
+                cookie: "overleaf.sid=s".into(),
+                user_id: "u1".into(),
+                email: String::new(),
+                saved_by: None,
+            },
+            None,
+        );
+        let error = Members::default()
+            .refresh(&http, &session, "p1")
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind, OnlineErrorKind::Unrecognized, "{declared:?}");
+        assert!(
+            error
+                .detail
+                .as_deref()
+                .unwrap_or_default()
+                .contains("larger than"),
+            "{error:?}"
+        );
+    }
+}
+
+#[test]
+fn the_import_settings_and_the_live_state_read_the_main_document_the_same_way() {
+    let join = json!({
+        "publicId": "P.1",
+        "permissionsLevel": "owner",
+        "project": {
+            "compiler": "lualatex",
+            "imageName": "texlive-full:2025.1",
+            "rootDoc_id": "d9",
+            "rootFolder": [{
+                "_id": "root",
+                "name": "rootFolder",
+                "docs": [{ "_id": "d1", "name": "notes.tex" }, { "_id": "../d9", "name": "evil.tex" }],
+                "folders": [{ "_id": "f1", "name": "thesis", "docs": [{ "_id": "d9", "name": "main.tex" }] }],
+            }],
+        },
+    });
+    let state = ProjectState::from_join(join.clone()).unwrap();
+    assert_eq!(state.settings(), settings_from_project(&join["project"]));
+    assert_eq!(
+        state.settings().main_doc.as_deref(),
+        Some("thesis/main.tex")
+    );
+    let mut hostile = join["project"].clone();
+    hostile["rootDoc_id"] = json!("../d9");
+    assert_eq!(settings_from_project(&hostile).main_doc, None);
+}

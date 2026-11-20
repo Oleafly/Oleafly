@@ -41,7 +41,7 @@ impl State {
 
     fn offset_of(&self, doc: Option<&DocId>, at: Option<(u64, u64)>) -> Option<usize> {
         let (row, column) = at?;
-        self.text(doc?).map(|text| to_offset(&text, row, column))
+        self.with_text(doc?, |text| to_offset(text, row, column))
     }
 
     pub(in crate::live::session) fn peer_left(&mut self, id: PublicId) {

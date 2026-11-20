@@ -30,6 +30,7 @@ import {
 } from "./latex-delimiters";
 import { inLatexIgnoredRegion, mathContextAt } from "./latex-lexical";
 import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export interface LatexPairOptions {
   math: boolean;
@@ -156,16 +157,8 @@ function pendingCloserAt(
 }
 
 function escapedAt(state: EditorState, pos: number): boolean {
-  const from = Math.max(0, pos - RUN_LIMIT);
-  const before = state.sliceDoc(from, pos);
-  let backslashes = 0;
-  while (
-    backslashes < before.length &&
-    before[before.length - 1 - backslashes] === "\\"
-  ) {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
+  const before = state.sliceDoc(Math.max(0, pos - RUN_LIMIT), pos);
+  return isBackslashEscaped(before, before.length);
 }
 
 function characterAt(state: EditorState, pos: number): string {

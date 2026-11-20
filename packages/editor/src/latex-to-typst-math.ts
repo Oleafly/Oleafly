@@ -1,4 +1,5 @@
 import { encodeTypstString } from "./typst-literals";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export interface LatexToTypstOptions {
   typstVersion?: string | null;
@@ -1422,25 +1423,19 @@ export function latexMathToTypst(latex: string, options: LatexToTypstOptions = {
 
 const MATH_ENVIRONMENT = /^\\begin\{(equation|align|gather|multline|eqnarray|displaymath|flalign|alignat|math)(\*?)\}/u;
 
-function isEscapedAt(text: string, index: number): boolean {
-  let slashes = 0;
-  for (let cursor = index - 1; cursor >= 0 && text[cursor] === "\\"; cursor--) slashes++;
-  return slashes % 2 === 1;
-}
-
 function closingIndex(text: string, from: number, close: string): number {
   let cursor = from;
   while (cursor < text.length) {
     const found = text.indexOf(close, cursor);
     if (found < 0) return -1;
-    if (!isEscapedAt(text, found) && (close !== "$" || text[found + 1] !== "$")) return found;
+    if (!isBackslashEscaped(text, found) && (close !== "$" || text[found + 1] !== "$")) return found;
     cursor = found + 1;
   }
   return -1;
 }
 
 function spanAt(text: string, index: number): LatexMathSpan | null {
-  if (isEscapedAt(text, index)) return null;
+  if (isBackslashEscaped(text, index)) return null;
   const environment = MATH_ENVIRONMENT.exec(text.slice(index));
   if (environment) {
     const closing = String.raw`\end{${environment[1]}${environment[2]}}`;

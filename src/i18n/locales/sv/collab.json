@@ -224,6 +224,8 @@
     "overleaf_linked": "Det här projektet är länkat till Overleaf. Ta bort länken för att dela det på en Oleafly Server.",
     "collab_shared": "Det här projektet delas på en Oleafly Server. Sluta dela det där för att redigera det live med Overleaf.",
     "live_elsewhere": "Det här projektet är live i ett annat Oleafly-fönster. Avsluta liveredigeringen där och försök sedan igen.",
+    "access_ended": "Du har inte längre åtkomst till det här projektet, så det kan inte redigeras live. Din kopia finns kvar på den här datorn. Be ägaren att dela det med dig igen.",
+    "failed": "Liveredigeringen kunde inte starta på grund av ett fel. Dina ändringar finns kvar på den här datorn. Vänta en stund och välj sedan Synka igen.",
     "overleaf_unsent": "Vissa ändringar har inte nått Overleaf än. Återuppta liveredigeringen för att skicka dem och ta sedan bort länken.",
     "suggestion_not_found": "Förslaget finns inte längre. Någon kan ha accepterat eller avvisat det.",
     "suggestion_not_yours": "Bara den som gjorde förslaget kan dra tillbaka det.",
@@ -554,7 +556,8 @@
     "trustAgain": "Alla du lägger till i projektet kan ändra dess filer, så Oleafly ber dig lita på det igen på den här datorn innan det kör agenter, terminalkommandon eller shell escape för det.",
     "projectNotesShared": "Projektets anteckningar delas med alla i det här projektet. Personliga anteckningar förblir privata.",
     "personalNotesPrivate": "Personliga anteckningar förblir privata. Bara anteckningar i projektets anteckningsmapp delas.",
-    "unlinkOverleaf": "Ta bort länken till Overleaf"
+    "unlinkOverleaf": "Ta bort länken till Overleaf",
+    "unlinkOverleafDescription": "Liveredigeringen avslutas för det här projektet. Din kopia finns kvar på den här datorn, och dina medförfattare behåller onlineprojektet som det är."
   },
   "manage": {
     "sharedOn": "Delat på {{server}}",

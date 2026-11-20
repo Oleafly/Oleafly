@@ -12,7 +12,7 @@ vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("@/components/editor/cm/inline-ai/openSession", () => session);
 vi.mock("@/features/assistant-handoff", () => handoff);
 
-import { SelectionActionMenu, selectionMenuPosition } from "./SelectionActionMenu";
+import { SelectionActionMenu } from "./SelectionActionMenu";
 
 const actions = en.selectionActions;
 
@@ -55,28 +55,6 @@ function showPill() {
   });
   return view.container.firstElementChild as HTMLElement;
 }
-
-describe("selectionMenuPosition", () => {
-  const bounds = { top: 30, bottom: 600, left: 0, right: 800 };
-  const line = (top: number, left = 40) => ({ top, bottom: top + 16, left, right: left + 50, bounds });
-
-  it("sits above the selection when there is room", () => {
-    expect(selectionMenuPosition(line(120), { width: 90, height: 24 })).toEqual({ top: 84, left: 40 });
-  });
-
-  it("drops below the line instead of covering what sits above the editor", () => {
-    expect(selectionMenuPosition(line(34), { width: 90, height: 24 })).toEqual({ top: 62, left: 40 });
-    expect(selectionMenuPosition(line(60), { width: 256, height: 240 })).toEqual({ top: 88, left: 40 });
-  });
-
-  it("stays inside the editor at its right and bottom edges and in a tiny editor", () => {
-    expect(selectionMenuPosition(line(120, 760), { width: 90, height: 24 })).toEqual({ top: 84, left: 710 });
-    expect(selectionMenuPosition(line(580), { width: 256, height: 600 })).toEqual({ top: 30, left: 40 });
-    expect(
-      selectionMenuPosition({ ...line(40), bounds: { top: 30, bottom: 70, left: 0, right: 60 } }, { width: 90, height: 24 }),
-    ).toEqual({ top: 46, left: 0 });
-  });
-});
 
 describe("SelectionActionMenu", () => {
   afterEach(() => {

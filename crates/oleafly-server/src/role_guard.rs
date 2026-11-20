@@ -7,37 +7,18 @@ use loro::{
 };
 use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::projects::ProjectRole;
-use oleafly_collab_protocol::reactions::ReactionKey;
+use oleafly_collab_protocol::reactions::{
+    reactions_counted, ReactionKey, MAX_REACTIONS_PER_PERSON, MAX_REACTION_KEYS,
+};
+use oleafly_collab_protocol::schema::{
+    ANCHOR, AUTHOR, CHAT, CHAT_REACTIONS, COMMENTS, CREATED_AT, CREATED_BY, DELETE, DELETED, END,
+    FILE_ID, ID as ID_KEY, INSERT, KIND, MAX_MENTIONS, MENTIONS, MESSAGES, QUOTE, REACTIONS,
+    REMOVED, RESOLVED, START, SUGGESTION, SUGGESTIONS, TEXT, TEXT_PREFIX,
+};
 
-use crate::comment_guard::COMMENTS;
 use crate::peers;
 use crate::snapshots;
 
-pub const CHAT: &str = "chat";
-pub const CHAT_REACTIONS: &str = "chat_reactions";
-pub const SUGGESTIONS: &str = "suggestions";
-const TEXT_PREFIX: &str = "text:";
-const FILE_ID: &str = "file_id";
-const KIND: &str = "kind";
-const AUTHOR: &str = "author";
-const START: &str = "start";
-const END: &str = "end";
-const ANCHOR: &str = "anchor";
-const TEXT: &str = "text";
-const INSERT: &str = "insert";
-const DELETE: &str = "delete";
-const CREATED_BY: &str = "created_by";
-const CREATED_AT: &str = "created_at";
-const QUOTE: &str = "quote";
-const SUGGESTION: &str = "suggestion";
-const AT: &str = "at";
-const MESSAGES: &str = "messages";
-const RESOLVED: &str = "resolved";
-const DELETED: &str = "deleted";
-const ID_KEY: &str = "id";
-const REACTIONS: &str = "reactions";
-const REMOVED: &str = "removed";
-const STAMPED: [&str; 3] = [ID_KEY, AUTHOR, AT];
 const ANCHORED: [&str; 6] = [CREATED_BY, CREATED_AT, QUOTE, START, END, SUGGESTION];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -456,9 +437,8 @@ fn items_kept(before: &[LoroValue], after: &[LoroValue], account: &str) -> bool 
 
 struct Said<'a> {
     author: Option<&'a str>,
-    at: Option<&'a LoroValue>,
-    deleted: bool,
     removed: Option<&'a LoroValue>,
+    whole: &'a LoroValue,
 }
 
 fn said_in(comments: &LoroValue) -> BTreeMap<(&str, &str), Said<'_>> {
@@ -479,9 +459,8 @@ fn said_in(comments: &LoroValue) -> BTreeMap<(&str, &str), Said<'_>> {
                 (thread, id.as_str()),
                 Said {
                     author,
-                    at: value_at(message, AT),
-                    deleted: truthy(value_at(message, DELETED)),
                     removed: value_at(message, REMOVED),
+                    whole: message,
                 },
             );
         }
@@ -493,13 +472,19 @@ fn reactions_in<'a>(comments: &'a LoroValue, thread: &str) -> Option<&'a LoroVal
     value_at(comments, thread).and_then(|thread| value_at(thread, REACTIONS))
 }
 
+fn messages_of<'a>(comments: &'a LoroValue, thread: &str) -> &'a [LoroValue] {
+    value_at(comments, thread).map_or(&[], thread_messages)
+}
+
 fn editor_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
     let (old, new) = (said_in(before), said_in(after));
     old.iter().all(|(key, was)| {
         new.get(key).is_some_and(|now| {
-            now.removed == was.removed
-                && now.author == was.author
-                && (was.author == Some(account) || (now.deleted == was.deleted && now.at == was.at))
+            if was.author == Some(account) {
+                now.removed == was.removed && now.author == was.author
+            } else {
+                now.whole == was.whole
+            }
         })
     }) && new
         .iter()
@@ -510,6 +495,28 @@ fn editor_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
                 reactions_in(before, thread),
                 reactions_in(after, thread),
                 account,
+                messages_of(after, thread),
+            )
+        })
+}
+
+fn mentions_capped(before: &[LoroValue], after: &[LoroValue]) -> bool {
+    after.iter().enumerate().all(|(index, message)| {
+        let named = value_at(message, MENTIONS);
+        before
+            .get(index)
+            .is_some_and(|old| value_at(old, MENTIONS) == named)
+            || listed(named).is_none_or(|named| named.len() <= MAX_MENTIONS)
+    })
+}
+
+fn discussion_capped(before: &Discussion, after: &Discussion) -> bool {
+    let chat = listed(Some(&before.chat)).unwrap_or_default();
+    mentions_capped(chat, listed(Some(&after.chat)).unwrap_or_default())
+        && keys_of(&after.comments).into_iter().all(|thread| {
+            mentions_capped(
+                messages_of(&before.comments, thread),
+                messages_of(&after.comments, thread),
             )
         })
 }
@@ -532,7 +539,12 @@ fn thread_added(thread: &LoroValue, account: &str) -> bool {
         && thread_messages(thread)
             .iter()
             .all(|message| own(message, account))
-        && reactions_kept(None, value_at(thread, REACTIONS), account)
+        && reactions_kept(
+            None,
+            value_at(thread, REACTIONS),
+            account,
+            thread_messages(thread),
+        )
 }
 
 fn thread_removable(thread: &LoroValue, account: &str) -> bool {
@@ -546,21 +558,65 @@ fn own_reaction(key: &str, account: &str) -> bool {
     ReactionKey::parse(key).is_some_and(|parsed| parsed.account.to_string() == account)
 }
 
-fn reactions_kept(before: Option<&LoroValue>, after: Option<&LoroValue>, account: &str) -> bool {
+fn ids_in(messages: &[LoroValue]) -> HashSet<&str> {
+    messages
+        .iter()
+        .filter_map(|message| match value_at(message, ID_KEY) {
+            Some(LoroValue::String(id)) => Some(id.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn reactions_kept(
+    before: Option<&LoroValue>,
+    after: Option<&LoroValue>,
+    account: &str,
+    messages: &[LoroValue],
+) -> bool {
     let mapped =
         |value: Option<&LoroValue>| value.is_none_or(|value| matches!(value, LoroValue::Map(_)));
     if !mapped(before) || !mapped(after) {
         return false;
     }
+    if before == after {
+        return true;
+    }
     let old = before.map(keys_of).unwrap_or_default();
     let new = after.map(keys_of).unwrap_or_default();
-    old.union(&new).all(|key| {
+    let mut ids: Option<HashSet<&str>> = None;
+    let mut grown = BTreeSet::new();
+    let kept = old.union(&new).all(|key| {
         let was = before.and_then(|value| value_at(value, key));
         let now = after.and_then(|value| value_at(value, key));
-        was == now
-            || (own_reaction(key, account)
-                && now.is_none_or(|value| matches!(value, LoroValue::I64(_))))
-    })
+        if was == now {
+            return true;
+        }
+        if !own_reaction(key, account)
+            || !now.is_none_or(|value| matches!(value, LoroValue::I64(_)))
+        {
+            return false;
+        }
+        let Some(parsed) = now.and(ReactionKey::parse(key)) else {
+            return true;
+        };
+        if was.is_none() {
+            grown.insert(parsed.message);
+        }
+        ids.get_or_insert_with(|| ids_in(messages))
+            .contains(parsed.message)
+    });
+    if !kept || grown.is_empty() {
+        return kept;
+    }
+    let Ok(person) = account.parse() else {
+        return false;
+    };
+    let counted = reactions_counted(new.iter().copied(), person);
+    new.len() <= old.len().max(MAX_REACTION_KEYS)
+        && grown.iter().all(|message| {
+            counted.get(*message).copied().unwrap_or_default() <= MAX_REACTIONS_PER_PERSON
+        })
 }
 
 fn thread_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
@@ -580,7 +636,7 @@ fn thread_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
                 _ => false,
             },
             DELETED => !truthy(old) && truthy(new) && thread_removable(after, account),
-            REACTIONS => reactions_kept(old, new, account),
+            REACTIONS => reactions_kept(old, new, account, thread_messages(after)),
             _ => false,
         }
     })
@@ -745,10 +801,7 @@ fn rewritable(map: &Stamped, key: &str, account: &str, editor: bool) -> bool {
             _ if ANCHORED.contains(&key) => own,
             _ => editor || own,
         },
-        Held::Comment => {
-            key != REMOVED && (own || (editor && key != DELETED && !STAMPED.contains(&key)))
-        }
-        Held::Chat => key != REMOVED && own,
+        Held::Comment | Held::Chat => key != REMOVED && own,
     }
 }
 
@@ -815,7 +868,9 @@ fn discussed(doc: &LoroDoc, piece: &Piece, account: &str, editor: bool) -> bool 
             Some(&before.chat_reactions),
             Some(&after.chat_reactions),
             account,
+            listed(Some(&after.chat)).unwrap_or_default(),
         )
+        && discussion_capped(&before, &after)
         && shaped(&after.stamps, &written)
         && stamps_kept(
             &before.stamps,
@@ -921,31 +976,26 @@ pub fn judge_imported(doc: &LoroDoc, spans: &[(u64, i32, i32)], rule: &RoleRule)
     judge_spans(doc, spans, rule).verdict
 }
 
-fn read_in(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> Judged {
-    let Ok(status) = snapshots::import_update(doc, payload) else {
-        return RoleVerdict::Unreadable.into();
-    };
-    if status.pending.is_some() {
-        return RoleVerdict::Unreadable.into();
-    }
-    let spans: Vec<(u64, i32, i32)> = status
-        .success
-        .iter()
-        .map(|(peer, (start, end))| (*peer, *start, *end))
-        .collect();
-    judge_spans(doc, &spans, rule)
+fn builds_on(doc: &LoroDoc, payload: &[u8]) -> bool {
+    peers::update_reach(payload).is_some_and(|reach| snapshots::builds_on(&reach, &doc.oplog_vv()))
 }
 
-pub fn spares_comments(doc: &LoroDoc, payload: &[u8]) -> Option<bool> {
-    let reach = peers::update_reach(payload)?;
-    if !snapshots::builds_on(&reach, &doc.oplog_vv()) {
-        return None;
-    }
+fn imported(doc: &LoroDoc, payload: &[u8]) -> Option<Vec<(u64, i32, i32)>> {
     let status = snapshots::import_update(doc, payload).ok()?;
     if status.pending.is_some() {
         return None;
     }
-    let spared = status.success.iter().all(|(peer, (start, end))| {
+    Some(
+        status
+            .success
+            .iter()
+            .map(|(peer, (start, end))| (*peer, *start, *end))
+            .collect(),
+    )
+}
+
+fn spared(doc: &LoroDoc, spans: &[(u64, i32, i32)]) -> bool {
+    spans.iter().all(|(peer, start, end)| {
         let length = usize::try_from(end.saturating_sub(*start)).unwrap_or(0);
         doc.get_changed_containers_in(ID::new(*peer, *start), length)
             .iter()
@@ -956,17 +1006,24 @@ pub fn spares_comments(doc: &LoroDoc, payload: &[u8]) -> Option<bool> {
                         Root::Comments | Root::Chat | Root::ChatReactions
                     )
             })
-    });
-    Some(spared)
+    })
+}
+
+pub fn spares_comments(doc: &LoroDoc, payload: &[u8]) -> Option<bool> {
+    if !builds_on(doc, payload) {
+        return None;
+    }
+    imported(doc, payload).map(|spans| spared(doc, &spans))
 }
 
 pub fn judge_change(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> (Judged, bool) {
-    let attached = peers::update_reach(payload)
-        .is_some_and(|reach| snapshots::builds_on(&reach, &doc.oplog_vv()));
-    if !attached {
+    if !builds_on(doc, payload) {
         return (RoleVerdict::Unreadable.into(), true);
     }
-    let judged = read_in(doc, payload, rule);
+    let judged = match imported(doc, payload) {
+        Some(spans) => judge_spans(doc, &spans, rule),
+        None => RoleVerdict::Unreadable.into(),
+    };
     (judged, judged.verdict == RoleVerdict::Allowed)
 }
 
@@ -2431,6 +2488,46 @@ mod tests {
                 "moving an own thread that someone answered",
                 Box::new(move |doc| thread(doc, "f1/t2").insert("start", "gone").unwrap()),
             ),
+            (
+                "rewriting someone else's comment",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t1", 0)
+                        .insert("body", "changed")
+                        .unwrap()
+                }),
+            ),
+            (
+                "blanking someone else's reply",
+                Box::new(|doc| message_at(doc, "f1/t1", 1).insert("body", "").unwrap()),
+            ),
+            (
+                "changing whom someone else's comment mentions",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t1", 0)
+                        .insert("mentions", LoroValue::from(vec![carol()]))
+                        .unwrap()
+                }),
+            ),
+            (
+                "marking someone else's comment as edited",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t1", 0)
+                        .insert("edited_at", 2_i64)
+                        .unwrap()
+                }),
+            ),
+            (
+                "writing someone else's comment again as it was",
+                Box::new(|doc| rewrite(&message_at(doc, "f1/t1", 0), "body")),
+            ),
+            (
+                "answering in an own thread by rewriting the reply someone wrote there",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t2", 1)
+                        .insert("body", "changed")
+                        .unwrap()
+                }),
+            ),
         ];
         let mut wrong = Vec::new();
         for (what, edit) in &refused {
@@ -2442,11 +2539,14 @@ mod tests {
         }
         let allowed: Vec<(&str, Edit)> = vec![
             (
-                "rewriting someone else's comment",
+                "editing an own comment",
                 Box::new(|doc| {
-                    message_at(doc, "f1/t1", 0)
-                        .insert("body", "changed")
-                        .unwrap()
+                    let message = message_at(doc, "f1/t2", 0);
+                    message.insert("body", "changed").unwrap();
+                    message.insert("edited_at", 2_i64).unwrap();
+                    message
+                        .insert("mentions", LoroValue::from(vec![carol()]))
+                        .unwrap();
                 }),
             ),
             (
@@ -2648,5 +2748,369 @@ mod tests {
             judged(&[&base], b"not a change", rule(ProjectRole::Reviewer)),
             RoleVerdict::Unreadable
         );
+    }
+
+    const DISCUSSING: [ProjectRole; 3] = [
+        ProjectRole::Editor,
+        ProjectRole::Reviewer,
+        ProjectRole::Commenter,
+    ];
+
+    fn judged_as_every_role(held: &[&[u8]], edits: &[(&str, Edit)], expected: RoleVerdict) {
+        let mut wrong = Vec::new();
+        for role in DISCUSSING {
+            for (what, edit) in edits {
+                let update = change(held, 2, |doc| edit(doc));
+                let verdict = judged(held, &update, rule(role));
+                if verdict != expected {
+                    wrong.push(format!("{what} as {role:?}: {verdict:?}"));
+                }
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn a_reaction_names_an_emoji_and_a_message_that_is_there() {
+        let base = discussed_base();
+        let stale = {
+            let doc = loaded(&[&base], 1);
+            reactions_on(&doc)
+                .insert(&reaction_key("m9", "👍", &me()), 1)
+                .unwrap();
+            doc.get_map(CHAT_REACTIONS)
+                .insert(&reaction_key("c9", "👍", &me()), 1)
+                .unwrap();
+            doc.commit();
+            doc.export(ExportMode::all_updates()).unwrap()
+        };
+        let held: [&[u8]; 2] = [&base, &stale];
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "a word instead of an emoji",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m1", "ok", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a reaction to a comment that is not in the thread",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m2", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a reaction to a chat message that is not in the chat",
+                Box::new(|doc| {
+                    doc.get_map(CHAT_REACTIONS)
+                        .insert(&reaction_key("c2", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a chat reaction naming a comment",
+                Box::new(|doc| {
+                    doc.get_map(CHAT_REACTIONS)
+                        .insert(&reaction_key("m1", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a comment reaction naming a chat message",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("c1", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a reaction kept again on a comment that is gone",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m9", "👍", &me()), 3)
+                        .unwrap();
+                }),
+            ),
+        ];
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "reacting to a comment and a chat message that are there",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m1", "🇳🇴", &me()), 2)
+                        .unwrap();
+                    doc.get_map(CHAT_REACTIONS)
+                        .insert(&reaction_key("c1", "👍🏽", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "taking back reactions to messages that are gone",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .delete(&reaction_key("m9", "👍", &me()))
+                        .unwrap();
+                    doc.get_map(CHAT_REACTIONS)
+                        .delete(&reaction_key("c9", "👍", &me()))
+                        .unwrap();
+                }),
+            ),
+        ];
+        judged_as_every_role(&held, &refused, RoleVerdict::Refused);
+        judged_as_every_role(&held, &allowed, RoleVerdict::Allowed);
+    }
+
+    const EMOJI: [&str; 21] = [
+        "👍", "🎉", "❤️", "😄", "👀", "🚀", "🍕", "👋", "🙏", "🔥", "✅", "💯", "🤔", "😂", "🥳",
+        "👏", "🙌", "😮", "😢", "🇳🇴", "1️⃣",
+    ];
+
+    #[test]
+    fn one_person_adds_at_most_twenty_reactions_to_a_message() {
+        let base = discussed_base();
+        let mine = change(&[&base], 2, |doc| {
+            for emoji in &EMOJI[..MAX_REACTIONS_PER_PERSON] {
+                reactions_on(doc)
+                    .insert(&reaction_key("m1", emoji, &me()), 1)
+                    .unwrap();
+                doc.get_map(CHAT_REACTIONS)
+                    .insert(&reaction_key("c1", emoji, &me()), 1)
+                    .unwrap();
+            }
+        });
+        for role in DISCUSSING {
+            assert_eq!(
+                judged(&[&base], &mine, rule(role)),
+                RoleVerdict::Allowed,
+                "{role:?}"
+            );
+        }
+        let held: [&[u8]; 2] = [&base, &mine];
+        let more = EMOJI[MAX_REACTIONS_PER_PERSON];
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "one more on a comment",
+                Box::new(move |doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m1", more, &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "one more on a chat message",
+                Box::new(move |doc| {
+                    doc.get_map(CHAT_REACTIONS)
+                        .insert(&reaction_key("c1", more, &me()), 2)
+                        .unwrap();
+                }),
+            ),
+        ];
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "swapping one for another",
+                Box::new(move |doc| {
+                    let reactions = reactions_on(doc);
+                    reactions.delete(&reaction_key("m1", "👍", &me())).unwrap();
+                    reactions
+                        .insert(&reaction_key("m1", more, &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "taking one back",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .delete(&reaction_key("m1", "🎉", &me()))
+                        .unwrap();
+                }),
+            ),
+            (
+                "one more on another message",
+                Box::new(move |doc| {
+                    let message = said(&list_in(their_thread(doc).get("messages")), &me(), "m2");
+                    message.insert("at", 3_i64).unwrap();
+                    reactions_on(doc)
+                        .insert(&reaction_key("m2", more, &me()), 2)
+                        .unwrap();
+                }),
+            ),
+        ];
+        judged_as_every_role(&held, &refused, RoleVerdict::Refused);
+        judged_as_every_role(&held, &allowed, RoleVerdict::Allowed);
+    }
+
+    #[test]
+    fn a_full_reactions_map_takes_no_new_reaction_but_lets_people_take_theirs_back() {
+        let base = discussed_base();
+        let filled = {
+            let doc = loaded(&[&base], 1);
+            let reactions = doc.get_map(CHAT_REACTIONS);
+            for index in 0..MAX_REACTION_KEYS {
+                reactions
+                    .insert(&reaction_key(&format!("c{index}"), "👍", &carol()), 1)
+                    .unwrap();
+            }
+            reactions
+                .insert(&reaction_key("c1", "🎉", &me()), 1)
+                .unwrap();
+            doc.commit();
+            doc.export(ExportMode::all_updates()).unwrap()
+        };
+        let held: [&[u8]; 2] = [&base, &filled];
+        let refused: Vec<(&str, Edit)> = vec![(
+            "a new chat reaction",
+            Box::new(|doc| {
+                doc.get_map(CHAT_REACTIONS)
+                    .insert(&reaction_key("c1", "👍", &me()), 2)
+                    .unwrap();
+            }),
+        )];
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "taking an own reaction back",
+                Box::new(|doc| {
+                    doc.get_map(CHAT_REACTIONS)
+                        .delete(&reaction_key("c1", "🎉", &me()))
+                        .unwrap();
+                }),
+            ),
+            (
+                "swapping an own reaction for another",
+                Box::new(|doc| {
+                    let reactions = doc.get_map(CHAT_REACTIONS);
+                    reactions.delete(&reaction_key("c1", "🎉", &me())).unwrap();
+                    reactions
+                        .insert(&reaction_key("c1", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "a reaction on a comment",
+                Box::new(|doc| {
+                    reactions_on(doc)
+                        .insert(&reaction_key("m1", "👍", &me()), 2)
+                        .unwrap();
+                }),
+            ),
+            (
+                "typing",
+                Box::new(|doc| {
+                    file_text(doc, FILE).insert(0, "x").unwrap();
+                }),
+            ),
+        ];
+        judged_as_every_role(&held, &refused, RoleVerdict::Refused);
+        for (what, edit) in &allowed {
+            let update = change(&held, 2, |doc| edit(doc));
+            let verdict = judged(&held, &update, rule(ProjectRole::Editor));
+            assert_eq!(verdict, RoleVerdict::Allowed, "{what}");
+        }
+        judged_as_every_role(&held, &allowed[..3], RoleVerdict::Allowed);
+    }
+
+    fn named(count: usize) -> LoroValue {
+        LoroValue::from(
+            (0..count)
+                .map(|index| format!("01920000-0000-7000-8000-{index:012x}"))
+                .collect::<Vec<String>>(),
+        )
+    }
+
+    #[test]
+    fn a_message_names_at_most_a_hundred_people() {
+        let base = discussed_base();
+        let crowded = {
+            let doc = loaded(&[&base], 1);
+            their_message(&doc)
+                .insert("mentions", named(MAX_MENTIONS * 2))
+                .unwrap();
+            said(&doc.get_list(CHAT), &me(), "c0")
+                .insert("mentions", named(MAX_MENTIONS * 2))
+                .unwrap();
+            doc.commit();
+            doc.export(ExportMode::all_updates()).unwrap()
+        };
+        let mine = change(&[&base, &crowded], 2, |doc| {
+            said(&list_in(their_thread(doc).get("messages")), &me(), "m2")
+                .insert("mentions", named(MAX_MENTIONS))
+                .unwrap();
+            said(&doc.get_list(CHAT), &me(), "c2")
+                .insert("mentions", named(MAX_MENTIONS))
+                .unwrap();
+        });
+        for role in DISCUSSING {
+            assert_eq!(
+                judged(&[&base, &crowded], &mine, rule(role)),
+                RoleVerdict::Allowed,
+                "{role:?}"
+            );
+        }
+        let held: [&[u8]; 3] = [&base, &crowded, &mine];
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "a reply naming too many people",
+                Box::new(|doc| {
+                    said(&list_in(their_thread(doc).get("messages")), &me(), "m3")
+                        .insert("mentions", named(MAX_MENTIONS + 1))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a chat message naming too many people",
+                Box::new(|doc| {
+                    said(&doc.get_list(CHAT), &me(), "c3")
+                        .insert("mentions", named(MAX_MENTIONS + 1))
+                        .unwrap();
+                }),
+            ),
+            (
+                "an own reply edited to name too many people",
+                Box::new(|doc| {
+                    map_in(list_in(their_thread(doc).get("messages")).get(1))
+                        .insert("mentions", named(MAX_MENTIONS + 1))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a new thread naming too many people",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map(COMMENTS)
+                        .insert_container("f1/t3", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me()).unwrap();
+                    said(
+                        &thread
+                            .insert_container("messages", LoroList::new())
+                            .unwrap(),
+                        &me(),
+                        "m4",
+                    )
+                    .insert("mentions", named(MAX_MENTIONS + 1))
+                    .unwrap();
+                }),
+            ),
+        ];
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "a reply beside a message that already names many",
+                Box::new(|doc| {
+                    said(&list_in(their_thread(doc).get("messages")), &me(), "m5");
+                }),
+            ),
+            (
+                "deleting an own message written before the cap",
+                Box::new(|doc| {
+                    let message = map_in(doc.get_list(CHAT).get(1));
+                    message.insert("deleted", true).unwrap();
+                    message.insert("body", "").unwrap();
+                }),
+            ),
+        ];
+        judged_as_every_role(&held, &refused, RoleVerdict::Refused);
+        judged_as_every_role(&held, &allowed, RoleVerdict::Allowed);
     }
 }

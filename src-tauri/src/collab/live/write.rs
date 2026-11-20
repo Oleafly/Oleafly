@@ -173,7 +173,7 @@ fn write_renaming(
     ))
 }
 
-const READ_ONLY: &str = "read_only";
+pub(super) const READ_ONLY: &str = "read_only";
 
 fn kept_from_a_viewer(live: &LiveProject, root: &Path, path: &str) -> Result<bool, CollabError> {
     if live.can_edit() {

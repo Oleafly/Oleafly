@@ -4,7 +4,7 @@ mod tests;
 use oleafly_ot::{Component, TextOperation};
 use serde_json::{json, Map, Value};
 
-use super::format::CodecError;
+use super::format::{bounded, CodecError, MAX_UNITS};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TrackedRange {
@@ -91,11 +91,12 @@ fn text_of(units: &[u16]) -> Result<String, CodecError> {
 fn count(value: &Value) -> Result<usize, CodecError> {
     value
         .as_u64()
-        .map(|count| count as usize)
+        .and_then(bounded)
         .ok_or_else(|| malformed("a range has no position or length"))
 }
 
 impl RawOp {
+    #[cfg(test)]
     pub fn base_len(&self) -> usize {
         self.base
     }
@@ -181,7 +182,9 @@ impl RawOp {
             match part {
                 Value::Number(number) => op.push_count(number.as_i64())?,
                 Value::String(text) if !text.is_empty() => {
-                    op.insert(text.encode_utf16().collect(), None, None)
+                    let text: Vec<u16> = text.encode_utf16().collect();
+                    op.room(0, text.len())?;
+                    op.insert(text, None, None)
                 }
                 Value::Object(object) => op.push_marked(object)?,
                 _ => return Err(malformed("unknown text operation step")),
@@ -190,11 +193,27 @@ impl RawOp {
         Ok(op)
     }
 
+    fn room(&self, base: usize, target: usize) -> Result<(), CodecError> {
+        let within =
+            |total: usize, more: usize| total.checked_add(more).is_some_and(|sum| sum <= MAX_UNITS);
+        if within(self.base, base) && within(self.target, target) {
+            Ok(())
+        } else {
+            Err(malformed("a text operation is longer than any document"))
+        }
+    }
+
     fn push_count(&mut self, count: Option<i64>) -> Result<(), CodecError> {
-        match count {
-            Some(count) if count > 0 => self.retain(count as usize, None, None),
-            Some(count) if count < 0 => self.delete(count.unsigned_abs() as usize),
-            _ => return Err(malformed("a text operation step is zero or not whole")),
+        let length = count
+            .and_then(|count| bounded(count.unsigned_abs()))
+            .filter(|length| *length > 0)
+            .ok_or_else(|| malformed("a text operation step is zero or not whole"))?;
+        if count.is_some_and(|count| count > 0) {
+            self.room(length, length)?;
+            self.retain(length, None, None);
+        } else {
+            self.room(length, 0)?;
+            self.delete(length);
         }
         Ok(())
     }
@@ -205,13 +224,17 @@ impl RawOp {
         if let Some(count) = object.get("r") {
             let count = count
                 .as_u64()
+                .and_then(bounded)
                 .filter(|count| *count > 0)
                 .ok_or_else(|| malformed("a retain has no length"))?;
-            self.retain(count as usize, tracking, comment_ids);
+            self.room(count, count)?;
+            self.retain(count, tracking, comment_ids);
             return Ok(());
         }
         if let Some(Value::String(text)) = object.get("i") {
-            self.insert(text.encode_utf16().collect(), tracking, comment_ids);
+            let text: Vec<u16> = text.encode_utf16().collect();
+            self.room(0, text.len())?;
+            self.insert(text, tracking, comment_ids);
             return Ok(());
         }
         Err(CodecError::Unsupported(format!(
@@ -457,9 +480,11 @@ impl RawDoc {
         let mut runs = Vec::new();
         let mut at = 0;
         for range in &tracked {
-            if range.pos < at || range.pos + range.length > doc.content.len() {
-                return Err(malformed("tracked changes overlap or run past the end"));
-            }
+            let end = range
+                .pos
+                .checked_add(range.length)
+                .filter(|end| range.pos >= at && *end <= doc.content.len())
+                .ok_or_else(|| malformed("tracked changes overlap or run past the end"))?;
             runs.push(Run {
                 length: range.pos - at,
                 mark: None,
@@ -468,7 +493,7 @@ impl RawDoc {
                 length: range.length,
                 mark: Some(range.tracking.clone()),
             });
-            at = range.pos + range.length;
+            at = end;
         }
         runs.push(Run {
             length: doc.content.len() - at,
@@ -497,6 +522,7 @@ impl RawDoc {
         Ok(doc)
     }
 
+    #[cfg(test)]
     pub fn length(&self) -> usize {
         self.content.len()
     }
@@ -584,6 +610,7 @@ impl RawDoc {
         raw
     }
 
+    #[cfg(test)]
     pub fn to_visible(&self, raw: usize) -> usize {
         let mut seen = 0;
         let mut at = 0;
@@ -608,7 +635,7 @@ impl RawDoc {
                 comment
                     .ranges
                     .iter()
-                    .any(|(pos, length)| *pos < raw && raw < pos + length)
+                    .any(|(pos, length)| *pos < raw && raw < pos.saturating_add(*length))
             })
             .map(|comment| json!(comment.id))
             .collect();
@@ -792,7 +819,7 @@ impl RawDoc {
     fn shift_comments(&mut self, shifts: &[(usize, isize, Option<Value>)]) {
         for comment in &mut self.comments {
             for (pos, length) in &mut comment.ranges {
-                let mut range = (*pos, *pos + *length);
+                let mut range = (*pos, pos.saturating_add(*length));
                 for (at, by, ids) in shifts {
                     let named = names(ids, &comment.id);
                     range = match usize::try_from(*by) {
@@ -833,16 +860,16 @@ fn names(ids: &Option<Value>, id: &str) -> bool {
 
 fn grown((start, end): (usize, usize), at: usize, by: usize, named: bool) -> (usize, usize) {
     if at < start || (at == start && !named) {
-        (start + by, end + by)
+        (start.saturating_add(by), end.saturating_add(by))
     } else if at < end || (at == end && named) {
-        (start, end + by)
+        (start, end.saturating_add(by))
     } else {
         (start, end)
     }
 }
 
 fn shrunk((start, end): (usize, usize), at: usize, gone: usize) -> (usize, usize) {
-    let cut_end = at + gone;
+    let cut_end = at.saturating_add(gone);
     let removed_before = cut_end.min(start).saturating_sub(at);
     let removed_inside = cut_end.min(end).saturating_sub(at.max(start));
     (

@@ -1,7 +1,7 @@
 use loro::cursor::Side;
 use loro::{Container, LoroDoc, LoroMap, LoroText, LoroValue, ValueOrContainer};
 
-use crate::role_guard::SUGGESTIONS;
+use oleafly_collab_protocol::schema::SUGGESTIONS;
 
 pub fn file_text(doc: &LoroDoc, file: &str) -> LoroText {
     doc.get_text(format!("text:{file}"))

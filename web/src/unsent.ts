@@ -1,4 +1,5 @@
 import type { CollabTextOperation } from "@oleafly/backend-port";
+import { readTab, writeTab } from "./tab-storage";
 
 export interface UnsentTyping {
   base: string;
@@ -9,17 +10,8 @@ export interface UnsentTyping {
 
 export type UnsentFiles = Readonly<Record<string, UnsentTyping>>;
 
-const PREFIX = "oleafly.web.unsent.v1.";
 export const MAX_UNSENT_CHARS = 2_000_000;
 export const MAX_UNSENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-
-function storage(): Storage | null {
-  try {
-    return typeof sessionStorage === "undefined" ? null : sessionStorage;
-  } catch {
-    return null;
-  }
-}
 
 function isTyping(value: unknown): value is UnsentTyping {
   if (typeof value !== "object" || value === null) return false;
@@ -33,20 +25,8 @@ function isTyping(value: unknown): value is UnsentTyping {
   );
 }
 
-export function readUnsent(projectId: string, now = Date.now()): UnsentFiles {
-  let raw: string | null = null;
-  try {
-    raw = storage()?.getItem(`${PREFIX}${projectId}`) ?? null;
-  } catch {
-    return {};
-  }
-  if (!raw) return {};
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return {};
-  }
+export function readUnsent(scope: string, now = Date.now()): UnsentFiles {
+  const parsed = readTab("unsent", scope);
   if (typeof parsed !== "object" || parsed === null) return {};
   const kept: Record<string, UnsentTyping> = {};
   for (const [fileId, entry] of Object.entries(parsed)) {
@@ -55,29 +35,18 @@ export function readUnsent(projectId: string, now = Date.now()): UnsentFiles {
   return kept;
 }
 
-export function writeUnsent(projectId: string, fileId: string, typing: UnsentTyping | null, now = Date.now()): void {
-  const store = storage();
-  if (!store) return;
-  const key = `${PREFIX}${projectId}`;
-  const files: Record<string, UnsentTyping> = { ...readUnsent(projectId, now) };
+export function writeUnsent(scope: string, fileId: string, typing: UnsentTyping | null, now = Date.now()): void {
+  const files: Record<string, UnsentTyping> = { ...readUnsent(scope, now) };
   if (typing) files[fileId] = typing;
   else delete files[fileId];
-  try {
-    const text = JSON.stringify(files);
-    if (Object.keys(files).length === 0) store.removeItem(key);
-    else if (text.length > MAX_UNSENT_CHARS) {
-      delete files[fileId];
-      store.setItem(key, JSON.stringify(files));
-    } else store.setItem(key, text);
-  } catch {
-    return;
+  let text = JSON.stringify(files);
+  if (text.length > MAX_UNSENT_CHARS) {
+    delete files[fileId];
+    text = JSON.stringify(files);
   }
+  writeTab("unsent", scope, Object.keys(files).length === 0 ? null : text);
 }
 
-export function forgetUnsent(projectId: string): void {
-  try {
-    storage()?.removeItem(`${PREFIX}${projectId}`);
-  } catch {
-    return;
-  }
+export function forgetUnsent(scope: string): void {
+  writeTab("unsent", scope, null);
 }

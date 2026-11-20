@@ -54,9 +54,6 @@ const ALL = "__all__";
 
 const DOWNLOADS_TABS = ["fonts", "templates", "dictionaries", "sources"] as const;
 
-function isDownloadsTab(value: string): value is (typeof DOWNLOADS_TABS)[number] {
-  return (DOWNLOADS_TABS as readonly string[]).includes(value);
-}
 
 // fontspec needs XeLaTeX or LuaLaTeX, so a pdfLaTeX-family project has no use for these fonts.
 const NO_FONTSPEC_FLAVORS: ReadonlySet<string> = new Set(["pdflatex", "uplatex", "platex"]);
@@ -96,7 +93,7 @@ export function DownloadsSection() {
   const progress = useDownloadActivity((s) => s.fontProgress);
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [tab, setTab] = useSettingsTab("downloads", "fonts", isDownloadsTab);
+  const [tab, setTab] = useSettingsTab("downloads", "fonts", DOWNLOADS_TABS);
   const [openPackId, setOpenPackId] = useState<string | null>(null);
   const [link, setLink] = useState<PendingTemplateLink | null>(null);
   const [packSearch, setPackSearch] = useState<{ text: string; serial: number } | null>(null);

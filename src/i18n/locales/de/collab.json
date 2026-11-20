@@ -224,6 +224,8 @@
     "overleaf_linked": "Dieses Projekt ist mit Overleaf verknüpft. Heben Sie die Verknüpfung auf, um es auf einem Oleafly Server zu teilen.",
     "collab_shared": "Dieses Projekt wird auf einem Oleafly Server geteilt. Beenden Sie die Freigabe dort, um es live mit Overleaf zu bearbeiten.",
     "live_elsewhere": "Dieses Projekt ist in einem anderen Oleafly-Fenster live. Beenden Sie dort die Live-Bearbeitung und versuchen Sie es dann erneut.",
+    "access_ended": "Sie haben keinen Zugriff mehr auf dieses Projekt, deshalb kann es nicht live bearbeitet werden. Ihre Kopie bleibt auf diesem Computer. Bitten Sie den Inhaber, es wieder für Sie freizugeben.",
+    "failed": "Die Live-Bearbeitung konnte wegen eines Fehlers nicht gestartet werden. Ihre Änderungen bleiben auf diesem Computer. Warten Sie einen Moment und wählen Sie dann Erneut abgleichen.",
     "overleaf_unsent": "Einige Änderungen sind noch nicht bei Overleaf angekommen. Setzen Sie die Live-Bearbeitung fort, um sie zu senden, und heben Sie dann die Verknüpfung auf.",
     "suggestion_not_found": "Diesen Vorschlag gibt es nicht mehr. Möglicherweise hat ihn jemand übernommen oder verworfen.",
     "suggestion_not_yours": "Nur die Person, die diesen Vorschlag gemacht hat, kann ihn zurückziehen.",
@@ -554,7 +556,8 @@
     "trustAgain": "Alle, die Sie zu diesem Projekt hinzufügen, können seine Dateien ändern. Deshalb bittet Oleafly Sie auf diesem Computer erneut, ihm zu vertrauen, bevor es dafür Agenten, Terminalbefehle oder shell escape ausführt.",
     "projectNotesShared": "Die Notizen des Projekts sind für alle in diesem Projekt freigegeben. Persönliche Notizen bleiben privat.",
     "personalNotesPrivate": "Persönliche Notizen bleiben privat. Nur Notizen im Notizordner des Projekts werden geteilt.",
-    "unlinkOverleaf": "Verknüpfung mit Overleaf aufheben"
+    "unlinkOverleaf": "Verknüpfung mit Overleaf aufheben",
+    "unlinkOverleafDescription": "Die Live-Bearbeitung für dieses Projekt wird beendet. Ihre Kopie bleibt auf diesem Computer, und Ihre Mitautoren behalten das Online-Projekt, wie es ist."
   },
   "manage": {
     "sharedOn": "Geteilt über {{server}}",

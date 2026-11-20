@@ -166,7 +166,6 @@
       "purple": "Lila"
     },
     "imageFile": "Bildfil",
-    "apply": "Tillämpa",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figurer/diagram.png",
     "split": "Delad",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Det gick inte att läsa in PDF:en: {{detail}}",
     "imageLoadFailed": "Det gick inte att läsa in bilden: {{detail}}",
     "imageUnreadable": "Filen kan inte visas som en bild. Den kan vara skadad, eller så är den kanske ingen bild.",
+    "imageTooLarge": "Den här bilden är större än {{limit}}, så den visas inte här.",
     "imageFit": "Anpassa till fönstret",
     "htmlPreviewFailed": "Det gick inte att förhandsgranska sidan: {{detail}}",
     "binaryFile": "Binär fil. Ingen förhandsvisning är tillgänglig.",

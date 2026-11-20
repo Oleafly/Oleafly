@@ -15,13 +15,13 @@ use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
 
 pub trait LiveHost: Send + Sync + 'static {
-    fn status(&self, payload: StatusPayload);
-    fn role(&self, payload: RolePayload);
-    fn merged(&self, payload: MergedPayload);
-    fn presence(&self, payload: PresencePayload);
-    fn presence_left(&self, payload: PresenceLeftPayload);
-    fn folder_changed(&self, change: FolderChange);
-    fn new_device(&self, payload: NewDevicePayload);
+    fn status(&self, _payload: StatusPayload) {}
+    fn role(&self, _payload: RolePayload) {}
+    fn merged(&self, _payload: MergedPayload) {}
+    fn presence(&self, _payload: PresencePayload) {}
+    fn presence_left(&self, _payload: PresenceLeftPayload) {}
+    fn folder_changed(&self, _change: FolderChange) {}
+    fn new_device(&self, _payload: NewDevicePayload) {}
     fn renamed(&self, _payload: crate::collab::tree::RenamedPayload) {}
     fn comments_changed(&self, _payload: crate::collab::comments::CommentsChangedPayload) {}
     fn comments_not_sent(&self, _payload: crate::collab::comments::CommentsNotSentPayload) {}

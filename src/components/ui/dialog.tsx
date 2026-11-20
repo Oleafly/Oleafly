@@ -69,6 +69,7 @@ const DialogContent = React.forwardRef<
           "data-[state=closed]:pointer-events-none",
           className,
         )}
+        data-modal-surface=""
         {...props}
       >
         {children}

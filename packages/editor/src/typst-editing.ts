@@ -21,6 +21,7 @@ import { EditorView, keymap, type KeyBinding } from "@codemirror/view";
 import type { NodeSet, SyntaxNode } from "@lezer/common";
 import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
 import { typstAutolinkEnd, typstIdentifierEnd } from "./typst-syntax";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export type TypstContext =
   | "markup"
@@ -539,14 +540,7 @@ function isWordCharacter(state: EditorState, pos: number, character: string): bo
 
 function escapedAt(state: EditorState, pos: number): boolean {
   const before = state.sliceDoc(Math.max(0, pos - 64), pos);
-  let backslashes = 0;
-  while (
-    backslashes < before.length &&
-    before[before.length - 1 - backslashes] === "\\"
-  ) {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
+  return isBackslashEscaped(before, before.length);
 }
 
 function plainInsert(range: SelectionRange, text: string): RangeChange {

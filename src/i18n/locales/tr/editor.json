@@ -166,7 +166,6 @@
       "purple": "Mor"
     },
     "imageFile": "Görsel dosyası",
-    "apply": "Uygula",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/grafik.png",
     "split": "Böl",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "PDF yüklenemedi: {{detail}}",
     "imageLoadFailed": "Görsel yüklenemedi: {{detail}}",
     "imageUnreadable": "Bu dosya görüntü olarak gösterilemiyor. Dosya bozuk olabilir ya da bir görüntü olmayabilir.",
+    "imageTooLarge": "Bu görsel {{limit}} boyutundan büyük olduğu için burada gösterilmiyor.",
     "imageFit": "Pencereye sığdır",
     "htmlPreviewFailed": "Sayfa önizlenemedi: {{detail}}",
     "binaryFile": "İkili dosya. Önizleme yok.",

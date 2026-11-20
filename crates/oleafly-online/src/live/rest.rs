@@ -1,12 +1,15 @@
+#[cfg(test)]
+mod tests;
+
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::StreamExt;
 use reqwest::header::{ACCEPT, CONTENT_TYPE, RETRY_AFTER};
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde_json::{json, Value};
 
-use crate::client::{set_cookie_lines, Http};
+use super::tree_queue::MAX_UPLOAD_BYTES;
+use crate::client::{read_counted, BodyError, Http};
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::realtime::events::EntityId;
 use crate::realtime::tree::NodeKind;
@@ -37,6 +40,8 @@ pub enum RestError {
     Unreadable(String),
     #[error("the download ended before its length")]
     Short,
+    #[error("the file is larger than {} MiB", MAX_UPLOAD_BYTES >> 20)]
+    TooLarge,
 }
 
 impl RestError {
@@ -146,12 +151,15 @@ async fn judged(response: Response) -> Judged {
     }
 }
 
-fn multipart(name: &str, bytes: &[u8]) -> (String, Vec<u8>) {
-    let boundary = format!(
+fn boundary() -> String {
+    format!(
         "----oleafly{:016x}{:016x}",
         rand::random::<u64>(),
         rand::random::<u64>()
-    );
+    )
+}
+
+fn multipart(boundary: &str, name: &str, bytes: &[u8]) -> Vec<u8> {
     let quoted: String = name
         .chars()
         .map(|character| match character {
@@ -175,7 +183,7 @@ fn multipart(name: &str, bytes: &[u8]) -> (String, Vec<u8>) {
     );
     body.extend_from_slice(bytes);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-    (format!("multipart/form-data; boundary={boundary}"), body)
+    body
 }
 
 async fn json_of(response: Response) -> Result<Value, RestError> {
@@ -233,15 +241,14 @@ impl TreeRest {
             .send()
             .await
             .map_err(|error| sent_error(&error))?;
-        let cookies = set_cookie_lines(response.headers());
-        session.absorb(cookies.iter().map(String::as_str));
+        session.absorb_headers(response.headers());
         Ok(response)
     }
 
     async fn write(
         &self,
         session: &SessionHandle,
-        request: impl Fn(&str) -> RequestBuilder,
+        mut request: impl FnMut(&str) -> RequestBuilder,
     ) -> Result<Response, RestError> {
         let mut refreshed = false;
         loop {
@@ -321,14 +328,19 @@ impl TreeRest {
         bytes: &[u8],
     ) -> Result<Uploaded, RestError> {
         let path = self.route(&format!("/upload?folder_id={}", folder.0));
-        let (content_type, body) = multipart(name, bytes);
-        let size = body.len() as u64;
+        let boundary = boundary();
+        let content_type = format!("multipart/form-data; boundary={boundary}");
+        let mut built = Some(multipart(&boundary, name, bytes));
+        let size = built.as_ref().map_or(0, |body| body.len() as u64);
         let response = self
             .write(session, |cookie| {
+                let body = built
+                    .take()
+                    .unwrap_or_else(|| multipart(&boundary, name, bytes));
                 self.http
                     .post_upload(&path, cookie, size)
                     .header(CONTENT_TYPE, &content_type)
-                    .body(body.clone())
+                    .body(body)
             })
             .await?;
         let reply = json_of(response).await?;
@@ -449,13 +461,16 @@ impl TreeRest {
             None => self.get(session, &by_file).await?,
         };
         let total = response.content_length();
-        let mut bytes = Vec::with_capacity(total.unwrap_or_default() as usize);
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|_| RestError::Short)?;
-            bytes.extend_from_slice(&chunk);
-            progress(bytes.len() as u64, total);
-        }
+        let mut done: u64 = 0;
+        let bytes = read_counted(response, MAX_UPLOAD_BYTES as usize, |arrived| {
+            done = done.saturating_add(arrived as u64);
+            progress(done, total);
+        })
+        .await
+        .map_err(|error| match error {
+            BodyError::TooLarge(_) => RestError::TooLarge,
+            BodyError::Read(_) => RestError::Short,
+        })?;
         if total.is_some_and(|total| total != bytes.len() as u64) {
             return Err(RestError::Short);
         }

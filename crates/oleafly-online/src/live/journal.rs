@@ -14,6 +14,7 @@ use serde_json::Value;
 use super::tree_queue::Queued;
 use super::{DocId, PublicId};
 use crate::error::{OnlineError, OnlineErrorKind};
+use crate::realtime::events::plain_id;
 
 pub const LIVE_DIR: &str = "overleaf-live";
 pub const SCHEMA: u64 = 1;
@@ -118,6 +119,7 @@ pub struct Journal {
     _folder_lock: Option<File>,
     manifest: ProjectManifest,
     docs: BTreeMap<DocId, DocRecord>,
+    #[cfg(test)]
     kept: Vec<PathBuf>,
     dirty_docs: BTreeSet<DocId>,
     dirty_manifest: bool,
@@ -157,8 +159,10 @@ pub fn origin_dir(base: &str) -> Result<String, JournalError> {
         .collect())
 }
 
-fn plain_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 128 && id.bytes().all(|byte| byte.is_ascii_alphanumeric())
+pub(crate) fn plain_doc_id(id: &str) -> bool {
+    plain_id(id)
+        && !id.bytes().any(|byte| byte.is_ascii_uppercase())
+        && MANIFEST.strip_suffix(".json") != Some(id)
 }
 
 pub fn journal_dir(
@@ -233,6 +237,7 @@ impl Journal {
             _folder_lock: folder_lock,
             manifest: ProjectManifest::default(),
             docs: BTreeMap::new(),
+            #[cfg(test)]
             kept: Vec::new(),
             dirty_docs: BTreeSet::new(),
             dirty_manifest: false,
@@ -283,10 +288,12 @@ impl Journal {
         let name = path.file_name().unwrap_or_default();
         let target = kept.join(name);
         std::fs::rename(path, &target)?;
+        #[cfg(test)]
         self.kept.push(target);
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn dir(&self) -> &Path {
         &self.dir
     }
@@ -306,11 +313,15 @@ impl Journal {
         &self.docs
     }
 
+    #[cfg(test)]
     pub fn kept(&self) -> &[PathBuf] {
         &self.kept
     }
 
     pub fn put(&mut self, doc: &DocId, record: Option<DocRecord>) {
+        if !plain_doc_id(&doc.0) {
+            return;
+        }
         let changed = match &record {
             Some(record) => self.docs.get(doc) != Some(record),
             None => self.docs.contains_key(doc),
@@ -325,6 +336,7 @@ impl Journal {
         self.dirty_docs.insert(doc.clone());
     }
 
+    #[cfg(test)]
     pub fn is_dirty(&self) -> bool {
         self.dirty_manifest || self.dirty_joined || self.dirty_tree || !self.dirty_docs.is_empty()
     }
@@ -378,10 +390,12 @@ impl Journal {
             self.dirty_tree = false;
         }
         while let Some(doc) = self.dirty_docs.first().cloned() {
-            let path = self.dir.join(format!("{}.json", doc.0));
-            match self.docs.get(&doc) {
-                Some(record) => write_json(&path, record)?,
-                None => remove(&path)?,
+            if plain_doc_id(&doc.0) {
+                let path = self.dir.join(format!("{}.json", doc.0));
+                match self.docs.get(&doc) {
+                    Some(record) => write_json(&path, record)?,
+                    None => remove(&path)?,
+                }
             }
             self.dirty_docs.remove(&doc);
         }
@@ -443,7 +457,7 @@ fn unsent_paths(dir: &Path) -> Vec<String> {
 fn doc_of(path: &Path) -> Option<DocId> {
     let name = path.file_name()?.to_str()?;
     let id = name.strip_suffix(".json")?;
-    (plain_id(id) && name != MANIFEST && path.is_file()).then(|| DocId(id.to_string()))
+    (plain_doc_id(id) && path.is_file()).then(|| DocId(id.to_string()))
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {

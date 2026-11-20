@@ -110,7 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   useComments.setState({ projectId: null, status: null, path: null, threads: [], phase: "idle", selectedId: null });
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, pending: 0, members: [] });
+  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, pending: 0, members: [], peers: {} });
   useFilesStore.setState({ projectId: null, activePath: null });
 });
 
@@ -128,6 +128,41 @@ describe("Comments tab redraws", () => {
       useCollabLiveStore.setState({ status: { state: "ended", reason: "removed" } });
     });
     expect(commits).toBe(1);
+    screen.unmount();
+  });
+
+  it("redraws no comment while a peer replying to one thread keeps sending presence", async () => {
+    const screen = renderPane(threads());
+    const peer = (cursor: number, typing = true) => ({
+      d1: {
+        deviceId: "d1",
+        accountId: BOB_ID,
+        person: BOB,
+        path: "main.tex",
+        cursor,
+        anchor: cursor,
+        seenAt: Date.now(),
+        hue: 200,
+        activity: typing ? { kind: "reply" as const, threadId: "t3" } : null,
+        activityAt: typing ? Date.now() : 0,
+      },
+    });
+    await act(async () => {
+      useCollabLiveStore.setState({ peers: peer(0, false) });
+    });
+    mocks.rows = 0;
+    for (let move = 1; move < 20; move += 1) {
+      await act(async () => {
+        useCollabLiveStore.setState({ peers: peer(move) });
+      });
+    }
+    expect(screen.getAllByRole("status").filter((line) => line.textContent?.includes("Bob Smith"))).toHaveLength(1);
+    expect(mocks.rows).toBe(0);
+    await act(async () => {
+      useCollabLiveStore.setState({ peers: peer(20, false) });
+    });
+    expect(screen.queryAllByRole("status").filter((line) => line.textContent?.includes("Bob Smith"))).toHaveLength(0);
+    expect(mocks.rows).toBe(0);
     screen.unmount();
   });
 

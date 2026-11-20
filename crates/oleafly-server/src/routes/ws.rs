@@ -792,7 +792,13 @@ impl Peer<'_> {
                 project_id: project,
             });
         }
-        self.state.rooms.join(project, member);
+        self.state.rooms.join(
+            project,
+            RoomMember {
+                role: Some(role),
+                ..member
+            },
+        );
         let still = self
             .state
             .db
@@ -870,12 +876,12 @@ impl Peer<'_> {
     }
 
     pub(crate) async fn update(&self, project: SharedProjectId, envelope: Envelope) -> ServerFrame {
-        if !self.state.rooms.is_member(project, self.connection) {
+        let Some(seen) = self.state.rooms.role_seen(project, self.connection) else {
             return frame_error(
                 FrameErrorCode::Forbidden,
                 "Open the project before changing it.",
             );
-        }
+        };
         if let Some(problem) = self.envelope_problem(project, &envelope) {
             return problem;
         }
@@ -919,7 +925,7 @@ impl Peer<'_> {
             Ok(Err(Unread::Failed)) | Err(_) => return stored_failed,
         };
         let batch = envelope.batch_id;
-        let mut check = match self.checked_ahead(project, &envelope, &reach).await {
+        let mut check = match self.checked_ahead(project, &envelope, &reach, seen).await {
             Ok(check) => check,
             Err(refusal) => return *refusal,
         };
@@ -939,6 +945,11 @@ impl Peer<'_> {
                     break Ok(appended);
                 }
                 Ok(Appendix::Unchecked(held, needed)) => {
+                    if let Needed::Role(rule) = needed {
+                        self.state
+                            .rooms
+                            .saw_role(project, self.connection, rule.role);
+                    }
                     waiting = *held;
                     needed
                 }
@@ -1049,8 +1060,9 @@ impl Peer<'_> {
         project: SharedProjectId,
         envelope: &Envelope,
         reach: &peers::Reach,
+        seen: Option<ProjectRole>,
     ) -> Result<Check, Box<ServerFrame>> {
-        if !self.state.db.has_readers() {
+        if !self.state.db.has_readers() || seen.is_some_and(|role| !RoleRule::needed(role)) {
             return Ok(Check::Pending);
         }
         let (account, batch) = (self.account, envelope.batch_id);
@@ -1070,6 +1082,9 @@ impl Peer<'_> {
                 Ok(Some((role, !comments_on(conn, &row)?)))
             })
             .await;
+        if let Ok(Some((role, _))) = ahead {
+            self.state.rooms.saw_role(project, self.connection, role);
+        }
         match ahead {
             Ok(Some((role, comments_off))) if RoleRule::needed(role) => {
                 let rule = RoleRule {
@@ -1096,26 +1111,24 @@ impl Peer<'_> {
             comments_off: rule.comments_off,
             comments,
         };
-        if rule.role == ProjectRole::Editor
-            && !rule.comments_off
-            && guard
-                .spares_comments(
-                    &self.state.db,
-                    &self.state.snapshots,
-                    project,
-                    envelope.payload.clone(),
-                    reach,
-                )
+        let (db, snapshots) = (&self.state.db, &self.state.snapshots);
+        let editing = rule.role == ProjectRole::Editor && !rule.comments_off;
+        let spared = if editing {
+            guard
+                .spares_comments(db, snapshots, project, envelope.payload.clone(), reach)
                 .await
-                .unwrap_or(false)
-        {
+                .unwrap_or(None)
+        } else {
+            None
+        };
+        if spared == Some(true) {
             guard.read_project(self.state, project);
             return Ok(judged(false));
         }
         let checked = guard
             .check_role(
-                &self.state.db,
-                &self.state.snapshots,
+                db,
+                snapshots,
                 project,
                 envelope.payload.clone(),
                 reach,
@@ -1151,7 +1164,9 @@ impl Peer<'_> {
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
             ))),
-            Ok(RoleVerdict::Unchecked) if rule.role == ProjectRole::Editor => Ok(Check::Later),
+            Ok(RoleVerdict::Unchecked) if rule.role == ProjectRole::Editor && spared.is_none() => {
+                Ok(Check::Later)
+            }
             Ok(RoleVerdict::Unchecked) | Err(_) => Err(Box::new(frame_error(
                 FrameErrorCode::Internal,
                 "The server could not check this change. It goes again shortly.",
@@ -1433,6 +1448,7 @@ impl Session<'_> {
             account: self.account,
             frames: frames.clone(),
             control: self.signal.clone(),
+            role: None,
         };
         let head = match self.peer().open(project, since, member).await {
             Opened::Refused(frame) => return link.send(&frame).await,

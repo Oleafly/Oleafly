@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeckFrame } from "@/components/editor/deck/use-deck-frame";
+import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 
 const frame = vi.hoisted(() => ({ current: null as unknown as DeckFrame, options: [] as unknown[] }));
 vi.mock("@/components/editor/deck/use-deck-frame", () => ({
@@ -70,6 +71,13 @@ describe("DeckSlide", () => {
 
     fireEvent.load(iframe);
     expect(onLoad).toHaveBeenCalledExactlyOnceWith("oleafly-artifact://localhost/t1");
+  });
+
+  it("says the slides could not open instead of showing a blank slide", () => {
+    frame.current = deck({ url: null, info: null, failure: "The runtime is missing" });
+    render(<DeckSlide {...props()} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(enPreview.presentation.failed);
+    expect(screen.queryByTitle("Slide 2 of 4")).toBeNull();
   });
 
   it("shows nothing until the deck has an address", () => {

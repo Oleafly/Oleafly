@@ -166,7 +166,6 @@
       "purple": "Fioletowy"
     },
     "imageFile": "Plik obrazu",
-    "apply": "Zastosuj",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/wykres.png",
     "split": "Podziel",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Nie udało się wczytać pliku PDF: {{detail}}",
     "imageLoadFailed": "Nie udało się wczytać obrazu: {{detail}}",
     "imageUnreadable": "Tego pliku nie można wyświetlić jako obrazu. Może być uszkodzony albo nie jest obrazem.",
+    "imageTooLarge": "Ten obraz ma więcej niż {{limit}}, więc nie jest tu wyświetlany.",
     "imageFit": "Dopasuj do okna",
     "htmlPreviewFailed": "Nie udało się wyświetlić podglądu strony: {{detail}}",
     "binaryFile": "Plik binarny. Podgląd niedostępny.",

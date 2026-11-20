@@ -1,6 +1,8 @@
 //! Command lines the way the Microsoft C runtime splits them, and `cmd.exe`
 //! lines, built in UTF-16 so no character is lost.
 use crate::SandboxError;
+use std::ffi::OsStr;
+use std::path::Path;
 
 /// The longest command `cmd.exe` takes.
 pub const MAX_CMD_UNITS: usize = 8_000;
@@ -92,6 +94,53 @@ pub fn quoted_cmd_words<S: AsRef<str>>(words: &[S]) -> Result<String, &str> {
     Ok(format!("\"{}\"", quoted.join(" ")))
 }
 
+pub fn wrapper_safe_arg(arg: &str) -> Option<String> {
+    const RESPELLED_BARE: [char; 7] = ['\'', '[', ']', '{', '}', '*', '?'];
+    let needs_quotes =
+        arg.contains(RESPELLED_BARE) && !arg.contains(['"', ' ', '\t', '\n', '\r', '\0']);
+    needs_quotes.then(|| {
+        let trailing = arg.len() - arg.trim_end_matches('\\').len();
+        format!("\"{arg}{}\"", "\\".repeat(trailing))
+    })
+}
+
+pub fn is_windows_batch_script(program: &Path) -> bool {
+    program
+        .extension()
+        .and_then(OsStr::to_str)
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("bat") || extension.eq_ignore_ascii_case("cmd")
+        })
+}
+
+pub fn add_wrapper_safe_args<S: AsRef<OsStr>>(
+    command: &mut std::process::Command,
+    program: &Path,
+    args: &[S],
+) {
+    let quote = cfg!(windows) && !is_windows_batch_script(program);
+    for arg in args {
+        let arg = arg.as_ref();
+        match arg.to_str().and_then(wrapper_safe_arg).filter(|_| quote) {
+            Some(quoted) => push_raw_arg(command, quoted),
+            None => {
+                command.arg(arg);
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn push_raw_arg(command: &mut std::process::Command, text: String) {
+    use std::os::windows::process::CommandExt;
+    command.raw_arg(text);
+}
+
+#[cfg(not(windows))]
+fn push_raw_arg(command: &mut std::process::Command, text: String) {
+    command.arg(text);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,6 +209,43 @@ mod tests {
                 Err(risky),
                 "accepted {risky:?}"
             );
+        }
+    }
+
+    #[test]
+    fn a_bare_argument_a_script_wrapper_would_respell_is_quoted_on_windows() {
+        for (arg, quoted) in [
+            (
+                "-outdir=C:/Users/O'Brien/build",
+                "\"-outdir=C:/Users/O'Brien/build\"",
+            ),
+            ("./fig[1].tex", "\"./fig[1].tex\""),
+            ("-r", ""),
+            ("./main.tex", ""),
+            ("C:/a b/O'Brien.tex", ""),
+            ("say\"what'", ""),
+            ("C:\\it's\\", "\"C:\\it's\\\\\""),
+        ] {
+            assert_eq!(wrapper_safe_arg(arg).unwrap_or_default(), quoted, "{arg}");
+        }
+        assert!(is_windows_batch_script(Path::new("C:/tl/bin/tlmgr.BAT")));
+        assert!(is_windows_batch_script(Path::new("quarto.cmd")));
+        assert!(!is_windows_batch_script(Path::new("C:/tl/bin/latexmk.exe")));
+    }
+
+    #[test]
+    fn wrapper_safe_args_keep_every_argument_in_order() {
+        let mut command = std::process::Command::new("latexmk");
+        add_wrapper_safe_args(
+            &mut command,
+            Path::new("latexmk"),
+            &["-norc", "./O'Neil.tex", "a b"],
+        );
+        let args: Vec<_> = command.get_args().collect();
+        if cfg!(windows) {
+            assert_eq!(args, ["-norc", "\"./O'Neil.tex\"", "a b"]);
+        } else {
+            assert_eq!(args, ["-norc", "./O'Neil.tex", "a b"]);
         }
     }
 }

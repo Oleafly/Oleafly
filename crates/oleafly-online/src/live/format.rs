@@ -19,7 +19,14 @@ pub const SHAREJS_MAX_DOC_LENGTH: usize = 2 * 1024 * 1024;
 pub const SHAREJS_REPLAY_WINDOW: u64 = 80;
 pub const HISTORY_OT_MAX_LENGTH: usize = 3 * 1024 * 1024;
 pub const HISTORY_OT_REPLAY_WINDOW: u64 = 100;
+pub(crate) const MAX_UNITS: usize = u32::MAX as usize;
 const REPLACEMENT: char = '\u{FFFD}';
+
+pub(crate) fn bounded(count: u64) -> Option<usize> {
+    usize::try_from(count)
+        .ok()
+        .filter(|units| *units <= MAX_UNITS)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DocFormat {
@@ -444,16 +451,12 @@ fn clean_insert(text: &str, correction: &mut TextOperation) -> String {
     clean
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
 fn tc_seed() -> Result<String, CodecError> {
     let mut seed = [0_u8; 9];
     SystemRandom::new()
         .fill(&mut seed)
         .map_err(|_| CodecError::Malformed("no random source for the suggestion id".into()))?;
-    Ok(hex(&seed))
+    Ok(oleafly_core::encoding::hex_lower(&seed))
 }
 
 pub(crate) fn unpack(packed: &str) -> Result<String, CodecError> {
@@ -506,8 +509,8 @@ pub(crate) fn pieces_from_json(op: &Value) -> Result<Vec<Piece>, CodecError> {
             let p = object
                 .get("p")
                 .and_then(Value::as_u64)
-                .ok_or_else(|| CodecError::Malformed("a component has no position".into()))?
-                as usize;
+                .and_then(bounded)
+                .ok_or_else(|| CodecError::Malformed("a component has no position".into()))?;
             let undo = object.get("u").and_then(Value::as_bool).unwrap_or(false);
             if let Some(text) = field(object, "i")? {
                 return Ok(Piece::Insert {

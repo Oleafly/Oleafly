@@ -14,7 +14,7 @@ use super::session::{guard, lock, Active};
 use super::sync_hold::{self, KeptEdit};
 use super::{moves, uploads, LiveDisk};
 
-pub(super) struct Mirror {
+pub(super) struct Outgoing {
     pub(super) work: DiskWork,
     pub(super) next: Layout,
     pub(super) texts: Vec<(String, String)>,
@@ -44,7 +44,7 @@ pub(super) trait LiveTree: TreeRead + Send + Sync {
         &self,
         previous: &mut Layout,
         hashes: &BTreeMap<String, String>,
-    ) -> Result<Option<Mirror>, CollabError>;
+    ) -> Result<Option<Outgoing>, CollabError>;
     fn can_edit(&self) -> bool;
     fn refused(&self, _import: &LocalImport) {}
     fn open(&self, ids: &[String]) -> BTreeSet<String>;
@@ -95,7 +95,7 @@ impl LiveTree for Active {
         &self,
         previous: &mut Layout,
         hashes: &BTreeMap<String, String>,
-    ) -> Result<Option<Mirror>, CollabError> {
+    ) -> Result<Option<Outgoing>, CollabError> {
         lock(&self.live).guarded(|live| {
             let work = live.take_disk_work();
             if work.is_empty() {
@@ -113,7 +113,7 @@ impl LiveTree for Active {
             } else {
                 Vec::new()
             };
-            Ok(Some(Mirror {
+            Ok(Some(Outgoing {
                 work,
                 next: drawn.next,
                 texts: drawn.texts,

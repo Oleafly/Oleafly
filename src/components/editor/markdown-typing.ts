@@ -215,11 +215,6 @@ const LIST_MARKER = /^([ \t>]*)([*+-]|\d{1,9}[.)])(?=[ \t]|$)/gmu;
 const LIST_TOKENS: Readonly<Record<string, string>> = { "*": "\u0001", "-": "\u0002", "+": "\u0003" };
 const MARKUP_CHARS = /[*_~`^=\\#|+>[\]{}\t -]/gu;
 
-/**
- * The words of a Markdown text with its markup taken out: delimiters, tags, fence lines, heading marks and spacing
- * go; line breaks (collapsed) and list markers stay, so a key that hops to another line or rewrites another item's
- * marker reads as a different text.
- */
 function withoutTags(text: string): string {
   let current = text;
   let previous: string;
@@ -253,10 +248,6 @@ function count(text: string, part: string): number {
   return part ? text.split(part).length - 1 : 0;
 }
 
-/**
- * Moves a selection's ends off half a construct: out of a definition's `[^id]: ` lead to the line start, and over a
- * closing delimiter whose opener the selection holds, so the next key replaces whole markup, never half of it.
- */
 export function settledEnds(text: string, from: number, to: number): [number, number] {
   const lineStart = text.lastIndexOf("\n", from - 1) + 1;
   const lead = DEFINITION_LEAD.exec(text.slice(lineStart));
@@ -415,8 +406,6 @@ function handedKey(run: Run, key: TypedKey): TransactionSpec | null {
   }
   const { local, after, state: carried } = result;
   const text = local?.text ?? plain;
-  // Visual's reading of a key may add or mend markup around it, but the words must stay what plain typing gives:
-  // the key lands among the same letters, and no definition, link target or math moves. Otherwise it types plainly.
   if (key.kind === "type" && text !== plain && wordsOf(text) !== wordsOf(plain)) return null;
   const placed = local?.caret ?? caret;
   const closer = skip ? run.closer.slice(key.text.length) : key.kind === "type" ? key.text.slice(key.head - key.from) + run.closer : "";

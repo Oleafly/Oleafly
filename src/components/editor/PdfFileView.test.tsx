@@ -44,6 +44,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   readFileBase64: tauri.readFileBase64,
 }));
+const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/log")>()), ...log }));
 vi.mock("@/components/pdf/PdfViewer", () => ({
   PdfViewer: forwardRef(function FakePdfViewer(props: FakeViewerProps, ref) {
     useImperativeHandle(ref, () => ({
@@ -162,6 +164,19 @@ describe("PdfFileView", () => {
     expect(await screen.findByText(enEditor.shell.pdfLoadFailed.replace("{{detail}}", "denied"))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: enPreview.viewer.retry }));
     expect(await screen.findByTestId("pdf-viewer")).toBeInTheDocument();
+  });
+
+  it("logs a failed read and drops the error once a later read of the file works", async () => {
+    Object.assign(globalThis, { isTauri: true });
+    tauri.readFileBase64.mockRejectedValueOnce("busy").mockResolvedValueOnce(PDF);
+    render(<PdfFileView projectId="p1" path="paper.pdf" />);
+    expect(await screen.findByText(enEditor.shell.pdfLoadFailed.replace("{{detail}}", "busy"))).toBeInTheDocument();
+    expect(log.logError).toHaveBeenCalledWith("open a PDF", "busy");
+    await waitFor(() => expect(events.listeners.has("pdf-sync:written")).toBe(true));
+
+    act(() => events.listeners.get("pdf-sync:written")?.({ payload: { projectId: "p1", path: "paper.pdf" } }));
+    expect(await screen.findByTestId("pdf-viewer")).toBeInTheDocument();
+    expect(screen.queryByText(enEditor.shell.pdfLoadFailed.replace("{{detail}}", "busy"))).toBeNull();
   });
 
   it("fits a newly opened PDF to the width", async () => {

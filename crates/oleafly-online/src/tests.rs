@@ -48,6 +48,40 @@ fn meta_tags_read_any_attribute_order_quotes_and_entities() {
 }
 
 #[test]
+fn entities_decode_next_to_wide_text_without_splitting_a_character() {
+    assert_eq!(
+        html::decode_entities("&lt;お知らせ&gt; ヒト&amp;モノ &amp;😀 a&mdash;b&ndash;c&hellip;"),
+        "<お知らせ> ヒト&モノ &😀 a\u{2014}b\u{2013}c\u{2026}"
+    );
+    assert_eq!(html::decode_entities("&お知らせ;"), "&お知らせ;");
+    assert_eq!(html::decode_entities("😀&#x1F600;&#128512;"), "😀😀😀");
+    assert_eq!(html::decode_entities("&amp"), "&amp");
+}
+
+#[tokio::test]
+async fn a_capped_read_refuses_an_oversized_or_endless_body() {
+    let limit = 4 * crate::test_support::STREAM_CHUNK;
+    let read = |base: String| async move {
+        let http = Http::new(&base, AGENT).unwrap();
+        let response = http.public_get("/").send().await.unwrap();
+        client::read_capped(response, limit).await
+    };
+    let declared =
+        crate::test_support::streaming_server(Some(u64::MAX / 2), None, std::time::Duration::ZERO)
+            .await;
+    assert_eq!(
+        read(declared).await,
+        Err(client::BodyError::TooLarge(limit))
+    );
+    let endless =
+        crate::test_support::streaming_server(None, None, std::time::Duration::ZERO).await;
+    assert_eq!(read(endless).await, Err(client::BodyError::TooLarge(limit)));
+    let fits =
+        crate::test_support::streaming_server(None, Some(4), std::time::Duration::ZERO).await;
+    assert_eq!(read(fits).await.map(|body| body.len()), Ok(limit));
+}
+
+#[test]
 fn the_dashboard_yields_identity_and_projects_or_reads_as_signed_out() {
     let page = dashboard_page(
         &json!({ "totalSize": 3, "projects": [remote("a1", "Thesis"), remote("b2", "Paper")] }),
@@ -181,11 +215,11 @@ fn project_settings_resolve_the_main_document_path() {
     let project = json!({
         "compiler": "xelatex",
         "imageName": "quay.io/sharelatex/texlive-full:2025.1",
-        "rootDoc_id": "doc-9",
+        "rootDoc_id": "doc9",
         "rootFolder": [{
             "_id": "root", "name": "rootFolder",
-            "docs": [{ "_id": "doc-1", "name": "notes.tex" }],
-            "folders": [{ "_id": "f", "name": "thesis", "docs": [{ "_id": "doc-9", "name": "main.tex" }], "folders": [] }]
+            "docs": [{ "_id": "doc1", "name": "notes.tex" }],
+            "folders": [{ "_id": "f", "name": "thesis", "docs": [{ "_id": "doc9", "name": "main.tex" }], "folders": [] }]
         }]
     });
     assert_eq!(
@@ -349,7 +383,7 @@ async fn http_calls_send_the_session_and_classify_replies() {
 
 #[tokio::test]
 async fn the_settings_exchange_answers_heartbeats_and_returns_the_project() {
-    let project = json!({ "compiler": "lualatex", "rootDoc_id": "d", "rootFolder": [{ "docs": [{ "_id": "d", "name": "paper.tex" }] }] });
+    let project = json!({ "compiler": "lualatex", "rootDoc_id": "d", "rootFolder": [{ "_id": "root", "docs": [{ "_id": "d", "name": "paper.tex" }] }] });
     let polls = Arc::new(Mutex::new(0));
     let socket = socket_handler(project, polls.clone());
     let fixture = FixtureServer::start(Arc::new(move |request: &Request| {
@@ -810,4 +844,38 @@ fn imported_projects_map_remote_ids_to_local_folders() {
     let found = projects::imported_projects(root.path(), "https://latex.example.edu");
     assert_eq!(found.len(), 1);
     assert_eq!(found.get("r1").map(String::as_str), Some("local-a"));
+}
+
+#[tokio::test]
+async fn a_changed_cookie_is_saved_without_holding_up_the_async_thread() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://one.example";
+    let saved = session_of("a=1", "u1");
+    session::save(&store, base, &saved).unwrap();
+    let handle = session::SessionHandle::new(base, saved, Some(store.clone()));
+    let (inside, entered) = std::sync::mpsc::channel();
+    let busy = store.clone();
+    let holder = std::thread::spawn(move || {
+        busy.update(SESSIONS_ACCOUNT, |_| {
+            inside.send(()).unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(600));
+        })
+        .unwrap();
+    });
+    entered.recv().unwrap();
+    let started = std::time::Instant::now();
+    assert!(handle.absorb(["a=2; Path=/"]));
+    assert!(
+        started.elapsed() < std::time::Duration::from_millis(300),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(handle.cookie(), "a=2");
+    holder.join().unwrap();
+    let waited = std::time::Instant::now();
+    while session::load(&store, base).unwrap().unwrap().cookie != "a=2" {
+        assert!(waited.elapsed() < std::time::Duration::from_secs(10));
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
 }

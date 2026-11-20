@@ -107,6 +107,31 @@ describe("runDeck", () => {
     stop();
   });
 
+  it("hands the app the shortcuts the deck does not use, but not keys typed into a field or plain keys", () => {
+    document.body.innerHTML = '<div id="root"></div><input aria-label="Answer" />';
+    act(() => {
+      runner()(DECK, MESSAGES, { mode: "edit", page: 0, assets: {} });
+    });
+    const { sent, stop } = collect();
+    const press = (target: EventTarget, init: KeyboardEventInit) =>
+      act(() => {
+        target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+      });
+    press(window, { key: "s", code: "KeyS", ctrlKey: true });
+    press(window, { key: "Control", code: "ControlLeft", ctrlKey: true });
+    press(window, { key: "x" });
+    press(document.querySelector("input") as HTMLInputElement, { key: "z", code: "KeyZ", ctrlKey: true });
+    const handled = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true });
+    handled.preventDefault();
+    act(() => {
+      window.dispatchEvent(handled);
+    });
+    expect(sent.filter((message) => message.type === "key")).toEqual([
+      { type: "key", key: "s", code: "KeyS", ctrlKey: true, metaKey: false, altKey: false, shiftKey: false },
+    ]);
+    stop();
+  });
+
   it("styles decks with Tailwind and gives each slide the whole canvas", () => {
     document.body.innerHTML = '<div id="root"></div>';
     const started = vi.fn();

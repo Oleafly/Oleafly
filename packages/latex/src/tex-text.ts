@@ -110,3 +110,9 @@ export function foldLatinDiacritics(text: string): string {
     .normalize("NFC")
     .replace(/[ßẞæÆœŒøØłŁđĐðÐþÞıȷŋŊ]/gu, (letter) => UNDECOMPOSED_LETTERS[letter] ?? letter);
 }
+
+export function isBackslashEscaped(text: string, index: number): boolean {
+  let run = 0;
+  while (run < index && text[index - 1 - run] === "\\") run += 1;
+  return run % 2 === 1;
+}

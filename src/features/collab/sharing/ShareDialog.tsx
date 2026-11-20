@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CopyPlus, Eye, Share2, Unlink, X } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +24,7 @@ import {
   onCollabShareProgress,
 } from "@/lib/tauri-collab";
 import { overleafLiveActions, useLiveBackend } from "@/lib/collab-live-bridge";
+import { logError } from "@/lib/log";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "../AddServerDialog";
@@ -280,28 +282,41 @@ function CopyStep({ projectId, name }: Readonly<{ projectId: string; name: strin
 
 function OverleafLinked({ projectId, onUnlinked }: Readonly<{ projectId: string; onUnlinked: () => void }>) {
   const { t } = useTranslation(["collab"]);
+  const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const unlink = async () => {
+    setAsking(false);
     setBusy(true);
     setFailed(null);
     try {
-      await overleafLiveActions()?.unlink(projectId);
+      await overleafLiveActions().unlink(projectId);
       onUnlinked();
     } catch (error) {
+      void logError("unlink a project from the online service", error);
       setFailed(collabErrorText(error));
     } finally {
       setBusy(false);
     }
   };
+  const label = t(($) => $.collab.share.unlinkOverleaf);
   return (
     <div className="space-y-3" data-testid="collab-share-overleaf-linked">
       <p className="text-sm text-foreground">{t(($) => $.collab.errors.overleaf_linked)}</p>
       {failed ? <InlineAlert>{failed}</InlineAlert> : null}
-      <Button type="button" variant="outline" disabled={busy} onClick={() => void unlink()}>
+      <Button type="button" variant="outline" disabled={busy} onClick={() => setAsking(true)}>
         {busy ? <Spinner size="sm" /> : <Unlink aria-hidden />}
-        {t(($) => $.collab.share.unlinkOverleaf)}
+        {label}
       </Button>
+      <ConfirmationDialog
+        open={asking}
+        title={label}
+        description={t(($) => $.collab.share.unlinkOverleafDescription)}
+        confirmLabel={label}
+        destructive
+        onConfirm={() => void unlink()}
+        onCancel={() => setAsking(false)}
+      />
     </div>
   );
 }

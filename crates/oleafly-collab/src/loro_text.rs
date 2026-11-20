@@ -10,10 +10,7 @@ pub fn operation_for(
 
 // Loro counts a change's retained and deleted spans in characters; the
 // editor counts UTF-16 units.
-pub fn operation_for_pieces(
-    pieces: &Pieces,
-    deltas: &[TextDelta],
-) -> Result<TextOperation, OtError> {
+fn operation_for_pieces(pieces: &Pieces, deltas: &[TextDelta]) -> Result<TextOperation, OtError> {
     let mut walk = pieces.walk_chars();
     let mut passed = 0;
     let mut operation = TextOperation::new();

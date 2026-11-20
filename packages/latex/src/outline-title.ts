@@ -4,7 +4,7 @@ import {
   type LatexDefinitions,
   type LatexWrapperSection,
 } from "./latex-definitions";
-import { decodeLatexAccents } from "./tex-text";
+import { decodeLatexAccents, isBackslashEscaped } from "./tex-text";
 
 const SIMPLE_TEXT_COMMAND_NAMES: ReadonlySet<string> = new Set([
   "emph",
@@ -110,15 +110,7 @@ function maskComments(text: string): string {
     .map((line) => {
       for (let index = 0; index < line.length; index += 1) {
         if (line[index] !== "%") continue;
-        let slashes = 0;
-        for (
-          let cursor = index - 1;
-          cursor >= 0 && line[cursor] === "\\";
-          cursor -= 1
-        ) {
-          slashes += 1;
-        }
-        if (slashes % 2 === 0) {
+        if (!isBackslashEscaped(line, index)) {
           return `${line.slice(0, index)}${" ".repeat(line.length - index)}`;
         }
       }

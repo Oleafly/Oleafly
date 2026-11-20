@@ -90,6 +90,11 @@ enum Turn {
     Follow(watch::Receiver<bool>),
 }
 
+#[cfg(feature = "test-support")]
+pub struct HeldBuild {
+    _building: Building,
+}
+
 impl Building {
     fn turn(running: &Running, project: SharedProjectId) -> Turn {
         let mut builds = running.lock().unwrap_or_else(PoisonError::into_inner);
@@ -985,6 +990,16 @@ impl Snapshots {
             .unwrap_or_else(PoisonError::into_inner)
             .get(&project)
             .cloned()
+    }
+
+    #[cfg(feature = "test-support")]
+    pub fn hold_build(&self, project: SharedProjectId) -> Option<HeldBuild> {
+        match Building::turn(&self.building, project) {
+            Turn::Lead(building) => Some(HeldBuild {
+                _building: building,
+            }),
+            Turn::Follow(_) => None,
+        }
     }
 
     pub async fn build_soon(

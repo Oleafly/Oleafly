@@ -1,3 +1,5 @@
+import { isBackslashEscaped } from "@oleafly/latex";
+
 export type LatexDelimiterRole = "open" | "close" | "middle";
 
 export interface LatexDelimiterSize {
@@ -113,12 +115,6 @@ const GLYPH_BY_CLOSE: ReadonlyMap<string, LatexDelimiterGlyph> = new Map(
 
 const RUN_LIMIT = 64;
 
-function backslashIsEscaped(text: string, index: number): boolean {
-  let run = 0;
-  while (run < index && text[index - 1 - run] === "\\") run += 1;
-  return run % 2 === 1;
-}
-
 export interface LatexDelimiterPrefixMatch {
   readonly size: LatexDelimiterSize;
   readonly role: LatexDelimiterRole;
@@ -135,7 +131,7 @@ export function latexDelimiterPrefixBefore(
   const match = PREFIX_BEFORE.exec(text);
   if (!match) return null;
   const entry = SIZE_BY_COMMAND.get(match[1]);
-  if (!entry || backslashIsEscaped(text, match.index)) return null;
+  if (!entry || isBackslashEscaped(text, match.index)) return null;
   return {
     size: entry.size,
     role: entry.role,
@@ -216,11 +212,11 @@ const ESCAPED_GLYPH = /^\\[^A-Za-z]$/u;
 function endsWithUnescaped(text: string, suffix: string): boolean {
   if (!text.endsWith(suffix)) return false;
   const start = text.length - suffix.length;
-  return !suffix.startsWith("\\") || !backslashIsEscaped(text, start);
+  return !suffix.startsWith("\\") || !isBackslashEscaped(text, start);
 }
 
 function glyphAt(body: string, index: number, glyph: string): boolean {
-  if (backslashIsEscaped(body, index)) return false;
+  if (isBackslashEscaped(body, index)) return false;
   if (!/^\\[A-Za-z]+$/u.test(glyph)) return true;
   const next = body[index + glyph.length];
   return next === undefined || !/[A-Za-z]/u.test(next);
@@ -271,7 +267,7 @@ function glyphForms(closer: LatexDelimiterCloser): string[] {
 function bareConsumption(before: string, closer: LatexDelimiterCloser): number | null {
   const literalEscape =
     !ESCAPED_GLYPH.test(closer.glyph) &&
-    backslashIsEscaped(before, before.length);
+    isBackslashEscaped(before, before.length);
   return literalEscape ? null : 0;
 }
 
@@ -329,7 +325,7 @@ export function latexEmptyDelimiterPairAt(
   after: string,
 ): LatexEmptyDelimiterPair | null {
   const sized = OPENER_BEFORE.exec(before);
-  if (sized && !backslashIsEscaped(before, sized.index)) {
+  if (sized && !isBackslashEscaped(before, sized.index)) {
     const entry = SIZE_BY_COMMAND.get(sized[1]);
     const closing =
       entry?.role === "open" ? sizedClosing(entry.size, sized[2]) : null;
@@ -338,7 +334,7 @@ export function latexEmptyDelimiterPairAt(
     }
   }
   const standalone = STANDALONE_BEFORE.exec(before);
-  if (standalone && !backslashIsEscaped(before, standalone.index)) {
+  if (standalone && !isBackslashEscaped(before, standalone.index)) {
     const entry = GLYPH_BY_OPEN.get(standalone[0]);
     if (entry?.standalone && after.startsWith(entry.close)) {
       return { opener: entry.open.length, closer: entry.close.length };

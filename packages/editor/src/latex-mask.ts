@@ -5,6 +5,7 @@ import {
   type SpellingWordSpan,
 } from "./spelling-words";
 import { escapeRegExp } from "./regexp";
+import { isBackslashEscaped } from "@oleafly/latex";
 
 export interface Range {
   from: number;
@@ -531,11 +532,7 @@ function collectLatexRegions(
     return j;
   };
 
-  const escapedAt = (k: number): boolean => {
-    let slashes = 0;
-    while (k - slashes > 0 && text[k - slashes - 1] === "\\") slashes++;
-    return slashes % 2 === 1;
-  };
+  const escapedAt = (k: number): boolean => isBackslashEscaped(text, k);
 
   const argumentBrace = (open: number): boolean => {
     if (escapedAt(open)) return true;

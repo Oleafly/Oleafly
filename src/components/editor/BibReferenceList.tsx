@@ -95,7 +95,7 @@ function BibList({
   onReveal,
 }: Readonly<{ viewKey: string; path: string; onReveal: (from: number) => void }>) {
   const { t } = useTranslation(["editor"]);
-  const content = useFilesStore((state) => state.files[path]?.content ?? "");
+  const content = useDeferredValue(useFilesStore((state) => state.files[path]?.content ?? ""));
   const rows = useMemo(() => bibRows(content), [content]);
   const [view, setView] = useState(() => views.get(viewKey) ?? NO_VIEW);
   const query = useDeferredValue(view.search.trim().toLowerCase());

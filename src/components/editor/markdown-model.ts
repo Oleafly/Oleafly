@@ -18,7 +18,20 @@ import type { TextAlign } from "@oleafly/wysiwyg/text-align-values";
 import { minimalReplacement } from "@oleafly/editor/CodeMirrorEditor";
 import { visualLinkHref } from "@/components/editor/markdown-commands";
 import { bareCaret, changesBetween, endOffset, parse, pendingMarks, reported, settledEnds, typingAfter } from "@/components/editor/markdown-typing";
-import { alignable, alignmentOf, alignText, applyTextColor, clearFormatting, quotable, textColorOf, toggleQuote } from "@/components/editor/rich-text-controls";
+import {
+  alignable,
+  alignmentOf,
+  alignText,
+  applyLink,
+  applyTextColor,
+  clearFormatting,
+  currentLinkHref,
+  quotable,
+  TASK_MARKER,
+  textColorOf,
+  toggleQuote,
+} from "@/components/editor/rich-text-controls";
+import { ALIGN_FENCE_OPEN } from "@/components/editor/markdown-preview-markup";
 import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import type { MarkdownIt, MdToken } from "@/components/notes/note-markdown-it";
 
@@ -50,10 +63,10 @@ export interface MarkdownTarget {
   clear(): void;
   color(spec: string | null): void;
   emoji(text: string): void;
-  link(typed: string): void;
+  link(typed: string): boolean;
   unlink(): void;
   linkHref(): string;
-  image(typed: string): void;
+  image(typed: string): boolean;
   table(): void;
 }
 
@@ -129,31 +142,26 @@ export function visualTarget(editor: Editor): MarkdownTarget {
     color: (spec) => applyTextColor(editor, spec),
     emoji: (text) => chain().insertContent(text).run(),
     link: (typed) => {
-      const href = visualLinkHref(typed.trim());
-      if (!href) chain().extendMarkRange("link").unsetLink().run();
-      else if (editor.state.selection.empty && !editor.isActive("link")) {
-        chain().insertContent({ type: "text", text: "link text", marks: [{ type: "link", attrs: { href } }] }).run();
-      } else chain().extendMarkRange("link").setLink({ href }).run();
+      const text = typed.trim();
+      return applyLink(editor, text && visualLinkHref(text), text);
     },
     unlink: () => chain().extendMarkRange("link").unsetLink().run(),
-    linkHref: () => {
-      const href: unknown = editor.getAttributes("link").href;
-      return typeof href === "string" ? readableLinkHref(href) : "";
-    },
+    linkHref: () => readableLinkHref(currentLinkHref(editor)),
     image: (typed) => {
       const path = typed.trim();
-      if (path) chain().setImage({ src: visualLinkHref(path), alt: "" }).run();
+      return path !== "" && chain().setImage({ src: visualLinkHref(path), alt: "" }).run();
     },
     table: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   };
 }
 
+export const MODEL_DOC_LIMIT = 500_000;
+export const MODEL_SLICE_LIMIT = 10_000;
 const OWN_LINE_STEPS = 32;
 const SPAN_CANDIDATES = 32;
 const LEADING_RULE = /^ {0,3}---[ \t]*(?:\r?\n|$)/u;
 const LEAF_TOKENS = new Set(["paragraph_open", "heading_open", "fence", "code_block", "hr", "html_block", "table_open"]);
 const BLANKISH = /^[\s>]*$/u;
-const TASK_MARKER = /^\s*\[[ xX]\]\s*$/u;
 const EMPTY_CONTAINER = /^[\s>]*(?:(?:[-+*]|\d{1,9}[.)])(?:[ \t]+\[[ xX]\])?)?[ \t]*$/u;
 
 type Span = { from: number; to: number };
@@ -199,18 +207,25 @@ interface Structure {
   divs: { open: number; close: number; leaves: Leaf[] }[];
 }
 
-const analysed = new WeakMap<Text, { units: MarkdownUnits; math: Span[] }>();
+interface Analysis {
+  source: string;
+  units: MarkdownUnits;
+  math: Span[];
+}
+
+const analysed = new WeakMap<Text, Analysis>();
 const structures = new Map<string, Structure>();
 let scratchEditor: Editor | null = null;
 let primed = false;
 let loaded: Omit<Model, "doc" | "slice"> | null = null;
 let loadedInput: string | null = null;
 
-function analysisOf(doc: Text, source: string): { units: MarkdownUnits; math: Span[] } {
+function analysisOf(doc: Text): Analysis {
   let analysis = analysed.get(doc);
   if (!analysis) {
+    const source = doc.toString();
     const math = markdownMathRanges(source);
-    analysis = { units: markdownUnits(source, { preservedInlineRanges: math }), math };
+    analysis = { source, units: markdownUnits(source, { preservedInlineRanges: math }), math };
     analysed.set(doc, analysis);
   }
   return analysis;
@@ -226,16 +241,13 @@ function headOf(references: MarkdownUnits["references"], text: string): string {
   return lines.length > 0 ? `${lines.join("\n")}\n\n` : "";
 }
 
-// A fenced div that isn't an alignment (a callout, a Quarto column, a figure div) is one source block in Visual, so
-// its fences can't be broken there. The Code toolbar works inside it on the text between the fences instead.
 const DIV_OPEN = /^ {0,3}:{3,}[ \t]*(?:\{[^{}\n]*\}|[^\s{}:]+)[ \t]*:*[ \t]*\r?\n/u;
-const ALIGN_OPEN = /^ {0,3}:{3,}[ \t]*(?:\{[ \t]*\.(?:left|center|right|justify)[ \t]*\}|(?:left|center|right|justify))[ \t]*(?::+[ \t]*)?\r?\n/u;
 const DIV_CLOSE = /\r?\n {0,3}:{3,}[ \t]*(?:\r?\n)?$/u;
 
 function divBody(source: string, span: Span): Span | null {
   const text = source.slice(span.from, span.to);
   const open = DIV_OPEN.exec(text);
-  if (!open || ALIGN_OPEN.test(text)) return null;
+  if (!open || ALIGN_FENCE_OPEN.test(text)) return null;
   const close = DIV_CLOSE.exec(text);
   if (!close || close.index <= open[0].length) return null;
   return { from: span.from + open[0].length, to: span.from + close.index };
@@ -252,8 +264,9 @@ function spanIndex(spans: readonly Span[], offset: number, before: boolean): num
   return index;
 }
 
-function sliceOf(doc: Text, source: string, from: number, to: number, margin: number): Slice {
-  const { bodyFrom, spans: top, references } = analysisOf(doc, source).units;
+function sliceOf(doc: Text, from: number, to: number, margin: number): Slice {
+  const { source, units } = analysisOf(doc);
+  const { bodyFrom, spans: top, references } = units;
   if (top.length === 0) {
     const body = source.slice(bodyFrom);
     if (body.trim() !== "") return { from: bodyFrom, to: source.length, text: body, head: headOf(references, body), lead: "", units: [{ from: bodyFrom, to: source.length }] };
@@ -323,9 +336,10 @@ function unitNodes(snapshot: MarkdownSourceSnapshot | null, units: readonly Span
 }
 
 function modelOf(state: EditorState, from: number, to: number, margin: number): Model | null {
-  const source = state.doc.toString();
-  const slice = sliceOf(state.doc, source, from, to, margin);
+  if (state.doc.length > MODEL_DOC_LIMIT) return null;
+  const slice = sliceOf(state.doc, from, to, margin);
   const input = slice.head + slice.text;
+  if (input.length > MODEL_SLICE_LIMIT) return null;
   if (loadedInput !== input) {
     const model = loadModel(input);
     loaded = model && { ...model, nodes: unitNodes(model.snapshot, slice.units, state.doc) };
@@ -466,10 +480,15 @@ function maskedMath(text: string, math: readonly Span[], offset: number): string
   return out + text.slice(at);
 }
 
+function onlyTaskMarker(text: string): boolean {
+  const marker = text.trim();
+  return marker.length === 3 && TASK_MARKER.test(marker);
+}
+
 function imageOnly(group: readonly MdToken[], first: boolean): boolean {
   return (
     group.some((child) => child.type === "image") &&
-    group.every((child) => child.type === "image" || (child.type === "text" && (child.content.trim() === "" || (first && TASK_MARKER.test(child.content)))))
+    group.every((child) => child.type === "image" || (child.type === "text" && (child.content.trim() === "" || (first && onlyTaskMarker(child.content)))))
   );
 }
 
@@ -806,6 +825,13 @@ export function sourceTarget(viewOf: () => EditorView | null): MarkdownTarget {
     if (spec) view.dispatch(spec);
     view.focus();
   };
+  const accepted = (act: (target: MarkdownTarget) => boolean) => {
+    let valid = true;
+    run((target) => {
+      valid = act(target);
+    })();
+    return valid;
+  };
   return {
     bold: run((target) => target.bold()),
     italic: run((target) => target.italic()),
@@ -825,13 +851,13 @@ export function sourceTarget(viewOf: () => EditorView | null): MarkdownTarget {
     clear: run((target) => target.clear()),
     color: (spec) => run((target) => target.color(spec))(),
     emoji: (text) => run((target) => target.emoji(text))(),
-    link: (typed) => run((target) => target.link(typed))(),
+    link: (typed) => accepted((target) => target.link(typed)),
     unlink: run((target) => target.unlink()),
     linkHref: () => {
       const view = viewOf();
       return view ? modelLinkHref(view.state) : "";
     },
-    image: (typed) => run((target) => target.image(typed))(),
+    image: (typed) => accepted((target) => target.image(typed)),
     table: run((target) => target.table()),
   };
 }

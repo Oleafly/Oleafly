@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { frameHasUserFocus } from "@/components/notes/artifact-runtime/frame-host";
 import { logError } from "@/lib/log";
 import { openInSystemBrowser, safeHttpUrl } from "@/lib/system-browser";
 
@@ -31,7 +32,7 @@ export function PreviewFrame({ src, title }: Readonly<{ src: string; title: stri
       const own = frame.current;
       if (event.source !== own?.contentWindow || event.origin !== origin) return;
       const url = clickedLink(event.data);
-      if (!url || document.activeElement !== own) return;
+      if (!url || !frameHasUserFocus(own)) return;
       const now = performance.now();
       if (now - lastOpened < LINK_GAP_MS) return;
       lastOpened = now;

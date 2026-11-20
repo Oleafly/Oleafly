@@ -224,6 +224,8 @@
     "overleaf_linked": "This project is linked to Overleaf. Unlink it to share it on an Oleafly Server.",
     "collab_shared": "This project is shared on an Oleafly Server. Stop sharing it there to edit it live with Overleaf.",
     "live_elsewhere": "This project is live in another Oleafly window. Stop live editing there, then try again.",
+    "access_ended": "You don't have access to this project anymore, so it can't be edited live. Your copy stays on this computer. Ask the owner to share it with you again.",
+    "failed": "Live editing couldn't start because of an error. Your changes stay on this computer. Wait a moment, then choose Go live again.",
     "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "That suggestion is already gone. Someone may have accepted or rejected it.",
     "suggestion_not_yours": "Only the person who made this suggestion can withdraw it.",
@@ -554,7 +556,8 @@
     "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it.",
     "projectNotesShared": "The project's notes are shared with everyone on this project. Personal notes stay private.",
     "personalNotesPrivate": "Personal notes stay private. Only notes in the project's notes folder are shared.",
-    "unlinkOverleaf": "Unlink from Overleaf"
+    "unlinkOverleaf": "Unlink from Overleaf",
+    "unlinkOverleafDescription": "Live editing stops for this project. Your copy stays on this computer, and your coauthors keep the online project as it is."
   },
   "manage": {
     "sharedOn": "Shared on {{server}}",

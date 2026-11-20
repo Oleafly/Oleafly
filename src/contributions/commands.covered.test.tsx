@@ -201,6 +201,28 @@ describe("the palette under a page that covers the project", { timeout: 60_000 }
     expect(text(note)).toBe("Note word here.");
   });
 
+  it("holds the note it last saw focused only weakly, so a closed note can be freed", () => {
+    const held: unknown[] = [];
+    class Held<T extends WeakKey> extends WeakRef<T> {
+      constructor(target: T) {
+        super(target);
+        held.push(target);
+      }
+    }
+    vi.stubGlobal("WeakRef", Held);
+    try {
+      useHomeViewStore.setState({ page: "notes" });
+      const note = openNote("Note word here.\n");
+      select(note, "word");
+      note.view.dom.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+      expect(held).toContain(note.view.dom);
+      focusPalette();
+      expect(engineFormattingAvailable()).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("leaves a read-only note alone", async () => {
     useHomeViewStore.setState({ page: "notes" });
     const note = openNote("Note word here.\n");

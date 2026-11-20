@@ -306,25 +306,30 @@ pub fn explain_turned_down_effort(
             status: status @ (400 | 422),
             message,
             retry_after,
-        } => AgentError::Provider {
+        } if names_the_effort_field(&message) => AgentError::Provider {
             status,
-            message: if message.trim().is_empty() {
-                TURNED_DOWN_EFFORT_HINT.to_owned()
-            } else {
-                {
-                    let said = message.trim_end();
-                    let stop = if said.ends_with(['.', '!', '?']) {
-                        ""
-                    } else {
-                        "."
-                    };
-                    format!("{said}{stop} {TURNED_DOWN_EFFORT_HINT}")
-                }
+            message: {
+                let said = message.trim_end();
+                let stop = if said.ends_with(['.', '!', '?']) {
+                    ""
+                } else {
+                    "."
+                };
+                format!("{said}{stop} {TURNED_DOWN_EFFORT_HINT}")
             },
             retry_after,
         },
         other => other,
     }
+}
+
+fn names_the_effort_field(message: &str) -> bool {
+    message
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|character| character.to_ascii_lowercase())
+        .collect::<String>()
+        .contains("reasoningeffort")
 }
 
 pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
@@ -547,11 +552,29 @@ mod tests {
                 Some(High),
                 AgentError::provider(400, "Bad request.")
             ),
-            AgentError::provider(400, format!("Bad request. {TURNED_DOWN_EFFORT_HINT}"))
+            AgentError::provider(400, "Bad request.")
         );
         assert_eq!(
             explain_turned_down_effort(&model, Some(High), AgentError::provider(422, "  ")),
-            AgentError::provider(422, TURNED_DOWN_EFFORT_HINT)
+            AgentError::provider(422, "  ")
+        );
+        for named in [
+            "Extra inputs are not permitted: body.reasoning.effort",
+            "Unknown field reasoningEffort",
+            "unsupported parameter: Reasoning Effort",
+            "{\"loc\":[\"body\",\"reasoning_effort\"],\"msg\":\"extra fields not permitted\"}",
+        ] {
+            let explained =
+                explain_turned_down_effort(&model, Some(High), AgentError::provider(422, named));
+            assert!(
+                explained.to_string().ends_with(TURNED_DOWN_EFFORT_HINT),
+                "{named}"
+            );
+        }
+        let unrelated = AgentError::provider(400, "max_tokens must be at most 4096");
+        assert_eq!(
+            explain_turned_down_effort(&model, Some(High), unrelated.clone()),
+            unrelated
         );
 
         assert_eq!(

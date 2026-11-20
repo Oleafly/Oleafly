@@ -135,6 +135,9 @@ fn decode_entity(entity: &str) -> Option<char> {
         "gt" => Some('>'),
         "apos" => Some('\''),
         "nbsp" => Some('\u{a0}'),
+        "mdash" => Some('\u{2014}'),
+        "ndash" => Some('\u{2013}'),
+        "hellip" => Some('\u{2026}'),
         _ => {
             let number = entity.strip_prefix('#')?;
             let code = match number.strip_prefix(['x', 'X']) {

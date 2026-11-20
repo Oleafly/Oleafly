@@ -166,7 +166,6 @@
       "purple": "紫色"
     },
     "imageFile": "图片文件",
-    "apply": "应用",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "分屏",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "加载 PDF 失败：{{detail}}",
     "imageLoadFailed": "加载图片失败：{{detail}}",
     "imageUnreadable": "无法将此文件显示为图片。它可能已损坏，或者根本不是图片。",
+    "imageTooLarge": "此图片大于 {{limit}}，因此不在这里显示。",
     "imageFit": "适合窗口",
     "htmlPreviewFailed": "预览页面失败：{{detail}}",
     "binaryFile": "二进制文件，无法预览。",

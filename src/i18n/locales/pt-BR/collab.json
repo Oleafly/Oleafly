@@ -224,6 +224,8 @@
     "overleaf_linked": "Este projeto está vinculado ao Overleaf. Desvincule-o para compartilhá-lo em um Oleafly Server.",
     "collab_shared": "Este projeto está compartilhado em um Oleafly Server. Pare de compartilhá-lo lá para editá-lo ao vivo com o Overleaf.",
     "live_elsewhere": "Este projeto está ao vivo em outra janela do Oleafly. Pare a edição ao vivo lá e tente de novo.",
+    "access_ended": "Você não tem mais acesso a este projeto, então ele não pode ser editado ao vivo. Sua cópia continua neste computador. Peça ao proprietário para compartilhá-lo com você de novo.",
+    "failed": "A edição ao vivo não pôde começar por causa de um erro. Suas alterações continuam neste computador. Espere um pouco e escolha Sincronizar de novo.",
     "overleaf_unsent": "Algumas alterações ainda não chegaram ao Overleaf. Retome a edição ao vivo para enviá-las e depois desvincule o projeto.",
     "suggestion_not_found": "Essa sugestão não existe mais. Talvez alguém a tenha aceitado ou recusado.",
     "suggestion_not_yours": "Só quem fez esta sugestão pode retirá-la.",
@@ -554,7 +556,8 @@
     "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele.",
     "projectNotesShared": "As notas do projeto são compartilhadas com todos neste projeto. As notas pessoais continuam privadas.",
     "personalNotesPrivate": "As notas pessoais continuam privadas. Só as notas da pasta de notas do projeto são compartilhadas.",
-    "unlinkOverleaf": "Desvincular do Overleaf"
+    "unlinkOverleaf": "Desvincular do Overleaf",
+    "unlinkOverleafDescription": "A edição ao vivo para neste projeto. Sua cópia continua neste computador, e seus coautores mantêm o projeto online como está."
   },
   "manage": {
     "sharedOn": "Compartilhado em {{server}}",

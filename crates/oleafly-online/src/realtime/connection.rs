@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
-use reqwest::header::SET_COOKIE;
+use oleafly_net::{Heard, MAX_MESSAGE_BYTES};
 use serde_json::{json, Value};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -17,13 +17,15 @@ use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use url::Url;
 
 use super::codec::{self, Frame, FrameError};
-use super::events::{PublicId, Rejection, ServerEvent};
+use super::events::{PublicId, Rejection, ServerEvent, LONGEST_SERVER_WAIT};
 use super::page::ProjectPage;
-use crate::client::Http;
+use crate::client::{self, Http, SMALL_BODY_BYTES};
 use crate::error::{OnlineError, OnlineErrorKind};
+use crate::locked;
 use crate::session::SessionHandle;
 
 const DEFAULT_SILENCE: Duration = Duration::from_secs(45);
+const SHORTEST_HEARTBEAT: Duration = Duration::from_secs(10);
 const SLEEP_JUMP: Duration = Duration::from_secs(20);
 const WATCH_TICK: Duration = Duration::from_secs(5);
 const JOIN_TIMEOUT: Duration = Duration::from_secs(30);
@@ -54,6 +56,7 @@ pub struct Tuning {
     pub sleep_jump: Duration,
     pub join_timeout: Duration,
     pub wall_clock: fn() -> SystemTime,
+    #[cfg(test)]
     pub proxy: Option<String>,
 }
 
@@ -65,6 +68,7 @@ impl Default for Tuning {
             sleep_jump: SLEEP_JUMP,
             join_timeout: JOIN_TIMEOUT,
             wall_clock: SystemTime::now,
+            #[cfg(test)]
             proxy: None,
         }
     }
@@ -191,13 +195,18 @@ fn parse_handshake(body: &str) -> Option<Handshake> {
         && transports.split(',').all(named);
     usable.then(|| Handshake {
         sid: sid.to_string(),
-        heartbeat: heartbeat
-            .parse::<u64>()
-            .ok()
-            .filter(|seconds| *seconds > 0)
-            .map(Duration::from_secs),
+        heartbeat: heartbeat_of(heartbeat),
         transports: transports.split(',').map(str::to_string).collect(),
     })
+}
+
+fn heartbeat_of(digits: &str) -> Option<Duration> {
+    if digits.is_empty() {
+        return None;
+    }
+    let seconds = digits.parse::<u64>().unwrap_or(u64::MAX);
+    (seconds > 0)
+        .then(|| Duration::from_secs(seconds).clamp(SHORTEST_HEARTBEAT, LONGEST_SERVER_WAIT))
 }
 
 fn now_millis() -> u128 {
@@ -205,19 +214,6 @@ fn now_millis() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis())
         .unwrap_or_default()
-}
-
-fn set_cookie_lines(headers: &reqwest::header::HeaderMap) -> Vec<String> {
-    headers
-        .get_all(SET_COOKIE)
-        .iter()
-        .filter_map(|value| value.to_str().ok().map(str::to_string))
-        .collect()
-}
-
-fn absorb(session: &SessionHandle, response: &reqwest::Response) {
-    let lines = set_cookie_lines(response.headers());
-    session.absorb(lines.iter().map(String::as_str));
 }
 
 fn resource(http: &Http, page: &ProjectPage) -> Result<Url, RealtimeError> {
@@ -244,12 +240,6 @@ fn wants_ping(carrier: Carrier) -> &'static str {
     }
 }
 
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
 struct Context<'a> {
     http: &'a Http,
     session: &'a SessionHandle,
@@ -269,7 +259,14 @@ struct Poller {
     http: Http,
     session: SessionHandle,
     channel: String,
-    timeout: Duration,
+    wait: Duration,
+    arrived: Arc<AtomicU64>,
+}
+
+fn carried_within(wait: Duration, bytes: usize) -> Duration {
+    wait.saturating_add(client::transfer_time(
+        u64::try_from(bytes).unwrap_or(u64::MAX),
+    ))
 }
 
 impl Poller {
@@ -280,34 +277,40 @@ impl Poller {
                 &format!("{}&t={}", self.channel, now_millis()),
                 &self.session.cookie(),
             )
-            .timeout(self.timeout)
+            .timeout(carried_within(self.wait, MAX_MESSAGE_BYTES))
             .send()
             .await
             .map_err(|error| error.to_string())?;
-        absorb(&self.session, &response);
+        self.session.absorb_headers(response.headers());
         if !response.status().is_success() {
             return Err(format!(
                 "a poll was refused with HTTP {}",
                 response.status().as_u16()
             ));
         }
-        let body = response.text().await.map_err(|error| error.to_string())?;
-        Ok(codec::decode_payload(&body))
+        let arrived = &self.arrived;
+        let body = client::read_counted(response, MAX_MESSAGE_BYTES, |bytes| {
+            arrived.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::Relaxed);
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+        Ok(codec::decode_payload(&client::lossy_text(body)))
     }
 
     async fn post(&self, frames: &[String]) -> Result<(), String> {
+        let body = codec::encode_payload(frames);
         let response = self
             .http
             .post_at(
                 &format!("{}&t={}", self.channel, now_millis()),
                 &self.session.cookie(),
             )
-            .timeout(self.timeout)
-            .body(codec::encode_payload(frames))
+            .timeout(carried_within(self.wait, body.len()))
+            .body(body)
             .send()
             .await
             .map_err(|error| error.to_string())?;
-        absorb(&self.session, &response);
+        self.session.absorb_headers(response.headers());
         if response.status().is_success() {
             Ok(())
         } else {
@@ -424,6 +427,7 @@ async fn classify_lost(http: &Http, session: &SessionHandle) -> Rejection {
 struct Opened {
     rx: Rx,
     tx: Tx,
+    arrivals: Arrivals,
     carrier: Carrier,
     handshake: Handshake,
     join: JoinProject,
@@ -437,7 +441,7 @@ async fn warm(context: &Context<'_>, base: &Url) {
         .send()
         .await
     {
-        absorb(context.session, &response);
+        context.session.absorb_headers(response.headers());
     }
 }
 
@@ -462,15 +466,14 @@ async fn handshake(
         .send()
         .await
         .map_err(|error| Attempt::NotSocketIo(error.to_string()))?;
-    absorb(context.session, &response);
+    context.session.absorb_headers(response.headers());
     if !response.status().is_success() {
         return Err(Attempt::NotSocketIo(format!(
             "the handshake was refused with HTTP {}",
             response.status().as_u16()
         )));
     }
-    let body = response
-        .text()
+    let body = client::text_capped(response, SMALL_BODY_BYTES)
         .await
         .map_err(|error| Attempt::NotSocketIo(error.to_string()))?;
     parse_handshake(&body).ok_or_else(|| {
@@ -489,12 +492,27 @@ fn websocket_target(base: &Url, sid: &str, project_id: &str) -> Result<Url, Stri
     Ok(url)
 }
 
+#[derive(Clone, Default)]
+struct Arrivals {
+    socket: Option<Heard>,
+    polled: Arc<AtomicU64>,
+}
+
+impl Arrivals {
+    fn bytes(&self) -> u64 {
+        self.socket
+            .as_ref()
+            .map_or(0, Heard::bytes)
+            .saturating_add(self.polled.load(Ordering::Relaxed))
+    }
+}
+
 async fn open_link(
     context: &Context<'_>,
     base: &Url,
     handshake: &Handshake,
     carrier: Carrier,
-) -> Result<(Rx, Tx), Attempt> {
+) -> Result<(Rx, Tx, Arrivals), Attempt> {
     match carrier {
         Carrier::WebSocket => {
             let target = websocket_target(base, &handshake.sid, context.page.project_id())
@@ -508,16 +526,23 @@ async fn open_link(
             put(header::COOKIE, &context.session.cookie());
             put(header::ORIGIN, &context.http.origin);
             put(header::USER_AGENT, &context.http.user_agent);
+            #[cfg(test)]
             let opened = match &context.tuning.proxy {
                 Some(proxy) => oleafly_net::open_websocket_through(&target, headers, proxy).await,
                 None => oleafly_net::open_websocket(&target, headers).await,
             };
-            let (sink, stream) = opened
-                .map_err(|error| Attempt::Transport(error.to_string()))?
-                .split();
-            Ok((Rx::WebSocket(stream), Tx::WebSocket(sink)))
+            #[cfg(not(test))]
+            let opened = oleafly_net::open_websocket(&target, headers).await;
+            let socket = opened.map_err(|error| Attempt::Transport(error.to_string()))?;
+            let arrivals = Arrivals {
+                socket: Heard::of(&socket),
+                ..Arrivals::default()
+            };
+            let (sink, stream) = socket.split();
+            Ok((Rx::WebSocket(stream), Tx::WebSocket(sink), arrivals))
         }
         Carrier::XhrPolling => {
+            let arrivals = Arrivals::default();
             let poller = Poller {
                 http: context.http.clone(),
                 session: context.session.clone(),
@@ -529,9 +554,10 @@ async fn open_link(
                         context.page.project_id()
                     ),
                 ),
-                timeout: silence_for(context.tuning, handshake) + REQUEST_SLACK,
+                wait: silence_for(context.tuning, handshake).saturating_add(REQUEST_SLACK),
+                arrived: Arc::clone(&arrivals.polled),
             };
-            Ok((Rx::Polling(poller.clone()), Tx::Polling(poller)))
+            Ok((Rx::Polling(poller.clone()), Tx::Polling(poller), arrivals))
         }
     }
 }
@@ -643,11 +669,12 @@ async fn open(context: &Context<'_>, carrier: Carrier) -> Result<Opened, Attempt
     {
         return Err(Attempt::NotOffered);
     }
-    let (mut rx, mut tx) = open_link(context, &base, &handshake, carrier).await?;
+    let (mut rx, mut tx, arrivals) = open_link(context, &base, &handshake, carrier).await?;
     let (join, early) = await_join(context, &mut rx, &mut tx, carrier, &handshake).await?;
     Ok(Opened {
         rx,
         tx,
+        arrivals,
         carrier,
         handshake,
         join,
@@ -740,18 +767,22 @@ struct Watch {
     silence: Duration,
     sleep_jump: Duration,
     wall_clock: fn() -> SystemTime,
+    arrivals: Arrivals,
+    arrived: u64,
     heard: Instant,
     checked: Instant,
     checked_wall: SystemTime,
 }
 
 impl Watch {
-    fn new(tuning: &Tuning, silence: Duration) -> Watch {
+    fn new(tuning: &Tuning, silence: Duration, arrivals: Arrivals) -> Watch {
         let now = Instant::now();
         Watch {
             silence,
             sleep_jump: tuning.sleep_jump,
             wall_clock: tuning.wall_clock,
+            arrived: arrivals.bytes(),
+            arrivals,
             heard: now,
             checked: now,
             checked_wall: (tuning.wall_clock)(),
@@ -760,6 +791,7 @@ impl Watch {
 
     fn heard(&mut self) {
         self.heard = Instant::now();
+        self.arrived = self.arrivals.bytes();
     }
 
     fn check(&mut self) -> Option<Dropped> {
@@ -769,8 +801,13 @@ impl Watch {
         let walked = wall.duration_since(self.checked_wall).unwrap_or_default();
         self.checked = now;
         self.checked_wall = wall;
-        if walked > steady + self.sleep_jump {
+        if walked > steady.saturating_add(self.sleep_jump) {
             return Some(Dropped::Slept(walked - steady));
+        }
+        let arrived = self.arrivals.bytes();
+        if arrived != self.arrived {
+            self.arrived = arrived;
+            self.heard = now;
         }
         let silent = now.duration_since(self.heard);
         (silent > self.silence).then_some(Dropped::Silent(silent))
@@ -794,8 +831,8 @@ type Poll = Pin<Box<dyn Future<Output = Result<Vec<String>, String>> + Send>>;
 impl Driver {
     async fn run(mut self, rx: Rx, mut tx: Tx, early: Vec<String>) {
         let reason = self.drive(rx, &mut tx, early).await;
-        *lock(&self.shared.dropped) = Some(reason);
-        let mut calls = lock(&self.shared.calls);
+        *locked(&self.shared.dropped) = Some(reason);
+        let mut calls = locked(&self.shared.calls);
         calls.ended = true;
         calls.waiting.clear();
     }
@@ -818,7 +855,7 @@ impl Driver {
             Frame::Disconnect => Err(Dropped::ServerClosed),
             Frame::Error(reason) => Err(Dropped::ServerError(reason)),
             Frame::Ack { id, args } => {
-                if let Some(waiting) = lock(&self.shared.calls).waiting.remove(&id.0) {
+                if let Some(waiting) = locked(&self.shared.calls).waiting.remove(&id.0) {
                     let _ = waiting.send(args);
                 }
                 Ok(())
@@ -1000,7 +1037,7 @@ impl Connection {
             shared: Arc::clone(&shared),
             events: events_tx,
             outbound: outbound_rx,
-            watch: Watch::new(context.tuning, silence),
+            watch: Watch::new(context.tuning, silence, opened.arrivals),
             tick: context.tuning.tick,
         };
         let task = tokio::spawn(driver.run(opened.rx, opened.tx, opened.early));
@@ -1037,15 +1074,18 @@ impl Connection {
         let id = self.next_ack.fetch_add(1, Ordering::SeqCst);
         let (reply, answer) = oneshot::channel();
         {
-            let mut calls = lock(&self.shared.calls);
+            let mut calls = locked(&self.shared.calls);
             if calls.ended {
                 return Err(CallError::Closed);
             }
             calls.waiting.insert(id, reply);
         }
+        let _waiting = Waiting {
+            calls: &self.shared.calls,
+            id,
+        };
         let frame = codec::encode(&Frame::call(id, name, &args));
         if self.outbound.send(Outbound::Frame(frame)).is_err() {
-            lock(&self.shared.calls).waiting.remove(&id);
             return Err(CallError::Closed);
         }
         answer.await.map_err(|_| CallError::Closed)
@@ -1061,15 +1101,29 @@ impl Connection {
     }
 
     pub fn dropped(&self) -> Option<Dropped> {
-        lock(&self.shared.dropped).clone()
+        locked(&self.shared.dropped).clone()
     }
 
     pub async fn close(mut self) {
         self.shared.closing.store(true, Ordering::SeqCst);
         let _ = self.outbound.send(Outbound::Close);
-        if let Some(task) = self.driver.take() {
-            let _ = tokio::time::timeout(CLOSE_WAIT, task).await;
+        if let Some(mut task) = self.driver.take() {
+            if tokio::time::timeout(CLOSE_WAIT, &mut task).await.is_err() {
+                task.abort();
+                let _ = task.await;
+            }
         }
+    }
+}
+
+struct Waiting<'a> {
+    calls: &'a Mutex<Calls>,
+    id: u64,
+}
+
+impl Drop for Waiting<'_> {
+    fn drop(&mut self) {
+        locked(self.calls).waiting.remove(&self.id);
     }
 }
 
@@ -1083,6 +1137,7 @@ impl Drop for Connection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{streaming_server, STREAM_CHUNK};
 
     #[test]
     fn only_a_socket_io_0_9_handshake_is_accepted() {
@@ -1121,7 +1176,7 @@ mod tests {
             SystemTime::now() + Duration::from_secs(120)
         }
         let tuning = Tuning::default();
-        let mut watch = Watch::new(&tuning, Duration::from_secs(60));
+        let mut watch = Watch::new(&tuning, Duration::from_secs(60), Arrivals::default());
         assert_eq!(watch.check(), None);
         watch.wall_clock = later;
         assert!(
@@ -1133,6 +1188,154 @@ mod tests {
         assert!(matches!(watch.check(), Some(Dropped::Silent(_))));
         watch.heard();
         assert_eq!(watch.check(), None);
+    }
+
+    #[test]
+    fn bytes_still_arriving_keep_the_watchdog_quiet() {
+        let arrivals = Arrivals::default();
+        let mut watch = Watch::new(
+            &Tuning::default(),
+            Duration::from_secs(60),
+            arrivals.clone(),
+        );
+        watch.heard -= Duration::from_secs(61);
+        arrivals.polled.fetch_add(512, Ordering::Relaxed);
+        assert_eq!(watch.check(), None);
+        watch.heard -= Duration::from_secs(61);
+        assert!(matches!(watch.check(), Some(Dropped::Silent(_))));
+    }
+
+    #[test]
+    fn a_server_heartbeat_is_held_to_a_sane_range() {
+        let huge = u64::MAX.to_string();
+        for (field, expected) in [
+            ("100000000000000000000", Some(LONGEST_SERVER_WAIT)),
+            ("1000000000000", Some(LONGEST_SERVER_WAIT)),
+            (huge.as_str(), Some(LONGEST_SERVER_WAIT)),
+            ("0", None),
+            ("1", Some(SHORTEST_HEARTBEAT)),
+            ("60", Some(Duration::from_secs(60))),
+        ] {
+            let shake = parse_handshake(&format!("sid:{field}:60:websocket")).unwrap();
+            assert_eq!(shake.heartbeat, expected, "{field}");
+            let silence = silence_for(&Tuning::default(), &shake);
+            assert!(silence <= LONGEST_SERVER_WAIT, "{field}");
+            assert!(
+                carried_within(silence.saturating_add(REQUEST_SLACK), MAX_MESSAGE_BYTES) > silence
+            );
+            let mut watch = Watch::new(&Tuning::default(), silence, Arrivals::default());
+            watch.heard -= LONGEST_SERVER_WAIT + Duration::from_secs(1);
+            assert!(matches!(watch.check(), Some(Dropped::Silent(_))), "{field}");
+        }
+    }
+
+    fn idle_connection(driver: JoinHandle<()>) -> (Connection, mpsc::UnboundedReceiver<Outbound>) {
+        let (outbound, outbound_rx) = mpsc::unbounded_channel();
+        let (_events, events) = mpsc::unbounded_channel();
+        let connection = Connection {
+            public_id: PublicId("P.1".into()),
+            carrier: Carrier::WebSocket,
+            sid: "sid".into(),
+            outbound,
+            events,
+            shared: Arc::default(),
+            next_ack: AtomicU64::new(1),
+            driver: Some(driver),
+        };
+        (connection, outbound_rx)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn closing_a_stuck_connection_stops_its_driver() {
+        let alive = Arc::new(());
+        let held = Arc::clone(&alive);
+        let driver = tokio::spawn(async move {
+            let _held = held;
+            std::future::pending::<()>().await;
+        });
+        let (connection, _outbound) = idle_connection(driver);
+        connection.close().await;
+        assert_eq!(Arc::strong_count(&alive), 1);
+    }
+
+    #[tokio::test]
+    async fn a_call_given_up_on_leaves_no_waiter_behind() {
+        let (connection, _outbound) = idle_connection(tokio::spawn(std::future::pending()));
+        let gave_up = tokio::time::timeout(
+            Duration::from_millis(20),
+            connection.call("joinDoc", Vec::new()),
+        )
+        .await;
+        assert!(gave_up.is_err());
+        assert!(locked(&connection.shared.calls).waiting.is_empty());
+    }
+
+    fn signed_in(base: &str) -> (Http, SessionHandle) {
+        let session = crate::session::Session {
+            cookie: "overleaf.sid=s".into(),
+            user_id: "u1".into(),
+            email: String::new(),
+            saved_by: None,
+        };
+        (
+            Http::new(base, "Oleafly/test").unwrap(),
+            SessionHandle::new(base, session, None),
+        )
+    }
+
+    fn poller_for(base: &str, wait: Duration) -> Poller {
+        let (http, session) = signed_in(base);
+        Poller {
+            http,
+            session,
+            channel: format!("{base}/socket.io/1/xhr-polling/sid?projectId=p1"),
+            wait,
+            arrived: Arc::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_slow_poll_reply_is_read_to_the_end_and_counted_as_it_arrives() {
+        let base = streaming_server(None, Some(6), Duration::from_millis(100)).await;
+        let poller = poller_for(&base, Duration::from_millis(200));
+        let arrived = Arc::clone(&poller.arrived);
+        let frames = poller.get().await.expect("the whole reply");
+        assert!(!frames.is_empty());
+        assert_eq!(
+            arrived.load(Ordering::Relaxed),
+            u64::try_from(6 * STREAM_CHUNK).unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_poll_reply_that_never_ends_is_refused() {
+        let base = streaming_server(None, None, Duration::ZERO).await;
+        let refused = poller_for(&base, Duration::from_secs(5))
+            .get()
+            .await
+            .unwrap_err();
+        assert!(refused.contains("larger than"), "{refused}");
+    }
+
+    #[tokio::test]
+    async fn an_oversized_handshake_is_refused_before_it_is_read() {
+        let base = streaming_server(Some(u64::MAX / 2), None, Duration::ZERO).await;
+        let (http, session) = signed_in(&base);
+        let page = ProjectPage::unloaded("p1").unwrap();
+        let tuning = Tuning::default();
+        let context = Context {
+            http: &http,
+            session: &session,
+            page: &page,
+            tuning: &tuning,
+        };
+        let socket_io = Url::parse(&format!("{base}/socket.io")).unwrap();
+        match handshake(&context, &socket_io, Carrier::XhrPolling).await {
+            Err(Attempt::NotSocketIo(detail)) => {
+                assert!(detail.contains("larger than"), "{detail}");
+            }
+            _ => panic!("an oversized handshake is refused"),
+        }
     }
 
     #[test]

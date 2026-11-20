@@ -150,10 +150,6 @@ const ENGINE_TABS = ["latex", "typst", "markdown", "quarto", "calepin"] as const
 
 type EngineTab = (typeof ENGINE_TABS)[number];
 
-function isEngineTab(value: string): value is EngineTab {
-  return (ENGINE_TABS as readonly string[]).includes(value);
-}
-
 function engineTabForTarget(target: string | null): EngineTab | null {
   if (target === TYPST_SETTINGS_TARGET) return "typst";
   return notebookToolForSettingsTarget(target);
@@ -475,7 +471,7 @@ export function EngineSection() {
   const [distros, setDistros] = useState<TexDistribution[]>([]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
-  const [tab, setTab] = useSettingsTab("engine", () => engineTabForTarget(scrollTarget) ?? "latex", isEngineTab);
+  const [tab, setTab] = useSettingsTab("engine", () => engineTabForTarget(scrollTarget) ?? "latex", ENGINE_TABS);
   useEffect(() => {
     const target = engineTabForTarget(scrollTarget);
     if (!target) return;

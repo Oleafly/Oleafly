@@ -5,6 +5,7 @@ import { logError } from "@/lib/log";
 import { overleafLiveKeepCopy, overleafLiveResolve, overleafLiveRetry } from "@/lib/overleaf-live";
 import { onOverleafLiveNotice } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
+import { followProject } from "./follow-project";
 import { useCollabLiveStore } from "./live-store";
 
 export interface OverleafMerge {
@@ -40,9 +41,9 @@ interface OverleafNoticesState {
   dismissUnsteady: (path: string) => void;
   dismissExternal: (path: string) => void;
   dismissReplaced: () => void;
-  resolve: (path: string, keep: "mine" | "theirs") => Promise<void>;
-  tryLiveAgain: (path: string) => Promise<void>;
-  keepCopy: (path: string) => Promise<void>;
+  resolve: (path: string, keep: "mine" | "theirs") => Promise<boolean>;
+  tryLiveAgain: (path: string) => Promise<boolean>;
+  keepCopy: (path: string) => Promise<boolean>;
 }
 
 const EMPTY = {
@@ -72,16 +73,18 @@ export const useOverleafNotices = create<OverleafNoticesState>()((set, get) => {
     task: string,
     call: (projectId: string) => Promise<void>,
     done: (state: OverleafNoticesState) => Partial<OverleafNoticesState>,
-  ) => {
+  ): Promise<boolean> => {
     const { projectId } = get();
-    if (!projectId) return;
+    if (!projectId) return false;
     set({ resolving: path, failed: null });
     try {
       await call(projectId);
       set(done);
+      return true;
     } catch (error) {
       void logError(task, error);
       set({ failed: path });
+      return false;
     } finally {
       set({ resolving: null });
     }
@@ -153,9 +156,8 @@ function follow(projectId: string | null) {
 }
 
 export function startOverleafNotices(): () => void {
-  follow(useCollabLiveStore.getState().projectId);
+  const stopFollowing = followProject(useCollabLiveStore, follow);
   const unsubscribe = useCollabLiveStore.subscribe((state, previous) => {
-    follow(state.projectId);
     if (state.status?.state === "online" && previous.status?.state !== "online") {
       useOverleafNotices.setState({ maintenance: null, slowAck: false });
     }
@@ -165,6 +167,7 @@ export function startOverleafNotices(): () => void {
     return () => {};
   });
   return () => {
+    stopFollowing();
     unsubscribe();
     void stopListening.then((unlisten) => unlisten());
   };

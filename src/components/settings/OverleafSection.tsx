@@ -10,6 +10,7 @@ import {
   overleafTokenPage,
 } from "@/lib/overleaf-sync";
 import { logError } from "@/lib/log";
+import { serverHost } from "@/lib/overleaf-live";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,8 @@ import {
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
 import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
-import { OverleafServerField, serverHost } from "@/components/library/overleaf/OverleafServerField";
+import { SettingsRow } from "@/components/settings/SettingsRow";
+import { OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 
 export function OverleafSection() {
@@ -102,22 +104,26 @@ function LiveDeletesField() {
   if (!live) return null;
   const label = t(($) => $.settings.integrations.overleaf.deletes.title);
   return (
-    <div data-testid="overleaf-live-deletes" className="mt-4 space-y-2 border-t pt-3">
-      <p className="text-xs font-medium text-foreground">{label}</p>
-      <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.deletes.description)}</p>
-      <Select value={deletes} onValueChange={(value) => setDeletes(value as OverleafDeletes)}>
-        <SelectTrigger className="w-[220px]" aria-label={label} data-testid="overleaf-live-deletes-trigger">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="z-[100]">
-          {DELETE_CHOICES.map((choice) => (
-            <SelectItem key={choice} value={choice}>
-              {t(($) => $.settings.integrations.overleaf.deletes.options[choice])}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <SettingsRow
+      testId="overleaf-live-deletes"
+      className="mt-4 flex-wrap gap-y-2"
+      label={label}
+      description={t(($) => $.settings.integrations.overleaf.deletes.description)}
+      control={
+        <Select value={deletes} onValueChange={(value) => setDeletes(value as OverleafDeletes)}>
+          <SelectTrigger className="w-[220px]" aria-label={label} data-testid="overleaf-live-deletes-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {DELETE_CHOICES.map((choice) => (
+              <SelectItem key={choice} value={choice}>
+                {t(($) => $.settings.integrations.overleaf.deletes.options[choice])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      }
+    />
   );
 }
 

@@ -166,7 +166,6 @@
       "purple": "Roxo"
     },
     "imageFile": "Arquivo de imagem",
-    "apply": "Aplicar",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figuras/grafico.png",
     "split": "Dividir",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Falha ao carregar o PDF: {{detail}}",
     "imageLoadFailed": "Falha ao carregar a imagem: {{detail}}",
     "imageUnreadable": "Este arquivo não pode ser exibido como imagem. Ele pode estar danificado ou não ser uma imagem.",
+    "imageTooLarge": "Esta imagem tem mais de {{limit}}, por isso não é mostrada aqui.",
     "imageFit": "Ajustar à janela",
     "htmlPreviewFailed": "Falha ao pré-visualizar a página: {{detail}}",
     "binaryFile": "Arquivo binário. Nenhuma prévia disponível.",

@@ -4,9 +4,9 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: vi.fn(async () => true) }));
 
-import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
@@ -73,7 +73,7 @@ describe("access banners on Overleaf", () => {
     render(<CollabBanners />);
     expect(screen.getByRole("status")).toHaveTextContent(copy.viewOnly);
     await user.click(screen.getByRole("button", { name: copy.askOnOverleaf }));
-    expect(openExternal).toHaveBeenCalledWith(`${LINK.server}/project/${LINK.remoteId}`);
+    expect(openInSystemBrowser).toHaveBeenCalledWith(`${LINK.server}/project/${LINK.remoteId}`);
   });
 
   it("says a reviewer's edits go in as suggestions", () => {
@@ -128,6 +128,15 @@ describe("access banners on Overleaf", () => {
     expect(banner.querySelector(icon)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: copy.keepLocal }));
     expect(unlink).toHaveBeenCalledWith("paper");
+  });
+
+  it("says the project couldn't go local when live editing isn't running", async () => {
+    uninstall();
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "removed" }, ended: "removed" });
+    const user = userEvent.setup();
+    render(<CollabBanners />);
+    await user.click(screen.getByRole("button", { name: copy.keepLocal }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.keepLocalFailed);
   });
 
   it("explains why the project couldn't go local, and hides once it is unlinked", async () => {

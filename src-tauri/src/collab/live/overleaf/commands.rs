@@ -13,7 +13,9 @@ use crate::collab::commands::{signed_out, CollabCommandError};
 use crate::collab::live::host::{AppLiveHost, LiveHost};
 use crate::collab::live::lifecycle::{stop, stop_any};
 use crate::collab::live::payloads::{LiveInfo, OverleafMember, StatusPayload};
-use crate::collab::live::session::{guard, io, live_for, not_live, Live, ACTIVE, LIFECYCLE};
+use crate::collab::live::session::{
+    guard, io, live_for, not_live, Live, Starting, ACTIVE, LIFECYCLE, STARTING,
+};
 use crate::collab::state::CollabState;
 use crate::overleaf::OverleafLink;
 
@@ -42,16 +44,20 @@ async fn open_journal(
     })
 }
 
-pub(crate) async fn start(
-    host: Arc<dyn LiveHost>,
+struct Prepared {
+    link: OverleafLink,
+    http: oleafly_online::client::Http,
+    session: oleafly_online::session::SessionHandle,
+    root: std::path::PathBuf,
+    data: std::path::PathBuf,
+    mirror_dir: std::path::PathBuf,
+    git_mirror: Option<std::path::PathBuf>,
+}
+
+fn prepare(
     paths: &oleafly_collab::CollabPaths,
     project_id: &str,
-) -> Result<LiveInfo, CollabError> {
-    let _lifecycle = LIFECYCLE.lock().await;
-    if let Some(Live::Overleaf(live)) = live_for(project_id) {
-        live.repeat_status();
-        return Ok(live.info());
-    }
+) -> Result<Option<Prepared>, CollabError> {
     let link = match live_backend_for(paths, project_id, true)? {
         Some(Backend::Overleaf(link)) => link,
         Some(Backend::Server | Backend::Both) => return Err(collab_shared()),
@@ -60,6 +66,56 @@ pub(crate) async fn start(
     let Some((http, session)) =
         crate::overleaf::live_session(&link.server).map_err(CollabError::Io)?
     else {
+        return Ok(None);
+    };
+    let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
+    let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
+    Ok(Some(Prepared {
+        mirror_dir: mirror_dir(&data, &link, project_id)?,
+        git_mirror: crate::overleaf::linked_mirror(project_id),
+        link,
+        http,
+        session,
+        root,
+        data,
+    }))
+}
+
+fn joining(project_id: &str) -> Option<Arc<tokio::sync::Mutex<()>>> {
+    guard(&STARTING)
+        .as_ref()
+        .filter(|starting| starting.project_id == project_id)
+        .map(|starting| Arc::clone(&starting.joined))
+}
+
+fn end_start(joined: &Arc<tokio::sync::Mutex<()>>) -> bool {
+    let mut slot = guard(&STARTING);
+    let ours = slot
+        .as_ref()
+        .is_some_and(|starting| Arc::ptr_eq(&starting.joined, joined));
+    let wanted = ours && slot.as_ref().is_some_and(|starting| starting.wanted);
+    if ours {
+        *slot = None;
+    }
+    wanted
+}
+
+pub(crate) async fn start(
+    host: Arc<dyn LiveHost>,
+    paths: &oleafly_collab::CollabPaths,
+    project_id: &str,
+) -> Result<LiveInfo, CollabError> {
+    if let Some(Live::Overleaf(live)) = live_for(project_id) {
+        live.repeat_status();
+        return Ok(live.info());
+    }
+    let checked = {
+        let (paths, id) = (paths.clone(), project_id.to_owned());
+        tauri::async_runtime::spawn_blocking(move || prepare(&paths, &id))
+            .await
+            .map_err(io)??
+    };
+    let Some(prepared) = checked else {
         host.status(StatusPayload {
             project_id: project_id.to_owned(),
             status: LiveStatus::Ended {
@@ -69,19 +125,52 @@ pub(crate) async fn start(
         });
         return Err(signed_out());
     };
-    stop_any().await;
-    let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
-    let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
-    let journal = open_journal(
-        data.clone(),
-        link.server.clone(),
-        link.project_id.clone(),
-        root.clone(),
-    )
-    .await?;
+    let (joined, held, journal) = loop {
+        let lifecycle = LIFECYCLE.lock().await;
+        if let Some(Live::Overleaf(live)) = live_for(project_id) {
+            live.repeat_status();
+            return Ok(live.info());
+        }
+        if let Some(joined) = joining(project_id) {
+            drop(lifecycle);
+            drop(joined.lock().await);
+            continue;
+        }
+        stop_any().await;
+        let joined = Arc::new(tokio::sync::Mutex::new(()));
+        let held = Arc::clone(&joined).lock_owned().await;
+        *guard(&STARTING) = Some(Starting {
+            project_id: project_id.to_owned(),
+            joined: Arc::clone(&joined),
+            wanted: true,
+        });
+        let journal = open_journal(
+            prepared.data.clone(),
+            prepared.link.server.clone(),
+            prepared.link.project_id.clone(),
+            prepared.root.clone(),
+        )
+        .await;
+        match journal {
+            Ok(journal) => break (joined, held, journal),
+            Err(error) => {
+                end_start(&joined);
+                return Err(error);
+            }
+        }
+    };
+    let Prepared {
+        link,
+        http,
+        session,
+        root,
+        mirror_dir,
+        git_mirror,
+        ..
+    } = prepared;
     let parts = Parts {
         project_id: project_id.to_owned(),
-        mirror_dir: mirror_dir(&data, &link, project_id)?,
+        mirror_dir,
         root,
         host,
         config: SessionConfig {
@@ -94,14 +183,23 @@ pub(crate) async fn start(
         },
         link,
         journal,
-        git_mirror: crate::overleaf::linked_mirror(project_id),
+        git_mirror,
     };
-    let live = OverleafLive::start_with(parts).await?;
+    let started = OverleafLive::start_with(parts).await;
+    let lifecycle = LIFECYCLE.lock().await;
+    let ours = end_start(&joined);
+    let live = started?;
+    if !ours || guard(&ACTIVE).is_some() {
+        drop(lifecycle);
+        live.finish().await;
+        drop(live);
+        drop(held);
+        return Err(not_live());
+    }
     *guard(&ACTIVE) = Some(Live::Overleaf(Arc::clone(&live)));
-    let importing = Arc::clone(&live);
-    tauri::async_runtime::spawn(async move {
-        let _ = importing.import_paths(None).await;
-    });
+    drop(lifecycle);
+    drop(held);
+    Live::Overleaf(Arc::clone(&live)).import_later(None);
     Ok(live.info())
 }
 
@@ -163,26 +261,37 @@ pub(crate) async fn pause(
     })
 }
 
-async fn set_paused(link: &OverleafLink, paused: bool) -> Result<(), CollabError> {
+fn write_paused(link: &OverleafLink, paused: bool) -> Result<bool, CollabError> {
     let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
-    let started = Instant::now();
-    loop {
-        match Journal::open(&data, &link.server, &link.project_id, None) {
-            Ok(mut journal) => {
-                if journal.manifest().paused == paused {
-                    return Ok(());
-                }
+    match Journal::open(&data, &link.server, &link.project_id, None) {
+        Ok(mut journal) => {
+            if journal.manifest().paused != paused {
                 let mut manifest = journal.manifest().clone();
                 manifest.paused = paused;
                 journal.set_manifest(manifest);
-                return journal.flush().map_err(CollabError::Io);
+                journal.flush().map_err(CollabError::Io)?;
             }
-            Err(JournalError::Busy) if started.elapsed() < JOURNAL_WAIT => {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-            Err(JournalError::Busy) => return Err(live_elsewhere()),
-            Err(error) => return Err(CollabError::Io(error.to_string())),
+            Ok(true)
         }
+        Err(JournalError::Busy) => Ok(false),
+        Err(error) => Err(CollabError::Io(error.to_string())),
+    }
+}
+
+async fn set_paused(link: &OverleafLink, paused: bool) -> Result<(), CollabError> {
+    let started = Instant::now();
+    loop {
+        let link = link.clone();
+        let written = tauri::async_runtime::spawn_blocking(move || write_paused(&link, paused))
+            .await
+            .map_err(io)??;
+        if written {
+            return Ok(());
+        }
+        if started.elapsed() >= JOURNAL_WAIT {
+            return Err(live_elsewhere());
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 

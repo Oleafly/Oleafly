@@ -1,27 +1,24 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
+use oleafly_collab::sync::{spawn_live, LiveLink, SharedLive};
 use oleafly_collab::{ServerClient, ServerUrl};
-use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
+use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::{mpsc, oneshot};
 
 use super::super::{
-    guard, initial_bases, lock, writer_loop, Active, Live, LiveDisk, LiveHost, MergedPayload,
-    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
-    WriterSignal, ACTIVE,
+    guard, initial_bases, lock, writer_loop, Active, Live, LiveDisk, LiveHost, WriterSignal, ACTIVE,
 };
 use super::SharedDocument;
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::collab::state::CollabState;
-use crate::folder_watch::FolderChange;
 
 static LIVE_TURN: Mutex<()> = Mutex::new(());
 
@@ -41,15 +38,7 @@ impl Drop for LiveNow {
 
 struct Quiet;
 
-impl LiveHost for Quiet {
-    fn status(&self, _: StatusPayload) {}
-    fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
-    fn presence(&self, _: PresencePayload) {}
-    fn presence_left(&self, _: PresenceLeftPayload) {}
-    fn folder_changed(&self, _: FolderChange) {}
-    fn new_device(&self, _: NewDevicePayload) {}
-}
+impl LiveHost for Quiet {}
 
 pub(crate) struct LiveRig {
     active: Arc<Active>,
@@ -110,26 +99,22 @@ impl LiveRig {
             let (events, _events) = mpsc::unbounded_channel();
             let (writer, writer_rx) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
-            let active = Arc::new(Active {
-                local: LiveDisk {
-                    project_id,
-                    root,
-                    disk_file: collab.join("materializer-index.json"),
-                    disk: Mutex::new(disk),
-                    bases: Mutex::new(bases),
-                    host,
-                    writer,
-                    upkeep: Default::default(),
-                },
-                document_dir: collab.join("document"),
-                live: shared,
+            let local = LiveDisk::assembled(
+                &project_id,
+                root,
+                collab.join("materializer-index.json"),
+                disk,
+                bases,
+                host,
+                writer,
+            );
+            let active = Arc::new(Active::assembled(
+                local,
+                collab.join("document"),
+                shared,
                 handle,
                 link,
-                account_id: AccountId::new_v7(),
-                quiet_merge: AtomicBool::new(false),
-                waiting: AtomicBool::new(false),
-                last_status: Mutex::new(LiveStatus::Connecting),
-            });
+            ));
             tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             active
         });

@@ -485,15 +485,11 @@ function ApplicationShortcutRow({
   );
 }
 
-const SHORTCUT_TABS: ReadonlySet<string> = new Set(["application", ...BUILT_IN_SHORTCUTS.map(({ category }) => category)]);
-
-function isShortcutsTab(value: string): value is string {
-  return SHORTCUT_TABS.has(value);
-}
+const SHORTCUT_TABS: readonly string[] = ["application", ...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))];
 
 export function ShortcutsSection() {
   const { t } = useTranslation(["common", "settings"]);
-  const [chosenTab, setTab] = useSettingsTab("shortcuts", "application", isShortcutsTab);
+  const [chosenTab, setTab] = useSettingsTab("shortcuts", "application", SHORTCUT_TABS);
   const resetAll = useShortcutStore((state) => state.resetAll);
   const resetEditorKeys = useEditorKeymapStore((state) => state.resetAll);
   const bindingsChanged = useShortcutStore((state) =>

@@ -166,7 +166,6 @@
       "purple": "Viola"
     },
     "imageFile": "File immagine",
-    "apply": "Applica",
     "linkPlaceholder": "https://",
     "imagePlaceholder": "figures/plot.png",
     "split": "Dividi",
@@ -230,6 +229,7 @@
     "pdfLoadFailed": "Caricamento del PDF non riuscito: {{detail}}",
     "imageLoadFailed": "Caricamento dell'immagine non riuscito: {{detail}}",
     "imageUnreadable": "Questo file non può essere mostrato come immagine. Potrebbe essere danneggiato o non essere un'immagine.",
+    "imageTooLarge": "Questa immagine supera {{limit}}, quindi non viene mostrata qui.",
     "imageFit": "Adatta alla finestra",
     "htmlPreviewFailed": "Anteprima della pagina non riuscita: {{detail}}",
     "binaryFile": "File binario. Nessuna anteprima disponibile.",

@@ -46,6 +46,7 @@ import { fileMode, setActiveFileMode, useFileMode, useVisualModeStore } from "@/
 import {
   type EditorMode,
   getMarkdownSplitSize,
+  isMarkdownPath,
   type MarkdownSplitLayout,
   setMarkdownSplitSize,
   sourcePreviewKind,
@@ -204,7 +205,7 @@ export function Editor() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
-  const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
+  const isMarkdownFile = isMarkdownPath(activePath);
   const sourcePreview = sourcePreviewKind(activePath);
   const notesOn = useSettingsStore((s) => s.notes);
   const noteTab = useNoteTabsStore((s) => (notesOn ? activeNoteTab(s, projectId) : null));

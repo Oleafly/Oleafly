@@ -10,17 +10,12 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { type CommentConfirmProps, type CommentKit, CommentKitProvider } from "./comment-kit";
 import { CommentScrollArea } from "./comment-arrivals";
 import { CommentComposer } from "./comment-composer";
-import { presenceText } from "./comment-presence";
+import { type CommentPresence, type CommentPresenceFeed, createPresenceFeed, presenceText } from "./comment-presence";
 import { CommentQuote } from "./comment-quote";
-import {
-  chatGroups,
-  type CommentEntry,
-  CommentItem,
-  commentCardClass,
-  CommentThread,
-  type CommentThreadActions,
-  type CommentThreadModel,
-} from "./comment-thread";
+import { chatGroups } from "./comment-bubble";
+import type { CommentEntry } from "./comment-entry";
+import { CommentItem } from "./comment-item";
+import { commentCardClass, CommentThread, type CommentThreadActions, type CommentThreadModel } from "./comment-thread";
 
 const SELF = "alice";
 const NO = "No";
@@ -150,6 +145,12 @@ function actions(): CommentThreadActions {
     reopen: done,
     removeThread: done,
   };
+}
+
+function replyingFeed(replying: Record<string, CommentPresence[]>): CommentPresenceFeed {
+  const feed = createPresenceFeed();
+  feed.publish({ replying: new Map(Object.entries(replying)), chat: [] });
+  return feed;
 }
 
 function renderWith(node: ReactNode, value = kit()) {
@@ -314,18 +315,12 @@ describe("reactions", () => {
 
 describe("comment composer", () => {
   function compose(onSubmit: (body: string) => Promise<void>, canRetry?: (error: unknown) => boolean) {
-    render(
-      <CommentComposer
-        label={MESSAGE}
-        submitLabel={LABELS.send}
-        labels={LABELS}
-        describeError={() => "The server didn't answer."}
-        canRetry={canRetry}
-        members={[]}
-        self={SELF}
-        onSubmit={onSubmit}
-      />,
-    );
+    renderWith(<CommentComposer label={MESSAGE} submitLabel={LABELS.send} onSubmit={onSubmit} />, {
+      ...kit(),
+      describeError: () => "The server didn't answer.",
+      canRetry,
+      members: [],
+    });
     return screen.getByRole("textbox", { name: "Message" }) as HTMLTextAreaElement;
   }
 
@@ -460,7 +455,7 @@ describe("live comment states", () => {
     const people = names.map((name, index) => ({ id: `p${index}`, name }));
     renderWith(<CommentThread thread={model([ROOT])} actions={actions()} canWrite />, {
       ...kit(),
-      replyingIn: (threadId) => (threadId === "t1" ? people : []),
+      presence: replyingFeed({ t1: people }),
     });
     expect(screen.getByRole("status")).toHaveTextContent(text);
   });
@@ -598,20 +593,14 @@ describe("live comment states", () => {
 describe("mention picker", () => {
   it("labels each person with their role and marks the people here now", async () => {
     const user = userEvent.setup();
-    renderWith(
-      <CommentComposer
-        label={MESSAGE}
-        submitLabel="Send"
-        labels={LABELS}
-        describeError={() => "x"}
-        members={[
-          { accountId: "daniel", displayName: "Daniel Hart", role: "Editor", here: true },
-          { accountId: "dana", displayName: "Dana Abiodun", role: "Reviewer" },
-        ]}
-        self={SELF}
-        onSubmit={vi.fn(async () => undefined)}
-      />,
-    );
+    renderWith(<CommentComposer label={MESSAGE} submitLabel="Send" onSubmit={vi.fn(async () => undefined)} />, {
+      ...kit(),
+      describeError: () => "x",
+      members: [
+        { accountId: "daniel", displayName: "Daniel Hart", role: "Editor", here: true },
+        { accountId: "dana", displayName: "Dana Abiodun", role: "Reviewer" },
+      ],
+    });
     await user.type(screen.getByRole("textbox", { name: MESSAGE }), "Check this @da");
     const options = within(screen.getByRole("listbox", { name: "People to mention" })).getAllByRole("option");
     expect(options.map((option) => option.textContent?.slice(1))).toEqual(["Daniel HartEditor · here now", "Dana AbiodunReviewer"]);
@@ -624,18 +613,11 @@ describe("typing signal", () => {
     vi.useFakeTimers();
     try {
       const onActivity = vi.fn();
-      renderWith(
-        <CommentComposer
-          label={MESSAGE}
-          submitLabel="Send"
-          labels={LABELS}
-          describeError={() => "x"}
-          members={[]}
-          self={SELF}
-          onSubmit={vi.fn(async () => undefined)}
-          onActivity={onActivity}
-        />,
-      );
+      renderWith(<CommentComposer label={MESSAGE} submitLabel="Send" onSubmit={vi.fn(async () => undefined)} onActivity={onActivity} />, {
+        ...kit(),
+        describeError: () => "x",
+        members: [],
+      });
       const field = screen.getByRole("textbox", { name: MESSAGE });
       fireEvent.change(field, { target: { value: "H" } });
       fireEvent.change(field, { target: { value: "He" } });
@@ -733,10 +715,12 @@ describe("review fixes", () => {
   it("names two people by their first names, as the board does", () => {
     renderWith(<CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")])} actions={actions()} canWrite />, {
       ...kit(),
-      replyingIn: () => [
-        { id: "a", name: "Daniel Hart" },
-        { id: "b", name: "Nina Takeda" },
-      ],
+      presence: replyingFeed({
+        t1: [
+          { id: "a", name: "Daniel Hart" },
+          { id: "b", name: "Nina Takeda" },
+        ],
+      }),
     });
     expect(screen.getByRole("status")).toHaveTextContent("Daniel and Nina are replying");
   });
@@ -748,7 +732,7 @@ describe("review fixes", () => {
   });
 
   it("keeps an empty send button grey when it gets keyboard focus", () => {
-    renderWith(<CommentComposer label={MESSAGE} submitLabel="Send" labels={LABELS} describeError={() => "x"} members={[]} self={SELF} onSubmit={vi.fn(async () => undefined)} />);
+    renderWith(<CommentComposer label={MESSAGE} submitLabel="Send" onSubmit={vi.fn(async () => undefined)} />);
     expect(screen.getByRole("button", { name: "Send" })).toHaveClass("focus-visible:bg-muted");
   });
 
@@ -841,7 +825,7 @@ describe("typing signal on reply", () => {
   it("doesn't announce a reply box that only holds its @mention prefill", () => {
     const onActivity = vi.fn();
     renderWith(
-      <CommentComposer label={MESSAGE} submitLabel="Send" labels={LABELS} describeError={() => "x"} members={[]} self={SELF} initial="@Bob Smith " onSubmit={vi.fn(async () => undefined)} onActivity={onActivity} />,
+      <CommentComposer label={MESSAGE} submitLabel="Send" initial="@Bob Smith " onSubmit={vi.fn(async () => undefined)} onActivity={onActivity} />,
     );
     expect(onActivity).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole("textbox", { name: MESSAGE }), { target: { value: "@Bob Smith y" } });
@@ -853,7 +837,7 @@ describe("typing signal on reply", () => {
     try {
       const onActivity = vi.fn();
       renderWith(
-        <CommentComposer label={MESSAGE} submitLabel="Send" labels={LABELS} describeError={() => "x"} members={[]} self={SELF} onSubmit={vi.fn(async () => undefined)} onActivity={onActivity} />,
+        <CommentComposer label={MESSAGE} submitLabel="Send" onSubmit={vi.fn(async () => undefined)} onActivity={onActivity} />,
       );
       fireEvent.change(screen.getByRole("textbox", { name: MESSAGE }), { target: { value: "H" } });
       act(() => {
@@ -1697,17 +1681,38 @@ describe("headers after the final check", () => {
     }
   });
 
-  it("re-measures when the row is resized, not only when it renders", () => {
-    const callbacks: (() => void)[] = [];
+  function watched() {
+    const observers: { callback: (entries: { target: Element }[]) => void; targets: Set<Element> }[] = [];
     const original = globalThis.ResizeObserver;
     globalThis.ResizeObserver = class {
-      constructor(callback: () => void) {
-        callbacks.push(callback);
+      private readonly targets = new Set<Element>();
+      constructor(callback: (entries: { target: Element }[]) => void) {
+        observers.push({ callback, targets: this.targets });
       }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe(target: Element) {
+        this.targets.add(target);
+      }
+      unobserve(target: Element) {
+        this.targets.delete(target);
+      }
+      disconnect() {
+        this.targets.clear();
+      }
     } as unknown as typeof ResizeObserver;
+    return {
+      observers,
+      resize: () =>
+        act(() => {
+          for (const { callback, targets } of observers) callback([...targets].map((target) => ({ target })));
+        }),
+      restore: () => {
+        globalThis.ResizeObserver = original;
+      },
+    };
+  }
+
+  it("re-measures when the row is resized, not only when it renders", () => {
+    const sizes = watched();
     try {
       const { tail, pill, before } = editedReply();
       const restore = lay(
@@ -1716,16 +1721,42 @@ describe("headers after the final check", () => {
       );
       try {
         expect(margins(tail)).toEqual([]);
-        expect(callbacks.length).toBeGreaterThan(0);
-        act(() => {
-          for (const callback of callbacks) callback();
-        });
+        expect(sizes.observers.length).toBeGreaterThan(0);
+        sizes.resize();
         expect(margins(tail)).toEqual(["mt-1"]);
       } finally {
         restore();
       }
     } finally {
-      globalThis.ResizeObserver = original;
+      sizes.restore();
+    }
+  });
+
+  it("measures each header once, not on every redraw, and watches every row with one observer", () => {
+    const sizes = watched();
+    try {
+      const given = actions();
+      const value = kit();
+      const thread = model([entry("m1", "bob", "Bob Smith", "Root", 60_000), entry("r1", SELF, "Prajwal S Venkatesh", "Reply", 2 * 60_000)]);
+      const tree = (key: number) => (
+        <CommentKitProvider value={value}>
+          <CommentThread key="t" thread={{ ...thread, label: `Thread ${key}` }} actions={given} canWrite />
+        </CommentKitProvider>
+      );
+      const view = render(tree(0));
+      expect(sizes.observers).toHaveLength(1);
+      expect(sizes.observers[0].targets.size).toBeGreaterThan(1);
+      const style = vi.spyOn(window, "getComputedStyle");
+      try {
+        for (let round = 1; round <= 5; round += 1) view.rerender(tree(round));
+        expect(style).not.toHaveBeenCalled();
+      } finally {
+        style.mockRestore();
+      }
+      view.unmount();
+      expect(sizes.observers[0].targets.size).toBe(0);
+    } finally {
+      sizes.restore();
     }
   });
 

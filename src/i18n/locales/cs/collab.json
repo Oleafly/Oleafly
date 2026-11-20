@@ -224,6 +224,8 @@
     "overleaf_linked": "Tento projekt je propojený s Overleaf. Pokud ho chcete sdílet na Oleafly Server, zrušte propojení.",
     "collab_shared": "Tento projekt je sdílený na Oleafly Server. Pokud ho chcete živě upravovat s Overleaf, přestaňte ho tam sdílet.",
     "live_elsewhere": "Tento projekt je živě otevřený v jiném okně Oleafly. Zastavte tam živé úpravy a zkuste to znovu.",
+    "access_ended": "K tomuto projektu už nemáte přístup, takže ho nelze upravovat živě. Vaše kopie zůstane v tomto počítači. Požádejte vlastníka, aby vám ho znovu nasdílel.",
+    "failed": "Živé úpravy se kvůli chybě nepodařilo spustit. Vaše změny zůstanou v tomto počítači. Chvíli počkejte a pak zvolte Znovu synchronizovat.",
     "overleaf_unsent": "Některé změny ještě nedorazily do Overleafu. Obnovte živé úpravy, abyste je odeslali, a pak projekt odpojte.",
     "suggestion_not_found": "Tento návrh už neexistuje. Někdo ho možná přijal nebo odmítl.",
     "suggestion_not_yours": "Tento návrh může vzít zpět jen ten, kdo ho vytvořil.",
@@ -554,7 +556,8 @@
     "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape.",
     "projectNotesShared": "Poznámky projektu se sdílejí se všemi, kdo na tomto projektu pracují. Osobní poznámky zůstávají soukromé.",
     "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu.",
-    "unlinkOverleaf": "Odpojit od Overleafu"
+    "unlinkOverleaf": "Odpojit od Overleafu",
+    "unlinkOverleafDescription": "Živé úpravy tohoto projektu skončí. Vaše kopie zůstane v tomto počítači a spoluautorům zůstane online projekt tak, jak je."
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",

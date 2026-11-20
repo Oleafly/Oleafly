@@ -1,6 +1,8 @@
+use oleafly_ot::utf16_len;
 use serde::{Deserialize, Serialize};
 
-pub const MAX_DOC_BYTES: usize = 2 * 1024 * 1024;
+use super::format::SHAREJS_MAX_DOC_LENGTH;
+
 pub const MAX_UPLOAD_BYTES: u64 = 50 * 1024 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,5 +82,21 @@ pub struct LocalFile {
 }
 
 pub fn stays_a_file(text: &str) -> bool {
-    text.len() > MAX_DOC_BYTES || text.contains('\0')
+    text.contains('\0') || utf16_len(text) > SHAREJS_MAX_DOC_LENGTH
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{stays_a_file, SHAREJS_MAX_DOC_LENGTH};
+
+    #[test]
+    fn the_doc_limit_counts_characters_not_bytes() {
+        let wide = "字".repeat(SHAREJS_MAX_DOC_LENGTH / 2);
+        assert!(wide.len() > SHAREJS_MAX_DOC_LENGTH);
+        assert!(!stays_a_file(&wide));
+        assert!(stays_a_file(&"a".repeat(SHAREJS_MAX_DOC_LENGTH + 1)));
+        assert!(stays_a_file(&"😀".repeat(SHAREJS_MAX_DOC_LENGTH / 2 + 1)));
+        assert!(stays_a_file("a\0b"));
+        assert!(!stays_a_file("plain"));
+    }
 }

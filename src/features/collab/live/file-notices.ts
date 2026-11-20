@@ -24,6 +24,7 @@ import {
 } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
+import { followProject } from "./follow-project";
 import { useCollabLiveStore } from "./live-store";
 
 export interface UploadProgress {
@@ -59,7 +60,7 @@ export interface FileNoticesState {
   dismissKeptAway: () => void;
 }
 
-export type TreeNoticeKind = "not_allowed" | "kept_away";
+type TreeNoticeKind = "not_allowed" | "kept_away";
 
 const NO_OFFER = { offer: null, bringing: false, offerFailure: null, broughtIn: null } as const;
 
@@ -68,16 +69,12 @@ const NO_PROGRESS: Readonly<Record<string, UploadProgress>> = {};
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
 const NO_PATHS: readonly string[] = [];
 const NO_TREE = { notAllowed: NO_PATHS, keptAway: NO_PATHS } as const;
+const NO_FILES = { uploads: NO_UPLOADS, progress: NO_PROGRESS, downloads: NO_PROGRESS, kept: NO_KEPT, ...NO_TREE } as const;
+const NOTHING = { ...NO_FILES, retrying: false, ...NO_OFFER } as const;
 
 export const useFileNotices = create<FileNoticesState>((set, get) => ({
   projectId: null,
-  uploads: NO_UPLOADS,
-  progress: NO_PROGRESS,
-  downloads: NO_PROGRESS,
-  kept: NO_KEPT,
-  retrying: false,
-  ...NO_OFFER,
-  ...NO_TREE,
+  ...NOTHING,
   retry: async () => {
     const { projectId, retrying } = get();
     if (!projectId || retrying) return;
@@ -132,9 +129,7 @@ export function treeNoticed(projectId: string, kind: TreeNoticeKind, paths: read
   if (useFilesStore.getState().projectId !== projectId) return;
   const key = kind === "not_allowed" ? "notAllowed" : "keptAway";
   useFileNotices.setState((state) =>
-    state.projectId === projectId
-      ? { [key]: withPaths(state[key], paths) }
-      : { projectId, uploads: NO_UPLOADS, progress: NO_PROGRESS, downloads: NO_PROGRESS, kept: NO_KEPT, ...NO_TREE, [key]: paths },
+    state.projectId === projectId ? { [key]: withPaths(state[key], paths) } : { projectId, ...NO_FILES, [key]: paths },
   );
 }
 
@@ -216,16 +211,7 @@ function keptCopies(payload: CollabLiveKept): void {
 }
 
 function load(projectId: string | null): void {
-  useFileNotices.setState({
-    projectId,
-    uploads: NO_UPLOADS,
-    progress: NO_PROGRESS,
-    downloads: NO_PROGRESS,
-    kept: NO_KEPT,
-    retrying: false,
-    ...NO_OFFER,
-    ...NO_TREE,
-  });
+  useFileNotices.setState({ projectId, ...NOTHING });
   if (!projectId) return;
   collabUploadList(projectId).then(
     (files) => {
@@ -258,28 +244,13 @@ export function startFileNotices(): () => void {
     void logError("collab download progress listen", error);
     return () => {};
   });
-  let projectId = useFilesStore.getState().projectId;
-  load(projectId);
-  const stopFiles = useFilesStore.subscribe((state) => {
-    if (state.projectId === projectId) return;
-    projectId = state.projectId;
-    load(projectId);
-  });
+  const stopFiles = followProject(useFilesStore, load);
   return () => {
     stopFiles();
     void stopUploads.then((stop) => stop());
     void stopKept.then((stop) => stop());
     void stopProgress.then((stop) => stop());
     void stopDownloads.then((stop) => stop());
-    useFileNotices.setState({
-      projectId: null,
-      uploads: NO_UPLOADS,
-      progress: NO_PROGRESS,
-      downloads: NO_PROGRESS,
-      kept: NO_KEPT,
-      retrying: false,
-      ...NO_OFFER,
-      ...NO_TREE,
-    });
+    useFileNotices.setState({ projectId: null, ...NOTHING });
   };
 }

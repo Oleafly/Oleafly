@@ -1,21 +1,22 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
-import { useCommentKit } from "@/components/ui/comments/comment-kit";
-import { presenceText, TypingLine } from "@/components/ui/comments/comment-presence";
-import { chatGroups, type CommentEntry, CommentItem } from "@/components/ui/comments/comment-thread";
+import { presenceText, TypingLine, useChatTyping } from "@/components/ui/comments/comment-presence";
+import { chatGroups } from "@/components/ui/comments/comment-bubble";
+import { type CommentMessageActions, messageEntry } from "@/components/ui/comments/comment-entry";
+import { CommentItem } from "@/components/ui/comments/comment-item";
 import { EmptyState } from "@/components/ui/empty";
 import type { CollabChatMessage } from "../protocol";
 import { abilitiesFor } from "../roles";
 import { useWeb } from "../store";
 import { useOutboxEntry } from "./CommentsPane";
-import { useWebTyping, WebCommentKit } from "./comment-kit";
+import { WebCommentKit } from "./comment-kit";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useActions } from "./context";
 import { type ErrorKey, failureKey } from "./errors";
-import { usePersonName } from "./people";
+import { useMessageAuthor } from "./people";
 
 export const CHAT_LIMIT = 4_000;
 const CHAT_SCOPE = { kind: "chat" } as const;
@@ -23,7 +24,7 @@ const NO_ACTIONS = {};
 
 function ChatTyping() {
   const { t } = useTranslation(["web"]);
-  const typing = useWebTyping();
+  const typing = useChatTyping();
   if (typing.length === 0) return null;
   const label = presenceText(
     {
@@ -36,62 +37,42 @@ function ChatTyping() {
   return <TypingLine people={typing} label={label} className="px-3 pb-1" />;
 }
 
-function ChatRow({
+const ChatRow = memo(function ChatRow({
   message,
   canWrite,
   canReact,
   continued,
 }: Readonly<{ message: CollabChatMessage; canWrite: boolean; canReact: boolean; continued: boolean }>) {
   const actions = useActions();
-  const nameOf = usePersonName();
-  const people = useWeb((state) => state.people);
-  const entry: CommentEntry = {
-    id: message.id,
-    author: {
-      id: message.author,
-      name: nameOf(message.author, message.verified),
-      imageUrl: message.verified ? (people[message.author]?.avatarUrl ?? null) : null,
-      verified: message.verified,
-    },
-    at: message.at,
-    editedAt: null,
-    deleted: message.deleted,
-    body: message.body,
-    mentions: message.mentions ?? [],
-    reactions: message.reactions ?? [],
-  };
+  const authorOf = useMessageAuthor();
+  const chatActions = useMemo<CommentMessageActions>(
+    () => ({
+      remove: (id) => actions.deleteChat(id),
+      react: (id, emoji, on) => actions.reactChat(id, emoji, on),
+    }),
+    [actions],
+  );
   return (
     <CommentItem
       variant="bubble"
       continued={continued}
-      entry={entry}
+      entry={messageEntry(message, authorOf(message))}
       canWrite={canWrite}
       canReact={canReact}
-      actions={{
-        remove: (id) => actions.deleteChat(id),
-        react: (id, emoji, on) => actions.reactChat(id, emoji, on),
-      }}
+      actions={chatActions}
     />
   );
-}
+});
 
 function ChatComposer() {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
-  const kit = useCommentKit();
   return (
     <CommentComposer
       compact
       label={t(($) => $.web.chat.label)}
       placeholder={t(($) => $.web.chat.placeholder)}
       submitLabel={t(($) => $.web.chat.send)}
-      labels={kit.labels}
-      describeError={kit.describeError}
-      canRetry={kit.canRetry}
-      maxLength={CHAT_LIMIT}
-      members={kit.members}
-      self={kit.self}
-      hue={kit.hue}
       onSubmit={(body) => actions.sendChat(body)}
       onActivity={(active) => actions.setActivity(CHAT_SCOPE, active)}
     />

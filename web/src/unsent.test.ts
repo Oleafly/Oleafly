@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { tabKey } from "./tab-storage";
 import { forgetUnsent, MAX_UNSENT_AGE_MS, MAX_UNSENT_CHARS, readUnsent, writeUnsent } from "./unsent";
 
 const typing = (base: string, at = Date.now()) => ({ base, inflight: null, rest: [base.length, "!"], at });
@@ -23,9 +24,9 @@ describe("unsent typing in this tab", () => {
     expect(readUnsent("p1")).toEqual({});
     writeUnsent("p1", "old", typing("abc", 1));
     expect(readUnsent("p1", 2 + MAX_UNSENT_AGE_MS)).toEqual({});
-    sessionStorage.setItem("oleafly.web.unsent.v1.p3", "{not json");
+    sessionStorage.setItem(tabKey("unsent", "p3"), "{not json");
     expect(readUnsent("p3")).toEqual({});
-    sessionStorage.setItem("oleafly.web.unsent.v1.p3", JSON.stringify({ f1: { base: 1 } }));
+    sessionStorage.setItem(tabKey("unsent", "p3"), JSON.stringify({ f1: { base: 1 } }));
     expect(readUnsent("p3")).toEqual({});
   });
 });
