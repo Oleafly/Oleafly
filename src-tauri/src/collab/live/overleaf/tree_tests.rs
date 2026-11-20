@@ -1181,6 +1181,15 @@ fn a_server_file_never_overwrites_a_local_text_file_of_the_same_name_at_first_st
     });
 }
 
+fn saved_a_minute_ago(rig: &OverleafRig, path: &str) {
+    std::fs::File::options()
+        .write(true)
+        .open(rig.root.join(path))
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - Duration::from_secs(60))
+        .unwrap();
+}
+
 async fn watched(rig: &OverleafRig) -> u64 {
     let token = crate::folder_watch::watch_project(
         &rig.project_id,
@@ -1200,6 +1209,7 @@ fn outside_creates_edits_renames_and_deletes_reach_the_service_through_the_watch
     let library = crate::collab::testing::TempLibrary::new();
     run(async {
         let rig = ready(OverleafRig::start_at(project(), DISK, Place::Library).await).await;
+        saved_a_minute_ago(&rig, MAIN);
         let token = watched(&rig).await;
         let main = rig.doc(MAIN);
         let notes = rig.doc(NOTES);

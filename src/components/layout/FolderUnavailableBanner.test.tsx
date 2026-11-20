@@ -70,6 +70,7 @@ describe("FolderUnavailableBanner", () => {
     expect(screen.queryByRole("button", { name: labels.useThisFolder })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: labels.locate }));
     await waitFor(() => expect(mocks.locateProjectFolder).toHaveBeenCalledWith("linked-a"));
+    await waitFor(() => expect(screen.getByRole("button", { name: labels.tryAgain })).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: labels.tryAgain }));
     await waitFor(() => expect(mocks.recheckProjectAvailability).toHaveBeenCalledTimes(1));
     expect(mocks.toastSuccess).not.toHaveBeenCalled();

@@ -33,11 +33,23 @@ interface EditorGeometry {
   readonly worstLine: string;
 }
 
+const BLANK_BAND = `(viewport, lines) => {
+  const first = lines[0]?.getBoundingClientRect();
+  const last = lines.at(-1)?.getBoundingClientRect();
+  return Math.round(
+    Math.max(
+      first ? first.top - viewport.top : viewport.height,
+      last ? viewport.bottom - last.bottom : viewport.height,
+    ),
+  );
+}`;
+
 interface AuthoringChaosProbe {
   readonly p95: number;
   readonly max: number;
   readonly samples: number;
   readonly blankFrames: number;
+  readonly blankSamples: readonly string[];
   readonly missingSurfaceFrames: number;
   readonly misalignedFrames: number;
   readonly misalignedActions: Readonly<Record<string, number>>;
@@ -396,10 +408,12 @@ async function runAuthoringChaos(
         const view = controller.getEditorView();
         if (!view) throw new Error("editor is unavailable");
         const original = view.state.doc.toString();
+        const blankBand = ${BLANK_BAND};
         const durations = [];
         const durationsByAction = {};
         const actionCounts = {};
         let blankFrames = 0;
+        const blankSamples = [];
         let missingSurfaceFrames = 0;
         let misalignedFrames = 0;
         let maxSettleFrames = 0;
@@ -518,7 +532,7 @@ async function runAuthoringChaos(
             }
           }
           return {
-            gutterCount: deltas.length,
+            gutterBand: blankBand(viewport, gutters),
             maxDelta: worst,
             worstLineNumber,
             worstDetail,
@@ -535,7 +549,7 @@ async function runAuthoringChaos(
             const rect = line.getBoundingClientRect();
             return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
           });
-          let { gutterCount, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
+          let { gutterBand, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
             gutterDelta();
           let settleFrames = 0;
           // Debounced decoration dispatches (math previews, lint sets) can land
@@ -548,13 +562,28 @@ async function runAuthoringChaos(
           while (maxDelta > 1.5 && settleFrames < 24) {
             await frame();
             settleFrames++;
-            ({ gutterCount, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
+            ({ gutterBand, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
               gutterDelta());
           }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
           maxSettleFrames = Math.max(maxSettleFrames, settleFrames);
           if (!geometrySample && worstDetail) geometrySample = JSON.stringify(worstDetail);
-          if (visibleLines.length < 5 || gutterCount < 5) blankFrames++;
+          const band = blankBand(viewport, visibleLines);
+          if (Math.max(band, gutterBand) > viewport.height / 4) {
+            blankFrames++;
+            if (blankSamples.length < 5) {
+              blankSamples.push(
+                JSON.stringify({
+                  action: actionName,
+                  lines: visibleLines.length,
+                  band,
+                  gutterBand,
+                  width: Math.round(viewport.width),
+                  height: Math.round(viewport.height),
+                }),
+              );
+            }
+          }
           if (maxDelta > 1.5) {
             misalignedFrames++;
             misalignedActions[actionName] =
@@ -711,6 +740,7 @@ async function runAuthoringChaos(
           max: Math.max(0, ...durations),
           samples: durations.length,
           blankFrames,
+          blankSamples,
           missingSurfaceFrames,
           misalignedFrames,
           misalignedActions,
@@ -894,8 +924,10 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
             requestAnimationFrame(finish);
             setTimeout(finish, 100);
           });
+        const blankBand = ${BLANK_BAND};
         const durations = [];
         let blankFrames = 0;
+        const blankSamples = [];
         let missingSurfaceFrames = 0;
         let documentScrollLeaks = 0;
         const ratios = [0.08, 0.91, 0.27, 0.73, 0.42, 0.58, 0.15, 0.85];
@@ -915,7 +947,22 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
               const rect = line.getBoundingClientRect();
               return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
             });
-            if (visibleLines.length < 5) blankFrames++;
+            const band = blankBand(viewport, visibleLines);
+            if (band > viewport.height / 4) {
+              blankFrames++;
+              if (blankSamples.length < 5) {
+                blankSamples.push(
+                  JSON.stringify({
+                    round,
+                    ratio,
+                    lines: visibleLines.length,
+                    band,
+                    width: Math.round(viewport.width),
+                    height: Math.round(viewport.height),
+                  }),
+                );
+              }
+            }
             const tree = document.querySelector('[role="tree"]');
             const canvas = document.querySelector(".pdf-canvas");
             if (
@@ -940,6 +987,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
           p95,
           max: Math.max(...durations),
           blankFrames,
+          blankSamples,
           missingSurfaceFrames,
           documentScrollLeaks,
         };
@@ -958,6 +1006,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     p95?: number;
     max?: number;
     blankFrames?: number;
+    blankSamples?: string[];
     missingSurfaceFrames?: number;
     documentScrollLeaks?: number;
     error?: string;
@@ -969,7 +1018,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   // half a second. The deterministic production-path p95 budgets are enforced
   // separately by test:editor:performance.
   expect(scrollProbe.p95).toBeLessThanOrEqual(1_500);
-  expect(scrollProbe.blankFrames).toBe(0);
+  expect(scrollProbe.blankFrames, JSON.stringify(scrollProbe.blankSamples)).toBe(0);
   expect(scrollProbe.missingSurfaceFrames).toBe(0);
   expect(scrollProbe.documentScrollLeaks).toBe(0);
 
@@ -979,7 +1028,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   expect(chaos.samples).toBeGreaterThan(240);
   expect(chaos.p95).toBeLessThanOrEqual(1_500);
   expect(chaos.max).toBeLessThanOrEqual(3_000);
-  expect(chaos.blankFrames).toBe(0);
+  expect(chaos.blankFrames, JSON.stringify(chaos.blankSamples)).toBe(0);
   expect(chaos.missingSurfaceFrames).toBe(0);
   expect(chaos.misalignedFrames).toBe(0);
   expect(chaos.documentScrollLeaks).toBe(0);
