@@ -41,7 +41,7 @@ export async function linkedTableDiagnostics(text: string, read: LinkedDataReade
   const reads = await Promise.all(
     matches.map((match) => {
       const path = normalizeProjectPath(match.table.source);
-      return path ? read(path) : null;
+      return path ? read(path) : Promise.resolve(null);
     }),
   );
   for (const [index, match] of matches.entries()) {

@@ -368,8 +368,9 @@ const tableAbbreviation: WritingRule = {
   },
 };
 
-const TRAILING_WORDS = ["\\nonumber", "\\notag", "\\\\"];
-const TRAILING_ARGUMENT_COMMANDS = ["\\label", "\\tag", "\\tag*"];
+const LINE_BREAK = String.raw`\\`;
+const TRAILING_WORDS = [String.raw`\nonumber`, String.raw`\notag`, LINE_BREAK];
+const TRAILING_ARGUMENT_COMMANDS = [String.raw`\label`, String.raw`\tag`, String.raw`\tag*`];
 
 function spaceBefore(text: string, from: number, at: number): number {
   let index = at;
@@ -394,7 +395,7 @@ function lineBreakSpacingStart(text: string, from: number, end: number): number 
   for (let index = floor; index < end - 1; index += 1) {
     if (text[index] !== "[") continue;
     const name = spaceBefore(text, from, index);
-    if (endsWithAt(text, from, name, "\\\\")) return name - 2;
+    if (endsWithAt(text, from, name, LINE_BREAK)) return name - LINE_BREAK.length;
   }
   return -1;
 }
