@@ -1,23 +1,17 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { sourceFilesUnder } from "@/lib/test-utils";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SOURCE_DIRS = ["src", "packages"];
-const SOURCE_FILE = /\.(ts|tsx)$/;
-const TEST_FILE = /\.(test|spec)\.(ts|tsx)$/;
 const PIXEL_TEXT = /(?:^|[\s"'`:])((?:text|leading)-\[\d+(?:\.\d+)?px\])/gm;
 const EDITOR_THEME = /\bEditorView\.(?:baseTheme|theme)\(/;
 const PIXEL_FONT_SIZE = /(?:\bfontSize|["']font-size["'])\s*:\s*["'`](\d+(?:\.\d+)?px)["'`]/g;
 
 function sourceFiles(): string[] {
-  return SOURCE_DIRS.flatMap((dir) =>
-    readdirSync(join(ROOT, dir), { recursive: true, encoding: "utf8" })
-      .filter((path) => SOURCE_FILE.test(path) && !TEST_FILE.test(path))
-      .filter((path) => !path.split(/[\\/]/).includes("node_modules"))
-      .map((path) => join(ROOT, dir, path)),
-  );
+  return sourceFilesUnder(ROOT, SOURCE_DIRS);
 }
 
 function pixelTextClasses(text: string): string[] {
