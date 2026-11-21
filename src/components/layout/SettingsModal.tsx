@@ -63,6 +63,8 @@ import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { OverleafLiveSetting } from "@/components/layout/overleaf-sync/OverleafLiveSetting";
+import { PhitexSetting } from "@/components/settings/PhitexSetting";
+import { useEngineStore } from "@/store/engine";
 import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -366,6 +368,8 @@ export function SettingsModal() {
   const notesEnabled = useSettingsStore((s) => s.notes);
   const setNotesEnabled = useSettingsStore((s) => s.setNotes);
   const researchTasks = useResearchTasksEnabled();
+  const phitexEnabled = useEngineStore((s) => s.info?.phitex_enabled === true);
+  const setPhitex = useEngineStore((s) => s.setPhitex);
   const [researchTasksBusy, setResearchTasksBusy] = useState(false);
   const [researchTasksFailed, setResearchTasksFailed] = useState(false);
   const toggleResearchTasks = (value: boolean) => {
@@ -827,6 +831,7 @@ export function SettingsModal() {
           checked={latexTools}
           onChange={setLatexTools}
         />
+        <PhitexSetting />
         <SettingsToggleRow
           testId="settings-notes"
           label={t(($) => $.shell.settings.experimentation.notes.label)}
@@ -853,8 +858,11 @@ export function SettingsModal() {
           onReset={() => {
             resetExperimentationPreferences();
             if (researchTasks) toggleResearchTasks(false);
+            if (phitexEnabled) {
+              void setPhitex(false).catch((error: unknown) => logError("reset the PhiTeX switch", error));
+            }
           }}
-          changed={experimentationChanged || researchTasks}
+          changed={experimentationChanged || researchTasks || phitexEnabled}
         />
       </div>
     )

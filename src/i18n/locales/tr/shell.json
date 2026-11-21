@@ -999,6 +999,12 @@
         "label": "Overleaf ile canlı düzenleme",
         "description": "Overleaf'ten aktardığınız projeleri ortak yazarlarınızla aynı anda düzenleyin. Yazarken değişiklikler iki tarafta da görünür. Beta aşamasında olduğu için varsayılan olarak kapalıdır."
       },
+      "phitex": {
+        "label": "PhiTeX motoru",
+        "description": "latexmk kullanan pdfLaTeX ve XeLaTeX projelerini, kendiniz kurduğunuz bir TeX motoru olan PhiTeX ile derler. LuaLaTeX projeleri latexmk ile devam eder, PhiTeX kurulu değilse tüm projeler de öyle. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "notFound": "Oleafly bu bilgisayarda PhiTeX'i bulamıyor, bu yüzden latexmk projeleri hâlâ latexmk ile derleniyor.",
+        "saveFailed": "PhiTeX anahtarı kaydedilemedi. Yeniden deneyin."
+      },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
         "label": "Araştırma görevleri",

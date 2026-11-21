@@ -4,6 +4,7 @@ import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { recompileWithPreview } from "@/lib/compile-preview";
 import { useEngineStore } from "@/store/engine";
+import { latexmkBlocked } from "@/lib/tex-distributions";
 import { useEnginePickerStore } from "@/store/engine-picker";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 
@@ -16,7 +17,7 @@ export async function offerTexSetupAfterSwitch(): Promise<void> {
   const engine = useEngineStore.getState();
   if (engine.installing) return;
   await engine.refresh({ rescan: "full" });
-  const blocked = Boolean(useEngineStore.getState().info?.latexmk_blocker);
+  const blocked = latexmkBlocked(useEngineStore.getState().info);
   const files = useFilesStore.getState();
   if (blocked && files.projectId === projectId && files.engine.id === "latexmk") {
     useEnginePickerStore.getState().openPicker("tex-missing", []);

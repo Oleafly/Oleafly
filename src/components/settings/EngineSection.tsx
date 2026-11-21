@@ -584,7 +584,7 @@ export function EngineSection() {
       <div className="flex flex-col gap-2">
         {ENGINE_CHOICES.map((choiceId) => {
           const selected = defaultLatexEngine === choiceId;
-          const missing = choiceId === "latexmk" && !info?.latexmk;
+          const missing = choiceId === "latexmk" && !info?.latexmk && !info?.phitex;
           const needsPerl =
             choiceId === "latexmk" && info?.latexmk_blocker?.code === "tex.latexmk_needs_perl";
           return (

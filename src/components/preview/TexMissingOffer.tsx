@@ -21,7 +21,8 @@ export function TexMissingOffer({
 }: Readonly<{ compact: boolean; testId: string; projectId: string; offerTectonic?: boolean }>) {
   const { t } = useTranslation(["preview", "shell"]);
   const canInstallTinytex = useEngineStore(
-    (s) => s.info?.kind !== "tinytex" && (!s.info?.tex_complete || !!s.info?.latexmk_blocker),
+    (s) =>
+      !s.info?.phitex && s.info?.kind !== "tinytex" && (!s.info?.tex_complete || !!s.info?.latexmk_blocker),
   );
   const installing = useEngineStore((s) => s.installing);
   const installPhase = useEngineStore((s) => s.installPhase);

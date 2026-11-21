@@ -27,7 +27,7 @@ import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotic
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
 import { formatList } from "@/lib/intl";
-import { texDistributionNames } from "@/lib/tex-distributions";
+import { latexmkUsable, texDistributionNames } from "@/lib/tex-distributions";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +74,7 @@ export function EnginePickerModal() {
   if (!open) return null;
 
   const texBlocker = info?.latexmk_blocker ?? null;
-  const hasSystemTex = !!info?.latexmk && !texBlocker;
+  const hasSystemTex = latexmkUsable(info);
   const alreadyLatexmk = engineId === "latexmk";
   const fixable = findings.filter((finding) => latexmkFixesFinding(finding.id));
   const needsShellEscape = findings.some((finding) => needsShellEscapeFinding(finding.id));
@@ -157,10 +157,7 @@ export function EnginePickerModal() {
   const chooseSystemTex = () =>
     useFilesStore.getState().engine.id === "latexmk" ? recompileHere() : pinLatexmk(false);
 
-  const latexmkReady = () => {
-    const installed = useEngineStore.getState().info;
-    return !!installed?.latexmk && !installed.latexmk_blocker;
-  };
+  const latexmkReady = () => latexmkUsable(useEngineStore.getState().info);
 
   const installForLatexmkProject = async () => {
     if (!(await shellEscapeReady())) return;
