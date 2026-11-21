@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, ImageOff } from "lucide-react";
-import type { FileEntry } from "@oleafly/backend-port";
+import type { FigureGridSource } from "@oleafly/latex/figure-grid";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,18 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { pickOpenPath } from "@/lib/native-file-dialog";
-import { logError } from "@/lib/log";
-import { INSERTABLE_IMAGE_EXTENSIONS, isInsertableImagePath } from "@/lib/image-mime";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useFigureDialogStore } from "@/store/figure-dialog";
-import {
-  figureDirectory,
-  suggestedFigureLabel,
-} from "@/components/editor/figure-import";
+import { suggestedFigureLabel } from "@/components/editor/figure-import";
+import { ProjectImagePicker } from "@/components/editor/figure-image-picker";
+import { FigureGridTab } from "@/components/editor/FigureGridTab";
 import { insertFigureFromDialog, insertFigurePlaceholder } from "@/components/editor/latex-commands";
-import { applyFigureEdit } from "@/components/editor/figure-edit";
+import { applyFigureEdit, writeFigureGrid } from "@/components/editor/figure-edit";
 import {
   applyTypstFigureEdit,
   insertTypstFigureFromDialog,
@@ -35,11 +31,10 @@ import {
   type TypstFigurePlacement,
 } from "@/components/editor/typst-figure";
 import { sourceLanguageForPath } from "@/lib/document-engine";
-import { resolveVisualAssetUrl } from "@/components/editor/wysiwyg/asset-url";
-import { Spinner } from "@/components/ui/spinner";
 
 type WidthChoice = "quarter" | "half" | "threeQuarters" | "full" | "custom";
 type FigureLanguage = "latex" | "typst";
+type FigureTab = "single" | "grid";
 
 const WIDTH_CHOICES: readonly WidthChoice[] = ["quarter", "half", "threeQuarters", "full", "custom"];
 const WIDTH_VALUES: Record<Exclude<WidthChoice, "custom">, string> = {
@@ -83,13 +78,6 @@ const INITIAL_FORM: FigureForm = {
   placement: "none",
 };
 
-export function projectImagePaths(tree: readonly FileEntry[]): string[] {
-  return tree
-    .filter((entry) => !entry.is_dir && isInsertableImagePath(entry.path))
-    .map((entry) => entry.path)
-    .sort((left, right) => left.localeCompare(right));
-}
-
 export function figureWidthValue(
   form: Pick<FigureForm, "width" | "customWidth">,
   language: FigureLanguage = "latex",
@@ -108,71 +96,6 @@ export function widthChoiceFor(
     if (value === width) return { width: choice as WidthChoice, customWidth: "" };
   }
   return { width: "custom", customWidth: width };
-}
-
-function Thumbnail({ path }: Readonly<{ path: string }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    setUrl(null);
-    resolveVisualAssetUrl(path).then(
-      (value) => {
-        if (active) setUrl(typeof value === "string" ? value : null);
-      },
-      () => {
-        if (active) setUrl(null);
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [path]);
-  return (
-    <span className="flex h-20 w-full items-center justify-center overflow-hidden rounded bg-muted/40">
-      {url ? (
-        <img src={url} alt={t(($) => $.editor.figureDialog.thumbnailAlt, { path })} className="max-h-full max-w-full object-contain" />
-      ) : (
-        <ImageOff className="size-5 text-muted-foreground" aria-label={t(($) => $.editor.figureDialog.noPreview)} />
-      )}
-    </span>
-  );
-}
-
-function ImageGrid({
-  images,
-  selected,
-  onChoose,
-}: Readonly<{ images: string[]; selected: string | null; onChoose: (path: string) => void }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  if (images.length === 0) {
-    return (
-      <p className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-        {t(($) => $.editor.figureDialog.noProjectImages)}
-      </p>
-    );
-  }
-  return (
-    <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-      {images.map((path) => (
-        <button
-          key={path}
-          type="button"
-          aria-pressed={selected === path}
-          data-testid="figure-dialog-image"
-          data-path={path}
-          onClick={() => onChoose(path)}
-          className={cn(
-            "flex w-full flex-col gap-1 rounded-md border p-2 text-left transition-colors hover:bg-accent",
-            selected === path ? "border-primary bg-primary/5" : "border-border",
-          )}
-        >
-          <Thumbnail path={path} />
-          <span className="truncate text-[0.6875rem] text-foreground">{path}</span>
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function PlacementOptions({
@@ -333,28 +256,14 @@ function FigureOptions({
   );
 }
 
-async function pickImageSource(filterName: string): Promise<string | null> {
-  const picked = await pickOpenPath({
-    multiple: false,
-    filters: [{ name: filterName, extensions: INSERTABLE_IMAGE_EXTENSIONS }],
-  });
-  const source = Array.isArray(picked) ? picked[0] : picked;
-  return typeof source === "string" && source !== "" ? source : null;
-}
-
 export function FigureDialog() {
   const { t } = useTranslation(["common", "editor"]);
   const open = useFigureDialogStore((state) => state.open);
   const edit = useFigureDialogStore((state) => state.edit);
   const setOpen = useFigureDialogStore((state) => state.setOpen);
-  const tree = useFilesStore((state) => state.tree);
-  const projectId = useFilesStore((state) => state.projectId);
-  const importPaths = useFilesStore((state) => state.importPaths);
-  const images = useMemo(() => projectImagePaths(tree), [tree]);
   const [selected, setSelected] = useState<string | null>(null);
   const [form, setForm] = useState<FigureForm>(INITIAL_FORM);
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<FigureTab>("single");
   const [language, setLanguage] = useState<FigureLanguage>("latex");
   const [filePath, setFilePath] = useState<string | null>(null);
   const insertedRef = useRef(false);
@@ -383,8 +292,7 @@ export function FigureDialog() {
       setSelected(edit?.path ?? null);
       setForm(edit ? { ...INITIAL_FORM, ...widthChoiceFor(edit.width) } : INITIAL_FORM);
     }
-    setImporting(false);
-    setError(null);
+    setTab(edit?.grid ? "grid" : "single");
     insertedRef.current = false;
   }, [open, edit]);
 
@@ -393,27 +301,6 @@ export function FigureDialog() {
   const choose = (path: string) => {
     setSelected(path);
     setForm((current) => (current.labelTouched ? current : { ...current, label: suggestedFigureLabel(path) }));
-  };
-
-  const importFromDisk = async () => {
-    if (importing || !projectId) return;
-    setImporting(true);
-    setError(null);
-    try {
-      const source = await pickImageSource(t(($) => $.editor.figureDialog.imageFilter));
-      if (!source) return;
-      const state = useFilesStore.getState();
-      const before = new Set(state.tree.map((entry) => entry.path));
-      await importPaths(figureDirectory(state.tree, state.mainDoc), [source]);
-      const added = projectImagePaths(useFilesStore.getState().tree).find((path) => !before.has(path));
-      if (added) choose(added);
-      else setError(t(($) => $.editor.figureDialog.importFailed));
-    } catch (e) {
-      void logError("import figure", e);
-      setError(t(($) => $.editor.figureDialog.importFailed));
-    } finally {
-      setImporting(false);
-    }
   };
 
   const typstVersion = () => useFilesStore.getState().engine.typst_resolved?.version ?? null;
@@ -473,11 +360,23 @@ export function FigureDialog() {
     else insertFigurePlaceholder();
   };
 
+  const submitGrid = (grid: FigureGridSource) => {
+    insertedRef.current = true;
+    setOpen(false);
+    void writeFigureGrid(grid, edit?.grid ? { from: edit.from, to: edit.to } : null);
+  };
+
   const typstEdit = edit !== null && language === "typst";
+  const gridView = edit?.grid !== undefined || (edit === null && language === "latex" && tab === "grid");
   let title = t(($) => $.editor.figureDialog.title);
   let description = t(($) => $.editor.figureDialog.description);
   let saveLabel = t(($) => $.editor.figureDialog.insert);
-  if (typstEdit) {
+  if (edit?.grid) {
+    title = t(($) => $.editor.figureDialog.gridEditTitle);
+    description = t(($) => $.editor.figureDialog.gridEditDescription);
+  } else if (gridView) {
+    description = t(($) => $.editor.figureDialog.gridDescription);
+  } else if (typstEdit) {
     title = t(($) => $.editor.figureDialog.editFigureTitle);
     description = t(($) => $.editor.figureDialog.editFigureDescription);
     saveLabel = t(($) => $.editor.figureDialog.saveFigure);
@@ -487,11 +386,80 @@ export function FigureDialog() {
     saveLabel = t(($) => $.editor.figureDialog.save);
   }
 
+  const single = (
+    <>
+      <div className="grid gap-5 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_15rem]">
+        <section className="min-w-0">
+          <ProjectImagePicker
+            selected={selected ? [selected] : []}
+            multiple={false}
+            testId="figure-dialog"
+            onChoose={choose}
+            onImported={(paths) => choose(paths[0])}
+          />
+        </section>
+        <FigureOptions
+          form={form}
+          onChange={patch}
+          imageOnly={edit !== null && language !== "typst"}
+          language={language}
+        />
+      </div>
+      <DialogFooter className="border-t px-5 py-3 sm:justify-between">
+        {edit ? (
+          <span />
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-testid="figure-dialog-placeholder"
+            onClick={placeholder}
+          >
+            {t(($) => $.editor.figureDialog.insertPlaceholder)}
+          </Button>
+        )}
+        <div className="flex items-center gap-2">
+          {!selected && (
+            <span className="text-xs text-muted-foreground">{t(($) => $.editor.figureDialog.selectImage)}</span>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+            {t(($) => $.editor.figureDialog.cancel)}
+          </Button>
+          <Button type="button" size="sm" disabled={!selected} data-testid="figure-dialog-insert" onClick={insert}>
+            {saveLabel}
+          </Button>
+        </div>
+      </DialogFooter>
+    </>
+  );
+  const grid = (
+    <FigureGridTab spec={edit?.grid ?? null} onCancel={() => setOpen(false)} onSubmit={submitGrid} />
+  );
+  let content = single;
+  if (edit?.grid) content = grid;
+  else if (edit === null && language === "latex") {
+    content = (
+      <Tabs value={tab} onValueChange={(value) => setTab(value === "grid" ? "grid" : "single")}>
+        <div className="px-5 pt-3">
+          <TabsList size="sm">
+            <TabsTrigger value="single">{t(($) => $.editor.figureDialog.tabSingle)}</TabsTrigger>
+            <TabsTrigger value="grid" data-testid="figure-grid-tab">
+              {t(($) => $.editor.figureDialog.tabGrid)}
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="single">{single}</TabsContent>
+        <TabsContent value="grid">{grid}</TabsContent>
+      </Tabs>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         data-testid="figure-dialog"
-        className="max-w-2xl gap-0 p-0"
+        className={cn("max-w-2xl gap-0 p-0", gridView && "max-w-3xl")}
         onCloseAutoFocus={(event) => {
           if (insertedRef.current) event.preventDefault();
         }}
@@ -500,68 +468,7 @@ export function FigureDialog() {
           <DialogTitle className="text-sm leading-tight">{title}</DialogTitle>
           <DialogDescription className="text-xs">{description}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-5 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_15rem]">
-          <section className="min-w-0">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {t(($) => $.editor.figureDialog.projectImages)}
-              </h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={importing || !projectId}
-                data-testid="figure-dialog-import"
-                onClick={() => void importFromDisk()}
-              >
-                {importing ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <FolderOpen aria-hidden className="size-3.5" />
-                )}
-                {importing ? t(($) => $.editor.figureDialog.importing) : t(($) => $.editor.figureDialog.importFromDisk)}
-              </Button>
-            </div>
-            <ImageGrid images={images} selected={selected} onChoose={choose} />
-            {error && (
-              <p role="alert" className="mt-2 select-text text-xs text-destructive">
-                {error}
-              </p>
-            )}
-          </section>
-          <FigureOptions
-            form={form}
-            onChange={patch}
-            imageOnly={edit !== null && language !== "typst"}
-            language={language}
-          />
-        </div>
-        <DialogFooter className="border-t px-5 py-3 sm:justify-between">
-          {edit ? (
-            <span />
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-testid="figure-dialog-placeholder"
-              onClick={placeholder}
-            >
-              {t(($) => $.editor.figureDialog.insertPlaceholder)}
-            </Button>
-          )}
-          <div className="flex items-center gap-2">
-            {!selected && (
-              <span className="text-xs text-muted-foreground">{t(($) => $.editor.figureDialog.selectImage)}</span>
-            )}
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t(($) => $.editor.figureDialog.cancel)}
-            </Button>
-            <Button type="button" size="sm" disabled={!selected} data-testid="figure-dialog-insert" onClick={insert}>
-              {saveLabel}
-            </Button>
-          </div>
-        </DialogFooter>
+        {content}
       </DialogContent>
     </Dialog>
   );

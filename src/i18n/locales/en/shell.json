@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Quick capture",
       "keywords": "quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notation table",
+      "keywords": "insert notation symbols definitions glossary math",
+      "empty": "No symbol definitions found. Define symbols in the text with phrases like \"Let $x$ be the input\" or \"where $x$ is the input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "thesis chapter paper import merge copy project",
+      "label": "Add chapter from another project"
     }
   },
   "community": {
@@ -998,6 +1007,12 @@
       "overleafLive": {
         "label": "Live editing with Overleaf",
         "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+      },
+      "phitex": {
+        "label": "PhiTeX engine",
+        "description": "Compile pdfLaTeX and XeLaTeX projects that use latexmk with PhiTeX, a TeX engine you install yourself. LuaLaTeX projects stay on latexmk, and so does every project if PhiTeX isn't installed. Off by default while still in beta.",
+        "notFound": "Oleafly can't find PhiTeX on this computer, so latexmk projects still compile with latexmk.",
+        "saveFailed": "The PhiTeX switch could not be saved. Try again."
       },
       "researchTasks": {
         "description": "An agent works on its own in a copy of the project and leaves its changes for you to review. Highly unstable: runs can stall, fail or leave changes to sort out by hand, and they use your provider's quota the whole time. Adds a Research section to Settings. Turning it off stops every running task. Off by default. Turn it on at your own risk.",

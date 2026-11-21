@@ -24,5 +24,5 @@ export async function openVisualFigureEditor(range: { from: number; to: number }
     await openTypstFigureEditorAt(range);
     return;
   }
-  openFigureEditorAt(range);
+  await openFigureEditorAt(range);
 }

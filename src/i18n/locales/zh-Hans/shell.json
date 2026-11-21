@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "快速记录",
       "keywords": "快速记录 随手记 笔记 收件箱 今天 quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "符号表",
+      "keywords": "插入 符号 定义 术语表 数学 记号",
+      "empty": "未找到符号定义。请在正文中用“Let $x$ be the input”或“where $x$ is the input”之类的句子定义符号。"
+    },
+    "addChapterFromProject": {
+      "keywords": "学位论文 章 论文 导入 合并 复制 项目",
+      "label": "从其他项目添加一章"
     }
   },
   "community": {
@@ -984,6 +993,12 @@
       "overleafLive": {
         "label": "与 Overleaf 实时编辑",
         "description": "与合作者同时编辑从 Overleaf 导入的项目。你输入时，更改会在双方同步显示。目前仍处于测试阶段，默认关闭。"
+      },
+      "phitex": {
+        "label": "PhiTeX 引擎",
+        "description": "使用 PhiTeX（一个需要自行安装的 TeX 引擎）编译使用 latexmk 的 pdfLaTeX 和 XeLaTeX 项目。LuaLaTeX 项目继续使用 latexmk，未安装 PhiTeX 时所有项目也都使用 latexmk。仍处于测试阶段，默认关闭。",
+        "notFound": "Oleafly 在这台电脑上找不到 PhiTeX，因此 latexmk 项目仍使用 latexmk 编译。",
+        "saveFailed": "无法保存 PhiTeX 开关。请重试。"
       },
       "researchTasks": {
         "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",

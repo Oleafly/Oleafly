@@ -292,6 +292,7 @@ export interface ProjectMeta {
     tex_flavor?: TexFlavor | null;
     typst?: TypstSpec | null;
     dictionary_locale?: string | null;
+    writing?: unknown;
     exports?: ProjectExportRecord[];
     hidden?: boolean;
     forked_from?: string | null;
@@ -648,6 +649,8 @@ export interface EngineInfo {
     system_package_manager?: string | null;
     tex_complete?: boolean;
     tinytex_outdated?: boolean;
+    phitex_enabled?: boolean;
+    phitex?: string | null;
 }
 export interface TexBlocker {
     code: string;
@@ -1601,6 +1604,7 @@ export interface BackendPort {
   downloadPandoc: () => Promise<string>;
   texDistributions: () => Promise<TexDistribution[]>;
   latexEngineInfo: (rescan?: EngineRescan) => Promise<EngineInfo>;
+  setPhitexEnabled: (enabled: boolean) => Promise<void>;
   hasTaggingEngine: () => Promise<boolean>;
   installTinytex: () => Promise<EngineInfo>;
   tinytexInstallState: () => Promise<TinytexInstallState>;

@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Very large image: {{file}}",
       "detail": "This image is over {{limit}}. Large images slow the compile and bloat the PDF. Some venues also cap the upload size. Compress it, or export it at the size it prints."
+    },
+    "writing-space-before-paren": {
+      "title": "Add a space before the parenthesis",
+      "detail": "Put a space between a word and its opening parenthesis: \"neural network (CNN)\", not \"neural network(CNN)\"."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Remove the space before the punctuation",
+      "detail": "A period, comma, colon or question mark goes right after the word, with no space in between."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Use a non-breaking space before the reference",
+      "detail": "Write problem~\\cite{key} or Figure~\\ref{fig:plot}. The tilde keeps the citation or number on the same line as the word before it."
+    },
+    "writing-straight-quotes": {
+      "title": "Use LaTeX quotes",
+      "detail": "LaTeX prints a straight \" mark as a closing quote. Write ``quoted'' so the opening quote faces the right way."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citation in the abstract",
+      "detail": "Abstracts are often read on their own, where a citation number means nothing. Name the work in words or move the citation to the introduction."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Spell out the word at the start of a sentence",
+      "detail": "A sentence should not start with an abbreviation. Write {{word}} instead of {{abbreviation}} here, and keep the short form inside sentences."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Punctuate the equation",
+      "detail": "A displayed equation is part of the sentence around it. End it with a comma when the sentence goes on, or a period when it ends."
+    },
+    "writing-table-caption-below": {
+      "title": "Put the table caption above the table",
+      "detail": "Most venues expect table captions above the table and figure captions below the figure."
+    },
+    "writing-figure-caption-above": {
+      "title": "Put the figure caption below the figure",
+      "detail": "Most venues expect figure captions below the figure and table captions above the table."
+    },
+    "writing-macro-available": {
+      "title": "Use the macro you defined",
+      "detail": "\"{{text}}\" has a macro, {{macro}}. Using it keeps the name the same everywhere and lets you change it in one place."
+    },
+    "writing-table-abbreviation": {
+      "title": "Write Table in full",
+      "detail": "This style writes Table in full, for example Table~\\ref{tab:results}, and shortens only Fig., Eq. and Sec. inside a sentence."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Number the equation",
+      "detail": "This style numbers every displayed equation so reviewers can refer to it."
+    },
+    "writing-float-placement": {
+      "title": "Place the float at the top of the page",
+      "detail": "This style puts figures and tables at the top of a page. Use [t] instead of [h]."
+    },
+    "writing-custom": {
+      "title": "Project rule: {{find}}",
+      "detail": "This project writes \"{{replace}}\" instead of \"{{find}}\".",
+      "detailNote": "{{note}}",
+      "detailFlag": "This project's style rules flag \"{{find}}\"."
+    },
+    "writing-results-best": {
+      "title": "Bold value is not the best",
+      "titleSecond": "Underlined value is not the second best",
+      "detail": "{{value}} is in bold, but {{best}} is the best value in this column. Higher is better here.",
+      "detailLower": "{{value}} is in bold, but {{best}} is the best value in this column. Lower is better here.",
+      "detailSecond": "{{value}} is underlined, but {{best}} is the second best value in this column. Higher is better here.",
+      "detailSecondLower": "{{value}} is underlined, but {{best}} is the second best value in this column. Lower is better here."
+    },
+    "writing-open-promise": {
+      "title": "Promise with no reference",
+      "detail": "\"{{sentence}}\" This sentence promises something or points elsewhere, but nothing in it links there. Add a \\ref to the part that keeps the promise, or a \\url for released code.",
+      "titleRebuttal": "Rebuttal promise to keep",
+      "detailRebuttal": "You promised this in the rebuttal: \"{{sentence}}\" Make the change in the camera-ready version, then add a \\ref to it here or ignore this note."
+    },
+    "writing-review-point": {
+      "title": "Reviewer point {{n}}",
+      "detail": "\"{{point}}\"",
+      "titleUnplaced": "Reviewer point {{n}}: no matching place found",
+      "detailUnplaced": "\"{{point}}\" No table, figure, equation or section named here matches the paper.",
+      "detailLines": "\"{{point}}\" Line numbers refer to the review copy, so find this place by hand."
+    },
+    "writing-name-variants": {
+      "title": "Same name, different spellings",
+      "detail": "This name is spelled more than one way across the project: {{spellings}}. Use one spelling everywhere. A macro keeps it the same."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol defined twice",
+      "detail": "{{symbol}} means \"{{first}}\" in {{file}}. Here it means \"{{second}}\". Give each meaning its own symbol."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "References",
     "compile": "Compile",
     "submission": "Submission",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "writing": "Writing"
   },
   "severity": {
     "error": "Error",
@@ -499,7 +587,8 @@
     "a11y": "Access",
     "refs": "Refs",
     "submission": "Submit",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "writing": "Style"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Before sharing source or submitting anonymously",
       "info": "Secrets, draft notes, sensitive files, and identity leaks during blind review.",
       "detail": "Finds credentials, private keys, internal comments, draft markup, sensitive project files, author metadata, and identity leaks in anonymous-review submissions."
+    },
+    "writing": {
+      "label": "Writing style",
+      "who": "For papers, theses and reports",
+      "info": "Spacing, quotes, references, equation punctuation and your project's own rules.",
+      "detail": "Checks the LaTeX source against common paper conventions and the rules saved in this project. Most findings come with a one-click fix."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Compiled output",
     "fixAll_one": "Fix {{count}} with AI",
     "fixAll_other": "Fix all {{count}} with AI",
-    "noProblems": "No problems found."
+    "noProblems": "No problems found.",
+    "writing": {
+      "profile": "Writing style",
+      "underlines": "Show style underlines in the editor",
+      "underlinesHint": "Turn this off to keep the editor clean. Preflight still lists the findings when you run this check.",
+      "rules": "Project rules",
+      "noRules": "No project rules yet. Select text in the editor, right-click, and choose Make a style rule.",
+      "addRule": "Add a rule",
+      "removeRule": "Remove the rule for {{find}}",
+      "flagOnly": "flag only",
+      "clearIgnored_one": "Show {{count}} ignored finding again",
+      "clearIgnored_other": "Show {{count}} ignored findings again",
+      "fixAll_one": "Fix {{count}} finding",
+      "fixAll_other": "Fix all {{count}} findings",
+      "fixed_one": "Fixed {{count}} finding.",
+      "fixed_other": "Fixed {{count}} findings.",
+      "skipped_one": "{{count}} fix touched the same text as another. Run the check again to fix it.",
+      "skipped_other": "{{count}} fixes touched the same text as others. Run the check again to fix them.",
+      "fixFailed": "Some files changed after the check ran. Run it again, then fix.",
+      "saveFailed": "The writing settings could not be saved."
+    }
   },
   "finding": {
     "review": "Review",
@@ -657,7 +772,9 @@
     "page": "p.{{page}}",
     "needsJudgment": "Needs your judgment. No tool can decide this one from the file alone.",
     "jumpToSource": "Jump to source",
-    "fixWithAi": "Fix with AI"
+    "fixWithAi": "Fix with AI",
+    "applyFix": "Fix",
+    "ignore": "Ignore"
   },
   "score": {
     "notEvaluated": "{{label}} not evaluated",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} does not tag PDFs for screen readers. Typst 0.14 and later do.",
     "none": "Typst {{version}} can't write PDF standards. Pick Typst 0.12 or later in the compile menu.",
     "uaNote": "PDF/UA-1 needs a document title and alternative text for every image."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Detect from the document",
+      "description": "Uses the CVPR-style rules when the project loads cvpr.sty or a sibling style, and the general rules otherwise."
+    },
+    "general": {
+      "label": "General paper style",
+      "description": "Spacing, quotes, references, equation punctuation, captions and macros."
+    },
+    "cvpr": {
+      "label": "CVPR-style",
+      "description": "The general rules, plus Table written in full, numbered equations and floats at the top of the page."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Add a space",
+    "removeSpace": "Remove the space",
+    "useTilde": "Use ~",
+    "useTexQuotes": "Use LaTeX quotes",
+    "spellOut": "Write {{word}}",
+    "addComma": "Add a comma",
+    "addPeriod": "Add a period",
+    "useMacro": "Use {{macro}}",
+    "numberEquation": "Number it",
+    "placeTop": "Use [t]",
+    "replaceWith": "Write {{text}}",
+    "boldBest": "Bold {{value}} instead",
+    "underlineSecond": "Underline {{value}} instead",
+    "makeMacro": "Make a macro"
+  },
+  "styleRule": {
+    "title": "Make a style rule",
+    "description": "The rule checks every LaTeX file in this project while you write, and travels with the project in project.json.",
+    "find": "Text to flag",
+    "replace": "Write this instead",
+    "replaceHint": "Leave empty to flag the text without offering a fix.",
+    "note": "Note for coauthors (optional)",
+    "wholeWord": "Whole words only",
+    "matchCase": "Match case",
+    "noMatches": "No matches in this project yet.",
+    "matches_one": "Matches {{count}} place in this project.",
+    "matches_other": "Matches {{count}} places in this project.",
+    "save": "Save rule",
+    "cancel": "Cancel",
+    "saved": "Rule saved. It now checks every file in this project."
   }
 }

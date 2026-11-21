@@ -13,8 +13,11 @@ use oleafly_core::tex_outputs::{
 };
 
 mod calepin;
+mod phitex;
 mod quarto;
 mod typst_diagnostics;
+
+pub(crate) use phitex::program as phitex_program;
 
 pub(crate) use quarto::html_artifact as quarto_html_artifact;
 
@@ -182,6 +185,7 @@ pub struct EngineEnvironment {
     time_limit: Option<std::time::Duration>,
     stdin: Option<String>,
     launch_dir: Option<PathBuf>,
+    produced_stem: Option<String>,
 }
 
 impl EngineEnvironment {
@@ -193,6 +197,15 @@ impl EngineEnvironment {
     fn with_project_root(mut self, project_root: &Path) -> Self {
         self.project_root = Some(project_root.to_owned());
         self
+    }
+
+    fn with_produced_stem(mut self, stem: String) -> Self {
+        self.produced_stem = Some(stem);
+        self
+    }
+
+    fn produced_stem(&self) -> Option<&str> {
+        self.produced_stem.as_deref()
     }
 
     fn with_stdin(mut self, text: String) -> Self {
@@ -779,14 +792,6 @@ impl DocumentEngine for LatexmkEngine {
         target: CompileTarget<'_>,
         options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
-        let latexmk = usable_latexmk()?;
-        let resolved_latexmk = latexmk.canonicalize().unwrap_or_else(|_| latexmk.clone());
-        let resolved_project = project_dir
-            .canonicalize()
-            .unwrap_or_else(|_| project_dir.to_path_buf());
-        if resolved_latexmk.starts_with(&resolved_project) {
-            return Err("refusing to run a project-local latexmk executable".into());
-        }
         // No generated wrapper: latexmk drives the real main document directly so
         // Biber, makeindex, and multi-pass logic all see the project's own jobs.
         // `-jobname` keeps every artifact on the same paths Tectonic uses.
@@ -803,6 +808,19 @@ impl DocumentEngine for LatexmkEngine {
         let flavor = options
             .latex_flavor
             .unwrap_or_else(|| oleafly_core::project_tex_flavor(project_dir, &input_path));
+        if let Some(phitex) = phitex::builds(flavor).then(phitex::program).flatten() {
+            let job = phitex::PhitexJob {
+                phitex,
+                out_dir,
+                project_dir,
+                input_path,
+                flavor,
+                artifacts: self.artifacts(out_dir, target),
+            };
+            return phitex::compile_spec(job, &options).map(with_bibtex_search_path);
+        }
+        let latexmk = usable_latexmk()?;
+        quarto::reject_project_local(&latexmk, project_dir)?;
         require_dvi_toolchain(flavor, &latexmk)?;
         let (mut args, environment) = latexmk_invocation(
             project_dir,
@@ -3382,6 +3400,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         crate::biber_toolchain::bbl_stamp(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM);
     let build_before = oleafly_core::source_places::BuildBefore::take(&spec.artifacts.output_dir);
     let (mut stdout_buf, mut exit_code) = execute_compile_spec(&request, &spec).await?;
+    phitex::adopt_outputs(&spec);
     let document_render = (request.engine.id() == DocumentEngineId::Quarto)
         .then(|| quarto::document_render_spec(&spec, &stdout_buf, exit_code))
         .flatten();
@@ -3395,6 +3414,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         recover_bibliography(&request, &spec, &mut stdout_buf, &mut exit_code, bbl_before).await?;
     let (pythontex_notes, pythontex_failure) =
         recover_pythontex(&request, &spec, &mut stdout_buf, &mut exit_code).await?;
+    phitex::adopt_outputs(&spec);
     let finish = CompileFinish {
         capabilities,
         spec,
@@ -3777,14 +3797,14 @@ fn supervised_command(
         command.env(crate::biber_toolchain::UNPACK_ENV, &child_biber.unpack_dir);
     }
     command.env_remove("openin_any");
-    for (name, value) in &environment.variables {
-        command.env(name, value);
-    }
     if !args.iter().any(|argument| argument == "-shell-escape") {
         command.env("shell_escape", "f").env(
             MIKTEX_SHELL_COMMANDS_VARIABLE,
             restricted_miktex_shell_commands(),
         );
+    }
+    for (name, value) in &environment.variables {
+        command.env(name, value);
     }
     crate::proc::clear_appimage_env(command.as_std_mut());
     command

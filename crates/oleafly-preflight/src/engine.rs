@@ -283,6 +283,7 @@ pub fn run_preflight(input: &PreflightInput) -> PreflightReport {
             input.anonymous_review && input.facts.is_none(),
         ),
     );
+    coverage.insert(CheckId::Writing, Coverage::NotRun);
     let score_or_null = |id: CheckId| -> Option<i64> {
         match coverage.get(&id) {
             Some(Coverage::NotRun) | Some(Coverage::Unsupported) | None => None,
@@ -296,6 +297,7 @@ pub fn run_preflight(input: &PreflightInput) -> PreflightReport {
         refs_score: score_or_null(CheckId::Refs),
         submission_score: score_or_null(CheckId::Submission),
         privacy_score: score_or_null(CheckId::Privacy),
+        writing_score: score_or_null(CheckId::Writing),
         findings,
         scores,
         coverage,

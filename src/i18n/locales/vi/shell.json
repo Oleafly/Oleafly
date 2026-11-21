@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "Ghi nhanh",
       "keywords": "ghi nhanh ghi chú hộp thư đến hôm nay quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Bảng ký hiệu",
+      "keywords": "chèn ký hiệu định nghĩa bảng thuật ngữ toán",
+      "empty": "Không tìm thấy định nghĩa ký hiệu nào. Hãy định nghĩa ký hiệu trong văn bản bằng các cụm như “Gọi $x$ là đầu vào” hoặc “trong đó $x$ là đầu vào”."
+    },
+    "addChapterFromProject": {
+      "keywords": "luận văn chương bài báo nhập gộp sao chép dự án",
+      "label": "Thêm chương từ dự án khác"
     }
   },
   "community": {
@@ -984,6 +993,12 @@
       "overleafLive": {
         "label": "Chỉnh sửa trực tiếp với Overleaf",
         "description": "Chỉnh sửa các dự án bạn nhập từ Overleaf cùng lúc với đồng tác giả. Thay đổi hiện ở cả hai phía khi bạn gõ. Tắt theo mặc định khi còn ở giai đoạn beta."
+      },
+      "phitex": {
+        "label": "Công cụ PhiTeX",
+        "description": "Biên dịch các dự án pdfLaTeX và XeLaTeX dùng latexmk bằng PhiTeX, một công cụ TeX bạn tự cài đặt. Dự án LuaLaTeX vẫn dùng latexmk, và mọi dự án cũng vậy nếu chưa cài PhiTeX. Mặc định tắt khi còn beta.",
+        "notFound": "Oleafly không tìm thấy PhiTeX trên máy tính này, nên các dự án latexmk vẫn biên dịch bằng latexmk.",
+        "saveFailed": "Không lưu được công tắc PhiTeX. Hãy thử lại."
       },
       "researchTasks": {
         "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",

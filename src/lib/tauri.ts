@@ -862,6 +862,12 @@ export const setProjectDictionaryLocaleCmd = (
 ) =>
   invoke<ProjectMeta>("set_project_dictionary_locale", { projectId, locale });
 
+export const setProjectWritingSettingsCmd = (
+  projectId: string,
+  settings: Record<string, unknown> | null,
+) =>
+  invoke<ProjectMeta>("set_project_writing_settings", { projectId, settings });
+
 export const resetProjectDictionaryLocaleOnDeviceCmd = (projectId: string) =>
   invoke<ProjectMeta>("reset_project_dictionary_locale_on_device", { projectId });
 
@@ -1580,6 +1586,8 @@ export const setDownloadSettings = (settings: DownloadSettingsInput) =>
 
 export const latexEngineInfo = (rescan?: EngineRescan) =>
   invoke<EngineInfo>("latex_engine_info", { rescan });
+export const setPhitexEnabled = (enabled: boolean) =>
+  invoke<void>("set_phitex_enabled", { enabled });
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
 export const cancelTinytexInstall = () => invoke<void>("cancel_tinytex_install");

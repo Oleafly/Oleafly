@@ -509,6 +509,93 @@
     "submission-large-image": {
       "title": "Velmi velký obrázek: {{file}}",
       "detail": "Tento obrázek má přes {{limit}}. Velké obrázky zpomalují kompilaci a zvětšují PDF. Některé konference a časopisy navíc omezují velikost nahrávaného souboru. Obrázek zkomprimujte, nebo jej exportujte ve velikosti, v jaké se vytiskne."
+    },
+    "writing-space-before-paren": {
+      "title": "Přidejte mezeru před závorku",
+      "detail": "Mezi slovo a otevírací závorku patří mezera: „neuronová síť (CNN)“, ne „neuronová síť(CNN)“."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Odstraňte mezeru před interpunkcí",
+      "detail": "Tečka, čárka, dvojtečka nebo otazník patří hned za slovo, bez mezery."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Použijte pevnou mezeru před odkazem",
+      "detail": "Pište problém~\\cite{key} nebo Obrázek~\\ref{fig:plot}. Vlnovka drží citaci nebo číslo na stejném řádku jako předchozí slovo."
+    },
+    "writing-straight-quotes": {
+      "title": "Použijte uvozovky LaTeXu",
+      "detail": "LaTeX vysází rovnou uvozovku \" jako zavírací. Pište ``citát'', aby úvodní uvozovka směřovala správně."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citace v abstraktu",
+      "detail": "Abstrakty se často čtou samostatně a číslo citace tam nic neříká. Dílo pojmenujte slovy nebo citaci přesuňte do úvodu."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Na začátku věty slovo napište celé",
+      "detail": "Věta by neměla začínat zkratkou. Napište zde {{word}} místo {{abbreviation}} a krátký tvar ponechte uvnitř vět."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Doplňte interpunkci za rovnici",
+      "detail": "Zobrazená rovnice je součástí okolní věty. Ukončete ji čárkou, když věta pokračuje, nebo tečkou, když končí."
+    },
+    "writing-table-caption-below": {
+      "title": "Dejte popisek tabulky nad tabulku",
+      "detail": "Většina konferencí a časopisů očekává popisky tabulek nad tabulkou a popisky obrázků pod obrázkem."
+    },
+    "writing-figure-caption-above": {
+      "title": "Dejte popisek obrázku pod obrázek",
+      "detail": "Většina konferencí a časopisů očekává popisky obrázků pod obrázkem a popisky tabulek nad tabulkou."
+    },
+    "writing-macro-available": {
+      "title": "Použijte makro, které jste definovali",
+      "detail": "„{{text}}“ má makro {{macro}}. Díky němu zůstane název všude stejný a změníte ho na jednom místě."
+    },
+    "writing-table-abbreviation": {
+      "title": "Napište Table celým slovem",
+      "detail": "Tento styl píše Table celým slovem, například Table~\\ref{tab:results}, a zkracuje jen Fig., Eq. a Sec. uvnitř věty."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Očíslujte rovnici",
+      "detail": "Tento styl čísluje každou zobrazenou rovnici, aby se na ni mohli recenzenti odkazovat."
+    },
+    "writing-float-placement": {
+      "title": "Umístěte plovoucí objekt na začátek stránky",
+      "detail": "Tento styl dává obrázky a tabulky na začátek stránky. Použijte [t] místo [h]."
+    },
+    "writing-custom": {
+      "title": "Pravidlo projektu: {{find}}",
+      "detail": "Tento projekt píše „{{replace}}“ místo „{{find}}“.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Pravidla stylu tohoto projektu označují „{{find}}“."
+    },
+    "writing-results-best": {
+      "title": "Tučná hodnota není nejlepší",
+      "titleSecond": "Podtržená hodnota není druhá nejlepší",
+      "detail": "{{value}} je tučně, ale nejlepší hodnota v tomto sloupci je {{best}}. Vyšší je zde lepší.",
+      "detailLower": "{{value}} je tučně, ale nejlepší hodnota v tomto sloupci je {{best}}. Nižší je zde lepší.",
+      "detailSecond": "{{value}} je podtržené, ale druhá nejlepší hodnota v tomto sloupci je {{best}}. Vyšší je zde lepší.",
+      "detailSecondLower": "{{value}} je podtržené, ale druhá nejlepší hodnota v tomto sloupci je {{best}}. Nižší je zde lepší."
+    },
+    "writing-open-promise": {
+      "title": "Příslib bez odkazu",
+      "detail": "„{{sentence}}“ Tato věta něco slibuje nebo odkazuje jinam, ale nic v ní tam nevede. Přidejte \\ref na část, která slib plní, nebo \\url pro zveřejněný kód.",
+      "titleRebuttal": "Slib z odpovědi recenzentům k dodržení",
+      "detailRebuttal": "Tohle jste slíbili v odpovědi recenzentům: „{{sentence}}“ Proveďte změnu ve finální verzi a pak sem přidejte \\ref na ni, nebo tuto poznámku ignorujte."
+    },
+    "writing-review-point": {
+      "title": "Bod recenzenta {{n}}",
+      "detail": "„{{point}}“",
+      "titleUnplaced": "Bod recenzenta {{n}}: nenalezeno odpovídající místo",
+      "detailUnplaced": "„{{point}}“ Žádná zde uvedená tabulka, obrázek, rovnice ani sekce neodpovídá článku.",
+      "detailLines": "„{{point}}“ Čísla řádků odkazují na recenzní kopii, takže toto místo najděte ručně."
+    },
+    "writing-name-variants": {
+      "title": "Stejný název, různé zápisy",
+      "detail": "Tento název je v projektu zapsán více způsoby: {{spellings}}. Používejte všude jeden zápis. Makro ho udrží stejný."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol definován dvakrát",
+      "detail": "{{symbol}} znamená „{{first}}“ v {{file}}. Zde znamená „{{second}}“. Dejte každému významu vlastní symbol."
     }
   },
   "lens": {
@@ -518,7 +605,8 @@
     "refs": "Reference",
     "compile": "Kompilace",
     "submission": "Odeslání",
-    "privacy": "Soukromí"
+    "privacy": "Soukromí",
+    "writing": "Psaní"
   },
   "severity": {
     "error": "Chyba",
@@ -531,7 +619,8 @@
     "a11y": "Přístup",
     "refs": "Ref.",
     "submission": "Odesl.",
-    "privacy": "Soukromí"
+    "privacy": "Soukromí",
+    "writing": "Styl"
   },
   "checks": {
     "compile": {
@@ -569,6 +658,12 @@
       "who": "Před sdílením zdroje nebo anonymním odesláním",
       "info": "Tajemství, konceptové poznámky, citlivé soubory a úniky identity při anonymní recenzi.",
       "detail": "Najde přihlašovací údaje, soukromé klíče, interní komentáře, konceptové značky, citlivé soubory projektu, metadata autora a úniky identity v příspěvcích pro anonymní recenzi."
+    },
+    "writing": {
+      "label": "Styl psaní",
+      "who": "Pro články, práce a zprávy",
+      "info": "Mezery, uvozovky, odkazy, interpunkce rovnic a vlastní pravidla projektu.",
+      "detail": "Kontroluje zdroj LaTeXu podle běžných zvyklostí odborných článků a pravidel uložených v tomto projektu. Většina nálezů má opravu na jedno kliknutí."
     }
   },
   "profiles": {
@@ -693,7 +788,35 @@
     "fixAll_few": "Opravit všechny {{count}} pomocí AI",
     "fixAll_many": "Opravit všech {{count}} pomocí AI",
     "fixAll_other": "Opravit všech {{count}} pomocí AI",
-    "noProblems": "Nebyly nalezeny žádné problémy."
+    "noProblems": "Nebyly nalezeny žádné problémy.",
+    "writing": {
+      "profile": "Styl psaní",
+      "underlines": "Zobrazovat podtržení stylu v editoru",
+      "underlinesHint": "Vypněte, aby byl editor čistý. Předletová kontrola nálezy stále uvede, když tuto kontrolu spustíte.",
+      "rules": "Pravidla projektu",
+      "noRules": "Zatím žádná pravidla projektu. Vyberte text v editoru, klikněte pravým tlačítkem a zvolte Vytvořit pravidlo stylu.",
+      "addRule": "Přidat pravidlo",
+      "removeRule": "Odebrat pravidlo pro {{find}}",
+      "flagOnly": "jen označit",
+      "clearIgnored_one": "Znovu zobrazit {{count}} ignorovaný nález",
+      "clearIgnored_few": "Znovu zobrazit {{count}} ignorované nálezy",
+      "clearIgnored_many": "Znovu zobrazit {{count}} ignorovaného nálezu",
+      "clearIgnored_other": "Znovu zobrazit {{count}} ignorovaných nálezů",
+      "fixAll_one": "Opravit {{count}} nález",
+      "fixAll_few": "Opravit všechny {{count}} nálezy",
+      "fixAll_many": "Opravit všech {{count}} nálezu",
+      "fixAll_other": "Opravit všech {{count}} nálezů",
+      "fixed_one": "Opraven {{count}} nález.",
+      "fixed_few": "Opraveny {{count}} nálezy.",
+      "fixed_many": "Opraveno {{count}} nálezu.",
+      "fixed_other": "Opraveno {{count}} nálezů.",
+      "skipped_one": "{{count}} oprava zasáhla stejný text jako jiná. Spusťte kontrolu znovu a opravte ji.",
+      "skipped_few": "{{count}} opravy zasáhly stejný text jako jiné. Spusťte kontrolu znovu a opravte je.",
+      "skipped_many": "{{count}} opravy zasáhly stejný text jako jiné. Spusťte kontrolu znovu a opravte je.",
+      "skipped_other": "{{count}} oprav zasáhlo stejný text jako jiné. Spusťte kontrolu znovu a opravte je.",
+      "fixFailed": "Některé soubory se po spuštění kontroly změnily. Spusťte ji znovu a pak opravte.",
+      "saveFailed": "Nastavení psaní se nepodařilo uložit."
+    }
   },
   "finding": {
     "review": "K posouzení",
@@ -701,7 +824,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Potřebuje váš úsudek. Tohle žádný nástroj ze samotného souboru nerozhodne.",
     "jumpToSource": "Přejít do zdroje",
-    "fixWithAi": "Opravit pomocí AI"
+    "fixWithAi": "Opravit pomocí AI",
+    "applyFix": "Opravit",
+    "ignore": "Ignorovat"
   },
   "score": {
     "notEvaluated": "{{label}} nevyhodnoceno",
@@ -757,5 +882,53 @@
     "untagged": "Typst {{version}} netaguje PDF pro čtečky obrazovky. Typst 0.14 a novější to umí.",
     "none": "Typst {{version}} neumí vytvářet standardy PDF. V nabídce kompilace vyberte Typst 0.12 nebo novější.",
     "uaNote": "PDF/UA-1 vyžaduje název dokumentu a alternativní text u každého obrázku."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Zjistit z dokumentu",
+      "description": "Použije pravidla ve stylu CVPR, když projekt načítá cvpr.sty nebo příbuzný styl, jinak obecná pravidla."
+    },
+    "general": {
+      "label": "Obecný styl článku",
+      "description": "Mezery, uvozovky, odkazy, interpunkce rovnic, popisky a makra."
+    },
+    "cvpr": {
+      "label": "Styl CVPR",
+      "description": "Obecná pravidla plus slovo Table psané celým slovem, číslované rovnice a plovoucí objekty na začátku stránky."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Přidat mezeru",
+    "removeSpace": "Odstranit mezeru",
+    "useTilde": "Použít ~",
+    "useTexQuotes": "Použít uvozovky LaTeXu",
+    "spellOut": "Napsat {{word}}",
+    "addComma": "Přidat čárku",
+    "addPeriod": "Přidat tečku",
+    "useMacro": "Použít {{macro}}",
+    "numberEquation": "Očíslovat ji",
+    "placeTop": "Použít [t]",
+    "replaceWith": "Napsat {{text}}",
+    "boldBest": "Místo toho zvýraznit {{value}} tučně",
+    "underlineSecond": "Místo toho podtrhnout {{value}}",
+    "makeMacro": "Vytvořit makro"
+  },
+  "styleRule": {
+    "title": "Vytvořit pravidlo stylu",
+    "description": "Pravidlo kontroluje každý soubor LaTeXu v tomto projektu během psaní a putuje s projektem v project.json.",
+    "find": "Text k označení",
+    "replace": "Místo toho napsat",
+    "replaceHint": "Nechte prázdné, aby se text jen označil bez nabídky opravy.",
+    "note": "Poznámka pro spoluautory (volitelné)",
+    "wholeWord": "Jen celá slova",
+    "matchCase": "Rozlišovat velikost písmen",
+    "noMatches": "V tomto projektu zatím nic neodpovídá.",
+    "matches_one": "Odpovídá {{count}} místo v tomto projektu.",
+    "matches_few": "Odpovídá {{count}} místa v tomto projektu.",
+    "matches_many": "Odpovídá {{count}} místa v tomto projektu.",
+    "matches_other": "Odpovídá {{count}} míst v tomto projektu.",
+    "save": "Uložit pravidlo",
+    "cancel": "Zrušit",
+    "saved": "Pravidlo uloženo. Nyní kontroluje každý soubor v tomto projektu."
   }
 }

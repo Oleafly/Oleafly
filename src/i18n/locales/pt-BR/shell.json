@@ -393,6 +393,15 @@
     "notesQuickCapture": {
       "label": "Captura rápida",
       "keywords": "captura rápida anotar nota entrada hoje quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabela de notação",
+      "keywords": "inserir notação símbolos definições glossário matemática",
+      "empty": "Nenhuma definição de símbolo encontrada. Defina os símbolos no texto com frases como \"Seja $x$ a entrada\" ou \"onde $x$ é a entrada\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "tese capítulo artigo importar mesclar copiar projeto",
+      "label": "Adicionar capítulo de outro projeto"
     }
   },
   "community": {
@@ -1012,6 +1021,12 @@
       "overleafLive": {
         "label": "Edição ao vivo com o Overleaf",
         "description": "Edite projetos importados do Overleaf ao mesmo tempo que seus coautores. As alterações aparecem dos dois lados enquanto você digita. Desligado por padrão enquanto está em beta."
+      },
+      "phitex": {
+        "label": "Motor PhiTeX",
+        "description": "Compila com o PhiTeX, um motor TeX que você instala por conta própria, os projetos pdfLaTeX e XeLaTeX que usam latexmk. Projetos LuaLaTeX continuam no latexmk, assim como todos os projetos se o PhiTeX não estiver instalado. Desligado por padrão enquanto está em beta.",
+        "notFound": "O Oleafly não encontra o PhiTeX neste computador, então os projetos latexmk continuam compilando com o latexmk.",
+        "saveFailed": "Não foi possível salvar o interruptor do PhiTeX. Tente de novo."
       },
       "researchTasks": {
         "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",

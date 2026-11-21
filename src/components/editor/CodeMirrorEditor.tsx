@@ -29,6 +29,7 @@ import {
 } from "@oleafly/editor";
 import { setWysiwygTranslator, type WysiwygTranslator } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
+import { createLinkedTableLinter } from "./cm/linked-table-linter";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
@@ -310,6 +311,7 @@ const HOST: EditorHost = {
     useDictionary((s) => s.global),
     useDictionary((s) => s.ignored),
     useCompileStore((s) => s.errors),
+    useFilesStore((s) => s.projectWritingSettings),
   ],
 };
 
@@ -317,6 +319,7 @@ const SHELL_EXTENSIONS: Extension[] = [inlineDiffPlugin, cursorSignalExtension()
 
 const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
+  createLinkedTableLinter(),
   createCompileErrorLinter(),
   imagePasteExtension(),
 ];

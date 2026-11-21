@@ -393,6 +393,15 @@
     "notesQuickCapture": {
       "label": "Captura rápida",
       "keywords": "captura rápida apuntar nota bandeja de entrada hoy quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabla de notación",
+      "keywords": "insertar notación símbolos definiciones glosario matemáticas notation symbols glossary math",
+      "empty": "No se encontraron definiciones de símbolos. Define los símbolos en el texto con frases como \"Let $x$ be the input\" o \"where $x$ is the input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "tesis capítulo artículo importar fusionar copiar proyecto thesis chapter paper import merge copy project",
+      "label": "Añadir capítulo desde otro proyecto"
     }
   },
   "community": {
@@ -1012,6 +1021,12 @@
       "overleafLive": {
         "label": "Edición en directo con Overleaf",
         "description": "Edita los proyectos que importaste de Overleaf al mismo tiempo que tus coautores. Los cambios aparecen en ambos lados mientras escribes. Desactivado por omisión mientras siga en beta."
+      },
+      "phitex": {
+        "label": "Motor PhiTeX",
+        "description": "Compila con PhiTeX, un motor de TeX que instalas tú mismo, los proyectos de pdfLaTeX y XeLaTeX que usan latexmk. Los proyectos de LuaLaTeX siguen con latexmk, y lo mismo todos los proyectos si PhiTeX no está instalado. Desactivado por omisión mientras siga en beta.",
+        "notFound": "Oleafly no encuentra PhiTeX en este equipo, así que los proyectos con latexmk se siguen compilando con latexmk.",
+        "saveFailed": "No se pudo guardar el ajuste de PhiTeX. Inténtalo de nuevo."
       },
       "researchTasks": {
         "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",

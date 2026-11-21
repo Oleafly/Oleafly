@@ -8,17 +8,20 @@ const mocks = vi.hoisted(() => ({
   insertFigureFromDialog: vi.fn(),
   insertFigurePlaceholder: vi.fn(),
   applyFigureEdit: vi.fn(),
+  writeFigureGrid: vi.fn(async () => {}),
   pickOpenPath: vi.fn(),
   resolveVisualAssetUrl: vi.fn(async (path: string) => (path.endsWith(".png") ? `data:${path}` : null)),
   logError: vi.fn(),
   notifyError: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorUnique: vi.fn() },
   insertTemplate: vi.fn(),
+  insertAtCursor: vi.fn(),
   replaceRange: vi.fn(),
 }));
 
 vi.mock("@/components/editor/cm/controller", () => ({
   insertTemplate: mocks.insertTemplate,
+  insertAtCursor: mocks.insertAtCursor,
   replaceRange: mocks.replaceRange,
 }));
 
@@ -26,15 +29,20 @@ vi.mock("@/components/editor/latex-commands", () => ({
   insertFigureFromDialog: mocks.insertFigureFromDialog,
   insertFigurePlaceholder: mocks.insertFigurePlaceholder,
 }));
-vi.mock("@/components/editor/figure-edit", () => ({ applyFigureEdit: mocks.applyFigureEdit }));
+vi.mock("@/components/editor/figure-edit", () => ({
+  applyFigureEdit: mocks.applyFigureEdit,
+  writeFigureGrid: mocks.writeFigureGrid,
+}));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath }));
 vi.mock("@/components/editor/wysiwyg/asset-url", () => ({ resolveVisualAssetUrl: mocks.resolveVisualAssetUrl }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: mocks.toast }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
+import { type FigureGridSource, type FigureGridSpec, figureGridSource, readFigureGridMarker } from "@oleafly/latex/figure-grid";
 import { useFilesStore } from "@/store/files";
 import { useFigureDialogStore } from "@/store/figure-dialog";
-import { FigureDialog, figureWidthValue, projectImagePaths, widthChoiceFor } from "./FigureDialog";
+import { FigureDialog, figureWidthValue, widthChoiceFor } from "./FigureDialog";
+import { projectImagePaths } from "./figure-image-picker";
 import { typstFigureAt } from "./typst-figure";
 
 const TREE: FileEntry[] = [
@@ -51,10 +59,11 @@ function setProject(tree: FileEntry[], projectId: string | null = "p1", activePa
     activePath,
     tree,
     importPaths: vi.fn(async (destDir: string, sources: string[]) => {
-      const name = sources[0].split("/").pop() ?? "new.png";
-      useFilesStore.setState({
-        tree: [...useFilesStore.getState().tree, { path: destDir ? `${destDir}/${name}` : name, is_dir: false }],
-      } as never);
+      const added = sources.map((source) => {
+        const name = source.split("/").pop() ?? "new.png";
+        return { path: destDir ? `${destDir}/${name}` : name, is_dir: false };
+      });
+      useFilesStore.setState({ tree: [...useFilesStore.getState().tree, ...added] } as never);
     }),
   } as never);
 }
@@ -317,5 +326,182 @@ describe("FigureDialog", () => {
       source.length,
       '#figure(\n  image("../figures/diagram.svg"),\n  caption: [C],\n)',
     );
+  });
+});
+
+const GRID_TREE: FileEntry[] = [
+  { path: "figures", is_dir: true },
+  { path: "figures/a.png", is_dir: false },
+  { path: "figures/b.png", is_dir: false },
+  { path: "figures/c.png", is_dir: false },
+  { path: "figures/d.png", is_dir: false },
+  { path: "main.tex", is_dir: false },
+];
+
+function gridImage(path: string): HTMLElement {
+  const image = screen.getAllByTestId("figure-grid-image").find((node) => node.dataset.path === path);
+  if (!image) throw new Error(`${path} is not listed`);
+  return image;
+}
+
+function insertedGrid(): { grid: FigureGridSource; target: unknown } {
+  const call = mocks.writeFigureGrid.mock.lastCall as unknown as [FigureGridSource, unknown] | undefined;
+  if (!call) throw new Error("no grid was written");
+  return { grid: call[0], target: call[1] };
+}
+
+function setNaturalSize(image: HTMLImageElement, width: number, height: number) {
+  Object.defineProperty(image, "naturalWidth", { configurable: true, value: width });
+  Object.defineProperty(image, "naturalHeight", { configurable: true, value: height });
+  fireEvent.load(image);
+}
+
+describe("FigureDialog grid", () => {
+  beforeEach(() => {
+    setProject(GRID_TREE);
+  });
+
+  it("keeps the single image view as the default tab", () => {
+    openDialog();
+    expect(screen.getByRole("tab", { name: en.figureDialog.tabSingle })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByTestId("figure-dialog-image")).toHaveLength(4);
+    expect(screen.queryByTestId("figure-grid-image")).not.toBeInTheDocument();
+  });
+
+  it("builds a grid with columns, headers, row labels and a zoom box drawn on the first image", async () => {
+    openDialog();
+    fireEvent.mouseDown(screen.getByTestId("figure-grid-tab"), { button: 0 });
+    expect(screen.queryByTestId("figure-dialog-image")).not.toBeInTheDocument();
+    expect(screen.getByTestId("figure-grid-insert")).toBeDisabled();
+
+    for (const path of ["figures/c.png", "figures/a.png", "figures/b.png", "figures/d.png"]) fireEvent.click(gridImage(path));
+    fireEvent.click(gridImage("figures/b.png"));
+    expect(gridImage("figures/b.png")).toHaveAttribute("aria-pressed", "false");
+    expect(gridImage("figures/d.png")).toHaveTextContent("3");
+    fireEvent.change(screen.getByTestId("figure-grid-columns"), { target: { value: "2" } });
+    fireEvent.change(screen.getByTestId("figure-grid-column-label-0"), { target: { value: "(a) Input" } });
+    fireEvent.change(screen.getByTestId("figure-grid-column-label-1"), { target: { value: "(b) Ours" } });
+    fireEvent.change(screen.getByTestId("figure-grid-row-label-1"), { target: { value: "Night" } });
+    fireEvent.click(screen.getByTestId("figure-grid-width-page"));
+    expect((screen.getByTestId("figure-grid-label") as HTMLInputElement).value).toBe("fig:c");
+    fireEvent.change(screen.getByTestId("figure-grid-caption"), { target: { value: "Close-ups." } });
+
+    const cells = await waitFor(() => {
+      const shown = screen.getAllByTestId("figure-grid-cell").map((cell) => cell.querySelector("img"));
+      if (shown.length !== 3 || shown.some((image) => image === null)) throw new Error("the grid preview is not ready");
+      return shown as HTMLImageElement[];
+    });
+    for (const image of cells) setNaturalSize(image, 400, 200);
+
+    fireEvent.click(screen.getByTestId("figure-grid-zoom"));
+    fireEvent.click(screen.getByTestId("figure-grid-zoom-below"));
+    fireEvent.click(screen.getByTestId("figure-grid-zoom-color-blue"));
+    const area = screen.getByTestId("figure-grid-zoom-area");
+    const surface = await waitFor(() => {
+      const image = area.querySelector("img");
+      if (!image) throw new Error("the first image is not shown yet");
+      return image;
+    });
+    vi.spyOn(surface, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 10, y: 20, width: 200, height: 100 }));
+    fireEvent.pointerDown(area, { clientX: 130, clientY: 80, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(area, { clientX: 60, clientY: 50, pointerId: 1 });
+    fireEvent.pointerUp(area, { clientX: 30, clientY: 30, pointerId: 1 });
+    fireEvent.pointerMove(area, { clientX: 200, clientY: 110, pointerId: 1 });
+
+    expect(screen.getByTestId("figure-grid-source").textContent).toContain(String.raw`\begin{tikzpicture}`);
+    fireEvent.click(screen.getByTestId("figure-grid-insert"));
+
+    const { grid, target } = insertedGrid();
+    expect(target).toBeNull();
+    expect(grid.packages).toEqual(["graphicx", "tikz"]);
+    expect(grid.source.startsWith(String.raw`\begin{figure*}[t]`)).toBe(true);
+    expect(readFigureGridMarker(grid.source)).toEqual({
+      images: [
+        [
+          { path: "figures/c.png", aspect: 2 },
+          { path: "figures/a.png", aspect: 2 },
+        ],
+        [{ path: "figures/d.png", aspect: 2 }],
+      ],
+      columnLabels: ["(a) Input", "(b) Ours"],
+      rowLabels: ["", "Night"],
+      zoom: { rect: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 }, placement: "below", color: "cyan!40!blue!85!black" },
+      width: "page",
+      caption: "Close-ups.",
+      label: "fig:c",
+    });
+    expect(useFigureDialogStore.getState().open).toBe(false);
+  });
+
+  it("moves the zoom box with the arrow keys and keeps it inside the image", async () => {
+    openDialog();
+    fireEvent.mouseDown(screen.getByTestId("figure-grid-tab"), { button: 0 });
+    fireEvent.click(gridImage("figures/a.png"));
+    fireEvent.click(screen.getByTestId("figure-grid-zoom"));
+    const area = screen.getByTestId("figure-grid-zoom-area");
+    for (let step = 0; step < 30; step += 1) fireEvent.keyDown(area, { key: "ArrowRight" });
+    fireEvent.keyDown(area, { key: "ArrowUp" });
+    fireEvent.click(screen.getByTestId("figure-grid-insert"));
+    expect(readFigureGridMarker(insertedGrid().grid.source)?.zoom?.rect).toEqual({ x: 0.7, y: 0.33, w: 0.3, h: 0.3 });
+  });
+
+  it("imports several images from disk at once and adds them to the grid", async () => {
+    mocks.pickOpenPath.mockResolvedValue(["/Users/me/one.png", "/Users/me/two.png"]);
+    openDialog();
+    fireEvent.mouseDown(screen.getByTestId("figure-grid-tab"), { button: 0 });
+    fireEvent.click(screen.getByTestId("figure-grid-import"));
+    await waitFor(() => expect(gridImage("figures/two.png")).toHaveAttribute("aria-pressed", "true"));
+    expect(mocks.pickOpenPath).toHaveBeenCalledWith(expect.objectContaining({ multiple: true }));
+    expect(useFilesStore.getState().importPaths).toHaveBeenCalledWith("figures", ["/Users/me/one.png", "/Users/me/two.png"]);
+    expect(gridImage("figures/one.png")).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByTestId("figure-grid-insert"));
+    const { grid } = insertedGrid();
+    expect(grid.packages).toEqual(["graphicx"]);
+    expect(grid.source).toContain(String.raw`\includegraphics[width=0.49\linewidth]{figures/one.png}`);
+  });
+
+  it("offers no grid tab for Typst files or when editing a single image", () => {
+    setProject(GRID_TREE, "p1", "main.typ");
+    openDialog();
+    expect(screen.queryByTestId("figure-grid-tab")).not.toBeInTheDocument();
+    act(() => {
+      useFigureDialogStore.getState().setOpen(false);
+    });
+    setProject(GRID_TREE);
+    openEditDialog(null);
+    expect(screen.queryByTestId("figure-grid-tab")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("figure-dialog-image").length).toBeGreaterThan(0);
+  });
+
+  it("reopens a grid from its marker and replaces the whole environment on save", () => {
+    const spec: FigureGridSpec = {
+      images: [[{ path: "figures/a.png", aspect: 1.5 }, { path: "figures/b.png", aspect: 1.5 }]],
+      columnLabels: ["Before", "After"],
+      rowLabels: [""],
+      zoom: { rect: { x: 0.2, y: 0.2, w: 0.2, h: 0.2 }, placement: "right", color: "red!85!black" },
+      width: "column",
+      caption: "Old caption",
+      label: "fig:old",
+    };
+    render(<FigureDialog />);
+    act(() => {
+      useFigureDialogStore.getState().openForEdit({ from: 7, to: 900, path: "figures/a.png", width: null, grid: spec });
+    });
+    expect(screen.getByText(en.figureDialog.gridEditTitle)).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(gridImage("figures/a.png")).toHaveAttribute("aria-pressed", "true");
+    expect(gridImage("figures/b.png")).toHaveAttribute("aria-pressed", "true");
+    expect((screen.getByTestId("figure-grid-columns") as HTMLInputElement).value).toBe("2");
+    expect((screen.getByTestId("figure-grid-column-label-1") as HTMLInputElement).value).toBe("After");
+    expect(screen.getByTestId("figure-grid-zoom")).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByTestId("figure-grid-zoom-right")).toHaveAttribute("aria-pressed", "true");
+    expect((screen.getByTestId("figure-grid-label") as HTMLInputElement).value).toBe("fig:old");
+
+    fireEvent.change(screen.getByTestId("figure-grid-caption"), { target: { value: "New caption" } });
+    fireEvent.click(screen.getByTestId("figure-grid-insert"));
+
+    const { grid, target } = insertedGrid();
+    expect(target).toEqual({ from: 7, to: 900 });
+    expect(grid).toEqual(figureGridSource({ ...spec, caption: "New caption" }, (path) => path));
   });
 });

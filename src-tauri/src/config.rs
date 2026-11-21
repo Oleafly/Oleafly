@@ -240,6 +240,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub research_background_at_login: bool,
     #[serde(default)]
+    pub phitex_enabled: bool,
+    #[serde(default)]
     pub cua_driver: crate::cua_driver::CuaDriverConfig,
 }
 
@@ -310,6 +312,7 @@ impl Default for AppConfig {
             research_tasks_enabled: false,
             research_background_enabled: true,
             research_background_at_login: false,
+            phitex_enabled: false,
             cua_driver: crate::cua_driver::CuaDriverConfig::default(),
         }
     }
@@ -517,15 +520,24 @@ where
     write_config_unlocked(&config)
 }
 
-pub(crate) fn typst_default_choice() -> Option<String> {
+fn stored_value(key: &str) -> Option<serde_json::Value> {
     let text = std::fs::read_to_string(config_path().ok()?).ok()?;
     serde_json::from_str::<serde_json::Value>(&text)
         .ok()?
-        .get("typst_default_version")?
+        .get(key)
+        .cloned()
+}
+
+fn stored_text(key: &str) -> Option<String> {
+    stored_value(key)?
         .as_str()
         .map(str::trim)
-        .filter(|version| !version.is_empty())
+        .filter(|text| !text.is_empty())
         .map(str::to_owned)
+}
+
+pub(crate) fn typst_default_choice() -> Option<String> {
+    stored_text("typst_default_version")
 }
 
 pub(crate) fn set_typst_default_choice(version: Option<String>) -> Result<(), String> {
@@ -626,14 +638,18 @@ pub(crate) fn set_latex_default_engine_choice(engine: &str) -> Result<(), String
 }
 
 pub(crate) fn tex_distribution_choice() -> Option<String> {
-    let text = std::fs::read_to_string(config_path().ok()?).ok()?;
-    serde_json::from_str::<serde_json::Value>(&text)
-        .ok()?
-        .get("tex_distribution")?
-        .as_str()
-        .map(str::trim)
-        .filter(|bin_dir| !bin_dir.is_empty())
-        .map(str::to_owned)
+    stored_text("tex_distribution")
+}
+
+pub(crate) fn phitex_enabled() -> bool {
+    stored_value("phitex_enabled").and_then(|value| value.as_bool()) == Some(true)
+}
+
+pub(crate) fn set_phitex_enabled(enabled: bool) -> Result<(), String> {
+    update_config(|config| {
+        config.phitex_enabled = enabled;
+        Ok(())
+    })
 }
 
 pub(crate) fn set_tex_distribution_choice(bin_dir: Option<String>) -> Result<(), String> {
@@ -1254,6 +1270,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.research_tasks_enabled = stored.research_tasks_enabled;
     config.research_background_enabled = stored.research_background_enabled;
     config.research_background_at_login = stored.research_background_at_login;
+    config.phitex_enabled = stored.phitex_enabled;
     config.notes_starter_note_created = stored.notes_starter_note_created;
     config.github_connected = false;
     write_config_unlocked(&config)
@@ -1344,6 +1361,32 @@ mod tests {
         incoming.research_tasks_enabled = false;
         tauri::async_runtime::block_on(set_config(incoming)).unwrap();
         assert!(read_config().unwrap().research_tasks_enabled);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn phitex_starts_off_and_only_its_own_setter_turns_it_on() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(!config.phitex_enabled);
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        assert!(!phitex_enabled());
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.phitex_enabled = true;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert!(!phitex_enabled());
+        set_phitex_enabled(true).unwrap();
+        assert!(phitex_enabled());
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.phitex_enabled = false;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert!(phitex_enabled());
+        set_phitex_enabled(false).unwrap();
+        assert!(!phitex_enabled());
         std::fs::remove_dir_all(dir).ok();
     }
 

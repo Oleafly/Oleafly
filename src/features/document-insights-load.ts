@@ -26,7 +26,7 @@ export function insightsEngineFor(engine: { id?: string; source_format?: string 
   return format === "typst" || format === "latex" || format === "markdown" ? format : null;
 }
 
-function projectTexts(pattern: RegExp): Record<string, string> {
+export function projectTexts(pattern: RegExp): Record<string, string> {
   const texts: Record<string, string> = {};
   for (const [path, text] of Object.entries(useIndexStore.getState().texts)) {
     if (pattern.test(path)) texts[path] = text;

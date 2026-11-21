@@ -461,6 +461,93 @@
     "submission-large-image": {
       "title": "非常に大きな画像: {{file}}",
       "detail": "この画像は {{limit}} を超えています。大きな画像はコンパイルを遅くし、PDF を肥大化させます。アップロードのサイズに上限を設ける投稿先もあります。圧縮するか、印刷されるサイズで書き出してください。"
+    },
+    "writing-space-before-paren": {
+      "title": "括弧の前にスペースを追加",
+      "detail": "単語と開き括弧の間にはスペースを入れます。「neural network(CNN)」ではなく「neural network (CNN)」と書きます。"
+    },
+    "writing-space-before-punctuation": {
+      "title": "句読点の前のスペースを削除",
+      "detail": "ピリオド、カンマ、コロン、疑問符は、単語の直後に置き、間にスペースを入れません。"
+    },
+    "writing-nonbreaking-reference": {
+      "title": "参照の前にはノーブレークスペースを使う",
+      "detail": "problem~\\cite{key} や Figure~\\ref{fig:plot} のように書きます。チルダ (~) によって、引用や番号が直前の単語と同じ行に収まります。"
+    },
+    "writing-straight-quotes": {
+      "title": "LaTeX の引用符を使う",
+      "detail": "LaTeX は、ストレートな \" を閉じ引用符として出力します。開き引用符が正しい向きになるよう、``quoted'' と書いてください。"
+    },
+    "writing-cite-in-abstract": {
+      "title": "概要内の引用",
+      "detail": "概要は単独で読まれることが多く、その場合、引用番号には意味がありません。論文名を文章で示すか、引用を序論に移してください。"
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "文頭の語は省略せずに書く",
+      "detail": "文を略語で始めないでください。ここでは {{abbreviation}} ではなく {{word}} と書き、短い形は文中で使います。"
+    },
+    "writing-display-math-punctuation": {
+      "title": "数式に句読点を付ける",
+      "detail": "別行立ての数式は、前後の文の一部です。文が続くならカンマで、文が終わるならピリオドで終えてください。"
+    },
+    "writing-table-caption-below": {
+      "title": "表のキャプションを表の上に置く",
+      "detail": "ほとんどの投稿先では、表のキャプションは表の上、図のキャプションは図の下に置きます。"
+    },
+    "writing-figure-caption-above": {
+      "title": "図のキャプションを図の下に置く",
+      "detail": "ほとんどの投稿先では、図のキャプションは図の下、表のキャプションは表の上に置きます。"
+    },
+    "writing-macro-available": {
+      "title": "定義したマクロを使う",
+      "detail": "「{{text}}」にはマクロ {{macro}} があります。使うと名前がどこでも統一され、1 か所の変更で済みます。"
+    },
+    "writing-table-abbreviation": {
+      "title": "Table は省略せずに書く",
+      "detail": "このスタイルでは Table を省略せず、Table~\\ref{tab:results} のように書きます。文中で短縮するのは Fig.、Eq.、Sec. だけです。"
+    },
+    "writing-unnumbered-equation": {
+      "title": "数式に番号を付ける",
+      "detail": "このスタイルでは、査読者が参照できるよう、別行立ての数式にすべて番号を付けます。"
+    },
+    "writing-float-placement": {
+      "title": "フロートをページの上部に置く",
+      "detail": "このスタイルでは、図と表をページの上部に置きます。[h] ではなく [t] を使ってください。"
+    },
+    "writing-custom": {
+      "title": "プロジェクトのルール: {{find}}",
+      "detail": "このプロジェクトでは、「{{find}}」ではなく「{{replace}}」と書きます。",
+      "detailNote": "{{note}}",
+      "detailFlag": "このプロジェクトのスタイルルールは「{{find}}」を指摘します。"
+    },
+    "writing-results-best": {
+      "title": "太字の値が最良ではありません",
+      "titleSecond": "下線の値が 2 番目に良い値ではありません",
+      "detail": "{{value}} が太字ですが、この列の最良値は {{best}} です。ここでは高いほど良い値です。",
+      "detailLower": "{{value}} が太字ですが、この列の最良値は {{best}} です。ここでは低いほど良い値です。",
+      "detailSecond": "{{value}} に下線が引かれていますが、この列で 2 番目に良い値は {{best}} です。ここでは高いほど良い値です。",
+      "detailSecondLower": "{{value}} に下線が引かれていますが、この列で 2 番目に良い値は {{best}} です。ここでは低いほど良い値です。"
+    },
+    "writing-open-promise": {
+      "title": "参照のない約束",
+      "detail": "「{{sentence}}」 この文は何かを約束したり別の箇所を示したりしていますが、そこへのリンクがありません。約束を果たす箇所への \\ref か、公開したコードへの \\url を追加してください。",
+      "titleRebuttal": "反論で約束したことを果たす",
+      "detailRebuttal": "反論で次のように約束しました。「{{sentence}}」 最終版で変更を行い、ここにその箇所への \\ref を追加するか、この通知を無視してください。"
+    },
+    "writing-review-point": {
+      "title": "査読コメント {{n}}",
+      "detail": "「{{point}}」",
+      "titleUnplaced": "査読コメント {{n}}: 対応する箇所が見つかりません",
+      "detailUnplaced": "「{{point}}」 ここで挙げられた表、図、数式、節のうち、論文に一致するものはありません。",
+      "detailLines": "「{{point}}」 行番号は査読用のコピーのものなので、この箇所は手動で探してください。"
+    },
+    "writing-name-variants": {
+      "title": "同じ名前で表記が異なります",
+      "detail": "この名前は、プロジェクト内で複数の表記で書かれています: {{spellings}}。どこでも同じ表記に統一してください。マクロを使うと統一を保てます。"
+    },
+    "writing-symbol-redefined": {
+      "title": "記号が 2 回定義されています",
+      "detail": "{{symbol}} は {{file}} では「{{first}}」を意味しますが、ここでは「{{second}}」を意味します。意味ごとに別の記号を使ってください。"
     }
   },
   "lens": {
@@ -470,7 +557,8 @@
     "refs": "参考文献",
     "compile": "コンパイル",
     "submission": "投稿",
-    "privacy": "プライバシー"
+    "privacy": "プライバシー",
+    "writing": "文章"
   },
   "severity": {
     "error": "エラー",
@@ -483,7 +571,8 @@
     "a11y": "アクセス",
     "refs": "文献",
     "submission": "投稿",
-    "privacy": "プライバシー"
+    "privacy": "プライバシー",
+    "writing": "スタイル"
   },
   "checks": {
     "compile": {
@@ -521,6 +610,12 @@
       "who": "ソースを共有する前、匿名で投稿する前",
       "info": "秘密情報、下書きのメモ、機微なファイル、ブラインド査読での身元の露出。",
       "detail": "匿名査読の投稿に含まれる資格情報、秘密鍵、内部向けのコメント、下書きの記述、機微なプロジェクトファイル、著者のメタデータ、身元の露出を見つけます。"
+    },
+    "writing": {
+      "label": "文章スタイル",
+      "who": "論文、学位論文、レポート向け",
+      "info": "スペース、引用符、参照、数式の句読点、プロジェクト独自のルール。",
+      "detail": "LaTeX のソースを、一般的な論文の慣習とこのプロジェクトに保存されたルールに照らしてチェックします。ほとんどの指摘は、ワンクリックで修正できます。"
     }
   },
   "profiles": {
@@ -573,7 +668,7 @@
   },
   "prep": {
     "metadataInMain": "\\DocumentMetadata はメイン文書の先頭に置くため、このファイルには追加されません。",
-    "metadataUpdated":"\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
+    "metadataUpdated": "\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
     "metadataAdded": "\\DocumentMetadata を先頭行に追加しました（必須で、\\documentclass より前に置く必要があります）。この行はバージョンチェックの中に置かれ、{{date}} より古い LaTeX（同梱のエンジンを含む）では読み飛ばされて、失敗せずにタグなしでコンパイルされます。",
     "headerRows": "各表の 1 行目が見出しセルとしてタグ付けされるよう、table/header-rows を 1 に設定しました。見出しの行数が違う表がある場合は、数値を変えてください。",
     "unicodeMath": "このエンジンでタグ付き数式に必要な \\usepackage{unicode-math} を追加しました。",
@@ -627,7 +722,23 @@
     "groupSource": "プロジェクトとソース",
     "groupOutput": "コンパイル結果",
     "fixAll_other": "{{count}} 件すべてを AI で修正",
-    "noProblems": "問題は見つかりませんでした。"
+    "noProblems": "問題は見つかりませんでした。",
+    "writing": {
+      "profile": "文章スタイル",
+      "underlines": "エディタにスタイルの下線を表示",
+      "underlinesHint": "エディタをすっきりさせたい場合はオフにします。このチェックを実行すると、プリフライトは引き続き指摘を一覧表示します。",
+      "rules": "プロジェクトのルール",
+      "noRules": "プロジェクトのルールはまだありません。エディタでテキストを選択して右クリックし、「スタイルルールを作成」を選んでください。",
+      "addRule": "ルールを追加",
+      "removeRule": "{{find}} のルールを削除",
+      "flagOnly": "指摘のみ",
+      "clearIgnored_other": "無視した指摘 {{count}} 件を再表示",
+      "fixAll_other": "{{count}} 件の指摘をすべて修正",
+      "fixed_other": "{{count}} 件の指摘を修正しました。",
+      "skipped_other": "{{count}} 件の修正が、ほかの修正と同じテキストに触れていました。もう一度チェックを実行して修正してください。",
+      "fixFailed": "チェックの実行後に、一部のファイルが変更されました。もう一度実行してから修正してください。",
+      "saveFailed": "文章の設定を保存できませんでした。"
+    }
   },
   "finding": {
     "review": "要確認",
@@ -635,7 +746,9 @@
     "page": "p.{{page}}",
     "needsJudgment": "あなたの判断が必要です。ファイルだけからこれを判断できるツールはありません。",
     "jumpToSource": "ソースへ移動",
-    "fixWithAi": "AI で修正"
+    "fixWithAi": "AI で修正",
+    "applyFix": "修正",
+    "ignore": "無視"
   },
   "score": {
     "notEvaluated": "{{label}} は評価していません",
@@ -688,5 +801,50 @@
     "untagged": "Typst {{version}} は PDF にスクリーンリーダー用のタグを付けません。Typst 0.14 以降は付けます。",
     "none": "Typst {{version}} は PDF 規格に沿った書き出しができません。コンパイルメニューで Typst 0.12 以降を選んでください。",
     "uaNote": "PDF/UA-1 には、文書のタイトルと、すべての画像の代替テキストが必要です。"
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "文書から検出",
+      "description": "プロジェクトが cvpr.sty または同じ階層のスタイルファイルを読み込む場合は CVPR スタイルのルールを使い、そうでなければ一般のルールを使います。"
+    },
+    "general": {
+      "label": "一般的な論文スタイル",
+      "description": "スペース、引用符、参照、数式の句読点、キャプション、マクロ。"
+    },
+    "cvpr": {
+      "label": "CVPR スタイル",
+      "description": "一般のルールに加えて、Table を省略せずに書く、数式に番号を付ける、フロートをページの上部に置く、というルールがあります。"
+    }
+  },
+  "fixes": {
+    "insertSpace": "スペースを追加",
+    "removeSpace": "スペースを削除",
+    "useTilde": "~ を使う",
+    "useTexQuotes": "LaTeX の引用符を使う",
+    "spellOut": "{{word}} と書く",
+    "addComma": "カンマを追加",
+    "addPeriod": "ピリオドを追加",
+    "useMacro": "{{macro}} を使う",
+    "numberEquation": "番号を付ける",
+    "placeTop": "[t] を使う",
+    "replaceWith": "{{text}} と書く",
+    "boldBest": "代わりに {{value}} を太字にする",
+    "underlineSecond": "代わりに {{value}} に下線を引く",
+    "makeMacro": "マクロを作成"
+  },
+  "styleRule": {
+    "title": "スタイルルールを作成",
+    "description": "このルールは、書いている間にこのプロジェクトのすべての LaTeX ファイルをチェックし、project.json に保存されてプロジェクトとともに移動します。",
+    "find": "指摘するテキスト",
+    "replace": "代わりに書くテキスト",
+    "replaceHint": "空のままにすると、修正を提案せずにテキストだけを指摘します。",
+    "note": "共著者向けのメモ（任意）",
+    "wholeWord": "単語単位のみ",
+    "matchCase": "大文字と小文字を区別",
+    "noMatches": "このプロジェクトに一致する箇所はまだありません。",
+    "matches_other": "このプロジェクトの {{count}} 箇所に一致します。",
+    "save": "ルールを保存",
+    "cancel": "キャンセル",
+    "saved": "ルールを保存しました。このプロジェクトのすべてのファイルをチェックします。"
   }
 }

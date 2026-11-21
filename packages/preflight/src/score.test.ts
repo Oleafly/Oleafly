@@ -18,6 +18,7 @@ describe("computeScores", () => {
       a11y: 100,
       refs: 100,
       submission: 100,
+      writing: 100,
       privacy: 100,
     });
   });

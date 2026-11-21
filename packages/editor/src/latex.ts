@@ -1117,7 +1117,7 @@ function structuralArgumentCompletions(
   return null;
 }
 
-const REFERENCE_COMPLETION_COMMANDS = [
+export const REFERENCE_COMPLETION_COMMANDS = [
   "ref", "eqref", "pageref", "vpageref", "fullref", "autoref", "cref", "Cref", "cpageref",
   "Cpageref", "vref", "Vref", "labelcref", "nameref", "namecref", "fref", "sref", "labelref",
 ];

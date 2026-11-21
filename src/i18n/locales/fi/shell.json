@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Pikakirjaus",
       "keywords": "pikakirjaus kirjaa muistiinpano saapuneet tänään quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Merkintätaulukko",
+      "keywords": "lisää merkinnät symbolit määritelmät sanasto matematiikka notation symbols definitions glossary math",
+      "empty": "Symbolien määritelmiä ei löytynyt. Määrittele symbolit tekstissä esimerkiksi lauseilla ”Olkoon $x$ syöte” tai ”missä $x$ on syöte”."
+    },
+    "addChapterFromProject": {
+      "keywords": "opinnäyte luku artikkeli tuo yhdistä kopioi projekti thesis chapter paper import merge copy project",
+      "label": "Lisää luku toisesta projektista"
     }
   },
   "community": {
@@ -998,6 +1007,12 @@
       "overleafLive": {
         "label": "Reaaliaikainen muokkaus Overleafin kanssa",
         "description": "Muokkaa Overleafista tuomiasi projekteja samaan aikaan kanssakirjoittajiesi kanssa. Muutokset näkyvät molemmilla puolilla kirjoittaessasi. Oletuksena pois käytöstä beta-vaiheen ajan."
+      },
+      "phitex": {
+        "label": "PhiTeX-moottori",
+        "description": "Kääntää latexmk:ta käyttävät pdfLaTeX- ja XeLaTeX-projektit PhiTeXillä, joka on itse asennettava TeX-moottori. LuaLaTeX-projektit jäävät latexmk:hon, kuten kaikki projektit, jos PhiTeXiä ei ole asennettu. Oletuksena pois, koska tämä on vielä beta-vaiheessa.",
+        "notFound": "Oleafly ei löydä PhiTeXiä tältä tietokoneelta, joten latexmk-projektit käännetään edelleen latexmk:lla.",
+        "saveFailed": "PhiTeX-kytkintä ei voitu tallentaa. Yritä uudelleen."
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",

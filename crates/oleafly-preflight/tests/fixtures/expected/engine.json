@@ -9,7 +9,8 @@
       "compile": "not_run",
       "privacy": "not_run",
       "refs": "unsupported",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -188,9 +189,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "latex-anonymous-with-facts": {
     "a11yScore": null,
@@ -202,7 +205,8 @@
       "compile": "evaluated",
       "privacy": "evaluated",
       "refs": "unsupported",
-      "submission": "evaluated"
+      "submission": "evaluated",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -254,9 +258,11 @@
       "compile": 100,
       "privacy": 70,
       "refs": 100,
-      "submission": 94
+      "submission": 94,
+      "writing": 100
     },
-    "submissionScore": 94
+    "submissionScore": 94,
+    "writingScore": null
   },
   "latex-anonymous-without-facts": {
     "a11yScore": null,
@@ -268,7 +274,8 @@
       "compile": "not_run",
       "privacy": "partial",
       "refs": "unsupported",
-      "submission": "partial"
+      "submission": "partial",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -305,9 +312,11 @@
       "compile": 100,
       "privacy": 85,
       "refs": 100,
-      "submission": 94
+      "submission": 94,
+      "writing": 100
     },
-    "submissionScore": 94
+    "submissionScore": 94,
+    "writingScore": null
   },
   "latex-compile-error": {
     "a11yScore": null,
@@ -319,7 +328,8 @@
       "compile": "evaluated",
       "privacy": "not_run",
       "refs": "unsupported",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -530,9 +540,11 @@
       "compile": 70,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "latex-compile-idle": {
     "a11yScore": null,
@@ -544,7 +556,8 @@
       "compile": "not_run",
       "privacy": "not_run",
       "refs": "unsupported",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -723,9 +736,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "latex-source-only": {
     "a11yScore": null,
@@ -737,7 +752,8 @@
       "compile": "not_run",
       "privacy": "not_run",
       "refs": "unsupported",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -916,9 +932,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "latex-with-facts": {
     "a11yScore": null,
@@ -930,7 +948,8 @@
       "compile": "evaluated",
       "privacy": "evaluated",
       "refs": "unsupported",
-      "submission": "evaluated"
+      "submission": "evaluated",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -1166,9 +1185,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 64
+      "submission": 64,
+      "writing": 100
     },
-    "submissionScore": 64
+    "submissionScore": 64,
+    "writingScore": null
   },
   "latex-with-project": {
     "a11yScore": null,
@@ -1180,7 +1201,8 @@
       "compile": "not_run",
       "privacy": "evaluated",
       "refs": "evaluated",
-      "submission": "partial"
+      "submission": "partial",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -1477,9 +1499,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 55,
-      "submission": 85
+      "submission": 85,
+      "writing": 100
     },
-    "submissionScore": 85
+    "submissionScore": 85,
+    "writingScore": null
   },
   "latex-with-refs": {
     "a11yScore": null,
@@ -1491,7 +1515,8 @@
       "compile": "not_run",
       "privacy": "not_run",
       "refs": "evaluated",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -1702,9 +1727,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 70,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "none-profile": {
     "a11yScore": null,
@@ -1716,7 +1743,8 @@
       "compile": "evaluated",
       "privacy": "unsupported",
       "refs": "unsupported",
-      "submission": "unsupported"
+      "submission": "unsupported",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -1742,9 +1770,11 @@
       "compile": 94,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   },
   "typst-profile": {
     "a11yScore": null,
@@ -1756,7 +1786,8 @@
       "compile": "not_run",
       "privacy": "evaluated",
       "refs": "evaluated",
-      "submission": "partial"
+      "submission": "partial",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -1931,9 +1962,11 @@
       "compile": 100,
       "privacy": 100,
       "refs": 70,
-      "submission": 77
+      "submission": 77,
+      "writing": 100
     },
-    "submissionScore": 77
+    "submissionScore": 77,
+    "writingScore": null
   },
   "typst-without-project": {
     "a11yScore": null,
@@ -1945,7 +1978,8 @@
       "compile": "not_run",
       "privacy": "not_run",
       "refs": "unsupported",
-      "submission": "not_run"
+      "submission": "not_run",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -2069,8 +2103,10 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 92
+      "submission": 92,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   }
 }

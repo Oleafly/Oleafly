@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Hyvin suuri kuva: {{file}}",
       "detail": "Tämä kuva on yli {{limit}}. Suuret kuvat hidastavat kääntämistä ja paisuttavat PDF-tiedostoa. Jotkin foorumit myös rajoittavat lähetyksen kokoa. Pakkaa kuva tai vie se siinä koossa, jossa se tulostetaan."
+    },
+    "writing-space-before-paren": {
+      "title": "Lisää välilyönti sulkeen eteen",
+      "detail": "Laita sanan ja sen avaavan sulkeen väliin välilyönti: ”neuroverkko (CNN)”, ei ”neuroverkko(CNN)”."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Poista välilyönti välimerkin edestä",
+      "detail": "Piste, pilkku, kaksoispiste tai kysymysmerkki tulee heti sanan perään ilman välilyöntiä."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Käytä sitovaa välilyöntiä viittauksen edessä",
+      "detail": "Kirjoita ongelma~\\cite{key} tai Kuva~\\ref{fig:plot}. Tilde pitää viittauksen tai numeron samalla rivillä edellisen sanan kanssa."
+    },
+    "writing-straight-quotes": {
+      "title": "Käytä LaTeXin lainausmerkkejä",
+      "detail": "LaTeX tulostaa suoran \" -merkin sulkevana lainausmerkkinä. Kirjoita ``quoted'', jotta avaava lainausmerkki osoittaa oikeaan suuntaan."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Viittaus tiivistelmässä",
+      "detail": "Tiivistelmiä luetaan usein erillään, jolloin viittausnumero ei kerro mitään. Nimeä työ sanoin tai siirrä viittaus johdantoon."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Kirjoita sana kokonaan virkkeen alussa",
+      "detail": "Virke ei saa alkaa lyhenteellä. Kirjoita tähän {{word}} lyhenteen {{abbreviation}} sijaan ja pidä lyhyt muoto virkkeiden sisällä."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Lisää yhtälön perään välimerkki",
+      "detail": "Erillinen yhtälö on osa ympäröivää virkettä. Päätä se pilkkuun, jos virke jatkuu, tai pisteeseen, jos se päättyy."
+    },
+    "writing-table-caption-below": {
+      "title": "Siirrä taulukkoteksti taulukon yläpuolelle",
+      "detail": "Useimmat julkaisut odottavat taulukkotekstit taulukon yläpuolelle ja kuvatekstit kuvan alapuolelle."
+    },
+    "writing-figure-caption-above": {
+      "title": "Siirrä kuvateksti kuvan alapuolelle",
+      "detail": "Useimmat julkaisut odottavat kuvatekstit kuvan alapuolelle ja taulukkotekstit taulukon yläpuolelle."
+    },
+    "writing-macro-available": {
+      "title": "Käytä määrittelemääsi makroa",
+      "detail": "Tekstille ”{{text}}” on makro {{macro}}. Sen käyttö pitää nimen samana kaikkialla, ja voit muuttaa sen yhdessä paikassa."
+    },
+    "writing-table-abbreviation": {
+      "title": "Kirjoita Table kokonaan",
+      "detail": "Tämä tyyli kirjoittaa Table kokonaan, esimerkiksi Table~\\ref{tab:results}, ja lyhentää virkkeen sisällä vain Fig., Eq. ja Sec."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Numeroi yhtälö",
+      "detail": "Tämä tyyli numeroi jokaisen erillisen yhtälön, jotta arvioijat voivat viitata siihen."
+    },
+    "writing-float-placement": {
+      "title": "Sijoita kelluva kohde sivun yläreunaan",
+      "detail": "Tämä tyyli sijoittaa kuvat ja taulukot sivun yläreunaan. Käytä [t] eikä [h]."
+    },
+    "writing-custom": {
+      "title": "Projektin sääntö: {{find}}",
+      "detail": "Tässä projektissa kirjoitetaan ”{{replace}}” tekstin ”{{find}}” sijaan.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Projektin tyylisäännöt merkitsevät tekstin ”{{find}}”."
+    },
+    "writing-results-best": {
+      "title": "Lihavoitu arvo ei ole paras",
+      "titleSecond": "Alleviivattu arvo ei ole toiseksi paras",
+      "detail": "{{value}} on lihavoitu, mutta tämän sarakkeen paras arvo on {{best}}. Tässä suurempi on parempi.",
+      "detailLower": "{{value}} on lihavoitu, mutta tämän sarakkeen paras arvo on {{best}}. Tässä pienempi on parempi.",
+      "detailSecond": "{{value}} on alleviivattu, mutta tämän sarakkeen toiseksi paras arvo on {{best}}. Tässä suurempi on parempi.",
+      "detailSecondLower": "{{value}} on alleviivattu, mutta tämän sarakkeen toiseksi paras arvo on {{best}}. Tässä pienempi on parempi."
+    },
+    "writing-open-promise": {
+      "title": "Lupaus ilman viittausta",
+      "detail": "”{{sentence}}” Tämä virke lupaa jotakin tai osoittaa muualle, mutta siinä ei ole linkkiä sinne. Lisää \\ref lupauksen täyttävään kohtaan tai \\url julkaistulle koodille.",
+      "titleRebuttal": "Pidettävä lupaus vastineesta",
+      "detailRebuttal": "Lupasit tämän vastineessa: ”{{sentence}}” Tee muutos lopulliseen versioon ja lisää sitten tähän \\ref siihen tai ohita tämä huomautus."
+    },
+    "writing-review-point": {
+      "title": "Arvioijan kohta {{n}}",
+      "detail": "”{{point}}”",
+      "titleUnplaced": "Arvioijan kohta {{n}}: sopivaa paikkaa ei löytynyt",
+      "detailUnplaced": "”{{point}}” Mikään tässä mainittu taulukko, kuva, yhtälö tai luku ei vastaa artikkelia.",
+      "detailLines": "”{{point}}” Rivinumerot viittaavat arviointikopioon, joten etsi tämä kohta käsin."
+    },
+    "writing-name-variants": {
+      "title": "Sama nimi, eri kirjoitusasuja",
+      "detail": "Tämä nimi kirjoitetaan projektissa useammalla tavalla: {{spellings}}. Käytä kaikkialla yhtä kirjoitusasua. Makro pitää sen samana."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symboli määritelty kahdesti",
+      "detail": "{{symbol}} tarkoittaa ”{{first}}” tiedostossa {{file}}. Täällä se tarkoittaa ”{{second}}”. Anna kullekin merkitykselle oma symbolinsa."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Viitteet",
     "compile": "Käännös",
     "submission": "Lähetys",
-    "privacy": "Yksityisyys"
+    "privacy": "Yksityisyys",
+    "writing": "Kirjoitus"
   },
   "severity": {
     "error": "Virhe",
@@ -499,7 +587,8 @@
     "a11y": "Saavut.",
     "refs": "Viitteet",
     "submission": "Lähetys",
-    "privacy": "Yksityis."
+    "privacy": "Yksityis.",
+    "writing": "Tyyli"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Ennen lähdekoodin jakamista tai anonyymiä lähetystä",
       "info": "Salaisuudet, luonnosmuistiinpanot, arkaluontoiset tiedostot ja henkilöllisyyden paljastuminen anonyymissä arvioinnissa.",
       "detail": "Etsii tunnistetietoja, yksityisiä avaimia, sisäisiä kommentteja, luonnosmerkintöjä, arkaluontoisia projektitiedostoja, tekijän metatietoja ja henkilöllisyyden paljastavia kohtia anonyymiin arviointiin menevissä lähetyksissä."
+    },
+    "writing": {
+      "label": "Kirjoitustyyli",
+      "who": "Artikkeleille, opinnäytteille ja raporteille",
+      "info": "Välilyönnit, lainausmerkit, viittaukset, yhtälöiden välimerkit ja projektin omat säännöt.",
+      "detail": "Tarkistaa LaTeX-lähdekoodin yleisiä artikkelikäytäntöjä ja tähän projektiin tallennettuja sääntöjä vasten. Useimpiin huomioihin on yhden napsautuksen korjaus."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Käännetty tuloste",
     "fixAll_one": "Korjaa {{count}} tekoälyllä",
     "fixAll_other": "Korjaa kaikki {{count}} tekoälyllä",
-    "noProblems": "Ongelmia ei löytynyt."
+    "noProblems": "Ongelmia ei löytynyt.",
+    "writing": {
+      "profile": "Kirjoitustyyli",
+      "underlines": "Näytä tyylin alleviivaukset editorissa",
+      "underlinesHint": "Poista tämä käytöstä, jos haluat pitää editorin siistinä. Esitarkistus listaa huomiot silti, kun ajat tämän tarkistuksen.",
+      "rules": "Projektin säännöt",
+      "noRules": "Projektilla ei ole vielä sääntöjä. Valitse teksti editorissa, napsauta hiiren kakkospainikkeella ja valitse Tee tyylisääntö.",
+      "addRule": "Lisää sääntö",
+      "removeRule": "Poista sääntö: {{find}}",
+      "flagOnly": "vain merkintä",
+      "clearIgnored_one": "Näytä {{count}} ohitettu huomio uudelleen",
+      "clearIgnored_other": "Näytä {{count}} ohitettua huomiota uudelleen",
+      "fixAll_one": "Korjaa {{count}} huomio",
+      "fixAll_other": "Korjaa kaikki {{count}} huomiota",
+      "fixed_one": "Korjattiin {{count}} huomio.",
+      "fixed_other": "Korjattiin {{count}} huomiota.",
+      "skipped_one": "{{count}} korjaus koski samaa tekstiä kuin toinen. Aja tarkistus uudelleen, niin se korjataan.",
+      "skipped_other": "{{count}} korjausta koski samaa tekstiä kuin muut. Aja tarkistus uudelleen, niin ne korjataan.",
+      "fixFailed": "Osa tiedostoista muuttui tarkistuksen jälkeen. Aja se uudelleen ja korjaa sitten.",
+      "saveFailed": "Kirjoitusasetuksia ei voitu tallentaa."
+    }
   },
   "finding": {
     "review": "Tarkista",
@@ -657,7 +772,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Vaatii omaa harkintaa. Mikään työkalu ei voi ratkaista tätä pelkän tiedoston perusteella.",
     "jumpToSource": "Hyppää lähdekoodiin",
-    "fixWithAi": "Korjaa tekoälyllä"
+    "fixWithAi": "Korjaa tekoälyllä",
+    "applyFix": "Korjaa",
+    "ignore": "Ohita"
   },
   "score": {
     "notEvaluated": "{{label}}: ei arvioitu",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} ei merkitse PDF-tiedostoja ruudunlukijoita varten. Typst 0.14 ja uudemmat merkitsevät.",
     "none": "Typst {{version}} ei osaa kirjoittaa PDF-standardeja. Valitse käännösvalikosta Typst 0.12 tai uudempi.",
     "uaNote": "PDF/UA-1 vaatii dokumentin otsikon ja vaihtoehtoisen tekstin jokaiselle kuvalle."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Tunnista dokumentista",
+      "description": "Käyttää CVPR-tyylin sääntöjä, kun projekti lataa tiedoston cvpr.sty tai sen vierestä löytyvän tyylitiedoston, ja yleisiä sääntöjä muuten."
+    },
+    "general": {
+      "label": "Yleinen artikkelityyli",
+      "description": "Välilyönnit, lainausmerkit, viittaukset, yhtälöiden välimerkit, kuvatekstit ja makrot."
+    },
+    "cvpr": {
+      "label": "CVPR-tyyli",
+      "description": "Yleiset säännöt sekä sana Table kokonaan, numeroidut yhtälöt ja kelluvat kohteet sivun yläreunassa."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Lisää välilyönti",
+    "removeSpace": "Poista välilyönti",
+    "useTilde": "Käytä ~",
+    "useTexQuotes": "Käytä LaTeXin lainausmerkkejä",
+    "spellOut": "Kirjoita {{word}}",
+    "addComma": "Lisää pilkku",
+    "addPeriod": "Lisää piste",
+    "useMacro": "Käytä {{macro}}",
+    "numberEquation": "Numeroi se",
+    "placeTop": "Käytä [t]",
+    "replaceWith": "Kirjoita {{text}}",
+    "boldBest": "Lihavoi sen sijaan {{value}}",
+    "underlineSecond": "Alleviivaa sen sijaan {{value}}",
+    "makeMacro": "Tee makro"
+  },
+  "styleRule": {
+    "title": "Tee tyylisääntö",
+    "description": "Sääntö tarkistaa kirjoittaessasi jokaisen tämän projektin LaTeX-tiedoston ja kulkee projektin mukana tiedostossa project.json.",
+    "find": "Merkittävä teksti",
+    "replace": "Kirjoita sen sijaan",
+    "replaceHint": "Jätä tyhjäksi, niin teksti merkitään ilman korjausehdotusta.",
+    "note": "Huomautus kanssakirjoittajille (valinnainen)",
+    "wholeWord": "Vain kokonaiset sanat",
+    "matchCase": "Erota isot ja pienet kirjaimet",
+    "noMatches": "Tässä projektissa ei ole vielä osumia.",
+    "matches_one": "{{count}} osuma tässä projektissa.",
+    "matches_other": "{{count}} osumaa tässä projektissa.",
+    "save": "Tallenna sääntö",
+    "cancel": "Peruuta",
+    "saved": "Sääntö tallennettiin. Se tarkistaa nyt jokaisen tämän projektin tiedoston."
   }
 }

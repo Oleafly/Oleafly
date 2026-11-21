@@ -23,6 +23,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
+      "@oleafly/latex/figure-grid": ["./packages/latex/src/figure-grid.ts"],
       "@oleafly/wysiwyg": ["./packages/wysiwyg/src/index.ts"],
       "@oleafly/wysiwyg/block-id-marker": ["./packages/wysiwyg/src/block-id-marker.ts"],
       "@oleafly/wysiwyg/link-destination": ["./packages/wysiwyg/src/link-destination.ts"],
@@ -64,6 +65,8 @@
       "@oleafly/i18n-contract": ["./packages/i18n-contract/src/index.ts"],
       "@oleafly/i18n-contract/testing": ["./packages/i18n-contract/src/testing.ts"],
       "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
+      "@oleafly/preflight/writing": ["./packages/preflight/src/writing/index.ts"],
+      "@oleafly/preflight/writing/settings": ["./packages/preflight/src/writing/settings.ts"],
       "@oleafly/search-query": ["./packages/search-query/src/index.ts"],
       "@oleafly/templates": ["./packages/templates/src/index.ts"],
       "@oleafly/preview": ["./packages/preview/src/index.ts"],

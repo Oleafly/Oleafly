@@ -493,6 +493,93 @@
     "submission-large-image": {
       "title": "Imagine foarte mare: {{file}}",
       "detail": "Această imagine depășește {{limit}}. Imaginile mari încetinesc compilarea și umflă PDF-ul. Unele locuri de publicare limitează și dimensiunea încărcării. Comprimă imaginea sau exporteaz-o la dimensiunea la care se tipărește."
+    },
+    "writing-space-before-paren": {
+      "title": "Adaugă un spațiu înainte de paranteză",
+      "detail": "Pune un spațiu între cuvânt și paranteza deschisă: „rețea neuronală (CNN)”, nu „rețea neuronală(CNN)”."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Elimină spațiul dinaintea semnului de punctuație",
+      "detail": "Punctul, virgula, două puncte sau semnul întrebării se pun imediat după cuvânt, fără spațiu între ele."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Folosește un spațiu inseparabil înaintea referinței",
+      "detail": "Scrie problema~\\cite{key} sau Figura~\\ref{fig:plot}. Tilda ține citarea sau numărul pe același rând cu cuvântul dinaintea lor."
+    },
+    "writing-straight-quotes": {
+      "title": "Folosește ghilimele LaTeX",
+      "detail": "LaTeX tipărește semnul drept \" ca ghilimea de închidere. Scrie ``citat'' ca ghilimeaua de deschidere să fie orientată corect."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citare în rezumat",
+      "detail": "Rezumatele se citesc adesea separat, iar acolo un număr de citare nu spune nimic. Numește lucrarea în cuvinte sau mută citarea în introducere."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Scrie cuvântul întreg la începutul propoziției",
+      "detail": "O propoziție nu ar trebui să înceapă cu o abreviere. Scrie {{word}} în loc de {{abbreviation}} aici și păstrează forma scurtă în interiorul propozițiilor."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Pune punctuație la ecuație",
+      "detail": "O ecuație afișată face parte din propoziția din jurul ei. Încheie-o cu virgulă dacă propoziția continuă sau cu punct dacă se termină."
+    },
+    "writing-table-caption-below": {
+      "title": "Pune legenda tabelului deasupra tabelului",
+      "detail": "Majoritatea conferințelor și revistelor cer legendele tabelelor deasupra tabelului și legendele figurilor sub figură."
+    },
+    "writing-figure-caption-above": {
+      "title": "Pune legenda figurii sub figură",
+      "detail": "Majoritatea conferințelor și revistelor cer legendele figurilor sub figură și legendele tabelelor deasupra tabelului."
+    },
+    "writing-macro-available": {
+      "title": "Folosește macroul pe care l-ai definit",
+      "detail": "„{{text}}” are un macro, {{macro}}. Dacă îl folosești, numele rămâne același peste tot și îl poți schimba într-un singur loc."
+    },
+    "writing-table-abbreviation": {
+      "title": "Scrie Table în întregime",
+      "detail": "Acest stil scrie Table în întregime, de exemplu Table~\\ref{tab:results}, și scurtează doar Fig., Eq. și Sec. în interiorul propoziției."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Numerotează ecuația",
+      "detail": "Acest stil numerotează fiecare ecuație afișată, ca recenzenții să se poată referi la ea."
+    },
+    "writing-float-placement": {
+      "title": "Plasează obiectul plutitor sus pe pagină",
+      "detail": "Acest stil pune figurile și tabelele sus pe pagină. Folosește [t] în loc de [h]."
+    },
+    "writing-custom": {
+      "title": "Regulă de proiect: {{find}}",
+      "detail": "Acest proiect scrie „{{replace}}” în loc de „{{find}}”.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Regulile de stil ale acestui proiect semnalează „{{find}}”."
+    },
+    "writing-results-best": {
+      "title": "Valoarea îngroșată nu este cea mai bună",
+      "titleSecond": "Valoarea subliniată nu este a doua cea mai bună",
+      "detail": "{{value}} este îngroșat, dar {{best}} este cea mai bună valoare din această coloană. Aici o valoare mai mare este mai bună.",
+      "detailLower": "{{value}} este îngroșat, dar {{best}} este cea mai bună valoare din această coloană. Aici o valoare mai mică este mai bună.",
+      "detailSecond": "{{value}} este subliniat, dar {{best}} este a doua cea mai bună valoare din această coloană. Aici o valoare mai mare este mai bună.",
+      "detailSecondLower": "{{value}} este subliniat, dar {{best}} este a doua cea mai bună valoare din această coloană. Aici o valoare mai mică este mai bună."
+    },
+    "writing-open-promise": {
+      "title": "Promisiune fără referință",
+      "detail": "„{{sentence}}” Această propoziție promite ceva sau trimite în altă parte, dar nimic din ea nu duce acolo. Adaugă un \\ref la partea care ține promisiunea sau un \\url pentru codul publicat.",
+      "titleRebuttal": "Promisiune din răspunsul către recenzenți de ținut",
+      "detailRebuttal": "Ai promis asta în răspunsul către recenzenți: „{{sentence}}” Fă modificarea în versiunea finală, apoi adaugă aici un \\ref la ea sau ignoră această notă."
+    },
+    "writing-review-point": {
+      "title": "Punctul recenzentului {{n}}",
+      "detail": "„{{point}}”",
+      "titleUnplaced": "Punctul recenzentului {{n}}: nu s-a găsit niciun loc potrivit",
+      "detailUnplaced": "„{{point}}” Niciun tabel, figură, ecuație sau secțiune numite aici nu se potrivește cu lucrarea.",
+      "detailLines": "„{{point}}” Numerele de linie se referă la copia pentru recenzie, așa că găsește singur locul acesta."
+    },
+    "writing-name-variants": {
+      "title": "Același nume, scrieri diferite",
+      "detail": "Acest nume este scris în mai multe feluri în proiect: {{spellings}}. Folosește o singură scriere peste tot. Un macro o menține identică."
+    },
+    "writing-symbol-redefined": {
+      "title": "Simbol definit de două ori",
+      "detail": "{{symbol}} înseamnă „{{first}}” în {{file}}. Aici înseamnă „{{second}}”. Dă fiecărei semnificații propriul simbol."
     }
   },
   "lens": {
@@ -502,7 +589,8 @@
     "refs": "Referințe",
     "compile": "Compilare",
     "submission": "Trimitere",
-    "privacy": "Confidențialitate"
+    "privacy": "Confidențialitate",
+    "writing": "Scriere"
   },
   "severity": {
     "error": "Eroare",
@@ -515,7 +603,8 @@
     "a11y": "Acces",
     "refs": "Referințe",
     "submission": "Trimitere",
-    "privacy": "Confidențial"
+    "privacy": "Confidențial",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -553,6 +642,12 @@
       "who": "Înainte să distribui sursa sau să trimiți anonim",
       "info": "Secrete, note de ciornă, fișiere sensibile și scurgeri de identitate în timpul recenziei oarbe.",
       "detail": "Găsește credențiale, chei private, comentarii interne, marcaje de ciornă, fișiere sensibile din proiect, metadate despre autor și scurgeri de identitate în lucrările trimise la recenzie anonimă."
+    },
+    "writing": {
+      "label": "Stil de scriere",
+      "who": "Pentru lucrări, teze și rapoarte",
+      "info": "Spațiere, ghilimele, referințe, punctuația ecuațiilor și regulile proprii ale proiectului.",
+      "detail": "Verifică sursa LaTeX față de convențiile obișnuite ale lucrărilor și față de regulile salvate în acest proiect. Majoritatea rezultatelor vin cu o reparare dintr-un clic."
     }
   },
   "profiles": {
@@ -671,7 +766,31 @@
     "fixAll_one": "Repară {{count}} cu AI",
     "fixAll_few": "Repară toate cele {{count}} cu AI",
     "fixAll_other": "Repară toate cele {{count}} cu AI",
-    "noProblems": "Nu s-a găsit nicio problemă."
+    "noProblems": "Nu s-a găsit nicio problemă.",
+    "writing": {
+      "profile": "Stil de scriere",
+      "underlines": "Arată subliniaturi de stil în editor",
+      "underlinesHint": "Dezactivează ca să păstrezi editorul curat. Preverificarea listează în continuare rezultatele când rulezi această verificare.",
+      "rules": "Reguli de proiect",
+      "noRules": "Nicio regulă de proiect încă. Selectează text în editor, fă clic dreapta și alege Creează o regulă de stil.",
+      "addRule": "Adaugă o regulă",
+      "removeRule": "Elimină regula pentru {{find}}",
+      "flagOnly": "doar semnalare",
+      "clearIgnored_one": "Arată din nou {{count}} rezultat ignorat",
+      "clearIgnored_few": "Arată din nou {{count}} rezultate ignorate",
+      "clearIgnored_other": "Arată din nou {{count}} de rezultate ignorate",
+      "fixAll_one": "Repară {{count}} rezultat",
+      "fixAll_few": "Repară toate cele {{count}} rezultate",
+      "fixAll_other": "Repară toate cele {{count}} de rezultate",
+      "fixed_one": "{{count}} rezultat reparat.",
+      "fixed_few": "{{count}} rezultate reparate.",
+      "fixed_other": "{{count}} de rezultate reparate.",
+      "skipped_one": "{{count}} reparare a modificat același text ca alta. Rulează din nou verificarea ca s-o repari.",
+      "skipped_few": "{{count}} reparări au modificat același text ca altele. Rulează din nou verificarea ca să le repari.",
+      "skipped_other": "{{count}} de reparări au modificat același text ca altele. Rulează din nou verificarea ca să le repari.",
+      "fixFailed": "Unele fișiere s-au schimbat după rularea verificării. Rulează-o din nou, apoi repară.",
+      "saveFailed": "Setările de scriere nu au putut fi salvate."
+    }
   },
   "finding": {
     "review": "De verificat",
@@ -679,7 +798,9 @@
     "page": "p.{{page}}",
     "needsJudgment": "Are nevoie de judecata ta. Niciun instrument nu poate decide asta doar din fișier.",
     "jumpToSource": "Sari la sursă",
-    "fixWithAi": "Repară cu AI"
+    "fixWithAi": "Repară cu AI",
+    "applyFix": "Repară",
+    "ignore": "Ignoră"
   },
   "score": {
     "notEvaluated": "{{label}} nu a fost evaluat",
@@ -734,5 +855,52 @@
     "untagged": "Typst {{version}} nu etichetează PDF-urile pentru cititoarele de ecran. Typst 0.14 și versiunile ulterioare o fac.",
     "none": "Typst {{version}} nu poate scrie standarde PDF. Alege Typst 0.12 sau o versiune ulterioară din meniul de compilare.",
     "uaNote": "PDF/UA-1 necesită un titlu de document și text alternativ pentru fiecare imagine."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Detectare din document",
+      "description": "Folosește regulile în stilul CVPR când proiectul încarcă cvpr.sty sau un stil înrudit, iar în rest regulile generale."
+    },
+    "general": {
+      "label": "Stil general de lucrare",
+      "description": "Spațiere, ghilimele, referințe, punctuația ecuațiilor, legende și macrouri."
+    },
+    "cvpr": {
+      "label": "Stil CVPR",
+      "description": "Regulile generale, plus cuvântul Table scris în întregime, ecuații numerotate și obiecte plutitoare sus pe pagină."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Adaugă un spațiu",
+    "removeSpace": "Elimină spațiul",
+    "useTilde": "Folosește ~",
+    "useTexQuotes": "Folosește ghilimele LaTeX",
+    "spellOut": "Scrie {{word}}",
+    "addComma": "Adaugă o virgulă",
+    "addPeriod": "Adaugă un punct",
+    "useMacro": "Folosește {{macro}}",
+    "numberEquation": "Numerotează-o",
+    "placeTop": "Folosește [t]",
+    "replaceWith": "Scrie {{text}}",
+    "boldBest": "Îngroașă {{value}} în schimb",
+    "underlineSecond": "Subliniază {{value}} în schimb",
+    "makeMacro": "Creează un macro"
+  },
+  "styleRule": {
+    "title": "Creează o regulă de stil",
+    "description": "Regula verifică fiecare fișier LaTeX din acest proiect cât scrii și se păstrează cu proiectul în project.json.",
+    "find": "Text de semnalat",
+    "replace": "Scrie în schimb",
+    "replaceHint": "Lasă gol ca să semnalezi textul fără a oferi o reparare.",
+    "note": "Notă pentru coautori (opțional)",
+    "wholeWord": "Doar cuvinte întregi",
+    "matchCase": "Respectă majusculele",
+    "noMatches": "Încă nicio potrivire în acest proiect.",
+    "matches_one": "Se potrivește cu {{count}} loc din acest proiect.",
+    "matches_few": "Se potrivește cu {{count}} locuri din acest proiect.",
+    "matches_other": "Se potrivește cu {{count}} de locuri din acest proiect.",
+    "save": "Salvează regula",
+    "cancel": "Anulează",
+    "saved": "Regulă salvată. Acum verifică fiecare fișier din acest proiect."
   }
 }
