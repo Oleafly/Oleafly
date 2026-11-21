@@ -1,6 +1,9 @@
 import { i18n } from "@/i18n";
 import { parseEditorThemeExport, type EditorThemeExport } from "@/lib/editor-themes";
 import type { Theme } from "@/lib/theme";
+import { activeThemePreset, themePresetStyle, type ThemePreset } from "@/lib/theme-presets";
+
+export const DEFAULT_ACCENT_COLOR = "#2563eb";
 
 export const THEME_CUSTOMIZATION_STORAGE_KEY = "oleafly.theme-customization.v1";
 export const THEME_CUSTOMIZATION_VERSION = 1;
@@ -345,28 +348,47 @@ export function themeTokenOverride(theme: Theme, token: ThemeTokenName): string 
 export function accentTokenDefaults(
   theme: Theme,
   accentColor = window.localStorage.getItem("oleafly.accent"),
+  preset: ThemePreset = activeThemePreset(theme),
 ): Readonly<Record<string, string>> {
   if (themeTokenOverride(theme, "primary")) return {};
+  const primary = accentColor || themePresetStyle(preset).primary || DEFAULT_ACCENT_COLOR;
   return themeTokenOverride(theme, "primary-foreground")
-    ? { "--primary": accentColor || "#2563eb" }
-    : { "--primary": accentColor || "#2563eb", "--primary-foreground": "#ffffff" };
+    ? { "--primary": primary }
+    : { "--primary": primary, "--primary-foreground": "#ffffff" };
+}
+
+export function effectiveAccentColor(
+  theme: Theme,
+  accentColor: string | null,
+  preset: ThemePreset = activeThemePreset(theme),
+): string {
+  return (
+    themeTokenOverride(theme, "primary") ??
+    accentTokenDefaults(theme, accentColor, preset)["--primary"] ??
+    DEFAULT_ACCENT_COLOR
+  );
 }
 
 export function applyThemeCustomization(
   theme: Theme,
   customization: ThemeCustomization = readThemeCustomization(),
+  preset: ThemePreset = activeThemePreset(theme),
 ): ThemeCustomization {
   const valid = validateThemeCustomization(customization);
+  const presetStyle = themePresetStyle(preset);
   const root = document.documentElement;
   removeAppliedProperties(root);
-  for (const [token, value] of Object.entries(valid[theme])) {
-    const property = `--${token}`;
+  const properties: Record<string, string> = { ...presetStyle.properties };
+  for (const [token, value] of Object.entries({ ...presetStyle.tokens, ...valid[theme] })) {
+    properties[`--${token}`] = value;
+  }
+  const radius = valid.radius ?? presetStyle.radius;
+  if (radius) properties["--radius"] = radius;
+  if (preset.builtIn) delete root.dataset.themePreset;
+  else root.dataset.themePreset = preset.id;
+  for (const [property, value] of Object.entries(properties)) {
     root.style.setProperty(property, value);
     appliedProperties.add(property);
-  }
-  if (valid.radius) {
-    root.style.setProperty("--radius", valid.radius);
-    appliedProperties.add("--radius");
   }
   const style = styleElement();
   style.textContent = valid.customCss ? `#root { ${valid.customCss} }` : "";
@@ -375,5 +397,6 @@ export function applyThemeCustomization(
 
 export function clearThemeCustomization(): void {
   removeAppliedProperties(document.documentElement);
+  delete document.documentElement.dataset.themePreset;
   document.querySelector("style[data-oleafly-custom-theme]")?.remove();
 }

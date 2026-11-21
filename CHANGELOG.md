@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Thanks
+
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #428, "Incorrect regex causes missing Typst section from Document Outline", and #429, "Have section number for Typst Document Outline".
+
 ### Added
 
 - When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.
 - pdfLaTeX's "Unicode character ... not set up for use with LaTeX" error has a plain explanation.
+- Settings > Appearance has a Theme picker under Appearance. Pick one theme for light mode and one for dark mode. Light mode has Oleafly, Charcoal, Ink, Quiet gray, Atom One Light, GitHub Light and Islands Light. Dark mode has Oleafly, Charcoal, Ink and Quiet gray too, plus One Dark Pro, One Dark Pro Darker, One Dark Pro Flat, GitHub Dark, Islands Dark, JetBrains Dark and Darcula. A theme sets the colors of the whole app, menus and dialogs included, and how round the corners are. Anything you set in Theme customization still wins. The accent colors now start with Theme accent, which follows the theme you picked, and any other accent you choose replaces it.
+- Notes have an outline rail like the source editor's: a short mark for each heading at the right edge of the note, with the section you're reading highlighted. Hover over it or click it to see the headings, and pick one to go there. It stays hidden when a note has fewer than two headings or no room beside the text.
+- Quick capture can stay ready all the time. Turn on Keep quick capture ready in Settings > Shortcuts and Oleafly opens in the background when you sign in. Closing the window leaves Oleafly in the menu bar on macOS, or in the system tray on Windows and Linux, so the shortcut keeps working. The icon's menu has Quick capture, Open Oleafly and Quit. Linux desktops without tray support get no icon.
 
 ### Changed
 
@@ -18,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on `mirrors.oleafly.com`, Oleafly downloads the update from there first and
   from the release on GitHub if that fails. With Original hosts chosen it uses
   GitHub only. The signature check is the same whichever address answers.
+- You can see through the quick capture window to what's behind it. On macOS it opens on the screen with the pointer, over full-screen apps too, and leaves Oleafly's main window where it was.
+- In the dark theme, dialogs, editor hover cards and switches take their colors from the theme, so Theme customization and theme files change them as well.
 
 ### Fixed
 
@@ -39,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   address, so on a shared network Update now could fail with "Download request
   failed with status: 403 Forbidden". Every release since at least 0.4.7 was
   affected, up to 0.4.13.
+- The outline shows every Typst heading the compiler reads, including indented headings, headings deeper than six levels and `#heading[...]` calls. Before, it only listed headings that started a line with one to six `=` (#428).
+- The outline numbers Typst headings from the last compile, the way the PDF bookmarks do. Appendix letters from `#set heading(numbering: "A.1")` and unnumbered headings come out right too (#429).
+- A Markdown file's outline lists the same headings Pandoc reads, including ones with seven or more `#` and ones underlined with a single `=`.
+- On macOS, Left or Right at the start or end of a text field could still add an invisible character after the fix for #445. The webview sometimes types the arrow key's older control code instead of the Apple code point, and Oleafly now drops both.
 
 ## [0.4.13] - 2026-11-20
 

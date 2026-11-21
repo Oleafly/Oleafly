@@ -209,11 +209,11 @@
 
 .dark [role="dialog"],
 .dark [role="alertdialog"] {
-  background-color: #121212;
+  background-color: var(--popover);
 }
 
 .dark [data-modal-surface] {
-  background-color: #181818;
+  background-color: var(--card);
 }
 
 [data-editor-theme="linear"] {
@@ -409,7 +409,7 @@
   --cm-operator: #0184bc;
 }
 
-.ai-prompt-surface {
+:root:not([data-theme-preset]) .ai-prompt-surface {
   --background: #fafafa;
   --foreground: var(--neutral-900);
   --popover-foreground: var(--neutral-900);
@@ -427,7 +427,7 @@
   background: #fafafa;
 }
 
-.dark .ai-prompt-surface {
+.dark:not([data-theme-preset]) .ai-prompt-surface {
   --background: var(--neutral-900);
   --foreground: #f5f5f5;
   --popover-foreground: #f5f5f5;
@@ -445,9 +445,14 @@
   background: var(--background);
 }
 
-.dark .ai-prompt-surface.ai-surface-elevated {
+.dark:not([data-theme-preset]) .ai-prompt-surface.ai-surface-elevated {
   --background: #181818;
   background: #181818;
+}
+
+:root[data-theme-preset] .ai-prompt-surface {
+  background: var(--popover);
+  color: var(--popover-foreground);
 }
 
 .wysiwyg-content .ProseMirror {
@@ -1387,10 +1392,10 @@ body[data-tour-active] [data-tour-hide] {
   font-family: inherit;
 }
 .dark .cm-proofread-card {
-  background: #181818;
+  background: var(--card);
 }
 .dark .cm-tooltip-hover {
-  background: #181818 !important;
+  background: var(--card) !important;
 }
 /* A hosted proofreading card is one section of CodeMirror's shared hover
    surface. Floating gutter cards keep their own border, radius, and shadow. */
@@ -1525,7 +1530,7 @@ body[data-tour-active] [data-tour-hide] {
     0 2px 6px oklch(0 0 0 / 0.12);
 }
 .dark .cm-fold-label {
-  background: #181818;
+  background: var(--card);
 }
 
 @keyframes oleafly-assistant-blink {

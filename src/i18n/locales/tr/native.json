@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Hızlı not"
     }
+  },
+  "tray": {
+    "open": "Oleafly'ı aç"
   }
 }

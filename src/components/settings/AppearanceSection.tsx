@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/intl";
 import { isEditorThemeId, type EditorThemeId } from "@/lib/editor-themes";
 import { applyTheme, currentTheme, useTheme, type Theme } from "@/lib/theme";
 import {
+  DEFAULT_ACCENT_COLOR,
   THEME_CUSTOMIZATION_CHANGED_EVENT,
   hasThemeCustomization,
   resetThemeCustomization,
@@ -75,6 +76,9 @@ import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization, ThemeTokenField, useThemeTokenEditor } from "@/components/settings/ThemeCustomization";
+import { ThemePresetSetting } from "@/components/settings/ThemePresets";
+import { useThemePreset } from "@/hooks/use-theme-preset";
+import { themePresetStyle } from "@/lib/theme-presets";
 import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -181,7 +185,8 @@ function CommentColorSetting() {
 
 function AppAppearanceTab() {
   const { t } = useTranslation(["common", "settings"]);
-  const { preference, setPreference } = useTheme();
+  const { preference, setPreference, theme } = useTheme();
+  const themeAccent = themePresetStyle(useThemePreset(theme)).primary ?? DEFAULT_ACCENT_COLOR;
   const dockPlacement = useSettingsStore((state) => state.dockPlacement);
   const setDockPlacement = useSettingsStore((state) => state.setDockPlacement);
   const bgPattern = useSettingsStore((state) => state.bgPattern);
@@ -282,29 +287,6 @@ function AppAppearanceTab() {
         ]}
       />
 
-      <SettingsRow
-        testId="settings-row-accent"
-        className="flex-wrap gap-y-2"
-        label={t(($) => $.settings.appearance.app.accent.label)}
-        description={t(($) => $.settings.appearance.app.accent.description)}
-        control={
-          <div className="flex flex-wrap items-center gap-2">
-            {ACCENTS.map((accent) => (
-              <ColorSwatch
-                key={accent.id}
-                color={accent.color}
-                name={accent.name}
-                label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, { name: accent.name })}
-                pressed={accentColor === accent.color}
-                onClick={() => setAccentColor(accent.color)}
-              />
-            ))}
-          </div>
-        }
-      />
-
-      <CommentColorSetting />
-
       <div
         data-testid="settings-row-appearance"
         className="rounded-lg border bg-card p-3"
@@ -321,6 +303,40 @@ function AppAppearanceTab() {
           testIdPrefix="settings-appearance"
         />
       </div>
+
+      <ThemePresetSetting />
+
+      <SettingsRow
+        testId="settings-row-accent"
+        className="flex-wrap gap-y-2"
+        label={t(($) => $.settings.appearance.app.accent.label)}
+        description={t(($) => $.settings.appearance.app.accent.description)}
+        control={
+          <div className="flex flex-wrap items-center gap-2">
+            <ColorSwatch
+              color={themeAccent}
+              name={t(($) => $.settings.appearance.app.accent.theme)}
+              label={t(($) => $.settings.appearance.app.accent.themeAriaLabel)}
+              pressed={accentColor === ""}
+              onClick={() => setAccentColor("")}
+              data-testid="settings-accent-theme"
+            />
+            <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+            {ACCENTS.map((accent) => (
+              <ColorSwatch
+                key={accent.id}
+                color={accent.color}
+                name={accent.name}
+                label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, { name: accent.name })}
+                pressed={accentColor === accent.color}
+                onClick={() => setAccentColor(accent.color)}
+              />
+            ))}
+          </div>
+        }
+      />
+
+      <CommentColorSetting />
 
       <SettingsRow
         testId="settings-row-app-font-size"

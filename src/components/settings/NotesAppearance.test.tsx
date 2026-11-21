@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn(asy
 vi.mock("@/lib/theme", () => ({
   currentTheme: () => "light",
   subscribeTheme: () => () => undefined,
+  useAppTheme: () => "light",
 }));
 
 import {

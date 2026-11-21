@@ -1,3 +1,4 @@
+import { decodeTypstString } from "@oleafly/editor/typst-literals";
 import {
   isTypstEscaped,
   maskTypstSource,
@@ -31,6 +32,99 @@ function resolveImport(from: string, raw: string): string | null {
   return hasExtension ? target : `${target}.typ`;
 }
 
+type Range = { readonly from: number; readonly to: number };
+
+const HEADING_CALL = /#heading(?=[([])/g;
+const CLOSERS: Readonly<Record<string, string>> = { "(": ")", "[": "]", "{": "}" };
+
+function closingIndex(code: string, open: number): number {
+  const stack: string[] = [];
+  for (let at = open; at < code.length; at++) {
+    const char = code[at];
+    if (char === "\\") {
+      at++;
+      continue;
+    }
+    const top = stack.at(-1);
+    const closer = top === "]" && char !== "[" ? undefined : CLOSERS[char];
+    if (closer) stack.push(closer);
+    else if (char === top) {
+      stack.pop();
+      if (stack.length === 0) return at;
+    }
+  }
+  return -1;
+}
+
+function argumentRanges(code: string, from: number, to: number): Range[] {
+  const ranges: Range[] = [];
+  let start = from;
+  for (let at = from; at < to; at++) {
+    if (CLOSERS[code[at]]) {
+      const close = closingIndex(code, at);
+      if (close < 0) break;
+      at = close;
+    } else if (code[at] === ",") {
+      ranges.push({ from: start, to: at });
+      start = at + 1;
+    }
+  }
+  ranges.push({ from: start, to });
+  return ranges;
+}
+
+function trimmed(text: string, range: Range): Range {
+  const slice = text.slice(range.from, range.to);
+  const from = range.from + slice.length - slice.trimStart().length;
+  return { from, to: from + slice.trim().length };
+}
+
+interface HeadingBody {
+  readonly title: string;
+  readonly name: Range;
+}
+
+interface HeadingCall extends HeadingBody {
+  readonly level: number;
+  readonly to: number;
+}
+
+function headingBody(text: string, value: Range): HeadingBody | null {
+  if (text[value.from] === "[") {
+    const name = trimmed(text, { from: value.from + 1, to: value.to - 1 });
+    return { title: text.slice(name.from, name.to), name };
+  }
+  const title = decodeTypstString(text.slice(value.from, value.to));
+  return title === null ? null : { title, name: { from: value.from + 1, to: value.to - 1 } };
+}
+
+function headingCall(text: string, code: string, at: number): HeadingCall | null {
+  let end = at + "#heading".length;
+  const named = new Map<string, number>();
+  let body: HeadingBody | null = null;
+  if (code[end] === "(") {
+    const close = closingIndex(code, end);
+    if (close < 0) return null;
+    for (const range of argumentRanges(code, end + 1, close)) {
+      const value = trimmed(text, range);
+      const written = text.slice(value.from, value.to);
+      const pair = /^([a-z]+)\s*:\s*(\d+)$/u.exec(written);
+      if (pair) named.set(pair[1], Number(pair[2]));
+      else if (written !== "" && !/^[a-z-]+\s*:/u.test(written)) body ??= headingBody(text, value);
+    }
+    end = close + 1;
+  }
+  if (code[end] === "[") {
+    const close = closingIndex(code, end);
+    if (close < 0) return null;
+    body = headingBody(text, { from: end, to: close + 1 });
+    end = close + 1;
+  }
+  if (!body || body.title.trim() === "") return null;
+  const level = named.get("level") ?? (named.get("depth") ?? 1) + (named.get("offset") ?? 0);
+  return { ...body, level: Math.max(1, level), to: end };
+}
+
 export function parseTypstFile(path: string, rawText: string): FileSymbols {
   const { text, code } = maskTypstSource(rawText);
   const defs: Sym[] = [];
@@ -51,18 +145,32 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     list: Sym[], kind: SymKind, name: string, span: SymSpan, extra?: Partial<Sym>,
   ) => list.push({ kind, name, file: path, line: lineAt(span.from), ...span, ...extra });
 
-  const heading = /^(={1,6})[ \t]+([^\n]+)$/gm;
+  const heading = /^[ \t]*(=+)[ \t]+([^\n]+)$/gm;
   for (const match of text.matchAll(heading)) {
     const rawTitle = match[2].replace(/(?<![ \t])[ \t]+<[^>]+>[ \t]*$/, "").trim();
     if (!rawTitle) continue;
-    const nameFrom = match.index + match[0].indexOf(match[2]) + match[2].indexOf(rawTitle);
+    const marker = match.index + match[0].indexOf("=");
+    const nameFrom = match.index + match[0].length - match[2].length + match[2].indexOf(rawTitle);
     push(defs, "section", rawTitle, {
-      from: match.index,
+      from: marker,
       to: match.index + match[0].length,
       nameFrom,
       nameTo: nameFrom + rawTitle.length,
     }, { level: match[1].length - 1 });
   }
+
+  for (const match of code.matchAll(HEADING_CALL)) {
+    if (isTypstEscaped(code, match.index)) continue;
+    const call = headingCall(text, code, match.index);
+    if (!call) continue;
+    push(defs, "section", call.title, {
+      from: match.index,
+      to: call.to,
+      nameFrom: call.name.from,
+      nameTo: call.name.to,
+    }, { level: call.level - 1 });
+  }
+  defs.sort((left, right) => left.from - right.from);
 
   const label = new RegExp(`<(${TYPST_LABEL_PATTERN})>`, "gu");
   for (const match of code.matchAll(label)) {

@@ -11,6 +11,8 @@ import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
 import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
+import { applyThemeCustomization, readThemeCustomization } from "@/lib/theme-customization";
+import { findThemePreset } from "@/lib/theme-presets";
 import { applyCommentColor } from "@/lib/comment-color";
 import { Contained } from "@/components/Contained";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -471,6 +473,8 @@ function AppContent() {
   const editorColors = useSettingsStore((s) => s.editorColors);
   const activeEditorColorKey = useEditorColorKey();
   const accentColor = useSettingsStore((s) => s.accentColor);
+  const appThemeLight = useSettingsStore((s) => s.appThemeLight);
+  const appThemeDark = useSettingsStore((s) => s.appThemeDark);
   const commentColor = useSettingsStore((s) => s.commentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
@@ -649,10 +653,14 @@ function AppContent() {
   }, [editorColors, activeEditorColorKey]);
 
   useEffect(() => {
-    const apply = (theme: Theme) => applyAccentColor(theme, accentColor);
+    const apply = (theme: Theme) => {
+      const preset = findThemePreset(theme, theme === "dark" ? appThemeDark : appThemeLight);
+      applyThemeCustomization(theme, readThemeCustomization(), preset);
+      applyAccentColor(theme, accentColor, preset);
+    };
     apply(currentTheme());
     return subscribeTheme(apply);
-  }, [accentColor]);
+  }, [accentColor, appThemeLight, appThemeDark]);
 
   useEffect(() => {
     applyCommentColor(commentColor);

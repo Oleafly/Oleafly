@@ -643,7 +643,9 @@
       "accent": {
         "description": "Wordt gebruikt voor knoppen, selecties en de cursor in de editor.",
         "label": "Accentkleur",
-        "swatchAriaLabel": "Accent {{name}}"
+        "swatchAriaLabel": "Accent {{name}}",
+        "theme": "Accent van thema",
+        "themeAriaLabel": "De accentkleur van het thema gebruiken"
       },
       "appIcon": {
         "about": "Waar het app-pictogram verschijnt",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
         "label": "Weergave"
+      },
+      "themePresets": {
+        "dark": "Donkere modus",
+        "description": "Kies een thema voor de lichte modus en een voor de donkere modus. De instelling Weergave hierboven bepaalt welk je ziet.",
+        "label": "Thema",
+        "light": "Lichte modus",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "Een andere app gebruikt {{shortcut}} al. Kies een andere sneltoets voor Notities: snel noteren.",
       "invalid": "{{shortcut}} kan niet werken buiten Oleafly. Kies een sneltoets die eindigt op een letter, een cijfer of een functietoets.",
       "failed": "Oleafly kon de sneltoets niet instellen. Zet snel noteren uit en weer aan om het opnieuw te proberen.",
-      "wayland": "Wayland laat apps niet luisteren naar toetsen buiten hun eigen vensters. Wil je snel noteren met een toets openen, voeg dan in de toetsenbordinstellingen van je systeem een eigen sneltoets toe die deze opdracht uitvoert:"
+      "wayland": "Wayland laat apps niet luisteren naar toetsen buiten hun eigen vensters. Wil je snel noteren met een toets openen, voeg dan in de toetsenbordinstellingen van je systeem een eigen sneltoets toe die deze opdracht uitvoert:",
+      "background": {
+        "label": "Snel noteren altijd klaar houden",
+        "descriptionMac": "Oleafly opent op de achtergrond wanneer je inlogt. Als je het venster sluit, blijft Oleafly in de menubalk staan, zodat de sneltoets altijd werkt. Stop het via het pictogram in de menubalk.",
+        "description": "Oleafly opent op de achtergrond wanneer je inlogt. Als je het venster sluit, blijft Oleafly in het systeemvak staan, zodat de sneltoets altijd werkt. Stop het via het pictogram in het systeemvak."
+      }
     }
   },
   "systemIntegration": {

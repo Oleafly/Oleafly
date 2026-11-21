@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Snabbanteckning"
     }
+  },
+  "tray": {
+    "open": "Öppna Oleafly"
   }
 }

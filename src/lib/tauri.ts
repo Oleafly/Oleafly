@@ -147,6 +147,7 @@ import type {
   ZoteroProjectLink,
   ZoteroSearchReply,
 } from "@oleafly/backend-port";
+import type { LoginItemState } from "@/lib/background-helper";
 export type * from "@oleafly/backend-port";
 
 export type BrowserCookieSourceId =
@@ -1047,10 +1048,11 @@ export interface QuickCaptureStatus {
   registered: boolean;
   command: string | null;
   failure: QuickCaptureFailure | null;
+  atLogin: LoginItemState;
 }
 
-export const quickCaptureConfigure = (enabled: boolean, accelerator: string | null) =>
-  invoke<QuickCaptureStatus>("quick_capture_configure", { enabled, accelerator });
+export const quickCaptureConfigure = (enabled: boolean, accelerator: string | null, background: boolean) =>
+  invoke<QuickCaptureStatus>("quick_capture_configure", { enabled, accelerator, background });
 
 export const quickCaptureOpen = () => invoke<void>("quick_capture_open");
 

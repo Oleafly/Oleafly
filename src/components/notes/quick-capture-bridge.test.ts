@@ -39,7 +39,7 @@ const { useShortcutStore } = await import("@/store/shortcuts");
 beforeEach(() => {
   Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true });
   useShortcutStore.getState().resetAll();
-  useQuickCaptureStore.setState({ enabled: true, status: null });
+  useQuickCaptureStore.setState({ enabled: true, background: false, status: null });
   useSettingsStore.setState({ notes: true });
   configure.mockClear();
   emitTo.mockClear();
@@ -51,12 +51,13 @@ afterEach(() => useSettingsStore.setState({ notes: false }));
 
 describe("wantedShortcut", () => {
   it("asks for the binding as a native accelerator only while Notes and quick capture are on", () => {
-    expect(wantedShortcut()).toEqual({ enabled: true, accelerator: "Cmd+Shift+Alt+Space" });
-    useQuickCaptureStore.setState({ enabled: false });
-    expect(wantedShortcut()).toEqual({ enabled: false, accelerator: null });
+    expect(wantedShortcut()).toEqual({ enabled: true, accelerator: "Cmd+Shift+Alt+Space", background: false });
+    useQuickCaptureStore.setState({ enabled: false, background: true });
+    expect(wantedShortcut()).toEqual({ enabled: false, accelerator: null, background: false });
     useQuickCaptureStore.setState({ enabled: true });
+    expect(wantedShortcut()).toEqual({ enabled: true, accelerator: "Cmd+Shift+Alt+Space", background: true });
     useSettingsStore.setState({ notes: false });
-    expect(wantedShortcut()).toEqual({ enabled: false, accelerator: null });
+    expect(wantedShortcut()).toEqual({ enabled: false, accelerator: null, background: false });
   });
 });
 
@@ -65,13 +66,16 @@ describe("startQuickCaptureBridge", () => {
     const stop = await startQuickCaptureBridge();
     await vi.waitFor(() => expect(useQuickCaptureStore.getState().status?.registered).toBe(true));
     expect(configure).toHaveBeenCalledTimes(1);
-    expect(configure).toHaveBeenLastCalledWith(true, "Cmd+Shift+Alt+Space");
+    expect(configure).toHaveBeenLastCalledWith(true, "Cmd+Shift+Alt+Space", false);
     useSettingsStore.setState({ latexTools: true });
     useShortcutStore.getState().setBinding("notesQuickCapture", { key: "k", mod: true, shift: true });
-    await vi.waitFor(() => expect(configure).toHaveBeenLastCalledWith(true, "Cmd+Shift+K"));
+    await vi.waitFor(() => expect(configure).toHaveBeenLastCalledWith(true, "Cmd+Shift+K", false));
     expect(configure).toHaveBeenCalledTimes(2);
+    useQuickCaptureStore.getState().setBackground(true);
+    await vi.waitFor(() => expect(configure).toHaveBeenLastCalledWith(true, "Cmd+Shift+K", true));
+    expect(configure).toHaveBeenCalledTimes(3);
     useSettingsStore.setState({ notes: false });
-    await vi.waitFor(() => expect(configure).toHaveBeenLastCalledWith(false, null));
+    await vi.waitFor(() => expect(configure).toHaveBeenLastCalledWith(false, null, false));
     stop();
   });
 
