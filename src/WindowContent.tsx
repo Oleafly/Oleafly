@@ -17,6 +17,8 @@ import { useFileRenameStore } from "@/store/file-rename";
 import { useCitationStore } from "@/store/citation";
 import { useZoteroDialogStore } from "@/store/zotero-dialogs";
 import { useTableImportStore } from "@/store/table-import";
+import { useChapterImportStore } from "@/store/chapter-import";
+import { useStyleRuleDialogStore } from "@/store/style-rule-dialog";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { OpeningIndicator } from "@/components/ui/opening-indicator";
@@ -89,6 +91,20 @@ const TableImportDialog = mountOnFirstOpen(
     import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })), { warm: true }),
   () => useTableImportStore((state) => state.open),
   () => useTableImportStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
+);
+const ChapterImportDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/ChapterImportDialog").then((module) => ({ default: module.ChapterImportDialog })), { warm: true }),
+  () => useChapterImportStore((state) => state.open),
+  () => useChapterImportStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
+);
+const StyleRuleDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/preflight/StyleRuleDialog").then((module) => ({ default: module.StyleRuleDialog }))),
+  () => useStyleRuleDialogStore((state) => state.open),
+  () => useStyleRuleDialogStore.getState().setOpen(false),
   { loading: <OpeningIndicator /> },
 );
 const FigureDialog = mountOnFirstOpen(
@@ -220,6 +236,8 @@ export function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <AddCitationDialog />
       <ZoteroDialogs />
       <TableImportDialog />
+      <ChapterImportDialog />
+      <StyleRuleDialog />
       <FigureDialog />
       <TypstMigrationHost />
       <TypstDocumentPanels />

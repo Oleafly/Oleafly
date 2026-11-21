@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Zeer grote afbeelding: {{file}}",
       "detail": "Deze afbeelding is groter dan {{limit}}. Grote afbeeldingen vertragen het compileren en maken de PDF onnodig groot. Sommige uitgevers beperken ook de uploadgrootte. Comprimeer hem, of exporteer hem op het formaat waarop hij wordt afgedrukt."
+    },
+    "writing-space-before-paren": {
+      "title": "Voeg een spatie toe voor het haakje",
+      "detail": "Zet een spatie tussen een woord en het openingshaakje: \"neural network (CNN)\", niet \"neural network(CNN)\"."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Verwijder de spatie voor het leesteken",
+      "detail": "Een punt, komma, dubbele punt of vraagteken komt direct achter het woord, zonder spatie ertussen."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Gebruik een harde spatie voor de verwijzing",
+      "detail": "Schrijf problem~\\cite{key} of Figure~\\ref{fig:plot}. De tilde houdt de citatie of het nummer op dezelfde regel als het woord ervoor."
+    },
+    "writing-straight-quotes": {
+      "title": "Gebruik LaTeX-aanhalingstekens",
+      "detail": "LaTeX drukt een recht \" af als sluitend aanhalingsteken. Schrijf ``quoted'' zodat het openingsteken de goede kant op wijst."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citatie in de samenvatting",
+      "detail": "Samenvattingen worden vaak los gelezen, waar een citatienummer niets zegt. Noem het werk in woorden of verplaats de citatie naar de inleiding."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Schrijf het woord uit aan het begin van een zin",
+      "detail": "Een zin hoort niet met een afkorting te beginnen. Schrijf hier {{word}} in plaats van {{abbreviation}} en gebruik de korte vorm binnen zinnen."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Zet een leesteken bij de vergelijking",
+      "detail": "Een vergelijking op een eigen regel hoort bij de zin eromheen. Sluit haar af met een komma als de zin doorgaat, of met een punt als hij eindigt."
+    },
+    "writing-table-caption-below": {
+      "title": "Zet het bijschrift van de tabel boven de tabel",
+      "detail": "De meeste conferenties en tijdschriften verwachten bijschriften boven een tabel en onder een figuur."
+    },
+    "writing-figure-caption-above": {
+      "title": "Zet het bijschrift van de figuur onder de figuur",
+      "detail": "De meeste conferenties en tijdschriften verwachten bijschriften onder een figuur en boven een tabel."
+    },
+    "writing-macro-available": {
+      "title": "Gebruik de macro die je hebt gedefinieerd",
+      "detail": "\"{{text}}\" heeft een macro, {{macro}}. Met de macro blijft de naam overal gelijk en pas je hem op één plek aan."
+    },
+    "writing-table-abbreviation": {
+      "title": "Schrijf Table voluit",
+      "detail": "Deze stijl schrijft Table voluit, bijvoorbeeld Table~\\ref{tab:results}, en verkort alleen Fig., Eq. en Sec. binnen een zin."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Nummer de vergelijking",
+      "detail": "Deze stijl nummert elke vergelijking op een eigen regel, zodat reviewers ernaar kunnen verwijzen."
+    },
+    "writing-float-placement": {
+      "title": "Zet het zwevende object bovenaan de pagina",
+      "detail": "Deze stijl zet figuren en tabellen bovenaan een pagina. Gebruik [t] in plaats van [h]."
+    },
+    "writing-custom": {
+      "title": "Projectregel: {{find}}",
+      "detail": "Dit project schrijft \"{{replace}}\" in plaats van \"{{find}}\".",
+      "detailNote": "{{note}}",
+      "detailFlag": "De stijlregels van dit project markeren \"{{find}}\"."
+    },
+    "writing-results-best": {
+      "title": "De vetgedrukte waarde is niet de beste",
+      "titleSecond": "De onderstreepte waarde is niet de op een na beste",
+      "detail": "{{value}} is vetgedrukt, maar {{best}} is de beste waarde in deze kolom. Hier is hoger beter.",
+      "detailLower": "{{value}} is vetgedrukt, maar {{best}} is de beste waarde in deze kolom. Hier is lager beter.",
+      "detailSecond": "{{value}} is onderstreept, maar {{best}} is de op een na beste waarde in deze kolom. Hier is hoger beter.",
+      "detailSecondLower": "{{value}} is onderstreept, maar {{best}} is de op een na beste waarde in deze kolom. Hier is lager beter."
+    },
+    "writing-open-promise": {
+      "title": "Belofte zonder verwijzing",
+      "detail": "\"{{sentence}}\" Deze zin belooft iets of wijst naar een andere plek, maar niets erin leidt daar naartoe. Voeg een \\ref toe naar het deel dat de belofte nakomt, of een \\url voor vrijgegeven code.",
+      "titleRebuttal": "Belofte uit de rebuttal om na te komen",
+      "detailRebuttal": "Je hebt dit beloofd in de rebuttal: \"{{sentence}}\" Voer de wijziging door in de camera-ready-versie en voeg dan hier een \\ref ernaartoe toe, of negeer deze notitie."
+    },
+    "writing-review-point": {
+      "title": "Punt van reviewer {{n}}",
+      "detail": "\"{{point}}\"",
+      "titleUnplaced": "Punt van reviewer {{n}}: geen passende plek gevonden",
+      "detailUnplaced": "\"{{point}}\" Geen tabel, figuur, vergelijking of sectie die hier wordt genoemd komt overeen met het artikel.",
+      "detailLines": "\"{{point}}\" Regelnummers verwijzen naar de reviewversie, dus zoek deze plek zelf op."
+    },
+    "writing-name-variants": {
+      "title": "Dezelfde naam, verschillende spellingen",
+      "detail": "Deze naam wordt in het project op meer dan één manier gespeld: {{spellings}}. Gebruik overal dezelfde spelling. Een macro houdt die gelijk."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbool tweemaal gedefinieerd",
+      "detail": "{{symbol}} betekent \"{{first}}\" in {{file}}. Hier betekent het \"{{second}}\". Geef elke betekenis een eigen symbool."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Referenties",
     "compile": "Build",
     "submission": "Inzending",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "writing": "Schrijven"
   },
   "severity": {
     "error": "Fout",
@@ -499,7 +587,8 @@
     "a11y": "Toegang",
     "refs": "Refs",
     "submission": "Inzenden",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "writing": "Stijl"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Voordat je broncode deelt of anoniem inzendt",
       "info": "Geheimen, conceptnotities, gevoelige bestanden en identiteitslekken tijdens blinde review.",
       "detail": "Vindt inloggegevens, privésleutels, interne opmerkingen, conceptopmaak, gevoelige projectbestanden, auteursmetagegevens en identiteitslekken in inzendingen voor anonieme review."
+    },
+    "writing": {
+      "label": "Schrijfstijl",
+      "who": "Voor artikelen, scripties en rapporten",
+      "info": "Spaties, aanhalingstekens, verwijzingen, leestekens bij vergelijkingen en de eigen regels van je project.",
+      "detail": "Controleert de LaTeX-broncode op gangbare conventies voor artikelen en op de regels die in dit project zijn opgeslagen. Bij de meeste bevindingen hoort een oplossing met één klik."
     }
   },
   "profiles": {
@@ -589,7 +684,7 @@
   },
   "prep": {
     "metadataInMain": "\\DocumentMetadata hoort bovenaan het hoofddocument, dus dit bestand krijgt het niet.",
-    "metadataUpdated":"De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
+    "metadataUpdated": "De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
     "metadataAdded": "\\DocumentMetadata is als eerste regel toegevoegd (verplicht, moet vóór \\documentclass staan). Het staat in een versiecontrole: LaTeX ouder dan {{date}}, inclusief de meegeleverde engine, slaat het over en compileert het document ongetagd in plaats van te falen.",
     "headerRows": "table/header-rows is op 1 gezet, zodat de eerste rij van elke tabel als kopcellen wordt getagd. Wijzig het getal als een tabel een andere kopdiepte heeft.",
     "unicodeMath": "\\usepackage{unicode-math} is toegevoegd, dat deze engine nodig heeft voor getagde wiskunde.",
@@ -649,7 +744,27 @@
     "groupOutput": "Gecompileerde uitvoer",
     "fixAll_one": "{{count}} oplossen met AI",
     "fixAll_other": "Alle {{count}} oplossen met AI",
-    "noProblems": "Geen problemen gevonden."
+    "noProblems": "Geen problemen gevonden.",
+    "writing": {
+      "profile": "Schrijfstijl",
+      "underlines": "Stijlonderstrepingen in de editor tonen",
+      "underlinesHint": "Zet dit uit om de editor schoon te houden. Preflight toont de bevindingen nog steeds als je deze controle uitvoert.",
+      "rules": "Projectregels",
+      "noRules": "Nog geen projectregels. Selecteer tekst in de editor, klik met de rechtermuisknop en kies Een stijlregel maken.",
+      "addRule": "Een regel toevoegen",
+      "removeRule": "De regel voor {{find}} verwijderen",
+      "flagOnly": "alleen markeren",
+      "clearIgnored_one": "{{count}} genegeerde bevinding opnieuw tonen",
+      "clearIgnored_other": "{{count}} genegeerde bevindingen opnieuw tonen",
+      "fixAll_one": "{{count}} bevinding repareren",
+      "fixAll_other": "Alle {{count}} bevindingen repareren",
+      "fixed_one": "{{count}} bevinding gerepareerd.",
+      "fixed_other": "{{count}} bevindingen gerepareerd.",
+      "skipped_one": "{{count}} reparatie raakte dezelfde tekst als een andere. Voer de controle opnieuw uit om hem te repareren.",
+      "skipped_other": "{{count}} reparaties raakten dezelfde tekst als andere. Voer de controle opnieuw uit om ze te repareren.",
+      "fixFailed": "Sommige bestanden zijn gewijzigd nadat de controle liep. Voer de controle opnieuw uit en repareer dan.",
+      "saveFailed": "De schrijfinstellingen konden niet worden opgeslagen."
+    }
   },
   "finding": {
     "review": "Beoordelen",
@@ -657,7 +772,9 @@
     "page": "p.{{page}}",
     "needsJudgment": "Vraagt jouw oordeel. Geen enkel hulpmiddel kan dit uit het bestand alleen bepalen.",
     "jumpToSource": "Naar de broncode springen",
-    "fixWithAi": "Repareren met AI"
+    "fixWithAi": "Repareren met AI",
+    "applyFix": "Repareren",
+    "ignore": "Negeren"
   },
   "score": {
     "notEvaluated": "{{label}} niet beoordeeld",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} tagt geen PDF's voor schermlezers. Typst 0.14 en nieuwer doen dat wel.",
     "none": "Typst {{version}} kan geen PDF-standaarden maken. Kies Typst 0.12 of nieuwer in het compileermenu.",
     "uaNote": "PDF/UA-1 vereist een documenttitel en alternatieve tekst voor elke afbeelding."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Afleiden uit het document",
+      "description": "Gebruikt de regels in CVPR-stijl als het project cvpr.sty of een verwante stijl laadt, en anders de algemene regels."
+    },
+    "general": {
+      "label": "Algemene artikelstijl",
+      "description": "Spaties, aanhalingstekens, verwijzingen, leestekens bij vergelijkingen, bijschriften en macro's."
+    },
+    "cvpr": {
+      "label": "CVPR-stijl",
+      "description": "De algemene regels, plus Table voluit geschreven, genummerde vergelijkingen en zwevende objecten bovenaan de pagina."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Een spatie toevoegen",
+    "removeSpace": "De spatie verwijderen",
+    "useTilde": "~ gebruiken",
+    "useTexQuotes": "LaTeX-aanhalingstekens gebruiken",
+    "spellOut": "{{word}} schrijven",
+    "addComma": "Een komma toevoegen",
+    "addPeriod": "Een punt toevoegen",
+    "useMacro": "{{macro}} gebruiken",
+    "numberEquation": "Nummeren",
+    "placeTop": "[t] gebruiken",
+    "replaceWith": "{{text}} schrijven",
+    "boldBest": "In plaats daarvan {{value}} vet maken",
+    "underlineSecond": "In plaats daarvan {{value}} onderstrepen",
+    "makeMacro": "Een macro maken"
+  },
+  "styleRule": {
+    "title": "Een stijlregel maken",
+    "description": "De regel controleert elk LaTeX-bestand in dit project terwijl je schrijft en reist met het project mee in project.json.",
+    "find": "Tekst om te markeren",
+    "replace": "Schrijf in plaats daarvan",
+    "replaceHint": "Laat leeg om de tekst te markeren zonder een oplossing aan te bieden.",
+    "note": "Notitie voor coauteurs (optioneel)",
+    "wholeWord": "Alleen hele woorden",
+    "matchCase": "Hoofdlettergevoelig",
+    "noMatches": "Nog geen overeenkomsten in dit project.",
+    "matches_one": "Komt overeen op {{count}} plek in dit project.",
+    "matches_other": "Komt overeen op {{count}} plekken in dit project.",
+    "save": "Regel opslaan",
+    "cancel": "Annuleren",
+    "saved": "Regel opgeslagen. Hij controleert nu elk bestand in dit project."
   }
 }

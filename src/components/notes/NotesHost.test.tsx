@@ -38,14 +38,14 @@ const paper = vi.hoisted(() => ({
   writeProjectBytes: vi.fn(),
   renderMermaidFigure: vi.fn(),
   svgDocumentToPngBytes: vi.fn(),
-  insertUsepackage: vi.fn(),
+  insertUsepackages: vi.fn(),
   notesRenderTikz: vi.fn(),
 }));
 vi.mock("@/features/tools-ai/pandoc-text", () => ({ pandocConvert: paper.pandocConvert }));
 vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: paper.insertAtCursor }));
 vi.mock("@/components/diagram/mermaid-render", () => ({ renderMermaidFigure: paper.renderMermaidFigure }));
 vi.mock("@/features/equation-export", () => ({ svgDocumentToPngBytes: paper.svgDocumentToPngBytes }));
-vi.mock("@/components/packages/latex-document", () => ({ insertUsepackage: paper.insertUsepackage }));
+vi.mock("@/components/packages/latex-document", () => ({ insertUsepackages: paper.insertUsepackages }));
 const captured = vi.hoisted(() => ({
   props: null as WorkspaceProps | null,
   data: null as NotesData | null,
@@ -922,16 +922,16 @@ describe("sending a note to the open paper", () => {
   });
 
   it("adds the packages a TikZ block needs to a LaTeX paper's preamble", async () => {
-    paper.insertUsepackage.mockResolvedValue("file");
+    paper.insertUsepackages.mockResolvedValue(undefined);
     useFilesStore.setState({ projectId: "paper-1", activePath: "chapters/circuit.tex", mainDoc: "main.tex", tree: [] });
     const note = "```circuitikz\n\\usepackage[siunitx]{circuitikz}\n\\draw (0,0) to[R] (2,0);\n```";
     await expect(sendTextToPaper("paper-1", note, "note-1")).resolves.toBe(true);
-    expect(paper.insertUsepackage.mock.calls).toEqual([["main.tex", "circuitikz", "siunitx"]]);
+    expect(paper.insertUsepackages.mock.calls).toEqual([["main.tex", [{ name: "circuitikz", options: "siunitx" }]]]);
     expect(paper.insertAtCursor.mock.lastCall?.[0]).toContain("\\begin{circuitikz}");
-    paper.insertUsepackage.mockClear();
+    paper.insertUsepackages.mockClear();
     useFilesStore.setState({ activePath: "notes/plan.md" });
     await sendTextToPaper("paper-1", "```tikz\n\\draw (0,0);\n```", "note-1");
-    expect(paper.insertUsepackage).not.toHaveBeenCalled();
+    expect(paper.insertUsepackages).not.toHaveBeenCalled();
   });
 
   it("inserts Markdown as it is and refuses a paper that is not open", async () => {

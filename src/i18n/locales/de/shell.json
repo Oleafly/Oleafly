@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Schnellerfassung",
       "keywords": "Schnellerfassung erfassen notieren Notiz Eingang heute quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notationstabelle",
+      "keywords": "notation symbole definitionen glossar formeln einfügen insert symbols glossary math",
+      "empty": "Keine Symboldefinitionen gefunden. Definieren Sie Symbole im Text mit Wendungen wie „Let $x$ be the input“ oder „where $x$ is the input“."
+    },
+    "addChapterFromProject": {
+      "keywords": "abschlussarbeit kapitel aufsatz import zusammenführen kopieren projekt thesis chapter paper merge",
+      "label": "Kapitel aus einem anderen Projekt hinzufügen"
     }
   },
   "community": {

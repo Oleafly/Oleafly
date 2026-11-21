@@ -51,3 +51,13 @@ export async function insertUsepackage(mainDoc: string, name: string, options: s
   }
   return "file";
 }
+
+export async function insertUsepackages(
+  mainDoc: string,
+  packages: readonly { name: string; options: string }[],
+  from = 0,
+): Promise<void> {
+  if (from >= packages.length) return;
+  await insertUsepackage(mainDoc, packages[from].name, packages[from].options);
+  await insertUsepackages(mainDoc, packages, from + 1);
+}

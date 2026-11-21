@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Snel noteren",
       "keywords": "snel noteren vastleggen notitie inbox vandaag quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notatietabel",
+      "keywords": "notatie symbolen definities woordenlijst wiskunde invoegen",
+      "empty": "Geen symbooldefinities gevonden. Definieer symbolen in de tekst met zinnen als \"Let $x$ be the input\" of \"where $x$ is the input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "scriptie hoofdstuk artikel importeren samenvoegen kopiëren project",
+      "label": "Een hoofdstuk uit een ander project toevoegen"
     }
   },
   "community": {

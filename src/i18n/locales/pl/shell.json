@@ -394,6 +394,15 @@
     "notesQuickCapture": {
       "label": "Szybka notatka",
       "keywords": "szybka notatka zanotuj notatka skrzynka dzisiaj quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabela oznaczeń",
+      "keywords": "wstaw oznaczenia symbole definicje glosariusz matematyka",
+      "empty": "Nie znaleziono definicji symboli. Definiuj symbole w tekście zwrotami takimi jak „Niech $x$ będzie wejściem” lub „gdzie $x$ jest wejściem”."
+    },
+    "addChapterFromProject": {
+      "keywords": "praca rozdział artykuł importuj scal kopiuj projekt",
+      "label": "Dodaj rozdział z innego projektu"
     }
   },
   "community": {

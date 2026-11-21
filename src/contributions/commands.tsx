@@ -8,6 +8,7 @@ import {
   Asterisk,
   Bold,
   Bookmark,
+  BookPlus,
   CaseLower,
   CaseSensitive,
   CaseUpper,
@@ -154,6 +155,7 @@ import { openFolderWithPicker } from "@/features/open-folder";
 import { logError } from "@/lib/log";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { openLatexPackages } from "@/components/packages/open";
+import { useChapterImportStore } from "@/store/chapter-import";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { toggleZenMode } from "@/lib/zen-mode";
 import { togglePreviewPane } from "@/lib/compile-preview";
@@ -282,6 +284,7 @@ const ENGLISH_KEYWORDS = {
   formatSelection: "format selection tidy indent typstyle typst",
   typstPackages: "typst universe packages import library browse vendor",
   latexPackages: "latex ctan packages usepackage preamble install tlmgr browse",
+  addChapterFromProject: "thesis chapter paper import merge copy project",
   closeAllEditorTabs: "close all editor tabs files",
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
@@ -294,6 +297,7 @@ const ENGLISH_KEYWORDS = {
   zoomIn: "zoom in bigger larger magnify scale interface window",
   zoomOut: "zoom out smaller shrink scale interface window",
   resetZoom: "reset zoom actual size 100 percent scale interface window",
+  notationTable: "insert notation symbols definitions glossary math",
 } as const;
 
 const PANE_EDGE_ICONS = [
@@ -899,6 +903,17 @@ export function registerPaletteCommands() {
     run: openZoteroUpdates,
   });
   palette({
+    id: "palette.add-chapter-from-project",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.addChapterFromProject.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.addChapterFromProject.keywords)} ${ENGLISH_KEYWORDS.addChapterFromProject}`,
+    icon: () => <BookPlus className="size-4" />,
+    order: 126,
+    when: (ctx) => !!ctx.projectId && engineLoaded() && engine().source_format === "latex",
+    run: () => useChapterImportStore.getState().setOpen(true),
+  });
+  palette({
     id: "palette.zotero-sync",
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
     label: () => i18n.t(($) => $.shell.commands.zoteroSync.label),
@@ -1035,6 +1050,21 @@ export function registerPaletteCommands() {
       if (activeIsTypstSource()) void insertTypstTable(2, 2);
       else latexTable();
     },
+  });
+  sourceEditing({
+    id: "palette.notation-table",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.notationTable.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.notationTable.keywords)} ${ENGLISH_KEYWORDS.notationTable}`,
+    icon: () => <Sigma className="size-4" />,
+    order: 455,
+    when: activeIsLatexSource,
+    run: () =>
+      void import("@/features/notation-table").then(
+        (module) => module.insertNotationTable(),
+        (error: unknown) => logError("load notation table", error),
+      ),
   });
   sourceEditing({
     id: "palette.equation",

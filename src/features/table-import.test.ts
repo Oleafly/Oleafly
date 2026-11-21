@@ -35,9 +35,13 @@ import {
   planLinkedTable,
   readTableFile,
   readTableRows,
+  relinkedTable,
+  resultColumns,
   writeLinkedTableData,
   type TableFile,
 } from "./table-import";
+import { findLinkedLatexTables } from "@oleafly/conversion-registry/table";
+import { diskHash } from "@/lib/disk-hash";
 
 function csvBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -283,14 +287,36 @@ describe("planLinkedTable", () => {
 });
 
 describe("linked tables", () => {
+  const plan = { dataPath: "data/x.tsv", content: "A\tB\n1\t2\n3\t4\n", source: { format: "csv" as const, path: "../data/x.tsv", delimiter: "\t" } };
+
   it("emits the compile-time reader for the planned file", () => {
-    const source = emitLinkedTable([["A"], ["1"]], {
-      header: true,
-      label: "tab:x",
-      source: { format: "csv", path: "data/x.csv" },
-    });
-    expect(source.split("\n")[0]).toBe('#let x-data = csv("data/x.csv")');
+    const source = emitLinkedTable([["A"], ["1"]], { header: true, label: "tab:x", target: "typst" }, plan);
+    expect(source.split("\n")[0]).toBe('#let x-data = csv("../data/x.tsv", delimiter: "\\t")');
     expect(source).toContain(") <tab:x>");
+  });
+
+  it("marks a LaTeX table with the data file, its hash and the options", () => {
+    const rows = [["A", "B"], ["1", "2"], ["3", "4"]];
+    const highlight = { directions: [null, "higher"] as const, best: true, second: false };
+    const source = emitLinkedTable(rows, { header: true, caption: "Runs", highlight, target: "latex" }, plan);
+    expect(source).toContain("3 & \\textbf{4} \\\\");
+    const [match] = findLinkedLatexTables(source);
+    expect(match.table).toEqual({
+      v: 1,
+      source: "data/x.tsv",
+      hash: diskHash(plan.content),
+      options: { header: true, caption: "Runs", highlight, format: "csv", delimiter: "\t" },
+    });
+  });
+
+  it("rebuilds a linked LaTeX table from changed data and declines data it cannot read", () => {
+    const source = emitLinkedTable([["A", "B"], ["1", "2"]], { header: true, target: "latex" }, plan);
+    const [match] = findLinkedLatexTables(source);
+    const edit = relinkedTable(match, "A\tB\n5\t6\n");
+    expect(edit?.insert).toContain("5 & 6 \\\\");
+    expect(findLinkedLatexTables(edit?.insert ?? "")[0].table.hash).toBe(diskHash("A\tB\n5\t6\n"));
+    expect(relinkedTable(match, "")).toBeNull();
+    expect(relinkedTable(match, Array.from({ length: MAX_TABLE_ROWS + 1 }, () => "x").join("\n"))).toBeNull();
   });
 
   it("writes the data file as UTF-8 and refreshes the file tree", async () => {
@@ -299,5 +325,17 @@ describe("linked tables", () => {
     expect(mocks.writeProjectBytes).toHaveBeenCalledWith("paper", "data/é.csv", btoa("\u00c3\u00a9\n"));
     expect(mocks.refreshTree).toHaveBeenCalled();
     expect(mocks.notifyProjectFilesChanged).toHaveBeenCalledWith("paper", ["data/é.csv"]);
+  });
+});
+
+describe("resultColumns", () => {
+  it("lists columns with numbers and guesses which way is better from the header", () => {
+    const rows = [["Method", "PSNR", "LPIPS", "Notes", "Runs"], ["A", "30.1", "0.2", "x", "3"], ["B", "31.0", "0.1", "y", "-"]];
+    expect(resultColumns(rows, true)).toEqual([
+      { column: 1, title: "PSNR", direction: "higher" },
+      { column: 2, title: "LPIPS", direction: "lower" },
+    ]);
+    expect(resultColumns(rows, false).map((column) => column.column)).toEqual([1, 2]);
+    expect(resultColumns(rows, false)[0]).toEqual({ column: 1, title: "", direction: null });
   });
 });

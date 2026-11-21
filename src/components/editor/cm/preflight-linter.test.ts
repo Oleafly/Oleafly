@@ -96,3 +96,31 @@ describe("preflightDiagnostics", () => {
     expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toHaveLength(1);
   });
 });
+
+describe("writing diagnostics", () => {
+  it("offers a one-click fix and an Ignore action for writing findings", async () => {
+    const { EditorState } = await import("@codemirror/state");
+    const text = "Convolutional neural network(CNN) works.";
+    const diagnostics = await preflightDiagnostics(text, "latex");
+    const writing = diagnostics.find((diagnostic) => text.slice(diagnostic.from, diagnostic.to) === "network(CNN)");
+    expect(writing?.actions?.map((action) => action.name)).toEqual(["Add a space", "Ignore"]);
+    let state = EditorState.create({ doc: `Moved. ${text}` });
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (spec: Parameters<typeof state.update>[0]) => {
+        state = state.update(spec).state;
+      },
+    } as unknown as import("@codemirror/view").EditorView;
+    const shift = "Moved. ".length;
+    writing?.actions?.[0].apply(view, (writing?.from ?? 0) + shift, (writing?.to ?? 0) + shift);
+    expect(state.doc.toString()).toBe("Moved. Convolutional neural network (CNN) works.");
+  });
+
+  it("leaves writing findings out of the editor when the project turns underlines off", async () => {
+    const text = "Convolutional neural network(CNN) works.";
+    useFilesStore.setState({ projectWritingSettings: { ...useFilesStore.getState().projectWritingSettings, underlines: false } });
+    expect(await preflightDiagnostics(text, "latex")).toEqual([]);
+  });
+});

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -38,6 +39,18 @@ const requirePolyfillsFirst = (): Plugin => ({
   },
 });
 
+const PACKAGE_STRINGS = "?package-strings";
+
+export const packageStringsOnly = (): Plugin => ({
+  name: "web-package-strings-only",
+  enforce: "pre",
+  async load(id) {
+    if (!id.endsWith(PACKAGE_STRINGS)) return null;
+    const catalog = JSON.parse(await readFile(id.slice(0, -PACKAGE_STRINGS.length), "utf8"));
+    return JSON.stringify({ package: catalog.package ?? {} });
+  },
+});
+
 const preserveWorkerExports = (): Plugin => ({
   name: "web-preserve-worker-exports",
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
@@ -47,7 +60,7 @@ export default defineConfig({
   root: path.resolve(repo, "web"),
   base: "/web/",
   publicDir: false,
-  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst(), pdfjsAssets()],
+  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst(), pdfjsAssets(), packageStringsOnly()],
   resolve: { alias: WEB_ALIASES },
   worker: {
     format: "es",

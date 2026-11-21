@@ -730,7 +730,7 @@ function AppContent() {
       const files = useFilesStore.getState();
       if (!payload || payload.projectId !== files.projectId) return;
       void files.applyProjectStateChanged(payload).then((applied) => {
-        if (applied) usePreflightStore.getState().reset();
+        if (applied && payload.reason !== "writing-changed") usePreflightStore.getState().reset();
         if (useFilesStore.getState().projectId === payload.projectId) {
           void useTypstFormsStore.getState().refresh();
         }
