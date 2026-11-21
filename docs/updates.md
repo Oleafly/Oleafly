@@ -22,9 +22,80 @@ an installed build cannot use the signed feed.
 2. The app fetches `latest.json` from the release's
    `.../releases/latest/download/latest.json` endpoint (see the `plugins.updater`
    block in `tauri.conf.json`).
-3. Before installing, the downloaded bundle's **minisign signature** is verified
+3. It downloads the update file from the addresses that entry lists.
+4. Before installing, the downloaded bundle's **minisign signature** is verified
    against the public key embedded in `tauri.conf.json`. An unsigned or
    tampered artifact is rejected.
+
+## Where the download comes from
+
+Each platform entry in `latest.json` has a `url`. The release workflow runs
+`scripts/update-feed.sh`, which sets it to the release's public download
+address, `https://github.com/Oleafly/Oleafly/releases/download/<tag>/<file>`.
+tauri-action writes `api.github.com` addresses, because it builds into a draft
+release. Those count against GitHub's limit of 60 anonymous API requests an
+hour for each network address, so they must not reach a published feed.
+
+When the mirror is set up (next section), the script also copies each update
+file to `mirrors.oleafly.com/releases/desktop/<tag>/<hash>/<file>`. It
+downloads every copy again through the public address and compares the
+SHA-256. Only then does it put the mirror address in `url` and the GitHub
+address in `original_url`. The folder name holds the first 16 characters of
+the file's SHA-256, so a rebuilt file gets a new address and an edge cache can
+never serve the earlier build under it.
+
+Versions up to 0.4.13 read `url` and nothing else. Later versions read both
+addresses and try them in the order set in Settings > Downloads > Sources
+(see [download-sources.md](download-sources.md)). A download that fails, stalls
+or doesn't match its signature moves to the next address, and each failure is
+written to `app.log`.
+
+If any step of the mirror copy fails, the feed keeps the GitHub addresses and
+the release goes ahead. The job prints a warning and says in its summary which
+addresses the feed uses. Pre-releases are never mirrored.
+
+After a successful copy the script removes older update files from the mirror.
+It keeps every file that the new feed or the live feed
+(`releases/latest/download/latest.json`) points at, so the current release and
+the one before it stay available. If it can't read the live feed or list the
+bucket, it removes nothing.
+
+## Optional: mirror the update files
+
+Without these secrets the release works as before and updates download from
+GitHub.
+
+1. In the Cloudflare dashboard, open R2 > Manage API tokens and create a token
+   with Object Read & Write, limited to the `oleafly-mirror` bucket.
+2. Add three repository secrets under Settings > Secrets and variables >
+   Actions:
+   - `MIRROR_R2_ACCESS_KEY_ID`: the token's Access Key ID.
+   - `MIRROR_R2_SECRET_ACCESS_KEY`: the token's Secret Access Key.
+   - `MIRROR_R2_ENDPOINT`: the S3 endpoint shown with the token,
+     `https://<account id>.r2.cloudflarestorage.com`.
+
+Set all three or none. The script stops the release if only some are present.
+
+The ten update files of one release add up to about 2.4 GB, and two releases
+are kept. R2 charges for storage above 10 GB a month and nothing for
+downloads.
+
+To take a published release off the mirror, upload a `latest.json` whose `url`
+fields are the `original_url` values:
+
+```bash
+gh release download vX.Y.Z --repo Oleafly/Oleafly -p latest.json
+```
+
+```bash
+jq '.platforms |= with_entries(.value |= ((.url = (.original_url // .url)) | del(.original_url)))' latest.json > latest.github.json && mv latest.github.json latest.json
+```
+
+```bash
+gh release upload vX.Y.Z latest.json --repo Oleafly/Oleafly --clobber
+```
+
+## Release notes
 
 The update window renders the release notes as formatted markdown. Those notes
 come from the version's `CHANGELOG.md` section: `release.yml` runs

@@ -95,6 +95,23 @@ describe("installUpdate", () => {
     expect(flushForQuit).not.toHaveBeenCalled();
   });
 
+  it("starts the bar again when the download moves to the release's second address", async () => {
+    const percents: number[] = [];
+    invoke.mockImplementation(async (command, options) => {
+      if (command === "download_update") {
+        options.onEvent.onmessage({ event: "Started", data: { contentLength: 100 } });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 70 } });
+        options.onEvent.onmessage({ event: "Started", data: { contentLength: 100 } });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 30 } });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 70 } });
+        options.onEvent.onmessage({ event: "Finished" });
+        return 8;
+      }
+    });
+    await installUpdate(update, (p) => percents.push(p));
+    expect(percents).toEqual([0, 70, 0, 30, 100, 100]);
+  });
+
   it("does not install if the download stalls or fails verification", async () => {
     invoke.mockRejectedValue(new Error("download stopped making progress"));
     await expect(installUpdate(update)).rejects.toThrow("stopped making progress");

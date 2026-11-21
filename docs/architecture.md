@@ -209,6 +209,19 @@ longer reparses the whole log on every streamed chunk. The TypeScript parser in
 `@oleafly/latex` remains the fallback for a backend that does not send the
 field.
 
+A LaTeX log often names the line where the compiler noticed a problem, or a
+file in the build folder. Three readers in `oleafly-core` turn that into a line
+the author can fix, and both runtimes call them in the same order after
+`parse_latex_log`. `MissingCharacterPlaces` takes the file and line the built-in
+engine prints for each lost character. `bibtex_log` reads BibTeX's `.blg`.
+`source_places::place_in_sources` reads the project files the log opened and
+moves each error and warning to the source line, for example from `\end{align}`
+to the row with the mistake. A file in the build folder is never left as the
+place. When LaTeX fails while reading one, the result says so instead. Each
+runtime records the build folder before the engine starts (`BuildBefore`), which
+is how the result tells a file left over from an earlier compile from a line
+the document wrote during this one.
+
 Markdown PDF compiles run Pandoc with a fixed chain: the `mermaid-figures`,
 `image-compat` and `markdown-bibliography` filters, then `--citeproc`, then
 `default-fonts`. `markdown_pdf_args` in `oleafly-core` builds it for both

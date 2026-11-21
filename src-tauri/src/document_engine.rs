@@ -1631,8 +1631,9 @@ pub(crate) async fn export_notebook(export: NotebookExport<'_>) -> Result<(), St
 
 pub use oleafly_core::tex_errors::CompileError;
 use oleafly_core::tex_errors::{
-    parse_pandoc_diagnostics, parse_tectonic_log_errors, parse_tex_log_errors, rebase_log_files,
-    resolve_extensionless_inputs, ENGINE_OUTPUT_MARKER,
+    parse_pandoc_diagnostics, parse_tectonic_log_errors, parse_tex_log_errors,
+    point_at_unclosed_environments, rebase_log_files, resolve_extensionless_inputs,
+    ENGINE_OUTPUT_MARKER,
 };
 
 #[derive(Serialize, Default)]
@@ -2131,6 +2132,7 @@ struct CompileFinish {
     retained_stale: Vec<RetainedArtifact>,
     compile_start: std::time::Instant,
     bbl_before: Option<crate::biber_toolchain::BblStamp>,
+    build_before: oleafly_core::source_places::BuildBefore,
     stdout_buf: String,
     exit_code: Option<i32>,
     biber_notes: String,
@@ -2150,6 +2152,7 @@ async fn finish_compile(
         retained_stale,
         compile_start,
         bbl_before,
+        build_before,
         stdout_buf,
         exit_code,
         biber_notes,
@@ -2158,6 +2161,12 @@ async fn finish_compile(
         pythontex_failure,
     } = finish;
     let setup_gap = latexmk_setup_gap(request, &spec, &stdout_buf, exit_code, stopped, bbl_before);
+    let mut findings = EngineFindings {
+        lost_characters: oleafly_core::MissingCharacterPlaces::read(&stdout_buf),
+        bibtex: Vec::new(),
+        out_dir: spec.artifacts.output_dir.clone(),
+        build_before,
+    };
     let mut log =
         combined_compile_log(&spec, stdout_buf, exit_code, &biber_notes, &pythontex_notes);
     if matches!(
@@ -2192,7 +2201,14 @@ async fn finish_compile(
     append_setup_gap(setup_gap, &mut log, &mut errors);
     if !stopped {
         let failed = !has_output || exit_code != Some(0);
-        append_tex_output_notes(request, &spec, failed, &mut log, &mut errors);
+        findings.bibtex = append_tex_output_notes(
+            request,
+            &spec,
+            &findings.build_before,
+            failed,
+            &mut log,
+            &mut errors,
+        );
     }
     let ok = compile_succeeded(
         request, &spec, stopped, has_output, exit_code, &errors, &mut log,
@@ -2214,6 +2230,7 @@ async fn finish_compile(
         request.project_dir.to_owned(),
         spec.working_dir.clone(),
         errors,
+        findings,
     )
     .await?;
     Ok(build_compile_result(
@@ -2258,20 +2275,39 @@ fn seed_project_bibliography(project_dir: &Path, main_document: &str, out_dir: &
 fn append_tex_output_notes(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
+    before: &oleafly_core::source_places::BuildBefore,
     failed: bool,
     log: &mut String,
     errors: &mut Vec<CompileError>,
-) {
+) -> Vec<oleafly_core::LogDiagnostic> {
     let engine = request.engine.id();
     let CompileTarget::Main { main_document } = request.target else {
-        return;
+        return Vec::new();
     };
     if !matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk) {
-        return;
+        return Vec::new();
     }
     if let Some(bbl) = shipped_bibliography(request.project_dir, main_document) {
         append_bounded(log, shipped_bibliography_note(&bbl).as_bytes());
     }
+    let bibtex = if tex_ran(spec) {
+        oleafly_core::tex_outputs::bibtex_findings(
+            oleafly_core::tex_outputs::BibtexRun {
+                folders: oleafly_core::source_places::BuildFolders {
+                    project_dir: request.project_dir,
+                    compile_dir: &spec.working_dir,
+                    out_dir: &spec.artifacts.output_dir,
+                },
+                before,
+                stem: crate::paths::ENTRY_STEM,
+                fails_build: engine == DocumentEngineId::Latexmk,
+            },
+            log,
+        )
+    } else {
+        oleafly_core::tex_outputs::BibtexFindings::default()
+    };
+    errors.extend(bibtex.errors);
     let source = read_source_head(&request.project_dir.join(main_document));
     errors.extend(jobname_bibliography_warning(&source));
     errors.extend(unbuilt_index_warnings(
@@ -2281,7 +2317,7 @@ fn append_tex_output_notes(
         engine == DocumentEngineId::Latex,
     ));
     if !failed {
-        return;
+        return bibtex.diagnostics;
     }
     let mut causes = Vec::new();
     if engine == DocumentEngineId::Latexmk {
@@ -2301,6 +2337,7 @@ fn append_tex_output_notes(
     }
     causes.extend(nested_input_error(request.project_dir, main_document, log));
     errors.splice(0..0, causes);
+    bibtex.diagnostics
 }
 
 fn latexmk_failure_causes(
@@ -2392,6 +2429,14 @@ fn apply_image_findings(
 
 type ParsedCompileLog = (String, Vec<oleafly_core::LogDiagnostic>, Vec<CompileError>);
 
+#[derive(Default)]
+struct EngineFindings {
+    lost_characters: oleafly_core::MissingCharacterPlaces,
+    bibtex: Vec<oleafly_core::LogDiagnostic>,
+    out_dir: PathBuf,
+    build_before: oleafly_core::source_places::BuildBefore,
+}
+
 async fn typst_glyph_warnings(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
@@ -2448,6 +2493,7 @@ pub(crate) async fn typst_checked_log_errors(
         project_dir,
         log_dir,
         errors,
+        EngineFindings::default(),
     )
     .await
 }
@@ -2459,6 +2505,7 @@ async fn parse_log_diagnostics(
     project_dir: PathBuf,
     log_dir: PathBuf,
     mut errors: Vec<CompileError>,
+    findings: EngineFindings,
 ) -> Result<ParsedCompileLog, String> {
     if matches!(
         engine,
@@ -2481,6 +2528,9 @@ async fn parse_log_diagnostics(
             Some(root) => oleafly_core::parse_latex_log(&log, Some(root)),
             None => Vec::new(),
         };
+        findings
+            .lost_characters
+            .apply(&mut diagnostics, &[&log_dir, &project_dir]);
         rebase_log_files(
             &project_dir,
             &log_dir,
@@ -2489,6 +2539,19 @@ async fn parse_log_diagnostics(
             &mut diagnostics,
         );
         resolve_extensionless_inputs(&project_dir, &mut errors, &mut diagnostics);
+        point_at_unclosed_environments(&project_dir, &mut errors, &mut diagnostics);
+        oleafly_core::source_places::place_in_sources(
+            oleafly_core::source_places::BuildFolders {
+                project_dir: &project_dir,
+                compile_dir: &log_dir,
+                out_dir: &findings.out_dir,
+            },
+            &findings.build_before,
+            &log,
+            &mut errors,
+            &mut diagnostics,
+        );
+        diagnostics.extend(findings.bibtex);
         (log, diagnostics, errors)
     })
     .await
@@ -3335,6 +3398,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     let compile_start = std::time::Instant::now();
     let bbl_before =
         crate::biber_toolchain::bbl_stamp(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM);
+    let build_before = oleafly_core::source_places::BuildBefore::take(&spec.artifacts.output_dir);
     let (mut stdout_buf, mut exit_code) = execute_compile_spec(&request, &spec).await?;
     phitex::adopt_outputs(&spec);
     let document_render = (request.engine.id() == DocumentEngineId::Quarto)
@@ -3357,6 +3421,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         retained_stale,
         compile_start,
         bbl_before,
+        build_before,
         stdout_buf,
         exit_code,
         biber_notes,
@@ -6397,6 +6462,7 @@ mod tests {
             project.path().to_owned(),
             project.path().to_owned(),
             errors,
+            EngineFindings::default(),
         )
         .await
         .unwrap();
@@ -10506,6 +10572,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 PathBuf::new(),
                 PathBuf::new(),
                 Vec::new(),
+                EngineFindings::default(),
             )
             .await
             .unwrap();
@@ -10523,6 +10590,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             PathBuf::new(),
             PathBuf::new(),
             Vec::new(),
+            EngineFindings::default(),
         )
         .await
         .unwrap();
@@ -10540,6 +10608,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 PathBuf::new(),
                 PathBuf::new(),
                 Vec::new(),
+                EngineFindings::default(),
             )
             .await
             .unwrap();
@@ -10562,6 +10631,52 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     }
 
     #[tokio::test]
+    async fn engine_findings_give_rows_their_lines_before_names_are_resolved() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir(project.path().join("sections")).unwrap();
+        std::fs::write(
+            project.path().join("sections/phon.tex"),
+            "one\ntwo \u{251}\n",
+        )
+        .unwrap();
+        let lost = "Missing character: There is no \u{251} (U+0251) in font [f]:m;!";
+        let bibtex = oleafly_core::LogDiagnostic {
+            severity: oleafly_core::LogSeverity::Warning,
+            message: "Repeated entry".to_owned(),
+            file: Some("refs.bib".to_owned()),
+            line: Some(9),
+            category: oleafly_core::LogCategory::Bibtex,
+            error_context: None,
+        };
+        let findings = EngineFindings {
+            lost_characters: oleafly_core::MissingCharacterPlaces::read(
+                "warning: sections/phon:2: Missing character: There is no ? (U+0251) in font [f]:m;!\n",
+            ),
+            bibtex: vec![bibtex.clone()],
+            out_dir: project.path().join("build"),
+            build_before: Default::default(),
+        };
+        let (_, diagnostics, _) = parse_log_diagnostics(
+            DocumentEngineId::Latex,
+            format!("(main.tex (sections/phon\n{lost}\n))\n"),
+            Some("main.tex".to_string()),
+            project.path().to_owned(),
+            project.path().to_owned(),
+            Vec::new(),
+            findings,
+        )
+        .await
+        .unwrap();
+        assert_eq!(diagnostics.len(), 2);
+        assert_eq!(
+            (diagnostics[0].file.as_deref(), diagnostics[0].line),
+            (Some("./sections/phon.tex"), Some(2))
+        );
+        assert_eq!(diagnostics[0].message, lost);
+        assert_eq!(diagnostics[1], bibtex);
+    }
+
+    #[tokio::test]
     async fn an_empty_log_parses_to_no_diagnostics() {
         let (log, diagnostics, _) = parse_log_diagnostics(
             DocumentEngineId::Latex,
@@ -10570,6 +10685,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             PathBuf::new(),
             PathBuf::new(),
             Vec::new(),
+            EngineFindings::default(),
         )
         .await
         .unwrap();

@@ -26,6 +26,12 @@ host.
 The Tectonic bundle follows the same choice. `OLEAFLY_TEX_BUNDLE_URL` still
 overrides it when set.
 
+App updates follow it too. A release can list two addresses for each update
+file, a copy on `mirrors.oleafly.com` and the release on GitHub, and Oleafly
+tries them in the order above. Your own mirror is tried first only if it has
+the file at the same path. The update's signature is checked whichever address
+answers. See [updates.md](updates.md).
+
 ## TeX package repository
 
 When you add a package in Settings > Engines > LaTeX, or a compile installs a
@@ -102,8 +108,9 @@ doesn't break them.
 ## Not covered yet
 
 These still come from their own hosts whatever the setting: spelling
-dictionaries, template packs, app updates, Typst Universe packages, and online
-services such as AI providers and literature search.
+dictionaries, template packs, Typst Universe packages, and online services
+such as AI providers and literature search. The update check itself always
+reads `latest.json` from GitHub.
 
 ## Checking the Oleafly mirror
 

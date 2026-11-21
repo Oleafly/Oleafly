@@ -8,6 +8,8 @@ function shellEscapeParams() {
 
 type Explain = (params: Readonly<Record<string, string>>) => string;
 
+export const BUILD_FILE_DAMAGED_CODE = "tex.build_file_damaged";
+
 function glyphParams(params: Readonly<Record<string, string>>) {
   return {
     count: Number(params.count ?? 0),

@@ -70,6 +70,10 @@
     "in_use": "Windows only. {{path}} is the oleafly.exe file. oleafly is the command name."
   },
   "tex": {
+    "bibtex_entry_skipped": "{{message}} is BibTeX's own message, always in English, such as: I was expecting a `,' or a `}'. Keep it directly after the colon.",
+    "build_file_damaged": "Recompile from scratch is the label of the button under this message. Use the exact translation of shell compile.fromScratch.",
+    "build_file_unreadable": "Working files are the files LaTeX writes while compiling, such as the .aux file.",
+    "missing_characters_font": "{{sample}} is one to three of the missing characters, such as ɪ ɑ ː. Latin Modern and New Computer Modern are font names. The setup is a short piece of LaTeX shown under this message.",
     "explain": {
       "missing_dollar": "_, ^ and $...$ are LaTeX syntax the writer types. Keep them exactly as written.",
       "unbalanced_braces": "{ and } are LaTeX syntax the writer types. Keep them exactly as written.",

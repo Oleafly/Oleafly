@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.
+- pdfLaTeX's "Unicode character ... not set up for use with LaTeX" error has a plain explanation.
+
+### Changed
+
+- App updates follow Settings > Downloads > Sources. When a release has a copy
+  on `mirrors.oleafly.com`, Oleafly downloads the update from there first and
+  from the release on GitHub if that fails. With Original hosts chosen it uses
+  GitHub only. The signature check is the same whichever address answers.
+
+### Fixed
+
+- When a file left over from an earlier compile is damaged, the Logs panel says so and offers Recompile from scratch. Before, it suggested a typo in a command and pointed into the build folder, and with Stop on first error every later compile failed the same way. When the document itself writes a line LaTeX can't read back, the panel says that instead and names where it usually comes from, since recompiling from scratch won't help.
+- With the built-in engine, each entry under Missing characters in the Logs panel names the file and line of the character and opens it. A character that is missing on several lines gets an entry for each line. With XeLaTeX and LuaLaTeX, where the compiler gives no line, Oleafly looks the character up in your files.
+- An error inside `align`, a beamer frame, `tabularx` or a long caption opens the line with the mistake instead of the closing line, and the card shows that line with a mark under the command.
+- An error that comes from a command you defined opens the definition.
+- An error in the built bibliography opens the entry in your `.bib` file. Before, it pointed into a file in the build folder.
+- A broken entry in a `.bib` file that BibTeX reads shows in the Logs panel with its file and line. Before, the built-in engine said nothing and left the reference incomplete, and latexmk only told you to read the `.blg` file.
+- A brace or `$` that is never closed opens where it starts. An environment that is never closed opens at its `\begin` line instead of at `\end{document}`.
+- One missing file or package shows one error. Before, the built-in engine could list a hundred. The same error is no longer listed several times.
+- A label defined twice lists both places, and a warning from inside a package opens the line that loads the package.
+- A line that is too wide opens the line with the text. At the end of an included chapter it used to name the main file.
+- The "Float too large for page" and "float specifier changed" warnings open the float.
+- With latexmk, a missing `\input` file opens at the line that asks for it.
+- An error in a file with a long path keeps its file name. The log cuts long names at 79 characters, and the Logs panel used to show the cut-off name.
+- Updates download from the release's own address. The update feed pointed at
+  GitHub's API, which allows 60 anonymous requests an hour for each network
+  address, so on a shared network Update now could fail with "Download request
+  failed with status: 403 Forbidden". Every release since at least 0.4.7 was
+  affected, up to 0.4.13.
+
 ## [0.4.13] - 2026-11-20
 
 If you use Oleafly for your research, a thesis or a course, add a line to [Who's using Oleafly?](https://github.com/Oleafly/Oleafly/discussions/502) with where you use it and what for.
