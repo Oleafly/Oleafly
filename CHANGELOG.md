@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.
 - pdfLaTeX's "Unicode character ... not set up for use with LaTeX" error has a plain explanation.
 
+### Changed
+
+- App updates follow Settings > Downloads > Sources. When a release has a copy
+  on `mirrors.oleafly.com`, Oleafly downloads the update from there first and
+  from the release on GitHub if that fails. With Original hosts chosen it uses
+  GitHub only. The signature check is the same whichever address answers.
+
 ### Fixed
 
 - When a file left over from an earlier compile is damaged, the Logs panel says so and offers Recompile from scratch. Before, it suggested a typo in a command and pointed into the build folder, and with Stop on first error every later compile failed the same way. When the document itself writes a line LaTeX can't read back, the panel says that instead and names where it usually comes from, since recompiling from scratch won't help.
@@ -27,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "Float too large for page" and "float specifier changed" warnings open the float.
 - With latexmk, a missing `\input` file opens at the line that asks for it.
 - An error in a file with a long path keeps its file name. The log cuts long names at 79 characters, and the Logs panel used to show the cut-off name.
+- Updates download from the release's own address. The update feed pointed at
+  GitHub's API, which allows 60 anonymous requests an hour for each network
+  address, so on a shared network Update now could fail with "Download request
+  failed with status: 403 Forbidden". Every release since at least 0.4.7 was
+  affected, up to 0.4.13.
 
 ## [0.4.13] - 2026-11-20
 
