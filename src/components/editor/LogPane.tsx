@@ -8,7 +8,7 @@ import { isNullfontMissingCharacter, parseLatexLog, type LogDiagnostic } from "@
 import { compileLogCleared, useCompileStore, type CompileState } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import type { CompileError } from "@/lib/tauri";
-import { translatedLogNote } from "@/lib/compile-error-codes";
+import { BUILD_FILE_DAMAGED_CODE, translatedLogNote } from "@/lib/compile-error-codes";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
@@ -203,6 +203,11 @@ function extractErrorExcerpt(log: string, message: string): string {
 }
 
 const LogNavigation = createContext(openFileAndGotoLine);
+const LogRecompile = createContext<(() => void) | null>(null);
+
+function recompileStoredFromScratch(): void {
+  void useCompileStore.getState().recompile({ fromScratch: true });
+}
 
 const CompileErrorDetails = lazy(() =>
   import("./compile-log-details").then((module) => ({ default: module.CompileErrorDetails })), { warm: true });
@@ -210,7 +215,7 @@ const CompileLogSummary = lazy(() =>
   import("./compile-log-details").then((module) => ({ default: module.CompileLogSummary })), { warm: true });
 
 function hasErrorDetails(err: CompileError): boolean {
-  return err.source_line != null || (err.hints?.length ?? 0) > 0;
+  return err.source_line != null || (err.hints?.length ?? 0) > 0 || err.code === BUILD_FILE_DAMAGED_CODE;
 }
 
 type LogT = ReturnType<typeof useTranslation<["common", "editor"]>>["t"];
@@ -233,6 +238,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const displayText = useDisplayText();
   const openLocation = useContext(LogNavigation);
+  const recompileFromScratch = useContext(LogRecompile);
   const [expanded, setExpanded] = useState(true);
   const { copied, copy } = useCopyStatus();
   const excerpt = useMemo(() => extractErrorExcerpt(log, err.message), [log, err.message]);
@@ -325,7 +331,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
       )}
       {expanded && details && (
         <Suspense fallback={null}>
-          <CompileErrorDetails err={err} />
+          <CompileErrorDetails err={err} recompileFromScratch={recompileFromScratch} />
         </Suspense>
       )}
     </div>
@@ -609,10 +615,16 @@ function coversElement(range: Range, element: Element): boolean {
   );
 }
 
-export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine, onClearLog }: Readonly<{
+export function LogPane({
+  snapshot,
+  onOpenLocation = openFileAndGotoLine,
+  onClearLog,
+  onRecompileFromScratch = recompileStoredFromScratch,
+}: Readonly<{
   snapshot?: Pick<CompileState, "log" | "errors" | "status" | "diagnostics"> & { mainDoc: string; logCleared?: boolean };
   onOpenLocation?: typeof openFileAndGotoLine;
   onClearLog?: () => void;
+  onRecompileFromScratch?: () => void;
 }> = {}) {
   const { t } = useTranslation(["common", "editor"]);
   const displayText = useDisplayText();
@@ -724,6 +736,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine, onClea
 
   return (
     <LogNavigation value={onOpenLocation}>
+    <LogRecompile value={status === "compiling" ? null : onRecompileFromScratch}>
     <LogRows value={rowContext}>
     <div className="relative flex h-full min-h-0 flex-col bg-sidebar">
       <div
@@ -791,6 +804,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine, onClea
       {tooltip}
     </div>
     </LogRows>
+    </LogRecompile>
     </LogNavigation>
   );
 }

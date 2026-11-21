@@ -1036,6 +1036,7 @@ export function PreviewWindow({
           snapshot={workspace}
           onOpenLocation={(file, line, column) => command({ action: "source-location", file, line, column })}
           onClearLog={() => void command({ action: "clear-log" })}
+          onRecompileFromScratch={() => void command({ action: "compile", fromScratch: true })}
         />
       </div>}
 

@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
-use std::path::Path;
+use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -180,6 +180,9 @@ pub fn humanize_tex_error(message: &str) -> Option<(&'static str, &'static str)>
         return Some(("tex.explain.no_line_to_end", "\\\\ was used where LaTeX did not expect a line break, for example in ordinary paragraph text. Remove it, or leave a blank line to start a new paragraph."));
     }
     if let Some(rest) = m.strip_prefix("LaTeX Error: ") {
+        if rest.starts_with("Unicode character") {
+            return Some(("tex.explain.unicode_character", "pdfLaTeX has no setup for this character. Switch this project to Tectonic or XeLaTeX, which read Unicode text as it is typed."));
+        }
         if rest.starts_with("Too many unprocessed floats") {
             return Some(("tex.explain.too_many_floats", "LaTeX ran out of room to place figures and tables. Add a \\clearpage before continuing, shrink the floats, or use [htbp] placement so they can move."));
         }
@@ -225,7 +228,9 @@ fn float_warning(line: &str) -> Option<(&'static str, &'static str)> {
     None
 }
 
-const LOST_CHARACTER: &str = "Missing character: There is no ";
+const EMERGENCY_STOP: &str = "! Emergency stop";
+const UNCLOSED_AT_DOCUMENT_END: &str = "ended by \\end{document}.";
+const MAX_SOURCE_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_LOST_SAMPLE: usize = 3;
 const BANNER_LINES: usize = 64;
 
@@ -238,9 +243,16 @@ const JAPANESE_SETUP: &str =
 // Plain xeCJK drops the spaces between Hangul words.
 const KOREAN_SETUP: &str =
     "% Korean\n\\usepackage[space]{xeCJK}\n\\setCJKmainfont[AutoFakeBold]{UnBatang.ttf}";
+// The newcomputermodern package also swaps the math fonts through
+// unicode-math, which stops documents that use bm.
+const NEW_COMPUTER_MODERN_SETUP: &str = "% New Computer Modern\n\\usepackage{fontspec}\n\\setmainfont{NewCM10-Regular.otf}[ItalicFont=NewCM10-Italic.otf, BoldFont=NewCM10-Bold.otf, BoldItalicFont=NewCM10-BoldItalic.otf]";
+const LATIN_MODERN_ROMAN: &str = "[lmroman";
+const UPRIGHT_FACES: [&str; 2] = ["-regular]", "-bold]"];
 
-fn code_point(glyph: &str) -> Option<char> {
-    let (_, code) = glyph.split_once("(U+")?;
+pub(crate) fn code_point(glyph: &str) -> Option<char> {
+    let (_, code) = glyph
+        .split_once("(U+")
+        .or_else(|| glyph.split_once("(\""))?;
     u32::from_str_radix(code.split(')').next()?, 16)
         .ok()
         .and_then(char::from_u32)
@@ -263,11 +275,17 @@ struct LostCharacters {
     han: bool,
     kana: bool,
     hangul: bool,
+    in_default_font: bool,
+    beyond_new_computer_modern: bool,
+    in_new_computer_modern: Vec<String>,
 }
 
 impl LostCharacters {
     fn observe(&mut self, line: &str) {
-        let Some(rest) = line.trim_start().strip_prefix(LOST_CHARACTER) else {
+        let Some(rest) = line
+            .trim_start()
+            .strip_prefix(crate::compile_log::MISSING_CHARACTER)
+        else {
             return;
         };
         if rest.contains("in font nullfont") {
@@ -275,7 +293,9 @@ impl LostCharacters {
         }
         self.count += 1;
         let token = rest.split_whitespace().next().unwrap_or_default();
-        let Some(character) = code_point(rest).or_else(|| only_char(token)) else {
+        let found = code_point(rest).or_else(|| only_char(token));
+        self.note_font(rest, found);
+        let Some(character) = found else {
             self.remember(token);
             return;
         };
@@ -294,6 +314,28 @@ impl LostCharacters {
         }
         if !character.is_whitespace() && character != char::REPLACEMENT_CHARACTER {
             self.remember(&character.to_string());
+        }
+    }
+
+    fn note_font(&mut self, rest: &str, character: Option<char>) {
+        let font = rest.split_once(" in font ").map_or("", |(_, font)| font);
+        let Some(face) = font.strip_prefix(LATIN_MODERN_ROMAN) else {
+            return;
+        };
+        self.in_default_font = true;
+        let face = face.trim_start_matches(|digit: char| digit.is_ascii_digit());
+        let upright = UPRIGHT_FACES.iter().any(|name| face.starts_with(name));
+        let covered = character.filter(|character| {
+            upright && crate::font_coverage::new_computer_modern_upright_has(*character)
+        });
+        let Some(character) = covered else {
+            self.beyond_new_computer_modern = true;
+            return;
+        };
+        let glyph = character.to_string();
+        let room = self.in_new_computer_modern.len() < MAX_LOST_SAMPLE;
+        if room && !self.in_new_computer_modern.contains(&glyph) {
+            self.in_new_computer_modern.push(glyph);
         }
     }
 
@@ -321,16 +363,31 @@ impl LostCharacters {
         if self.count == 0 {
             return None;
         }
-        let sample = match self.sample.as_slice() {
-            [] => "?".to_owned(),
-            glyphs => glyphs.join(" "),
-        };
-        let hints = if log_runs_xetex(lines) {
+        let mut hints = if log_runs_xetex(lines) {
             self.setups()
         } else {
             Vec::new()
         };
-        let (code, explanation) = if hints.is_empty() {
+        let other_font = hints.is_empty()
+            && self.in_default_font
+            && !self.beyond_new_computer_modern
+            && log_reads_unicode(lines);
+        let glyphs = if other_font {
+            &self.in_new_computer_modern
+        } else {
+            &self.sample
+        };
+        let sample = match glyphs.as_slice() {
+            [] => "?".to_owned(),
+            glyphs => glyphs.join(" "),
+        };
+        let (code, explanation) = if other_font {
+            hints.push(NEW_COMPUTER_MODERN_SETUP.to_owned());
+            (
+                "tex.missing_characters_font",
+                format!("Some characters, such as {sample}, are missing from the PDF because the default font, Latin Modern, has no glyphs for them. New Computer Modern looks nearly the same and has them. Add the setup below to the preamble."),
+            )
+        } else if hints.is_empty() {
             (
                 "tex.missing_characters",
                 format!("Some characters, such as {sample}, are missing from the PDF because the font has no glyphs for them. Switch to a font that covers them."),
@@ -372,6 +429,14 @@ fn log_runs_xetex(lines: &[&str]) -> bool {
         .take(BANNER_LINES)
         .find(|line| line.starts_with("This is "))
         .is_none_or(|line| line.starts_with("This is XeTeX"))
+}
+
+fn log_reads_unicode(lines: &[&str]) -> bool {
+    lines
+        .iter()
+        .take(BANNER_LINES)
+        .find(|line| line.starts_with("This is "))
+        .is_none_or(|line| line.starts_with("This is XeTeX") || line.starts_with("This is Lua"))
 }
 
 pub const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
@@ -423,12 +488,26 @@ fn push_bib_syntax_error(out: &mut Vec<CompileError>, line: &str, source: Option
     });
 }
 
+fn named_input_line(text: &str) -> Option<u32> {
+    let (_, rest) = text.split_once("on input line ")?;
+    rest.split(|character: char| !character.is_ascii_digit())
+        .next()?
+        .parse()
+        .ok()
+}
+
+// TeX prints no `l.N` for an error that stops the run at once, such as a file
+// it cannot find in nonstop mode. The `l.N` then follows the `! Emergency
+// stop.` it raises next.
 fn reported_line_number(lines: &[&str], index: usize) -> Option<u32> {
     for following in lines
         .iter()
         .skip(index + 1)
         .take(20.min(lines.len().saturating_sub(index + 1)))
     {
+        if following.starts_with(EMERGENCY_STOP) {
+            continue;
+        }
         if following.starts_with('!') {
             break;
         }
@@ -468,7 +547,7 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
         lost_characters.observe(lines[i]);
         if let Some((code, explanation)) = float_warning(lines[i]) {
             out.push(CompileError {
-                line: None,
+                line: named_input_line(lines[i]),
                 file: current_tex_file(&stack),
                 message: lines[i].trim().to_owned(),
                 kind: "warning".to_owned(),
@@ -817,6 +896,80 @@ pub fn resolve_extensionless_inputs(
     }
 }
 
+#[derive(Default)]
+pub(crate) struct SourceLines {
+    files: HashMap<PathBuf, Option<Vec<String>>>,
+}
+
+impl SourceLines {
+    pub(crate) fn line(&mut self, folder: &Path, file: &str, line: u32) -> Option<&str> {
+        let relative = Path::new(file.strip_prefix("./").unwrap_or(file));
+        let inside = relative
+            .components()
+            .all(|part| matches!(part, std::path::Component::Normal(_)));
+        let index = usize::try_from(line).ok()?.checked_sub(1)?;
+        if !inside {
+            return None;
+        }
+        self.files
+            .entry(folder.join(relative))
+            .or_insert_with_key(|path| read_source_lines(path))
+            .as_ref()?
+            .get(index)
+            .map(String::as_str)
+    }
+}
+
+pub(crate) fn read_source_lines(path: &Path) -> Option<Vec<String>> {
+    let read = crate::read_bounded(path, MAX_SOURCE_BYTES)?;
+    Some(read.lossy_text().lines().map(str::to_owned).collect())
+}
+
+fn unclosed_environment(message: &str) -> Option<(&str, u32)> {
+    let rest = message
+        .strip_prefix("LaTeX Error: ")
+        .unwrap_or(message)
+        .strip_prefix("\\begin{")?;
+    let (environment, rest) = rest.split_once("} on input line ")?;
+    let (line, rest) = rest.split_once(' ')?;
+    (rest.trim_end() == UNCLOSED_AT_DOCUMENT_END).then_some((environment, line.parse().ok()?))
+}
+
+fn opening_line(
+    sources: &mut SourceLines,
+    project_dir: &Path,
+    file: Option<&str>,
+    message: &str,
+) -> Option<u32> {
+    let (environment, line) = unclosed_environment(message)?;
+    sources
+        .line(project_dir, file?, line)?
+        .contains(&format!("\\begin{{{environment}}}"))
+        .then_some(line)
+}
+
+/// LaTeX notices an environment that is never closed at `\end{document}` and
+/// names the line that opened it in the message, without its file.
+pub fn point_at_unclosed_environments(
+    project_dir: &Path,
+    errors: &mut [CompileError],
+    diagnostics: &mut [crate::LogDiagnostic],
+) {
+    let mut sources = SourceLines::default();
+    for error in errors.iter_mut() {
+        let file = error.file.as_deref();
+        if let Some(line) = opening_line(&mut sources, project_dir, file, &error.message) {
+            error.line = Some(line);
+        }
+    }
+    for diagnostic in diagnostics.iter_mut() {
+        let file = diagnostic.file.as_deref();
+        if let Some(line) = opening_line(&mut sources, project_dir, file, &diagnostic.message) {
+            diagnostic.line = Some(line);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -993,7 +1146,11 @@ mod tests {
             .contains("does not recognize"));
     }
 
-    const EXPLAINED_MESSAGES: [(&str, &str); 17] = [
+    const EXPLAINED_MESSAGES: [(&str, &str); 18] = [
+        (
+            "LaTeX Error: Unicode character \u{26a} (U+026A)",
+            "unicode_character",
+        ),
         ("Undefined control sequence.", "undefined_control_sequence"),
         ("Missing $ inserted.", "missing_dollar"),
         ("Missing } inserted.", "unbalanced_braces"),
@@ -1627,5 +1784,191 @@ mod tests {
         assert_eq!(diagnostics.len(), 2);
         assert_eq!(diagnostics[0].kind, "warning");
         assert_eq!(diagnostics[1].kind, "error");
+    }
+
+    fn lost_in(font: &str, characters: &str) -> String {
+        characters
+            .chars()
+            .map(|character| {
+                format!(
+                    "Missing character: There is no {character} (U+{:04X}) in font {font}!\n",
+                    character as u32
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn characters_the_default_font_lacks_get_a_font_that_has_them() {
+        let regular = "[lmroman10-regular]:mapping=tex-text;";
+        let log = format!(
+            "(main.tex\n{}{})\n",
+            lost_in(regular, "\u{2d0}\u{26a}"),
+            lost_in("[lmroman12-bold]:mapping=tex-text;", "\u{251}")
+        );
+        let errors = parse_tex_log_errors(&log);
+        assert_eq!(errors.len(), 1);
+        let card = &errors[0];
+        assert_eq!(card.code.as_deref(), Some("tex.missing_characters_font"));
+        assert_eq!(card.kind, "warning");
+        assert_eq!(card.hints, [NEW_COMPUTER_MODERN_SETUP]);
+        let english = english_catalog()["tex"]["missing_characters_font"]
+            .as_str()
+            .unwrap()
+            .replace("{{sample}}", &card.params["sample"]);
+        assert_eq!(card.explanation.as_deref(), Some(english.as_str()));
+
+        let lualatex = format!(
+            "This is LuaHBTeX, Version 1.21.0 (TeX Live 2025)\n{}",
+            lost_in("[lmroman10-regular]:+tlig;", "\u{2d0}")
+        );
+        assert_eq!(
+            parse_tex_log_errors(&lualatex)[0].code.as_deref(),
+            Some("tex.missing_characters_font")
+        );
+    }
+
+    #[test]
+    fn the_other_font_is_only_offered_when_it_has_every_missing_character() {
+        let regular = "[lmroman10-regular]:mapping=tex-text;";
+        for log in [
+            lost_in("[lmroman10-italic]:mapping=tex-text;", "\u{2d0}"),
+            lost_in("[lmromanslant10-regular]:mapping=tex-text;", "\u{2d0}"),
+            format!(
+                "{}{}",
+                lost_in(regular, "\u{2d0}"),
+                lost_in(regular, "\u{a7ae}")
+            ),
+            lost_in("[texgyretermes-regular]:mapping=tex-text;", "\u{2d0}"),
+            lost_in("cmmi10", "\u{26a}"),
+        ] {
+            let errors = parse_tex_log_errors(&log);
+            assert_eq!(
+                errors[0].code.as_deref(),
+                Some("tex.missing_characters"),
+                "{log}"
+            );
+            assert!(errors[0].hints.is_empty(), "{log}");
+        }
+        let with_other_fonts = format!(
+            "{}{}{}",
+            lost_in("[lmmono10-regular]:", "\u{2192}"),
+            lost_in("cmmi10", "\u{26a}"),
+            lost_in(regular, "\u{2d0}")
+        );
+        let card = &parse_tex_log_errors(&with_other_fonts)[0];
+        assert_eq!(card.code.as_deref(), Some("tex.missing_characters_font"));
+        assert_eq!(card.params["sample"], "\u{2d0}");
+        let chinese = lost_in(regular, "\u{4e2d}");
+        assert_eq!(
+            parse_tex_log_errors(&chinese)[0].code.as_deref(),
+            Some("tex.missing_characters_cjk")
+        );
+    }
+
+    #[test]
+    fn a_float_card_carries_the_line_latex_names() {
+        let large = parse_tex_log_errors(
+            "(./main.tex\nLaTeX Warning: Float too large for page by 134.0583pt on input line 13.\n)\n",
+        );
+        assert_eq!(large[0].line, Some(13));
+        let moved = parse_tex_log_errors(
+            "(./main.tex\nLaTeX Warning: `h' float specifier changed to `ht'.\n)\n",
+        );
+        assert_eq!(moved[0].line, None);
+    }
+
+    #[test]
+    fn a_file_that_is_not_found_takes_its_line_from_the_stop_it_causes() {
+        let log = concat!(
+            "(./main.tex\n",
+            "! LaTeX Error: File `nofile.tex' not found.\n",
+            "\n",
+            "Type X to quit or <RETURN> to proceed,\n",
+            "or enter new name. (Default extension: tex)\n",
+            "\n",
+            "Enter file name: \n",
+            "! Emergency stop.\n",
+            "<read *> \n",
+            "         \n",
+            "l.5 \\input{nofile}\n",
+            "                  ^^M\n",
+        );
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(
+            errors[0].message,
+            "LaTeX Error: File `nofile.tex' not found."
+        );
+        assert_eq!(
+            (errors[0].file.as_deref(), errors[0].line),
+            (Some("main.tex"), Some(5))
+        );
+        assert_eq!(errors[1].line, Some(5));
+    }
+
+    #[test]
+    fn an_error_followed_by_another_error_does_not_borrow_its_line() {
+        let errors = parse_tex_log_errors(
+            "! LaTeX Error: Something without a line.\n\n! Undefined control sequence.\nl.9 \\bad\n",
+        );
+        assert_eq!(errors[0].line, None);
+        assert_eq!(errors[1].line, Some(9));
+    }
+
+    fn left_open(
+        file: &str,
+        line: u32,
+        ended_by: &str,
+    ) -> (Vec<CompileError>, Vec<crate::LogDiagnostic>) {
+        let message = format!("\\begin{{itemize}} on input line 5 ended by \\end{{{ended_by}}}.");
+        let error = CompileError {
+            line: Some(line),
+            file: Some(file.to_owned()),
+            message: format!("LaTeX Error: {message}"),
+            kind: "error".to_owned(),
+            ..Default::default()
+        };
+        let row = crate::LogDiagnostic {
+            severity: crate::LogSeverity::Error,
+            message,
+            file: Some(format!("./{file}")),
+            line: Some(line),
+            category: crate::LogCategory::Error,
+            error_context: None,
+        };
+        (vec![error], vec![row])
+    }
+
+    fn project_with(file: &str, fifth_line: &str) -> tempfile::TempDir {
+        let project = tempfile::tempdir().unwrap();
+        let path = project.path().join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, format!("one\ntwo\nthree\nfour\n{fifth_line}\nsix\n")).unwrap();
+        project
+    }
+
+    #[test]
+    fn an_environment_left_open_points_at_the_line_that_opened_it() {
+        let project = project_with("chapters/one.tex", "Intro. \\begin{itemize}");
+        let (mut errors, mut rows) = left_open("chapters/one.tex", 10, "document");
+        point_at_unclosed_environments(project.path(), &mut errors, &mut rows);
+        assert_eq!((errors[0].line, rows[0].line), (Some(5), Some(5)));
+    }
+
+    #[test]
+    fn the_reported_line_stays_when_the_named_line_cannot_be_confirmed() {
+        let other_file = project_with("main.tex", "\\input{chapters/one}");
+        let (mut errors, mut rows) = left_open("main.tex", 10, "document");
+        point_at_unclosed_environments(other_file.path(), &mut errors, &mut rows);
+        assert_eq!((errors[0].line, rows[0].line), (Some(10), Some(10)));
+
+        let mismatched = project_with("main.tex", "\\begin{itemize}");
+        let (mut errors, mut rows) = left_open("main.tex", 7, "enumerate");
+        point_at_unclosed_environments(mismatched.path(), &mut errors, &mut rows);
+        assert_eq!((errors[0].line, rows[0].line), (Some(7), Some(7)));
+
+        let (mut errors, mut rows) = left_open("../main.tex", 10, "document");
+        point_at_unclosed_environments(&mismatched.path().join("sub"), &mut errors, &mut rows);
+        assert_eq!((errors[0].line, rows[0].line), (Some(10), Some(10)));
     }
 }

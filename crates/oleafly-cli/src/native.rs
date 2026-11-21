@@ -23,17 +23,20 @@ use oleafly_core::pandoc::{
     MIN_PANDOC_VERSION,
 };
 use oleafly_core::process_probe::{probe_output, PROBE_TIMEOUT};
+use oleafly_core::source_places::{place_in_sources, BuildBefore, BuildFolders};
 use oleafly_core::tex_distro::{distribution_for_tool, find_tool_in_dir, TexSearch};
 use oleafly_core::tex_errors::{
     latexmk_tool_error, parse_pandoc_diagnostics, parse_tectonic_log_errors, parse_tex_log_errors,
-    rebase_log_files, resolve_extensionless_inputs, CompileError, ENGINE_OUTPUT_MARKER,
+    point_at_unclosed_environments, rebase_log_files, resolve_extensionless_inputs, CompileError,
+    ENGINE_OUTPUT_MARKER,
 };
 use oleafly_core::tex_failure::{blocked_shell_escape, tex_failure_reason, DeniedShellEscape};
 use oleafly_core::tex_outputs::{
-    bib2gls_java_error, bibliography_above_main_error, jobname_bibliography_warning,
-    latexmk_biber_mismatch_error, nested_input_error, pinned_compiler_warning,
-    seed_shipped_bibliography, shipped_bibliography, shipped_bibliography_note, source_head,
-    unbuilt_index_warnings, unicode_engine_error,
+    bib2gls_java_error, bibliography_above_main_error, bibtex_findings,
+    jobname_bibliography_warning, latexmk_biber_mismatch_error, nested_input_error,
+    pinned_compiler_warning, seed_shipped_bibliography, shipped_bibliography,
+    shipped_bibliography_note, source_head, unbuilt_index_warnings, unicode_engine_error,
+    BibtexFindings, BibtexRun,
 };
 use oleafly_core::typst_log::{parse_typst_diagnostics, typst_path_relative_to};
 use oleafly_core::typst_toolchain::{
@@ -45,8 +48,8 @@ use oleafly_core::{
     bibtex_search_entry, bibtex_search_environment, image_failure_evidence, image_failure_notes,
     parse_latex_log, place_image_findings, plain_path, project_search_environment,
     project_tex_flavor, slash_path, Engine, EngineScratch, EngineScratchBases, Error, ErrorKind,
-    ImageFinding, LogCategory, LogDiagnostic, LogSeverity, PreparedBuild, Result, TexFlavor,
-    Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
+    ImageFinding, LogCategory, LogDiagnostic, LogSeverity, MissingCharacterPlaces, PreparedBuild,
+    Result, TexFlavor, Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -750,6 +753,7 @@ impl NativeCompiler {
         let started = Instant::now();
         let pdf = build_dir.join(format!("{ENTRY_STEM}.pdf"));
         let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
+        let build_before = BuildBefore::take(&build_dir);
 
         let mut command = self.command(build, flags, true)?;
         let mut in_place = match command.staging {
@@ -782,6 +786,7 @@ impl NativeCompiler {
             .then(|| command.environment.iter().find(|(name, _)| *name == "PATH"))
             .flatten()
             .and_then(|(_, path)| latexmk_tool_error(&output, path));
+        let lost_characters = MissingCharacterPlaces::read(&output);
         let mut log = match &file_log {
             Some(file_log) => {
                 let log =
@@ -802,14 +807,16 @@ impl NativeCompiler {
         if build.engine() == Engine::Typst {
             relativize_typst_errors(&mut errors, &command.working_directory).await;
         }
+        let mut bibtex = Vec::new();
         if tex_engine {
             let out_dir = command
                 .staging
                 .as_ref()
                 .map_or(build_dir.as_path(), OutputStaging::path);
-            apply_tex_output_notes(
+            bibtex = apply_tex_output_notes(
                 build,
                 out_dir,
+                &build_before,
                 status.success(),
                 tex_ran,
                 &mut log,
@@ -833,7 +840,14 @@ impl NativeCompiler {
         let fresh = output_is_fresh(build.engine(), ok, wrote_pdf, produced_pdf);
         self.explain_build_failure(build, ok, tex_engine, &mut log, &mut errors)
             .await;
-        let diagnostics = diagnostics_for(build, file_log.as_deref(), &mut errors);
+        let diagnostics = diagnostics_for(
+            build,
+            file_log.as_deref(),
+            &lost_characters,
+            bibtex,
+            &build_before,
+            &mut errors,
+        );
         let output_path = (fresh && pdf.is_file()).then(|| pdf.clone());
         let previous_output = (!fresh && pdf.is_file()).then(|| pdf.clone());
         let output_id = output_path.as_deref().map(fingerprint_file).transpose()?;
@@ -1485,13 +1499,20 @@ pub(crate) fn output_locked_or(error: std::io::Error) -> CliError {
 fn diagnostics_for(
     build: &PreparedBuild,
     file_log: Option<&str>,
-    errors: &mut [BuildError],
+    lost_characters: &MissingCharacterPlaces,
+    bibtex: Vec<LogDiagnostic>,
+    build_before: &BuildBefore,
+    errors: &mut Vec<BuildError>,
 ) -> Vec<LogDiagnostic> {
     match build.engine() {
         Engine::Tectonic | Engine::Latexmk => {
             let mut diagnostics = file_log
                 .map(|log| parse_latex_log(log, Some(build.main_document())))
                 .unwrap_or_default();
+            lost_characters.apply(
+                &mut diagnostics,
+                &[build.compile_directory(), build.project_root()],
+            );
             let mut compile_errors: Vec<CompileError> =
                 errors.iter().map(BuildError::to_compile_error).collect();
             rebase_log_files(
@@ -1506,9 +1527,24 @@ fn diagnostics_for(
                 &mut compile_errors,
                 &mut diagnostics,
             );
-            for (error, rebased) in errors.iter_mut().zip(compile_errors) {
-                error.file = rebased.file;
-            }
+            point_at_unclosed_environments(
+                build.project_root(),
+                &mut compile_errors,
+                &mut diagnostics,
+            );
+            place_in_sources(
+                BuildFolders {
+                    project_dir: build.project_root(),
+                    compile_dir: build.compile_directory(),
+                    out_dir: build.build_directory(),
+                },
+                build_before,
+                file_log.unwrap_or_default(),
+                &mut compile_errors,
+                &mut diagnostics,
+            );
+            *errors = compile_errors.into_iter().map(BuildError::from).collect();
+            diagnostics.extend(bibtex);
             diagnostics
         }
         Engine::Typst | Engine::Markdown | Engine::Quarto | Engine::Calepin => {
@@ -2150,24 +2186,43 @@ fn biber_unpack_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
 fn apply_tex_output_notes(
     build: &PreparedBuild,
     out_dir: &Path,
+    before: &BuildBefore,
     succeeded: bool,
     tex_ran: bool,
     log: &mut String,
     errors: &mut Vec<BuildError>,
-) {
+) -> Vec<LogDiagnostic> {
     if let Some(bbl) = shipped_bibliography(build.project_root(), build.main_document()) {
         append_bounded(log, shipped_bibliography_note(&bbl).as_bytes());
     }
     let source = source_head(build.source_path()).unwrap_or_default();
     errors.extend(jobname_bibliography_warning(&source).map(BuildError::from));
     let bundled = build.engine() == Engine::Tectonic;
+    let bibtex = if tex_ran {
+        bibtex_findings(
+            BibtexRun {
+                folders: BuildFolders {
+                    project_dir: build.project_root(),
+                    compile_dir: build.compile_directory(),
+                    out_dir,
+                },
+                before,
+                stem: ENTRY_STEM,
+                fails_build: !bundled,
+            },
+            log,
+        )
+    } else {
+        BibtexFindings::default()
+    };
+    errors.extend(bibtex.errors.into_iter().map(BuildError::from));
     errors.extend(
         unbuilt_index_warnings(log, out_dir, ENTRY_STEM, bundled)
             .into_iter()
             .map(BuildError::from),
     );
     if succeeded {
-        return;
+        return bibtex.diagnostics;
     }
     let mut causes: Vec<BuildError> = Vec::new();
     if !bundled {
@@ -2204,6 +2259,7 @@ fn apply_tex_output_notes(
         nested_input_error(build.project_root(), build.main_document(), log).map(BuildError::from),
     );
     errors.splice(0..0, causes);
+    bibtex.diagnostics
 }
 
 fn typst_arguments(
