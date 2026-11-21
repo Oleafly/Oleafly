@@ -600,6 +600,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/update-feed.sh
+          sparse-checkout-cone-mode: false
+
       - name: Download per-target updater fragments
         uses: actions/download-artifact@v8
         with:
@@ -610,6 +615,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          MIRROR_R2_ACCESS_KEY_ID: ${{ secrets.MIRROR_R2_ACCESS_KEY_ID }}
+          MIRROR_R2_SECRET_ACCESS_KEY: ${{ secrets.MIRROR_R2_SECRET_ACCESS_KEY }}
+          MIRROR_R2_ENDPOINT: ${{ secrets.MIRROR_R2_ENDPOINT }}
         shell: bash
         run: |
           set -euo pipefail
@@ -650,6 +658,17 @@ jobs:
                 )
               }
             ' > latest.json
+          # tauri-action builds into a draft, and a draft's assets only have
+          # api.github.com addresses. Those count against GitHub's limit of
+          # 60 anonymous API requests an hour per IP, so on a shared network
+          # installed apps got "403 Forbidden" when they downloaded an update.
+          # The script points every platform at the published release's
+          # download address. With the three MIRROR_R2_* secrets set it also
+          # copies the update files to mirrors.oleafly.com, reads each one
+          # back, and lists the mirror first with GitHub as `original_url`.
+          # A mirror failure leaves the GitHub addresses and never fails the
+          # release.
+          bash scripts/update-feed.sh latest.json
           required=(
             darwin-aarch64 darwin-aarch64-app
             darwin-x86_64 darwin-x86_64-app
@@ -781,6 +800,14 @@ jobs:
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done
+          # Installed versions up to 0.4.13 only know the first address of an
+          # update file. When the feed lists the mirror, every copy has to
+          # answer before the release goes live. Running this workflow again
+          # rebuilds the copies.
+          while IFS= read -r url; do
+            curl -fsSI --retry 3 --retry-delay 5 -o /dev/null "$url" \
+              || { echo "refusing to publish $TAG; the mirror does not have $url" >&2; exit 1; }
+          done < <(jq -r '[.platforms[] | select(has("original_url")) | .url] | unique | .[]' latest.json)
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
           echo "published $TAG with all platform artifacts"
 

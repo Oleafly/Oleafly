@@ -40,6 +40,7 @@ export async function installUpdate(
     switch (event.event) {
       case "Started":
         total = event.data.contentLength ?? 0;
+        downloaded = 0;
         onProgress?.(0);
         break;
       case "Progress":

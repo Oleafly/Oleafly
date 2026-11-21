@@ -188,6 +188,9 @@ jobs:
       - name: Test the MCP bundle build script
         run: bash scripts/mcpb-release.test.sh
 
+      - name: Test the update feed script
+        run: bash scripts/update-feed.test.sh
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
@@ -948,8 +951,12 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh aarch64-apple-darwin
 
+      # Pandoc is fetched even when the packed app came from the cache. The
+      # shared crates' tests below run either way, and in CI they fail when
+      # src-tauri/binaries has no Pandoc. A commit that leaves the app's
+      # sources alone hits that cache, so workflow-only and docs-only pushes
+      # and every re-run failed here.
       - name: Cache Pandoc sidecar
-        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-pandoc-e2e-build
         uses: actions/cache@v6
         with:
@@ -960,7 +967,7 @@ jobs:
           key: pandoc-sidecar-${{ runner.os }}-${{ hashFiles('scripts/fetch-pandoc.sh') }}
 
       - name: Fetch Pandoc sidecar
-        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-pandoc-e2e-build.outputs.cache-hit != 'true'
+        if: steps.cache-pandoc-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-pandoc.sh aarch64-apple-darwin
 
       - name: Stage checksum-pinned Tinymist resource archive
