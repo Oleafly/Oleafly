@@ -110,11 +110,11 @@ function blank(chars: string[], from: number, to: number): void {
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 export function environmentEnd(text: string, name: string, from: number): number {
-  const pattern = new RegExp(`\\\\end\\s*\\{${escapeRegExp(name)}\\}`, "g");
+  const pattern = new RegExp(String.raw`\\end\s*\{${escapeRegExp(name)}\}`, "g");
   pattern.lastIndex = from;
   const match = pattern.exec(text);
   return match ? match.index + match[0].length : -1;
@@ -171,23 +171,32 @@ function maskInlineMath(chars: string[], source: string): void {
   }
 }
 
+function argumentClose(source: string, open: number, character: string): number {
+  return character === "{" ? matchingBrace(source, open) : closingBracket(source, open);
+}
+
+function maskArgumentsAfterCommand(chars: string[], source: string, start: number, limit: number): number {
+  let at = start;
+  for (let taken = 0; taken < limit + 1 && at < source.length; ) {
+    let next = at;
+    while (source[next] === " " || source[next] === "\t") next += 1;
+    const character = source[next];
+    if (character !== "{" && character !== "[") break;
+    const close = argumentClose(source, next, character);
+    if (close < 0) break;
+    blank(chars, next, close + 1);
+    at = close + 1;
+    if (character === "{") taken += 1;
+  }
+  return at;
+}
+
 function maskCommandArguments(chars: string[], source: string): void {
   const command = /\\([A-Za-z]+)\*?/g;
   for (let match = command.exec(source); match; match = command.exec(source)) {
     const limit = ARGUMENT_LIMITS[match[1]];
     if (limit === undefined) continue;
-    let at = match.index + match[0].length;
-    for (let taken = 0; taken < limit + 1 && at < source.length; ) {
-      let next = at;
-      while (source[next] === " " || source[next] === "\t") next += 1;
-      const character = source[next];
-      if (character !== "{" && character !== "[") break;
-      const close = character === "{" ? matchingBrace(source, next) : closingBracket(source, next);
-      if (close < 0) break;
-      blank(chars, next, close + 1);
-      at = close + 1;
-      if (character === "{") taken += 1;
-    }
+    const at = maskArgumentsAfterCommand(chars, source, match.index + match[0].length, limit);
     command.lastIndex = Math.max(command.lastIndex, at);
   }
 }
@@ -211,8 +220,8 @@ export function proseView(text: string): ProseView {
     environment.lastIndex = to;
   }
   maskDelimited(chars, source, "$$", "$$");
-  maskDelimited(chars, source, "\\[", "\\]");
-  maskDelimited(chars, source, "\\(", "\\)");
+  maskDelimited(chars, source, String.raw`\[`, String.raw`\]`);
+  maskDelimited(chars, source, String.raw`\(`, String.raw`\)`);
   maskInlineMath(chars, source);
   maskCommandArguments(chars, source);
   return { text, prose: chars.join(""), bodyStart };

@@ -20,12 +20,26 @@ const STRUCTURAL = /\\(?:begin|end|item|par|caption|captionof|part|chapter|(?:su
 const HEADING = /\\(?:part|chapter|(?:sub){0,2}section|(?:sub)?paragraph|title)\*?\s*(?:\[[^\]]*\]\s*)?\{/g;
 const PARAGRAPH_BREAK = /\n[ \t]*\n/y;
 const CLOSERS = new Set([")", "\"", "'", "}", "]"]);
-const POINTER =
-  /\b(?:(?:in|see) (?:the |our )?supplement(?:ary|al)?(?: materials?)?|supplement(?:ary|al) materials?|supp\.|(?:in|see) (?:the )?appendi(?:x|ces))(?![A-Za-z])/gi;
-const COMMITMENT =
-  /\b(?:(?:our )?code(?: and (?:data|models?|weights))? will (?:also )?be(?: (?:made )?(?:publicly )?(?:released|available|published|shared))?|we(?: will|'ll|’ll) (?:also |further |then |[a-z]+ly )?(?:add|include|release|provide|clarify|revise|update|discuss|report|fix|make|publish)|will (?:also )?be (?:released|made (?:publicly )?available|added|included|provided|clarified|updated|published)|in the final (?:version|paper|manuscript)|in the camera[- ]ready(?: version| paper)?)(?![A-Za-z])/gi;
-const REFERENCE =
-  /\\(?:ref|cref|Cref|autoref|nameref|eqref|vref|Vref|pageref|cpageref|labelcref)\*?\s*\{([^{}]*)\}|\\hyperref\s*\[([^\]]*)\]/g;
+const SUPPLEMENT_PHRASE = "(?:in|see) (?:the |our )?supplement(?:ary|al)?(?: materials?)?";
+const SUPPLEMENT_MATERIALS = "supplement(?:ary|al) materials?";
+const SUPP_ABBREVIATION = String.raw`supp\.`;
+const APPENDIX_PHRASE = "(?:in|see) (?:the )?appendi(?:x|ces)";
+const POINTER = new RegExp(
+  String.raw`\b(?:${SUPPLEMENT_PHRASE}|${SUPPLEMENT_MATERIALS}|${SUPP_ABBREVIATION}|${APPENDIX_PHRASE})(?![a-z])`,
+  "gi",
+);
+const CODE_WILL_BE = "(?:our )?code(?: and (?:data|models?|weights))? will (?:also )?be(?: (?:made )?(?:publicly )?(?:released|available|published|shared))?";
+const WE_WILL = "we(?: will|'ll|’ll) (?:also |further |then |[a-z]+ly )?(?:add|include|release|provide|clarify|revise|update|discuss|report|fix|make|publish)";
+const WILL_BE_DONE = "will (?:also )?be (?:released|made (?:publicly )?available|added|included|provided|clarified|updated|published)";
+const FINAL_VERSION = "in the final (?:version|paper|manuscript)";
+const CAMERA_READY = "in the camera[- ]ready(?: version| paper)?";
+const COMMITMENT = new RegExp(
+  String.raw`\b(?:${CODE_WILL_BE}|${WE_WILL}|${WILL_BE_DONE}|${FINAL_VERSION}|${CAMERA_READY})(?![a-z])`,
+  "gi",
+);
+const REFERENCE_COMMAND = String.raw`\\(?:ref|cref|Cref|autoref|nameref|eqref|vref|Vref|pageref|cpageref|labelcref)\*?\s*\{([^{}]*)\}`;
+const HYPERREF_COMMAND = String.raw`\\hyperref\s*\[([^\]]*)\]`;
+const REFERENCE = new RegExp(`${REFERENCE_COMMAND}|${HYPERREF_COMMAND}`, "g");
 const RELEASE = /\b(?:releas|availab|publish|shar|code|data|models?\b|weights)/i;
 const LINK = /\\(?:url|href)\s*\{/;
 
@@ -61,48 +75,65 @@ function endsSentence(prose: string, at: number): boolean {
   return next >= prose.length || !/[a-z]/.test(prose[next]);
 }
 
-export function splitSentences(view: ProseView): TextSpan[] {
-  const { text, prose } = view;
-  const spans: TextSpan[] = [];
-  let start = -1;
-  const close = (end: number) => {
-    let to = end;
-    while (start >= 0 && to > start && /\s/.test(prose[to - 1])) to -= 1;
-    if (start >= 0 && to > start) spans.push({ from: start, to });
-    start = -1;
-  };
-  for (let index = view.bodyStart; index < prose.length; index += 1) {
-    const character = prose[index];
-    if (character === "\n") {
-      PARAGRAPH_BREAK.lastIndex = index;
-      if (PARAGRAPH_BREAK.test(text)) close(index);
-      continue;
-    }
-    if (character === "\\") {
-      STRUCTURAL.lastIndex = index;
-      const command = STRUCTURAL.exec(prose);
-      if (command) {
-        close(index);
-        index += command[0].length - 1;
-        continue;
-      }
-      if (start < 0) start = index;
-      if (!/[A-Za-z]/.test(prose[index + 1] ?? "")) index += 1;
-      continue;
-    }
-    if (start < 0) {
-      if (/[\s{}[\]]/.test(character)) continue;
-      start = index;
-    }
-    if (/[.!?]/.test(character) && endsSentence(prose, index)) {
-      let end = index + 1;
-      while (end < prose.length && CLOSERS.has(prose[end])) end += 1;
-      close(end);
-      index = end - 1;
-    }
+interface SentenceScan {
+  readonly view: ProseView;
+  readonly spans: TextSpan[];
+  start: number;
+}
+
+function closeSentence(scan: SentenceScan, end: number): void {
+  const { prose } = scan.view;
+  let to = end;
+  while (scan.start >= 0 && to > scan.start && /\s/.test(prose[to - 1])) to -= 1;
+  if (scan.start >= 0 && to > scan.start) scan.spans.push({ from: scan.start, to });
+  scan.start = -1;
+}
+
+function scanNewline(scan: SentenceScan, index: number): number {
+  PARAGRAPH_BREAK.lastIndex = index;
+  if (PARAGRAPH_BREAK.test(scan.view.text)) closeSentence(scan, index);
+  return index + 1;
+}
+
+function scanBackslash(scan: SentenceScan, index: number): number {
+  const { prose } = scan.view;
+  STRUCTURAL.lastIndex = index;
+  const command = STRUCTURAL.exec(prose);
+  if (command) {
+    closeSentence(scan, index);
+    return index + command[0].length;
   }
-  close(prose.length);
-  return spans;
+  if (scan.start < 0) scan.start = index;
+  return /[A-Za-z]/.test(prose[index + 1] ?? "") ? index + 1 : index + 2;
+}
+
+function scanCharacter(scan: SentenceScan, index: number): number {
+  const { prose } = scan.view;
+  const character = prose[index];
+  if (scan.start < 0) {
+    if (/[\s{}[\]]/.test(character)) return index + 1;
+    scan.start = index;
+  }
+  if (!/[.!?]/.test(character) || !endsSentence(prose, index)) return index + 1;
+  let end = index + 1;
+  while (end < prose.length && CLOSERS.has(prose[end])) end += 1;
+  closeSentence(scan, end);
+  return end;
+}
+
+function scanStep(scan: SentenceScan, index: number): number {
+  const character = scan.view.prose[index];
+  if (character === "\n") return scanNewline(scan, index);
+  if (character === "\\") return scanBackslash(scan, index);
+  return scanCharacter(scan, index);
+}
+
+export function splitSentences(view: ProseView): TextSpan[] {
+  const scan: SentenceScan = { view, spans: [], start: -1 };
+  let index = view.bodyStart;
+  while (index < view.prose.length) index = scanStep(scan, index);
+  closeSentence(scan, view.prose.length);
+  return scan.spans;
 }
 
 function withoutHeadings(view: ProseView): ProseView {

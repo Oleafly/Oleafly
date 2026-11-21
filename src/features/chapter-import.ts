@@ -1,6 +1,7 @@
 import type { ChapterImportPlan, ChapterSourceFile } from "@oleafly/editor/chapter-import";
 import type { FileEntry } from "@oleafly/backend-port";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
+import { eachInOrder } from "@/lib/each-in-order";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { applyReferencePlan } from "@/lib/file-references/follow-rename";
 import { normalizeSourceText } from "@/lib/project-sources";
@@ -86,19 +87,19 @@ export async function writeChapterImport(
   const { projectId } = thesis;
   if (isEditorMutationLocked(projectId)) throw new Error("The project is busy with another change.");
   const written: string[] = [];
-  for (const asset of plan.assets) {
+  await eachInOrder(plan.assets, async (asset) => {
     stillOpen(projectId);
     const data = await readFileBase64(paper.projectId, asset.from);
     const result = await writeProjectBytes(projectId, asset.to, data);
     useFilesStore.getState().recordMutationGeneration(projectId, result.generation);
     written.push(asset.to);
-  }
+  });
   if (written.length > 0) notifyProjectFilesChanged(projectId, [...written]);
-  for (const file of plan.files) {
+  await eachInOrder(plan.files, async (file) => {
     stillOpen(projectId);
     await useFilesStore.getState().writeProjectFile(projectId, file.path, file.content);
     written.push(file.path);
-  }
+  });
   const main = thesis.files.find((file) => file.path === thesis.main);
   if (!main || plan.mainEdits.length === 0) return { written, mainUpdated: plan.mainEdits.length === 0 };
   const references = plan.mainEdits.length;

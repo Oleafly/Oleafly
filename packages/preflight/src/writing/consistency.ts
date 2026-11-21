@@ -119,7 +119,14 @@ function spellings(occurrences: readonly Occurrence[]): Spelling[] {
 }
 
 function written(spelling: Spelling): string {
-  return [...spelling.surfaces].reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0];
+  let best = "";
+  let most = 0;
+  for (const [text, count] of spelling.surfaces) {
+    if (count <= most) continue;
+    best = text;
+    most = count;
+  }
+  return best;
 }
 
 function controlWords(files: readonly ProjectWritingFile[], macros: readonly MacroText[]): Set<string> {
@@ -205,8 +212,10 @@ const DEFINITION_PATTERNS = [
     "g",
   ),
 ];
-const MEANING_TOKEN =
-  /(?<math>(?<!\\)\$[^$]+\$|\\\([\s\S]*?\\\))|(?<word>[A-Za-z0-9][A-Za-z0-9'-]*)|\\(?:emph|textit|textbf|textsc|textrm|textnormal|text)\s*\{|[{}]|[ \t~]+|\n(?![ \t]*\n)/y;
+const MEANING_MATH = /(?<!\\)\$[^$]+\$|\\\([\s\S]*?\\\)/y;
+const MEANING_WORD = /[A-Za-z0-9][A-Za-z0-9'-]*/y;
+const MEANING_TEXT_COMMAND = /\\(?:emph|textit|textbf|textsc|textrm|textnormal|text)\s*\{/y;
+const MEANING_FILLER = /[{}]|[ \t~]+|\n(?![ \t]*\n)/y;
 const TRAILING_WORDS: ReadonlySet<string> = new Set([
   "a", "an", "the", "and", "or", "but", "while", "whereas", "where", "which", "that", "with", "of", "for", "in", "on", "at", "to", "by", "from",
 ]);
@@ -263,26 +272,49 @@ function candidates(file: ViewedFile): Candidate[] {
   return out.sort((left, right) => left.from - right.from);
 }
 
+interface MeaningToken {
+  readonly word: string | undefined;
+  readonly end: number;
+}
+
+function stickyMatch(pattern: RegExp, source: string, at: number): string | undefined {
+  pattern.lastIndex = at;
+  return pattern.exec(source)?.[0];
+}
+
+function meaningMathWord(math: string): string {
+  return `$${normalizeMath(math.startsWith("$") ? math.slice(1, -1) : math.slice(2, -2))}$`;
+}
+
+function meaningTokenAt(source: string, at: number): MeaningToken | null {
+  const math = stickyMatch(MEANING_MATH, source, at);
+  if (math !== undefined) return { word: meaningMathWord(math), end: at + math.length };
+  const word = stickyMatch(MEANING_WORD, source, at);
+  if (word !== undefined) return { word, end: at + word.length };
+  const skipped = stickyMatch(MEANING_TEXT_COMMAND, source, at) ?? stickyMatch(MEANING_FILLER, source, at);
+  return skipped === undefined ? null : { word: undefined, end: at + skipped.length };
+}
+
 function meaningAt(source: string, from: number, until: number): { words: string[]; to: number } {
   const words: string[] = [];
   const ends: number[] = [];
-  MEANING_TOKEN.lastIndex = from;
-  for (
-    let match = MEANING_TOKEN.exec(source);
-    match && match.index < until && words.length < MAX_MEANING_WORDS;
-    match = MEANING_TOKEN.exec(source)
-  ) {
-    const { math, word } = match.groups ?? {};
-    if (math !== undefined) words.push(`$${normalizeMath(math.startsWith("$") ? math.slice(1, -1) : math.slice(2, -2))}$`);
-    else if (word !== undefined) words.push(word);
-    else continue;
-    ends.push(MEANING_TOKEN.lastIndex);
+  let at = from;
+  let token = meaningTokenAt(source, at);
+  while (token && at < until && words.length < MAX_MEANING_WORDS) {
+    if (token.word !== undefined) {
+      words.push(token.word);
+      ends.push(token.end);
+    }
+    at = token.end;
+    token = meaningTokenAt(source, at);
   }
-  while (words.length > 0 && TRAILING_WORDS.has(words[words.length - 1].toLowerCase())) {
+  let last = words.at(-1);
+  while (last !== undefined && TRAILING_WORDS.has(last.toLowerCase())) {
     words.pop();
     ends.pop();
+    last = words.at(-1);
   }
-  return { words, to: ends[ends.length - 1] ?? from };
+  return { words, to: ends.at(-1) ?? from };
 }
 
 function comparable(words: readonly string[]): string[] {

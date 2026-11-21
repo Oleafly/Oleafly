@@ -39,6 +39,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 const PREVIEW_ROWS = 6;
 const PREVIEW_COLUMNS = 6;
+const PREVIEW_COLUMN_KEYS = Array.from({ length: PREVIEW_COLUMNS }, (_, column) => `column-${column}`);
 
 type DirectionChoice = MetricDirection | "skip";
 
@@ -358,8 +359,7 @@ export function TableImportDialog() {
                           const Cell = header && rowIndex === 0 ? "th" : "td";
                           const mark = previewMarks[rowIndex]?.[cellIndex];
                           return (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: positional spreadsheet cells
-                            <Cell key={cellIndex} scope={Cell === "th" ? "col" : undefined} className={cn("min-w-20 max-w-64 whitespace-pre-wrap break-words px-3 py-2", mark === "best" && "font-semibold", mark === "second" && "underline")}>{cell}</Cell>
+                            <Cell key={PREVIEW_COLUMN_KEYS[cellIndex]} scope={Cell === "th" ? "col" : undefined} className={cn("min-w-20 max-w-64 whitespace-pre-wrap break-words px-3 py-2", mark === "best" && "font-semibold", mark === "second" && "underline")}>{cell}</Cell>
                           );
                         })}
                       </tr>

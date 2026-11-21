@@ -216,7 +216,8 @@ function headerLines(spec: FigureGridSpec, layout: GridLayout): string[] {
   if (layout.rowLabels) cells.push([String.raw`\makebox[${decimal(LABEL_WIDTH)}${unit}]{}`]);
   for (let column = 0; column < columns; column += 1) {
     const text = spec.columnLabels[column]?.trim() ?? "";
-    cells.push([String.raw`\makebox[${decimal(cell)}${unit}]{${text === "" ? "" : String.raw`\footnotesize ${text}`}}`]);
+    const label = text === "" ? "" : String.raw`\footnotesize ${text}`;
+    cells.push([String.raw`\makebox[${decimal(cell)}${unit}]{${label}}`]);
   }
   return joinCells(cells, unit);
 }
@@ -278,7 +279,7 @@ function parseFigureGridSpec(value: unknown): FigureGridSpec | null {
   for (const row of value.images) {
     if (!Array.isArray(row)) return null;
     const parsed = row.map(parseImage);
-    if (parsed.some((image) => image === null)) return null;
+    if (parsed.includes(null)) return null;
     images.push(parsed as FigureGridImage[]);
   }
   const { columnLabels, rowLabels, width, caption, label } = value;

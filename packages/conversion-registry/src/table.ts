@@ -306,11 +306,22 @@ export function escapeTypstCell(value: string): string {
 
 const UP_ARROW = /\\uparrow(?![A-Za-z])|↑/u;
 const DOWN_ARROW = /\\downarrow(?![A-Za-z])|↓/u;
-const ERROR_METRIC = /(?<![A-Za-z0-9])(?:error|err|loss|wer|cer)(?![A-Za-z])/iu;
-const HIGHER_METRIC = /(?<![A-Za-z0-9])(?:psnr|ssim|accuracy|acc|f1|f-score|bleu|rouge|meteor|cider|auc|recall|precision|iou|miou|top-[15]|dice|r@(?:\d+|k)|ndcg|hit\s+rate)(?![A-Za-z])/iu;
+const ERROR_METRIC = /(?<![a-z0-9])(?:error|err|loss|wer|cer)(?![a-z])/iu;
+const HIGHER_METRICS = [
+  /(?<![a-z0-9])(?:psnr|ssim|accuracy|acc|f1|f-score|bleu)(?![a-z])/iu,
+  /(?<![a-z0-9])(?:rouge|meteor|cider|auc|recall|precision|iou|miou)(?![a-z])/iu,
+  /(?<![a-z0-9])(?:top-[15]|dice|r@(?:\d+|k)|ndcg|hit\s+rate)(?![a-z])/iu,
+];
 const HIGHER_ACRONYM = /(?<![A-Za-z0-9])m?AP(?![A-Za-z])/u;
-const LOWER_METRIC = /(?<![A-Za-z0-9])(?:mae|mse|rmse|lpips|fid|kid|epe|perplexity|ppl|latency|time|runtime|memory|[gmt]?flops|params?)(?![A-Za-z])/iu;
+const LOWER_METRICS = [
+  /(?<![a-z0-9])(?:mae|mse|rmse|lpips|fid|kid|epe|perplexity)(?![a-z])/iu,
+  /(?<![a-z0-9])(?:ppl|latency|time|runtime|memory|[gmt]?flops|params?)(?![a-z])/iu,
+];
 const LOWER_ACRONYM = /(?<![A-Za-z0-9])CD(?![A-Za-z])/u;
+
+function matchesAny(patterns: readonly RegExp[], text: string): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
 
 export function metricDirection(header: string): MetricDirection | null {
   const up = UP_ARROW.test(header);
@@ -319,24 +330,28 @@ export function metricDirection(header: string): MetricDirection | null {
   if (up) return null;
   const words = header.replaceAll(/\\[A-Za-z]+/gu, " ");
   if (ERROR_METRIC.test(words)) return "lower";
-  const higher = HIGHER_METRIC.test(words) || HIGHER_ACRONYM.test(words);
-  const lower = LOWER_METRIC.test(words) || LOWER_ACRONYM.test(words);
+  const higher = matchesAny(HIGHER_METRICS, words) || HIGHER_ACRONYM.test(words);
+  const lower = matchesAny(LOWER_METRICS, words) || LOWER_ACRONYM.test(words);
   if (higher === lower) return null;
   return higher ? "higher" : "lower";
 }
 
-const METRIC_NUMBER = /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?%?$/u;
+const METRIC_NUMBER_BODY = /^(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?$/u;
+
+function isMetricNumber(value: string): boolean {
+  return METRIC_NUMBER_BODY.test(value.replace(/^[+-]/u, "").replace(/%$/u, ""));
+}
 
 export function parseMetricNumber(text: string): number | null {
   let value = text.replaceAll(/\\(?:cellcolor|rowcolor|color|textcolor)(?:\s*\[[^\][]{0,80}\])?\s*\{[^{}]{0,80}\}/gu, "");
   const cut = value.search(/\\pm(?![A-Za-z])|±|(?<!\\)\(/u);
   if (cut >= 0) value = value.slice(0, cut);
   value = value
-    .replaceAll("\\%", "%")
+    .replaceAll(String.raw`\%`, "%")
     .replaceAll(/\\[A-Za-z]+\*?|\\[,;:! ]/gu, "")
     .replaceAll(/[\s{}$^_~*†‡]/gu, "")
     .replaceAll(/[−–]/gu, "-");
-  if (!/\d/u.test(value) || !METRIC_NUMBER.test(value)) return null;
+  if (!/\d/u.test(value) || !isMetricNumber(value)) return null;
   const number = Number(value.replaceAll(",", "").replace(/%$/u, ""));
   return Number.isFinite(number) ? number : null;
 }
@@ -654,7 +669,7 @@ const LATEX_TABLE_END = /\\end\s*\{table\*?\}/gu;
 function base64UrlText(text: string): string {
   let binary = "";
   for (const byte of new TextEncoder().encode(text)) binary += String.fromCodePoint(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
 function textFromBase64Url(value: string): string {
@@ -710,6 +725,13 @@ export function emitLatexLinkedTable(rows: string[][], table: LinkedLatexTable):
   return lines.join("\n");
 }
 
+function lastMatchBefore(matches: readonly RegExpExecArray[], position: number): RegExpExecArray | undefined {
+  for (let index = matches.length - 1; index >= 0; index--) {
+    if (matches[index].index < position) return matches[index];
+  }
+  return undefined;
+}
+
 export function findLinkedLatexTables(text: string): LinkedLatexTableMatch[] {
   if (!text.includes(LATEX_TABLE_MARK)) return [];
   const begins = [...text.matchAll(LATEX_TABLE_BEGIN)];
@@ -720,7 +742,7 @@ export function findLinkedLatexTables(text: string): LinkedLatexTableMatch[] {
     if (!table) continue;
     const from = match.index + match[1].length;
     const to = from + match[2].length;
-    const begin = begins.filter((candidate) => candidate.index < from).at(-1);
+    const begin = lastMatchBefore(begins, from);
     const end = ends.find((candidate) => candidate.index > to);
     if (!begin || !end || ends.some((candidate) => candidate.index > begin.index && candidate.index < from)) continue;
     found.push({ from, to, table, tableFrom: begin.index, tableTo: end.index + end[0].length, begin: begin[0] });

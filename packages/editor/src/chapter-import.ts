@@ -238,41 +238,71 @@ function resolveTarget(world: PaperWorld, reference: PathReference, sourcePath: 
   );
 }
 
+interface ReachState {
+  readonly preamble: Set<string>;
+  readonly body: Set<string>;
+  readonly assets: Set<string>;
+  readonly bibliographies: Set<string>;
+  readonly packages: Map<string, string>;
+  readonly unresolved: Set<string>;
+  readonly queue: { path: string; inBody: boolean }[];
+}
+
+function isSkippedReference(reference: PathReference, isMain: boolean, bounds: DocumentBounds): boolean {
+  if (UNFOLLOWED_KINDS.has(reference.kind) || reference.command === "includeonly") return true;
+  return isMain && reference.from >= bounds.bodyTo;
+}
+
+function isReportedUnresolved(reference: PathReference, inBody: boolean): boolean {
+  return (inBody && reference.kind !== "tex-package") || BIBLIOGRAPHY_KINDS.has(reference.kind);
+}
+
+function followReference(
+  world: PaperWorld,
+  bounds: DocumentBounds,
+  state: ReachState,
+  next: { path: string; inBody: boolean },
+  reference: PathReference,
+): void {
+  const isMain = next.path === world.main;
+  if (isSkippedReference(reference, isMain, bounds)) return;
+  const inBody = isMain ? reference.from >= bounds.bodyFrom : next.inBody;
+  const target = resolveTarget(world, reference, next.path);
+  if (target === null) {
+    if (isReportedUnresolved(reference, inBody)) state.unresolved.add(reference.raw);
+    return;
+  }
+  if (BIBLIOGRAPHY_KINDS.has(reference.kind)) state.bibliographies.add(target);
+  if (reference.kind === "tex-package") state.packages.set(reference.raw.trim(), target);
+  if (INPUT_KINDS.has(reference.kind) && world.texts.has(target)) {
+    if (target === world.main) return;
+    (inBody ? state.body : state.preamble).add(target);
+    state.queue.push({ path: target, inBody });
+    return;
+  }
+  state.assets.add(target);
+}
+
 function reach(world: PaperWorld, bounds: DocumentBounds): Reach {
-  const preamble = new Set<string>();
-  const body = new Set<string>();
-  const assets = new Set<string>();
-  const bibliographies = new Set<string>();
-  const packages = new Map<string, string>();
-  const unresolved = new Set<string>();
-  const queue: { path: string; inBody: boolean }[] = [{ path: world.main, inBody: false }];
+  const state: ReachState = {
+    preamble: new Set<string>(),
+    body: new Set<string>(),
+    assets: new Set<string>(),
+    bibliographies: new Set<string>(),
+    packages: new Map<string, string>(),
+    unresolved: new Set<string>(),
+    queue: [{ path: world.main, inBody: false }],
+  };
   const seen = new Set<string>();
-  for (let next = queue.shift(); next; next = queue.shift()) {
+  for (let next = state.queue.shift(); next; next = state.queue.shift()) {
     const key = `${next.inBody}\0${next.path}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const isMain = next.path === world.main;
     for (const reference of scanPathReferences("latex", world.texts.get(next.path) ?? "")) {
-      if (UNFOLLOWED_KINDS.has(reference.kind) || reference.command === "includeonly") continue;
-      if (isMain && reference.from >= bounds.bodyTo) continue;
-      const inBody = isMain ? reference.from >= bounds.bodyFrom : next.inBody;
-      const target = resolveTarget(world, reference, next.path);
-      if (target === null) {
-        const reported = (inBody && reference.kind !== "tex-package") || BIBLIOGRAPHY_KINDS.has(reference.kind);
-        if (reported) unresolved.add(reference.raw);
-        continue;
-      }
-      if (BIBLIOGRAPHY_KINDS.has(reference.kind)) bibliographies.add(target);
-      if (reference.kind === "tex-package") packages.set(reference.raw.trim(), target);
-      if (INPUT_KINDS.has(reference.kind) && world.texts.has(target)) {
-        if (target === world.main) continue;
-        (inBody ? body : preamble).add(target);
-        queue.push({ path: target, inBody });
-        continue;
-      }
-      assets.add(target);
+      followReference(world, bounds, state, next, reference);
     }
   }
+  const { preamble, body, assets, bibliographies, packages, unresolved } = state;
   return {
     preamble: [...preamble].filter((path) => !body.has(path)),
     body: [...body],
@@ -289,8 +319,10 @@ function copyTargets(paths: readonly string[], base: string): Map<string, string
   for (const path of paths) {
     const relative = base && isWithin(path, base) ? path.slice(base.length + 1) : path;
     let candidate = relative;
-    for (let counter = 2; taken.has(candidate.toLowerCase()); counter += 1) {
+    let counter = 2;
+    while (taken.has(candidate.toLowerCase())) {
       candidate = `${withoutExtension(relative)}-${counter}${extensionOf(relative)}`;
+      counter += 1;
     }
     taken.add(candidate.toLowerCase());
     targets.set(path, candidate);
@@ -374,7 +406,8 @@ function scanDefinitions(text: string, source: string): Definition[] {
       definition: definition("environment", match[2].trim(), text, [match.index, end], shape, source),
     });
   }
-  return found.sort((left, right) => left.at - right.at).map((entry) => entry.definition);
+  found.sort((left, right) => left.at - right.at);
+  return found.map((entry) => entry.definition);
 }
 
 function grouped(definitions: readonly Definition[]): Map<string, Definition[]> {
@@ -621,7 +654,8 @@ function missingPackages(
     const localPath = local.get(name);
     const mapped = localPath === undefined ? undefined : targets.get(localPath);
     const target = mapped === undefined ? name : `${latexRoot}/${withoutExtension(mapped)}`;
-    missing.set(name, { name, line: `\\usepackage${options ? `[${options}]` : ""}{${target}}` });
+    const bracketed = options ? `[${options}]` : "";
+    missing.set(name, { name, line: String.raw`\usepackage${bracketed}{${target}}` });
   }
   return [...missing.values()];
 }
@@ -637,12 +671,12 @@ function wiring(
   const edits: FileReferenceEdit[] = [];
   const lines: string[] = [];
   if (withDefinitions) {
-    const line = `\\input{${latexRoot}/macros}`;
+    const line = String.raw`\input{${latexRoot}/macros}`;
     const at = lineStart(masked, begin.index);
     lines.push(line);
     edits.push({ from: at, to: at, insert: `${line}\n\n` });
   }
-  const chapter = `\\include{${latexRoot}/chapter}`;
+  const chapter = String.raw`\include{${latexRoot}/chapter}`;
   const present = new RegExp(
     String.raw`\\(?:include|input)\s*\{\s*${escapeRegExp(latexRoot)}/chapter(?:\.tex)?\s*\}`,
     "u",

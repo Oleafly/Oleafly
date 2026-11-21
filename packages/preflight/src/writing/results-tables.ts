@@ -73,10 +73,38 @@ function trimmed(text: string, span: Span): Span {
   return { from, to };
 }
 
-function groupEnd(text: string, open: number, limit: number): number {
+function groupClose(text: string, open: number): number {
   const character = text[open];
-  const close = character === "{" ? matchingBrace(text, open) : character === "[" ? closingBracket(text, open) : text.indexOf(")", open);
+  if (character === "{") return matchingBrace(text, open);
+  if (character === "[") return closingBracket(text, open);
+  return text.indexOf(")", open);
+}
+
+function groupEnd(text: string, open: number, limit: number): number {
+  const close = groupClose(text, open);
   return close >= 0 && close < limit ? close + 1 : -1;
+}
+
+function skipRuleOptions(text: string, from: number, options: string, to: number): number {
+  let next = from;
+  for (const open of options) {
+    const start = skipSpace(text, next, to);
+    if (text[start] !== open) continue;
+    next = groupEnd(text, start, to);
+    if (next < 0) return -1;
+  }
+  return next;
+}
+
+function skipRuleBraces(text: string, from: number, braces: number, to: number): number {
+  let next = from;
+  for (let count = 0; count < braces; count += 1) {
+    const start = skipSpace(text, next, to);
+    if (text[start] !== "{") break;
+    next = groupEnd(text, start, to);
+    if (next < 0) return -1;
+  }
+  return next;
 }
 
 function skipRules(text: string, from: number, to: number): { at: number; full: boolean } {
@@ -87,19 +115,9 @@ function skipRules(text: string, from: number, to: number): { at: number; full: 
     const name = /^\\([A-Za-z]+)/.exec(text.slice(at, at + 24))?.[1];
     const rule = name && Object.hasOwn(RULES, name) ? RULES[name] : undefined;
     if (!name || !rule) return { at, full };
-    let next = at + name.length + 1;
-    for (const open of rule[0]) {
-      const start = skipSpace(text, next, to);
-      if (text[start] !== open) continue;
-      next = groupEnd(text, start, to);
-      if (next < 0) return { at, full };
-    }
-    for (let count = 0; count < rule[1]; count += 1) {
-      const start = skipSpace(text, next, to);
-      if (text[start] !== "{") break;
-      next = groupEnd(text, start, to);
-      if (next < 0) return { at, full };
-    }
+    let next = skipRuleOptions(text, at + name.length + 1, rule[0], to);
+    if (next >= 0) next = skipRuleBraces(text, next, rule[1], to);
+    if (next < 0) return { at, full };
     full ||= rule[2];
     at = next;
   }
@@ -111,6 +129,27 @@ function afterLineBreak(text: string, at: number, to: number): number {
   if (text[open] !== "[") return next;
   const end = groupEnd(text, open, to);
   return end < 0 ? next : end;
+}
+
+function commandNameAfter(text: string, at: number): string | undefined {
+  return /^[A-Za-z]+/.exec(text.slice(at + 1, at + 33))?.[0];
+}
+
+function commandWidth(name: string | undefined): number {
+  return name ? name.length : 1;
+}
+
+function rowEndAfter(text: string, at: number, to: number, name: string | undefined, top: boolean): number {
+  if (!top) return -1;
+  if (!name && text[at + 1] === "\\") return afterLineBreak(text, at + 2, to);
+  if (name === "tabularnewline") return at + name.length + 1;
+  return -1;
+}
+
+function environmentDelta(name: string | undefined): number {
+  if (name === "begin") return 1;
+  if (name === "end") return -1;
+  return 0;
 }
 
 function scanRow(text: string, from: number, to: number): { cells: Span[]; next: number } {
@@ -127,18 +166,14 @@ function scanRow(text: string, from: number, to: number): { cells: Span[]; next:
       cells.push({ from: start, to: at });
       start = at + 1;
     } else if (character === "\\") {
-      const name = /^[A-Za-z]+/.exec(text.slice(at + 1, at + 33))?.[0];
-      if (!name && text[at + 1] === "\\" && top) {
+      const name = commandNameAfter(text, at);
+      const end = rowEndAfter(text, at, to, name, top);
+      if (end >= 0) {
         cells.push({ from: start, to: at });
-        return { cells, next: afterLineBreak(text, at + 2, to) };
+        return { cells, next: end };
       }
-      if (name === "tabularnewline" && top) {
-        cells.push({ from: start, to: at });
-        return { cells, next: at + name.length + 1 };
-      }
-      if (name === "begin") environments += 1;
-      else if (name === "end") environments -= 1;
-      at += name ? name.length : 1;
+      environments += environmentDelta(name);
+      at += commandWidth(name);
     }
   }
   cells.push({ from: start, to });
@@ -267,8 +302,13 @@ function entryOf(text: string, cell: Cell, block: number, highlighted: boolean):
   };
 }
 
+function markOpener(kind: Kind, math: boolean): string {
+  if (kind === "second") return String.raw`\underline{`;
+  return math ? String.raw`\mathbf{` : String.raw`\textbf{`;
+}
+
 function addMark(entry: Entry, kind: Kind): TextEdit[] {
-  const open = kind === "second" ? "\\underline{" : entry.math ? "\\mathbf{" : "\\textbf{";
+  const open = markOpener(kind, entry.math);
   return [{ from: entry.token.from, to: entry.token.from, insert: open }, { from: entry.token.to, to: entry.token.to, insert: "}" }];
 }
 

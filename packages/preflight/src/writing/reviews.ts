@@ -40,7 +40,13 @@ const MARKDOWN_HEADING = /^[ \t]{0,3}#{1,6}(?=[ \t])/;
 const REVIEWER_ID = String.raw`(\d+|[A-Za-z0-9]{4}(?![A-Za-z0-9]))`;
 const REVIEWER_IN_HEADING = new RegExp(String.raw`\breviewer\s*(?:#\s*)?${REVIEWER_ID}|^R(\d+)\b`, "i");
 const REVIEWER_LINE = new RegExp(String.raw`^\s*(?:(?:\*\*|__)\s*)?reviewer\s*(?:#\s*)?${REVIEWER_ID}(?:\s*\([^()]{0,200}\))?[\s*_:.-]*$`, "i");
-const NUMBERED = /^(\s*)(?:[-*+]\s+)?(?:\*\*|__)?(\d{1,3}(?=[.)])|[QWR]\d{1,3}(?:\.\d{1,3})*)[.):]?(?:\*\*|__)?[.):]?(?:\s+|$)/;
+const LIST_MARKER = String.raw`(?:[-*+]\s+)?`;
+const EMPHASIS = String.raw`(?:\*\*|__)?`;
+const POINT_NUMBER = String.raw`(\d{1,3}(?=[.)])|[QWR]\d{1,3}(?:\.\d{1,3})*)`;
+const POINT_PUNCTUATION = "[.):]?";
+const NUMBERED = new RegExp(
+  String.raw`^(\s*)${LIST_MARKER}${EMPHASIS}${POINT_NUMBER}${POINT_PUNCTUATION}${EMPHASIS}${POINT_PUNCTUATION}(?:\s+|$)`,
+);
 const BULLET = /^(\s*)[-*+]\s+(?=\S)/;
 const REFERENCE_PATTERNS: readonly (readonly [ReviewReferenceKind, RegExp])[] = [
   ["table", /\b(?:tables?|tabs?\.?)\s*~?(\d+)/gi],
@@ -49,8 +55,18 @@ const REFERENCE_PATTERNS: readonly (readonly [ReviewReferenceKind, RegExp])[] = 
   ["section", /(?:\b(?:sections?|secs?\.?)|§)\s*~?(\d+(?:\.\d+)*)/gi],
   ["line", /\b(?:[Ll]ines?|ll?\.)\s*(\d+)|\bL(\d+)\b/g],
 ];
-const TOKEN =
-  /\\(?:(input|include)\s*\{([^{}]{0,500})\}|begin\s*\{([A-Za-z]+\*?)\}|(section|subsection|subsubsection)(\*?)\s*(?:\[[^\][]{0,500}\]\s*)?\{|(?:captionof\s*\{|captionsetup\s*\{\s*type\s*=\s*)(figure|table)\s*\}|(appendix)(?![A-Za-z])|end\s*\{document\})/g;
+const INCLUDE_TOKEN = String.raw`(input|include)\s*\{([^{}]{0,500})\}`;
+const BEGIN_TOKEN = String.raw`begin\s*\{([A-Za-z]+\*?)\}`;
+const SECTION_TOKEN = String.raw`(section|subsection|subsubsection)(\*?)\s*(?:\[[^\][]{0,500}\]\s*)?\{`;
+const CAPTION_TOKEN = String.raw`(?:captionof\s*\{|captionsetup\s*\{\s*type\s*=\s*)(figure|table)\s*\}`;
+const APPENDIX_TOKEN = "(appendix)(?![A-Za-z])";
+const END_DOCUMENT_TOKEN = String.raw`end\s*\{document\}`;
+const TOKEN = new RegExp(
+  String.raw`\\(?:${INCLUDE_TOKEN}|${BEGIN_TOKEN}|${SECTION_TOKEN}|${CAPTION_TOKEN}|${APPENDIX_TOKEN}|${END_DOCUMENT_TOKEN})`,
+  "g",
+);
+const BEGIN_COMMAND = String.raw`\begin`;
+const END_COMMAND = String.raw`\end`;
 const FLOATS: Readonly<Record<string, "figure" | "table">> = {
   figure: "figure",
   "figure*": "figure",
@@ -76,7 +92,8 @@ function reviewerName(line: string): string | null {
 
 function pointLabel(reviewer: string | null, marker: string): string {
   if (reviewer === null || marker.startsWith("R")) return marker;
-  return `${/^\d+$/.test(reviewer) ? `R${reviewer}` : reviewer}.${marker}`;
+  const prefix = /^\d+$/.test(reviewer) ? `R${reviewer}` : reviewer;
+  return `${prefix}.${marker}`;
 }
 
 interface OpenPoint {
@@ -86,6 +103,29 @@ interface OpenPoint {
   to: number;
   indent: number;
   bullet: boolean;
+}
+
+function openPoint(
+  line: string,
+  lineFrom: number,
+  ordinal: number,
+  reviewer: string | null,
+  current: OpenPoint | null,
+): OpenPoint | null {
+  const numbered = NUMBERED.exec(line);
+  const bullet = numbered ? null : BULLET.exec(line);
+  const start = numbered ?? bullet;
+  const nested = current !== null && start !== null && start[1].length > current.indent;
+  const opens = numbered !== null || (bullet !== null && reviewer !== null && (current === null || current.bullet));
+  if (!start || !opens || nested) return null;
+  return {
+    label: pointLabel(reviewer, numbered ? numbered[2] : String(ordinal)),
+    lines: [line.slice(start[0].length)],
+    from: lineFrom + start[1].length,
+    to: lineFrom + line.trimEnd().length,
+    indent: start[1].length,
+    bullet: numbered === null,
+  };
 }
 
 export function reviewPoints(content: string): ReviewPoint[] {
@@ -112,21 +152,10 @@ export function reviewPoints(content: string): ReviewPoint[] {
       current = null;
       continue;
     }
-    const numbered = NUMBERED.exec(line);
-    const bullet = numbered ? null : BULLET.exec(line);
-    const start = numbered ?? bullet;
-    const nested = current !== null && start !== null && start[1].length > current.indent;
-    const opens = numbered !== null || (bullet !== null && reviewer !== null && (current === null || current.bullet));
-    if (start && opens && !nested) {
+    const opened = openPoint(line, lineFrom, count + 1, reviewer, current);
+    if (opened) {
       count += 1;
-      current = {
-        label: pointLabel(reviewer, numbered ? numbered[2] : String(count)),
-        lines: [line.slice(start[0].length)],
-        from: lineFrom + start[1].length,
-        to: lineFrom + line.trimEnd().length,
-        indent: start[1].length,
-        bullet: numbered === null,
-      };
+      current = opened;
       points.push(current);
     } else if (current) {
       current.lines.push(line);
@@ -151,7 +180,8 @@ export function reviewReferences(text: string): ReviewReference[] {
       found.push({ at: match.index, reference: { kind, number } });
     }
   }
-  return found.sort((left, right) => left.at - right.at).map((entry) => entry.reference);
+  found.sort((left, right) => left.at - right.at);
+  return found.map((entry) => entry.reference);
 }
 
 function inputPath(base: string, target: string, contents: ReadonlyMap<string, string>): string | null {
@@ -184,8 +214,8 @@ function equationRows(body: string): TextSpan[] {
     if (character === "{") braces += 1;
     else if (character === "}") braces -= 1;
     else if (character === "\\") {
-      if (body.startsWith("\\begin", index)) nested += 1;
-      else if (body.startsWith("\\end", index)) nested -= 1;
+      if (body.startsWith(BEGIN_COMMAND, index)) nested += 1;
+      else if (body.startsWith(END_COMMAND, index)) nested -= 1;
       else if (body[index + 1] === "\\" && braces === 0 && nested === 0) {
         push(index);
         start = index + 2;
@@ -219,7 +249,7 @@ export function paperPlaces(files: readonly ProjectWritingFile[], mainFile: stri
       missing.add(name);
       return bodyFrom;
     }
-    const body = source.slice(bodyFrom, source.lastIndexOf("\\end", end - 1));
+    const body = source.slice(bodyFrom, source.lastIndexOf(END_COMMAND, end - 1));
     const float = FLOATS[name];
     if (float) {
       for (let caption = captionCount(body); caption > 0; caption -= 1) add(float, file, at, bodyFrom);
@@ -241,6 +271,31 @@ export function paperPlaces(files: readonly ProjectWritingFile[], mainFile: stri
     const close = matchingBrace(source, open);
     places.push({ kind: "section", number: sections.slice(0, level + 1).join("."), file, from: at, to: close < 0 ? open + 1 : close + 1 });
   };
+  const visit = (match: RegExpExecArray, source: string, file: string, depth: number, token: RegExp): boolean => {
+    const [whole, input, target, name, heading, starred, captioned, appendixCommand] = match;
+    const after = match.index + whole.length;
+    if (input) {
+      const next = inputPath(base, target, contents);
+      return next ? walk(next, depth + 1) : true;
+    }
+    if (name) {
+      token.lastIndex = environment(name, source, file, match.index, after);
+      return true;
+    }
+    if (heading) {
+      if (!starred && !appendix) section(heading, source, file, match.index, after - 1);
+      return true;
+    }
+    if (captioned) {
+      add(captioned === "figure" ? "figure" : "table", file, match.index, after);
+      return true;
+    }
+    if (appendixCommand) {
+      appendix = true;
+      return true;
+    }
+    return false;
+  };
   const walk = (file: string, depth: number): boolean => {
     const content = contents.get(file);
     if (content === undefined || depth > MAX_DEPTH || active.has(file)) return true;
@@ -249,22 +304,7 @@ export function paperPlaces(files: readonly ProjectWritingFile[], mainFile: stri
     const token = new RegExp(TOKEN.source, "g");
     let going = true;
     for (let match = token.exec(source); match && going; match = token.exec(source)) {
-      const [whole, input, target, name, heading, starred, captioned, appendixCommand] = match;
-      const after = match.index + whole.length;
-      if (input) {
-        const next = inputPath(base, target, contents);
-        if (next) going = walk(next, depth + 1);
-      } else if (name) {
-        token.lastIndex = environment(name, source, file, match.index, after);
-      } else if (heading) {
-        if (!starred && !appendix) section(heading, source, file, match.index, after - 1);
-      } else if (captioned) {
-        add(captioned === "figure" ? "figure" : "table", file, match.index, after);
-      } else if (appendixCommand) {
-        appendix = true;
-      } else {
-        going = false;
-      }
+      going = visit(match, source, file, depth, token);
     }
     active.delete(file);
     return going;

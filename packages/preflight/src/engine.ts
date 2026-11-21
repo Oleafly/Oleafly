@@ -119,6 +119,11 @@ function privacyCoverage(supported: boolean, hasProject: boolean, factsPending: 
   return factsPending ? "partial" : "evaluated";
 }
 
+function writingCoverage(hasWriting: boolean, sourceProfile: SourcePreflightProfile): Coverage {
+  if (!hasWriting) return "not_run";
+  return sourceProfile === "latex" ? "evaluated" : "unsupported";
+}
+
 function projectRefsFindings(
   latexSources: readonly LatexSource[],
   refs: RefsContext,
@@ -253,7 +258,7 @@ export function runPreflight({
     refs: supported && refs ? "evaluated" : "unsupported",
     submission: submissionCoverage(supported, Boolean(project), Boolean(facts)),
     privacy: privacyCoverage(supported, Boolean(project), anonymousReview && !facts),
-    writing: !writing ? "not_run" : sourceProfile === "latex" ? "evaluated" : "unsupported",
+    writing: writingCoverage(Boolean(writing), sourceProfile),
   };
   const scoreOrNull = (id: keyof typeof coverage) =>
     coverage[id] === "not_run" || coverage[id] === "unsupported" ? null : scores[id];

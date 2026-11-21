@@ -57,13 +57,18 @@ function textList(value: unknown, limit: number, itemLimit: number): string[] {
   return [...seen];
 }
 
+function optionalReplacement(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return typeof value === "string" && value.length <= WRITING_SETTINGS_LIMITS.text ? value : null;
+}
+
 function customRule(value: unknown): CustomWritingRule | null {
   const entry = record(value);
   if (!entry) return null;
   const id = typeof entry.id === "string" && RULE_ID.test(entry.id) ? entry.id : null;
   const find = shortText(entry.find);
   if (!id || !find || find.trim().length === 0) return null;
-  const replace = entry.replace === null || entry.replace === undefined ? null : typeof entry.replace === "string" && entry.replace.length <= WRITING_SETTINGS_LIMITS.text ? entry.replace : null;
+  const replace = optionalReplacement(entry.replace);
   const note = shortText(entry.note);
   return {
     id,

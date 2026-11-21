@@ -38,9 +38,14 @@ export async function linkedTableDiagnostics(text: string, read: LinkedDataReade
   if (matches.length === 0) return [];
   const { relinkedTable } = await import("@/features/table-import");
   const diagnostics: Diagnostic[] = [];
-  for (const match of matches) {
-    const path = normalizeProjectPath(match.table.source);
-    const data = path ? await read(path) : null;
+  const reads = await Promise.all(
+    matches.map((match) => {
+      const path = normalizeProjectPath(match.table.source);
+      return path ? read(path) : null;
+    }),
+  );
+  for (const [index, match] of matches.entries()) {
+    const data = reads[index];
     if (data === null || diskHash(data) === match.table.hash || !relinkedTable(match, data)) continue;
     diagnostics.push({
       from: match.from,
