@@ -294,6 +294,29 @@ pub(crate) fn frost_window<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) 
     let _ = window;
 }
 
+fn prepare_main_window(app: &mut tauri::App) {
+    use tauri::Manager;
+    let hidden = quick_capture::background_launch(&std::env::args().collect::<Vec<_>>());
+    if hidden {
+        quick_capture::note_hidden_launch();
+        #[cfg(target_os = "macos")]
+        app.set_dock_visibility(false);
+    }
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = window.set_decorations(false);
+        }
+        if !hidden {
+            let _ = window.maximize();
+        }
+    }
+    frost_window(&window);
+}
+
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     download_settings::load();
     {
@@ -351,30 +374,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     crate::stall_trace::mark_ui_thread();
     crate::stall_trace::start_watchdog();
-    let hidden = quick_capture::background_launch(&std::env::args().collect::<Vec<_>>());
-    if hidden {
-        quick_capture::note_hidden_launch();
-        #[cfg(target_os = "macos")]
-        app.set_dock_visibility(false);
-    }
-    if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
-        use tauri::Manager;
-        if let Some(window) = app.get_webview_window("main") {
-            #[cfg(target_os = "windows")]
-            {
-                let _ = window.set_decorations(false);
-            }
-            if !hidden {
-                let _ = window.maximize();
-            }
-        }
-    }
-    {
-        use tauri::Manager;
-        if let Some(window) = app.get_webview_window("main") {
-            frost_window(&window);
-        }
-    }
+    prepare_main_window(app);
     #[cfg(feature = "e2e-testing")]
     {
         use tauri::Manager;

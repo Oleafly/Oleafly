@@ -1,34 +1,65 @@
+use std::ffi::CStr;
 use std::sync::OnceLock;
 
-use objc2::runtime::{AnyClass, AnyObject};
-use objc2::{define_class, ClassType, MainThreadOnly};
+use objc2::runtime::{AnyClass, AnyObject, Bool, ClassBuilder, Sel};
+use objc2::{sel, ClassType};
 use objc2_app_kit::{
-    NSEvent, NSPanel, NSResponder, NSScreen, NSWindow, NSWindowCollectionBehavior,
-    NSWindowStyleMask,
+    NSEvent, NSPanel, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
-use objc2_foundation::{NSObject, NSPoint, NSRect};
+use objc2_foundation::{NSPoint, NSRect};
 use tauri::{Runtime, WebviewWindow};
 
-define_class!(
-    #[unsafe(super(NSPanel, NSWindow, NSResponder, NSObject))]
-    #[thread_kind = MainThreadOnly]
-    #[name = "OleaflyCapturePanel"]
-    struct CapturePanel;
+const PANEL_CLASS: &CStr = c"OleaflyCapturePanel";
+const FOCUSABLE: &CStr = c"focusable";
 
-    impl CapturePanel {
-        #[unsafe(method(canBecomeKeyWindow))]
-        fn can_become_key_window(&self) -> bool {
-            true
+static ORIGINAL_CLASS: OnceLock<&AnyClass> = OnceLock::new();
+
+extern "C-unwind" fn can_become_key(_this: &AnyObject, _sel: Sel) -> Bool {
+    Bool::YES
+}
+
+extern "C-unwind" fn can_become_main(_this: &AnyObject, _sel: Sel) -> Bool {
+    Bool::NO
+}
+
+fn panel_class() -> Option<&'static AnyClass> {
+    static PANEL: OnceLock<Option<&AnyClass>> = OnceLock::new();
+    *PANEL.get_or_init(|| {
+        let mut builder = ClassBuilder::new(PANEL_CLASS, NSPanel::class())?;
+        builder.add_ivar::<Bool>(FOCUSABLE);
+        // SAFETY: canBecomeKeyWindow and canBecomeMainWindow take no arguments
+        // and return BOOL, which is what both functions take and return.
+        unsafe {
+            builder.add_method(
+                sel!(canBecomeKeyWindow),
+                can_become_key as extern "C-unwind" fn(_, _) -> _,
+            );
+            builder.add_method(
+                sel!(canBecomeMainWindow),
+                can_become_main as extern "C-unwind" fn(_, _) -> _,
+            );
         }
+        Some(builder.register())
+    })
+}
 
-        #[unsafe(method(canBecomeMainWindow))]
-        fn can_become_main_window(&self) -> bool {
-            false
-        }
-    }
-);
+fn own_ivars(class: &AnyClass) -> Vec<(String, isize, String)> {
+    class
+        .instance_variables()
+        .iter()
+        .map(|ivar| {
+            (
+                ivar.name().to_string_lossy().into_owned(),
+                ivar.offset(),
+                ivar.type_encoding().to_string_lossy().into_owned(),
+            )
+        })
+        .collect()
+}
 
-static ORIGINAL_CLASS: OnceLock<&'static AnyClass> = OnceLock::new();
+fn same_layout(window: &AnyClass, panel: &AnyClass) -> bool {
+    window.instance_size() == panel.instance_size() && own_ivars(window) == own_ivars(panel)
+}
 
 fn on_main_thread<R: Runtime>(
     window: &WebviewWindow<R>,
@@ -52,15 +83,26 @@ fn on_main_thread<R: Runtime>(
 
 pub(super) fn make_panel<R: Runtime>(window: &WebviewWindow<R>) {
     on_main_thread(window, |ns_window| {
+        let Some(panel) = panel_class() else {
+            return;
+        };
         let object: &AnyObject = ns_window.as_ref();
         let original = object.class();
-        if !std::ptr::eq(original, CapturePanel::class()) {
+        if !std::ptr::eq(original, panel) {
+            if !same_layout(original, panel) {
+                let _ = crate::project::append_app_log(format!(
+                    "Quick capture stays an ordinary window: its window class {} is laid out differently from the panel.",
+                    original.name().to_string_lossy()
+                ));
+                return;
+            }
             let _ = ORIGINAL_CLASS.set(original);
-            // SAFETY: CapturePanel adds no instance variables and only answers
-            // canBecomeKeyWindow and canBecomeMainWindow, so the window's memory
-            // and Tao's state stay valid. `restore_window` puts the original
-            // class back before the window is destroyed.
-            unsafe { AnyObject::set_class(object, CapturePanel::class()) };
+            // SAFETY: same_layout checked that the panel class has the window
+            // class's instance size and its own instance variables at the same
+            // offsets with the same types, so the object's memory means the same
+            // under both. `restore_window` puts the original class back before
+            // the window is destroyed.
+            unsafe { AnyObject::set_class(object, panel) };
         }
         ns_window.setStyleMask(ns_window.styleMask() | NSWindowStyleMask::NonactivatingPanel);
         ns_window.setHidesOnDeactivate(false);
@@ -69,20 +111,22 @@ pub(super) fn make_panel<R: Runtime>(window: &WebviewWindow<R>) {
                 | NSWindowCollectionBehavior::CanJoinAllSpaces
                 | NSWindowCollectionBehavior::FullScreenAuxiliary,
         );
-        // SAFETY: the window's class is CapturePanel, an NSPanel subclass.
-        let panel = unsafe { &*(ns_window as *const NSWindow).cast::<NSPanel>() };
-        panel.setFloatingPanel(true);
+        // SAFETY: the window's class is now the panel class, an NSPanel subclass.
+        let panel_window = unsafe { &*(ns_window as *const NSWindow).cast::<NSPanel>() };
+        panel_window.setFloatingPanel(true);
     });
 }
 
 pub(super) fn restore_window<R: Runtime>(window: &WebviewWindow<R>) {
     on_main_thread(window, |ns_window| {
+        let (Some(panel), Some(original)) = (panel_class(), ORIGINAL_CLASS.get()) else {
+            return;
+        };
         let object: &AnyObject = ns_window.as_ref();
-        if let Some(original) = ORIGINAL_CLASS.get() {
-            if std::ptr::eq(object.class(), CapturePanel::class()) {
-                // SAFETY: this puts back the class the window was created with.
-                unsafe { AnyObject::set_class(object, original) };
-            }
+        if std::ptr::eq(object.class(), panel) {
+            // SAFETY: this puts back the class the window was created with,
+            // whose layout same_layout matched before the swap.
+            unsafe { AnyObject::set_class(object, original) };
         }
     });
 }
@@ -119,4 +163,34 @@ pub(super) fn bring_forward<R: Runtime>(window: &WebviewWindow<R>) {
         ns_window.orderFrontRegardless();
         ns_window.makeKeyWindow();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn window_class_like_tao(name: &CStr) -> &'static AnyClass {
+        let mut builder = ClassBuilder::new(name, NSWindow::class()).unwrap();
+        builder.add_ivar::<Bool>(FOCUSABLE);
+        builder.register()
+    }
+
+    #[test]
+    fn the_panel_matches_a_window_class_laid_out_like_tao_s() {
+        let panel = panel_class().unwrap();
+        assert!(same_layout(
+            window_class_like_tao(c"OleaflyTaoLikeWindow"),
+            panel
+        ));
+    }
+
+    #[test]
+    fn the_panel_refuses_a_window_class_with_another_layout() {
+        let panel = panel_class().unwrap();
+        assert!(!same_layout(NSWindow::class(), panel));
+        let mut builder = ClassBuilder::new(c"OleaflyWiderWindow", NSWindow::class()).unwrap();
+        builder.add_ivar::<Bool>(FOCUSABLE);
+        builder.add_ivar::<usize>(c"extra");
+        assert!(!same_layout(builder.register(), panel));
+    }
 }
