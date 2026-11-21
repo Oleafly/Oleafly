@@ -1,10 +1,12 @@
+use std::collections::HashSet;
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use oleafly_core::download_sources::{self, DownloadSettings};
 use serde::Serialize;
-use tauri::{ipc::Channel, Emitter, Manager, Resource, ResourceId, Runtime, State, Webview};
+use tauri::{ipc::Channel, Emitter, Manager, Resource, ResourceId, Runtime, State, Url, Webview};
 use tokio::sync::{oneshot, watch};
 
 const DOWNLOAD_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
@@ -215,6 +217,76 @@ async fn watched_download<T>(
     }).await.map_err(|_| "The update download took too long. Check your connection and try again.".to_string())?
 }
 
+fn download_addresses(
+    listed: &Url,
+    feed: &serde_json::Value,
+    settings: &DownloadSettings,
+    failed_hosts: &HashSet<String>,
+) -> Vec<Url> {
+    let address = |entry: &serde_json::Value, key: &str| {
+        entry
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .and_then(|url| Url::parse(url).ok())
+    };
+    let platforms = feed
+        .get("platforms")
+        .and_then(serde_json::Value::as_object)
+        .into_iter()
+        .flat_map(|platforms| platforms.values());
+    let original = std::iter::once(feed)
+        .chain(platforms)
+        .filter(|entry| address(entry, "url").as_ref() == Some(listed))
+        .find_map(|entry| address(entry, "original_url"))
+        .filter(|original| original.scheme() == "https" || original.scheme() == listed.scheme());
+    let known: Vec<String> = std::iter::once(listed.to_string())
+        .chain(original.map(|original| original.to_string()))
+        .collect();
+    settings
+        .arrange(&known, failed_hosts)
+        .iter()
+        .filter_map(|url| Url::parse(url).ok())
+        .collect()
+}
+
+async fn download_archive(
+    update: &tauri_plugin_updater::Update,
+    on_event: &Channel<DownloadEvent>,
+) -> Result<Vec<u8>, String> {
+    let (progress, changes) = watch::channel(());
+    let mut started = false;
+    let download = update.download(
+        |chunk_length, content_length| {
+            if !started {
+                started = true;
+                let _ = on_event.send(DownloadEvent::Started { content_length });
+            }
+            if chunk_length > 0 {
+                progress.send_replace(());
+            }
+            let _ = on_event.send(DownloadEvent::Progress { chunk_length });
+        },
+        || {},
+    );
+    watched_download(
+        async { download.await.map_err(|error| error.to_string()) },
+        changes,
+        DOWNLOAD_IDLE_TIMEOUT,
+        DOWNLOAD_TOTAL_TIMEOUT,
+    )
+    .await
+}
+
+fn remember_update_source(url: &str, outcome: &Result<Vec<u8>, String>) {
+    if cfg!(test) {
+        return;
+    }
+    match outcome {
+        Ok(_) => download_sources::note_success(url),
+        Err(_) => download_sources::note_failure(url),
+    }
+}
+
 #[tauri::command]
 pub async fn download_update<R: Runtime>(
     webview: Webview<R>,
@@ -237,28 +309,28 @@ pub async fn download_update<R: Runtime>(
         .map_err(|error| error.to_string())?;
     let mut update = (*update).clone();
     update.timeout = Some(DOWNLOAD_TOTAL_TIMEOUT);
-    let (progress, changes) = watch::channel(());
-    let mut started = false;
-    let download = update.download(
-        |chunk_length, content_length| {
-            if !started {
-                started = true;
-                let _ = on_event.send(DownloadEvent::Started { content_length });
-            }
-            if chunk_length > 0 {
-                progress.send_replace(());
-            }
-            let _ = on_event.send(DownloadEvent::Progress { chunk_length });
-        },
-        || {},
+    let addresses = download_addresses(
+        &update.download_url,
+        &update.raw_json,
+        &download_sources::current(),
+        &download_sources::recently_failed_hosts(),
     );
-    let bytes = watched_download(
-        async { download.await.map_err(|error| error.to_string()) },
-        changes,
-        DOWNLOAD_IDLE_TIMEOUT,
-        DOWNLOAD_TOTAL_TIMEOUT,
-    )
-    .await?;
+    let mut outcome = Err("The update has no download address.".to_string());
+    for address in addresses {
+        update.download_url = address;
+        outcome = download_archive(&update, &on_event).await;
+        remember_update_source(update.download_url.as_str(), &outcome);
+        match &outcome {
+            Ok(_) => break,
+            Err(error) => {
+                let _ = crate::project::append_app_log(format!(
+                    "Update download from {} failed: {error}",
+                    update.download_url.host_str().unwrap_or("an unnamed host")
+                ));
+            }
+        }
+    }
+    let bytes = outcome?;
     on_event
         .send(DownloadEvent::Finished)
         .map_err(|error| error.to_string())?;
@@ -427,7 +499,25 @@ mod tests {
 
     impl UpdateFixture {
         async fn new() -> Self {
-            use axum::{routing::get, Json, Router};
+            Self::serving("invalid fixture public key", |address| {
+                use axum::{routing::get, Router};
+                (
+                    serde_json::json!({
+                        "version": "9.0.0",
+                        "url": format!("http://{address}/download"),
+                        "signature": "invalid fixture signature",
+                    }),
+                    Router::new().route("/download", get(|| async { "unsigned fixture archive" })),
+                )
+            })
+            .await
+        }
+
+        async fn serving(
+            public_key: &str,
+            release: impl FnOnce(std::net::SocketAddr) -> (serde_json::Value, axum::Router),
+        ) -> Self {
+            use axum::{routing::get, Json};
             use tauri_plugin_updater::UpdaterExt;
             let directory = tempfile::tempdir().unwrap();
             let executable = directory.path().join("Oleafly.app/Contents/MacOS/oleafly");
@@ -435,21 +525,15 @@ mod tests {
             std::fs::write(&executable, b"original fixture executable").unwrap();
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
             let address = listener.local_addr().unwrap();
-            let release = serde_json::json!({
-                "version": "9.0.0",
-                "url": format!("http://{address}/download"),
-                "signature": "invalid fixture signature",
-            });
-            let router = Router::new()
-                .route("/latest", get(move || async move { Json(release) }))
-                .route("/download", get(|| async { "unsigned fixture archive" }));
+            let (release, routes) = release(address);
+            let router = routes.route("/latest", get(move || async move { Json(release) }));
             let server = tokio::spawn(async move {
                 axum::serve(listener, router).await.unwrap();
             });
             let mut context = tauri::test::mock_context(tauri::test::noop_assets());
             context.config_mut().plugins.0.insert(
                 "updater".into(),
-                serde_json::json!({"pubkey":"invalid fixture public key", "dangerousInsecureTransportProtocol":true}),
+                serde_json::json!({"pubkey": public_key, "dangerousInsecureTransportProtocol": true}),
             );
             let app = tauri::test::mock_builder()
                 .plugin(tauri_plugin_updater::Builder::new().build())
@@ -491,6 +575,254 @@ mod tests {
         }
     }
 
+    const FIXTURE_ARCHIVE: &str = "signed fixture archive";
+    const FIXTURE_PUBLIC_KEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ2RjQwNDIzNjY0NjVFQkQKUldTOVhrWm1Jd1QwMXMrTDdQNUNFbDRaenFFK2VkakJrRVk0NmlkaUxSODR4OWxZaGV2U0lrYTkK";
+    const FIXTURE_SIGNATURE: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTOVhrWm1Jd1QwMW40K3djWXJET00wb0t2QTdHSUs3alcyUXI4akh3RzUvRVVvcVdRZURsYWM3WmJlejZoVWppaS9CbEdqWURlOG9mT2UzeTc4M25vSG9GVkFDRE1YMHdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjI5ODc4CWZpbGU6YXJjaGl2ZS5iaW4KaTUvbWN6Wld1RVh5dWNnS2RPM1ZpeFFTcTQ0YnpTQzhRL1FHa3hQNURETEM4MFk0WU9OUUFNRWdUZWU3Mnl6NGRnV3IzeTVlZGc5cWJOTVlOUUltRGc9PQo=";
+
+    type Requests = Arc<Mutex<Vec<&'static str>>>;
+    type Events = Arc<Mutex<Vec<serde_json::Value>>>;
+
+    fn recording_channel() -> (Channel<DownloadEvent>, Events) {
+        let events = Events::default();
+        let received = events.clone();
+        let channel = Channel::new(move |body| {
+            received
+                .lock()
+                .unwrap()
+                .push(body.deserialize::<serde_json::Value>().unwrap());
+            Ok(())
+        });
+        (channel, events)
+    }
+
+    fn count(events: &Events, name: &str) -> usize {
+        events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| event["event"] == name)
+            .count()
+    }
+
+    async fn two_address_fixture(
+        first: (axum::http::StatusCode, &'static str),
+        second: &'static str,
+    ) -> (UpdateFixture, Requests) {
+        use axum::{routing::get, Router};
+        let requests = Requests::default();
+        let (to_first, to_second) = (requests.clone(), requests.clone());
+        let fixture = UpdateFixture::serving(FIXTURE_PUBLIC_KEY, move |address| {
+            (
+                serde_json::json!({
+                    "version": "9.0.0",
+                    "url": format!("http://{address}/first"),
+                    "original_url": format!("http://{address}/second"),
+                    "signature": FIXTURE_SIGNATURE,
+                }),
+                Router::new()
+                    .route(
+                        "/first",
+                        get(move || async move {
+                            to_first.lock().unwrap().push("/first");
+                            first
+                        }),
+                    )
+                    .route(
+                        "/second",
+                        get(move || async move {
+                            to_second.lock().unwrap().push("/second");
+                            second
+                        }),
+                    ),
+            )
+        })
+        .await;
+        (fixture, requests)
+    }
+
+    fn release_feed() -> serde_json::Value {
+        serde_json::json!({
+            "version": "9.0.0",
+            "platforms": {
+                "darwin-aarch64": {
+                    "signature": "mac",
+                    "url": "https://mirrors.oleafly.com/releases/desktop/v9.0.0/0a1b/Oleafly.app.tar.gz",
+                    "original_url": "https://github.com/Oleafly/Oleafly/releases/download/v9.0.0/Oleafly.app.tar.gz",
+                },
+                "windows-x86_64": {
+                    "signature": "windows",
+                    "url": "https://mirrors.oleafly.com/releases/desktop/v9.0.0/2c3d/Oleafly-setup.exe",
+                    "original_url": "https://github.com/Oleafly/Oleafly/releases/download/v9.0.0/Oleafly-setup.exe",
+                },
+            },
+        })
+    }
+
+    fn addresses(
+        listed: &str,
+        feed: &serde_json::Value,
+        source: download_sources::DownloadSource,
+        failed_hosts: &[&str],
+    ) -> Vec<String> {
+        download_addresses(
+            &Url::parse(listed).unwrap(),
+            feed,
+            &DownloadSettings {
+                source,
+                tex_repository: None,
+            },
+            &failed_hosts.iter().map(ToString::to_string).collect(),
+        )
+        .iter()
+        .map(ToString::to_string)
+        .collect()
+    }
+
+    const MAC_MIRROR: &str =
+        "https://mirrors.oleafly.com/releases/desktop/v9.0.0/0a1b/Oleafly.app.tar.gz";
+    const MAC_RELEASE: &str =
+        "https://github.com/Oleafly/Oleafly/releases/download/v9.0.0/Oleafly.app.tar.gz";
+
+    #[test]
+    fn a_mirrored_update_tries_the_mirror_then_its_own_release() {
+        use download_sources::DownloadSource;
+        assert_eq!(
+            addresses(MAC_MIRROR, &release_feed(), DownloadSource::Automatic, &[]),
+            [MAC_MIRROR, MAC_RELEASE]
+        );
+    }
+
+    #[test]
+    fn the_download_source_setting_orders_update_addresses() {
+        use download_sources::DownloadSource;
+        assert_eq!(
+            addresses(MAC_MIRROR, &release_feed(), DownloadSource::Original, &[]),
+            [MAC_RELEASE]
+        );
+        assert_eq!(
+            addresses(
+                MAC_MIRROR,
+                &release_feed(),
+                DownloadSource::Mirror("https://tex.campus.edu".into()),
+                &[]
+            ),
+            [
+                "https://tex.campus.edu/releases/desktop/v9.0.0/0a1b/Oleafly.app.tar.gz",
+                MAC_MIRROR,
+                MAC_RELEASE
+            ]
+        );
+    }
+
+    #[test]
+    fn a_host_that_failed_recently_is_tried_last() {
+        use download_sources::DownloadSource;
+        assert_eq!(
+            addresses(
+                MAC_MIRROR,
+                &release_feed(),
+                DownloadSource::Automatic,
+                &["mirrors.oleafly.com"]
+            ),
+            [MAC_RELEASE, MAC_MIRROR]
+        );
+    }
+
+    #[test]
+    fn an_update_without_a_second_address_keeps_its_listed_one() {
+        use download_sources::DownloadSource;
+        let mut feed = release_feed();
+        feed["platforms"]["darwin-aarch64"] =
+            serde_json::json!({"signature": "mac", "url": MAC_RELEASE});
+        assert_eq!(
+            addresses(MAC_RELEASE, &feed, DownloadSource::Automatic, &[]),
+            [MAC_RELEASE]
+        );
+        feed["platforms"]["darwin-aarch64"] = serde_json::json!({
+            "signature": "mac",
+            "url": MAC_MIRROR,
+            "original_url": "http://github.com/Oleafly/Oleafly/releases/download/v9.0.0/Oleafly.app.tar.gz",
+        });
+        assert_eq!(
+            addresses(MAC_MIRROR, &feed, DownloadSource::Automatic, &[]),
+            [MAC_MIRROR]
+        );
+    }
+
+    #[tokio::test]
+    async fn a_missing_first_address_falls_back_to_the_second() {
+        let (fixture, requests) =
+            two_address_fixture((axum::http::StatusCode::NOT_FOUND, ""), FIXTURE_ARCHIVE).await;
+        let rid = fixture
+            .webview
+            .resources_table()
+            .add(fixture.update.clone());
+        let (channel, events) = recording_channel();
+        let archive = download_update(fixture.webview.clone(), fixture.app.state(), rid, channel)
+            .await
+            .unwrap();
+        assert_eq!(*requests.lock().unwrap(), ["/first", "/second"]);
+        let downloaded = fixture
+            .webview
+            .resources_table()
+            .get::<DownloadedUpdate>(archive)
+            .unwrap();
+        assert_eq!(downloaded.bytes, FIXTURE_ARCHIVE.as_bytes());
+        assert_eq!(downloaded.update.download_url.path(), "/second");
+        assert_eq!(count(&events, "Started"), 1);
+        assert_eq!(count(&events, "Finished"), 1);
+    }
+
+    #[tokio::test]
+    async fn bytes_that_fail_the_signature_fall_back_to_the_second_address() {
+        let (fixture, requests) = two_address_fixture(
+            (axum::http::StatusCode::OK, "tampered fixture archive"),
+            FIXTURE_ARCHIVE,
+        )
+        .await;
+        let rid = fixture
+            .webview
+            .resources_table()
+            .add(fixture.update.clone());
+        let (channel, events) = recording_channel();
+        let archive = download_update(fixture.webview.clone(), fixture.app.state(), rid, channel)
+            .await
+            .unwrap();
+        assert_eq!(*requests.lock().unwrap(), ["/first", "/second"]);
+        let downloaded = fixture
+            .webview
+            .resources_table()
+            .get::<DownloadedUpdate>(archive)
+            .unwrap();
+        assert_eq!(downloaded.bytes, FIXTURE_ARCHIVE.as_bytes());
+        assert_eq!(count(&events, "Started"), 2);
+        assert_eq!(count(&events, "Finished"), 1);
+    }
+
+    #[tokio::test]
+    async fn a_download_fails_only_after_every_address_has_been_tried() {
+        let (fixture, requests) = two_address_fixture(
+            (axum::http::StatusCode::NOT_FOUND, ""),
+            "tampered fixture archive",
+        )
+        .await;
+        let rid = fixture
+            .webview
+            .resources_table()
+            .add(fixture.update.clone());
+        let (channel, events) = recording_channel();
+        let result =
+            download_update(fixture.webview.clone(), fixture.app.state(), rid, channel).await;
+        assert!(!result.unwrap_err().contains("404"));
+        assert_eq!(*requests.lock().unwrap(), ["/first", "/second"]);
+        assert_eq!(count(&events, "Finished"), 0);
+        assert!(!fixture
+            .app
+            .state::<UpdateState>()
+            .downloading
+            .load(Ordering::Acquire));
+    }
+
     async fn wait_for_recovery(state: &UpdateState) {
         tokio::time::timeout(Duration::from_secs(2), async {
             while state.installing() {
@@ -508,15 +840,7 @@ mod tests {
             .webview
             .resources_table()
             .add(fixture.update.clone());
-        let events = Arc::new(Mutex::new(Vec::new()));
-        let received = events.clone();
-        let channel = Channel::new(move |body| {
-            received
-                .lock()
-                .unwrap()
-                .push(body.deserialize::<serde_json::Value>().unwrap());
-            Ok(())
-        });
+        let (channel, events) = recording_channel();
         let result =
             download_update(fixture.webview.clone(), fixture.app.state(), rid, channel).await;
         assert!(result.is_err());

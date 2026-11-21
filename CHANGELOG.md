@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- App updates follow Settings > Downloads > Sources. When a release has a copy
+  on `mirrors.oleafly.com`, Oleafly downloads the update from there first and
+  from the release on GitHub if that fails. With Original hosts chosen it uses
+  GitHub only. The signature check is the same whichever address answers.
+
+### Fixed
+
+- Updates download from the release's own address. The update feed pointed at
+  GitHub's API, which allows 60 anonymous requests an hour for each network
+  address, so on a shared network Update now could fail with "Download request
+  failed with status: 403 Forbidden". Every release since at least 0.4.7 was
+  affected, up to 0.4.13.
+
 ## [0.4.13] - 2026-11-20
 
 If you use Oleafly for your research, a thesis or a course, add a line to [Who's using Oleafly?](https://github.com/Oleafly/Oleafly/discussions/502) with where you use it and what for.
