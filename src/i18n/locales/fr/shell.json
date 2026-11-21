@@ -393,6 +393,15 @@
     "notesQuickCapture": {
       "label": "Capture rapide",
       "keywords": "capture rapide noter note boîte de réception aujourd'hui"
+    },
+    "notationTable": {
+      "label": "Tableau de notation",
+      "keywords": "insérer notation symboles définitions glossaire maths",
+      "empty": "Aucune définition de symbole trouvée. Définissez les symboles dans le texte avec des formules comme « Soit $x$ l'entrée » ou « où $x$ est l'entrée »."
+    },
+    "addChapterFromProject": {
+      "keywords": "thèse chapitre article importer fusionner copier projet",
+      "label": "Ajouter un chapitre depuis un autre projet"
     }
   },
   "community": {

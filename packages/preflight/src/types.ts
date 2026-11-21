@@ -7,6 +7,7 @@ export const CHECK_IDS = [
   "refs",
   "submission",
   "privacy",
+  "writing",
 ] as const;
 
 export type CheckId = (typeof CHECK_IDS)[number];
@@ -29,6 +30,23 @@ export type PreflightEngine = "bundled" | "pdflatex" | "lualatex" | "xelatex" | 
 
 export type FindingMethod = "pdf-object-model" | "source-heuristic" | "compile-log" | "layout-heuristic";
 
+export interface TextEdit {
+  from: number;
+  to: number;
+  insert: string;
+}
+
+export interface FileEdits {
+  file: string;
+  edits: TextEdit[];
+}
+
+export interface FindingFix {
+  label: MessageRef;
+  edits: TextEdit[];
+  otherFiles?: FileEdits[];
+}
+
 export interface Finding {
   id: string;
   lens: Lens;
@@ -44,6 +62,8 @@ export interface Finding {
   standards?: StandardRef[];
   method?: FindingMethod;
   machineCheckable?: boolean;
+  fix?: FindingFix;
+  fingerprint?: string;
 }
 
 export type Coverage = "evaluated" | "partial" | "not_run" | "unsupported";
@@ -59,6 +79,7 @@ export interface PreflightReport {
   refsScore: number | null;
   submissionScore: number | null;
   privacyScore: number | null;
+  writingScore: number | null;
   coverage: CheckCoverage;
   ranAt: number;
   hasPdf: boolean;

@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Svært stort bilde: {{file}}",
       "detail": "Dette bildet er over {{limit}}. Store bilder gjør kompileringen tregere og PDF-en større. Noen arenaer begrenser også opplastingsstørrelsen. Komprimer det, eller eksporter det i den størrelsen det skrives ut i."
+    },
+    "writing-space-before-paren": {
+      "title": "Legg til et mellomrom foran parentesen",
+      "detail": "Sett et mellomrom mellom et ord og startparentesen: \"neural network (CNN)\", ikke \"neural network(CNN)\"."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Fjern mellomrommet foran skilletegnet",
+      "detail": "Punktum, komma, kolon eller spørsmålstegn står rett etter ordet, uten mellomrom imellom."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Bruk et hardt mellomrom foran henvisningen",
+      "detail": "Skriv problem~\\cite{key} eller Figure~\\ref{fig:plot}. Tilden holder siteringen eller nummeret på samme linje som ordet foran."
+    },
+    "writing-straight-quotes": {
+      "title": "Bruk LaTeX-sitattegn",
+      "detail": "LaTeX skriver ut et rett \" som et avsluttende sitattegn. Skriv ``quoted'', så vender det innledende tegnet riktig vei."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Sitering i sammendraget",
+      "detail": "Sammendrag leses ofte alene, og der sier et siteringsnummer ingenting. Nevn arbeidet med ord, eller flytt siteringen til innledningen."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Skriv ut ordet i starten av en setning",
+      "detail": "En setning bør ikke starte med en forkortelse. Skriv {{word}} i stedet for {{abbreviation}} her, og behold kortformen inne i setninger."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Sett tegnsetting etter ligningen",
+      "detail": "En ligning i egen blokk er en del av setningen rundt den. Avslutt den med komma når setningen fortsetter, eller punktum når den slutter."
+    },
+    "writing-table-caption-below": {
+      "title": "Sett tabellteksten over tabellen",
+      "detail": "De fleste konferanser og tidsskrifter forventer tabelltekster over tabellen og bildetekster under figuren."
+    },
+    "writing-figure-caption-above": {
+      "title": "Sett bildeteksten under figuren",
+      "detail": "De fleste konferanser og tidsskrifter forventer bildetekster under figuren og tabelltekster over tabellen."
+    },
+    "writing-macro-available": {
+      "title": "Bruk makroen du har definert",
+      "detail": "\"{{text}}\" har en makro, {{macro}}. Når du bruker den, er navnet likt overalt, og du kan endre det på ett sted."
+    },
+    "writing-table-abbreviation": {
+      "title": "Skriv ut Table",
+      "detail": "Denne stilen skriver ut Table, for eksempel Table~\\ref{tab:results}, og forkorter bare Fig., Eq. og Sec. inne i en setning."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Nummerer ligningen",
+      "detail": "Denne stilen nummererer hver ligning i egen blokk, så vurderere kan henvise til den."
+    },
+    "writing-float-placement": {
+      "title": "Plasser flyteobjektet øverst på siden",
+      "detail": "Denne stilen setter figurer og tabeller øverst på en side. Bruk [t] i stedet for [h]."
+    },
+    "writing-custom": {
+      "title": "Prosjektregel: {{find}}",
+      "detail": "Dette prosjektet skriver \"{{replace}}\" i stedet for \"{{find}}\".",
+      "detailNote": "{{note}}",
+      "detailFlag": "Stilreglene i dette prosjektet markerer \"{{find}}\"."
+    },
+    "writing-results-best": {
+      "title": "Verdien i fet skrift er ikke den beste",
+      "titleSecond": "Den understrekede verdien er ikke den nest beste",
+      "detail": "{{value}} står i fet skrift, men {{best}} er den beste verdien i denne kolonnen. Her er høyere bedre.",
+      "detailLower": "{{value}} står i fet skrift, men {{best}} er den beste verdien i denne kolonnen. Her er lavere bedre.",
+      "detailSecond": "{{value}} er understreket, men {{best}} er den nest beste verdien i denne kolonnen. Her er høyere bedre.",
+      "detailSecondLower": "{{value}} er understreket, men {{best}} er den nest beste verdien i denne kolonnen. Her er lavere bedre."
+    },
+    "writing-open-promise": {
+      "title": "Løfte uten henvisning",
+      "detail": "\"{{sentence}}\" Denne setningen lover noe eller peker et annet sted, men ingenting i den leder dit. Legg til en \\ref til delen som holder løftet, eller en \\url for utgitt kode.",
+      "titleRebuttal": "Løfte fra svaret til vurdererne som må holdes",
+      "detailRebuttal": "Du lovet dette i svaret til vurdererne: \"{{sentence}}\" Gjør endringen i den endelige versjonen, og legg så til en \\ref til den her, eller se bort fra dette notatet."
+    },
+    "writing-review-point": {
+      "title": "Vurderers punkt {{n}}",
+      "detail": "\"{{point}}\"",
+      "titleUnplaced": "Vurderers punkt {{n}}: fant ikke noe passende sted",
+      "detailUnplaced": "\"{{point}}\" Ingen tabell, figur, ligning eller seksjon som er nevnt her, stemmer med artikkelen.",
+      "detailLines": "\"{{point}}\" Linjenumrene viser til vurderingskopien, så finn stedet selv."
+    },
+    "writing-name-variants": {
+      "title": "Samme navn, ulike stavemåter",
+      "detail": "Dette navnet er skrevet på mer enn én måte i prosjektet: {{spellings}}. Bruk samme stavemåte overalt. En makro holder den lik."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol definert to ganger",
+      "detail": "{{symbol}} betyr \"{{first}}\" i {{file}}. Her betyr det \"{{second}}\". Gi hver betydning sitt eget symbol."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Referanser",
     "compile": "Kompilering",
     "submission": "Innsending",
-    "privacy": "Personvern"
+    "privacy": "Personvern",
+    "writing": "Skriving"
   },
   "severity": {
     "error": "Feil",
@@ -499,7 +587,8 @@
     "a11y": "Tilgang",
     "refs": "Ref.",
     "submission": "Send",
-    "privacy": "Personvern"
+    "privacy": "Personvern",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Før du deler kildekode eller sender inn anonymt",
       "info": "Hemmeligheter, utkastnotater, sensitive filer og identitetslekkasjer ved blind fagfellevurdering.",
       "detail": "Finner passord, private nøkler, interne kommentarer, utkastmarkering, sensitive prosjektfiler, forfattermetadata og identitetslekkasjer i innsendinger til anonym fagfellevurdering."
+    },
+    "writing": {
+      "label": "Skrivestil",
+      "who": "For artikler, avhandlinger og rapporter",
+      "info": "Mellomrom, sitattegn, henvisninger, tegnsetting ved ligninger og prosjektets egne regler.",
+      "detail": "Sjekker LaTeX-kilden mot vanlige konvensjoner for artikler og mot reglene som er lagret i dette prosjektet. De fleste funn kommer med en retting med ett klikk."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Kompilert resultat",
     "fixAll_one": "Fiks {{count}} med AI",
     "fixAll_other": "Fiks alle {{count}} med AI",
-    "noProblems": "Fant ingen problemer."
+    "noProblems": "Fant ingen problemer.",
+    "writing": {
+      "profile": "Skrivestil",
+      "underlines": "Vis stilunderstrekinger i editoren",
+      "underlinesHint": "Slå av dette for å holde editoren ren. Forhåndssjekken viser fortsatt funnene når du kjører denne sjekken.",
+      "rules": "Prosjektregler",
+      "noRules": "Ingen prosjektregler ennå. Marker tekst i editoren, høyreklikk og velg Lag en stilregel.",
+      "addRule": "Legg til en regel",
+      "removeRule": "Fjern regelen for {{find}}",
+      "flagOnly": "bare markering",
+      "clearIgnored_one": "Vis {{count}} funn det er sett bort fra, igjen",
+      "clearIgnored_other": "Vis {{count}} funn det er sett bort fra, igjen",
+      "fixAll_one": "Fiks {{count}} funn",
+      "fixAll_other": "Fiks alle {{count}} funn",
+      "fixed_one": "Fikset {{count}} funn.",
+      "fixed_other": "Fikset {{count}} funn.",
+      "skipped_one": "{{count}} fiks rørte ved den samme teksten som en annen. Kjør sjekken på nytt for å fikse den.",
+      "skipped_other": "{{count}} fikser rørte ved den samme teksten som andre. Kjør sjekken på nytt for å fikse dem.",
+      "fixFailed": "Noen filer ble endret etter at sjekken kjørte. Kjør den på nytt, og fiks så.",
+      "saveFailed": "Skriveinnstillingene kunne ikke lagres."
+    }
   },
   "finding": {
     "review": "Vurder",
@@ -657,7 +772,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Krever at du vurderer selv. Ingen verktøy kan avgjøre denne ut fra filen alene.",
     "jumpToSource": "Hopp til kilden",
-    "fixWithAi": "Fiks med AI"
+    "fixWithAi": "Fiks med AI",
+    "applyFix": "Fiks",
+    "ignore": "Se bort fra"
   },
   "score": {
     "notEvaluated": "{{label}} er ikke vurdert",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} tagger ikke PDF-er for skjermlesere. Typst 0.14 og nyere gjør det.",
     "none": "Typst {{version}} kan ikke lage PDF-standarder. Velg Typst 0.12 eller nyere i kompileringsmenyen.",
     "uaNote": "PDF/UA-1 krever en dokumenttittel og alternativ tekst for hvert bilde."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Finn ut fra dokumentet",
+      "description": "Bruker reglene i CVPR-stil når prosjektet laster cvpr.sty eller en beslektet stil, og ellers de generelle reglene."
+    },
+    "general": {
+      "label": "Generell artikkelstil",
+      "description": "Mellomrom, sitattegn, henvisninger, tegnsetting ved ligninger, bildetekster og makroer."
+    },
+    "cvpr": {
+      "label": "CVPR-stil",
+      "description": "De generelle reglene, pluss Table skrevet ut, nummererte ligninger og flyteobjekter øverst på siden."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Legg til et mellomrom",
+    "removeSpace": "Fjern mellomrommet",
+    "useTilde": "Bruk ~",
+    "useTexQuotes": "Bruk LaTeX-sitattegn",
+    "spellOut": "Skriv {{word}}",
+    "addComma": "Legg til et komma",
+    "addPeriod": "Legg til et punktum",
+    "useMacro": "Bruk {{macro}}",
+    "numberEquation": "Nummerer den",
+    "placeTop": "Bruk [t]",
+    "replaceWith": "Skriv {{text}}",
+    "boldBest": "Sett {{value}} i fet skrift i stedet",
+    "underlineSecond": "Understrek {{value}} i stedet",
+    "makeMacro": "Lag en makro"
+  },
+  "styleRule": {
+    "title": "Lag en stilregel",
+    "description": "Regelen sjekker hver LaTeX-fil i dette prosjektet mens du skriver, og følger prosjektet i project.json.",
+    "find": "Tekst som skal markeres",
+    "replace": "Skriv dette i stedet",
+    "replaceHint": "La feltet stå tomt for å markere teksten uten å tilby en retting.",
+    "note": "Merknad til medforfattere (valgfritt)",
+    "wholeWord": "Bare hele ord",
+    "matchCase": "Skill mellom store og små bokstaver",
+    "noMatches": "Ingen treff i dette prosjektet ennå.",
+    "matches_one": "Treffer {{count}} sted i dette prosjektet.",
+    "matches_other": "Treffer {{count}} steder i dette prosjektet.",
+    "save": "Lagre regel",
+    "cancel": "Avbryt",
+    "saved": "Regelen er lagret. Den sjekker nå hver fil i dette prosjektet."
   }
 }

@@ -1,7 +1,7 @@
 import type { EditorTranslator } from "@oleafly/editor";
 import type { PreviewTranslator } from "@oleafly/preview";
-import editor from "@/i18n/locales/en/editor.json";
-import preview from "@/i18n/locales/en/preview.json";
+import editor from "@/i18n/locales/en/editor.json?package-strings";
+import preview from "@/i18n/locales/en/preview.json?package-strings";
 import { webI18n } from "./index";
 
 type Untyped = (key: string, params?: Record<string, unknown>) => string;

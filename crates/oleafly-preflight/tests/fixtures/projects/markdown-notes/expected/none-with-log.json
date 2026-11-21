@@ -28,7 +28,8 @@
       "compile": "evaluated",
       "privacy": "unsupported",
       "refs": "unsupported",
-      "submission": "unsupported"
+      "submission": "unsupported",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -67,8 +68,10 @@
       "compile": 79,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": null
+    "submissionScore": null,
+    "writingScore": null
   }
 }

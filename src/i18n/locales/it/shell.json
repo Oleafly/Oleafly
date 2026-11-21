@@ -393,6 +393,15 @@
     "notesQuickCapture": {
       "label": "Cattura rapida",
       "keywords": "cattura rapida annota nota posta in arrivo oggi quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabella di notazione",
+      "keywords": "inserisci notazione simboli definizioni glossario matematica notation symbols glossary math",
+      "empty": "Nessuna definizione di simbolo trovata. Definisci i simboli nel testo con frasi come \"Sia $x$ l'input\" o \"dove $x$ è l'input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "tesi capitolo articolo importa unisci copia progetto thesis chapter paper import merge copy project",
+      "label": "Aggiungi capitolo da un altro progetto"
     }
   },
   "community": {

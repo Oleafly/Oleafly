@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Meget stort billede: {{file}}",
       "detail": "Dette billede fylder over {{limit}}. Store billeder gør kompileringen langsommere og PDF'en større. Nogle udgivelsessteder begrænser også uploadstørrelsen. Komprimer det, eller eksporter det i den størrelse, det trykkes i."
+    },
+    "writing-space-before-paren": {
+      "title": "Tilføj et mellemrum før parentesen",
+      "detail": "Sæt et mellemrum mellem et ord og dets startparentes: »neural network (CNN)«, ikke »neural network(CNN)«."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Fjern mellemrummet før tegnsætningen",
+      "detail": "Et punktum, komma, kolon eller spørgsmålstegn står lige efter ordet uden mellemrum imellem."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Brug et hårdt mellemrum før henvisningen",
+      "detail": "Skriv problem~\\cite{key} eller Figure~\\ref{fig:plot}. Tilden holder citationen eller nummeret på samme linje som ordet foran."
+    },
+    "writing-straight-quotes": {
+      "title": "Brug LaTeX-anførselstegn",
+      "detail": "LaTeX trykker et lige \" som et afsluttende anførselstegn. Skriv ``quoted'', så det indledende tegn vender den rigtige vej."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citation i resuméet",
+      "detail": "Resuméer læses ofte for sig, hvor et citationsnummer ikke siger noget. Nævn værket med ord, eller flyt citationen til indledningen."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Skriv ordet ud i begyndelsen af en sætning",
+      "detail": "En sætning bør ikke begynde med en forkortelse. Skriv {{word}} i stedet for {{abbreviation}} her, og behold den korte form inde i sætninger."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Sæt tegnsætning efter ligningen",
+      "detail": "En ligning på egen linje er en del af sætningen omkring den. Afslut den med et komma, når sætningen fortsætter, eller et punktum, når den slutter."
+    },
+    "writing-table-caption-below": {
+      "title": "Sæt tabelteksten over tabellen",
+      "detail": "De fleste konferencer og tidsskrifter forventer tabeltekster over tabellen og figurtekster under figuren."
+    },
+    "writing-figure-caption-above": {
+      "title": "Sæt figurteksten under figuren",
+      "detail": "De fleste konferencer og tidsskrifter forventer figurtekster under figuren og tabeltekster over tabellen."
+    },
+    "writing-macro-available": {
+      "title": "Brug den makro, du har defineret",
+      "detail": "»{{text}}« har en makro, {{macro}}. Når du bruger den, er navnet ens overalt, og du kan ændre det ét sted."
+    },
+    "writing-table-abbreviation": {
+      "title": "Skriv Table ud",
+      "detail": "Denne stil skriver Table ud, for eksempel Table~\\ref{tab:results}, og forkorter kun Fig., Eq. og Sec. inde i en sætning."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Nummerer ligningen",
+      "detail": "Denne stil nummererer hver ligning på egen linje, så bedømmerne kan henvise til den."
+    },
+    "writing-float-placement": {
+      "title": "Placer flydeobjektet øverst på siden",
+      "detail": "Denne stil sætter figurer og tabeller øverst på en side. Brug [t] i stedet for [h]."
+    },
+    "writing-custom": {
+      "title": "Projektregel: {{find}}",
+      "detail": "Dette projekt skriver »{{replace}}« i stedet for »{{find}}«.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Dette projekts stilregler markerer »{{find}}«."
+    },
+    "writing-results-best": {
+      "title": "Den fede værdi er ikke den bedste",
+      "titleSecond": "Den understregede værdi er ikke den næstbedste",
+      "detail": "{{value}} står med fed, men {{best}} er den bedste værdi i denne kolonne. Her er højere bedre.",
+      "detailLower": "{{value}} står med fed, men {{best}} er den bedste værdi i denne kolonne. Her er lavere bedre.",
+      "detailSecond": "{{value}} er understreget, men {{best}} er den næstbedste værdi i denne kolonne. Her er højere bedre.",
+      "detailSecondLower": "{{value}} er understreget, men {{best}} er den næstbedste værdi i denne kolonne. Her er lavere bedre."
+    },
+    "writing-open-promise": {
+      "title": "Løfte uden henvisning",
+      "detail": "»{{sentence}}« Denne sætning lover noget eller peger et andet sted hen, men intet i den fører derhen. Tilføj en \\ref til den del, der holder løftet, eller en \\url til udgivet kode.",
+      "titleRebuttal": "Løfte fra svaret til bedømmerne, som skal holdes",
+      "detailRebuttal": "Du lovede dette i svaret til bedømmerne: »{{sentence}}« Foretag ændringen i den endelige version, og tilføj så en \\ref til den her, eller ignorer denne note."
+    },
+    "writing-review-point": {
+      "title": "Bedømmerens punkt {{n}}",
+      "detail": "»{{point}}«",
+      "titleUnplaced": "Bedømmerens punkt {{n}}: ingen passende placering fundet",
+      "detailUnplaced": "»{{point}}« Ingen tabel, figur, ligning eller noget afsnit, der nævnes her, passer til artiklen.",
+      "detailLines": "»{{point}}« Linjenumre henviser til bedømmelseskopien, så find stedet manuelt."
+    },
+    "writing-name-variants": {
+      "title": "Samme navn, forskellige stavemåder",
+      "detail": "Dette navn staves på mere end én måde i projektet: {{spellings}}. Brug den samme stavemåde overalt. En makro holder den ens."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol defineret to gange",
+      "detail": "{{symbol}} betyder »{{first}}« i {{file}}. Her betyder det »{{second}}«. Giv hver betydning sit eget symbol."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Referencer",
     "compile": "Kompilering",
     "submission": "Indsendelse",
-    "privacy": "Privatliv"
+    "privacy": "Privatliv",
+    "writing": "Skrivning"
   },
   "severity": {
     "error": "Fejl",
@@ -499,7 +587,8 @@
     "a11y": "Adgang",
     "refs": "Ref.",
     "submission": "Indsend",
-    "privacy": "Privat"
+    "privacy": "Privat",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Før du deler kilden eller indsender anonymt",
       "info": "Hemmeligheder, noter fra udkast, følsomme filer og identitet, der slipper ud under blind bedømmelse.",
       "detail": "Finder adgangsoplysninger, private nøgler, interne kommentarer, udkastmarkering, følsomme projektfiler, forfattermetadata og identitet, der slipper ud i indsendelser til anonym bedømmelse."
+    },
+    "writing": {
+      "label": "Skrivestil",
+      "who": "Til artikler, afhandlinger og rapporter",
+      "info": "Mellemrum, anførselstegn, henvisninger, tegnsætning ved ligninger og dit projekts egne regler.",
+      "detail": "Tjekker LaTeX-kilden mod gængse konventioner for artikler og mod de regler, der er gemt i dette projekt. De fleste fund kommer med en rettelse med ét klik."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Kompileret resultat",
     "fixAll_one": "Ret {{count}} med AI",
     "fixAll_other": "Ret alle {{count}} med AI",
-    "noProblems": "Der blev ikke fundet nogen problemer."
+    "noProblems": "Der blev ikke fundet nogen problemer.",
+    "writing": {
+      "profile": "Skrivestil",
+      "underlines": "Vis stilunderstregninger i editoren",
+      "underlinesHint": "Slå det fra for at holde editoren ren. Preflight viser stadig fundene, når du kører dette tjek.",
+      "rules": "Projektregler",
+      "noRules": "Ingen projektregler endnu. Markér tekst i editoren, højreklik, og vælg Lav en stilregel.",
+      "addRule": "Tilføj en regel",
+      "removeRule": "Fjern reglen for {{find}}",
+      "flagOnly": "kun markering",
+      "clearIgnored_one": "Vis {{count}} ignoreret fund igen",
+      "clearIgnored_other": "Vis {{count}} ignorerede fund igen",
+      "fixAll_one": "Ret {{count}} fund",
+      "fixAll_other": "Ret alle {{count}} fund",
+      "fixed_one": "Rettede {{count}} fund.",
+      "fixed_other": "Rettede {{count}} fund.",
+      "skipped_one": "{{count}} rettelse rørte ved samme tekst som en anden. Kør tjekket igen for at rette den.",
+      "skipped_other": "{{count}} rettelser rørte ved samme tekst som andre. Kør tjekket igen for at rette dem.",
+      "fixFailed": "Nogle filer blev ændret, efter tjekket kørte. Kør det igen, og ret så.",
+      "saveFailed": "Skriveindstillingerne kunne ikke gemmes."
+    }
   },
   "finding": {
     "review": "Vurder",
@@ -657,7 +772,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Kræver din vurdering. Intet værktøj kan afgøre denne ud fra filen alene.",
     "jumpToSource": "Hop til kilden",
-    "fixWithAi": "Ret med AI"
+    "fixWithAi": "Ret med AI",
+    "applyFix": "Ret",
+    "ignore": "Ignorer"
   },
   "score": {
     "notEvaluated": "{{label}} er ikke vurderet",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} tagger ikke PDF'er til skærmlæsere. Det gør Typst 0.14 og nyere.",
     "none": "Typst {{version}} kan ikke skrive PDF-standarder. Vælg Typst 0.12 eller nyere i kompileringsmenuen.",
     "uaNote": "PDF/UA-1 kræver en dokumenttitel og alternativ tekst til alle billeder."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Find ud fra dokumentet",
+      "description": "Bruger CVPR-stilens regler, når projektet indlæser cvpr.sty eller en søskendestil, og ellers de generelle regler."
+    },
+    "general": {
+      "label": "Generel artikelstil",
+      "description": "Mellemrum, anførselstegn, henvisninger, tegnsætning ved ligninger, tekster og makroer."
+    },
+    "cvpr": {
+      "label": "CVPR-stil",
+      "description": "De generelle regler plus Table skrevet ud, nummererede ligninger og flydeobjekter øverst på siden."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Tilføj et mellemrum",
+    "removeSpace": "Fjern mellemrummet",
+    "useTilde": "Brug ~",
+    "useTexQuotes": "Brug LaTeX-anførselstegn",
+    "spellOut": "Skriv {{word}}",
+    "addComma": "Tilføj et komma",
+    "addPeriod": "Tilføj et punktum",
+    "useMacro": "Brug {{macro}}",
+    "numberEquation": "Nummerer den",
+    "placeTop": "Brug [t]",
+    "replaceWith": "Skriv {{text}}",
+    "boldBest": "Gør {{value}} fed i stedet",
+    "underlineSecond": "Understreg {{value}} i stedet",
+    "makeMacro": "Lav en makro"
+  },
+  "styleRule": {
+    "title": "Lav en stilregel",
+    "description": "Reglen tjekker hver LaTeX-fil i dette projekt, mens du skriver, og følger med projektet i project.json.",
+    "find": "Tekst, der skal markeres",
+    "replace": "Skriv dette i stedet",
+    "replaceHint": "Lad feltet stå tomt for at markere teksten uden at tilbyde en rettelse.",
+    "note": "Note til medforfattere (valgfri)",
+    "wholeWord": "Kun hele ord",
+    "matchCase": "Skeln mellem store og små bogstaver",
+    "noMatches": "Ingen match i dette projekt endnu.",
+    "matches_one": "Matcher {{count}} sted i dette projekt.",
+    "matches_other": "Matcher {{count}} steder i dette projekt.",
+    "save": "Gem regel",
+    "cancel": "Annuller",
+    "saved": "Reglen er gemt. Den tjekker nu hver fil i dette projekt."
   }
 }

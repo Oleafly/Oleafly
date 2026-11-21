@@ -493,6 +493,93 @@
     "submission-large-image": {
       "title": "Imagem muito grande: {{file}}",
       "detail": "Esta imagem passa de {{limit}}. Imagens grandes deixam a compilação lenta e incham o PDF. Alguns veículos também limitam o tamanho do envio. Comprima-a ou exporte-a no tamanho em que será impressa."
+    },
+    "writing-space-before-paren": {
+      "title": "Adicione um espaço antes do parêntese",
+      "detail": "Coloque um espaço entre uma palavra e o parêntese de abertura: \"neural network (CNN)\", não \"neural network(CNN)\"."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Remova o espaço antes da pontuação",
+      "detail": "Ponto, vírgula, dois-pontos ou ponto de interrogação vão logo depois da palavra, sem espaço no meio."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Use um espaço não separável antes da referência",
+      "detail": "Escreva problem~\\cite{key} ou Figure~\\ref{fig:plot}. O til mantém a citação ou o número na mesma linha da palavra anterior."
+    },
+    "writing-straight-quotes": {
+      "title": "Use as aspas do LaTeX",
+      "detail": "O LaTeX imprime uma aspa reta \" como aspa de fechamento. Escreva ``quoted'' para que a aspa de abertura fique virada para o lado certo."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citação no resumo",
+      "detail": "Resumos costumam ser lidos sozinhos, e lá o número de uma citação não significa nada. Nomeie a obra com palavras ou mova a citação para a introdução."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Escreva a palavra por extenso no início da frase",
+      "detail": "Uma frase não deve começar com abreviação. Escreva {{word}} aqui em vez de {{abbreviation}} e mantenha a forma curta dentro das frases."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Pontue a equação",
+      "detail": "Uma equação destacada faz parte da frase ao redor. Termine-a com vírgula se a frase continua, ou com ponto se ela acaba."
+    },
+    "writing-table-caption-below": {
+      "title": "Ponha a legenda da tabela acima da tabela",
+      "detail": "A maioria das revistas e conferências espera a legenda das tabelas acima da tabela e a das figuras abaixo da figura."
+    },
+    "writing-figure-caption-above": {
+      "title": "Ponha a legenda da figura abaixo da figura",
+      "detail": "A maioria das revistas e conferências espera a legenda das figuras abaixo da figura e a das tabelas acima da tabela."
+    },
+    "writing-macro-available": {
+      "title": "Use a macro que você definiu",
+      "detail": "\"{{text}}\" tem uma macro, {{macro}}. Usá-la mantém o mesmo nome em todo lugar e deixa você mudá-lo em um só ponto."
+    },
+    "writing-table-abbreviation": {
+      "title": "Escreva Table por extenso",
+      "detail": "Este estilo escreve Table por extenso, por exemplo Table~\\ref{tab:results}, e abrevia só Fig., Eq. e Sec. dentro de uma frase."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Numere a equação",
+      "detail": "Este estilo numera toda equação destacada para que os revisores possam se referir a ela."
+    },
+    "writing-float-placement": {
+      "title": "Coloque o flutuante no topo da página",
+      "detail": "Este estilo põe figuras e tabelas no topo da página. Use [t] em vez de [h]."
+    },
+    "writing-custom": {
+      "title": "Regra do projeto: {{find}}",
+      "detail": "Este projeto escreve \"{{replace}}\" em vez de \"{{find}}\".",
+      "detailNote": "{{note}}",
+      "detailFlag": "As regras de estilo deste projeto sinalizam \"{{find}}\"."
+    },
+    "writing-results-best": {
+      "title": "O valor em negrito não é o melhor",
+      "titleSecond": "O valor sublinhado não é o segundo melhor",
+      "detail": "{{value}} está em negrito, mas {{best}} é o melhor valor desta coluna. Aqui, quanto maior, melhor.",
+      "detailLower": "{{value}} está em negrito, mas {{best}} é o melhor valor desta coluna. Aqui, quanto menor, melhor.",
+      "detailSecond": "{{value}} está sublinhado, mas {{best}} é o segundo melhor valor desta coluna. Aqui, quanto maior, melhor.",
+      "detailSecondLower": "{{value}} está sublinhado, mas {{best}} é o segundo melhor valor desta coluna. Aqui, quanto menor, melhor."
+    },
+    "writing-open-promise": {
+      "title": "Promessa sem referência",
+      "detail": "\"{{sentence}}\" Esta frase promete algo ou aponta para outro lugar, mas nada nela leva até lá. Adicione um \\ref à parte que cumpre a promessa, ou um \\url para o código publicado.",
+      "titleRebuttal": "Promessa da resposta aos revisores a cumprir",
+      "detailRebuttal": "Você prometeu isto na resposta aos revisores: \"{{sentence}}\" Faça a mudança na versão final e depois adicione aqui um \\ref para ela, ou ignore esta nota."
+    },
+    "writing-review-point": {
+      "title": "Ponto do revisor {{n}}",
+      "detail": "\"{{point}}\"",
+      "titleUnplaced": "Ponto do revisor {{n}}: nenhum lugar correspondente encontrado",
+      "detailUnplaced": "\"{{point}}\" Nenhuma tabela, figura, equação ou seção citada aqui corresponde ao artigo.",
+      "detailLines": "\"{{point}}\" Os números de linha se referem à cópia de revisão, então procure este lugar manualmente."
+    },
+    "writing-name-variants": {
+      "title": "Mesmo nome, grafias diferentes",
+      "detail": "Este nome é escrito de mais de um jeito no projeto: {{spellings}}. Use uma só grafia em todo lugar. Uma macro mantém tudo igual."
+    },
+    "writing-symbol-redefined": {
+      "title": "Símbolo definido duas vezes",
+      "detail": "{{symbol}} significa \"{{first}}\" em {{file}}. Aqui significa \"{{second}}\". Dê a cada significado o seu próprio símbolo."
     }
   },
   "lens": {
@@ -502,7 +589,8 @@
     "refs": "Referências",
     "compile": "Compilação",
     "submission": "Submissão",
-    "privacy": "Privacidade"
+    "privacy": "Privacidade",
+    "writing": "Escrita"
   },
   "severity": {
     "error": "Erro",
@@ -515,7 +603,8 @@
     "a11y": "Acesso",
     "refs": "Refs",
     "submission": "Envio",
-    "privacy": "Sigilo"
+    "privacy": "Sigilo",
+    "writing": "Estilo"
   },
   "checks": {
     "compile": {
@@ -553,6 +642,12 @@
       "who": "Antes de compartilhar o código ou submeter anonimamente",
       "info": "Segredos, notas de rascunho, arquivos sensíveis e vazamentos de identidade na revisão cega.",
       "detail": "Encontra credenciais, chaves privadas, comentários internos, marcação de rascunho, arquivos sensíveis do projeto, metadados de autoria e vazamentos de identidade em submissões de revisão anônima."
+    },
+    "writing": {
+      "label": "Estilo de escrita",
+      "who": "Para artigos, teses e relatórios",
+      "info": "Espaçamento, aspas, referências, pontuação de equações e as regras do seu projeto.",
+      "detail": "Confere o código LaTeX com as convenções comuns de artigos e com as regras salvas neste projeto. A maioria das ocorrências vem com uma correção em um clique."
     }
   },
   "profiles": {
@@ -671,7 +766,31 @@
     "fixAll_one": "Corrigir {{count}} com IA",
     "fixAll_many": "Corrigir todas as {{count}} com IA",
     "fixAll_other": "Corrigir todas as {{count}} com IA",
-    "noProblems": "Nenhum problema encontrado."
+    "noProblems": "Nenhum problema encontrado.",
+    "writing": {
+      "profile": "Estilo de escrita",
+      "underlines": "Mostrar sublinhados de estilo no editor",
+      "underlinesHint": "Desative para manter o editor limpo. A pré-verificação ainda lista as ocorrências quando você roda esta verificação.",
+      "rules": "Regras do projeto",
+      "noRules": "Ainda não há regras do projeto. Selecione um texto no editor, clique com o botão direito e escolha Criar uma regra de estilo.",
+      "addRule": "Adicionar uma regra",
+      "removeRule": "Remover a regra de {{find}}",
+      "flagOnly": "só sinalizar",
+      "clearIgnored_one": "Mostrar de novo {{count}} ocorrência ignorada",
+      "clearIgnored_many": "Mostrar de novo {{count}} ocorrências ignoradas",
+      "clearIgnored_other": "Mostrar de novo {{count}} ocorrências ignoradas",
+      "fixAll_one": "Corrigir {{count}} ocorrência",
+      "fixAll_many": "Corrigir todas as {{count}} ocorrências",
+      "fixAll_other": "Corrigir todas as {{count}} ocorrências",
+      "fixed_one": "{{count}} ocorrência corrigida.",
+      "fixed_many": "{{count}} ocorrências corrigidas.",
+      "fixed_other": "{{count}} ocorrências corrigidas.",
+      "skipped_one": "{{count}} correção mexia no mesmo texto que outra. Rode a verificação de novo para corrigi-la.",
+      "skipped_many": "{{count}} correções mexiam no mesmo texto que outras. Rode a verificação de novo para corrigi-las.",
+      "skipped_other": "{{count}} correções mexiam no mesmo texto que outras. Rode a verificação de novo para corrigi-las.",
+      "fixFailed": "Alguns arquivos mudaram depois da verificação. Rode-a de novo e depois corrija.",
+      "saveFailed": "Não foi possível salvar as configurações de escrita."
+    }
   },
   "finding": {
     "review": "Avaliar",
@@ -679,7 +798,9 @@
     "page": "p.{{page}}",
     "needsJudgment": "Depende do seu julgamento. Nenhuma ferramenta decide isso só pelo arquivo.",
     "jumpToSource": "Ir para o código",
-    "fixWithAi": "Corrigir com IA"
+    "fixWithAi": "Corrigir com IA",
+    "applyFix": "Corrigir",
+    "ignore": "Ignorar"
   },
   "score": {
     "notEvaluated": "{{label}} não avaliado",
@@ -734,5 +855,52 @@
     "untagged": "O Typst {{version}} não marca PDFs para leitores de tela. O Typst 0.14 e posteriores marcam.",
     "none": "O Typst {{version}} não consegue gerar PDFs em conformidade com padrões. Escolha o Typst 0.12 ou posterior no menu de compilação.",
     "uaNote": "O PDF/UA-1 precisa de um título de documento e de texto alternativo em cada imagem."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Detectar pelo documento",
+      "description": "Usa as regras de estilo CVPR quando o projeto carrega cvpr.sty ou um estilo irmão, e as regras gerais nos demais casos."
+    },
+    "general": {
+      "label": "Estilo geral de artigo",
+      "description": "Espaçamento, aspas, referências, pontuação de equações, legendas e macros."
+    },
+    "cvpr": {
+      "label": "Estilo CVPR",
+      "description": "As regras gerais, mais Table escrito por extenso, equações numeradas e flutuantes no topo da página."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Adicionar um espaço",
+    "removeSpace": "Remover o espaço",
+    "useTilde": "Usar ~",
+    "useTexQuotes": "Usar aspas do LaTeX",
+    "spellOut": "Escrever {{word}}",
+    "addComma": "Adicionar uma vírgula",
+    "addPeriod": "Adicionar um ponto",
+    "useMacro": "Usar {{macro}}",
+    "numberEquation": "Numerar",
+    "placeTop": "Usar [t]",
+    "replaceWith": "Escrever {{text}}",
+    "boldBest": "Pôr {{value}} em negrito",
+    "underlineSecond": "Sublinhar {{value}}",
+    "makeMacro": "Criar uma macro"
+  },
+  "styleRule": {
+    "title": "Criar uma regra de estilo",
+    "description": "A regra confere todos os arquivos LaTeX deste projeto enquanto você escreve e acompanha o projeto em project.json.",
+    "find": "Texto a sinalizar",
+    "replace": "Escrever isto no lugar",
+    "replaceHint": "Deixe vazio para sinalizar o texto sem oferecer uma correção.",
+    "note": "Nota para coautores (opcional)",
+    "wholeWord": "Só palavras inteiras",
+    "matchCase": "Diferenciar maiúsculas",
+    "noMatches": "Ainda não há correspondências neste projeto.",
+    "matches_one": "Corresponde a {{count}} lugar neste projeto.",
+    "matches_many": "Corresponde a {{count}} lugares neste projeto.",
+    "matches_other": "Corresponde a {{count}} lugares neste projeto.",
+    "save": "Salvar regra",
+    "cancel": "Cancelar",
+    "saved": "Regra salva. Agora ela confere todos os arquivos deste projeto."
   }
 }

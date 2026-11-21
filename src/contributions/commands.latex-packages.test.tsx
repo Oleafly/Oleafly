@@ -23,13 +23,18 @@ vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({}) } })
 vi.mock("@/store/citation", () => ({ useCitationStore: { getState: () => ({}) } }));
 
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import { useChapterImportStore } from "@/store/chapter-import";
 import { registerPaletteCommands } from "./commands";
 
 const library: AppContext = { projectId: null, projectKind: null, theme: "light" };
 const project: AppContext = { projectId: "paper", projectKind: null, theme: "light" };
 
+function paletteCommand(ctx: AppContext, id: string) {
+  return commandsFor("palette", ctx).find((command) => command.id === id);
+}
+
 function packagesCommand(ctx: AppContext) {
-  return commandsFor("palette", ctx).find((command) => command.id === "palette.latex-packages");
+  return paletteCommand(ctx, "palette.latex-packages");
 }
 
 beforeEach(() => {
@@ -63,5 +68,18 @@ describe("LaTeX packages command", () => {
     mocks.files.engine = LATEX_ENGINE;
     mocks.files.engineLoaded = false;
     expect(packagesCommand(project)).toBeUndefined();
+  });
+});
+
+describe("Add chapter from another project command", () => {
+  it("opens the chapter dialog in a LaTeX project only", () => {
+    const command = paletteCommand(project, "palette.add-chapter-from-project");
+    expect(command && commandLabel(command, project)).toBe(enShell.commands.addChapterFromProject.label);
+    command?.run(project);
+    expect(useChapterImportStore.getState().open).toBe(true);
+    useChapterImportStore.setState({ open: false });
+    expect(paletteCommand(library, "palette.add-chapter-from-project")).toBeUndefined();
+    mocks.files.engine = { ...LATEX_ENGINE, id: "typst", source_format: "typst" };
+    expect(paletteCommand(project, "palette.add-chapter-from-project")).toBeUndefined();
   });
 });

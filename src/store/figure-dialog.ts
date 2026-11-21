@@ -1,3 +1,4 @@
+import type { FigureGridSpec } from "@oleafly/latex/figure-grid";
 import { create } from "zustand";
 import type { TypstFigureFields } from "@/components/editor/typst-figure";
 
@@ -7,6 +8,7 @@ export interface FigureEditTarget {
   path: string;
   width: string | null;
   typst?: TypstFigureFields;
+  grid?: FigureGridSpec;
 }
 
 interface FigureDialogState {

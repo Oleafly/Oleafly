@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Pikakirjaus",
       "keywords": "pikakirjaus kirjaa muistiinpano saapuneet tänään quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Merkintätaulukko",
+      "keywords": "lisää merkinnät symbolit määritelmät sanasto matematiikka notation symbols definitions glossary math",
+      "empty": "Symbolien määritelmiä ei löytynyt. Määrittele symbolit tekstissä esimerkiksi lauseilla ”Olkoon $x$ syöte” tai ”missä $x$ on syöte”."
+    },
+    "addChapterFromProject": {
+      "keywords": "opinnäyte luku artikkeli tuo yhdistä kopioi projekti thesis chapter paper import merge copy project",
+      "label": "Lisää luku toisesta projektista"
     }
   },
   "community": {

@@ -88,7 +88,8 @@
       "compile": "not_run",
       "privacy": "evaluated",
       "refs": "evaluated",
-      "submission": "partial"
+      "submission": "partial",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -227,8 +228,10 @@
       "compile": 100,
       "privacy": 100,
       "refs": 100,
-      "submission": 100
+      "submission": 100,
+      "writing": 100
     },
-    "submissionScore": 100
+    "submissionScore": 100,
+    "writingScore": null
   }
 }

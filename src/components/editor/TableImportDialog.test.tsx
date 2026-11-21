@@ -5,6 +5,8 @@ import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useTableImportStore } from "@/store/table-import";
+import { findLinkedLatexTables } from "@oleafly/conversion-registry/table";
+import { diskHash } from "@/lib/disk-hash";
 
 interface FilesState {
   projectId: string;
@@ -241,10 +243,48 @@ describe("TableImportDialog", () => {
     expect(mocks.insert).not.toHaveBeenCalled();
   });
 
-  it("offers a linked table only for Typst documents", async () => {
+  it("links a LaTeX table with a marker that remembers the data file", async () => {
+    mocks.writeLinked.mockResolvedValue(undefined);
     render(<TableImportDialog />);
     await choose();
-    expect(screen.queryByRole("switch", { name: enEditor.tableImport.keepLinked })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: enEditor.tableImport.keepLinked }));
+    expect(screen.getByText(enEditor.tableImport.footerLinkedLatex.replace("{{path}}", "data/results.csv"))).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    await waitFor(() => expect(mocks.insert).toHaveBeenCalledOnce());
+    expect(mocks.writeLinked).toHaveBeenCalledWith("paper", {
+      dataPath: "data/results.csv",
+      content: "Method,Score\n",
+      source: { format: "csv", path: "data/results.csv" },
+    });
+    const [match] = findLinkedLatexTables(mocks.insert.mock.calls[0][0]);
+    expect(match.table).toMatchObject({ v: 1, source: "data/results.csv", hash: diskHash("Method,Score\n") });
+    expect(mocks.success).toHaveBeenCalledWith(enEditor.tableImport.insertedLinkedLatex.replace("{{path}}", "data/results.csv"));
+  });
+
+  it("bolds the best and underlines the second best in the directions the user picks", async () => {
+    mocks.read.mockResolvedValue([["Method", "PSNR", "LPIPS"], ["A", "30.1", "0.21"], ["B", "31.4", "0.25"], ["C", "29.0", "0.19"]]);
+    render(<TableImportDialog />);
+    await choose();
+    expect(screen.queryByRole("group", { name: "Better values in PSNR" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: enEditor.tableImport.boldBest }));
+    fireEvent.click(screen.getByRole("switch", { name: enEditor.tableImport.underlineSecond }));
+    const lpips = within(screen.getByRole("group", { name: "Better values in LPIPS" }));
+    expect(within(screen.getByRole("group", { name: "Better values in PSNR" })).getByRole("button", { name: "Higher" })).toHaveAttribute("aria-pressed", "true");
+    expect(lpips.getByRole("button", { name: "Lower" })).toHaveAttribute("aria-pressed", "true");
+    const preview = within(screen.getByTestId("table-import-preview"));
+    expect(preview.getAllByRole("row")).toHaveLength(4);
+    expect(preview.getAllByRole("columnheader")).toHaveLength(3);
+    expect(preview.getByText("31.4")).toHaveClass("font-semibold");
+    expect(preview.getByText("30.1")).toHaveClass("underline");
+    fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledOnce());
+    const source = vi.mocked(navigator.clipboard.writeText).mock.calls[0][0];
+    expect(source).toContain("A & \\underline{30.1} & \\underline{0.21} \\\\");
+    expect(source).toContain("B & \\textbf{31.4} & 0.25 \\\\");
+    expect(source).toContain("C & 29.0 & \\textbf{0.19} \\\\");
+    fireEvent.click(lpips.getByRole("button", { name: "Skip" }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    expect(mocks.insert.mock.calls[0][0]).toContain("C & 29.0 & 0.19 \\\\");
   });
 
   it("copies the data into data/ and inserts code that reads it at compile time", async () => {

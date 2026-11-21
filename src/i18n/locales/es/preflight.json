@@ -493,6 +493,93 @@
     "submission-large-image": {
       "title": "Imagen muy grande: {{file}}",
       "detail": "Esta imagen supera {{limit}}. Las imágenes grandes ralentizan la compilación e inflan el PDF. Algunos destinos también limitan el tamaño de los envíos. Comprímela o expórtala al tamaño al que se imprime."
+    },
+    "writing-space-before-paren": {
+      "title": "Añade un espacio antes del paréntesis",
+      "detail": "Pon un espacio entre una palabra y su paréntesis de apertura: \"neural network (CNN)\", no \"neural network(CNN)\"."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Quita el espacio antes del signo de puntuación",
+      "detail": "Un punto, una coma, dos puntos o un signo de interrogación va justo después de la palabra, sin espacio en medio."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Usa un espacio duro antes de la referencia",
+      "detail": "Escribe problem~\\cite{key} o Figure~\\ref{fig:plot}. La tilde mantiene la cita o el número en la misma línea que la palabra anterior."
+    },
+    "writing-straight-quotes": {
+      "title": "Usa las comillas de LaTeX",
+      "detail": "LaTeX imprime una comilla recta \" como comilla de cierre. Escribe ``quoted'' para que la comilla de apertura mire hacia el lado correcto."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Cita en el resumen",
+      "detail": "Los resúmenes suelen leerse solos, y allí el número de una cita no significa nada. Nombra la obra con palabras o pasa la cita a la introducción."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Escribe la palabra completa al principio de una frase",
+      "detail": "Una frase no debe empezar con una abreviatura. Escribe {{word}} aquí en lugar de {{abbreviation}}, y deja la forma corta dentro de las frases."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Puntúa la ecuación",
+      "detail": "Una ecuación en pantalla forma parte de la frase que la rodea. Termínala con una coma si la frase sigue, o con un punto si acaba."
+    },
+    "writing-table-caption-below": {
+      "title": "Pon el pie de la tabla encima de la tabla",
+      "detail": "La mayoría de las revistas y congresos esperan los pies de tabla encima de la tabla y los pies de figura debajo de la figura."
+    },
+    "writing-figure-caption-above": {
+      "title": "Pon el pie de la figura debajo de la figura",
+      "detail": "La mayoría de las revistas y congresos esperan los pies de figura debajo de la figura y los pies de tabla encima de la tabla."
+    },
+    "writing-macro-available": {
+      "title": "Usa la macro que definiste",
+      "detail": "\"{{text}}\" tiene una macro, {{macro}}. Usarla mantiene el mismo nombre en todas partes y te deja cambiarlo en un solo sitio."
+    },
+    "writing-table-abbreviation": {
+      "title": "Escribe Table completo",
+      "detail": "Este estilo escribe Table completo, por ejemplo Table~\\ref{tab:results}, y abrevia solo Fig., Eq. y Sec. dentro de una frase."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Numera la ecuación",
+      "detail": "Este estilo numera todas las ecuaciones en pantalla para que los revisores puedan referirse a ellas."
+    },
+    "writing-float-placement": {
+      "title": "Coloca el flotante en la parte superior de la página",
+      "detail": "Este estilo pone las figuras y las tablas en la parte superior de la página. Usa [t] en lugar de [h]."
+    },
+    "writing-custom": {
+      "title": "Regla del proyecto: {{find}}",
+      "detail": "Este proyecto escribe \"{{replace}}\" en lugar de \"{{find}}\".",
+      "detailNote": "{{note}}",
+      "detailFlag": "Las reglas de estilo de este proyecto marcan \"{{find}}\"."
+    },
+    "writing-results-best": {
+      "title": "El valor en negrita no es el mejor",
+      "titleSecond": "El valor subrayado no es el segundo mejor",
+      "detail": "{{value}} está en negrita, pero {{best}} es el mejor valor de esta columna. Aquí un valor más alto es mejor.",
+      "detailLower": "{{value}} está en negrita, pero {{best}} es el mejor valor de esta columna. Aquí un valor más bajo es mejor.",
+      "detailSecond": "{{value}} está subrayado, pero {{best}} es el segundo mejor valor de esta columna. Aquí un valor más alto es mejor.",
+      "detailSecondLower": "{{value}} está subrayado, pero {{best}} es el segundo mejor valor de esta columna. Aquí un valor más bajo es mejor."
+    },
+    "writing-open-promise": {
+      "title": "Promesa sin referencia",
+      "detail": "\"{{sentence}}\" Esta frase promete algo o remite a otro lugar, pero nada en ella enlaza allí. Añade un \\ref a la parte que cumple la promesa, o un \\url para el código publicado.",
+      "titleRebuttal": "Promesa de la respuesta a los revisores por cumplir",
+      "detailRebuttal": "Prometiste esto en la respuesta a los revisores: \"{{sentence}}\" Haz el cambio en la versión final, y luego añade aquí un \\ref que apunte a él o ignora esta nota."
+    },
+    "writing-review-point": {
+      "title": "Punto del revisor {{n}}",
+      "detail": "\"{{point}}\"",
+      "titleUnplaced": "Punto del revisor {{n}}: no se encontró un lugar que coincida",
+      "detailUnplaced": "\"{{point}}\" Ninguna tabla, figura, ecuación ni sección mencionada aquí coincide con el artículo.",
+      "detailLines": "\"{{point}}\" Los números de línea se refieren a la copia de revisión, así que busca este lugar a mano."
+    },
+    "writing-name-variants": {
+      "title": "Mismo nombre, distintas grafías",
+      "detail": "Este nombre se escribe de más de una manera en el proyecto: {{spellings}}. Usa una sola grafía en todas partes. Una macro la mantiene igual."
+    },
+    "writing-symbol-redefined": {
+      "title": "Símbolo definido dos veces",
+      "detail": "{{symbol}} significa \"{{first}}\" en {{file}}. Aquí significa \"{{second}}\". Dale a cada significado su propio símbolo."
     }
   },
   "lens": {
@@ -502,7 +589,8 @@
     "refs": "Referencias",
     "compile": "Compilación",
     "submission": "Envío",
-    "privacy": "Privacidad"
+    "privacy": "Privacidad",
+    "writing": "Redacción"
   },
   "severity": {
     "error": "Error",
@@ -515,7 +603,8 @@
     "a11y": "Acces.",
     "refs": "Refs.",
     "submission": "Envío",
-    "privacy": "Privac."
+    "privacy": "Privac.",
+    "writing": "Estilo"
   },
   "checks": {
     "compile": {
@@ -553,6 +642,12 @@
       "who": "Antes de compartir el código o enviar de forma anónima",
       "info": "Secretos, notas de borrador, archivos sensibles y filtraciones de identidad en la revisión ciega.",
       "detail": "Encuentra credenciales, claves privadas, comentarios internos, marcado de borrador, archivos sensibles del proyecto, metadatos de autoría y filtraciones de identidad en los envíos para revisión anónima."
+    },
+    "writing": {
+      "label": "Estilo de escritura",
+      "who": "Para artículos, tesis e informes",
+      "info": "Espacios, comillas, referencias, puntuación de ecuaciones y tus propias reglas de proyecto.",
+      "detail": "Comprueba el código LaTeX con las convenciones habituales de los artículos y con las reglas guardadas en este proyecto. La mayoría de los hallazgos incluyen una corrección con un clic."
     }
   },
   "profiles": {
@@ -671,7 +766,31 @@
     "fixAll_one": "Corregir {{count}} con IA",
     "fixAll_many": "Corregir los {{count}} con IA",
     "fixAll_other": "Corregir los {{count}} con IA",
-    "noProblems": "No se encontró ningún problema."
+    "noProblems": "No se encontró ningún problema.",
+    "writing": {
+      "profile": "Estilo de escritura",
+      "underlines": "Mostrar los subrayados de estilo en el editor",
+      "underlinesHint": "Desactívalo para mantener el editor limpio. Preflight sigue listando los hallazgos cuando ejecutas esta comprobación.",
+      "rules": "Reglas del proyecto",
+      "noRules": "Aún no hay reglas del proyecto. Selecciona texto en el editor, haz clic derecho y elige Crear una regla de estilo.",
+      "addRule": "Añadir una regla",
+      "removeRule": "Quitar la regla de {{find}}",
+      "flagOnly": "solo marcar",
+      "clearIgnored_one": "Mostrar de nuevo {{count}} hallazgo ignorado",
+      "clearIgnored_many": "Mostrar de nuevo {{count}} hallazgos ignorados",
+      "clearIgnored_other": "Mostrar de nuevo {{count}} hallazgos ignorados",
+      "fixAll_one": "Corregir {{count}} hallazgo",
+      "fixAll_many": "Corregir los {{count}} hallazgos",
+      "fixAll_other": "Corregir los {{count}} hallazgos",
+      "fixed_one": "Se corrigió {{count}} hallazgo.",
+      "fixed_many": "Se corrigieron {{count}} hallazgos.",
+      "fixed_other": "Se corrigieron {{count}} hallazgos.",
+      "skipped_one": "{{count}} corrección tocaba el mismo texto que otra. Vuelve a ejecutar la comprobación para corregirla.",
+      "skipped_many": "{{count}} correcciones tocaban el mismo texto que otras. Vuelve a ejecutar la comprobación para corregirlas.",
+      "skipped_other": "{{count}} correcciones tocaban el mismo texto que otras. Vuelve a ejecutar la comprobación para corregirlas.",
+      "fixFailed": "Algunos archivos cambiaron después de la comprobación. Vuelve a ejecutarla y luego corrige.",
+      "saveFailed": "No se pudieron guardar los ajustes de escritura."
+    }
   },
   "finding": {
     "review": "Revisar",
@@ -679,7 +798,9 @@
     "page": "p. {{page}}",
     "needsJudgment": "Necesita tu criterio. Ninguna herramienta puede decidir esto solo con el archivo.",
     "jumpToSource": "Ir al código",
-    "fixWithAi": "Corregir con IA"
+    "fixWithAi": "Corregir con IA",
+    "applyFix": "Corregir",
+    "ignore": "Ignorar"
   },
   "score": {
     "notEvaluated": "{{label}} sin evaluar",
@@ -734,5 +855,52 @@
     "untagged": "Typst {{version}} no etiqueta los PDF para lectores de pantalla. Typst 0.14 y posteriores sí lo hacen.",
     "none": "Typst {{version}} no puede generar PDF conformes a un estándar. Elige Typst 0.12 o posterior en el menú de compilación.",
     "uaNote": "PDF/UA-1 necesita un título de documento y texto alternativo en cada imagen."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Detectar según el documento",
+      "description": "Usa las reglas de estilo CVPR cuando el proyecto carga cvpr.sty o un estilo hermano, y las reglas generales en los demás casos."
+    },
+    "general": {
+      "label": "Estilo general de artículo",
+      "description": "Espacios, comillas, referencias, puntuación de ecuaciones, pies y macros."
+    },
+    "cvpr": {
+      "label": "Estilo CVPR",
+      "description": "Las reglas generales, más Table escrito completo, ecuaciones numeradas y flotantes en la parte superior de la página."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Añadir un espacio",
+    "removeSpace": "Quitar el espacio",
+    "useTilde": "Usar ~",
+    "useTexQuotes": "Usar las comillas de LaTeX",
+    "spellOut": "Escribir {{word}}",
+    "addComma": "Añadir una coma",
+    "addPeriod": "Añadir un punto",
+    "useMacro": "Usar {{macro}}",
+    "numberEquation": "Numerarla",
+    "placeTop": "Usar [t]",
+    "replaceWith": "Escribir {{text}}",
+    "boldBest": "Poner {{value}} en negrita",
+    "underlineSecond": "Subrayar {{value}}",
+    "makeMacro": "Crear una macro"
+  },
+  "styleRule": {
+    "title": "Crear una regla de estilo",
+    "description": "La regla comprueba todos los archivos LaTeX de este proyecto mientras escribes, y viaja con el proyecto en project.json.",
+    "find": "Texto que marcar",
+    "replace": "Escribir esto en su lugar",
+    "replaceHint": "Déjalo vacío para marcar el texto sin ofrecer una corrección.",
+    "note": "Nota para coautores (opcional)",
+    "wholeWord": "Solo palabras completas",
+    "matchCase": "Distinguir mayúsculas",
+    "noMatches": "Todavía no hay coincidencias en este proyecto.",
+    "matches_one": "Coincide con {{count}} lugar de este proyecto.",
+    "matches_many": "Coincide con {{count}} lugares de este proyecto.",
+    "matches_other": "Coincide con {{count}} lugares de este proyecto.",
+    "save": "Guardar la regla",
+    "cancel": "Cancelar",
+    "saved": "Regla guardada. Ahora comprueba todos los archivos de este proyecto."
   }
 }

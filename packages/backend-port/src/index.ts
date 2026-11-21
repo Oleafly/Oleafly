@@ -292,6 +292,7 @@ export interface ProjectMeta {
     tex_flavor?: TexFlavor | null;
     typst?: TypstSpec | null;
     dictionary_locale?: string | null;
+    writing?: unknown;
     exports?: ProjectExportRecord[];
     hidden?: boolean;
     forked_from?: string | null;

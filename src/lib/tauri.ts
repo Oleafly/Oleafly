@@ -861,6 +861,12 @@ export const setProjectDictionaryLocaleCmd = (
 ) =>
   invoke<ProjectMeta>("set_project_dictionary_locale", { projectId, locale });
 
+export const setProjectWritingSettingsCmd = (
+  projectId: string,
+  settings: Record<string, unknown> | null,
+) =>
+  invoke<ProjectMeta>("set_project_writing_settings", { projectId, settings });
+
 export const resetProjectDictionaryLocaleOnDeviceCmd = (projectId: string) =>
   invoke<ProjectMeta>("reset_project_dictionary_locale_on_device", { projectId });
 
