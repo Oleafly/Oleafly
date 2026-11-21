@@ -1008,6 +1008,12 @@
         "label": "Liveredigering med Overleaf",
         "description": "Redigera projekt som du har importerat från Overleaf samtidigt som dina medförfattare. Ändringarna syns på båda sidor medan du skriver. Av som standard så länge det fortfarande är i beta."
       },
+      "phitex": {
+        "label": "PhiTeX-motor",
+        "description": "Kompilerar pdfLaTeX- och XeLaTeX-projekt som använder latexmk med PhiTeX, en TeX-motor som du installerar själv. LuaLaTeX-projekt stannar på latexmk, liksom alla projekt om PhiTeX inte är installerat. Av som standard medan det fortfarande är i beta.",
+        "notFound": "Oleafly hittar inte PhiTeX på den här datorn, så latexmk-projekt kompileras fortfarande med latexmk.",
+        "saveFailed": "Reglaget för PhiTeX kunde inte sparas. Försök igen."
+      },
       "researchTasks": {
         "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
         "label": "Forskningsuppgifter",

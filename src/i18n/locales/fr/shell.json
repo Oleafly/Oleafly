@@ -1022,6 +1022,12 @@
         "label": "Édition en direct avec Overleaf",
         "description": "Modifiez les projets importés depuis Overleaf en même temps que vos coauteurs. Les modifications apparaissent des deux côtés pendant que vous tapez. Désactivé par défaut tant que c'est en bêta."
       },
+      "phitex": {
+        "label": "Moteur PhiTeX",
+        "description": "Compile avec PhiTeX, un moteur TeX que vous installez vous-même, les projets pdfLaTeX et XeLaTeX qui utilisent latexmk. Les projets LuaLaTeX restent sur latexmk, comme tous les projets si PhiTeX n'est pas installé. Désactivé par défaut tant que c'est en bêta.",
+        "notFound": "Oleafly ne trouve pas PhiTeX sur cet ordinateur, donc les projets latexmk sont toujours compilés avec latexmk.",
+        "saveFailed": "Impossible d'enregistrer le réglage de PhiTeX. Réessayez."
+      },
       "researchTasks": {
         "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",
         "label": "Tâches de recherche",

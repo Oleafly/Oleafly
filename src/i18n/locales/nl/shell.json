@@ -1008,6 +1008,12 @@
         "label": "Live bewerken met Overleaf",
         "description": "Bewerk projecten die je uit Overleaf hebt geïmporteerd tegelijk met je medeauteurs. Wijzigingen verschijnen aan beide kanten terwijl je typt. Standaard uit zolang het nog in bèta is."
       },
+      "phitex": {
+        "label": "PhiTeX-engine",
+        "description": "Compileert pdfLaTeX- en XeLaTeX-projecten die latexmk gebruiken met PhiTeX, een TeX-engine die je zelf installeert. LuaLaTeX-projecten blijven op latexmk, net als alle projecten als PhiTeX niet is geïnstalleerd. Staat standaard uit zolang dit in bèta is.",
+        "notFound": "Oleafly kan PhiTeX niet vinden op deze computer, dus latexmk-projecten worden nog steeds met latexmk gecompileerd.",
+        "saveFailed": "De schakelaar voor PhiTeX kon niet worden opgeslagen. Probeer het opnieuw."
+      },
       "researchTasks": {
         "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
         "label": "Onderzoekstaken",

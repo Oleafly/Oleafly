@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Thanks
+
+- Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
+
 ### Added
 
 - When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.
 - pdfLaTeX's "Unicode character ... not set up for use with LaTeX" error has a plain explanation.
+- Projects on the latexmk engine can now compile with PhiTeX, if you have it installed. Turn on PhiTeX engine in Settings > Experimentation, and pdfLaTeX and XeLaTeX projects build with `phitex build`. Click-to-jump between source and PDF works as before. LuaLaTeX projects, and computers without PhiTeX, keep using latexmk. If your own PhiTeX settings fetch packages from Shelf, Oleafly's compiles do too, and offline mode limits them to packages you've already downloaded.
 - Preflight has a Writing style check for LaTeX papers. It finds slips reviewers notice: a missing space before a parenthesis, a citation without `~`, straight quotes, a citation in the abstract, an equation with no closing punctuation, a table caption below its table, and a name typed out when you defined a macro for it. Most findings have a Fix button, and Fix all applies them at once. The same checks underline the source as you type, and a switch in the check turns the underlines off for a project.
 - Choose a writing style for the project in that check. CVPR-style adds Table written in full, numbered equations and floats at the top of the page, and Oleafly picks it by itself when the project loads cvpr.sty or a sibling style.
 - Select text, right-click and choose Make a style rule to add your own find-and-fix rule. Oleafly shows how many places it matches before you save it. Rules are saved in project.json, so your coauthors get them too.

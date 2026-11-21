@@ -1036,6 +1036,12 @@
         "label": "Edycja na żywo z Overleaf",
         "description": "Edytuj projekty zaimportowane z Overleaf jednocześnie ze współautorami. Zmiany pojawiają się po obu stronach w trakcie pisania. Domyślnie wyłączone, dopóki funkcja jest w wersji beta."
       },
+      "phitex": {
+        "label": "Silnik PhiTeX",
+        "description": "Kompiluje projekty pdfLaTeX i XeLaTeX korzystające z latexmk za pomocą PhiTeX, silnika TeX, który instalujesz samodzielnie. Projekty LuaLaTeX zostają przy latexmk, podobnie jak wszystkie projekty, jeśli PhiTeX nie jest zainstalowany. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
+        "notFound": "Oleafly nie może znaleźć PhiTeX na tym komputerze, więc projekty latexmk nadal są kompilowane przez latexmk.",
+        "saveFailed": "Nie udało się zapisać przełącznika PhiTeX. Spróbuj ponownie."
+      },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
         "label": "Zadania badawcze",

@@ -33,6 +33,8 @@ pub struct EngineInfo {
     pub tex_complete: bool,
     pub tinytex_outdated: bool,
     pub latexmk_blocker: Option<crate::tex_distro::TexBlocker>,
+    pub phitex_enabled: bool,
+    pub phitex: Option<String>,
 }
 
 impl EngineInfo {
@@ -47,6 +49,8 @@ impl EngineInfo {
             tex_complete: false,
             tinytex_outdated: false,
             latexmk_blocker: crate::tex_distro::latexmk_blocker(),
+            phitex_enabled: false,
+            phitex: None,
         }
     }
 }
@@ -475,6 +479,8 @@ async fn engine_info_for_lualatex_unlocked(lualatex: PathBuf, kind: &str) -> Opt
         tex_complete: false,
         tinytex_outdated: false,
         latexmk_blocker: crate::tex_distro::latexmk_blocker(),
+        phitex_enabled: false,
+        phitex: None,
     })
 }
 
@@ -551,7 +557,17 @@ pub async fn latex_engine_info(rescan: Option<EngineRescan>) -> EngineInfo {
         (Ok(root), Ok(asset)) => tinytex_is_outdated(&root, &asset),
         _ => false,
     };
+    info.phitex_enabled = crate::config::phitex_enabled();
+    info.phitex = crate::document_engine::phitex_program()
+        .map(|program| program.to_string_lossy().into_owned());
     info
+}
+
+#[tauri::command]
+pub async fn set_phitex_enabled(enabled: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || crate::config::set_phitex_enabled(enabled))
+        .await
+        .map_err(|error| format!("configuration worker failed: {error}"))?
 }
 
 fn tinytex_is_outdated(root: &Path, asset: &TinytexAsset) -> bool {

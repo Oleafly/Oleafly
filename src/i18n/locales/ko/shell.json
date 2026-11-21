@@ -994,6 +994,12 @@
         "label": "Overleaf와 실시간 편집",
         "description": "Overleaf에서 가져온 프로젝트를 공동 저자와 동시에 편집합니다. 입력하는 대로 양쪽에 변경 사항이 나타납니다. 아직 베타라서 기본값은 꺼짐입니다."
       },
+      "phitex": {
+        "label": "PhiTeX 엔진",
+        "description": "latexmk를 쓰는 pdfLaTeX 및 XeLaTeX 프로젝트를 직접 설치하는 TeX 엔진인 PhiTeX로 컴파일합니다. LuaLaTeX 프로젝트는 latexmk를 그대로 쓰며, PhiTeX가 설치되어 있지 않으면 모든 프로젝트가 latexmk를 씁니다. 아직 베타라서 기본은 꺼짐입니다.",
+        "notFound": "Oleafly가 이 컴퓨터에서 PhiTeX를 찾을 수 없어 latexmk 프로젝트는 계속 latexmk로 컴파일됩니다.",
+        "saveFailed": "PhiTeX 스위치를 저장하지 못했습니다. 다시 시도하세요."
+      },
       "researchTasks": {
         "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
         "label": "연구 작업",

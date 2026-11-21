@@ -61,6 +61,33 @@ function trees(system: string[], user: string[]) {
   });
 }
 
+describe("the PhiTeX switch", () => {
+  it("saves the switch and reads the engine info again", async () => {
+    vi.clearAllMocks();
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "latex_engine_info") {
+        return { ...engine, phitex_enabled: true, phitex: "/test/phitex" };
+      }
+      return null;
+    });
+    await useEngineStore.getState().setPhitex(true);
+    expect(mocks.invoke).toHaveBeenCalledWith("set_phitex_enabled", { enabled: true });
+    expect(useEngineStore.getState().info?.phitex).toBe("/test/phitex");
+  });
+
+  it("leaves the engine info alone when the switch can't be saved", async () => {
+    vi.clearAllMocks();
+    useEngineStore.setState({ info: engine });
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "set_phitex_enabled") throw new Error("disk full");
+      return null;
+    });
+    await expect(useEngineStore.getState().setPhitex(true)).rejects.toThrow("disk full");
+    expect(mocks.invoke).not.toHaveBeenCalledWith("latex_engine_info", expect.anything());
+    expect(useEngineStore.getState().info).toBe(engine);
+  });
+});
+
 describe("installPhaseLabel", () => {
   it("shows the download percentage when the total size is known", () => {
     expect(installPhaseLabel("download", 42)).toBe(
@@ -516,7 +543,9 @@ describe("package error messages", () => {
       return [];
     });
     await useEngineStore.getState().addPackage("pgf");
-    const message = packageErrorMessage(useEngineStore.getState().packageError!);
+    const error = useEngineStore.getState().packageError;
+    expect(error).not.toBeNull();
+    const message = error ? packageErrorMessage(error) : "";
     expect(message).toContain("came with your Linux distribution");
     expect(message).toContain("apt");
     expect(message).not.toContain("@oleafly/error");

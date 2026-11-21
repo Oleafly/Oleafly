@@ -1584,6 +1584,8 @@ export const setDownloadSettings = (settings: DownloadSettingsInput) =>
 
 export const latexEngineInfo = (rescan?: EngineRescan) =>
   invoke<EngineInfo>("latex_engine_info", { rescan });
+export const setPhitexEnabled = (enabled: boolean) =>
+  invoke<void>("set_phitex_enabled", { enabled });
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
 export const cancelTinytexInstall = () => invoke<void>("cancel_tinytex_install");

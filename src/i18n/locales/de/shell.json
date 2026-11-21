@@ -1008,6 +1008,12 @@
         "label": "Live-Bearbeitung mit Overleaf",
         "description": "Bearbeiten Sie aus Overleaf importierte Projekte gleichzeitig mit Ihren Koautoren. Änderungen erscheinen beim Tippen auf beiden Seiten. Standardmäßig aus, solange es noch in der Beta ist."
       },
+      "phitex": {
+        "label": "PhiTeX-Engine",
+        "description": "Kompiliert pdfLaTeX- und XeLaTeX-Projekte, die latexmk verwenden, mit PhiTeX, einer TeX-Engine, die Sie selbst installieren. LuaLaTeX-Projekte bleiben bei latexmk, ebenso alle Projekte, wenn PhiTeX nicht installiert ist. Standardmäßig aus, solange es noch Beta ist.",
+        "notFound": "Oleafly findet PhiTeX auf diesem Computer nicht, deshalb werden latexmk-Projekte weiter mit latexmk kompiliert.",
+        "saveFailed": "Die Einstellung für PhiTeX konnte nicht gespeichert werden. Versuchen Sie es erneut."
+      },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
         "label": "Forschungsaufgaben",

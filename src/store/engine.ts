@@ -7,6 +7,7 @@ import {
   installTinytex,
   cancelTinytexInstall,
   deleteTinytex,
+  setPhitexEnabled,
   tinytexInstallState,
   tlmgrInstalled,
   tlmgrInstall,
@@ -132,6 +133,7 @@ interface EngineStore {
   loaded: boolean;
   refresh: (options?: { rescan?: EngineRescan }) => Promise<void>;
   ensureLoaded: () => Promise<void>;
+  setPhitex: (enabled: boolean) => Promise<void>;
   refreshPackages: () => Promise<void>;
   install: () => Promise<void>;
   cancelInstall: () => Promise<void>;
@@ -182,6 +184,11 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
 
   ensureLoaded: async () => {
     if (get().loaded || !isTauri()) return;
+    await get().refresh();
+  },
+
+  setPhitex: async (enabled) => {
+    await setPhitexEnabled(enabled);
     await get().refresh();
   },
 
