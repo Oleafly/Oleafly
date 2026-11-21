@@ -1,4 +1,4 @@
-use flate2::read::GzDecoder;
+use flate2::read::MultiGzDecoder;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Read;
@@ -956,7 +956,7 @@ pub fn gunzip(
     if bytes.len() as u64 > max_file_bytes {
         return Err(GunzipError::FileTooLarge);
     }
-    let mut decoder = GzDecoder::new(bytes);
+    let mut decoder = MultiGzDecoder::new(bytes);
     let mut text: Vec<u8> = Vec::new();
     let mut chunk = [0_u8; 32 * 1024];
     loop {
@@ -1056,9 +1056,7 @@ mod tests {
         include_str!("../tests/fixtures/synctex/lualatex-chapters.forward.tsv");
 
     fn fixture(gz: &[u8]) -> Doc {
-        let mut text = String::new();
-        GzDecoder::new(gz).read_to_string(&mut text).unwrap();
-        parse(&text)
+        parse(&gunzip(gz, MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES).unwrap())
     }
 
     fn fixture_roots() -> Vec<String> {
@@ -1598,6 +1596,17 @@ Content:\n\
     }
 
     #[test]
+    fn gunzip_reads_every_member_of_a_gzip_written_in_parts() {
+        let mut parts = gzip(b"SyncTeX Version:1\nInput:1:/p/main.tex\n");
+        parts.extend(gzip(b"Content:\n{1\n(1,3:100,200:300,10,2\n)\n}1\n"));
+        let text = gunzip(&parts, MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES).unwrap();
+        assert!(text.ends_with("}1\n"), "{text}");
+        let doc = parse(&text);
+        assert_eq!(doc.nodes.len(), 1);
+        assert_eq!(doc.inputs.get(&1).map(String::as_str), Some("/p/main.tex"));
+    }
+
+    #[test]
     fn gunzip_stops_at_a_gzip_bomb_and_an_oversized_file() {
         let bomb = gzip(&vec![0_u8; 1 << 20]);
         assert!(bomb.len() < 64 * 1024, "{}", bomb.len());
@@ -1749,8 +1758,7 @@ Content:\n\
 
     #[test]
     fn an_output_built_on_another_machine_searches_like_one_built_here() {
-        let mut text = String::new();
-        GzDecoder::new(BOOK).read_to_string(&mut text).unwrap();
+        let text = gunzip(BOOK, MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES).unwrap();
         let elsewhere = parse(&text.replace(":/p/", ":D:\\Users\\Ana Lucía\\Book\\"));
         let here = parse(&text);
         let project = [

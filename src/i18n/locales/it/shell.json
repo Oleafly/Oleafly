@@ -1013,6 +1013,12 @@
         "label": "Modifica dal vivo con Overleaf",
         "description": "Modifica i progetti importati da Overleaf contemporaneamente ai tuoi coautori. Le modifiche compaiono su entrambi i lati mentre scrivi. Disattivata per impostazione predefinita finché è in beta."
       },
+      "phitex": {
+        "label": "Motore PhiTeX",
+        "description": "Compila con PhiTeX, un motore TeX che installi tu, i progetti pdfLaTeX e XeLaTeX che usano latexmk. I progetti LuaLaTeX restano su latexmk, e così tutti i progetti se PhiTeX non è installato. Disattivata per impostazione predefinita finché è in beta.",
+        "notFound": "Oleafly non trova PhiTeX su questo computer, quindi i progetti latexmk vengono ancora compilati con latexmk.",
+        "saveFailed": "Impossibile salvare l'impostazione di PhiTeX. Riprova."
+      },
       "researchTasks": {
         "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
         "label": "Attività di ricerca",

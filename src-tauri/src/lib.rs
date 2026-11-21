@@ -990,6 +990,7 @@ pub fn run() {
             project::has_pandoc,
             project::download_pandoc,
             latex_engine::latex_engine_info,
+            latex_engine::set_phitex_enabled,
             latex_engine::tinytex_install_state,
             latex_engine::confirm_quit_during_install,
             quit_gate::confirm_quit_flush,

@@ -14,6 +14,7 @@ import {
   onCollabOutputNotShared,
 } from "@/lib/tauri-collab";
 import { useEngineStore } from "@/store/engine";
+import { latexmkBlocked } from "@/lib/tex-distributions";
 import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { useCollabActivity, type NewActivity } from "./activity-store";
@@ -245,7 +246,7 @@ function compilesWithoutTex(projectId: string): boolean {
     files.projectId === projectId &&
     files.engineLoaded &&
     files.engine.capabilities.compiler_prerequisite === "system_tex" &&
-    Boolean(useEngineStore.getState().info?.latexmk_blocker)
+    latexmkBlocked(useEngineStore.getState().info)
   );
 }
 

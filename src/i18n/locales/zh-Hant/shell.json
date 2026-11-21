@@ -985,6 +985,12 @@
         "label": "與 Overleaf 即時編輯",
         "description": "與共同作者同時編輯從 Overleaf 匯入的專案。你輸入時，變更會在雙方同步顯示。目前仍處於測試階段，預設為關閉。"
       },
+      "phitex": {
+        "label": "PhiTeX 引擎",
+        "description": "使用 PhiTeX（一個需要自行安裝的 TeX 引擎）編譯使用 latexmk 的 pdfLaTeX 與 XeLaTeX 專案。LuaLaTeX 專案繼續使用 latexmk，未安裝 PhiTeX 時所有專案也都使用 latexmk。仍在 beta 階段，預設為關閉。",
+        "notFound": "Oleafly 在這台電腦上找不到 PhiTeX，因此 latexmk 專案仍使用 latexmk 編譯。",
+        "saveFailed": "無法儲存 PhiTeX 開關。請再試一次。"
+      },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
         "label": "研究任務",

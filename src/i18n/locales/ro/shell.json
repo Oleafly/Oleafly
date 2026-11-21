@@ -1013,6 +1013,12 @@
         "label": "Editare live cu Overleaf",
         "description": "Editează proiectele importate din Overleaf în același timp cu coautorii tăi. Modificările apar pe ambele părți pe măsură ce scrii. Dezactivat implicit cât timp este în beta."
       },
+      "phitex": {
+        "label": "Motorul PhiTeX",
+        "description": "Compilează cu PhiTeX, un motor TeX pe care îl instalezi singur, proiectele pdfLaTeX și XeLaTeX care folosesc latexmk. Proiectele LuaLaTeX rămân pe latexmk, la fel ca toate proiectele dacă PhiTeX nu este instalat. Dezactivată implicit, cât timp este în beta.",
+        "notFound": "Oleafly nu găsește PhiTeX pe acest computer, așa că proiectele latexmk se compilează în continuare cu latexmk.",
+        "saveFailed": "Comutatorul PhiTeX nu a putut fi salvat. Încearcă din nou."
+      },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
         "label": "Sarcini de cercetare",
