@@ -33,6 +33,12 @@ describe("isReviewsFile", () => {
 });
 
 describe("reviewPoints", () => {
+  it("stays fast on long runs of whitespace", () => {
+    expect(reviewPoints("\t\t".repeat(50_000))).toEqual([]);
+    expect(reviewPoints(`# reviewer${"\t".repeat(50_000)}x`)).toEqual([]);
+    expect(reviewPoints(`**${"\t".repeat(50_000)}x`)).toEqual([]);
+  });
+
   it("reads numbered points and bullets under reviewer headings", () => {
     expect(reviewPoints(REVIEWS).map((point) => [point.label, point.text])).toEqual([
       ["R1.1", "The gains in Table 2 are small on real scenes."],
@@ -93,6 +99,11 @@ describe("reviewReferences", () => {
 });
 
 describe("paperPlaces", () => {
+  it("stays fast on environments that never close", () => {
+    const content = "\\begin{figure} x ".repeat(20_000);
+    expect(paperPlaces([{ path: "main.tex", content }], "main.tex")).toEqual([]);
+  });
+
   it("numbers floats, equations and sections in document order through \\input and \\include", () => {
     const places = paperPlaces(CVPR_PROJECT, "main.tex").map((place) => `${place.kind} ${place.number} ${place.file}`);
     expect(places).toEqual([

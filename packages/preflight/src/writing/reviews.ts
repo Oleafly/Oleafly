@@ -36,10 +36,10 @@ const LIMIT = 200;
 const MAX_DEPTH = 16;
 const POINT_LIMIT = 280;
 const REVIEWS_FILE = /(?:^|\/)reviews\.(?:md|txt)$/i;
-const MARKDOWN_HEADING = /^\s{0,3}#{1,6}\s+(.*)$/;
+const MARKDOWN_HEADING = /^[ \t]{0,3}#{1,6}(?=[ \t])/;
 const REVIEWER_ID = String.raw`(\d+|[A-Za-z0-9]{4}(?![A-Za-z0-9]))`;
-const REVIEWER_IN_HEADING = new RegExp(String.raw`\breviewer\s*#?\s*${REVIEWER_ID}|^R(\d+)\b`, "i");
-const REVIEWER_LINE = new RegExp(String.raw`^\s*(?:\*\*|__)?\s*reviewer\s*#?\s*${REVIEWER_ID}(?:\s*\([^)]*\))?[\s*_:.-]*$`, "i");
+const REVIEWER_IN_HEADING = new RegExp(String.raw`\breviewer\s*(?:#\s*)?${REVIEWER_ID}|^R(\d+)\b`, "i");
+const REVIEWER_LINE = new RegExp(String.raw`^\s*(?:(?:\*\*|__)\s*)?reviewer\s*(?:#\s*)?${REVIEWER_ID}(?:\s*\([^()]{0,200}\))?[\s*_:.-]*$`, "i");
 const NUMBERED = /^(\s*)(?:[-*+]\s+)?(?:\*\*|__)?(\d{1,3}(?=[.)])|[QWR]\d{1,3}(?:\.\d{1,3})*)[.):]?(?:\*\*|__)?[.):]?(?:\s+|$)/;
 const BULLET = /^(\s*)[-*+]\s+(?=\S)/;
 const REFERENCE_PATTERNS: readonly (readonly [ReviewReferenceKind, RegExp])[] = [
@@ -50,7 +50,7 @@ const REFERENCE_PATTERNS: readonly (readonly [ReviewReferenceKind, RegExp])[] = 
   ["line", /\b(?:[Ll]ines?|ll?\.)\s*(\d+)|\bL(\d+)\b/g],
 ];
 const TOKEN =
-  /\\(?:(input|include)\s*\{([^{}]*)\}|begin\s*\{([A-Za-z]+\*?)\}|(section|subsection|subsubsection)(\*?)\s*(?:\[[^\]]*\]\s*)?\{|(?:captionof\s*\{|captionsetup\s*\{\s*type\s*=\s*)(figure|table)\s*\}|(appendix)(?![A-Za-z])|end\s*\{document\})/g;
+  /\\(?:(input|include)\s*\{([^{}]{0,500})\}|begin\s*\{([A-Za-z]+\*?)\}|(section|subsection|subsubsection)(\*?)\s*(?:\[[^\][]{0,500}\]\s*)?\{|(?:captionof\s*\{|captionsetup\s*\{\s*type\s*=\s*)(figure|table)\s*\}|(appendix)(?![A-Za-z])|end\s*\{document\})/g;
 const FLOATS: Readonly<Record<string, "figure" | "table">> = {
   figure: "figure",
   "figure*": "figure",
@@ -68,7 +68,9 @@ export function isReviewsFile(path: string): boolean {
 
 function reviewerName(line: string): string | null {
   const heading = MARKDOWN_HEADING.exec(line);
-  const match = heading ? REVIEWER_IN_HEADING.exec(heading[1]) : REVIEWER_LINE.exec(line);
+  const match = heading
+    ? REVIEWER_IN_HEADING.exec(line.slice(heading[0].length).trim())
+    : REVIEWER_LINE.exec(line);
   return match ? (match[1] ?? match[2]) : null;
 }
 
@@ -207,9 +209,16 @@ export function paperPlaces(files: readonly ProjectWritingFile[], mainFile: stri
     counts[kind] += 1;
     places.push({ kind, number: String(counts[kind]), file, from, to });
   };
+  const unclosed = new Map<string, Set<string>>();
   const environment = (name: string, source: string, file: string, at: number, bodyFrom: number): number => {
+    const missing = unclosed.get(file) ?? new Set<string>();
+    unclosed.set(file, missing);
+    if (missing.has(name)) return bodyFrom;
     const end = environmentEnd(source, name, bodyFrom);
-    if (end < 0) return bodyFrom;
+    if (end < 0) {
+      missing.add(name);
+      return bodyFrom;
+    }
     const body = source.slice(bodyFrom, source.lastIndexOf("\\end", end - 1));
     const float = FLOATS[name];
     if (float) {

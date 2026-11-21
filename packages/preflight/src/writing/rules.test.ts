@@ -23,6 +23,20 @@ function only(text: string, id: string, settings?: WritingSettings): Finding[] {
 }
 
 describe("writing rules", () => {
+  it("stays fast on text built to make its patterns backtrack", () => {
+    for (const body of [
+      `)${"\t".repeat(50_000)}x`,
+      "\\[a".repeat(20_000),
+      "$$a".repeat(20_000),
+      "\\begin{table}[\\".repeat(20_000),
+      "\\begin{table} x ".repeat(20_000),
+      "\\begin{equation} x ".repeat(20_000),
+    ]) {
+      expect(Array.isArray(runWritingRules(paper(body), {}))).toBe(true);
+    }
+    expect(detectWritingProfile([`\\usepackage${"\t".repeat(50_000)}x`])).toBe("general");
+  });
+
   it("adds a space before an acronym in parentheses", () => {
     const text = paper("Convolutional neural network(CNN) has been applied widely.");
     const [finding] = only(text, "writing-space-before-paren");

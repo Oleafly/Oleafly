@@ -556,6 +556,12 @@ describe("metricDirection", () => {
 });
 
 describe("parseMetricNumber", () => {
+  it("stays fast on colour commands that never close", () => {
+    expect(parseMetricNumber("\\color[".repeat(20_000))).toBeNull();
+    expect(parseMetricNumber(`\\color${"\t".repeat(50_000)}`)).toBeNull();
+    expect(findLinkedLatexTables(`% oleafly-table-v1: x\n${"\\begin{table}[".repeat(20_000)}`)).toEqual([]);
+  });
+
   it.each([
     ["30.12", 30.12],
     ["\\textbf{30.1}", 30.1],

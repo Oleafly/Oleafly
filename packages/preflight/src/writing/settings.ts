@@ -118,7 +118,7 @@ export function serializeWritingSettings(settings: WritingSettings): Record<stri
   return Object.keys(out).length > 0 ? out : null;
 }
 
-const CVPR_FAMILY = /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{(?:cvpr|iccv|eccv|wacv|3dv)\}|\\def\\cvprPaperID\b|\\def\\iccvPaperID\b/;
+const CVPR_FAMILY = /\\(?:usepackage|RequirePackage)(?:\s*\[[^\][]{0,300}\])?\s*\{(?:cvpr|iccv|eccv|wacv|3dv)\}|\\def\\cvprPaperID\b|\\def\\iccvPaperID\b/;
 
 export function detectWritingProfile(texts: readonly string[]): ResolvedWritingProfile {
   return texts.some((text) => CVPR_FAMILY.test(text)) ? "cvpr" : "general";

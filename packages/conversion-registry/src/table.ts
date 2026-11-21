@@ -328,7 +328,7 @@ export function metricDirection(header: string): MetricDirection | null {
 const METRIC_NUMBER = /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?%?$/u;
 
 export function parseMetricNumber(text: string): number | null {
-  let value = text.replaceAll(/\\(?:cellcolor|rowcolor|color|textcolor)\s*(?:\[[^\]]*\])?\s*\{[^{}]*\}/gu, "");
+  let value = text.replaceAll(/\\(?:cellcolor|rowcolor|color|textcolor)(?:\s*\[[^\][]{0,80}\])?\s*\{[^{}]{0,80}\}/gu, "");
   const cut = value.search(/\\pm(?![A-Za-z])|±|(?<!\\)\(/u);
   if (cut >= 0) value = value.slice(0, cut);
   value = value
@@ -648,7 +648,7 @@ export interface LinkedLatexTableMatch {
 
 const LATEX_TABLE_MARK = "oleafly-table-v1:";
 const LATEX_TABLE_MARK_LINE = /^([ \t]*)(%[ \t]*oleafly-table-v1:[ \t]*([A-Za-z0-9_-]+))[ \t]*\r?$/gmu;
-const LATEX_TABLE_BEGIN = /\\begin\s*\{table\*?\}(?:[ \t]*\[[^\]\n]*\])?/gu;
+const LATEX_TABLE_BEGIN = /\\begin\s*\{table\*?\}(?:[ \t]*\[[^\][\n]{0,40}\])?/gu;
 const LATEX_TABLE_END = /\\end\s*\{table\*?\}/gu;
 
 function base64UrlText(text: string): string {

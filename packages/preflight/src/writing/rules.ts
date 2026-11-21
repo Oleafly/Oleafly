@@ -79,6 +79,16 @@ export function fix(label: PreflightMessageKey, edits: TextEdit[], params?: Mess
   return { label: message(label, params), edits };
 }
 
+function eachDisplayMath(source: string, visit: (from: number, to: number, body: string) => void): void {
+  let count = 0;
+  for (let open = source.indexOf("\\["); open >= 0 && count < PER_RULE_LIMIT * 4; count += 1) {
+    const close = source.indexOf("\\]", open + 2);
+    if (close < 0) return;
+    visit(open, close + 2, source.slice(open + 2, close));
+    open = source.indexOf("\\[", close + 2);
+  }
+}
+
 function each(pattern: RegExp, text: string, visit: (match: RegExpExecArray) => void): void {
   pattern.lastIndex = 0;
   let count = 0;
@@ -162,7 +172,7 @@ const nonbreakingReference: WritingRule = {
   profiles: EVERY,
   run: ({ view }) => {
     const out: Finding[] = [];
-    each(/([A-Za-z0-9.)\]}])([ \t]*\n?[ \t]*)\\(cite|citep|ref|eqref|autoref|cref|pageref|vref)(?![A-Za-z@])/g, view.text, (match) => {
+    each(/([A-Za-z0-9.)\]}])([ \t]*(?:\n[ \t]*)?)\\(cite|citep|ref|eqref|autoref|cref|pageref|vref)(?![A-Za-z@])/g, view.text, (match) => {
       const before = match.index;
       const gap = match[2];
       const command = before + 1 + gap.length;
@@ -179,7 +189,7 @@ const nonbreakingReference: WritingRule = {
   },
 };
 
-const SHORTHAND_QUOTES = /\\usepackage\s*\[[^\]]*\b(?:ngerman|german|naustrian|austrian|nswissgerman|swissgerman|dutch|afrikaans|swedish|finnish|danish|norsk|nynorsk|icelandic|estonian|slovene|serbian|croatian|czech|slovak|polish|bulgarian|russian|ukrainian|catalan|basque|galician|spanish|portuges|portuguese|brazil|brazilian)\b[^\]]*\]\s*\{babel\}|\\setmainlanguage\s*\{(?:german|dutch|russian|ukrainian|polish|czech)\}/;
+const SHORTHAND_QUOTES = /\\usepackage\s*\[[^\][]{0,300}\b(?:ngerman|german|naustrian|austrian|nswissgerman|swissgerman|dutch|afrikaans|swedish|finnish|danish|norsk|nynorsk|icelandic|estonian|slovene|serbian|croatian|czech|slovak|polish|bulgarian|russian|ukrainian|catalan|basque|galician|spanish|portuges|portuguese|brazil|brazilian)\b[^\]]*\]\s*\{babel\}|\\setmainlanguage\s*\{(?:german|dutch|russian|ukrainian|polish|czech)\}/;
 
 const straightQuotes: WritingRule = {
   id: "writing-straight-quotes",
@@ -221,11 +231,16 @@ const straightQuotes: WritingRule = {
 
 function environments(text: string, names: readonly string[], visit: (begin: number, bodyFrom: number, bodyTo: number, end: number, name: string) => void): void {
   const pattern = new RegExp(`\\\\begin\\s*\\{(${names.map(escapeRegExp).join("|")})\\}`, "g");
+  const unclosed = new Set<string>();
   for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
     const name = match[1];
+    if (unclosed.has(name)) continue;
     const bodyFrom = match.index + match[0].length;
     const end = environmentEnd(text, name, bodyFrom);
-    if (end < 0) continue;
+    if (end < 0) {
+      unclosed.add(name);
+      continue;
+    }
     const bodyTo = text.lastIndexOf("\\end", end - 1);
     visit(match.index, bodyFrom, bodyTo, end, name);
     pattern.lastIndex = end;
@@ -238,7 +253,7 @@ const citeInAbstract: WritingRule = {
   run: ({ view, source }) => {
     const out: Finding[] = [];
     environments(source, ["abstract"], (_begin, bodyFrom, bodyTo) => {
-      each(/\\(?:cite[A-Za-z]*|nocite)\b\*?(?:\[[^\]]*\])*\s*\{[^}]*\}/g, source.slice(bodyFrom, bodyTo), (match) => {
+      each(/\\(?:cite[A-Za-z]*|nocite)\b\*?(?:\[[^\][]{0,200}\])*\s*\{[^}]{0,2000}\}/g, source.slice(bodyFrom, bodyTo), (match) => {
         out.push(writingFinding(citeInAbstract.id, view, bodyFrom + match.index, bodyFrom + match.index + match[0].length));
       });
     });
@@ -319,7 +334,7 @@ const displayMathPunctuation: WritingRule = {
       if (/[.,;:!?][\s}]*$/.test(tail) || /\\(?:quad|qquad)\s*$/.test(tail)) return;
       const after = source.slice(closeTo, closeTo + 80);
       if (/^\s*[.,;:]/.test(after)) return;
-      const continues = /^[ \t]*\n?[ \t]*(?:[a-z]|\\(?:text|emph)\b)/.test(after) && !/^\s*\n\s*\n/.test(after);
+      const continues = /^[ \t]*(?:\n[ \t]*)?(?:[a-z]|\\(?:text|emph)\b)/.test(after) && !/^\s*\n\s*\n/.test(after);
       const mark = continues ? "," : ".";
       out.push(writingFinding(displayMathPunctuation.id, view, closeFrom, closeTo, {
         fix: fix(continues ? "fixes.addComma" : "fixes.addPeriod", [{ from: end, to: end, insert: mark }]),
@@ -329,10 +344,8 @@ const displayMathPunctuation: WritingRule = {
     environments(source, [...DISPLAY_MATH_ENVIRONMENTS].filter((name) => name !== "math"), (_begin, bodyFrom, bodyTo, end) => {
       check(bodyFrom, bodyTo, bodyTo, end);
     });
-    each(/\\\[([\s\S]*?)\\\]/g, source, (match) => {
-      const bodyFrom = match.index + 2;
-      const bodyTo = match.index + match[0].length - 2;
-      check(bodyFrom, bodyTo, bodyTo, bodyTo + 2);
+    eachDisplayMath(source, (from, to) => {
+      check(from + 2, to - 2, to - 2, to);
     });
     return capped(out);
   },
@@ -430,15 +443,14 @@ const unnumberedEquation: WritingRule = {
         ]),
       }));
     });
-    each(/\\\[([\s\S]*?)\\\]/g, source, (match) => {
-      if (match.index < view.bodyStart) return;
-      const to = match.index + match[0].length;
-      out.push(writingFinding(unnumberedEquation.id, view, match.index, match.index + 2, {
+    eachDisplayMath(source, (from, to, body) => {
+      if (from < view.bodyStart) return;
+      out.push(writingFinding(unnumberedEquation.id, view, from, from + 2, {
         fix: fix("fixes.numberEquation", [
-          { from: match.index, to: match.index + 2, insert: "\\begin{equation}" },
+          { from, to: from + 2, insert: "\\begin{equation}" },
           { from: to - 2, to, insert: "\\end{equation}" },
         ]),
-        fingerprint: writingFingerprint(unnumberedEquation.id, match[1]),
+        fingerprint: writingFingerprint(unnumberedEquation.id, body),
       }));
     });
     return capped(out);
@@ -450,7 +462,7 @@ const floatPlacement: WritingRule = {
   profiles: CVPR,
   run: ({ view, source }) => {
     const out: Finding[] = [];
-    each(/\\begin\s*\{(?:figure|table)\*?\}\s*\[([^\]]*)\]/g, source, (match) => {
+    each(/\\begin\s*\{(?:figure|table)\*?\}\s*\[([^\][\n]{0,40})\]/g, source, (match) => {
       if (match.index < view.bodyStart) return;
       const options = match[1];
       if (!/[hH]/.test(options) || /t/.test(options)) return;

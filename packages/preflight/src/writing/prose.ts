@@ -120,9 +120,12 @@ export function environmentEnd(text: string, name: string, from: number): number
   return match ? match.index + match[0].length : -1;
 }
 
+const OPTIONAL_ARGUMENT_LIMIT = 1000;
+
 export function closingBracket(text: string, open: number): number {
   let depth = 0;
-  for (let index = open + 1; index < text.length; index += 1) {
+  const stop = Math.min(text.length, open + OPTIONAL_ARGUMENT_LIMIT);
+  for (let index = open + 1; index < stop; index += 1) {
     const character = text[index];
     if (character === "\\") {
       index += 1;
@@ -142,13 +145,16 @@ function escaped(text: string, index: number): boolean {
   return slashes % 2 === 1;
 }
 
-function maskPattern(chars: string[], source: string, pattern: RegExp): void {
-  for (let match = pattern.exec(source); match; match = pattern.exec(source)) {
-    if (escaped(source, match.index)) {
-      pattern.lastIndex = match.index + 1;
+function maskDelimited(chars: string[], source: string, opener: string, closer: string): void {
+  for (let open = source.indexOf(opener); open >= 0; ) {
+    if (escaped(source, open)) {
+      open = source.indexOf(opener, open + 1);
       continue;
     }
-    blank(chars, match.index, match.index + match[0].length);
+    const close = source.indexOf(closer, open + opener.length);
+    if (close < 0) return;
+    blank(chars, open, close + closer.length);
+    open = source.indexOf(opener, close + closer.length);
   }
 }
 
@@ -204,9 +210,9 @@ export function proseView(text: string): ProseView {
     blank(chars, match.index, to);
     environment.lastIndex = to;
   }
-  maskPattern(chars, source, /\$\$[\s\S]*?\$\$/g);
-  maskPattern(chars, source, /\\\[[\s\S]*?\\\]/g);
-  maskPattern(chars, source, /\\\([\s\S]*?\\\)/g);
+  maskDelimited(chars, source, "$$", "$$");
+  maskDelimited(chars, source, "\\[", "\\]");
+  maskDelimited(chars, source, "\\(", "\\)");
   maskInlineMath(chars, source);
   maskCommandArguments(chars, source);
   return { text, prose: chars.join(""), bodyStart };
