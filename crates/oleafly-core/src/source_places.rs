@@ -1252,6 +1252,119 @@ fn place_warning(sources: &Sources, row: &mut LogDiagnostic) {
     }
 }
 
+struct Placing<'a> {
+    folders: BuildFolders<'a>,
+    before: &'a BuildBefore,
+    sources: &'a Sources,
+    bibliographies: &'a Bibliographies,
+}
+
+impl Placing<'_> {
+    fn outcome(&self, row: &LogDiagnostic) -> Outcome {
+        place_error(self.folders, self.sources, self.bibliographies, row)
+    }
+
+    fn in_a_source(&self, file: Option<&str>) -> bool {
+        file.is_some_and(|name| self.sources.get(name).is_some())
+    }
+
+    fn row_echoed(&self, diagnostics: &[LogDiagnostic], index: usize) -> bool {
+        let echo = echo_of(&diagnostics[index]);
+        diagnostics.iter().enumerate().any(|(other, row)| {
+            other != index
+                && row.severity == LogSeverity::Error
+                && echo_of(row) == echo
+                && self.in_a_source(row.file.as_deref())
+        })
+    }
+
+    fn card_echoed(&self, errors: &[CompileError], index: usize) -> bool {
+        let text = error_text(&errors[index].message);
+        errors.iter().enumerate().any(|(other, error)| {
+            other != index
+                && error.kind == "error"
+                && error_text(&error.message) == text
+                && self.in_a_source(error.file.as_deref())
+        })
+    }
+
+    fn place_row(
+        &self,
+        index: usize,
+        card: Option<&mut CompileError>,
+        diagnostics: &mut [LogDiagnostic],
+    ) -> bool {
+        match self.outcome(&diagnostics[index]) {
+            Outcome::Keep => {}
+            Outcome::Mark(place) => {
+                card.into_iter().for_each(|error| move_card(error, &place));
+            }
+            Outcome::Move(place) => {
+                move_row(&mut diagnostics[index], &place);
+                card.into_iter().for_each(|error| move_card(error, &place));
+            }
+            Outcome::Unline => {
+                diagnostics[index].line = None;
+                card.into_iter().for_each(|error| error.line = None);
+            }
+            Outcome::Unplace => unplace(&mut diagnostics[index], card),
+            Outcome::Damaged => {
+                if self.row_echoed(diagnostics, index) {
+                    return true;
+                }
+                let written =
+                    written_by_this_compile(self.folders, self.before, &diagnostics[index]);
+                unplace(&mut diagnostics[index], None);
+                card.into_iter()
+                    .for_each(|error| name_the_build_file(error, written));
+            }
+        }
+        false
+    }
+
+    fn place_lone_card(&self, index: usize, errors: &mut [CompileError]) -> bool {
+        let row = as_row(&errors[index]);
+        match self.outcome(&row) {
+            Outcome::Keep => {}
+            Outcome::Mark(place) | Outcome::Move(place) => move_card(&mut errors[index], &place),
+            Outcome::Unline => errors[index].line = None,
+            Outcome::Unplace => unplace_card(&mut errors[index]),
+            Outcome::Damaged => {
+                if self.card_echoed(errors, index) {
+                    return true;
+                }
+                let written = written_by_this_compile(self.folders, self.before, &row);
+                name_the_build_file(&mut errors[index], written);
+            }
+        }
+        false
+    }
+}
+
+fn drop_marked<T>(entries: &mut Vec<T>, dropped: &HashSet<usize>) {
+    let mut index = 0;
+    entries.retain(|_| {
+        index += 1;
+        !dropped.contains(&(index - 1))
+    });
+}
+
+fn place_floats(sources: &Sources, errors: &mut [CompileError], diagnostics: &mut [LogDiagnostic]) {
+    for error in errors.iter_mut() {
+        let file = error.file.as_deref();
+        if let Some(place) = float_place(sources, &error.message, file, error.line) {
+            error.file = Some(place.file);
+            error.line = Some(place.line);
+        }
+    }
+    for row in diagnostics.iter_mut() {
+        let file = row.file.as_deref();
+        if let Some(place) = float_place(sources, &row.message, file, row.line) {
+            move_row(row, &place);
+        }
+    }
+}
+
 /// TeX reports where it noticed a problem. For the body of `align`, a beamer
 /// frame, `tabularx` or a long argument that is the closing line, and for a
 /// file it wrote itself it is that file.
@@ -1292,128 +1405,49 @@ pub fn place_in_sources(
         .collect();
     let sources = Sources::read(folders, log, &named);
     let bibliographies = Bibliographies::default();
+    let placing = Placing {
+        folders,
+        before,
+        sources: &sources,
+        bibliographies: &bibliographies,
+    };
     let pairs = pair_cards(errors, diagnostics);
     let mut dropped_rows = HashSet::new();
     let mut dropped_cards = HashSet::new();
     for index in 0..diagnostics.len() {
-        if diagnostics[index].severity != LogSeverity::Error {
-            if diagnostics[index].severity == LogSeverity::Warning {
-                place_warning(&sources, &mut diagnostics[index]);
-            }
-            continue;
-        }
         let card = pairs[index];
-        match place_error(folders, &sources, &bibliographies, &diagnostics[index]) {
-            Outcome::Keep => {}
-            Outcome::Mark(place) => {
-                if let Some(card) = card {
-                    move_card(&mut errors[card], &place);
-                }
-            }
-            Outcome::Move(place) => {
-                move_row(&mut diagnostics[index], &place);
-                if let Some(card) = card {
-                    move_card(&mut errors[card], &place);
-                }
-            }
-            Outcome::Unline => {
-                diagnostics[index].line = None;
-                if let Some(card) = card {
-                    errors[card].line = None;
-                }
-            }
-            Outcome::Unplace => {
-                unplace(&mut diagnostics[index], card.map(|card| &mut errors[card]));
-            }
-            Outcome::Damaged => {
-                let echo = echo_of(&diagnostics[index]);
-                let echoed = diagnostics.iter().enumerate().any(|(other, row)| {
-                    other != index
-                        && row.severity == LogSeverity::Error
-                        && echo_of(row) == echo
-                        && row
-                            .file
-                            .as_deref()
-                            .is_some_and(|name| sources.get(name).is_some())
-                });
-                if echoed {
+        match diagnostics[index].severity {
+            LogSeverity::Error => {
+                let error = card.map(|card| &mut errors[card]);
+                if placing.place_row(index, error, diagnostics) {
                     dropped_rows.insert(index);
                     dropped_cards.extend(card);
-                    continue;
-                }
-                let written = written_by_this_compile(folders, before, &diagnostics[index]);
-                unplace(&mut diagnostics[index], None);
-                if let Some(card) = card {
-                    name_the_build_file(&mut errors[card], written);
                 }
             }
+            LogSeverity::Warning => place_warning(&sources, &mut diagnostics[index]),
+            _ => {}
         }
     }
     let paired: HashSet<usize> = pairs.iter().flatten().copied().collect();
     for index in 0..errors.len() {
-        if errors[index].kind != "error" || paired.contains(&index) {
-            continue;
-        }
-        let row = as_row(&errors[index]);
-        match place_error(folders, &sources, &bibliographies, &row) {
-            Outcome::Keep => {}
-            Outcome::Mark(place) | Outcome::Move(place) => move_card(&mut errors[index], &place),
-            Outcome::Unline => errors[index].line = None,
-            Outcome::Unplace => unplace_card(&mut errors[index]),
-            Outcome::Damaged => {
-                let text = error_text(&row.message);
-                let echoed = errors.iter().enumerate().any(|(other, error)| {
-                    other != index
-                        && error.kind == "error"
-                        && error_text(&error.message) == text
-                        && error
-                            .file
-                            .as_deref()
-                            .is_some_and(|name| sources.get(name).is_some())
-                });
-                if echoed {
-                    dropped_cards.insert(index);
-                    continue;
-                }
-                let written = written_by_this_compile(folders, before, &row);
-                name_the_build_file(&mut errors[index], written);
-            }
+        let lone = errors[index].kind == "error" && !paired.contains(&index);
+        if lone && placing.place_lone_card(index, errors) {
+            dropped_cards.insert(index);
         }
     }
-    let mut index = 0;
-    diagnostics.retain(|_| {
-        index += 1;
-        !dropped_rows.contains(&(index - 1))
-    });
-    let mut index = 0;
-    errors.retain(|_| {
-        index += 1;
-        !dropped_cards.contains(&(index - 1))
-    });
-    for error in errors.iter_mut() {
-        let file = error.file.as_deref();
-        if let Some(place) = float_place(&sources, &error.message, file, error.line) {
-            error.file = Some(place.file);
-            error.line = Some(place.line);
-        }
-    }
-    for row in diagnostics.iter_mut() {
-        let file = row.file.as_deref();
-        if let Some(place) = float_place(&sources, &row.message, file, row.line) {
-            move_row(row, &place);
-        }
-    }
+    drop_marked(diagnostics, &dropped_rows);
+    drop_marked(errors, &dropped_cards);
+    place_floats(&sources, errors, diagnostics);
     place_boxes(&sources, log, diagnostics);
     *diagnostics = spread(std::mem::take(diagnostics), &sources, log);
-    for row in diagnostics.iter_mut() {
-        if row
-            .file
+    let built = |row: &&mut LogDiagnostic| {
+        row.file
             .as_deref()
             .is_some_and(|name| sources.is_built(name))
-        {
-            row.file = None;
-            row.line = None;
-        }
+    };
+    for row in diagnostics.iter_mut().filter(built) {
+        row.file = None;
+        row.line = None;
     }
     tidy_rows(diagnostics);
     tidy_cards(errors);
