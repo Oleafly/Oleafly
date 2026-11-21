@@ -36,6 +36,11 @@ sha256_of() {
   fi
 }
 
+fetch() {
+  local url="$1"
+  curl -fsSL --proto '=https' --tlsv1.2 --retry 3 --retry-delay 5 "$url"
+}
+
 r2() {
   AWS_ACCESS_KEY_ID="$MIRROR_R2_ACCESS_KEY_ID" \
     AWS_SECRET_ACCESS_KEY="$MIRROR_R2_SECRET_ACCESS_KEY" \
@@ -96,7 +101,7 @@ copy_to_mirror() {
       --content-type application/octet-stream \
       --cache-control "public, max-age=31536000, immutable" \
       --only-show-errors || return 1
-    served="$(curl -fsSL --retry 3 --retry-delay 5 "$MIRROR_URL/$key" | sha256_of)" || return 1
+    served="$(fetch "$MIRROR_URL/$key" | sha256_of)" || return 1
     if [[ "$served" != "$digest" ]]; then
       warn "$MIRROR_URL/$key does not serve the bytes that were uploaded."
       return 1
@@ -116,14 +121,14 @@ copy_to_mirror() {
 }
 
 mirror_keys() {
+  local feed="$1"
   jq -r --arg base "$MIRROR_URL/" --arg prefix "$MIRROR_URL/$MIRROR_PREFIX" \
-    '.platforms[].url | select(startswith($prefix)) | ltrimstr($base)' "$1"
+    '.platforms[].url | select(startswith($prefix)) | ltrimstr($base)' "$feed"
 }
 
 remove_unlisted_copies() {
   local key
-  if ! curl -fsSL --retry 3 --retry-delay 5 \
-    "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json" >"$WORK/live.json" \
+  if ! fetch "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json" >"$WORK/live.json" \
     || ! jq -e '.platforms | type == "object"' "$WORK/live.json" >/dev/null 2>&1; then
     warn "Could not read the live update feed, so no older mirror copies were removed."
     return 0
@@ -150,10 +155,6 @@ remove_unlisted_copies() {
 use_release_addresses
 
 case "$(mirror_settings)" in
-  some)
-    echo "Set MIRROR_R2_ACCESS_KEY_ID, MIRROR_R2_SECRET_ACCESS_KEY and MIRROR_R2_ENDPOINT together, or none of them." >&2
-    exit 1
-    ;;
   none)
     report "Update feed: downloads come from this release on GitHub. The mirror is not set up."
     ;;
@@ -166,6 +167,10 @@ case "$(mirror_settings)" in
     else
       warn "The mirror copy failed, so the update feed keeps the GitHub addresses for $TAG."
     fi
+    ;;
+  *)
+    echo "Set MIRROR_R2_ACCESS_KEY_ID, MIRROR_R2_SECRET_ACCESS_KEY and MIRROR_R2_ENDPOINT together, or none of them." >&2
+    exit 1
     ;;
 esac
 
