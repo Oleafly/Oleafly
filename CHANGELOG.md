@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Thanks
-
-- Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
-
-### Added
-
-- Projects on the latexmk engine can now compile with PhiTeX, if you have it installed. Turn on PhiTeX engine in Settings > Experimentation, and pdfLaTeX and XeLaTeX projects build with `phitex build`. Click-to-jump between source and PDF works as before. LuaLaTeX projects, and computers without PhiTeX, keep using latexmk. If your own PhiTeX settings fetch packages from Shelf, Oleafly's compiles do too, and offline mode limits them to packages you've already downloaded.
-
 ## [0.4.13] - 2026-11-20
 
 If you use Oleafly for your research, a thesis or a course, add a line to [Who's using Oleafly?](https://github.com/Oleafly/Oleafly/discussions/502) with where you use it and what for.
