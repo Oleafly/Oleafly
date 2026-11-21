@@ -17,7 +17,7 @@ const packageCatalogs: CatalogLoaders = import.meta.glob<Catalog>(
     "../../../src/i18n/locales/*/preview.json",
     "!../../../src/i18n/locales/en/*.json",
   ],
-  { import: "default" },
+  { import: "default", query: "?package-strings" },
 );
 
 const PACKAGE_NAMESPACES = ["editor", "preview"] as const;
