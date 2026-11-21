@@ -19,6 +19,7 @@ use oleafly_core::engine_spec::{
     self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, DOCUMENT_KIND_FILTER_NAME,
     ENTRY_STEM, ENTRY_TEX, MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
 };
+use oleafly_core::source_places::BuildBefore;
 use oleafly_core::tex_distro::find_tool_in_dir;
 #[cfg(unix)]
 use oleafly_core::tex_distro::TexSearch;
@@ -520,7 +521,15 @@ fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow()
         )
         .unwrap();
         let (mut log, mut errors) = (String::new(), Vec::new());
-        apply_tex_output_notes(&build, out.path(), succeeded, true, &mut log, &mut errors);
+        apply_tex_output_notes(
+            &build,
+            out.path(),
+            &BuildBefore::default(),
+            succeeded,
+            true,
+            &mut log,
+            &mut errors,
+        );
         assert_eq!(
             errors
                 .iter()
@@ -529,10 +538,85 @@ fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow()
             "{engine:?} succeeded={succeeded}"
         );
         let (mut log, mut errors) = (String::new(), Vec::new());
-        apply_tex_output_notes(&build, out.path(), succeeded, false, &mut log, &mut errors);
+        apply_tex_output_notes(
+            &build,
+            out.path(),
+            &BuildBefore::default(),
+            succeeded,
+            false,
+            &mut log,
+            &mut errors,
+        );
         assert!(
             errors.is_empty(),
             "a .blg from an earlier build blamed a run where TeX never started: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn a_bibtex_error_points_at_the_bib_line_and_only_fails_a_latexmk_build() {
+    let blg = concat!(
+        "This is BibTeX, Version 0.99d (TeX Live 2025)\n",
+        "Database file #1: refs.bib\n",
+        "Repeated entry---line 2 of file refs.bib\n",
+        " : @article{knuth84,\n",
+        "I'm skipping whatever remains of this entry\n",
+    );
+    for (engine, kind) in [(Engine::Tectonic, "warning"), (Engine::Latexmk, "error")] {
+        let project = TempDir::new().unwrap();
+        let workspace = tex_project(project.path(), "main.tex", engine, None);
+        std::fs::write(project.path().join("refs.bib"), "@article{knuth84,\n").unwrap();
+        let build = workspace.prepare_build().unwrap();
+        let out = TempDir::new().unwrap();
+        std::fs::write(out.path().join(format!("{ENTRY_STEM}.blg")), blg).unwrap();
+        let read = format!("(main.tex ({ENTRY_STEM}.bbl))\n");
+
+        let (mut log, mut errors) = (read.clone(), Vec::new());
+        let rows = apply_tex_output_notes(
+            &build,
+            out.path(),
+            &BuildBefore::default(),
+            true,
+            true,
+            &mut log,
+            &mut errors,
+        );
+        assert_eq!(errors.len(), 1, "{engine:?}");
+        assert_eq!(
+            (
+                errors[0].kind.as_str(),
+                errors[0].file.as_deref(),
+                errors[0].line,
+                errors[0].code.as_deref()
+            ),
+            (
+                kind,
+                Some("refs.bib"),
+                Some(2),
+                Some("tex.bibtex_entry_skipped")
+            ),
+            "{engine:?}"
+        );
+        assert_eq!(rows.len(), 1, "{engine:?}");
+        assert_eq!(
+            (rows[0].file.as_deref(), rows[0].line),
+            (Some("refs.bib"), Some(2))
+        );
+
+        let (mut log, mut errors) = (read, Vec::new());
+        let rows = apply_tex_output_notes(
+            &build,
+            out.path(),
+            &BuildBefore::default(),
+            true,
+            false,
+            &mut log,
+            &mut errors,
+        );
+        assert!(
+            errors.is_empty() && rows.is_empty(),
+            "a .blg from an earlier build was read for a run where TeX never started"
         );
     }
 }

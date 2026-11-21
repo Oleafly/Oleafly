@@ -5,8 +5,6 @@ export * from "./tikz-parser";
 export * from "./figure";
 export * from "./compile-log/types";
 export * from "./compile-log/latex-log";
-export * from "./compile-log/bibtex-log";
-export * from "./compile-log/biber-log";
 export * from "./import-compat";
 export * from "./outline-title";
 export * from "./tex-text";
