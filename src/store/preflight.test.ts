@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   extractForPreflight: vi.fn(),
   isCompileCheckpointCurrent: vi.fn(() => false),
   logError: vi.fn(),
+  logWarning: vi.fn(),
   report: {
     findings: [],
     scores: { ats: 100, compile: 100, a11y: 100, refs: 100, submission: 100, privacy: 100 },
@@ -34,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   },
   runPreflight: vi.fn(),
   projectFileSizes: vi.fn(),
+  readProjectSourcesBatch: vi.fn(),
 }));
 
 vi.mock("@oleafly/preflight", async (importOriginal) => {
@@ -57,11 +59,11 @@ vi.mock("@/store/compile", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: mocks.logWarning }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/tauri")>();
-  return { ...actual, projectFileSizes: mocks.projectFileSizes };
+  return { ...actual, projectFileSizes: mocks.projectFileSizes, readProjectSourcesBatch: mocks.readProjectSourcesBatch };
 });
 
 import { preflightEngineFor, usePreflightStore } from "./preflight";
@@ -152,8 +154,10 @@ beforeEach(() => {
   mocks.extractForPreflight.mockReset();
   mocks.isCompileCheckpointCurrent.mockReset().mockReturnValue(false);
   mocks.logError.mockClear();
+  mocks.logWarning.mockClear();
   mocks.runPreflight.mockReset().mockReturnValue(mocks.report);
   mocks.projectFileSizes.mockReset().mockResolvedValue({});
+  mocks.readProjectSourcesBatch.mockReset().mockResolvedValue({ files: [], unchanged: [], unreadable: [], truncated: false });
 });
 
 const TYPST_ENGINE = {
@@ -273,6 +277,7 @@ describe("preflight store", () => {
       refs: false,
       submission: true,
       privacy: false,
+      writing: true,
     };
     const store = usePreflightStore.getState();
     store.setRan(flags);
@@ -360,6 +365,47 @@ describe("preflight store", () => {
       running: false,
       error: null,
     });
+  });
+
+  it("loads a reviews file the index does not hold so the writing check can read it", async () => {
+    seedProject();
+    const { tree } = useFilesStore.getState();
+    useFilesStore.setState({ tree: [...tree, { path: "notes/reviews.txt", is_dir: false }, { path: "reviews.md", is_dir: false }] });
+    useIndexStore.setState({ texts: { ...useIndexStore.getState().texts, "reviews.md": "1. Fig. 1" } });
+    mocks.readProjectSourcesBatch.mockResolvedValue({
+      files: [{ path: "notes/reviews.txt", hash: "h", text: "1. Table 2 is small." }],
+      unchanged: [],
+      unreadable: [],
+      truncated: false,
+    });
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.readProjectSourcesBatch).toHaveBeenCalledOnce();
+    expect(mocks.readProjectSourcesBatch.mock.calls[0][1]).toMatchObject({ paths: ["notes/reviews.txt"] });
+    const files = mocks.runPreflight.mock.calls[0][0].project.files;
+    expect(files).toEqual(expect.arrayContaining([
+      { path: "notes/reviews.txt", content: "1. Table 2 is small." },
+      { path: "reviews.md", content: "1. Fig. 1" },
+    ]));
+  });
+
+  it("logs a reviews file it cannot read and still runs", async () => {
+    seedProject();
+    const { tree } = useFilesStore.getState();
+    useFilesStore.setState({ tree: [...tree, { path: "reviews.txt", is_dir: false }] });
+    mocks.readProjectSourcesBatch.mockResolvedValue({
+      files: [],
+      unchanged: [],
+      unreadable: [{ path: "reviews.txt", message: "denied" }],
+      truncated: false,
+    });
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.logWarning).toHaveBeenCalledWith("preflight", "could not read reviews.txt");
+    expect(mocks.runPreflight).toHaveBeenCalledOnce();
+    expect(usePreflightStore.getState().error).toBeNull();
   });
 
   it("keeps LaTeX, Typst and Markdown labels apart", async () => {

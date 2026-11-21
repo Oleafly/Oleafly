@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Mycket stor bild: {{file}}",
       "detail": "Bilden är större än {{limit}}. Stora bilder gör kompileringen långsammare och PDF:en onödigt stor. Vissa publiceringsforum begränsar också uppladdningsstorleken. Komprimera den, eller exportera den i den storlek den skrivs ut i."
+    },
+    "writing-space-before-paren": {
+      "title": "Lägg till ett mellanslag före parentesen",
+      "detail": "Sätt ett mellanslag mellan ett ord och dess inledande parentes: ”neural network (CNN)”, inte ”neural network(CNN)”."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Ta bort mellanslaget före skiljetecknet",
+      "detail": "Punkt, komma, kolon eller frågetecken står direkt efter ordet, utan mellanslag emellan."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Använd ett hårt mellanslag före hänvisningen",
+      "detail": "Skriv problem~\\cite{key} eller Figure~\\ref{fig:plot}. Tilden håller kvar citeringen eller numret på samma rad som ordet före."
+    },
+    "writing-straight-quotes": {
+      "title": "Använd LaTeX-citattecken",
+      "detail": "LaTeX skriver ut ett rakt \" som ett avslutande citattecken. Skriv ``quoted'' så att det inledande tecknet vänder åt rätt håll."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Citering i sammanfattningen",
+      "detail": "Sammanfattningar läses ofta för sig, där ett citeringsnummer inte säger något. Nämn verket med ord eller flytta citeringen till inledningen."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Skriv ut ordet i början av en mening",
+      "detail": "En mening bör inte börja med en förkortning. Skriv {{word}} i stället för {{abbreviation}} här och behåll den korta formen inne i meningar."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Sätt skiljetecken efter ekvationen",
+      "detail": "En ekvation på egen rad är en del av meningen runt den. Avsluta den med ett kommatecken när meningen fortsätter eller en punkt när den slutar."
+    },
+    "writing-table-caption-below": {
+      "title": "Placera bildtexten ovanför tabellen",
+      "detail": "De flesta konferenser och tidskrifter vill ha tabellens bildtext ovanför tabellen och figurens bildtext under figuren."
+    },
+    "writing-figure-caption-above": {
+      "title": "Placera bildtexten under figuren",
+      "detail": "De flesta konferenser och tidskrifter vill ha figurens bildtext under figuren och tabellens bildtext ovanför tabellen."
+    },
+    "writing-macro-available": {
+      "title": "Använd makrot du har definierat",
+      "detail": "”{{text}}” har ett makro, {{macro}}. Med makrot blir namnet detsamma överallt och du kan ändra det på ett ställe."
+    },
+    "writing-table-abbreviation": {
+      "title": "Skriv ut Table i sin helhet",
+      "detail": "Den här stilen skriver ut Table i sin helhet, till exempel Table~\\ref{tab:results}, och förkortar bara Fig., Eq. och Sec. inne i en mening."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Numrera ekvationen",
+      "detail": "Den här stilen numrerar varje ekvation på egen rad så att granskare kan hänvisa till den."
+    },
+    "writing-float-placement": {
+      "title": "Placera flytobjektet överst på sidan",
+      "detail": "Den här stilen lägger figurer och tabeller överst på en sida. Använd [t] i stället för [h]."
+    },
+    "writing-custom": {
+      "title": "Projektregel: {{find}}",
+      "detail": "Det här projektet skriver ”{{replace}}” i stället för ”{{find}}”.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Det här projektets stilregler flaggar ”{{find}}”."
+    },
+    "writing-results-best": {
+      "title": "Det fetmarkerade värdet är inte det bästa",
+      "titleSecond": "Det understrukna värdet är inte det näst bästa",
+      "detail": "{{value}} är fetmarkerat, men {{best}} är det bästa värdet i den här kolumnen. Här är högre bättre.",
+      "detailLower": "{{value}} är fetmarkerat, men {{best}} är det bästa värdet i den här kolumnen. Här är lägre bättre.",
+      "detailSecond": "{{value}} är understruket, men {{best}} är det näst bästa värdet i den här kolumnen. Här är högre bättre.",
+      "detailSecondLower": "{{value}} är understruket, men {{best}} är det näst bästa värdet i den här kolumnen. Här är lägre bättre."
+    },
+    "writing-open-promise": {
+      "title": "Löfte utan hänvisning",
+      "detail": "”{{sentence}}” Den här meningen lovar något eller pekar någon annanstans, men ingenting i den leder dit. Lägg till en \\ref till den del som infriar löftet eller en \\url till publicerad kod.",
+      "titleRebuttal": "Löfte från bemötandet att infria",
+      "detailRebuttal": "Du lovade det här i bemötandet: ”{{sentence}}” Gör ändringen i den slutgiltiga versionen och lägg sedan till en \\ref till den här, eller ignorera den här anteckningen."
+    },
+    "writing-review-point": {
+      "title": "Granskarens punkt {{n}}",
+      "detail": "”{{point}}”",
+      "titleUnplaced": "Granskarens punkt {{n}}: ingen matchande plats hittades",
+      "detailUnplaced": "”{{point}}” Ingen tabell, figur, ekvation eller något avsnitt som nämns här matchar artikeln.",
+      "detailLines": "”{{point}}” Radnumren hänvisar till granskningskopian, så hitta stället själv."
+    },
+    "writing-name-variants": {
+      "title": "Samma namn, olika stavningar",
+      "detail": "Det här namnet stavas på mer än ett sätt i projektet: {{spellings}}. Använd samma stavning överallt. Ett makro håller den enhetlig."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol definierad två gånger",
+      "detail": "{{symbol}} betyder ”{{first}}” i {{file}}. Här betyder den ”{{second}}”. Ge varje betydelse en egen symbol."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Referenser",
     "compile": "Kompilering",
     "submission": "Inlämning",
-    "privacy": "Integritet"
+    "privacy": "Integritet",
+    "writing": "Skrivande"
   },
   "severity": {
     "error": "Fel",
@@ -499,7 +587,8 @@
     "a11y": "Tillgäng.",
     "refs": "Ref.",
     "submission": "Inlämn.",
-    "privacy": "Integr."
+    "privacy": "Integr.",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Innan du delar källkod eller lämnar in anonymt",
       "info": "Hemligheter, utkastnoteringar, känsliga filer och identitetsläckor vid blindgranskning.",
       "detail": "Hittar inloggningsuppgifter, privata nycklar, interna kommentarer, utkastmarkeringar, känsliga projektfiler, författarmetadata och identitetsläckor i inlämningar för anonym granskning."
+    },
+    "writing": {
+      "label": "Skrivstil",
+      "who": "För artiklar, avhandlingar och rapporter",
+      "info": "Mellanslag, citattecken, hänvisningar, skiljetecken vid ekvationer och projektets egna regler.",
+      "detail": "Kontrollerar LaTeX-källkoden mot vanliga konventioner för artiklar och mot reglerna som sparats i det här projektet. De flesta fynd kommer med en åtgärd med ett klick."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Kompilerad utdata",
     "fixAll_one": "Åtgärda {{count}} med AI",
     "fixAll_other": "Åtgärda alla {{count}} med AI",
-    "noProblems": "Inga problem hittades."
+    "noProblems": "Inga problem hittades.",
+    "writing": {
+      "profile": "Skrivstil",
+      "underlines": "Visa stilunderstrykningar i redigeraren",
+      "underlinesHint": "Stäng av det här för att hålla redigeraren ren. Förkontrollen listar fortfarande fynden när du kör den här kontrollen.",
+      "rules": "Projektregler",
+      "noRules": "Inga projektregler än. Markera text i redigeraren, högerklicka och välj Skapa en stilregel.",
+      "addRule": "Lägg till en regel",
+      "removeRule": "Ta bort regeln för {{find}}",
+      "flagOnly": "bara flagga",
+      "clearIgnored_one": "Visa {{count}} ignorerat fynd igen",
+      "clearIgnored_other": "Visa {{count}} ignorerade fynd igen",
+      "fixAll_one": "Åtgärda {{count}} fynd",
+      "fixAll_other": "Åtgärda alla {{count}} fynd",
+      "fixed_one": "Åtgärdade {{count}} fynd.",
+      "fixed_other": "Åtgärdade {{count}} fynd.",
+      "skipped_one": "{{count}} åtgärd berörde samma text som en annan. Kör kontrollen igen för att åtgärda den.",
+      "skipped_other": "{{count}} åtgärder berörde samma text som andra. Kör kontrollen igen för att åtgärda dem.",
+      "fixFailed": "Vissa filer ändrades efter att kontrollen kördes. Kör den igen och åtgärda sedan.",
+      "saveFailed": "Skrivinställningarna kunde inte sparas."
+    }
   },
   "finding": {
     "review": "Granska",
@@ -657,7 +772,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Kräver din bedömning. Inget verktyg kan avgöra det här utifrån filen ensam.",
     "jumpToSource": "Hoppa till källkoden",
-    "fixWithAi": "Åtgärda med AI"
+    "fixWithAi": "Åtgärda med AI",
+    "applyFix": "Åtgärda",
+    "ignore": "Ignorera"
   },
   "score": {
     "notEvaluated": "{{label}} är inte bedömd",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} taggar inte PDF:er för skärmläsare. Det gör Typst 0.14 och senare.",
     "none": "Typst {{version}} kan inte skriva PDF-standarder. Välj Typst 0.12 eller senare i kompileringsmenyn.",
     "uaNote": "PDF/UA-1 kräver en dokumenttitel och alternativ text för varje bild."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Identifiera från dokumentet",
+      "description": "Använder reglerna i CVPR-stil när projektet laddar cvpr.sty eller en närstående stil, och annars de allmänna reglerna."
+    },
+    "general": {
+      "label": "Allmän artikelstil",
+      "description": "Mellanslag, citattecken, hänvisningar, skiljetecken vid ekvationer, bildtexter och makron."
+    },
+    "cvpr": {
+      "label": "CVPR-stil",
+      "description": "De allmänna reglerna, plus Table utskrivet, numrerade ekvationer och flytobjekt överst på sidan."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Lägg till ett mellanslag",
+    "removeSpace": "Ta bort mellanslaget",
+    "useTilde": "Använd ~",
+    "useTexQuotes": "Använd LaTeX-citattecken",
+    "spellOut": "Skriv {{word}}",
+    "addComma": "Lägg till ett kommatecken",
+    "addPeriod": "Lägg till en punkt",
+    "useMacro": "Använd {{macro}}",
+    "numberEquation": "Numrera den",
+    "placeTop": "Använd [t]",
+    "replaceWith": "Skriv {{text}}",
+    "boldBest": "Fetmarkera {{value}} i stället",
+    "underlineSecond": "Understryk {{value}} i stället",
+    "makeMacro": "Skapa ett makro"
+  },
+  "styleRule": {
+    "title": "Skapa en stilregel",
+    "description": "Regeln kontrollerar varje LaTeX-fil i det här projektet medan du skriver och följer med projektet i project.json.",
+    "find": "Text att flagga",
+    "replace": "Skriv det här i stället",
+    "replaceHint": "Lämna tomt för att flagga texten utan att erbjuda en åtgärd.",
+    "note": "Anteckning till medförfattare (valfritt)",
+    "wholeWord": "Endast hela ord",
+    "matchCase": "Matcha versaler och gemener",
+    "noMatches": "Inga träffar i det här projektet än.",
+    "matches_one": "Träffar {{count}} ställe i det här projektet.",
+    "matches_other": "Träffar {{count}} ställen i det här projektet.",
+    "save": "Spara regel",
+    "cancel": "Avbryt",
+    "saved": "Regeln sparades. Den kontrollerar nu varje fil i det här projektet."
   }
 }

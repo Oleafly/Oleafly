@@ -461,6 +461,93 @@
     "submission-large-image": {
       "title": "影像過大：{{file}}",
       "detail": "這張影像超過 {{limit}}。大型影像會拖慢編譯並讓 PDF 變得臃腫。有些期刊或會議也會限制上傳大小。請壓縮影像，或以實際列印尺寸匯出。"
+    },
+    "writing-space-before-paren": {
+      "title": "在括號前加上空格",
+      "detail": "單字與其左括號之間要有空格：寫「neural network (CNN)」，而不是「neural network(CNN)」。"
+    },
+    "writing-space-before-punctuation": {
+      "title": "移除標點前的空格",
+      "detail": "句號、逗號、冒號和問號應緊接在單字之後，中間不留空格。"
+    },
+    "writing-nonbreaking-reference": {
+      "title": "在引用前使用不換行空格",
+      "detail": "寫成 problem~\\cite{key} 或 Figure~\\ref{fig:plot}。波浪號（~）可讓引用或編號與前面的單字維持在同一行。"
+    },
+    "writing-straight-quotes": {
+      "title": "使用 LaTeX 引號",
+      "detail": "LaTeX 會把直引號 \" 排成右引號。請寫成 ``quoted''，讓左引號朝向正確。"
+    },
+    "writing-cite-in-abstract": {
+      "title": "摘要中有引用",
+      "detail": "摘要常被單獨閱讀，此時引用編號沒有任何意義。請用文字寫明所指的作品，或把引用移到前言。"
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "句首請寫出全名",
+      "detail": "句子不應以縮寫開頭。此處請寫 {{word}}，而不是 {{abbreviation}}，縮寫形式只在句中使用。"
+    },
+    "writing-display-math-punctuation": {
+      "title": "為公式加上標點",
+      "detail": "獨立公式是前後句子的一部分。句子還沒結束時以逗號收尾，句子結束時以句號收尾。"
+    },
+    "writing-table-caption-below": {
+      "title": "將表格說明放在表格上方",
+      "detail": "大多數期刊與研討會要求表格說明放在表格上方，圖片圖說放在圖片下方。"
+    },
+    "writing-figure-caption-above": {
+      "title": "將圖片圖說放在圖片下方",
+      "detail": "大多數期刊與研討會要求圖片圖說放在圖片下方，表格說明放在表格上方。"
+    },
+    "writing-macro-available": {
+      "title": "使用你定義的巨集",
+      "detail": "「{{text}}」已有巨集 {{macro}}。使用它可以讓名稱處處一致，也能只在一個地方修改。"
+    },
+    "writing-table-abbreviation": {
+      "title": "完整寫出 Table",
+      "detail": "這個樣式要求完整寫出 Table，例如 Table~\\ref{tab:results}，句中只縮寫 Fig.、Eq. 和 Sec.。"
+    },
+    "writing-unnumbered-equation": {
+      "title": "為公式編號",
+      "detail": "這個樣式會為每個獨立公式編號，方便審查者引用。"
+    },
+    "writing-float-placement": {
+      "title": "將浮動體放在頁面頂端",
+      "detail": "這個樣式把圖片和表格放在頁面頂端。請使用 [t]，不要使用 [h]。"
+    },
+    "writing-custom": {
+      "title": "專案規則：{{find}}",
+      "detail": "這個專案寫作「{{replace}}」，而不是「{{find}}」。",
+      "detailNote": "{{note}}",
+      "detailFlag": "這個專案的樣式規則會標示「{{find}}」。"
+    },
+    "writing-results-best": {
+      "title": "加粗的值不是最佳值",
+      "titleSecond": "加底線的值不是次佳值",
+      "detail": "{{value}} 已加粗，但這一欄的最佳值是 {{best}}。此處越高越好。",
+      "detailLower": "{{value}} 已加粗，但這一欄的最佳值是 {{best}}。此處越低越好。",
+      "detailSecond": "{{value}} 已加底線，但這一欄的次佳值是 {{best}}。此處越高越好。",
+      "detailSecondLower": "{{value}} 已加底線，但這一欄的次佳值是 {{best}}。此處越低越好。"
+    },
+    "writing-open-promise": {
+      "title": "沒有參照的承諾",
+      "detail": "「{{sentence}}」 這句話做出了承諾或指向別處，但句中沒有連結到那裡。請為兌現承諾的部分加上 \\ref，或為已公開的程式碼加上 \\url。",
+      "titleRebuttal": "待兌現的回覆承諾",
+      "detailRebuttal": "你在回覆審查意見時做出了這項承諾：「{{sentence}}」 請在定稿中完成修改，然後在此處加上指向它的 \\ref，或忽略這則提示。"
+    },
+    "writing-review-point": {
+      "title": "審查意見 {{n}}",
+      "detail": "「{{point}}」",
+      "titleUnplaced": "審查意見 {{n}}：找不到對應的位置",
+      "detailUnplaced": "「{{point}}」 這裡提到的表格、圖片、公式或章節，沒有與論文相符的。",
+      "detailLines": "「{{point}}」 行號對應的是審查用副本，請手動尋找這個位置。"
+    },
+    "writing-name-variants": {
+      "title": "名稱相同，寫法不同",
+      "detail": "這個名稱在專案中有多種寫法：{{spellings}}。請在各處統一使用一種寫法。使用巨集可以保持一致。"
+    },
+    "writing-symbol-redefined": {
+      "title": "符號被定義了兩次",
+      "detail": "{{symbol}} 在 {{file}} 中表示「{{first}}」，在此處表示「{{second}}」。請為每種意義使用各自的符號。"
     }
   },
   "lens": {
@@ -470,7 +557,8 @@
     "refs": "參考文獻",
     "compile": "編譯",
     "submission": "投稿",
-    "privacy": "隱私"
+    "privacy": "隱私",
+    "writing": "寫作"
   },
   "severity": {
     "error": "錯誤",
@@ -483,7 +571,8 @@
     "a11y": "無障礙",
     "refs": "參考",
     "submission": "投稿",
-    "privacy": "隱私"
+    "privacy": "隱私",
+    "writing": "風格"
   },
   "checks": {
     "compile": {
@@ -521,6 +610,12 @@
       "who": "適用於分享原始碼或匿名投稿之前",
       "info": "密鑰、草稿註記、機敏檔案，以及匿名審查時的身分洩漏。",
       "detail": "找出匿名審查投稿中的憑證、私密金鑰、內部註解、草稿標記、機敏專案檔案、作者中繼資料與身分洩漏。"
+    },
+    "writing": {
+      "label": "寫作風格",
+      "who": "適用於論文、學位論文與報告",
+      "info": "空格、引號、參照、公式標點，以及專案自己的規則。",
+      "detail": "對照常見的論文慣例與這個專案中儲存的規則，檢查 LaTeX 原始碼。多數檢查結果都能一鍵修正。"
     }
   },
   "profiles": {
@@ -627,7 +722,23 @@
     "groupSource": "專案與原始碼",
     "groupOutput": "編譯輸出",
     "fixAll_other": "用 AI 修正全部 {{count}} 項",
-    "noProblems": "沒有發現問題。"
+    "noProblems": "沒有發現問題。",
+    "writing": {
+      "profile": "寫作風格",
+      "underlines": "在編輯器中顯示風格底線",
+      "underlinesHint": "關閉後編輯器會更清爽。執行這項檢查時，預檢仍會列出檢查結果。",
+      "rules": "專案規則",
+      "noRules": "還沒有專案規則。在編輯器中選取文字，按右鍵，然後選擇「建立樣式規則」。",
+      "addRule": "加入規則",
+      "removeRule": "移除 {{find}} 的規則",
+      "flagOnly": "僅標示",
+      "clearIgnored_other": "重新顯示 {{count}} 項已忽略的檢查結果",
+      "fixAll_other": "修正全部 {{count}} 項檢查結果",
+      "fixed_other": "已修正 {{count}} 項檢查結果。",
+      "skipped_other": "有 {{count}} 項修正與其他修正涉及同一段文字。請重新執行檢查後再修正。",
+      "fixFailed": "檢查執行後，部分檔案已變更。請重新執行檢查，然後再修正。",
+      "saveFailed": "無法儲存寫作設定。"
+    }
   },
   "finding": {
     "review": "待審閱",
@@ -635,7 +746,9 @@
     "page": "第 {{page}} 頁",
     "needsJudgment": "需要你自行判斷。沒有工具能單憑檔案判定這一項。",
     "jumpToSource": "跳至原始碼",
-    "fixWithAi": "用 AI 修正"
+    "fixWithAi": "用 AI 修正",
+    "applyFix": "修正",
+    "ignore": "忽略"
   },
   "score": {
     "notEvaluated": "未評估 {{label}}",
@@ -688,5 +801,50 @@
     "untagged": "Typst {{version}} 不會為 PDF 加上供螢幕閱讀器使用的標記。Typst 0.14 以上版本才會加上。",
     "none": "Typst {{version}} 無法產生符合 PDF 標準的檔案。請在編譯選單中選擇 Typst 0.12 以上版本。",
     "uaNote": "PDF/UA-1 需要文件標題，以及每張影像的替代文字。"
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "依文件自動偵測",
+      "description": "當專案載入 cvpr.sty 或同類樣式檔案時使用 CVPR 風格規則，否則使用通用規則。"
+    },
+    "general": {
+      "label": "通用論文風格",
+      "description": "空格、引號、參照、公式標點、圖說與巨集。"
+    },
+    "cvpr": {
+      "label": "CVPR 風格",
+      "description": "在通用規則之外，還要求完整寫出 Table、為公式編號，並將浮動體放在頁面頂端。"
+    }
+  },
+  "fixes": {
+    "insertSpace": "加上空格",
+    "removeSpace": "移除空格",
+    "useTilde": "使用 ~",
+    "useTexQuotes": "使用 LaTeX 引號",
+    "spellOut": "寫成 {{word}}",
+    "addComma": "加上逗號",
+    "addPeriod": "加上句號",
+    "useMacro": "使用 {{macro}}",
+    "numberEquation": "為其編號",
+    "placeTop": "使用 [t]",
+    "replaceWith": "寫成 {{text}}",
+    "boldBest": "改為加粗 {{value}}",
+    "underlineSecond": "改為替 {{value}} 加底線",
+    "makeMacro": "建立巨集"
+  },
+  "styleRule": {
+    "title": "建立樣式規則",
+    "description": "這條規則會在你寫作時檢查專案中的每個 LaTeX 檔案，並透過 project.json 隨專案一起保存。",
+    "find": "要標示的文字",
+    "replace": "改寫為",
+    "replaceHint": "留空則只標示文字，不提供修正。",
+    "note": "給共同作者的備註（選填）",
+    "wholeWord": "僅比對完整單字",
+    "matchCase": "區分大小寫",
+    "noMatches": "這個專案中暫時沒有相符的項目。",
+    "matches_other": "在這個專案中符合 {{count}} 處。",
+    "save": "儲存規則",
+    "cancel": "取消",
+    "saved": "規則已儲存。現在它會檢查這個專案中的每個檔案。"
   }
 }

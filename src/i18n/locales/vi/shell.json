@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "Ghi nhanh",
       "keywords": "ghi nhanh ghi chú hộp thư đến hôm nay quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Bảng ký hiệu",
+      "keywords": "chèn ký hiệu định nghĩa bảng thuật ngữ toán",
+      "empty": "Không tìm thấy định nghĩa ký hiệu nào. Hãy định nghĩa ký hiệu trong văn bản bằng các cụm như “Gọi $x$ là đầu vào” hoặc “trong đó $x$ là đầu vào”."
+    },
+    "addChapterFromProject": {
+      "keywords": "luận văn chương bài báo nhập gộp sao chép dự án",
+      "label": "Thêm chương từ dự án khác"
     }
   },
   "community": {

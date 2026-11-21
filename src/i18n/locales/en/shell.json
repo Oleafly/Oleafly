@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Quick capture",
       "keywords": "quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notation table",
+      "keywords": "insert notation symbols definitions glossary math",
+      "empty": "No symbol definitions found. Define symbols in the text with phrases like \"Let $x$ be the input\" or \"where $x$ is the input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "thesis chapter paper import merge copy project",
+      "label": "Add chapter from another project"
     }
   },
   "community": {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Preflight has a Writing style check for LaTeX papers. It finds slips reviewers notice: a missing space before a parenthesis, a citation without `~`, straight quotes, a citation in the abstract, an equation with no closing punctuation, a table caption below its table, and a name typed out when you defined a macro for it. Most findings have a Fix button, and Fix all applies them at once. The same checks underline the source as you type, and a switch in the check turns the underlines off for a project.
+- Choose a writing style for the project in that check. CVPR-style adds Table written in full, numbered equations and floats at the top of the page, and Oleafly picks it by itself when the project loads cvpr.sty or a sibling style.
+- Select text, right-click and choose Make a style rule to add your own find-and-fix rule. Oleafly shows how many places it matches before you save it. Rules are saved in project.json, so your coauthors get them too.
+- The Writing style check also finds a bold value in a results table that isn't the best in its column, one name spelled several ways (its fix defines a macro and uses it everywhere), a symbol defined with two meanings, and promises like "see the supplementary material" with no reference behind them. Put the reviews in a reviews.md file and each point shows up at the table, figure, equation or section it mentions.
+- Table from file can bold the best value and underline the second best in each column, higher or lower is better per column. Keep linked to the data file now works for LaTeX tables too, and the editor offers to update the table when the data file changes.
+- The figure dialog has a Grid tab for LaTeX. Pick several images, set the columns, headers and row labels, and drag a zoom box on the first image to add an enlarged inset to every image. Editing a grid image in Visual mode opens the whole grid again.
+- The command palette has Notation table, which builds a table of the symbols you define in the text, and Add chapter from another project, which copies a paper into a thesis as a chapter with its figures, definitions and bibliography and renames macros and labels that clash.
+
 ## [0.4.13] - 2026-11-20
 
 If you use Oleafly for your research, a thesis or a course, add a line to [Who's using Oleafly?](https://github.com/Oleafly/Oleafly/discussions/502) with where you use it and what for.

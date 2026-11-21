@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
   delimiterOf,
+  emitLatexLinkedTable,
   emitLatexTable,
   emitTypstLinkedTable,
   emitTypstTable,
   escapeLatexCell,
   escapeTypstCell,
+  findLinkedLatexTables,
   inferAlignment,
+  linkedTableRows,
+  metricDirection,
+  metricRanks,
   parseDelimited,
   parseJsonTable,
+  parseMetricNumber,
+  relinkLatexTable,
   serializeCsv,
+  tableHighlights,
   typstDataName,
+  type LinkedLatexTable,
 } from "./table.ts";
 
 describe("parseDelimited", () => {
@@ -513,5 +522,166 @@ describe("emitTypstLinkedTable", () => {
 
   it("returns nothing for an empty table", () => {
     expect(emitTypstLinkedTable([], { header: true, source: csv })).toBe("");
+  });
+});
+
+describe("metricDirection", () => {
+  it.each([
+    ["PSNR$\\uparrow$", "higher"],
+    ["LPIPS \\downarrow", "lower"],
+    ["Time ↓", "lower"],
+    ["Score ↑", "higher"],
+    ["PSNR (dB)", "higher"],
+    ["Top-1 Acc. (%)", "higher"],
+    ["Top-1 Err. (%)", "lower"],
+    ["mAP@0.5", "higher"],
+    ["AP$_{50}$", "higher"],
+    ["R@10", "higher"],
+    ["NDCG@20", "higher"],
+    ["Hit Rate", "higher"],
+    ["FID", "lower"],
+    ["\\#Params (M)", "lower"],
+    ["GFLOPs", "lower"],
+    ["CD", "lower"],
+    ["Inference time (ms)", "lower"],
+    ["Method", null],
+    ["Year", null],
+    ["Saliency map", null],
+    ["cd", null],
+    ["PSNR / LPIPS", null],
+    ["Score ↑↓", null],
+  ])("reads %j as %j", (header, direction) => {
+    expect(metricDirection(header)).toBe(direction);
+  });
+});
+
+describe("parseMetricNumber", () => {
+  it.each([
+    ["30.12", 30.12],
+    ["\\textbf{30.1}", 30.1],
+    ["$\\mathbf{0.912}$", 0.912],
+    ["{\\bf 12.5}", 12.5],
+    ["\\underline{91.2\\%}", 91.2],
+    ["91.2%", 91.2],
+    ["1,234", 1234],
+    ["30.1 \\pm 0.2", 30.1],
+    ["$30.1_{\\pm 0.2}$", 30.1],
+    ["45.2 (+1.3)", 45.2],
+    ["12.3 ± 0.4", 12.3],
+    ["−0.5", -0.5],
+    ["\\textcolor{red}{30.1}", 30.1],
+    ["30.1$^*$", 30.1],
+    ["0.5\\,", 0.5],
+    ["-", null],
+    ["N/A", null],
+    ["11.2M", null],
+    ["ResNet-50", null],
+    ["0,95", null],
+    ["", null],
+  ])("reads %j as %j", (text, value) => {
+    expect(parseMetricNumber(text)).toBe(value);
+  });
+});
+
+describe("metricRanks", () => {
+  it("keeps ties together for the best and the second best", () => {
+    expect(metricRanks([30, null, 31, 31, 29, 30], "higher")).toEqual({ best: [2, 3], second: [0, 5] });
+    expect(metricRanks([0.2, 0.1, 0.3], "lower")).toEqual({ best: [1], second: [0] });
+  });
+
+  it("ranks nothing with fewer than two numbers", () => {
+    expect(metricRanks([null, 3, null], "higher")).toEqual({ best: [], second: [] });
+  });
+});
+
+const SCORES = [
+  ["Method", "PSNR", "LPIPS", "Notes"],
+  ["A", "30.1", "0.21", "x"],
+  ["B", "31.4", "0.25", "y"],
+  ["C", "29.0", "0.19", "z"],
+];
+const HIGHLIGHT = { directions: [null, "higher", "lower", null] as const, best: true, second: true };
+
+describe("tableHighlights", () => {
+  it("marks the best and second best body cells per column and skips the header", () => {
+    expect(tableHighlights(SCORES, { header: true, highlight: HIGHLIGHT })).toEqual([
+      [null, null, null, null],
+      [null, "second", "second", null],
+      [null, "best", null, null],
+      [null, null, "best", null],
+    ]);
+  });
+
+  it("marks only what is switched on", () => {
+    const marks = tableHighlights(SCORES, { header: true, highlight: { ...HIGHLIGHT, second: false } });
+    expect(marks.flat().filter(Boolean)).toEqual(["best", "best"]);
+    expect(tableHighlights(SCORES, { header: true }).flat().every((mark) => mark === null)).toBe(true);
+  });
+});
+
+describe("highlighted tables", () => {
+  it("bolds the best and underlines the second best in LaTeX after escaping", () => {
+    const latex = emitLatexTable([["Model", "Acc"], ["A_1", "90%"], ["B", "95%"], ["C", "80%"]], {
+      header: true,
+      highlight: { directions: [null, "higher"], best: true, second: true },
+    });
+    expect(latex).toContain("A\\_1 & \\underline{90\\%} \\\\");
+    expect(latex).toContain("B & \\textbf{95\\%} \\\\");
+    expect(latex).toContain("C & 80\\% \\\\");
+  });
+
+  it("uses strong and underline in Typst", () => {
+    const typst = emitTypstTable(SCORES, { header: true, highlight: HIGHLIGHT });
+    expect(typst).toContain("[B], [*31.4*], [0.25], [y],");
+    expect(typst).toContain("[A], [#underline[30.1]], [#underline[0.21]], [x],");
+  });
+});
+
+describe("linked LaTeX tables", () => {
+  const table: LinkedLatexTable = {
+    v: 1,
+    source: "data/résultats.csv",
+    hash: "0123456789abcdef",
+    options: { header: true, caption: "Runs", label: "tab:runs", format: "csv", highlight: { directions: [null, "higher"], best: true, second: false } },
+  };
+
+  it("writes a marker right after the table begin and reads it back", () => {
+    const latex = emitLatexLinkedTable([["Model", "Acc"], ["A", "1"], ["B", "2"]], table);
+    const lines = latex.split("\n");
+    expect(lines[0]).toBe("\\begin{table}[htbp]");
+    expect(lines[1]).toMatch(/^ {2}% oleafly-table-v1: [A-Za-z0-9_-]+$/);
+    expect(latex).toContain("B & \\textbf{2}");
+    const text = `Intro.\n${latex}\nMore.`;
+    const [match] = findLinkedLatexTables(text);
+    expect(match.table).toEqual(table);
+    expect(text.slice(match.from, match.to)).toBe(lines[1].trim());
+    expect(text.slice(match.tableFrom, match.tableTo)).toBe(latex);
+  });
+
+  it("ignores broken markers and markers outside a table", () => {
+    const latex = emitLatexLinkedTable([["A"], ["1"]], table);
+    const marker = latex.split("\n")[1];
+    expect(findLinkedLatexTables(`${marker}\n`)).toEqual([]);
+    expect(findLinkedLatexTables("\\begin{table}\n% oleafly-table-v1: bm90LWpzb24\n\\end{table}")).toEqual([]);
+    expect(findLinkedLatexTables(`\\begin{table}\n\\end{table}\n${marker}\n\\end{table}`)).toEqual([]);
+  });
+
+  it("rebuilds the table from new data and keeps the float line the author chose", () => {
+    const text = emitLatexLinkedTable([["Model", "Acc"], ["A", "1"]], table).replace("\\begin{table}[htbp]", "\\begin{table*}[t]");
+    const [match] = findLinkedLatexTables(text);
+    const edit = relinkLatexTable(match, linkedTableRows("Model,Acc\nA,1\nB,3\n", match.table.options), "fedcba9876543210");
+    expect(edit?.from).toBe(0);
+    expect(edit?.to).toBe(text.length);
+    expect(edit?.insert.startsWith("\\begin{table*}[t]\n  % oleafly-table-v1: ")).toBe(true);
+    expect(edit?.insert).toContain("B & \\textbf{3}");
+    const [updated] = findLinkedLatexTables(edit?.insert ?? "");
+    expect(updated.table.hash).toBe("fedcba9876543210");
+    expect(relinkLatexTable(match, [], "x")).toBeNull();
+  });
+
+  it("reads the data rows with the stored format", () => {
+    expect(linkedTableRows("a\tb\n1\t2\n", { format: "csv", delimiter: "\t" })).toEqual([["a", "b"], ["1", "2"]]);
+    expect(linkedTableRows('[{"a":1}]', { format: "json" })).toEqual([["a"], ["1"]]);
+    expect(linkedTableRows("not json", { format: "json" })).toEqual([]);
   });
 });

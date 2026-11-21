@@ -1,26 +1,33 @@
 import type { FileEntry } from "@oleafly/backend-port";
 import {
   delimiterOf,
+  emitLatexLinkedTable,
   emitLatexTable,
   emitTypstLinkedTable,
   emitTypstTable,
   inferAlignment,
   isValidLatexLabel,
+  linkedTableRows,
+  metricDirection,
   parseDelimited,
   parseJsonTable,
+  parseMetricNumber,
+  relinkLatexTable,
   serializeCsv,
   type JsonTable,
-  type LinkedTableOptions,
+  type LinkedLatexTableMatch,
   type LinkedTableSource,
+  type MetricDirection,
   type TableOptions,
 } from "@oleafly/conversion-registry/table";
 import { latexGraphicsPath, uniqueProjectPath } from "@/components/editor/figure-import";
 import { i18n } from "@/i18n";
 import { bytesToBase64 } from "@/lib/base64";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
+import { diskHash } from "@/lib/disk-hash";
 import { readPickedFileBase64, registerPickedFileForE2E, writeProjectBytes } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { useFilesStore } from "@/store/files";
 
 export type TableTarget = "latex" | "typst";
@@ -158,8 +165,48 @@ export function planLinkedTable(
   return { dataPath, content, source: linkedSource(file, path, tabbed) };
 }
 
-export function emitLinkedTable(rows: string[][], options: LinkedTableOptions): string {
-  return emitTypstLinkedTable(rows, options);
+export function emitLinkedTable(rows: string[][], options: TableImportOptions, plan: LinkedTablePlan): string {
+  const { target, ...table } = options;
+  if (target === "typst") return emitTypstLinkedTable(rows, { ...table, source: plan.source });
+  const { format, delimiter } = plan.source;
+  return emitLatexLinkedTable(rows, {
+    v: 1,
+    source: plan.dataPath,
+    hash: diskHash(plan.content),
+    options: { ...table, format, ...(delimiter ? { delimiter } : {}) },
+  });
+}
+
+export function relinkedTable(match: LinkedLatexTableMatch, data: string): { from: number; to: number; insert: string } | null {
+  try {
+    return relinkLatexTable(match, validateTableRows(linkedTableRows(data, match.table.options)), diskHash(data));
+  } catch (error) {
+    void logWarning("rebuild a linked table", error);
+    return null;
+  }
+}
+
+export interface ResultColumn {
+  column: number;
+  title: string;
+  direction: MetricDirection | null;
+}
+
+export function resultColumns(rows: string[][], header: boolean): ResultColumn[] {
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const body = header ? rows.slice(1) : rows;
+  const columns: ResultColumn[] = [];
+  for (let column = 0; column < width; column++) {
+    let numbers = 0;
+    for (const row of body) {
+      if (parseMetricNumber(row[column] ?? "") !== null) numbers += 1;
+      if (numbers > 1) break;
+    }
+    if (numbers < 2) continue;
+    const title = header ? (rows[0]?.[column] ?? "").trim() : "";
+    columns.push({ column, title, direction: metricDirection(title) });
+  }
+  return columns;
 }
 
 export async function writeLinkedTableData(projectId: string, plan: LinkedTablePlan): Promise<void> {

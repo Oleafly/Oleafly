@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Çok büyük görsel: {{file}}",
       "detail": "Bu görsel {{limit}} boyutunu aşıyor. Büyük görseller derlemeyi yavaşlatır ve PDF'i şişirir. Bazı etkinlikler yükleme boyutunu da sınırlar. Görseli sıkıştırın veya basılacağı boyutta dışa aktarın."
+    },
+    "writing-space-before-paren": {
+      "title": "Parantezden önce boşluk ekleyin",
+      "detail": "Bir sözcük ile açılış parantezi arasına boşluk koyun: “sinir ağı (CNN)”, “sinir ağı(CNN)” değil."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Noktalama işaretinden önceki boşluğu kaldırın",
+      "detail": "Nokta, virgül, iki nokta veya soru işareti sözcüğün hemen ardına gelir, arada boşluk olmaz."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Başvurudan önce bölünmeyen boşluk kullanın",
+      "detail": "problem~\\cite{key} veya Şekil~\\ref{fig:plot} yazın. Tilde işareti, atfı veya numarayı önceki sözcükle aynı satırda tutar."
+    },
+    "writing-straight-quotes": {
+      "title": "LaTeX tırnakları kullanın",
+      "detail": "LaTeX düz \" işaretini kapanış tırnağı olarak basar. Açılış tırnağı doğru yöne baksın diye ``alıntı'' yazın."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Özette atıf",
+      "detail": "Özetler çoğu zaman tek başına okunur ve orada atıf numarası bir şey ifade etmez. Çalışmayı sözcüklerle anın ya da atfı girişe taşıyın."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Cümle başında sözcüğü açık yazın",
+      "detail": "Bir cümle kısaltmayla başlamamalıdır. Burada {{abbreviation}} yerine {{word}} yazın, kısa biçimi cümle içinde kullanın."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Denkleme noktalama ekleyin",
+      "detail": "Ayrı satırdaki denklem, çevresindeki cümlenin parçasıdır. Cümle sürüyorsa virgülle, bitiyorsa noktayla bitirin."
+    },
+    "writing-table-caption-below": {
+      "title": "Tablo başlığını tablonun üstüne koyun",
+      "detail": "Çoğu konferans ve dergi tablo başlıklarını tablonun üstünde, şekil başlıklarını şeklin altında bekler."
+    },
+    "writing-figure-caption-above": {
+      "title": "Şekil başlığını şeklin altına koyun",
+      "detail": "Çoğu konferans ve dergi şekil başlıklarını şeklin altında, tablo başlıklarını tablonun üstünde bekler."
+    },
+    "writing-macro-available": {
+      "title": "Tanımladığınız makroyu kullanın",
+      "detail": "“{{text}}” için bir makro var: {{macro}}. Makroyu kullanmak adı her yerde aynı tutar ve tek yerden değiştirmenizi sağlar."
+    },
+    "writing-table-abbreviation": {
+      "title": "Table sözcüğünü tam yazın",
+      "detail": "Bu stil Table sözcüğünü tam yazar, örneğin Table~\\ref{tab:results}, ve cümle içinde yalnızca Fig., Eq. ve Sec. kısaltmalarını kullanır."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Denklemi numaralandırın",
+      "detail": "Bu stil ayrı satırdaki her denklemi numaralandırır, böylece hakemler ona başvurabilir."
+    },
+    "writing-float-placement": {
+      "title": "Kayan ögeyi sayfanın üstüne yerleştirin",
+      "detail": "Bu stil şekilleri ve tabloları sayfanın üstüne koyar. [h] yerine [t] kullanın."
+    },
+    "writing-custom": {
+      "title": "Proje kuralı: {{find}}",
+      "detail": "Bu proje “{{find}}” yerine “{{replace}}” yazar.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Bu projenin stil kuralları “{{find}}” ifadesini işaretler."
+    },
+    "writing-results-best": {
+      "title": "Kalın değer en iyisi değil",
+      "titleSecond": "Altı çizili değer ikinci en iyisi değil",
+      "detail": "{{value}} kalın yazılmış, ancak bu sütundaki en iyi değer {{best}}. Burada yüksek olan daha iyidir.",
+      "detailLower": "{{value}} kalın yazılmış, ancak bu sütundaki en iyi değer {{best}}. Burada düşük olan daha iyidir.",
+      "detailSecond": "{{value}} altı çizili, ancak bu sütundaki ikinci en iyi değer {{best}}. Burada yüksek olan daha iyidir.",
+      "detailSecondLower": "{{value}} altı çizili, ancak bu sütundaki ikinci en iyi değer {{best}}. Burada düşük olan daha iyidir."
+    },
+    "writing-open-promise": {
+      "title": "Başvurusuz söz",
+      "detail": "“{{sentence}}” Bu cümle bir söz veriyor ya da başka yere gönderiyor, ama içinde oraya bağlayan bir şey yok. Sözü tutan bölüme \\ref ya da yayımlanan kod için \\url ekleyin.",
+      "titleRebuttal": "Tutulacak yanıt mektubu sözü",
+      "detailRebuttal": "Bu sözü hakem yanıtında verdiniz: “{{sentence}}” Değişikliği son sürümde yapın, sonra buraya ona bir \\ref ekleyin veya bu notu yok sayın."
+    },
+    "writing-review-point": {
+      "title": "Hakem maddesi {{n}}",
+      "detail": "“{{point}}”",
+      "titleUnplaced": "Hakem maddesi {{n}}: eşleşen yer bulunamadı",
+      "detailUnplaced": "“{{point}}” Burada adı geçen hiçbir tablo, şekil, denklem veya bölüm makaleyle eşleşmiyor.",
+      "detailLines": "“{{point}}” Satır numaraları inceleme kopyasına aittir, bu yeri elle bulun."
+    },
+    "writing-name-variants": {
+      "title": "Aynı ad, farklı yazımlar",
+      "detail": "Bu ad projede birden fazla biçimde yazılmış: {{spellings}}. Her yerde tek bir yazım kullanın. Bir makro onu aynı tutar."
+    },
+    "writing-symbol-redefined": {
+      "title": "Sembol iki kez tanımlanmış",
+      "detail": "{{symbol}}, {{file}} dosyasında “{{first}}” anlamına geliyor. Burada “{{second}}” anlamına geliyor. Her anlama ayrı bir sembol verin."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Kaynaklar",
     "compile": "Derleme",
     "submission": "Gönderim",
-    "privacy": "Gizlilik"
+    "privacy": "Gizlilik",
+    "writing": "Yazım"
   },
   "severity": {
     "error": "Hata",
@@ -499,7 +587,8 @@
     "a11y": "Erişim",
     "refs": "Kaynak",
     "submission": "Gönderim",
-    "privacy": "Gizlilik"
+    "privacy": "Gizlilik",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Kaynağı paylaşmadan veya anonim göndermeden önce",
       "info": "Sırlar, taslak notları, hassas dosyalar ve kör hakemlik sırasında kimlik sızıntıları.",
       "detail": "Anonim hakemlik gönderimlerinde kimlik bilgilerini, özel anahtarları, iç açıklamaları, taslak işaretlemesini, hassas proje dosyalarını, yazar üst verisini ve kimlik sızıntılarını bulur."
+    },
+    "writing": {
+      "label": "Yazım stili",
+      "who": "Makaleler, tezler ve raporlar için",
+      "info": "Boşluklar, tırnaklar, başvurular, denklem noktalaması ve projenizin kendi kuralları.",
+      "detail": "LaTeX kaynağını yaygın makale kurallarına ve bu projede kayıtlı kurallara göre denetler. Bulguların çoğu tek tıkla düzeltilir."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Derlenen çıktı",
     "fixAll_one": "{{count}} tanesini yapay zeka ile düzelt",
     "fixAll_other": "{{count}} tanesinin tümünü yapay zeka ile düzelt",
-    "noProblems": "Sorun bulunamadı."
+    "noProblems": "Sorun bulunamadı.",
+    "writing": {
+      "profile": "Yazım stili",
+      "underlines": "Düzenleyicide stil altı çizgilerini göster",
+      "underlinesHint": "Düzenleyiciyi temiz tutmak için kapatın. Bu denetimi çalıştırdığınızda Ön denetim bulguları yine de listeler.",
+      "rules": "Proje kuralları",
+      "noRules": "Henüz proje kuralı yok. Düzenleyicide metni seçin, sağ tıklayın ve Stil kuralı oluştur'u seçin.",
+      "addRule": "Kural ekle",
+      "removeRule": "{{find}} kuralını kaldır",
+      "flagOnly": "yalnızca işaretle",
+      "clearIgnored_one": "Yok sayılan {{count}} bulguyu yeniden göster",
+      "clearIgnored_other": "Yok sayılan {{count}} bulguyu yeniden göster",
+      "fixAll_one": "{{count}} bulguyu düzelt",
+      "fixAll_other": "Tüm {{count}} bulguyu düzelt",
+      "fixed_one": "{{count}} bulgu düzeltildi.",
+      "fixed_other": "{{count}} bulgu düzeltildi.",
+      "skipped_one": "{{count}} düzeltme başka bir düzeltmeyle aynı metne dokundu. Düzeltmek için denetimi yeniden çalıştırın.",
+      "skipped_other": "{{count}} düzeltme başkalarıyla aynı metne dokundu. Düzeltmek için denetimi yeniden çalıştırın.",
+      "fixFailed": "Bazı dosyalar denetim çalıştıktan sonra değişti. Yeniden çalıştırın, sonra düzeltin.",
+      "saveFailed": "Yazım ayarları kaydedilemedi."
+    }
   },
   "finding": {
     "review": "İnceleme",
@@ -657,7 +772,9 @@
     "page": "s.{{page}}",
     "needsJudgment": "Sizin değerlendirmenizi gerektirir. Hiçbir araç bunu yalnızca dosyaya bakarak karara bağlayamaz.",
     "jumpToSource": "Kaynağa atla",
-    "fixWithAi": "Yapay zeka ile düzelt"
+    "fixWithAi": "Yapay zeka ile düzelt",
+    "applyFix": "Düzelt",
+    "ignore": "Yok say"
   },
   "score": {
     "notEvaluated": "{{label}} değerlendirilmedi",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} PDF'leri ekran okuyucular için etiketlemez. Typst 0.14 ve sonraki sürümler etiketler.",
     "none": "Typst {{version}} PDF standartlarını yazamaz. Derleme menüsünden Typst 0.12 veya sonrasını seçin.",
     "uaNote": "PDF/UA-1 için bir belge başlığı ve her görsel için alternatif metin gerekir."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Belgeden algıla",
+      "description": "Proje cvpr.sty veya yakın bir stil yüklüyorsa CVPR stili kurallarını, yoksa genel kuralları kullanır."
+    },
+    "general": {
+      "label": "Genel makale stili",
+      "description": "Boşluklar, tırnaklar, başvurular, denklem noktalaması, başlıklar ve makrolar."
+    },
+    "cvpr": {
+      "label": "CVPR stili",
+      "description": "Genel kurallar, ayrıca Table sözcüğünün tam yazılması, numaralı denklemler ve sayfanın üstündeki kayan ögeler."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Boşluk ekle",
+    "removeSpace": "Boşluğu kaldır",
+    "useTilde": "~ kullan",
+    "useTexQuotes": "LaTeX tırnakları kullan",
+    "spellOut": "{{word}} yaz",
+    "addComma": "Virgül ekle",
+    "addPeriod": "Nokta ekle",
+    "useMacro": "{{macro}} kullan",
+    "numberEquation": "Numaralandır",
+    "placeTop": "[t] kullan",
+    "replaceWith": "{{text}} yaz",
+    "boldBest": "Bunun yerine {{value}} değerini kalın yap",
+    "underlineSecond": "Bunun yerine {{value}} değerinin altını çiz",
+    "makeMacro": "Makro oluştur"
+  },
+  "styleRule": {
+    "title": "Stil kuralı oluştur",
+    "description": "Kural, siz yazarken bu projedeki her LaTeX dosyasını denetler ve project.json içinde projeyle birlikte taşınır.",
+    "find": "İşaretlenecek metin",
+    "replace": "Bunun yerine şunu yaz",
+    "replaceHint": "Düzeltme önermeden yalnızca işaretlemek için boş bırakın.",
+    "note": "Ortak yazarlar için not (isteğe bağlı)",
+    "wholeWord": "Yalnızca tam sözcükler",
+    "matchCase": "Büyük/küçük harfe duyarlı",
+    "noMatches": "Bu projede henüz eşleşme yok.",
+    "matches_one": "Bu projede {{count}} yerle eşleşiyor.",
+    "matches_other": "Bu projede {{count}} yerle eşleşiyor.",
+    "save": "Kuralı kaydet",
+    "cancel": "İptal",
+    "saved": "Kural kaydedildi. Artık bu projedeki her dosyayı denetliyor."
   }
 }

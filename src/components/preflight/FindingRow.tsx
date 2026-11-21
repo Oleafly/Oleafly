@@ -1,10 +1,12 @@
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info, Sparkles } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, EyeOff, Info, Sparkles, Wand2 } from "lucide-react";
 import { standardChips, type Finding, type Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
+import { Button } from "@/components/ui/button";
 import { askAiAboutFinding } from "@/features/ask-ai-preflight";
+import { fixWritingFindings, ignoreWritingFindingAndRerun } from "@/features/writing-actions";
 import { keptVisualEditor } from "@/lib/open-location";
 import { useFilesStore } from "@/store/files";
 import { cn } from "@/lib/utils";
@@ -45,7 +47,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
       >
         <Icon className={cn("mt-0.5 size-4 shrink-0", sev.color)} />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm leading-snug">{renderMessage(tp, finding.title)}</span>
+          <span className="block text-sm leading-snug" data-testid="preflight-finding-title">{renderMessage(tp, finding.title)}</span>
           <span className="mt-0.5 flex items-center gap-1.5 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
             <span>{tp(`preflight:lens.${finding.lens}`)}</span>
             {finding.page != null && <span>·{" "}{t(($) => $.preflight.finding.page, { page: finding.page })}</span>}
@@ -91,12 +93,24 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
                 <CornerDownLeft className="size-3" /> {t(($) => $.preflight.finding.jumpToSource)}
               </button>
             )}
-            <button type="button"
-              onClick={() => void askAiAboutFinding(finding)}
-              className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs text-primary hover:bg-accent"
-            >
-              <Sparkles className="size-3" /> {t(($) => $.preflight.finding.fixWithAi)}
-            </button>
+            {finding.fix && (
+              <Button type="button" variant="outline" size="xs" data-testid="preflight-finding-fix" onClick={() => void fixWritingFindings([finding])}>
+                <Wand2 aria-hidden /> {renderMessage(tp, finding.fix.label)}
+              </Button>
+            )}
+            {finding.lens === "writing" && finding.fingerprint && (
+              <Button type="button" variant="ghost" size="xs" data-testid="preflight-finding-ignore" onClick={() => void ignoreWritingFindingAndRerun(finding)}>
+                <EyeOff aria-hidden /> {t(($) => $.preflight.finding.ignore)}
+              </Button>
+            )}
+            {finding.lens !== "writing" && (
+              <button type="button"
+                onClick={() => void askAiAboutFinding(finding)}
+                className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs text-primary hover:bg-accent"
+              >
+                <Sparkles className="size-3" /> {t(($) => $.preflight.finding.fixWithAi)}
+              </button>
+            )}
           </div>
         </div>
       )}

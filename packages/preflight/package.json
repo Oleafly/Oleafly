@@ -9,9 +9,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./pdf-extract": "./src/pdf-extract.ts",
+    "./writing": "./src/writing/index.ts",
+    "./writing/settings": "./src/writing/settings.ts",
     "./typst": "./src/typst.ts"
   },
   "dependencies": {
+    "@oleafly/conversion-registry": "workspace:*",
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@oleafly/preview": "workspace:*",

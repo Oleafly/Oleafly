@@ -18,7 +18,6 @@ import { artifactItems, experimentItems, latestRunContext } from "./note-artifac
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { createNoteItems, createNotesService, refreshNoteFacts, relatedProjectChoices, useVaultFacts } from "./notes-service";
 import type { PaperFormat, PaperPlace } from "./note-to-paper";
-import type { LatexPackage } from "./tikz-source";
 import { NotesWorkspace, type ProjectSeed } from "./NotesWorkspace";
 import { shareNote } from "./NoteShareButton";
 import { createStarterNote } from "./starter-note";
@@ -73,17 +72,6 @@ async function openPaperPlace(paperId: string, format: PaperFormat, activePath: 
   };
 }
 
-async function insertPackagesInOrder(
-  insert: (mainDoc: string, name: string, options: string) => Promise<unknown>,
-  mainDoc: string,
-  packages: readonly LatexPackage[],
-  from = 0,
-): Promise<void> {
-  if (from >= packages.length) return;
-  await insert(mainDoc, packages[from].name, packages[from].options);
-  await insertPackagesInOrder(insert, mainDoc, packages, from + 1);
-}
-
 export async function sendTextToPaper(paperId: string, text: string, noteId: string, shared = false): Promise<boolean> {
   const files = useFilesStore.getState();
   const format = paperFormat(files.activePath);
@@ -97,8 +85,8 @@ export async function sendTextToPaper(paperId: string, text: string, noteId: str
   const prepared = await notePaperText(text, read, place);
   await saveProjectFiles(paperId, prepared.files);
   if (format === "latex" && files.mainDoc && prepared.packages.length > 0) {
-    const { insertUsepackage } = await import("@/components/packages/latex-document");
-    await insertPackagesInOrder(insertUsepackage, files.mainDoc, prepared.packages);
+    const { insertUsepackages } = await import("@/components/packages/latex-document");
+    await insertUsepackages(files.mainDoc, prepared.packages);
   }
   const converted = await convertForPaper(prepared.text, format);
   const { insertAtCursor } = await import("@/components/editor/cm/controller");

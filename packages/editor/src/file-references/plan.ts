@@ -263,7 +263,7 @@ function record(edits: Map<ScannedSource, SourceEdits>, source: ScannedSource, f
   edits.set(source, entry);
 }
 
-function withoutOverlaps(edits: readonly FileReferenceEdit[]): FileReferenceEdit[] {
+export function withoutOverlaps(edits: readonly FileReferenceEdit[]): FileReferenceEdit[] {
   const sorted = [...edits].sort((left, right) => left.from - right.from);
   const kept: FileReferenceEdit[] = [];
   for (const edit of sorted) {

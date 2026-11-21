@@ -394,6 +394,15 @@
     "notesQuickCapture": {
       "label": "Быстрая запись",
       "keywords": "быстрая запись записать заметка входящие сегодня quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Таблица обозначений",
+      "keywords": "вставить обозначения символы определения глоссарий формулы notation symbols definitions glossary math",
+      "empty": "Определения символов не найдены. Определяйте символы в тексте фразами вроде «Пусть $x$ будет входом» или «где $x$ является входом»."
+    },
+    "addChapterFromProject": {
+      "keywords": "диссертация глава статья импорт слияние копировать проект thesis chapter paper import merge copy project",
+      "label": "Добавить главу из другого проекта"
     }
   },
   "community": {

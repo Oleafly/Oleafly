@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { CHECK_IDS, detectSubmissionProfile, runPreflight } from "@oleafly/preflight";
-import type { CheckId, PreflightEngine, PreflightReport, SubmissionProfileId } from "@oleafly/preflight";
+import type { CheckId, PreflightEngine, PreflightReport, ProjectContext, SubmissionProfileId } from "@oleafly/preflight";
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { buildProjectContext, buildRefsContext, type PreflightContextInput } from "@/lib/preflight-context";
 import { i18n } from "@/i18n";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
-import { useIndexStore } from "@/store/project-index";
+import { readProjectSources, useIndexStore } from "@/store/project-index";
 
 export function preflightEngineFor(
   engine: DocumentEngineDescriptor["id"],
@@ -27,6 +27,21 @@ function contextInput(files: ReturnType<typeof useFilesStore.getState>): Preflig
     indexTexts: indexState.texts,
     openTexts: Object.fromEntries(Object.entries(files.files).map(([path, state]) => [path, state.content])),
     index: indexState.index,
+  };
+}
+
+async function withReviewTexts(
+  projectId: string | null,
+  project: ProjectContext,
+  isReviewsFile: (path: string) => boolean,
+): Promise<ProjectContext> {
+  const missing = project.files.filter((file) => file.content === undefined && isReviewsFile(file.path)).map((file) => file.path);
+  if (projectId === null || missing.length === 0) return project;
+  const { texts, unreadable } = await readProjectSources(projectId, missing);
+  if (unreadable.size > 0) void logWarning("preflight", `could not read ${[...unreadable].join(", ")}`);
+  return {
+    ...project,
+    files: project.files.map((file) => (texts[file.path] === undefined ? file : { ...file, content: texts[file.path] })),
   };
 }
 
@@ -115,7 +130,12 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
 
       const input = contextInput(files);
       const refs = buildRefsContext(input);
-      const project = buildProjectContext(input);
+      const writingRules =
+        files.engine.capabilities.source_preflight_profile === "latex" ? await import("@oleafly/preflight/writing") : null;
+      const project = writingRules
+        ? await withReviewTexts(pid, buildProjectContext(input), writingRules.isReviewsFile)
+        : buildProjectContext(input);
+      if (stale()) return;
       const state = usePreflightStore.getState();
       const profileSource = files.files[files.mainDoc]?.content ?? project.files.find((file) => file.path === files.mainDoc)?.content ?? source;
       const submissionProfile = state.submissionProfile ?? detectSubmissionProfile(profileSource);
@@ -142,6 +162,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
         submissionProfile,
         anonymousReview: state.anonymousReview,
         engine,
+        ...(writingRules ? { writing: { settings: files.projectWritingSettings, rules: writingRules } } : {}),
       };
       const produce = async (): Promise<{ report: PreflightReport; pageText: string[] } | null> => {
         if (!bytes) {

@@ -3,6 +3,7 @@ export * from "./diagram-routing";
 export * from "./tikz-serializer";
 export * from "./tikz-parser";
 export * from "./figure";
+export * from "./figure-grid-marker";
 export * from "./compile-log/types";
 export * from "./compile-log/latex-log";
 export * from "./compile-log/bibtex-log";

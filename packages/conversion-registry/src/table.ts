@@ -9,6 +9,14 @@
  * once here instead.
  */
 
+export type MetricDirection = "higher" | "lower";
+
+export interface TableHighlight {
+  directions: readonly (MetricDirection | null)[];
+  best: boolean;
+  second: boolean;
+}
+
 export interface TableOptions {
   header: boolean;
   /** Table caption (LaTeX) or figure caption (Typst). */
@@ -16,6 +24,7 @@ export interface TableOptions {
   label?: string;
   alignment?: string;
   boldHeader?: boolean;
+  highlight?: TableHighlight;
 }
 
 export interface DelimitedOptions {
@@ -295,12 +304,76 @@ export function escapeTypstCell(value: string): string {
   return out;
 }
 
-export function emitLatexTable(rowsInput: string[][], options: TableOptions): string {
+const UP_ARROW = /\\uparrow(?![A-Za-z])|↑/u;
+const DOWN_ARROW = /\\downarrow(?![A-Za-z])|↓/u;
+const ERROR_METRIC = /(?<![A-Za-z0-9])(?:error|err|loss|wer|cer)(?![A-Za-z])/iu;
+const HIGHER_METRIC = /(?<![A-Za-z0-9])(?:psnr|ssim|accuracy|acc|f1|f-score|bleu|rouge|meteor|cider|auc|recall|precision|iou|miou|top-[15]|dice|r@(?:\d+|k)|ndcg|hit\s+rate)(?![A-Za-z])/iu;
+const HIGHER_ACRONYM = /(?<![A-Za-z0-9])m?AP(?![A-Za-z])/u;
+const LOWER_METRIC = /(?<![A-Za-z0-9])(?:mae|mse|rmse|lpips|fid|kid|epe|perplexity|ppl|latency|time|runtime|memory|[gmt]?flops|params?)(?![A-Za-z])/iu;
+const LOWER_ACRONYM = /(?<![A-Za-z0-9])CD(?![A-Za-z])/u;
+
+export function metricDirection(header: string): MetricDirection | null {
+  const up = UP_ARROW.test(header);
+  const down = DOWN_ARROW.test(header);
+  if (up !== down) return up ? "higher" : "lower";
+  if (up) return null;
+  const words = header.replaceAll(/\\[A-Za-z]+/gu, " ");
+  if (ERROR_METRIC.test(words)) return "lower";
+  const higher = HIGHER_METRIC.test(words) || HIGHER_ACRONYM.test(words);
+  const lower = LOWER_METRIC.test(words) || LOWER_ACRONYM.test(words);
+  if (higher === lower) return null;
+  return higher ? "higher" : "lower";
+}
+
+const METRIC_NUMBER = /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?%?$/u;
+
+export function parseMetricNumber(text: string): number | null {
+  let value = text.replaceAll(/\\(?:cellcolor|rowcolor|color|textcolor)\s*(?:\[[^\]]*\])?\s*\{[^{}]*\}/gu, "");
+  const cut = value.search(/\\pm(?![A-Za-z])|±|(?<!\\)\(/u);
+  if (cut >= 0) value = value.slice(0, cut);
+  value = value
+    .replaceAll("\\%", "%")
+    .replaceAll(/\\[A-Za-z]+\*?|\\[,;:! ]/gu, "")
+    .replaceAll(/[\s{}$^_~*†‡]/gu, "")
+    .replaceAll(/[−–]/gu, "-");
+  if (!/\d/u.test(value) || !METRIC_NUMBER.test(value)) return null;
+  const number = Number(value.replaceAll(",", "").replace(/%$/u, ""));
+  return Number.isFinite(number) ? number : null;
+}
+
+export function metricRanks(values: readonly (number | null)[], direction: MetricDirection): { best: number[]; second: number[] } {
+  const numbers = values.filter((value): value is number => value !== null);
+  if (numbers.length < 2) return { best: [], second: [] };
+  const order = [...new Set(numbers)].sort((left, right) => (direction === "higher" ? right - left : left - right));
+  const at = (target: number | undefined) =>
+    target === undefined ? [] : values.flatMap((value, index) => (value === target ? [index] : []));
+  return { best: at(order[0]), second: at(order[1]) };
+}
+
+export type CellHighlight = "best" | "second" | null;
+
+export function tableHighlights(rows: readonly (readonly string[])[], options: Pick<TableOptions, "header" | "highlight">): CellHighlight[][] {
+  const marks: CellHighlight[][] = rows.map((row) => row.map(() => null));
+  const highlight = options.highlight;
+  if (!highlight || (!highlight.best && !highlight.second)) return marks;
+  const first = options.header ? 1 : 0;
+  highlight.directions.forEach((direction, column) => {
+    if (!direction) return;
+    const values = rows.map((row, index) => (index < first ? null : parseMetricNumber(row[column] ?? "")));
+    const { best, second } = metricRanks(values, direction);
+    if (highlight.second) for (const index of second) marks[index][column] = "second";
+    if (highlight.best) for (const index of best) marks[index][column] = "best";
+  });
+  return marks;
+}
+
+function latexTableLines(rowsInput: string[][], options: TableOptions): string[] {
   const { rows } = padRows(rowsInput);
   if (rows.length === 0) {
-    return "";
+    return [];
   }
   const bold = options.boldHeader ?? true;
+  const marks = tableHighlights(rows, options);
   const alignment = explicitAlignment(options.alignment, rows[0].length)
     ?? inferAlignment(rowsInput, options.header);
   const lines: string[] = ["\\begin{table}[htbp]", "  \\centering"];
@@ -315,14 +388,23 @@ export function emitLatexTable(rowsInput: string[][], options: TableOptions): st
   rows.forEach((row, index) => {
     const cells = row.map(escapeLatexCell);
     const isHeader = options.header && index === 0;
-    const shown = isHeader && bold ? cells.map((cell) => String.raw`\textbf{${cell}}`) : cells;
+    const shown = cells.map((cell, column) => {
+      if (isHeader) return bold ? String.raw`\textbf{${cell}}` : cell;
+      const mark = marks[index][column];
+      if (mark === "best") return String.raw`\textbf{${cell}}`;
+      return mark === "second" ? String.raw`\underline{${cell}}` : cell;
+    });
     lines.push(`    ${shown.join(" & ")} \\\\`);
     if (isHeader) {
       lines.push("    \\midrule");
     }
   });
   lines.push("    \\bottomrule", "  \\end{tabular}", "\\end{table}");
-  return lines.join("\n");
+  return lines;
+}
+
+export function emitLatexTable(rowsInput: string[][], options: TableOptions): string {
+  return latexTableLines(rowsInput, options).join("\n");
 }
 
 function typstAlignment(letter: string): string {
@@ -347,13 +429,18 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
     "stroke: none,",
     "table.hline(),",
   ];
+  const marks = tableHighlights(rows, options);
   rows.forEach((row, index) => {
     const cells = row.map(escapeTypstCell);
     if (options.header && index === 0) {
       const headerCells = cells.map((cell) => (bold && cell ? `[*${cell}*]` : `[${cell}]`));
       body.push(`table.header(${headerCells.join(", ")}),`, "table.hline(stroke: 0.5pt),");
     } else {
-      const bracketed = cells.map((cell) => `[${cell}]`).join(", ");
+      const bracketed = cells.map((cell, column) => {
+        const mark = marks[index][column];
+        if (mark === "best") return `[*${cell}*]`;
+        return mark === "second" ? `[#underline[${cell}]]` : `[${cell}]`;
+      }).join(", ");
       body.push(`${bracketed},`);
     }
   });
@@ -536,4 +623,118 @@ export function emitTypstLinkedTable(rowsInput: string[][], options: LinkedTable
   }
   lines.push(validLabel ? `) <${validLabel}>` : ")");
   return lines.join("\n");
+}
+
+export interface LinkedLatexTableOptions extends TableOptions {
+  format: LinkedTableSource["format"];
+  delimiter?: string;
+}
+
+export interface LinkedLatexTable {
+  v: 1;
+  source: string;
+  hash: string;
+  options: LinkedLatexTableOptions;
+}
+
+export interface LinkedLatexTableMatch {
+  from: number;
+  to: number;
+  table: LinkedLatexTable;
+  tableFrom: number;
+  tableTo: number;
+  begin: string;
+}
+
+const LATEX_TABLE_MARK = "oleafly-table-v1:";
+const LATEX_TABLE_MARK_LINE = /^([ \t]*)(%[ \t]*oleafly-table-v1:[ \t]*([A-Za-z0-9_-]+))[ \t]*\r?$/gmu;
+const LATEX_TABLE_BEGIN = /\\begin\s*\{table\*?\}(?:[ \t]*\[[^\]\n]*\])?/gu;
+const LATEX_TABLE_END = /\\end\s*\{table\*?\}/gu;
+
+function base64UrlText(text: string): string {
+  let binary = "";
+  for (const byte of new TextEncoder().encode(text)) binary += String.fromCodePoint(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+}
+
+function textFromBase64Url(value: string): string {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
+  const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(binary, (character) => character.codePointAt(0) ?? 0));
+}
+
+function linkedHighlight(value: unknown): TableHighlight | undefined {
+  if (!isRecord(value) || !Array.isArray(value.directions)) return undefined;
+  return {
+    directions: value.directions.map((direction) => (direction === "higher" || direction === "lower" ? direction : null)),
+    best: value.best === true,
+    second: value.second === true,
+  };
+}
+
+function linkedLatexTable(value: unknown): LinkedLatexTable | null {
+  if (!isRecord(value) || value.v !== 1 || typeof value.source !== "string" || typeof value.hash !== "string") return null;
+  const options = value.options;
+  if (!isRecord(options) || (options.format !== "csv" && options.format !== "json")) return null;
+  const text = (key: string) => (typeof options[key] === "string" ? { [key]: options[key] } : {});
+  const highlight = linkedHighlight(options.highlight);
+  return {
+    v: 1,
+    source: value.source,
+    hash: value.hash,
+    options: {
+      header: options.header !== false,
+      format: options.format,
+      ...text("caption"),
+      ...text("label"),
+      ...text("alignment"),
+      ...(typeof options.boldHeader === "boolean" ? { boldHeader: options.boldHeader } : {}),
+      ...(typeof options.delimiter === "string" && options.delimiter.length === 1 ? { delimiter: options.delimiter } : {}),
+      ...(highlight ? { highlight } : {}),
+    },
+  };
+}
+
+function decodeLinkedLatexTable(value: string): LinkedLatexTable | null {
+  try {
+    return linkedLatexTable(JSON.parse(textFromBase64Url(value)));
+  } catch {
+    return null;
+  }
+}
+
+export function emitLatexLinkedTable(rows: string[][], table: LinkedLatexTable): string {
+  const lines = latexTableLines(rows, table.options);
+  if (lines.length === 0) return "";
+  lines.splice(1, 0, `  % ${LATEX_TABLE_MARK} ${base64UrlText(JSON.stringify(table))}`);
+  return lines.join("\n");
+}
+
+export function findLinkedLatexTables(text: string): LinkedLatexTableMatch[] {
+  if (!text.includes(LATEX_TABLE_MARK)) return [];
+  const begins = [...text.matchAll(LATEX_TABLE_BEGIN)];
+  const ends = [...text.matchAll(LATEX_TABLE_END)];
+  const found: LinkedLatexTableMatch[] = [];
+  for (const match of text.matchAll(LATEX_TABLE_MARK_LINE)) {
+    const table = decodeLinkedLatexTable(match[3]);
+    if (!table) continue;
+    const from = match.index + match[1].length;
+    const to = from + match[2].length;
+    const begin = begins.filter((candidate) => candidate.index < from).at(-1);
+    const end = ends.find((candidate) => candidate.index > to);
+    if (!begin || !end || ends.some((candidate) => candidate.index > begin.index && candidate.index < from)) continue;
+    found.push({ from, to, table, tableFrom: begin.index, tableTo: end.index + end[0].length, begin: begin[0] });
+  }
+  return found;
+}
+
+export function linkedTableRows(data: string, options: Pick<LinkedLatexTableOptions, "format" | "delimiter">): string[][] {
+  if (options.format === "json") return parseJsonTable(data)?.rows ?? [];
+  return parseDelimited(data, { delimiter: options.delimiter });
+}
+
+export function relinkLatexTable(match: LinkedLatexTableMatch, rows: string[][], hash: string): { from: number; to: number; insert: string } | null {
+  const fresh = emitLatexLinkedTable(rows, { ...match.table, hash });
+  if (!fresh) return null;
+  return { from: match.tableFrom, to: match.tableTo, insert: match.begin + fresh.slice(fresh.indexOf("\n")) };
 }

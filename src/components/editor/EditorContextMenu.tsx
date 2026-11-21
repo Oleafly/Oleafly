@@ -32,6 +32,7 @@ import {
   SearchCode,
   Sigma,
   Sparkles,
+  SpellCheck,
   SquareSigma,
   Strikethrough,
   Table,
@@ -71,6 +72,7 @@ import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export
 import { convertLatexMathAtSelection } from "./convert-latex-math";
 import type { MarkdownTarget } from "./markdown-model";
 import { useTableImportStore } from "@/store/table-import";
+import { useStyleRuleDialogStore } from "@/store/style-rule-dialog";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import {
@@ -496,6 +498,13 @@ function LatexNavigationItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
   );
 }
 
+function openStyleRuleFromSelection() {
+  const view = getEditorView();
+  const selection = view?.state.selection.main;
+  const selected = view && selection && !selection.empty ? view.state.sliceDoc(selection.from, selection.to) : "";
+  useStyleRuleDialogStore.getState().show(selected.split("\n")[0].slice(0, 200));
+}
+
 function LatexMenuItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
@@ -560,6 +569,9 @@ function LatexMenuItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
           <Tag className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.label)}
         </ContextMenuItem>
       </Submenu>
+      <ContextMenuItem onClick={openStyleRuleFromSelection} data-testid="context-make-style-rule">
+        <SpellCheck className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.makeStyleRule)}
+      </ContextMenuItem>
       <ImportExportSubmenu />
     </>
   );

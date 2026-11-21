@@ -30,6 +30,7 @@
     "./typst-forms": "./src/typst-forms.ts",
     "./typst-literals": "./src/typst-literals.ts",
     "./file-references": "./src/file-references/index.ts",
+    "./chapter-import": "./src/chapter-import.ts",
     "./typst": "./src/typst.ts",
     "./prose": "./src/prose.ts",
     "./overlay-scrollbar": "./src/overlay-scrollbar.ts",

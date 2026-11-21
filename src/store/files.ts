@@ -1,3 +1,4 @@
+import { DEFAULT_WRITING_SETTINGS, parseWritingSettings, type WritingSettings } from "@oleafly/preflight/writing/settings";
 import { create, type StoreApi } from "zustand";
 import {
   createFile as apiCreateFile,
@@ -408,6 +409,7 @@ interface FilesStore {
   projectName: string;
   projectKind: string;
   projectDictionaryLocale: string | null;
+  projectWritingSettings: WritingSettings;
   manifestHome: ManifestHome;
   mainDoc: string;
   mainDecision: MainDecision;
@@ -1356,6 +1358,7 @@ async function loadOpenedProject(
     projectName: meta.name,
     projectKind: meta.kind ?? "",
     projectDictionaryLocale: meta.dictionary_locale ?? null,
+    projectWritingSettings: parseWritingSettings(meta.writing),
     manifestHome,
     mainDoc: meta.main_doc,
     tree,
@@ -1462,6 +1465,7 @@ type ProjectMetadataState = Pick<
   | "projectName"
   | "projectKind"
   | "projectDictionaryLocale"
+  | "projectWritingSettings"
   | "mainDoc"
   | "engine"
   | "engineLoaded"
@@ -1490,6 +1494,7 @@ function projectMetadataState(event: ProjectStateChanged): ProjectMetadataState 
     projectName: event.project.name,
     projectKind: event.project.kind ?? "",
     projectDictionaryLocale: event.project.dictionary_locale ?? null,
+    projectWritingSettings: parseWritingSettings(event.project.writing),
     mainDoc: event.project.main_doc,
     engine: event.engine,
     engineLoaded: true,
@@ -1720,6 +1725,7 @@ const EMPTY_PROJECT_STATE = {
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  projectWritingSettings: DEFAULT_WRITING_SETTINGS,
   manifestHome: "library",
   mainDoc: "main.tex",
   mainDecision: "auto",
@@ -1743,6 +1749,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  projectWritingSettings: DEFAULT_WRITING_SETTINGS,
   manifestHome: "library",
   mainDoc: "main.tex",
   mainDecision: "auto",

@@ -461,6 +461,93 @@
     "submission-large-image": {
       "title": "매우 큰 이미지: {{file}}",
       "detail": "이 이미지는 {{limit}}을(를) 넘습니다. 큰 이미지는 컴파일을 느리게 하고 PDF를 키웁니다. 업로드 크기를 제한하는 발표처도 있습니다. 압축하거나 인쇄되는 크기로 내보내세요."
+    },
+    "writing-space-before-paren": {
+      "title": "여는 괄호 앞에 공백 추가",
+      "detail": "단어와 여는 괄호 사이에는 공백을 둡니다. “neural network(CNN)”이 아니라 “neural network (CNN)”이라고 쓰세요."
+    },
+    "writing-space-before-punctuation": {
+      "title": "문장 부호 앞의 공백 제거",
+      "detail": "마침표, 쉼표, 콜론, 물음표는 단어 바로 뒤에 붙이고 사이에 공백을 두지 않습니다."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "참조 앞에 줄바꿈 없는 공백 사용",
+      "detail": "problem~\\cite{key}나 Figure~\\ref{fig:plot}처럼 씁니다. 물결표(~)는 인용이나 번호가 앞 단어와 같은 줄에 머물게 합니다."
+    },
+    "writing-straight-quotes": {
+      "title": "LaTeX 따옴표 사용",
+      "detail": "LaTeX는 곧은 \" 표시를 닫는 따옴표로 출력합니다. 여는 따옴표가 올바른 방향을 향하도록 ``quoted''처럼 쓰세요."
+    },
+    "writing-cite-in-abstract": {
+      "title": "초록의 인용",
+      "detail": "초록은 단독으로 읽히는 경우가 많아서 인용 번호가 아무 의미도 갖지 못합니다. 문장으로 해당 연구를 밝히거나 인용을 서론으로 옮기세요."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "문장 첫머리의 단어는 줄이지 않고 쓰기",
+      "detail": "문장은 약어로 시작하지 않습니다. 여기서는 {{abbreviation}} 대신 {{word}}라고 쓰고, 줄임말은 문장 중간에서 쓰세요."
+    },
+    "writing-display-math-punctuation": {
+      "title": "수식에 문장 부호 넣기",
+      "detail": "별행 수식은 앞뒤 문장의 일부입니다. 문장이 이어지면 쉼표로, 끝나면 마침표로 수식을 마무리하세요."
+    },
+    "writing-table-caption-below": {
+      "title": "표 캡션을 표 위에 두기",
+      "detail": "대부분의 학회는 표 캡션을 표 위에, 그림 캡션을 그림 아래에 두기를 요구합니다."
+    },
+    "writing-figure-caption-above": {
+      "title": "그림 캡션을 그림 아래에 두기",
+      "detail": "대부분의 학회는 그림 캡션을 그림 아래에, 표 캡션을 표 위에 두기를 요구합니다."
+    },
+    "writing-macro-available": {
+      "title": "정의해 둔 매크로 사용",
+      "detail": "“{{text}}”에 해당하는 매크로가 있습니다: {{macro}}. 매크로를 쓰면 이름이 어디서나 같게 유지되고 한 곳에서 바꿀 수 있습니다."
+    },
+    "writing-table-abbreviation": {
+      "title": "Table은 줄이지 않고 쓰기",
+      "detail": "이 스타일은 Table~\\ref{tab:results}처럼 Table을 줄이지 않고 쓰며, 문장 안에서는 Fig., Eq., Sec.만 줄입니다."
+    },
+    "writing-unnumbered-equation": {
+      "title": "수식에 번호 매기기",
+      "detail": "이 스타일은 심사자가 참조할 수 있도록 모든 별행 수식에 번호를 매깁니다."
+    },
+    "writing-float-placement": {
+      "title": "플로트를 쪽 위쪽에 두기",
+      "detail": "이 스타일은 그림과 표를 쪽 위쪽에 둡니다. [h] 대신 [t]를 쓰세요."
+    },
+    "writing-custom": {
+      "title": "프로젝트 규칙: {{find}}",
+      "detail": "이 프로젝트에서는 “{{find}}” 대신 “{{replace}}”라고 씁니다.",
+      "detailNote": "{{note}}",
+      "detailFlag": "이 프로젝트의 스타일 규칙은 “{{find}}” 표현을 표시합니다."
+    },
+    "writing-results-best": {
+      "title": "굵게 표시한 값이 가장 좋은 값이 아님",
+      "titleSecond": "밑줄 친 값이 두 번째로 좋은 값이 아님",
+      "detail": "{{value}} 값이 굵게 표시되어 있지만 이 열에서 가장 좋은 값은 {{best}} 값입니다. 여기서는 높을수록 좋습니다.",
+      "detailLower": "{{value}} 값이 굵게 표시되어 있지만 이 열에서 가장 좋은 값은 {{best}} 값입니다. 여기서는 낮을수록 좋습니다.",
+      "detailSecond": "{{value}} 값에 밑줄이 쳐져 있지만 이 열에서 두 번째로 좋은 값은 {{best}} 값입니다. 여기서는 높을수록 좋습니다.",
+      "detailSecondLower": "{{value}} 값에 밑줄이 쳐져 있지만 이 열에서 두 번째로 좋은 값은 {{best}} 값입니다. 여기서는 낮을수록 좋습니다."
+    },
+    "writing-open-promise": {
+      "title": "참조 없는 약속",
+      "detail": "“{{sentence}}” 이 문장은 무언가를 약속하거나 다른 곳을 가리키지만, 그곳으로 이어지는 링크가 없습니다. 약속을 지키는 부분에 \\ref를 추가하거나, 공개된 코드에 \\url을 추가하세요.",
+      "titleRebuttal": "반박문에서 한 약속 지키기",
+      "detailRebuttal": "반박문에서 이렇게 약속했습니다. “{{sentence}}” 최종본에서 변경하고 여기에 그 부분을 가리키는 \\ref를 추가하거나, 이 알림을 무시하세요."
+    },
+    "writing-review-point": {
+      "title": "심사 의견 {{n}}",
+      "detail": "“{{point}}”",
+      "titleUnplaced": "심사 의견 {{n}}: 맞는 위치를 찾지 못함",
+      "detailUnplaced": "“{{point}}” 여기에 언급된 표, 그림, 수식, 절 중 논문과 일치하는 것이 없습니다.",
+      "detailLines": "“{{point}}” 줄 번호는 심사용 사본 기준이므로 이 위치는 직접 찾아야 합니다."
+    },
+    "writing-name-variants": {
+      "title": "같은 이름, 다른 철자",
+      "detail": "이 이름이 프로젝트 안에서 여러 철자로 쓰였습니다: {{spellings}}. 어디서나 한 가지 철자를 쓰세요. 매크로를 쓰면 철자가 같게 유지됩니다."
+    },
+    "writing-symbol-redefined": {
+      "title": "기호를 두 번 정의함",
+      "detail": "기호 {{symbol}}의 의미는 {{file}}에서 “{{first}}”, 여기서는 “{{second}}”입니다. 의미마다 다른 기호를 쓰세요."
     }
   },
   "lens": {
@@ -470,7 +557,8 @@
     "refs": "참조",
     "compile": "컴파일",
     "submission": "제출",
-    "privacy": "개인정보"
+    "privacy": "개인정보",
+    "writing": "글쓰기"
   },
   "severity": {
     "error": "오류",
@@ -483,7 +571,8 @@
     "a11y": "접근성",
     "refs": "참조",
     "submission": "제출",
-    "privacy": "개인정보"
+    "privacy": "개인정보",
+    "writing": "스타일"
   },
   "checks": {
     "compile": {
@@ -521,6 +610,12 @@
       "who": "소스를 공유하거나 익명으로 제출하기 전에",
       "info": "비밀 정보, 초안 메모, 민감한 파일, 블라인드 심사 중 신원 노출입니다.",
       "detail": "자격 증명, 개인 키, 내부 주석, 초안 마크업, 민감한 프로젝트 파일, 저자 메타데이터와 익명 심사 제출본의 신원 노출을 찾아냅니다."
+    },
+    "writing": {
+      "label": "글쓰기 스타일",
+      "who": "논문, 학위논문, 보고서에",
+      "info": "공백, 따옴표, 참조, 수식 문장 부호, 프로젝트 자체 규칙입니다.",
+      "detail": "LaTeX 소스를 일반적인 논문 관례와 이 프로젝트에 저장된 규칙에 비추어 검사합니다. 대부분의 결과는 한 번의 클릭으로 수정할 수 있습니다."
     }
   },
   "profiles": {
@@ -627,7 +722,23 @@
     "groupSource": "프로젝트 및 소스",
     "groupOutput": "컴파일된 출력",
     "fixAll_other": "AI로 {{count}}건 모두 고치기",
-    "noProblems": "문제를 찾지 못했습니다."
+    "noProblems": "문제를 찾지 못했습니다.",
+    "writing": {
+      "profile": "글쓰기 스타일",
+      "underlines": "편집기에 스타일 밑줄 표시",
+      "underlinesHint": "편집기를 깔끔하게 두려면 끄세요. 이 검사를 실행하면 프리플라이트는 여전히 결과를 나열합니다.",
+      "rules": "프로젝트 규칙",
+      "noRules": "아직 프로젝트 규칙이 없습니다. 편집기에서 텍스트를 선택하고 마우스 오른쪽 버튼을 눌러 “스타일 규칙 만들기”를 고르세요.",
+      "addRule": "규칙 추가",
+      "removeRule": "{{find}} 규칙 삭제",
+      "flagOnly": "표시만",
+      "clearIgnored_other": "무시한 결과 {{count}}건 다시 표시",
+      "fixAll_other": "결과 {{count}}건 모두 수정",
+      "fixed_other": "결과 {{count}}건을 수정했습니다.",
+      "skipped_other": "수정 {{count}}건이 다른 수정과 같은 텍스트를 건드렸습니다. 검사를 다시 실행해 수정하세요.",
+      "fixFailed": "검사를 실행한 뒤 일부 파일이 바뀌었습니다. 다시 실행한 다음 수정하세요.",
+      "saveFailed": "글쓰기 설정을 저장하지 못했습니다."
+    }
   },
   "finding": {
     "review": "검토",
@@ -635,7 +746,9 @@
     "page": "{{page}}쪽",
     "needsJudgment": "사람의 판단이 필요합니다. 파일만으로는 어떤 도구도 결정할 수 없습니다.",
     "jumpToSource": "소스로 이동",
-    "fixWithAi": "AI로 수정"
+    "fixWithAi": "AI로 수정",
+    "applyFix": "수정",
+    "ignore": "무시"
   },
   "score": {
     "notEvaluated": "{{label}} 평가 안 됨",
@@ -688,5 +801,50 @@
     "untagged": "Typst {{version}}은(는) PDF에 화면 낭독기용 태그를 넣지 않습니다. Typst 0.14 이상은 태그를 넣습니다.",
     "none": "Typst {{version}}은(는) PDF 표준을 지원하지 않습니다. 컴파일 메뉴에서 Typst 0.12 이상을 고르세요.",
     "uaNote": "PDF/UA-1에는 문서 제목과 모든 이미지의 대체 텍스트가 필요합니다."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "문서에서 감지",
+      "description": "프로젝트가 cvpr.sty나 같은 위치의 스타일 파일을 불러오면 CVPR 스타일 규칙을, 그렇지 않으면 일반 규칙을 씁니다."
+    },
+    "general": {
+      "label": "일반 논문 스타일",
+      "description": "공백, 따옴표, 참조, 수식 문장 부호, 캡션, 매크로."
+    },
+    "cvpr": {
+      "label": "CVPR 스타일",
+      "description": "일반 규칙에 더해 Table을 줄이지 않고 쓰기, 수식 번호 매기기, 플로트를 쪽 위쪽에 두기가 적용됩니다."
+    }
+  },
+  "fixes": {
+    "insertSpace": "공백 추가",
+    "removeSpace": "공백 제거",
+    "useTilde": "~ 사용",
+    "useTexQuotes": "LaTeX 따옴표 사용",
+    "spellOut": "{{word}} 쓰기",
+    "addComma": "쉼표 추가",
+    "addPeriod": "마침표 추가",
+    "useMacro": "{{macro}} 사용",
+    "numberEquation": "번호 매기기",
+    "placeTop": "[t] 사용",
+    "replaceWith": "{{text}} 쓰기",
+    "boldBest": "{{value}} 값을 대신 굵게",
+    "underlineSecond": "{{value}} 값에 대신 밑줄",
+    "makeMacro": "매크로 만들기"
+  },
+  "styleRule": {
+    "title": "스타일 규칙 만들기",
+    "description": "이 규칙은 글을 쓰는 동안 이 프로젝트의 모든 LaTeX 파일을 검사하며, project.json에 저장되어 프로젝트와 함께 이동합니다.",
+    "find": "표시할 텍스트",
+    "replace": "대신 쓸 텍스트",
+    "replaceHint": "비워 두면 수정 제안 없이 텍스트만 표시합니다.",
+    "note": "공저자에게 남길 메모(선택 사항)",
+    "wholeWord": "전체 단어만",
+    "matchCase": "대소문자 구분",
+    "noMatches": "이 프로젝트에서 일치하는 곳이 아직 없습니다.",
+    "matches_other": "이 프로젝트에서 {{count}}곳이 일치합니다.",
+    "save": "규칙 저장",
+    "cancel": "취소",
+    "saved": "규칙을 저장했습니다. 이제 이 프로젝트의 모든 파일을 검사합니다."
   }
 }

@@ -10,6 +10,8 @@ import { runCompileRules, type CompileContext } from "./compile-rules";
 import { runSubmissionRules } from "./submission-rules";
 import { pdfUaCoverage, type PdfUaAvailability } from "./standards";
 import type { SubmissionProfileId } from "./profiles";
+import type * as Writing from "./writing";
+import type { WritingSettings } from "./writing/settings";
 
 export type SourcePreflightProfile = "latex" | "typst" | "none";
 
@@ -21,6 +23,14 @@ export interface SourceRuleInput {
   readonly pdf?: PdfFacts;
   readonly engine: PreflightEngine;
   readonly typstVersion?: string;
+  readonly writing?: WritingCheck;
+}
+
+export type WritingRules = Pick<typeof Writing, "runWritingRules" | "runProjectWritingRules" | "writingContextFor" | "isReviewsFile">;
+
+export interface WritingCheck {
+  readonly settings: WritingSettings;
+  readonly rules: WritingRules;
 }
 
 export interface SourceRuleSet {
@@ -46,6 +56,7 @@ export interface PreflightInput {
   submissionProfile?: SubmissionProfileId;
   anonymousReview?: boolean;
   engine?: PreflightEngine;
+  writing?: WritingCheck;
 }
 
 function dedupeUntaggedFinding(findings: PreflightReport["findings"]) {
@@ -123,14 +134,45 @@ function projectRefsFindings(
   );
 }
 
+const WRITING_SOURCE = /\.(?:tex|ltx)$/i;
+
+function latexWritingFindings(sources: readonly LatexSource[], input: SourceRuleInput): PreflightReport["findings"] {
+  if (!input.writing) return [];
+  const { settings, rules } = input.writing;
+  const context = rules.writingContextFor(sources.map((file) => file.content), settings);
+  const documents = sources.filter((file) => file.path === undefined || WRITING_SOURCE.test(file.path));
+  const perFile = documents.flatMap((file) =>
+    rules.runWritingRules(file.content, { settings, ...context }).map((finding) => ({
+      ...finding,
+      ...(file.path ? { file: file.path } : {}),
+    })),
+  );
+  const reviews = (input.project?.files ?? []).flatMap((file) =>
+    file.content !== undefined && rules.isReviewsFile(file.path) ? [{ path: file.path, content: file.content }] : [],
+  );
+  const project = rules.runProjectWritingRules(
+    [
+      ...documents.map((file) => ({ path: file.path ?? input.project?.mainFile ?? "main.tex", content: file.content })),
+      ...reviews,
+    ],
+    { settings, ...context, mainFile: input.project?.mainFile ?? documents[0]?.path ?? "main.tex" },
+  );
+  return [...perFile, ...project];
+}
+
 const LATEX_SOURCE_RULES: SourceRuleSet = {
-  source: (input) =>
-    latexProjectSources(input.project, input.source).flatMap((file) =>
-      runSourceRules(file.content, { engine: input.engine }).map((finding) => ({
-        ...finding,
-        ...(file.path ? { file: file.path } : {}),
-      })),
-    ),
+  source: (input) => {
+    const sources = latexProjectSources(input.project, input.source);
+    return [
+      ...sources.flatMap((file) =>
+        runSourceRules(file.content, { engine: input.engine }).map((finding) => ({
+          ...finding,
+          ...(file.path ? { file: file.path } : {}),
+        })),
+      ),
+      ...latexWritingFindings(sources, input),
+    ];
+  },
   refs: (input, refs) => projectRefsFindings(latexProjectSources(input.project, input.source), refs),
   submission: (input, project) =>
     runSubmissionRules({
@@ -174,6 +216,7 @@ export function runPreflight({
   submissionProfile = "generic",
   anonymousReview = false,
   engine = "unknown",
+  writing,
 }: PreflightInput): PreflightReport {
   const rules = sourceRulesFor(sourceProfile, sourceRules);
   const supported = rules !== null;
@@ -186,6 +229,7 @@ export function runPreflight({
     ...(project ? { project } : {}),
     ...(facts ? { pdf: facts } : {}),
     ...(typstVersion ? { typstVersion } : {}),
+    ...(writing ? { writing } : {}),
   };
   const sourceFindings = rules ? rules.source(ruleInput) : [];
   const refsFindings = rules && refs ? rules.refs(ruleInput, refs) : [];
@@ -209,6 +253,7 @@ export function runPreflight({
     refs: supported && refs ? "evaluated" : "unsupported",
     submission: submissionCoverage(supported, Boolean(project), Boolean(facts)),
     privacy: privacyCoverage(supported, Boolean(project), anonymousReview && !facts),
+    writing: !writing ? "not_run" : sourceProfile === "latex" ? "evaluated" : "unsupported",
   };
   const scoreOrNull = (id: keyof typeof coverage) =>
     coverage[id] === "not_run" || coverage[id] === "unsupported" ? null : scores[id];
@@ -221,6 +266,7 @@ export function runPreflight({
     refsScore: scoreOrNull("refs"),
     submissionScore: scoreOrNull("submission"),
     privacyScore: scoreOrNull("privacy"),
+    writingScore: scoreOrNull("writing"),
     coverage,
     ranAt: Date.now(),
     hasPdf: pages !== undefined,

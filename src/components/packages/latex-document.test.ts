@@ -37,7 +37,7 @@ vi.mock("@/store/project-index", () => ({ useIndexStore: { getState: () => ({ in
 const root = vi.hoisted(() => ({ resolveEffectiveMainDoc: vi.fn(() => ({ mainDoc: "main.tex" })) }));
 vi.mock("@/lib/tex-root", () => root);
 
-import { documentPackages, insertUsepackage, latexMainDocument } from "./latex-document";
+import { documentPackages, insertUsepackage, insertUsepackages, latexMainDocument } from "./latex-document";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const MAIN = "\\documentclass{article}\n\\usepackage{amsmath}\n\\begin{document}\nHi\n\\end{document}\n";
@@ -118,6 +118,17 @@ describe("insertUsepackage", () => {
     expect(await insertUsepackage("main.tex", "booktabs", "")).toBe("no-preamble");
     expect(files.state.writeProjectFile).not.toHaveBeenCalled();
     expect(editor.view.state.doc.toString()).toBe(MAIN);
+  });
+});
+
+describe("insertUsepackages", () => {
+  it("adds each package in order and skips the ones already loaded", async () => {
+    await insertUsepackages("main.tex", [
+      { name: "booktabs", options: "" },
+      { name: "amsmath", options: "" },
+      { name: "tikz", options: "" },
+    ]);
+    expect(editor.view.state.doc.toString()).toBe(WITH_BOOKTABS.replace("{booktabs}\n", "{booktabs}\n\\usepackage{tikz}\n"));
   });
 });
 

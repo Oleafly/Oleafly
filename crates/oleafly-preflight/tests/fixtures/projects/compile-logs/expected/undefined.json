@@ -65,7 +65,8 @@
       "compile": "evaluated",
       "privacy": "evaluated",
       "refs": "evaluated",
-      "submission": "partial"
+      "submission": "partial",
+      "writing": "not_run"
     },
     "findings": [
       {
@@ -338,8 +339,10 @@
       "compile": 70,
       "privacy": 100,
       "refs": 100,
-      "submission": 82
+      "submission": 82,
+      "writing": 100
     },
-    "submissionScore": 82
+    "submissionScore": 82,
+    "writingScore": null
   }
 }
