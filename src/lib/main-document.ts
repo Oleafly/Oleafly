@@ -64,6 +64,10 @@ function filesOf(tree: readonly FileEntry[]): TreeFiles {
   return files;
 }
 
+export function treeHasFile(tree: readonly FileEntry[], path: string): boolean {
+  return filesOf(tree).exact.has(path);
+}
+
 export function mainDocumentMissing(state: MainDocumentView): boolean {
   if (state.projectId === null || !isLinkedHome(state.manifestHome)) return false;
   const files = filesOf(state.tree);

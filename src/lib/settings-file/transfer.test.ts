@@ -21,6 +21,7 @@ vi.mock("@/i18n/desktop", () => ({
 import { useDictionary } from "@/lib/dictionary";
 import { readThemeCustomization } from "@/lib/theme-customization";
 import { useCompileStore } from "@/store/compile";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { TERMINAL_COLOR_THEMES, useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
@@ -232,10 +233,13 @@ describe("settings document", () => {
     expect(listener).not.toHaveBeenCalled();
     useCompileStore.setState({ stopOnFirstError: !useCompileStore.getState().stopOnFirstError });
     useSettingsStore.getState().setEditorFontSize(18);
+    useCompileRootStore.setState({ latexUnits: null });
     expect(listener).toHaveBeenCalledTimes(2);
+    useCompileRootStore.setState({ followOpenFile: !useCompileRootStore.getState().followOpenFile });
+    expect(listener).toHaveBeenCalledTimes(3);
     stop();
     useSettingsStore.getState().setEditorFontSize(19);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it("covers every field in the export", () => {

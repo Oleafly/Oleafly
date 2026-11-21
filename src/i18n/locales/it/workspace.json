@@ -55,7 +55,11 @@
     "insertLink": "Inserisci collegamento",
     "copyLink": "Copia collegamento",
     "linkCopied": "Collegamento copiato",
-    "copyLinkFailed": "Il collegamento non è stato copiato. Controlla l'accesso agli appunti e riprova."
+    "copyLinkFailed": "Il collegamento non è stato copiato. Controlla l'accesso agli appunti e riprova.",
+    "copyPath": "Copia percorso",
+    "copyRelativePath": "Copia percorso relativo",
+    "pathCopied": "Percorso copiato",
+    "copyPathFailed": "Il percorso non è stato copiato. Controlla l'accesso agli appunti e riprova."
   },
   "explorer": {
     "resizeSections": "Ridimensiona {{first}} e {{second}}"

@@ -178,6 +178,33 @@ pub async fn reveal_project(project_id: String, path: Option<String>) -> Result<
     .map_err(|error| format!("failed to reveal the project: {error}"))?
 }
 
+pub(crate) fn project_entry_path(
+    project_id: &str,
+    path: &str,
+) -> Result<std::path::PathBuf, String> {
+    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let mut target = location.root.clone();
+    if !path.is_empty() {
+        crate::sandbox::resolve_readable_at(&location, path)?;
+        target.extend(
+            path.split('/')
+                .filter(|part| !part.is_empty() && *part != "."),
+        );
+    }
+    Ok(crate::project_availability::without_verbatim_prefix(
+        &target,
+    ))
+}
+
+#[tauri::command]
+pub async fn project_file_path(project_id: String, path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        project_entry_path(&project_id, &path).map(|target| target.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|error| format!("failed to find the file: {error}"))?
+}
+
 #[cfg(any(windows, test))]
 fn explorer_select_argument(path: &str) -> String {
     let display = crate::project_availability::without_verbatim_prefix(std::path::Path::new(path));
@@ -1341,6 +1368,51 @@ mod tests {
                 revealable_project_path(&linked.id, Some(escape)).is_err(),
                 "{escape}"
             );
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn copied_paths_stay_inside_the_project_and_use_native_separators() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join("chapters")).unwrap();
+        std::fs::write(folder.join("chapters").join("intro.tex"), b"x").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let library = crate::paths::create_project_dir("paper").unwrap();
+        let root =
+            crate::project_availability::without_verbatim_prefix(&folder.canonicalize().unwrap());
+        let text = |path: &std::path::Path| path.to_string_lossy().into_owned();
+
+        assert_eq!(
+            text(&project_entry_path(&linked.id, "").unwrap()),
+            text(&root)
+        );
+        assert_eq!(
+            text(&project_entry_path(&linked.id, "chapters/intro.tex").unwrap()),
+            text(&root.join("chapters").join("intro.tex"))
+        );
+        assert_eq!(
+            text(&project_entry_path(&linked.id, "chapters").unwrap()),
+            text(&root.join("chapters"))
+        );
+        assert_eq!(
+            text(&project_entry_path("paper", "").unwrap()),
+            text(&crate::project_availability::without_verbatim_prefix(
+                &library
+            ))
+        );
+        for escape in [
+            "../data",
+            "/etc",
+            "chapters/../../data",
+            r"chapters\intro.tex",
+        ] {
+            assert!(project_entry_path(&linked.id, escape).is_err(), "{escape}");
         }
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

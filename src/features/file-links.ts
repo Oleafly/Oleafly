@@ -16,8 +16,13 @@ import {
   type FileLinkPlace,
   type LinkLanguage,
 } from "@/lib/file-links";
+import { i18n } from "@/i18n";
+import { writeClipboardText } from "@/lib/clipboard";
 import { logError } from "@/lib/log";
 import { openProjectLocation } from "@/lib/open-location";
+import { projectFilePath } from "@/lib/tauri";
+import { toast } from "@/lib/toast";
+import { isWindows } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 
 export function canInsertFileLink(activePath: string | null): boolean {
@@ -63,18 +68,35 @@ export function insertFileLink(target: string): boolean {
   return true;
 }
 
-export async function copyFileLink(target: string): Promise<boolean> {
+export type FileReference = "link" | "path" | "relativePath";
+
+async function fileReferenceText(target: string, reference: FileReference): Promise<string> {
   const files = useFilesStore.getState();
+  if (reference === "relativePath") return isWindows ? target.replaceAll("/", "\\") : target;
+  if (reference === "path") {
+    if (!files.projectId) throw new Error("no project is open");
+    return projectFilePath(files.projectId, target);
+  }
   const language = linkLanguageFor(files.activePath);
-  const source = fileLinkSource(language ?? "markdown", target, {
+  return fileLinkSource(language ?? "markdown", target, {
     fromFile: language ? (files.activePath ?? "") : "",
     mainDoc: files.mainDoc,
   });
+}
+
+export async function copyFileReference(target: string, reference: FileReference): Promise<boolean> {
+  const link = reference === "link";
   try {
-    await navigator.clipboard.writeText(source);
+    await writeClipboardText(await fileReferenceText(target, reference));
+    toast.success(
+      link ? i18n.t(($) => $.workspace.files.linkCopied) : i18n.t(($) => $.workspace.files.pathCopied),
+    );
     return true;
   } catch (error) {
-    void logError("copy file link", error);
+    void logError(`copy file ${reference}`, error);
+    toast.error(
+      link ? i18n.t(($) => $.workspace.files.copyLinkFailed) : i18n.t(($) => $.workspace.files.copyPathFailed),
+    );
     return false;
   }
 }

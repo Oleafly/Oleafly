@@ -50,8 +50,6 @@
       "readOnly": "Read only",
       "browse": "Browse files",
       "moreActions": "More actions for {{label}}",
-      "showInFinder": "Show in Finder",
-      "showInExplorer": "Show in Explorer",
       "unlink": "Unlink",
       "listingTruncated": "This view stops after 2,000 files or eight folder levels.",
       "emptyFolder": "This folder is empty.",

@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Thanks
 
 - Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
 
 ### Added
 
+- LaTeX compiles follow the open file. A file with its own `\documentclass` compiles by itself, and a chapter compiles the document that includes it. A paper, its supplement and a response letter can share a project without Set as main document or `% !TEX root` comments. Other files compile the main document, and while a `.bib` file or an image is open, Oleafly keeps compiling the last document. To always compile the main document, pick Always the main document under Compile target in the compile menu.
+- Right-click a file or folder in the file tree to copy its full path or its path inside the project, or to show it in Finder, File Explorer or your file manager. Editor tabs have the same items. Right-click the empty part of the tree to copy or show the project folder.
 - When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.
 - pdfLaTeX's "Unicode character ... not set up for use with LaTeX" error has a plain explanation.
 - Projects on the latexmk engine can now compile with PhiTeX, if you have it installed. Turn on PhiTeX engine in Settings > Experimentation, and pdfLaTeX and XeLaTeX projects build with `phitex build`. Click-to-jump between source and PDF works as before. LuaLaTeX projects, and computers without PhiTeX, keep using latexmk. If your own PhiTeX settings fetch packages from Shelf, Oleafly's compiles do too, and offline mode limits them to packages you've already downloaded.
@@ -33,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In a folder you opened that has no main document, the compile button now works when the open file is a complete LaTeX document.
+- On Linux, the research roots menu says Show in file manager instead of Show in Explorer.
 - When a file left over from an earlier compile is damaged, the Logs panel says so and offers Recompile from scratch. Before, it suggested a typo in a command and pointed into the build folder, and with Stop on first error every later compile failed the same way. When the document itself writes a line LaTeX can't read back, the panel says that instead and names where it usually comes from, since recompiling from scratch won't help.
 - With the built-in engine, each entry under Missing characters in the Logs panel names the file and line of the character and opens it. A character that is missing on several lines gets an entry for each line. With XeLaTeX and LuaLaTeX, where the compiler gives no line, Oleafly looks the character up in your files.
 - An error inside `align`, a beamer frame, `tabularx` or a long caption opens the line with the mistake instead of the closing line, and the card shows that line with a mark under the command.

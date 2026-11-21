@@ -501,7 +501,15 @@
       "run": "在这台电脑上运行代码"
     },
     "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。",
-    "coauthorsChanged": "自上次编译以来合作者有更改"
+    "coauthorsChanged": "自上次编译以来合作者有更改",
+    "texRootDocument": "根文件：{{path}}（它有自己的 \\documentclass）",
+    "texRootInclude": "根文件：{{path}}（它包含 {{file}}）",
+    "target": {
+      "title": "编译目标",
+      "help": "选择“跟随打开的文件”时，有自己 \\documentclass 的文件会单独编译。章节文件会编译包含它的文档。其他文件编译主文档。% !TEX root 注释始终优先。",
+      "open": "跟随打开的文件",
+      "main": "始终编译主文档"
+    }
   },
   "datePicker": {
     "placeholder": "选择日期"

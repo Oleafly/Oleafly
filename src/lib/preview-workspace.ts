@@ -20,6 +20,7 @@ import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
 import { mainDocumentMissing } from "@/lib/main-document";
+import { effectiveMainDocMissing } from "@/lib/tex-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
@@ -81,7 +82,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       compileTimeMs: compile.compileTimeMs, compileRevision: compile.lastCompileCheckpoint?.outputRevision ?? 0,
       autoCompile: compile.autoCompile, compileMode: compile.compileMode,
       checkSyntaxBeforeCompile: compile.checkSyntaxBeforeCompile, stopOnFirstError: compile.stopOnFirstError,
-      noMainDocument: mainDocumentMissing(files),
+      noMainDocument: effectiveMainDocMissing(),
       systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
       typstVariant: activeTypstVariant(projectId, files.engine),
       livePreview: compile.livePreview,
@@ -203,9 +204,13 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
   };
   const offCompile = useCompileStore.subscribe(schedule);
   const offDetached = usePreviewDetachedStore.subscribe(schedule);
+  let noMainDocument = effectiveMainDocMissing();
   const offFiles = useFilesStore.subscribe((next, previous) => {
+    const missing = effectiveMainDocMissing();
+    const missingChanged = missing !== noMainDocument;
+    noMainDocument = missing;
     if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc ||
-      next.projectName !== previous.projectName ||
+      next.projectName !== previous.projectName || missingChanged ||
       mainDocumentMissing(next) !== mainDocumentMissing(previous)) schedule();
   });
   const offAccess = useFolderAccessStore.subscribe((next, previous) => {

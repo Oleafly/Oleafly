@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { resetProjectSourcesCache } from "@/lib/project-sources";
 import { projectCompileFolder } from "@/lib/tauri";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { useEffectiveMainDoc } from "@/lib/tex-root";
 import { filesystemTree, useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -17,7 +17,7 @@ export function IndexKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
   const tree = useFilesStore(filesystemTree);
-  const mainDocument = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
+  const mainDocument = useEffectiveMainDoc((root) => root.mainDoc);
   const projectLoading = useFilesStore((s) => s.loading);
   const content = useActiveContent();
 

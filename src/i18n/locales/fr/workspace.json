@@ -55,7 +55,11 @@
     "insertLink": "Insérer un lien",
     "copyLink": "Copier le lien",
     "linkCopied": "Lien copié",
-    "copyLinkFailed": "Le lien n'a pas été copié. Vérifiez l'accès au presse-papiers et réessayez."
+    "copyLinkFailed": "Le lien n'a pas été copié. Vérifiez l'accès au presse-papiers et réessayez.",
+    "copyPath": "Copier le chemin",
+    "copyRelativePath": "Copier le chemin relatif",
+    "pathCopied": "Chemin copié",
+    "copyPathFailed": "Le chemin n'a pas été copié. Vérifiez l'accès au presse-papiers et réessayez."
   },
   "explorer": {
     "resizeSections": "Redimensionner {{first}} et {{second}}"

@@ -585,9 +585,6 @@
     "unsupported": "Вычитка не поддерживается для этого формата документа."
   },
   "checkpoints": {
-    "showInExplorer": "Показать в проводнике",
-    "showInFinder": "Показать в Finder",
-    "showInFileManager": "Показать в файловом менеджере",
     "timeNotRecorded": "Время не записано",
     "justNow": "Только что",
     "fallbackName": "Контрольная точка",

@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
+
+const copyFileReference = vi.hoisted(() => vi.fn(async () => true));
+vi.mock("@/features/file-links", () => ({ copyFileReference }));
 
 const shell = en.shell;
 const CLEAN = { content: "x\n", dirty: false };
@@ -84,6 +89,20 @@ describe("editor tab menu", () => {
     ]) {
       expect(within(menu).getByRole("menuitem", { name: label })).toBeInTheDocument();
     }
+  });
+
+  it("copies a file tab's path and offers no path for a diff tab", async () => {
+    renderStrip();
+    const files = enWorkspace.files;
+
+    const menu = openMenu("methods.tex");
+    expect(within(menu).getByRole("menuitem", { name: showInFileManagerLabel() })).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: files.copyRelativePath }));
+    await waitFor(() => expect(copyFileReference).toHaveBeenCalledWith("methods.tex", "relativePath"));
+    await waitFor(() => expect(screen.queryByTestId("editor-tab-menu")).not.toBeInTheDocument());
+
+    const diffMenu = openMenu("refs.bib");
+    expect(within(diffMenu).queryByRole("menuitem", { name: files.copyPath })).not.toBeInTheDocument();
   });
 
   it("opens the same menu from the keyboard", () => {

@@ -50,8 +50,6 @@
       "readOnly": "Chỉ đọc",
       "browse": "Duyệt tệp",
       "moreActions": "Thêm hành động cho {{label}}",
-      "showInFinder": "Hiện trong Finder",
-      "showInExplorer": "Hiện trong Explorer",
       "unlink": "Bỏ liên kết",
       "listingTruncated": "Chế độ xem này dừng sau 2.000 tệp hoặc tám cấp thư mục.",
       "emptyFolder": "Thư mục này trống.",

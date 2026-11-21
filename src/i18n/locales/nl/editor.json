@@ -571,9 +571,6 @@
     "unsupported": "Proeflezen wordt niet ondersteund voor dit documentformaat."
   },
   "checkpoints": {
-    "showInExplorer": "Tonen in Verkenner",
-    "showInFinder": "Tonen in Finder",
-    "showInFileManager": "Tonen in de bestandsbeheerder",
     "timeNotRecorded": "Tijd niet vastgelegd",
     "justNow": "Zojuist",
     "fallbackName": "Checkpoint",

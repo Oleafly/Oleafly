@@ -50,8 +50,6 @@
       "readOnly": "Salt okunur",
       "browse": "Dosyalara göz at",
       "moreActions": "{{label}} için diğer eylemler",
-      "showInFinder": "Finder'da göster",
-      "showInExplorer": "Dosya Gezgini'nde göster",
       "unlink": "Bağlantıyı kaldır",
       "listingTruncated": "Bu görünüm 2.000 dosyadan veya sekiz klasör düzeyinden sonra durur.",
       "emptyFolder": "Bu klasör boş.",

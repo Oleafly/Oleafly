@@ -24,7 +24,10 @@
     "no": "Nej",
     "learnMore": "Læs mere",
     "showMore": "Vis mere",
-    "showLess": "Vis mindre"
+    "showLess": "Vis mindre",
+    "showInFinder": "Vis i Finder",
+    "showInExplorer": "Vis i Stifinder",
+    "showInFileManager": "Vis i filhåndteringen"
   },
   "state": {
     "loading": "Indlæser…",

@@ -571,9 +571,6 @@
     "unsupported": "Korrekturlesing støttes ikke for dette dokumentformatet."
   },
   "checkpoints": {
-    "showInExplorer": "Vis i Utforsker",
-    "showInFinder": "Vis i Finder",
-    "showInFileManager": "Vis i filbehandleren",
     "timeNotRecorded": "Tidspunktet er ikke registrert",
     "justNow": "Nå nettopp",
     "fallbackName": "Sjekkpunkt",

@@ -578,9 +578,6 @@
     "unsupported": "La corrección no es compatible con este formato de documento."
   },
   "checkpoints": {
-    "showInExplorer": "Mostrar en el Explorador",
-    "showInFinder": "Mostrar en el Finder",
-    "showInFileManager": "Mostrar en el gestor de archivos",
     "timeNotRecorded": "Hora no registrada",
     "justNow": "Ahora mismo",
     "fallbackName": "Punto de control",

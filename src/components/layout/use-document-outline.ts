@@ -26,7 +26,7 @@ import {
 import type { ProjectIndex } from "@/lib/index/types";
 import { activeOutlineIndex } from "@/lib/outline-active";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { useEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -120,7 +120,7 @@ export function useDocumentOutline(scope: OutlineScope, numbered: boolean): Docu
   const index = useIndexStore((state) => state.index);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
-  const mainDoc = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
+  const mainDoc = useEffectiveMainDoc((root) => root.mainDoc);
   const root = useMemo(
     () => (index && activePath ? outlineRoot(scope, index, activePath, mainDoc) : null),
     [activePath, index, mainDoc, scope],

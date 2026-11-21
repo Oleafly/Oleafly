@@ -55,7 +55,11 @@
     "insertLink": "Link einfügen",
     "copyLink": "Link kopieren",
     "linkCopied": "Link kopiert",
-    "copyLinkFailed": "Der Link wurde nicht kopiert. Prüfen Sie den Zugriff auf die Zwischenablage und versuchen Sie es erneut."
+    "copyLinkFailed": "Der Link wurde nicht kopiert. Prüfen Sie den Zugriff auf die Zwischenablage und versuchen Sie es erneut.",
+    "copyPath": "Pfad kopieren",
+    "copyRelativePath": "Relativen Pfad kopieren",
+    "pathCopied": "Pfad kopiert",
+    "copyPathFailed": "Der Pfad wurde nicht kopiert. Prüfen Sie den Zugriff auf die Zwischenablage und versuchen Sie es erneut."
   },
   "explorer": {
     "resizeSections": "{{first}} und {{second}} in der Größe ändern"

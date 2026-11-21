@@ -578,9 +578,6 @@
     "unsupported": "A revisão de texto não é compatível com este formato de documento."
   },
   "checkpoints": {
-    "showInExplorer": "Mostrar no Explorador de Arquivos",
-    "showInFinder": "Mostrar no Finder",
-    "showInFileManager": "Mostrar no gerenciador de arquivos",
     "timeNotRecorded": "Horário não registrado",
     "justNow": "Agora mesmo",
     "fallbackName": "Ponto de verificação",

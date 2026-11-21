@@ -503,7 +503,15 @@
       "run": "Esegui il codice su questo computer"
     },
     "sharedViewer": "Solo proprietari ed editor possono modificare queste impostazioni in un progetto condiviso.",
-    "coauthorsChanged": "Modificato dai coautori dopo l'ultima compilazione"
+    "coauthorsChanged": "Modificato dai coautori dopo l'ultima compilazione",
+    "texRootDocument": "root: {{path}} (ha un proprio \\documentclass)",
+    "texRootInclude": "root: {{path}} (include {{file}})",
+    "target": {
+      "title": "Destinazione della compilazione",
+      "help": "Con Segui il file aperto, un file con un proprio \\documentclass si compila da solo. Un capitolo o una sezione compila il documento che lo include. Gli altri file compilano il documento principale. Un commento % !TEX root ha sempre la precedenza.",
+      "open": "Segui il file aperto",
+      "main": "Sempre il documento principale"
+    }
   },
   "datePicker": {
     "placeholder": "Scegli una data"

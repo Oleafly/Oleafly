@@ -50,8 +50,6 @@
       "readOnly": "Sola lettura",
       "browse": "Sfoglia i file",
       "moreActions": "Altre azioni per {{label}}",
-      "showInFinder": "Mostra nel Finder",
-      "showInExplorer": "Mostra in Esplora file",
       "unlink": "Scollega",
       "listingTruncated": "Questa vista si ferma dopo 2.000 file oppure otto livelli di cartelle.",
       "emptyFolder": "Questa cartella è vuota.",

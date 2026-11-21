@@ -426,9 +426,9 @@ describe("folder menu", () => {
     expect(
       items.some((item) =>
         [
-          enLibrary.folder.menu.showInFinder,
-          enLibrary.folder.menu.showInExplorer,
-          enLibrary.folder.menu.showInFileManager,
+          enCommon.actions.showInFinder,
+          enCommon.actions.showInExplorer,
+          enCommon.actions.showInFileManager,
         ].includes(item ?? ""),
       ),
     ).toBe(true);

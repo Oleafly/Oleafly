@@ -564,9 +564,6 @@
     "unsupported": "この文書形式は校正に対応していません。"
   },
   "checkpoints": {
-    "showInExplorer": "エクスプローラーで表示",
-    "showInFinder": "Finder で表示",
-    "showInFileManager": "ファイルマネージャーで表示",
     "timeNotRecorded": "時刻は記録されていません",
     "justNow": "たった今",
     "fallbackName": "チェックポイント",

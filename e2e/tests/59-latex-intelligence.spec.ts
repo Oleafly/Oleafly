@@ -193,3 +193,25 @@ test("% !TEX root override compiles the declared root", async ({ tauriPage }) =>
   await expectCompiledPdfContains(tauriPage, "ROOTOVERRIDEMARK");
   await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");
 });
+
+test("a second complete document compiles while it is the open file", async ({ tauriPage }) => {
+  test.setTimeout(300_000);
+  await createBlankProject(tauriPage, "Follow Open File");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await replaceEditorSource(
+    tauriPage,
+    "\\documentclass{article}\n\\begin{document}\nSTOREDMAINMARK\n\\end{document}\n",
+  );
+  await writeProjectText(
+    tauriPage,
+    "letter.tex",
+    "\\documentclass{article}\n\\begin{document}\nOPENLETTERMARK\n\\end{document}\n",
+  );
+  await tauriPage.evaluate(
+    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("letter.tex"))`,
+  );
+  await expect(tauriPage.getByTestId("tex-root-indicator")).toBeVisible({ timeout: 15_000 });
+  await compileAndWait(tauriPage);
+  await expectCompiledPdfContains(tauriPage, "OPENLETTERMARK");
+  await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");
+});

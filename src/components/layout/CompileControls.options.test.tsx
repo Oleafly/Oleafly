@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useCompileStore } from "@/store/compile";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
@@ -51,6 +52,7 @@ beforeEach(() => {
     stopCompile,
   } as unknown as ReturnType<typeof useCompileStore.getState>);
   useSettingsStore.setState({ viewMode: "editor" });
+  useCompileRootStore.setState({ followOpenFile: true, latexUnits: null });
 });
 
 describe("CompileControls button", () => {
@@ -366,5 +368,81 @@ describe("CompileControls TeX root indicator", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       copy.texRootNotTex.replace("{{file}}", "chapter.tex").replace("{{target}}", "notes.md"),
     );
+  });
+
+  it("says when the open file compiles because it has its own \\documentclass", async () => {
+    const letter = "\\documentclass{letter}\n\\begin{document}\n\\end{document}\n";
+    useFilesStore.setState({
+      activePath: "response.tex",
+      openTabs: ["response.tex"],
+      files: { "response.tex": { content: letter }, "main.tex": { content: "" } },
+      tree: [
+        { path: "response.tex", is_dir: false },
+        { path: "main.tex", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    const user = userEvent.setup();
+    await user.hover(screen.getByTestId("tex-root-indicator"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.texRootDocument.replace("{{path}}", "response.tex"),
+    );
+  });
+
+  it("names the document that includes the open file", async () => {
+    useFilesStore.setState({
+      activePath: "supplement/methods.tex",
+      files: { "supplement/methods.tex": { content: "\\section{Methods}\n" } },
+      tree: [
+        { path: "supplement/methods.tex", is_dir: false },
+        { path: "supplement.tex", is_dir: false },
+        { path: "main.tex", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileRootStore.setState({
+      latexUnits: {
+        projectId: "p1",
+        units: { roots: ["main.tex", "supplement.tex"], groups: [[1]], fileGroups: { "supplement/methods.tex": 0 }, openUnits: [] },
+      },
+    });
+    render(<CompileControls />);
+    expect(screen.getByTestId("tex-root-indicator")).toHaveTextContent(
+      copy.texRootName.replace("{{name}}", "supplement.tex"),
+    );
+    const user = userEvent.setup();
+    await user.hover(screen.getByTestId("tex-root-indicator"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.texRootInclude.replace("{{path}}", "supplement.tex").replace("{{file}}", "supplement/methods.tex"),
+    );
+  });
+});
+
+describe("CompileControls compile target", () => {
+  it("switches between following the open file and the main document", async () => {
+    const letter = "\\documentclass{letter}\n\\begin{document}\n\\end{document}\n";
+    useFilesStore.setState({
+      activePath: "response.tex",
+      files: { "response.tex": { content: letter } },
+      tree: [
+        { path: "response.tex", is_dir: false },
+        { path: "main.tex", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    expect(screen.getByTestId("tex-root-indicator")).toBeInTheDocument();
+    const user = await openOptions();
+    expect(screen.getByTestId("compile-target-open")).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByTestId("compile-target-main"));
+    expect(useCompileRootStore.getState().followOpenFile).toBe(false);
+    await waitFor(() => expect(screen.queryByTestId("tex-root-indicator")).not.toBeInTheDocument());
+  });
+
+  it("is offered only for LaTeX projects", async () => {
+    useFilesStore.setState({
+      engine: { ...LATEX_ENGINE, id: "typst", source_format: "typst" },
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    await openOptions();
+    expect(screen.queryByTestId("compile-target-open")).not.toBeInTheDocument();
   });
 });

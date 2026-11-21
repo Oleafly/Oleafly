@@ -95,6 +95,7 @@ import {
   useIndexStore,
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { readStoredFlag, storeFlag } from "@/lib/stored-flag";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { compiledHtmlOutput, notebookOutput } from "@/lib/notebook-engines";
 import type { NotebookTool } from "@/lib/notebook-commands";
@@ -460,24 +461,6 @@ function livePreviewRoutes(state: CompileState, files: FilesSnapshot, projectId:
     live.status !== "failed" &&
     files.engine.id === "typst"
   );
-}
-
-function readStoredFlag(key: string, fallback: boolean): boolean {
-  try {
-    if (typeof localStorage === "undefined") return fallback;
-    const raw = localStorage.getItem(key);
-    return raw === null ? fallback : raw === "1";
-  } catch {
-    return fallback;
-  }
-}
-
-function storeFlag(key: string, value: boolean) {
-  try {
-    localStorage.setItem(key, value ? "1" : "0");
-  } catch {
-    /* a storage-less runtime keeps the setting for this session only */
-  }
 }
 
 function readStoredCompileMode(): CompileMode {
@@ -1381,7 +1364,7 @@ function folderAvailableGate(ctx: CompileGateContext): boolean {
 }
 
 function mainDocumentGate(ctx: CompileGateContext): boolean {
-  if (!mainDocumentMissing(ctx.files)) return true;
+  if (!mainDocumentMissing({ ...ctx.files, mainDoc: ctx.mainDoc })) return true;
   setCompileUnavailable(ctx, i18n.t(($) => $.shell.openedFolder.noMain));
   ctx.abortIntent();
   return false;

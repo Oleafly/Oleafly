@@ -571,9 +571,6 @@
     "unsupported": "Die Korrekturprüfung wird für dieses Dokumentformat nicht unterstützt."
   },
   "checkpoints": {
-    "showInExplorer": "Im Explorer anzeigen",
-    "showInFinder": "Im Finder anzeigen",
-    "showInFileManager": "Im Dateimanager anzeigen",
     "timeNotRecorded": "Zeit nicht erfasst",
     "justNow": "Gerade eben",
     "fallbackName": "Checkpoint",
