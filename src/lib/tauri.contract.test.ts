@@ -49,6 +49,7 @@ describe("IPC command contract", () => {
     ["setProjectEngineCmd keeps auto-detection", () => tauri.setProjectEngineCmd("p", "latexmk"), "set_project_engine", { projectId: "p", engine: "latexmk", flavor: null }],
     ["setDefaultLatexEngineCmd", () => tauri.setDefaultLatexEngineCmd("latexmk"), "set_default_latex_engine", { engine: "latexmk" }],
     ["setProjectDictionaryLocaleCmd", () => tauri.setProjectDictionaryLocaleCmd("p", null), "set_project_dictionary_locale", { projectId: "p", locale: null }],
+    ["setProjectWritingSettingsCmd", () => tauri.setProjectWritingSettingsCmd("p", null), "set_project_writing_settings", { projectId: "p", settings: null }],
     ["openDevtools", () => tauri.openDevtools(), "open_devtools", undefined],
     ["listProjects", () => tauri.listProjects(), "list_projects", undefined],
     ["libraryStorageSummary", () => tauri.libraryStorageSummary(), "library_storage_summary", undefined],

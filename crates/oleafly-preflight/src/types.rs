@@ -17,15 +17,17 @@ pub enum CheckId {
     Refs,
     Submission,
     Privacy,
+    Writing,
 }
 
-pub const CHECK_IDS: [CheckId; 6] = [
+pub const CHECK_IDS: [CheckId; 7] = [
     CheckId::Ats,
     CheckId::Compile,
     CheckId::A11y,
     CheckId::Refs,
     CheckId::Submission,
     CheckId::Privacy,
+    CheckId::Writing,
 ];
 
 impl CheckId {
@@ -37,6 +39,7 @@ impl CheckId {
             Self::Refs => "refs",
             Self::Submission => "submission",
             Self::Privacy => "privacy",
+            Self::Writing => "writing",
         }
     }
 }
@@ -50,6 +53,7 @@ pub enum Lens {
     Refs,
     Submission,
     Privacy,
+    Writing,
     Both,
 }
 
@@ -62,6 +66,7 @@ impl Lens {
             Self::Refs => "refs",
             Self::Submission => "submission",
             Self::Privacy => "privacy",
+            Self::Writing => "writing",
             Self::Both => "both",
         }
     }
@@ -351,6 +356,7 @@ pub struct PreflightReport {
     pub refs_score: Option<i64>,
     pub submission_score: Option<i64>,
     pub privacy_score: Option<i64>,
+    pub writing_score: Option<i64>,
     pub coverage: CheckCoverage,
     pub has_pdf: bool,
 }
@@ -394,7 +400,7 @@ mod tests {
         }
         let text = serde_json::to_string(&scores).unwrap();
         assert!(text.starts_with("{\"ats\":"));
-        assert!(text.ends_with("\"privacy\":0}"));
+        assert!(text.ends_with("\"writing\":0}"));
     }
 
     #[test]

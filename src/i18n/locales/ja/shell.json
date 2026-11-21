@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "クイックメモ",
       "keywords": "クイックメモ メモ ノート 受信箱 今日 キャプチャ"
+    },
+    "notationTable": {
+      "label": "記号表",
+      "keywords": "挿入 記号 定義 用語集 数式 表記",
+      "empty": "記号の定義が見つかりません。本文中で「Let $x$ be the input」や「where $x$ is the input」のような表現を使って記号を定義してください。"
+    },
+    "addChapterFromProject": {
+      "keywords": "学位論文 章 論文 インポート 統合 コピー プロジェクト",
+      "label": "別のプロジェクトから章を追加"
     }
   },
   "community": {

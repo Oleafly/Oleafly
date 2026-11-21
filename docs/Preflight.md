@@ -35,6 +35,15 @@ guarantee of acceptance or a formal accessibility certificate.
 - **Privacy and blind review:** credentials, private keys, sensitive files,
   draft markup, internal comments, author fields, acknowledgements, and PDF
   identity metadata.
+- **Writing style:** paper conventions in LaTeX source, such as a space before
+  a parenthesis, `~` before `\cite` and `\ref`, LaTeX quotes, punctuation after
+  display equations, caption placement, citations in the abstract, and macros
+  typed out in full. A CVPR-style profile adds Table written in full, numbered
+  equations, and floats at the top of the page. Projects can add their own
+  find-and-fix rules, which are saved under `writing` in `project.json`. Most
+  findings carry a one-click fix, and the same rules underline the source while
+  you type unless the project turns the underlines off. Everything runs
+  offline.
 
 Typst projects get their own source checks: unresolved references and
 citations, missing alt text, document metadata, missing images, privacy, and
@@ -124,7 +133,7 @@ Each finding has a severity, certainty, stable rule identifier, explanation,
 and a source or PDF location where available. Accessibility findings also
 carry the standards they cite, how the result was established (the PDF object
 model, the compiler log, a source heuristic, or page geometry), and whether a
-machine can decide the requirement at all. The six checks can run on their
+machine can decide the requirement at all. The seven checks can run on their
 own or together. A check never reports success when its required input was not
 available. Source-only results are marked partial until a current PDF exists.
 
@@ -138,6 +147,9 @@ available. Source-only results are marked partial until a current PDF exists.
 - `packages/preflight/src/standards.ts`: the PDF/UA, Matterhorn, and WCAG table.
 - `packages/preflight/src/tagging-status.ts`: the vendored compatibility data.
 - `packages/preflight/src/accessible-prep.ts`: tagged-export preparation.
+- `packages/preflight/src/writing/`: writing-style rules, project rules, and
+  their settings. `src/features/writing-fixes.ts` applies fixes and saves the
+  settings through `set_project_writing_settings`.
 - `src/components/preflight/`: product surface.
 - `crates/oleafly-preflight/`: the same source rules in Rust, for `oleafly check`
   and research tasks. Golden fixtures generated from `packages/preflight`

@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Hurtig notering",
       "keywords": "hurtig notering noter indbakke i dag quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notationstabel",
+      "keywords": "notation symboler definitioner ordliste matematik indsæt insert symbols glossary math",
+      "empty": "Der blev ikke fundet nogen symboldefinitioner. Definer symboler i teksten med vendinger som »Let $x$ be the input« eller »where $x$ is the input«."
+    },
+    "addChapterFromProject": {
+      "keywords": "afhandling kapitel artikel import flet kopier projekt thesis chapter paper merge",
+      "label": "Tilføj kapitel fra et andet projekt"
     }
   },
   "community": {

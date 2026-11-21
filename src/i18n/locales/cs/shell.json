@@ -394,6 +394,15 @@
     "notesQuickCapture": {
       "label": "Rychlý záznam",
       "keywords": "rychlý záznam zapsat poznámka doručené dnes quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabulka značení",
+      "keywords": "vložit značení symboly definice slovníček matematika",
+      "empty": "Nenalezeny žádné definice symbolů. Symboly definujte v textu větami jako „Nechť $x$ je vstup“ nebo „kde $x$ je vstup“."
+    },
+    "addChapterFromProject": {
+      "keywords": "práce kapitola článek import sloučit kopírovat projekt",
+      "label": "Přidat kapitolu z jiného projektu"
     }
   },
   "community": {

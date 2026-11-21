@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { tableHighlights, type MetricDirection, type TableHighlight } from "@oleafly/conversion-registry/table";
 import { useTranslation } from "react-i18next";
 import { Copy, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { Switch } from "@/components/ui/switch";
 import { pickTableImportPath } from "@/lib/native-file-dialog";
 import { logError } from "@/lib/log";
@@ -24,17 +26,22 @@ import {
   hasValidTableLabel,
   planLinkedTable,
   readTableFile,
+  resultColumns,
   writeLinkedTableData,
   type TableFile,
   type TableTarget,
 } from "@/features/table-import";
 
-import { ToolPane, ToolPreviewSurface, ToolSplitView } from "@/components/tools/ToolWorkspace";
+import { ToolPane, ToolPreviewSurface, ToolSegmentedControl, ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { basename } from "@/lib/path-utils";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
 const PREVIEW_ROWS = 6;
 const PREVIEW_COLUMNS = 6;
+const PREVIEW_COLUMN_KEYS = Array.from({ length: PREVIEW_COLUMNS }, (_, column) => `column-${column}`);
+
+type DirectionChoice = MetricDirection | "skip";
 
 interface TableImportContext {
   projectId: string | null;
@@ -61,6 +68,9 @@ export function TableImportDialog() {
   const [header, setHeader] = useState(true);
   const [caption, setCaption] = useState("");
   const [label, setLabel] = useState("tab:imported");
+  const [boldBest, setBoldBest] = useState(false);
+  const [underlineSecond, setUnderlineSecond] = useState(false);
+  const [directionChoices, setDirectionChoices] = useState<Record<number, DirectionChoice>>({});
   const [error, setError] = useState<string | null>(null);
   const selectionRequest = useRef(0);
   const busyRef = useRef(false);
@@ -74,6 +84,7 @@ export function TableImportDialog() {
       setRows([]);
       setTableFile(null);
       setFileName(null);
+      setDirectionChoices({});
       setError(null);
       setTableContext(null);
       busyRef.current = false;
@@ -82,9 +93,28 @@ export function TableImportDialog() {
   }, [open]);
 
   const tableTarget = tableContext?.target ?? target;
-  const linkedPlan = linked && tableTarget === "typst" && tableFile && fileName && tableContext?.activePath
+  const linkedPlan = linked && tableFile && fileName && tableContext?.activePath
     ? planLinkedTable(tableFile, fileName, tree, tableContext.activePath)
     : null;
+  const columnCount = rows.reduce((count, row) => Math.max(count, row.length), 0);
+  const highlightable = !(linked && target === "typst");
+  const highlighting = highlightable && (boldBest || underlineSecond);
+  const metricColumns = useMemo(() => (highlighting ? resultColumns(rows, header) : []), [highlighting, rows, header]);
+  const directionOf = (column: number, direction: MetricDirection | null): DirectionChoice =>
+    directionChoices[column] ?? direction ?? "skip";
+  const highlight = useMemo((): TableHighlight | undefined => {
+    if (!highlighting) return undefined;
+    const chosen = new Map(metricColumns.map(({ column, direction }) => [column, directionChoices[column] ?? direction]));
+    return {
+      directions: Array.from({ length: columnCount }, (_, column) => {
+        const choice = chosen.get(column);
+        return choice === "higher" || choice === "lower" ? choice : null;
+      }),
+      best: boldBest,
+      second: underlineSecond,
+    };
+  }, [highlighting, boldBest, underlineSecond, metricColumns, directionChoices, columnCount]);
+  const previewMarks = useMemo(() => (highlight ? tableHighlights(rows, { header, highlight }) : []), [rows, header, highlight]);
 
   const validLabel = (): string | null => {
     const trimmedLabel = label.trim();
@@ -102,6 +132,7 @@ export function TableImportDialog() {
       header,
       caption: caption.trim() || undefined,
       label: trimmedLabel || undefined,
+      highlight,
       target: tableTarget,
     });
   };
@@ -130,6 +161,7 @@ export function TableImportDialog() {
       if (request === selectionRequest.current && contextMatches(context)) {
         setRows(parsed.rows);
         setTableFile(parsed);
+        setDirectionChoices({});
         setFileName(basename(selection));
         setTableContext(context);
       } else if (request === selectionRequest.current) {
@@ -184,8 +216,9 @@ export function TableImportDialog() {
       header,
       caption: caption.trim() || undefined,
       label: trimmedLabel || undefined,
-      source: plan.source,
-    });
+      highlight,
+      target: context.target,
+    }, plan);
     const request = selectionRequest.current;
     busyRef.current = true;
     setBusy(true);
@@ -209,7 +242,11 @@ export function TableImportDialog() {
     }
     setOpen(false);
     insertAtCursor(`\n${tableSource}\n`);
-    toast.success(t(($) => $.editor.tableImport.insertedLinked, { path: plan.dataPath }));
+    toast.success(
+      context.target === "typst"
+        ? t(($) => $.editor.tableImport.insertedLinked, { path: plan.dataPath })
+        : t(($) => $.editor.tableImport.insertedLinkedLatex, { path: plan.dataPath }),
+    );
   };
 
   const copy = async () => {
@@ -226,8 +263,10 @@ export function TableImportDialog() {
     }
   };
 
-  const columnCount = rows.reduce((count, row) => Math.max(count, row.length), 0);
   const engineFooter = target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex);
+  const linkedFooter = (path: string) => target === "typst"
+    ? t(($) => $.editor.tableImport.footerLinked, { path })
+    : t(($) => $.editor.tableImport.footerLinkedLatex, { path });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -247,7 +286,7 @@ export function TableImportDialog() {
           <ToolPane
             title={t(($) => $.editor.tableImport.spreadsheetPane)}
             badge={target === "typst" ? "Typst" : "LaTeX"}
-            footer={<p className="text-xs leading-relaxed text-muted-foreground">{linkedPlan ? t(($) => $.editor.tableImport.footerLinked, { path: linkedPlan.dataPath }) : engineFooter}</p>}
+            footer={<p className="text-xs leading-relaxed text-muted-foreground">{linkedPlan ? linkedFooter(linkedPlan.dataPath) : engineFooter}</p>}
           >
             <div className="space-y-5 p-5">
               <div className="space-y-2">
@@ -261,13 +300,42 @@ export function TableImportDialog() {
                 <label htmlFor="table-import-header" className="text-sm">{t(($) => $.editor.tableImport.firstRowHeader)}</label>
                 <Switch id="table-import-header" checked={header} onCheckedChange={setHeader} aria-label={t(($) => $.editor.tableImport.firstRowHeader)} />
               </div>
-              {target === "typst" && <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <label htmlFor="table-import-linked" className="text-sm">{t(($) => $.editor.tableImport.keepLinked)}</label>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.editor.tableImport.keepLinkedHint)}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{target === "typst" ? t(($) => $.editor.tableImport.keepLinkedHint) : t(($) => $.editor.tableImport.keepLinkedHintLatex)}</p>
                 </div>
                 <Switch id="table-import-linked" data-testid="table-import-linked" checked={linked} onCheckedChange={setLinked} aria-label={t(($) => $.editor.tableImport.keepLinked)} />
-              </div>}
+              </div>
+              {highlightable && <fieldset aria-labelledby="table-import-results" className="min-w-0 space-y-3">
+                <SectionHeading as="p" id="table-import-results">{t(($) => $.editor.tableImport.resultsTable)}</SectionHeading>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="table-import-best" className="text-sm">{t(($) => $.editor.tableImport.boldBest)}</label>
+                  <Switch id="table-import-best" checked={boldBest} onCheckedChange={setBoldBest} aria-label={t(($) => $.editor.tableImport.boldBest)} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="table-import-second" className="text-sm">{t(($) => $.editor.tableImport.underlineSecond)}</label>
+                  <Switch id="table-import-second" checked={underlineSecond} onCheckedChange={setUnderlineSecond} aria-label={t(($) => $.editor.tableImport.underlineSecond)} />
+                </div>
+                {metricColumns.map(({ column, title, direction }) => {
+                  const name = title || t(($) => $.editor.tableImport.columnNumber, { number: column + 1 });
+                  return (
+                    <div key={column} className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-xs">{name}</span>
+                      <ToolSegmentedControl
+                        label={t(($) => $.editor.tableImport.columnDirection, { column: name })}
+                        value={directionOf(column, direction)}
+                        options={[
+                          { value: "higher", label: t(($) => $.editor.tableImport.higherBetter) },
+                          { value: "lower", label: t(($) => $.editor.tableImport.lowerBetter) },
+                          { value: "skip", label: t(($) => $.editor.tableImport.skipColumn) },
+                        ]}
+                        onChange={(choice) => setDirectionChoices((choices) => ({ ...choices, [column]: choice }))}
+                      />
+                    </div>
+                  );
+                })}
+              </fieldset>}
               <div className="grid gap-2">
                 <label htmlFor="table-import-caption" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.captionLabel)}</label>
                 <Input id="table-import-caption" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder={t(($) => $.editor.tableImport.captionPlaceholder)} />
@@ -289,9 +357,9 @@ export function TableImportDialog() {
                       <tr key={rowIndex} className={header && rowIndex === 0 ? "border-b border-foreground/30 font-semibold" : "border-b border-border/60 last:border-b-0"}>
                         {row.slice(0, PREVIEW_COLUMNS).map((cell, cellIndex) => {
                           const Cell = header && rowIndex === 0 ? "th" : "td";
+                          const mark = previewMarks[rowIndex]?.[cellIndex];
                           return (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: positional spreadsheet cells
-                            <Cell key={cellIndex} scope={Cell === "th" ? "col" : undefined} className="min-w-20 max-w-64 whitespace-pre-wrap break-words px-3 py-2">{cell}</Cell>
+                            <Cell key={PREVIEW_COLUMN_KEYS[cellIndex]} scope={Cell === "th" ? "col" : undefined} className={cn("min-w-20 max-w-64 whitespace-pre-wrap break-words px-3 py-2", mark === "best" && "font-semibold", mark === "second" && "underline")}>{cell}</Cell>
                           );
                         })}
                       </tr>

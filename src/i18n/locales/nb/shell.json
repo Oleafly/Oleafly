@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Hurtignotat",
       "keywords": "hurtignotat skriv ned notat innboks i dag quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notasjonstabell",
+      "keywords": "notasjon symboler definisjoner ordliste matematikk sett inn insert symbols glossary math",
+      "empty": "Fant ingen symboldefinisjoner. Definer symboler i teksten med uttrykk som \"Let $x$ be the input\" eller \"where $x$ is the input\"."
+    },
+    "addChapterFromProject": {
+      "keywords": "avhandling kapittel artikkel import slå sammen kopier prosjekt thesis chapter paper merge",
+      "label": "Legg til kapittel fra et annet prosjekt"
     }
   },
   "community": {

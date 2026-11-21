@@ -9,6 +9,7 @@ const controller = vi.hoisted(() => ({
 
 vi.mock("@/components/editor/cm/controller", () => controller);
 
+import { figureGridSource } from "@oleafly/latex/figure-grid";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useFilesStore } from "@/store/files";
 import { openVisualFigureEditor } from "./visual-figure-edit";
@@ -45,6 +46,23 @@ describe("openVisualFigureEditor", () => {
     useDocument("main.typ", 'Text #image("a.png") end.');
     await openVisualFigureEditor({ from: 5, to: 20 });
     expect(useFigureDialogStore.getState().open).toBe(false);
+  });
+
+  it("opens the grid editor when the LaTeX image sits in a figure grid", async () => {
+    const spec = {
+      images: [[{ path: "a.png", aspect: 1.5 }]],
+      columnLabels: [""],
+      rowLabels: [""],
+      width: "column" as const,
+      caption: "",
+      label: "",
+    };
+    const { source } = figureGridSource(spec, (path) => path);
+    const doc = `Text.\n${source}\n`;
+    useDocument("main.tex", doc);
+    const from = doc.indexOf(String.raw`\includegraphics`);
+    await openVisualFigureEditor({ from, to: doc.indexOf("}", doc.indexOf("{a.png")) + 1 });
+    expect(useFigureDialogStore.getState().edit).toEqual({ from: 6, to: 6 + source.length, path: "a.png", width: null, grid: spec });
   });
 
   it("keeps the LaTeX figure editor for LaTeX files", async () => {

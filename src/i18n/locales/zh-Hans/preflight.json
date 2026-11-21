@@ -461,6 +461,93 @@
     "submission-large-image": {
       "title": "图片过大：{{file}}",
       "detail": "此图片超过 {{limit}}。大图片会拖慢编译并使 PDF 臃肿。有些期刊或会议还会限制上传大小。请压缩图片，或按打印尺寸导出。"
+    },
+    "writing-space-before-paren": {
+      "title": "在括号前加空格",
+      "detail": "单词与其左括号之间要有空格：写 “neural network (CNN)”，而不是 “neural network(CNN)”。"
+    },
+    "writing-space-before-punctuation": {
+      "title": "删除标点前的空格",
+      "detail": "句号、逗号、冒号和问号应紧跟在单词之后，中间不留空格。"
+    },
+    "writing-nonbreaking-reference": {
+      "title": "在引用前使用不换行空格",
+      "detail": "写成 problem~\\cite{key} 或 Figure~\\ref{fig:plot}。波浪号（~）可让引用或编号与前面的单词保持在同一行。"
+    },
+    "writing-straight-quotes": {
+      "title": "使用 LaTeX 引号",
+      "detail": "LaTeX 会把直引号 \" 排成右引号。请写成 ``quoted''，让左引号朝向正确。"
+    },
+    "writing-cite-in-abstract": {
+      "title": "摘要中有引用",
+      "detail": "摘要常被单独阅读，此时引用编号没有任何意义。请用文字写明所指的工作，或把引用移到引言。"
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "句首请写全称",
+      "detail": "句子不应以缩写开头。此处请写 {{word}}，而不是 {{abbreviation}}，缩写形式只在句中使用。"
+    },
+    "writing-display-math-punctuation": {
+      "title": "为公式添加标点",
+      "detail": "独立公式是其前后句子的一部分。句子未完时以逗号结尾，句子结束时以句号结尾。"
+    },
+    "writing-table-caption-below": {
+      "title": "将表格题注放在表格上方",
+      "detail": "大多数期刊和会议要求表格题注在表格上方，图片图注在图片下方。"
+    },
+    "writing-figure-caption-above": {
+      "title": "将图片图注放在图片下方",
+      "detail": "大多数期刊和会议要求图片图注在图片下方，表格题注在表格上方。"
+    },
+    "writing-macro-available": {
+      "title": "使用你定义的宏",
+      "detail": "“{{text}}”已有宏 {{macro}}。使用它可以让名称处处一致，也能只在一个地方修改。"
+    },
+    "writing-table-abbreviation": {
+      "title": "完整写出 Table",
+      "detail": "此风格要求完整写出 Table，例如 Table~\\ref{tab:results}，句中只缩写 Fig.、Eq. 和 Sec.。"
+    },
+    "writing-unnumbered-equation": {
+      "title": "为公式编号",
+      "detail": "此风格为每个独立公式编号，方便审稿人引用。"
+    },
+    "writing-float-placement": {
+      "title": "将浮动体放在页面顶部",
+      "detail": "此风格把图片和表格放在页面顶部。请使用 [t]，不要使用 [h]。"
+    },
+    "writing-custom": {
+      "title": "项目规则：{{find}}",
+      "detail": "本项目写作“{{replace}}”，而不是“{{find}}”。",
+      "detailNote": "{{note}}",
+      "detailFlag": "本项目的样式规则会标记“{{find}}”。"
+    },
+    "writing-results-best": {
+      "title": "加粗的值不是最优值",
+      "titleSecond": "加下划线的值不是次优值",
+      "detail": "{{value}} 已加粗，但本列的最优值是 {{best}}。此处越高越好。",
+      "detailLower": "{{value}} 已加粗，但本列的最优值是 {{best}}。此处越低越好。",
+      "detailSecond": "{{value}} 已加下划线，但本列的次优值是 {{best}}。此处越高越好。",
+      "detailSecondLower": "{{value}} 已加下划线，但本列的次优值是 {{best}}。此处越低越好。"
+    },
+    "writing-open-promise": {
+      "title": "未附参考的承诺",
+      "detail": "“{{sentence}}” 这句话作出了承诺或指向别处，但句中没有链接到那里。请为兑现承诺的部分添加 \\ref，或为已发布的代码添加 \\url。",
+      "titleRebuttal": "待兑现的反驳承诺",
+      "detailRebuttal": "你在反驳中作出了这一承诺：“{{sentence}}” 请在终稿中完成修改，然后在此处添加指向它的 \\ref，或忽略此提示。"
+    },
+    "writing-review-point": {
+      "title": "审稿意见 {{n}}",
+      "detail": "“{{point}}”",
+      "titleUnplaced": "审稿意见 {{n}}：未找到对应位置",
+      "detailUnplaced": "“{{point}}” 这里提到的表格、图片、公式或章节，没有与论文匹配的。",
+      "detailLines": "“{{point}}” 行号对应的是审稿用副本，请手动查找此处。"
+    },
+    "writing-name-variants": {
+      "title": "名称相同，写法不同",
+      "detail": "此名称在项目中有多种写法：{{spellings}}。请在各处统一使用一种写法。使用宏可以保持一致。"
+    },
+    "writing-symbol-redefined": {
+      "title": "符号被定义了两次",
+      "detail": "{{symbol}} 在 {{file}} 中表示“{{first}}”，在此处表示“{{second}}”。请为每种含义使用各自的符号。"
     }
   },
   "lens": {
@@ -470,7 +557,8 @@
     "refs": "参考文献",
     "compile": "编译",
     "submission": "投稿",
-    "privacy": "隐私"
+    "privacy": "隐私",
+    "writing": "写作"
   },
   "severity": {
     "error": "错误",
@@ -483,7 +571,8 @@
     "a11y": "无障碍",
     "refs": "引用",
     "submission": "提交",
-    "privacy": "隐私"
+    "privacy": "隐私",
+    "writing": "风格"
   },
   "checks": {
     "compile": {
@@ -521,6 +610,12 @@
       "who": "适用于共享源码或匿名投稿之前。",
       "info": "机密信息、草稿备注、敏感文件，以及盲审中的身份泄露。",
       "detail": "查找匿名评审投稿中的凭据、私钥、内部注释、草稿标记、敏感项目文件、作者元数据以及身份泄露。"
+    },
+    "writing": {
+      "label": "写作风格",
+      "who": "适用于论文、学位论文和报告。",
+      "info": "空格、引号、引用、公式标点和项目自己的规则。",
+      "detail": "对照常见论文规范和此项目中保存的规则检查 LaTeX 源码。多数检查结果都可一键修复。"
     }
   },
   "profiles": {
@@ -573,7 +668,7 @@
   },
   "prep": {
     "metadataInMain": "\\DocumentMetadata 要放在主文档的开头，因此这个文件不会添加它。",
-    "metadataUpdated":"已将所需的标签键添加到你的 \\DocumentMetadata 中。",
+    "metadataUpdated": "已将所需的标签键添加到你的 \\DocumentMetadata 中。",
     "metadataAdded": "已将 \\DocumentMetadata 添加为第一行（必需，必须位于 \\documentclass 之前）。它位于一个版本检查之内：早于 {{date}} 的 LaTeX（包括内置引擎）会跳过它，并以无标签方式编译文档，而不是报错失败。",
     "headerRows": "已将 table/header-rows 设置为 1，使每个表格的第一行被标记为表头单元格。如果表格的表头深度不同，请更改此数字。",
     "unicodeMath": "已添加 \\usepackage{unicode-math}，此引擎的数学公式标签功能需要它。",
@@ -627,7 +722,23 @@
     "groupSource": "项目与源码",
     "groupOutput": "编译输出",
     "fixAll_other": "使用 AI 修复全部 {{count}} 项",
-    "noProblems": "未发现问题。"
+    "noProblems": "未发现问题。",
+    "writing": {
+      "profile": "写作风格",
+      "underlines": "在编辑器中显示风格下划线",
+      "underlinesHint": "关闭后编辑器更清爽。运行此检查时，预检仍会列出检查结果。",
+      "rules": "项目规则",
+      "noRules": "还没有项目规则。在编辑器中选中文本，点击右键，然后选择“创建样式规则”。",
+      "addRule": "添加规则",
+      "removeRule": "删除 {{find}} 的规则",
+      "flagOnly": "仅标记",
+      "clearIgnored_other": "重新显示 {{count}} 项已忽略的检查结果",
+      "fixAll_other": "修复全部 {{count}} 项检查结果",
+      "fixed_other": "已修复 {{count}} 项检查结果。",
+      "skipped_other": "有 {{count}} 项修复与其他修复涉及同一段文本。请重新运行检查后再修复。",
+      "fixFailed": "检查运行后，部分文件已更改。请重新运行检查，然后再修复。",
+      "saveFailed": "无法保存写作设置。"
+    }
   },
   "finding": {
     "review": "需复核",
@@ -635,7 +746,9 @@
     "page": "第 {{page}} 页",
     "needsJudgment": "需要你的判断。仅凭文件本身，任何工具都无法判定这一项。",
     "jumpToSource": "跳转到源码",
-    "fixWithAi": "用 AI 修复"
+    "fixWithAi": "用 AI 修复",
+    "applyFix": "修复",
+    "ignore": "忽略"
   },
   "score": {
     "notEvaluated": "{{label}} 未评估",
@@ -688,5 +801,50 @@
     "untagged": "Typst {{version}} 不会为 PDF 添加供屏幕阅读器使用的标签。Typst 0.14 及更高版本会添加。",
     "none": "Typst {{version}} 无法生成符合 PDF 标准的文件。请在编译菜单中选择 Typst 0.12 或更高版本。",
     "uaNote": "PDF/UA-1 要求提供文档标题，并为每张图片提供替代文本。"
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "根据文档自动检测",
+      "description": "当项目加载 cvpr.sty 或同类样式文件时使用 CVPR 风格规则，否则使用通用规则。"
+    },
+    "general": {
+      "label": "通用论文风格",
+      "description": "空格、引号、引用、公式标点、题注和宏。"
+    },
+    "cvpr": {
+      "label": "CVPR 风格",
+      "description": "在通用规则之外，还要求完整写出 Table、为公式编号，并将浮动体放在页面顶部。"
+    }
+  },
+  "fixes": {
+    "insertSpace": "添加空格",
+    "removeSpace": "删除空格",
+    "useTilde": "使用 ~",
+    "useTexQuotes": "使用 LaTeX 引号",
+    "spellOut": "写成 {{word}}",
+    "addComma": "添加逗号",
+    "addPeriod": "添加句号",
+    "useMacro": "使用 {{macro}}",
+    "numberEquation": "为其编号",
+    "placeTop": "使用 [t]",
+    "replaceWith": "写成 {{text}}",
+    "boldBest": "改为加粗 {{value}}",
+    "underlineSecond": "改为给 {{value}} 加下划线",
+    "makeMacro": "创建宏"
+  },
+  "styleRule": {
+    "title": "创建样式规则",
+    "description": "此规则会在你写作时检查项目中的每个 LaTeX 文件，并通过 project.json 随项目一起保存。",
+    "find": "要标记的文本",
+    "replace": "改写为",
+    "replaceHint": "留空则只标记文本，不提供修复。",
+    "note": "给合作者的备注（可选）",
+    "wholeWord": "仅匹配整词",
+    "matchCase": "区分大小写",
+    "noMatches": "此项目中暂无匹配项。",
+    "matches_other": "在此项目中匹配 {{count}} 处。",
+    "save": "保存规则",
+    "cancel": "取消",
+    "saved": "规则已保存。现在它会检查此项目中的每个文件。"
   }
 }

@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Snabbanteckning",
       "keywords": "snabbanteckning anteckna anteckning inkorg i dag quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Notationstabell",
+      "keywords": "notation symboler definitioner ordlista matematik infoga",
+      "empty": "Inga symboldefinitioner hittades. Definiera symboler i texten med fraser som ”Let $x$ be the input” eller ”where $x$ is the input”."
+    },
+    "addChapterFromProject": {
+      "keywords": "avhandling kapitel artikel importera slå ihop kopiera projekt",
+      "label": "Lägg till kapitel från ett annat projekt"
     }
   },
   "community": {

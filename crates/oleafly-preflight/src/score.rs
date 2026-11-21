@@ -17,6 +17,7 @@ pub fn finding_applies_to(finding: &Finding, check: CheckId) -> bool {
         Lens::Refs => check == CheckId::Refs,
         Lens::Submission => check == CheckId::Submission,
         Lens::Privacy => check == CheckId::Privacy,
+        Lens::Writing => check == CheckId::Writing,
     }
 }
 

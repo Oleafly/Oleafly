@@ -674,6 +674,9 @@ importers:
 
   packages/preflight:
     dependencies:
+      '@oleafly/conversion-registry':
+        specifier: workspace:*
+        version: link:../conversion-registry
       '@oleafly/i18n-contract':
         specifier: workspace:*
         version: link:../i18n-contract

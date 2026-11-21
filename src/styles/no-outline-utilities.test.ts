@@ -1,12 +1,11 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { sourceFilesUnder } from "@/lib/test-utils";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SOURCE_DIRS = ["src", "packages"];
-const SOURCE_FILE = /\.(ts|tsx)$/;
-const TEST_FILE = /\.(test|spec)\.(ts|tsx)$/;
 const VARIANTS = String.raw`(?:(?:[\w-]+|\[[^\]\s]*\])(?:\/[\w-]+)?:)*`;
 const RING_OR_OUTLINE = new RegExp(
   String.raw`(?:^|[\s"'\`])(` +
@@ -17,12 +16,7 @@ const RING_OR_OUTLINE = new RegExp(
 );
 
 function sourceFiles(): string[] {
-  return SOURCE_DIRS.flatMap((dir) =>
-    readdirSync(join(ROOT, dir), { recursive: true, encoding: "utf8" })
-      .filter((path) => SOURCE_FILE.test(path) && !TEST_FILE.test(path))
-      .filter((path) => !path.split(/[\\/]/).includes("node_modules"))
-      .map((path) => join(ROOT, dir, path)),
-  );
+  return sourceFilesUnder(ROOT, SOURCE_DIRS);
 }
 
 function findOutlineUtilities(text: string): string[] {

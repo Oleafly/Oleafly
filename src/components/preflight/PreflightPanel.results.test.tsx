@@ -42,13 +42,14 @@ function finding(id: string, lens: CheckId, severity: Finding["severity"], from:
 function report(overrides: Partial<PreflightReport> = {}): PreflightReport {
   return {
     findings: [],
-    scores: { ats: 90, compile: 70, a11y: 40, refs: 100, submission: 100, privacy: 100 },
+    scores: { ats: 90, compile: 70, a11y: 40, refs: 100, submission: 100, privacy: 100, writing: 100 },
     atsScore: 90,
     compileScore: 70,
     a11yScore: 40,
     refsScore: 100,
     submissionScore: 100,
     privacyScore: 100,
+    writingScore: 100,
     coverage: {
       ats: "evaluated",
       compile: "evaluated",
@@ -56,6 +57,7 @@ function report(overrides: Partial<PreflightReport> = {}): PreflightReport {
       refs: "evaluated",
       submission: "evaluated",
       privacy: "evaluated",
+      writing: "evaluated",
     },
     ranAt: 1,
     hasPdf: true,
@@ -222,7 +224,7 @@ describe("score ring", () => {
   it("names the readiness score for each band and marks unevaluated checks", () => {
     show(
       "compile",
-      report({ scores: { ats: 0, compile: 70, a11y: 0, refs: 0, submission: 0, privacy: 0 } }),
+      report({ scores: { ats: 0, compile: 70, a11y: 0, refs: 0, submission: 0, privacy: 0, writing: 0 } }),
     );
     expect(screen.getByRole("img", { name: /70/ })).toBeInTheDocument();
   });

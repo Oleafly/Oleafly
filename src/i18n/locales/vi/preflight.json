@@ -461,6 +461,93 @@
     "submission-large-image": {
       "title": "Hình rất lớn: {{file}}",
       "detail": "Hình này vượt {{limit}}. Hình lớn làm chậm biên dịch và phình PDF. Một số hội nghị cũng giới hạn dung lượng tải lên. Hãy nén, hoặc xuất ở kích thước khi in."
+    },
+    "writing-space-before-paren": {
+      "title": "Thêm dấu cách trước dấu ngoặc",
+      "detail": "Đặt một dấu cách giữa từ và dấu ngoặc mở: “mạng nơ-ron (CNN)”, không phải “mạng nơ-ron(CNN)”."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Bỏ dấu cách trước dấu câu",
+      "detail": "Dấu chấm, dấu phẩy, dấu hai chấm hoặc dấu hỏi đi liền sau từ, không có dấu cách."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Dùng dấu cách không ngắt dòng trước tham chiếu",
+      "detail": "Hãy viết bài toán~\\cite{key} hoặc Hình~\\ref{fig:plot}. Dấu ngã giữ trích dẫn hoặc số cùng dòng với từ đứng trước."
+    },
+    "writing-straight-quotes": {
+      "title": "Dùng dấu ngoặc kép của LaTeX",
+      "detail": "LaTeX in dấu \" thẳng thành dấu ngoặc kép đóng. Hãy viết ``quoted'' để dấu mở quay đúng hướng."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Trích dẫn trong phần tóm tắt",
+      "detail": "Phần tóm tắt thường được đọc riêng, nơi số trích dẫn không có nghĩa gì. Hãy nêu tên công trình bằng lời hoặc chuyển trích dẫn xuống phần giới thiệu."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Viết đầy đủ từ ở đầu câu",
+      "detail": "Câu không nên bắt đầu bằng từ viết tắt. Hãy viết {{word}} thay cho {{abbreviation}} ở đây, và giữ dạng ngắn bên trong câu."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Thêm dấu câu sau phương trình",
+      "detail": "Phương trình hiển thị là một phần của câu xung quanh. Kết thúc bằng dấu phẩy nếu câu còn tiếp, hoặc dấu chấm nếu câu đã hết."
+    },
+    "writing-table-caption-below": {
+      "title": "Đặt chú thích bảng phía trên bảng",
+      "detail": "Hầu hết nơi xuất bản yêu cầu chú thích bảng ở trên bảng và chú thích hình ở dưới hình."
+    },
+    "writing-figure-caption-above": {
+      "title": "Đặt chú thích hình phía dưới hình",
+      "detail": "Hầu hết nơi xuất bản yêu cầu chú thích hình ở dưới hình và chú thích bảng ở trên bảng."
+    },
+    "writing-macro-available": {
+      "title": "Dùng macro bạn đã định nghĩa",
+      "detail": "“{{text}}” đã có macro {{macro}}. Dùng macro giữ tên thống nhất ở mọi nơi và cho phép bạn đổi ở một chỗ."
+    },
+    "writing-table-abbreviation": {
+      "title": "Viết đầy đủ Table",
+      "detail": "Phong cách này viết đầy đủ Table, ví dụ Table~\\ref{tab:results}, và chỉ rút gọn Fig., Eq. và Sec. bên trong câu."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Đánh số phương trình",
+      "detail": "Phong cách này đánh số mọi phương trình hiển thị để người phản biện có thể dẫn tới."
+    },
+    "writing-float-placement": {
+      "title": "Đặt đối tượng nổi ở đầu trang",
+      "detail": "Phong cách này đặt hình và bảng ở đầu trang. Hãy dùng [t] thay cho [h]."
+    },
+    "writing-custom": {
+      "title": "Quy tắc dự án: {{find}}",
+      "detail": "Dự án này viết “{{replace}}” thay cho “{{find}}”.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Quy tắc văn phong của dự án này đánh dấu “{{find}}”."
+    },
+    "writing-results-best": {
+      "title": "Giá trị in đậm không phải tốt nhất",
+      "titleSecond": "Giá trị gạch chân không phải tốt thứ hai",
+      "detail": "{{value}} được in đậm, nhưng {{best}} mới là giá trị tốt nhất trong cột này. Ở đây giá trị cao hơn là tốt hơn.",
+      "detailLower": "{{value}} được in đậm, nhưng {{best}} mới là giá trị tốt nhất trong cột này. Ở đây giá trị thấp hơn là tốt hơn.",
+      "detailSecond": "{{value}} được gạch chân, nhưng {{best}} mới là giá trị tốt thứ hai trong cột này. Ở đây giá trị cao hơn là tốt hơn.",
+      "detailSecondLower": "{{value}} được gạch chân, nhưng {{best}} mới là giá trị tốt thứ hai trong cột này. Ở đây giá trị thấp hơn là tốt hơn."
+    },
+    "writing-open-promise": {
+      "title": "Lời hứa không có tham chiếu",
+      "detail": "“{{sentence}}” Câu này hứa hẹn điều gì đó hoặc chỉ sang chỗ khác, nhưng không có liên kết nào dẫn tới đó. Hãy thêm \\ref tới phần thực hiện lời hứa, hoặc \\url cho mã đã công bố.",
+      "titleRebuttal": "Lời hứa trong phản hồi cần giữ",
+      "detailRebuttal": "Bạn đã hứa điều này trong phản hồi phản biện: “{{sentence}}” Hãy thực hiện thay đổi trong bản camera-ready, rồi thêm \\ref tới đó ở đây hoặc bỏ qua ghi chú này."
+    },
+    "writing-review-point": {
+      "title": "Ý kiến phản biện {{n}}",
+      "detail": "“{{point}}”",
+      "titleUnplaced": "Ý kiến phản biện {{n}}: không tìm thấy vị trí phù hợp",
+      "detailUnplaced": "“{{point}}” Không có bảng, hình, phương trình hay mục nào được nêu ở đây khớp với bài báo.",
+      "detailLines": "“{{point}}” Số dòng tính theo bản dùng để phản biện, nên hãy tự tìm vị trí này."
+    },
+    "writing-name-variants": {
+      "title": "Cùng một tên, nhiều cách viết",
+      "detail": "Tên này được viết theo nhiều cách trong dự án: {{spellings}}. Hãy dùng một cách viết ở mọi nơi. Macro giữ cho nó thống nhất."
+    },
+    "writing-symbol-redefined": {
+      "title": "Ký hiệu được định nghĩa hai lần",
+      "detail": "{{symbol}} nghĩa là “{{first}}” trong {{file}}. Ở đây nó nghĩa là “{{second}}”. Hãy cho mỗi nghĩa một ký hiệu riêng."
     }
   },
   "lens": {
@@ -470,7 +557,8 @@
     "refs": "Tham chiếu",
     "compile": "Biên dịch",
     "submission": "Nộp bài",
-    "privacy": "Riêng tư"
+    "privacy": "Riêng tư",
+    "writing": "Văn phong"
   },
   "severity": {
     "error": "Lỗi",
@@ -483,7 +571,8 @@
     "a11y": "Tiếp cận",
     "refs": "Tham chiếu",
     "submission": "Nộp",
-    "privacy": "Riêng tư"
+    "privacy": "Riêng tư",
+    "writing": "Văn phong"
   },
   "checks": {
     "compile": {
@@ -521,6 +610,12 @@
       "who": "Trước khi chia sẻ nguồn hoặc nộp ẩn danh",
       "info": "Bí mật, ghi chú nháp, tệp nhạy cảm và lộ danh tính trong phản biện kín.",
       "detail": "Tìm thông tin đăng nhập, khoá riêng, chú thích nội bộ, đánh dấu nháp, tệp dự án nhạy cảm, siêu dữ liệu tác giả và lộ danh tính trong bản nộp phản biện ẩn danh."
+    },
+    "writing": {
+      "label": "Văn phong",
+      "who": "Cho bài báo, luận văn và báo cáo",
+      "info": "Dấu cách, dấu ngoặc kép, tham chiếu, dấu câu quanh phương trình và quy tắc riêng của dự án.",
+      "detail": "Đối chiếu mã nguồn LaTeX với các quy ước thường gặp của bài báo và với quy tắc đã lưu trong dự án này. Hầu hết vấn đề đi kèm cách sửa một lần bấm."
     }
   },
   "profiles": {
@@ -627,7 +722,23 @@
     "groupSource": "Dự án & nguồn",
     "groupOutput": "Đầu ra đã biên dịch",
     "fixAll_other": "Sửa tất cả {{count}} bằng AI",
-    "noProblems": "Không tìm thấy vấn đề."
+    "noProblems": "Không tìm thấy vấn đề.",
+    "writing": {
+      "profile": "Văn phong",
+      "underlines": "Hiện gạch chân văn phong trong trình soạn thảo",
+      "underlinesHint": "Tắt để giữ trình soạn thảo gọn gàng. Kiểm tra trước vẫn liệt kê các vấn đề khi bạn chạy kiểm tra này.",
+      "rules": "Quy tắc dự án",
+      "noRules": "Chưa có quy tắc dự án. Hãy chọn văn bản trong trình soạn thảo, bấm chuột phải và chọn Tạo quy tắc văn phong.",
+      "addRule": "Thêm quy tắc",
+      "removeRule": "Xoá quy tắc cho {{find}}",
+      "flagOnly": "chỉ đánh dấu",
+      "clearIgnored_other": "Hiện lại {{count}} vấn đề đã bỏ qua",
+      "fixAll_other": "Sửa tất cả {{count}} vấn đề",
+      "fixed_other": "Đã sửa {{count}} vấn đề.",
+      "skipped_other": "{{count}} cách sửa chạm vào cùng đoạn văn bản với cách sửa khác. Hãy chạy lại kiểm tra để sửa chúng.",
+      "fixFailed": "Một số tệp đã thay đổi sau khi chạy kiểm tra. Hãy chạy lại rồi sửa.",
+      "saveFailed": "Không thể lưu cài đặt văn phong."
+    }
   },
   "finding": {
     "review": "Xem xét",
@@ -635,7 +746,9 @@
     "page": "tr.{{page}}",
     "needsJudgment": "Cần bạn đánh giá. Không công cụ nào tự quyết được việc này chỉ từ tệp.",
     "jumpToSource": "Nhảy tới nguồn",
-    "fixWithAi": "Sửa bằng AI"
+    "fixWithAi": "Sửa bằng AI",
+    "applyFix": "Sửa",
+    "ignore": "Bỏ qua"
   },
   "score": {
     "notEvaluated": "{{label}} chưa được đánh giá",
@@ -688,5 +801,50 @@
     "untagged": "Typst {{version}} không gắn thẻ PDF cho trình đọc màn hình. Typst 0.14 trở lên có.",
     "none": "Typst {{version}} không ghi được chuẩn PDF. Hãy chọn Typst 0.12 trở lên trong menu biên dịch.",
     "uaNote": "PDF/UA-1 cần tiêu đề tài liệu và văn bản thay thế cho mọi hình."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Nhận diện từ tài liệu",
+      "description": "Dùng quy tắc kiểu CVPR khi dự án nạp cvpr.sty hoặc một tệp style cùng thư mục, và dùng quy tắc chung trong các trường hợp còn lại."
+    },
+    "general": {
+      "label": "Văn phong bài báo chung",
+      "description": "Dấu cách, dấu ngoặc kép, tham chiếu, dấu câu quanh phương trình, chú thích và macro."
+    },
+    "cvpr": {
+      "label": "Kiểu CVPR",
+      "description": "Quy tắc chung, cộng thêm viết đầy đủ Table, phương trình có đánh số và đối tượng nổi ở đầu trang."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Thêm dấu cách",
+    "removeSpace": "Bỏ dấu cách",
+    "useTilde": "Dùng ~",
+    "useTexQuotes": "Dùng dấu ngoặc kép LaTeX",
+    "spellOut": "Viết {{word}}",
+    "addComma": "Thêm dấu phẩy",
+    "addPeriod": "Thêm dấu chấm",
+    "useMacro": "Dùng {{macro}}",
+    "numberEquation": "Đánh số",
+    "placeTop": "Dùng [t]",
+    "replaceWith": "Viết {{text}}",
+    "boldBest": "In đậm {{value}} thay vào đó",
+    "underlineSecond": "Gạch chân {{value}} thay vào đó",
+    "makeMacro": "Tạo macro"
+  },
+  "styleRule": {
+    "title": "Tạo quy tắc văn phong",
+    "description": "Quy tắc kiểm tra mọi tệp LaTeX trong dự án này khi bạn viết, và đi cùng dự án trong project.json.",
+    "find": "Văn bản cần đánh dấu",
+    "replace": "Viết thế này thay vào đó",
+    "replaceHint": "Để trống để đánh dấu văn bản mà không đề xuất cách sửa.",
+    "note": "Ghi chú cho đồng tác giả (tuỳ chọn)",
+    "wholeWord": "Chỉ khớp từ nguyên",
+    "matchCase": "Phân biệt hoa thường",
+    "noMatches": "Dự án này chưa có chỗ nào khớp.",
+    "matches_other": "Khớp {{count}} chỗ trong dự án này.",
+    "save": "Lưu quy tắc",
+    "cancel": "Huỷ",
+    "saved": "Đã lưu quy tắc. Từ giờ nó kiểm tra mọi tệp trong dự án này."
   }
 }

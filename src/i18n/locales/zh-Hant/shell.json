@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "快速記錄",
       "keywords": "快速記錄 隨手記 筆記 收件匣 今天 quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "符號表",
+      "keywords": "插入 符號 定義 術語表 數學 記號",
+      "empty": "找不到符號定義。請在內文中用「Let $x$ be the input」或「where $x$ is the input」之類的句子定義符號。"
+    },
+    "addChapterFromProject": {
+      "keywords": "學位論文 章 論文 匯入 合併 複製 專案",
+      "label": "從其他專案加入一章"
     }
   },
   "community": {

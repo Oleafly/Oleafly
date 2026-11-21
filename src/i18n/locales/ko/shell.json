@@ -391,6 +391,15 @@
     "notesQuickCapture": {
       "label": "빠른 캡처",
       "keywords": "빠른 캡처 메모 노트 받은편지함 오늘 quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "기호 표",
+      "keywords": "삽입 기호 정의 용어집 수학 표기",
+      "empty": "기호 정의를 찾지 못했습니다. 본문에서 “Let $x$ be the input” 또는 “where $x$ is the input” 같은 표현으로 기호를 정의하세요."
+    },
+    "addChapterFromProject": {
+      "keywords": "학위논문 장 논문 가져오기 병합 복사 프로젝트",
+      "label": "다른 프로젝트에서 장 추가"
     }
   },
   "community": {

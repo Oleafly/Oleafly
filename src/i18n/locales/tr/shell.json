@@ -392,6 +392,15 @@
     "notesQuickCapture": {
       "label": "Hızlı not",
       "keywords": "hızlı not al yakala gelen kutusu bugün quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Gösterim tablosu",
+      "keywords": "ekle gösterim semboller tanımlar sözlük matematik",
+      "empty": "Sembol tanımı bulunamadı. Sembolleri metinde “$x$ girdi olsun” ya da “burada $x$ girdidir” gibi ifadelerle tanımlayın."
+    },
+    "addChapterFromProject": {
+      "keywords": "tez bölüm makale içe aktar birleştir kopyala proje",
+      "label": "Başka bir projeden bölüm ekle"
     }
   },
   "community": {

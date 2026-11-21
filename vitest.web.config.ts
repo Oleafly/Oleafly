@@ -1,10 +1,10 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { WEB_ALIASES } from "./vite.web.config";
+import { WEB_ALIASES, packageStringsOnly } from "./vite.web.config";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), packageStringsOnly()],
   resolve: { alias: WEB_ALIASES },
   test: {
     root: path.resolve(__dirname),

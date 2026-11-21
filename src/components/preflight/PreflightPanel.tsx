@@ -14,8 +14,11 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  SpellCheck,
+  Wand2,
 } from "lucide-react";
 import { askAiAboutFindings } from "@/features/ask-ai-preflight";
+import { fixWritingFindings } from "@/features/writing-actions";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { usePreflightStore } from "@/store/preflight";
 import { useFilesStore } from "@/store/files";
@@ -34,6 +37,7 @@ import { FindingRow } from "./FindingRow";
 import { ReaderViewDialog } from "./ReaderViewDialog";
 import { AtsCard } from "./AtsCard";
 import { PrepExport } from "./PrepExport";
+import { WritingOptions } from "./WritingOptions";
 import { cn } from "@/lib/utils";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Popover } from "@/components/ui/popover";
@@ -52,6 +56,7 @@ const CHECKS: { id: CheckId; icon: typeof FileSearch }[] = [
   { id: "ats", icon: FileSearch },
   { id: "a11y", icon: Accessibility },
   { id: "refs", icon: Link2 },
+  { id: "writing", icon: SpellCheck },
   { id: "privacy", icon: ShieldAlert },
 ];
 
@@ -104,6 +109,7 @@ export function PreflightPanel() {
       refs: !resume,
       submission: !resume,
       privacy: !resume,
+      writing: !resume,
     };
     const suggestedOpen: Flags = {
       ats: resume,
@@ -112,6 +118,7 @@ export function PreflightPanel() {
       refs: false,
       submission: false,
       privacy: false,
+      writing: false,
     };
     return { suggested, suggestedOpen, profile: detectSubmissionProfile(source) };
   }, [mainDoc, lastCompiledAt]);
@@ -310,6 +317,7 @@ export function PreflightPanel() {
                       />
                     </label>
                   )}
+                  {c.id === "writing" && sourcePreflight === "latex" && <WritingOptions />}
                   {sourcePreflight === "none" && c.id !== "refs" && (
                     <p className="mt-2 rounded bg-muted/60 px-2 py-1.5 text-[0.625rem] text-muted-foreground">
                       {t(($) => $.preflight.panel.engineUnsupported, { engine: engineLabel })}
@@ -370,12 +378,13 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
   const { t } = useTranslation(["common", "preflight"]);
   const tp = t as unknown as PreflightTranslate;
   const coverage = report.coverage[id];
-  const { findings, fixable, src, out } = useMemo(() => {
+  const { findings, fixable, oneClick, src, out } = useMemo(() => {
     const shown = Object.fromEntries(CHECK_IDS.map((check) => [check, check === id])) as Flags;
     const f = report.findings.filter((x) => includes(x, shown));
     return {
       findings: f,
       fixable: f.filter((x) => x.severity === "error" || x.severity === "warning"),
+      oneClick: f.filter((x) => x.lens === "writing" && x.fix),
       src: bySeverity(f.filter((x) => !isOutputFinding(x))),
       out: bySeverity(f.filter(isOutputFinding)),
     };
@@ -427,6 +436,17 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
 
       {group(t(($) => $.preflight.panel.groupSource), src)}
       {group(t(($) => $.preflight.panel.groupOutput), out)}
+
+      {oneClick.length > 1 && (
+        <button
+          type="button"
+          data-testid="preflight-writing-fix-all"
+          onClick={() => void fixWritingFindings(oneClick)}
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-2 py-1.5 text-xs text-primary hover:bg-accent"
+        >
+          <Wand2 className="size-3.5" /> {t(($) => $.preflight.panel.writing.fixAll, { count: oneClick.length })}
+        </button>
+      )}
 
       {fixable.length > 1 && (
         <button

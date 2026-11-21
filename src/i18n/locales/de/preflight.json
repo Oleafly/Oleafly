@@ -477,6 +477,93 @@
     "submission-large-image": {
       "title": "Sehr großes Bild: {{file}}",
       "detail": "Dieses Bild ist größer als {{limit}}. Große Bilder verlangsamen das Kompilieren und blähen das PDF auf. Manche Publikationsorte begrenzen auch die Uploadgröße. Komprimieren Sie es oder exportieren Sie es in der Größe, in der es gedruckt wird."
+    },
+    "writing-space-before-paren": {
+      "title": "Leerzeichen vor der Klammer einfügen",
+      "detail": "Setzen Sie zwischen ein Wort und seine öffnende Klammer ein Leerzeichen: „neural network (CNN)“, nicht „neural network(CNN)“."
+    },
+    "writing-space-before-punctuation": {
+      "title": "Leerzeichen vor dem Satzzeichen entfernen",
+      "detail": "Punkt, Komma, Doppelpunkt oder Fragezeichen stehen direkt hinter dem Wort, ohne Leerzeichen dazwischen."
+    },
+    "writing-nonbreaking-reference": {
+      "title": "Geschütztes Leerzeichen vor dem Verweis verwenden",
+      "detail": "Schreiben Sie problem~\\cite{key} oder Figure~\\ref{fig:plot}. Die Tilde hält die Zitation oder Nummer in derselben Zeile wie das Wort davor."
+    },
+    "writing-straight-quotes": {
+      "title": "LaTeX-Anführungszeichen verwenden",
+      "detail": "LaTeX setzt ein gerades \" als schließendes Anführungszeichen. Schreiben Sie ``quoted'', damit das öffnende Zeichen in die richtige Richtung zeigt."
+    },
+    "writing-cite-in-abstract": {
+      "title": "Zitation in der Zusammenfassung",
+      "detail": "Zusammenfassungen werden oft für sich allein gelesen, wo eine Zitationsnummer nichts bedeutet. Nennen Sie die Arbeit mit Worten oder verschieben Sie die Zitation in die Einleitung."
+    },
+    "writing-abbreviation-at-sentence-start": {
+      "title": "Das Wort am Satzanfang ausschreiben",
+      "detail": "Ein Satz sollte nicht mit einer Abkürzung beginnen. Schreiben Sie hier {{word}} statt {{abbreviation}} und behalten Sie die Kurzform innerhalb von Sätzen."
+    },
+    "writing-display-math-punctuation": {
+      "title": "Die Formel mit Satzzeichen versehen",
+      "detail": "Eine abgesetzte Formel gehört zum Satz um sie herum. Beenden Sie sie mit einem Komma, wenn der Satz weitergeht, oder mit einem Punkt, wenn er endet."
+    },
+    "writing-table-caption-below": {
+      "title": "Die Beschriftung der Tabelle über die Tabelle setzen",
+      "detail": "Die meisten Tagungen und Zeitschriften erwarten die Beschriftung einer Tabelle über der Tabelle und die einer Abbildung unter der Abbildung."
+    },
+    "writing-figure-caption-above": {
+      "title": "Die Bildunterschrift unter die Abbildung setzen",
+      "detail": "Die meisten Tagungen und Zeitschriften erwarten die Bildunterschrift einer Abbildung unter der Abbildung und die Beschriftung einer Tabelle über der Tabelle."
+    },
+    "writing-macro-available": {
+      "title": "Das definierte Makro verwenden",
+      "detail": "„{{text}}“ hat ein Makro, {{macro}}. Mit dem Makro bleibt der Name überall gleich, und Sie können ihn an einer einzigen Stelle ändern."
+    },
+    "writing-table-abbreviation": {
+      "title": "Table ausschreiben",
+      "detail": "Dieser Stil schreibt Table aus, zum Beispiel Table~\\ref{tab:results}, und kürzt nur Fig., Eq. und Sec. innerhalb eines Satzes ab."
+    },
+    "writing-unnumbered-equation": {
+      "title": "Die Formel nummerieren",
+      "detail": "Dieser Stil nummeriert jede abgesetzte Formel, damit Gutachter darauf verweisen können."
+    },
+    "writing-float-placement": {
+      "title": "Das Gleitobjekt oben auf der Seite platzieren",
+      "detail": "Dieser Stil setzt Abbildungen und Tabellen an den Seitenanfang. Verwenden Sie [t] statt [h]."
+    },
+    "writing-custom": {
+      "title": "Projektregel: {{find}}",
+      "detail": "Dieses Projekt schreibt „{{replace}}“ statt „{{find}}“.",
+      "detailNote": "{{note}}",
+      "detailFlag": "Die Stilregeln dieses Projekts markieren „{{find}}“."
+    },
+    "writing-results-best": {
+      "title": "Der fette Wert ist nicht der beste",
+      "titleSecond": "Der unterstrichene Wert ist nicht der zweitbeste",
+      "detail": "{{value}} ist fett gesetzt, aber {{best}} ist der beste Wert in dieser Spalte. Hier ist höher besser.",
+      "detailLower": "{{value}} ist fett gesetzt, aber {{best}} ist der beste Wert in dieser Spalte. Hier ist niedriger besser.",
+      "detailSecond": "{{value}} ist unterstrichen, aber {{best}} ist der zweitbeste Wert in dieser Spalte. Hier ist höher besser.",
+      "detailSecondLower": "{{value}} ist unterstrichen, aber {{best}} ist der zweitbeste Wert in dieser Spalte. Hier ist niedriger besser."
+    },
+    "writing-open-promise": {
+      "title": "Versprechen ohne Verweis",
+      "detail": "„{{sentence}}“ Dieser Satz verspricht etwas oder verweist auf eine andere Stelle, aber nichts darin führt dorthin. Fügen Sie ein \\ref auf den Teil ein, der das Versprechen einlöst, oder eine \\url für veröffentlichten Code.",
+      "titleRebuttal": "Versprechen aus der Erwiderung einhalten",
+      "detailRebuttal": "Sie haben dies in der Erwiderung versprochen: „{{sentence}}“ Nehmen Sie die Änderung in der Camera-ready-Fassung vor und fügen Sie dann hier ein \\ref darauf ein, oder ignorieren Sie diesen Hinweis."
+    },
+    "writing-review-point": {
+      "title": "Gutachterpunkt {{n}}",
+      "detail": "„{{point}}“",
+      "titleUnplaced": "Gutachterpunkt {{n}}: keine passende Stelle gefunden",
+      "detailUnplaced": "„{{point}}“ Keine hier genannte Tabelle, Abbildung oder Formel und kein hier genannter Abschnitt passt zum Aufsatz.",
+      "detailLines": "„{{point}}“ Zeilennummern beziehen sich auf die Begutachtungsfassung. Suchen Sie die Stelle daher von Hand."
+    },
+    "writing-name-variants": {
+      "title": "Derselbe Name, verschiedene Schreibweisen",
+      "detail": "Dieser Name ist im Projekt auf mehr als eine Weise geschrieben: {{spellings}}. Verwenden Sie überall dieselbe Schreibweise. Ein Makro hält sie einheitlich."
+    },
+    "writing-symbol-redefined": {
+      "title": "Symbol doppelt definiert",
+      "detail": "{{symbol}} bedeutet in {{file}} „{{first}}“. Hier bedeutet es „{{second}}“. Geben Sie jeder Bedeutung ein eigenes Symbol."
     }
   },
   "lens": {
@@ -486,7 +573,8 @@
     "refs": "Referenzen",
     "compile": "Kompilieren",
     "submission": "Einreichung",
-    "privacy": "Privatsphäre"
+    "privacy": "Privatsphäre",
+    "writing": "Schreiben"
   },
   "severity": {
     "error": "Fehler",
@@ -499,7 +587,8 @@
     "a11y": "Zugang",
     "refs": "Refs",
     "submission": "Abgabe",
-    "privacy": "Schutz"
+    "privacy": "Schutz",
+    "writing": "Stil"
   },
   "checks": {
     "compile": {
@@ -537,6 +626,12 @@
       "who": "Bevor Sie Quelltext teilen oder anonym einreichen",
       "info": "Geheimnisse, Entwurfsnotizen, vertrauliche Dateien und Identitätslecks bei der anonymen Begutachtung.",
       "detail": "Findet Zugangsdaten, private Schlüssel, interne Kommentare, Entwurfsmarkierungen, vertrauliche Projektdateien, Autorenmetadaten und Identitätslecks in Einreichungen zur anonymen Begutachtung."
+    },
+    "writing": {
+      "label": "Schreibstil",
+      "who": "Für Aufsätze, Abschlussarbeiten und Berichte",
+      "info": "Abstände, Anführungszeichen, Verweise, Formelzeichensetzung und die eigenen Regeln Ihres Projekts.",
+      "detail": "Prüft den LaTeX-Quelltext anhand gängiger Konventionen für Aufsätze und anhand der in diesem Projekt gespeicherten Regeln. Zu den meisten Funden gibt es eine Korrektur mit einem Klick."
     }
   },
   "profiles": {
@@ -649,7 +744,27 @@
     "groupOutput": "Kompilierte Ausgabe",
     "fixAll_one": "{{count}} mit KI beheben",
     "fixAll_other": "Alle {{count}} mit KI beheben",
-    "noProblems": "Keine Probleme gefunden."
+    "noProblems": "Keine Probleme gefunden.",
+    "writing": {
+      "profile": "Schreibstil",
+      "underlines": "Stilunterstreichungen im Editor anzeigen",
+      "underlinesHint": "Schalten Sie das aus, um den Editor übersichtlich zu halten. Preflight listet die Funde weiterhin auf, wenn Sie diese Prüfung ausführen.",
+      "rules": "Projektregeln",
+      "noRules": "Noch keine Projektregeln. Wählen Sie Text im Editor aus, klicken Sie mit der rechten Maustaste und wählen Sie Stilregel erstellen.",
+      "addRule": "Regel hinzufügen",
+      "removeRule": "Regel für {{find}} entfernen",
+      "flagOnly": "nur markieren",
+      "clearIgnored_one": "{{count}} ignorierten Fund wieder anzeigen",
+      "clearIgnored_other": "{{count}} ignorierte Funde wieder anzeigen",
+      "fixAll_one": "{{count}} Fund beheben",
+      "fixAll_other": "Alle {{count}} Funde beheben",
+      "fixed_one": "{{count}} Fund behoben.",
+      "fixed_other": "{{count}} Funde behoben.",
+      "skipped_one": "{{count}} Korrektur betraf denselben Text wie eine andere. Führen Sie die Prüfung erneut aus, um sie zu beheben.",
+      "skipped_other": "{{count}} Korrekturen betrafen denselben Text wie andere. Führen Sie die Prüfung erneut aus, um sie zu beheben.",
+      "fixFailed": "Einige Dateien haben sich nach der Prüfung geändert. Führen Sie sie erneut aus und beheben Sie dann.",
+      "saveFailed": "Die Schreibeinstellungen konnten nicht gespeichert werden."
+    }
   },
   "finding": {
     "review": "Prüfen",
@@ -657,7 +772,9 @@
     "page": "S.{{page}}",
     "needsJudgment": "Braucht Ihr Urteil. Kein Werkzeug kann das allein aus der Datei entscheiden.",
     "jumpToSource": "Zum Quelltext springen",
-    "fixWithAi": "Mit KI beheben"
+    "fixWithAi": "Mit KI beheben",
+    "applyFix": "Beheben",
+    "ignore": "Ignorieren"
   },
   "score": {
     "notEvaluated": "{{label}} nicht bewertet",
@@ -711,5 +828,51 @@
     "untagged": "Typst {{version}} versieht PDFs nicht mit Tags für Screenreader. Ab Typst 0.14 geschieht das.",
     "none": "Typst {{version}} kann keine PDF-Standards schreiben. Wählen Sie im Kompiliermenü Typst 0.12 oder neuer.",
     "uaNote": "PDF/UA-1 braucht einen Dokumenttitel und einen Alternativtext für jedes Bild."
+  },
+  "writingProfiles": {
+    "auto": {
+      "label": "Aus dem Dokument erkennen",
+      "description": "Verwendet die Regeln im CVPR-Stil, wenn das Projekt cvpr.sty oder einen verwandten Stil lädt, sonst die allgemeinen Regeln."
+    },
+    "general": {
+      "label": "Allgemeiner Aufsatzstil",
+      "description": "Abstände, Anführungszeichen, Verweise, Formelzeichensetzung, Beschriftungen und Makros."
+    },
+    "cvpr": {
+      "label": "CVPR-Stil",
+      "description": "Die allgemeinen Regeln, dazu Table ausgeschrieben, nummerierte Formeln und Gleitobjekte oben auf der Seite."
+    }
+  },
+  "fixes": {
+    "insertSpace": "Leerzeichen einfügen",
+    "removeSpace": "Leerzeichen entfernen",
+    "useTilde": "~ verwenden",
+    "useTexQuotes": "LaTeX-Anführungszeichen verwenden",
+    "spellOut": "{{word}} schreiben",
+    "addComma": "Komma einfügen",
+    "addPeriod": "Punkt einfügen",
+    "useMacro": "{{macro}} verwenden",
+    "numberEquation": "Nummerieren",
+    "placeTop": "[t] verwenden",
+    "replaceWith": "{{text}} schreiben",
+    "boldBest": "Stattdessen {{value}} fett setzen",
+    "underlineSecond": "Stattdessen {{value}} unterstreichen",
+    "makeMacro": "Makro erstellen"
+  },
+  "styleRule": {
+    "title": "Stilregel erstellen",
+    "description": "Die Regel prüft beim Schreiben jede LaTeX-Datei in diesem Projekt und wandert in project.json mit dem Projekt mit.",
+    "find": "Zu markierender Text",
+    "replace": "Stattdessen schreiben",
+    "replaceHint": "Leer lassen, um den Text ohne Korrekturvorschlag zu markieren.",
+    "note": "Hinweis für Koautoren (optional)",
+    "wholeWord": "Nur ganze Wörter",
+    "matchCase": "Groß- und Kleinschreibung beachten",
+    "noMatches": "Noch keine Treffer in diesem Projekt.",
+    "matches_one": "Trifft auf {{count}} Stelle in diesem Projekt zu.",
+    "matches_other": "Trifft auf {{count}} Stellen in diesem Projekt zu.",
+    "save": "Regel speichern",
+    "cancel": "Abbrechen",
+    "saved": "Regel gespeichert. Sie prüft jetzt jede Datei in diesem Projekt."
   }
 }

@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { pdfUaAvailability, runPreflight } from "./engine";
 import { pdfUaCoverage } from "./standards";
 import { verifyStructure } from "./structure";
+import * as writingRules from "./writing";
+import { DEFAULT_WRITING_SETTINGS } from "./writing/settings";
 import type { PdfExtractionStatus, PositionedText } from "./types";
 
 describe("runPreflight", () => {
@@ -123,6 +125,45 @@ describe("runPreflight", () => {
       id: "refs-undefined-cite",
       file: "sections/results.tex",
     }));
+  });
+
+  it("runs the writing check only when the caller passes writing settings", () => {
+    const main = "\\documentclass{article}\\begin{document}Neural network(CNN) works.\\end{document}";
+    const without = runPreflight({ source: main });
+    expect(without.coverage.writing).toBe("not_run");
+    expect(without.findings.filter((finding) => finding.lens === "writing")).toEqual([]);
+    const withSettings = runPreflight({ source: main, writing: { settings: DEFAULT_WRITING_SETTINGS, rules: writingRules } });
+    expect(withSettings.coverage.writing).toBe("evaluated");
+    expect(withSettings.findings.map((finding) => finding.id)).toContain("writing-space-before-paren");
+  });
+
+  it("passes a reviews file to the project writing rules and to no LaTeX rule", () => {
+    const main = "\\documentclass{article}\\begin{document}\\begin{table}\\caption{Results.}\\end{table}\\end{document}";
+    const reviews = "1. Table 1 misses \\cite{nope} and \\includegraphics{gone.png}.";
+    const report = runPreflight({
+      source: main,
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: main },
+          { path: "reviews.md", content: reviews },
+        ],
+      },
+      refs: {
+        definedLabels: [],
+        bibKeys: [],
+        bibLoaded: true,
+        projectFiles: ["main.tex", "reviews.md"],
+        duplicateDois: [],
+      },
+      writing: { settings: DEFAULT_WRITING_SETTINGS, rules: writingRules },
+    });
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      id: "writing-review-point",
+      file: "main.tex",
+      from: main.indexOf("\\begin{table}"),
+    }));
+    expect(report.findings.filter((finding) => finding.file === "reviews.md")).toEqual([]);
   });
 
   it("reports two entries sharing a DOI once, however many source files the project has", () => {

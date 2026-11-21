@@ -1147,6 +1147,7 @@ pub fn run() {
             assets::ensure_template_assets,
             project::set_project_dictionary_locale,
             project::reset_project_dictionary_locale_on_device,
+            project::set_project_writing_settings,
             dictionaries::list_dictionaries,
             dictionaries::install_dictionary,
             dictionaries::remove_dictionary,

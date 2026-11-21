@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CheckId, PreflightReport } from "@oleafly/preflight";
+import { CHECK_IDS, type CheckId, type PreflightReport } from "@oleafly/preflight";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -17,7 +17,7 @@ const resume =
 
 const allFlags = (value: boolean) =>
   Object.fromEntries(
-    ["ats", "compile", "a11y", "refs", "submission", "privacy"].map(
+    CHECK_IDS.map(
       (id) => [id, value],
     ),
   ) as Record<CheckId, boolean>;
@@ -128,6 +128,7 @@ describe("Preflight document suggestion checkpoint", () => {
         refs: 72,
         submission: 100,
         privacy: 0,
+        writing: 100,
       },
       atsScore: null,
       compileScore: null,
@@ -135,6 +136,7 @@ describe("Preflight document suggestion checkpoint", () => {
       refsScore: 72,
       submissionScore: 100,
       privacyScore: null,
+      writingScore: null,
       coverage: {
         ats: "not_run",
         compile: "not_run",
@@ -142,6 +144,7 @@ describe("Preflight document suggestion checkpoint", () => {
         refs: "evaluated",
         submission: "evaluated",
         privacy: "unsupported",
+        writing: "not_run",
       },
       ranAt: 1,
       hasPdf: false,
@@ -189,10 +192,10 @@ describe("Preflight document suggestion checkpoint", () => {
     expect(usePreflightStore.getState().ran.compile).toBe(true);
     expect(usePreflightStore.getState().open?.compile).toBe(true);
 
-    fireEvent.click(screen.getByText("Run 6 enabled checks"));
+    fireEvent.click(screen.getByText(`Run ${CHECK_IDS.length} enabled checks`));
     await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(2));
     expect(Object.values(usePreflightStore.getState().ran)).toEqual(
-      Array(6).fill(true),
+      Array(CHECK_IDS.length).fill(true),
     );
 
     fireEvent.click(screen.getByLabelText("Enable ATS readiness"));

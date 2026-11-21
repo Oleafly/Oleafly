@@ -393,6 +393,15 @@
     "notesQuickCapture": {
       "label": "Notare rapidă",
       "keywords": "notare rapidă notează notiță inbox azi quick capture jot note inbox today"
+    },
+    "notationTable": {
+      "label": "Tabel de notații",
+      "keywords": "inserează notații simboluri definiții glosar matematică",
+      "empty": "Nu s-au găsit definiții de simboluri. Definește simbolurile în text cu expresii ca „Fie $x$ intrarea” sau „unde $x$ este intrarea”."
+    },
+    "addChapterFromProject": {
+      "keywords": "teză capitol lucrare importă îmbină copiază proiect",
+      "label": "Adaugă un capitol din alt proiect"
     }
   },
   "community": {

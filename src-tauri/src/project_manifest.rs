@@ -31,6 +31,7 @@ pub(crate) struct FolderFields {
     pub(crate) dictionary_locale: Option<String>,
     pub(crate) compile_dir: Option<String>,
     pub(crate) typst: Option<Value>,
+    pub(crate) writing: Option<Value>,
 }
 
 impl FolderFields {
@@ -52,6 +53,10 @@ impl FolderFields {
                 .and_then(folder_directory),
             typst: object
                 .get("typst")
+                .filter(|value| value.is_object())
+                .cloned(),
+            writing: object
+                .get("writing")
                 .filter(|value| value.is_object())
                 .cloned(),
         })
@@ -538,6 +543,7 @@ mod tests {
                 dictionary_locale: None,
                 compile_dir: None,
                 typst: None,
+                writing: None,
             }))
         );
     }

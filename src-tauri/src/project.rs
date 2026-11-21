@@ -781,6 +781,14 @@ fn merge_folder_fields(
         .flatten();
     meta.typst = declared_typst(folder);
     meta.dictionary_locale.clone_from(&folder.dictionary_locale);
+    match &folder.writing {
+        Some(writing) => {
+            meta.extra.insert(WRITING_KEY.to_owned(), writing.clone());
+        }
+        None => {
+            meta.extra.remove(WRITING_KEY);
+        }
+    }
 }
 
 fn declared_typst(
@@ -825,6 +833,9 @@ enum MetaWrite<'a> {
 const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
 const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor", "typst"];
 const DICTIONARY_FIELDS: &[&str] = &["dictionary_locale"];
+const WRITING_KEY: &str = "writing";
+const WRITING_FIELDS: &[&str] = &[WRITING_KEY];
+const WRITING_SETTINGS_LIMIT: usize = 256 * 1024;
 const SHARED_SETTING_FIELDS: &[&str] = &[
     "main_doc",
     "engine",
@@ -1091,6 +1102,15 @@ fn shared_field_changes(
             effective.dictionary_locale != next.dictionary_locale,
             &next.dictionary_locale,
         ),
+        differs(
+            WRITING_KEY,
+            effective.extra.get(WRITING_KEY) != next.extra.get(WRITING_KEY),
+            declared.writing.as_ref() != next.extra.get(WRITING_KEY),
+        )
+        .then(|| match next.extra.get(WRITING_KEY) {
+            Some(value) => FieldChange::SetValue(WRITING_KEY, value.clone()),
+            None => FieldChange::Remove(WRITING_KEY),
+        }),
     ]
     .into_iter()
     .flatten()
@@ -4250,6 +4270,74 @@ fn write_dictionary_locale(
         let mut meta = read_routed_meta(project_id, &route)?;
         meta.dictionary_locale = locale;
         write_routed_meta(project_id, &route, &meta, intent)?;
+        read_meta(project_id)
+    })
+}
+
+#[tauri::command]
+pub async fn set_project_writing_settings(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    settings: Option<serde_json::Value>,
+) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
+    let settings = validate_writing_settings(settings)?;
+    let owned = project_id.clone();
+    let meta =
+        tauri::async_runtime::spawn_blocking(move || write_writing_settings(&owned, settings))
+            .await
+            .map_err(|error| format!("failed to save the writing settings: {error}"))??;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "writing-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    crate::collab::settings::local_changed(&project_id);
+    Ok(meta)
+}
+
+fn validate_writing_settings(
+    settings: Option<serde_json::Value>,
+) -> Result<Option<serde_json::Value>, String> {
+    let Some(value) = settings.filter(|value| !value.is_null()) else {
+        return Ok(None);
+    };
+    if !value.is_object() {
+        return Err("The writing settings must be a JSON object.".into());
+    }
+    let size = serde_json::to_vec(&value).map_or(usize::MAX, |bytes| bytes.len());
+    if size > WRITING_SETTINGS_LIMIT {
+        return Err("The writing settings are too large to save.".into());
+    }
+    Ok(Some(value))
+}
+
+fn write_writing_settings(
+    project_id: &str,
+    settings: Option<serde_json::Value>,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let route = crate::project_manifest::route_project(project_id)?;
+        let mut meta = read_routed_meta(project_id, &route)?;
+        match settings {
+            Some(value) => {
+                meta.extra.insert(WRITING_KEY.to_owned(), value);
+            }
+            None => {
+                meta.extra.remove(WRITING_KEY);
+            }
+        }
+        write_routed_meta(
+            project_id,
+            &route,
+            &meta,
+            MetaWrite::Explicit(WRITING_FIELDS),
+        )?;
         read_meta(project_id)
     })
 }
@@ -9789,6 +9877,57 @@ mod tests {
             std::fs::read_to_string(shared.join("project.json")).unwrap(),
             "{\n  \"main_doc\": \"main.tex\"\n}\n"
         );
+    }
+
+    #[test]
+    fn writing_settings_live_in_the_shared_folder_manifest_and_validate_their_shape() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let settings = serde_json::json!({"profile": "cvpr", "rules": [{"id": "rule-1", "find": "dataset", "replace": "data set"}]});
+
+        let (plain_id, _plain) = linked_folder_with(&fixture, "notes", None);
+        let meta = super::write_writing_settings(&plain_id, Some(settings.clone())).unwrap();
+        assert_eq!(meta.extra.get(super::WRITING_KEY), Some(&settings));
+        assert_eq!(
+            read_meta(&plain_id).unwrap().extra.get(super::WRITING_KEY),
+            Some(&settings)
+        );
+
+        let (shared_id, shared) = linked_folder_with(
+            &fixture,
+            "thesis",
+            Some("{\n  \"main_doc\": \"main.tex\"\n}\n"),
+        );
+        assert!(matches!(
+            crate::project_manifest::route_project(&shared_id).unwrap(),
+            crate::project_manifest::Route::Split { .. }
+        ));
+        super::write_writing_settings(&shared_id, Some(settings.clone())).unwrap();
+        let written: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(shared.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(written.get("writing"), Some(&settings));
+        assert_eq!(
+            read_meta(&shared_id).unwrap().extra.get(super::WRITING_KEY),
+            Some(&settings)
+        );
+        super::write_writing_settings(&shared_id, None).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            "{\n  \"main_doc\": \"main.tex\"\n}\n"
+        );
+        assert_eq!(
+            read_meta(&shared_id).unwrap().extra.get(super::WRITING_KEY),
+            None
+        );
+
+        assert_eq!(super::validate_writing_settings(None).unwrap(), None);
+        assert_eq!(
+            super::validate_writing_settings(Some(serde_json::Value::Null)).unwrap(),
+            None
+        );
+        assert!(super::validate_writing_settings(Some(serde_json::json!(["x"]))).is_err());
+        let huge = serde_json::json!({"ignored": ["x".repeat(super::WRITING_SETTINGS_LIMIT)]});
+        assert!(super::validate_writing_settings(Some(huge)).is_err());
     }
 
     #[test]

@@ -128,6 +128,7 @@ function engineOutput(input: Record<string, unknown>) {
     refsScore: report.refsScore,
     submissionScore: report.submissionScore,
     privacyScore: report.privacyScore,
+    writingScore: report.writingScore,
     hasPdf: report.hasPdf,
   };
 }

@@ -311,10 +311,11 @@ function hlineBody(
 export function buildLatexTable(
   cells: string[][],
   aligns: TableAlign[],
-  opts: { booktabs: boolean; headerRow: boolean; caption: string },
+  opts: { booktabs: boolean; headerRow: boolean; caption: string; latexCells?: boolean },
 ): string {
   const colSpec = aligns.join("");
-  const row = (r: string[]) => `    ${r.map(escapeLatex).join(" & ")} \\\\`;
+  const cell = opts.latexCells ? (value: string) => value : escapeLatex;
+  const row = (r: string[]) => `    ${r.map(cell).join(" & ")} \\\\`;
   const lines: string[] = [];
   lines.push(String.raw`\begin{table}[htbp]`, String.raw`  \centering`);
   if (opts.caption) lines.push(String.raw`  \caption{${escapeLatex(opts.caption)}}`);
