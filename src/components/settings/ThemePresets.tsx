@@ -1,8 +1,10 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RadioGroup, RadioGroupCard } from "@/components/ui/radio-group";
+import { SIDEWAYS_FADE, useScrollEdges } from "@/hooks/use-sideways-scroll";
 import type { Theme } from "@/lib/theme";
 import { themePresets, type ThemePalette } from "@/lib/theme-presets";
+import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
 
 function ThemePreview({ palette, sample }: Readonly<{ palette: ThemePalette; sample: string }>) {
@@ -60,22 +62,31 @@ function ThemePresetRow({ mode }: Readonly<{ mode: Theme }>) {
       ? t(($) => $.settings.appearance.app.themePresets.dark)
       : t(($) => $.settings.appearance.app.themePresets.light);
   const sample = t(($) => $.settings.appearance.app.themePresets.sample);
+  const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  useScrollEdges(strip);
+  useEffect(() => {
+    const chosen = strip?.querySelector<HTMLElement>('[data-state="checked"]');
+    if (!strip || !chosen) return;
+    strip.scrollLeft = Math.max(0, chosen.offsetLeft - (strip.clientWidth - chosen.offsetWidth) / 2);
+  }, [strip]);
   return (
     <div className="space-y-2">
       <div id={labelId} className="text-xs font-medium text-muted-foreground">
         {label}
       </div>
       <RadioGroup
+        ref={setStrip}
         aria-labelledby={labelId}
         value={value}
         onValueChange={(id) => setAppTheme(mode, id)}
-        className="grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-3"
+        className={cn("relative flex gap-3 overflow-x-auto pb-1", SIDEWAYS_FADE)}
       >
         {themePresets(mode).map((preset) => (
           <RadioGroupCard
             key={preset.id}
             value={preset.id}
             label={preset.name}
+            className="w-32 shrink-0"
             data-testid={`theme-preset-${mode}-${preset.id}`}
           >
             <ThemePreview palette={preset.palette} sample={sample} />
