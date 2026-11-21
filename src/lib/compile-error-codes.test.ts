@@ -203,7 +203,12 @@ describe("explainCodedCompileErrors", () => {
   });
 
   it("names a lost character in a translatable explanation", () => {
-    for (const code of ["missing_characters", "missing_characters_cjk", "missing_characters_cjk_package"] as const) {
+    for (const code of [
+      "missing_characters",
+      "missing_characters_font",
+      "missing_characters_cjk",
+      "missing_characters_cjk_package",
+    ] as const) {
       const [explained] = explainCodedCompileErrors([
         { ...warning(`tex.${code}`), params: { sample: "大 綱" } },
       ]);
@@ -228,6 +233,19 @@ describe("explainCodedCompileErrors", () => {
   it("explains why BibTeX can't read a folder with a lone brace", () => {
     const [explained] = explainCodedCompileErrors([warning("tex.bibtex_folder_brace")]);
     expect(explained.explanation).toBe(enErrors.tex.bibtex_folder_brace);
+  });
+
+  it("explains a skipped BibTeX entry and both kinds of unreadable build file", () => {
+    const [skipped, leftOver, written] = explainCodedCompileErrors([
+      { ...warning("tex.bibtex_entry_skipped"), params: { message: "I was expecting a `,' or a `}'" } },
+      warning("tex.build_file_damaged"),
+      warning("tex.build_file_unreadable"),
+    ]);
+    expect(skipped.explanation).toBe(
+      enErrors.tex.bibtex_entry_skipped.replace("{{message}}", "I was expecting a `,' or a `}'"),
+    );
+    expect(leftOver.explanation).toBe(enErrors.tex.build_file_damaged);
+    expect(written.explanation).toBe(enErrors.tex.build_file_unreadable);
   });
 
   it("translates the cards for failures that printed no error line", () => {

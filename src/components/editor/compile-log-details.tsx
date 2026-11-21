@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import type { CompileError, ComponentInfo } from "@/lib/tauri";
+import { BUILD_FILE_DAMAGED_CODE } from "@/lib/compile-error-codes";
 import { compileErrorExcerpt } from "@/lib/compile-error-excerpt";
 import {
   missingTypstFont,
@@ -64,25 +66,24 @@ function MissingFontPackHint({ missing }: Readonly<{ missing: MissingFontPack }>
     >
       <span>{hint()}</span>
       {packsApply && (
-        <button
-          type="button"
-          onClick={() => void downloadAndCompile()}
-          disabled={installing !== null}
-          className="rounded-md border border-input px-2 py-0.5 text-[0.71875rem] text-foreground hover:bg-accent disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" size="xs" disabled={installing !== null} onClick={() => void downloadAndCompile()}>
           {installing === pack.id ? t(($) => $.editor.log.fontPackDownloading) : t(($) => $.editor.log.fontPackAction)}
-        </button>
+        </Button>
       )}
     </div>
   );
 }
 
-export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
-  const { t } = useTranslation(["editor"]);
+export function CompileErrorDetails({ err, recompileFromScratch = null }: Readonly<{
+  err: CompileError;
+  recompileFromScratch?: (() => void) | null;
+}>) {
+  const { t } = useTranslation(["editor", "shell"]);
   const excerpt = compileErrorExcerpt(err);
   const hints = err.hints ?? [];
   const missingFont = useMissingFontPack(err);
-  if (!excerpt && hints.length === 0 && !missingFont) return null;
+  const damagedBuild = err.code === BUILD_FILE_DAMAGED_CODE;
+  if (!excerpt && hints.length === 0 && !missingFont && !damagedBuild) return null;
   const tone = err.kind === "error" ? "text-red-500" : "text-amber-500";
   return (
     <div className="mx-3 mb-3 space-y-2">
@@ -113,6 +114,19 @@ export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
         </figure>
       )}
       {missingFont && <MissingFontPackHint missing={missingFont} />}
+      {damagedBuild && (
+        <div className="px-0.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            disabled={recompileFromScratch === null}
+            onClick={() => recompileFromScratch?.()}
+          >
+            {t(($) => $.shell.compile.fromScratch)}
+          </Button>
+        </div>
+      )}
       {hints.length > 0 && (
         <ul className="space-y-1 px-0.5">
           {hints.map((hint) => (

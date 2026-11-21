@@ -1,6 +1,7 @@
 pub mod atomic;
 pub mod biber_env;
 pub mod bibkey;
+mod bibtex_log;
 mod bounded_read;
 mod build;
 pub mod build_output;
@@ -15,6 +16,7 @@ pub mod engine_spec;
 mod engine_temp;
 mod error;
 pub mod exclude;
+mod font_coverage;
 pub mod front_matter;
 pub mod hlc;
 pub mod ids;
@@ -30,6 +32,7 @@ pub mod pdf_sync;
 pub mod portable;
 pub mod process_probe;
 pub mod sidecar;
+pub mod source_places;
 pub mod templates;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
@@ -51,7 +54,7 @@ pub use bounded_read::{read_bounded, BoundedRead};
 pub use build::PreparedBuild;
 pub use compile_log::{
     is_nullfont_missing_character, parse_latex_log, LogCategory, LogDiagnostic, LogSeverity,
-    MAX_COMPILE_LOG_BYTES,
+    MissingCharacterPlaces, MAX_COMPILE_LOG_BYTES,
 };
 pub use detect::{
     compile_dir_for, declared_tex_flavor, detect_main_document, project_tex_flavor,

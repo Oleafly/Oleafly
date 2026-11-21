@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::engine_spec::{discover_bibliographies, validate_latex_main_document, ENTRY_STEM};
+use crate::source_places::{BuildBefore, BuildFolders};
 use crate::tex_errors::CompileError;
 use crate::tex_flavor::uncommented_preamble;
-use crate::TexFlavor;
+use crate::{LogCategory, LogDiagnostic, LogSeverity, TexFlavor};
 
 const SOURCE_SNIFF_BYTES: u64 = 512 * 1024;
 const LOG_FILE_OPEN: &str = "File `";
@@ -391,6 +392,123 @@ pub fn bibliography_above_main_error(out_dir: &Path, stem: &str) -> Option<Compi
         ]),
         ..Default::default()
     })
+}
+
+#[derive(Debug, Default)]
+pub struct BibtexFindings {
+    pub errors: Vec<CompileError>,
+    pub diagnostics: Vec<LogDiagnostic>,
+}
+
+/// latexmk stops the build for a BibTeX error. Tectonic carries on and still
+/// writes the PDF.
+#[derive(Clone, Copy)]
+pub struct BibtexRun<'a> {
+    pub folders: BuildFolders<'a>,
+    pub before: &'a BuildBefore,
+    pub stem: &'a str,
+    pub fails_build: bool,
+}
+
+// Biber writes its log under the same `.blg` name, without this banner.
+fn bibtex_log(run: BibtexRun<'_>, log: &str) -> Option<String> {
+    if !log.contains(&format!("{}.bbl", run.stem)) {
+        return None;
+    }
+    let written = run.folders.out_dir.join(format!("{}.blg", run.stem));
+    if run.before.left_untouched(&written) {
+        return None;
+    }
+    let blg = source_head(&written)?;
+    let banner = blg.lines().next()?;
+    (banner.starts_with("This is ") && banner.contains("BibTeX")).then_some(blg)
+}
+
+fn project_file(run: BibtexRun<'_>, printed: &str) -> Option<String> {
+    let folders = run.folders;
+    let root = folders.project_dir.canonicalize().ok()?;
+    let path = [folders.compile_dir, folders.project_dir, folders.out_dir]
+        .iter()
+        .filter_map(|folder| folder.join(printed).canonicalize().ok())
+        .find(|path| path.is_file())?;
+    let built = folders
+        .out_dir
+        .canonicalize()
+        .is_ok_and(|build| path.starts_with(build));
+    if built {
+        return None;
+    }
+    path.strip_prefix(&root)
+        .ok()
+        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+        .filter(|relative| relative.split('/').next() != Some(crate::workspace::INTERNAL_DIR))
+}
+
+fn entry_skipped_card(message: &str, file: &str, line: u32, fails_build: bool) -> CompileError {
+    CompileError {
+        line: Some(line),
+        file: Some(file.to_owned()),
+        message: message.to_owned(),
+        kind: if fails_build { "error" } else { "warning" }.into(),
+        explanation: Some(format!(
+            "BibTeX stopped reading this entry: {message}. It skipped the rest, so the reference may be incomplete or missing in the PDF. Check this line and the one before it."
+        )),
+        code: Some("tex.bibtex_entry_skipped".into()),
+        params: BTreeMap::from([("message".to_owned(), message.to_owned())]),
+        ..Default::default()
+    }
+}
+
+pub fn bibtex_findings(run: BibtexRun<'_>, log: &str) -> BibtexFindings {
+    let mut findings = BibtexFindings::default();
+    let Some(blg) = bibtex_log(run, log) else {
+        return findings;
+    };
+    for found in crate::bibtex_log::parse_bibtex_log(&blg) {
+        let reported = found
+            .missing_entry
+            .as_deref()
+            .is_some_and(|key| log.contains(&format!("Citation `{key}'")));
+        if reported {
+            continue;
+        }
+        let place = found
+            .place
+            .as_ref()
+            .and_then(|(file, line)| Some((project_file(run, file)?, *line)));
+        if let Some((file, line)) = place
+            .as_ref()
+            .filter(|(file, _)| found.error && file.ends_with(".bib"))
+        {
+            findings.errors.push(entry_skipped_card(
+                &found.message,
+                file,
+                *line,
+                run.fails_build,
+            ));
+        }
+        let (category, message) = match found.missing_entry.as_deref() {
+            Some(key) => (
+                LogCategory::UndefinedCitation,
+                crate::compile_log::missing_bib_entry_note(key),
+            ),
+            None => (LogCategory::Bibtex, found.message),
+        };
+        let (file, line) = place.unzip();
+        findings.diagnostics.push(LogDiagnostic {
+            severity: if found.error && run.fails_build {
+                LogSeverity::Error
+            } else {
+                LogSeverity::Warning
+            },
+            message,
+            file,
+            line,
+            category,
+            error_context: None,
+        });
+    }
+    findings
 }
 
 #[cfg(test)]
@@ -878,6 +996,256 @@ mod tests {
         assert!(nested_input_error(directory.path(), "paper/main.tex", &log("both.tex")).is_none());
         assert!(
             nested_input_error(directory.path(), "main.tex", &log("sections/intro.tex")).is_none()
+        );
+    }
+
+    const BROKEN_ENTRY_BLG: &str = concat!(
+        "This is BibTeX, Version 0.99d\n",
+        "Capacity: max_strings=35307, hash_size=35307, hash_prime=30011\n",
+        "The top-level auxiliary file: job.aux\n",
+        "The style file: plainnat.bst\n",
+        "Database file #1: refs.bib\n",
+        "I was expecting a `,' or a `}'---line 3 of file refs.bib\n",
+        " :   \n",
+        " :   title = {Literate Programming},\n",
+        "(Error may have been on previous line)\n",
+        "I'm skipping whatever remains of this entry\n",
+        "Warning--empty title in knuth84\n",
+        "(There was 1 error message)\n",
+    );
+    const READS_BBL: &str = "(./main.tex (./build/job.bbl))\n";
+
+    fn bibtex_run(project: &Path, fails_build: bool) -> BibtexFindings {
+        bibtex_findings(
+            BibtexRun {
+                folders: BuildFolders {
+                    project_dir: project,
+                    compile_dir: project,
+                    out_dir: &project.join("build"),
+                },
+                before: &BuildBefore::default(),
+                stem: "job",
+                fails_build,
+            },
+            READS_BBL,
+        )
+    }
+
+    fn rows(findings: &BibtexFindings) -> Vec<(LogSeverity, Option<&str>, Option<u32>, &str)> {
+        findings
+            .diagnostics
+            .iter()
+            .map(|row| {
+                (
+                    row.severity,
+                    row.file.as_deref(),
+                    row.line,
+                    row.message.as_str(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_broken_bib_entry_is_reported_on_its_own_line() {
+        let project = project(&[
+            ("refs.bib", "@article{knuth84,\n"),
+            ("build/job.blg", BROKEN_ENTRY_BLG),
+        ]);
+        let ignored = bibtex_run(project.path(), false);
+        assert_eq!(
+            rows(&ignored),
+            [(
+                LogSeverity::Warning,
+                Some("refs.bib"),
+                Some(3),
+                "I was expecting a `,' or a `}'"
+            )]
+        );
+        assert_eq!(ignored.errors.len(), 1);
+        let card = &ignored.errors[0];
+        assert_eq!(
+            (
+                card.kind.as_str(),
+                card.file.as_deref(),
+                card.line,
+                card.message.as_str()
+            ),
+            (
+                "warning",
+                Some("refs.bib"),
+                Some(3),
+                "I was expecting a `,' or a `}'"
+            )
+        );
+        let stopped = bibtex_run(project.path(), true);
+        assert_eq!(stopped.errors[0].kind, "error");
+        assert_eq!(stopped.diagnostics[0].severity, LogSeverity::Error);
+    }
+
+    #[test]
+    fn the_bibtex_card_matches_the_catalog_word_for_word() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../../src/i18n/locales/en/errors.json")).unwrap();
+        let card = entry_skipped_card("Repeated entry", "refs.bib", 9, true);
+        let english = catalog["tex"]["bibtex_entry_skipped"]
+            .as_str()
+            .unwrap()
+            .replace("{{message}}", "Repeated entry");
+        assert_eq!(card.code.as_deref(), Some("tex.bibtex_entry_skipped"));
+        assert_eq!(card.explanation.as_deref(), Some(english.as_str()));
+    }
+
+    #[test]
+    fn a_log_that_is_not_from_this_bibtex_run_is_left_alone() {
+        let biber = project(&[
+            ("refs.bib", ""),
+            (
+                "build/job.blg",
+                "[0] Config.pm:310> INFO - Logfile is 'job.blg'\nRepeated entry---line 3 of file refs.bib\n",
+            ),
+        ]);
+        assert!(bibtex_run(biber.path(), true).diagnostics.is_empty());
+
+        let stale = project(&[("refs.bib", ""), ("build/job.blg", BROKEN_ENTRY_BLG)]);
+        let findings = bibtex_findings(
+            BibtexRun {
+                folders: BuildFolders {
+                    project_dir: stale.path(),
+                    compile_dir: stale.path(),
+                    out_dir: &stale.path().join("build"),
+                },
+                before: &BuildBefore::default(),
+                stem: "job",
+                fails_build: true,
+            },
+            "(./main.tex)\n",
+        );
+        assert!(findings.diagnostics.is_empty() && findings.errors.is_empty());
+
+        let before = BuildBefore::take(&stale.path().join("build"));
+        let read = || {
+            bibtex_findings(
+                BibtexRun {
+                    folders: BuildFolders {
+                        project_dir: stale.path(),
+                        compile_dir: stale.path(),
+                        out_dir: &stale.path().join("build"),
+                    },
+                    before: &before,
+                    stem: "job",
+                    fails_build: true,
+                },
+                READS_BBL,
+            )
+        };
+        assert!(read().errors.is_empty());
+        let rewritten = format!("{BROKEN_ENTRY_BLG}\n");
+        std::fs::write(stale.path().join("build/job.blg"), rewritten).unwrap();
+        assert_eq!(read().errors.len(), 1);
+    }
+
+    #[test]
+    fn a_build_file_is_never_given_as_the_place() {
+        let blg = concat!(
+            "This is BibTeX, Version 0.99d (TeX Live 2025)\n",
+            "I couldn't open database file refs.bib\n",
+            "---line 3 of file build/job.aux\n",
+            " : \\bibdata{refs\n",
+            " :              }\n",
+            "I'm skipping whatever remains of this command\n",
+            "Repeated entry---line 2 of file .oleafly/build/copy.bib\n",
+            "I found no \\bibstyle command---while reading file build/job.aux\n",
+        );
+        let project = project(&[
+            ("build/job.aux", "\\relax\n"),
+            (".oleafly/build/copy.bib", ""),
+            ("build/job.blg", blg),
+        ]);
+        let findings = bibtex_run(project.path(), true);
+        assert!(findings.errors.is_empty());
+        assert_eq!(
+            rows(&findings),
+            [
+                (
+                    LogSeverity::Error,
+                    None,
+                    None,
+                    "I couldn't open database file refs.bib"
+                ),
+                (LogSeverity::Error, None, None, "Repeated entry"),
+                (
+                    LogSeverity::Error,
+                    None,
+                    None,
+                    "I found no \\bibstyle command"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_path_printed_from_the_build_folder_becomes_the_project_path() {
+        let blg = concat!(
+            "This is BibTeX, Version 0.99d (TeX Live 2025)\n",
+            "Warning--I'm ignoring knuth84's extra \"year\" field\n",
+            "--line 4 of file ../bib/refs.bib\n",
+        );
+        let project = project(&[("bib/refs.bib", ""), ("build/job.blg", blg)]);
+        let findings = bibtex_findings(
+            BibtexRun {
+                folders: BuildFolders {
+                    project_dir: project.path(),
+                    compile_dir: &project.path().join("build"),
+                    out_dir: &project.path().join("build"),
+                },
+                before: &BuildBefore::default(),
+                stem: "job",
+                fails_build: true,
+            },
+            READS_BBL,
+        );
+        assert!(findings.errors.is_empty());
+        assert_eq!(
+            rows(&findings),
+            [(
+                LogSeverity::Warning,
+                Some("bib/refs.bib"),
+                Some(4),
+                "I'm ignoring knuth84's extra \"year\" field"
+            )]
+        );
+    }
+
+    #[test]
+    fn a_citation_with_no_entry_is_listed_only_when_latex_did_not_report_it() {
+        let blg = concat!(
+            "This is BibTeX, Version 0.99d (TeX Live 2025)\n",
+            "Warning--I didn't find a database entry for \"cited\"\n",
+            "Warning--I didn't find a database entry for \"listed\"\n",
+        );
+        let project = project(&[("build/job.blg", blg)]);
+        let findings = bibtex_findings(
+            BibtexRun {
+                folders: BuildFolders {
+                    project_dir: project.path(),
+                    compile_dir: project.path(),
+                    out_dir: &project.path().join("build"),
+                },
+                before: &BuildBefore::default(),
+                stem: "job",
+                fails_build: false,
+            },
+            "(./build/job.bbl)\nLaTeX Warning: Citation `cited' on page 1 undefined on input line 5.\n",
+        );
+        assert_eq!(findings.diagnostics.len(), 1);
+        assert_eq!(
+            findings.diagnostics[0].category,
+            LogCategory::UndefinedCitation
+        );
+        assert_eq!(
+            findings.diagnostics[0].message,
+            "No bib entry found for 'listed'"
         );
     }
 }

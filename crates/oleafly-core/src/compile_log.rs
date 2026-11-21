@@ -1,13 +1,16 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::OnceLock;
 
 pub const MAX_COMPILE_LOG_BYTES: usize = 4 * 1024 * 1024;
 
 const MAX_ERROR_CONTEXT_LINES: usize = 12;
-const MAX_MISSING_CHARACTER_DIAGNOSTICS: usize = 50;
+pub(crate) const MAX_MISSING_CHARACTER_DIAGNOSTICS: usize = 50;
 const NULLFONT_SUFFIX: &str = " in font nullfont!";
+pub(crate) const MISSING_CHARACTER: &str = "Missing character: There is no ";
+const FONT_CLAUSE: &str = " in font ";
 
 const BIBER_RERUN_MESSAGE: &str = "Bibliography needs Biber (biblatex). If citations stay undefined, check the Biber messages in this log.";
 
@@ -104,6 +107,7 @@ struct Patterns {
     wrapped_reference: Regex,
     trailing_input_line: Regex,
     wrapped_line_number: Regex,
+    engine_missing_character: Regex,
 }
 
 fn compile(pattern: String) -> Regex {
@@ -196,6 +200,9 @@ fn patterns() -> &'static Patterns {
         ),
         trailing_input_line: compile(r"on input line ([0-9]+)\.?$".into()),
         wrapped_line_number: compile(r"^([^\n]*)\n([0-9]+)(\.?)$".into()),
+        engine_missing_character: compile(format!(
+            r"^warning: ({ANY}+?):([0-9]+): ?(Missing character: {ANY}*)?$"
+        )),
     })
 }
 
@@ -340,6 +347,153 @@ fn collapse_missing_characters(diagnostics: &mut Vec<LogDiagnostic>) {
         kept += 1;
         kept <= MAX_MISSING_CHARACTER_DIAGNOSTICS
     });
+}
+
+pub(crate) fn missing_character_key(message: &str) -> Option<&str> {
+    let rest = message.trim_start().strip_prefix(MISSING_CHARACTER)?;
+    let font = rest.find(FONT_CLAUSE)?;
+    let code = rest[..font].rfind(" (")? + 1;
+    let end = rest[font..]
+        .find('!')
+        .map_or(rest.len(), |end| font + end + 1);
+    Some(&rest[code..end])
+}
+
+pub(crate) fn missing_bib_entry_note(key: &str) -> String {
+    format!("No bib entry found for '{key}'")
+}
+
+pub(crate) fn is_build_file(file: &str) -> bool {
+    file.rsplit(['/', '\\'])
+        .next()
+        .and_then(|name| name.strip_prefix(crate::engine_spec::ENTRY_STEM))
+        .is_some_and(|rest| rest.starts_with('.'))
+}
+
+fn log_file_name(file: &str) -> String {
+    let rooted =
+        file.starts_with("./") || file.starts_with('/') || file.as_bytes().get(1) == Some(&b':');
+    if rooted {
+        file.to_owned()
+    } else {
+        format!("./{file}")
+    }
+}
+
+fn typed_on_line(
+    sources: &mut crate::tex_errors::SourceLines,
+    folders: &[&Path],
+    place: &(String, u32),
+    character: char,
+) -> bool {
+    let name = place.0.strip_prefix("./").unwrap_or(&place.0);
+    let with_extension = format!("{name}.tex");
+    let names = if Path::new(name).extension().is_some() {
+        vec![name]
+    } else {
+        vec![with_extension.as_str(), name]
+    };
+    for folder in folders {
+        for name in &names {
+            if let Some(text) = sources.line(folder, name, place.1) {
+                return text.contains(character);
+            }
+        }
+    }
+    false
+}
+
+/// Tectonic names the file and line of every character it could not typeset
+/// on its error stream (`warning: main.tex:8: Missing character: ...`), which
+/// the TeX log leaves out. TeX typesets a page header while it reads some
+/// later line, so for a header that line is not where the character is.
+#[derive(Debug, Default)]
+pub struct MissingCharacterPlaces {
+    places: HashMap<String, Vec<(String, u32)>>,
+}
+
+impl MissingCharacterPlaces {
+    pub fn read(engine_output: &str) -> Self {
+        let p = patterns();
+        let mut places: HashMap<String, Vec<(String, u32)>> = HashMap::new();
+        let mut seen = HashSet::new();
+        let mut lines = head(engine_output).lines().peekable();
+        while let Some(line) = lines.next() {
+            let Some(caps) = line
+                .starts_with("warning: ")
+                .then(|| p.engine_missing_character.captures(line))
+                .flatten()
+            else {
+                continue;
+            };
+            let message = match caps.get(3) {
+                Some(message) => message.as_str(),
+                None => lines.peek().copied().unwrap_or_default(),
+            };
+            let (Some(key), Some(number)) =
+                (missing_character_key(message), parse_number(caps.get(2)))
+            else {
+                continue;
+            };
+            if is_build_file(&caps[1]) {
+                continue;
+            }
+            let place = (log_file_name(&caps[1]), number);
+            if seen.insert((key.to_owned(), place.clone())) {
+                places.entry(key.to_owned()).or_default().push(place);
+            }
+        }
+        Self { places }
+    }
+
+    pub fn apply(&self, diagnostics: &mut Vec<LogDiagnostic>, source_folders: &[&Path]) {
+        if self.places.is_empty() {
+            return;
+        }
+        let listed = diagnostics
+            .iter()
+            .filter(|diagnostic| {
+                diagnostic.category == LogCategory::MissingCharacter
+                    && !is_nullfont_missing_character(&diagnostic.message)
+            })
+            .count();
+        let mut spare = MAX_MISSING_CHARACTER_DIAGNOSTICS.saturating_sub(listed);
+        let mut sources = crate::tex_errors::SourceLines::default();
+        let mut placed = Vec::with_capacity(diagnostics.len());
+        for diagnostic in diagnostics.drain(..) {
+            let key = (diagnostic.category == LogCategory::MissingCharacter)
+                .then(|| missing_character_key(&diagnostic.message))
+                .flatten();
+            let wanted = if is_nullfont_missing_character(&diagnostic.message) {
+                1
+            } else {
+                spare + 1
+            };
+            let found: Vec<&(String, u32)> = key
+                .and_then(|key| Some((self.places.get(key)?, crate::tex_errors::code_point(key)?)))
+                .map(|(places, character)| {
+                    places
+                        .iter()
+                        .filter(|place| {
+                            typed_on_line(&mut sources, source_folders, place, character)
+                        })
+                        .take(wanted)
+                        .collect()
+                })
+                .unwrap_or_default();
+            if found.is_empty() {
+                placed.push(diagnostic);
+                continue;
+            }
+            spare -= found.len() - 1;
+            placed.extend(found.into_iter().map(|(file, line)| LogDiagnostic {
+                file: Some(file.clone()),
+                line: Some(*line),
+                ..diagnostic.clone()
+            }));
+        }
+        *diagnostics = placed;
+    }
 }
 
 pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic> {
@@ -502,7 +656,7 @@ impl Parser<'_> {
                 LogSeverity::Warning,
                 None,
                 None,
-                format!("No bib entry found for '{}'", &caps[1]),
+                missing_bib_entry_note(&caps[1]),
             ));
         }
         if let Some(caps) = p.biber_cannot_find.captures(line) {
@@ -711,7 +865,7 @@ impl Parser<'_> {
                 category: LogCategory::Biber,
                 file: None,
                 line: None,
-                text: format!("No bib entry found for '{}'", &caps[1]),
+                text: missing_bib_entry_note(&caps[1]),
                 context: None,
             });
             self.search_empty_line = false;
