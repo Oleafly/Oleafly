@@ -20,12 +20,14 @@ import {
 export interface WantedShortcut {
   enabled: boolean;
   accelerator: string | null;
+  background: boolean;
 }
 
 export function wantedShortcut(): WantedShortcut {
-  const enabled = useSettingsStore.getState().notes && useQuickCaptureStore.getState().enabled;
+  const capture = useQuickCaptureStore.getState();
+  const enabled = useSettingsStore.getState().notes && capture.enabled;
   const binding = useShortcutStore.getState().bindings.notesQuickCapture;
-  return { enabled, accelerator: enabled ? nativeAccelerator(binding) : null };
+  return { enabled, accelerator: enabled ? nativeAccelerator(binding) : null, background: enabled && capture.background };
 }
 
 export async function captureReply(request: CaptureRequest): Promise<CaptureReply> {
@@ -44,11 +46,11 @@ export async function startQuickCaptureBridge(): Promise<() => void> {
   let configuring = Promise.resolve();
   const sync = () => {
     const wanted = wantedShortcut();
-    const key = `${wanted.enabled}:${wanted.accelerator ?? ""}`;
+    const key = `${wanted.enabled}:${wanted.accelerator ?? ""}:${wanted.background}`;
     if (key === applied) return;
     applied = key;
     configuring = configuring
-      .then(() => quickCaptureConfigure(wanted.enabled, wanted.accelerator))
+      .then(() => quickCaptureConfigure(wanted.enabled, wanted.accelerator, wanted.background))
       .then(
         (status) => useQuickCaptureStore.getState().setStatus(status),
         (error: unknown) => {

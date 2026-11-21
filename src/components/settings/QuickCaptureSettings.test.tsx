@@ -12,7 +12,7 @@ const strings = enSettings.shortcuts.quickCapture;
 beforeEach(() => {
   Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true });
   useShortcutStore.getState().resetAll();
-  useQuickCaptureStore.setState({ enabled: true, status: null });
+  useQuickCaptureStore.setState({ enabled: true, background: false, status: null });
 });
 
 afterEach(() => localStorage.clear());
@@ -27,14 +27,37 @@ describe("QuickCaptureSettings", () => {
     expect(localStorage.getItem("oleafly.notes.quickCapture")).toBe("0");
   });
 
+  it("keeps quick capture ready in the background only while quick capture is on", () => {
+    render(<QuickCaptureSettings />);
+    const ready = screen.getByRole("switch", { name: strings.background.label });
+    expect(screen.getByText(strings.background.description)).toBeInTheDocument();
+    expect(ready).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(ready);
+    expect(useQuickCaptureStore.getState().background).toBe(true);
+    expect(localStorage.getItem("oleafly.notes.quickCapture.background")).toBe("1");
+    fireEvent.click(screen.getByRole("switch", { name: strings.label }));
+    expect(screen.getByRole("switch", { name: strings.background.label })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("asks to move the app before it can start at sign-in", () => {
+    useQuickCaptureStore.setState({
+      background: true,
+      status: { supported: true, registered: true, command: null, failure: null, atLogin: { state: "move_app" } },
+    });
+    render(<QuickCaptureSettings />);
+    expect(screen.getByTestId("settings-quick-capture-move-app")).toHaveTextContent(
+      enSettings.research.background.atLogin.moveApp,
+    );
+  });
+
   it("says which keys open it once the shortcut is registered", () => {
-    useQuickCaptureStore.setState({ status: { supported: true, registered: true, command: null, failure: null } });
+    useQuickCaptureStore.setState({ status: { supported: true, registered: true, command: null, failure: null, atLogin: { state: "disabled" } } });
     render(<QuickCaptureSettings />);
     expect(screen.getByText(strings.ready.replace("{{shortcut}}", "Ctrl+Shift+Alt+Space"))).toBeInTheDocument();
   });
 
   it("names the shortcut another app holds", () => {
-    useQuickCaptureStore.setState({ status: { supported: true, registered: false, command: null, failure: "taken" } });
+    useQuickCaptureStore.setState({ status: { supported: true, registered: false, command: null, failure: "taken", atLogin: { state: "disabled" } } });
     render(<QuickCaptureSettings />);
     expect(screen.getByRole("alert")).toHaveTextContent(strings.taken.replace("{{shortcut}}", "Ctrl+Shift+Alt+Space"));
   });
@@ -47,7 +70,13 @@ describe("QuickCaptureSettings", () => {
 
   it("explains Wayland and offers the command to bind instead", () => {
     useQuickCaptureStore.setState({
-      status: { supported: false, registered: false, command: "/usr/bin/oleafly --quick-capture", failure: null },
+      status: {
+        supported: false,
+        registered: false,
+        command: "/usr/bin/oleafly --quick-capture",
+        failure: null,
+        atLogin: { state: "disabled" },
+      },
     });
     render(<QuickCaptureSettings />);
     const row = screen.getByRole("switch", { name: strings.label });

@@ -41,7 +41,7 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     args: Vec<String>,
     cwd: String,
 ) {
-    if crate::quick_capture::arrive(app, &args) {
+    if crate::quick_capture::arrive(app, &args) || crate::quick_capture::background_launch(&args) {
         return;
     }
     reveal_main_window(app);
@@ -55,7 +55,14 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
 }
 
 pub(crate) fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    #[cfg(target_os = "macos")]
+    let _ = app.set_dock_visibility(true);
     if let Some(window) = app.get_window("main") {
+        if crate::quick_capture::take_hidden_launch()
+            && std::env::var("OLEAFLY_E2E_WINDOW").is_err()
+        {
+            let _ = window.maximize();
+        }
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();

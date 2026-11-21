@@ -29,6 +29,7 @@ export interface TypstInsightElement {
   level: number | null;
   figureKind: string | null;
   numbered: boolean;
+  number: string | null;
   page: number | null;
 }
 

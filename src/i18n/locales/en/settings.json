@@ -643,7 +643,9 @@
       "accent": {
         "description": "Used for buttons, selections, and the editor cursor.",
         "label": "Accent color",
-        "swatchAriaLabel": "{{name}} accent"
+        "swatchAriaLabel": "{{name}} accent",
+        "theme": "Theme accent",
+        "themeAriaLabel": "Use the theme's accent"
       },
       "appIcon": {
         "about": "Where the app icon shows",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "System follows the operating system and changes when it does.",
         "label": "Appearance"
+      },
+      "themePresets": {
+        "dark": "Dark mode",
+        "description": "Choose a theme for light mode and one for dark mode. The Appearance setting above decides which one you see.",
+        "label": "Theme",
+        "light": "Light mode",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "Another app already uses {{shortcut}}. Pick a different shortcut for Notes: quick capture.",
       "invalid": "{{shortcut}} can't work outside Oleafly. Pick a shortcut that ends in a letter, a number or a function key.",
       "failed": "Oleafly couldn't set up the shortcut. Turn quick capture off and on again to retry.",
-      "wayland": "Wayland doesn't let apps listen for keys outside their own windows. To open quick capture with a key, add a custom shortcut in your system keyboard settings that runs this command:"
+      "wayland": "Wayland doesn't let apps listen for keys outside their own windows. To open quick capture with a key, add a custom shortcut in your system keyboard settings that runs this command:",
+      "background": {
+        "label": "Keep quick capture ready",
+        "descriptionMac": "Oleafly opens in the background when you sign in. Closing its window keeps it in the menu bar, so the shortcut always works. Quit it from the menu bar icon.",
+        "description": "Oleafly opens in the background when you sign in. Closing its window keeps it in the system tray, so the shortcut always works. Quit it from the tray icon."
+      }
     }
   },
   "systemIntegration": {

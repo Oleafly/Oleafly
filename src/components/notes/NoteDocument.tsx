@@ -74,6 +74,7 @@ import {
 import { NoteToolbar } from "./NoteToolbar";
 import { NoteFind } from "./note-find";
 import { NoteFindBar } from "./NoteFindBar";
+import { NoteOutlineRail } from "./NoteOutlineRail";
 import { isRemoteTransaction, noteSourceOf, parseSharedNote, type SharedNote, sharedNoteSnapshot, showNoteDoc } from "./note-live-doc";
 import { NoteCommentMarks } from "./note-comment-marks";
 import { NotePeerMarks } from "./note-presence-decorations";
@@ -1023,7 +1024,7 @@ function NoteEditor({
   );
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       <NoteLiveNotice noteId={note.id} />
       {saveFailure && <NoteSaveFailed failure={saveFailure} onDismiss={() => setSaveFailure(null)} />}
       <div
@@ -1198,6 +1199,7 @@ function NoteEditor({
           />
         </div>
       </div>
+      <NoteOutlineRail editor={editor} title={title} />
     </div>
   );
 }

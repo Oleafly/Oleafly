@@ -70,7 +70,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "present" || view === "presenter" || view === "admin" || view === "capture") {
+  if (view === "present" || view === "presenter" || view === "admin") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();

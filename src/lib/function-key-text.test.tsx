@@ -55,6 +55,12 @@ describe("function key text guard", () => {
     expect(typed("beforeinput", RIGHT_ARROW, "insertCompositionText")).toBe(true);
   });
 
+  it("refuses the Carbon codes the arrow keys also carry", () => {
+    expect(typed("beforeinput", "\u001D")).toBe(true);
+    expect(typed("beforeinput", "\u001C\u001C")).toBe(true);
+    expect(typed("textInput", "\u001E")).toBe(true);
+  });
+
   it("lets real text through, the Apple logo included", () => {
     expect(typed("beforeinput", "a")).toBe(false);
     expect(typed("beforeinput", APPLE_LOGO)).toBe(false);

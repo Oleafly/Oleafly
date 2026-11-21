@@ -44,7 +44,7 @@ const RESULTS = [
 const LIB = "#let conf(title: none, authors: (), keywords: (), body) = body\n";
 
 function element(partial: Partial<TypstInsightElement> & Pick<TypstInsightElement, "kind" | "text">): TypstInsightElement {
-  return { label: null, level: null, figureKind: null, numbered: true, page: null, ...partial };
+  return { label: null, level: null, figureKind: null, numbered: true, number: null, page: null, ...partial };
 }
 
 const COMPILED: TypstDocumentInsightsResult = {

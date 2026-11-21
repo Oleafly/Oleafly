@@ -4,7 +4,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, describe, expect, it, vi } from "vitest";
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import type { AuxToc } from "@/lib/aux-numbers";
-import type { OutlineItem } from "@/lib/index/outline";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -31,13 +30,9 @@ vi.mock("@/lib/index/outline-numbers", async (importOriginal) => {
 
 import { DocumentOutline } from "@/components/layout/DocumentOutline";
 import { latexHeadingNumbers } from "@/lib/index/outline-numbers";
-import { OUTLINE_RAIL_MIN_EDITOR_WIDTH, OutlineRail, railMarks } from "./OutlineRail";
+import { EditorOutlineRail, OUTLINE_RAIL_MIN_EDITOR_WIDTH } from "./EditorOutlineRail";
 
 const copy = enWorkspace.outline;
-
-function item(level: number, title: string, from = 0, file = "main.tex"): OutlineItem {
-  return { level, title, line: 1, file, kind: "section", from, to: from + 1 };
-}
 
 type Section = readonly [file: string, from: number, level: number, title: string];
 
@@ -92,7 +87,7 @@ function mount(
   editor.view = fakeView(pos, { width, panels });
   useIndexStore.setState({ index: indexOf(sections, includes) as never, texts });
   useFilesStore.setState({ projectId: "p1", activePath, mainDoc: "main.tex", files: {}, tree: [] } as never);
-  return render(<OutlineRail />);
+  return render(<EditorOutlineRail />);
 }
 
 function marks() {
@@ -109,25 +104,7 @@ afterEach(() => {
   useFilesStore.setState({ projectId: null, activePath: null, mainDoc: "main.tex", files: {}, tree: [] } as never);
 });
 
-describe("railMarks", () => {
-  it("draws every heading, a level down as a shorter mark", () => {
-    const rail = railMarks([item(1, "A"), item(2, "B"), item(3, "C"), item(4, "D")]);
-    expect(rail.depths).toEqual([0, 1, 2, 2]);
-    expect(rail.shown).toEqual([0, 1, 2, 3]);
-  });
-
-  it("keeps the upper levels when there are too many, lighting a hidden heading's section", () => {
-    const items = [item(2, "A"), item(3, "A.1"), item(3, "A.2"), item(2, "B"), item(3, "B.1")];
-    expect(railMarks(items, 3)).toEqual({ depths: [0, 1, 1, 0, 1], shown: [0, 3], markOf: [0, 0, 0, 1, 1] });
-    expect(railMarks(items, 1).shown).toEqual([0, 3]);
-  });
-
-  it("draws nothing for an empty outline", () => {
-    expect(railMarks([])).toEqual({ depths: [], shown: [], markOf: [] });
-  });
-});
-
-describe("OutlineRail", () => {
+describe("EditorOutlineRail", () => {
   it("shows the whole manuscript from an included file and lights the section being read", async () => {
     mount("ch1.tex", { pos: 350 });
     expect(marks()).toHaveLength(4);
@@ -220,7 +197,7 @@ function reindex() {
   });
 }
 
-describe("OutlineRail numbering", () => {
+describe("EditorOutlineRail numbering", () => {
   it("works out heading numbers only while the outline is open", async () => {
     aux.toc = NUMBERED_TOC;
     mount("main.tex", { texts: NUMBERED_TEXTS });
@@ -247,7 +224,7 @@ describe("OutlineRail numbering", () => {
     cleanup();
     render(
       <>
-        <OutlineRail />
+        <EditorOutlineRail />
         <DocumentOutline />
       </>,
     );

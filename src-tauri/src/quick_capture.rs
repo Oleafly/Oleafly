@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
+use oleafly_cli::daemon::login_item::{self, LoginEnv, LoginItemState};
 use serde::Serialize;
 use tauri::{
     AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
@@ -8,18 +9,22 @@ use tauri::{
 
 pub(crate) const WINDOW: &str = "quick-capture";
 pub(crate) const FLAG: &str = "--quick-capture";
+pub(crate) const BACKGROUND_FLAG: &str = "--background";
 const SHOWN_EVENT: &str = "quick-capture:shown";
 const OPEN_NOTES_EVENT: &str = "notes:quick-capture-open-notes";
 const MAIN_WINDOW: &str = "main";
 const URL: &str = "index.html?view=capture";
 const SIZE: (f64, f64) = (460.0, 220.0);
 const MIN_SIZE: (f64, f64) = (340.0, 150.0);
+static BUILDING: Mutex<()> = Mutex::new(());
+static HIDDEN_AT_LAUNCH: AtomicBool = AtomicBool::new(false);
 
 #[derive(Default)]
 pub struct QuickCaptureState {
     shortcut: Mutex<Option<String>>,
     enabled: AtomicBool,
     requested: AtomicBool,
+    background: AtomicBool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -37,6 +42,7 @@ pub struct QuickCaptureStatus {
     pub registered: bool,
     pub command: Option<String>,
     pub failure: Option<RegisterFailure>,
+    pub at_login: LoginItemState,
 }
 
 pub(crate) fn wayland_session(var: impl Fn(&str) -> Option<String>) -> bool {
@@ -50,6 +56,77 @@ pub(crate) fn global_shortcuts_supported() -> bool {
 
 pub(crate) fn requested_in<S: AsRef<str>>(args: &[S]) -> bool {
     args.iter().any(|arg| arg.as_ref() == FLAG)
+}
+
+pub(crate) fn background_launch<S: AsRef<str>>(args: &[S]) -> bool {
+    args.iter().any(|arg| arg.as_ref() == BACKGROUND_FLAG)
+}
+
+pub(crate) fn note_hidden_launch() {
+    HIDDEN_AT_LAUNCH.store(true, Ordering::Release);
+}
+
+pub(crate) fn take_hidden_launch() -> bool {
+    HIDDEN_AT_LAUNCH.swap(false, Ordering::AcqRel)
+}
+
+pub(crate) fn keeps_running<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<QuickCaptureState>()
+        .is_some_and(|state| state.background.load(Ordering::Acquire))
+}
+
+pub(crate) fn close_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window(WINDOW) {
+        #[cfg(target_os = "macos")]
+        panel::restore_window(&window);
+        let _ = window.destroy();
+    }
+}
+
+pub(crate) fn to_background<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+        let _ = window.hide();
+    }
+    #[cfg(target_os = "macos")]
+    let _ = app.set_dock_visibility(false);
+}
+
+fn sign_in_exec() -> login_item::LoginExec {
+    let exe = std::env::current_exe().unwrap_or_default();
+    let appimage = std::env::var_os("APPIMAGE")
+        .filter(|value| cfg!(target_os = "linux") && !value.is_empty())
+        .map(std::path::PathBuf::from);
+    login_item::login_exec(&login_item::QUICK_CAPTURE, &exe, appimage.as_deref())
+}
+
+fn start_at_sign_in(wanted: bool) -> LoginItemState {
+    if !crate::single_instance::enabled_for_this_launch() {
+        return LoginItemState::Unsupported {
+            reason: "This copy of Oleafly runs beside another one, so it doesn't start at sign-in."
+                .into(),
+        };
+    }
+    let Some(env) = LoginEnv::current() else {
+        return LoginItemState::Unsupported {
+            reason: "Oleafly can't find your home folder.".into(),
+        };
+    };
+    let exec = sign_in_exec();
+    let current = login_item::status(&env, &exec);
+    let change = match current {
+        LoginItemState::Enabled => !wanted,
+        LoginItemState::Disabled => wanted,
+        _ => false,
+    };
+    if !change {
+        return current;
+    }
+    login_item::set(&env, &exec, wanted).unwrap_or_else(|error| {
+        let _ = crate::project::append_app_log(format!(
+            "Could not change quick capture's sign-in entry: {error}"
+        ));
+        login_item::status(&env, &exec)
+    })
 }
 
 pub(crate) fn launch_command(appimage: Option<String>, exe: Option<String>) -> Option<String> {
@@ -84,11 +161,53 @@ pub(crate) fn parse_shortcut(
         .map_err(|_| RegisterFailure::Invalid)
 }
 
+#[cfg(target_os = "macos")]
+mod panel;
+
+#[cfg(target_os = "macos")]
+use panel::bring_forward;
+
+#[cfg(not(target_os = "macos"))]
+fn bring_forward<R: Runtime>(window: &WebviewWindow<R>) {
+    place_on_active_screen(window);
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn place_on_active_screen<R: Runtime>(window: &WebviewWindow<R>) {
+    let Ok(cursor) = window.cursor_position() else {
+        return;
+    };
+    let Ok(Some(screen)) = window.monitor_from_point(cursor.x, cursor.y) else {
+        return;
+    };
+    if window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .is_some_and(|current| current.position() == screen.position())
+    {
+        return;
+    }
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+    let area = screen.work_area();
+    let width = i32::try_from(size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(size.height).unwrap_or(i32::MAX);
+    let area_width = i32::try_from(area.size.width).unwrap_or(i32::MAX);
+    let area_height = i32::try_from(area.size.height).unwrap_or(i32::MAX);
+    let _ = window.set_position(tauri::PhysicalPosition::new(
+        area.position.x + (area_width - width) / 2,
+        area.position.y + (area_height - height) / 2,
+    ));
+}
+
 fn show<R: Runtime>(window: &WebviewWindow<R>) {
     set_window_buttons(window, false);
     let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
+    bring_forward(window);
     let _ = window.emit(SHOWN_EVENT, ());
 }
 
@@ -99,6 +218,7 @@ fn frameless<'a, R: Runtime>(
     builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true)
+        .shadow(false)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -140,7 +260,14 @@ fn set_window_buttons<R: Runtime>(window: &WebviewWindow<R>, shown: bool) {
 #[cfg(not(target_os = "macos"))]
 fn set_window_buttons<R: Runtime>(_window: &WebviewWindow<R>, _shown: bool) {}
 
-fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+fn build<R: Runtime>(app: &AppHandle<R>, visible: bool) -> tauri::Result<()> {
+    let _building = BUILDING.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(window) = app.get_webview_window(WINDOW) {
+        if visible {
+            show(&window);
+        }
+        return Ok(());
+    }
     let builder = WebviewWindowBuilder::new(app, WINDOW, WebviewUrl::App(URL.into()))
         .title(crate::i18n::t("notes.quickCapture.title"))
         .inner_size(SIZE.0, SIZE.1)
@@ -153,7 +280,12 @@ fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .visible_on_all_workspaces(true)
         .visible(false)
         .center();
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    let builder = builder.transparent(true);
     let window = frameless(builder).build()?;
+    crate::frost_window(&window);
+    #[cfg(target_os = "macos")]
+    panel::make_panel(&window);
     let handle = window.clone();
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -161,8 +293,21 @@ fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let _ = handle.hide();
         }
     });
-    show(&window);
+    if visible {
+        show(&window);
+    }
     Ok(())
+}
+
+fn open<R: Runtime>(app: &AppHandle<R>, visible: bool) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = build(&app, visible) {
+            let _ = crate::project::append_app_log(format!(
+                "Could not open the quick capture window: {error}"
+            ));
+        }
+    });
 }
 
 fn open_notes<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
@@ -180,14 +325,7 @@ pub(crate) fn toggle<R: Runtime>(app: &AppHandle<R>) {
         }
         return;
     }
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        if let Err(error) = build(&app) {
-            let _ = crate::project::append_app_log(format!(
-                "Could not open the quick capture window: {error}"
-            ));
-        }
-    });
+    open(app, true);
 }
 
 pub(crate) fn arrive<R: Runtime>(app: &AppHandle<R>, args: &[String]) -> bool {
@@ -264,10 +402,19 @@ pub async fn quick_capture_configure(
     state: tauri::State<'_, QuickCaptureState>,
     enabled: bool,
     accelerator: Option<String>,
+    background: bool,
 ) -> Result<QuickCaptureStatus, String> {
     let supported = global_shortcuts_supported();
     unregister(&app, &state);
     state.enabled.store(enabled, Ordering::Release);
+    let background = enabled && background;
+    state.background.store(background, Ordering::Release);
+    crate::tray::show(&app, background);
+    let at_login = tauri::async_runtime::spawn_blocking(move || start_at_sign_in(background))
+        .await
+        .unwrap_or_else(|error| LoginItemState::Unsupported {
+            reason: format!("The sign-in check stopped: {error}"),
+        });
     let wanted = accelerator.filter(|value| enabled && supported && !value.trim().is_empty());
     let failure = match wanted {
         Some(accelerator) => register(&app, &state, &accelerator).err(),
@@ -280,12 +427,24 @@ pub async fn quick_capture_configure(
         .is_some();
     if enabled && state.requested.swap(false, Ordering::AcqRel) {
         toggle(&app);
+    } else if enabled {
+        open(&app, false);
+    } else {
+        close_window(&app);
+    }
+    if !background && HIDDEN_AT_LAUNCH.load(Ordering::Acquire) {
+        let _ = crate::project::append_app_log(
+            "Quick capture isn't kept ready any more, so the copy started at sign-in is quitting."
+                .to_string(),
+        );
+        app.exit(0);
     }
     Ok(QuickCaptureStatus {
         supported,
         registered,
         command: this_launch_command(),
         failure,
+        at_login,
     })
 }
 
@@ -341,6 +500,14 @@ mod tests {
             "notes/--quick-capture"
         ]));
         assert!(!requested_in::<&str>(&[]));
+    }
+
+    #[test]
+    fn only_the_exact_background_flag_starts_hidden() {
+        assert!(background_launch(&["/usr/bin/oleafly", "--background"]));
+        assert!(!background_launch(&["/usr/bin/oleafly", "--background=1"]));
+        assert!(!background_launch(&["/usr/bin/oleafly", "--quick-capture"]));
+        assert!(!background_launch::<&str>(&[]));
     }
 
     #[test]

@@ -212,3 +212,39 @@ describe("parseFile: Typst comments and code masking", () => {
     expect(parsed.defs.map((s) => s.name)).toEqual(["Real"]);
   });
 });
+
+describe("parseFile: Typst headings the compiler reads", () => {
+  const sections = (text: string) =>
+    parseFile("main.typ", text)
+      .defs.filter((s) => s.kind === "section")
+      .map((s) => [s.name, s.level, text.slice(s.nameFrom, s.nameTo), text.slice(s.from, s.from + 1)]);
+
+  it("reads indented headings, headings deeper than six levels and #heading calls", () => {
+    expect(sections("= One\n  = Indented\n======= Seven\n#heading[Call]")).toEqual([
+      ["One", 0, "One", "="],
+      ["Indented", 0, "Indented", "="],
+      ["Seven", 6, "Seven", "="],
+      ["Call", 0, "Call", "#"],
+    ]);
+  });
+
+  it("takes a called heading's level, depth and offset, and its body from content or a string", () => {
+    const text = [
+      '#heading(level: 3, numbering: "1.", [Content *arg*]) <sec:a>',
+      '#heading(depth: 2, offset: 1)["Quoted" body]',
+      '#heading(outlined: false, "Plain \\"string\\"")',
+      "#heading(level: 2)[Nested [brackets] and #f(\")\")]",
+    ].join("\n");
+    expect(sections(text)).toEqual([
+      ["Content *arg*", 2, "Content *arg*", "#"],
+      ['"Quoted" body', 2, '"Quoted" body', "#"],
+      ['Plain "string"', 0, 'Plain \\"string\\"', "#"],
+      ['Nested [brackets] and #f(")")', 1, 'Nested [brackets] and #f(")")', "#"],
+    ]);
+  });
+
+  it("leaves heading rules, escaped calls, calls in strings and unclosed calls alone", () => {
+    const text = '#set heading(numbering: "1.")\n#show heading: it => it\n\\#heading[No]\n#let s = "#heading[No]"\n#heading[]\n#heading[Open';
+    expect(sections(text)).toEqual([]);
+  });
+});

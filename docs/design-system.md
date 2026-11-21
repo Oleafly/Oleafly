@@ -35,6 +35,12 @@ rounded pill with the toolbar role, made of frosted glass (`GLASS_PANEL` from
 `lib/utils`) so the content underneath shows through, blurred, in both themes. The caller places it and gives it an
 `aria-label`; its buttons are `rounded-full` `TooltipIconButton`s.
 
+A small window that floats over the desktop, like quick capture, is painted
+with `WINDOW_GLASS` from `lib/utils`. The window itself does the blur: it is
+created transparent and given the system's frosted material by `frost_window`
+on macOS and Windows. `WINDOW_GLASS` only tints it.
+On Linux, where there is no blur, the app surface stays solid.
+
 Zoom controls are a `ZoomBar` from `ui/zoom-bar.tsx`: a `FloatingBar` with a
 minus button, the level as a percentage, a plus button and a reset. `value` is
 the level as a fraction, kept between `min` and `max`. The bar calls
@@ -230,6 +236,20 @@ chevron toggle with `aria-expanded` when `expanded` is set, and an optional
 active row gets an accent border on its left edge over a quiet tint, in the
 sidebar colours. Hover help on long rows goes in `tooltip`, shown by
 `useDelegatedTooltips` on the list.
+
+The strip of short marks on the right edge of a document, one per heading,
+is an `OutlineRail` from `ui/outline-rail.tsx`. The code editor and Notes both
+use it. The host passes the headings with their `level`, a `row` function that
+gives each one its label and what a click does, and the index of the heading
+being read. That heading's mark turns the primary colour. Hovering the marks
+opens the list beside them. The rail hides itself with fewer than two marks,
+and the host sets `hidden` when the text leaves no room for it.
+
+`RadioGroupCard` in `ui/radio-group.tsx` is a radio option shown as a picture
+with a label under it. Use it inside `RadioGroup` when people choose by
+looking, like a theme or a layout. The selected card gets a border in the
+primary color and a check next to its label. Arrow keys move between cards,
+the same as any `RadioGroup`.
 
 A list of sections down the side of a window, like the one in Settings or in
 the server admin console, is made of `NavItem`s from `ui/nav-item.tsx`. The

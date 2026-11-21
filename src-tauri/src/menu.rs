@@ -460,6 +460,16 @@ fn reload_views<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+pub(crate) fn request_quit<R: Runtime>(app: &AppHandle<R>) {
+    if !crate::quit_gate::flush_confirmed() {
+        let _ = app.emit("quit-flush-requested", false);
+    } else if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed() {
+        let _ = app.emit("tinytex-quit-blocked", ());
+    } else {
+        app.exit(0);
+    }
+}
+
 pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
     if app
         .try_state::<crate::updater::UpdateState>()
@@ -503,17 +513,7 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 app.request_restart();
             }
         }
-        "quit_app" => {
-            if !crate::quit_gate::flush_confirmed() {
-                let _ = app.emit("quit-flush-requested", false);
-            } else if crate::latex_engine::install_in_progress()
-                && !crate::latex_engine::quit_confirmed()
-            {
-                let _ = app.emit("tinytex-quit-blocked", ());
-            } else {
-                app.exit(0);
-            }
-        }
+        "quit_app" => request_quit(app),
         _ => {}
     }
 }

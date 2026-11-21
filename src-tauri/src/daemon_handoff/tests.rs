@@ -1054,6 +1054,7 @@ fn turning_background_tasks_off_removes_the_sign_in_entry_and_stops_the_helper()
         registry: Some(Box::new(registry.clone())),
     };
     let exec = login_item::login_exec(
+        &login_item::HELPER,
         Path::new(r"C:\Users\Zoë Müller\AppData\Local\Oleafly\Oleafly.exe"),
         None,
     );
@@ -1070,7 +1071,7 @@ fn turning_background_tasks_off_removes_the_sign_in_entry_and_stops_the_helper()
 
     set_background_enabled(false, Some(&env), &exec, &helper).unwrap();
 
-    assert_eq!(registry.get(login_item::RUN_VALUE_NAME), None);
+    assert_eq!(registry.get(login_item::HELPER.run_value), None);
     assert_eq!(FakeHelper::count(&helper.stop_requests), 1);
     let config = crate::config::read_config().unwrap();
     assert!(!config.research_background_enabled && !config.research_background_at_login);
@@ -1081,7 +1082,7 @@ fn turning_background_tasks_off_removes_the_sign_in_entry_and_stops_the_helper()
             .unwrap()
             .research_background_enabled
     );
-    assert_eq!(registry.get(login_item::RUN_VALUE_NAME), None);
+    assert_eq!(registry.get(login_item::HELPER.run_value), None);
     assert_eq!(FakeHelper::count(&helper.stop_requests), 1);
 }
 
@@ -1329,7 +1330,7 @@ fn the_daemon_flag_is_recognised_only_as_its_own_argument() {
     ])));
     assert!(!at_login_requested(args(&["Oleafly", "--at-login"])));
     assert_eq!(DAEMON_FLAG, oleafly_cli::daemon::client::DAEMON_FLAG);
-    assert_eq!(login_item::DAEMON_ARGS, [DAEMON_FLAG, AT_LOGIN_FLAG]);
+    assert_eq!(login_item::HELPER.args, [DAEMON_FLAG, AT_LOGIN_FLAG]);
 }
 
 #[test]
@@ -1341,7 +1342,7 @@ fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     assert!(hooks.contains(r#"${FileExists} "$INSTDIR\oleafly-cli.exe""#));
     assert!(!hooks.contains(r"$PROFILE\.oleafly"));
     assert!(!hooks.contains("state.json"));
-    assert!(hooks.contains(login_item::RUN_VALUE_NAME));
+    assert!(hooks.contains(login_item::HELPER.run_value));
     assert!(
         hooks.contains("DeleteRegValue HKCU \"Software\\Microsoft\\Windows\\CurrentVersion\\Run\"")
     );
@@ -1352,7 +1353,7 @@ fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     assert!(msi.contains(r#"<Custom Action="StopOleaflyHelper" Before="RemoveExistingProducts">"#));
     assert!(msi.contains(r#"oleafly-cli.exe&quot; internal remove-command-line-tool"#));
     assert!(msi.contains(r#"<Custom Action="RemoveOleaflyCommandLineTool" Before="RemoveFiles">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>"#));
-    assert!(msi.contains(&format!(r#"/v {} /f"#, login_item::RUN_VALUE_NAME)));
+    assert!(msi.contains(&format!(r#"/v {} /f"#, login_item::HELPER.run_value)));
     assert!(msi.contains("OLEAFLY_BACKGROUND_RUN ~&lt;&lt; OLEAFLY_INSTALL_PREFIX"));
 }
 

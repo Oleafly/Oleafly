@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Capture rapide"
     }
+  },
+  "tray": {
+    "open": "Ouvrir Oleafly"
   }
 }
