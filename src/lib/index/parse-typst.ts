@@ -59,15 +59,19 @@ function closingIndex(code: string, open: number): number {
 function argumentRanges(code: string, from: number, to: number): Range[] {
   const ranges: Range[] = [];
   let start = from;
-  for (let at = from; at < to; at++) {
+  let at = from;
+  while (at < to) {
     if (CLOSERS[code[at]]) {
       const close = closingIndex(code, at);
       if (close < 0) break;
-      at = close;
-    } else if (code[at] === ",") {
+      at = close + 1;
+      continue;
+    }
+    if (code[at] === ",") {
       ranges.push({ from: start, to: at });
       start = at + 1;
     }
+    at += 1;
   }
   ranges.push({ from: start, to });
   return ranges;
@@ -125,6 +129,52 @@ function headingCall(text: string, code: string, at: number): HeadingCall | null
   return { ...body, level: Math.max(1, level), to: end };
 }
 
+interface TypstSection {
+  readonly title: string;
+  readonly span: SymSpan;
+  readonly level: number;
+}
+
+function markerSections(text: string): TypstSection[] {
+  const sections: TypstSection[] = [];
+  for (const match of text.matchAll(/^[ \t]*(=+)[ \t]+(\S[^\n]*)$/gm)) {
+    const title = match[2].replace(/(?<![ \t])[ \t]+<[^>]+>[ \t]*$/, "").trim();
+    if (!title) continue;
+    const nameFrom = match.index + match[0].length - match[2].length + match[2].indexOf(title);
+    sections.push({
+      title,
+      span: {
+        from: match.index + match[0].indexOf("="),
+        to: match.index + match[0].length,
+        nameFrom,
+        nameTo: nameFrom + title.length,
+      },
+      level: match[1].length - 1,
+    });
+  }
+  return sections;
+}
+
+function calledSections(text: string, code: string): TypstSection[] {
+  const sections: TypstSection[] = [];
+  for (const match of code.matchAll(HEADING_CALL)) {
+    const call = isTypstEscaped(code, match.index) ? null : headingCall(text, code, match.index);
+    if (!call) continue;
+    sections.push({
+      title: call.title,
+      span: { from: match.index, to: call.to, nameFrom: call.name.from, nameTo: call.name.to },
+      level: call.level - 1,
+    });
+  }
+  return sections;
+}
+
+function typstSections(text: string, code: string): TypstSection[] {
+  return [...markerSections(text), ...calledSections(text, code)].sort(
+    (left, right) => left.span.from - right.span.from,
+  );
+}
+
 export function parseTypstFile(path: string, rawText: string): FileSymbols {
   const { text, code } = maskTypstSource(rawText);
   const defs: Sym[] = [];
@@ -145,32 +195,9 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     list: Sym[], kind: SymKind, name: string, span: SymSpan, extra?: Partial<Sym>,
   ) => list.push({ kind, name, file: path, line: lineAt(span.from), ...span, ...extra });
 
-  const heading = /^[ \t]*(=+)[ \t]+([^\n]+)$/gm;
-  for (const match of text.matchAll(heading)) {
-    const rawTitle = match[2].replace(/(?<![ \t])[ \t]+<[^>]+>[ \t]*$/, "").trim();
-    if (!rawTitle) continue;
-    const marker = match.index + match[0].indexOf("=");
-    const nameFrom = match.index + match[0].length - match[2].length + match[2].indexOf(rawTitle);
-    push(defs, "section", rawTitle, {
-      from: marker,
-      to: match.index + match[0].length,
-      nameFrom,
-      nameTo: nameFrom + rawTitle.length,
-    }, { level: match[1].length - 1 });
+  for (const section of typstSections(text, code)) {
+    push(defs, "section", section.title, section.span, { level: section.level });
   }
-
-  for (const match of code.matchAll(HEADING_CALL)) {
-    if (isTypstEscaped(code, match.index)) continue;
-    const call = headingCall(text, code, match.index);
-    if (!call) continue;
-    push(defs, "section", call.title, {
-      from: match.index,
-      to: call.to,
-      nameFrom: call.name.from,
-      nameTo: call.name.to,
-    }, { level: call.level - 1 });
-  }
-  defs.sort((left, right) => left.from - right.from);
 
   const label = new RegExp(`<(${TYPST_LABEL_PATTERN})>`, "gu");
   for (const match of code.matchAll(label)) {
