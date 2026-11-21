@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 const MANIFEST_NAME: &str = "project.json";
-const INTERNAL_DIR: &str = ".oleafly";
+pub(crate) const INTERNAL_DIR: &str = ".oleafly";
 const BUILD_DIR: &str = "build";
 static WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 

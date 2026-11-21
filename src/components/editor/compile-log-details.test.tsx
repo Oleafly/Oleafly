@@ -29,6 +29,7 @@ vi.mock("@/store/files", () => {
 });
 
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useFontPacksStore } from "@/store/font-packs";
 import { CompileErrorDetails } from "./compile-log-details";
@@ -125,5 +126,33 @@ describe("missing Typst font hint", () => {
     expect(await screen.findByText(enEditor.log.fontPackGlyphs.replace("{{pack}}", label))).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: enEditor.log.fontPackAction }));
     await waitFor(() => expect(mocks.installFontComponent).toHaveBeenCalledWith("typst-cjk"));
+  });
+});
+
+describe("damaged build file", () => {
+  const damaged: CompileError = {
+    line: null,
+    file: null,
+    message: "Undefined control sequence.",
+    kind: "error",
+    explanation: "A file left over from an earlier compile is damaged.",
+    code: "tex.build_file_damaged",
+  };
+
+  it("offers to recompile from scratch and does it", async () => {
+    const recompileFromScratch = vi.fn();
+    render(<CompileErrorDetails err={damaged} recompileFromScratch={recompileFromScratch} />);
+    await userEvent.click(screen.getByRole("button", { name: enShell.compile.fromScratch }));
+    expect(recompileFromScratch).toHaveBeenCalledOnce();
+  });
+
+  it("waits while a compile is running", () => {
+    render(<CompileErrorDetails err={damaged} recompileFromScratch={null} />);
+    expect(screen.getByRole("button", { name: enShell.compile.fromScratch })).toBeDisabled();
+  });
+
+  it("stays out of every other card", () => {
+    render(<CompileErrorDetails err={{ ...damaged, code: "tex.explain.undefined_control_sequence", hints: ["a hint"] }} />);
+    expect(screen.queryByRole("button", { name: enShell.compile.fromScratch })).not.toBeInTheDocument();
   });
 });

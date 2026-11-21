@@ -1,12 +1,41 @@
 use oleafly_core::{
     is_nullfont_missing_character, parse_latex_log, LogCategory, LogDiagnostic, LogSeverity,
-    MAX_COMPILE_LOG_BYTES,
+    MissingCharacterPlaces, MAX_COMPILE_LOG_BYTES,
 };
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn parse(lines: &[&str]) -> Vec<LogDiagnostic> {
     parse_latex_log(&lines.join("\n"), None)
+}
+
+fn placed(
+    sources: &[(&str, &str)],
+    log: &[&str],
+    engine_output: &[&str],
+) -> Vec<(Option<String>, Option<u32>, String)> {
+    let project = tempfile::tempdir().unwrap();
+    for (file, source) in sources {
+        let path = project.path().join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, source).unwrap();
+    }
+    let mut diagnostics = parse(log);
+    MissingCharacterPlaces::read(&engine_output.join("\n"))
+        .apply(&mut diagnostics, &[project.path()]);
+    diagnostics
+        .into_iter()
+        .filter(|diagnostic| diagnostic.category == LogCategory::MissingCharacter)
+        .map(|diagnostic| (diagnostic.file, diagnostic.line, diagnostic.message))
+        .collect()
+}
+
+fn file_only(file: &str, message: &str) -> (Option<String>, Option<u32>, String) {
+    (Some(file.to_owned()), None, message.to_owned())
+}
+
+fn place(file: &str, line: u32, message: &str) -> (Option<String>, Option<u32>, String) {
+    (Some(file.to_owned()), Some(line), message.to_owned())
 }
 
 #[test]
@@ -245,6 +274,173 @@ fn nullfont_lines_do_not_use_up_the_missing_character_budget() {
     assert_eq!(diags.len(), 61);
     assert!(is_nullfont_missing_character(&diags[0].message));
     assert!(!is_nullfont_missing_character(&diags[60].message));
+}
+
+const LONG_VOWEL: &str =
+    "Missing character: There is no \u{2d0} (U+02D0) in font [lmroman10-regular]:mapping=tex-text;!";
+const OPEN_A: &str =
+    "Missing character: There is no \u{251} (U+0251) in font [lmroman10-regular]:mapping=tex-text;!";
+const MATH_I: &str = "Missing character: There is no \u{26a} (\"26A) in font cmmi10!";
+const LONG_VOWEL_PLACE: &str = "Missing character: There is no \u{fffd}\u{fffd} (U+02D0) in font [lmroman10-regular]:mapping=tex-text;!";
+const MAIN: &str = "one\ntwo\nthree\nfour\nfive\nsix\nseven\nA long vowel i\u{2d0} here.\nAnd again \u{2d0}.\nten\nMath: $\u{26a} + 1$.\n";
+
+#[test]
+fn tectonic_names_the_line_of_each_missing_character() {
+    let rows = placed(
+        &[("main.tex", MAIN), ("sections/phon.tex", "% phonetics\nHas \u{251} here.\n")],
+        &[
+            "(_oleafly_entry.tex (main.tex",
+            "Missing character: There is no \u{2d0} (U+02D0) in font [lmroman10-regular]:mapping=t",
+            "ex-text;!",
+            "Missing character: There is no \u{2d0} (U+02D0) in font [lmroman10-regular]:mapping=t",
+            "ex-text;!",
+            "(sections/phon",
+            OPEN_A,
+            ")",
+            MATH_I,
+            "))",
+        ],
+        &[
+            &format!("warning: main.tex:8: {LONG_VOWEL_PLACE}"),
+            "warning: could not represent character \"\u{2d0}\" (0x2d0) in font \"[lmroman10-regular]:mapping=tex-text;\"",
+            &format!("warning: main.tex:9: {LONG_VOWEL_PLACE}"),
+            "warning: sections/phon:2: ",
+            "Missing character: There is no \u{fffd}\u{fffd} (U+0251) in font [lmroman10-regular]:mapping=tex-text;!",
+            "warning: main.tex:11: ",
+            "Missing character: There is no \u{fffd}\u{fffd} (\"26A) in font cmmi10!",
+        ],
+    );
+    assert_eq!(
+        rows,
+        [
+            place("./main.tex", 8, LONG_VOWEL),
+            place("./main.tex", 9, LONG_VOWEL),
+            place("./sections/phon", 2, OPEN_A),
+            place("./main.tex", 11, MATH_I),
+        ]
+    );
+}
+
+#[test]
+fn a_line_that_does_not_hold_the_character_is_not_named() {
+    let from_a_command = placed(
+        &[(
+            "main.tex",
+            "\\newcommand{\\long}{\u{2d0}}\ntwo\nA vowel a\\long.\n",
+        )],
+        &["(main.tex", LONG_VOWEL, ")"],
+        &[&format!("warning: main.tex:3: {LONG_VOWEL_PLACE}")],
+    );
+    assert_eq!(from_a_command, [file_only("./main.tex", LONG_VOWEL)]);
+
+    let in_a_page_header = placed(
+        &[("main.tex", "\\section{Vowel \u{2d0}}\ntwo\nthree\nfour\n")],
+        &["(main.tex", LONG_VOWEL, ")"],
+        &[
+            &format!("warning: main.tex:1: {LONG_VOWEL_PLACE}"),
+            &format!("warning: main.tex:3: {LONG_VOWEL_PLACE}"),
+            &format!("warning: main.tex:4: {LONG_VOWEL_PLACE}"),
+        ],
+    );
+    assert_eq!(in_a_page_header, [place("./main.tex", 1, LONG_VOWEL)]);
+
+    let unreadable = placed(
+        &[],
+        &["(main.tex", LONG_VOWEL, ")"],
+        &[&format!("warning: main.tex:8: {LONG_VOWEL_PLACE}")],
+    );
+    assert_eq!(unreadable, [file_only("./main.tex", LONG_VOWEL)]);
+}
+
+#[test]
+fn a_second_pass_does_not_list_the_same_line_twice() {
+    let pass = format!("warning: main.tex:8: {LONG_VOWEL_PLACE}");
+    let rows = placed(
+        &[("main.tex", MAIN)],
+        &["(main.tex", LONG_VOWEL, ")"],
+        &[&pass, &pass],
+    );
+    assert_eq!(rows, [place("./main.tex", 8, LONG_VOWEL)]);
+}
+
+#[test]
+fn a_character_echoed_from_a_build_file_keeps_its_row() {
+    let echoed =
+        "Missing character: There is no \u{26a} (U+026A) in font [lmroman10-bold]:mapping=tex-text;!";
+    let rows = placed(
+        &[("_oleafly_entry.toc", "\\contentsline {section}{Vowel \u{26a}}{1}{}\n")],
+        &["(_oleafly_entry.toc", echoed, ")"],
+        &["warning: _oleafly_entry.toc:1: Missing character: There is no \u{fffd}\u{fffd} (U+026A) in font [lmroman10-bold]:mapping=tex-text;!"],
+    );
+    assert_eq!(rows, [file_only("./_oleafly_entry.toc", echoed)]);
+}
+
+#[test]
+fn output_without_places_leaves_the_rows_alone() {
+    let rows = placed(
+        &[("main.tex", MAIN)],
+        &["(./main.tex", LONG_VOWEL, ")"],
+        &[
+            "Latexmk: applying rule 'pdflatex'...",
+            "warning: main.tex:9: Overfull \\hbox (709.58891pt too wide) in paragraph at lines 6--9",
+            "warning: main.tex:7: Missing character: There is no x (U+0078) in font other!",
+        ],
+    );
+    assert_eq!(rows, [file_only("./main.tex", LONG_VOWEL)]);
+}
+
+#[test]
+fn located_rows_keep_every_character_inside_the_budget() {
+    let character = |index: u32| char::from_u32(0x4E00 + index).unwrap();
+    let source: String = (0..4000)
+        .map(|line| format!("{}\n", character(line / 100)))
+        .collect();
+    let log: Vec<String> = (0..40)
+        .map(|index| {
+            format!(
+                "Missing character: There is no x (U+{:04X}) in font [f]:m;!",
+                0x4E00 + index
+            )
+        })
+        .collect();
+    let engine: Vec<String> = (0..40)
+        .flat_map(|index| {
+            (1..=30).map(move |line| {
+                format!(
+                    "warning: main.tex:{}: Missing character: There is no ? (U+{:04X}) in font [f]:m;!",
+                    index * 100 + line,
+                    0x4E00 + index
+                )
+            })
+        })
+        .collect();
+    let log: Vec<&str> = log.iter().map(String::as_str).collect();
+    let engine: Vec<&str> = engine.iter().map(String::as_str).collect();
+    let rows = placed(&[("main.tex", &source)], &log, &engine);
+    assert_eq!(rows.len(), 50);
+    let characters: std::collections::BTreeSet<&str> = rows
+        .iter()
+        .map(|(_, _, message)| message.as_str())
+        .collect();
+    assert_eq!(characters.len(), 40);
+    assert_eq!(rows[0].1, Some(1));
+    assert_eq!(rows[10].1, Some(11));
+    assert_eq!(rows[11].1, Some(101));
+    assert!(rows.iter().all(|(_, line, _)| line.is_some()));
+}
+
+#[test]
+fn stray_text_in_a_picture_gets_its_first_line_only() {
+    let stray = "Missing character: There is no a (U+0061) in font nullfont!";
+    let rows = placed(
+        &[("main.tex", "one\ntwo\nthree\na\nfive\na\n")],
+        &["(main.tex", stray, ")"],
+        &[
+            "warning: main.tex:4: Missing character: There is no a (U+0061) in font nullfont!",
+            "warning: main.tex:6: Missing character: There is no a (U+0061) in font nullfont!",
+        ],
+    );
+    assert_eq!(rows, [place("./main.tex", 4, stray)]);
 }
 
 #[test]
