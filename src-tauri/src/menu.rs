@@ -523,6 +523,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn quit_asks_the_open_editors_to_save_first() {
+        use tauri::Listener;
+        let app = tauri::test::mock_app();
+        let (sender, heard) = std::sync::mpsc::channel();
+        app.listen_any("quit-flush-requested", move |event| {
+            let _ = sender.send(event.payload().to_owned());
+        });
+        on_event(app.handle(), "quit_app");
+        assert_eq!(
+            heard.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok("false".to_owned())
+        );
+    }
+
+    #[test]
     fn routes_dock_menu_items_to_frontend_events() {
         assert_eq!(
             frontend_event("toggle_terminal"),

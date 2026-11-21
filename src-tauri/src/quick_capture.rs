@@ -100,19 +100,32 @@ fn sign_in_exec() -> login_item::LoginExec {
 }
 
 fn start_at_sign_in(wanted: bool) -> LoginItemState {
-    if !crate::single_instance::enabled_for_this_launch() {
+    sign_in_change(
+        crate::single_instance::enabled_for_this_launch(),
+        LoginEnv::current(),
+        &sign_in_exec(),
+        wanted,
+    )
+}
+
+fn sign_in_change(
+    single_instance: bool,
+    env: Option<LoginEnv>,
+    exec: &login_item::LoginExec,
+    wanted: bool,
+) -> LoginItemState {
+    if !single_instance {
         return LoginItemState::Unsupported {
             reason: "This copy of Oleafly runs beside another one, so it doesn't start at sign-in."
                 .into(),
         };
     }
-    let Some(env) = LoginEnv::current() else {
+    let Some(env) = env else {
         return LoginItemState::Unsupported {
             reason: "Oleafly can't find your home folder.".into(),
         };
     };
-    let exec = sign_in_exec();
-    let current = login_item::status(&env, &exec);
+    let current = login_item::status(&env, exec);
     let change = match current {
         LoginItemState::Enabled => !wanted,
         LoginItemState::Disabled => wanted,
@@ -121,11 +134,11 @@ fn start_at_sign_in(wanted: bool) -> LoginItemState {
     if !change {
         return current;
     }
-    login_item::set(&env, &exec, wanted).unwrap_or_else(|error| {
+    login_item::set(&env, exec, wanted).unwrap_or_else(|error| {
         let _ = crate::project::append_app_log(format!(
             "Could not change quick capture's sign-in entry: {error}"
         ));
-        login_item::status(&env, &exec)
+        login_item::status(&env, exec)
     })
 }
 
@@ -397,8 +410,8 @@ pub(crate) fn plugin() -> Option<tauri::plugin::TauriPlugin<tauri::Wry>> {
 }
 
 #[tauri::command]
-pub async fn quick_capture_configure(
-    app: AppHandle,
+pub async fn quick_capture_configure<R: Runtime>(
+    app: AppHandle<R>,
     state: tauri::State<'_, QuickCaptureState>,
     enabled: bool,
     accelerator: Option<String>,
@@ -592,5 +605,181 @@ mod tests {
         assert!(!state.requested.load(Ordering::Acquire));
         note_launch_request(&state, ["oleafly".to_string(), FLAG.to_string()]);
         assert!(state.requested.load(Ordering::Acquire));
+    }
+
+    fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
+        tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap()
+    }
+
+    fn linux_sign_in(home: &std::path::Path) -> Option<LoginEnv> {
+        Some(LoginEnv {
+            platform: oleafly_cli::app_paths::Platform::Linux,
+            home: home.to_path_buf(),
+            xdg_config_home: None,
+            registry: None,
+        })
+    }
+
+    fn capture_exec() -> login_item::LoginExec {
+        login_item::login_exec(
+            &login_item::QUICK_CAPTURE,
+            std::path::Path::new("/usr/bin/oleafly"),
+            None,
+        )
+    }
+
+    #[test]
+    fn keeping_quick_capture_ready_adds_and_removes_its_sign_in_entry() {
+        let home = tempfile::tempdir().unwrap();
+        let exec = capture_exec();
+        let entry = home
+            .path()
+            .join(".config/autostart")
+            .join(login_item::QUICK_CAPTURE.autostart_file);
+
+        assert_eq!(
+            sign_in_change(true, linux_sign_in(home.path()), &exec, true),
+            LoginItemState::Enabled
+        );
+        let written = std::fs::read_to_string(&entry).unwrap();
+        assert!(
+            written.contains("Exec=\"/usr/bin/oleafly\" --background\n"),
+            "{written}"
+        );
+        assert_eq!(
+            sign_in_change(true, linux_sign_in(home.path()), &exec, true),
+            LoginItemState::Enabled
+        );
+        assert_eq!(
+            sign_in_change(true, linux_sign_in(home.path()), &exec, false),
+            LoginItemState::Disabled
+        );
+        assert!(!entry.exists());
+        assert_eq!(
+            sign_in_change(true, linux_sign_in(home.path()), &exec, false),
+            LoginItemState::Disabled
+        );
+    }
+
+    #[test]
+    fn a_side_by_side_copy_or_a_missing_home_never_writes_a_sign_in_entry() {
+        let home = tempfile::tempdir().unwrap();
+        let exec = capture_exec();
+        assert!(matches!(
+            sign_in_change(false, linux_sign_in(home.path()), &exec, true),
+            LoginItemState::Unsupported { .. }
+        ));
+        assert!(matches!(
+            sign_in_change(true, None, &exec, true),
+            LoginItemState::Unsupported { .. }
+        ));
+        assert!(!home.path().join(".config").exists());
+    }
+
+    #[test]
+    fn the_sign_in_entry_starts_this_program_in_the_background() {
+        let exec = sign_in_exec();
+        assert_eq!(exec.entry, &login_item::QUICK_CAPTURE);
+        assert_eq!(exec.args, vec![BACKGROUND_FLAG.to_string()]);
+        if std::env::var_os("APPIMAGE").is_none() {
+            assert_eq!(exec.program, std::env::current_exe().unwrap());
+        }
+    }
+
+    #[test]
+    fn only_the_background_setting_keeps_the_app_running() {
+        let app = mock_app();
+        assert!(!keeps_running(app.handle()));
+        app.manage(QuickCaptureState::default());
+        assert!(!keeps_running(app.handle()));
+        app.state::<QuickCaptureState>()
+            .background
+            .store(true, Ordering::Release);
+        assert!(keeps_running(app.handle()));
+    }
+
+    #[test]
+    fn keeping_the_app_running_hides_the_main_window_instead_of_closing_it() {
+        let app = mock_app();
+        WebviewWindowBuilder::new(&app, MAIN_WINDOW, Default::default())
+            .build()
+            .unwrap();
+        to_background(app.handle());
+        assert!(app.get_webview_window(MAIN_WINDOW).is_some());
+    }
+
+    #[test]
+    fn turning_quick_capture_off_registers_nothing_and_drops_the_background_mode() {
+        let app = mock_app();
+        app.manage(QuickCaptureState::default());
+        app.state::<QuickCaptureState>()
+            .background
+            .store(true, Ordering::Release);
+        let status = tauri::async_runtime::block_on(quick_capture_configure(
+            app.handle().clone(),
+            app.state::<QuickCaptureState>(),
+            false,
+            Some("Ctrl+Alt+N".into()),
+            true,
+        ))
+        .unwrap();
+        assert_eq!(status.supported, global_shortcuts_supported());
+        assert!(!status.registered);
+        assert_eq!(status.failure, None);
+        assert!(matches!(
+            status.at_login,
+            LoginItemState::Unsupported { .. }
+        ));
+        assert!(!keeps_running(app.handle()));
+        assert!(app.get_webview_window(WINDOW).is_none());
+    }
+
+    #[test]
+    fn showing_the_main_window_uses_up_a_hidden_launch() {
+        let app = mock_app();
+        WebviewWindowBuilder::new(&app, MAIN_WINDOW, Default::default())
+            .build()
+            .unwrap();
+        note_hidden_launch();
+        crate::single_instance::reveal_main_window(app.handle());
+        assert!(!take_hidden_launch());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_capture_window_is_built_once_and_shown_only_when_asked() {
+        let app = mock_app();
+        let (sender, shown) = std::sync::mpsc::channel();
+        app.listen_any(SHOWN_EVENT, move |_| {
+            let _ = sender.send(());
+        });
+        build(app.handle(), false).unwrap();
+        build(app.handle(), false).unwrap();
+        assert!(app.get_webview_window(WINDOW).is_some());
+        assert!(shown.try_recv().is_err());
+        build(app.handle(), true).unwrap();
+        assert_eq!(
+            shown.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok(())
+        );
+        assert_eq!(app.webview_windows().len(), 1);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_shortcut_opens_a_window_when_there_is_none() {
+        let app = mock_app();
+        let (sender, shown) = std::sync::mpsc::channel();
+        app.listen_any(SHOWN_EVENT, move |_| {
+            let _ = sender.send(());
+        });
+        toggle(app.handle());
+        assert_eq!(
+            shown.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok(())
+        );
+        assert!(app.get_webview_window(WINDOW).is_some());
     }
 }

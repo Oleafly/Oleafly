@@ -133,3 +133,43 @@ pub(crate) fn show<R: Runtime>(app: &AppHandle<R>, shown: bool) {
         log(format!("Could not change the tray icon: {error}"));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri::menu::MenuId;
+    use tauri::Listener;
+
+    fn pick(app: &tauri::App<tauri::test::MockRuntime>, id: &str) {
+        on_menu(
+            app.handle(),
+            MenuEvent {
+                id: MenuId::new(id),
+            },
+        );
+    }
+
+    #[test]
+    fn only_quit_in_the_tray_menu_goes_through_the_save_check() {
+        let app = tauri::test::mock_app();
+        let (sender, heard) = std::sync::mpsc::channel();
+        app.listen_any("quit-flush-requested", move |event| {
+            let _ = sender.send(event.payload().to_owned());
+        });
+        pick(&app, OPEN_ITEM);
+        pick(&app, "elsewhere");
+        assert!(heard.try_recv().is_err());
+        pick(&app, QUIT_ITEM);
+        assert_eq!(
+            heard.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok("false".to_owned())
+        );
+    }
+
+    #[test]
+    fn turning_background_capture_off_leaves_no_tray_icon() {
+        let app = tauri::test::mock_app();
+        show(app.handle(), false);
+        assert!(app.tray_by_id(TRAY).is_none());
+    }
+}
