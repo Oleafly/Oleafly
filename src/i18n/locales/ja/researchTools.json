@@ -50,8 +50,6 @@
       "readOnly": "読み取り専用",
       "browse": "ファイルを見る",
       "moreActions": "{{label}} のその他の操作",
-      "showInFinder": "Finder で表示",
-      "showInExplorer": "エクスプローラーで表示",
       "unlink": "リンクを解除",
       "listingTruncated": "この表示は 2,000 ファイル、またはフォルダ 8 階層までです。",
       "emptyFolder": "このフォルダは空です。",

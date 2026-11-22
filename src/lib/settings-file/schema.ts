@@ -115,6 +115,7 @@ export interface CompilePreferences {
   compileMode: CompileMode;
   checkSyntaxBeforeCompile: boolean;
   stopOnFirstError: boolean;
+  followOpenFile: boolean;
 }
 
 export type ConfigPreferences = Pick<
@@ -670,6 +671,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   compile("engine.compile.mode", "compileMode", oneOf(["normal", "fast"] as const)),
   compile("engine.compile.checkSyntaxFirst", "checkSyntaxBeforeCompile", bool),
   compile("engine.compile.stopOnFirstError", "stopOnFirstError", bool),
+  compile("engine.compile.followOpenFile", "followOpenFile", bool),
 
   ...SHORTCUT_DEFINITIONS.map(({ id }) => shortcutField(id)),
   ...EDITOR_KEY_DEFINITIONS.map(editorKeyField),

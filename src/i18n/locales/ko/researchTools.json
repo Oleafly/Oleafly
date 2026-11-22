@@ -50,8 +50,6 @@
       "readOnly": "읽기 전용",
       "browse": "파일 살펴보기",
       "moreActions": "{{label}}의 추가 작업",
-      "showInFinder": "Finder에서 보기",
-      "showInExplorer": "탐색기에서 보기",
       "unlink": "연결 해제",
       "listingTruncated": "이 목록은 파일 2,000개 또는 폴더 8단계에서 멈춥니다.",
       "emptyFolder": "이 폴더는 비어 있습니다.",

@@ -50,8 +50,6 @@
       "readOnly": "Solo lectura",
       "browse": "Explorar los archivos",
       "moreActions": "Más acciones para {{label}}",
-      "showInFinder": "Mostrar en el Finder",
-      "showInExplorer": "Mostrar en el Explorador",
       "unlink": "Desenlazar",
       "listingTruncated": "Esta vista se detiene a los 2000 archivos o a los ocho niveles de carpetas.",
       "emptyFolder": "Esta carpeta está vacía.",

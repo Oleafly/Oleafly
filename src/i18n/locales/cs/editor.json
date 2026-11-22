@@ -585,9 +585,6 @@
     "unsupported": "Korektura není pro tento formát dokumentu podporovaná."
   },
   "checkpoints": {
-    "showInExplorer": "Zobrazit v Průzkumníku",
-    "showInFinder": "Zobrazit ve Finderu",
-    "showInFileManager": "Zobrazit ve správci souborů",
     "timeNotRecorded": "Čas nebyl zaznamenán",
     "justNow": "Právě teď",
     "fallbackName": "Záchytný bod",

@@ -642,9 +642,6 @@
       "permissionDenied": "Accès refusé"
     },
     "menu": {
-      "showInFinder": "Afficher dans le Finder",
-      "showInExplorer": "Afficher dans l'Explorateur de fichiers",
-      "showInFileManager": "Afficher dans le gestionnaire de fichiers",
       "copyToLibrary": "Copier dans la bibliothèque",
       "remove": "Retirer d'Oleafly"
     },

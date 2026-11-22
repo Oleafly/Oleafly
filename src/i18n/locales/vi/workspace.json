@@ -55,7 +55,11 @@
     "insertLink": "Chèn liên kết",
     "copyLink": "Sao chép liên kết",
     "linkCopied": "Đã sao chép liên kết",
-    "copyLinkFailed": "Không sao chép được liên kết. Hãy kiểm tra quyền truy cập bộ nhớ tạm và thử lại."
+    "copyLinkFailed": "Không sao chép được liên kết. Hãy kiểm tra quyền truy cập bộ nhớ tạm và thử lại.",
+    "copyPath": "Sao chép đường dẫn",
+    "copyRelativePath": "Sao chép đường dẫn tương đối",
+    "pathCopied": "Đã sao chép đường dẫn",
+    "copyPathFailed": "Không sao chép được đường dẫn. Hãy kiểm tra quyền truy cập bộ nhớ tạm và thử lại."
   },
   "explorer": {
     "resizeSections": "Đổi kích thước {{first}} và {{second}}"

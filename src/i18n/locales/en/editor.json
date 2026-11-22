@@ -571,9 +571,6 @@
     "unsupported": "Proofreading is not supported for this document format."
   },
   "checkpoints": {
-    "showInExplorer": "Show in Explorer",
-    "showInFinder": "Show in Finder",
-    "showInFileManager": "Show in file manager",
     "timeNotRecorded": "Time not recorded",
     "justNow": "Just now",
     "fallbackName": "Checkpoint",

@@ -663,9 +663,6 @@
       "permissionDenied": "Brak uprawnień"
     },
     "menu": {
-      "showInFinder": "Pokaż w Finderze",
-      "showInExplorer": "Pokaż w Eksploratorze plików",
-      "showInFileManager": "Pokaż w menedżerze plików",
       "copyToLibrary": "Skopiuj do biblioteki",
       "remove": "Usuń z Oleafly"
     },

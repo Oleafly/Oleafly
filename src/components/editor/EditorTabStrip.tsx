@@ -22,6 +22,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { FilePathMenuItems } from "@/components/files/FilePathMenuItems";
 import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
 import { SIDEWAYS_FADE, type SidewaysScrollActive, useSidewaysScroll } from "@/hooks/use-sideways-scroll";
 import { useFilesStore } from "@/store/files";
@@ -172,6 +173,12 @@ function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
           {item.label}
         </ContextMenuItem>
       ))}
+      {tab.kind === "file" && (
+        <>
+          <ContextMenuSeparator />
+          <FilePathMenuItems path={tab.id} />
+        </>
+      )}
       <ContextMenuSeparator />
       <ContextMenuItem
         data-testid="editor-tab-menu-close-assistant"

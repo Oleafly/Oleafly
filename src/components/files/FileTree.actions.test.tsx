@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   openTerminalWith: vi.fn(),
   toastSuccess: vi.fn(),
   insertFileLink: vi.fn(() => true),
-  copyFileLink: vi.fn(async () => true),
+  copyFileReference: vi.fn(async () => true),
 }));
 
 const launch = vi.hoisted(() => {
@@ -53,7 +53,7 @@ vi.mock("@/lib/toast", () => ({
 }));
 vi.mock("@/features/file-links", () => ({
   insertFileLink: mocks.insertFileLink,
-  copyFileLink: mocks.copyFileLink,
+  copyFileReference: mocks.copyFileReference,
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: vi.fn(),
@@ -68,6 +68,7 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { FileTree } from "./FileTree";
 
 const files = enWorkspace.files;
@@ -1032,7 +1033,7 @@ describe("FileTree row actions", () => {
   });
 
   it("inserts or copies a link to a file for the open document", async () => {
-    mocks.toastSuccess.mockReset();
+    mocks.copyFileReference.mockClear();
     render(<FileTree />);
     act(() => useFilesStore.setState({ activePath: "main.tex" }));
 
@@ -1042,13 +1043,50 @@ describe("FileTree row actions", () => {
 
     openRowMenu("main.tex");
     fireEvent.click(within(await screen.findByRole("menu")).getByText(files.copyLink));
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(files.linkCopied));
-    expect(mocks.copyFileLink).toHaveBeenCalledWith("main.tex");
+    await waitFor(() => expect(mocks.copyFileReference).toHaveBeenCalledWith("main.tex", "link"));
+  });
 
-    mocks.copyFileLink.mockResolvedValueOnce(false);
+  it("copies the path of a file, a folder and the project, and shows them in the file manager", async () => {
+    mocks.copyFileReference.mockClear();
+    render(<FileTree />);
+
+    for (const [row, path] of [["intro.tex", "chapters/intro.tex"], ["chapters", "chapters"]] as const) {
+      if (row === "intro.tex") fireEvent.click(screen.getByRole("treeitem", { name: /chapters/i }));
+      for (const [label, reference] of [[files.copyPath, "path"], [files.copyRelativePath, "relativePath"]] as const) {
+        openRowMenu(row);
+        fireEvent.click(within(await screen.findByRole("menu")).getByText(label));
+        await waitFor(() => expect(mocks.copyFileReference).toHaveBeenLastCalledWith(path, reference));
+        await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+      }
+    }
+
     openRowMenu("main.tex");
-    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.copyLink));
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(files.copyLinkFailed));
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(showInFileManagerLabel()));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("reveal_project", { projectId: "project", path: "main.tex" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    fireEvent.contextMenu(screen.getByRole("tree", { name: files.treeAriaLabel }));
+    const rootMenu = await screen.findByRole("menu");
+    expect(within(rootMenu).queryByText(files.copyRelativePath)).not.toBeInTheDocument();
+    fireEvent.click(within(rootMenu).getByText(files.copyPath));
+    await waitFor(() => expect(mocks.copyFileReference).toHaveBeenLastCalledWith("", "path"));
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    fireEvent.contextMenu(screen.getByRole("tree", { name: files.treeAriaLabel }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(showInFileManagerLabel()));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("reveal_project", { projectId: "project", path: null }),
+    );
+  });
+
+  it("says when the file manager could not show a file", async () => {
+    backend({ reveal_project: new Error("gone") });
+    render(<FileTree />);
+    openRowMenu("main.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(showInFileManagerLabel()));
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledWith("show in folder", expect.any(Error)));
   });
 
   it("offers Insert link only while a document that can hold one is open", async () => {

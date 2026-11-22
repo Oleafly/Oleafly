@@ -600,9 +600,6 @@
       "permissionDenied": "アクセス権なし"
     },
     "menu": {
-      "showInFinder": "Finder で表示",
-      "showInExplorer": "エクスプローラーで表示",
-      "showInFileManager": "ファイルマネージャーで表示",
       "copyToLibrary": "ライブラリにコピー",
       "remove": "Oleafly から削除"
     },

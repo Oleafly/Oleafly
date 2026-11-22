@@ -24,7 +24,10 @@
     "no": "Nee",
     "learnMore": "Meer informatie",
     "showMore": "Meer tonen",
-    "showLess": "Minder tonen"
+    "showLess": "Minder tonen",
+    "showInFinder": "Tonen in Finder",
+    "showInExplorer": "Tonen in Verkenner",
+    "showInFileManager": "Tonen in de bestandsbeheerder"
   },
   "state": {
     "loading": "Laden…",

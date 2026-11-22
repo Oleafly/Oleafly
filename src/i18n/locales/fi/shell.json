@@ -502,7 +502,15 @@
       "run": "Suorita koodi tällä koneella"
     },
     "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa.",
-    "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen"
+    "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen",
+    "texRootDocument": "juuri: {{path}} (sillä on oma \\documentclass)",
+    "texRootInclude": "juuri: {{path}} (sisältää tiedoston {{file}})",
+    "target": {
+      "title": "Käännöskohde",
+      "help": "Kun Seuraa avointa tiedostoa on valittuna, tiedosto, jolla on oma \\documentclass, käännetään sellaisenaan. Luku tai osio kääntää dokumentin, joka sisältää sen. Muut tiedostot kääntävät päädokumentin. % !TEX root -kommentti ratkaisee aina.",
+      "open": "Seuraa avointa tiedostoa",
+      "main": "Aina päädokumentti"
+    }
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"

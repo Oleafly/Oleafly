@@ -24,7 +24,10 @@
     "no": "Нет",
     "learnMore": "Подробнее",
     "showMore": "Показать больше",
-    "showLess": "Показать меньше"
+    "showLess": "Показать меньше",
+    "showInFinder": "Показать в Finder",
+    "showInExplorer": "Показать в проводнике",
+    "showInFileManager": "Показать в файловом менеджере"
   },
   "state": {
     "loading": "Загрузка…",

@@ -585,9 +585,6 @@
     "unsupported": "Вичитування не підтримується для цього формату документа."
   },
   "checkpoints": {
-    "showInExplorer": "Показати у провіднику",
-    "showInFinder": "Показати у Finder",
-    "showInFileManager": "Показати у файловому менеджері",
     "timeNotRecorded": "Час не записано",
     "justNow": "Щойно",
     "fallbackName": "Контрольна точка",

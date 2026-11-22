@@ -642,9 +642,6 @@
       "permissionDenied": "Sin permiso"
     },
     "menu": {
-      "showInFinder": "Mostrar en Finder",
-      "showInExplorer": "Mostrar en el Explorador de archivos",
-      "showInFileManager": "Mostrar en el gestor de archivos",
       "copyToLibrary": "Copiar a la biblioteca",
       "remove": "Quitar de Oleafly"
     },

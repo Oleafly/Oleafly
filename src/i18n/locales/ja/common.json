@@ -24,7 +24,10 @@
     "no": "いいえ",
     "learnMore": "詳細",
     "showMore": "さらに表示",
-    "showLess": "表示を減らす"
+    "showLess": "表示を減らす",
+    "showInFinder": "Finder で表示",
+    "showInExplorer": "エクスプローラーで表示",
+    "showInFileManager": "ファイルマネージャーで表示"
   },
   "state": {
     "loading": "読み込み中…",

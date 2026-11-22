@@ -55,7 +55,11 @@
     "insertLink": "Insertar enlace",
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace copiado",
-    "copyLinkFailed": "El enlace no se copió. Revisa el acceso al portapapeles e inténtalo de nuevo."
+    "copyLinkFailed": "El enlace no se copió. Revisa el acceso al portapapeles e inténtalo de nuevo.",
+    "copyPath": "Copiar ruta",
+    "copyRelativePath": "Copiar ruta relativa",
+    "pathCopied": "Ruta copiada",
+    "copyPathFailed": "La ruta no se copió. Revisa el acceso al portapapeles e inténtalo de nuevo."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} y {{second}}"

@@ -585,9 +585,6 @@
     "unsupported": "Korekta nie jest obsługiwana dla tego formatu dokumentu."
   },
   "checkpoints": {
-    "showInExplorer": "Pokaż w Eksploratorze",
-    "showInFinder": "Pokaż w Finderze",
-    "showInFileManager": "Pokaż w menedżerze plików",
     "timeNotRecorded": "Czas nie został zapisany",
     "justNow": "Przed chwilą",
     "fallbackName": "Punkt kontrolny",

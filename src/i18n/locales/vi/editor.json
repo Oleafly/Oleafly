@@ -564,9 +564,6 @@
     "unsupported": "Không hỗ trợ hiệu đính cho định dạng tài liệu này."
   },
   "checkpoints": {
-    "showInExplorer": "Hiện trong Explorer",
-    "showInFinder": "Hiện trong Finder",
-    "showInFileManager": "Hiện trong trình quản lý tệp",
     "timeNotRecorded": "Không ghi thời gian",
     "justNow": "Vừa xong",
     "fallbackName": "Điểm lưu",

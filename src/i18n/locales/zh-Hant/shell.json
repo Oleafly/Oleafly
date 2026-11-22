@@ -501,7 +501,15 @@
       "run": "在這台電腦上執行程式碼"
     },
     "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。",
-    "coauthorsChanged": "自上次編譯以來共同作者有變更"
+    "coauthorsChanged": "自上次編譯以來共同作者有變更",
+    "texRootDocument": "根檔案：{{path}}（它有自己的 \\documentclass）",
+    "texRootInclude": "根檔案：{{path}}（它包含 {{file}}）",
+    "target": {
+      "title": "編譯目標",
+      "help": "選擇「跟隨開啟的檔案」時，有自己 \\documentclass 的檔案會單獨編譯。章節檔案會編譯包含它的文件。其他檔案編譯主要文件。% !TEX root 註解一律優先。",
+      "open": "跟隨開啟的檔案",
+      "main": "一律編譯主要文件"
+    }
   },
   "datePicker": {
     "placeholder": "選擇日期"

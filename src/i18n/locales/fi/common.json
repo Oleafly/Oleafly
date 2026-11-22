@@ -24,7 +24,10 @@
     "no": "Ei",
     "learnMore": "Lue lisää",
     "showMore": "Näytä enemmän",
-    "showLess": "Näytä vähemmän"
+    "showLess": "Näytä vähemmän",
+    "showInFinder": "Näytä Finderissa",
+    "showInExplorer": "Näytä Resurssienhallinnassa",
+    "showInFileManager": "Näytä tiedostonhallinnassa"
   },
   "state": {
     "loading": "Ladataan…",

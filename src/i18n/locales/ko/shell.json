@@ -501,7 +501,15 @@
       "run": "이 컴퓨터에서 코드 실행"
     },
     "sharedViewer": "공유 프로젝트에서는 소유자와 편집자만 이 설정을 변경할 수 있습니다.",
-    "coauthorsChanged": "마지막 컴파일 이후 공동 저자가 변경함"
+    "coauthorsChanged": "마지막 컴파일 이후 공동 저자가 변경함",
+    "texRootDocument": "root: {{path}}(자체 \\documentclass가 있음)",
+    "texRootInclude": "root: {{path}}({{file}}을(를) 포함함)",
+    "target": {
+      "title": "컴파일 대상",
+      "help": "열린 파일 따르기를 선택하면 자체 \\documentclass가 있는 파일은 그 파일만 컴파일합니다. 장이나 절은 그것을 포함하는 문서를 컴파일합니다. 다른 파일은 주 문서를 컴파일합니다. % !TEX root 주석이 항상 우선합니다.",
+      "open": "열린 파일 따르기",
+      "main": "항상 주 문서"
+    }
   },
   "datePicker": {
     "placeholder": "날짜 선택"

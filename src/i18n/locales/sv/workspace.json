@@ -55,7 +55,11 @@
     "insertLink": "Infoga länk",
     "copyLink": "Kopiera länk",
     "linkCopied": "Länken kopierades",
-    "copyLinkFailed": "Länken kopierades inte. Kontrollera åtkomsten till urklipp och försök igen."
+    "copyLinkFailed": "Länken kopierades inte. Kontrollera åtkomsten till urklipp och försök igen.",
+    "copyPath": "Kopiera sökväg",
+    "copyRelativePath": "Kopiera relativ sökväg",
+    "pathCopied": "Sökvägen kopierades",
+    "copyPathFailed": "Sökvägen kopierades inte. Kontrollera åtkomsten till urklipp och försök igen."
   },
   "explorer": {
     "resizeSections": "Ändra storlek på {{first}} och {{second}}"
