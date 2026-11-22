@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Annotate a region",
-    "list": "Annotations ({{n}})"
+    "list": "Annotations ({{n}})",
+    "hide": "Hide annotations"
   },
   "markBadge": "Annotation {{label}}",
   "composer": {

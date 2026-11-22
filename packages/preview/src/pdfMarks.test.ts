@@ -214,7 +214,7 @@ describe("describePdfSelection", () => {
     expect(info?.page).toBe(2);
     expect(info?.text).toBe("The quick brown fox");
     expect(info?.before).toBe("");
-    expect(info?.after).toBe("jumps over the lazy dog");
+    expect(info?.after).toBe(" jumps over the lazy dog");
     expect(info?.rects).toEqual([
       { page: 2, x: 100, y: 100, width: 200, height: 12 },
       { page: 2, x: 100, y: 114, width: 50, height: 12 },
@@ -226,7 +226,7 @@ describe("describePdfSelection", () => {
     expect(one.bound).not.toHaveBeenCalled();
   });
 
-  it("keeps up to 32 characters of collapsed context on each side", () => {
+  it("keeps up to 32 characters of collapsed context on each side, with the space next to the selection", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const long = "a".repeat(40);
@@ -241,8 +241,8 @@ describe("describePdfSelection", () => {
       (text) => text,
     );
     expect(info?.text).toBe("middle");
-    expect(info?.before).toBe(`${"a".repeat(30)} x`);
-    expect(info?.after).toBe(`tail end ${"a".repeat(23)}`);
+    expect(info?.before).toBe(`${"a".repeat(29)} x `);
+    expect(info?.after).toBe(` tail end ${"a".repeat(22)}`);
   });
 
   it("puts boxes on the start and end pages of a selection across a page break", () => {
@@ -260,7 +260,7 @@ describe("describePdfSelection", () => {
       { page: 1, x: 10, y: 700, width: 60, height: 12 },
       { page: 2, x: 10, y: 20, width: 40, height: 12 },
     ]);
-    expect(info?.before).toBe("First");
+    expect(info?.before).toBe("First ");
     expect(info?.after).toBe("quick brown fox jumps over the l");
   });
 

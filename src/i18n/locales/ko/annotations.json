@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "영역에 주석 달기",
-    "list": "주석 ({{n}})"
+    "list": "주석 ({{n}})",
+    "hide": "주석 숨기기"
   },
   "markBadge": "주석 {{label}}",
   "composer": {

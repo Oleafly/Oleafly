@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "範囲に注釈を付ける",
-    "list": "注釈 ({{n}})"
+    "list": "注釈 ({{n}})",
+    "hide": "注釈を隠す"
   },
   "markBadge": "注釈 {{label}}",
   "composer": {

@@ -46,7 +46,7 @@ describe("FloatingSidePanel", () => {
     expect(panel).toHaveClass("right-2", "translate-x-[calc(100%_+_1rem)]");
   });
 
-  it("takes a width, a separate accessible name and header actions", () => {
+  it("takes a width, a separate accessible name, header actions and a footer outside the scrolling body", () => {
     render(
       <FloatingSidePanel
         open
@@ -57,6 +57,7 @@ describe("FloatingSidePanel", () => {
         onClose={vi.fn()}
         width="20rem"
         headerActions={<button type="button">{"Export"}</button>}
+        footer={<button type="button">{"Send"}</button>}
       >
         {BODY}
       </FloatingSidePanel>,
@@ -64,5 +65,10 @@ describe("FloatingSidePanel", () => {
     const panel = screen.getByRole("complementary", { name: "Annotation list" });
     expect(panel.style.getPropertyValue("--floating-side-panel-width")).toBe("20rem");
     expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
+    const body = screen.getByText(BODY).closest("[data-side-panel-body]");
+    const send = screen.getByRole("button", { name: "Send" });
+    expect(body).not.toBeNull();
+    expect(body?.contains(send)).toBe(false);
+    expect(panel.contains(send)).toBe(true);
   });
 });

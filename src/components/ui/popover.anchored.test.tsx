@@ -67,6 +67,29 @@ describe("AnchoredPopover", () => {
     scroller.remove();
   });
 
+  it("drops the card surface when bare, for content with its own box", async () => {
+    const { rerender } = render(
+      <AnchoredPopover open onOpenChange={vi.fn()} anchor={() => rect(0)} ariaLabel={LABEL}>
+        {BODY}
+      </AnchoredPopover>,
+    );
+    await settle();
+    const card = screen.getByRole("dialog", { name: LABEL });
+    expect(card).toHaveClass("border", "bg-card", "p-1", "shadow-xl");
+    expect(card).not.toHaveAttribute("data-bare");
+
+    rerender(
+      <AnchoredPopover open bare onOpenChange={vi.fn()} anchor={() => rect(0)} ariaLabel={LABEL}>
+        {BODY}
+      </AnchoredPopover>,
+    );
+    await settle();
+    const bare = screen.getByRole("dialog", { name: LABEL });
+    expect(bare).toHaveAttribute("data-bare");
+    expect(bare).toHaveClass("shadow-xl");
+    expect(bare).not.toHaveClass("border", "bg-card", "p-1");
+  });
+
   it("leaves the open state to its caller", async () => {
     const onOpenChange = vi.fn();
     function Host() {

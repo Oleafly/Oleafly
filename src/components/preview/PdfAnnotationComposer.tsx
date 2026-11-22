@@ -56,7 +56,8 @@ export function PdfAnnotationComposer({
       align="start"
       sideOffset={6}
       ariaLabel={t(($) => $.annotations.composer.title)}
-      className={kind ? "w-72 p-2" : "w-auto p-1"}
+      bare={kind !== null}
+      className={kind ? "w-72" : "w-auto p-1"}
       onOpenAutoFocus={(event) => {
         if (!kind) event.preventDefault();
       }}

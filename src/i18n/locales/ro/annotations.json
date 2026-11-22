@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Adnotează o zonă",
-    "list": "Adnotări ({{n}})"
+    "list": "Adnotări ({{n}})",
+    "hide": "Ascunde adnotările"
   },
   "markBadge": "Adnotarea {{label}}",
   "composer": {

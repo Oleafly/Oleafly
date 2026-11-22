@@ -207,7 +207,7 @@
   --comment-ink: color-mix(in oklab, var(--primary) 70%, var(--foreground));
 }
 
-.dark [role="dialog"],
+.dark [role="dialog"]:not([data-bare]),
 .dark [role="alertdialog"] {
   background-color: var(--popover);
 }

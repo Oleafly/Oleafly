@@ -7,6 +7,7 @@ import {
   Columns2,
   Contrast,
   Download,
+  EyeOff,
   FileText,
   Globe,
   ListTree,
@@ -477,6 +478,9 @@ export function PdfToolbarControls({
             annotations.togglePanel,
             { active: annotations.panelOpen },
           ),
+          iconControl("annotation-marks", EyeOff, t(($) => $.annotations.toolbar.hide), annotations.toggleMarks, {
+            active: !annotations.marksShown,
+          }),
         );
       }
     }

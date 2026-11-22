@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Anotovat oblast",
-    "list": "Anotace ({{n}})"
+    "list": "Anotace ({{n}})",
+    "hide": "Skrýt anotace"
   },
   "markBadge": "Anotace {{label}}",
   "composer": {

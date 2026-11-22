@@ -194,11 +194,16 @@ function fence(text: string, language: string): string {
 }
 
 const ASKS: Record<PdfAnnotationKind, string> = {
-  comment: "A comment on this passage.",
-  delete: "Delete this passage.",
-  replace: "Replace this passage with the text in the comment.",
-  insert: "Insert the text in the comment right after the quoted text.",
-  region: "A comment on the marked region of the page, such as an equation, figure or table.",
+  comment: "The comment is about the selected text.",
+  delete: "Delete only the selected text. Keep the words around it.",
+  replace: "Replace only the selected text with the replacement. Keep the words around it.",
+  insert: "Insert the new text right after the selected text. Change nothing else.",
+  region: "The comment is about the marked region of the page, such as an equation, figure or table.",
+};
+
+const EXACT_TEXT: Partial<Record<PdfAnnotationKind, string>> = {
+  replace: "Replacement",
+  insert: "New text",
 };
 
 export interface CurrentSource {
@@ -232,25 +237,37 @@ function locationLine(annotation: PdfAnnotation, current: CurrentSource): string
   return `Location: ${where}${section}${unchecked}.`;
 }
 
-function quoteLine(annotation: PdfAnnotation): string | null {
+function quoteLines(annotation: PdfAnnotation): string[] {
   const { text, before, after } = annotation.quote;
-  if (!text.trim()) return null;
+  if (!text.trim()) return [];
   const lead = before.trim() ? `…${before.trimStart()}` : "";
   const tail = after.trim() ? `${after.trimEnd()}…` : "";
-  return `Text on the PDF: ${lead}[${text}]${tail}`;
+  return [`Selected text: ${JSON.stringify(text)}`, `On the PDF, in brackets: ${lead}[${text}]${tail}`];
+}
+
+function commentLine(annotation: PdfAnnotation): string | null {
+  const label = EXACT_TEXT[annotation.kind];
+  if (label) return `${label}: ${JSON.stringify(annotation.comment)}`;
+  const comment = annotation.comment.trim();
+  return comment ? `Comment: ${comment}` : null;
 }
 
 export function annotationPrompt(annotation: PdfAnnotation, current: CurrentSource): string {
+  const quote = quoteLines(annotation);
   const lines = [
     `Note ${annotation.number} on the compiled PDF`,
     locationLine(annotation, current),
+    ...quote,
     `Asked: ${ASKS[annotation.kind]}`,
   ];
-  const comment = annotation.comment.trim();
-  if (comment) lines.push(`Comment: ${comment}`);
-  const quote = quoteLine(annotation);
-  if (quote) lines.push(quote);
+  const comment = commentLine(annotation);
+  if (comment) lines.push(comment);
   const excerpt = current.source?.excerpt ?? "";
-  if (current.source && excerpt) lines.push("Source:", fence(excerpt, fenceLanguage(current.source.path)));
+  if (current.source && excerpt) {
+    lines.push(
+      quote.length > 0 ? "Source lines that hold the selected text, which may carry markup the PDF hides:" : "Source:",
+      fence(excerpt, fenceLanguage(current.source.path)),
+    );
+  }
   return lines.join("\n");
 }

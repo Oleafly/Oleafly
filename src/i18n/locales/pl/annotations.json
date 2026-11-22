@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Dodaj adnotację do obszaru",
-    "list": "Adnotacje ({{n}})"
+    "list": "Adnotacje ({{n}})",
+    "hide": "Ukryj adnotacje"
   },
   "markBadge": "Adnotacja {{label}}",
   "composer": {

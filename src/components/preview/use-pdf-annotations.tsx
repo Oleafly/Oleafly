@@ -50,6 +50,8 @@ export interface PdfAnnotationsToolbar {
   togglePanel: () => void;
   regionMode: boolean;
   toggleRegionMode: () => void;
+  marksShown: boolean;
+  toggleMarks: () => void;
 }
 
 interface Options {
@@ -124,6 +126,7 @@ export function usePdfAnnotations({
   const activeId = usePdfAnnotationsStore((state) => state.activeId);
   const [panelOpen, setPanelOpen] = useState(false);
   const [regionMode, setRegionMode] = useState(false);
+  const [marksShown, setMarksShown] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [placingId, setPlacingId] = useState<string | null>(null);
   const [layer, setLayer] = useState<PdfAnnotationLayer | null>(null);
@@ -195,10 +198,12 @@ export function usePdfAnnotations({
 
   const marks = useMemo<readonly PdfMark[]>(
     () =>
-      items
-        .filter((item) => item.build === build && item.boxes.length > 0 && item.placement !== "needsPlacing")
-        .map((item) => ({ id: item.id, label: String(item.number), rects: item.boxes, active: item.id === activeId })),
-    [items, build, activeId],
+      marksShown
+        ? items
+            .filter((item) => item.build === build && item.boxes.length > 0 && item.placement !== "needsPlacing")
+            .map((item) => ({ id: item.id, label: String(item.number), rects: item.boxes, active: item.id === activeId }))
+        : [],
+    [marksShown, items, build, activeId],
   );
 
   const onSelectText = useCallback(
@@ -262,6 +267,7 @@ export function usePdfAnnotations({
       id = added.id;
     }
     finishDraft(current);
+    setMarksShown(true);
     if (!syncAvailable || madeOn !== build) return true;
     try {
       const { locateSource, regionProbePoints } = await import("@/features/pdf-annotations/locate");
@@ -282,6 +288,7 @@ export function usePdfAnnotations({
   };
 
   const show = (annotation: PdfAnnotation) => {
+    setMarksShown(true);
     usePdfAnnotationsStore.getState().setActive(annotation.id);
     const rect = annotation.build === build ? annotation.boxes[0] : undefined;
     if (rect) gotoRect(rect);
@@ -320,9 +327,11 @@ export function usePdfAnnotations({
               setDraft(null);
               setRegionMode((on) => !on);
             },
+            marksShown,
+            toggleMarks: () => setMarksShown((shown) => !shown),
           }
         : null,
-    [stringsReady, count, panelOpen, regionMode],
+    [stringsReady, count, panelOpen, regionMode, marksShown],
   );
 
   let anchor: PopoverAnchor | null = null;

@@ -1700,7 +1700,7 @@ describe("PdfViewer annotations", () => {
       expect(onSelectText.mock.calls[0][0]).toMatchObject({
         page: 1,
         text: "alpha beta",
-        before: "intro",
+        before: "intro ",
         after: "gamma delta",
         rects: [{ page: 1, x: 40, y: 20, width: 60, height: 12 }],
       });

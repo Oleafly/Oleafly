@@ -14,6 +14,7 @@ export interface FloatingSidePanelProps {
   onClose: () => void;
   width?: string;
   headerActions?: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -30,6 +31,7 @@ export function FloatingSidePanel({
   onClose,
   width = "19rem",
   headerActions,
+  footer,
   children,
   className,
   bodyClassName,
@@ -73,7 +75,10 @@ export function FloatingSidePanel({
           </Button>
         </div>
       </div>
-      <div className={cn("min-h-0 flex-1 overflow-auto p-2", bodyClassName)}>{children}</div>
+      <div data-side-panel-body className={cn("min-h-0 flex-1 overflow-auto p-2", bodyClassName)}>
+        {children}
+      </div>
+      {footer ? <div className="flex items-center justify-between gap-2 border-t px-3 py-2">{footer}</div> : null}
     </aside>
   );
 }

@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Bir alana not ekle",
-    "list": "Notlar ({{n}})"
+    "list": "Notlar ({{n}})",
+    "hide": "Notları gizle"
   },
   "markBadge": "Not {{label}}",
   "composer": {

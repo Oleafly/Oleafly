@@ -60,6 +60,10 @@ the title alone is not enough. `width` is a CSS length and defaults to
 `19rem`, and the panel never grows wider than its container. A closed panel
 slides off towards its own edge and turns `inert`, so focus and clicks skip
 it. Its parent needs `relative`. `bodyClassName` changes the body padding.
+`footer` holds actions that stay below the body while the body scrolls. To
+show an item in the body, scroll the `[data-side-panel-body]` element
+yourself. Don't call `scrollIntoView`: it also scrolls the clipped parent,
+and that drags a closed panel back into view.
 
 A file or folder icon is a `FileIcon` or `FolderIcon` from
 `files/fileIcon.tsx`, and a type badge (`TEX`, `PDF`) is a `FileBadge` from the
@@ -309,7 +313,9 @@ card follows the selection while the page scrolls or zooms. Pass the element
 that scrolls with the anchor, or any element inside it, as `contextElement`.
 Without it the popover only follows scrolling of the window. `side`, `align`
 and `sideOffset` place the card, and `hideWhenDetached` hides it while the
-anchor is scrolled out of view. `ariaLabel` names the dialog.
+anchor is scrolled out of view. `ariaLabel` names the dialog. `bare` drops
+the card's border, background and padding but keeps its shadow, for content
+that brings its own box, such as a `CommentComposer`.
 
 A caption that lets people jump to any month is a `MonthPicker` from
 `ui/month-picker.tsx`. Its trigger reads like "November 2026" with a small

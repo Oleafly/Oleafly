@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Gebied annoteren",
-    "list": "Annotaties ({{n}})"
+    "list": "Annotaties ({{n}})",
+    "hide": "Annotaties verbergen"
   },
   "markBadge": "Annotatie {{label}}",
   "composer": {

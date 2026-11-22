@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Merkitse alue",
-    "list": "Merkinnät ({{n}})"
+    "list": "Merkinnät ({{n}})",
+    "hide": "Piilota merkinnät"
   },
   "markBadge": "Merkintä {{label}}",
   "composer": {

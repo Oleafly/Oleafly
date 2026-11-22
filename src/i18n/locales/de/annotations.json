@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Bereich anmerken",
-    "list": "Anmerkungen ({{n}})"
+    "list": "Anmerkungen ({{n}})",
+    "hide": "Anmerkungen ausblenden"
   },
   "markBadge": "Anmerkung {{label}}",
   "composer": {

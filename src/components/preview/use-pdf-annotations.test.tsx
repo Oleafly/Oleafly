@@ -165,6 +165,16 @@ describe("usePdfAnnotations", () => {
     expect(marks.map((mark) => mark.id)).toEqual(["n1"]);
   });
 
+  it("hides the notes on the PDF until they are shown again", async () => {
+    await mount([note()]);
+    expect(latest?.toolbar?.marksShown).toBe(true);
+    act(() => latest?.toolbar?.toggleMarks());
+    expect(latest?.toolbar?.marksShown).toBe(false);
+    expect(latest?.viewerProps.marks).toEqual([]);
+    act(() => latest?.toolbar?.toggleMarks());
+    expect((latest?.viewerProps.marks ?? []).map((mark) => mark.id)).toEqual(["n1"]);
+  });
+
   it("places notes from an earlier PDF again when a new one loads", async () => {
     const view = await mount([note({ build: "old" })]);
     await waitFor(

@@ -119,23 +119,46 @@ describe("annotationLabel", () => {
 });
 
 describe("annotationPrompt", () => {
-  it("says what is asked, where it is now, the section, the quote and the source", () => {
+  it("says where the note is, the exact selection, what is asked and the source", () => {
     const note = annotation();
     const prompt = annotationPrompt(note, currentSource(note, `% one\n${TEXT}`));
     expect(prompt).toContain("Note 3 on the compiled PDF");
     expect(prompt).toContain('Location: chapters/intro.tex:4-5 (page 4), in "Introduction".');
-    expect(prompt).toContain("Asked: A comment on this passage.");
+    expect(prompt).toContain('Selected text: "the result holds"');
+    expect(prompt).toContain("On the PDF, in brackets: …We show that [the result holds] for every n…");
+    expect(prompt).toContain("Asked: The comment is about the selected text.");
     expect(prompt).toContain("Comment: Say why this matters.");
-    expect(prompt).toContain("Text on the PDF: …We show that [the result holds] for every n…");
+    expect(prompt).toContain("Source lines that hold the selected text");
     expect(prompt).toContain("```latex\nWe show that\nthe result holds\n```");
   });
 
+  it("asks to change only the selected words, with the new text exactly as typed", () => {
+    const replace = annotation({
+      kind: "replace",
+      comment: "The",
+      quote: { text: "this", before: "commands are allowed for ", after: " project." },
+    });
+    const prompt = annotationPrompt(replace, currentSource(replace, null));
+    expect(prompt).toContain('Selected text: "this"');
+    expect(prompt).toContain("…commands are allowed for [this] project.…");
+    expect(prompt).toContain("Asked: Replace only the selected text with the replacement. Keep the words around it.");
+    expect(prompt).toContain('Replacement: "The"');
+    expect(prompt).not.toContain("Comment:");
+
+    const insert = annotation({ kind: "insert", comment: ":", quote: { text: "command", before: "", after: "" } });
+    const inserted = annotationPrompt(insert, currentSource(insert, null));
+    expect(inserted).toContain("Asked: Insert the new text right after the selected text. Change nothing else.");
+    expect(inserted).toContain('New text: ":"');
+    expect(inserted).toContain("On the PDF, in brackets: [command]");
+  });
+
   it("says so when the lines are gone", () => {
-    const note = annotation({ kind: "delete" });
+    const note = annotation({ kind: "delete", comment: "" });
     const prompt = annotationPrompt(note, currentSource(note, "nothing here\n"));
     expect(prompt).toContain("are no longer in the file");
-    expect(prompt).toContain("Asked: Delete this passage.");
-    expect(prompt).not.toContain("Source:");
+    expect(prompt).toContain("Asked: Delete only the selected text. Keep the words around it.");
+    expect(prompt).not.toContain("Comment:");
+    expect(prompt).not.toContain("```");
   });
 
   it("says so when the file could not be checked", () => {
@@ -143,10 +166,11 @@ describe("annotationPrompt", () => {
     expect(annotationPrompt(note, currentSource(note, null))).toContain("were not checked again");
   });
 
-  it("handles a note with no source", () => {
+  it("handles a region note with no source", () => {
     const note = annotation({ source: null, kind: "region", quote: { text: "", before: "", after: "" } });
     const prompt = annotationPrompt(note, currentSource(note, null));
     expect(prompt).toContain("Location: page 4. No source location was found.");
-    expect(prompt).not.toContain("Text on the PDF");
+    expect(prompt).toContain("Asked: The comment is about the marked region of the page");
+    expect(prompt).not.toContain("Selected text");
   });
 });

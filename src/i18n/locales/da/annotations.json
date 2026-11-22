@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Kommentér et område",
-    "list": "Kommentarer ({{n}})"
+    "list": "Kommentarer ({{n}})",
+    "hide": "Skjul kommentarer"
   },
   "markBadge": "Kommentar {{label}}",
   "composer": {

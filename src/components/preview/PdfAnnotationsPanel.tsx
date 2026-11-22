@@ -65,7 +65,13 @@ export function PdfAnnotationsPanel({
   const store = () => usePdfAnnotationsStore.getState();
 
   useEffect(() => {
-    if (open && activeId) activeRef.current?.scrollIntoView?.({ block: "nearest" });
+    const item = activeRef.current;
+    const body = item?.closest<HTMLElement>("[data-side-panel-body]");
+    if (!open || !activeId || !item || !body) return;
+    const shown = body.getBoundingClientRect();
+    const box = item.getBoundingClientRect();
+    if (box.top < shown.top) body.scrollTop -= shown.top - box.top;
+    else if (box.bottom > shown.bottom) body.scrollTop += box.bottom - shown.bottom;
   }, [open, activeId]);
 
   const clearAll = async () => {
@@ -88,6 +94,19 @@ export function PdfAnnotationsPanel({
       closeLabel={t(($) => $.annotations.panel.close)}
       onClose={onClose}
       bodyClassName="px-2 pb-2 pt-0"
+      footer={
+        items.length > 0 ? (
+          <>
+            <Button variant="ghost" size="xs" onClick={() => void clearAll()}>
+              {t(($) => $.annotations.panel.clear)}
+            </Button>
+            <Button size="xs" className="gap-1.5" disabled={included.length === 0} onClick={() => onSend(included)}>
+              <Send className="size-3.5" />
+              {t(($) => $.annotations.panel.send, { n: included.length })}
+            </Button>
+          </>
+        ) : null
+      }
     >
       {error ? (
         <div className="mb-2">
@@ -243,22 +262,6 @@ export function PdfAnnotationsPanel({
           })}
         </ul>
       )}
-      {items.length > 0 ? (
-        <div className="sticky bottom-0 mt-2 flex items-center justify-between gap-2 border-t bg-popover px-1 pt-2">
-          <Button variant="ghost" size="xs" onClick={() => void clearAll()}>
-            {t(($) => $.annotations.panel.clear)}
-          </Button>
-          <Button
-            size="xs"
-            className="gap-1.5"
-            disabled={included.length === 0}
-            onClick={() => onSend(included)}
-          >
-            <Send className="size-3.5" />
-            {t(($) => $.annotations.panel.send, { n: included.length })}
-          </Button>
-        </div>
-      ) : null}
     </FloatingSidePanel>
   );
 }

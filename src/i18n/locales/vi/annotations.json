@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "Chú thích một vùng",
-    "list": "Chú thích ({{n}})"
+    "list": "Chú thích ({{n}})",
+    "hide": "Ẩn chú thích"
   },
   "markBadge": "Chú thích {{label}}",
   "composer": {

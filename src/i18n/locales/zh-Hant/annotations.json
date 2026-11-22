@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "註解區域",
-    "list": "註解（{{n}}）"
+    "list": "註解（{{n}}）",
+    "hide": "隱藏註解"
   },
   "markBadge": "註解 {{label}}",
   "composer": {

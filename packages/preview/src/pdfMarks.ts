@@ -272,10 +272,11 @@ function quoteContext(
     }
     if ((side === "start" && position < 0) || (side === "end" && position > 0)) pieces.push(piece);
   }
-  const characters = Array.from(collapseWhitespace(pieces.join(""), normalize));
+  const characters = Array.from(normalize(pieces.join("")).replace(/\s+/gu, " "));
   const kept =
     side === "start" ? characters.slice(-QUOTE_CONTEXT_LENGTH) : characters.slice(0, QUOTE_CONTEXT_LENGTH);
-  return kept.join("").trim();
+  const context = kept.join("");
+  return side === "start" ? context.trimStart() : context.trimEnd();
 }
 
 function snapPoint(node: Node, offset: number, side: Side): number {

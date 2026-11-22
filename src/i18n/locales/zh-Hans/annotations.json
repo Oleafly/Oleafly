@@ -1,7 +1,8 @@
 {
   "toolbar": {
     "region": "批注区域",
-    "list": "批注（{{n}}）"
+    "list": "批注（{{n}}）",
+    "hide": "隐藏批注"
   },
   "markBadge": "批注 {{label}}",
   "composer": {

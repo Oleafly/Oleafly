@@ -90,6 +90,22 @@ describe("PdfAnnotationsPanel", () => {
     expect(within(second).getByText(strings.status.sent)).toBeTruthy();
   });
 
+  it("scrolls the active note into its list without scrolling anything around the panel", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
+    const spy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      return this.hasAttribute("data-side-panel-body") ? rect(0, 100) : rect(150, 190);
+    });
+    seed([note(), note({ id: "b", number: 2 })]);
+    usePdfAnnotationsStore.setState({ activeId: "b" });
+    renderPanel();
+    const body = document.querySelector<HTMLElement>("[data-side-panel-body]") as HTMLElement;
+    expect(body.scrollTop).toBe(90);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   it("picks open notes to send by default and sends the ticked ones", async () => {
     seed([note(), note({ id: "b", number: 2, status: "sent" })]);
     const { onSend } = renderPanel();

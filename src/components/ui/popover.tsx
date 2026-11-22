@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { cn } from "@/lib/utils";
 
-const POPOVER_CONTENT =
-  "z-50 min-w-42 rounded-md border bg-card p-1 text-card-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+const POPOVER_MOTION =
+  "z-50 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+const POPOVER_CONTENT = `${POPOVER_MOTION} min-w-42 rounded-md border bg-card p-1 text-card-foreground`;
 const NESTED_POPUP = '[role="listbox"], [data-radix-popper-content-wrapper]';
 const HOVER_OPEN_MS = 250;
 const HOVER_CLOSE_MS = 200;
@@ -222,6 +223,7 @@ interface AnchoredPopoverProps {
   align?: "start" | "center" | "end";
   sideOffset?: number;
   hideWhenDetached?: boolean;
+  bare?: boolean;
   className?: string;
   ariaLabel: string;
   onOpenAutoFocus?: (event: Event) => void;
@@ -244,6 +246,7 @@ export function AnchoredPopover({
   align = "start",
   sideOffset = 4,
   hideWhenDetached = false,
+  bare = false,
   className,
   ariaLabel,
   onOpenAutoFocus,
@@ -281,7 +284,8 @@ export function AnchoredPopover({
           onCloseAutoFocus={onCloseAutoFocus}
           onEscapeKeyDown={onEscapeKeyDown}
           onInteractOutside={onInteractOutside}
-          className={cn(POPOVER_CONTENT, className)}
+          data-bare={bare ? "" : undefined}
+          className={cn(bare ? `${POPOVER_MOTION} rounded-lg` : POPOVER_CONTENT, className)}
         >
           {children}
         </PopoverPrimitive.Content>
