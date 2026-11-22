@@ -1512,6 +1512,9 @@ export const revealInDir = (path: string) =>
 export const revealProject = (projectId: string, path?: string | null) =>
   invoke<void>("reveal_project", { projectId, path: path ?? null });
 
+export const projectFilePath = (projectId: string, path: string) =>
+  invoke<string>("project_file_path", { projectId, path });
+
 export interface CopyIntoLibraryProgress {
   phase: "counting" | "copying";
   entriesDone: number;

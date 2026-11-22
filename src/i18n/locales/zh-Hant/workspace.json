@@ -55,7 +55,11 @@
     "insertLink": "插入連結",
     "copyLink": "複製連結",
     "linkCopied": "已複製連結",
-    "copyLinkFailed": "連結未複製。請檢查剪貼簿存取權後再試一次。"
+    "copyLinkFailed": "連結未複製。請檢查剪貼簿存取權後再試一次。",
+    "copyPath": "複製路徑",
+    "copyRelativePath": "複製相對路徑",
+    "pathCopied": "已複製路徑",
+    "copyPathFailed": "路徑未複製。請檢查剪貼簿存取權後再試一次。"
   },
   "explorer": {
     "resizeSections": "調整 {{first}} 與 {{second}} 的大小"

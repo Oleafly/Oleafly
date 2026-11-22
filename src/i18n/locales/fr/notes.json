@@ -1485,18 +1485,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Apparence des notes",
-      "resetAriaLabel": "Rétablir la valeur par défaut du réglage {{setting}}",
       "text": {
         "title": "Texte"
       },
       "typeface": {
         "label": "Type de police",
-        "description": "Choisissez un type de police pour le texte des notes.",
-        "options": {
-          "sans": "Sans empattement",
-          "serif": "Avec empattement",
-          "mono": "Chasse fixe"
-        }
+        "description": "Choisissez un type de police pour le texte des notes."
       },
       "font": {
         "label": "Police des notes",
@@ -1515,23 +1509,14 @@
       },
       "paragraphSpacing": {
         "label": "Espacement des paragraphes",
-        "description": "Définissez l'espace entre les paragraphes, les listes et les autres blocs.",
-        "options": {
-          "compact": "Compact",
-          "normal": "Normal",
-          "relaxed": "Aéré",
-          "spacious": "Spacieux"
-        }
+        "description": "Définissez l'espace entre les paragraphes, les listes et les autres blocs."
       },
       "headings": {
         "title": "Titres de section et titre"
       },
       "headingTypeface": {
         "label": "Type de police des titres",
-        "description": "Choisissez un type de police pour les titres de section et le titre de la note.",
-        "options": {
-          "text": "Comme le texte"
-        }
+        "description": "Choisissez un type de police pour les titres de section et le titre de la note."
       },
       "headingFont": {
         "label": "Police des titres",
@@ -1539,12 +1524,7 @@
       },
       "headingSize": {
         "label": "Taille des titres de section",
-        "description": "Définissez la taille des titres de section par rapport au texte.",
-        "options": {
-          "small": "Plus petits",
-          "normal": "Normale",
-          "large": "Plus grands"
-        }
+        "description": "Définissez la taille des titres de section par rapport au texte."
       },
       "titleSize": {
         "label": "Taille du titre",

@@ -113,6 +113,15 @@ describe("checkpoint publication events", () => {
     expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
+  it("refreshes the panel when a compile matches an older checkpoint", () => {
+    applyCheckpointPublicationEvent(
+      finished({ status: "published", snapshot_root: "older", created: false }),
+    );
+
+    expect(useSettingsStore.getState().checkpointsRevision).toBe(1);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+
   it("treats an unchanged source as a silent outcome", async () => {
     applyCheckpointPublicationEvent(started());
 

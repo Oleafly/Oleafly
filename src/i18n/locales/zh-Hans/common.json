@@ -24,7 +24,10 @@
     "no": "否",
     "learnMore": "了解更多",
     "showMore": "显示更多",
-    "showLess": "收起"
+    "showLess": "收起",
+    "showInFinder": "在 Finder 中显示",
+    "showInExplorer": "在文件资源管理器中显示",
+    "showInFileManager": "在文件管理器中显示"
   },
   "state": {
     "loading": "正在加载…",

@@ -663,9 +663,6 @@
       "permissionDenied": "Немає доступу"
     },
     "menu": {
-      "showInFinder": "Показати у Finder",
-      "showInExplorer": "Показати у Провіднику",
-      "showInFileManager": "Показати у файловому менеджері",
       "copyToLibrary": "Скопіювати до бібліотеки",
       "remove": "Прибрати з Oleafly"
     },

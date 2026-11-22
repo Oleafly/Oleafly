@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} är inte installerat, så standardteckensnittet används i stället.",
     "preview": {
       "darkMode": {
-        "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
-        "label": "Mörkt läge för PDF"
+        "description": "Med Följ appens tema blir sidorna mörka när appen är mörk. I ljust läge ser de ut som tryckta, eller behåller den ljusa ton du har valt, till exempel sepia. Knappen för att invertera färger i förhandsvisningens verktygsfält ställer om detta till På eller Av.",
+        "label": "Mörkt läge för PDF",
+        "modes": {
+          "follow": "Följ appens tema",
+          "off": "Av",
+          "on": "På"
+        }
       },
       "darkColors": {
         "label": "Färger för mörk sida",
@@ -1031,6 +1036,7 @@
     "tabs": {
       "app": "App",
       "editor": "Redigerare",
+      "visual": "Visuellt läge",
       "files": "Projekt",
       "pdf": "PDF-förhandsvisning",
       "terminal": "Terminal",
@@ -1167,6 +1173,115 @@
         "label": "Visa PDF:en vid kompilering"
       },
       "title": "Zen-läge"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Sans serif",
+        "serif": "Serif",
+        "mono": "Fast bredd",
+        "text": "Samma som texten"
+      },
+      "paragraphSpacings": {
+        "compact": "Kompakt",
+        "normal": "Normal",
+        "relaxed": "Luftig",
+        "spacious": "Rymlig"
+      },
+      "headingSizes": {
+        "small": "Mindre",
+        "normal": "Normal",
+        "large": "Större"
+      }
+    },
+    "resetSetting": "Återställ {{setting}} till standard",
+    "visual": {
+      "intro": "Välj hur LaTeX- och Typst-filer ser ut i visuellt läge. Dina filer och PDF:en ändras inte. Vill du formatera Markdown också slår du på dess reglage under Layout. Text- och länkfärger anges i Redigerarens färger på fliken Redigerare.",
+      "matchEditor": "Samma som redigeraren",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typsnittsstil",
+        "description": "Välj typsnittsstil för text i visuellt läge."
+      },
+      "font": {
+        "label": "Typsnitt för visuellt läge",
+        "description": "Välj valfritt installerat typsnitt för text i visuellt läge. Lämna tomt för att använda inställningen Typsnittsstil."
+      },
+      "fontSize": {
+        "label": "Textstorlek",
+        "description": "Ange storleken på text i visuellt läge. Samma som redigeraren följer redigerarens teckenstorlek.",
+        "customLabel": "Anpassad textstorlek i visuellt läge i pixlar"
+      },
+      "lineHeight": {
+        "label": "Radhöjd",
+        "description": "Ange avståndet mellan textens rader. Samma som redigeraren följer redigerarens radhöjd.",
+        "customLabel": "Anpassad radhöjd i visuellt läge"
+      },
+      "paragraphSpacing": {
+        "label": "Styckeavstånd",
+        "description": "Ange hur hög den tomma raden mellan två stycken är."
+      },
+      "paragraphIndent": {
+        "label": "Styckeindrag",
+        "description": "Dra in första raden i varje stycke, som PDF:en gör. LaTeX drar inte in stycket efter en rubrik, och Typst drar bara in ett stycke som kommer efter ett annat.",
+        "none": "Inget",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Textjustering",
+        "description": "Låt högerkanten vara ojämn eller justera raderna mot båda kanterna.",
+        "options": {
+          "start": "Vänster",
+          "justify": "Marginaljusterad"
+        }
+      },
+      "headings": {
+        "title": "Rubriker och dokumenttitel"
+      },
+      "headingTypeface": {
+        "label": "Typsnittsstil för rubriker",
+        "description": "Välj typsnittsstil för rubriker och dokumenttiteln."
+      },
+      "headingFont": {
+        "label": "Typsnitt för rubriker",
+        "description": "Välj ett installerat typsnitt för rubriker och dokumenttiteln. Lämna tomt för att använda inställningen Typsnittsstil för rubriker."
+      },
+      "headingSize": {
+        "label": "Rubrikstorlek",
+        "description": "Ange hur stora rubrikerna är jämfört med texten."
+      },
+      "headingColor": {
+        "label": "Rubrikfärg",
+        "description": "Färg för rubriker och dokumenttiteln. Redigerarens tema behåller den rubrikfärg som redigerarens tema ger dem.",
+        "matchTheme": "Redigerarens tema",
+        "customAriaLabel": "Välj en anpassad rubrikfärg"
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Textbredd",
+        "description": "Ange hur lång en rad blir innan den bryts.",
+        "options": {
+          "narrow": "Smal",
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Full bredd"
+        }
+      },
+      "markdown": {
+        "label": "Använd även för Markdown",
+        "description": "Använd det här utseendet för Markdown-filer i visuellt läge också. När det är av behåller Markdown appens typsnitt."
+      },
+      "preview": {
+        "label": "Förhandsvisning av visuellt läge",
+        "heading": "Inledning",
+        "first": "Visuellt läge visar rubriker och stycken i stället för kommandona som skapar dem.",
+        "second": "Det här stycket kommer efter en tom rad. Ett styckeindrag flyttar in dess första rad.",
+        "subheading": "Metod",
+        "third": "Ändra en inställning så ändras den här texten med den."
+      }
     }
   },
   "checkpoints": {

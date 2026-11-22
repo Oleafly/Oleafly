@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Muistiinpanojen ulkoasu",
-      "resetAriaLabel": "Palauta oletusarvo: {{setting}}",
       "text": {
         "title": "Teksti"
       },
       "typeface": {
         "label": "Kirjaintyyppi",
-        "description": "Valitse muistiinpanojen tekstin kirjaintyyppi.",
-        "options": {
-          "sans": "Groteski",
-          "serif": "Antiikva",
-          "mono": "Tasalevyinen"
-        }
+        "description": "Valitse muistiinpanojen tekstin kirjaintyyppi."
       },
       "font": {
         "label": "Muistiinpanojen fontti",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Kappaleväli",
-        "description": "Aseta kappaleiden, luetteloiden ja muiden lohkojen välinen tila.",
-        "options": {
-          "compact": "Tiivis",
-          "normal": "Normaali",
-          "relaxed": "Väljä",
-          "spacious": "Tilava"
-        }
+        "description": "Aseta kappaleiden, luetteloiden ja muiden lohkojen välinen tila."
       },
       "headings": {
         "title": "Otsikot ja nimi"
       },
       "headingTypeface": {
         "label": "Otsikoiden kirjaintyyppi",
-        "description": "Valitse otsikoiden ja muistiinpanon nimen kirjaintyyppi.",
-        "options": {
-          "text": "Sama kuin tekstissä"
-        }
+        "description": "Valitse otsikoiden ja muistiinpanon nimen kirjaintyyppi."
       },
       "headingFont": {
         "label": "Otsikoiden fontti",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Otsikoiden koko",
-        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna.",
-        "options": {
-          "small": "Pienempi",
-          "normal": "Normaali",
-          "large": "Suurempi"
-        }
+        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna."
       },
       "titleSize": {
         "label": "Nimen koko",

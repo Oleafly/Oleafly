@@ -317,6 +317,10 @@
       "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
       "label": "Slå Zen-modus av eller på"
     },
+    "visualSettings": {
+      "keywords": "utseende skrift skrifttype tekststørrelse avsnittsinnrykk avstand justering overskrifter skriving",
+      "label": "Innstillinger for Visuell modus"
+    },
     "togglePreview": {
       "keywords": "pdf forhåndsvisning vis skjul delt bare editor",
       "label": "Vis eller skjul PDF-forhåndsvisning"
@@ -502,7 +506,15 @@
       "run": "Kjør kode på denne maskinen"
     },
     "sharedViewer": "Bare eiere og redaktører kan endre disse innstillingene i et delt prosjekt.",
-    "coauthorsChanged": "Endret av medforfattere siden siste kompilering"
+    "coauthorsChanged": "Endret av medforfattere siden siste kompilering",
+    "texRootDocument": "rot: {{path}} (har sin egen \\documentclass)",
+    "texRootInclude": "rot: {{path}} (inkluderer {{file}})",
+    "target": {
+      "title": "Kompileringsmål",
+      "help": "Med Følg den åpne filen kompileres en fil med sin egen \\documentclass for seg selv. Et kapittel eller avsnitt kompilerer dokumentet som inkluderer det. Andre filer kompilerer hoveddokumentet. En % !TEX root-kommentar går alltid foran.",
+      "open": "Følg den åpne filen",
+      "main": "Alltid hoveddokumentet"
+    }
   },
   "datePicker": {
     "placeholder": "Velg en dato"
@@ -1115,7 +1127,7 @@
       "empty": "Ingen innstillinger passer",
       "keywords": {
         "ai": "assistent, chat, modeller, leverandører, API-nøkler, agenter, ledetekster, prompter, budsjett, MCP-servere",
-        "appearance": "tema, mørk modus, lys modus, farge, skrift, skrifttyper, tekststørrelse, zoom, oppsett",
+        "appearance": "tema, mørk modus, lys modus, farge, skrift, skrifttyper, tekststørrelse, zoom, oppsett, visuell modus, skrifttype, avsnittsinnrykk, blokkjustering",
         "collaboration": "servere, logge inn, innlogging, enheter, medlemmer, vedlikeholdere, deling, team, lab, redigering i sanntid, sanntid, sikkerhetslogg",
         "data": "sikkerhetskopi, bibliotekmappe, prosjektmappe, lagring, lagringsplass, diskplass, papirkurv, slette prosjekter, sjekkpunkter",
         "dictionary": "stavemåte, rettskriving, egne ord, ignorerte ord, korrektur, grammatikkregler",

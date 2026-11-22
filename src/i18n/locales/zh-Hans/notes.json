@@ -1427,18 +1427,12 @@
   "appearance": {
     "notes": {
       "sectionName": "笔记外观",
-      "resetAriaLabel": "将{{setting}}恢复为默认值",
       "text": {
         "title": "正文"
       },
       "typeface": {
         "label": "字体类型",
-        "description": "选择笔记正文的字体类型。",
-        "options": {
-          "sans": "无衬线",
-          "serif": "衬线",
-          "mono": "等宽"
-        }
+        "description": "选择笔记正文的字体类型。"
       },
       "font": {
         "label": "笔记字体",
@@ -1457,23 +1451,14 @@
       },
       "paragraphSpacing": {
         "label": "段落间距",
-        "description": "设置段落、列表和其他块之间的间距。",
-        "options": {
-          "compact": "紧凑",
-          "normal": "标准",
-          "relaxed": "宽松",
-          "spacious": "宽敞"
-        }
+        "description": "设置段落、列表和其他块之间的间距。"
       },
       "headings": {
         "title": "标题与笔记标题"
       },
       "headingTypeface": {
         "label": "标题字体类型",
-        "description": "为标题和笔记标题选择字体类型。",
-        "options": {
-          "text": "与正文相同"
-        }
+        "description": "为标题和笔记标题选择字体类型。"
       },
       "headingFont": {
         "label": "标题字体",
@@ -1481,12 +1466,7 @@
       },
       "headingSize": {
         "label": "标题大小",
-        "description": "设置标题相对于正文的大小。",
-        "options": {
-          "small": "较小",
-          "normal": "标准",
-          "large": "较大"
-        }
+        "description": "设置标题相对于正文的大小。"
       },
       "titleSize": {
         "label": "笔记标题大小",

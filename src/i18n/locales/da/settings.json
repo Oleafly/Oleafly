@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} er ikke installeret, så standardskrifttypen bruges i stedet.",
     "preview": {
       "darkMode": {
-        "description": "Vend PDF'ens farver om som udgangspunkt. Du kan stadig skifte farver på forhåndsvisningens værktøjslinje.",
-        "label": "Mørk tilstand til PDF"
+        "description": "Med Følg appens tema bliver siderne mørke, når appen er mørk. I lys tilstand ser de ud som på tryk, eller de beholder den lyse tone, du har valgt, fx sepia. Knappen til at vende farverne om på forhåndsvisningens værktøjslinje sætter dette til Til eller Fra.",
+        "label": "Mørk tilstand til PDF",
+        "modes": {
+          "follow": "Følg appens tema",
+          "off": "Fra",
+          "on": "Til"
+        }
       },
       "darkColors": {
         "label": "Farver til den mørke side",
@@ -1031,6 +1036,7 @@
     "tabs": {
       "app": "App",
       "editor": "Editor",
+      "visual": "Visuel tilstand",
       "files": "Projekt",
       "pdf": "PDF-forhåndsvisning",
       "terminal": "Terminal",
@@ -1167,6 +1173,115 @@
         "label": "Vis PDF'en ved kompilering"
       },
       "title": "Zen-tilstand"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Uden seriffer",
+        "serif": "Med seriffer",
+        "mono": "Monospace",
+        "text": "Samme som teksten"
+      },
+      "paragraphSpacings": {
+        "compact": "Kompakt",
+        "normal": "Normal",
+        "relaxed": "Luftig",
+        "spacious": "Rummelig"
+      },
+      "headingSizes": {
+        "small": "Mindre",
+        "normal": "Normal",
+        "large": "Større"
+      }
+    },
+    "resetSetting": "Nulstil {{setting}} til standard",
+    "visual": {
+      "intro": "Vælg, hvordan LaTeX- og Typst-filer ser ud i Visuel tilstand. Dine filer og PDF-filen ændres ikke. Hvis Markdown også skal have udseendet, så slå dens kontakt til under Layout. Farver til tekst og links indstilles i Editorens farver på fanen Editor.",
+      "matchEditor": "Som editoren",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Skriftstil",
+        "description": "Vælg en skriftstil til tekst i Visuel tilstand."
+      },
+      "font": {
+        "label": "Skrifttype i Visuel tilstand",
+        "description": "Vælg en hvilken som helst installeret skrifttype til tekst i Visuel tilstand. Lad feltet være tomt for at bruge indstillingen Skriftstil."
+      },
+      "fontSize": {
+        "label": "Tekststørrelse",
+        "description": "Indstil størrelsen på tekst i Visuel tilstand. Som editoren følger editorens skriftstørrelse.",
+        "customLabel": "Brugerdefineret tekststørrelse i Visuel tilstand i pixel"
+      },
+      "lineHeight": {
+        "label": "Linjehøjde",
+        "description": "Indstil afstanden mellem linjerne i teksten. Som editoren følger editorens linjehøjde.",
+        "customLabel": "Brugerdefineret linjehøjde i Visuel tilstand"
+      },
+      "paragraphSpacing": {
+        "label": "Afstand mellem afsnit",
+        "description": "Indstil, hvor høj den tomme linje mellem to afsnit er."
+      },
+      "paragraphIndent": {
+        "label": "Indrykning af afsnit",
+        "description": "Ryk første linje i hvert afsnit ind, som PDF-filen gør. LaTeX lader afsnittet efter en overskrift være, og Typst rykker kun et afsnit ind, der følger efter et andet.",
+        "none": "Ingen",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Tekstjustering",
+        "description": "Lad højre kant være ujævn, eller stræk linjerne ud til begge kanter.",
+        "options": {
+          "start": "Venstre",
+          "justify": "Lige margener"
+        }
+      },
+      "headings": {
+        "title": "Overskrifter og titel"
+      },
+      "headingTypeface": {
+        "label": "Skriftstil til overskrifter",
+        "description": "Vælg en skriftstil til overskrifter og dokumentets titel."
+      },
+      "headingFont": {
+        "label": "Skrifttype til overskrifter",
+        "description": "Vælg en installeret skrifttype til overskrifter og dokumentets titel. Lad feltet være tomt for at bruge indstillingen Skriftstil til overskrifter."
+      },
+      "headingSize": {
+        "label": "Størrelse på overskrifter",
+        "description": "Indstil, hvor store overskrifter er i forhold til teksten."
+      },
+      "headingColor": {
+        "label": "Farve på overskrifter",
+        "description": "Farven på overskrifter og dokumentets titel. Editorens tema beholder den overskriftsfarve, som dit editortema giver dem.",
+        "matchTheme": "Editorens tema",
+        "customAriaLabel": "Vælg en brugerdefineret farve til overskrifter"
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Tekstbredde",
+        "description": "Indstil, hvor lang en linje bliver, før den ombrydes.",
+        "options": {
+          "narrow": "Smal",
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Fuld bredde"
+        }
+      },
+      "markdown": {
+        "label": "Brug også til Markdown",
+        "description": "Brug dette udseende også til Markdown-filer i Visuel tilstand. Når det er slået fra, beholder Markdown appens skrifttype."
+      },
+      "preview": {
+        "label": "Eksempel på Visuel tilstand",
+        "heading": "Indledning",
+        "first": "Visuel tilstand viser overskrifter og afsnit i stedet for de kommandoer, der laver dem.",
+        "second": "Dette afsnit kommer efter en tom linje. En indrykning af afsnit rykker afsnittets første linje ind.",
+        "subheading": "Metode",
+        "third": "Skift en indstilling, og denne tekst ændrer sig med den."
+      }
     }
   },
   "checkpoints": {

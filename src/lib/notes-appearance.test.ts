@@ -8,9 +8,7 @@ import {
   NOTES_TEXT_REPLACEMENTS,
   TEXT_REPLACEMENT_LIMITS,
   clampNotesFontSize,
-  clampNotesLineHeight,
   normalizeNotesSetting,
-  notesOption,
   readNotesAppearance,
   type NotesAppearance,
 } from "./notes-appearance";
@@ -21,12 +19,12 @@ import {
   notesAppearanceVariables,
   notesCodeFont,
   notesHeadingFont,
-  notesLineHeightValue,
-  notesSettingIsDefault,
   notesTextFont,
   readableForeground,
   resolveNotesCodeTheme,
 } from "./notes-appearance-style";
+import { sameValue } from "./same-value";
+import { appearanceOption, clampLineHeight, lineHeightValue } from "./text-appearance";
 
 const defaults = (): NotesAppearance => ({ ...NOTES_APPEARANCE_DEFAULTS });
 
@@ -157,19 +155,19 @@ describe("Notes number limits", () => {
     expect(clampNotesFontSize(2)).toBe(10);
     expect(clampNotesFontSize(99)).toBe(40);
     expect(clampNotesFontSize(13.46)).toBe(13.5);
-    expect(clampNotesLineHeight(Number.POSITIVE_INFINITY)).toBe(1.7);
-    expect(clampNotesLineHeight(0.2)).toBe(1);
-    expect(clampNotesLineHeight(9)).toBe(3);
-    expect(clampNotesLineHeight(1.234)).toBe(1.23);
-    expect(notesLineHeightValue("custom", 7)).toBe(3);
-    expect(notesLineHeightValue("wide", 1.2)).toBe(2);
+    expect(clampLineHeight(Number.POSITIVE_INFINITY)).toBe(1.7);
+    expect(clampLineHeight(0.2)).toBe(1);
+    expect(clampLineHeight(9)).toBe(3);
+    expect(clampLineHeight(1.234)).toBe(1.23);
+    expect(lineHeightValue("custom", 7)).toBe(3);
+    expect(lineHeightValue("wide", 1.2)).toBe(2);
   });
 });
 
 describe("normalizing a Notes setting", () => {
   it("keeps only the choices it knows", () => {
-    expect(notesOption(["a", "b"], "b", "a")).toBe("b");
-    expect(notesOption(["a", "b"], "c", "a")).toBe("a");
+    expect(appearanceOption(["a", "b"], "b", "a")).toBe("b");
+    expect(appearanceOption(["a", "b"], "c", "a")).toBe("a");
     expect(normalizeNotesSetting("notesTypeface", "serif")).toBe("serif");
     expect(normalizeNotesSetting("notesTypeface", "comic")).toBe("sans");
     expect(normalizeNotesSetting("notesWidth", "full")).toBe("full");
@@ -242,21 +240,14 @@ describe("normalizing a Notes setting", () => {
 });
 
 describe("comparing with the defaults", () => {
-  it("tells which Notes keys differ", () => {
-    const state = { ...defaults(), accentColor: "#123456", notesTitleSize: 28 };
-    expect(notesSettingIsDefault(state, "notesTypeface")).toBe(true);
-    expect(notesSettingIsDefault(state, "notesTitleSize")).toBe(false);
-  });
-
   it("counts the built-in replacement pairs as the default after a save and a reload", () => {
     const stored = JSON.stringify(NOTES_TEXT_REPLACEMENTS);
     const reloaded = readNotesAppearance((key) => (key === NOTES_APPEARANCE_STORAGE_KEYS.notesTextReplacements ? stored : null));
     expect(reloaded.notesTextReplacements).not.toBe(NOTES_TEXT_REPLACEMENTS);
-    expect(notesSettingIsDefault(reloaded, "notesTextReplacements")).toBe(true);
-    const saved = { ...defaults(), notesTextReplacements: normalizeNotesSetting("notesTextReplacements", { ...NOTES_TEXT_REPLACEMENTS }) };
-    expect(notesSettingIsDefault(saved, "notesTextReplacements")).toBe(true);
-    const changed = { ...defaults(), notesTextReplacements: { ...NOTES_TEXT_REPLACEMENTS, "(c)": "©" } };
-    expect(notesSettingIsDefault(changed, "notesTextReplacements")).toBe(false);
+    expect(sameValue(reloaded.notesTextReplacements, NOTES_TEXT_REPLACEMENTS)).toBe(true);
+    const saved = normalizeNotesSetting("notesTextReplacements", { ...NOTES_TEXT_REPLACEMENTS });
+    expect(sameValue(saved, NOTES_TEXT_REPLACEMENTS)).toBe(true);
+    expect(sameValue({ ...NOTES_TEXT_REPLACEMENTS, "(c)": "©" }, NOTES_TEXT_REPLACEMENTS)).toBe(false);
   });
 });
 

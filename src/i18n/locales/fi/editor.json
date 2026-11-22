@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Piilota versiointi",
     "title": "Versiointi",
-    "close": "Sulje versiointi",
-    "views": "Versioinnin näkymät",
-    "gitHistory": "Git-historia",
-    "savedCheckpoints": "Tallennetut tarkistuspisteet"
+    "close": "Sulje versiointi"
   },
   "wordCount": {
     "close": "Sulje projektin tiedot"
@@ -453,20 +450,6 @@
     "fontPackAction": "Lataa ja käännä",
     "fontPackDownloading": "Ladataan…",
     "fontPackFailed": "Fonttipakettia ei voitu ladata. Tarkista yhteys ja yritä uudelleen."
-  },
-  "history": {
-    "untitledCommit": "Nimetön commit",
-    "restoreFailed": "Tuota Git-versiota ei voitu palauttaa.",
-    "copyIdFailed": "Commitin tunnusta ei voitu kopioida.",
-    "empty": "Ei vielä Git-historiaa",
-    "emptyHint": "Ota versionhallinta käyttöön ja tee commit, kun haluat version tähän.",
-    "commitIdCopied": "Commitin tunnus kopioitu",
-    "copyCommitId": "Kopioi koko commitin tunnus",
-    "copyCommitIdFor": "Kopioi commitin tunnus {{id}}",
-    "overwriteTooltip": "Korvaa kaikki tiedostot tällä versiolla",
-    "overwriteAll": "Korvaa kaikki",
-    "restoreTooltip": "Palauta tämä versio (korvaa kaikki tiedostot)",
-    "restore": "Palauta"
   },
   "diff": {
     "reloadFailed": "Vertailua ei voitu ladata uudelleen. Sulje tämä välilehti ja avaa se uudestaan.",
@@ -571,9 +554,6 @@
     "unsupported": "Kielentarkistusta ei tueta tälle dokumenttimuodolle."
   },
   "checkpoints": {
-    "showInExplorer": "Näytä Resurssienhallinnassa",
-    "showInFinder": "Näytä Finderissa",
-    "showInFileManager": "Näytä tiedostonhallinnassa",
     "timeNotRecorded": "Aikaa ei kirjattu",
     "justNow": "Juuri nyt",
     "fallbackName": "Tarkistuspiste",
@@ -649,12 +629,13 @@
       "deleteCheckpoint": "Poista tarkistuspiste",
       "restoreFor": "Palauta {{version}}",
       "restore": "Palauta",
-      "deleteFor": "Poista {{version}}"
+      "deleteFor": "Poista {{version}}",
+      "current": "Nykyinen"
     },
     "toast": {
       "copyIdFailed": "Tarkistuspisteen tunnusta ei voitu kopioida.",
       "saveLabelFailed": "Tarkistuspisteen nimeä ei voitu tallentaa.",
-      "restored": "Tarkistuspiste palautettiin.",
+      "restored": "{{version}} palautettiin. Versioinnissa sillä on nyt tunniste Nykyinen.",
       "restoreFailed": "Tätä tarkistuspistettä ei voitu palauttaa. Katso lisätiedot sovelluslokista.",
       "deleted": "Tarkistuspiste poistettiin.",
       "deleteFailed": "Tätä tarkistuspistettä ei voitu poistaa.",
@@ -713,7 +694,7 @@
     "maintenance": {
       "title": "Ylläpito",
       "description": "Poista tarkistuspisteet, joita tämä projekti ei enää tarvitse.",
-      "keepLatestPrompt": "Poistetaanko kaikki tarkistuspisteet viimeisintä lukuun ottamatta? Tätä ei voi kumota.",
+      "keepLatestPrompt": "Poistetaanko kaikki tarkistuspisteet viimeisintä ja Nykyinen-tunnisteella merkittyä lukuun ottamatta? Tätä ei voi kumota.",
       "deleteOlder": "Poista vanhemmat tarkistuspisteet",
       "keepAll": "Säilytä kaikki tarkistuspisteet",
       "resetPrompt": "Poistetaanko tämän projektin kaikki tarkistuspisteet? Projektin nykyiset tiedostot säilyvät ennallaan. Tätä ei voi kumota.",

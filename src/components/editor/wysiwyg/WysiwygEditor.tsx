@@ -521,7 +521,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
           </Button>
         </output>
       ) : null}
-      <div data-keep-scroll className="wysiwyg-content flex min-h-0 flex-1 flex-col overflow-auto">
+      <div data-keep-scroll data-visual-document className="wysiwyg-content flex min-h-0 flex-1 flex-col overflow-auto">
         {hasDocumentEnv && (
           <div className="mx-auto w-full max-w-[42rem] px-8 pt-6">
             <div className="rounded-md border border-border">

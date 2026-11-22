@@ -55,7 +55,11 @@
     "insertLink": "Lisää linkki",
     "copyLink": "Kopioi linkki",
     "linkCopied": "Linkki kopioitu",
-    "copyLinkFailed": "Linkkiä ei kopioitu. Tarkista leikepöydän käyttöoikeus ja yritä uudelleen."
+    "copyLinkFailed": "Linkkiä ei kopioitu. Tarkista leikepöydän käyttöoikeus ja yritä uudelleen.",
+    "copyPath": "Kopioi polku",
+    "copyRelativePath": "Kopioi suhteellinen polku",
+    "pathCopied": "Polku kopioitu",
+    "copyPathFailed": "Polkua ei kopioitu. Tarkista leikepöydän käyttöoikeus ja yritä uudelleen."
   },
   "explorer": {
     "resizeSections": "Muuta osioiden {{first}} ja {{second}} kokoa"

@@ -24,7 +24,10 @@
     "no": "아니요",
     "learnMore": "자세히 알아보기",
     "showMore": "더 보기",
-    "showLess": "간략히 보기"
+    "showLess": "간략히 보기",
+    "showInFinder": "Finder에서 보기",
+    "showInExplorer": "파일 탐색기에서 보기",
+    "showInFileManager": "파일 관리자에서 보기"
   },
   "state": {
     "loading": "불러오는 중…",

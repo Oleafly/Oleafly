@@ -317,6 +317,10 @@
       "keywords": "ablenkungsfrei Fokus Vollbild Oberfläche ausblenden minimal schreiben",
       "label": "Zen-Modus ein- oder ausschalten"
     },
+    "visualSettings": {
+      "keywords": "Darstellung Schrift Schriftart Text Größe Absatz Einzug Abstand Blocksatz Überschrift Schreiben",
+      "label": "Einstellungen für den visuellen Modus"
+    },
     "togglePreview": {
       "keywords": "pdf vorschau anzeigen ausblenden geteilt nur editor",
       "label": "PDF-Vorschau ein- oder ausblenden"
@@ -502,7 +506,15 @@
       "run": "Code auf diesem Computer ausführen"
     },
     "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern.",
-    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert"
+    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert",
+    "texRootDocument": "root: {{path}} (hat eine eigene \\documentclass)",
+    "texRootInclude": "root: {{path}} (bindet {{file}} ein)",
+    "target": {
+      "title": "Kompilierziel",
+      "help": "Mit „Der geöffneten Datei folgen“ wird eine Datei mit eigener \\documentclass für sich kompiliert. Ein Kapitel oder Abschnitt kompiliert das Dokument, das es einbindet. Andere Dateien kompilieren das Hauptdokument. Ein % !TEX root-Kommentar hat immer Vorrang.",
+      "open": "Der geöffneten Datei folgen",
+      "main": "Immer das Hauptdokument"
+    }
   },
   "datePicker": {
     "placeholder": "Datum wählen"
@@ -1115,7 +1127,7 @@
       "empty": "Keine passenden Einstellungen",
       "keywords": {
         "ai": "Assistent, Chat, Modelle, Anbieter, API-Schlüssel, Agenten, Prompts, Budget, MCP-Server",
-        "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout",
+        "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout, visueller Modus, Schriftart, Absatzeinzug, Blocksatz",
         "collaboration": "Server, Anmelden, Anmeldung, Geräte, Mitglieder, Maintainer, Teilen, Teams, Labore, Arbeitsgruppen, Live-Bearbeitung, Echtzeit, Sicherheitsprotokoll, Zusammenarbeit, Kollaboration",
         "data": "Backup, Sicherung, Bibliotheksordner, Projektordner, Speicher, Speicherplatz, Papierkorb, Projekte löschen, Checkpoints",
         "dictionary": "Rechtschreibung, eigene Wörter, ignorierte Wörter, Korrektur, Korrekturlesen, Grammatikregeln",

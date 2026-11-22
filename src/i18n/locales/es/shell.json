@@ -318,6 +318,10 @@
       "keywords": "sin distracciones concentración pantalla completa ocultar interfaz mínimo escritura",
       "label": "Activar o desactivar el modo Zen"
     },
+    "visualSettings": {
+      "keywords": "apariencia tipografía tipo de letra texto tamaño párrafo sangría espaciado justificar títulos escritura",
+      "label": "Ajustes del modo Visual"
+    },
     "togglePreview": {
       "keywords": "pdf vista previa mostrar ocultar dividir solo editor",
       "label": "Alternar la vista previa del PDF"
@@ -503,7 +507,15 @@
       "run": "Ejecutar código en este equipo"
     },
     "sharedViewer": "Solo los propietarios y los editores pueden cambiar estos ajustes en un proyecto compartido.",
-    "coauthorsChanged": "Cambiado por coautores desde tu última compilación"
+    "coauthorsChanged": "Cambiado por coautores desde tu última compilación",
+    "texRootDocument": "raíz: {{path}} (tiene su propio \\documentclass)",
+    "texRootInclude": "raíz: {{path}} (incluye {{file}})",
+    "target": {
+      "title": "Destino de compilación",
+      "help": "Con Seguir el archivo abierto, un archivo con su propio \\documentclass se compila por sí solo. Un capítulo o una sección compila el documento que lo incluye. Los demás archivos compilan el documento principal. Un comentario % !TEX root siempre tiene prioridad.",
+      "open": "Seguir el archivo abierto",
+      "main": "Siempre el documento principal"
+    }
   },
   "datePicker": {
     "placeholder": "Elige una fecha"
@@ -1131,7 +1143,7 @@
       "empty": "Ningún ajuste coincide",
       "keywords": {
         "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
-        "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
+        "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño, modo visual, tipo de letra, sangría de párrafo, justificar",
         "collaboration": "servidores, iniciar sesión, dispositivos, miembros, mantenedores, compartir, equipos, laboratorios, edición en tiempo real, tiempo real, registro de seguridad",
         "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
         "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",

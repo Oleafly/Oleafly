@@ -411,10 +411,7 @@
   "versioning": {
     "dismiss": "Zavřít správu verzí",
     "title": "Správa verzí",
-    "close": "Zavřít správu verzí",
-    "views": "Zobrazení správy verzí",
-    "gitHistory": "Historie Git",
-    "savedCheckpoints": "Uložené záchytné body"
+    "close": "Zavřít správu verzí"
   },
   "wordCount": {
     "close": "Zavřít informace o projektu"
@@ -467,20 +464,6 @@
     "fontPackAction": "Stáhnout a přeložit",
     "fontPackDownloading": "Stahování…",
     "fontPackFailed": "Balíček písem se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu."
-  },
-  "history": {
-    "untitledCommit": "Commit bez názvu",
-    "restoreFailed": "Tuto verzi z Gitu se nepodařilo obnovit.",
-    "copyIdFailed": "Toto ID commitu se nepodařilo zkopírovat.",
-    "empty": "Zatím žádná historie Git",
-    "emptyHint": "Inicializujte správu verzí a pak commitněte, až tu budete chtít mít verzi.",
-    "commitIdCopied": "ID commitu zkopírováno",
-    "copyCommitId": "Kopírovat celé ID commitu",
-    "copyCommitIdFor": "Kopírovat ID commitu {{id}}",
-    "overwriteTooltip": "Přepsat všechny soubory touto verzí",
-    "overwriteAll": "Přepsat vše",
-    "restoreTooltip": "Obnovit tuto verzi (přepíše všechny soubory)",
-    "restore": "Obnovit"
   },
   "diff": {
     "reloadFailed": "Porovnání se nepodařilo znovu načíst. Zavřete tuto kartu a otevřete ji znovu.",
@@ -585,9 +568,6 @@
     "unsupported": "Korektura není pro tento formát dokumentu podporovaná."
   },
   "checkpoints": {
-    "showInExplorer": "Zobrazit v Průzkumníku",
-    "showInFinder": "Zobrazit ve Finderu",
-    "showInFileManager": "Zobrazit ve správci souborů",
     "timeNotRecorded": "Čas nebyl zaznamenán",
     "justNow": "Právě teď",
     "fallbackName": "Záchytný bod",
@@ -669,12 +649,13 @@
       "deleteCheckpoint": "Smazat záchytný bod",
       "restoreFor": "Obnovit {{version}}",
       "restore": "Obnovit",
-      "deleteFor": "Smazat {{version}}"
+      "deleteFor": "Smazat {{version}}",
+      "current": "Aktuální"
     },
     "toast": {
       "copyIdFailed": "Toto ID záchytného bodu se nepodařilo zkopírovat.",
       "saveLabelFailed": "Popisek záchytného bodu se nepodařilo uložit.",
-      "restored": "Záchytný bod byl obnoven.",
+      "restored": "Obnoveno: {{version}}. Ve Správě verzí má teď štítek Aktuální.",
       "restoreFailed": "Tento záchytný bod se nepodařilo obnovit. Podrobnosti najdete v protokolu aplikace.",
       "deleted": "Záchytný bod byl smazán.",
       "deleteFailed": "Tento záchytný bod se nepodařilo smazat.",
@@ -733,7 +714,7 @@
     "maintenance": {
       "title": "Údržba",
       "description": "Smažte záchytné body, které už tento projekt nepotřebuje.",
-      "keepLatestPrompt": "Smazat všechny záchytné body kromě posledního? Tuto akci nelze vrátit zpět.",
+      "keepLatestPrompt": "Smazat všechny záchytné body kromě posledního a toho se štítkem Aktuální? Tuto akci nelze vrátit zpět.",
       "deleteOlder": "Smazat starší záchytné body",
       "keepAll": "Ponechat všechny záchytné body",
       "resetPrompt": "Smazat všechny záchytné body tohoto projektu? Aktuální soubory projektu zůstanou beze změny. Tuto akci nelze vrátit zpět.",

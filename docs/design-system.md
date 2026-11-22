@@ -116,6 +116,16 @@ description and `icon` for a leading icon. `SettingsToggleRow` is a
 `SettingsRow` where the whole card is the switch, and it takes the same
 `details`. Notes go in `SettingsNote` and file paths in `SettingsPath`.
 
+An Appearance tab that styles text, such as Notes or Visual mode, is built
+from `settings/AppearanceControls.tsx`. `AppearanceTabLayout` puts the options
+beside a sticky `AppearancePreviewFrame` and stacks them on narrow windows.
+`SettingsGroup` is a titled block of rows. `TypefaceCards`, `FontRow`,
+`FontSizeRow`, `LineHeightRow`, `ChoiceRow`, `WidthCards`, `ToggleRow` and
+`ColorChoiceRow` read and write one setting by its key through
+`useAppearanceSetting`, and each shows a `ResetSetting` button once the value
+differs from its default. A font size list with a "follow another setting"
+choice passes `automatic` to `FontSizeControl`.
+
 A tab strip inside a Settings section remembers its tab through
 `useSettingsTab` from `settings/use-settings-tab.ts`. Open Settings without a
 destination and it comes back on the session's last section and tab. A link

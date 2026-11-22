@@ -663,9 +663,6 @@
       "permissionDenied": "Chybí oprávnění"
     },
     "menu": {
-      "showInFinder": "Zobrazit ve Finderu",
-      "showInExplorer": "Zobrazit v Průzkumníku souborů",
-      "showInFileManager": "Zobrazit ve správci souborů",
       "copyToLibrary": "Zkopírovat do knihovny",
       "remove": "Odebrat z Oleafly"
     },

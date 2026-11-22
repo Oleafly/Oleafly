@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Versionierung schließen",
     "title": "Versionierung",
-    "close": "Versionierung schließen",
-    "views": "Ansichten der Versionierung",
-    "gitHistory": "Git-Verlauf",
-    "savedCheckpoints": "Gespeicherte Checkpoints"
+    "close": "Versionierung schließen"
   },
   "wordCount": {
     "close": "Projektinfo schließen"
@@ -453,20 +450,6 @@
     "fontPackAction": "Herunterladen und kompilieren",
     "fontPackDownloading": "Wird heruntergeladen…",
     "fontPackFailed": "Das Schriftpaket konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
-  },
-  "history": {
-    "untitledCommit": "Commit ohne Titel",
-    "restoreFailed": "Diese Git-Version konnte nicht wiederhergestellt werden.",
-    "copyIdFailed": "Diese Commit-ID konnte nicht kopiert werden.",
-    "empty": "Noch kein Git-Verlauf",
-    "emptyHint": "Richten Sie die Versionsverwaltung ein und committen Sie, wenn Sie hier eine Version wünschen.",
-    "commitIdCopied": "Commit-ID kopiert",
-    "copyCommitId": "Vollständige Commit-ID kopieren",
-    "copyCommitIdFor": "Commit-ID {{id}} kopieren",
-    "overwriteTooltip": "Alle Dateien mit dieser Version überschreiben",
-    "overwriteAll": "Alle überschreiben",
-    "restoreTooltip": "Diese Version wiederherstellen (überschreibt alle Dateien)",
-    "restore": "Wiederherstellen"
   },
   "diff": {
     "reloadFailed": "Der Vergleich konnte nicht neu geladen werden. Schließen Sie diesen Reiter und öffnen Sie ihn erneut.",
@@ -571,9 +554,6 @@
     "unsupported": "Die Korrekturprüfung wird für dieses Dokumentformat nicht unterstützt."
   },
   "checkpoints": {
-    "showInExplorer": "Im Explorer anzeigen",
-    "showInFinder": "Im Finder anzeigen",
-    "showInFileManager": "Im Dateimanager anzeigen",
     "timeNotRecorded": "Zeit nicht erfasst",
     "justNow": "Gerade eben",
     "fallbackName": "Checkpoint",
@@ -649,12 +629,13 @@
       "deleteCheckpoint": "Checkpoint löschen",
       "restoreFor": "{{version}} wiederherstellen",
       "restore": "Wiederherstellen",
-      "deleteFor": "{{version}} löschen"
+      "deleteFor": "{{version}} löschen",
+      "current": "Aktuell"
     },
     "toast": {
       "copyIdFailed": "Diese Checkpoint-ID konnte nicht kopiert werden.",
       "saveLabelFailed": "Die Bezeichnung des Checkpoints konnte nicht gespeichert werden.",
-      "restored": "Checkpoint wiederhergestellt.",
+      "restored": "{{version}} wiederhergestellt. In der Versionierung ist sie jetzt als Aktuell markiert.",
       "restoreFailed": "Dieser Checkpoint konnte nicht wiederhergestellt werden. Einzelheiten stehen im Protokoll der App.",
       "deleted": "Checkpoint gelöscht.",
       "deleteFailed": "Dieser Checkpoint konnte nicht gelöscht werden.",
@@ -713,7 +694,7 @@
     "maintenance": {
       "title": "Wartung",
       "description": "Löschen Sie Checkpoints, die dieses Projekt nicht mehr braucht.",
-      "keepLatestPrompt": "Jeden Checkpoint außer dem neuesten löschen? Das lässt sich nicht rückgängig machen.",
+      "keepLatestPrompt": "Jeden Checkpoint außer dem neuesten und dem als Aktuell markierten löschen? Das lässt sich nicht rückgängig machen.",
       "deleteOlder": "Ältere Checkpoints löschen",
       "keepAll": "Alle Checkpoints behalten",
       "resetPrompt": "Alle Checkpoints dieses Projekts löschen? Die aktuellen Projektdateien bleiben unverändert. Das lässt sich nicht rückgängig machen.",

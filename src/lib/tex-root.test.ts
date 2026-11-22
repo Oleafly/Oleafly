@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  parseTexMagicComments,
-  resolveEffectiveMainDoc,
-  resolveTexRootPath,
-} from "./tex-root";
+import { effectiveMainDocMissing, resolveEffectiveMainDoc } from "./tex-root";
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import type { LatexUnits } from "@/lib/project-intelligence/types";
+import { parseTexMagicComments } from "@/lib/tex-magic-comments";
 import type { ProjectInfo, ProjectLocationInfo } from "@/lib/tauri";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useFilesStore } from "@/store/files";
 
 describe("parseTexMagicComments", () => {
@@ -96,28 +96,6 @@ describe("parseTexMagicComments", () => {
   });
 });
 
-describe("resolveTexRootPath", () => {
-  it("resolves a relative parent path from a nested file", () => {
-    expect(resolveTexRootPath("chapters/ch1.tex", "../main.tex")).toBe(
-      "main.tex",
-    );
-  });
-
-  it("resolves a nested descendant path", () => {
-    expect(resolveTexRootPath("main.tex", "sub/dir/file.tex")).toBe(
-      "sub/dir/file.tex",
-    );
-  });
-
-  it("rejects targets that escape the project root", () => {
-    expect(resolveTexRootPath("ch1.tex", "../../x.tex")).toBeNull();
-  });
-
-  it("rejects absolute paths", () => {
-    expect(resolveTexRootPath("chapters/ch1.tex", "/etc/main.tex")).toBeNull();
-  });
-});
-
 describe("resolveEffectiveMainDoc", () => {
   const resetState = {
     projectId: null,
@@ -125,16 +103,22 @@ describe("resolveEffectiveMainDoc", () => {
     projects: [],
     mainDoc: "main.tex",
     activePath: null,
+    openTabs: [],
     tree: [],
     files: {},
+    engine: LATEX_ENGINE,
+    manifestHome: "library" as const,
   };
 
   beforeEach(() => {
     useFilesStore.setState(resetState);
+    useCompileRootStore.setState({ followOpenFile: true, latexUnits: null });
+    resolveEffectiveMainDoc();
   });
 
   afterEach(() => {
     useFilesStore.setState(resetState);
+    useCompileRootStore.setState({ followOpenFile: true, latexUnits: null });
   });
 
   it("overrides the stored main document with a valid magic root", () => {
@@ -158,6 +142,7 @@ describe("resolveEffectiveMainDoc", () => {
     expect(resolveEffectiveMainDoc()).toEqual({
       mainDoc: "main.tex",
       overriddenBy: "chapters/ch1.tex",
+      reason: "magic",
       brokenRoot: null,
     });
   });
@@ -181,6 +166,7 @@ describe("resolveEffectiveMainDoc", () => {
     expect(resolveEffectiveMainDoc()).toEqual({
       mainDoc: "thesis.tex",
       overriddenBy: null,
+      reason: null,
       brokenRoot: {
         declaredIn: "chapters/ch1.tex",
         target: "../missing.tex",
@@ -206,6 +192,7 @@ describe("resolveEffectiveMainDoc", () => {
     expect(resolveEffectiveMainDoc()).toEqual({
       mainDoc: "thesis.tex",
       overriddenBy: null,
+      reason: null,
       brokenRoot: { declaredIn: "chapters/ch1.tex", target: "../notes.md", reason: "not_tex" },
     });
   });
@@ -251,6 +238,7 @@ describe("resolveEffectiveMainDoc", () => {
         expect(resolveEffectiveMainDoc(), `${projectId} ${content}`).toEqual({
           mainDoc: "thesis.tex",
           overriddenBy: null,
+          reason: null,
           brokenRoot: null,
         });
       }
@@ -258,6 +246,7 @@ describe("resolveEffectiveMainDoc", () => {
       expect(resolveEffectiveMainDoc(), content).toEqual({
         mainDoc: "main.tex",
         overriddenBy: "chapters/ch1.tex",
+        reason: "magic",
         brokenRoot: null,
       });
     }
@@ -283,6 +272,7 @@ describe("resolveEffectiveMainDoc", () => {
     expect(resolveEffectiveMainDoc()).toEqual({
       mainDoc: "thesis.tex",
       overriddenBy: null,
+      reason: null,
       brokenRoot: null,
     });
   });
@@ -306,7 +296,172 @@ describe("resolveEffectiveMainDoc", () => {
     expect(resolveEffectiveMainDoc()).toEqual({
       mainDoc: "thesis.tex",
       overriddenBy: null,
+      reason: null,
       brokenRoot: null,
     });
+  });
+
+  const article = String.raw`\documentclass[11pt]{article}
+\begin{document}
+Supplement.
+\end{document}
+`;
+
+  function open(activePath: string, files: Record<string, string>, extra: Record<string, unknown> = {}) {
+    useFilesStore.setState({
+      projectId: "paper",
+      mainDoc: "paper.tex",
+      activePath,
+      openTabs: Object.keys(files),
+      tree: [
+        { path: "paper.tex", is_dir: false },
+        { path: "supplement.tex", is_dir: false },
+        { path: "response.tex", is_dir: false },
+        { path: "refs.bib", is_dir: false },
+        { path: "sections", is_dir: true },
+        { path: "sections/intro.tex", is_dir: false },
+        { path: "sections/methods.tex", is_dir: false },
+        { path: "figures/plot.tex", is_dir: false },
+      ],
+      files: Object.fromEntries(
+        Object.entries(files).map(([path, content]) => [path, { content, dirty: false }]),
+      ),
+      ...extra,
+    });
+  }
+
+  function units(fileGroups: Record<string, number>, groups: number[][]): LatexUnits {
+    return { roots: ["paper.tex", "supplement.tex", "response.tex"], groups, fileGroups, openUnits: [] };
+  }
+
+  it("compiles the open file when it has its own \\documentclass", () => {
+    open("supplement.tex", { "supplement.tex": article });
+    expect(resolveEffectiveMainDoc()).toEqual({
+      mainDoc: "supplement.tex",
+      overriddenBy: "supplement.tex",
+      reason: "document",
+      brokenRoot: null,
+    });
+    open("paper.tex", { "paper.tex": article });
+    expect(resolveEffectiveMainDoc().overriddenBy).toBeNull();
+  });
+
+  it.each([
+    ["a standalone figure", "\\documentclass[tikz]{standalone}\n\\begin{document}x\\end{document}"],
+    ["a subfile", "\\documentclass[../paper.tex]{subfiles}\n\\begin{document}x\\end{document}"],
+    ["a commented-out class", "% \\documentclass{article}\n\\begin{document}x\\end{document}"],
+    ["a class with no document body", "\\documentclass{article}\n\\usepackage{amsmath}\n"],
+    ["a commented-out document body", "\\documentclass{article}\n% \\begin{document}\n"],
+    ["an escaped command", String.raw`See \\documentclass{article} and \begin{document}`],
+  ])("keeps the main document for %s", (_name, text) => {
+    open("figures/plot.tex", { "figures/plot.tex": text });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+  });
+
+  it("reads a class whose options span lines and a percent sign that is escaped", () => {
+    open("response.tex", {
+      "response.tex": String.raw`Fees of 5\% apply.
+\documentclass[
+  11pt, % size
+  a4paper
+]{letter}
+\begin{document}
+\end{document}
+`,
+    });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("response.tex");
+  });
+
+  it("lets a % !TEX root comment win over the file's own class", () => {
+    open("supplement.tex", { "supplement.tex": `% !TEX root = paper.tex\n${article}` });
+    expect(resolveEffectiveMainDoc()).toMatchObject({ mainDoc: "paper.tex", reason: "magic" });
+  });
+
+  it("compiles the document that includes the open fragment", () => {
+    open("sections/methods.tex", { "sections/methods.tex": "\\section{Methods}\n" });
+    useCompileRootStore.setState({
+      latexUnits: { projectId: "paper", units: units({ "sections/methods.tex": 0, "sections/intro.tex": 1 }, [[1], [0]]) },
+    });
+    expect(resolveEffectiveMainDoc()).toEqual({
+      mainDoc: "supplement.tex",
+      overriddenBy: "sections/methods.tex",
+      reason: "include",
+      brokenRoot: null,
+    });
+    open("sections/intro.tex", { "sections/intro.tex": "\\section{Intro}\n" });
+    expect(resolveEffectiveMainDoc()).toMatchObject({ mainDoc: "paper.tex", overriddenBy: null });
+  });
+
+  it("prefers the main document, then the last document, for a fragment several documents include", () => {
+    const shared = units({ "sections/intro.tex": 0, "sections/methods.tex": 1 }, [[0, 1], [1, 2]]);
+    useCompileRootStore.setState({ latexUnits: { projectId: "paper", units: shared } });
+    open("sections/intro.tex", { "sections/intro.tex": "x" });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+
+    open("sections/methods.tex", { "sections/methods.tex": "x" });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+
+    open("response.tex", { "response.tex": article, "sections/methods.tex": "x" });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("response.tex");
+    open("sections/methods.tex", { "response.tex": article, "sections/methods.tex": "x" });
+    expect(resolveEffectiveMainDoc()).toMatchObject({ mainDoc: "response.tex", reason: "include" });
+  });
+
+  it("ignores units from another project and roots that are gone", () => {
+    open("sections/methods.tex", { "sections/methods.tex": "x" });
+    useCompileRootStore.setState({
+      latexUnits: { projectId: "other", units: units({ "sections/methods.tex": 0 }, [[1]]) },
+    });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+    useCompileRootStore.setState({
+      latexUnits: {
+        projectId: "paper",
+        units: { roots: ["deleted.tex"], groups: [[0]], fileGroups: { "sections/methods.tex": 0 }, openUnits: [] },
+      },
+    });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+  });
+
+  it("keeps the last document while a bibliography is open, until its tab closes", () => {
+    open("supplement.tex", { "supplement.tex": article });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("supplement.tex");
+    useFilesStore.setState({ activePath: "refs.bib", openTabs: ["supplement.tex", "refs.bib"] });
+    expect(resolveEffectiveMainDoc()).toMatchObject({
+      mainDoc: "supplement.tex",
+      overriddenBy: "supplement.tex",
+      reason: "document",
+    });
+    useFilesStore.setState({ openTabs: ["refs.bib"] });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+  });
+
+  it("keeps a % !TEX root while another file is open", () => {
+    open("sections/intro.tex", { "sections/intro.tex": "% !TEX root = ../supplement.tex\n" });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("supplement.tex");
+    useFilesStore.setState({ activePath: "refs.bib", openTabs: ["sections/intro.tex", "refs.bib"] });
+    useCompileRootStore.setState({ followOpenFile: false });
+    expect(resolveEffectiveMainDoc()).toMatchObject({ mainDoc: "supplement.tex", reason: "magic" });
+  });
+
+  it("always compiles the main document when following is off or the project isn't LaTeX", () => {
+    useCompileRootStore.setState({
+      followOpenFile: false,
+      latexUnits: { projectId: "paper", units: units({ "sections/methods.tex": 0 }, [[1]]) },
+    });
+    open("supplement.tex", { "supplement.tex": article });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+    open("sections/methods.tex", { "sections/methods.tex": "x" });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+
+    useCompileRootStore.setState({ followOpenFile: true });
+    open("supplement.tex", { "supplement.tex": article }, { engine: { ...LATEX_ENGINE, source_format: "typst" } });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+  });
+
+  it("lets an opened folder with no main document compile a complete open file", () => {
+    open("supplement.tex", { "supplement.tex": article }, { mainDoc: "", manifestHome: "folder" });
+    expect(effectiveMainDocMissing()).toBe(false);
+    open("sections/intro.tex", { "sections/intro.tex": "x" }, { mainDoc: "", manifestHome: "folder" });
+    expect(effectiveMainDocMissing()).toBe(true);
   });
 });

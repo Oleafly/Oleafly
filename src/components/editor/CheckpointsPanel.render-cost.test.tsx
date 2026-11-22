@@ -57,6 +57,7 @@ const history = Array.from({ length: COUNT }, (_, index) => ({
   file_count: 4,
   logical_bytes: 4096,
   label: null,
+  number: COUNT - index,
 }));
 
 class FakeIntersectionObserver {

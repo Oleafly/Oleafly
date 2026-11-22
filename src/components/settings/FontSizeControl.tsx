@@ -15,9 +15,23 @@ export interface FontSizeControlProps {
   customTestId: string;
   ariaLabel?: string;
   disabled?: boolean;
+  automatic?: FontSizeAutomatic;
 }
 
+export type FontSizeAutomatic = Readonly<{ label: string; value: number; size: number }>;
+
 const CUSTOM = "custom";
+
+function chosenOption(
+  value: number,
+  presets: readonly number[],
+  automatic: FontSizeAutomatic | undefined,
+  customChosen: boolean,
+): string {
+  if (customChosen) return CUSTOM;
+  if (value === automatic?.value) return String(value);
+  return presets.includes(value) ? String(value) : CUSTOM;
+}
 
 export function FontSizeControl({
   value,
@@ -31,10 +45,11 @@ export function FontSizeControl({
   customTestId,
   ariaLabel,
   disabled = false,
+  automatic,
 }: Readonly<FontSizeControlProps>) {
   const { t } = useTranslation(["settings"]);
   const [customChosen, setCustomChosen] = useState(false);
-  const choice = customChosen || !presets.includes(value) ? CUSTOM : String(value);
+  const choice = chosenOption(value, presets, automatic, customChosen);
   return (
     <div className="flex shrink-0 items-center gap-2">
       <Select
@@ -45,10 +60,11 @@ export function FontSizeControl({
           if (next !== CUSTOM) onChange(Number(next));
         }}
       >
-        <SelectTrigger className="w-[112px]" aria-label={ariaLabel} data-testid={triggerTestId}>
+        <SelectTrigger className={automatic ? "w-[168px]" : "w-[112px]"} aria-label={ariaLabel} data-testid={triggerTestId}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="z-[100]">
+          {automatic ? <SelectItem value={String(automatic.value)}>{automatic.label}</SelectItem> : null}
           {presets.map((option) => (
             <SelectItem key={option} value={String(option)}>
               {t(($) => $.settings.appearance.fontSizeOption, { size: option })}
@@ -59,7 +75,7 @@ export function FontSizeControl({
       </Select>
       {choice === CUSTOM ? (
         <CustomNumberInput
-          value={value}
+          value={value === automatic?.value ? automatic.size : value}
           onCommit={onChange}
           range={range}
           clamp={clamp}

@@ -50,6 +50,13 @@ async function clickHoverRevealed(page: Page, selector: string) {
   if (!clicked) throw new Error(`no element matched ${selector}`);
 }
 
+async function expectCurrent(page: Page, version: string) {
+  await expect(
+    page.locator(`[data-testid="checkpoint-entry"][data-version="${version}"][aria-current="true"]`),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[data-testid="checkpoint-entry"][aria-current="true"]')).toHaveCount(1);
+}
+
 async function waitUntilIdle(page: Page) {
   await expect(page.getByTestId("checkpoint-publishing")).toHaveCount(0, { timeout: 150_000 });
 }
@@ -71,8 +78,13 @@ async function archiveRoundTrip(page: Page, template: string) {
   expect(bytes.subarray(0, 16).toString("ascii")).toBe("OLEAFLYCPARCHIVE");
   expect(bytes.length).toBeGreaterThan(100);
 
-  await page.getByText("Keep latest", { exact: true }).click();
-  await page.getByText("Delete older checkpoints", { exact: true }).click();
+  expect(
+    await page.evaluate<boolean>(
+      `Array.from(document.querySelectorAll("button")).some((button) => button.textContent.trim() === "Keep latest" && button.disabled)`,
+    ),
+  ).toBe(true);
+  await page.click('[aria-label="Delete V2"]');
+  await page.getByText("Delete checkpoint", { exact: true }).click();
   await expect(page.getByTestId("checkpoint-entry")).toHaveCount(1, { timeout: 60_000 });
   await page.fill("#checkpoint-archive-password", password);
   await setNextImportPaths(page, [archive]);
@@ -82,6 +94,11 @@ async function archiveRoundTrip(page: Page, template: string) {
     60_000,
   );
   await expect(page.getByTestId("checkpoint-entry")).toHaveCount(2, { timeout: 30_000 });
+  const versions = await page.evaluate<string[]>(
+    `Array.from(document.querySelectorAll('[data-testid="checkpoint-entry"]')).map((row) => row.getAttribute('data-version') || '')`,
+  );
+  expect(versions).toEqual(["V2", "V1"]);
+  await expectCurrent(page, "V1");
   const source = await page.locator(".cm-content").textContent();
   expect(source).toContain("here.");
   expect(source).not.toContain(EDIT);
@@ -162,6 +179,7 @@ for (const template of ["blank", "blank-typst", "blank-markdown"]) {
       `Array.from(document.querySelectorAll('[data-testid="checkpoint-entry"]')).map((row) => row.getAttribute('data-version') || '')`,
     );
     expect(versions).toEqual(["V2", "V1"]);
+    await expectCurrent(tauriPage, "V2");
 
     await tauriPage.click('[aria-label="Show files for V2"]');
     await expect(
@@ -187,10 +205,15 @@ for (const template of ["blank", "blank-typst", "blank-markdown"]) {
       timeout: 10_000,
     });
 
+    await openCheckpoints(tauriPage);
+    await expectCurrent(tauriPage, "V1");
+    await closeCheckpoints(tauriPage);
+
     await compileOk(tauriPage);
     await openCheckpoints(tauriPage);
     await waitUntilIdle(tauriPage);
     await expect(tauriPage.getByTestId("checkpoint-entry")).toHaveCount(2);
+    await expectCurrent(tauriPage, "V1");
     await archiveRoundTrip(tauriPage, template);
     await closeCheckpoints(tauriPage);
   });

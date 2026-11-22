@@ -600,9 +600,6 @@
       "permissionDenied": "Không có quyền"
     },
     "menu": {
-      "showInFinder": "Hiện trong Finder",
-      "showInExplorer": "Hiện trong File Explorer",
-      "showInFileManager": "Hiện trong trình quản lý tệp",
       "copyToLibrary": "Sao chép vào thư viện",
       "remove": "Xoá khỏi Oleafly"
     },

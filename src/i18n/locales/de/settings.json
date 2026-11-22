@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} ist nicht installiert, daher wird stattdessen die Standardschrift verwendet.",
     "preview": {
       "darkMode": {
-        "description": "PDF-Farben standardmäßig umkehren. Sie können die Farben weiterhin über die Werkzeugleiste der Vorschau umschalten.",
-        "label": "Dunkler Modus für PDFs"
+        "description": "Mit „An App-Design anpassen“ werden Seiten dunkel, wenn die App dunkel ist. Im hellen Modus sehen sie wie gedruckt aus oder behalten den hellen Farbton, den Sie gewählt haben, etwa Sepia. Die Schaltfläche zum Umkehren der Farben in der Werkzeugleiste der Vorschau stellt dies auf Ein oder Aus.",
+        "label": "Dunkler Modus für PDFs",
+        "modes": {
+          "follow": "An App-Design anpassen",
+          "off": "Aus",
+          "on": "Ein"
+        }
       },
       "darkColors": {
         "label": "Farben der dunklen Seite",
@@ -1031,6 +1036,7 @@
     "tabs": {
       "app": "App",
       "editor": "Editor",
+      "visual": "Visueller Modus",
       "files": "Projekt",
       "pdf": "PDF-Vorschau",
       "terminal": "Terminal",
@@ -1167,6 +1173,115 @@
         "label": "PDF beim Kompilieren anzeigen"
       },
       "title": "Zen-Modus"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Serifenlos",
+        "serif": "Serif",
+        "mono": "Monospace",
+        "text": "Wie der Text"
+      },
+      "paragraphSpacings": {
+        "compact": "Kompakt",
+        "normal": "Normal",
+        "relaxed": "Locker",
+        "spacious": "Großzügig"
+      },
+      "headingSizes": {
+        "small": "Kleiner",
+        "normal": "Normal",
+        "large": "Größer"
+      }
+    },
+    "resetSetting": "{{setting}} auf Standard zurücksetzen",
+    "visual": {
+      "intro": "Legen Sie fest, wie LaTeX- und Typst-Dateien im visuellen Modus aussehen. Ihre Dateien und das PDF ändern sich nicht. Damit auch Markdown so aussieht, schalten Sie unter Layout den passenden Schalter ein. Text- und Linkfarben stellen Sie unter Farben des Editors auf dem Tab Editor ein.",
+      "matchEditor": "Wie der Editor",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Schriftart",
+        "description": "Wählen Sie eine Schriftart für den Text im visuellen Modus."
+      },
+      "font": {
+        "label": "Schrift im visuellen Modus",
+        "description": "Wählen Sie eine beliebige installierte Schrift für den Text im visuellen Modus. Lassen Sie das Feld leer, um die Einstellung Schriftart zu verwenden."
+      },
+      "fontSize": {
+        "label": "Textgröße",
+        "description": "Legen Sie die Größe des Texts im visuellen Modus fest. Wie der Editor übernimmt die Schriftgröße des Editors.",
+        "customLabel": "Benutzerdefinierte Textgröße im visuellen Modus in Pixeln"
+      },
+      "lineHeight": {
+        "label": "Zeilenhöhe",
+        "description": "Legen Sie den Abstand zwischen den Textzeilen fest. Wie der Editor übernimmt die Zeilenhöhe des Editors.",
+        "customLabel": "Benutzerdefinierte Zeilenhöhe im visuellen Modus"
+      },
+      "paragraphSpacing": {
+        "label": "Absatzabstand",
+        "description": "Legen Sie fest, wie hoch die Leerzeile zwischen zwei Absätzen ist."
+      },
+      "paragraphIndent": {
+        "label": "Absatzeinzug",
+        "description": "Rückt die erste Zeile jedes Absatzes ein, wie es das PDF tut. LaTeX lässt den Absatz nach einer Überschrift unverändert, und Typst rückt nur einen Absatz ein, der auf einen anderen folgt.",
+        "none": "Keiner",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Textausrichtung",
+        "description": "Lassen Sie den rechten Rand ungleichmäßig oder richten Sie die Zeilen an beiden Rändern aus.",
+        "options": {
+          "start": "Links",
+          "justify": "Blocksatz"
+        }
+      },
+      "headings": {
+        "title": "Überschriften und Titel"
+      },
+      "headingTypeface": {
+        "label": "Schriftart für Überschriften",
+        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel des Dokuments."
+      },
+      "headingFont": {
+        "label": "Schrift für Überschriften",
+        "description": "Wählen Sie eine installierte Schrift für Überschriften und den Titel des Dokuments. Lassen Sie das Feld leer, um die Einstellung Schriftart für Überschriften zu verwenden."
+      },
+      "headingSize": {
+        "label": "Größe der Überschriften",
+        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind."
+      },
+      "headingColor": {
+        "label": "Farbe der Überschriften",
+        "description": "Farbe für Überschriften und den Titel des Dokuments. Mit Editor-Design behalten sie die Farbe, die Ihr Editor-Design ihnen gibt.",
+        "matchTheme": "Editor-Design",
+        "customAriaLabel": "Eigene Farbe für Überschriften wählen"
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Textbreite",
+        "description": "Legen Sie fest, wie lang eine Zeile wird, bevor sie umbricht.",
+        "options": {
+          "narrow": "Schmal",
+          "standard": "Standard",
+          "wide": "Breit",
+          "full": "Volle Breite"
+        }
+      },
+      "markdown": {
+        "label": "Auch für Markdown verwenden",
+        "description": "Diese Darstellung auch für Markdown-Dateien im visuellen Modus verwenden. Ist die Option aus, behält Markdown die Schrift der App."
+      },
+      "preview": {
+        "label": "Vorschau des visuellen Modus",
+        "heading": "Einleitung",
+        "first": "Der visuelle Modus zeigt Überschriften und Absätze statt der Befehle, die sie erzeugen.",
+        "second": "Dieser Absatz folgt auf eine Leerzeile. Ein Absatzeinzug rückt seine erste Zeile ein.",
+        "subheading": "Methode",
+        "third": "Ändern Sie eine Einstellung, und dieser Text ändert sich mit."
+      }
     }
   },
   "checkpoints": {

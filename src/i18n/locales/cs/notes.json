@@ -1514,18 +1514,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Vzhled poznámek",
-      "resetAriaLabel": "Obnovit výchozí hodnotu: {{setting}}",
       "text": {
         "title": "Text"
       },
       "typeface": {
         "label": "Řez písma",
-        "description": "Zvolte řez písma pro text poznámek.",
-        "options": {
-          "sans": "Bezpatkové",
-          "serif": "Patkové",
-          "mono": "Neproporcionální"
-        }
+        "description": "Zvolte řez písma pro text poznámek."
       },
       "font": {
         "label": "Písmo poznámek",
@@ -1544,23 +1538,14 @@
       },
       "paragraphSpacing": {
         "label": "Mezery mezi odstavci",
-        "description": "Nastavte mezery mezi odstavci, seznamy a dalšími bloky.",
-        "options": {
-          "compact": "Kompaktní",
-          "normal": "Normální",
-          "relaxed": "Volnější",
-          "spacious": "Prostorné"
-        }
+        "description": "Nastavte mezery mezi odstavci, seznamy a dalšími bloky."
       },
       "headings": {
         "title": "Nadpisy a název"
       },
       "headingTypeface": {
         "label": "Řez písma nadpisů",
-        "description": "Zvolte řez písma pro nadpisy a název poznámky.",
-        "options": {
-          "text": "Stejné jako text"
-        }
+        "description": "Zvolte řez písma pro nadpisy a název poznámky."
       },
       "headingFont": {
         "label": "Písmo nadpisů",
@@ -1568,12 +1553,7 @@
       },
       "headingSize": {
         "label": "Velikost nadpisů",
-        "description": "Nastavte, jak velké mají být nadpisy oproti textu.",
-        "options": {
-          "small": "Menší",
-          "normal": "Normální",
-          "large": "Větší"
-        }
+        "description": "Nastavte, jak velké mají být nadpisy oproti textu."
       },
       "titleSize": {
         "label": "Velikost názvu",

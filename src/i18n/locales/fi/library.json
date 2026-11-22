@@ -621,9 +621,6 @@
       "permissionDenied": "Ei käyttöoikeutta"
     },
     "menu": {
-      "showInFinder": "Näytä Finderissa",
-      "showInExplorer": "Näytä Resurssienhallinnassa",
-      "showInFileManager": "Näytä tiedostonhallinnassa",
       "copyToLibrary": "Kopioi kirjastoon",
       "remove": "Poista Oleaflystä"
     },

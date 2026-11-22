@@ -575,6 +575,40 @@
   padding: 0;
   font-size: inherit;
 }
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror {
+  max-width: var(--visual-text-width);
+  font-family: var(--visual-text-font);
+  font-size: var(--visual-text-size);
+  line-height: var(--visual-line-height);
+  text-align: var(--visual-text-align);
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror > * + *:not(h1, h2, h3, h4, h5, h6) {
+  margin-top: calc(0.75em * var(--visual-paragraph-gap));
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror > p:not(:is(h1, h2, h3, h4, h5, h6) + p) {
+  text-indent: var(--visual-paragraph-indent);
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror > p * {
+  text-indent: 0;
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--visual-heading-font);
+}
+:root[data-visual-markdown][data-visual-heading-color] .wysiwyg-content[data-visual-document] .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--visual-heading-color);
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror h1 {
+  font-size: calc(1em + 0.5em * var(--visual-heading-scale));
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror h2 {
+  font-size: calc(1em + 0.25em * var(--visual-heading-scale));
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror h3 {
+  font-size: calc(1em + 0.1em * var(--visual-heading-scale));
+}
+:root[data-visual-markdown] .wysiwyg-content[data-visual-document] .ProseMirror :is(pre, table, [data-type="raw-block"]) {
+  text-align: start;
+}
 .wysiwyg-content .ProseMirror [data-type="raw-block"] {
   display: block;
   margin-block: 0.75rem;

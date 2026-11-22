@@ -24,7 +24,10 @@
     "no": "Hayır",
     "learnMore": "Daha fazla bilgi",
     "showMore": "Daha fazla göster",
-    "showLess": "Daha az göster"
+    "showLess": "Daha az göster",
+    "showInFinder": "Finder'da göster",
+    "showInExplorer": "Dosya Gezgini'nde göster",
+    "showInFileManager": "Dosya yöneticisinde göster"
   },
   "state": {
     "loading": "Yükleniyor…",

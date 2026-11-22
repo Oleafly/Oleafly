@@ -7,6 +7,7 @@ import {
 } from "@/lib/theme-customization";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
@@ -61,6 +62,9 @@ export function watchSettingsSources(listener: () => void): () => void {
     useCompileStore.subscribe((state, previous) => {
       if (COMPILE_KEYS.some((key) => state[key] !== previous[key])) listener();
     }),
+    useCompileRootStore.subscribe((state, previous) => {
+      if (state.followOpenFile !== previous.followOpenFile) listener();
+    }),
   ];
   return () => {
     for (const stop of stops) stop();
@@ -102,7 +106,8 @@ function pickConfig(config: AppConfig): ConfigPreferences {
 
 function compilePreferences(): CompilePreferences {
   const { autoCompile, compileMode, checkSyntaxBeforeCompile, stopOnFirstError } = useCompileStore.getState();
-  return { autoCompile, compileMode, checkSyntaxBeforeCompile, stopOnFirstError };
+  const { followOpenFile } = useCompileRootStore.getState();
+  return { autoCompile, compileMode, checkSyntaxBeforeCompile, stopOnFirstError, followOpenFile };
 }
 
 export function readConfigPreferences(): Promise<ConfigPreferences | null> {
@@ -264,6 +269,10 @@ function applyCompile(changes: Partial<CompilePreferences>): void {
   }
   if (changes.stopOnFirstError !== undefined && changes.stopOnFirstError !== store.stopOnFirstError) {
     store.setStopOnFirstError(changes.stopOnFirstError);
+  }
+  const root = useCompileRootStore.getState();
+  if (changes.followOpenFile !== undefined && changes.followOpenFile !== root.followOpenFile) {
+    root.setFollowOpenFile(changes.followOpenFile);
   }
 }
 

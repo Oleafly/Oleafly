@@ -317,6 +317,10 @@
       "keywords": "distraction free focus full screen hide interface minimal writing",
       "label": "Toggle Zen Mode"
     },
+    "visualSettings": {
+      "keywords": "appearance font typeface text size paragraph indent spacing justify heading writing",
+      "label": "Visual mode settings"
+    },
     "togglePreview": {
       "keywords": "pdf preview show hide split editor only",
       "label": "Toggle PDF Preview"
@@ -502,7 +506,15 @@
       "run": "Run code on this computer"
     },
     "sharedViewer": "Only owners and editors can change these settings in a shared project.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Changed by coauthors since your last compile",
+    "texRootDocument": "root: {{path}} (it has its own \\documentclass)",
+    "texRootInclude": "root: {{path}} (it includes {{file}})",
+    "target": {
+      "title": "Compile target",
+      "help": "With Follow the open file, a file that has its own \\documentclass compiles by itself. A chapter or section compiles the document that includes it. Other files compile the main document. A % !TEX root comment always wins.",
+      "open": "Follow the open file",
+      "main": "Always the main document"
+    }
   },
   "datePicker": {
     "placeholder": "Pick a date"
@@ -1115,7 +1127,7 @@
       "empty": "No settings match",
       "keywords": {
         "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
-        "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
+        "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout, visual mode, typeface, paragraph indent, justify",
         "collaboration": "servers, sign in, devices, members, maintainers, sharing, teams, labs, live editing, real time, security log",
         "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
         "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",

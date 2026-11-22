@@ -59,7 +59,8 @@ import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
-import { cn, isMac, isWindows } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { runWithEditorMutationLease, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
@@ -92,12 +93,6 @@ type PanelActionToken = {
   session: number;
   request: number;
 };
-
-function revealLabel(): string {
-  if (isWindows) return i18n.t(($) => $.editor.checkpoints.showInExplorer);
-  if (isMac) return i18n.t(($) => $.editor.checkpoints.showInFinder);
-  return i18n.t(($) => $.editor.checkpoints.showInFileManager);
-}
 
 function checkpointsPanelIsActive(): boolean {
   const settings = useSettingsStore.getState();
@@ -641,6 +636,11 @@ function TimelineEntry({
             {version}
           </Badge>
         ) : null}
+        {checkpoint.current ? (
+          <Badge data-testid="checkpoint-current" variant="primaryGhost" size="sm">
+            {t(($) => $.editor.checkpoints.entry.current)}
+          </Badge>
+        ) : null}
         <Tooltip label={t(($) => $.editor.checkpoints.entry.editLabel)} side="top">
           <button
             type="button"
@@ -681,6 +681,7 @@ function TimelineEntry({
       data-version={version}
       data-root={root}
       data-label={label ?? undefined}
+      aria-current={checkpoint.current ? "true" : undefined}
       className="group relative rounded-md py-3 pl-10 pr-2 hover:bg-accent/60"
     >
       <span
@@ -1126,13 +1127,6 @@ export function CheckpointsPanel({
     observer.observe(end);
     return () => observer.disconnect();
   }, [pagedTimelineLimit]);
-  const versionLabels = useMemo(() => {
-    const labels = new Map<string, string>();
-    [...visibleCheckpoints].reverse().forEach((entry, index) => {
-      labels.set(entry.snapshot_root, `V${index + 1}`);
-    });
-    return labels;
-  }, [visibleCheckpoints]);
 
   if (!open) return null;
 
@@ -1146,8 +1140,9 @@ export function CheckpointsPanel({
   const storePath = visibleInspection?.store_path ?? null;
   const packBytes =
     visibleInspection?.packs.reduce((total, pack) => total + pack.bytes, 0) ?? 0;
-  const labelFor = (snapshotRoot: string) =>
-    versionLabels.get(snapshotRoot) ?? t(($) => $.editor.checkpoints.fallbackName);
+  const labelFor = (checkpoint: CheckpointSummary) =>
+    checkpoint.number ? `V${checkpoint.number}` : t(($) => $.editor.checkpoints.fallbackName);
+  const keepLatestDeletes = visibleCheckpoints.slice(1).some((entry) => !entry.current);
 
   const ensureFiles = (snapshotRoot: string) => {
     if (!projectId) return;
@@ -1200,7 +1195,9 @@ export function CheckpointsPanel({
       if (!isCurrentAction(action)) return;
       setCheckpoints((current) =>
         current.map((entry) =>
-          entry.snapshot_root === updated.snapshot_root ? updated : entry,
+          entry.snapshot_root === updated.snapshot_root
+            ? { ...updated, current: entry.current }
+            : entry,
         ),
       );
       if (editingLabelRoot === snapshotRoot) {
@@ -1239,7 +1236,11 @@ export function CheckpointsPanel({
         return true;
       });
       if (!restored || !isCurrentAction(action)) return;
-      toast.success(t(($) => $.editor.checkpoints.toast.restored));
+      toast.success(
+        t(($) => $.editor.checkpoints.toast.restored, {
+          version: checkpoint.label?.trim() || labelFor(checkpoint),
+        }),
+      );
       closeVersioning();
     } catch (error) {
       if (!isCurrentAction(action)) return;
@@ -1526,7 +1527,7 @@ export function CheckpointsPanel({
             <TimelineRow
               key={root}
               checkpoint={checkpoint}
-              version={labelFor(root)}
+              version={labelFor(checkpoint)}
               age={formatCheckpointAge(checkpoint.completed_at_unix_ms, now)}
               busy={busy}
               expanded={expanded.includes(root)}
@@ -1598,7 +1599,7 @@ export function CheckpointsPanel({
             onClick={() => void checkpointRevealStore(projectId)}
           >
             <FolderOpen className="size-3.5" aria-hidden />
-            {revealLabel()}
+            {showInFileManagerLabel()}
           </Button>
         </div>
         <dl className="grid grid-cols-3 gap-x-4 gap-y-1">
@@ -1648,7 +1649,7 @@ export function CheckpointsPanel({
           ) : (
             <ul className="mt-1 list-none space-y-1 p-0">
               {visibleCheckpoints.map((checkpoint) => {
-                const version = labelFor(checkpoint.snapshot_root);
+                const version = labelFor(checkpoint);
                 const isOpen = catalogExpanded.includes(checkpoint.snapshot_root);
                 return (
                   <li key={checkpoint.snapshot_root} className="border-t pt-1">
@@ -1869,7 +1870,7 @@ export function CheckpointsPanel({
             <Button
               variant="outline"
               size="sm"
-              disabled={busy || !projectId || checkpointCount <= 1}
+              disabled={busy || !projectId || !keepLatestDeletes}
               onClick={() => setConfirmation({ kind: "keep-latest" })}
             >
               {t(($) => $.editor.checkpoints.maintenance.keepLatest)}

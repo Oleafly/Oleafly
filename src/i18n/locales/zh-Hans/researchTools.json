@@ -50,8 +50,6 @@
       "readOnly": "只读",
       "browse": "浏览文件",
       "moreActions": "{{label}} 的更多操作",
-      "showInFinder": "在 Finder 中显示",
-      "showInExplorer": "在资源管理器中显示",
       "unlink": "取消链接",
       "listingTruncated": "此视图最多显示 2,000 个文件或 8 层文件夹。",
       "emptyFolder": "此文件夹为空。",

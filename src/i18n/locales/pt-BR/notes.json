@@ -1485,18 +1485,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Aparência das notas",
-      "resetAriaLabel": "Redefinir {{setting}} para o padrão",
       "text": {
         "title": "Texto"
       },
       "typeface": {
         "label": "Tipo de letra",
-        "description": "Escolha um tipo de letra para o texto das notas.",
-        "options": {
-          "sans": "Sem serifa",
-          "serif": "Com serifa",
-          "mono": "Monoespaçada"
-        }
+        "description": "Escolha um tipo de letra para o texto das notas."
       },
       "font": {
         "label": "Fonte das notas",
@@ -1515,23 +1509,14 @@
       },
       "paragraphSpacing": {
         "label": "Espaçamento entre parágrafos",
-        "description": "Defina o espaço entre parágrafos, listas e outros blocos.",
-        "options": {
-          "compact": "Compacto",
-          "normal": "Normal",
-          "relaxed": "Confortável",
-          "spacious": "Espaçoso"
-        }
+        "description": "Defina o espaço entre parágrafos, listas e outros blocos."
       },
       "headings": {
         "title": "Títulos e título da nota"
       },
       "headingTypeface": {
         "label": "Tipo de letra dos títulos",
-        "description": "Escolha um tipo de letra para os títulos e para o título da nota.",
-        "options": {
-          "text": "Igual ao texto"
-        }
+        "description": "Escolha um tipo de letra para os títulos e para o título da nota."
       },
       "headingFont": {
         "label": "Fonte dos títulos",
@@ -1539,12 +1524,7 @@
       },
       "headingSize": {
         "label": "Tamanho dos títulos",
-        "description": "Defina o tamanho dos títulos em relação ao texto.",
-        "options": {
-          "small": "Menor",
-          "normal": "Normal",
-          "large": "Maior"
-        }
+        "description": "Defina o tamanho dos títulos em relação ao texto."
       },
       "titleSize": {
         "label": "Tamanho do título",

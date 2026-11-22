@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProjectInfo } from "@/lib/tauri";
 import { registerNoteEditor, type OpenNoteEditor } from "@/lib/open-note-editors";
 import { useFilesStore } from "@/store/files";
-import { saveNoteVersion, saveVersionBeforeAccept } from "./note-versions";
+import { restoreNoteVersion, saveNoteVersion, saveVersionBeforeAccept } from "./note-versions";
 
 const checkpoints = vi.hoisted(() => ({ checkpointSave: vi.fn(), checkpointReadText: vi.fn() }));
 vi.mock("@/lib/checkpoints", () => checkpoints);
@@ -48,8 +48,53 @@ describe("note versions", () => {
     expect(order).toEqual(["flush", "save"]);
     checkpoints.checkpointSave.mockResolvedValue({ status: "unchanged" });
     await expect(saveNoteVersion("note-1")).resolves.toBe(false);
+    checkpoints.checkpointSave.mockResolvedValue({ status: "published", snapshot_root: "older", created: false });
+    await expect(saveNoteVersion("note-1")).resolves.toBe(false);
     checkpoints.checkpointSave.mockResolvedValue({ status: "skipped", reason: "incomplete_capture", message: "Not saved.", suggestion: "" });
     await expect(saveNoteVersion("note-1")).rejects.toThrow("Not saved.");
     unregister();
+  });
+
+  it("saves the note as it was, writes the restored text, then records the restored text as current", async () => {
+    withProjects({ id: "note-1", kind: "note", main_doc: "note.md" });
+    const order: string[] = [];
+    checkpoints.checkpointReadText.mockImplementation(async () => {
+      order.push("read");
+      return "# Older\n";
+    });
+    checkpoints.checkpointSave.mockImplementation(async () => {
+      order.push("checkpoint");
+      return { status: "published", snapshot_root: "root", created: true };
+    });
+    const loadNote = vi.fn(async () => {
+      order.push("load");
+      return { text: "# Newer\n", version: "v2" };
+    });
+    const saveNote = vi.fn(async (_id: string, text: string) => {
+      order.push("write");
+      return { text, version: "v3" };
+    });
+
+    await restoreNoteVersion({ loadNote, saveNote }, "note-1", "older");
+
+    expect(order).toEqual(["read", "checkpoint", "load", "write", "checkpoint"]);
+    expect(saveNote).toHaveBeenCalledWith("note-1", "# Older\n", "v2");
+    expect(checkpoints.checkpointSave).toHaveBeenLastCalledWith("note-1");
+  });
+
+  it("keeps a restored note when its text cannot be recorded as current", async () => {
+    withProjects({ id: "note-1", kind: "note", main_doc: "note.md" });
+    checkpoints.checkpointReadText.mockResolvedValue("# Older\n");
+    checkpoints.checkpointSave
+      .mockResolvedValueOnce({ status: "published", snapshot_root: "root", created: true })
+      .mockResolvedValueOnce({ status: "skipped", reason: "storage_unavailable", message: "Disk full.", suggestion: "" });
+    const saveNote = vi.fn(async (_id: string, text: string) => ({ text, version: "v3" }));
+
+    await expect(
+      restoreNoteVersion({ loadNote: async () => ({ text: "# Newer\n", version: "v2" }), saveNote }, "note-1", "older"),
+    ).resolves.toBeUndefined();
+
+    expect(saveNote).toHaveBeenCalledWith("note-1", "# Older\n", "v2");
+    expect(logs.logError).toHaveBeenCalledWith("mark the restored note version as current", expect.any(Error));
   });
 });

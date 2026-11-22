@@ -29,6 +29,11 @@ pending or has failed.
   and dark theme keeps its own pair. A page color lighter than the text
   color gives a tinted light page, such as sepia, instead of an inverted
   one.
+- Dark mode can be Off, On or Match app theme. Match app theme turns pages
+  dark while the app is dark. In light mode they look as printed, or keep the
+  light tint the light theme's page colors give, such as sepia. The invert
+  button in the toolbar sets the choice to On or Off. All windows share it, so
+  a change in the preview window shows in the main window too.
 - Download the displayed PDF with a chosen filename.
 - Document outline and in-document text search.
 - Compile-log and preview tabs in the same surface.

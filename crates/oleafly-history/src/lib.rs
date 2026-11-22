@@ -314,6 +314,7 @@ pub struct Checkpoint {
     pub file_count: u64,
     pub logical_bytes: u64,
     pub label: Option<String>,
+    pub number: Option<u64>,
     portable_metadata_bytes: u64,
     chunk_references: u64,
 }
@@ -696,6 +697,15 @@ impl ExclusiveStoreGuard<'_> {
         destination: impl AsRef<Path>,
     ) -> Result<Materialization> {
         self.store.materialize_unlocked(root, destination.as_ref())
+    }
+
+    pub fn mark_current(&self, root: &SnapshotRoot) -> Result<()> {
+        let connection = self.store.connection()?;
+        let root = root.as_hex();
+        if query_checkpoint(&connection, &root)?.is_none() {
+            return Err(HistoryError::CheckpointNotFound(root));
+        }
+        record_current_checkpoint(&connection, &root)
     }
 }
 
@@ -1307,6 +1317,7 @@ impl Store {
         let mut connection = self.connection()?;
         if let Some(existing) = query_checkpoint(&connection, &root_hex)? {
             let _ = candidate.cleanup();
+            record_current_checkpoint(&connection, &root_hex)?;
             return Ok(PublishOutcome::Existing(existing));
         }
 
@@ -1329,11 +1340,13 @@ impl Store {
             file_count: candidate.manifest.files.len() as u64,
             logical_bytes,
             label: None,
+            number: None,
             portable_metadata_bytes: 0,
             chunk_references: 0,
         };
 
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        checkpoint.number = Some(claim_checkpoint_number(&transaction, None)?);
 
         let (_, candidate_budget) = validate_portable_history_after_publication(
             &transaction,
@@ -1424,6 +1437,7 @@ impl Store {
         }
 
         insert_checkpoint(&transaction, &checkpoint)?;
+        record_current_checkpoint(&transaction, &root_hex)?;
 
         if fault == PublishFault::BeforeCommit {
             return Err(HistoryError::Io(io::Error::other(
@@ -1470,7 +1484,7 @@ impl Store {
                           + length(CAST(toolchain_identity AS BLOB))
                           + length(CAST(main_document AS BLOB))
                           + length(CAST(output_hash AS BLOB)),
-                 portable_metadata_bytes, chunk_references, label
+                 portable_metadata_bytes, chunk_references, label, number
                  FROM checkpoints
                  ORDER BY sequence DESC
                  LIMIT 1",
@@ -1579,6 +1593,23 @@ impl Store {
         })
     }
 
+    pub fn current_checkpoint(&self) -> Result<Option<Checkpoint>> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let connection = self.connection()?;
+        let Some(root) = connection
+            .query_row(
+                "SELECT current_root FROM checkpoint_state WHERE singleton = 1",
+                [],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .optional()?
+            .flatten()
+        else {
+            return Ok(None);
+        };
+        query_checkpoint(&connection, &root)
+    }
+
     pub fn list(&self) -> Result<Vec<Checkpoint>> {
         let _store_locks = self.acquire_shared_locks()?;
         self.list_inner()
@@ -1594,7 +1625,7 @@ impl Store {
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB)),
-             portable_metadata_bytes, chunk_references, label
+             portable_metadata_bytes, chunk_references, label, number
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -1706,6 +1737,9 @@ impl Store {
                  SELECT snapshot_root FROM checkpoints
                  ORDER BY sequence DESC
                  LIMIT 1
+             )
+             AND snapshot_root IS NOT (
+                 SELECT current_root FROM checkpoint_state WHERE singleton = 1
              )",
             [],
         )? as u64)
@@ -2178,7 +2212,7 @@ impl Store {
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB)),
-             portable_metadata_bytes, chunk_references, label
+             portable_metadata_bytes, chunk_references, label, number
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
@@ -2239,11 +2273,6 @@ impl Store {
                 "portable history belongs to a different Checkpoints store".into(),
             ));
         }
-        let preexisting_checkpoints = if existing_checkpoint_count > 0 {
-            query_checkpoints_oldest_first(&transaction)?
-        } else {
-            Vec::new()
-        };
         if existing_checkpoint_count == 0 && current_lineage != archive_lineage {
             transaction.execute(
                 "UPDATE store_identity SET lineage = ?1 WHERE singleton = 1",
@@ -2324,7 +2353,12 @@ impl Store {
 
         let (missing, existing_checkpoints) = stage_imported_manifests(&transaction, checkpoints)?;
 
+        let mut renumbered = Vec::new();
         for checkpoint in &missing {
+            let number = claim_checkpoint_number(&transaction, checkpoint.number)?;
+            if checkpoint.number != Some(number) {
+                renumbered.push(checkpoint.root);
+            }
             let logical_bytes =
                 checkpoint
                     .manifest
@@ -2339,8 +2373,8 @@ impl Store {
                 "INSERT INTO checkpoints(
                     snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
                     main_document, output_hash, file_count, logical_bytes,
-                    portable_metadata_bytes, chunk_references, label
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    portable_metadata_bytes, chunk_references, label, number
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 params![
                     checkpoint.root.as_hex(),
                     checkpoint.evidence.completed_at_unix_ms,
@@ -2353,16 +2387,21 @@ impl Store {
                     checkpoint.portable_budget.metadata_bytes as i64,
                     checkpoint.portable_budget.chunk_references as i64,
                     checkpoint.label.as_deref(),
+                    number as i64,
                 ],
             )?;
         }
+        for root in &renumbered {
+            refresh_portable_budget(&transaction, root)?;
+        }
 
-        // Imported missing roots belong behind every recovery point that was
-        // already visible locally. Reinsert only the catalog rows, oldest
-        // first, so SQLite assigns them newer authoritative sequences while
-        // preserving their relative order and immutable payload identities.
         if !missing.is_empty() {
-            for checkpoint in &preexisting_checkpoints {
+            let (behind, mut numbered): (Vec<_>, Vec<_>) =
+                query_checkpoints_oldest_first(&transaction)?
+                    .into_iter()
+                    .partition(|checkpoint| renumbered.contains(&checkpoint.snapshot_root));
+            numbered.sort_by_key(|checkpoint| checkpoint.number);
+            for checkpoint in behind.iter().chain(&numbered) {
                 transaction.execute(
                     "DELETE FROM checkpoints WHERE snapshot_root = ?1",
                     [checkpoint.snapshot_root.as_hex()],
@@ -2550,6 +2589,7 @@ impl Store {
                 evidence,
                 manifest: metadata.manifest,
                 label,
+                number: metadata.number,
                 portable_budget: PortableCheckpointBudget {
                     metadata_bytes,
                     logical_bytes: declared_logical_bytes,
@@ -2603,6 +2643,7 @@ impl Store {
                 ,portable_metadata_bytes INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)
                 ,chunk_references INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)
                 ,label TEXT
+                ,number INTEGER CHECK(number >= 1)
              );
              CREATE TABLE IF NOT EXISTS store_identity(
                 singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
@@ -2783,6 +2824,8 @@ struct PortableCheckpoint {
     output_hash: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    number: Option<u64>,
     manifest: Manifest,
 }
 
@@ -2797,6 +2840,8 @@ struct PortableCheckpointView<'a> {
     output_hash: PortableContentHash<'a>,
     #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<u64>,
     manifest: &'a Manifest,
 }
 
@@ -2917,6 +2962,7 @@ fn portable_checkpoint_view<'a>(
         main_document: &checkpoint.main_document,
         output_hash: PortableContentHash(&checkpoint.output_hash),
         label: checkpoint.label.as_deref(),
+        number: checkpoint.number,
         manifest,
     };
     Ok((
@@ -2994,6 +3040,7 @@ struct ImportedCheckpoint {
     evidence: CompileEvidence,
     manifest: Manifest,
     label: Option<String>,
+    number: Option<u64>,
     portable_budget: PortableCheckpointBudget,
 }
 
@@ -3425,7 +3472,7 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB)),
-             portable_metadata_bytes, chunk_references, label
+             portable_metadata_bytes, chunk_references, label, number
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -3443,7 +3490,7 @@ fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpo
                   + length(CAST(toolchain_identity AS BLOB))
                   + length(CAST(main_document AS BLOB))
                   + length(CAST(output_hash AS BLOB)),
-         portable_metadata_bytes, chunk_references, label
+         portable_metadata_bytes, chunk_references, label, number
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -3456,8 +3503,8 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
         "INSERT INTO checkpoints(
             snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
             main_document, output_hash, file_count, logical_bytes,
-            portable_metadata_bytes, chunk_references, label
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            portable_metadata_bytes, chunk_references, label, number
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             checkpoint.snapshot_root.as_hex(),
             checkpoint.completed_at_unix_ms,
@@ -3470,6 +3517,7 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             checkpoint.portable_metadata_bytes as i64,
             checkpoint.chunk_references as i64,
             checkpoint.label,
+            checkpoint.number.map(|number| number as i64),
         ],
     )?;
     Ok(())
@@ -3495,6 +3543,11 @@ const CATALOG_ADDED_COLUMNS: &[CatalogColumn] = &[
     CatalogColumn {
         name: "label",
         declaration: "TEXT",
+        backfilled: false,
+    },
+    CatalogColumn {
+        name: "number",
+        declaration: "INTEGER CHECK(number >= 1)",
         backfilled: false,
     },
 ];
@@ -3530,6 +3583,98 @@ fn retired_catalog_columns(connection: &Connection) -> Result<Vec<&'static str>>
         .collect())
 }
 
+fn catalog_has_checkpoint_state(connection: &Connection) -> Result<bool> {
+    Ok(connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'checkpoint_state')",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+fn catalog_has_unnumbered_checkpoints(connection: &Connection) -> Result<bool> {
+    Ok(connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM checkpoints WHERE number IS NULL)",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+fn record_current_checkpoint(connection: &Connection, root: &str) -> Result<()> {
+    connection.execute(
+        "UPDATE checkpoint_state SET current_root = ?1 WHERE singleton = 1",
+        [root],
+    )?;
+    Ok(())
+}
+
+fn claim_checkpoint_number(connection: &Connection, wanted: Option<u64>) -> Result<u64> {
+    let wanted = wanted.filter(|number| (1..=i64::MAX as u64).contains(number));
+    if let Some(number) = wanted {
+        let taken = connection.query_row(
+            "SELECT EXISTS(SELECT 1 FROM checkpoints WHERE number = ?1)",
+            [number as i64],
+            |row| row.get::<_, bool>(0),
+        )?;
+        if !taken {
+            connection.execute(
+                "UPDATE checkpoint_state SET next_number = MAX(next_number, ?1 + 1)
+                 WHERE singleton = 1",
+                [number as i64],
+            )?;
+            return Ok(number);
+        }
+    }
+    let next = connection.query_row(
+        "SELECT MAX(next_number, COALESCE((SELECT MAX(number) FROM checkpoints), 0) + 1)
+         FROM checkpoint_state WHERE singleton = 1",
+        [],
+        |row| row.get::<_, i64>(0),
+    )?;
+    connection.execute(
+        "UPDATE checkpoint_state SET next_number = ?1 WHERE singleton = 1",
+        [next + 1],
+    )?;
+    Ok(next as u64)
+}
+
+fn number_unnumbered_checkpoints(connection: &Connection) -> Result<Vec<SnapshotRoot>> {
+    let unnumbered = {
+        let mut statement = connection.prepare(
+            "SELECT snapshot_root FROM checkpoints WHERE number IS NULL ORDER BY sequence",
+        )?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()?
+    };
+    let mut numbered = Vec::with_capacity(unnumbered.len());
+    for root in unnumbered {
+        let number = claim_checkpoint_number(connection, None)?;
+        connection.execute(
+            "UPDATE checkpoints SET number = ?2 WHERE snapshot_root = ?1",
+            params![root, number as i64],
+        )?;
+        numbered.push(SnapshotRoot::from_hex(&root)?);
+    }
+    Ok(numbered)
+}
+
+fn refresh_portable_budget(connection: &Connection, root: &SnapshotRoot) -> Result<()> {
+    let checkpoint = query_checkpoint(connection, &root.as_hex())?
+        .ok_or_else(|| HistoryError::CheckpointNotFound(root.as_hex()))?;
+    let manifest = load_visible_manifest(connection, root)?;
+    let budget = portable_checkpoint_budget(&checkpoint, &manifest)?;
+    connection.execute(
+        "UPDATE checkpoints
+         SET portable_metadata_bytes = ?2, chunk_references = ?3
+         WHERE snapshot_root = ?1",
+        params![
+            root.as_hex(),
+            budget.metadata_bytes as i64,
+            budget.chunk_references as i64,
+        ],
+    )?;
+    Ok(())
+}
+
 fn catalog_user_version(connection: &Connection) -> Result<u32> {
     Ok(connection.query_row("PRAGMA user_version", [], |row| row.get(0))?)
 }
@@ -3542,6 +3687,8 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
     if version == FORMAT_VERSION
         && missing_catalog_columns(connection)?.is_empty()
         && retired_catalog_columns(connection)?.is_empty()
+        && catalog_has_checkpoint_state(connection)?
+        && !catalog_has_unnumbered_checkpoints(connection)?
     {
         return Ok(());
     }
@@ -3563,20 +3710,26 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
     for name in retired_catalog_columns(&transaction)? {
         transaction.execute_batch(&format!("ALTER TABLE checkpoints DROP COLUMN {name};"))?;
     }
+    if !catalog_has_checkpoint_state(&transaction)? {
+        transaction.execute_batch(
+            "CREATE TABLE checkpoint_state(
+                singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+                current_root TEXT,
+                next_number INTEGER NOT NULL CHECK(next_number >= 1)
+             );
+             INSERT INTO checkpoint_state(singleton, current_root, next_number)
+                VALUES (1, (SELECT snapshot_root FROM checkpoints ORDER BY sequence DESC LIMIT 1), 1);
+             CREATE UNIQUE INDEX IF NOT EXISTS checkpoints_number ON checkpoints(number);",
+        )?;
+    }
+    let numbered = number_unnumbered_checkpoints(&transaction)?;
     if requires_backfill {
         for checkpoint in query_checkpoints_oldest_first(&transaction)? {
-            let manifest = load_visible_manifest(&transaction, &checkpoint.snapshot_root)?;
-            let budget = portable_checkpoint_budget(&checkpoint, &manifest)?;
-            transaction.execute(
-                "UPDATE checkpoints
-                 SET portable_metadata_bytes = ?2, chunk_references = ?3
-                 WHERE snapshot_root = ?1",
-                params![
-                    checkpoint.snapshot_root.as_hex(),
-                    budget.metadata_bytes as i64,
-                    budget.chunk_references as i64,
-                ],
-            )?;
+            refresh_portable_budget(&transaction, &checkpoint.snapshot_root)?;
+        }
+    } else {
+        for root in &numbered {
+            refresh_portable_budget(&transaction, root)?;
         }
     }
     if version != FORMAT_VERSION {
@@ -3611,6 +3764,7 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
         portable_metadata_bytes: row.get::<_, i64>(9)? as u64,
         chunk_references: row.get::<_, i64>(10)? as u64,
         label: row.get(11)?,
+        number: row.get::<_, Option<i64>>(12)?.map(|number| number as u64),
     })
 }
 
@@ -5273,6 +5427,7 @@ mod tests {
             file_count: 2,
             logical_bytes: 0,
             label: None,
+            number: None,
             portable_metadata_bytes: 0,
             chunk_references: 0,
         };
@@ -5285,6 +5440,7 @@ mod tests {
             main_document: checkpoint.main_document.clone(),
             output_hash: output_hash.to_hex(),
             label: None,
+            number: None,
             manifest: manifest.clone(),
         };
         let canonical = serde_json::to_vec(&metadata).unwrap();
@@ -5712,6 +5868,7 @@ mod tests {
             main_document: "main.tex".into(),
             output_hash: ContentHash::digest(b"output").to_hex(),
             label: None,
+            number: None,
             manifest,
         };
         let header = serde_json::to_vec(&metadata).unwrap();

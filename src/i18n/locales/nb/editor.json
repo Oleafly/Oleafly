@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Lukk versjonshåndteringen",
     "title": "Versjonshåndtering",
-    "close": "Lukk versjonshåndteringen",
-    "views": "Visninger i versjonshåndteringen",
-    "gitHistory": "Git-historikk",
-    "savedCheckpoints": "Lagrede sjekkpunkter"
+    "close": "Lukk versjonshåndteringen"
   },
   "wordCount": {
     "close": "Lukk prosjektinfoen"
@@ -453,20 +450,6 @@
     "fontPackAction": "Last ned og kompiler",
     "fontPackDownloading": "Laster ned…",
     "fontPackFailed": "Skriftpakken kunne ikke lastes ned. Sjekk tilkoblingen og prøv igjen."
-  },
-  "history": {
-    "untitledCommit": "Commit uten tittel",
-    "restoreFailed": "Kunne ikke gjenopprette den Git-versjonen.",
-    "copyIdFailed": "Kunne ikke kopiere den commit-ID-en.",
-    "empty": "Ingen Git-historikk ennå",
-    "emptyHint": "Sett opp versjonskontroll, og commit når du vil ha en versjon her.",
-    "commitIdCopied": "Commit-ID-en er kopiert",
-    "copyCommitId": "Kopier hele commit-ID-en",
-    "copyCommitIdFor": "Kopier commit-ID-en {{id}}",
-    "overwriteTooltip": "Overskriv alle filer med denne versjonen",
-    "overwriteAll": "Overskriv alt",
-    "restoreTooltip": "Gjenopprett denne versjonen (overskriver alle filer)",
-    "restore": "Gjenopprett"
   },
   "diff": {
     "reloadFailed": "Diffen kunne ikke lastes på nytt. Lukk denne fanen og åpne den igjen.",
@@ -571,9 +554,6 @@
     "unsupported": "Korrekturlesing støttes ikke for dette dokumentformatet."
   },
   "checkpoints": {
-    "showInExplorer": "Vis i Utforsker",
-    "showInFinder": "Vis i Finder",
-    "showInFileManager": "Vis i filbehandleren",
     "timeNotRecorded": "Tidspunktet er ikke registrert",
     "justNow": "Nå nettopp",
     "fallbackName": "Sjekkpunkt",
@@ -649,12 +629,13 @@
       "deleteCheckpoint": "Slett sjekkpunktet",
       "restoreFor": "Gjenopprett {{version}}",
       "restore": "Gjenopprett",
-      "deleteFor": "Slett {{version}}"
+      "deleteFor": "Slett {{version}}",
+      "current": "Gjeldende"
     },
     "toast": {
       "copyIdFailed": "Kunne ikke kopiere den sjekkpunkt-id-en.",
       "saveLabelFailed": "Kunne ikke lagre sjekkpunktetiketten.",
-      "restored": "Sjekkpunktet er gjenopprettet.",
+      "restored": "{{version}} er gjenopprettet. Versjonshåndtering merker den nå som Gjeldende.",
       "restoreFailed": "Kunne ikke gjenopprette dette sjekkpunktet. Se apploggen for detaljer.",
       "deleted": "Sjekkpunktet er slettet.",
       "deleteFailed": "Kunne ikke slette dette sjekkpunktet.",
@@ -713,7 +694,7 @@
     "maintenance": {
       "title": "Vedlikehold",
       "description": "Slett sjekkpunkter dette prosjektet ikke trenger lenger.",
-      "keepLatestPrompt": "Slette alle sjekkpunkter bortsett fra det nyeste? Dette kan ikke angres.",
+      "keepLatestPrompt": "Slette alle sjekkpunkter bortsett fra det nyeste og det som er merket Gjeldende? Dette kan ikke angres.",
       "deleteOlder": "Slett eldre sjekkpunkter",
       "keepAll": "Behold alle sjekkpunkter",
       "resetPrompt": "Slette alle sjekkpunkter i dette prosjektet? Prosjektfilene blir stående uendret. Dette kan ikke angres.",

@@ -1427,18 +1427,12 @@
   "appearance": {
     "notes": {
       "sectionName": "노트 모양",
-      "resetAriaLabel": "{{setting}}을(를) 기본값으로 되돌리기",
       "text": {
         "title": "텍스트"
       },
       "typeface": {
         "label": "서체",
-        "description": "노트 본문의 서체를 고르세요.",
-        "options": {
-          "sans": "산세리프",
-          "serif": "세리프",
-          "mono": "고정폭"
-        }
+        "description": "노트 본문의 서체를 고르세요."
       },
       "font": {
         "label": "노트 글꼴",
@@ -1457,23 +1451,14 @@
       },
       "paragraphSpacing": {
         "label": "문단 간격",
-        "description": "문단, 목록, 기타 블록 사이의 간격을 정합니다.",
-        "options": {
-          "compact": "좁게",
-          "normal": "보통",
-          "relaxed": "여유 있게",
-          "spacious": "넓게"
-        }
+        "description": "문단, 목록, 기타 블록 사이의 간격을 정합니다."
       },
       "headings": {
         "title": "제목과 노트 제목"
       },
       "headingTypeface": {
         "label": "제목 서체",
-        "description": "제목과 노트 제목의 서체를 고르세요.",
-        "options": {
-          "text": "본문과 같게"
-        }
+        "description": "제목과 노트 제목의 서체를 고르세요."
       },
       "headingFont": {
         "label": "제목 글꼴",
@@ -1481,12 +1466,7 @@
       },
       "headingSize": {
         "label": "제목 크기",
-        "description": "본문과 비교해 제목을 얼마나 크게 표시할지 정합니다.",
-        "options": {
-          "small": "작게",
-          "normal": "보통",
-          "large": "크게"
-        }
+        "description": "본문과 비교해 제목을 얼마나 크게 표시할지 정합니다."
       },
       "titleSize": {
         "label": "노트 제목 크기",

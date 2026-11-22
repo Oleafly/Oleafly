@@ -317,6 +317,10 @@
       "keywords": "afleidingsvrij focus schermvullend verbergen interface minimaal schrijven",
       "label": "Zenmodus aan- of uitzetten"
     },
+    "visualSettings": {
+      "keywords": "weergave lettertype lettersoort tekstgrootte alinea-inspringing afstand uitvullen koppen schrijven",
+      "label": "Instellingen voor de visuele modus"
+    },
     "togglePreview": {
       "keywords": "pdf voorbeeld tonen verbergen splitsen alleen editor",
       "label": "PDF-voorbeeld tonen of verbergen"
@@ -502,7 +506,15 @@
       "run": "Code uitvoeren op deze computer"
     },
     "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen.",
-    "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren"
+    "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren",
+    "texRootDocument": "root: {{path}} (heeft een eigen \\documentclass)",
+    "texRootInclude": "root: {{path}} (neemt {{file}} op)",
+    "target": {
+      "title": "Compileerdoel",
+      "help": "Met Het geopende bestand volgen wordt een bestand met een eigen \\documentclass op zichzelf gecompileerd. Een hoofdstuk of sectie compileert het document dat het opneemt. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking gaat altijd voor.",
+      "open": "Het geopende bestand volgen",
+      "main": "Altijd het hoofddocument"
+    }
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -1115,7 +1127,7 @@
       "empty": "Geen instellingen gevonden",
       "keywords": {
         "ai": "assistent, chat, modellen, providers, aanbieders, API-sleutels, agents, prompts, budget, MCP-servers",
-        "appearance": "thema, donkere modus, lichte modus, kleur, lettertypen, lettertype, tekstgrootte, zoomen, indeling, lay-out",
+        "appearance": "thema, donkere modus, lichte modus, kleur, lettertypen, lettertype, tekstgrootte, zoomen, indeling, lay-out, visuele modus, lettersoort, alinea-inspringing, uitvullen",
         "collaboration": "servers, aanmelden, apparaten, leden, onderhouders, delen, teams, labs, groepen, live bewerken, realtime, samenwerken, beveiligingslogboek",
         "data": "back-up, backup, bibliotheekmap, projectenmap, opslag, schijfruimte, prullenbak, projecten verwijderen, checkpoints",
         "dictionary": "spelling, eigen woorden, genegeerde woorden, proeflezen, grammaticaregels",

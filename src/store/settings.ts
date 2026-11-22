@@ -24,12 +24,20 @@ import {
 import {
   NOTES_APPEARANCE_DEFAULTS,
   NOTES_APPEARANCE_STORAGE_KEYS,
-  NOTES_LINE_HEIGHTS,
   normalizeNotesSetting,
   readNotesAppearance,
   type NotesAppearance,
   type NotesAppearanceKey,
 } from "@/lib/notes-appearance";
+import { TEXT_LINE_HEIGHTS } from "@/lib/text-appearance";
+import {
+  VISUAL_APPEARANCE_DEFAULTS,
+  VISUAL_APPEARANCE_STORAGE_KEYS,
+  normalizeVisualSetting,
+  readVisualAppearance,
+  type VisualAppearance,
+  type VisualAppearanceKey,
+} from "@/lib/visual-appearance";
 import { NOTES_PERIODIC_DEFAULTS, NOTES_PERIODIC_KEY, normalizePeriodic, type NotesPeriodic, type PeriodicKind, type PeriodicNoteSettings, readPeriodic, type WeekStartSetting } from "@/lib/notes-periodic";
 
 const SETTINGS_SECTIONS = new Set([
@@ -95,6 +103,9 @@ export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
 export type OverleafDeletes = "ask" | "always" | "never";
+export const PDF_DARK_MODES = ["off", "on", "follow"] as const;
+export type PdfDarkMode = (typeof PDF_DARK_MODES)[number];
+const PDF_DARK_MODE_STORAGE_KEY = "oleafly.pdf.darkMode";
 type FileMarkers = "icons" | "badges";
 export type GrammarDialect =
   | "american"
@@ -1101,8 +1112,8 @@ interface SettingsState {
   setEditorColor: (key: EditorColorKey, id: EditorColorId, color: string) => void;
   resetEditorColors: (key: EditorColorKey) => void;
   importEditorThemes: (exported: EditorThemeExport) => void;
-  pdfDarkMode: boolean;
-  setPdfDarkMode: (v: boolean) => void;
+  pdfDarkMode: PdfDarkMode;
+  setPdfDarkMode: (v: PdfDarkMode) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -1167,6 +1178,21 @@ interface SettingsState {
   notesXPostsLive: boolean;
   notesTikzPreamble: string;
   setNotesAppearance: <K extends NotesAppearanceKey>(key: K, value: NotesAppearance[K]) => void;
+  visualTypeface: VisualAppearance["visualTypeface"];
+  visualFontFamily: string;
+  visualFontSize: number;
+  visualLineHeight: VisualAppearance["visualLineHeight"];
+  visualCustomLineHeight: number;
+  visualParagraphSpacing: VisualAppearance["visualParagraphSpacing"];
+  visualParagraphIndent: number;
+  visualTextAlign: VisualAppearance["visualTextAlign"];
+  visualTextWidth: VisualAppearance["visualTextWidth"];
+  visualHeadingTypeface: VisualAppearance["visualHeadingTypeface"];
+  visualHeadingFontFamily: string;
+  visualHeadingSize: VisualAppearance["visualHeadingSize"];
+  visualHeadingColor: string;
+  visualMarkdown: boolean;
+  setVisualAppearance: <K extends VisualAppearanceKey>(key: K, value: VisualAppearance[K]) => void;
   notesPeriodic: NotesPeriodic;
   setNotesPeriodic: (kind: PeriodicKind, patch: Partial<PeriodicNoteSettings>) => void;
   setNotesWeekStart: (weekStart: WeekStartSetting) => void;
@@ -1314,7 +1340,7 @@ const PREF_DEFAULTS = {
   editorThemeLight: "system" as EditorThemeId,
   editorThemeDark: "system" as EditorThemeId,
   editorColors: {} as EditorColorSettings,
-  pdfDarkMode: false,
+  pdfDarkMode: "off" as PdfDarkMode,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
@@ -1354,6 +1380,7 @@ const PREF_DEFAULTS = {
   overleafDeletes: "ask" as OverleafDeletes,
   pdfReview: false,
   ...NOTES_APPEARANCE_DEFAULTS,
+  ...VISUAL_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
@@ -1438,7 +1465,7 @@ export const SECTION_SETTINGS = {
     editorThemeLight: "oleafly.editorTheme.light",
     editorThemeDark: "oleafly.editorTheme.dark",
     editorColors: "oleafly.editor.colors",
-    pdfDarkMode: "oleafly.pdf.darkMode",
+    pdfDarkMode: PDF_DARK_MODE_STORAGE_KEY,
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
@@ -1453,6 +1480,7 @@ export const SECTION_SETTINGS = {
     homeProjectLayout: "oleafly.library.projectLayout",
     fileMarkers: "oleafly.fileTree.markers",
     ...NOTES_APPEARANCE_STORAGE_KEYS,
+    ...VISUAL_APPEARANCE_STORAGE_KEYS,
     notesPeriodic: NOTES_PERIODIC_KEY,
   },
   experimentation: {
@@ -1469,6 +1497,14 @@ export const SECTION_SETTINGS = {
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
 export type SettingsSection = keyof typeof SECTION_SETTINGS;
+
+const PDF_DARK_MODE_STORED: Readonly<Record<PdfDarkMode, string>> = { off: "0", on: "1", follow: "follow" };
+
+function storedPdfDarkMode(): PdfDarkMode {
+  const stored = ls(PDF_DARK_MODE_STORAGE_KEY, "0");
+  if (stored === "1" || stored === "on") return "on";
+  return stored === "follow" ? "follow" : "off";
+}
 
 function overleafDeletesFrom(stored: string): OverleafDeletes {
   return stored === "always" || stored === "never" ? stored : "ask";
@@ -1514,6 +1550,13 @@ export function sectionDiffersFromDefaults(
   });
 }
 
+function seedCustomLineHeight(storageKey: string, seed: () => number): number | null {
+  if (ls(storageKey, "") !== "") return null;
+  const seeded = seed();
+  saveLs(storageKey, String(seeded));
+  return seeded;
+}
+
 function dropRetiredLiveCollaborationFlag(): void {
   try {
     localStorage.removeItem("oleafly.liveCollaboration");
@@ -1549,13 +1592,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const choice = EDITOR_LINE_HEIGHT_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLineHeight;
     const previous = get().editorLineHeight;
     saveLs("oleafly.editor.lineHeight", choice);
-    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.lineHeightCustom", "") === "") {
-      const seeded = EDITOR_LINE_HEIGHTS[previous];
-      saveLs("oleafly.editor.lineHeightCustom", String(seeded));
-      set({ editorLineHeight: choice, editorCustomLineHeight: seeded });
-      return;
-    }
-    set({ editorLineHeight: choice });
+    const seeded =
+      choice === "custom" && previous !== "custom"
+        ? seedCustomLineHeight("oleafly.editor.lineHeightCustom", () => EDITOR_LINE_HEIGHTS[previous])
+        : null;
+    set(seeded === null ? { editorLineHeight: choice } : { editorLineHeight: choice, editorCustomLineHeight: seeded });
   },
   editorCustomLineHeight: readEditorCustomLineHeight(),
   setEditorCustomLineHeight: (v) => {
@@ -2126,9 +2167,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
     set({ editorColors });
   },
-  pdfDarkMode: ls("oleafly.pdf.darkMode", "0") === "1",
+  pdfDarkMode: storedPdfDarkMode(),
   setPdfDarkMode: (v) => {
-    saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
+    saveLs(PDF_DARK_MODE_STORAGE_KEY, PDF_DARK_MODE_STORED[v]);
     set({ pdfDarkMode: v });
   },
   hiddenFilePatterns: readHiddenFilePatterns(
@@ -2228,14 +2269,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const value = normalizeNotesSetting(key, v);
     saveLs(NOTES_APPEARANCE_STORAGE_KEYS[key], storedDefault(value));
     const previous = get().notesLineHeight;
-    const customKey = NOTES_APPEARANCE_STORAGE_KEYS.notesCustomLineHeight;
-    if (key === "notesLineHeight" && value === "custom" && previous !== "custom" && ls(customKey, "") === "") {
-      const seeded = NOTES_LINE_HEIGHTS[previous];
-      saveLs(customKey, String(seeded));
-      set({ notesLineHeight: "custom", notesCustomLineHeight: seeded });
-      return;
-    }
-    set({ [key]: value } as Partial<SettingsState>);
+    const seeded =
+      key === "notesLineHeight" && value === "custom" && previous !== "custom"
+        ? seedCustomLineHeight(NOTES_APPEARANCE_STORAGE_KEYS.notesCustomLineHeight, () => TEXT_LINE_HEIGHTS[previous])
+        : null;
+    set(seeded === null ? ({ [key]: value } as Partial<SettingsState>) : { notesLineHeight: "custom", notesCustomLineHeight: seeded });
+  },
+  ...readVisualAppearance((key) => ls(key, "")),
+  setVisualAppearance: (key, v) => {
+    const value = normalizeVisualSetting(key, v);
+    saveLs(VISUAL_APPEARANCE_STORAGE_KEYS[key], storedDefault(value));
+    const state = get();
+    const previous = state.visualLineHeight;
+    const seeded =
+      key === "visualLineHeight" && value === "custom" && previous !== "custom"
+        ? seedCustomLineHeight(VISUAL_APPEARANCE_STORAGE_KEYS.visualCustomLineHeight, () =>
+            previous === "editor"
+              ? editorLineHeightValue(state.editorLineHeight, state.editorCustomLineHeight)
+              : TEXT_LINE_HEIGHTS[previous],
+          )
+        : null;
+    set(seeded === null ? ({ [key]: value } as Partial<SettingsState>) : { visualLineHeight: "custom", visualCustomLineHeight: seeded });
   },
   notesPeriodic: readPeriodic(ls(NOTES_PERIODIC_KEY, "")),
   setNotesPeriodic: (kind, patch) => {
@@ -2311,3 +2365,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ terminalOpen: false });
   },
 }));
+
+export function followPdfDarkModeInOtherWindows(): () => void {
+  const read = () => useSettingsStore.setState({ pdfDarkMode: storedPdfDarkMode() });
+  const onStorage = (event: StorageEvent) => {
+    if (event.storageArea !== window.localStorage) return;
+    if (event.key === null || event.key === PDF_DARK_MODE_STORAGE_KEY) read();
+  };
+  read();
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}

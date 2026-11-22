@@ -254,6 +254,11 @@ fn repeated_root_never_reorders_history_and_keep_latest_uses_catalog_sequence() 
     assert_eq!(listed[1].snapshot_root, root_a);
     assert_eq!(listed[1].completed_at_unix_ms, 100);
 
+    store
+        .lock_exclusive()
+        .unwrap()
+        .mark_current(&root_b)
+        .unwrap();
     assert_eq!(store.keep_latest().unwrap(), 1);
     let retained = store.list().unwrap();
     assert_eq!(retained.len(), 1);
@@ -1656,6 +1661,313 @@ fn latest_checkpoint_follows_the_catalog_sequence() {
         )
         .unwrap()
         .is_none());
+}
+
+fn publish_source(
+    store: &Store,
+    project: &std::path::Path,
+    source: &[u8],
+    time: i64,
+) -> PublishOutcome {
+    fs::write(project.join("main.tex"), source).unwrap();
+    let candidate = store
+        .stage_candidate(
+            project,
+            &capture_inputs(project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    publish(store, candidate, time).unwrap()
+}
+
+fn current_root(store: &Store) -> Option<oleafly_history::SnapshotRoot> {
+    store
+        .current_checkpoint()
+        .unwrap()
+        .map(|checkpoint| checkpoint.snapshot_root)
+}
+
+#[test]
+fn the_current_checkpoint_is_the_one_last_published_matched_or_restored() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    assert_eq!(current_root(&store), None);
+
+    let PublishOutcome::Created(first) = publish_source(&store, &project, b"first", 100) else {
+        panic!("the first source must make a checkpoint");
+    };
+    assert_eq!(current_root(&store), Some(first.snapshot_root));
+    let PublishOutcome::Created(second) = publish_source(&store, &project, b"second", 200) else {
+        panic!("an edit must make a checkpoint");
+    };
+    assert_eq!(current_root(&store), Some(second.snapshot_root));
+
+    let PublishOutcome::Existing(matched) = publish_source(&store, &project, b"first", 300) else {
+        panic!("a source already stored must match its checkpoint");
+    };
+    assert_eq!(matched.snapshot_root, first.snapshot_root);
+    assert_eq!(current_root(&store), Some(first.snapshot_root));
+    assert_eq!(
+        store.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        second.snapshot_root
+    );
+
+    store
+        .lock_exclusive()
+        .unwrap()
+        .mark_current(&second.snapshot_root)
+        .unwrap();
+    assert_eq!(current_root(&store), Some(second.snapshot_root));
+
+    assert!(store.delete_checkpoint(&second.snapshot_root).unwrap());
+    assert_eq!(
+        current_root(&store),
+        None,
+        "a deleted checkpoint must not read as current, and nothing else matches the files"
+    );
+    assert!(matches!(
+        store
+            .lock_exclusive()
+            .unwrap()
+            .mark_current(&second.snapshot_root),
+        Err(HistoryError::CheckpointNotFound(_))
+    ));
+}
+
+#[test]
+fn a_catalog_from_before_the_current_checkpoint_starts_at_its_latest_checkpoint() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    publish_source(&store, &project, b"first", 100);
+    let PublishOutcome::Created(second) = publish_source(&store, &project, b"second", 200) else {
+        panic!("an edit must make a checkpoint");
+    };
+    drop(store);
+    Connection::open(history.join("catalog.sqlite3"))
+        .unwrap()
+        .execute_batch("DROP TABLE checkpoint_state;")
+        .unwrap();
+
+    let reopened = Store::open_existing(&history).unwrap().unwrap();
+
+    assert_eq!(current_root(&reopened), Some(second.snapshot_root));
+}
+
+fn numbers(store: &Store) -> Vec<Option<u64>> {
+    store
+        .list()
+        .unwrap()
+        .iter()
+        .map(|checkpoint| checkpoint.number)
+        .collect()
+}
+
+fn created(outcome: PublishOutcome) -> oleafly_history::Checkpoint {
+    match outcome {
+        PublishOutcome::Created(checkpoint) => checkpoint,
+        PublishOutcome::Existing(checkpoint) => {
+            panic!(
+                "expected a new checkpoint, got {}",
+                checkpoint.snapshot_root
+            )
+        }
+    }
+}
+
+fn history_project(temp: &std::path::Path) -> std::path::PathBuf {
+    let project = temp.join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    project
+}
+
+#[test]
+fn checkpoint_numbers_survive_deletion_and_are_never_handed_out_again() {
+    let temp = tempdir().unwrap();
+    let project = history_project(temp.path());
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let first = created(publish_source(&store, &project, b"one", 1));
+    let second = created(publish_source(&store, &project, b"two", 2));
+    let third = created(publish_source(&store, &project, b"three", 3));
+    assert_eq!(numbers(&store), vec![Some(3), Some(2), Some(1)]);
+
+    assert!(store.delete_checkpoint(&second.snapshot_root).unwrap());
+    assert_eq!(numbers(&store), vec![Some(3), Some(1)]);
+
+    assert!(store.delete_checkpoint(&third.snapshot_root).unwrap());
+    let fourth = created(publish_source(&store, &project, b"four", 4));
+    assert_eq!(fourth.number, Some(4));
+    assert_eq!(numbers(&store), vec![Some(4), Some(1)]);
+    assert_eq!(
+        store
+            .checkpoint(&first.snapshot_root)
+            .unwrap()
+            .unwrap()
+            .number,
+        Some(1)
+    );
+}
+
+#[test]
+fn keep_latest_also_keeps_the_checkpoint_the_files_are_on() {
+    let temp = tempdir().unwrap();
+    let project = history_project(temp.path());
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let first = created(publish_source(&store, &project, b"one", 1));
+    created(publish_source(&store, &project, b"two", 2));
+    let third = created(publish_source(&store, &project, b"three", 3));
+    store
+        .lock_exclusive()
+        .unwrap()
+        .mark_current(&first.snapshot_root)
+        .unwrap();
+
+    assert_eq!(store.keep_latest().unwrap(), 1);
+
+    let kept = store
+        .list()
+        .unwrap()
+        .into_iter()
+        .map(|checkpoint| checkpoint.snapshot_root)
+        .collect::<Vec<_>>();
+    assert_eq!(kept, vec![third.snapshot_root, first.snapshot_root]);
+    assert_eq!(current_root(&store), Some(first.snapshot_root));
+    assert_eq!(store.keep_latest().unwrap(), 0);
+}
+
+#[test]
+fn a_history_archive_brings_checkpoints_back_under_their_own_numbers() {
+    let temp = tempdir().unwrap();
+    let project = history_project(temp.path());
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let first = created(publish_source(&store, &project, b"one", 1));
+    let second = created(publish_source(&store, &project, b"two", 2));
+    let mut archive = Vec::new();
+    store.export_history(&mut archive).unwrap();
+
+    assert!(store.delete_checkpoint(&first.snapshot_root).unwrap());
+    let imported = store.import_history(archive.as_slice()).unwrap();
+
+    assert_eq!(imported.created_checkpoints, 1);
+    let listed = store.list().unwrap();
+    assert_eq!(
+        listed
+            .iter()
+            .map(|checkpoint| (checkpoint.snapshot_root, checkpoint.number))
+            .collect::<Vec<_>>(),
+        vec![
+            (second.snapshot_root, Some(2)),
+            (first.snapshot_root, Some(1))
+        ]
+    );
+    store.verify().unwrap();
+
+    assert!(store.delete_checkpoint(&second.snapshot_root).unwrap());
+    store.import_history(archive.as_slice()).unwrap();
+    assert_eq!(numbers(&store), vec![Some(2), Some(1)]);
+    assert_eq!(
+        store.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        second.snapshot_root,
+        "a checkpoint brought back under its own number takes its old place"
+    );
+
+    let third = created(publish_source(&store, &project, b"three", 3));
+    assert_eq!(third.number, Some(3));
+}
+
+#[test]
+fn an_imported_checkpoint_whose_number_is_taken_gets_the_next_one() {
+    let temp = tempdir().unwrap();
+    let project = history_project(temp.path());
+    let source = Store::open(temp.path().join("source-history")).unwrap();
+    created(publish_source(&source, &project, b"one", 1));
+    let mut first_archive = Vec::new();
+    source.export_history(&mut first_archive).unwrap();
+    let copy = Store::open(temp.path().join("copy-history")).unwrap();
+    copy.import_history(first_archive.as_slice()).unwrap();
+
+    let source_second = created(publish_source(&source, &project, b"source two", 2));
+    let copy_second = created(publish_source(&copy, &project, b"copy two", 2));
+    assert_eq!(source_second.number, Some(2));
+    assert_eq!(copy_second.number, Some(2));
+    let mut second_archive = Vec::new();
+    source.export_history(&mut second_archive).unwrap();
+
+    copy.import_history(second_archive.as_slice()).unwrap();
+
+    let moved = copy
+        .checkpoint(&source_second.snapshot_root)
+        .unwrap()
+        .unwrap();
+    assert_eq!(moved.number, Some(3));
+    assert_eq!(
+        copy.checkpoint(&copy_second.snapshot_root)
+            .unwrap()
+            .unwrap()
+            .number,
+        Some(2)
+    );
+    assert_eq!(numbers(&copy), vec![Some(2), Some(1), Some(3)]);
+    assert_eq!(
+        copy.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        copy_second.snapshot_root,
+        "a renumbered import stays behind the checkpoints that were already here"
+    );
+    copy.verify().unwrap();
+    let mut reexported = Vec::new();
+    copy.export_history(&mut reexported).unwrap();
+}
+
+#[test]
+fn a_catalog_from_before_numbers_keeps_the_numbers_people_saw() {
+    let temp = tempdir().unwrap();
+    let project = history_project(temp.path());
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let first = created(publish_source(&store, &project, b"one", 1));
+    let second = created(publish_source(&store, &project, b"two", 2));
+    let third = created(publish_source(&store, &project, b"three", 3));
+    assert!(store.delete_checkpoint(&second.snapshot_root).unwrap());
+    drop(store);
+    Connection::open(history.join("catalog.sqlite3"))
+        .unwrap()
+        .execute_batch(
+            "DROP INDEX checkpoints_number;
+             DROP TABLE checkpoint_state;
+             ALTER TABLE checkpoints DROP COLUMN number;",
+        )
+        .unwrap();
+
+    let reopened = Store::open_existing(&history).unwrap().unwrap();
+    assert_eq!(numbers(&reopened), vec![Some(2), Some(1)]);
+    assert_eq!(current_root(&reopened), Some(third.snapshot_root));
+    reopened.verify().unwrap();
+    drop(reopened);
+
+    Connection::open(history.join("catalog.sqlite3"))
+        .unwrap()
+        .execute(
+            "UPDATE checkpoints SET number = NULL WHERE snapshot_root = ?1",
+            [first.snapshot_root.as_hex()],
+        )
+        .unwrap();
+    let reopened = Store::open_existing(&history).unwrap().unwrap();
+    assert_eq!(
+        reopened
+            .checkpoint(&first.snapshot_root)
+            .unwrap()
+            .unwrap()
+            .number,
+        Some(3),
+        "a checkpoint an older release saved gets the next number"
+    );
+    reopened.verify().unwrap();
 }
 
 #[test]

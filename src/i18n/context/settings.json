@@ -251,7 +251,8 @@
       "app": "Tab label for settings that affect the whole application window.",
       "editor": "Tab label for source editor settings.",
       "files": "Tab label for project and file tree settings.",
-      "pdf": "Tab label for PDF preview settings."
+      "pdf": "Tab label for PDF preview settings.",
+      "visual": "Tab label for the settings of Visual mode, the editing mode that shows a LaTeX or Typst document formatted instead of as source code."
     },
     "terminal": {
       "colors": {
@@ -344,6 +345,37 @@
       "darkColors": {
         "label": "Heading above two color pickers that set the page and text colors used when PDF dark mode is on.",
         "description": "Help text under that heading. 'Light or dark theme' refers to the app's own light and dark appearance."
+      }
+    },
+    "resetSetting": "Accessible label of the button that resets one setting. {{setting}} is the setting's own label.",
+    "text": {
+      "typefaces": {
+        "text": "Heading typeface option: use the same typeface as the body text."
+      },
+      "headingSizes": {
+        "small": "Heading size option: headings a bit smaller than normal.",
+        "large": "Heading size option: headings a bit larger than normal."
+      }
+    },
+    "visual": {
+      "matchEditor": "Option that makes Visual mode follow the source editor's own setting for this value.",
+      "paragraphIndent": {
+        "option": "Indent size option. {{value}} is a number and em is the CSS and typesetting unit equal to the font size. Keep em as is."
+      },
+      "textAlign": {
+        "options": {
+          "start": "Alignment option: lines start at the left edge and leave a ragged right edge.",
+          "justify": "Alignment option: lines are stretched to touch both edges."
+        }
+      },
+      "headingColor": {
+        "matchTheme": "Option: headings keep the heading color that the editor color theme gives them."
+      },
+      "preview": {
+        "label": "Accessible name of the sample document that previews the Visual mode settings.",
+        "first": "Sample body text in the preview. Keep it about this long.",
+        "second": "Sample body text in the preview. Keep it about this long.",
+        "third": "Sample body text in the preview. Keep it about this long."
       }
     }
   },

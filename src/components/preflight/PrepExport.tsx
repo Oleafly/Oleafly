@@ -8,7 +8,7 @@ import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { compileTaggedAndVerify } from "@/features/latex-engine";
 import { pathUsesEngineSource } from "@/lib/document-engine";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { useEffectiveMainDoc } from "@/lib/tex-root";
 import { readOnlyEditMessage } from "@/lib/read-only-files";
 import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
@@ -55,7 +55,7 @@ export function PrepExport() {
   const activePath = useFilesStore((s) => s.activePath);
   const source = useFilesStore((s) => (s.activePath ? s.files[s.activePath]?.content ?? "" : ""));
   const projectFiles = useFilesStore((s) => s.files);
-  const mainDocPath = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
+  const mainDocPath = useEffectiveMainDoc((root) => root.mainDoc);
   const latexSource = useFilesStore((s) =>
     canPrepareAccessible(s.engineLoaded, s.engine.capabilities.source_preflight_profile) &&
     pathUsesEngineSource(s.engine, s.activePath),

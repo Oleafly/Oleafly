@@ -642,9 +642,6 @@
       "permissionDenied": "Fără permisiune"
     },
     "menu": {
-      "showInFinder": "Afișează în Finder",
-      "showInExplorer": "Afișează în Explorer",
-      "showInFileManager": "Afișează în managerul de fișiere",
       "copyToLibrary": "Copiază în bibliotecă",
       "remove": "Elimină din Oleafly"
     },

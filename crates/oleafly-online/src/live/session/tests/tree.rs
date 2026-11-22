@@ -1092,7 +1092,10 @@ async fn a_local_delete_waits_for_unsent_edits_then_is_one_call() {
     let live = live_as(&rig, "alice", &port, quick()).await;
     let mut tab = Tab::open(&live, NOTES);
     let notes = tab.doc.clone();
-    eventually("notes is joined", || rig.joined("alice").contains(&notes.0)).await;
+    eventually("the tab shows the joined text", || {
+        tab.text(&live) == "Notes"
+    })
+    .await;
     tab.type_at(&live, 0, "Last words. ");
     live.change_tree(TreeChange::Delete { path: NOTES.into() })
         .unwrap();

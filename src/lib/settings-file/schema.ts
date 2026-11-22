@@ -11,23 +11,33 @@ import {
   NOTE_WIDTHS,
   NOTES_CALLOUT_STYLES,
   NOTES_CODE_THEMES,
-  NOTES_CUSTOM_LINE_HEIGHT,
   NOTES_FIELD_STYLES,
-  NOTES_FONT_SIZE_RANGE,
-  NOTES_HEADING_SIZES,
-  NOTES_HEADING_TYPEFACES,
   NOTES_INFO_PLACES,
   NOTES_LINE_HEIGHT_OPTIONS,
-  NOTES_PARAGRAPH_SPACING_OPTIONS,
   NOTES_TASK_BOXES,
   NOTES_TIKZ_PREAMBLE_MAX,
   NOTES_TITLE_SIZES,
-  NOTES_TYPEFACES,
   TEXT_REPLACEMENT_LIMITS,
   clampNotesFontSize,
-  clampNotesLineHeight,
   textReplacementPair,
 } from "@/lib/notes-appearance";
+import {
+  CUSTOM_LINE_HEIGHT,
+  HEADING_SIZES,
+  HEADING_TYPEFACES,
+  PARAGRAPH_SPACINGS,
+  TEXT_FONT_SIZE_RANGE,
+  TEXT_TYPEFACES,
+  clampLineHeight,
+} from "@/lib/text-appearance";
+import {
+  VISUAL_LINE_HEIGHT_OPTIONS,
+  VISUAL_MATCH_EDITOR_SIZE,
+  VISUAL_PARAGRAPH_INDENTS,
+  VISUAL_TEXT_ALIGNS,
+  VISUAL_TEXT_WIDTHS,
+  clampVisualFontSize,
+} from "@/lib/visual-appearance";
 import {
   cleanTag,
   FORMAT_LIMIT,
@@ -66,6 +76,7 @@ import {
   FILE_MOVE_REFERENCE_OPTIONS,
   GRAMMAR_DIALECTS,
   LAYOUT_PRESETS,
+  PDF_DARK_MODES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_OPEN_WITH_IDS,
   TERMINAL_SCROLLBACK_OPTIONS,
@@ -78,6 +89,7 @@ import {
   clampEditorLetterSpacing,
   clampEditorLineHeight,
   readDictionaryLocale,
+  type PdfDarkMode,
   type PreferenceKey,
   type PreferenceValues,
   type TerminalColorThemeId,
@@ -113,6 +125,7 @@ export interface CompilePreferences {
   compileMode: CompileMode;
   checkSyntaxBeforeCompile: boolean;
   stopOnFirstError: boolean;
+  followOpenFile: boolean;
 }
 
 export type ConfigPreferences = Pick<
@@ -405,6 +418,16 @@ const periodFormat = text(FORMAT_LIMIT);
 const periodTag = text(TAG_LIMIT);
 const periodTemplate = text(256);
 const weekStartSetting = oneOf(WEEK_START_SETTINGS);
+
+const pdfDarkModeValue: ValueType<PdfDarkMode> = {
+  parse(raw) {
+    if (raw === "follow") return ok("follow");
+    const legacy = bool.parse(raw);
+    if (legacy.ok) return ok(legacy.value ? "on" : "off");
+    return fail({ kind: "oneOf", values: PDF_DARK_MODES });
+  },
+};
+
 const PERIODIC_PARTS: ReadonlySet<string> = new Set<string>([...PERIODIC_KINDS, "weekStart"]);
 const periodFormatValue: ValueType<string> = {
   parse(raw) {
@@ -564,6 +587,29 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.editor.typst.inlayHints", "typstInlayHints", bool),
   pref("appearance.editor.typst.lint", "typstLint", bool),
 
+  pref("appearance.visual.typeface", "visualTypeface", oneOf(TEXT_TYPEFACES)),
+  pref("appearance.visual.fontFamily", "visualFontFamily", fontFamily),
+  pref(
+    "appearance.visual.fontSize",
+    "visualFontSize",
+    decimal(VISUAL_MATCH_EDITOR_SIZE, TEXT_FONT_SIZE_RANGE.max, clampVisualFontSize),
+  ),
+  pref("appearance.visual.lineHeight", "visualLineHeight", oneOf(VISUAL_LINE_HEIGHT_OPTIONS)),
+  pref(
+    "appearance.visual.customLineHeight",
+    "visualCustomLineHeight",
+    decimal(CUSTOM_LINE_HEIGHT.min, CUSTOM_LINE_HEIGHT.max, clampLineHeight),
+  ),
+  pref("appearance.visual.paragraphSpacing", "visualParagraphSpacing", oneOf(PARAGRAPH_SPACINGS)),
+  pref("appearance.visual.paragraphIndent", "visualParagraphIndent", numberOf(VISUAL_PARAGRAPH_INDENTS)),
+  pref("appearance.visual.textAlign", "visualTextAlign", oneOf(VISUAL_TEXT_ALIGNS)),
+  pref("appearance.visual.textWidth", "visualTextWidth", oneOf(VISUAL_TEXT_WIDTHS)),
+  pref("appearance.visual.headingTypeface", "visualHeadingTypeface", oneOf(HEADING_TYPEFACES)),
+  pref("appearance.visual.headingFontFamily", "visualHeadingFontFamily", fontFamily),
+  pref("appearance.visual.headingSize", "visualHeadingSize", oneOf(HEADING_SIZES)),
+  pref("appearance.visual.headingColor", "visualHeadingColor", hexColorOrEmpty),
+  pref("appearance.visual.markdown", "visualMarkdown", bool),
+
   pref("appearance.terminal.fontSize", "terminalFontSize", wholeNumber(8, 32)),
   pref("appearance.terminal.fontFamily", "terminalFontFamily", text(300, { required: true })),
   pref("appearance.terminal.fontWeight", "terminalFontWeight", terminalWeight),
@@ -588,7 +634,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.terminal.scrollback", "terminalScrollback", numberOf(TERMINAL_SCROLLBACK_OPTIONS)),
   pref("appearance.terminal.confirmClose", "terminalConfirmClose", bool),
 
-  pref("appearance.pdf.darkMode", "pdfDarkMode", bool),
+  pref("appearance.pdf.darkMode", "pdfDarkMode", pdfDarkModeValue),
   pref("appearance.pdf.hoverPreview", "hoverPreview", bool),
 
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),
@@ -599,23 +645,23 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.files.zenMode.fullScreen", "zenFullScreen", bool),
   pref("appearance.files.zenMode.showPdfOnCompile", "zenShowPdfOnCompile", bool),
 
-  pref("appearance.notes.typeface", "notesTypeface", oneOf(NOTES_TYPEFACES)),
+  pref("appearance.notes.typeface", "notesTypeface", oneOf(TEXT_TYPEFACES)),
   pref("appearance.notes.fontFamily", "notesFontFamily", fontFamily),
   pref(
     "appearance.notes.fontSize",
     "notesFontSize",
-    decimal(NOTES_FONT_SIZE_RANGE.min, NOTES_FONT_SIZE_RANGE.max, clampNotesFontSize),
+    decimal(TEXT_FONT_SIZE_RANGE.min, TEXT_FONT_SIZE_RANGE.max, clampNotesFontSize),
   ),
   pref("appearance.notes.lineHeight", "notesLineHeight", oneOf(NOTES_LINE_HEIGHT_OPTIONS)),
   pref(
     "appearance.notes.customLineHeight",
     "notesCustomLineHeight",
-    decimal(NOTES_CUSTOM_LINE_HEIGHT.min, NOTES_CUSTOM_LINE_HEIGHT.max, clampNotesLineHeight),
+    decimal(CUSTOM_LINE_HEIGHT.min, CUSTOM_LINE_HEIGHT.max, clampLineHeight),
   ),
-  pref("appearance.notes.paragraphSpacing", "notesParagraphSpacing", oneOf(NOTES_PARAGRAPH_SPACING_OPTIONS)),
-  pref("appearance.notes.headingTypeface", "notesHeadingTypeface", oneOf(NOTES_HEADING_TYPEFACES)),
+  pref("appearance.notes.paragraphSpacing", "notesParagraphSpacing", oneOf(PARAGRAPH_SPACINGS)),
+  pref("appearance.notes.headingTypeface", "notesHeadingTypeface", oneOf(HEADING_TYPEFACES)),
   pref("appearance.notes.headingFontFamily", "notesHeadingFontFamily", fontFamily),
-  pref("appearance.notes.headingSize", "notesHeadingSize", oneOf(NOTES_HEADING_SIZES)),
+  pref("appearance.notes.headingSize", "notesHeadingSize", oneOf(HEADING_SIZES)),
   pref("appearance.notes.titleSize", "notesTitleSize", numberOf(NOTES_TITLE_SIZES)),
   pref("appearance.notes.width", "notesWidth", oneOf(NOTE_WIDTHS)),
   pref("appearance.notes.info", "notesInfo", oneOf(NOTES_INFO_PLACES)),
@@ -658,6 +704,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   compile("engine.compile.mode", "compileMode", oneOf(["normal", "fast"] as const)),
   compile("engine.compile.checkSyntaxFirst", "checkSyntaxBeforeCompile", bool),
   compile("engine.compile.stopOnFirstError", "stopOnFirstError", bool),
+  compile("engine.compile.followOpenFile", "followOpenFile", bool),
 
   ...SHORTCUT_DEFINITIONS.map(({ id }) => shortcutField(id)),
   ...EDITOR_KEY_DEFINITIONS.map(editorKeyField),

@@ -1485,18 +1485,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Aspectul notițelor",
-      "resetAriaLabel": "Resetează {{setting}} la valoarea implicită",
       "text": {
         "title": "Text"
       },
       "typeface": {
         "label": "Tip de literă",
-        "description": "Alege un tip de literă pentru textul notițelor.",
-        "options": {
-          "sans": "Fără serife",
-          "serif": "Cu serife",
-          "mono": "Monospațiat"
-        }
+        "description": "Alege un tip de literă pentru textul notițelor."
       },
       "font": {
         "label": "Fontul notițelor",
@@ -1515,23 +1509,14 @@
       },
       "paragraphSpacing": {
         "label": "Spațierea paragrafelor",
-        "description": "Setează spațiul dintre paragrafe, liste și alte blocuri.",
-        "options": {
-          "compact": "Compactă",
-          "normal": "Normală",
-          "relaxed": "Relaxată",
-          "spacious": "Aerisită"
-        }
+        "description": "Setează spațiul dintre paragrafe, liste și alte blocuri."
       },
       "headings": {
         "title": "Titluri și titlul notiței"
       },
       "headingTypeface": {
         "label": "Tipul de literă al titlurilor",
-        "description": "Alege un tip de literă pentru titluri și pentru titlul notiței.",
-        "options": {
-          "text": "La fel ca textul"
-        }
+        "description": "Alege un tip de literă pentru titluri și pentru titlul notiței."
       },
       "headingFont": {
         "label": "Fontul titlurilor",
@@ -1539,12 +1524,7 @@
       },
       "headingSize": {
         "label": "Dimensiunea titlurilor",
-        "description": "Setează cât de mari sunt titlurile față de text.",
-        "options": {
-          "small": "Mai mici",
-          "normal": "Normale",
-          "large": "Mai mari"
-        }
+        "description": "Setează cât de mari sunt titlurile față de text."
       },
       "titleSize": {
         "label": "Dimensiunea titlului",

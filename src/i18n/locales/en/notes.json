@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Notes appearance",
-      "resetAriaLabel": "Reset {{setting}} to default",
       "text": {
         "title": "Text"
       },
       "typeface": {
         "label": "Typeface",
-        "description": "Choose a typeface for note text.",
-        "options": {
-          "sans": "Sans serif",
-          "serif": "Serif",
-          "mono": "Monospace"
-        }
+        "description": "Choose a typeface for note text."
       },
       "font": {
         "label": "Note font",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Paragraph spacing",
-        "description": "Set the space between paragraphs, lists and other blocks.",
-        "options": {
-          "compact": "Compact",
-          "normal": "Normal",
-          "relaxed": "Relaxed",
-          "spacious": "Spacious"
-        }
+        "description": "Set the space between paragraphs, lists and other blocks."
       },
       "headings": {
         "title": "Headings and title"
       },
       "headingTypeface": {
         "label": "Heading typeface",
-        "description": "Choose a typeface for headings and the note title.",
-        "options": {
-          "text": "Same as text"
-        }
+        "description": "Choose a typeface for headings and the note title."
       },
       "headingFont": {
         "label": "Heading font",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Heading size",
-        "description": "Set how large headings are compared with the text.",
-        "options": {
-          "small": "Smaller",
-          "normal": "Normal",
-          "large": "Larger"
-        }
+        "description": "Set how large headings are compared with the text."
       },
       "titleSize": {
         "label": "Title size",

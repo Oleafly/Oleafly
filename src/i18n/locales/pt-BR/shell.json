@@ -318,6 +318,10 @@
       "keywords": "sem distrações foco tela cheia ocultar interface mínimo escrita",
       "label": "Alternar o modo Zen"
     },
+    "visualSettings": {
+      "keywords": "aparência fonte tipo de letra texto tamanho recuo parágrafo espaçamento justificar título escrita",
+      "label": "Configurações do modo Visual"
+    },
     "togglePreview": {
       "keywords": "pdf prévia mostrar ocultar dividir só editor",
       "label": "Alternar a prévia do PDF"
@@ -503,7 +507,15 @@
       "run": "Executar código neste computador"
     },
     "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado.",
-    "coauthorsChanged": "Alterado por coautores desde a sua última compilação"
+    "coauthorsChanged": "Alterado por coautores desde a sua última compilação",
+    "texRootDocument": "raiz: {{path}} (tem seu próprio \\documentclass)",
+    "texRootInclude": "raiz: {{path}} (inclui {{file}})",
+    "target": {
+      "title": "Alvo da compilação",
+      "help": "Com Seguir o arquivo aberto, um arquivo com seu próprio \\documentclass é compilado sozinho. Um capítulo ou uma seção compila o documento que o inclui. Os outros arquivos compilam o documento principal. Um comentário % !TEX root sempre tem prioridade.",
+      "open": "Seguir o arquivo aberto",
+      "main": "Sempre o documento principal"
+    }
   },
   "datePicker": {
     "placeholder": "Escolha uma data"
@@ -1131,7 +1143,7 @@
       "empty": "Nenhuma configuração encontrada",
       "keywords": {
         "ai": "assistente, chat, conversa, modelos, provedores, chaves de API, agentes, prompts, orçamento, servidores MCP",
-        "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout",
+        "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout, modo visual, tipo de letra, recuo do parágrafo, justificar",
         "collaboration": "servidores, login, entrar, dispositivos, membros, mantenedores, compartilhamento, equipes, laboratórios, edição ao vivo, tempo real, registro de segurança",
         "data": "backup, pasta da biblioteca, pasta de projetos, armazenamento, espaço em disco, lixeira, excluir projetos, pontos de verificação",
         "dictionary": "ortografia, palavras personalizadas, palavras ignoradas, revisão, regras gramaticais",

@@ -21,6 +21,7 @@ vi.mock("@/i18n/desktop", () => ({
 import { useDictionary } from "@/lib/dictionary";
 import { readThemeCustomization } from "@/lib/theme-customization";
 import { useCompileStore } from "@/store/compile";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { TERMINAL_COLOR_THEMES, useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
@@ -140,7 +141,7 @@ describe("settings document", () => {
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files", "notes"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "visual", "terminal", "pdf", "files", "notes"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');
@@ -232,10 +233,13 @@ describe("settings document", () => {
     expect(listener).not.toHaveBeenCalled();
     useCompileStore.setState({ stopOnFirstError: !useCompileStore.getState().stopOnFirstError });
     useSettingsStore.getState().setEditorFontSize(18);
+    useCompileRootStore.setState({ latexUnits: null });
     expect(listener).toHaveBeenCalledTimes(2);
+    useCompileRootStore.setState({ followOpenFile: !useCompileRootStore.getState().followOpenFile });
+    expect(listener).toHaveBeenCalledTimes(3);
     stop();
     useSettingsStore.getState().setEditorFontSize(19);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it("covers every field in the export", () => {
@@ -419,6 +423,20 @@ describe("reading a settings file", () => {
     expect(read.changed).toEqual(
       expect.arrayContaining(["appearance.pdf.darkMode", "experimentation.latexTools", "shortcuts.app.commandPalette"]),
     );
+  });
+
+  it("reads PDF dark mode as off, on or match app theme, old switch values included", () => {
+    const modes = [true, "on", false, "off", "follow"].map((darkMode) => {
+      const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode } } }), snapshot());
+      return read.ok ? read.plan.preferences.pdfDarkMode : read;
+    });
+    expect(modes).toEqual(["on", "on", "off", "off", "follow"]);
+
+    const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode: "night" } } }), snapshot());
+    if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
+    expect(read.problems).toEqual([
+      { path: "appearance.pdf.darkMode", issue: { kind: "oneOf", values: ["off", "on", "follow"] } },
+    ]);
   });
 
   it("still reports keys it doesn't know", () => {

@@ -35,6 +35,13 @@
       "title": "Menu group heading. The setting applies to this computer only, not to other people sharing the project.",
       "off": "Radio option: code in the document does not run.",
       "run": "Radio option: the R, Python or Julia code in the document runs on this computer when it compiles."
+    },
+    "texRootDocument": "Tooltip on the root badge when the open LaTeX file compiles by itself because it starts with its own \\documentclass. Keep \\documentclass verbatim.",
+    "texRootInclude": "Tooltip on the root badge when the open file is a chapter or section and Oleafly compiles the document that includes it. {{file}} is the open file.",
+    "target": {
+      "title": "Heading in the compile options menu for choosing which document a compile builds",
+      "open": "Radio option: compile the document that belongs to the file open in the editor",
+      "main": "Radio option: always compile the project's main document"
     }
   },
   "dock": {

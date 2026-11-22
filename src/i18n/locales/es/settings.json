@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} no está instalada, así que se usa la fuente predeterminada.",
     "preview": {
       "darkMode": {
-        "description": "Invierte los colores del PDF por omisión. Aun así puedes cambiarlos desde la barra de la vista previa.",
-        "label": "Modo oscuro del PDF"
+        "description": "Con Seguir el tema de la aplicación, las páginas se oscurecen cuando la aplicación está en modo oscuro. En modo claro se ven como impresas o conservan el tono claro que elegiste, como sepia. El botón para invertir colores de la barra de la vista previa cambia esto a Activado o Desactivado.",
+        "label": "Modo oscuro del PDF",
+        "modes": {
+          "follow": "Seguir el tema de la aplicación",
+          "off": "Desactivado",
+          "on": "Activado"
+        }
       },
       "darkColors": {
         "label": "Colores de página oscuros",
@@ -1037,6 +1042,7 @@
     "tabs": {
       "app": "Aplicación",
       "editor": "Editor",
+      "visual": "Modo Visual",
       "files": "Proyecto",
       "pdf": "Vista previa del PDF",
       "terminal": "Terminal",
@@ -1174,6 +1180,115 @@
         "label": "Mostrar el PDF al compilar"
       },
       "title": "Modo Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Sin serifa",
+        "serif": "Con serifa",
+        "mono": "Monoespaciada",
+        "text": "Igual que el texto"
+      },
+      "paragraphSpacings": {
+        "compact": "Compacto",
+        "normal": "Normal",
+        "relaxed": "Holgado",
+        "spacious": "Amplio"
+      },
+      "headingSizes": {
+        "small": "Más pequeños",
+        "normal": "Normal",
+        "large": "Más grandes"
+      }
+    },
+    "resetSetting": "Restablecer el valor predeterminado del ajuste {{setting}}",
+    "visual": {
+      "intro": "Elige cómo se ven los archivos LaTeX y Typst en el modo Visual. Tus archivos y el PDF no cambian. Para dar estilo también a Markdown, activa su interruptor en Diseño. Los colores del texto y de los enlaces se ajustan en Colores del editor, en la pestaña Editor.",
+      "matchEditor": "Igual que el editor",
+      "text": {
+        "title": "Texto"
+      },
+      "typeface": {
+        "label": "Tipo de letra",
+        "description": "Elige un tipo de letra para el texto del modo Visual."
+      },
+      "font": {
+        "label": "Tipografía del modo Visual",
+        "description": "Elige cualquier tipografía instalada para el texto del modo Visual. Déjalo vacío para usar el ajuste Tipo de letra."
+      },
+      "fontSize": {
+        "label": "Tamaño del texto",
+        "description": "Define el tamaño del texto del modo Visual. Igual que el editor sigue el tamaño de letra del editor.",
+        "customLabel": "Tamaño personalizado del texto del modo Visual, en píxeles"
+      },
+      "lineHeight": {
+        "label": "Interlineado",
+        "description": "Define el espacio entre las líneas de texto. Igual que el editor sigue el interlineado del editor.",
+        "customLabel": "Interlineado personalizado del modo Visual"
+      },
+      "paragraphSpacing": {
+        "label": "Espacio entre párrafos",
+        "description": "Define la altura de la línea en blanco entre dos párrafos."
+      },
+      "paragraphIndent": {
+        "label": "Sangría del párrafo",
+        "description": "Aplica sangría a la primera línea de cada párrafo, como hace el PDF. LaTeX no la aplica al párrafo que sigue a un título, y Typst solo la aplica a un párrafo que va después de otro.",
+        "none": "Ninguna",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Alineación del texto",
+        "description": "Deja el borde derecho irregular o justifica las líneas a ambos bordes.",
+        "options": {
+          "start": "Izquierda",
+          "justify": "Justificado"
+        }
+      },
+      "headings": {
+        "title": "Títulos de sección y título"
+      },
+      "headingTypeface": {
+        "label": "Tipo de letra de los títulos",
+        "description": "Elige un tipo de letra para los títulos de sección y el título del documento."
+      },
+      "headingFont": {
+        "label": "Tipografía de los títulos",
+        "description": "Elige una tipografía instalada para los títulos de sección y el título del documento. Déjalo vacío para usar el ajuste Tipo de letra de los títulos."
+      },
+      "headingSize": {
+        "label": "Tamaño de los títulos de sección",
+        "description": "Define el tamaño de los títulos de sección en relación con el texto."
+      },
+      "headingColor": {
+        "label": "Color de los títulos de sección",
+        "description": "Color de los títulos de sección y del título del documento. Tema del editor conserva el color que les da el tema de tu editor.",
+        "matchTheme": "Tema del editor",
+        "customAriaLabel": "Elige un color personalizado para los títulos de sección"
+      },
+      "layout": {
+        "title": "Diseño"
+      },
+      "width": {
+        "label": "Ancho del texto",
+        "description": "Define cuánto mide una línea antes de ajustarse.",
+        "options": {
+          "narrow": "Estrecho",
+          "standard": "Estándar",
+          "wide": "Ancho",
+          "full": "Ancho completo"
+        }
+      },
+      "markdown": {
+        "label": "Usar también para Markdown",
+        "description": "Usa este aspecto también para los archivos Markdown en el modo Visual. Si está desactivado, Markdown conserva la tipografía de la aplicación."
+      },
+      "preview": {
+        "label": "Vista previa del modo Visual",
+        "heading": "Introducción",
+        "first": "El modo Visual muestra títulos de sección y párrafos en lugar de los comandos que los crean.",
+        "second": "Este párrafo va después de una línea en blanco. Una sangría de párrafo mueve su primera línea hacia dentro.",
+        "subheading": "Método",
+        "third": "Cambia un ajuste y este texto cambia con él."
+      }
     }
   },
   "checkpoints": {

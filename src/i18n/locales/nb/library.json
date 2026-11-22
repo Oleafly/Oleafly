@@ -621,9 +621,6 @@
       "permissionDenied": "Ingen tillatelse"
     },
     "menu": {
-      "showInFinder": "Vis i Finder",
-      "showInExplorer": "Vis i Filutforsker",
-      "showInFileManager": "Vis i filbehandleren",
       "copyToLibrary": "Kopier til biblioteket",
       "remove": "Fjern fra Oleafly"
     },

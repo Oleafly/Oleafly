@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Sürüm yönetimini kapat",
     "title": "Sürüm yönetimi",
-    "close": "Sürüm yönetimini kapat",
-    "views": "Sürüm yönetimi görünümleri",
-    "gitHistory": "Git Geçmişi",
-    "savedCheckpoints": "Kayıtlı Kontrol Noktaları"
+    "close": "Sürüm yönetimini kapat"
   },
   "wordCount": {
     "close": "Proje bilgilerini kapat"
@@ -453,20 +450,6 @@
     "fontPackAction": "İndir ve derle",
     "fontPackDownloading": "İndiriliyor…",
     "fontPackFailed": "Yazı tipi paketi indirilemedi. Bağlantını kontrol edip yeniden dene."
-  },
-  "history": {
-    "untitledCommit": "Adsız işleme",
-    "restoreFailed": "Bu Git sürümü geri yüklenemedi.",
-    "copyIdFailed": "Bu işleme kimliği kopyalanamadı.",
-    "empty": "Henüz Git geçmişi yok",
-    "emptyHint": "Kaynak Denetimi'ni başlatın, sonra burada bir sürüm istediğinizde işleyin.",
-    "commitIdCopied": "İşleme kimliği kopyalandı",
-    "copyCommitId": "Tam işleme kimliğini kopyala",
-    "copyCommitIdFor": "{{id}} işleme kimliğini kopyala",
-    "overwriteTooltip": "Tüm dosyaların üzerine bu sürümü yaz",
-    "overwriteAll": "Tümünün üzerine yaz",
-    "restoreTooltip": "Bu sürümü geri yükle (tüm dosyaların üzerine yazar)",
-    "restore": "Geri yükle"
   },
   "diff": {
     "reloadFailed": "Fark yeniden yüklenemedi. Bu sekmeyi kapatıp yeniden açın.",
@@ -571,9 +554,6 @@
     "unsupported": "Redaksiyon bu belge biçiminde desteklenmiyor."
   },
   "checkpoints": {
-    "showInExplorer": "Dosya Gezgini'nde göster",
-    "showInFinder": "Finder'da göster",
-    "showInFileManager": "Dosya yöneticisinde göster",
     "timeNotRecorded": "Saat kaydedilmedi",
     "justNow": "Az önce",
     "fallbackName": "Kontrol noktası",
@@ -649,12 +629,13 @@
       "deleteCheckpoint": "Kontrol noktasını sil",
       "restoreFor": "{{version}} sürümünü geri yükle",
       "restore": "Geri yükle",
-      "deleteFor": "{{version}} sürümünü sil"
+      "deleteFor": "{{version}} sürümünü sil",
+      "current": "Geçerli"
     },
     "toast": {
       "copyIdFailed": "Bu kontrol noktası kimliği kopyalanamadı.",
       "saveLabelFailed": "Kontrol noktası etiketi kaydedilemedi.",
-      "restored": "Kontrol noktası geri yüklendi.",
+      "restored": "{{version}} geri yüklendi. Sürüm yönetimi onu artık Geçerli olarak gösteriyor.",
       "restoreFailed": "Bu kontrol noktası geri yüklenemedi. Ayrıntılar için uygulama günlüğüne bakın.",
       "deleted": "Kontrol noktası silindi.",
       "deleteFailed": "Bu kontrol noktası silinemedi.",
@@ -713,7 +694,7 @@
     "maintenance": {
       "title": "Bakım",
       "description": "Bu projenin artık ihtiyaç duymadığı kontrol noktalarını silin.",
-      "keepLatestPrompt": "En sonuncusu dışındaki tüm kontrol noktaları silinsin mi? Bu işlem geri alınamaz.",
+      "keepLatestPrompt": "En sonuncusu ve Geçerli olarak işaretlenen dışındaki tüm kontrol noktaları silinsin mi? Bu işlem geri alınamaz.",
       "deleteOlder": "Eski kontrol noktalarını sil",
       "keepAll": "Tüm kontrol noktalarını tut",
       "resetPrompt": "Bu projenin tüm kontrol noktaları silinsin mi? Geçerli proje dosyaları değişmeden kalır. Bu işlem geri alınamaz.",

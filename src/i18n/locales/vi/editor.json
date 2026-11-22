@@ -399,10 +399,7 @@
   "versioning": {
     "dismiss": "Bỏ qua phiên bản",
     "title": "Phiên bản",
-    "close": "Đóng phiên bản",
-    "views": "Chế độ xem phiên bản",
-    "gitHistory": "Lịch sử Git",
-    "savedCheckpoints": "Điểm lưu đã lưu"
+    "close": "Đóng phiên bản"
   },
   "wordCount": {
     "close": "Đóng thông tin dự án"
@@ -446,20 +443,6 @@
     "fontPackAction": "Tải xuống và biên dịch",
     "fontPackDownloading": "Đang tải xuống…",
     "fontPackFailed": "Không thể tải bộ phông. Hãy kiểm tra kết nối và thử lại."
-  },
-  "history": {
-    "untitledCommit": "Commit chưa đặt tên",
-    "restoreFailed": "Không thể khôi phục phiên bản Git đó.",
-    "copyIdFailed": "Không thể sao chép ID commit đó.",
-    "empty": "Chưa có lịch sử Git",
-    "emptyHint": "Hãy khởi tạo Quản lý mã nguồn, rồi commit khi bạn muốn có phiên bản ở đây.",
-    "commitIdCopied": "Đã sao chép ID commit",
-    "copyCommitId": "Sao chép toàn bộ ID commit",
-    "copyCommitIdFor": "Sao chép ID commit {{id}}",
-    "overwriteTooltip": "Ghi đè mọi tệp bằng phiên bản này",
-    "overwriteAll": "Ghi đè tất cả",
-    "restoreTooltip": "Khôi phục phiên bản này (ghi đè mọi tệp)",
-    "restore": "Khôi phục"
   },
   "diff": {
     "reloadFailed": "Không thể tải lại diff. Hãy đóng tab này và mở lại.",
@@ -564,9 +547,6 @@
     "unsupported": "Không hỗ trợ hiệu đính cho định dạng tài liệu này."
   },
   "checkpoints": {
-    "showInExplorer": "Hiện trong Explorer",
-    "showInFinder": "Hiện trong Finder",
-    "showInFileManager": "Hiện trong trình quản lý tệp",
     "timeNotRecorded": "Không ghi thời gian",
     "justNow": "Vừa xong",
     "fallbackName": "Điểm lưu",
@@ -639,12 +619,13 @@
       "deleteCheckpoint": "Xoá điểm lưu",
       "restoreFor": "Khôi phục {{version}}",
       "restore": "Khôi phục",
-      "deleteFor": "Xoá {{version}}"
+      "deleteFor": "Xoá {{version}}",
+      "current": "Hiện tại"
     },
     "toast": {
       "copyIdFailed": "Không thể sao chép id điểm lưu đó.",
       "saveLabelFailed": "Không thể lưu nhãn điểm lưu.",
-      "restored": "Đã khôi phục điểm lưu.",
+      "restored": "Đã khôi phục {{version}}. Phiên bản giờ đánh dấu nó là Hiện tại.",
       "restoreFailed": "Không thể khôi phục điểm lưu này. Xem log ứng dụng để biết chi tiết.",
       "deleted": "Đã xoá điểm lưu.",
       "deleteFailed": "Không thể xoá điểm lưu này.",
@@ -703,7 +684,7 @@
     "maintenance": {
       "title": "Bảo trì",
       "description": "Xoá điểm lưu mà dự án không còn cần.",
-      "keepLatestPrompt": "Xoá mọi điểm lưu trừ cái mới nhất? Không thể hoàn tác.",
+      "keepLatestPrompt": "Xoá mọi điểm lưu trừ cái mới nhất và cái được đánh dấu Hiện tại? Không thể hoàn tác.",
       "deleteOlder": "Xoá điểm lưu cũ hơn",
       "keepAll": "Giữ mọi điểm lưu",
       "resetPrompt": "Xoá mọi điểm lưu của dự án này? Tệp dự án hiện tại giữ nguyên. Không thể hoàn tác.",

@@ -1485,18 +1485,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Apariencia de las notas",
-      "resetAriaLabel": "Restablecer el valor predeterminado del ajuste {{setting}}",
       "text": {
         "title": "Texto"
       },
       "typeface": {
         "label": "Tipo de letra",
-        "description": "Elige un tipo de letra para el texto de las notas.",
-        "options": {
-          "sans": "Sin serifa",
-          "serif": "Con serifa",
-          "mono": "Monoespaciada"
-        }
+        "description": "Elige un tipo de letra para el texto de las notas."
       },
       "font": {
         "label": "Tipografía de las notas",
@@ -1515,23 +1509,14 @@
       },
       "paragraphSpacing": {
         "label": "Espacio entre párrafos",
-        "description": "Define el espacio entre párrafos, listas y otros bloques.",
-        "options": {
-          "compact": "Compacto",
-          "normal": "Normal",
-          "relaxed": "Holgado",
-          "spacious": "Amplio"
-        }
+        "description": "Define el espacio entre párrafos, listas y otros bloques."
       },
       "headings": {
         "title": "Títulos de sección y título"
       },
       "headingTypeface": {
         "label": "Tipo de letra de los títulos",
-        "description": "Elige un tipo de letra para los títulos de sección y el título de la nota.",
-        "options": {
-          "text": "Igual que el texto"
-        }
+        "description": "Elige un tipo de letra para los títulos de sección y el título de la nota."
       },
       "headingFont": {
         "label": "Tipografía de los títulos",
@@ -1539,12 +1524,7 @@
       },
       "headingSize": {
         "label": "Tamaño de los títulos de sección",
-        "description": "Define el tamaño de los títulos de sección en relación con el texto.",
-        "options": {
-          "small": "Más pequeños",
-          "normal": "Normal",
-          "large": "Más grandes"
-        }
+        "description": "Define el tamaño de los títulos de sección en relación con el texto."
       },
       "titleSize": {
         "label": "Tamaño del título",
