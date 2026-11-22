@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "영역에 주석 달기",
+    "list": "주석 ({{n}})"
+  },
+  "markBadge": "주석 {{label}}",
+  "composer": {
+    "title": "새 주석",
+    "action": {
+      "comment": "의견",
+      "delete": "삭제",
+      "replace": "바꾸기",
+      "insert": "삽입"
+    },
+    "label": {
+      "comment": "의견",
+      "replace": "바꿀 텍스트",
+      "insert": "삽입할 텍스트",
+      "region": "영역에 대한 의견"
+    },
+    "placeholder": {
+      "comment": "이 부분에 대한 의견…",
+      "replace": "바꿀 내용…",
+      "insert": "선택한 부분 뒤에 삽입…",
+      "region": "이 영역에 대한 의견…"
+    },
+    "placeHere": "여기에 배치",
+    "cancel": "취소",
+    "save": "추가",
+    "saving": "저장 중",
+    "notSaved": "저장되지 않았습니다."
+  },
+  "kind": {
+    "comment": "의견",
+    "delete": "삭제",
+    "replace": "바꾸기",
+    "insert": "삽입",
+    "region": "영역"
+  },
+  "status": {
+    "draft": "초안",
+    "sent": "보냄",
+    "addressed": "반영됨",
+    "resolved": "해결됨",
+    "needsPlacing": "배치 필요"
+  },
+  "panel": {
+    "title": "주석",
+    "close": "주석 닫기",
+    "empty": "PDF에서 텍스트를 선택하고 의견, 삭제, 바꾸기, 삽입 중 하나를 고르세요. 또는 영역에 주석 달기를 켜고 수식이나 그림 주위로 상자를 그리세요.",
+    "failed": "주석을 저장하지 못했습니다. {{error}}",
+    "readOnly": "최신 Oleafly에서 저장되었습니다. 편집하려면 업데이트하세요.",
+    "setAside": "주석 파일을 읽을 수 없어 새 파일을 만들었습니다.",
+    "noSource": "소스 위치 없음",
+    "page": "{{page}}쪽",
+    "notFound": "새 PDF에서 이 부분을 찾지 못했습니다.",
+    "placing": "PDF에서 해당 부분을 선택한 뒤 여기에 배치를 누르세요.",
+    "placeAgain": "다시 배치",
+    "include": "주석 {{number}} 포함",
+    "resolve": "주석 {{number}} 해결됨으로 표시",
+    "reopen": "주석 {{number}} 다시 열기",
+    "delete": "주석 {{number}} 삭제",
+    "editComment": "주석 {{number}}의 의견 편집",
+    "addComment": "의견 추가",
+    "clear": "모두 삭제",
+    "clearConfirm": "이 프로젝트의 주석을 모두 삭제할까요? 되돌릴 수 없습니다.",
+    "send": "어시스턴트에게 보내기 ({{n}})"
+  }
+}

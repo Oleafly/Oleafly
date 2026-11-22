@@ -250,7 +250,8 @@
     "resizeHandle": "Redimensionar a caixa de mensagem",
     "resizeHint": "Arraste para redimensionar. Clique duas vezes para voltar ao tamanho original.",
     "removeContext": "Remover {{label}}",
-    "contextFailed": "Não foi possível ler o contexto anexado. A mensagem não foi enviada."
+    "contextFailed": "Não foi possível ler o contexto anexado. A mensagem não foi enviada.",
+    "contextTooLarge": "O contexto anexado é longo demais. Remova uma parte e tente novamente."
   },
   "commands": {
     "groups": {

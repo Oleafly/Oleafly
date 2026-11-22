@@ -22,6 +22,7 @@ function annotation(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
     build: null,
     origin: "pdf",
     status: "draft",
+    placement: "placed",
     createdAt: 1,
     updatedAt: 1,
     ...patch,
@@ -39,6 +40,15 @@ describe("sourceExcerpt", () => {
 });
 
 describe("followSource", () => {
+  it("follows an edited block to its nearest copy, not an earlier block with the same delimiters", () => {
+    const earlier = ["\\begin{equation}", "a = b", "\\end{equation}"];
+    const filler = Array.from({ length: 100 }, (_, index) => `Line ${index} of the proof.`);
+    const edited = ["\\begin{equation}", "E = m c^2 + k", "\\end{equation}"];
+    const text = [...earlier, ...filler, ...edited, "After."].join("\n");
+    const block = { path: "main.tex", startLine: 104, endLine: 106, excerpt: "\\begin{equation}\nE = mc^2\n\\end{equation}" };
+    expect(followSource(block, text)).toMatchObject({ startLine: 104, endLine: 106 });
+  });
+
   const source = { path: "main.tex", startLine: 3, endLine: 4, excerpt: "We show that\nthe result holds" };
 
   it("keeps the lines when nothing moved", () => {

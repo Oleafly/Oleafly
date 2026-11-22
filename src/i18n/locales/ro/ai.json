@@ -250,7 +250,8 @@
     "resizeHandle": "Redimensionează caseta de mesaj",
     "resizeHint": "Trage ca să redimensionezi. Dublu clic pentru dimensiunea inițială.",
     "removeContext": "Elimină {{label}}",
-    "contextFailed": "Contextul atașat nu a putut fi citit. Mesajul nu a fost trimis."
+    "contextFailed": "Contextul atașat nu a putut fi citit. Mesajul nu a fost trimis.",
+    "contextTooLarge": "Contextul atașat este prea lung. Elimină o parte și încearcă din nou."
   },
   "commands": {
     "groups": {

@@ -10,8 +10,11 @@ export interface ComposerContextItem {
 export interface ExpandedComposerContext {
   refId: string;
   path: string | null;
+  heading?: string;
   text: string;
 }
+
+export const MAX_COMPOSER_CONTEXT_CHARS = 60_000;
 
 export interface ComposerContextKind {
   expand(projectId: string, refIds: readonly string[]): Promise<readonly ExpandedComposerContext[]>;
@@ -87,7 +90,7 @@ function longestBacktickRun(text: string): number {
 export function composerContextBlock(expanded: readonly ExpandedComposerContextItem[]): string {
   return expanded
     .map((entry) => {
-      const heading = entry.path ? `${entry.item.label} (${entry.path})` : entry.item.label;
+      const heading = entry.heading ?? (entry.path ? `${entry.item.label} (${entry.path})` : entry.item.label);
       const fence = "`".repeat(Math.max(3, longestBacktickRun(entry.text) + 1));
       return `${heading}:\n${fence}\n${entry.text}\n${fence}`;
     })

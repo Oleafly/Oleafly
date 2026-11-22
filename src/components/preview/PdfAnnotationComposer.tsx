@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Crosshair, Eraser, MessageSquarePlus, Replace, TextCursorInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,26 +28,34 @@ export function PdfAnnotationComposer({
 }: Readonly<{
   anchor: PopoverAnchor;
   contextElement: Element | null;
-  kind: PdfAnnotationKind | null;
+  kind: Exclude<PdfAnnotationKind, "delete"> | null;
   placing: boolean;
   onPick: (kind: TextAnnotationKind) => void;
   onSave: (comment: string) => Promise<void>;
   onPlace: () => void;
   onCancel: () => void;
 }>) {
-  const { t } = useTranslation(["preview"]);
+  const { t } = useTranslation(["annotations"]);
+  const typed = useRef(false);
+  const keep = (event: Event) => {
+    if (typed.current) event.preventDefault();
+  };
   return (
     <AnchoredPopover
       open
       onOpenChange={(open) => {
         if (!open) onCancel();
       }}
+      onEscapeKeyDown={(event) => {
+        if (event.isComposing || typed.current) event.preventDefault();
+      }}
+      onInteractOutside={keep}
       anchor={anchor}
       contextElement={contextElement}
       side="bottom"
       align="start"
       sideOffset={6}
-      ariaLabel={t(($) => $.preview.annotations.composer.title)}
+      ariaLabel={t(($) => $.annotations.composer.title)}
       className={kind ? "w-72 p-2" : "w-auto p-1"}
       onOpenAutoFocus={(event) => {
         if (!kind) event.preventDefault();
@@ -56,10 +65,13 @@ export function PdfAnnotationComposer({
       {kind ? (
         <AnnotationCommentKit>
           <CommentComposer
-            label={t(($) => $.preview.annotations.composer.label[kind])}
-            placeholder={t(($) => $.preview.annotations.composer.placeholder[kind])}
-            submitLabel={t(($) => $.preview.annotations.composer.save)}
+            label={t(($) => $.annotations.composer.label[kind])}
+            placeholder={t(($) => $.annotations.composer.placeholder[kind])}
+            submitLabel={t(($) => $.annotations.composer.save)}
             autoFocus
+            onActivity={(active) => {
+              typed.current = active;
+            }}
             onSubmit={onSave}
             onCancel={onCancel}
           />
@@ -74,7 +86,7 @@ export function PdfAnnotationComposer({
           onClick={onPlace}
         >
           <Crosshair className="size-3.5" />
-          {t(($) => $.preview.annotations.composer.placeHere)}
+          {t(($) => $.annotations.composer.placeHere)}
         </Button>
       ) : (
         <div className="flex items-center gap-0.5">
@@ -89,7 +101,7 @@ export function PdfAnnotationComposer({
               onClick={() => onPick(action)}
             >
               <Icon className="size-3.5" />
-              {t(($) => $.preview.annotations.composer.action[action])}
+              {t(($) => $.annotations.composer.action[action])}
             </Button>
           ))}
         </div>

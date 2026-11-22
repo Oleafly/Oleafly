@@ -897,7 +897,7 @@ describe("ACP composer context chips", () => {
   const expand = vi.fn();
   const sent = vi.fn();
   let unregister: () => void = () => {};
-  const selection = { path: "main.tex", text: "Fix the sign in n1" };
+  const selection = { path: "main.tex", text: "Note on page 2 (main.tex):\n```\nFix the sign in n1\n```" };
 
   beforeEach(() => {
     expand.mockImplementation(async (_projectId: string, refIds: readonly string[]) =>
@@ -907,6 +907,25 @@ describe("ACP composer context chips", () => {
     useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [], pendingContext: [], target: "built-in" });
   });
   afterEach(() => unregister());
+
+  it("sends many chips as one selection, so they don't count against the attachment limit", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), lastSequence: 1 }, permissions: [] });
+    const notes = Array.from({ length: 11 }, (_, index) => ({
+      id: `note:n${index}`,
+      kind: "test-note",
+      refId: `n${index}`,
+      label: `Note ${index}`,
+    }));
+    useComposerDrafts.getState().addContext(composerId, notes);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await readyComposer(ui);
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.send }));
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledTimes(1));
+    const sentInput = vi.mocked(acpPrompt).mock.calls[0]?.[2] as { selections: { path: string | null; text: string }[] };
+    expect(sentInput.selections).toHaveLength(1);
+    expect(sentInput.selections[0]?.path).toBeNull();
+    expect(sentInput.selections[0]?.text).toContain("Fix the sign in n10");
+  });
 
   it("sends a chip-only draft as a real selection and marks it sent", async () => {
     vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), lastSequence: 1 }, permissions: [] });

@@ -242,7 +242,8 @@
     "resizeHandle": "Tilpas størrelsen på beskedfeltet",
     "resizeHint": "Træk for at ændre størrelsen. Dobbeltklik for at nulstille.",
     "removeContext": "Fjern {{label}}",
-    "contextFailed": "Den vedhæftede kontekst kunne ikke læses. Beskeden blev ikke sendt."
+    "contextFailed": "Den vedhæftede kontekst kunne ikke læses. Beskeden blev ikke sendt.",
+    "contextTooLarge": "Den vedhæftede kontekst er for lang. Fjern noget, og prøv igen."
   },
   "commands": {
     "groups": {

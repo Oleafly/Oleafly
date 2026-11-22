@@ -12,8 +12,8 @@ export {
   type PdfPageColors,
 } from "./PdfViewer";
 export type { PdfOutlineItem } from "./pdfOutline";
-export type { PdfMark, PdfRegionSelectionInfo, PdfTextSelectionInfo } from "./pdfMarks";
-export { findQuoteBoxes, type PdfQuote } from "./pdfQuote";
+export type { PdfAnnotationLayer, PdfMark, PdfRegionSelectionInfo, PdfTextSelectionInfo } from "./pdfMarks";
+export type { PdfQuote } from "./pdfQuote";
 export * from "./messages";
 export {
   registerPdfView,

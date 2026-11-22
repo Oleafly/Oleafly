@@ -1,5 +1,6 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import type { PdfMark, PdfRegionSelectionInfo, PdfTextSelectionInfo } from "@oleafly/preview";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
+import type { PdfAnnotationLayer, PdfMark, PdfRegionSelectionInfo, PdfTextSelectionInfo } from "@oleafly/preview";
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { gotoRect, pdfPageText } from "@/components/pdf/pdfController";
 import type { PopoverAnchor } from "@/components/ui/popover";
@@ -9,6 +10,7 @@ import type { PlaceDeps } from "@/features/pdf-annotations/place";
 import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { logError } from "@/lib/log";
 import { lazy } from "@/lib/preloadable";
+import { i18n, loadNamespace } from "@/i18n";
 import type { PdfAnnotation, PdfAnnotationBox, PdfAnnotationKind, PdfAnnotationQuote } from "@/lib/tauri";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
 import { useSettingsStore } from "@/store/settings";
@@ -17,11 +19,17 @@ import type { TextAnnotationKind } from "./PdfAnnotationComposer";
 const reviewing = () => useSettingsStore.getState().pdfReview;
 
 const PdfAnnotationComposer = lazy(
-  () => import("./PdfAnnotationComposer").then((module) => ({ default: module.PdfAnnotationComposer })),
+  () =>
+    Promise.all([import("./PdfAnnotationComposer"), loadNamespace("annotations")]).then(([module]) => ({
+      default: module.PdfAnnotationComposer,
+    })),
   { warm: reviewing },
 );
 const PdfAnnotationsPanel = lazy(
-  () => import("./PdfAnnotationsPanel").then((module) => ({ default: module.PdfAnnotationsPanel })),
+  () =>
+    Promise.all([import("./PdfAnnotationsPanel"), loadNamespace("annotations")]).then(([module]) => ({
+      default: module.PdfAnnotationsPanel,
+    })),
   { warm: reviewing },
 );
 
@@ -33,8 +41,8 @@ interface Fractions {
 }
 
 type Draft =
-  | { from: "text"; selection: PdfTextSelectionInfo; range: Range | null; kind: TextAnnotationKind | null }
-  | { from: "region"; region: PdfRegionSelectionInfo; fractions: Fractions | null; kind: "region" };
+  | { from: "text"; build: string; selection: PdfTextSelectionInfo; range: Range | null; kind: TextAnnotationKind | null }
+  | { from: "region"; build: string; region: PdfRegionSelectionInfo; fractions: Fractions | null; kind: "region" };
 
 export interface PdfAnnotationsToolbar {
   count: number;
@@ -45,8 +53,7 @@ export interface PdfAnnotationsToolbar {
 }
 
 interface Options {
-  enabled: boolean;
-  projectId: string | null;
+  projectId: string;
   build: string | null;
   documentReady: boolean;
   checkpoint: CompileSuccessCheckpoint | null;
@@ -76,29 +83,22 @@ async function textOf(path: string): Promise<string | null> {
 }
 
 async function placeDeps(checkpoint: CompileSuccessCheckpoint | null): Promise<PlaceDeps> {
-  const [{ sourceText, typesetLinesOf }, { findQuoteBoxes }] = await Promise.all([
+  const [{ compiledSourceText, typesetLinesOf }, { findQuoteBoxes }] = await Promise.all([
     import("@/features/synctex"),
-    import("@oleafly/preview"),
+    import("@oleafly/preview/pdfQuote"),
   ]);
   return {
-    textOf: sourceText,
+    compiledText: (path) => compiledSourceText(path, checkpoint),
     linesOf: (path, startLine, endLine) => typesetLinesOf(path, startLine, endLine, checkpoint),
     runsOf: pdfPageText,
     findQuote: findQuoteBoxes,
   };
 }
 
-export function usePdfAnnotations({
-  enabled,
-  projectId,
-  build,
-  documentReady,
-  checkpoint,
-  syncAvailable,
-  pdfRef,
-  containerRef,
-}: Options): {
+export interface PdfAnnotationsView {
   viewerProps: {
+    annotationLayer?: PdfAnnotationLayer;
+    markLabel?: (mark: PdfMark) => string;
     marks?: readonly PdfMark[];
     onMarkActivate?: (id: string) => void;
     onSelectText?: (selection: PdfTextSelectionInfo | null) => void;
@@ -106,8 +106,19 @@ export function usePdfAnnotations({
     onSelectRegion?: (region: PdfRegionSelectionInfo) => void;
   };
   toolbar: PdfAnnotationsToolbar | null;
-  overlay: ReactNode;
-} {
+}
+
+const markLabel = (mark: PdfMark) => i18n.t(($) => $.annotations.markBadge, { label: mark.label });
+
+export function usePdfAnnotations({
+  projectId,
+  build,
+  documentReady,
+  checkpoint,
+  syncAvailable,
+  pdfRef,
+  containerRef,
+}: Options): PdfAnnotationsView & { overlay: ReactNode } {
   const items = usePdfAnnotationsStore((state) => state.items);
   const loaded = usePdfAnnotationsStore((state) => state.loaded);
   const activeId = usePdfAnnotationsStore((state) => state.activeId);
@@ -115,70 +126,90 @@ export function usePdfAnnotations({
   const [regionMode, setRegionMode] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [placingId, setPlacingId] = useState<string | null>(null);
-  const placedRef = useRef<string | null>(null);
+  const [layer, setLayer] = useState<PdfAnnotationLayer | null>(null);
+  const [stringsReady, setStringsReady] = useState(false);
+  const attemptedRef = useRef<{ key: string; ids: Set<string> } | null>(null);
   const checkpointRef = useRef(checkpoint);
   checkpointRef.current = checkpoint;
 
   useEffect(() => {
-    void usePdfAnnotationsStore.getState().load(enabled ? projectId : null);
-  }, [enabled, projectId]);
+    void usePdfAnnotationsStore.getState().load(projectId);
+  }, [projectId]);
 
   useEffect(() => {
-    if (enabled) return;
-    setPanelOpen(false);
-    setRegionMode(false);
-    setDraft(null);
-    setPlacingId(null);
-  }, [enabled]);
+    if (stringsReady) return;
+    let live = true;
+    loadNamespace("annotations")
+      .then(() => {
+        if (live) setStringsReady(true);
+      })
+      .catch((error: unknown) => logError("load the PDF annotation strings", error));
+    return () => {
+      live = false;
+    };
+  }, [stringsReady]);
+
+  useEffect(() => {
+    if (layer) return;
+    let live = true;
+    import("@oleafly/preview/pdfMarks")
+      .then((module) => {
+        if (live) setLayer(module.pdfAnnotationLayer);
+      })
+      .catch((error: unknown) => logError("load the PDF annotation layer", error));
+    return () => {
+      live = false;
+    };
+  }, [layer]);
 
   useEffect(() => {
     void build;
-    setDraft(null);
+    setDraft((current) => (current?.kind ? current : null));
   }, [build]);
 
   useEffect(() => {
-    if (!enabled || !loaded || !build || !documentReady || !syncAvailable) return;
+    if (!loaded || !build || !documentReady) return;
     const key = `${projectId}:${build}`;
-    if (placedRef.current === key) return;
-    placedRef.current = key;
-    const stale = usePdfAnnotationsStore
-      .getState()
-      .items.filter((item) => item.build !== build || item.status === "needsPlacing");
+    if (attemptedRef.current?.key !== key) attemptedRef.current = { key, ids: new Set() };
+    const tried = attemptedRef.current.ids;
+    const stale = items.filter(
+      (item) => (item.build !== build || item.placement === "needsPlacing") && !tried.has(item.id),
+    );
     if (stale.length === 0) return;
-    let cancelled = false;
+    for (const item of stale) tried.add(item.id);
+    const current = () => attemptedRef.current?.key === key;
     void (async () => {
       try {
         const [{ placeAnnotations }, deps] = await Promise.all([
           import("@/features/pdf-annotations/place"),
           placeDeps(checkpointRef.current),
         ]);
-        if (cancelled) return;
+        if (!current()) return;
         const updates = await placeAnnotations(stale, build, deps);
-        if (!cancelled && placedRef.current === key) await usePdfAnnotationsStore.getState().update(updates);
+        if (current()) await usePdfAnnotationsStore.getState().update(updates, { quiet: true });
       } catch (error) {
         void logError("place PDF annotations again", error);
       }
     })();
-    return () => {
-      cancelled = true;
-      if (placedRef.current === key) placedRef.current = null;
-    };
-  }, [enabled, loaded, build, documentReady, syncAvailable, projectId]);
+  }, [loaded, build, documentReady, projectId, items]);
 
   const marks = useMemo<readonly PdfMark[]>(
     () =>
       items
-        .filter((item) => item.build === build && item.boxes.length > 0 && item.status !== "needsPlacing")
+        .filter((item) => item.build === build && item.boxes.length > 0 && item.placement !== "needsPlacing")
         .map((item) => ({ id: item.id, label: String(item.number), rects: item.boxes, active: item.id === activeId })),
     [items, build, activeId],
   );
 
-  const onSelectText = useCallback((selection: PdfTextSelectionInfo | null) => {
-    setDraft((current) => {
-      if (current?.kind) return current;
-      return selection ? { from: "text", selection, range: currentRange(), kind: null } : null;
-    });
-  }, []);
+  const onSelectText = useCallback(
+    (selection: PdfTextSelectionInfo | null) => {
+      setDraft((current) => {
+        if (current?.kind) return current;
+        return selection && build ? { from: "text", build, selection, range: currentRange(), kind: null } : null;
+      });
+    },
+    [build],
+  );
 
   const onSelectRegion = useCallback(
     (region: PdfRegionSelectionInfo) => {
@@ -192,9 +223,9 @@ export function usePdfAnnotations({
               height: region.clientRect.height / wrap.height,
             }
           : null;
-      setDraft({ from: "region", region, fractions, kind: "region" });
+      if (build) setDraft({ from: "region", build, region, fractions, kind: "region" });
     },
-    [containerRef],
+    [containerRef, build],
   );
 
   const onMarkActivate = useCallback((id: string) => {
@@ -208,8 +239,8 @@ export function usePdfAnnotations({
     setDraft(null);
   };
 
-  const save = async (current: Draft, kind: PdfAnnotationKind, comment: string) => {
-    if (!build) return;
+  const save = async (current: Draft, kind: PdfAnnotationKind, comment: string): Promise<boolean> => {
+    const { build: madeOn } = current;
     const store = usePdfAnnotationsStore.getState();
     const text = current.from === "text";
     const quote: PdfAnnotationQuote = text
@@ -219,27 +250,35 @@ export function usePdfAnnotations({
     const boxes: PdfAnnotationBox[] = text ? current.selection.rects : [current.region.rect];
     let id: string | null = null;
     if (placingId) {
-      const done = await store.update([{ id: placingId, quote, page, boxes, build, status: "draft" }]);
-      if (!done) return;
+      const done = await store.update([
+        { id: placingId, quote, page, boxes, build: madeOn, placement: "placed", source: null },
+      ]);
+      if (!done) return false;
       id = placingId;
       setPlacingId(null);
     } else {
-      const added = await store.add({ kind, comment, quote, page, source: null, boxes, build, origin: "pdf" });
-      if (!added) return;
+      const added = await store.add({ kind, comment, quote, page, source: null, boxes, build: madeOn, origin: "pdf" });
+      if (!added) return false;
       id = added.id;
     }
     finishDraft(current);
-    if (!syncAvailable) return;
+    if (!syncAvailable || madeOn !== build) return true;
     try {
       const { locateSource, regionProbePoints } = await import("@/features/pdf-annotations/locate");
       const [start, end] = text
         ? [current.selection.start, current.selection.end]
         : regionProbePoints(current.region.rect);
       const source = await locateSource(start, end, checkpointRef.current, undefined, textOf);
-      if (source) await usePdfAnnotationsStore.getState().update([{ id, source }]);
+      if (source) await usePdfAnnotationsStore.getState().update([{ id, source }], { quiet: true });
     } catch (error) {
       void logError("find the source of a PDF annotation", error);
     }
+    return true;
+  };
+
+  const saveOrThrow = async (current: Draft, kind: PdfAnnotationKind, comment: string) => {
+    if (await save(current, kind, comment)) return;
+    throw new Error(usePdfAnnotationsStore.getState().error ?? "");
   };
 
   const show = (annotation: PdfAnnotation) => {
@@ -255,7 +294,36 @@ export function usePdfAnnotations({
     handoffToAssistant("", { autoSend: false, context: annotationContextItems(annotations) });
   };
 
-  if (!enabled || !projectId) return { viewerProps: {}, toolbar: null, overlay: null };
+  const viewerProps = useMemo(
+    () => ({
+      annotationLayer: layer ?? undefined,
+      markLabel,
+      marks,
+      onMarkActivate,
+      onSelectText,
+      regionSelect: regionMode,
+      onSelectRegion,
+    }),
+    [layer, marks, onMarkActivate, onSelectText, regionMode, onSelectRegion],
+  );
+
+  const count = items.length;
+  const toolbar = useMemo<PdfAnnotationsToolbar | null>(
+    () =>
+      stringsReady
+        ? {
+            count,
+            panelOpen,
+            togglePanel: () => setPanelOpen((open) => !open),
+            regionMode,
+            toggleRegionMode: () => {
+              setDraft(null);
+              setRegionMode((on) => !on);
+            },
+          }
+        : null,
+    [stringsReady, count, panelOpen, regionMode],
+  );
 
   let anchor: PopoverAnchor | null = null;
   let contextElement: Element | null = null;
@@ -287,23 +355,8 @@ export function usePdfAnnotations({
   };
 
   return {
-    viewerProps: {
-      marks,
-      onMarkActivate,
-      onSelectText,
-      regionSelect: regionMode,
-      onSelectRegion,
-    },
-    toolbar: {
-      count: items.length,
-      panelOpen,
-      togglePanel: () => setPanelOpen((open) => !open),
-      regionMode,
-      toggleRegionMode: () => {
-        setDraft(null);
-        setRegionMode((on) => !on);
-      },
-    },
+    viewerProps,
+    toolbar,
     overlay: (
       <>
         {draft && anchor ? (
@@ -312,7 +365,7 @@ export function usePdfAnnotations({
               key={draft.from === "text" ? `${draft.selection.page}:${draft.selection.text}` : "region"}
               anchor={anchor}
               contextElement={contextElement}
-              kind={placingId ? null : draft.kind}
+              kind={placingId || draft.kind === "delete" ? null : draft.kind}
               placing={placingId !== null}
               onPick={(kind) => {
                 if (kind === "delete") {
@@ -321,7 +374,7 @@ export function usePdfAnnotations({
                 }
                 setDraft((current) => (current?.from === "text" ? { ...current, kind } : current));
               }}
-              onSave={(comment) => save(draft, draft.kind ?? "comment", comment)}
+              onSave={(comment) => saveOrThrow(draft, draft.kind ?? "comment", comment)}
               onPlace={() => void save(draft, draft.kind ?? "comment", "")}
               onCancel={cancel}
             />
@@ -332,7 +385,10 @@ export function usePdfAnnotations({
             id="pdf-annotations-panel"
             open={panelOpen}
             placingId={placingId}
-            onClose={() => setPanelOpen(false)}
+            onClose={() => {
+              setPanelOpen(false);
+              setPlacingId(null);
+            }}
             onShow={show}
             onPlaceAgain={(annotation) => setPlacingId(annotation?.id ?? null)}
             onSend={(annotations) => void send(annotations)}
@@ -341,4 +397,15 @@ export function usePdfAnnotations({
       </>
     ),
   };
+}
+
+export function PdfAnnotationsHost({
+  slot,
+  onView,
+  ...options
+}: Options & { slot: HTMLElement | null; onView: (view: PdfAnnotationsView | null) => void }) {
+  const { viewerProps, toolbar, overlay } = usePdfAnnotations(options);
+  useLayoutEffect(() => onView({ viewerProps, toolbar }), [onView, viewerProps, toolbar]);
+  useLayoutEffect(() => () => onView(null), [onView]);
+  return slot ? createPortal(overlay, slot) : null;
 }

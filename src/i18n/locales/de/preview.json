@@ -256,74 +256,6 @@
     "downloadSaved": "PDF erfolgreich gespeichert.",
     "downloadFailed": "Das angezeigte PDF konnte nicht gespeichert werden."
   },
-  "annotations": {
-    "toolbar": {
-      "region": "Bereich anmerken",
-      "list": "Anmerkungen ({{n}})"
-    },
-    "composer": {
-      "title": "Neue Anmerkung",
-      "action": {
-        "comment": "Kommentieren",
-        "delete": "Löschen",
-        "replace": "Ersetzen",
-        "insert": "Einfügen"
-      },
-      "label": {
-        "comment": "Kommentar",
-        "delete": "Löschen",
-        "replace": "Ersatztext",
-        "insert": "Einzufügender Text",
-        "region": "Kommentar zum Bereich"
-      },
-      "placeholder": {
-        "comment": "Kommentar zu dieser Stelle …",
-        "delete": "Warum löschen? (optional)",
-        "replace": "Ersetzen durch …",
-        "insert": "Nach der Auswahl einfügen …",
-        "region": "Kommentar zu diesem Bereich …"
-      },
-      "placeHere": "Hier platzieren",
-      "cancel": "Abbrechen",
-      "save": "Hinzufügen",
-      "saving": "Wird gespeichert",
-      "notSaved": "Nicht gespeichert."
-    },
-    "kind": {
-      "comment": "Kommentar",
-      "delete": "Löschung",
-      "replace": "Ersetzung",
-      "insert": "Einfügung",
-      "region": "Bereich"
-    },
-    "status": {
-      "draft": "Entwurf",
-      "sent": "Gesendet",
-      "addressed": "Bearbeitet",
-      "resolved": "Erledigt",
-      "needsPlacing": "Muss platziert werden"
-    },
-    "panel": {
-      "title": "Anmerkungen",
-      "close": "Anmerkungen schließen",
-      "empty": "Markieren Sie Text im PDF und wählen Sie „Kommentieren“, „Löschen“, „Ersetzen“ oder „Einfügen“. Oder schalten Sie „Bereich anmerken“ ein und ziehen Sie einen Rahmen um eine Formel oder Abbildung.",
-      "failed": "Anmerkungen konnten nicht gespeichert werden. {{error}}",
-      "noSource": "Keine Stelle in der Quelle",
-      "page": "S. {{page}}",
-      "notFound": "Diese Stelle wurde im neuen PDF nicht gefunden.",
-      "placing": "Markieren Sie die Stelle im PDF und wählen Sie dann „Hier platzieren“.",
-      "placeAgain": "Erneut platzieren",
-      "include": "Anmerkung {{number}} einbeziehen",
-      "resolve": "Anmerkung {{number}} als erledigt markieren",
-      "reopen": "Anmerkung {{number}} wieder öffnen",
-      "delete": "Anmerkung {{number}} löschen",
-      "editComment": "Kommentar von Anmerkung {{number}} bearbeiten",
-      "addComment": "Kommentar hinzufügen",
-      "clear": "Alle löschen",
-      "clearConfirm": "Alle Anmerkungen in diesem Projekt löschen? Das lässt sich nicht rückgängig machen.",
-      "send": "An Assistenten senden ({{n}})"
-    }
-  },
   "package": {
     "error": {
       "passwordIncorrect": "Das PDF-Passwort wurde nicht akzeptiert.",
@@ -361,9 +293,6 @@
       "title": "Screenreader-Modus",
       "pageLabel": "Seite {{page}} von {{total}}",
       "empty": "Auf dieser Seite wurde kein lesbarer Text gefunden."
-    },
-    "mark": {
-      "badge": "Anmerkung {{label}}"
     }
   },
   "presentation": {

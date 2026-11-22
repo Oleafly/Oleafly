@@ -90,6 +90,13 @@ describe("composer context prompt text", () => {
     );
   });
 
+  it("uses an item's own heading when it gives one, so stale labels never reach the prompt", () => {
+    const block = composerContextBlock([
+      { item: item("note", "a", "1 · main.tex:12"), refId: "a", path: "main.tex", heading: "PDF annotation 1", text: "body" },
+    ]);
+    expect(block).toBe("PDF annotation 1:\n```\nbody\n```");
+  });
+
   it("appends the blocks after the typed text, or stands alone without it", () => {
     const expanded = [{ item: item("note", "a", "Note"), refId: "a", path: null, text: "body" }];
     expect(withComposerContext("Please check", expanded)).toBe("Please check\n\nNote:\n```\nbody\n```");

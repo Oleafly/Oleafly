@@ -24,7 +24,6 @@ export const PREVIEW_MESSAGE_KEYS = [
   "screenReader.title",
   "screenReader.pageLabel",
   "screenReader.empty",
-  "mark.badge",
 ] as const;
 
 export type PreviewMessageKey = (typeof PREVIEW_MESSAGE_KEYS)[number];

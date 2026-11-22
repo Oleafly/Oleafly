@@ -47,15 +47,11 @@ import {
   type PdfRenderScheduler,
 } from "./pdfRenderScheduler";
 import { registerPdfTextSelection } from "./pdfTextSelection";
-import {
-  clientBoxToPageRect,
-  describePdfSelection,
-  MARK_BADGE_CLASS,
-  paintPdfMarks,
-  snapSelectionToWords,
-  type PdfMark,
-  type PdfRegionSelectionInfo,
-  type PdfTextSelectionInfo,
+import type {
+  PdfAnnotationLayer,
+  PdfMark,
+  PdfRegionSelectionInfo,
+  PdfTextSelectionInfo,
 } from "./pdfMarks";
 import {
   normalizePdfOutline,
@@ -1222,6 +1218,8 @@ export interface PdfViewerProps {
   pageColors?: PdfPageColors;
   reportWarning?: (scope: string, error: unknown) => void;
   t?: PreviewTranslator;
+  annotationLayer?: PdfAnnotationLayer;
+  markLabel?: (mark: PdfMark) => string;
   marks?: readonly PdfMark[];
   onMarkActivate?: (id: string) => void;
   onSelectText?: (selection: PdfTextSelectionInfo | null) => void;
@@ -1265,6 +1263,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     pageColors,
     reportWarning,
     t = keyEchoTranslator,
+    annotationLayer,
+    markLabel,
     marks,
     onMarkActivate,
     onSelectText,
@@ -1274,6 +1274,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const annotationLayerRef = useRef(annotationLayer);
+  annotationLayerRef.current = annotationLayer;
+  const markLabelRef = useRef(markLabel);
+  markLabelRef.current = markLabel;
   const marksRef = useRef<readonly PdfMark[]>(marks ?? []);
   marksRef.current = marks ?? [];
   const onMarkActivateRef = useRef(onMarkActivate);
@@ -1341,10 +1345,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const schedulerRef = useRef<PdfRenderScheduler | null>(null);
   const paintMarksOnPage = useCallback((pageNumber: number) => {
     const wrap = wrapsRef.current.get(pageNumber);
-    if (!wrap) return;
+    const layer = annotationLayerRef.current;
+    if (!wrap || !layer) return;
     try {
-      paintPdfMarks(wrap, pageNumber, pageViewportsRef.current.get(pageNumber), marksRef.current, {
-        badgeLabel: (mark) => tRef.current("mark.badge", { label: mark.label }),
+      layer.paint(wrap, pageNumber, pageViewportsRef.current.get(pageNumber), marksRef.current, {
+        badgeLabel: (mark) => markLabelRef.current?.(mark) ?? mark.label,
         onActivate: (id) => onMarkActivateRef.current?.(id),
       });
     } catch {
@@ -2930,7 +2935,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         );
         wrap.addEventListener("click", (ev: MouseEvent) => {
           if (regionSelectRef.current) return;
-          if ((ev.target as HTMLElement)?.closest?.(`.${MARK_BADGE_CLASS}`)) return;
+          const badge = annotationLayerRef.current?.badgeClass;
+          if (badge && (ev.target as HTMLElement)?.closest?.(`.${badge}`)) return;
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           if ((ev.target as HTMLElement)?.closest?.(".pdf-screen-reader-layer")) return;
           const selection = document.getSelection();
@@ -3683,17 +3689,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const selectTextEnabled = Boolean(onSelectText);
   useEffect(() => {
     const container = containerRef.current;
-    if (!data || !container || !selectTextEnabled) return;
+    if (!data || !container || !selectTextEnabled || !annotationLayer) return;
     let frame = 0;
     let reported = false;
     const report = () => {
       frame = 0;
       if (regionSelectRef.current) return;
-      const selection = document.getSelection();
-      if (selection) snapSelectionToWords(selection, container);
-      const info = selection
-        ? describePdfSelection(selection, container, pageClickToBp, pdfjsLib.normalizeUnicode)
-        : null;
+      const info = annotationLayer.readSelection(container, pageClickToBp, pdfjsLib.normalizeUnicode);
       if (!info && !reported) return;
       reported = Boolean(info);
       onSelectTextRef.current?.(info);
@@ -3715,113 +3717,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       container.removeEventListener("keyup", schedule);
       document.removeEventListener("selectionchange", onSelectionChange);
     };
-  }, [data, selectTextEnabled]);
+  }, [data, selectTextEnabled, annotationLayer]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!data || !container || !regionSelect) return;
-    const previousCursor = container.style.cursor;
-    const previousUserSelect = container.style.userSelect;
-    container.style.cursor = "crosshair";
-    container.style.userSelect = "none";
-    container.dataset.pdfRegionSelect = "true";
-    let drag: {
-      page: number;
-      wrap: HTMLElement;
-      x: number;
-      y: number;
-      box: HTMLElement;
-      pointerId: number;
-    } | null = null;
-    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-    const boxFor = (current: { page: number; wrap: HTMLElement; x: number; y: number }, clientX: number, clientY: number) => {
-      const bounds = current.wrap.getBoundingClientRect();
-      const x = clamp(clientX, bounds.left, bounds.right);
-      const y = clamp(clientY, bounds.top, bounds.bottom);
-      const left = Math.min(current.x, x);
-      const top = Math.min(current.y, y);
-      const right = Math.max(current.x, x);
-      const bottom = Math.max(current.y, y);
-      return { left, top, right, bottom, width: right - left, height: bottom - top, bounds };
-    };
-    const cancel = () => {
-      drag?.box.remove();
-      drag = null;
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return;
-      const wrap = (event.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-page]");
-      if (!wrap || !container.contains(wrap)) return;
-      if ((event.target as HTMLElement | null)?.closest?.(`.${MARK_BADGE_CLASS}`)) return;
-      const page = Number(wrap.dataset.page);
-      if (!Number.isInteger(page)) return;
-      event.preventDefault();
-      cancel();
-      const box = document.createElement("div");
-      box.className = "pdf-region-selection";
-      box.setAttribute("aria-hidden", "true");
-      Object.assign(box.style, {
-        position: "absolute",
-        zIndex: "4",
-        pointerEvents: "none",
-        border: "1px dashed rgba(37, 99, 235, 0.95)",
-        background: "rgba(37, 99, 235, 0.12)",
-      } as Partial<CSSStyleDeclaration>);
-      wrap.appendChild(box);
-      drag = { page, wrap, x: event.clientX, y: event.clientY, box, pointerId: event.pointerId };
-      try {
-        container.setPointerCapture?.(event.pointerId);
-      } catch {
-        return;
-      }
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      if (!drag || event.pointerId !== drag.pointerId) return;
-      const box = boxFor(drag, event.clientX, event.clientY);
-      Object.assign(drag.box.style, {
-        left: `${box.left - box.bounds.left}px`,
-        top: `${box.top - box.bounds.top}px`,
-        width: `${box.width}px`,
-        height: `${box.height}px`,
-      });
-    };
-    const onPointerUp = (event: PointerEvent) => {
-      if (!drag || event.pointerId !== drag.pointerId) return;
-      const current = drag;
-      cancel();
-      const box = boxFor(current, event.clientX, event.clientY);
-      if (box.width < 6 || box.height < 6) return;
-      const rect = clientBoxToPageRect(box, current.page, current.wrap, pageClickToBp);
-      if (!rect) return;
-      onSelectRegionRef.current?.({
-        page: current.page,
-        rect,
-        clientRect: { left: box.left, top: box.top, width: box.width, height: box.height },
-      });
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && drag) {
-        event.stopPropagation();
-        cancel();
-      }
-    };
-    container.addEventListener("pointerdown", onPointerDown);
-    container.addEventListener("pointermove", onPointerMove);
-    container.addEventListener("pointerup", onPointerUp);
-    container.addEventListener("pointercancel", cancel);
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      cancel();
-      container.removeEventListener("pointerdown", onPointerDown);
-      container.removeEventListener("pointermove", onPointerMove);
-      container.removeEventListener("pointerup", onPointerUp);
-      container.removeEventListener("pointercancel", cancel);
-      window.removeEventListener("keydown", onKeyDown, true);
-      container.style.cursor = previousCursor;
-      container.style.userSelect = previousUserSelect;
-      delete container.dataset.pdfRegionSelect;
-    };
-  }, [data, regionSelect]);
+    if (!data || !container || !regionSelect || !annotationLayer) return;
+    return annotationLayer.watchRegion(container, pageClickToBp, (region) => onSelectRegionRef.current?.(region));
+  }, [data, regionSelect, annotationLayer]);
 
   if (!data) return null;
   // The page wrappers are appended imperatively; switching the container between

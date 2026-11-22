@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "Dodaj adnotację do obszaru",
+    "list": "Adnotacje ({{n}})"
+  },
+  "markBadge": "Adnotacja {{label}}",
+  "composer": {
+    "title": "Nowa adnotacja",
+    "action": {
+      "comment": "Skomentuj",
+      "delete": "Usuń",
+      "replace": "Zastąp",
+      "insert": "Wstaw"
+    },
+    "label": {
+      "comment": "Komentarz",
+      "replace": "Nowy tekst",
+      "insert": "Tekst do wstawienia",
+      "region": "Komentarz do obszaru"
+    },
+    "placeholder": {
+      "comment": "Skomentuj ten fragment…",
+      "replace": "Zastąp tekstem…",
+      "insert": "Wstaw po zaznaczeniu…",
+      "region": "Skomentuj ten obszar…"
+    },
+    "placeHere": "Umieść tutaj",
+    "cancel": "Anuluj",
+    "save": "Dodaj",
+    "saving": "Zapisywanie",
+    "notSaved": "Nie zapisano."
+  },
+  "kind": {
+    "comment": "Komentarz",
+    "delete": "Usunięcie",
+    "replace": "Zastąpienie",
+    "insert": "Wstawienie",
+    "region": "Obszar"
+  },
+  "status": {
+    "draft": "Szkic",
+    "sent": "Wysłana",
+    "addressed": "Uwzględniona",
+    "resolved": "Rozwiązana",
+    "needsPlacing": "Do umieszczenia"
+  },
+  "panel": {
+    "title": "Adnotacje",
+    "close": "Zamknij adnotacje",
+    "empty": "Zaznacz tekst w PDF i wybierz Skomentuj, Usuń, Zastąp lub Wstaw. Albo włącz Dodaj adnotację do obszaru i obrysuj ramką równanie lub rysunek.",
+    "failed": "Nie udało się zapisać adnotacji. {{error}}",
+    "readOnly": "Zapisane w nowszej wersji Oleafly. Zaktualizuj, aby edytować.",
+    "setAside": "Nie udało się odczytać pliku adnotacji, więc założono nowy.",
+    "noSource": "Brak miejsca w źródle",
+    "page": "s. {{page}}",
+    "notFound": "Nie znaleziono tego fragmentu w nowym PDF.",
+    "placing": "Zaznacz fragment w PDF, a potem wybierz Umieść tutaj.",
+    "placeAgain": "Umieść ponownie",
+    "include": "Uwzględnij adnotację {{number}}",
+    "resolve": "Oznacz adnotację {{number}} jako rozwiązaną",
+    "reopen": "Otwórz ponownie adnotację {{number}}",
+    "delete": "Usuń adnotację {{number}}",
+    "editComment": "Edytuj komentarz adnotacji {{number}}",
+    "addComment": "Dodaj komentarz",
+    "clear": "Usuń wszystkie",
+    "clearConfirm": "Usunąć wszystkie adnotacje w tym projekcie? Tej operacji nie można cofnąć.",
+    "send": "Wyślij do asystenta ({{n}})"
+  }
+}

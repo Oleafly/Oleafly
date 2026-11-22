@@ -39,6 +39,14 @@ export interface PageFraction {
 }
 
 const MARK_LAYER_CLASS = "pdf-mark-layer";
+const MARK_COLORS = {
+  fill: "color-mix(in srgb, var(--comment-underline, #a5b4fc) 30%, transparent)",
+  activeFill: "color-mix(in srgb, var(--comment-active-underline, #4f46e5) 28%, transparent)",
+  line: "var(--comment-underline, #a5b4fc)",
+  activeLine: "var(--comment-active-underline, #4f46e5)",
+  badge: "var(--comment-ink, #3730a3)",
+  activeBadge: "var(--comment-active-underline, #4f46e5)",
+} as const;
 export const MARK_BADGE_CLASS = "pdf-mark-badge";
 const PAGE_WRAP_SELECTOR = "[data-page]";
 const MIN_MARK_HEIGHT = 4;
@@ -104,8 +112,8 @@ export function paintPdfMarks(
         width: percent(box.width),
         height: percent(box.height),
         borderRadius: "2px",
-        background: mark.active ? "rgba(37, 99, 235, 0.28)" : "rgba(37, 99, 235, 0.14)",
-        borderBottom: mark.active ? "2px solid rgba(29, 78, 216, 0.9)" : "1px solid rgba(37, 99, 235, 0.55)",
+        background: mark.active ? MARK_COLORS.activeFill : MARK_COLORS.fill,
+        borderBottom: mark.active ? `2px solid ${MARK_COLORS.activeLine}` : `1px solid ${MARK_COLORS.line}`,
       } as Partial<CSSStyleDeclaration>);
       layer.appendChild(highlight);
       if (badgePlaced) continue;
@@ -126,9 +134,9 @@ export function paintPdfMarks(
         padding: "0 0.25rem",
         borderRadius: "0.5rem",
         border: "1px solid rgba(255, 255, 255, 0.9)",
-        background: mark.active ? "rgb(29, 78, 216)" : "rgb(37, 99, 235)",
+        background: mark.active ? MARK_COLORS.activeBadge : MARK_COLORS.badge,
         color: "white",
-        font: "600 0.625rem/0.875rem system-ui, sans-serif",
+        font: "500 0.625rem/0.875rem system-ui, sans-serif",
         textAlign: "center",
         cursor: "pointer",
         pointerEvents: "auto",
@@ -141,6 +149,13 @@ export function paintPdfMarks(
       badge.addEventListener("pointerdown", (event) => event.stopPropagation());
       badge.addEventListener("mousedown", (event) => event.stopPropagation());
       badge.addEventListener("click", activate);
+      const resting = mark.active ? MARK_COLORS.activeBadge : MARK_COLORS.badge;
+      badge.addEventListener("focus", () => {
+        badge.style.background = mark.active ? MARK_COLORS.badge : MARK_COLORS.activeBadge;
+      });
+      badge.addEventListener("blur", () => {
+        badge.style.background = resting;
+      });
       layer.appendChild(badge);
     }
   }
@@ -364,3 +379,137 @@ export function describePdfSelection(
     clientRect: { left, top, width: right - left, height: bottom - top },
   };
 }
+
+export function readPdfTextSelection(
+  container: HTMLElement,
+  toPagePoint: ToPagePoint,
+  normalize: (text: string) => string,
+): PdfTextSelectionInfo | null {
+  const selection = document.getSelection();
+  if (!selection) return null;
+  snapSelectionToWords(selection, container);
+  return describePdfSelection(selection, container, toPagePoint, normalize);
+}
+
+export function watchRegionSelect(
+  container: HTMLElement,
+  toPagePoint: ToPagePoint,
+  onRegion: (region: PdfRegionSelectionInfo) => void,
+): () => void {
+  const previousCursor = container.style.cursor;
+  const previousUserSelect = container.style.userSelect;
+  container.style.cursor = "crosshair";
+  container.style.userSelect = "none";
+  container.dataset.pdfRegionSelect = "true";
+  let drag: {
+    page: number;
+    wrap: HTMLElement;
+    x: number;
+    y: number;
+    box: HTMLElement;
+    pointerId: number;
+  } | null = null;
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+  const boxFor = (current: { wrap: HTMLElement; x: number; y: number }, clientX: number, clientY: number) => {
+    const bounds = current.wrap.getBoundingClientRect();
+    const x = clamp(clientX, bounds.left, bounds.right);
+    const y = clamp(clientY, bounds.top, bounds.bottom);
+    const left = Math.min(current.x, x);
+    const top = Math.min(current.y, y);
+    const right = Math.max(current.x, x);
+    const bottom = Math.max(current.y, y);
+    return { left, top, right, bottom, width: right - left, height: bottom - top, bounds };
+  };
+  const cancel = () => {
+    drag?.box.remove();
+    drag = null;
+  };
+  const onPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    const wrap = target?.closest?.<HTMLElement>(PAGE_WRAP_SELECTOR);
+    if (!wrap || !container.contains(wrap)) return;
+    if (target?.closest?.(`.${MARK_BADGE_CLASS}`)) return;
+    const page = Number(wrap.dataset.page);
+    if (!Number.isInteger(page)) return;
+    event.preventDefault();
+    cancel();
+    const box = document.createElement("div");
+    box.className = "pdf-region-selection";
+    box.setAttribute("aria-hidden", "true");
+    Object.assign(box.style, {
+      position: "absolute",
+      zIndex: "4",
+      pointerEvents: "none",
+      border: `1px dashed ${MARK_COLORS.activeLine}`,
+      background: MARK_COLORS.fill,
+    } as Partial<CSSStyleDeclaration>);
+    wrap.appendChild(box);
+    drag = { page, wrap, x: event.clientX, y: event.clientY, box, pointerId: event.pointerId };
+    try {
+      container.setPointerCapture?.(event.pointerId);
+    } catch {
+      return;
+    }
+  };
+  const onPointerMove = (event: PointerEvent) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const box = boxFor(drag, event.clientX, event.clientY);
+    Object.assign(drag.box.style, {
+      left: `${box.left - box.bounds.left}px`,
+      top: `${box.top - box.bounds.top}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
+    });
+  };
+  const onPointerUp = (event: PointerEvent) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const current = drag;
+    cancel();
+    const box = boxFor(current, event.clientX, event.clientY);
+    if (box.width < 6 || box.height < 6) return;
+    const rect = clientBoxToPageRect(box, current.page, current.wrap, toPagePoint);
+    if (!rect) return;
+    onRegion({
+      page: current.page,
+      rect,
+      clientRect: { left: box.left, top: box.top, width: box.width, height: box.height },
+    });
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && drag) {
+      event.stopPropagation();
+      cancel();
+    }
+  };
+  container.addEventListener("pointerdown", onPointerDown);
+  container.addEventListener("pointermove", onPointerMove);
+  container.addEventListener("pointerup", onPointerUp);
+  container.addEventListener("pointercancel", cancel);
+  window.addEventListener("keydown", onKeyDown, true);
+  return () => {
+    cancel();
+    container.removeEventListener("pointerdown", onPointerDown);
+    container.removeEventListener("pointermove", onPointerMove);
+    container.removeEventListener("pointerup", onPointerUp);
+    container.removeEventListener("pointercancel", cancel);
+    window.removeEventListener("keydown", onKeyDown, true);
+    container.style.cursor = previousCursor;
+    container.style.userSelect = previousUserSelect;
+    delete container.dataset.pdfRegionSelect;
+  };
+}
+
+export interface PdfAnnotationLayer {
+  badgeClass: string;
+  paint: typeof paintPdfMarks;
+  readSelection: typeof readPdfTextSelection;
+  watchRegion: typeof watchRegionSelect;
+}
+
+export const pdfAnnotationLayer: PdfAnnotationLayer = {
+  badgeClass: MARK_BADGE_CLASS,
+  paint: paintPdfMarks,
+  readSelection: readPdfTextSelection,
+  watchRegion: watchRegionSelect,
+};

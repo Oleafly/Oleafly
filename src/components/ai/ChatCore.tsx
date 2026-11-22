@@ -171,6 +171,7 @@ import {
 import {
   expandComposerContext,
   markComposerContextSent,
+  MAX_COMPOSER_CONTEXT_CHARS,
   withComposerContext,
   type ComposerContextItem,
 } from "@/lib/composer-context";
@@ -2154,6 +2155,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
         context?: readonly ComposerContextItem[];
         commit?: () => Promise<void> | void;
       };
+      context?: readonly ComposerContextItem[];
       web?: boolean;
     },
   ) => {
@@ -2166,8 +2168,10 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       options?.replay?.attachments ?? queued?.attachments ?? readyAttachments(draft)
     ).map((attachment) => ({ ...attachment }));
     const fromDraft = !options?.replay && !queued;
-    const outgoingContext: ComposerContextItem[] = [
-      ...(options?.replay ? options.replay.context ?? [] : queued?.context ?? draftContext(sendComposerId)),
+    let outgoingContext: ComposerContextItem[] = [
+      ...(options?.replay
+        ? options.replay.context ?? []
+        : queued?.context ?? options?.context ?? draftContext(sendComposerId)),
     ];
     if (!text.trim() && outgoing.length === 0 && outgoingContext.length === 0) return;
     const sendSequence = sendSequenceRef.current + 1;
@@ -2239,12 +2243,30 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       return;
     }
     let modelContext: Awaited<ReturnType<typeof expandComposerContext>> = [];
+    const requestedContext = outgoingContext;
     if (outgoingContext.length > 0) {
       try {
         modelContext = await expandComposerContext(projectId ?? "", outgoingContext);
       } catch (error) {
         cancelSendPreparation();
         void logError("expand the composer context", error);
+        toast.error(i18n.t(($) => $.ai.composer.contextFailed));
+        return;
+      }
+      const found = new Set(modelContext.map((entry) => entry.item.id));
+      const missing = outgoingContext.filter((item) => !found.has(item.id));
+      if (missing.length > 0) {
+        useComposerDrafts.getState().removeContext(sendComposerId, missing.map((item) => item.id));
+        outgoingContext = outgoingContext.filter((item) => found.has(item.id));
+      }
+      const contextChars = modelContext.reduce((total, entry) => total + entry.text.length, 0);
+      if (contextChars > MAX_COMPOSER_CONTEXT_CHARS) {
+        cancelSendPreparation();
+        toast.error(i18n.t(($) => $.ai.composer.contextTooLarge));
+        return;
+      }
+      if (!text.trim() && outgoing.length === 0 && outgoingContext.length === 0) {
+        cancelSendPreparation();
         toast.error(i18n.t(($) => $.ai.composer.contextFailed));
         return;
       }
@@ -2612,7 +2634,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       }
       useComposerDrafts.getState().removeContext(
         sendComposerId,
-        outgoingContext.map((item) => item.id),
+        requestedContext.map((item) => item.id),
       );
     }
     setStreaming(true);
@@ -2645,7 +2667,6 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages, chatScopeOptions());
     }
-    if (!queued) markComposerContextSent(runProjectId ?? "", outgoingContext);
     let planTurn: PlanTurn | null = null;
     if (runPlanMode) {
       if (options?.approvedPlan) planTurn = "execution";
@@ -2898,11 +2919,16 @@ ${sandboxedCustom}`;
     );
     const runWeb = runWebTools(runChat ? runChat.web : newChatSettingsRef.current.web);
     let queuedAccepted = false;
+    let contextMarked = false;
+    const markContextSent = () => {
+      if (contextMarked) return;
+      contextMarked = true;
+      markComposerContextSent(runProjectId ?? "", outgoingContext);
+    };
     const acknowledgeQueued = () => {
       if (queuedAccepted || !queued || !runChatId) return;
       queuedAccepted = true;
       useAgentTurnsStore.getState().acknowledgeFollowUp(runChatId, queued.id);
-      markComposerContextSent(runProjectId ?? "", outgoingContext);
     };
     const optimisticMessageIds = new Set([userMsg.id, assistantMsg.id]);
     const withoutOptimisticTurn = (current: ChatMessage[]) =>
@@ -3132,9 +3158,11 @@ ${sandboxedCustom}`;
           runRequestId = id;
           trackRunRequestId(id);
           acknowledgeQueued();
+          markContextSent();
         },
         onRawEvent: (event) => {
           acknowledgeQueued();
+          markContextSent();
           if (!runChatId) return;
           useAgentTurnsStore.getState().applyEvent(runChatId, event);
         },
@@ -3305,6 +3333,7 @@ ${sandboxedCustom}`;
       });
       const outcome = await outcomePromise;
       acknowledgeQueued();
+      if (!outcome.error && !ac.signal.aborted) markContextSent();
 
       usageSteps = outcome.steps;
       runEndedCleanly = !outcome.error && !ac.signal.aborted;
@@ -3866,11 +3895,11 @@ ${sandboxedCustom}`;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
-    if (h.context.length) useComposerDrafts.getState().addContext(composerIdRef.current, h.context);
     if (h.autoSend && providerReady) {
-      void send(h.prompt);
+      void send(h.prompt, undefined, h.context.length ? { context: h.context } : undefined);
       return;
     }
+    if (h.context.length) useComposerDrafts.getState().addContext(composerIdRef.current, h.context);
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
   }, [
     acceptsHandoff,

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAcpSessionsStore, type AcpQueuedPrompt } from "@/store/acp-sessions";
 import { acpDraftId, restoreDraft } from "./AcpComposer";
 import { settleSelectionQuotes } from "./selection-quote";
+import { ComposerChip } from "@/components/ai/composer/ComposerChip";
 
 const EMPTY_QUEUE: AcpQueuedPrompt[] = [];
 
@@ -104,34 +105,28 @@ export function AcpComposerChips({
       {(skill || selections.length > 0) && (
         <div className="flex flex-wrap gap-1.5">
           {skill && (
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              data-testid="acp-skill-chip"
-              aria-label={t(($) => $.ai.presets.removeSkill, { name: skill.name })}
-              onClick={() => store().setComposer(projectId, { skill: null })}
-            >
-              <Sparkles className="size-3" /> {skill.name} <X className="size-3" />
-            </Button>
+            <ComposerChip
+              icon={<Sparkles className="size-3" />}
+              label={skill.name}
+              removeLabel={t(($) => $.ai.presets.removeSkill, { name: skill.name })}
+              onRemove={() => store().setComposer(projectId, { skill: null })}
+              testId="acp-skill-chip"
+            />
           )}
           {selections.map((selection) => (
-            <Button
+            <ComposerChip
               key={selection.id}
-              type="button"
-              variant="outline"
-              size="xs"
-              data-testid="acp-selection-chip"
-              aria-label={t(($) => $.ai.acp.composer.removeSelection, { label: selection.label })}
-              onClick={() => {
+              icon={<Quote className="size-3" />}
+              label={selection.label}
+              removeLabel={t(($) => $.ai.acp.composer.removeSelection, { label: selection.label })}
+              onRemove={() => {
                 settleSelectionQuotes(projectId, [selection]);
                 store().setComposer(projectId, {
                   selections: selections.filter((entry) => entry.id !== selection.id),
                 });
               }}
-            >
-              <Quote className="size-3" /> {selection.label} <X className="size-3" />
-            </Button>
+              testId="acp-selection-chip"
+            />
           ))}
         </div>
       )}

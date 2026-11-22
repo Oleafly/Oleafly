@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import "@/i18n";
+import { loadNamespace } from "@/i18n";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import enAnnotations from "@/i18n/locales/en/annotations.json" with { type: "json" };
 import type { PdfAnnotation } from "@/lib/tauri";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
 import { PdfAnnotationsPanel } from "./PdfAnnotationsPanel";
 
-const strings = enPreview.annotations;
+const strings = enAnnotations;
 const label = (text: string, values: Record<string, string | number>) =>
   Object.entries(values).reduce((out, [key, value]) => out.replace(`{{${key}}}`, String(value)), text);
 
@@ -37,6 +37,7 @@ function note(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
     build: "current",
     origin: "pdf",
     status: "draft",
+    placement: "placed",
     createdAt: 0,
     updatedAt: 0,
     ...patch,
@@ -49,9 +50,21 @@ function renderPanel(props: Partial<Parameters<typeof PdfAnnotationsPanel>[0]> =
   return handlers;
 }
 
-function seed(items: PdfAnnotation[], error: string | null = null) {
-  usePdfAnnotationsStore.setState({ projectId: "p", items, loaded: true, activeId: null, error });
+function seed(items: PdfAnnotation[], error: string | null = null, notices: { readOnly?: boolean; setAside?: boolean } = {}) {
+  usePdfAnnotationsStore.setState({
+    projectId: "p",
+    items,
+    loaded: true,
+    readOnly: notices.readOnly ?? false,
+    setAside: notices.setAside ?? false,
+    activeId: null,
+    error,
+  });
 }
+
+beforeAll(async () => {
+  await loadNamespace("annotations");
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -96,7 +109,7 @@ describe("PdfAnnotationsPanel", () => {
     expect(await screen.findByRole("button", { name: label(strings.panel.reopen, { number: 1 }) })).toBeTruthy();
 
     mocks.update.mockResolvedValue([note({ comment: "New comment", status: "resolved" })]);
-    await userEvent.click(screen.getByRole("button", { name: label(strings.panel.editComment, { number: 1 }) }));
+    await userEvent.click(screen.getByRole("button", { name: "Say what the bound depends on." }));
     const field = screen.getByRole("textbox");
     await userEvent.clear(field);
     await userEvent.type(field, "New comment");
@@ -108,12 +121,28 @@ describe("PdfAnnotationsPanel", () => {
     expect(mocks.remove).toHaveBeenCalledWith("p", ["a"]);
   });
 
-  it("offers Place again for a note that wasn't found", async () => {
-    seed([note({ status: "needsPlacing" })]);
+  it("offers Place again for a note that wasn't found, and keeps its status", async () => {
+    seed([note({ status: "sent", placement: "needsPlacing" })]);
     const { onPlaceAgain } = renderPanel();
     expect(screen.getByText(strings.panel.notFound)).toBeTruthy();
+    expect(screen.getByText(strings.status.sent)).toBeTruthy();
+    expect(screen.getByText(strings.status.needsPlacing)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: strings.panel.placeAgain }));
-    expect(onPlaceAgain).toHaveBeenCalledWith(note({ status: "needsPlacing" }));
+    expect(onPlaceAgain).toHaveBeenCalledWith(note({ status: "sent", placement: "needsPlacing" }));
+  });
+
+  it("renders a comment's formatting instead of its markers", () => {
+    seed([note({ comment: "Make it **shorter**." })]);
+    renderPanel();
+    expect(screen.getByText("shorter")).toBeTruthy();
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+
+  it("says when the file is read-only or was set aside", () => {
+    seed([], null, { readOnly: true, setAside: true });
+    renderPanel();
+    expect(screen.getByText(strings.panel.readOnly)).toBeTruthy();
+    expect(screen.getByText(strings.panel.setAside)).toBeTruthy();
   });
 
   it("shows a save failure", () => {

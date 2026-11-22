@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "Anotar una zona",
+    "list": "Anotaciones ({{n}})"
+  },
+  "markBadge": "Anotación {{label}}",
+  "composer": {
+    "title": "Nueva anotación",
+    "action": {
+      "comment": "Comentar",
+      "delete": "Eliminar",
+      "replace": "Reemplazar",
+      "insert": "Insertar"
+    },
+    "label": {
+      "comment": "Comentario",
+      "replace": "Texto de reemplazo",
+      "insert": "Texto que insertar",
+      "region": "Comentario sobre la zona"
+    },
+    "placeholder": {
+      "comment": "Comenta este fragmento…",
+      "replace": "Reemplazar por…",
+      "insert": "Insertar tras la selección…",
+      "region": "Comenta esta zona…"
+    },
+    "placeHere": "Colocar aquí",
+    "cancel": "Cancelar",
+    "save": "Añadir",
+    "saving": "Guardando",
+    "notSaved": "No se ha guardado."
+  },
+  "kind": {
+    "comment": "Comentario",
+    "delete": "Eliminación",
+    "replace": "Reemplazo",
+    "insert": "Inserción",
+    "region": "Zona"
+  },
+  "status": {
+    "draft": "Borrador",
+    "sent": "Enviada",
+    "addressed": "Atendida",
+    "resolved": "Resuelta",
+    "needsPlacing": "Sin colocar"
+  },
+  "panel": {
+    "title": "Anotaciones",
+    "close": "Cerrar anotaciones",
+    "empty": "Selecciona texto en el PDF y elige Comentar, Eliminar, Reemplazar o Insertar. O activa Anotar una zona y arrastra un recuadro alrededor de una ecuación o figura.",
+    "failed": "No se pudieron guardar las anotaciones. {{error}}",
+    "readOnly": "Guardado con un Oleafly más reciente. Actualízalo para editar.",
+    "setAside": "No se pudo leer el archivo de anotaciones, así que se empezó uno nuevo.",
+    "noSource": "Sin ubicación en la fuente",
+    "page": "p. {{page}}",
+    "notFound": "Este fragmento no se encontró en el nuevo PDF.",
+    "placing": "Selecciona el fragmento en el PDF y luego elige Colocar aquí.",
+    "placeAgain": "Volver a colocar",
+    "include": "Incluir la anotación {{number}}",
+    "resolve": "Marcar la anotación {{number}} como resuelta",
+    "reopen": "Reabrir la anotación {{number}}",
+    "delete": "Eliminar la anotación {{number}}",
+    "editComment": "Editar el comentario de la anotación {{number}}",
+    "addComment": "Añadir un comentario",
+    "clear": "Eliminar todas",
+    "clearConfirm": "¿Eliminar todas las anotaciones de este proyecto? No se puede deshacer.",
+    "send": "Enviar al asistente ({{n}})"
+  }
+}

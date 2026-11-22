@@ -51,10 +51,6 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { SaveAsTemplateHost } from "@/components/library/SaveAsTemplateHost";
-import { BibtexToolView } from "@/components/tools/BibtexToolView";
-import { TableToolView } from "@/components/tools/TableToolView";
-import { LatexToolsView } from "@/components/tools/LatexToolsView";
-import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { loadNamespace } from "@/i18n";
 import { useHomeViewStore } from "@/store/home-view";
 import {
@@ -261,6 +257,14 @@ const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
   })), { warm: true });
+const BibtexToolView = lazy(() =>
+  import("@/components/tools/BibtexToolView").then((m) => ({ default: m.BibtexToolView })), { warm: true });
+const TableToolView = lazy(() =>
+  import("@/components/tools/TableToolView").then((m) => ({ default: m.TableToolView })), { warm: true });
+const LabSearchToolView = lazy(() =>
+  import("@/components/tools/LabSearchToolView").then((m) => ({ default: m.LabSearchToolView })), { warm: true });
+const LatexToolsView = lazy(() =>
+  import("@/components/tools/LatexToolsView").then((m) => ({ default: m.LatexToolsView })), { warm: true });
 const TerminalDock = lazy(() =>
   import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })));
 const EnginePickerModal = lazy(() =>

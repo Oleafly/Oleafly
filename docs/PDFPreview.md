@@ -86,7 +86,7 @@ PDF review.
   each one is written when the message goes out: what you asked for, the file
   and lines checked again against the current file, the section heading, the
   quote with the words around it, the source lines and your comment. An
-  annotation is marked sent only once the message has actually gone out.
+  annotation is marked sent only once the message has gone out.
 
 An annotation is saved as soon as you add it, and its source location is found
 in the background. It comes from the same sync as a click in the PDF: SyncTeX
@@ -95,15 +95,47 @@ as Markdown, an annotation keeps its page and quote but no source location.
 
 Annotations are pinned to the source, not to one PDF. After a recompile each
 one follows its lines through any edits, finds where they are typeset now, and
-narrows that down with its quote on the page. If the passage can't be found,
-the annotation is marked **Needs placing** and stays in the list. Choose
-**Place again**, select the passage on the PDF and choose **Place here**.
+narrows that down with its quote on the page. Typing in the editor while that
+runs changes nothing, because the lines are looked up in the text the PDF was
+built from. When the engine has no sync, or the PDF is out of date, the quote
+is looked for on the annotation's page and the pages next to it. If the
+passage can't be found, the annotation is marked **Needs placing** and stays
+in the list, with its status unchanged. Choose **Place again**, select the
+passage on the PDF and choose **Place here**.
 
 Annotations are saved per project in the project's state folder, `.oleafly/`
 for library projects and the linked state folder for folders opened in place.
 They stay on this computer, out of Git and out of collaboration sync, and are
-never written into the PDF.
+never written into the PDF. A file that can't be read is set aside next to the
+new one instead of being overwritten, and a file saved by a newer version of
+Oleafly opens read-only.
 
+The detached preview window doesn't show annotations yet.
+
+PreviewPane loads `PdfAnnotationsHost` only while PDF review is on, so the
+startup chunk carries none of this. The host hands the viewer its props and the
+toolbar its controls, and draws its cards in a slot inside the preview.
+
+## Reliability rules
+
+- A PDF result carries a project revision identity.
+- A result is accepted only when its revision matches the current project.
+- A newer failed compile does not erase the last accepted PDF.
+- PDF bytes are transferred as binary IPC data, not base64 embedded in compile
+  metadata.
+- Rotation, password retry, and reload preserve the visible page where possible
+  to avoid a disruptive jump during recovery.
+
+## Implementation anchors
+
+- `src/components/preview/PreviewPane.tsx`
+- `src/components/preview/PreviewWindow.tsx`
+- `src/components/pdf/PdfViewer.tsx`
+- `src/features/synctex.ts`
+- `src-tauri/src/synctex.rs`
+- `src/features/typst-sync.ts`
+- `src-tauri/src/typst_sync.rs`
+- `src/store/pdf-view.ts`
 - `src/components/preview/use-pdf-annotations.tsx`
 - `src/features/pdf-annotations/`
 - `src/store/pdf-annotations.ts`

@@ -256,74 +256,6 @@
     "downloadSaved": "PDF başarıyla kaydedildi.",
     "downloadFailed": "Görüntülenen PDF kaydedilemedi."
   },
-  "annotations": {
-    "toolbar": {
-      "region": "Bir alana not ekle",
-      "list": "Notlar ({{n}})"
-    },
-    "composer": {
-      "title": "Yeni not",
-      "action": {
-        "comment": "Yorum",
-        "delete": "Sil",
-        "replace": "Değiştir",
-        "insert": "Araya ekle"
-      },
-      "label": {
-        "comment": "Yorum",
-        "delete": "Sil",
-        "replace": "Yeni metin",
-        "insert": "Eklenecek metin",
-        "region": "Alan hakkında yorum"
-      },
-      "placeholder": {
-        "comment": "Bu bölüm hakkında yorum…",
-        "delete": "Neden silinsin? (isteğe bağlı)",
-        "replace": "Şununla değiştir…",
-        "insert": "Seçimden sonra ekle…",
-        "region": "Bu alan hakkında yorum…"
-      },
-      "placeHere": "Buraya yerleştir",
-      "cancel": "İptal",
-      "save": "Ekle",
-      "saving": "Kaydediliyor",
-      "notSaved": "Kaydedilmedi."
-    },
-    "kind": {
-      "comment": "Yorum",
-      "delete": "Silme",
-      "replace": "Değiştirme",
-      "insert": "Ekleme",
-      "region": "Alan"
-    },
-    "status": {
-      "draft": "Taslak",
-      "sent": "Gönderildi",
-      "addressed": "Ele alındı",
-      "resolved": "Çözüldü",
-      "needsPlacing": "Yerleştirilmeli"
-    },
-    "panel": {
-      "title": "Notlar",
-      "close": "Notları kapat",
-      "empty": "PDF'te metin seçip Yorum, Sil, Değiştir veya Araya ekle'yi seçin. Ya da Bir alana not ekle'yi açıp bir denklemin veya şeklin çevresine kutu çizin.",
-      "failed": "Notlar kaydedilemedi. {{error}}",
-      "noSource": "Kaynakta konum yok",
-      "page": "s. {{page}}",
-      "notFound": "Bu bölüm yeni PDF'te bulunamadı.",
-      "placing": "PDF'te bölümü seçin, ardından Buraya yerleştir'i seçin.",
-      "placeAgain": "Yeniden yerleştir",
-      "include": "{{number}} numaralı notu dahil et",
-      "resolve": "{{number}} numaralı notu çözüldü olarak işaretle",
-      "reopen": "{{number}} numaralı notu yeniden aç",
-      "delete": "{{number}} numaralı notu sil",
-      "editComment": "{{number}} numaralı notun yorumunu düzenle",
-      "addComment": "Yorum ekle",
-      "clear": "Tümünü sil",
-      "clearConfirm": "Bu projedeki tüm notlar silinsin mi? Bu işlem geri alınamaz.",
-      "send": "Asistana gönder ({{n}})"
-    }
-  },
   "package": {
     "error": {
       "passwordIncorrect": "PDF parolası kabul edilmedi.",
@@ -361,9 +293,6 @@
       "title": "Ekran okuyucu kipi",
       "pageLabel": "Sayfa {{page}} / {{total}}",
       "empty": "Bu sayfada okunabilir metin bulunamadı."
-    },
-    "mark": {
-      "badge": "Not {{label}}"
     }
   },
   "presentation": {

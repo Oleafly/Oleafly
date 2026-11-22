@@ -409,8 +409,30 @@ export async function inverseFromClick(
 
 const MAX_FORWARD_LINES = 40;
 
-export async function typesetLinesOf(
+export interface CompiledSource {
+  path: string;
+  text: string;
+  current: boolean;
+}
+
+export function compiledSourceText(
   path: string,
+  expectedCheckpoint: CompileSuccessCheckpoint | null = null,
+): CompiledSource | null {
+  const context = currentSyncTexContext(expectedCheckpoint);
+  const snapshot = context?.[1] ?? useCompileStore.getState().compiledSources;
+  const compiledPath = snapshot ? resolveCompilePath(path, Object.keys(snapshot.texts)) : null;
+  const current = currentSource(path);
+  if (snapshot && compiledPath) {
+    const text = snapshot.texts[compiledPath];
+    return { path: compiledPath, text, current: current === text };
+  }
+  if (context && !context[1] && current !== null) return { path, text: current, current: true };
+  return null;
+}
+
+export async function typesetLinesOf(
+  compiledPath: string,
   startLine: number,
   endLine: number,
   expectedCheckpoint: CompileSuccessCheckpoint | null = null,
@@ -418,27 +440,21 @@ export async function typesetLinesOf(
   const files = useFilesStore.getState();
   const { projectId } = files;
   if (!projectId || !files.engineLoaded || !files.engine.capabilities.supports_synctex) return null;
-  const context = currentSyncTexContext(expectedCheckpoint);
-  if (!context) return null;
+  const checkpoint = useCompileStore.getState().lastCompileCheckpoint;
+  if (!checkpoint || (expectedCheckpoint && !sameCompileOutput(checkpoint, expectedCheckpoint))) return null;
+  const sameOutput = () => sameCompileOutput(useCompileStore.getState().lastCompileCheckpoint, checkpoint);
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  if (mainDoc !== checkpoint.mainDocument) return null;
   const typst = files.engine.id === "typst";
   const first = Math.min(startLine, endLine);
   const last = Math.min(Math.max(startLine, endLine), first + MAX_FORWARD_LINES - 1);
   const rects: SynctexRect[] = [];
   try {
     for (let line = first; line <= last; line += 1) {
-      let compiledPath = path;
-      let compiledLine = line;
-      if (context[1]) {
-        const mapped = await mapStaleLine(context, path, line, true);
-        if (!mapped) continue;
-        compiledPath = mapped[0];
-        compiledLine = mapped[2];
-      }
       const hit: SynctexForwardHit | null = typst
-        ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, null)
-        : await synctexForward(projectId, mainDoc, compiledPath, compiledLine);
-      if (!contextStillValid(context)) return null;
+        ? await typstForward(projectId, mainDoc, compiledPath, line, null)
+        : await synctexForward(projectId, mainDoc, compiledPath, line);
+      if (!sameOutput()) return null;
       if (!hit) continue;
       const lines: readonly SynctexRect[] = hit.lines?.length ? hit.lines : [hit];
       for (const rect of lines) {

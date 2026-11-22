@@ -7,22 +7,23 @@ import { describeError } from "@/lib/app-error";
 import { formatDateTime, formatList, formatRelativeTimeFrom } from "@/lib/intl";
 
 const NO_PRESENCE = { one: () => "", two: () => "", many: () => "" };
+const ANNOTATION_COMMENT_LIMIT = 4000;
 
 function Confirm(props: Readonly<CommentConfirmProps>) {
   return <ConfirmationDialog {...props} destructive />;
 }
 
 export function AnnotationCommentKit({ children }: Readonly<{ children: ReactNode }>) {
-  const { t } = useTranslation(["preview", "common", "editor", "shell"]);
+  const { t } = useTranslation(["annotations", "common", "editor", "shell"]);
   const kit = useMemo<CommentKit>(
     () => ({
       labels: {
         mentionList: "",
         hereNow: "",
         cancel: t(($) => $.common.actions.cancel),
-        sending: t(($) => $.preview.annotations.composer.saving),
+        sending: t(($) => $.annotations.composer.saving),
         enter: t(($) => $.shell.keys.enter),
-        notSent: t(($) => $.preview.annotations.composer.notSaved),
+        notSent: t(($) => $.annotations.composer.notSaved),
         retry: t(($) => $.common.actions.retry),
         format: {
           bold: t(($) => $.editor.toolbar.bold),
@@ -66,6 +67,7 @@ export function AnnotationCommentKit({ children }: Readonly<{ children: ReactNod
       relative: formatRelativeTimeFrom,
       exact: formatDateTime,
       members: [],
+      maxLength: ANNOTATION_COMMENT_LIMIT,
       self: null,
       hue: () => 0,
       describeError,

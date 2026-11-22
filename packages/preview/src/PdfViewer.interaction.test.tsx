@@ -282,6 +282,7 @@ vi.mock("pdfjs-dist", () => {
 });
 
 import { PdfViewer } from "./PdfViewer";
+import { pdfAnnotationLayer } from "./pdfMarks";
 
 const t = testCatalogTranslator<PreviewMessageKey>("preview");
 
@@ -1605,20 +1606,26 @@ describe("PdfViewer annotations", () => {
       { id: "a", label: "1", rects: [{ page: 1, x: 10, y: 10, width: 50, height: 12 }] },
       { id: "b", label: "2", rects: [{ page: 2, x: 10, y: 10, width: 50, height: 12 }] },
     ];
-    const view = renderViewer({ marks, onInverse, onMarkActivate });
+    const view = renderViewer({
+      annotationLayer: pdfAnnotationLayer,
+      markLabel: (mark) => `Annotation ${mark.label}`,
+      marks,
+      onInverse,
+      onMarkActivate,
+    });
     await ready();
 
     await waitFor(() => expect(pageWrap(1).querySelector(".pdf-mark-badge")).not.toBeNull());
     const badge = pageWrap(1).querySelector<HTMLButtonElement>(".pdf-mark-badge");
     expect(badge?.textContent).toBe("1");
-    expect(badge?.getAttribute("aria-label")).toBe(t("mark.badge", { label: "1" }));
+    expect(badge?.getAttribute("aria-label")).toBe("Annotation 1");
     expect(pageWrap(1).querySelectorAll(".pdf-mark-badge")).toHaveLength(1);
 
     badge?.click();
     expect(onMarkActivate).toHaveBeenCalledWith("a");
     expect(onInverse).not.toHaveBeenCalled();
 
-    view.rerender({ marks: [] });
+    view.rerender({ annotationLayer: pdfAnnotationLayer, marks: [] });
     await waitFor(() => expect(pageWrap(1).querySelector(".pdf-mark-layer")).toBeNull());
   });
 
@@ -1627,7 +1634,7 @@ describe("PdfViewer annotations", () => {
     toClientPoint();
     const onInverse = vi.fn();
     const onSelectRegion = vi.fn();
-    renderViewer({ regionSelect: true, onSelectRegion, onInverse });
+    renderViewer({ annotationLayer: pdfAnnotationLayer, regionSelect: true, onSelectRegion, onInverse });
     await ready();
     const wrap = pageWrap(1);
     wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);
@@ -1652,7 +1659,7 @@ describe("PdfViewer annotations", () => {
     harness.pages = [page("alpha beta")];
     toClientPoint();
     const onSelectRegion = vi.fn();
-    renderViewer({ regionSelect: true, onSelectRegion });
+    renderViewer({ annotationLayer: pdfAnnotationLayer, regionSelect: true, onSelectRegion });
     await ready();
     const wrap = pageWrap(1);
     wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);
@@ -1676,7 +1683,7 @@ describe("PdfViewer annotations", () => {
     harness.pages = [page("intro alpha beta", "gamma delta")];
     toClientPoint();
     const onSelectText = vi.fn();
-    renderViewer({ onSelectText });
+    renderViewer({ annotationLayer: pdfAnnotationLayer, onSelectText });
     await pageTextRendered(1);
     const wrap = pageWrap(1);
     wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);

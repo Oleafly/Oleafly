@@ -123,7 +123,7 @@ const PAGE_LAYOUTS: readonly {
 export function PdfToolbarControls({
   isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser, annotations = null
 }: Readonly<PdfToolbarControlsProps>) {
-  const { t } = useTranslation(["preview", "ai"]);
+  const { t } = useTranslation(["preview", "ai", "annotations"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
     useAvailableWidth();
@@ -466,14 +466,14 @@ export function PdfToolbarControls({
           iconControl(
             "annotate-region",
             SquareDashedMousePointer,
-            t(($) => $.preview.annotations.toolbar.region),
+            t(($) => $.annotations.toolbar.region),
             annotations.toggleRegionMode,
             { active: annotations.regionMode },
           ),
           iconControl(
             "annotations",
             MessageSquareText,
-            t(($) => $.preview.annotations.toolbar.list, { n: annotations.count }),
+            t(($) => $.annotations.toolbar.list, { n: annotations.count }),
             annotations.togglePanel,
             { active: annotations.panelOpen },
           ),

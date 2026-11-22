@@ -8,7 +8,7 @@ import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
-import { usePdfAnnotations } from "./use-pdf-annotations";
+import type { PdfAnnotationsView } from "./use-pdf-annotations";
 import { PdfStateMessage } from "./PdfStateMessage";
 import {
   INITIAL_PDF_LOAD_STATE,
@@ -96,6 +96,10 @@ interface PreviewDocument {
 
 const HtmlOutputPanel = lazy(() =>
   import("./HtmlOutputPanel").then((module) => ({ default: module.HtmlOutputPanel })),
+);
+const PdfAnnotationsHost = lazy(
+  () => import("./use-pdf-annotations").then((module) => ({ default: module.PdfAnnotationsHost })),
+  { warm: () => useSettingsStore.getState().pdfReview },
 );
 
 
@@ -865,17 +869,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const pdfReview = useSettingsStore((state) => state.pdfReview);
   const annotationLayerRef = useRef<HTMLDivElement>(null);
-  const annotations = usePdfAnnotations({
-    enabled: pdfReview && !isImage,
-    projectId,
-    build: viewerDocument?.identity ?? null,
-    documentReady:
-      pdfLoadState.status === "ready" && pdfLoadState.documentIdentity === (viewerDocument?.identity ?? null),
-    checkpoint: displayedCheckpoint,
-    syncAvailable: syncTexAvailable,
-    pdfRef,
-    containerRef: annotationLayerRef,
-  });
+  const [annotationSlot, setAnnotationSlot] = useState<HTMLDivElement | null>(null);
+  const [annotations, setAnnotations] = useState<PdfAnnotationsView | null>(null);
   const displayedBytes = viewerDocument?.bytes ?? null;
   const htmlBuiltAt =
     htmlEngine && htmlOutput !== null && htmlOutput.projectId === projectId
@@ -1215,7 +1210,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           userZoom={userZoom} fitPreview={fitPreview} exporting={exporting}
           exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
           pdfSync={pdfSync}
-          annotations={annotations.toolbar}
+          annotations={annotations?.toolbar ?? null}
           onSave={() => {
             const base = isImage
               ? trimEdgeCharacter((projectName || "figure").replace(UNSAFE_FILE_NAME_CHARACTERS, "-"), "-") || "figure"
@@ -1256,7 +1251,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
   const renderStaleMarker = () => (
     (pdfIsStale || retainedLoadFailure) && (
-      <div className="absolute bottom-3 right-3 z-30">
+      <div className={cn("absolute bottom-3 z-30", annotations?.toolbar?.panelOpen ? "right-[21rem]" : "right-3")}>
       <Tooltip
         label={
           <StaleTooltipLabel
@@ -1323,7 +1318,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onLoadStateChange={handlePdfLoadState}
           onSearchStateChange={setSearchState}
           onOutlineStateChange={setOutlineState}
-          {...annotations.viewerProps}
+          {...annotations?.viewerProps}
           onInverse={
             syncTexAvailable
               ? (pageNumber, clickX, clickY, word, wordContext) =>
@@ -1427,11 +1422,12 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
             pdfRef={pdfRef}
             onClose={() => setOutlineOpen(false)}
           />
-          {annotations.overlay}
+          <div ref={setAnnotationSlot} className="contents" />
 
           {searchOpen && (
             <PdfSearchBar
               id="pdf-search-panel"
+              besidePanel={annotations?.toolbar?.panelOpen ?? false}
               inputRef={searchInputRef}
               query={searchInput}
               onQueryChange={setSearchInput}
@@ -1465,6 +1461,23 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       className="relative flex h-full flex-col bg-background"
     >
       {isFs && fsToolbarHidden && <PdfShowToolbarButton onShow={() => setFsToolbarHidden(false)} />}
+      {pdfReview && !isImage && projectId ? (
+        <Suspense fallback={null}>
+          <PdfAnnotationsHost
+            projectId={projectId}
+            build={viewerDocument?.identity ?? null}
+            documentReady={
+              pdfLoadState.status === "ready" && pdfLoadState.documentIdentity === (viewerDocument?.identity ?? null)
+            }
+            checkpoint={displayedCheckpoint}
+            syncAvailable={syncTexAvailable}
+            pdfRef={pdfRef}
+            containerRef={annotationLayerRef}
+            slot={annotationSlot}
+            onView={setAnnotations}
+          />
+        </Suspense>
+      ) : null}
       {!zen && renderPreviewToolbar()}
 
       <div

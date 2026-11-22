@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "Kommentér et område",
+    "list": "Kommentarer ({{n}})"
+  },
+  "markBadge": "Kommentar {{label}}",
+  "composer": {
+    "title": "Ny kommentar",
+    "action": {
+      "comment": "Kommentér",
+      "delete": "Slet",
+      "replace": "Erstat",
+      "insert": "Indsæt"
+    },
+    "label": {
+      "comment": "Kommentar",
+      "replace": "Ny tekst",
+      "insert": "Tekst, der skal indsættes",
+      "region": "Kommentar til området"
+    },
+    "placeholder": {
+      "comment": "Kommentér denne passage…",
+      "replace": "Erstat med…",
+      "insert": "Indsæt efter markeringen…",
+      "region": "Kommentér dette område…"
+    },
+    "placeHere": "Placér her",
+    "cancel": "Annuller",
+    "save": "Tilføj",
+    "saving": "Gemmer",
+    "notSaved": "Ikke gemt."
+  },
+  "kind": {
+    "comment": "Kommentar",
+    "delete": "Sletning",
+    "replace": "Erstatning",
+    "insert": "Indsættelse",
+    "region": "Område"
+  },
+  "status": {
+    "draft": "Kladde",
+    "sent": "Sendt",
+    "addressed": "Behandlet",
+    "resolved": "Løst",
+    "needsPlacing": "Skal placeres"
+  },
+  "panel": {
+    "title": "Kommentarer",
+    "close": "Luk kommentarer",
+    "empty": "Markér tekst i PDF'en, og vælg Kommentér, Slet, Erstat eller Indsæt. Eller slå Kommentér et område til, og træk en boks omkring en ligning eller figur.",
+    "failed": "Kommentarerne kunne ikke gemmes. {{error}}",
+    "readOnly": "Gemt af en nyere Oleafly. Opdater for at ændre kommentarerne.",
+    "setAside": "Kommentarfilen kunne ikke læses, så der blev startet en ny.",
+    "noSource": "Ingen placering i kilden",
+    "page": "s. {{page}}",
+    "notFound": "Passagen blev ikke fundet i den nye PDF.",
+    "placing": "Markér passagen i PDF'en, og vælg derefter Placér her.",
+    "placeAgain": "Placér igen",
+    "include": "Medtag kommentar {{number}}",
+    "resolve": "Markér kommentar {{number}} som løst",
+    "reopen": "Genåbn kommentar {{number}}",
+    "delete": "Slet kommentar {{number}}",
+    "editComment": "Redigér teksten i kommentar {{number}}",
+    "addComment": "Tilføj en kommentar",
+    "clear": "Slet alle",
+    "clearConfirm": "Vil du slette alle kommentarer i dette projekt? Det kan ikke fortrydes.",
+    "send": "Send til assistenten ({{n}})"
+  }
+}

@@ -290,7 +290,9 @@ export type PdfAnnotationKind = "comment" | "delete" | "replace" | "insert" | "r
 
 export type PdfAnnotationOrigin = "pdf" | "review" | "aiReview";
 
-export type PdfAnnotationStatus = "draft" | "sent" | "addressed" | "resolved" | "needsPlacing";
+export type PdfAnnotationStatus = "draft" | "sent" | "addressed" | "resolved";
+
+export type PdfAnnotationPlacement = "placed" | "needsPlacing";
 
 export interface PdfAnnotationQuote {
   text: string;
@@ -325,8 +327,15 @@ export interface PdfAnnotation {
   build: string | null;
   origin: PdfAnnotationOrigin;
   status: PdfAnnotationStatus;
+  placement: PdfAnnotationPlacement;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface PdfAnnotationList {
+  items: PdfAnnotation[];
+  readOnly: boolean;
+  setAside: boolean;
 }
 
 export interface NewPdfAnnotation {
@@ -342,9 +351,11 @@ export interface NewPdfAnnotation {
 
 export interface PdfAnnotationUpdate {
   id: string;
+  expectedUpdatedAt?: number;
   comment?: string;
   kind?: PdfAnnotationKind;
   status?: PdfAnnotationStatus;
+  placement?: PdfAnnotationPlacement;
   quote?: PdfAnnotationQuote;
   page?: number;
   source?: PdfAnnotationSource | null;
@@ -353,7 +364,7 @@ export interface PdfAnnotationUpdate {
 }
 
 export const pdfAnnotationsList = (projectId: string) =>
-  invoke<PdfAnnotation[]>("pdf_annotations_list", { projectId });
+  invoke<PdfAnnotationList>("pdf_annotations_list", { projectId });
 
 export const pdfAnnotationsAdd = (projectId: string, annotation: NewPdfAnnotation) =>
   invoke<PdfAnnotation>("pdf_annotations_add", { projectId, annotation });

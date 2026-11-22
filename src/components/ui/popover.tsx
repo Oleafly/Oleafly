@@ -226,6 +226,8 @@ interface AnchoredPopoverProps {
   ariaLabel: string;
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onInteractOutside?: (event: Event) => void;
   children: ReactNode;
 }
 
@@ -246,6 +248,8 @@ export function AnchoredPopover({
   ariaLabel,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onEscapeKeyDown,
+  onInteractOutside,
   children,
 }: Readonly<AnchoredPopoverProps>) {
   const latest = useRef(anchor);
@@ -275,6 +279,8 @@ export function AnchoredPopover({
           hideWhenDetached={hideWhenDetached}
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onInteractOutside={onInteractOutside}
           className={cn(POPOVER_CONTENT, className)}
         >
           {children}

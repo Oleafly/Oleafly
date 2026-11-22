@@ -16,6 +16,7 @@ export function sourceExcerpt(text: string, startLine: number, endLine: number):
 }
 
 const FOLLOW_WINDOW = 400;
+const FOLLOW_NEAR = 20;
 const MIN_ANCHOR_CHARS = 4;
 const MIN_SIMILARITY = 0.5;
 
@@ -34,7 +35,12 @@ function similarity(a: Set<string>, b: Set<string>): number {
   return (2 * shared) / (a.size + b.size);
 }
 
-function alignedPairs(wanted: readonly string[], lines: readonly string[], from: number): [number, number][] {
+function alignedPairs(
+  wanted: readonly string[],
+  lines: readonly string[],
+  from: number,
+  uniqueOnly: boolean,
+): [number, number][] {
   const rows = wanted.length;
   const cols = lines.length - from;
   const table = Array.from({ length: rows + 1 }, () => new Uint16Array(cols + 1));
@@ -58,7 +64,13 @@ function alignedPairs(wanted: readonly string[], lines: readonly string[], from:
       j += 1;
     }
   }
-  return pairs.filter(([index]) => wanted[index].length >= MIN_ANCHOR_CHARS);
+  const counts = new Map<string, number>();
+  for (let index = from; index < lines.length; index += 1) {
+    counts.set(lines[index], (counts.get(lines[index]) ?? 0) + 1);
+  }
+  return pairs.filter(
+    ([index]) => wanted[index].length >= MIN_ANCHOR_CHARS && (!uniqueOnly || counts.get(wanted[index]) === 1),
+  );
 }
 
 function mostSimilar(wanted: readonly string[], lines: readonly string[], near: number, from: number, to: number) {
@@ -91,9 +103,27 @@ function exactCopy(wanted: readonly string[], lines: readonly string[], near: nu
   return best;
 }
 
-export function followSource(source: PdfAnnotationSource, text: string): PdfAnnotationSource | null {
+interface PreparedText {
+  text: string;
+  raw: string[];
+  lines: string[];
+}
+
+const PREPARED_LIMIT = 4;
+const prepared: PreparedText[] = [];
+
+function prepare(text: string): PreparedText {
+  const found = prepared.find((entry) => entry.text === text);
+  if (found) return found;
   const raw = text.split(/\r?\n/u);
-  const lines = raw.map(normalized);
+  const entry = { text, raw, lines: raw.map(normalized) };
+  prepared.unshift(entry);
+  prepared.length = Math.min(prepared.length, PREPARED_LIMIT);
+  return entry;
+}
+
+export function followSource(source: PdfAnnotationSource, text: string): PdfAnnotationSource | null {
+  const { raw, lines } = prepare(text);
   const span = Math.max(0, source.endLine - source.startLine);
   const moved = (start: number, end = start + span): PdfAnnotationSource | null => {
     if (start < 1 || start > raw.length) return null;
@@ -107,7 +137,13 @@ export function followSource(source: PdfAnnotationSource, text: string): PdfAnno
   if (copy >= 0) return moved(copy + 1);
   const from = Math.max(0, old - FOLLOW_WINDOW);
   const to = Math.min(lines.length, old + span + FOLLOW_WINDOW + 1);
-  const pairs = alignedPairs(wanted, lines.slice(0, to), from);
+  const near = alignedPairs(
+    wanted,
+    lines.slice(0, Math.min(lines.length, old + span + FOLLOW_NEAR + 1)),
+    Math.max(0, old - FOLLOW_NEAR),
+    false,
+  );
+  const pairs = near.length > 0 ? near : alignedPairs(wanted, lines.slice(0, to), from, true);
   if (pairs.length > 0) {
     const [firstIndex, firstLine] = pairs[0];
     const [lastIndex, lastLine] = pairs[pairs.length - 1];

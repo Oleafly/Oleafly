@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "批注区域",
+    "list": "批注（{{n}}）"
+  },
+  "markBadge": "批注 {{label}}",
+  "composer": {
+    "title": "新建批注",
+    "action": {
+      "comment": "意见",
+      "delete": "删除",
+      "replace": "替换",
+      "insert": "插入"
+    },
+    "label": {
+      "comment": "意见",
+      "replace": "替换文字",
+      "insert": "要插入的文字",
+      "region": "对该区域的意见"
+    },
+    "placeholder": {
+      "comment": "对这段内容的意见…",
+      "replace": "替换为…",
+      "insert": "插入到选区之后…",
+      "region": "对这个区域的意见…"
+    },
+    "placeHere": "放在这里",
+    "cancel": "取消",
+    "save": "添加",
+    "saving": "正在保存",
+    "notSaved": "未保存。"
+  },
+  "kind": {
+    "comment": "意见",
+    "delete": "删除",
+    "replace": "替换",
+    "insert": "插入",
+    "region": "区域"
+  },
+  "status": {
+    "draft": "草稿",
+    "sent": "已发送",
+    "addressed": "已处理",
+    "resolved": "已解决",
+    "needsPlacing": "待放置"
+  },
+  "panel": {
+    "title": "批注",
+    "close": "关闭批注",
+    "empty": "在 PDF 上选中文字，然后选择“意见”“删除”“替换”或“插入”。也可以打开“批注区域”，在公式或图片周围拖出一个框。",
+    "failed": "无法保存批注。{{error}}",
+    "readOnly": "由较新版本的 Oleafly 保存，更新后才能编辑。",
+    "setAside": "无法读取批注文件，已新建一个。",
+    "noSource": "没有源码位置",
+    "page": "第 {{page}} 页",
+    "notFound": "在新的 PDF 中找不到这段内容。",
+    "placing": "在 PDF 上选中这段内容，然后选择“放在这里”。",
+    "placeAgain": "重新放置",
+    "include": "包含批注 {{number}}",
+    "resolve": "将批注 {{number}} 标为已解决",
+    "reopen": "重新打开批注 {{number}}",
+    "delete": "删除批注 {{number}}",
+    "editComment": "编辑批注 {{number}} 的意见",
+    "addComment": "添加意见",
+    "clear": "全部删除",
+    "clearConfirm": "删除这个项目中的所有批注？此操作无法撤销。",
+    "send": "发送给助手（{{n}}）"
+  }
+}

@@ -258,7 +258,8 @@
     "resizeHandle": "Změnit velikost pole zprávy",
     "resizeHint": "Přetažením změníte velikost. Dvojitým kliknutím ji obnovíte.",
     "removeContext": "Odebrat {{label}}",
-    "contextFailed": "Připojený kontext se nepodařilo načíst. Zpráva nebyla odeslána."
+    "contextFailed": "Připojený kontext se nepodařilo načíst. Zpráva nebyla odeslána.",
+    "contextTooLarge": "Připojený kontext je příliš dlouhý. Část odeberte a zkuste to znovu."
   },
   "commands": {
     "groups": {

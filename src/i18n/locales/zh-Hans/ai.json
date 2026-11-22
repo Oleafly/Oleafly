@@ -234,7 +234,8 @@
     "resizeHandle": "调整消息框大小",
     "resizeHint": "拖动以调整大小，双击可还原。",
     "removeContext": "移除 {{label}}",
-    "contextFailed": "无法读取附加的上下文，消息未发送。"
+    "contextFailed": "无法读取附加的上下文，消息未发送。",
+    "contextTooLarge": "附加的上下文太长，请删掉一部分后重试。"
   },
   "commands": {
     "groups": {

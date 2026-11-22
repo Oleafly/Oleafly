@@ -2991,6 +2991,30 @@ describe("ChatCore context chips", () => {
     await completeRun(0, "Done.");
   });
 
+  it("does not mark the context sent when the request fails before the provider takes it", async () => {
+    mocks.runAgentHarness.mockImplementationOnce(() => Promise.reject(new Error("401 Unauthorized")));
+    const rendered = await renderChat();
+    addNote();
+    sendFromComposer("Please address this");
+    await waitFor(() => expect(expand).toHaveBeenCalled());
+    await waitFor(() => expect(rendered.queryByTestId("composer-context-chip")).toBeNull());
+    await waitFor(() => expect(savedMessages().some((message) => message.failed)).toBe(true));
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it("sends a handed-off message with its own context and leaves waiting chips alone", async () => {
+    const other = { id: "note:n2", kind: "test-note", refId: "n2", label: "Waiting note" };
+    const rendered = await renderChat();
+    const { projectId, activeId } = { ...useFilesStore.getState(), ...useChatsStore.getState() };
+    act(() => useComposerDrafts.getState().addContext(builtinComposerId(projectId, activeId), [other]));
+    await rendered.findByTestId("composer-context-chip");
+    act(() => useAgentHandoffStore.getState().handoff("Translate this", { autoSend: true, context: [note] }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(lastUserContent(0)).toBe("Translate this\n\nNote on page 2 (main.tex):\n```\nFix the sign in n1\n```");
+    expect(composerDraft()?.context).toEqual([other]);
+    await completeRun(0, "Done.");
+  });
+
   it("keeps the draft and does not mark the context sent when it cannot be read", async () => {
     expand.mockRejectedValue(new Error("source missing"));
     const rendered = await renderChat();

@@ -257,74 +257,6 @@
     "downloadSaved": "PDF enregistré.",
     "downloadFailed": "Le PDF affiché n'a pas pu être enregistré."
   },
-  "annotations": {
-    "toolbar": {
-      "region": "Annoter une zone",
-      "list": "Annotations ({{n}})"
-    },
-    "composer": {
-      "title": "Nouvelle annotation",
-      "action": {
-        "comment": "Commenter",
-        "delete": "Supprimer",
-        "replace": "Remplacer",
-        "insert": "Insérer"
-      },
-      "label": {
-        "comment": "Commentaire",
-        "delete": "Supprimer",
-        "replace": "Texte de remplacement",
-        "insert": "Texte à insérer",
-        "region": "Commentaire sur la zone"
-      },
-      "placeholder": {
-        "comment": "Commentez ce passage…",
-        "delete": "Pourquoi supprimer ? (facultatif)",
-        "replace": "Remplacer par…",
-        "insert": "Insérer après la sélection…",
-        "region": "Commentez cette zone…"
-      },
-      "placeHere": "Placer ici",
-      "cancel": "Annuler",
-      "save": "Ajouter",
-      "saving": "Enregistrement",
-      "notSaved": "Non enregistrée."
-    },
-    "kind": {
-      "comment": "Commentaire",
-      "delete": "Suppression",
-      "replace": "Remplacement",
-      "insert": "Insertion",
-      "region": "Zone"
-    },
-    "status": {
-      "draft": "Brouillon",
-      "sent": "Envoyée",
-      "addressed": "Traitée",
-      "resolved": "Résolue",
-      "needsPlacing": "À placer"
-    },
-    "panel": {
-      "title": "Annotations",
-      "close": "Fermer les annotations",
-      "empty": "Sélectionnez du texte dans le PDF et choisissez Commenter, Supprimer, Remplacer ou Insérer. Ou activez Annoter une zone et tracez un cadre autour d'une équation ou d'une figure.",
-      "failed": "Impossible d'enregistrer les annotations. {{error}}",
-      "noSource": "Aucun emplacement dans la source",
-      "page": "p. {{page}}",
-      "notFound": "Ce passage est introuvable dans le nouveau PDF.",
-      "placing": "Sélectionnez le passage dans le PDF, puis choisissez Placer ici.",
-      "placeAgain": "Placer à nouveau",
-      "include": "Inclure l'annotation {{number}}",
-      "resolve": "Marquer l'annotation {{number}} comme résolue",
-      "reopen": "Rouvrir l'annotation {{number}}",
-      "delete": "Supprimer l'annotation {{number}}",
-      "editComment": "Modifier le commentaire de l'annotation {{number}}",
-      "addComment": "Ajouter un commentaire",
-      "clear": "Tout supprimer",
-      "clearConfirm": "Supprimer toutes les annotations de ce projet ? Cette action est irréversible.",
-      "send": "Envoyer à l'assistant ({{n}})"
-    }
-  },
   "package": {
     "error": {
       "passwordIncorrect": "Le mot de passe du PDF a été refusé.",
@@ -362,9 +294,6 @@
       "title": "Mode lecteur d'écran",
       "pageLabel": "Page {{page}} sur {{total}}",
       "empty": "Aucun texte lisible n'a été trouvé sur cette page."
-    },
-    "mark": {
-      "badge": "Annotation {{label}}"
     }
   },
   "presentation": {

@@ -1,0 +1,69 @@
+{
+  "toolbar": {
+    "region": "Gebied annoteren",
+    "list": "Annotaties ({{n}})"
+  },
+  "markBadge": "Annotatie {{label}}",
+  "composer": {
+    "title": "Nieuwe annotatie",
+    "action": {
+      "comment": "Opmerking",
+      "delete": "Verwijderen",
+      "replace": "Vervangen",
+      "insert": "Invoegen"
+    },
+    "label": {
+      "comment": "Opmerking",
+      "replace": "Vervangende tekst",
+      "insert": "In te voegen tekst",
+      "region": "Opmerking bij het gebied"
+    },
+    "placeholder": {
+      "comment": "Opmerking bij deze passage…",
+      "replace": "Vervangen door…",
+      "insert": "Invoegen na de selectie…",
+      "region": "Opmerking bij dit gebied…"
+    },
+    "placeHere": "Hier plaatsen",
+    "cancel": "Annuleren",
+    "save": "Toevoegen",
+    "saving": "Opslaan",
+    "notSaved": "Niet opgeslagen."
+  },
+  "kind": {
+    "comment": "Opmerking",
+    "delete": "Verwijdering",
+    "replace": "Vervanging",
+    "insert": "Invoeging",
+    "region": "Gebied"
+  },
+  "status": {
+    "draft": "Concept",
+    "sent": "Verstuurd",
+    "addressed": "Verwerkt",
+    "resolved": "Opgelost",
+    "needsPlacing": "Nog plaatsen"
+  },
+  "panel": {
+    "title": "Annotaties",
+    "close": "Annotaties sluiten",
+    "empty": "Selecteer tekst in de PDF en kies Opmerking, Verwijderen, Vervangen of Invoegen. Of zet Gebied annoteren aan en sleep een kader om een vergelijking of figuur.",
+    "failed": "Annotaties konden niet worden opgeslagen. {{error}}",
+    "readOnly": "Opgeslagen met een nieuwere Oleafly. Werk bij om te bewerken.",
+    "setAside": "Het annotatiebestand was onleesbaar, dus er is een nieuw begonnen.",
+    "noSource": "Geen plek in de bron",
+    "page": "p. {{page}}",
+    "notFound": "Deze passage is niet gevonden in de nieuwe PDF.",
+    "placing": "Selecteer de passage in de PDF en kies dan Hier plaatsen.",
+    "placeAgain": "Opnieuw plaatsen",
+    "include": "Annotatie {{number}} meenemen",
+    "resolve": "Annotatie {{number}} als opgelost markeren",
+    "reopen": "Annotatie {{number}} heropenen",
+    "delete": "Annotatie {{number}} verwijderen",
+    "editComment": "Opmerking bij annotatie {{number}} bewerken",
+    "addComment": "Opmerking toevoegen",
+    "clear": "Alles verwijderen",
+    "clearConfirm": "Alle annotaties in dit project verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "send": "Naar assistent sturen ({{n}})"
+  }
+}

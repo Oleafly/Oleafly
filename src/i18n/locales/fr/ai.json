@@ -250,7 +250,8 @@
     "resizeHandle": "Redimensionner la zone de message",
     "resizeHint": "Faites glisser pour redimensionner. Double-cliquez pour rétablir la taille.",
     "removeContext": "Retirer {{label}}",
-    "contextFailed": "Impossible de lire le contexte joint. Le message n’a pas été envoyé."
+    "contextFailed": "Impossible de lire le contexte joint. Le message n’a pas été envoyé.",
+    "contextTooLarge": "Le contexte joint est trop long. Retirez-en une partie et réessayez."
   },
   "commands": {
     "groups": {

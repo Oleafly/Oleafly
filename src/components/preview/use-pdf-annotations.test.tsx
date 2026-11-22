@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import "@/i18n";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PdfMark, PdfTextSelectionInfo } from "@oleafly/preview";
-import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
+import enAnnotations from "@/i18n/locales/en/annotations.json" with { type: "json" };
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import type { PdfAnnotation } from "@/lib/tauri";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
-import { usePdfAnnotations } from "./use-pdf-annotations";
+import { PdfAnnotationsHost, usePdfAnnotations, type PdfAnnotationsView } from "./use-pdf-annotations";
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
@@ -34,7 +34,11 @@ vi.mock("@/features/pdf-annotations/locate", async (importOriginal) => ({
   locateSource: mocks.locateSource,
 }));
 vi.mock("@/features/pdf-annotations/place", () => ({ placeAnnotations: mocks.placeAnnotations }));
-vi.mock("@/features/synctex", () => ({ sourceText: () => null, typesetLinesOf: async () => null }));
+vi.mock("@/features/synctex", () => ({
+  sourceText: () => null,
+  compiledSourceText: () => null,
+  typesetLinesOf: async () => null,
+}));
 vi.mock("@/features/assistant-handoff", () => ({
   handoffToAssistant: mocks.handoffToAssistant,
   ensureAiProviderOrOpenSettings: mocks.ensureAiProviderOrOpenSettings,
@@ -42,7 +46,7 @@ vi.mock("@/features/assistant-handoff", () => ({
 vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: async () => null }));
 
 const PLACING = { timeout: 5_000 };
-const strings = enPreview.annotations;
+const strings = enAnnotations;
 
 const selection: PdfTextSelectionInfo = {
   page: 3,
@@ -70,6 +74,7 @@ function note(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
     build: "build-1",
     origin: "pdf",
     status: "draft",
+    placement: "placed",
     createdAt: 0,
     updatedAt: 0,
     ...patch,
@@ -80,7 +85,6 @@ let latest: ReturnType<typeof usePdfAnnotations> | null = null;
 
 function Harness({ build = "build-1", ready = true }: Readonly<{ build?: string; ready?: boolean }>) {
   const annotations = usePdfAnnotations({
-    enabled: true,
     projectId: "project",
     build,
     documentReady: ready,
@@ -94,9 +98,10 @@ function Harness({ build = "build-1", ready = true }: Readonly<{ build?: string;
 }
 
 async function mount(items: PdfAnnotation[] = []) {
-  mocks.list.mockResolvedValue(items);
+  mocks.list.mockResolvedValue({ items, readOnly: false, setAside: false });
   const view = render(<Harness />);
   await waitFor(() => expect(usePdfAnnotationsStore.getState().loaded).toBe(true));
+  await waitFor(() => expect(latest?.toolbar).not.toBeNull());
   return view;
 }
 
@@ -107,7 +112,15 @@ function select() {
 beforeEach(() => {
   vi.clearAllMocks();
   latest = null;
-  usePdfAnnotationsStore.setState({ projectId: null, items: [], loaded: false, activeId: null, error: null });
+  usePdfAnnotationsStore.setState({
+    projectId: null,
+    items: [],
+    loaded: false,
+    readOnly: false,
+    setAside: false,
+    activeId: null,
+    error: null,
+  });
   mocks.placeAnnotations.mockResolvedValue([]);
   mocks.locateSource.mockResolvedValue(source);
   mocks.update.mockImplementation(async () => usePdfAnnotationsStore.getState().items);
@@ -146,7 +159,7 @@ describe("usePdfAnnotations", () => {
     await mount([
       note(),
       note({ id: "n2", number: 2, build: "old" }),
-      note({ id: "n3", number: 3, status: "needsPlacing" }),
+      note({ id: "n3", number: 3, placement: "needsPlacing" }),
     ]);
     const marks = latest?.viewerProps.marks as readonly PdfMark[];
     expect(marks.map((mark) => mark.id)).toEqual(["n1"]);
@@ -154,18 +167,23 @@ describe("usePdfAnnotations", () => {
 
   it("places notes from an earlier PDF again when a new one loads", async () => {
     const view = await mount([note({ build: "old" })]);
-    await waitFor(() => expect(mocks.placeAnnotations).toHaveBeenCalled(), PLACING);
-    expect(mocks.placeAnnotations.mock.calls[0]?.slice(0, 2)).toEqual([[note({ build: "old" })], "build-1"]);
-    mocks.placeAnnotations.mockResolvedValue([{ id: "n1", build: "build-2", boxes: [], status: "needsPlacing" }]);
+    await waitFor(
+      () => expect(mocks.placeAnnotations).toHaveBeenCalledWith([note({ build: "old" })], "build-1", expect.anything()),
+      PLACING,
+    );
+    mocks.placeAnnotations.mockResolvedValue([{ id: "n1", build: "build-2", boxes: [], placement: "needsPlacing" }]);
     view.rerender(<Harness build="build-2" />);
     await waitFor(
-      () => expect(mocks.update).toHaveBeenCalledWith("project", [{ id: "n1", build: "build-2", boxes: [], status: "needsPlacing" }]),
+      () =>
+        expect(mocks.update).toHaveBeenCalledWith("project", [
+          { id: "n1", build: "build-2", boxes: [], placement: "needsPlacing" },
+        ]),
       PLACING,
     );
   });
 
   it("waits for the new PDF to load before placing notes again", async () => {
-    mocks.list.mockResolvedValue([note({ build: "old" })]);
+    mocks.list.mockResolvedValue({ items: [note({ build: "old" })], readOnly: false, setAside: false });
     const view = render(<Harness ready={false} />);
     await waitFor(() => expect(usePdfAnnotationsStore.getState().loaded).toBe(true));
     expect(mocks.placeAnnotations).not.toHaveBeenCalled();
@@ -174,7 +192,7 @@ describe("usePdfAnnotations", () => {
   });
 
   it("places a lost note again on a new selection", async () => {
-    await mount([note({ status: "needsPlacing", boxes: [], build: "old" })]);
+    await mount([note({ placement: "needsPlacing", boxes: [], build: "old" })]);
     act(() => latest?.toolbar?.togglePanel());
     await userEvent.click(await screen.findByRole("button", { name: strings.panel.placeAgain }));
     select();
@@ -186,9 +204,30 @@ describe("usePdfAnnotations", () => {
         page: 3,
         boxes: selection.rects,
         build: "build-1",
-        status: "draft",
+        placement: "placed",
+        source: null,
       },
     ]);
+  });
+
+  it("keeps a comment you are writing when a new PDF arrives", async () => {
+    const view = await mount();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: strings.composer.action.comment }));
+    await userEvent.type(screen.getByRole("textbox"), "Half a thought");
+    view.rerender(<Harness build="build-2" />);
+    expect(screen.getByRole("textbox")).toHaveValue("Half a thought");
+  });
+
+  it("keeps the comment and says so when it can't be saved", async () => {
+    await mount();
+    select();
+    mocks.add.mockRejectedValue(new Error("disk full"));
+    await userEvent.click(await screen.findByRole("button", { name: strings.composer.action.comment }));
+    await userEvent.type(screen.getByRole("textbox"), "Cite it");
+    await userEvent.click(screen.getByRole("button", { name: strings.composer.save }));
+    await waitFor(() => expect(screen.getAllByText(/disk full/).length).toBeGreaterThan(0));
+    expect(screen.getByRole("textbox")).toHaveValue("Cite it");
   });
 
   it("sends the picked notes to the assistant as context chips", async () => {
@@ -199,5 +238,40 @@ describe("usePdfAnnotations", () => {
       autoSend: false,
       context: [{ id: "pdfAnnotation:n1", kind: "pdfAnnotation", refId: "n1", label: "1 · main.tex:4" }],
     });
+  });
+});
+
+describe("PdfAnnotationsHost", () => {
+  it("hands its viewer props and toolbar to the preview, draws its cards in the slot, and clears them when it goes", async () => {
+    mocks.list.mockResolvedValue({ items: [note()], readOnly: false, setAside: false });
+    const views: (PdfAnnotationsView | null)[] = [];
+    const onView = vi.fn((view: PdfAnnotationsView | null) => void views.push(view));
+    const slot = document.createElement("div");
+    document.body.append(slot);
+    const host = (
+      <PdfAnnotationsHost
+        projectId="project"
+        build="build-1"
+        documentReady
+        checkpoint={null}
+        syncAvailable
+        pdfRef={{ current: null }}
+        containerRef={{ current: document.body }}
+        slot={slot}
+        onView={onView}
+      />
+    );
+    const view = render(host);
+    await waitFor(() => expect(views.at(-1)?.toolbar?.count).toBe(1));
+    const reported = onView.mock.calls.length;
+    view.rerender(host);
+    expect(onView).toHaveBeenCalledTimes(reported);
+
+    act(() => views.at(-1)?.toolbar?.togglePanel());
+    expect(await within(slot).findByText("Cite it")).toBeInTheDocument();
+
+    view.unmount();
+    expect(views.at(-1)).toBeNull();
+    slot.remove();
   });
 });

@@ -3,7 +3,8 @@ import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { i18n } from "@/i18n";
 import {
-  expandComposerContext, markComposerContextSent, type ComposerContextItem,
+  composerContextBlock, expandComposerContext, markComposerContextSent, MAX_COMPOSER_CONTEXT_CHARS,
+  type ComposerContextItem,
 } from "@/lib/composer-context";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { withoutFunctionKeyText } from "@oleafly/wysiwyg/function-key-text";
@@ -531,18 +532,38 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       const session = get().sessions[sessionId];
       if (!session) return false;
       const before = session.lastSequence;
-      const context = draft.context ?? [];
+      let context = draft.context ?? [];
       let selections = draft.selections;
       if (context.length > 0) {
+        let expanded: Awaited<ReturnType<typeof expandComposerContext>>;
         try {
-          const expanded = await expandComposerContext(projectId, context);
-          selections = [
-            ...draft.selections,
-            ...expanded.map((entry) => ({ id: entry.item.id, path: entry.path, text: entry.text, label: entry.item.label })),
-          ];
+          expanded = await expandComposerContext(projectId, context);
         } catch {
           get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextFailed));
           return false;
+        }
+        const found = new Set(expanded.map((entry) => entry.item.id));
+        context = context.filter((item) => found.has(item.id));
+        const block = composerContextBlock(expanded);
+        if (block.length > MAX_COMPOSER_CONTEXT_CHARS) {
+          get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextTooLarge));
+          return false;
+        }
+        if (!block && !draft.text.trim() && draft.attachments.length === 0 && draft.selections.length === 0) {
+          get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextFailed));
+          return false;
+        }
+        if (block) {
+          const single = expanded.length === 1 ? expanded[0] : null;
+          selections = [
+            ...draft.selections,
+            {
+              id: single?.item.id ?? "composer-context",
+              path: single?.path ?? null,
+              text: block,
+              label: single?.item.label ?? expanded.map((entry) => entry.item.label).join(", "),
+            },
+          ];
         }
       }
       let delivered = false;
