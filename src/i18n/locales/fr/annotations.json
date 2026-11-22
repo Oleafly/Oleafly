@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "Annoter une zone",
+    "list": "Annotations ({{n}})",
+    "hide": "Masquer les annotations"
+  },
+  "markBadge": "Annotation {{label}}",
+  "composer": {
+    "title": "Nouvelle annotation",
+    "action": {
+      "comment": "Commenter",
+      "delete": "Supprimer",
+      "replace": "Remplacer",
+      "insert": "Insérer"
+    },
+    "label": {
+      "comment": "Commentaire",
+      "replace": "Texte de remplacement",
+      "insert": "Texte à insérer",
+      "region": "Commentaire sur la zone"
+    },
+    "placeholder": {
+      "comment": "Commentez ce passage…",
+      "replace": "Remplacer par…",
+      "insert": "Insérer après la sélection…",
+      "region": "Commentez cette zone…"
+    },
+    "placeHere": "Placer ici",
+    "cancel": "Annuler",
+    "save": "Ajouter",
+    "saving": "Enregistrement",
+    "notSaved": "Non enregistrée."
+  },
+  "kind": {
+    "comment": "Commentaire",
+    "delete": "Suppression",
+    "replace": "Remplacement",
+    "insert": "Insertion",
+    "region": "Zone"
+  },
+  "status": {
+    "draft": "Brouillon",
+    "sent": "Envoyée",
+    "addressed": "Traitée",
+    "resolved": "Résolue",
+    "needsPlacing": "À placer"
+  },
+  "panel": {
+    "title": "Annotations",
+    "close": "Fermer les annotations",
+    "empty": "Sélectionnez du texte dans le PDF et choisissez Commenter, Supprimer, Remplacer ou Insérer. Ou activez Annoter une zone et tracez un cadre autour d'une équation ou d'une figure.",
+    "failed": "Impossible d'enregistrer les annotations. {{error}}",
+    "readOnly": "Enregistré par un Oleafly plus récent. Mettez-le à jour pour modifier.",
+    "setAside": "Le fichier des annotations était illisible, un nouveau a été créé.",
+    "noSource": "Aucun emplacement dans la source",
+    "page": "p. {{page}}",
+    "notFound": "Ce passage est introuvable dans le nouveau PDF.",
+    "placing": "Sélectionnez le passage dans le PDF, puis choisissez Placer ici.",
+    "placeAgain": "Placer à nouveau",
+    "include": "Inclure l'annotation {{number}}",
+    "resolve": "Marquer l'annotation {{number}} comme résolue",
+    "reopen": "Rouvrir l'annotation {{number}}",
+    "delete": "Supprimer l'annotation {{number}}",
+    "editComment": "Modifier le commentaire de l'annotation {{number}}",
+    "addComment": "Ajouter un commentaire",
+    "clear": "Tout supprimer",
+    "clearConfirm": "Supprimer toutes les annotations de ce projet ? Cette action est irréversible.",
+    "send": "Envoyer à l'assistant ({{n}})"
+  }
+}

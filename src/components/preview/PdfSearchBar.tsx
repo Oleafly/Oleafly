@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import type { PdfSearchState, PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { FindBar } from "@/components/ui/find-bar";
 
@@ -19,6 +20,7 @@ export function PdfSearchBar({
   state,
   pdfRef,
   onClose,
+  besidePanel = false,
 }: Readonly<{
   id: string;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -27,13 +29,17 @@ export function PdfSearchBar({
   state: PdfSearchState;
   pdfRef: RefObject<PdfViewerHandle | null>;
   onClose: () => void;
+  besidePanel?: boolean;
 }>) {
   const { t } = useTranslation(["preview"]);
   return (
     <FindBar
       id={id}
       aria-label={t(($) => $.preview.search.panel)}
-      className="absolute right-2 top-2 z-30 max-w-[calc(100%-1rem)]"
+      className={cn(
+        "absolute top-2 z-30 max-w-[calc(100%-1rem)]",
+        besidePanel ? "right-[21rem]" : "right-2",
+      )}
       inputRef={inputRef}
       value={query}
       onValueChange={onQueryChange}

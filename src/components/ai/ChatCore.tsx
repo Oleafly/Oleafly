@@ -169,10 +169,19 @@ import {
   type WebSetting,
 } from "@/lib/chat-settings";
 import {
+  expandComposerContext,
+  markComposerContextSent,
+  MAX_COMPOSER_CONTEXT_CHARS,
+  withComposerContext,
+  type ComposerContextItem,
+} from "@/lib/composer-context";
+import {
   builtinComposerId,
   draftAttachments,
+  draftContext,
   draftText,
   EMPTY_ATTACHMENTS,
+  EMPTY_CONTEXT,
   holdDraftAttachments,
   registerAttachmentHolder,
   useComposerDrafts,
@@ -782,7 +791,14 @@ function stillAddedAt(path: string) {
 }
 
 export function appendHandoffPrompt(existing: string, prompt: string): string {
+  if (!prompt) return existing;
   return existing.trim() ? `${existing.trimEnd()}\n\n${prompt}` : prompt;
+}
+
+function replaceDraftContext(composerId: string, items: readonly ComposerContextItem[]): void {
+  const drafts = useComposerDrafts.getState();
+  drafts.clearContext(composerId);
+  drafts.addContext(composerId, items);
 }
 
 function describeProbeFailure(error: unknown): string {
@@ -1242,6 +1258,12 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
   const removeAttachments = useCallback((ids: readonly string[]) => {
     useComposerDrafts.getState().removeAttachments(composerIdRef.current, ids);
   }, []);
+  const contextItems = useComposerDrafts(
+    (state) => state.drafts[composerId]?.context ?? EMPTY_CONTEXT,
+  );
+  const removeContext = useCallback((id: string) => {
+    useComposerDrafts.getState().removeContext(composerIdRef.current, [id]);
+  }, []);
   const sendSequenceRef = useRef(0);
   const sendPreparingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
@@ -1297,7 +1319,11 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
     messageId: string;
     userIndex: number;
     mode: "inPlace" | "fork";
-    stash: { text: string; attachments: readonly DraftAttachment[] };
+    stash: {
+      text: string;
+      attachments: readonly DraftAttachment[];
+      context: readonly ComposerContextItem[];
+    };
   } | null>(null);
   const editTargetRef = useRef(editTarget);
   editTargetRef.current = editTarget;
@@ -1308,6 +1334,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
     if (!target) return;
     setInput(target.stash.text);
     useComposerDrafts.getState().setAttachments(composerIdRef.current, target.stash.attachments);
+    replaceDraftContext(composerIdRef.current, target.stash.context);
     setEditTarget(null);
   }, [setInput]);
   const [replaceConfirm, setReplaceConfirm] = useState<{
@@ -1335,7 +1362,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
     (RunUsageView & { context?: { used: number; size: number } }) | null
   >(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
-  const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
+  const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt !== null);
   const handoffAutoSend = useAgentHandoffStore((s) => s.autoSend);
   const handoffTarget = useAgentHandoffStore((s) => s.target);
   const cliAssistantUsable = useAcpSessionsStore((s) => (s.catalog ?? []).some(acpUsable));
@@ -1865,12 +1892,14 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       if (editing && wasShown) {
         drafts.setText(deletedDraft, editing.stash.text);
         drafts.setAttachments(deletedDraft, editing.stash.attachments);
+        replaceDraftContext(deletedDraft, editing.stash.context);
         drafts.moveDraft(deletedDraft, builtinComposerId(stateKey));
         editTargetRef.current = null;
         setEditTarget(null);
       }
       drafts.setText(deletedDraft, "");
       drafts.setAttachments(deletedDraft, []);
+      drafts.clearContext(deletedDraft);
       removeChat(id);
       if (wasShown || running) startNewChat();
     },
@@ -2121,7 +2150,12 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
     queued?: QueuedFollowUp,
     options?: {
       approvedPlan?: boolean;
-      replay?: { attachments: readonly DraftAttachment[]; commit?: () => Promise<void> | void };
+      replay?: {
+        attachments: readonly DraftAttachment[];
+        context?: readonly ComposerContextItem[];
+        commit?: () => Promise<void> | void;
+      };
+      context?: readonly ComposerContextItem[];
       web?: boolean;
     },
   ) => {
@@ -2134,18 +2168,27 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       options?.replay?.attachments ?? queued?.attachments ?? readyAttachments(draft)
     ).map((attachment) => ({ ...attachment }));
     const fromDraft = !options?.replay && !queued;
-    if ((!text.trim() && outgoing.length === 0)) return;
+    let outgoingContext: ComposerContextItem[] = [
+      ...(options?.replay
+        ? options.replay.context ?? []
+        : queued?.context ?? options?.context ?? draftContext(sendComposerId)),
+    ];
+    if (!text.trim() && outgoing.length === 0 && outgoingContext.length === 0) return;
     const sendSequence = sendSequenceRef.current + 1;
     sendSequenceRef.current = sendSequence;
     const inputRevision = inputRevisionRef.current;
     const runScope = scopeRef.current;
     if (streaming || activeChatRun(scopeKey)) {
       if (!queued && !options?.replay && activeChatId) {
-        useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing);
+        useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing, outgoingContext);
         setInput("");
         useComposerDrafts.getState().removeAttachments(
           sendComposerId,
           outgoing.map((item) => item.id),
+        );
+        useComposerDrafts.getState().removeContext(
+          sendComposerId,
+          outgoingContext.map((item) => item.id),
         );
       }
       return;
@@ -2198,6 +2241,35 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       cancelSendPreparation();
       void logError("load the assistant tools", error);
       return;
+    }
+    let modelContext: Awaited<ReturnType<typeof expandComposerContext>> = [];
+    const requestedContext = outgoingContext;
+    if (outgoingContext.length > 0) {
+      try {
+        modelContext = await expandComposerContext(projectId ?? "", outgoingContext);
+      } catch (error) {
+        cancelSendPreparation();
+        void logError("expand the composer context", error);
+        toast.error(i18n.t(($) => $.ai.composer.contextFailed));
+        return;
+      }
+      const found = new Set(modelContext.map((entry) => entry.item.id));
+      const missing = outgoingContext.filter((item) => !found.has(item.id));
+      if (missing.length > 0) {
+        useComposerDrafts.getState().removeContext(sendComposerId, missing.map((item) => item.id));
+        outgoingContext = outgoingContext.filter((item) => found.has(item.id));
+      }
+      const contextChars = modelContext.reduce((total, entry) => total + entry.text.length, 0);
+      if (contextChars > MAX_COMPOSER_CONTEXT_CHARS) {
+        cancelSendPreparation();
+        toast.error(i18n.t(($) => $.ai.composer.contextTooLarge));
+        return;
+      }
+      if (!text.trim() && outgoing.length === 0 && outgoingContext.length === 0) {
+        cancelSendPreparation();
+        toast.error(i18n.t(($) => $.ai.composer.contextFailed));
+        return;
+      }
     }
     const skillCommand = parseSkillCommand(text, runSkills);
     const requestedSkillIds = skillCommand ? [skillCommand.skill.id] : [];
@@ -2528,6 +2600,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       ...(skillCommand ? { skillId: skillCommand.skill.id } : {}),
       ...(mentionedPaths.length > 0 ? { mentions: mentionedPaths } : {}),
       ...(outgoing.length ? { attachments: outgoing.map(draftToChatAttachment) } : {}),
+      ...(outgoingContext.length ? { context: outgoingContext } : {}),
     };
     const assistantMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -2559,6 +2632,10 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
           );
         }
       }
+      useComposerDrafts.getState().removeContext(
+        sendComposerId,
+        requestedContext.map((item) => item.id),
+      );
     }
     setStreaming(true);
     setRunThinking(i18n.t(($) => $.ai.chat.reasoning.thinking));
@@ -2800,6 +2877,7 @@ ${sandboxedCustom}`;
     const runMetadata = runStoredModel?.metadata;
     const runVision = modelSupportsVision(provider, model, runMetadata?.inputModalities);
     const runNativePdf = runMetadata?.inputModalities?.includes("pdf") === true;
+    const modelText = withComposerContext(runText, modelContext);
     let apiMessages: ModelMessage[];
     let runDroppedTurns = 0;
     try {
@@ -2817,7 +2895,7 @@ ${sandboxedCustom}`;
       runDroppedTurns = history.droppedTurns;
       apiMessages = [
         ...history.messages,
-        await chatAttachments.userModelMessage(runText, outgoing, mentioned, attachmentContext),
+        await chatAttachments.userModelMessage(modelText, outgoing, mentioned, attachmentContext),
       ];
     } catch (error) {
       void logError("prepare chat messages", error);
@@ -2826,7 +2904,7 @@ ${sandboxedCustom}`;
           role: m.role === "assistant" ? "assistant" : "user",
           content: m.content,
         })),
-        { role: "user", content: runText },
+        { role: "user", content: modelText },
       ];
     }
     if (runIsCurrent()) setDroppedTurns(runDroppedTurns);
@@ -2841,6 +2919,12 @@ ${sandboxedCustom}`;
     );
     const runWeb = runWebTools(runChat ? runChat.web : newChatSettingsRef.current.web);
     let queuedAccepted = false;
+    let contextMarked = false;
+    const markContextSent = () => {
+      if (contextMarked) return;
+      contextMarked = true;
+      markComposerContextSent(runProjectId ?? "", outgoingContext);
+    };
     const acknowledgeQueued = () => {
       if (queuedAccepted || !queued || !runChatId) return;
       queuedAccepted = true;
@@ -3074,9 +3158,11 @@ ${sandboxedCustom}`;
           runRequestId = id;
           trackRunRequestId(id);
           acknowledgeQueued();
+          markContextSent();
         },
         onRawEvent: (event) => {
           acknowledgeQueued();
+          markContextSent();
           if (!runChatId) return;
           useAgentTurnsStore.getState().applyEvent(runChatId, event);
         },
@@ -3247,6 +3333,7 @@ ${sandboxedCustom}`;
       });
       const outcome = await outcomePromise;
       acknowledgeQueued();
+      if (!outcome.error && !ac.signal.aborted) markContextSent();
 
       usageSteps = outcome.steps;
       runEndedCleanly = !outcome.error && !ac.signal.aborted;
@@ -3479,6 +3566,7 @@ ${sandboxedCustom}`;
       mode: "inPlace" | "fork";
       text: string;
       attachments: readonly DraftAttachment[];
+      context: readonly ComposerContextItem[];
       approvedPlan?: boolean;
       onCommit?: () => void;
     }) => {
@@ -3505,6 +3593,7 @@ ${sandboxedCustom}`;
           await send(args.text, undefined, {
             replay: {
               attachments: args.attachments,
+              context: args.context,
               commit: async () => {
                 args.onCommit?.();
                 setMessages(kept);
@@ -3528,6 +3617,7 @@ ${sandboxedCustom}`;
         await send(args.text, undefined, {
           replay: {
             attachments: args.attachments,
+            context: args.context,
             commit: async () => {
               const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
               args.onCommit?.();
@@ -3576,7 +3666,8 @@ ${sandboxedCustom}`;
     if (draftItems.some((item) => item.status === "processing")) return;
     const text = inputRef.current;
     const attachments = readyAttachments(draftItems);
-    if (!text.trim() && attachments.length === 0) return;
+    const context = [...draftContext(composerIdRef.current)];
+    if (!text.trim() && attachments.length === 0 && context.length === 0) return;
     const run = () => {
       const draftId = composerIdRef.current;
       void replay({
@@ -3584,9 +3675,11 @@ ${sandboxedCustom}`;
         mode: target.mode,
         text,
         attachments,
+        context,
         onCommit: () => {
           setInput(target.stash.text);
           useComposerDrafts.getState().setAttachments(draftId, target.stash.attachments);
+          replaceDraftContext(draftId, target.stash.context);
           setEditTarget(null);
         },
       });
@@ -3610,6 +3703,7 @@ ${sandboxedCustom}`;
           mode: "inPlace",
           text: userMessage.content,
           attachments: savedAttachmentsAsDrafts(userMessage),
+          context: userMessage.context ?? [],
           approvedPlan: userMessage.content === PLAN_APPROVED_MESSAGE,
         }),
       );
@@ -3622,10 +3716,14 @@ ${sandboxedCustom}`;
       attachments: editTargetRef.current
         ? editTargetRef.current.stash.attachments
         : draftAttachments(composerIdRef.current),
+      context: editTargetRef.current
+        ? editTargetRef.current.stash.context
+        : draftContext(composerIdRef.current),
     };
     const attachments = savedAttachmentsAsDrafts(userMessage);
     setInput(userMessage.content);
     useComposerDrafts.getState().setAttachments(composerIdRef.current, attachments);
+    replaceDraftContext(composerIdRef.current, userMessage.context ?? []);
     setEditTarget({ messageId, userIndex: index, mode: replayMode(current, index), stash });
     focusComposerAt(userMessage.content.length);
   };
@@ -3798,9 +3896,10 @@ ${sandboxedCustom}`;
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
     if (h.autoSend && providerReady) {
-      void send(h.prompt);
+      void send(h.prompt, undefined, h.context.length ? { context: h.context } : undefined);
       return;
     }
+    if (h.context.length) useComposerDrafts.getState().addContext(composerIdRef.current, h.context);
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
   }, [
     acceptsHandoff,
@@ -3857,6 +3956,7 @@ ${sandboxedCustom}`;
     if (editing) {
       useComposerDrafts.getState().setText(leaving, editing.stash.text);
       useComposerDrafts.getState().setAttachments(leaving, editing.stash.attachments);
+      replaceDraftContext(leaving, editing.stash.context);
     }
     useComposerDrafts.getState().moveDraft(leaving, builtinComposerId(prev));
     setEditTarget(null);
@@ -4104,7 +4204,10 @@ ${sandboxedCustom}`;
         {queuedFollowUps.map((item) => {
           const summary =
             item.text ||
-            item.attachments.map((attachment) => attachment.name).join(", ");
+            [
+              ...(item.context ?? []).map((entry) => entry.label),
+              ...item.attachments.map((attachment) => attachment.name),
+            ].join(", ");
           const awaitingSafePoint = steeringFollowUpIds.has(item.id);
           const beingSent = sendingFollowUpId === item.id;
           let chipText: string;
@@ -4121,7 +4224,7 @@ ${sandboxedCustom}`;
             className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
           >
             <span className="min-w-0 flex-1 truncate">{chipText}</span>
-            {item.status === "pending" && streaming && (
+            {item.status === "pending" && streaming && !item.context?.length && (
               <button
                 type="button"
                 data-testid="agent-follow-up-steer"
@@ -4505,6 +4608,8 @@ ${sandboxedCustom}`;
       attachments={attachments}
       onAddFiles={projectId ? addComposerFiles : undefined}
       onRemoveAttachment={(id) => removeAttachments([id])}
+      context={contextItems}
+      onRemoveContext={removeContext}
       onDropProjectPaths={projectId && scope.kind === "workspace" ? dropProjectPaths : undefined}
       slashItems={slashItems}
       onSlashSelect={onSlashSelect}

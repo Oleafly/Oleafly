@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use oleafly_core::content::ContentHash;
@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 use tauri::Emitter as _;
 
 use crate::project::ProjectMeta;
-use crate::project_location::{ProjectKind, ProjectLocation};
+use crate::project_location::ProjectLocation;
 
 const STATE_FILE: &str = "pdf-sync.json";
 const WRITTEN_EVENT: &str = "pdf-sync:written";
@@ -161,18 +161,6 @@ pub(crate) async fn plan_live_compile(
     wanted.then_some(CompilePlan { sources: None })
 }
 
-fn state_path(location: &ProjectLocation) -> Result<PathBuf, String> {
-    let directory = location.private_state_dir();
-    let directory = match location.kind {
-        ProjectKind::Linked => location.ensure_linked_state(&directory)?,
-        ProjectKind::Library => {
-            std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-            directory
-        }
-    };
-    Ok(directory.join(STATE_FILE))
-}
-
 fn read_state(location: &ProjectLocation) -> DeviceState {
     std::fs::read(location.private_state_dir().join(STATE_FILE))
         .ok()
@@ -182,7 +170,10 @@ fn read_state(location: &ProjectLocation) -> DeviceState {
 
 fn write_state(location: &ProjectLocation, state: &DeviceState) -> Result<(), String> {
     let bytes = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
-    crate::sandbox::atomic_write(&state_path(location)?, &bytes)
+    crate::sandbox::atomic_write(
+        &crate::paths::private_state_file(location, STATE_FILE)?,
+        &bytes,
+    )
 }
 
 fn names_in(root: &Path) -> HashSet<String> {
@@ -431,6 +422,7 @@ pub async fn pdf_sync_note_saved(project_id: String, path: String) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     fn meta(name: &str, sync: Option<PdfSync>) -> ProjectMeta {
         ProjectMeta {

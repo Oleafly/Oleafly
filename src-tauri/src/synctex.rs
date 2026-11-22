@@ -1,7 +1,19 @@
-use oleafly_doctools::synctex::{forward_hit, inverse, map_source_line, parse};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
+use oleafly_doctools::synctex::{forward_hit, inverse, map_source_line, parse, Doc};
 pub use oleafly_doctools::synctex::{SynctexForwardHit, SynctexHit, SynctexRect};
 
 use crate::paths;
+
+struct ParsedSynctex {
+    path: PathBuf,
+    stamp: (SystemTime, u64),
+    doc: Arc<Doc>,
+}
+
+static PARSED: Mutex<Option<ParsedSynctex>> = Mutex::new(None);
 
 fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String> {
     let build = paths::existing_build_dir(project_id)?
@@ -13,6 +25,42 @@ fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String
         ),
         _ => error.message,
     })
+}
+
+fn synctex_stamp(project_id: &str) -> Option<(PathBuf, (SystemTime, u64))> {
+    let build = paths::existing_build_dir(project_id).ok()??;
+    let path = build.join(format!(
+        "{}.synctex.gz",
+        oleafly_core::engine_spec::ENTRY_STEM
+    ));
+    let metadata = std::fs::symlink_metadata(&path).ok()?;
+    Some((path, (metadata.modified().ok()?, metadata.len())))
+}
+
+fn parsed_synctex(project_id: &str, main_doc: &str) -> Result<Arc<Doc>, String> {
+    let stamp = synctex_stamp(project_id);
+    if let Some((path, stamp)) = &stamp {
+        let cached = PARSED
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(parsed) = cached
+            .as_ref()
+            .filter(|parsed| &parsed.path == path && &parsed.stamp == stamp)
+        {
+            return Ok(Arc::clone(&parsed.doc));
+        }
+    }
+    let doc = Arc::new(parse(&read_synctex_text(project_id, main_doc)?));
+    if let Some((path, stamp)) = stamp {
+        *PARSED
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(ParsedSynctex {
+            path,
+            stamp,
+            doc: Arc::clone(&doc),
+        });
+    }
+    Ok(doc)
 }
 
 fn project_roots(project_id: &str) -> Vec<String> {
@@ -30,8 +78,7 @@ pub async fn synctex_forward(
     line: i32,
 ) -> Result<Option<SynctexForwardHit>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexForwardHit>, String> {
-        let text = read_synctex_text(&project_id, &main_doc)?;
-        let doc = parse(&text);
+        let doc = parsed_synctex(&project_id, &main_doc)?;
         Ok(forward_hit(&doc, &file, line, &project_roots(&project_id)))
     })
     .await
@@ -47,8 +94,7 @@ pub async fn synctex_inverse(
     y: f64,
 ) -> Result<Option<SynctexHit>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexHit>, String> {
-        let text = read_synctex_text(&project_id, &main_doc)?;
-        let doc = parse(&text);
+        let doc = parsed_synctex(&project_id, &main_doc)?;
         Ok(inverse(&doc, page, x, y, &project_roots(&project_id)))
     })
     .await

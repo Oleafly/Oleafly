@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "範囲に注釈を付ける",
+    "list": "注釈 ({{n}})",
+    "hide": "注釈を隠す"
+  },
+  "markBadge": "注釈 {{label}}",
+  "composer": {
+    "title": "新しい注釈",
+    "action": {
+      "comment": "コメント",
+      "delete": "削除",
+      "replace": "置換",
+      "insert": "挿入"
+    },
+    "label": {
+      "comment": "コメント",
+      "replace": "置換後のテキスト",
+      "insert": "挿入するテキスト",
+      "region": "範囲へのコメント"
+    },
+    "placeholder": {
+      "comment": "この箇所へのコメント…",
+      "replace": "置換後のテキスト…",
+      "insert": "選択箇所の後に挿入…",
+      "region": "この範囲へのコメント…"
+    },
+    "placeHere": "ここに配置",
+    "cancel": "キャンセル",
+    "save": "追加",
+    "saving": "保存中",
+    "notSaved": "保存されていません。"
+  },
+  "kind": {
+    "comment": "コメント",
+    "delete": "削除",
+    "replace": "置換",
+    "insert": "挿入",
+    "region": "範囲"
+  },
+  "status": {
+    "draft": "下書き",
+    "sent": "送信済み",
+    "addressed": "対応済み",
+    "resolved": "解決済み",
+    "needsPlacing": "未配置"
+  },
+  "panel": {
+    "title": "注釈",
+    "close": "注釈を閉じる",
+    "empty": "PDF のテキストを選択して「コメント」「削除」「置換」「挿入」のいずれかを選んでください。または「範囲に注釈を付ける」をオンにして数式や図を枠で囲んでください。",
+    "failed": "注釈を保存できませんでした。{{error}}",
+    "readOnly": "新しい Oleafly で保存されています。編集するには更新してください。",
+    "setAside": "注釈ファイルを読み込めなかったため、新しいファイルを作成しました。",
+    "noSource": "ソース上の位置なし",
+    "page": "{{page}} ページ",
+    "notFound": "新しい PDF でこの箇所が見つかりませんでした。",
+    "placing": "PDF で該当箇所を選択してから「ここに配置」を選んでください。",
+    "placeAgain": "配置し直す",
+    "include": "注釈 {{number}} を含める",
+    "resolve": "注釈 {{number}} を解決済みにする",
+    "reopen": "注釈 {{number}} を再開",
+    "delete": "注釈 {{number}} を削除",
+    "editComment": "注釈 {{number}} のコメントを編集",
+    "addComment": "コメントを追加",
+    "clear": "すべて削除",
+    "clearConfirm": "このプロジェクトの注釈をすべて削除しますか？この操作は元に戻せません。",
+    "send": "アシスタントに送信 ({{n}})"
+  }
+}

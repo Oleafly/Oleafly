@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "Kommenter et område",
+    "list": "Kommentarer ({{n}})",
+    "hide": "Skjul kommentarer"
+  },
+  "markBadge": "Kommentar {{label}}",
+  "composer": {
+    "title": "Ny kommentar",
+    "action": {
+      "comment": "Kommenter",
+      "delete": "Slett",
+      "replace": "Erstatt",
+      "insert": "Sett inn"
+    },
+    "label": {
+      "comment": "Kommentar",
+      "replace": "Ny tekst",
+      "insert": "Tekst som skal settes inn",
+      "region": "Kommentar til området"
+    },
+    "placeholder": {
+      "comment": "Kommenter dette avsnittet …",
+      "replace": "Erstatt med …",
+      "insert": "Sett inn etter markeringen …",
+      "region": "Kommenter dette området …"
+    },
+    "placeHere": "Plasser her",
+    "cancel": "Avbryt",
+    "save": "Legg til",
+    "saving": "Lagrer",
+    "notSaved": "Ikke lagret."
+  },
+  "kind": {
+    "comment": "Kommentar",
+    "delete": "Sletting",
+    "replace": "Erstatning",
+    "insert": "Innsetting",
+    "region": "Område"
+  },
+  "status": {
+    "draft": "Utkast",
+    "sent": "Sendt",
+    "addressed": "Behandlet",
+    "resolved": "Løst",
+    "needsPlacing": "Må plasseres"
+  },
+  "panel": {
+    "title": "Kommentarer",
+    "close": "Lukk kommentarer",
+    "empty": "Merk tekst i PDF-en og velg Kommenter, Slett, Erstatt eller Sett inn. Eller slå på Kommenter et område og dra en boks rundt en ligning eller figur.",
+    "failed": "Kommentarene kunne ikke lagres. {{error}}",
+    "readOnly": "Lagret av en nyere Oleafly. Oppdater for å endre kommentarene.",
+    "setAside": "Kommentarfilen kunne ikke leses, så en ny ble startet.",
+    "noSource": "Ingen plassering i kilden",
+    "page": "s. {{page}}",
+    "notFound": "Fant ikke dette avsnittet i den nye PDF-en.",
+    "placing": "Merk avsnittet i PDF-en, og velg deretter Plasser her.",
+    "placeAgain": "Plasser på nytt",
+    "include": "Ta med kommentar {{number}}",
+    "resolve": "Merk kommentar {{number}} som løst",
+    "reopen": "Åpne kommentar {{number}} igjen",
+    "delete": "Slett kommentar {{number}}",
+    "editComment": "Rediger teksten i kommentar {{number}}",
+    "addComment": "Legg til en kommentar",
+    "clear": "Slett alle",
+    "clearConfirm": "Vil du slette alle kommentarene i dette prosjektet? Dette kan ikke angres.",
+    "send": "Send til assistenten ({{n}})"
+  }
+}

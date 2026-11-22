@@ -232,7 +232,10 @@
     "send": "보내기",
     "checkAgain": "다시 확인",
     "resizeHandle": "메시지 입력란 크기 조절",
-    "resizeHint": "끌어서 크기를 조절하고, 두 번 클릭하면 원래대로 돌아갑니다."
+    "resizeHint": "끌어서 크기를 조절하고, 두 번 클릭하면 원래대로 돌아갑니다.",
+    "removeContext": "{{label}} 빼기",
+    "contextFailed": "첨부한 컨텍스트를 읽을 수 없습니다. 메시지를 보내지 않았습니다.",
+    "contextTooLarge": "첨부한 컨텍스트가 너무 깁니다. 일부를 제거하고 다시 시도하세요."
   },
   "commands": {
     "groups": {

@@ -232,7 +232,10 @@
     "send": "送信",
     "checkAgain": "もう一度確認",
     "resizeHandle": "メッセージ欄のサイズを変更",
-    "resizeHint": "ドラッグでサイズを変更し、ダブルクリックで元に戻します。"
+    "resizeHint": "ドラッグでサイズを変更し、ダブルクリックで元に戻します。",
+    "removeContext": "{{label}} を外す",
+    "contextFailed": "添付したコンテキストを読み込めませんでした。メッセージは送信されていません。",
+    "contextTooLarge": "添付したコンテキストが長すぎます。一部を削除してもう一度お試しください。"
   },
   "commands": {
     "groups": {

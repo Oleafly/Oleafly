@@ -240,7 +240,10 @@
     "send": "Lähetä",
     "checkAgain": "Tarkista uudelleen",
     "resizeHandle": "Muuta viestikentän kokoa",
-    "resizeHint": "Muuta kokoa vetämällä. Palauta kaksoisnapsauttamalla."
+    "resizeHint": "Muuta kokoa vetämällä. Palauta kaksoisnapsauttamalla.",
+    "removeContext": "Poista {{label}}",
+    "contextFailed": "Liitettyä kontekstia ei voitu lukea. Viestiä ei lähetetty.",
+    "contextTooLarge": "Liitetty konteksti on liian pitkä. Poista osa ja yritä uudelleen."
   },
   "commands": {
     "groups": {

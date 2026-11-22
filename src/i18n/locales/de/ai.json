@@ -240,7 +240,10 @@
     "send": "Senden",
     "checkAgain": "Erneut prüfen",
     "resizeHandle": "Größe des Nachrichtenfelds ändern",
-    "resizeHint": "Ziehen, um die Größe zu ändern. Doppelklicken zum Zurücksetzen."
+    "resizeHint": "Ziehen, um die Größe zu ändern. Doppelklicken zum Zurücksetzen.",
+    "removeContext": "{{label}} entfernen",
+    "contextFailed": "Der angehängte Kontext konnte nicht gelesen werden. Die Nachricht wurde nicht gesendet.",
+    "contextTooLarge": "Der angehängte Kontext ist zu lang. Kürzen Sie ihn und versuchen Sie es erneut."
   },
   "commands": {
     "groups": {

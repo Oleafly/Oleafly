@@ -1026,6 +1026,10 @@
         "notFound": "Oleafly kan ikke finde PhiTeX på denne computer, så latexmk-projekter kompileres stadig med latexmk.",
         "saveFailed": "Indstillingen for PhiTeX kunne ikke gemmes. Prøv igen."
       },
+      "pdfReview": {
+        "description": "Kommentér den kompilerede PDF: markér tekst, eller træk en boks omkring en ligning eller figur, og skriv en kommentar. Send dine kommentarer til assistenten sammen med de kildelinjer, de peger på. Kommentarerne bliver på denne computer. Slået fra som standard, mens funktionen er i beta.",
+        "label": "PDF-gennemgang"
+      },
       "researchTasks": {
         "description": "En agent arbejder selvstændigt i en kopi af projektet og efterlader sine ændringer, så du kan gennemgå dem. Meget ustabilt: kørsler kan gå i stå, fejle eller efterlade ændringer, du selv må rette op på manuelt, og de bruger din udbyders kvote hele tiden. Tilføjer afsnittet Forskning under Indstillinger. Hvis du slår det fra, stoppes alle kørende opgaver. Slået fra som udgangspunkt. Slå det til på eget ansvar.",
         "label": "Forskningsopgaver",

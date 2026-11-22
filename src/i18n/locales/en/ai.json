@@ -240,7 +240,10 @@
     "send": "Send",
     "checkAgain": "Check again",
     "resizeHandle": "Resize the message box",
-    "resizeHint": "Drag to resize. Double-click to reset."
+    "resizeHint": "Drag to resize. Double-click to reset.",
+    "removeContext": "Remove {{label}}",
+    "contextFailed": "Could not read the attached context. The message was not sent.",
+    "contextTooLarge": "The attached context is too long. Remove some and try again."
   },
   "commands": {
     "groups": {

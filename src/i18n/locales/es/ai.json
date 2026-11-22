@@ -248,7 +248,10 @@
     "send": "Enviar",
     "checkAgain": "Comprobar otra vez",
     "resizeHandle": "Cambiar el tamaño del cuadro de mensaje",
-    "resizeHint": "Arrastra para cambiar el tamaño. Haz doble clic para restablecerlo."
+    "resizeHint": "Arrastra para cambiar el tamaño. Haz doble clic para restablecerlo.",
+    "removeContext": "Quitar {{label}}",
+    "contextFailed": "No se pudo leer el contexto adjunto. El mensaje no se envió.",
+    "contextTooLarge": "El contexto adjunto es demasiado largo. Quita una parte e inténtalo de nuevo."
   },
   "commands": {
     "groups": {

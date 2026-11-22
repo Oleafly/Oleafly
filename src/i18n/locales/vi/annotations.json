@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "Chú thích một vùng",
+    "list": "Chú thích ({{n}})",
+    "hide": "Ẩn chú thích"
+  },
+  "markBadge": "Chú thích {{label}}",
+  "composer": {
+    "title": "Chú thích mới",
+    "action": {
+      "comment": "Nhận xét",
+      "delete": "Xoá",
+      "replace": "Thay thế",
+      "insert": "Chèn"
+    },
+    "label": {
+      "comment": "Nhận xét",
+      "replace": "Văn bản thay thế",
+      "insert": "Văn bản cần chèn",
+      "region": "Nhận xét về vùng"
+    },
+    "placeholder": {
+      "comment": "Nhận xét về đoạn này…",
+      "replace": "Thay bằng…",
+      "insert": "Chèn sau phần đã chọn…",
+      "region": "Nhận xét về vùng này…"
+    },
+    "placeHere": "Đặt vào đây",
+    "cancel": "Huỷ",
+    "save": "Thêm",
+    "saving": "Đang lưu",
+    "notSaved": "Chưa lưu."
+  },
+  "kind": {
+    "comment": "Nhận xét",
+    "delete": "Xoá",
+    "replace": "Thay thế",
+    "insert": "Chèn",
+    "region": "Vùng"
+  },
+  "status": {
+    "draft": "Nháp",
+    "sent": "Đã gửi",
+    "addressed": "Đã xử lý",
+    "resolved": "Đã giải quyết",
+    "needsPlacing": "Cần đặt vị trí"
+  },
+  "panel": {
+    "title": "Chú thích",
+    "close": "Đóng chú thích",
+    "empty": "Chọn văn bản trong PDF rồi chọn Nhận xét, Xoá, Thay thế hoặc Chèn. Hoặc bật Chú thích một vùng và kéo một khung quanh công thức hay hình.",
+    "failed": "Không lưu được chú thích. {{error}}",
+    "readOnly": "Được lưu bằng Oleafly mới hơn. Hãy cập nhật để chỉnh sửa.",
+    "setAside": "Không đọc được tệp chú thích nên đã tạo tệp mới.",
+    "noSource": "Không có vị trí trong mã nguồn",
+    "page": "tr. {{page}}",
+    "notFound": "Không tìm thấy đoạn này trong bản PDF mới.",
+    "placing": "Chọn đoạn văn trong PDF, sau đó chọn Đặt vào đây.",
+    "placeAgain": "Đặt lại vị trí",
+    "include": "Gửi kèm chú thích {{number}}",
+    "resolve": "Đánh dấu chú thích {{number}} là đã giải quyết",
+    "reopen": "Mở lại chú thích {{number}}",
+    "delete": "Xoá chú thích {{number}}",
+    "editComment": "Sửa nhận xét của chú thích {{number}}",
+    "addComment": "Thêm nhận xét",
+    "clear": "Xoá tất cả",
+    "clearConfirm": "Xoá tất cả chú thích trong dự án này? Không thể hoàn tác.",
+    "send": "Gửi cho Trợ lý ({{n}})"
+  }
+}

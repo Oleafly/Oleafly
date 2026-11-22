@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "Kommentera ett område",
+    "list": "Kommentarer ({{n}})",
+    "hide": "Dölj kommentarer"
+  },
+  "markBadge": "Kommentar {{label}}",
+  "composer": {
+    "title": "Ny kommentar",
+    "action": {
+      "comment": "Kommentera",
+      "delete": "Ta bort",
+      "replace": "Ersätt",
+      "insert": "Infoga"
+    },
+    "label": {
+      "comment": "Kommentar",
+      "replace": "Ersättningstext",
+      "insert": "Text att infoga",
+      "region": "Kommentar till området"
+    },
+    "placeholder": {
+      "comment": "Kommentera det här stycket …",
+      "replace": "Ersätt med …",
+      "insert": "Infoga efter markeringen …",
+      "region": "Kommentera det här området …"
+    },
+    "placeHere": "Placera här",
+    "cancel": "Avbryt",
+    "save": "Lägg till",
+    "saving": "Sparar",
+    "notSaved": "Inte sparad."
+  },
+  "kind": {
+    "comment": "Kommentar",
+    "delete": "Borttagning",
+    "replace": "Ersättning",
+    "insert": "Infogning",
+    "region": "Område"
+  },
+  "status": {
+    "draft": "Utkast",
+    "sent": "Skickad",
+    "addressed": "Åtgärdad",
+    "resolved": "Löst",
+    "needsPlacing": "Behöver placeras"
+  },
+  "panel": {
+    "title": "Kommentarer",
+    "close": "Stäng kommentarer",
+    "empty": "Markera text i PDF:en och välj Kommentera, Ta bort, Ersätt eller Infoga. Eller slå på Kommentera ett område och dra en ruta runt en ekvation eller figur.",
+    "failed": "Kommentarerna kunde inte sparas. {{error}}",
+    "readOnly": "Sparat av en nyare Oleafly. Uppdatera för att ändra kommentarerna.",
+    "setAside": "Kommentarfilen kunde inte läsas, så en ny påbörjades.",
+    "noSource": "Ingen plats i källan",
+    "page": "s. {{page}}",
+    "notFound": "Stycket hittades inte i den nya PDF:en.",
+    "placing": "Markera stycket i PDF:en och välj sedan Placera här.",
+    "placeAgain": "Placera igen",
+    "include": "Ta med kommentar {{number}}",
+    "resolve": "Markera kommentar {{number}} som löst",
+    "reopen": "Öppna kommentar {{number}} igen",
+    "delete": "Ta bort kommentar {{number}}",
+    "editComment": "Redigera texten i kommentar {{number}}",
+    "addComment": "Lägg till en kommentar",
+    "clear": "Ta bort alla",
+    "clearConfirm": "Vill du ta bort alla kommentarer i det här projektet? Det går inte att ångra.",
+    "send": "Skicka till assistenten ({{n}})"
+  }
+}

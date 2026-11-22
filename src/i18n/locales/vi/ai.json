@@ -232,7 +232,10 @@
     "send": "Gửi",
     "checkAgain": "Kiểm tra lại",
     "resizeHandle": "Đổi kích thước hộp tin nhắn",
-    "resizeHint": "Kéo để đổi kích thước. Nhấp đúp để đặt lại."
+    "resizeHint": "Kéo để đổi kích thước. Nhấp đúp để đặt lại.",
+    "removeContext": "Gỡ {{label}}",
+    "contextFailed": "Không đọc được ngữ cảnh đính kèm. Tin nhắn chưa được gửi.",
+    "contextTooLarge": "Ngữ cảnh đính kèm quá dài. Hãy bớt một phần rồi thử lại."
   },
   "commands": {
     "groups": {

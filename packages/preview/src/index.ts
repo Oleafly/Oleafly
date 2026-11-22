@@ -12,6 +12,8 @@ export {
   type PdfPageColors,
 } from "./PdfViewer";
 export type { PdfOutlineItem } from "./pdfOutline";
+export type { PdfAnnotationLayer, PdfMark, PdfRegionSelectionInfo, PdfTextSelectionInfo } from "./pdfMarks";
+export type { PdfQuote } from "./pdfQuote";
 export * from "./messages";
 export {
   registerPdfView,
@@ -19,5 +21,6 @@ export {
   gotoRect,
   pageClickToBp,
   setPdfLogger,
+  type PdfTextRun,
   type SynctexRect,
 } from "./pdfController";

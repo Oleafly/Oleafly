@@ -1,6 +1,11 @@
 import { useRef } from "react";
 import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
+import { i18n } from "@/i18n";
+import {
+  composerContextBlock, expandComposerContext, markComposerContextSent, MAX_COMPOSER_CONTEXT_CHARS,
+  type ComposerContextItem,
+} from "@/lib/composer-context";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { withoutFunctionKeyText } from "@oleafly/wysiwyg/function-key-text";
 import { registerAttachmentHolder, useComposerDrafts } from "@/store/composer-drafts";
@@ -21,6 +26,7 @@ export interface AcpQueuedPrompt {
   mentions: string[];
   selections: AcpSelection[];
   skill: AcpComposerSkill | null;
+  context?: ComposerContextItem[];
   sending?: boolean;
   failed?: boolean;
   gatedBy?: string[];
@@ -498,6 +504,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const drafts = useComposerDrafts.getState();
     drafts.setText(composerId, "");
     drafts.setAttachments(composerId, []);
+    drafts.clearContext(composerId);
   },
   sendPrompt: async (slot, sessionId, draft, gatedBy = []) => {
     const projectId = acpSlotProject(slot);
@@ -525,19 +532,54 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       const session = get().sessions[sessionId];
       if (!session) return false;
       const before = session.lastSequence;
+      let context = draft.context ?? [];
+      let selections = draft.selections;
+      if (context.length > 0) {
+        let expanded: Awaited<ReturnType<typeof expandComposerContext>>;
+        try {
+          expanded = await expandComposerContext(projectId, context);
+        } catch {
+          get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextFailed));
+          return false;
+        }
+        const found = new Set(expanded.map((entry) => entry.item.id));
+        context = context.filter((item) => found.has(item.id));
+        const block = composerContextBlock(expanded);
+        if (block.length > MAX_COMPOSER_CONTEXT_CHARS) {
+          get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextTooLarge));
+          return false;
+        }
+        if (!block && !draft.text.trim() && draft.attachments.length === 0 && draft.selections.length === 0) {
+          get().setSessionError(sessionId, i18n.t(($) => $.ai.composer.contextFailed));
+          return false;
+        }
+        if (block) {
+          const single = expanded.length === 1 ? expanded[0] : null;
+          selections = [
+            ...draft.selections,
+            {
+              id: single?.item.id ?? "composer-context",
+              path: single?.path ?? null,
+              text: block,
+              label: single?.item.label ?? expanded.map((entry) => entry.item.label).join(", "),
+            },
+          ];
+        }
+      }
+      let delivered = false;
       try {
         const [{ toPromptInput }, { useFilesStore }] = await Promise.all([
           import("@/components/ai/acp/acp-attachments"),
           import("@/store/files"),
         ]);
         const files = useFilesStore.getState();
-        const input = await toPromptInput(draft, session, files.projectId === projectId ? files.tree : null);
+        const input = await toPromptInput({ ...draft, selections }, session, files.projectId === projectId ? files.tree : null);
         get().setSnapshot(await acpPrompt(projectId, sessionId, input));
         get().setSessionError(sessionId, null);
         for (const [key, id] of Object.entries(get().activeByProject)) {
           if (id === sessionId) get().setError(key, null);
         }
-        return true;
+        delivered = true;
       } catch (error) {
         await get().resync(projectId, sessionId).catch(() => {});
         const status = get().sessions[sessionId]?.status;
@@ -545,8 +587,10 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
           const { promptErrorMessage } = await import("@/components/ai/acp/acp-attachments");
           get().setSessionError(sessionId, promptErrorMessage(error) ?? acpError(error));
         }
-        return acpPromptDelivered(error) ?? sentUserMessage(before, sessionId);
+        delivered = acpPromptDelivered(error) ?? sentUserMessage(before, sessionId);
       }
+      if (delivered) markComposerContextSent(projectId, context);
+      return delivered;
     } finally {
       adjust(-1);
       if (!get().sending[sessionId]) void get().dispatchQueued(projectId, sessionId);
@@ -580,7 +624,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const item = get().queues[sessionId]?.find((entry) => entry.id === id);
     const session = get().sessions[sessionId];
     if (!item || item.sending || item.failed || session?.status !== "running" || !session.capabilities.steering) return;
-    if (item.attachments.length > 0 || item.selections.length > 0 || item.skill) return;
+    if (item.attachments.length > 0 || item.selections.length > 0 || item.skill || item.context?.length) return;
     const mark = (sending: boolean) => set((state) => ({
       queues: { ...state.queues, [sessionId]: (state.queues[sessionId] ?? []).map((entry) => entry.id === id ? { ...entry, sending } : entry) },
     }));

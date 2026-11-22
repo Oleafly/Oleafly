@@ -13,6 +13,7 @@ import {
   Info,
   Paperclip,
   Pencil,
+  Quote,
   RotateCcw,
   Sparkles,
   XCircle,
@@ -56,6 +57,28 @@ const USER_SKILL_CHIP_CLASS =
   "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
 const USER_MENTION_CHIP_CLASS =
   "rounded bg-teal-300/35 px-1 py-px font-medium text-white";
+
+function UserMessageChip({
+  icon,
+  label,
+  testId,
+  kind,
+  className,
+}: Readonly<{ icon: React.ReactNode; label: string; testId: string; kind?: string; className?: string }>) {
+  return (
+    <span
+      data-testid={testId}
+      data-context-kind={kind}
+      className={cn(
+        "flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground",
+        className,
+      )}
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
 
 function userTokenChipClass(kind: string): string | undefined {
   if (kind === "skill") return USER_SKILL_CHIP_CLASS;
@@ -1535,14 +1558,27 @@ export const MessageItem = memo(function MessageItem({
         </span>
       )}
       {msg.attachments && <MessageAttachmentRows attachments={msg.attachments} />}
+      {msg.role === "user" && msg.context?.length ? (
+        <div data-testid="user-context-chips" className="flex max-w-[85%] flex-wrap justify-end gap-1">
+          {msg.context.map((item) => (
+            <UserMessageChip
+              key={item.id}
+              icon={<Quote aria-hidden className="size-3 shrink-0" />}
+              label={item.label}
+              testId="user-context-chip"
+              kind={item.kind}
+              className="max-w-full"
+            />
+          ))}
+        </div>
+      ) : null}
       {msg.role === "user" && msg.skill ? (
-        <span
-          data-testid="user-skill-chip"
-          className="flex max-w-[85%] items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
-        >
-          <Sparkles aria-hidden className="size-3 shrink-0" />
-          <span className="truncate">{msg.skill.name}</span>
-        </span>
+        <UserMessageChip
+          icon={<Sparkles aria-hidden className="size-3 shrink-0" />}
+          label={msg.skill.name}
+          testId="user-skill-chip"
+          className="max-w-[85%]"
+        />
       ) : null}
       {msg.notices?.map((notice) => (
         <RunNotice key={notice} text={notice} />

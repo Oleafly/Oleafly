@@ -1,0 +1,70 @@
+{
+  "toolbar": {
+    "region": "Bir alana not ekle",
+    "list": "Notlar ({{n}})",
+    "hide": "Notları gizle"
+  },
+  "markBadge": "Not {{label}}",
+  "composer": {
+    "title": "Yeni not",
+    "action": {
+      "comment": "Yorum",
+      "delete": "Sil",
+      "replace": "Değiştir",
+      "insert": "Araya ekle"
+    },
+    "label": {
+      "comment": "Yorum",
+      "replace": "Yeni metin",
+      "insert": "Eklenecek metin",
+      "region": "Alan hakkında yorum"
+    },
+    "placeholder": {
+      "comment": "Bu bölüm hakkında yorum…",
+      "replace": "Şununla değiştir…",
+      "insert": "Seçimden sonra ekle…",
+      "region": "Bu alan hakkında yorum…"
+    },
+    "placeHere": "Buraya yerleştir",
+    "cancel": "İptal",
+    "save": "Ekle",
+    "saving": "Kaydediliyor",
+    "notSaved": "Kaydedilmedi."
+  },
+  "kind": {
+    "comment": "Yorum",
+    "delete": "Silme",
+    "replace": "Değiştirme",
+    "insert": "Ekleme",
+    "region": "Alan"
+  },
+  "status": {
+    "draft": "Taslak",
+    "sent": "Gönderildi",
+    "addressed": "Ele alındı",
+    "resolved": "Çözüldü",
+    "needsPlacing": "Yerleştirilmeli"
+  },
+  "panel": {
+    "title": "Notlar",
+    "close": "Notları kapat",
+    "empty": "PDF'te metin seçip Yorum, Sil, Değiştir veya Araya ekle'yi seçin. Ya da Bir alana not ekle'yi açıp bir denklemin veya şeklin çevresine kutu çizin.",
+    "failed": "Notlar kaydedilemedi. {{error}}",
+    "readOnly": "Daha yeni bir Oleafly ile kaydedildi. Düzenlemek için güncelleyin.",
+    "setAside": "Not dosyası okunamadı, bu yüzden yeni bir dosya başlatıldı.",
+    "noSource": "Kaynakta konum yok",
+    "page": "s. {{page}}",
+    "notFound": "Bu bölüm yeni PDF'te bulunamadı.",
+    "placing": "PDF'te bölümü seçin, ardından Buraya yerleştir'i seçin.",
+    "placeAgain": "Yeniden yerleştir",
+    "include": "{{number}} numaralı notu dahil et",
+    "resolve": "{{number}} numaralı notu çözüldü olarak işaretle",
+    "reopen": "{{number}} numaralı notu yeniden aç",
+    "delete": "{{number}} numaralı notu sil",
+    "editComment": "{{number}} numaralı notun yorumunu düzenle",
+    "addComment": "Yorum ekle",
+    "clear": "Tümünü sil",
+    "clearConfirm": "Bu projedeki tüm notlar silinsin mi? Bu işlem geri alınamaz.",
+    "send": "Asistana gönder ({{n}})"
+  }
+}

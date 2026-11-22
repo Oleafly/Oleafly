@@ -1,6 +1,8 @@
 import {
   type ComponentProps,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -11,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { cn } from "@/lib/utils";
 
+const POPOVER_MOTION =
+  "z-50 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+const POPOVER_CONTENT = `${POPOVER_MOTION} min-w-42 rounded-md border bg-card p-1 text-card-foreground`;
 const NESTED_POPUP = '[role="listbox"], [data-radix-popper-content-wrapper]';
 const HOVER_OPEN_MS = 250;
 const HOVER_CLOSE_MS = 200;
@@ -197,15 +202,94 @@ export function Popover({
                 event.preventDefault();
               }
             }}
-            className={cn(
-              "z-50 min-w-42 rounded-md border bg-card p-1 text-card-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-              className,
-            )}
+            className={cn(POPOVER_CONTENT, className)}
           >
             {children}
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>
       )}
+    </PopoverPrimitive.Root>
+  );
+}
+
+export type PopoverAnchor = { getBoundingClientRect(): DOMRect } | (() => DOMRect);
+
+interface AnchoredPopoverProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  anchor: PopoverAnchor;
+  contextElement?: Element | null;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  sideOffset?: number;
+  hideWhenDetached?: boolean;
+  bare?: boolean;
+  className?: string;
+  ariaLabel: string;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onInteractOutside?: (event: Event) => void;
+  children: ReactNode;
+}
+
+function measure(anchor: PopoverAnchor) {
+  return typeof anchor === "function" ? anchor() : anchor.getBoundingClientRect();
+}
+
+export function AnchoredPopover({
+  open,
+  onOpenChange,
+  anchor,
+  contextElement,
+  side = "bottom",
+  align = "start",
+  sideOffset = 4,
+  hideWhenDetached = false,
+  bare = false,
+  className,
+  ariaLabel,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
+  onInteractOutside,
+  children,
+}: Readonly<AnchoredPopoverProps>) {
+  const latest = useRef(anchor);
+  useLayoutEffect(() => {
+    latest.current = anchor;
+  }, [anchor]);
+  const virtualRef = useMemo(
+    () => ({
+      current: {
+        getBoundingClientRect: () => measure(latest.current),
+        contextElement: contextElement ?? undefined,
+      },
+    }),
+    [contextElement],
+  );
+
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <PopoverPrimitive.Anchor virtualRef={virtualRef} />
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          aria-label={ariaLabel}
+          side={side}
+          align={align}
+          sideOffset={sideOffset}
+          collisionPadding={12}
+          hideWhenDetached={hideWhenDetached}
+          onOpenAutoFocus={onOpenAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onInteractOutside={onInteractOutside}
+          data-bare={bare ? "" : undefined}
+          className={cn(bare ? `${POPOVER_MOTION} rounded-lg` : POPOVER_CONTENT, className)}
+        >
+          {children}
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
   );
 }

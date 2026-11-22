@@ -52,6 +52,17 @@ describe("assistant handoff", () => {
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
   });
 
+  it("hands context chips with an empty prompt, and gives them back once", () => {
+    const context = [{ id: "note:a", kind: "note", refId: "a", label: "Note on page 2" }];
+    handoffToAssistant("", { autoSend: false, context });
+
+    expect(useAgentHandoffStore.getState()).toMatchObject({ pendingPrompt: "", autoSend: false, pendingContext: context });
+    expect(useSettingsStore.getState().assistantOpen).toBe(true);
+    expect(useAgentHandoffStore.getState().consume()).toEqual({ prompt: "", autoSend: false, images: [], context });
+    expect(useAgentHandoffStore.getState()).toMatchObject({ pendingPrompt: null, pendingContext: [] });
+    expect(useAgentHandoffStore.getState().consume()).toBeNull();
+  });
+
   it("can send the handed-off prompt right away", () => {
     handoffToAssistant("Summarize", { autoSend: true });
 

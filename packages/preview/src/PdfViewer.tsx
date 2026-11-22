@@ -47,6 +47,12 @@ import {
   type PdfRenderScheduler,
 } from "./pdfRenderScheduler";
 import { registerPdfTextSelection } from "./pdfTextSelection";
+import type {
+  PdfAnnotationLayer,
+  PdfMark,
+  PdfRegionSelectionInfo,
+  PdfTextSelectionInfo,
+} from "./pdfMarks";
 import {
   normalizePdfOutline,
   type PdfOutlineItem,
@@ -1212,6 +1218,13 @@ export interface PdfViewerProps {
   pageColors?: PdfPageColors;
   reportWarning?: (scope: string, error: unknown) => void;
   t?: PreviewTranslator;
+  annotationLayer?: PdfAnnotationLayer;
+  markLabel?: (mark: PdfMark) => string;
+  marks?: readonly PdfMark[];
+  onMarkActivate?: (id: string) => void;
+  onSelectText?: (selection: PdfTextSelectionInfo | null) => void;
+  regionSelect?: boolean;
+  onSelectRegion?: (region: PdfRegionSelectionInfo) => void;
 }
 
 export interface PdfViewerHandle {
@@ -1250,10 +1263,31 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     pageColors,
     reportWarning,
     t = keyEchoTranslator,
+    annotationLayer,
+    markLabel,
+    marks,
+    onMarkActivate,
+    onSelectText,
+    regionSelect = false,
+    onSelectRegion,
   },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const annotationLayerRef = useRef(annotationLayer);
+  annotationLayerRef.current = annotationLayer;
+  const markLabelRef = useRef(markLabel);
+  markLabelRef.current = markLabel;
+  const marksRef = useRef<readonly PdfMark[]>(marks ?? []);
+  marksRef.current = marks ?? [];
+  const onMarkActivateRef = useRef(onMarkActivate);
+  onMarkActivateRef.current = onMarkActivate;
+  const onSelectTextRef = useRef(onSelectText);
+  onSelectTextRef.current = onSelectText;
+  const regionSelectRef = useRef(regionSelect);
+  regionSelectRef.current = regionSelect;
+  const onSelectRegionRef = useRef(onSelectRegion);
+  onSelectRegionRef.current = onSelectRegion;
   const dataRef = useRef(data);
   dataRef.current = data;
   const tRef = useRef(t);
@@ -1309,6 +1343,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const fastScrollUntilRef = useRef(0);
   const fastScrollTimerRef = useRef<number | null>(null);
   const schedulerRef = useRef<PdfRenderScheduler | null>(null);
+  const paintMarksOnPage = useCallback((pageNumber: number) => {
+    const wrap = wrapsRef.current.get(pageNumber);
+    const layer = annotationLayerRef.current;
+    if (!wrap || !layer) return;
+    try {
+      layer.paint(wrap, pageNumber, pageViewportsRef.current.get(pageNumber), marksRef.current, {
+        badgeLabel: (mark) => markLabelRef.current?.(mark) ?? mark.label,
+        onActivate: (id) => onMarkActivateRef.current?.(id),
+      });
+    } catch {
+      return;
+    }
+  }, []);
   const releaseStaleRaster = useCallback((pageNumber: number) => {
     const canvas = staleRastersRef.current.get(pageNumber);
     if (!canvas) return;
@@ -1485,6 +1532,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       for (const [pageNumber, viewport] of entries) {
         const wrap = wrapsRef.current.get(pageNumber);
         pageViewportsRef.current.set(pageNumber, viewport);
+        if (marksRef.current.length > 0) paintMarksOnPage(pageNumber);
         if (wrap) {
           wrap.dataset.pdfGeometry = "exact";
           wrap.dataset.pdfRotation = String(viewport.rotation);
@@ -1508,7 +1556,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
       }
     },
-    [],
+    [paintMarksOnPage],
   );
 
   const queuedViewportsRef = useRef(new Map<number, PdfPageViewport>());
@@ -2886,6 +2934,9 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           window.devicePixelRatio || 1,
         );
         wrap.addEventListener("click", (ev: MouseEvent) => {
+          if (regionSelectRef.current) return;
+          const badge = annotationLayerRef.current?.badgeClass;
+          if (badge && (ev.target as HTMLElement)?.closest?.(`.${badge}`)) return;
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           if ((ev.target as HTMLElement)?.closest?.(".pdf-screen-reader-layer")) return;
           const selection = document.getSelection();
@@ -3024,10 +3075,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         pageGeometry: syncPageGeometry,
         pageText: syncPageText,
       });
+      if (marksRef.current.length > 0) {
+        for (const pageNumber of wrapsRef.current.keys()) paintMarksOnPage(pageNumber);
+      }
 
       onPageChangeRef.current?.(currentPageRef.current, doc.numPages);
     },
     [
+      paintMarksOnPage,
       dropQueuedViewports,
       ensurePageGeometry,
       queueExactPageViewport,
@@ -3625,6 +3680,50 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       layerQueueRef.current?.setPaused(zoomSettlingRef.current);
     };
   }, [emitCurrentPage, data, scheduleDetailUpdate, syncViewportPages]);
+
+  useEffect(() => {
+    marksRef.current = marks ?? [];
+    for (const pageNumber of wrapsRef.current.keys()) paintMarksOnPage(pageNumber);
+  }, [marks, paintMarksOnPage]);
+
+  const selectTextEnabled = Boolean(onSelectText);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!data || !container || !selectTextEnabled || !annotationLayer) return;
+    let frame = 0;
+    let reported = false;
+    const report = () => {
+      frame = 0;
+      if (regionSelectRef.current) return;
+      const info = annotationLayer.readSelection(container, pageClickToBp, pdfjsLib.normalizeUnicode);
+      if (!info && !reported) return;
+      reported = Boolean(info);
+      onSelectTextRef.current?.(info);
+    };
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(report);
+    };
+    const onSelectionChange = () => {
+      if (!reported) return;
+      const selection = document.getSelection();
+      if (!selection || selection.isCollapsed) schedule();
+    };
+    container.addEventListener("mouseup", schedule);
+    container.addEventListener("keyup", schedule);
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      container.removeEventListener("mouseup", schedule);
+      container.removeEventListener("keyup", schedule);
+      document.removeEventListener("selectionchange", onSelectionChange);
+    };
+  }, [data, selectTextEnabled, annotationLayer]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!data || !container || !regionSelect || !annotationLayer) return;
+    return annotationLayer.watchRegion(container, pageClickToBp, (region) => onSelectRegionRef.current?.(region));
+  }, [data, regionSelect, annotationLayer]);
 
   if (!data) return null;
   // The page wrappers are appended imperatively; switching the container between

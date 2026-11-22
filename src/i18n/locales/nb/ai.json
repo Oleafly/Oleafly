@@ -240,7 +240,10 @@
     "send": "Send",
     "checkAgain": "Sjekk på nytt",
     "resizeHandle": "Endre størrelse på meldingsfeltet",
-    "resizeHint": "Dra for å endre størrelsen. Dobbeltklikk for å tilbakestille."
+    "resizeHint": "Dra for å endre størrelsen. Dobbeltklikk for å tilbakestille.",
+    "removeContext": "Fjern {{label}}",
+    "contextFailed": "Kunne ikke lese den vedlagte konteksten. Meldingen ble ikke sendt.",
+    "contextTooLarge": "Den vedlagte konteksten er for lang. Fjern noe og prøv igjen."
   },
   "commands": {
     "groups": {

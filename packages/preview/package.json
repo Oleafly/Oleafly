@@ -9,6 +9,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./controller": "./src/controller.ts",
+    "./pdfMarks": "./src/pdfMarks.ts",
+    "./pdfQuote": "./src/pdfQuote.ts",
     "./polyfills": "./src/polyfills.ts",
     "./pdf.worker": "./src/pdf.worker.ts",
     "./mainThreadWorker": "./src/mainThreadWorker.ts",

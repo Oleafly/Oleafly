@@ -55,6 +55,8 @@ import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" }
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { gitIsInitialized } from "@/lib/tauri";
 import { acpComposerId, useAcpSessionsStore } from "@/store/acp-sessions";
+import { registerComposerContextKind } from "@/lib/composer-context";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useComposerDrafts } from "@/store/composer-drafts";
 import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
@@ -887,5 +889,125 @@ describe("ACP drafts, failed sends and queued messages", () => {
     const dot = pill.querySelector("span[aria-hidden]");
     expect(dot?.className).toContain("motion-safe:animate-pulse");
     expect(dot?.className).not.toMatch(/(^|\s)animate-pulse/);
+  });
+});
+
+describe("ACP composer context chips", () => {
+  const note = { id: "note:n1", kind: "test-note", refId: "n1", label: "Note on page 2" };
+  const expand = vi.fn();
+  const sent = vi.fn();
+  let unregister: () => void = () => {};
+  const selection = { path: "main.tex", text: "Note on page 2 (main.tex):\n```\nFix the sign in n1\n```" };
+
+  beforeEach(() => {
+    expand.mockImplementation(async (_projectId: string, refIds: readonly string[]) =>
+      refIds.map((refId) => ({ refId, path: "main.tex", text: `Fix the sign in ${refId}` })),
+    );
+    unregister = registerComposerContextKind("test-note", { expand, sent });
+    useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [], pendingContext: [], target: "built-in" });
+  });
+  afterEach(() => unregister());
+
+  it("sends many chips as one selection, so they don't count against the attachment limit", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), lastSequence: 1 }, permissions: [] });
+    const notes = Array.from({ length: 11 }, (_, index) => ({
+      id: `note:n${index}`,
+      kind: "test-note",
+      refId: `n${index}`,
+      label: `Note ${index}`,
+    }));
+    useComposerDrafts.getState().addContext(composerId, notes);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await readyComposer(ui);
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.send }));
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledTimes(1));
+    const sentInput = vi.mocked(acpPrompt).mock.calls[0]?.[2] as { selections: { path: string | null; text: string }[] };
+    expect(sentInput.selections).toHaveLength(1);
+    expect(sentInput.selections[0]?.path).toBeNull();
+    expect(sentInput.selections[0]?.text).toContain("Fix the sign in n10");
+  });
+
+  it("sends a chip-only draft as a real selection and marks it sent", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), lastSequence: 1 }, permissions: [] });
+    useComposerDrafts.getState().addContext(composerId, [note]);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await readyComposer(ui);
+    expect(await ui.findByTestId("composer-context-chip")).toHaveTextContent("Note on page 2");
+
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.send }));
+
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", input("", { selections: [selection] })));
+    expect(expand).toHaveBeenCalledExactlyOnceWith("paper", ["n1"]);
+    await waitFor(() => expect(sent).toHaveBeenCalledExactlyOnceWith("paper", ["n1"]));
+    expect(ui.queryByTestId("composer-context-chip")).toBeNull();
+    expect(useComposerDrafts.getState().drafts[composerId]).toBeUndefined();
+  });
+
+  it("restores the chip and does not mark it sent when the prompt never reached the agent", async () => {
+    vi.mocked(acpPrompt).mockRejectedValue(new Error("The agent refused the prompt."));
+    useComposerDrafts.getState().addContext(composerId, [note]);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "Please fix");
+    fireEvent.keyDown(composer, { key: "Enter" });
+
+    expect(await ui.findByRole("alert")).toHaveTextContent("The agent refused the prompt.");
+    expect(acpPrompt).toHaveBeenCalledWith("paper", "saved", input("Please fix", { selections: [selection] }));
+    expect(composer).toHaveValue("Please fix");
+    expect(await ui.findByTestId("composer-context-chip")).toHaveTextContent("Note on page 2");
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it("keeps the chip and says so when its context cannot be read", async () => {
+    expand.mockRejectedValue(new Error("source missing"));
+    useComposerDrafts.getState().addContext(composerId, [note]);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "Please fix");
+    fireEvent.keyDown(composer, { key: "Enter" });
+
+    expect(await ui.findByRole("alert")).toHaveTextContent(enAi.composer.contextFailed);
+    expect(acpPrompt).not.toHaveBeenCalled();
+    expect(composer).toHaveValue("Please fix");
+    expect(await ui.findByTestId("composer-context-chip")).toBeInTheDocument();
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it("marks a queued message's context sent once it goes out after the turn", async () => {
+    let emit: (value: AcpEvent) => void = () => {};
+    vi.mocked(onAcpEvent).mockImplementation(async (listener) => { emit = listener; return () => {}; });
+    vi.mocked(acpPrompt).mockResolvedValue({ session: session("saved", { status: "running", lastSequence: 1 }), permissions: [] });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+
+    typeMessage(composer, "First question");
+    fireEvent.keyDown(composer, { key: "Enter" });
+    await waitFor(() => expect(composer).toHaveAttribute("placeholder", enAi.acp.composerPlaceholderRunning));
+    act(() => useComposerDrafts.getState().addContext(composerId, [note]));
+    typeMessage(composer, "Then this");
+    fireEvent.keyDown(composer, { key: "Enter" });
+
+    const queued = await ui.findByTestId("acp-queued");
+    expect(queued).toHaveTextContent("Then this");
+    expect(within(queued).queryByRole("button", { name: enAi.acp.queue.sendNow })).toBeNull();
+    expect(ui.queryByTestId("composer-context-chip")).toBeNull();
+    expect(sent).not.toHaveBeenCalled();
+
+    snapshots.saved = { session: session("saved", { status: "ready", lastSequence: 2 }), permissions: [] };
+    act(() => emit(event(2, "turn_complete", { stopReason: "end_turn" })));
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledTimes(2));
+    expect(acpPrompt).toHaveBeenLastCalledWith("paper", "saved", input("Then this", { selections: [selection] }));
+    await waitFor(() => expect(sent).toHaveBeenCalledExactlyOnceWith("paper", ["n1"]));
+  });
+
+  it("puts handed-off context in the composer with an empty box", async () => {
+    useAgentHandoffStore.setState({ pendingPrompt: "", autoSend: false, pendingImages: [], pendingContext: [note], target: "acp" });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+
+    expect(await ui.findByTestId("composer-context-chip")).toHaveTextContent("Note on page 2");
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull();
+    expect(composer).toHaveValue("");
+    expect(acpPrompt).not.toHaveBeenCalled();
   });
 });

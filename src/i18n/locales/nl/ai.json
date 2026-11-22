@@ -240,7 +240,10 @@
     "send": "Versturen",
     "checkAgain": "Opnieuw controleren",
     "resizeHandle": "Grootte van het berichtvak aanpassen",
-    "resizeHint": "Sleep om de grootte aan te passen. Dubbelklik om terug te zetten."
+    "resizeHint": "Sleep om de grootte aan te passen. Dubbelklik om terug te zetten.",
+    "removeContext": "{{label}} verwijderen",
+    "contextFailed": "De bijgevoegde context kon niet worden gelezen. Het bericht is niet verzonden.",
+    "contextTooLarge": "De bijgevoegde context is te lang. Verwijder een deel en probeer het opnieuw."
   },
   "commands": {
     "groups": {

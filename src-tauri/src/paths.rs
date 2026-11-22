@@ -512,6 +512,31 @@ pub(crate) fn state_subdirectory(
     }
 }
 
+pub(crate) fn private_state_file(
+    location: &ProjectLocation,
+    name: &str,
+) -> Result<PathBuf, String> {
+    let directory = match location.kind {
+        ProjectKind::Linked => location.ensure_linked_state(&location.private_state_dir())?,
+        ProjectKind::Library => {
+            let project = location
+                .root
+                .canonicalize()
+                .map_err(|e| format!("failed to resolve project directory: {e}"))?;
+            let internal = project.join(crate::project_location::LIBRARY_STATE_DIR);
+            ensure_real_directory(&internal, "project data")?;
+            let internal = internal
+                .canonicalize()
+                .map_err(|e| format!("failed to resolve project data directory: {e}"))?;
+            if internal.parent() != Some(project.as_path()) {
+                return Err("project data directory escapes the project root".to_string());
+            }
+            internal
+        }
+    };
+    Ok(directory.join(name))
+}
+
 pub(crate) fn existing_state_subdirectory(
     location: &ProjectLocation,
     name: &str,

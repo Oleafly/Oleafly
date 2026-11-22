@@ -240,7 +240,10 @@
     "send": "Skicka",
     "checkAgain": "Kontrollera igen",
     "resizeHandle": "Ändra storlek på meddelanderutan",
-    "resizeHint": "Dra för att ändra storlek. Dubbelklicka för att återställa."
+    "resizeHint": "Dra för att ändra storlek. Dubbelklicka för att återställa.",
+    "removeContext": "Ta bort {{label}}",
+    "contextFailed": "Det bifogade sammanhanget kunde inte läsas. Meddelandet skickades inte.",
+    "contextTooLarge": "Den bifogade kontexten är för lång. Ta bort en del och försök igen."
   },
   "commands": {
     "groups": {
