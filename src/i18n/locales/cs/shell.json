@@ -319,6 +319,10 @@
       "keywords": "bez rušení soustředění celá obrazovka skrýt rozhraní minimalistický psaní",
       "label": "Přepnout režim Zen"
     },
+    "visualSettings": {
+      "keywords": "vzhled písmo řez písma text velikost odstavec odsazení mezery zarovnání do bloku nadpis psaní",
+      "label": "Nastavení vizuálního režimu"
+    },
     "togglePreview": {
       "keywords": "pdf náhled zobrazit skrýt rozdělit jen editor",
       "label": "Přepnout náhled PDF"
@@ -1143,7 +1147,7 @@
       "empty": "Žádné nastavení neodpovídá",
       "keywords": {
         "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
-        "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
+        "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení, vizuální režim, řez písma, odsazení odstavce, do bloku",
         "collaboration": "servery, přihlášení, zařízení, členové, správci, sdílení, týmy, laboratoře, živé úpravy, reálný čas, protokol zabezpečení",
         "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
         "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",

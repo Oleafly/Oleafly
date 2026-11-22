@@ -1485,18 +1485,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Aspetto delle note",
-      "resetAriaLabel": "Ripristina il valore predefinito dell'impostazione {{setting}}",
       "text": {
         "title": "Testo"
       },
       "typeface": {
         "label": "Tipo di carattere",
-        "description": "Scegli un tipo di carattere per il testo delle note.",
-        "options": {
-          "sans": "Senza grazie",
-          "serif": "Con grazie",
-          "mono": "Monospaziato"
-        }
+        "description": "Scegli un tipo di carattere per il testo delle note."
       },
       "font": {
         "label": "Font delle note",
@@ -1515,23 +1509,14 @@
       },
       "paragraphSpacing": {
         "label": "Spaziatura dei paragrafi",
-        "description": "Imposta lo spazio tra paragrafi, elenchi e altri blocchi.",
-        "options": {
-          "compact": "Compatta",
-          "normal": "Normale",
-          "relaxed": "Ariosa",
-          "spacious": "Ampia"
-        }
+        "description": "Imposta lo spazio tra paragrafi, elenchi e altri blocchi."
       },
       "headings": {
         "title": "Titoli di sezione e titolo"
       },
       "headingTypeface": {
         "label": "Tipo di carattere dei titoli",
-        "description": "Scegli un tipo di carattere per i titoli di sezione e il titolo della nota.",
-        "options": {
-          "text": "Come il testo"
-        }
+        "description": "Scegli un tipo di carattere per i titoli di sezione e il titolo della nota."
       },
       "headingFont": {
         "label": "Font dei titoli",
@@ -1539,12 +1524,7 @@
       },
       "headingSize": {
         "label": "Dimensione dei titoli di sezione",
-        "description": "Imposta la dimensione dei titoli di sezione rispetto al testo.",
-        "options": {
-          "small": "Più piccoli",
-          "normal": "Normale",
-          "large": "Più grandi"
-        }
+        "description": "Imposta la dimensione dei titoli di sezione rispetto al testo."
       },
       "titleSize": {
         "label": "Dimensione del titolo",

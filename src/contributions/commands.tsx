@@ -57,6 +57,7 @@ import {
   Tag,
   ToolCase,
   Trash2,
+  Type,
   Underline,
   X,
   Zap,
@@ -288,6 +289,7 @@ const ENGLISH_KEYWORDS = {
   closeAllEditorTabs: "close all editor tabs files",
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
+  visualSettings: "visual mode font typeface text size line height paragraph spacing indent justify heading color zen writing",
   togglePreview: "pdf preview show hide split editor only layout view",
   resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
   movePaneToEdge: "move pane edge dock side split stack layout",
@@ -1236,6 +1238,16 @@ export function registerPaletteCommands() {
     run: () => {
       toggleZenMode();
     },
+  });
+  palette({
+    id: "palette.visual-settings",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.visualSettings.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.visualSettings.keywords)} ${ENGLISH_KEYWORDS.visualSettings}`,
+    icon: () => <Type className="size-4" />,
+    order: 516,
+    run: () => useSettingsStore.getState().openSettingsAt("appearance", "visual"),
   });
   palette({
     id: "palette.toggle-preview",

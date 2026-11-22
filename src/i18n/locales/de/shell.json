@@ -317,6 +317,10 @@
       "keywords": "ablenkungsfrei Fokus Vollbild Oberfläche ausblenden minimal schreiben",
       "label": "Zen-Modus ein- oder ausschalten"
     },
+    "visualSettings": {
+      "keywords": "Darstellung Schrift Schriftart Text Größe Absatz Einzug Abstand Blocksatz Überschrift Schreiben",
+      "label": "Einstellungen für den visuellen Modus"
+    },
     "togglePreview": {
       "keywords": "pdf vorschau anzeigen ausblenden geteilt nur editor",
       "label": "PDF-Vorschau ein- oder ausblenden"
@@ -1111,7 +1115,7 @@
       "empty": "Keine passenden Einstellungen",
       "keywords": {
         "ai": "Assistent, Chat, Modelle, Anbieter, API-Schlüssel, Agenten, Prompts, Budget, MCP-Server",
-        "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout",
+        "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout, visueller Modus, Schriftart, Absatzeinzug, Blocksatz",
         "collaboration": "Server, Anmelden, Anmeldung, Geräte, Mitglieder, Maintainer, Teilen, Teams, Labore, Arbeitsgruppen, Live-Bearbeitung, Echtzeit, Sicherheitsprotokoll, Zusammenarbeit, Kollaboration",
         "data": "Backup, Sicherung, Bibliotheksordner, Projektordner, Speicher, Speicherplatz, Papierkorb, Projekte löschen, Checkpoints",
         "dictionary": "Rechtschreibung, eigene Wörter, ignorierte Wörter, Korrektur, Korrekturlesen, Grammatikregeln",

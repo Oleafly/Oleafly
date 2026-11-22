@@ -1,73 +1,56 @@
 import type { EditorThemeId } from "@/lib/editor-themes";
-import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
-import {
-  clampNotesLineHeight,
-  NOTES_APPEARANCE_DEFAULTS,
-  NOTES_LINE_HEIGHTS,
-  type NotesAppearance,
-  type NotesAppearanceKey,
-  type NotesCodeTheme,
-  type NotesHeadingSize,
-  type NotesLineHeight,
-  type NotesParagraphSpacing,
-  type NotesTypeface,
-} from "@/lib/notes-appearance";
+import { fontFamilyOr } from "@/lib/font-families";
+import type { NotesAppearance, NotesCodeTheme } from "@/lib/notes-appearance";
 import { hexLuminance } from "@/lib/peer-colors";
-import { sameValue } from "@/lib/same-value";
+import {
+  headingFont,
+  lineHeightValue,
+  typefaceFont,
+  type HeadingSize,
+  type ParagraphSpacing,
+  type TypefaceStacks,
+} from "@/lib/text-appearance";
 
-export const NOTES_TYPEFACE_STACKS: Readonly<Record<NotesTypeface, string>> = {
+export const NOTES_TYPEFACE_STACKS: TypefaceStacks = {
   sans: "var(--font-sans)",
   serif: 'ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, Cambria, "Times New Roman", serif',
   mono: "var(--font-mono)",
 };
 
-export const NOTES_FONT_SIZES: readonly number[] = [12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
-
-export const NOTES_PARAGRAPH_SPACINGS: Readonly<Record<NotesParagraphSpacing, number>> = {
+const NOTES_PARAGRAPH_SPACINGS: Readonly<Record<ParagraphSpacing, number>> = {
   compact: 0.4,
   normal: 0.75,
   relaxed: 1.1,
   spacious: 1.5,
 };
 
-export const NOTES_HEADING_SCALES: Readonly<Record<NotesHeadingSize, readonly [number, number, number]>> = {
+const NOTES_HEADING_SCALES: Readonly<Record<HeadingSize, readonly [number, number, number]>> = {
   small: [1.3, 1.15, 1.05],
   normal: [1.5, 1.25, 1.1],
   large: [1.8, 1.45, 1.2],
 };
 
-export function notesSettingIsDefault(state: Readonly<NotesAppearance>, key: NotesAppearanceKey): boolean {
-  return sameValue(state[key], NOTES_APPEARANCE_DEFAULTS[key]);
-}
-
-export function notesLineHeightValue(choice: NotesLineHeight, custom: number): number {
-  return choice === "custom" ? clampNotesLineHeight(custom) : NOTES_LINE_HEIGHTS[choice];
-}
-
 function rem(pixels: number): string {
   return `${pixels / 16}rem`;
 }
 
-function familyOr(name: string, fallback: string): string {
-  return fontFamilyName(name) ? fontFamilyStack(name, fallback) : fallback;
-}
-
 export function notesTextFont(appearance: Pick<NotesAppearance, "notesTypeface" | "notesFontFamily">): string {
-  return familyOr(appearance.notesFontFamily, NOTES_TYPEFACE_STACKS[appearance.notesTypeface]);
+  return typefaceFont(NOTES_TYPEFACE_STACKS, appearance.notesTypeface, appearance.notesFontFamily);
 }
 
 export function notesHeadingFont(
   appearance: Pick<NotesAppearance, "notesTypeface" | "notesFontFamily" | "notesHeadingTypeface" | "notesHeadingFontFamily">,
 ): string {
-  const typeface =
-    appearance.notesHeadingTypeface === "text"
-      ? notesTextFont(appearance)
-      : NOTES_TYPEFACE_STACKS[appearance.notesHeadingTypeface];
-  return familyOr(appearance.notesHeadingFontFamily, typeface);
+  return headingFont(
+    NOTES_TYPEFACE_STACKS,
+    notesTextFont(appearance),
+    appearance.notesHeadingTypeface,
+    appearance.notesHeadingFontFamily,
+  );
 }
 
 export function notesCodeFont(appearance: Pick<NotesAppearance, "notesCodeFontFamily">): string {
-  return familyOr(appearance.notesCodeFontFamily, "var(--font-mono)");
+  return fontFamilyOr(appearance.notesCodeFontFamily, "var(--font-mono)");
 }
 
 export function notesAppearanceVariables(appearance: NotesAppearance): Record<string, string> {
@@ -75,7 +58,7 @@ export function notesAppearanceVariables(appearance: NotesAppearance): Record<st
   const variables: Record<string, string> = {
     "--notes-text-font": notesTextFont(appearance),
     "--notes-text-size": rem(appearance.notesFontSize),
-    "--notes-line-height": String(notesLineHeightValue(appearance.notesLineHeight, appearance.notesCustomLineHeight)),
+    "--notes-line-height": String(lineHeightValue(appearance.notesLineHeight, appearance.notesCustomLineHeight)),
     "--notes-block-gap": `${NOTES_PARAGRAPH_SPACINGS[appearance.notesParagraphSpacing]}em`,
     "--notes-heading-font": notesHeadingFont(appearance),
     "--notes-h1": `${h1}em`,

@@ -316,6 +316,10 @@
       "keywords": "專注 無干擾 全螢幕 隱藏介面 極簡 寫作",
       "label": "切換禪模式"
     },
+    "visualSettings": {
+      "keywords": "外觀 字型 字型類型 文字大小 段落 縮排 間距 左右對齊 標題 寫作 appearance font typeface paragraph indent justify heading",
+      "label": "視覺化模式設定"
+    },
     "togglePreview": {
       "keywords": "pdf 預覽 顯示 隱藏 分割 僅編輯器",
       "label": "切換 PDF 預覽"
@@ -1095,7 +1099,7 @@
       "empty": "沒有相符的設定",
       "keywords": {
         "ai": "助理，聊天，模型，供應商，API 金鑰，代理程式，提示詞，預算，MCP 伺服器",
-        "appearance": "主題，深色模式，淺色模式，顏色，色彩，字型，文字大小，縮放，版面配置",
+        "appearance": "主題，深色模式，淺色模式，顏色，色彩，字型，文字大小，縮放，版面配置，視覺化模式，字型類型，段落縮排，左右對齊",
         "collaboration": "伺服器，登入，裝置，成員，維護者，分享，團隊，實驗室，即時編輯，共同編輯，即時，安全性記錄",
         "data": "備份，專案庫資料夾，專案資料夾，儲存空間，磁碟空間，垃圾桶，資源回收筒，刪除專案，檢查點",
         "dictionary": "拼字，自訂字詞，忽略的字詞，校對，文法規則",

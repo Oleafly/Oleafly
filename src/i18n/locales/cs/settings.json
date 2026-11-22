@@ -1043,6 +1043,7 @@
     "tabs": {
       "app": "Aplikace",
       "editor": "Editor",
+      "visual": "Vizuální režim",
       "files": "Projekt",
       "pdf": "Náhled PDF",
       "terminal": "Terminál",
@@ -1181,6 +1182,115 @@
         "label": "Zobrazit PDF při kompilaci"
       },
       "title": "Režim Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Bezpatkové",
+        "serif": "Patkové",
+        "mono": "Neproporcionální",
+        "text": "Stejné jako text"
+      },
+      "paragraphSpacings": {
+        "compact": "Kompaktní",
+        "normal": "Normální",
+        "relaxed": "Volnější",
+        "spacious": "Prostorné"
+      },
+      "headingSizes": {
+        "small": "Menší",
+        "normal": "Normální",
+        "large": "Větší"
+      }
+    },
+    "resetSetting": "Obnovit výchozí hodnotu: {{setting}}",
+    "visual": {
+      "intro": "Zvolte, jak vypadají soubory LaTeX a Typst ve vizuálním režimu. Vaše soubory ani PDF se nemění. Chcete-li upravit vzhled i souborů Markdown, zapněte jejich přepínač v části Rozvržení. Barvy textu a odkazů se nastavují v části Barvy editoru na kartě Editor.",
+      "matchEditor": "Podle editoru",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Řez písma",
+        "description": "Zvolte řez písma pro text ve vizuálním režimu."
+      },
+      "font": {
+        "label": "Písmo vizuálního režimu",
+        "description": "Vyberte pro text ve vizuálním režimu libovolné nainstalované písmo. Když pole necháte prázdné, použije se nastavení Řez písma."
+      },
+      "fontSize": {
+        "label": "Velikost textu",
+        "description": "Nastavte velikost textu ve vizuálním režimu. Možnost Podle editoru se řídí velikostí písma editoru.",
+        "customLabel": "Vlastní velikost textu vizuálního režimu v pixelech"
+      },
+      "lineHeight": {
+        "label": "Výška řádku",
+        "description": "Nastavte rozestup mezi řádky textu. Možnost Podle editoru se řídí výškou řádku editoru.",
+        "customLabel": "Vlastní výška řádku vizuálního režimu"
+      },
+      "paragraphSpacing": {
+        "label": "Mezery mezi odstavci",
+        "description": "Nastavte, jak vysoký je prázdný řádek mezi dvěma odstavci."
+      },
+      "paragraphIndent": {
+        "label": "Odsazení odstavce",
+        "description": "Odsadí první řádek každého odstavce stejně jako v PDF. LaTeX neodsazuje odstavec za nadpisem a Typst odsazuje jen odstavec, který následuje po jiném odstavci.",
+        "none": "Žádné",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Zarovnání textu",
+        "description": "Pravý okraj nechte nezarovnaný, nebo řádky zarovnejte na oba okraje.",
+        "options": {
+          "start": "Vlevo",
+          "justify": "Do bloku"
+        }
+      },
+      "headings": {
+        "title": "Nadpisy a název"
+      },
+      "headingTypeface": {
+        "label": "Řez písma nadpisů",
+        "description": "Zvolte řez písma pro nadpisy a název dokumentu."
+      },
+      "headingFont": {
+        "label": "Písmo nadpisů",
+        "description": "Vyberte nainstalované písmo pro nadpisy a název dokumentu. Když pole necháte prázdné, použije se nastavení Řez písma nadpisů."
+      },
+      "headingSize": {
+        "label": "Velikost nadpisů",
+        "description": "Nastavte, jak velké mají být nadpisy oproti textu."
+      },
+      "headingColor": {
+        "label": "Barva nadpisů",
+        "description": "Barva nadpisů a názvu dokumentu. Možnost Motiv editoru ponechá barvu nadpisů, kterou jim dává motiv editoru.",
+        "matchTheme": "Motiv editoru",
+        "customAriaLabel": "Vyberte vlastní barvu nadpisů"
+      },
+      "layout": {
+        "title": "Rozvržení"
+      },
+      "width": {
+        "label": "Šířka textu",
+        "description": "Nastavte, jak dlouhý může být řádek, než se zalomí.",
+        "options": {
+          "narrow": "Úzká",
+          "standard": "Standardní",
+          "wide": "Široká",
+          "full": "Plná šířka"
+        }
+      },
+      "markdown": {
+        "label": "Použít i pro Markdown",
+        "description": "Použít tento vzhled i pro soubory Markdown ve vizuálním režimu. Když je volba vypnutá, Markdown zůstane u písma aplikace."
+      },
+      "preview": {
+        "label": "Náhled vizuálního režimu",
+        "heading": "Úvod",
+        "first": "Vizuální režim zobrazuje nadpisy a odstavce místo příkazů, které je vytvářejí.",
+        "second": "Tento odstavec následuje po prázdném řádku. Odsazení odstavce posune jeho první řádek dovnitř.",
+        "subheading": "Metoda",
+        "third": "Změňte nastavení a tento text se změní s ním."
+      }
     }
   },
   "checkpoints": {

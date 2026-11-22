@@ -1,25 +1,31 @@
 import { useEffect, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { editorTheme } from "@/components/editor/cm/theme";
 import { useEditorThemeId } from "@/hooks/use-editor-theme";
+
+const NO_EXTENSIONS: readonly Extension[] = [];
 
 export function ReadOnlyLatex({
   source,
   gutter = false,
   className,
   testId,
+  language,
+  extensions = NO_EXTENSIONS,
 }: Readonly<{
   source: string;
   gutter?: boolean;
   className?: string;
   testId?: string;
+  language?: Extension;
+  extensions?: readonly Extension[];
 }>) {
   const editorThemeId = useEditorThemeId();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const initialRef = useRef({ source, gutter });
+  const initialRef = useRef({ source, gutter, language, extensions });
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -27,12 +33,14 @@ export function ReadOnlyLatex({
     const view = new EditorView({
       state: EditorState.create({
         doc: initial.source,
+        selection: { anchor: initial.source.length },
         extensions: [
           ...(initial.gutter ? [lineNumbers()] : []),
           EditorView.lineWrapping,
           EditorView.editable.of(false),
           EditorState.readOnly.of(true),
-          latexLanguage(),
+          initial.language ?? latexLanguage(),
+          ...initial.extensions,
           editorTheme(),
         ],
       }),
@@ -50,7 +58,7 @@ export function ReadOnlyLatex({
     if (!view) return;
     const current = view.state.doc.toString();
     if (current !== source) {
-      view.dispatch({ changes: { from: 0, to: current.length, insert: source } });
+      view.dispatch({ changes: { from: 0, to: current.length, insert: source }, selection: { anchor: source.length } });
     }
   }, [source]);
 

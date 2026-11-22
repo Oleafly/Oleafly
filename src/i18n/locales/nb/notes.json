@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Utseende for notater",
-      "resetAriaLabel": "Tilbakestill {{setting}} til standard",
       "text": {
         "title": "Tekst"
       },
       "typeface": {
         "label": "Skrifttype",
-        "description": "Velg en skrifttype for notattekst.",
-        "options": {
-          "sans": "Uten seriffer",
-          "serif": "Med seriffer",
-          "mono": "Fast bredde"
-        }
+        "description": "Velg en skrifttype for notattekst."
       },
       "font": {
         "label": "Notatskrift",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Avsnittsavstand",
-        "description": "Angi avstanden mellom avsnitt, lister og andre blokker.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Vanlig",
-          "relaxed": "Luftig",
-          "spacious": "Romslig"
-        }
+        "description": "Angi avstanden mellom avsnitt, lister og andre blokker."
       },
       "headings": {
         "title": "Overskrifter og tittel"
       },
       "headingTypeface": {
         "label": "Skrifttype for overskrifter",
-        "description": "Velg en skrifttype for overskrifter og notattittelen.",
-        "options": {
-          "text": "Samme som teksten"
-        }
+        "description": "Velg en skrifttype for overskrifter og notattittelen."
       },
       "headingFont": {
         "label": "Overskriftsskrift",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Overskriftsstørrelse",
-        "description": "Angi hvor store overskriftene er sammenlignet med teksten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Vanlig",
-          "large": "Større"
-        }
+        "description": "Angi hvor store overskriftene er sammenlignet med teksten."
       },
       "titleSize": {
         "label": "Tittelstørrelse",

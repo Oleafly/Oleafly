@@ -237,6 +237,7 @@ export function Editor() {
     if (projectId && activePath) useVisualModeStore.getState().remember(activePath);
   }, [projectId, activePath]);
   const toggleWysiwyg = () => setActiveFileMode(wysiwyg ? "code" : "visual");
+  const visualDocument = wysiwyg && (isMarkdownFile || toolbarProfile === "latex" || toolbarProfile === "typst");
   const splitCapable = isMarkdownFile || sourcePreview !== null;
   const markdownSplit = splitCapable && fileViewMode === "both";
   const stackMarkdownSplit = markdownSplitLayout === "stacked";
@@ -555,7 +556,7 @@ export function Editor() {
               <button
                 type="button"
                 aria-label={t(($) => $.editor.shell.editorSettings)}
-                onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
+                onClick={() => useSettingsStore.getState().openSettingsAt("appearance", visualDocument ? "visual" : "editor")}
                 className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
               >
                 <Settings2 className="size-4" aria-hidden />

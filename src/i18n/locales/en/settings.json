@@ -1031,6 +1031,7 @@
     "tabs": {
       "app": "App",
       "editor": "Editor",
+      "visual": "Visual mode",
       "files": "Project",
       "pdf": "PDF Preview",
       "terminal": "Terminal",
@@ -1167,6 +1168,115 @@
         "label": "Show the PDF when you compile"
       },
       "title": "Zen mode"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Sans serif",
+        "serif": "Serif",
+        "mono": "Monospace",
+        "text": "Same as text"
+      },
+      "paragraphSpacings": {
+        "compact": "Compact",
+        "normal": "Normal",
+        "relaxed": "Relaxed",
+        "spacious": "Spacious"
+      },
+      "headingSizes": {
+        "small": "Smaller",
+        "normal": "Normal",
+        "large": "Larger"
+      }
+    },
+    "resetSetting": "Reset {{setting}} to default",
+    "visual": {
+      "intro": "Choose how LaTeX and Typst files look in Visual mode. Your files and the PDF don't change. To style Markdown too, turn on its switch under Layout. Text and link colors are set in Editor colors on the Editor tab.",
+      "matchEditor": "Match editor",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typeface",
+        "description": "Choose a typeface for text in Visual mode."
+      },
+      "font": {
+        "label": "Visual mode font",
+        "description": "Pick any installed font for text in Visual mode. Leave it empty to use the Typeface setting."
+      },
+      "fontSize": {
+        "label": "Text size",
+        "description": "Set the size of text in Visual mode. Match editor follows the editor font size.",
+        "customLabel": "Custom Visual mode text size in pixels"
+      },
+      "lineHeight": {
+        "label": "Line height",
+        "description": "Set the space between lines of text. Match editor follows the editor line height.",
+        "customLabel": "Custom Visual mode line height"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraph spacing",
+        "description": "Set how tall the blank line between two paragraphs is."
+      },
+      "paragraphIndent": {
+        "label": "Paragraph indent",
+        "description": "Indent the first line of each paragraph, like the PDF does. LaTeX leaves the paragraph after a heading alone, and Typst indents only a paragraph that follows another.",
+        "none": "None",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Text alignment",
+        "description": "Leave the right edge ragged, or justify lines to both edges.",
+        "options": {
+          "start": "Left",
+          "justify": "Justified"
+        }
+      },
+      "headings": {
+        "title": "Headings and title"
+      },
+      "headingTypeface": {
+        "label": "Heading typeface",
+        "description": "Choose a typeface for headings and the document title."
+      },
+      "headingFont": {
+        "label": "Heading font",
+        "description": "Pick an installed font for headings and the document title. Leave it empty to use the Heading typeface setting."
+      },
+      "headingSize": {
+        "label": "Heading size",
+        "description": "Set how large headings are compared with the text."
+      },
+      "headingColor": {
+        "label": "Heading color",
+        "description": "Color for headings and the document title. Editor theme keeps the heading color your editor theme gives them.",
+        "matchTheme": "Editor theme",
+        "customAriaLabel": "Pick a custom heading color"
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Text width",
+        "description": "Set how long a line gets before it wraps.",
+        "options": {
+          "narrow": "Narrow",
+          "standard": "Standard",
+          "wide": "Wide",
+          "full": "Full width"
+        }
+      },
+      "markdown": {
+        "label": "Use for Markdown too",
+        "description": "Use this look for Markdown files in Visual mode too. When it's off, Markdown keeps the app font."
+      },
+      "preview": {
+        "label": "Visual mode preview",
+        "heading": "Introduction",
+        "first": "Visual mode shows headings and paragraphs instead of the commands that make them.",
+        "second": "This paragraph comes after a blank line. A paragraph indent moves its first line in.",
+        "subheading": "Method",
+        "third": "Change a setting and this text changes with it."
+      }
     }
   },
   "checkpoints": {

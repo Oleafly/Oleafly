@@ -1,18 +1,23 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { editorColor } from "../../color-roles";
+import { visualHeadingColorSelectors, visualHeadingSize, visualVariable } from "../appearance";
 
 const MONO = "var(--ofl-visual-mono)";
 const SANS = "var(--ofl-visual-sans)";
 
 export const typstVisualTheme: Extension = EditorView.theme({
   ".ofl-visual-typst-heading": {
+    fontFamily: visualVariable("--visual-heading-font"),
     fontWeight: "550",
     lineHeight: "1.35",
   },
-  ".ofl-visual-typst-heading-1": { fontSize: "1.6em", paddingTop: "0.4em" },
-  ".ofl-visual-typst-heading-2": { fontSize: "1.44em", paddingTop: "0.3em" },
-  ".ofl-visual-typst-heading-3": { fontSize: "1.2em", paddingTop: "0.2em" },
+  [visualHeadingColorSelectors([".ofl-visual-typst-heading", ".ofl-visual-typst-heading *"])]: {
+    color: visualVariable("--visual-heading-color"),
+  },
+  ".ofl-visual-typst-heading-1": { fontSize: visualHeadingSize(1.6), paddingTop: "0.4em" },
+  ".ofl-visual-typst-heading-2": { fontSize: visualHeadingSize(1.44), paddingTop: "0.3em" },
+  ".ofl-visual-typst-heading-3": { fontSize: visualHeadingSize(1.2), paddingTop: "0.2em" },
   ".ofl-visual-typst-heading-4, .ofl-visual-typst-heading-5, .ofl-visual-typst-heading-6": {
     fontSize: "1em",
   },
@@ -38,6 +43,7 @@ export const typstVisualTheme: Extension = EditorView.theme({
   ".ofl-visual-typst-raw-line": {
     backgroundColor: "var(--ofl-visual-panel)",
     fontFamily: MONO,
+    textAlign: "start",
     padding: "0 12px",
   },
   ".ofl-visual-typst-raw-first-line": {

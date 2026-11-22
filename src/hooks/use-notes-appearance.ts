@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { type AppearanceStyle, attachAppearanceStyle } from "@/lib/appearance-style";
 import type { EditorThemeId } from "@/lib/editor-themes";
 import {
   NOTES_APPEARANCE_KEYS,
@@ -13,12 +14,6 @@ import {
 import { currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 
-export interface NotesAppearanceStyle {
-  variables: Readonly<Record<string, string>>;
-  attributes: Readonly<Record<string, string | null>>;
-}
-
-const EMPTY_STYLE: NotesAppearanceStyle = { variables: {}, attributes: {} };
 const palettes = new Map<EditorThemeId, Readonly<Record<string, string>>>();
 
 export function readCodePalette(theme: EditorThemeId): Readonly<Record<string, string>> {
@@ -47,7 +42,7 @@ export function notesAppearanceStyle(
   appearance: NotesAppearance,
   mode: Theme,
   editorThemes: Readonly<Record<Theme, EditorThemeId>>,
-): NotesAppearanceStyle {
+): AppearanceStyle {
   const variables = notesAppearanceVariables(appearance);
   const attributes: Record<string, string | null> = notesAppearanceAttributes(appearance);
   const codeTheme = resolveNotesCodeTheme(appearance.notesCodeTheme, mode, editorThemes);
@@ -62,29 +57,7 @@ export function notesAppearanceStyle(
   return { variables, attributes };
 }
 
-export function writeNotesAppearance(
-  element: HTMLElement,
-  next: NotesAppearanceStyle,
-  previous: NotesAppearanceStyle = EMPTY_STYLE,
-): NotesAppearanceStyle {
-  for (const name of Object.keys(previous.variables)) {
-    if (!(name in next.variables)) element.style.removeProperty(name);
-  }
-  for (const [name, value] of Object.entries(next.variables)) {
-    if (previous.variables[name] !== value) element.style.setProperty(name, value);
-  }
-  for (const name of Object.keys(previous.attributes)) {
-    if (!(name in next.attributes)) element.removeAttribute(name);
-  }
-  for (const [name, value] of Object.entries(next.attributes)) {
-    if (previous.attributes[name] === value) continue;
-    if (value === null) element.removeAttribute(name);
-    else element.setAttribute(name, value);
-  }
-  return next;
-}
-
-function currentStyle(): NotesAppearanceStyle {
+function currentStyle(): AppearanceStyle {
   const state = useSettingsStore.getState();
   return notesAppearanceStyle(state, currentTheme(), { light: state.editorThemeLight, dark: state.editorThemeDark });
 }
@@ -92,19 +65,7 @@ function currentStyle(): NotesAppearanceStyle {
 const STYLE_KEYS = [...NOTES_APPEARANCE_KEYS, "editorThemeLight", "editorThemeDark"] as const;
 
 export function attachNotesAppearance(element: HTMLElement): () => void {
-  let applied = writeNotesAppearance(element, currentStyle());
-  const apply = () => {
-    applied = writeNotesAppearance(element, currentStyle(), applied);
-  };
-  const stopSettings = useSettingsStore.subscribe((state, previous) => {
-    if (STYLE_KEYS.some((key) => state[key] !== previous[key])) apply();
-  });
-  const stopTheme = subscribeTheme(apply);
-  return () => {
-    stopSettings();
-    stopTheme();
-    writeNotesAppearance(element, EMPTY_STYLE, applied);
-  };
+  return attachAppearanceStyle(element, STYLE_KEYS, currentStyle, [subscribeTheme]);
 }
 
 export function useNotesAppearanceRef<T extends HTMLElement>(): (element: T | null) => (() => void) | undefined {

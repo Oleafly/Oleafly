@@ -5,6 +5,7 @@ import { visualModeActive, visualPortsFacet } from "./facets";
 import { visualKeymap } from "./keymap";
 import { listItemMarker } from "./list-marker";
 import { markDecorations } from "./mark-decorations";
+import { latexParagraphs } from "./paragraphs";
 import { contentShownWhenParsed } from "./parsed-content";
 import { pasteHtml } from "./paste-html";
 import { pointerSelectionTracking, scrollAdjustment } from "./selection";
@@ -72,6 +73,7 @@ export function visualMode(ports: VisualPorts): Extension {
     listItemMarker,
     atomicDecorations,
     markDecorations,
+    latexParagraphs,
     visualKeymap,
     pasteHtml,
     contentShownWhenParsed,

@@ -1025,6 +1025,7 @@
     "tabs": {
       "app": "應用程式",
       "editor": "編輯器",
+      "visual": "視覺化模式",
       "files": "專案",
       "pdf": "PDF 預覽",
       "terminal": "終端機",
@@ -1160,6 +1161,115 @@
         "label": "編譯時顯示 PDF"
       },
       "title": "禪模式"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "無襯線",
+        "serif": "襯線",
+        "mono": "等寬",
+        "text": "與內文相同"
+      },
+      "paragraphSpacings": {
+        "compact": "緊密",
+        "normal": "標準",
+        "relaxed": "寬鬆",
+        "spacious": "寬敞"
+      },
+      "headingSizes": {
+        "small": "較小",
+        "normal": "標準",
+        "large": "較大"
+      }
+    },
+    "resetSetting": "將{{setting}}重設為預設值",
+    "visual": {
+      "intro": "選擇 LaTeX 和 Typst 檔案在視覺化模式中的外觀。你的檔案和 PDF 不會改變。若要同時為 Markdown 設定樣式，請在「版面配置」下開啟它的開關。文字和連結顏色在「編輯器」分頁的「編輯器顏色」中設定。",
+      "matchEditor": "與編輯器一致",
+      "text": {
+        "title": "內文"
+      },
+      "typeface": {
+        "label": "字型類型",
+        "description": "選擇視覺化模式中內文的字型類型。"
+      },
+      "font": {
+        "label": "視覺化模式字型",
+        "description": "為視覺化模式中的內文選擇任何已安裝的字型。留空則使用「字型類型」設定。"
+      },
+      "fontSize": {
+        "label": "文字大小",
+        "description": "設定視覺化模式中文字的大小。「與編輯器一致」會使用編輯器的文字大小。",
+        "customLabel": "自訂視覺化模式文字大小（像素）"
+      },
+      "lineHeight": {
+        "label": "行高",
+        "description": "設定文字的行距。「與編輯器一致」會使用編輯器的行高。",
+        "customLabel": "自訂視覺化模式行高"
+      },
+      "paragraphSpacing": {
+        "label": "段落間距",
+        "description": "設定兩個段落之間空行的高度。"
+      },
+      "paragraphIndent": {
+        "label": "段落縮排",
+        "description": "像 PDF 一樣縮排每個段落的首行。LaTeX 不縮排標題後的段落，Typst 只縮排接在另一個段落後面的段落。",
+        "none": "無",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "文字對齊",
+        "description": "右邊緣保持參差不齊，或將每行對齊到兩端。",
+        "options": {
+          "start": "靠左對齊",
+          "justify": "左右對齊"
+        }
+      },
+      "headings": {
+        "title": "標題與文件標題"
+      },
+      "headingTypeface": {
+        "label": "標題字型類型",
+        "description": "為標題和文件標題選擇字型類型。"
+      },
+      "headingFont": {
+        "label": "標題字型",
+        "description": "為標題和文件標題選擇已安裝的字型。留空則使用「標題字型類型」設定。"
+      },
+      "headingSize": {
+        "label": "標題大小",
+        "description": "設定標題相對於內文的大小。"
+      },
+      "headingColor": {
+        "label": "標題顏色",
+        "description": "標題和文件標題的顏色。「編輯器主題」會保留編輯器主題為標題指定的顏色。",
+        "matchTheme": "編輯器主題",
+        "customAriaLabel": "選擇自訂標題顏色"
+      },
+      "layout": {
+        "title": "版面配置"
+      },
+      "width": {
+        "label": "文字寬度",
+        "description": "設定一行文字在多長時換行。",
+        "options": {
+          "narrow": "窄",
+          "standard": "標準",
+          "wide": "寬",
+          "full": "全寬"
+        }
+      },
+      "markdown": {
+        "label": "也用於 Markdown",
+        "description": "在視覺化模式中，Markdown 檔案也使用這種外觀。關閉後，Markdown 維持應用程式字型。"
+      },
+      "preview": {
+        "label": "視覺化模式預覽",
+        "heading": "簡介",
+        "first": "視覺化模式會顯示標題和段落，而不是產生它們的命令。",
+        "second": "這個段落接在一個空行之後。段落縮排會讓它的首行向內縮排。",
+        "subheading": "方法",
+        "third": "更改設定後，這段文字也會隨之變化。"
+      }
     }
   },
   "checkpoints": {

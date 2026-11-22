@@ -318,6 +318,10 @@
       "keywords": "sans distraction concentration plein écran masquer interface minimal écriture",
       "label": "Activer ou désactiver le mode Zen"
     },
+    "visualSettings": {
+      "keywords": "apparence police type de police taille du texte retrait de paragraphe espacement justifier titres écriture",
+      "label": "Réglages du mode Visuel"
+    },
     "togglePreview": {
       "keywords": "pdf aperçu afficher masquer partager éditeur seul",
       "label": "Afficher ou masquer l'aperçu PDF"
@@ -1127,7 +1131,7 @@
       "empty": "Aucun paramètre ne correspond",
       "keywords": {
         "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
-        "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
+        "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page, mode visuel, type de police, retrait de paragraphe, justifier",
         "collaboration": "serveurs, connexion, se connecter, appareils, membres, mainteneurs, partage, équipes, labos, laboratoires, édition en direct, temps réel, journal de sécurité",
         "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
         "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",

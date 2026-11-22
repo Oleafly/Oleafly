@@ -33,7 +33,7 @@ import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { NotesAppearanceTab } from "./NotesAppearance";
 
 const notes = enNotes.appearance.notes;
-const reset = (setting: string) => notes.resetAriaLabel.replace("{{setting}}", setting);
+const reset = (setting: string) => enSettings.appearance.resetSetting.replace("{{setting}}", setting);
 
 function previewRoot() {
   return screen.getByTestId("settings-notes-preview-root");
@@ -136,8 +136,8 @@ describe("Notes appearance tab", () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ editorThemeLight: "paper" });
     render(<NotesAppearanceTab />);
-    await pick(user, "settings-row-notes-paragraph-spacing-trigger", notes.paragraphSpacing.options.relaxed);
-    await pick(user, "settings-row-notes-heading-size-trigger", notes.headingSize.options.large);
+    await pick(user, "settings-row-notes-paragraph-spacing-trigger", enSettings.appearance.text.paragraphSpacings.relaxed);
+    await pick(user, "settings-row-notes-heading-size-trigger", enSettings.appearance.text.headingSizes.large);
     await pick(user, "settings-row-notes-title-size-trigger", "32px");
     await pick(user, "settings-row-notes-code-theme-trigger", notes.codeTheme.options.editor);
     expect(useSettingsStore.getState()).toMatchObject({
@@ -308,7 +308,7 @@ describe("Notes appearance tab", () => {
     expect(document.activeElement).toHaveAccessibleName(copy.remove.replace("{{from}}", "<-"));
     await user.click(screen.getByRole("button", { name: reset(copy.list) }));
     expect(useSettingsStore.getState().notesTextReplacements).toEqual(NOTES_TEXT_REPLACEMENTS);
-    expect(screen.queryByTestId("settings-notes-reset-notesTextReplacements")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("settings-reset-notesTextReplacements")).not.toBeInTheDocument();
     await user.click(screen.getByRole("switch", { name: copy.label }));
     expect(useSettingsStore.getState().notesTextReplace).toBe(false);
     expect(screen.queryByTestId("settings-notes-replacements")).not.toBeInTheDocument();
@@ -317,7 +317,7 @@ describe("Notes appearance tab", () => {
   it("hides the reset for pairs saved with the built-in list", () => {
     useSettingsStore.getState().setNotesAppearance("notesTextReplacements", { ...NOTES_TEXT_REPLACEMENTS });
     render(<NotesAppearanceTab />);
-    expect(screen.queryByTestId("settings-notes-reset-notesTextReplacements")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("settings-reset-notesTextReplacements")).not.toBeInTheDocument();
   });
 
   it("stops adding new pairs at the limit and says why, but still changes an existing one", async () => {

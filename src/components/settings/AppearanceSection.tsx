@@ -79,6 +79,7 @@ import { ThemeCustomization, ThemeTokenField, useThemeTokenEditor } from "@/comp
 import { ThemePresetSetting } from "@/components/settings/ThemePresets";
 import { useThemePreset } from "@/hooks/use-theme-preset";
 import { themePresetStyle } from "@/lib/theme-presets";
+import { VisualAppearanceTab } from "@/components/settings/VisualAppearance";
 import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -102,6 +103,7 @@ const NotesAppearanceTab = lazy(
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
   { id: "editor", label: () => i18n.t(($) => $.settings.appearance.tabs.editor) },
+  { id: "visual", label: () => i18n.t(($) => $.settings.appearance.tabs.visual) },
   { id: "terminal", label: () => i18n.t(($) => $.settings.appearance.tabs.terminal) },
   { id: "pdf", label: () => i18n.t(($) => $.settings.appearance.tabs.pdf) },
   { id: "files", label: () => i18n.t(($) => $.settings.appearance.tabs.files) },
@@ -1691,6 +1693,9 @@ export function AppearanceSection() {
         </TabsContent>
         <TabsContent value="editor">
           <EditorAppearanceTab />
+        </TabsContent>
+        <TabsContent value="visual">
+          <VisualAppearanceTab />
         </TabsContent>
         <TabsContent value="terminal">
           <TerminalAppearanceTab />

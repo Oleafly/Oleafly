@@ -1427,18 +1427,12 @@
   "appearance": {
     "notes": {
       "sectionName": "ノートの外観",
-      "resetAriaLabel": "{{setting}} を既定に戻す",
       "text": {
         "title": "テキスト"
       },
       "typeface": {
         "label": "書体",
-        "description": "ノートの本文の書体を選びます。",
-        "options": {
-          "sans": "サンセリフ",
-          "serif": "セリフ",
-          "mono": "等幅"
-        }
+        "description": "ノートの本文の書体を選びます。"
       },
       "font": {
         "label": "ノートのフォント",
@@ -1457,23 +1451,14 @@
       },
       "paragraphSpacing": {
         "label": "段落の間隔",
-        "description": "段落、リスト、その他のブロックの間隔を設定します。",
-        "options": {
-          "compact": "狭い",
-          "normal": "標準",
-          "relaxed": "ゆったり",
-          "spacious": "広い"
-        }
+        "description": "段落、リスト、その他のブロックの間隔を設定します。"
       },
       "headings": {
         "title": "見出しとタイトル"
       },
       "headingTypeface": {
         "label": "見出しの書体",
-        "description": "見出しとノートのタイトルの書体を選びます。",
-        "options": {
-          "text": "本文と同じ"
-        }
+        "description": "見出しとノートのタイトルの書体を選びます。"
       },
       "headingFont": {
         "label": "見出しのフォント",
@@ -1481,12 +1466,7 @@
       },
       "headingSize": {
         "label": "見出しのサイズ",
-        "description": "本文に対する見出しの大きさを設定します。",
-        "options": {
-          "small": "小さめ",
-          "normal": "標準",
-          "large": "大きめ"
-        }
+        "description": "本文に対する見出しの大きさを設定します。"
       },
       "titleSize": {
         "label": "タイトルのサイズ",

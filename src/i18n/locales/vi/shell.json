@@ -316,6 +316,10 @@
       "keywords": "không xao nhãng tập trung toàn màn hình ẩn giao diện tối giản viết",
       "label": "Bật tắt Chế độ Zen"
     },
+    "visualSettings": {
+      "keywords": "giao diện phông chữ kiểu chữ cỡ chữ thụt lề đoạn khoảng cách căn đều tiêu đề viết appearance font typeface paragraph indent justify heading",
+      "label": "Cài đặt chế độ Trực quan"
+    },
     "togglePreview": {
       "keywords": "xem trước pdf hiện ẩn chia đôi chỉ trình soạn thảo",
       "label": "Bật tắt Xem trước PDF"
@@ -1095,7 +1099,7 @@
       "empty": "Không có cài đặt nào khớp",
       "keywords": {
         "ai": "trợ lý, trò chuyện, mô hình, nhà cung cấp, API key, agent, prompt, hạn mức, máy chủ MCP",
-        "appearance": "giao diện, chế độ tối, chế độ sáng, màu, phông chữ, cỡ chữ, phóng, bố cục",
+        "appearance": "giao diện, chế độ tối, chế độ sáng, màu, phông chữ, cỡ chữ, phóng, bố cục, chế độ trực quan, kiểu chữ, thụt lề đoạn, căn đều",
         "collaboration": "máy chủ, đăng nhập, thiết bị, thành viên, người duy trì, chia sẻ, nhóm, phòng lab, chỉnh sửa trực tiếp, thời gian thực, nhật ký bảo mật",
         "data": "sao lưu, thư mục thư viện, thư mục dự án, lưu trữ, dung lượng đĩa, thùng rác, xoá dự án, điểm lưu",
         "dictionary": "chính tả, từ tuỳ chỉnh, từ bỏ qua, hiệu đính, quy tắc ngữ pháp",

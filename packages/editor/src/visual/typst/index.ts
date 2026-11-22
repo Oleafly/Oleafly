@@ -12,6 +12,7 @@ import { typstFormsField, typstFormsSync } from "./forms/state";
 import { typstFormsTheme } from "./forms/theme";
 import { typstVisualKeymap } from "./keymap";
 import { typstMarkDecorations } from "./marks";
+import { typstParagraphs } from "./paragraphs";
 import { typstMathThemeWatcher } from "./math";
 import { typstPasteHtml } from "./paste-html";
 import { typstContentShownWhenParsed } from "./reveal";
@@ -42,6 +43,7 @@ export function typstVisualMode(ports: VisualPorts, path: string | null = null):
     scrollAdjustment,
     typstAtomicDecorations,
     typstMarkDecorations,
+    typstParagraphs,
     typstVisualKeymap,
     typstPasteHtml,
     typstContentShownWhenParsed,

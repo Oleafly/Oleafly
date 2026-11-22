@@ -1043,6 +1043,7 @@
     "tabs": {
       "app": "Aplikacja",
       "editor": "Edytor",
+      "visual": "Tryb wizualny",
       "files": "Projekt",
       "pdf": "Podgląd PDF",
       "terminal": "Terminal",
@@ -1181,6 +1182,115 @@
         "label": "Pokaż PDF przy kompilacji"
       },
       "title": "Tryb Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Bezszeryfowy",
+        "serif": "Szeryfowy",
+        "mono": "Stałej szerokości",
+        "text": "Taki jak tekst"
+      },
+      "paragraphSpacings": {
+        "compact": "Zwarte",
+        "normal": "Zwykłe",
+        "relaxed": "Swobodne",
+        "spacious": "Przestronne"
+      },
+      "headingSizes": {
+        "small": "Mniejszy",
+        "normal": "Zwykły",
+        "large": "Większy"
+      }
+    },
+    "resetSetting": "Przywróć domyślne ustawienie: {{setting}}",
+    "visual": {
+      "intro": "Wybierz, jak pliki LaTeX i Typst wyglądają w trybie wizualnym. Twoje pliki i PDF się nie zmieniają. Aby stylizować także Markdown, włącz jego przełącznik w sekcji Układ. Kolory tekstu i linków ustawisz w sekcji Kolory edytora na karcie Edytor.",
+      "matchEditor": "Taki jak w edytorze",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Krój pisma",
+        "description": "Wybierz krój pisma dla tekstu w trybie wizualnym."
+      },
+      "font": {
+        "label": "Czcionka trybu wizualnego",
+        "description": "Wybierz dowolną zainstalowaną czcionkę dla tekstu w trybie wizualnym. Pozostaw pole puste, aby używać ustawienia Krój pisma."
+      },
+      "fontSize": {
+        "label": "Rozmiar tekstu",
+        "description": "Ustaw rozmiar tekstu w trybie wizualnym. Opcja Taki jak w edytorze używa rozmiaru pisma edytora.",
+        "customLabel": "Niestandardowy rozmiar tekstu w trybie wizualnym w pikselach"
+      },
+      "lineHeight": {
+        "label": "Wysokość wiersza",
+        "description": "Ustaw odstęp między wierszami tekstu. Opcja Taki jak w edytorze używa wysokości wiersza edytora.",
+        "customLabel": "Niestandardowa wysokość wiersza w trybie wizualnym"
+      },
+      "paragraphSpacing": {
+        "label": "Odstępy między akapitami",
+        "description": "Ustaw wysokość pustego wiersza między dwoma akapitami."
+      },
+      "paragraphIndent": {
+        "label": "Wcięcie akapitu",
+        "description": "Wcinaj pierwszy wiersz każdego akapitu, tak jak robi to PDF. LaTeX nie wcina akapitu po nagłówku, a Typst wcina tylko akapit następujący po innym akapicie.",
+        "none": "Brak",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Wyrównanie tekstu",
+        "description": "Zostaw prawą krawędź nierówną albo wyjustuj wiersze do obu krawędzi.",
+        "options": {
+          "start": "Do lewej",
+          "justify": "Wyjustowane"
+        }
+      },
+      "headings": {
+        "title": "Nagłówki i tytuł"
+      },
+      "headingTypeface": {
+        "label": "Krój pisma nagłówków",
+        "description": "Wybierz krój pisma dla nagłówków i tytułu dokumentu."
+      },
+      "headingFont": {
+        "label": "Czcionka nagłówków",
+        "description": "Wybierz zainstalowaną czcionkę dla nagłówków i tytułu dokumentu. Pozostaw pole puste, aby używać ustawienia Krój pisma nagłówków."
+      },
+      "headingSize": {
+        "label": "Rozmiar nagłówków",
+        "description": "Ustaw rozmiar nagłówków względem tekstu."
+      },
+      "headingColor": {
+        "label": "Kolor nagłówków",
+        "description": "Kolor nagłówków i tytułu dokumentu. Opcja Motyw edytora zachowuje kolor, jaki nagłówkom nadaje motyw edytora.",
+        "matchTheme": "Motyw edytora",
+        "customAriaLabel": "Wybierz własny kolor nagłówków"
+      },
+      "layout": {
+        "title": "Układ"
+      },
+      "width": {
+        "label": "Szerokość tekstu",
+        "description": "Ustaw, jak długi może być wiersz, zanim się zawinie.",
+        "options": {
+          "narrow": "Wąska",
+          "standard": "Standardowa",
+          "wide": "Szeroka",
+          "full": "Pełna szerokość"
+        }
+      },
+      "markdown": {
+        "label": "Używaj także dla Markdown",
+        "description": "Używaj tego wyglądu także dla plików Markdown w trybie wizualnym. Gdy jest wyłączone, Markdown zachowuje czcionkę aplikacji."
+      },
+      "preview": {
+        "label": "Podgląd trybu wizualnego",
+        "heading": "Wstęp",
+        "first": "Tryb wizualny pokazuje nagłówki i akapity zamiast poleceń, które je tworzą.",
+        "second": "Ten akapit następuje po pustym wierszu. Wcięcie akapitu przesuwa jego pierwszy wiersz do środka.",
+        "subheading": "Metoda",
+        "third": "Zmień ustawienie, a ten tekst zmieni się razem z nim."
+      }
     }
   },
   "checkpoints": {

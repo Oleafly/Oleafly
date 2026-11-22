@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Weergave van notities",
-      "resetAriaLabel": "{{setting}} terugzetten naar standaard",
       "text": {
         "title": "Tekst"
       },
       "typeface": {
         "label": "Lettersoort",
-        "description": "Kies een lettersoort voor de tekst van notities.",
-        "options": {
-          "sans": "Schreefloos",
-          "serif": "Met schreef",
-          "mono": "Vaste breedte"
-        }
+        "description": "Kies een lettersoort voor de tekst van notities."
       },
       "font": {
         "label": "Lettertype van notities",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Alinea-afstand",
-        "description": "Stel de ruimte tussen alinea's, lijsten en andere blokken in.",
-        "options": {
-          "compact": "Compact",
-          "normal": "Normaal",
-          "relaxed": "Luchtig",
-          "spacious": "Ruim"
-        }
+        "description": "Stel de ruimte tussen alinea's, lijsten en andere blokken in."
       },
       "headings": {
         "title": "Koppen en titel"
       },
       "headingTypeface": {
         "label": "Lettersoort van koppen",
-        "description": "Kies een lettersoort voor koppen en de titel van de notitie.",
-        "options": {
-          "text": "Zelfde als tekst"
-        }
+        "description": "Kies een lettersoort voor koppen en de titel van de notitie."
       },
       "headingFont": {
         "label": "Lettertype van koppen",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Grootte van koppen",
-        "description": "Stel in hoe groot koppen zijn ten opzichte van de tekst.",
-        "options": {
-          "small": "Kleiner",
-          "normal": "Normaal",
-          "large": "Groter"
-        }
+        "description": "Stel in hoe groot koppen zijn ten opzichte van de tekst."
       },
       "titleSize": {
         "label": "Grootte van de titel",
