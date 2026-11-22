@@ -182,7 +182,7 @@ pub(crate) fn project_entry_path(
     project_id: &str,
     path: &str,
 ) -> Result<std::path::PathBuf, String> {
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let mut target = location.root.clone();
     if !path.is_empty() {
         crate::sandbox::resolve_readable_at(&location, path)?;

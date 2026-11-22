@@ -70,18 +70,20 @@ export function insertFileLink(target: string): boolean {
 
 export type FileReference = "link" | "path" | "relativePath";
 
-async function fileReferenceText(target: string, reference: FileReference): Promise<string> {
+function fileReferenceText(target: string, reference: FileReference): Promise<string> {
   const files = useFilesStore.getState();
-  if (reference === "relativePath") return isWindows ? target.replaceAll("/", "\\") : target;
+  if (reference === "relativePath") return Promise.resolve(isWindows ? target.replaceAll("/", "\\") : target);
   if (reference === "path") {
-    if (!files.projectId) throw new Error("no project is open");
+    if (!files.projectId) return Promise.reject(new Error("no project is open"));
     return projectFilePath(files.projectId, target);
   }
   const language = linkLanguageFor(files.activePath);
-  return fileLinkSource(language ?? "markdown", target, {
-    fromFile: language ? (files.activePath ?? "") : "",
-    mainDoc: files.mainDoc,
-  });
+  return Promise.resolve(
+    fileLinkSource(language ?? "markdown", target, {
+      fromFile: language ? (files.activePath ?? "") : "",
+      mainDoc: files.mainDoc,
+    }),
+  );
 }
 
 export async function copyFileReference(target: string, reference: FileReference): Promise<boolean> {
