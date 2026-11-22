@@ -44,7 +44,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useDisplayPath } from "@/lib/display-path";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { revealInDir } from "@/lib/tauri";
-import { isMac } from "@/lib/utils";
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { i18n } from "@/i18n";
 import {
   addResearchRoot,
@@ -379,9 +379,7 @@ function RootCard({
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onClick={() => void revealInDir(root.canonicalPath).catch(() => {})}>
                 <FolderOpen className="size-4 text-muted-foreground" />
-                {isMac
-                  ? t(($) => $.researchTools.roots.card.showInFinder)
-                  : t(($) => $.researchTools.roots.card.showInExplorer)}
+                {showInFileManagerLabel()}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="size-4 text-muted-foreground" />{" "}

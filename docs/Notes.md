@@ -730,8 +730,9 @@ A version is saved:
 
 Select a version to see what restoring it would change. Restore writes that
 version's text into the note. Only the text changes. Attached files stay as
-they are. Versions are kept outside the note's folder, in the same store as
-project [checkpoints](Checkpoints.md).
+they are. The version the note is on has a Current tag, so after a restore the
+restored version carries it. Versions are kept outside the note's folder, in
+the same store as project [checkpoints](Checkpoints.md).
 
 ## Send to paper and Export
 

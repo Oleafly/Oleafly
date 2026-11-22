@@ -407,10 +407,7 @@
   "versioning": {
     "dismiss": "Masquer la gestion des versions",
     "title": "Gestion des versions",
-    "close": "Fermer la gestion des versions",
-    "views": "Vues de la gestion des versions",
-    "gitHistory": "Historique Git",
-    "savedCheckpoints": "Points de contrôle enregistrés"
+    "close": "Fermer la gestion des versions"
   },
   "wordCount": {
     "close": "Fermer les infos du projet"
@@ -460,20 +457,6 @@
     "fontPackAction": "Télécharger et compiler",
     "fontPackDownloading": "Téléchargement…",
     "fontPackFailed": "Le pack de polices n'a pas pu être téléchargé. Vérifiez votre connexion et réessayez."
-  },
-  "history": {
-    "untitledCommit": "Commit sans titre",
-    "restoreFailed": "Impossible de restaurer cette version Git.",
-    "copyIdFailed": "Impossible de copier cet identifiant de commit.",
-    "empty": "Aucun historique Git pour l'instant",
-    "emptyHint": "Initialisez le contrôle de version, puis validez quand vous voulez une version ici.",
-    "commitIdCopied": "Identifiant de commit copié",
-    "copyCommitId": "Copier l'identifiant complet du commit",
-    "copyCommitIdFor": "Copier l'identifiant du commit {{id}}",
-    "overwriteTooltip": "Écraser tous les fichiers avec cette version",
-    "overwriteAll": "Tout écraser",
-    "restoreTooltip": "Restaurer cette version (écrase tous les fichiers)",
-    "restore": "Restaurer"
   },
   "diff": {
     "reloadFailed": "La comparaison n'a pas pu être rechargée. Fermez cet onglet et rouvrez-le.",
@@ -578,9 +561,6 @@
     "unsupported": "La relecture n'est pas prise en charge pour ce format de document."
   },
   "checkpoints": {
-    "showInExplorer": "Afficher dans l'Explorateur",
-    "showInFinder": "Afficher dans le Finder",
-    "showInFileManager": "Afficher dans le gestionnaire de fichiers",
     "timeNotRecorded": "Heure non enregistrée",
     "justNow": "À l'instant",
     "fallbackName": "Point de contrôle",
@@ -659,12 +639,13 @@
       "deleteCheckpoint": "Supprimer le point de contrôle",
       "restoreFor": "Restaurer {{version}}",
       "restore": "Restaurer",
-      "deleteFor": "Supprimer {{version}}"
+      "deleteFor": "Supprimer {{version}}",
+      "current": "Actuelle"
     },
     "toast": {
       "copyIdFailed": "Impossible de copier cet identifiant de point de contrôle.",
       "saveLabelFailed": "Impossible d'enregistrer le libellé du point de contrôle.",
-      "restored": "Point de contrôle restauré.",
+      "restored": "{{version}} restaurée. Gestion des versions la marque désormais comme Actuelle.",
       "restoreFailed": "Impossible de restaurer ce point de contrôle. Consultez le journal de l'application pour en savoir plus.",
       "deleted": "Point de contrôle supprimé.",
       "deleteFailed": "Impossible de supprimer ce point de contrôle.",
@@ -723,7 +704,7 @@
     "maintenance": {
       "title": "Maintenance",
       "description": "Supprimez les points de contrôle dont ce projet n'a plus besoin.",
-      "keepLatestPrompt": "Supprimer tous les points de contrôle sauf le plus récent ? Cette action est irréversible.",
+      "keepLatestPrompt": "Supprimer tous les points de contrôle sauf le plus récent et celui marqué « Actuelle » ? Cette action est irréversible.",
       "deleteOlder": "Supprimer les points de contrôle plus anciens",
       "keepAll": "Conserver tous les points de contrôle",
       "resetPrompt": "Supprimer tous les points de contrôle de ce projet ? Les fichiers actuels du projet restent inchangés. Cette action est irréversible.",

@@ -36,6 +36,7 @@ import {
 } from "@/lib/project-sources";
 import { existingProjectFiles } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { useCompileRootStore } from "@/store/compile-root";
 import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { useFilesStore } from "@/store/files";
 
@@ -1085,4 +1086,12 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       });
     },
   };
+});
+
+useIndexStore.subscribe((state, previous) => {
+  const data = state.intelligenceState.data;
+  if (data?.latexUnits === previous.intelligenceState.data?.latexUnits) return;
+  useCompileRootStore
+    .getState()
+    .setLatexUnits(data?.latexUnits ? { projectId: data.identity.projectId, units: data.latexUnits } : null);
 });

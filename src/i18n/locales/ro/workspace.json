@@ -55,7 +55,11 @@
     "insertLink": "Inserează o legătură",
     "copyLink": "Copiază legătura",
     "linkCopied": "Legătura a fost copiată",
-    "copyLinkFailed": "Legătura nu a fost copiată. Verifică accesul la clipboard și încearcă din nou."
+    "copyLinkFailed": "Legătura nu a fost copiată. Verifică accesul la clipboard și încearcă din nou.",
+    "copyPath": "Copiază calea",
+    "copyRelativePath": "Copiază calea relativă",
+    "pathCopied": "Calea a fost copiată",
+    "copyPathFailed": "Calea nu a fost copiată. Verifică accesul la clipboard și încearcă din nou."
   },
   "explorer": {
     "resizeSections": "Redimensionează {{first}} și {{second}}"

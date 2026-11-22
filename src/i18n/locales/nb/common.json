@@ -24,7 +24,10 @@
     "no": "Nei",
     "learnMore": "Les mer",
     "showMore": "Vis mer",
-    "showLess": "Vis mindre"
+    "showLess": "Vis mindre",
+    "showInFinder": "Vis i Finder",
+    "showInExplorer": "Vis i Filutforsker",
+    "showInFileManager": "Vis i filbehandleren"
   },
   "state": {
     "loading": "Laster…",

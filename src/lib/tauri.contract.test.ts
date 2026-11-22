@@ -83,6 +83,7 @@ describe("IPC command contract", () => {
     ["refreshDeadlines", () => tauri.refreshDeadlines(), "refresh_deadlines", undefined],
     ["revealProject at the root", () => tauri.revealProject("p"), "reveal_project", { projectId: "p", path: null }],
     ["revealProject at a file", () => tauri.revealProject("p", "a.tex"), "reveal_project", { projectId: "p", path: "a.tex" }],
+    ["projectFilePath", () => tauri.projectFilePath("p", "chapters/a.tex"), "project_file_path", { projectId: "p", path: "chapters/a.tex" }],
     ["pendingOpenRequests", () => tauri.pendingOpenRequests(), "pending_open_requests", undefined],
     ["beginOpenSession", () => tauri.beginOpenSession(), "begin_open_session", undefined],
     ["pickOpenFolder", () => tauri.pickOpenFolder(), "pick_open_folder", { browse: null }],

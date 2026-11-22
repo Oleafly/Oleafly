@@ -55,7 +55,11 @@
     "insertLink": "Vložit odkaz",
     "copyLink": "Kopírovat odkaz",
     "linkCopied": "Odkaz zkopírován",
-    "copyLinkFailed": "Odkaz nebyl zkopírován. Zkontrolujte přístup ke schránce a zkuste to znovu."
+    "copyLinkFailed": "Odkaz nebyl zkopírován. Zkontrolujte přístup ke schránce a zkuste to znovu.",
+    "copyPath": "Kopírovat cestu",
+    "copyRelativePath": "Kopírovat relativní cestu",
+    "pathCopied": "Cesta zkopírována",
+    "copyPathFailed": "Cesta nebyla zkopírována. Zkontrolujte přístup ke schránce a zkuste to znovu."
   },
   "explorer": {
     "resizeSections": "Změnit velikost sekcí {{first}} a {{second}}"

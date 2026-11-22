@@ -50,8 +50,6 @@
       "readOnly": "Jen ke čtení",
       "browse": "Procházet soubory",
       "moreActions": "Další akce pro {{label}}",
-      "showInFinder": "Zobrazit ve Finderu",
-      "showInExplorer": "Zobrazit v Průzkumníku",
       "unlink": "Zrušit propojení",
       "listingTruncated": "Toto zobrazení končí po 2 000 souborech nebo osmi úrovních složek.",
       "emptyFolder": "Tato složka je prázdná.",

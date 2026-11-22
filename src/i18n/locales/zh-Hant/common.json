@@ -24,7 +24,10 @@
     "no": "否",
     "learnMore": "了解詳情",
     "showMore": "顯示更多",
-    "showLess": "顯示較少"
+    "showLess": "顯示較少",
+    "showInFinder": "在 Finder 中顯示",
+    "showInExplorer": "在檔案總管中顯示",
+    "showInFileManager": "在檔案管理員中顯示"
   },
   "state": {
     "loading": "載入中…",

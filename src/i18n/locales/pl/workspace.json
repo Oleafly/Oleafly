@@ -55,7 +55,11 @@
     "insertLink": "Wstaw odsyłacz",
     "copyLink": "Kopiuj odsyłacz",
     "linkCopied": "Skopiowano odsyłacz",
-    "copyLinkFailed": "Odsyłacz nie został skopiowany. Sprawdź dostęp do schowka i spróbuj ponownie."
+    "copyLinkFailed": "Odsyłacz nie został skopiowany. Sprawdź dostęp do schowka i spróbuj ponownie.",
+    "copyPath": "Kopiuj ścieżkę",
+    "copyRelativePath": "Kopiuj ścieżkę względną",
+    "pathCopied": "Skopiowano ścieżkę",
+    "copyPathFailed": "Ścieżka nie została skopiowana. Sprawdź dostęp do schowka i spróbuj ponownie."
   },
   "explorer": {
     "resizeSections": "Zmień rozmiar sekcji {{first}} i {{second}}"

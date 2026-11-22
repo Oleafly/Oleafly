@@ -50,8 +50,6 @@
       "readOnly": "Doar citire",
       "browse": "Răsfoiește fișierele",
       "moreActions": "Mai multe acțiuni pentru {{label}}",
-      "showInFinder": "Arată în Finder",
-      "showInExplorer": "Arată în Explorer",
       "unlink": "Desfă asocierea",
       "listingTruncated": "Această vizualizare se oprește după 2.000 de fișiere sau opt niveluri de foldere.",
       "emptyFolder": "Acest folder este gol.",

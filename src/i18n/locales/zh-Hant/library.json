@@ -600,9 +600,6 @@
       "permissionDenied": "沒有權限"
     },
     "menu": {
-      "showInFinder": "在 Finder 中顯示",
-      "showInExplorer": "在檔案總管中顯示",
-      "showInFileManager": "在檔案管理員中顯示",
       "copyToLibrary": "複製到專案庫",
       "remove": "從 Oleafly 移除"
     },

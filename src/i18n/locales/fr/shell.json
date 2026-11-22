@@ -507,7 +507,15 @@
       "run": "Exécuter le code sur cet ordinateur"
     },
     "sharedViewer": "Seuls les propriétaires et les éditeurs peuvent modifier ces paramètres dans un projet partagé.",
-    "coauthorsChanged": "Modifié par des coauteurs depuis votre dernière compilation"
+    "coauthorsChanged": "Modifié par des coauteurs depuis votre dernière compilation",
+    "texRootDocument": "racine : {{path}} (il a son propre \\documentclass)",
+    "texRootInclude": "racine : {{path}} (il inclut {{file}})",
+    "target": {
+      "title": "Cible de compilation",
+      "help": "Avec Suivre le fichier ouvert, un fichier qui a son propre \\documentclass se compile seul. Un chapitre ou une section compile le document qui l'inclut. Les autres fichiers compilent le document principal. Un commentaire % !TEX root l'emporte toujours.",
+      "open": "Suivre le fichier ouvert",
+      "main": "Toujours le document principal"
+    }
   },
   "datePicker": {
     "placeholder": "Choisir une date"

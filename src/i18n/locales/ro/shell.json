@@ -507,7 +507,15 @@
       "run": "Rulează codul pe acest computer"
     },
     "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat.",
-    "coauthorsChanged": "Modificat de coautori de la ultima ta compilare"
+    "coauthorsChanged": "Modificat de coautori de la ultima ta compilare",
+    "texRootDocument": "rădăcină: {{path}} (are propriul \\documentclass)",
+    "texRootInclude": "rădăcină: {{path}} (include {{file}})",
+    "target": {
+      "title": "Ținta compilării",
+      "help": "Cu Urmează fișierul deschis, un fișier cu propriul \\documentclass se compilează singur. Un capitol sau o secțiune compilează documentul care îl include. Celelalte fișiere compilează documentul principal. Un comentariu % !TEX root are întotdeauna prioritate.",
+      "open": "Urmează fișierul deschis",
+      "main": "Întotdeauna documentul principal"
+    }
   },
   "datePicker": {
     "placeholder": "Alege o dată"

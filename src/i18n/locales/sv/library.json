@@ -621,9 +621,6 @@
       "permissionDenied": "Behörighet saknas"
     },
     "menu": {
-      "showInFinder": "Visa i Finder",
-      "showInExplorer": "Visa i Utforskaren",
-      "showInFileManager": "Visa i filhanteraren",
       "copyToLibrary": "Kopiera till biblioteket",
       "remove": "Ta bort från Oleafly"
     },

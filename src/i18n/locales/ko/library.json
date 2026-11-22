@@ -600,9 +600,6 @@
       "permissionDenied": "권한 없음"
     },
     "menu": {
-      "showInFinder": "Finder에서 보기",
-      "showInExplorer": "파일 탐색기에서 보기",
-      "showInFileManager": "파일 관리자에서 보기",
       "copyToLibrary": "라이브러리로 복사",
       "remove": "Oleafly에서 제거"
     },

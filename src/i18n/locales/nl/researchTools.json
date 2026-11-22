@@ -50,8 +50,6 @@
       "readOnly": "Alleen-lezen",
       "browse": "Bestanden bekijken",
       "moreActions": "Meer acties voor {{label}}",
-      "showInFinder": "Tonen in Finder",
-      "showInExplorer": "Tonen in Verkenner",
       "unlink": "Ontkoppelen",
       "listingTruncated": "Deze weergave stopt na 2.000 bestanden of acht mapniveaus.",
       "emptyFolder": "Deze map is leeg.",

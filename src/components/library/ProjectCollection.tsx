@@ -50,7 +50,8 @@ import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { isFolderProject } from "@/lib/library-projects";
 import { projectModifiedLabel } from "@/lib/project-format";
 import type { ProjectInfo } from "@/lib/tauri";
-import { cn, isMac, isWindows } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { LIBRARY_ITEM, LIBRARY_ITEM_LOCKED } from "@/components/library/marquee-selection";
 import { isSelectionModifier, useLibrarySelectionStore } from "@/store/library-selection";
@@ -265,16 +266,13 @@ function ProjectMenuItems({
     </Sub>
   );
   if (isFolderProject(p)) {
-    let revealLabel = t(($) => $.library.folder.menu.showInFileManager);
-    if (isMac) revealLabel = t(($) => $.library.folder.menu.showInFinder);
-    else if (isWindows) revealLabel = t(($) => $.library.folder.menu.showInExplorer);
     return (
       <>
         <Item onClick={() => actions.open(p)}>
           <FileText className="mr-2 size-4" /> {t(($) => $.library.projects.openProject)}
         </Item>
         <Item disabled={!reachable} onClick={() => actions.reveal(p.id)}>
-          <FolderOpen className="mr-2 size-4" /> {revealLabel}
+          <FolderOpen className="mr-2 size-4" /> {showInFileManagerLabel()}
         </Item>
         <Item disabled={!reachable} onClick={() => actions.copyIntoLibrary(p)}>
           <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}

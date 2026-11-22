@@ -50,8 +50,6 @@
       "readOnly": "Vain luku",
       "browse": "Selaa tiedostoja",
       "moreActions": "Lisää toimintoja kohteelle {{label}}",
-      "showInFinder": "Näytä Finderissa",
-      "showInExplorer": "Näytä Resurssienhallinnassa",
       "unlink": "Poista linkitys",
       "listingTruncated": "Tämä näkymä päättyy 2 000 tiedoston tai kahdeksan kansiotason jälkeen.",
       "emptyFolder": "Tämä kansio on tyhjä.",

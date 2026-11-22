@@ -50,8 +50,6 @@
       "readOnly": "Skrivskyddad",
       "browse": "Bläddra bland filer",
       "moreActions": "Fler åtgärder för {{label}}",
-      "showInFinder": "Visa i Finder",
-      "showInExplorer": "Visa i Utforskaren",
       "unlink": "Ta bort länken",
       "listingTruncated": "Den här vyn stannar efter 2 000 filer eller åtta mappnivåer.",
       "emptyFolder": "Den här mappen är tom.",

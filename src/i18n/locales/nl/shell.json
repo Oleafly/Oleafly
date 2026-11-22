@@ -506,7 +506,15 @@
       "run": "Code uitvoeren op deze computer"
     },
     "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen.",
-    "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren"
+    "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren",
+    "texRootDocument": "root: {{path}} (heeft een eigen \\documentclass)",
+    "texRootInclude": "root: {{path}} (neemt {{file}} op)",
+    "target": {
+      "title": "Compileerdoel",
+      "help": "Met Het geopende bestand volgen wordt een bestand met een eigen \\documentclass op zichzelf gecompileerd. Een hoofdstuk of sectie compileert het document dat het opneemt. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking gaat altijd voor.",
+      "open": "Het geopende bestand volgen",
+      "main": "Altijd het hoofddocument"
+    }
   },
   "datePicker": {
     "placeholder": "Kies een datum"

@@ -505,7 +505,15 @@
       "run": "このコンピュータでコードを実行"
     },
     "sharedViewer": "共有プロジェクトでは、これらの設定を変更できるのは所有者と編集者だけです。",
-    "coauthorsChanged": "前回のコンパイル以降に共著者が変更"
+    "coauthorsChanged": "前回のコンパイル以降に共著者が変更",
+    "texRootDocument": "root: {{path}}（独自の \\documentclass があります）",
+    "texRootInclude": "root: {{path}}（{{file}} を取り込んでいます）",
+    "target": {
+      "title": "コンパイル対象",
+      "help": "「開いているファイルに合わせる」では、独自の \\documentclass を持つファイルはそのファイルだけをコンパイルします。章や節は、それを取り込んでいる文書をコンパイルします。そのほかのファイルはメイン文書をコンパイルします。% !TEX root コメントが常に優先されます。",
+      "open": "開いているファイルに合わせる",
+      "main": "常にメイン文書"
+    }
   },
   "datePicker": {
     "placeholder": "日付を選択"

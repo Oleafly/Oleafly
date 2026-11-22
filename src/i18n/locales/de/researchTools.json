@@ -50,8 +50,6 @@
       "readOnly": "Nur lesen",
       "browse": "Dateien durchsuchen",
       "moreActions": "Weitere Aktionen für {{label}}",
-      "showInFinder": "Im Finder anzeigen",
-      "showInExplorer": "Im Explorer anzeigen",
       "unlink": "Trennen",
       "listingTruncated": "Diese Ansicht endet nach 2.000 Dateien oder acht Ordnerebenen.",
       "emptyFolder": "Dieser Ordner ist leer.",

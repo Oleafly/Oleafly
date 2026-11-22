@@ -506,7 +506,15 @@
       "run": "Kör kod på den här datorn"
     },
     "sharedViewer": "Bara ägare och redigerare kan ändra de här inställningarna i ett delat projekt.",
-    "coauthorsChanged": "Ändrad av medförfattare sedan din senaste kompilering"
+    "coauthorsChanged": "Ändrad av medförfattare sedan din senaste kompilering",
+    "texRootDocument": "rot: {{path}} (har en egen \\documentclass)",
+    "texRootInclude": "rot: {{path}} (inkluderar {{file}})",
+    "target": {
+      "title": "Kompileringsmål",
+      "help": "Med Följ den öppna filen kompileras en fil med en egen \\documentclass för sig. Ett kapitel eller avsnitt kompilerar dokumentet som inkluderar det. Andra filer kompilerar huvuddokumentet. En % !TEX root-kommentar går alltid först.",
+      "open": "Följ den öppna filen",
+      "main": "Alltid huvuddokumentet"
+    }
   },
   "datePicker": {
     "placeholder": "Välj ett datum"

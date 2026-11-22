@@ -506,7 +506,15 @@
       "run": "Code auf diesem Computer ausführen"
     },
     "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern.",
-    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert"
+    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert",
+    "texRootDocument": "root: {{path}} (hat eine eigene \\documentclass)",
+    "texRootInclude": "root: {{path}} (bindet {{file}} ein)",
+    "target": {
+      "title": "Kompilierziel",
+      "help": "Mit „Der geöffneten Datei folgen“ wird eine Datei mit eigener \\documentclass für sich kompiliert. Ein Kapitel oder Abschnitt kompiliert das Dokument, das es einbindet. Andere Dateien kompilieren das Hauptdokument. Ein % !TEX root-Kommentar hat immer Vorrang.",
+      "open": "Der geöffneten Datei folgen",
+      "main": "Immer das Hauptdokument"
+    }
   },
   "datePicker": {
     "placeholder": "Datum wählen"

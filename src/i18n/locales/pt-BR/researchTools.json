@@ -50,8 +50,6 @@
       "readOnly": "Somente leitura",
       "browse": "Navegar pelos arquivos",
       "moreActions": "Mais ações para {{label}}",
-      "showInFinder": "Mostrar no Finder",
-      "showInExplorer": "Mostrar no Explorador de Arquivos",
       "unlink": "Desvincular",
       "listingTruncated": "Esta visualização para depois de 2.000 arquivos ou oito níveis de pasta.",
       "emptyFolder": "Esta pasta está vazia.",

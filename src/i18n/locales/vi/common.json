@@ -24,7 +24,10 @@
     "no": "Không",
     "learnMore": "Tìm hiểu thêm",
     "showMore": "Hiện thêm",
-    "showLess": "Thu gọn"
+    "showLess": "Thu gọn",
+    "showInFinder": "Hiện trong Finder",
+    "showInExplorer": "Hiện trong File Explorer",
+    "showInFileManager": "Hiện trong trình quản lý tệp"
   },
   "state": {
     "loading": "Đang tải…",

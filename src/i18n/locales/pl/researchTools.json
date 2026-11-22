@@ -50,8 +50,6 @@
       "readOnly": "Tylko do odczytu",
       "browse": "Przeglądaj pliki",
       "moreActions": "Więcej działań dla {{label}}",
-      "showInFinder": "Pokaż w Finderze",
-      "showInExplorer": "Pokaż w Eksploratorze",
       "unlink": "Odłącz",
       "listingTruncated": "Ten widok zatrzymuje się po 2000 plików albo ośmiu poziomach folderów.",
       "emptyFolder": "Ten folder jest pusty.",

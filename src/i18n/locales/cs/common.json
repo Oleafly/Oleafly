@@ -24,7 +24,10 @@
     "no": "Ne",
     "learnMore": "Zjistit více",
     "showMore": "Zobrazit více",
-    "showLess": "Zobrazit méně"
+    "showLess": "Zobrazit méně",
+    "showInFinder": "Zobrazit ve Finderu",
+    "showInExplorer": "Zobrazit v Průzkumníku souborů",
+    "showInFileManager": "Zobrazit ve správci souborů"
   },
   "state": {
     "loading": "Načítání…",

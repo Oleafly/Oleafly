@@ -507,7 +507,15 @@
       "run": "Executar código neste computador"
     },
     "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado.",
-    "coauthorsChanged": "Alterado por coautores desde a sua última compilação"
+    "coauthorsChanged": "Alterado por coautores desde a sua última compilação",
+    "texRootDocument": "raiz: {{path}} (tem seu próprio \\documentclass)",
+    "texRootInclude": "raiz: {{path}} (inclui {{file}})",
+    "target": {
+      "title": "Alvo da compilação",
+      "help": "Com Seguir o arquivo aberto, um arquivo com seu próprio \\documentclass é compilado sozinho. Um capítulo ou uma seção compila o documento que o inclui. Os outros arquivos compilam o documento principal. Um comentário % !TEX root sempre tem prioridade.",
+      "open": "Seguir o arquivo aberto",
+      "main": "Sempre o documento principal"
+    }
   },
   "datePicker": {
     "placeholder": "Escolha uma data"

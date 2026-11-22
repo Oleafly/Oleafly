@@ -55,7 +55,11 @@
     "insertLink": "Inserir link",
     "copyLink": "Copiar link",
     "linkCopied": "Link copiado",
-    "copyLinkFailed": "O link não foi copiado. Verifique o acesso à área de transferência e tente de novo."
+    "copyLinkFailed": "O link não foi copiado. Verifique o acesso à área de transferência e tente de novo.",
+    "copyPath": "Copiar caminho",
+    "copyRelativePath": "Copiar caminho relativo",
+    "pathCopied": "Caminho copiado",
+    "copyPathFailed": "O caminho não foi copiado. Verifique o acesso à área de transferência e tente de novo."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} e {{second}}"

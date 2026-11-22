@@ -1,5 +1,4 @@
 import { Trans, useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import {
   useEffect,
   useId,
@@ -73,6 +72,7 @@ import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError, takeDroppedPaths } from "@/lib/tauri";
+import { copyReference, FilePathMenuItems } from "@/components/files/FilePathMenuItems";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
@@ -1078,7 +1078,12 @@ export function FileTree({
                 readOnlyLink={menuNode.readOnly && !menuNode.isDir}
                 afterClose={rootMenu.afterClose}
               />
-              {menuNode.readOnly && !menuNode.isDir ? null : (
+              {menuNode.readOnly && !menuNode.isDir ? (
+                <>
+                  <ContextMenuSeparator />
+                  <FilePathMenuItems path={menuNode.path} icons />
+                </>
+              ) : (
                 <TreeRowEditMenuItems node={menuNode} ctx={ctx} afterClose={rootMenu.afterClose} />
               )}
             </>
@@ -1101,6 +1106,7 @@ export function FileTree({
               <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onOpenInTerminal(""))}>
                 <SquareTerminal className="mr-2 size-4" /> {t(($) => $.workspace.terminal.openInTerminal)}
               </ContextMenuItem>
+              <FilePathMenuItems path="" icons />
             </>
           )}
         </ContextMenuContent>
@@ -1427,17 +1433,11 @@ function TreeRowKindMenuItems({
       >
         {t(($) => $.workspace.files.insertLink)}
       </ContextMenuItem>
-      <ContextMenuItem onClick={() => void copyFileLink(node.path, t)}>
+      <ContextMenuItem onClick={() => copyReference(node.path, "link")}>
         {t(($) => $.workspace.files.copyLink)}
       </ContextMenuItem>
     </>
   );
-}
-
-async function copyFileLink(path: string, t: TFunction<["common", "workspace"]>) {
-  const links = await import("@/features/file-links");
-  if (await links.copyFileLink(path)) toast.success(t(($) => $.workspace.files.linkCopied));
-  else toast.error(t(($) => $.workspace.files.copyLinkFailed));
 }
 
 function TreeRowEditMenuItems({
@@ -1457,6 +1457,8 @@ function TreeRowEditMenuItems({
           <CopyPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.makeCopy)}
         </ContextMenuItem>
       )}
+      <ContextMenuSeparator />
+      <FilePathMenuItems path={node.path} icons />
       <ContextMenuSeparator />
       <ContextMenuItem
         className="text-destructive focus:text-destructive"
