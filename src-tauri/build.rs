@@ -61,6 +61,13 @@ fn main() {
         attributes = attributes
             .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());
     }
+    if target_os == "windows" {
+        match target_env.as_str() {
+            "msvc" => println!("cargo:rustc-link-arg-bins=/STACK:8388608"),
+            "gnu" => println!("cargo:rustc-link-arg-bins=-Wl,--stack,8388608"),
+            _ => {}
+        }
+    }
     if target_os == "linux" {
         stage_linux_tools().expect("failed to stage the bundled tools");
     }
