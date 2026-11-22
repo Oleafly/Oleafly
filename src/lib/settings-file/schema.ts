@@ -66,6 +66,7 @@ import {
   FILE_MOVE_REFERENCE_OPTIONS,
   GRAMMAR_DIALECTS,
   LAYOUT_PRESETS,
+  PDF_DARK_MODES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_OPEN_WITH_IDS,
   TERMINAL_SCROLLBACK_OPTIONS,
@@ -78,6 +79,7 @@ import {
   clampEditorLetterSpacing,
   clampEditorLineHeight,
   readDictionaryLocale,
+  type PdfDarkMode,
   type PreferenceKey,
   type PreferenceValues,
   type TerminalColorThemeId,
@@ -405,6 +407,16 @@ const periodFormat = text(FORMAT_LIMIT);
 const periodTag = text(TAG_LIMIT);
 const periodTemplate = text(256);
 const weekStartSetting = oneOf(WEEK_START_SETTINGS);
+
+const pdfDarkModeValue: ValueType<PdfDarkMode> = {
+  parse(raw) {
+    if (raw === "follow") return ok("follow");
+    const legacy = bool.parse(raw);
+    if (legacy.ok) return ok(legacy.value ? "on" : "off");
+    return fail({ kind: "oneOf", values: PDF_DARK_MODES });
+  },
+};
+
 const PERIODIC_PARTS: ReadonlySet<string> = new Set<string>([...PERIODIC_KINDS, "weekStart"]);
 const periodFormatValue: ValueType<string> = {
   parse(raw) {
@@ -588,7 +600,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.terminal.scrollback", "terminalScrollback", numberOf(TERMINAL_SCROLLBACK_OPTIONS)),
   pref("appearance.terminal.confirmClose", "terminalConfirmClose", bool),
 
-  pref("appearance.pdf.darkMode", "pdfDarkMode", bool),
+  pref("appearance.pdf.darkMode", "pdfDarkMode", pdfDarkModeValue),
   pref("appearance.pdf.hoverPreview", "hoverPreview", bool),
 
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),

@@ -95,6 +95,9 @@ export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
 export type OverleafDeletes = "ask" | "always" | "never";
+export const PDF_DARK_MODES = ["off", "on", "follow"] as const;
+export type PdfDarkMode = (typeof PDF_DARK_MODES)[number];
+const PDF_DARK_MODE_STORAGE_KEY = "oleafly.pdf.darkMode";
 type FileMarkers = "icons" | "badges";
 export type GrammarDialect =
   | "american"
@@ -1101,8 +1104,8 @@ interface SettingsState {
   setEditorColor: (key: EditorColorKey, id: EditorColorId, color: string) => void;
   resetEditorColors: (key: EditorColorKey) => void;
   importEditorThemes: (exported: EditorThemeExport) => void;
-  pdfDarkMode: boolean;
-  setPdfDarkMode: (v: boolean) => void;
+  pdfDarkMode: PdfDarkMode;
+  setPdfDarkMode: (v: PdfDarkMode) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -1312,7 +1315,7 @@ const PREF_DEFAULTS = {
   editorThemeLight: "system" as EditorThemeId,
   editorThemeDark: "system" as EditorThemeId,
   editorColors: {} as EditorColorSettings,
-  pdfDarkMode: false,
+  pdfDarkMode: "off" as PdfDarkMode,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
@@ -1435,7 +1438,7 @@ export const SECTION_SETTINGS = {
     editorThemeLight: "oleafly.editorTheme.light",
     editorThemeDark: "oleafly.editorTheme.dark",
     editorColors: "oleafly.editor.colors",
-    pdfDarkMode: "oleafly.pdf.darkMode",
+    pdfDarkMode: PDF_DARK_MODE_STORAGE_KEY,
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
@@ -1465,6 +1468,14 @@ export const SECTION_SETTINGS = {
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
 export type SettingsSection = keyof typeof SECTION_SETTINGS;
+
+const PDF_DARK_MODE_STORED: Readonly<Record<PdfDarkMode, string>> = { off: "0", on: "1", follow: "follow" };
+
+function storedPdfDarkMode(): PdfDarkMode {
+  const stored = ls(PDF_DARK_MODE_STORAGE_KEY, "0");
+  if (stored === "1" || stored === "on") return "on";
+  return stored === "follow" ? "follow" : "off";
+}
 
 function overleafDeletesFrom(stored: string): OverleafDeletes {
   return stored === "always" || stored === "never" ? stored : "ask";
@@ -2122,9 +2133,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
     set({ editorColors });
   },
-  pdfDarkMode: ls("oleafly.pdf.darkMode", "0") === "1",
+  pdfDarkMode: storedPdfDarkMode(),
   setPdfDarkMode: (v) => {
-    saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
+    saveLs(PDF_DARK_MODE_STORAGE_KEY, PDF_DARK_MODE_STORED[v]);
     set({ pdfDarkMode: v });
   },
   hiddenFilePatterns: readHiddenFilePatterns(
@@ -2302,3 +2313,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ terminalOpen: false });
   },
 }));
+
+export function followPdfDarkModeInOtherWindows(): () => void {
+  const read = () => useSettingsStore.setState({ pdfDarkMode: storedPdfDarkMode() });
+  const onStorage = (event: StorageEvent) => {
+    if (event.storageArea !== window.localStorage) return;
+    if (event.key === null || event.key === PDF_DARK_MODE_STORAGE_KEY) read();
+  };
+  read();
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}

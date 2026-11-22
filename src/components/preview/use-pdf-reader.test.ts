@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { readPdfPageColors } from "./use-pdf-reader";
+import { pdfDarkModeShown, readPdfPageColors } from "./use-pdf-reader";
 
 function setPageColors(page: string, text: string) {
   document.documentElement.style.setProperty("--pdf-dark-page", page);
@@ -25,5 +25,29 @@ describe("readPdfPageColors", () => {
 
   it("falls back to a dark page when the colors cannot be read", () => {
     expect(readPdfPageColors()).toBe("dark");
+  });
+});
+
+describe("pdfDarkModeShown", () => {
+  it("follows the setting, and the app theme when matching it", () => {
+    const shown = (["off", "on", "follow"] as const).flatMap((mode) =>
+      (["light", "dark"] as const).flatMap((theme) =>
+        (["dark", "light"] as const).map((colors) => `${mode} ${theme} ${colors}: ${pdfDarkModeShown(mode, theme, colors)}`),
+      ),
+    );
+    expect(shown).toEqual([
+      "off light dark: false",
+      "off light light: false",
+      "off dark dark: false",
+      "off dark light: false",
+      "on light dark: true",
+      "on light light: true",
+      "on dark dark: true",
+      "on dark light: true",
+      "follow light dark: false",
+      "follow light light: true",
+      "follow dark dark: true",
+      "follow dark light: true",
+    ]);
   });
 });

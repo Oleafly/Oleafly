@@ -150,7 +150,7 @@ paths it expects to change. Trust prompts are answered through
 | Logs tab | real log shown; exact clipboard payload; animated scroll reaches exact top/bottom boundaries | 11, 17 |
 | Preview toolbar (full inventory) | single/two-page layouts, previous/next, valid + empty/non-numeric/zero/out-of-range page input, zoom in/out, all 7 presets, fit width/height, invert/restore, logs/PDF toggle, save actions | 17 |
 | Empty preview | real Recompile control invokes the compile handler | `PreviewPane.test.tsx` |
-| Preview window controls | native detached-window creation plus browser component harness for single/two-page, previous/input/next bounds, zoom +/−, invert, and layout state | 17, 56 |
+| Preview window controls | native detached-window creation plus browser component harness for single/two-page, previous/input/next bounds, zoom +/−, invert, PDF dark mode matching the app theme and shared between windows, and layout state | 17, 56 |
 | Preview recovery/races | detached A→B retarget clears A immediately, rejects late A completion, and fails closed when B has no PDF; spread navigation advances by two; a new compiled byte payload resets a crashed scoped preview boundary | `PreviewWindow.test.tsx`, `ErrorBoundary.test.tsx` |
 | Save PDF/image into project | in-app dialog; exact requested nested relative path; PDF bytes equal compiled output and `%PDF-`; PNG signature/dimensions/nonblank pixels; invalid path surfaces standard failure UX | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |

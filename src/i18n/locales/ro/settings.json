@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} nu este instalat, așa că se folosește fontul implicit.",
     "preview": {
       "darkMode": {
-        "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",
-        "label": "Mod întunecat pentru PDF"
+        "description": "Cu Urmează tema aplicației, paginile devin întunecate când aplicația este întunecată. În modul luminos arată ca tipărite sau își păstrează nuanța deschisă pe care ai ales-o, de exemplu sepia. Butonul de inversare a culorilor din bara previzualizării schimbă această opțiune în Activat sau Dezactivat.",
+        "label": "Mod întunecat pentru PDF",
+        "modes": {
+          "follow": "Urmează tema aplicației",
+          "off": "Dezactivat",
+          "on": "Activat"
+        }
       },
       "darkColors": {
         "label": "Culorile întunecate ale paginii",

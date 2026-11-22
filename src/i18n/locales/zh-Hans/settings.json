@@ -1009,8 +1009,13 @@
     "fontNotInstalled": "未安装 {{font}}，因此使用默认字体。",
     "preview": {
       "darkMode": {
-        "description": "默认反转 PDF 颜色。你仍可在预览工具栏中切换颜色。",
-        "label": "PDF 深色模式"
+        "description": "选择“跟随应用主题”后，应用为深色时页面也会变暗。浅色模式下页面保持印刷时的样子，或保留你选的浅色色调，例如棕褐色。点击预览工具栏中的反转颜色按钮，会把此项设为“开”或“关”。",
+        "label": "PDF 深色模式",
+        "modes": {
+          "follow": "跟随应用主题",
+          "off": "关",
+          "on": "开"
+        }
       },
       "darkColors": {
         "label": "深色页面颜色",
