@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
+import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 
 interface FakeViewerProps {
@@ -114,7 +115,7 @@ afterEach(() => {
   events.listeners.clear();
   Reflect.deleteProperty(globalThis, "isTauri");
   Reflect.deleteProperty(document, "fullscreenElement");
-  useSettingsStore.getState().setPdfDarkMode(false);
+  useSettingsStore.getState().setPdfDarkMode("off");
   localStorage.clear();
 });
 
@@ -284,6 +285,51 @@ describe("PdfFileView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: actions.readerView }));
     expect(pdf).toHaveAttribute("data-page-colors", "none");
+  });
+
+  it("matches the app theme until the toolbar picks on or off", async () => {
+    applyTheme("light");
+    useSettingsStore.getState().setPdfDarkMode("follow");
+    tauri.readFileBase64.mockResolvedValue(PDF);
+    render(<PdfFileView projectId="p1" path="paper.pdf" />);
+    const pdf = await screen.findByTestId("pdf-viewer");
+    const invert = screen.getByRole("button", { name: actions.invert });
+    const seen = () => [pdf.getAttribute("data-page-colors"), invert.getAttribute("aria-pressed")];
+    const states = [seen()];
+    for (const theme of ["dark", "light", "dark"] as const) {
+      act(() => applyTheme(theme));
+      states.push(seen());
+    }
+    expect(states).toEqual([
+      ["none", "false"],
+      ["dark", "true"],
+      ["none", "false"],
+      ["dark", "true"],
+    ]);
+
+    fireEvent.click(invert);
+    expect(useSettingsStore.getState().pdfDarkMode).toBe("off");
+    act(() => applyTheme("light"));
+    act(() => applyTheme("dark"));
+    expect(seen()).toEqual(["none", "false"]);
+  });
+
+  it("keeps a light tint such as sepia while matching a light app theme", async () => {
+    applyTheme("light");
+    useSettingsStore.getState().setPdfDarkMode("follow");
+    tauri.readFileBase64.mockResolvedValue(PDF);
+    render(<PdfFileView projectId="p1" path="paper.pdf" />);
+    const pdf = await screen.findByTestId("pdf-viewer");
+    expect(pdf).toHaveAttribute("data-page-colors", "none");
+
+    act(() => {
+      document.documentElement.style.setProperty("--pdf-dark-page", "#f4ecd8");
+      document.documentElement.style.setProperty("--pdf-dark-text", "#3b3024");
+    });
+    await waitFor(() => expect(pdf).toHaveAttribute("data-page-colors", "light"));
+    expect(screen.getByRole("button", { name: actions.invert })).toHaveAttribute("aria-pressed", "true");
+    document.documentElement.style.removeProperty("--pdf-dark-page");
+    document.documentElement.style.removeProperty("--pdf-dark-text");
   });
 
   it("hides the toolbar in fullscreen until the reader asks for it back", async () => {

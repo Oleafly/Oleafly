@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} yüklü değil, bu yüzden varsayılan yazı tipi kullanılıyor.",
     "preview": {
       "darkMode": {
-        "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",
-        "label": "PDF koyu kip"
+        "description": "Uygulama temasına uy seçiliyken uygulama koyu olduğunda sayfalar da koyulaşır. Açık modda sayfalar basıldığı gibi görünür ya da seçtiğiniz sepya gibi açık tonu korur. Önizleme araç çubuğundaki renkleri tersine çevirme düğmesi bunu Etkin ya da Devre dışı yapar.",
+        "label": "PDF koyu kip",
+        "modes": {
+          "follow": "Uygulama temasına uy",
+          "off": "Devre dışı",
+          "on": "Etkin"
+        }
       },
       "darkColors": {
         "label": "Koyu sayfa renkleri",

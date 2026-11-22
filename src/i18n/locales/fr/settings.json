@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} n'est pas installée, la police par défaut est donc utilisée.",
     "preview": {
       "darkMode": {
-        "description": "Inverser les couleurs du PDF par défaut. Vous pouvez toujours changer les couleurs depuis la barre d'outils de l'aperçu.",
-        "label": "Mode sombre du PDF"
+        "description": "Avec Suivre le thème de l'application, les pages s'assombrissent quand l'application est en mode sombre. En mode clair, elles restent telles qu'imprimées, ou gardent la teinte claire que vous avez choisie, comme le sépia. Le bouton d'inversion des couleurs de la barre d'outils de l'aperçu règle ce choix sur Activé ou Désactivé.",
+        "label": "Mode sombre du PDF",
+        "modes": {
+          "follow": "Suivre le thème de l'application",
+          "off": "Désactivé",
+          "on": "Activé"
+        }
       },
       "darkColors": {
         "label": "Couleurs de page sombres",

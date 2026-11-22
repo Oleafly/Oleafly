@@ -79,7 +79,7 @@ describe("Appearance settings tabs", () => {
       editorStickyScroll: false,
       hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS],
       openInTree: false,
-      pdfDarkMode: false,
+      pdfDarkMode: "off",
       hoverPreview: false,
       homeProjectLayout: "grid",
       terminalFontSize: 14,
@@ -144,13 +144,16 @@ describe("Appearance settings tabs", () => {
     expect(screen.queryByRole("tab", { name: "Browser" })).toBeNull();
 
     await user.click(screen.getByRole("tab", { name: appearance.tabs.pdf }));
-    expect(
-      screen.getByRole("switch", { name: appearance.preview.darkMode.label }),
-    ).toBeInTheDocument();
-    for (const label of [appearance.preview.darkMode.label, appearance.preview.hoverPreview.label]) {
-      await user.click(screen.getByRole("switch", { name: label }));
+    const darkMode = screen.getByRole("combobox", { name: appearance.preview.darkMode.label });
+    expect(darkMode).toHaveTextContent(appearance.preview.darkMode.modes.off);
+    for (const mode of ["follow", "on", "off"] as const) {
+      await user.click(darkMode);
+      await user.click(screen.getByRole("option", { name: appearance.preview.darkMode.modes[mode] }));
+      expect(useSettingsStore.getState().pdfDarkMode).toBe(mode);
+      expect(darkMode).toHaveTextContent(appearance.preview.darkMode.modes[mode]);
     }
-    expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: true, hoverPreview: true });
+    await user.click(screen.getByRole("switch", { name: appearance.preview.hoverPreview.label }));
+    expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: "off", hoverPreview: true });
   });
 
   it("sets the dark PDF page colors for the theme in use", async () => {

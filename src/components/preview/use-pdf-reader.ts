@@ -11,8 +11,9 @@ import type {
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { cssColorToHex, readCssVariable } from "@/lib/css-color";
 import { hexLuminance } from "@/lib/peer-colors";
+import { useAppTheme, type Theme } from "@/lib/theme";
 import { usePdfPosition } from "@/lib/use-pdf-position";
-import { useSettingsStore } from "@/store/settings";
+import { followPdfDarkModeInOtherWindows, useSettingsStore, type PdfDarkMode } from "@/store/settings";
 import { attachPreviewZoom, MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
 import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 
@@ -44,17 +45,32 @@ export function readPdfPageColors(): PdfPageColors {
   return page !== null && text !== null && page > text ? "light" : "dark";
 }
 
-function usePdfPageColors(active: boolean): PdfPageColors | undefined {
-  const [colors, setColors] = useState<PdfPageColors>("dark");
+export function pdfDarkModeShown(mode: PdfDarkMode, theme: Theme, colors: PdfPageColors): boolean {
+  if (mode === "follow") return theme === "dark" || colors === "light";
+  return mode === "on";
+}
+
+function usePdfPageColors(observe: boolean): PdfPageColors {
+  const [colors, setColors] = useState<PdfPageColors>(readPdfPageColors);
   useEffect(() => {
-    if (!active) return;
+    if (!observe) return;
     const update = () => setColors(readPdfPageColors());
     update();
     const observer = new MutationObserver(update);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
     return () => observer.disconnect();
-  }, [active]);
-  return active ? colors : undefined;
+  }, [observe]);
+  return colors;
+}
+
+function usePdfDarkMode() {
+  const mode = useSettingsStore((state) => state.pdfDarkMode);
+  const setMode = useSettingsStore((state) => state.setPdfDarkMode);
+  const theme = useAppTheme();
+  const colors = usePdfPageColors(mode !== "off");
+  useEffect(followPdfDarkModeInOtherWindows, []);
+  const setShown = useCallback((shown: boolean) => setMode(shown ? "on" : "off"), [setMode]);
+  return { shown: pdfDarkModeShown(mode, theme, colors), setShown, colors };
 }
 
 export interface PdfReaderOptions {
@@ -81,10 +97,9 @@ export function usePdfReader({
   const [layout, setLayout] = useState<PdfLayout>("single");
   const [rotation, setRotation] = useState<PdfRotation>(0);
   const [rotationPending, setRotationPending] = useState(false);
-  const inverted = useSettingsStore((state) => state.pdfDarkMode);
-  const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
+  const { shown: inverted, setShown: setInverted, colors } = usePdfDarkMode();
   const [screenReaderMode, setScreenReaderMode] = useState(false);
-  const pdfPageColors = usePdfPageColors(inverted && !screenReaderMode);
+  const pdfPageColors = inverted && !screenReaderMode ? colors : undefined;
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
