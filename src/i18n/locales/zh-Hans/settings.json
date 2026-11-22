@@ -1030,6 +1030,7 @@
     "tabs": {
       "app": "应用",
       "editor": "编辑器",
+      "visual": "可视化模式",
       "files": "项目",
       "pdf": "PDF 预览",
       "terminal": "终端",
@@ -1165,6 +1166,115 @@
         "label": "编译时显示 PDF"
       },
       "title": "禅模式"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "无衬线",
+        "serif": "衬线",
+        "mono": "等宽",
+        "text": "与正文相同"
+      },
+      "paragraphSpacings": {
+        "compact": "紧凑",
+        "normal": "标准",
+        "relaxed": "宽松",
+        "spacious": "宽敞"
+      },
+      "headingSizes": {
+        "small": "较小",
+        "normal": "标准",
+        "large": "较大"
+      }
+    },
+    "resetSetting": "将{{setting}}恢复为默认值",
+    "visual": {
+      "intro": "选择 LaTeX 和 Typst 文件在可视化模式中的外观。你的文件和 PDF 不会改变。若要同时为 Markdown 设置样式，请在“布局”下打开它的开关。文字和链接颜色在“编辑器”标签页的“编辑器颜色”中设置。",
+      "matchEditor": "跟随编辑器",
+      "text": {
+        "title": "正文"
+      },
+      "typeface": {
+        "label": "字体类型",
+        "description": "选择可视化模式中正文的字体类型。"
+      },
+      "font": {
+        "label": "可视化模式字体",
+        "description": "为可视化模式中的正文选择任意已安装的字体。留空则使用“字体类型”设置。"
+      },
+      "fontSize": {
+        "label": "字号",
+        "description": "设置可视化模式中文字的大小。“跟随编辑器”使用编辑器的字号。",
+        "customLabel": "自定义可视化模式字号（像素）"
+      },
+      "lineHeight": {
+        "label": "行高",
+        "description": "设置文本的行间距。“跟随编辑器”使用编辑器的行高。",
+        "customLabel": "自定义可视化模式行高"
+      },
+      "paragraphSpacing": {
+        "label": "段落间距",
+        "description": "设置两个段落之间空行的高度。"
+      },
+      "paragraphIndent": {
+        "label": "段落缩进",
+        "description": "像 PDF 一样缩进每个段落的首行。LaTeX 不缩进标题后的段落，Typst 只缩进接在另一个段落后面的段落。",
+        "none": "无",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "文本对齐",
+        "description": "右边缘保持参差不齐，或将每行对齐到两端。",
+        "options": {
+          "start": "左对齐",
+          "justify": "两端对齐"
+        }
+      },
+      "headings": {
+        "title": "标题与文档标题"
+      },
+      "headingTypeface": {
+        "label": "标题字体类型",
+        "description": "为标题和文档标题选择字体类型。"
+      },
+      "headingFont": {
+        "label": "标题字体",
+        "description": "为标题和文档标题选择已安装的字体。留空则使用“标题字体类型”设置。"
+      },
+      "headingSize": {
+        "label": "标题大小",
+        "description": "设置标题相对于正文的大小。"
+      },
+      "headingColor": {
+        "label": "标题颜色",
+        "description": "标题和文档标题的颜色。“编辑器主题”会保留编辑器主题为标题指定的颜色。",
+        "matchTheme": "编辑器主题",
+        "customAriaLabel": "选择自定义标题颜色"
+      },
+      "layout": {
+        "title": "布局"
+      },
+      "width": {
+        "label": "文本宽度",
+        "description": "设置一行文字在多长时换行。",
+        "options": {
+          "narrow": "窄",
+          "standard": "标准",
+          "wide": "宽",
+          "full": "全宽"
+        }
+      },
+      "markdown": {
+        "label": "也用于 Markdown",
+        "description": "在可视化模式中，Markdown 文件也使用这种外观。关闭后，Markdown 保持应用字体。"
+      },
+      "preview": {
+        "label": "可视化模式预览",
+        "heading": "引言",
+        "first": "可视化模式显示标题和段落，而不是生成它们的命令。",
+        "second": "这个段落接在一个空行之后。段落缩进会让它的首行向内缩进。",
+        "subheading": "方法",
+        "third": "更改设置后，这段文字也会随之变化。"
+      }
     }
   },
   "checkpoints": {

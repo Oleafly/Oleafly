@@ -1427,18 +1427,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Giao diện ghi chú",
-      "resetAriaLabel": "Đặt lại {{setting}} về mặc định",
       "text": {
         "title": "Văn bản"
       },
       "typeface": {
         "label": "Kiểu chữ",
-        "description": "Chọn kiểu chữ cho văn bản ghi chú.",
-        "options": {
-          "sans": "Không chân",
-          "serif": "Có chân",
-          "mono": "Đơn cách"
-        }
+        "description": "Chọn kiểu chữ cho văn bản ghi chú."
       },
       "font": {
         "label": "Phông chữ ghi chú",
@@ -1457,23 +1451,14 @@
       },
       "paragraphSpacing": {
         "label": "Khoảng cách đoạn",
-        "description": "Đặt khoảng cách giữa các đoạn, danh sách và các khối khác.",
-        "options": {
-          "compact": "Gọn",
-          "normal": "Bình thường",
-          "relaxed": "Thoáng",
-          "spacious": "Rộng rãi"
-        }
+        "description": "Đặt khoảng cách giữa các đoạn, danh sách và các khối khác."
       },
       "headings": {
         "title": "Tiêu đề mục và tiêu đề ghi chú"
       },
       "headingTypeface": {
         "label": "Kiểu chữ tiêu đề",
-        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề ghi chú.",
-        "options": {
-          "text": "Giống văn bản"
-        }
+        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề ghi chú."
       },
       "headingFont": {
         "label": "Phông chữ tiêu đề",
@@ -1481,12 +1466,7 @@
       },
       "headingSize": {
         "label": "Cỡ tiêu đề",
-        "description": "Đặt độ lớn của tiêu đề so với văn bản.",
-        "options": {
-          "small": "Nhỏ hơn",
-          "normal": "Bình thường",
-          "large": "Lớn hơn"
-        }
+        "description": "Đặt độ lớn của tiêu đề so với văn bản."
       },
       "titleSize": {
         "label": "Cỡ tiêu đề ghi chú",

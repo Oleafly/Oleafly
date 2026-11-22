@@ -1030,6 +1030,7 @@
     "tabs": {
       "app": "Ứng dụng",
       "editor": "Trình biên tập",
+      "visual": "Chế độ Trực quan",
       "files": "Dự án",
       "pdf": "Xem trước PDF",
       "terminal": "Terminal",
@@ -1165,6 +1166,115 @@
         "label": "Hiện PDF khi biên dịch"
       },
       "title": "Chế độ Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Không chân",
+        "serif": "Có chân",
+        "mono": "Đơn cách",
+        "text": "Giống văn bản"
+      },
+      "paragraphSpacings": {
+        "compact": "Gọn",
+        "normal": "Bình thường",
+        "relaxed": "Thoáng",
+        "spacious": "Rộng rãi"
+      },
+      "headingSizes": {
+        "small": "Nhỏ hơn",
+        "normal": "Bình thường",
+        "large": "Lớn hơn"
+      }
+    },
+    "resetSetting": "Đặt lại {{setting}} về mặc định",
+    "visual": {
+      "intro": "Chọn cách tệp LaTeX và Typst hiển thị trong chế độ Trực quan. Tệp của bạn và PDF không thay đổi. Để áp dụng cho cả Markdown, hãy bật công tắc của nó trong mục Bố cục. Màu chữ và màu liên kết được đặt trong Màu trình biên tập ở tab Trình biên tập.",
+      "matchEditor": "Theo trình biên tập",
+      "text": {
+        "title": "Văn bản"
+      },
+      "typeface": {
+        "label": "Kiểu chữ",
+        "description": "Chọn kiểu chữ cho văn bản trong chế độ Trực quan."
+      },
+      "font": {
+        "label": "Phông chữ chế độ Trực quan",
+        "description": "Chọn bất kỳ phông chữ nào đã cài cho văn bản trong chế độ Trực quan. Để trống để dùng cài đặt Kiểu chữ."
+      },
+      "fontSize": {
+        "label": "Cỡ chữ",
+        "description": "Đặt cỡ chữ của văn bản trong chế độ Trực quan. Theo trình biên tập dùng cỡ chữ của trình biên tập.",
+        "customLabel": "Cỡ chữ chế độ Trực quan tuỳ chỉnh theo pixel"
+      },
+      "lineHeight": {
+        "label": "Chiều cao dòng",
+        "description": "Đặt khoảng cách giữa các dòng văn bản. Theo trình biên tập dùng chiều cao dòng của trình biên tập.",
+        "customLabel": "Chiều cao dòng chế độ Trực quan tuỳ chỉnh"
+      },
+      "paragraphSpacing": {
+        "label": "Khoảng cách đoạn",
+        "description": "Đặt độ cao của dòng trống giữa hai đoạn."
+      },
+      "paragraphIndent": {
+        "label": "Thụt lề đoạn",
+        "description": "Thụt lề dòng đầu của mỗi đoạn, giống như PDF. LaTeX không thụt lề đoạn đứng sau tiêu đề mục, còn Typst chỉ thụt lề đoạn đứng sau một đoạn khác.",
+        "none": "Không",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Căn chỉnh văn bản",
+        "description": "Để mép phải so le, hoặc căn đều các dòng về hai mép.",
+        "options": {
+          "start": "Căn trái",
+          "justify": "Căn đều hai bên"
+        }
+      },
+      "headings": {
+        "title": "Tiêu đề mục và tiêu đề tài liệu"
+      },
+      "headingTypeface": {
+        "label": "Kiểu chữ tiêu đề",
+        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề tài liệu."
+      },
+      "headingFont": {
+        "label": "Phông chữ tiêu đề",
+        "description": "Chọn một phông chữ đã cài cho các tiêu đề mục và tiêu đề tài liệu. Để trống để dùng cài đặt Kiểu chữ tiêu đề."
+      },
+      "headingSize": {
+        "label": "Cỡ tiêu đề",
+        "description": "Đặt độ lớn của tiêu đề so với văn bản."
+      },
+      "headingColor": {
+        "label": "Màu tiêu đề",
+        "description": "Màu cho các tiêu đề mục và tiêu đề tài liệu. Chủ đề trình biên tập giữ màu tiêu đề mà chủ đề trình biên tập của bạn đặt cho chúng.",
+        "matchTheme": "Chủ đề trình biên tập",
+        "customAriaLabel": "Chọn màu tiêu đề tuỳ chỉnh"
+      },
+      "layout": {
+        "title": "Bố cục"
+      },
+      "width": {
+        "label": "Độ rộng văn bản",
+        "description": "Đặt độ dài của một dòng trước khi xuống dòng.",
+        "options": {
+          "narrow": "Hẹp",
+          "standard": "Chuẩn",
+          "wide": "Rộng",
+          "full": "Toàn chiều rộng"
+        }
+      },
+      "markdown": {
+        "label": "Dùng cho cả Markdown",
+        "description": "Dùng giao diện này cho cả tệp Markdown trong chế độ Trực quan. Khi tắt, Markdown giữ phông chữ của ứng dụng."
+      },
+      "preview": {
+        "label": "Xem trước chế độ Trực quan",
+        "heading": "Giới thiệu",
+        "first": "Chế độ Trực quan hiển thị tiêu đề mục và đoạn văn thay cho các lệnh tạo ra chúng.",
+        "second": "Đoạn này nằm sau một dòng trống. Thụt lề đoạn đẩy dòng đầu của nó vào trong.",
+        "subheading": "Phương pháp",
+        "third": "Đổi một cài đặt và văn bản này đổi theo."
+      }
     }
   },
   "checkpoints": {

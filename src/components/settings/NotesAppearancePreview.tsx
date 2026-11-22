@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
+import { AppearancePreviewFrame } from "@/components/settings/AppearanceControls";
 import { FieldChip } from "@/components/notes/FieldChip";
 import { DATE_KEY, DUE_KEY, fieldDisplay } from "@/components/notes/note-field-values";
 import { tagTone } from "@/components/notes/note-tags";
 import { localDate } from "@/components/notes/note-templates";
 import { addDays } from "@/lib/notes-periodic";
-import { cn } from "@/lib/utils";
 import "@/components/notes/notes.css";
 
 const PREVIEW_TAG = tagTone("fieldwork");
@@ -107,72 +107,63 @@ function CodeSample() {
   );
 }
 
-export function NotesAppearancePreview({ className }: Readonly<{ className?: string }>) {
+export function NotesAppearancePreview() {
   const { t } = useTranslation(["notes"]);
   const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
   return (
-    <figure
-      aria-label={t(($) => $.notes.notesPreview.label)}
-      data-testid="settings-notes-preview"
-      className={cn(
-        "sticky -top-5 isolate z-10 -mx-1 bg-background px-1 pb-2 pt-2 dark:bg-popover",
-        "@min-[52rem]:top-0 @min-[52rem]:isolation-auto @min-[52rem]:z-auto @min-[52rem]:mx-0 @min-[52rem]:self-start @min-[52rem]:bg-transparent @min-[52rem]:p-0 @min-[52rem]:dark:bg-transparent",
-        className,
-      )}
+    <AppearancePreviewFrame
+      label={t(($) => $.notes.notesPreview.label)}
+      testId="settings-notes-preview"
+      boxRef={appearanceRef}
+      boxTestId="settings-notes-preview-root"
+      boxClassName="bg-background px-6 py-5 @min-[52rem]:px-5 @min-[52rem]:py-4"
     >
-      <span aria-hidden className="absolute inset-0 -z-10 bg-muted/30 @min-[52rem]:hidden" />
-      <div
-        ref={appearanceRef}
-        data-testid="settings-notes-preview-root"
-        className="max-h-72 overflow-y-auto rounded-lg border bg-background px-6 py-5 @min-[52rem]:max-h-[calc(var(--settings-height)-5.5625rem)] @min-[52rem]:px-5 @min-[52rem]:py-4"
-      >
-        <div aria-hidden inert className="pointer-events-none select-none @min-[52rem]:[zoom:0.8]">
-          <p className="note-title text-2xl font-bold">{t(($) => $.notes.notesPreview.title)}</p>
-          <div className="wysiwyg-content note-body mt-4">
-            <div className="ProseMirror">
-              <h2>{t(($) => $.notes.notesPreview.heading)}</h2>
-              <p>{t(($) => $.notes.notesPreview.paragraph)}</p>
-              <p>
-                <Trans
-                  ns="notes"
-                  i18nKey={($) => $.notes.notesPreview.links}
-                  components={{
-                    note: <span className="text-primary underline" />,
-                    tag: <span className={`note-tag ${PREVIEW_TAG.tint} ${PREVIEW_TAG.text}`} />,
-                  }}
-                />
-              </p>
-              <p>
-                <mark className="note-highlight">{t(($) => $.notes.notesPreview.highlight)}</mark>{" "}
-                <code>{INLINE_CODE}</code>
-              </p>
-              <div className="note-callout">
-                <div className="note-callout-chrome">
-                  <span className="note-callout-icon">
-                    <Info aria-hidden className="size-4" />
-                  </span>
-                </div>
-                <div className="note-callout-content">
-                  <p className="note-callout-title">
-                    {t(($) => $.notes.notesPreview.calloutTitle)} <SampleField fieldKey={DATE_KEY} days={5} />
-                  </p>
-                  <p>{t(($) => $.notes.notesPreview.calloutBody)}</p>
-                </div>
+      <div aria-hidden inert className="pointer-events-none select-none @min-[52rem]:[zoom:0.8]">
+        <p className="note-title text-2xl font-bold">{t(($) => $.notes.notesPreview.title)}</p>
+        <div className="wysiwyg-content note-body mt-4">
+          <div className="ProseMirror">
+            <h2>{t(($) => $.notes.notesPreview.heading)}</h2>
+            <p>{t(($) => $.notes.notesPreview.paragraph)}</p>
+            <p>
+              <Trans
+                ns="notes"
+                i18nKey={($) => $.notes.notesPreview.links}
+                components={{
+                  note: <span className="text-primary underline" />,
+                  tag: <span className={`note-tag ${PREVIEW_TAG.tint} ${PREVIEW_TAG.text}`} />,
+                }}
+              />
+            </p>
+            <p>
+              <mark className="note-highlight">{t(($) => $.notes.notesPreview.highlight)}</mark>{" "}
+              <code>{INLINE_CODE}</code>
+            </p>
+            <div className="note-callout">
+              <div className="note-callout-chrome">
+                <span className="note-callout-icon">
+                  <Info aria-hidden className="size-4" />
+                </span>
               </div>
-              <CodeSample />
-              <ul className="note-tasks">
-                <SampleTask checked>{t(($) => $.notes.notesPreview.taskDone)}</SampleTask>
-                <SampleTask>
-                  {t(($) => $.notes.notesPreview.task)} <SampleField fieldKey={DUE_KEY} days={0} />
-                </SampleTask>
-                <SampleTask>
-                  {t(($) => $.notes.notesPreview.taskLate)} <SampleField fieldKey={DUE_KEY} days={-1} />
-                </SampleTask>
-              </ul>
+              <div className="note-callout-content">
+                <p className="note-callout-title">
+                  {t(($) => $.notes.notesPreview.calloutTitle)} <SampleField fieldKey={DATE_KEY} days={5} />
+                </p>
+                <p>{t(($) => $.notes.notesPreview.calloutBody)}</p>
+              </div>
             </div>
+            <CodeSample />
+            <ul className="note-tasks">
+              <SampleTask checked>{t(($) => $.notes.notesPreview.taskDone)}</SampleTask>
+              <SampleTask>
+                {t(($) => $.notes.notesPreview.task)} <SampleField fieldKey={DUE_KEY} days={0} />
+              </SampleTask>
+              <SampleTask>
+                {t(($) => $.notes.notesPreview.taskLate)} <SampleField fieldKey={DUE_KEY} days={-1} />
+              </SampleTask>
+            </ul>
           </div>
         </div>
       </div>
-    </figure>
+    </AppearancePreviewFrame>
   );
 }

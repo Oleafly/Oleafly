@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Not görünümü",
-      "resetAriaLabel": "{{setting}} ayarını varsayılana sıfırla",
       "text": {
         "title": "Metin"
       },
       "typeface": {
         "label": "Yazı stili",
-        "description": "Not metni için bir yazı stili seçin.",
-        "options": {
-          "sans": "Tırnaksız",
-          "serif": "Tırnaklı",
-          "mono": "Eş aralıklı"
-        }
+        "description": "Not metni için bir yazı stili seçin."
       },
       "font": {
         "label": "Not yazı tipi",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Paragraf aralığı",
-        "description": "Paragraflar, listeler ve diğer bloklar arasındaki boşluğu ayarlayın.",
-        "options": {
-          "compact": "Sıkışık",
-          "normal": "Normal",
-          "relaxed": "Rahat",
-          "spacious": "Ferah"
-        }
+        "description": "Paragraflar, listeler ve diğer bloklar arasındaki boşluğu ayarlayın."
       },
       "headings": {
         "title": "Başlıklar ve not başlığı"
       },
       "headingTypeface": {
         "label": "Başlık yazı stili",
-        "description": "Başlıklar ve not başlığı için bir yazı stili seçin.",
-        "options": {
-          "text": "Metinle aynı"
-        }
+        "description": "Başlıklar ve not başlığı için bir yazı stili seçin."
       },
       "headingFont": {
         "label": "Başlık yazı tipi",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Başlık boyutu",
-        "description": "Başlıkların metne göre ne kadar büyük olacağını ayarlayın.",
-        "options": {
-          "small": "Daha küçük",
-          "normal": "Normal",
-          "large": "Daha büyük"
-        }
+        "description": "Başlıkların metne göre ne kadar büyük olacağını ayarlayın."
       },
       "titleSize": {
         "label": "Not başlığı boyutu",

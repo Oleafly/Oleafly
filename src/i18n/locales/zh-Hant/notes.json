@@ -1427,18 +1427,12 @@
   "appearance": {
     "notes": {
       "sectionName": "筆記外觀",
-      "resetAriaLabel": "將{{setting}}重設為預設值",
       "text": {
         "title": "內文"
       },
       "typeface": {
         "label": "字型類型",
-        "description": "選擇筆記內文的字型類型。",
-        "options": {
-          "sans": "無襯線",
-          "serif": "襯線",
-          "mono": "等寬"
-        }
+        "description": "選擇筆記內文的字型類型。"
       },
       "font": {
         "label": "筆記字型",
@@ -1457,23 +1451,14 @@
       },
       "paragraphSpacing": {
         "label": "段落間距",
-        "description": "設定段落、清單與其他區塊之間的間距。",
-        "options": {
-          "compact": "緊密",
-          "normal": "標準",
-          "relaxed": "寬鬆",
-          "spacious": "寬敞"
-        }
+        "description": "設定段落、清單與其他區塊之間的間距。"
       },
       "headings": {
         "title": "標題與筆記標題"
       },
       "headingTypeface": {
         "label": "標題字型類型",
-        "description": "為標題與筆記標題選擇字型類型。",
-        "options": {
-          "text": "與內文相同"
-        }
+        "description": "為標題與筆記標題選擇字型類型。"
       },
       "headingFont": {
         "label": "標題字型",
@@ -1481,12 +1466,7 @@
       },
       "headingSize": {
         "label": "標題大小",
-        "description": "設定標題相對於內文的大小。",
-        "options": {
-          "small": "較小",
-          "normal": "標準",
-          "large": "較大"
-        }
+        "description": "設定標題相對於內文的大小。"
       },
       "titleSize": {
         "label": "筆記標題大小",

@@ -317,6 +317,10 @@
       "keywords": "distraction free focus full screen hide interface minimal writing",
       "label": "Toggle Zen Mode"
     },
+    "visualSettings": {
+      "keywords": "appearance font typeface text size paragraph indent spacing justify heading writing",
+      "label": "Visual mode settings"
+    },
     "togglePreview": {
       "keywords": "pdf preview show hide split editor only",
       "label": "Toggle PDF Preview"
@@ -1119,7 +1123,7 @@
       "empty": "No settings match",
       "keywords": {
         "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
-        "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
+        "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout, visual mode, typeface, paragraph indent, justify",
         "collaboration": "servers, sign in, devices, members, maintainers, sharing, teams, labs, live editing, real time, security log",
         "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
         "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",

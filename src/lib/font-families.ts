@@ -76,6 +76,10 @@ export function fontFamilyStack(name: string, fallback: string): string {
   return [quotedFontFamily(family), alias, fallback].filter(Boolean).join(", ");
 }
 
+export function fontFamilyOr(name: string, fallback: string): string {
+  return fontFamilyName(name) ? fontFamilyStack(name, fallback) : fallback;
+}
+
 // Named monospace fonts without Han glyphs. A CJK font only takes over for
 // characters these lack, and it has to come before ui-monospace or any generic,
 // which would otherwise draw Han themselves. The system SF Mono has no usable CSS

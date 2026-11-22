@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Darstellung der Notizen",
-      "resetAriaLabel": "{{setting}} auf Standard zurücksetzen",
       "text": {
         "title": "Text"
       },
       "typeface": {
         "label": "Schriftart",
-        "description": "Wählen Sie eine Schriftart für den Text von Notizen.",
-        "options": {
-          "sans": "Serifenlos",
-          "serif": "Serif",
-          "mono": "Monospace"
-        }
+        "description": "Wählen Sie eine Schriftart für den Text von Notizen."
       },
       "font": {
         "label": "Schrift für Notizen",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Absatzabstand",
-        "description": "Legen Sie den Abstand zwischen Absätzen, Listen und anderen Blöcken fest.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Locker",
-          "spacious": "Großzügig"
-        }
+        "description": "Legen Sie den Abstand zwischen Absätzen, Listen und anderen Blöcken fest."
       },
       "headings": {
         "title": "Überschriften und Titel"
       },
       "headingTypeface": {
         "label": "Schriftart für Überschriften",
-        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel der Notiz.",
-        "options": {
-          "text": "Wie der Text"
-        }
+        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel der Notiz."
       },
       "headingFont": {
         "label": "Schrift für Überschriften",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Größe der Überschriften",
-        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind.",
-        "options": {
-          "small": "Kleiner",
-          "normal": "Normal",
-          "large": "Größer"
-        }
+        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind."
       },
       "titleSize": {
         "label": "Größe des Titels",

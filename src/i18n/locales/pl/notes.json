@@ -1514,18 +1514,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Wygląd notatek",
-      "resetAriaLabel": "Przywróć domyślne ustawienie: {{setting}}",
       "text": {
         "title": "Tekst"
       },
       "typeface": {
         "label": "Krój pisma",
-        "description": "Wybierz krój pisma dla tekstu notatek.",
-        "options": {
-          "sans": "Bezszeryfowy",
-          "serif": "Szeryfowy",
-          "mono": "Stałej szerokości"
-        }
+        "description": "Wybierz krój pisma dla tekstu notatek."
       },
       "font": {
         "label": "Czcionka notatek",
@@ -1544,23 +1538,14 @@
       },
       "paragraphSpacing": {
         "label": "Odstępy między akapitami",
-        "description": "Ustaw odstęp między akapitami, listami i innymi blokami.",
-        "options": {
-          "compact": "Zwarte",
-          "normal": "Zwykłe",
-          "relaxed": "Swobodne",
-          "spacious": "Przestronne"
-        }
+        "description": "Ustaw odstęp między akapitami, listami i innymi blokami."
       },
       "headings": {
         "title": "Nagłówki i tytuł"
       },
       "headingTypeface": {
         "label": "Krój pisma nagłówków",
-        "description": "Wybierz krój pisma dla nagłówków i tytułu notatki.",
-        "options": {
-          "text": "Taki jak tekst"
-        }
+        "description": "Wybierz krój pisma dla nagłówków i tytułu notatki."
       },
       "headingFont": {
         "label": "Czcionka nagłówków",
@@ -1568,12 +1553,7 @@
       },
       "headingSize": {
         "label": "Rozmiar nagłówków",
-        "description": "Ustaw rozmiar nagłówków względem tekstu.",
-        "options": {
-          "small": "Mniejszy",
-          "normal": "Zwykły",
-          "large": "Większy"
-        }
+        "description": "Ustaw rozmiar nagłówków względem tekstu."
       },
       "titleSize": {
         "label": "Rozmiar tytułu",

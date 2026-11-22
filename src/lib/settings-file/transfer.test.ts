@@ -141,7 +141,7 @@ describe("settings document", () => {
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files", "notes"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "visual", "terminal", "pdf", "files", "notes"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');

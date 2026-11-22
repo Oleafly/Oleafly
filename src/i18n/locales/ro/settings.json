@@ -1042,6 +1042,7 @@
     "tabs": {
       "app": "Aplicație",
       "editor": "Editor",
+      "visual": "Modul Vizual",
       "files": "Proiect",
       "pdf": "Previzualizare PDF",
       "terminal": "Terminal",
@@ -1179,6 +1180,115 @@
         "label": "Arată PDF-ul la compilare"
       },
       "title": "Modul Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Fără serife",
+        "serif": "Cu serife",
+        "mono": "Monospațiat",
+        "text": "La fel ca textul"
+      },
+      "paragraphSpacings": {
+        "compact": "Compactă",
+        "normal": "Normală",
+        "relaxed": "Relaxată",
+        "spacious": "Aerisită"
+      },
+      "headingSizes": {
+        "small": "Mai mici",
+        "normal": "Normale",
+        "large": "Mai mari"
+      }
+    },
+    "resetSetting": "Resetează {{setting}} la valoarea implicită",
+    "visual": {
+      "intro": "Alege cum arată fișierele LaTeX și Typst în modul Vizual. Fișierele tale și PDF-ul nu se schimbă. Ca să stilizezi și Markdown, activează opțiunea lui din Aranjare. Culorile textului și ale legăturilor se setează în Culorile editorului, în fila Editor.",
+      "matchEditor": "La fel ca editorul",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Tip de literă",
+        "description": "Alege un tip de literă pentru textul din modul Vizual."
+      },
+      "font": {
+        "label": "Fontul modului Vizual",
+        "description": "Alege orice font instalat pentru textul din modul Vizual. Lasă câmpul gol ca să folosești setarea Tip de literă."
+      },
+      "fontSize": {
+        "label": "Dimensiunea textului",
+        "description": "Setează dimensiunea textului din modul Vizual. La fel ca editorul urmează dimensiunea fontului din editor.",
+        "customLabel": "Dimensiune personalizată a textului din modul Vizual, în pixeli"
+      },
+      "lineHeight": {
+        "label": "Înălțimea liniei",
+        "description": "Setează spațiul dintre liniile textului. La fel ca editorul urmează înălțimea liniei din editor.",
+        "customLabel": "Înălțime personalizată a liniei în modul Vizual"
+      },
+      "paragraphSpacing": {
+        "label": "Spațierea paragrafelor",
+        "description": "Setează înălțimea liniei goale dintre două paragrafe."
+      },
+      "paragraphIndent": {
+        "label": "Indentarea paragrafului",
+        "description": "Indentează primul rând al fiecărui paragraf, ca în PDF. LaTeX nu indentează paragraful de după un titlu, iar Typst indentează doar un paragraf care urmează după altul.",
+        "none": "Fără",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Alinierea textului",
+        "description": "Lasă marginea dreaptă neregulată sau aliniază rândurile la ambele margini.",
+        "options": {
+          "start": "La stânga",
+          "justify": "Justificat"
+        }
+      },
+      "headings": {
+        "title": "Titluri și titlul documentului"
+      },
+      "headingTypeface": {
+        "label": "Tipul de literă al titlurilor",
+        "description": "Alege un tip de literă pentru titluri și pentru titlul documentului."
+      },
+      "headingFont": {
+        "label": "Fontul titlurilor",
+        "description": "Alege un font instalat pentru titluri și pentru titlul documentului. Lasă câmpul gol ca să folosești setarea Tipul de literă al titlurilor."
+      },
+      "headingSize": {
+        "label": "Dimensiunea titlurilor",
+        "description": "Setează cât de mari sunt titlurile față de text."
+      },
+      "headingColor": {
+        "label": "Culoarea titlurilor",
+        "description": "Culoarea pentru titluri și pentru titlul documentului. Tema editorului păstrează culoarea pe care le-o dă tema editorului.",
+        "matchTheme": "Tema editorului",
+        "customAriaLabel": "Alege o culoare personalizată pentru titluri"
+      },
+      "layout": {
+        "title": "Aranjare"
+      },
+      "width": {
+        "label": "Lățimea textului",
+        "description": "Setează cât de lungă poate fi o linie înainte să treacă pe rândul următor.",
+        "options": {
+          "narrow": "Îngustă",
+          "standard": "Standard",
+          "wide": "Lată",
+          "full": "Lățime completă"
+        }
+      },
+      "markdown": {
+        "label": "Folosește și pentru Markdown",
+        "description": "Folosește acest aspect și pentru fișierele Markdown din modul Vizual. Dacă e oprit, Markdown păstrează fontul aplicației."
+      },
+      "preview": {
+        "label": "Previzualizare a modului Vizual",
+        "heading": "Introducere",
+        "first": "Modul Vizual arată titluri și paragrafe în loc de comenzile care le creează.",
+        "second": "Acest paragraf vine după o linie goală. O indentare a paragrafului mută primul rând spre interior.",
+        "subheading": "Metodă",
+        "third": "Schimbă o setare și acest text se schimbă odată cu ea."
+      }
     }
   },
   "checkpoints": {

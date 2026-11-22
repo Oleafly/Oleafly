@@ -24,6 +24,7 @@
     "./sticky-scroll": "./src/sticky-scroll.ts",
     "./emacs-mode": "./src/emacs-mode.ts",
     "./visual": "./src/visual/index.ts",
+    "./visual/appearance": "./src/visual/appearance.ts",
     "./latex-tree": "./src/latex-tree.ts",
     "./typst-syntax": "./src/typst-syntax.ts",
     "./typst-arguments": "./src/typst-arguments.ts",

@@ -47,4 +47,18 @@ describe("ReadOnlyLatex", () => {
     unmount();
     expect(view.dom.isConnected).toBe(false);
   });
+
+  it("takes a language and extra extensions, and keeps the cursor at the end", () => {
+    const language = EditorView.contentAttributes.of({ "data-language": "plain" });
+    const extensions = [EditorView.contentAttributes.of({ "data-probe": "on" })];
+    const { rerender } = render(
+      <ReadOnlyLatex source="first" language={language} extensions={extensions} testId="snippet" />,
+    );
+    const view = viewIn(screen.getByTestId("snippet"));
+    expect(view.contentDOM).toHaveAttribute("data-probe", "on");
+    expect(view.contentDOM).toHaveAttribute("data-language", "plain");
+    expect(view.state.selection.main.head).toBe(5);
+    rerender(<ReadOnlyLatex source="longer" language={language} extensions={extensions} testId="snippet" />);
+    expect(view.state.selection.main.head).toBe(6);
+  });
 });

@@ -1042,6 +1042,7 @@
     "tabs": {
       "app": "Application",
       "editor": "Éditeur",
+      "visual": "Mode Visuel",
       "files": "Projet",
       "pdf": "Aperçu PDF",
       "terminal": "Terminal",
@@ -1179,6 +1180,115 @@
         "label": "Afficher le PDF à la compilation"
       },
       "title": "Mode Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Sans empattement",
+        "serif": "Avec empattement",
+        "mono": "Chasse fixe",
+        "text": "Comme le texte"
+      },
+      "paragraphSpacings": {
+        "compact": "Compact",
+        "normal": "Normal",
+        "relaxed": "Aéré",
+        "spacious": "Spacieux"
+      },
+      "headingSizes": {
+        "small": "Plus petits",
+        "normal": "Normale",
+        "large": "Plus grands"
+      }
+    },
+    "resetSetting": "Rétablir la valeur par défaut du réglage {{setting}}",
+    "visual": {
+      "intro": "Choisissez l'apparence des fichiers LaTeX et Typst en mode Visuel. Vos fichiers et le PDF ne changent pas. Pour appliquer ce style aussi à Markdown, activez son option sous Mise en page. Les couleurs du texte et des liens se règlent dans Couleurs de l'éditeur, sous l'onglet Éditeur.",
+      "matchEditor": "Comme l'éditeur",
+      "text": {
+        "title": "Texte"
+      },
+      "typeface": {
+        "label": "Type de police",
+        "description": "Choisissez un type de police pour le texte en mode Visuel."
+      },
+      "font": {
+        "label": "Police du mode Visuel",
+        "description": "Choisissez n'importe quelle police installée pour le texte en mode Visuel. Laissez ce champ vide pour suivre le réglage Type de police."
+      },
+      "fontSize": {
+        "label": "Taille du texte",
+        "description": "Définissez la taille du texte en mode Visuel. Comme l'éditeur reprend la taille de police de l'éditeur.",
+        "customLabel": "Taille personnalisée du texte en mode Visuel, en pixels"
+      },
+      "lineHeight": {
+        "label": "Interligne",
+        "description": "Définissez l'espace entre les lignes de texte. Comme l'éditeur reprend l'interligne de l'éditeur.",
+        "customLabel": "Interligne personnalisé en mode Visuel"
+      },
+      "paragraphSpacing": {
+        "label": "Espacement des paragraphes",
+        "description": "Définissez la hauteur de la ligne vide entre deux paragraphes."
+      },
+      "paragraphIndent": {
+        "label": "Retrait de paragraphe",
+        "description": "Mettez en retrait la première ligne de chaque paragraphe, comme dans le PDF. LaTeX ne le fait pas pour le paragraphe qui suit un titre, et Typst l'applique seulement à un paragraphe qui en suit un autre.",
+        "none": "Aucun",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Alignement du texte",
+        "description": "Laissez le bord droit irrégulier ou justifiez les lignes sur les deux bords.",
+        "options": {
+          "start": "Gauche",
+          "justify": "Justifié"
+        }
+      },
+      "headings": {
+        "title": "Titres de section et titre"
+      },
+      "headingTypeface": {
+        "label": "Type de police des titres",
+        "description": "Choisissez un type de police pour les titres de section et le titre du document."
+      },
+      "headingFont": {
+        "label": "Police des titres",
+        "description": "Choisissez une police installée pour les titres de section et le titre du document. Laissez ce champ vide pour suivre le réglage Type de police des titres."
+      },
+      "headingSize": {
+        "label": "Taille des titres",
+        "description": "Définissez la taille des titres par rapport au texte."
+      },
+      "headingColor": {
+        "label": "Couleur des titres",
+        "description": "Couleur des titres de section et du titre du document. Thème de l'éditeur conserve la couleur que le thème de l'éditeur donne aux titres.",
+        "matchTheme": "Thème de l'éditeur",
+        "customAriaLabel": "Choisir une couleur personnalisée pour les titres"
+      },
+      "layout": {
+        "title": "Mise en page"
+      },
+      "width": {
+        "label": "Largeur du texte",
+        "description": "Définissez la longueur d'une ligne avant le retour à la ligne.",
+        "options": {
+          "narrow": "Étroite",
+          "standard": "Standard",
+          "wide": "Large",
+          "full": "Pleine largeur"
+        }
+      },
+      "markdown": {
+        "label": "Aussi pour Markdown",
+        "description": "Appliquez ce style aussi aux fichiers Markdown en mode Visuel. Désactivé, Markdown garde la police de l'application."
+      },
+      "preview": {
+        "label": "Aperçu du mode Visuel",
+        "heading": "Introduction",
+        "first": "Le mode Visuel affiche des titres et des paragraphes à la place des commandes qui les produisent.",
+        "second": "Ce paragraphe suit une ligne vide. Un retrait de paragraphe décale sa première ligne vers l'intérieur.",
+        "subheading": "Méthode",
+        "third": "Modifiez un réglage et ce texte change avec lui."
+      }
     }
   },
   "checkpoints": {

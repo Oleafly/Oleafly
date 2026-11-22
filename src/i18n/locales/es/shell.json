@@ -318,6 +318,10 @@
       "keywords": "sin distracciones concentración pantalla completa ocultar interfaz mínimo escritura",
       "label": "Activar o desactivar el modo Zen"
     },
+    "visualSettings": {
+      "keywords": "apariencia tipografía tipo de letra texto tamaño párrafo sangría espaciado justificar títulos escritura",
+      "label": "Ajustes del modo Visual"
+    },
     "togglePreview": {
       "keywords": "pdf vista previa mostrar ocultar dividir solo editor",
       "label": "Alternar la vista previa del PDF"
@@ -1135,7 +1139,7 @@
       "empty": "Ningún ajuste coincide",
       "keywords": {
         "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
-        "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
+        "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño, modo visual, tipo de letra, sangría de párrafo, justificar",
         "collaboration": "servidores, iniciar sesión, dispositivos, miembros, mantenedores, compartir, equipos, laboratorios, edición en tiempo real, tiempo real, registro de seguridad",
         "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
         "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",

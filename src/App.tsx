@@ -121,6 +121,7 @@ import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
 import { startKeptUndoTidy } from "@/components/notes/note-undo-tidy";
 import { applyEditorColors } from "@/lib/editor-themes";
+import { attachVisualAppearance } from "@/lib/visual-appearance-style";
 import { useEditorColorKey } from "@/hooks/use-editor-theme";
 import { handleDockShortcut, handleTerminalTabShortcut } from "@/lib/dock-shortcuts";
 import { isTerminalTarget } from "@/lib/terminal-keys";
@@ -651,6 +652,8 @@ function AppContent() {
   useEffect(() => {
     applyEditorColors(editorColors[activeEditorColorKey] ?? {});
   }, [editorColors, activeEditorColorKey]);
+
+  useEffect(() => attachVisualAppearance(document.documentElement), []);
 
   useEffect(() => {
     const apply = (theme: Theme) => {

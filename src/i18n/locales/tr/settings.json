@@ -1036,6 +1036,7 @@
     "tabs": {
       "app": "Uygulama",
       "editor": "Düzenleyici",
+      "visual": "Görsel kip",
       "files": "Proje",
       "pdf": "PDF Önizleme",
       "terminal": "Terminal",
@@ -1172,6 +1173,115 @@
         "label": "Derlerken PDF'yi göster"
       },
       "title": "Zen kipi"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Tırnaksız",
+        "serif": "Tırnaklı",
+        "mono": "Eş aralıklı",
+        "text": "Metinle aynı"
+      },
+      "paragraphSpacings": {
+        "compact": "Sıkışık",
+        "normal": "Normal",
+        "relaxed": "Rahat",
+        "spacious": "Ferah"
+      },
+      "headingSizes": {
+        "small": "Daha küçük",
+        "normal": "Normal",
+        "large": "Daha büyük"
+      }
+    },
+    "resetSetting": "{{setting}} ayarını varsayılana sıfırla",
+    "visual": {
+      "intro": "LaTeX ve Typst dosyalarının Görsel kipte nasıl görüneceğini seçin. Dosyalarınız ve PDF değişmez. Markdown'ı da biçimlendirmek için Düzen altındaki anahtarını açın. Metin ve bağlantı renkleri, Düzenleyici sekmesindeki Düzenleyici renkleri bölümünden ayarlanır.",
+      "matchEditor": "Düzenleyiciyle aynı",
+      "text": {
+        "title": "Metin"
+      },
+      "typeface": {
+        "label": "Yazı stili",
+        "description": "Görsel kipteki metin için bir yazı stili seçin."
+      },
+      "font": {
+        "label": "Görsel kip yazı tipi",
+        "description": "Görsel kipteki metin için yüklü herhangi bir yazı tipini seçin. Yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "fontSize": {
+        "label": "Metin boyutu",
+        "description": "Görsel kipteki metnin boyutunu ayarlayın. Düzenleyiciyle aynı, düzenleyici yazı tipi boyutunu izler.",
+        "customLabel": "Piksel cinsinden özel Görsel kip metin boyutu"
+      },
+      "lineHeight": {
+        "label": "Satır yüksekliği",
+        "description": "Metin satırları arasındaki boşluğu ayarlayın. Düzenleyiciyle aynı, düzenleyici satır yüksekliğini izler.",
+        "customLabel": "Özel Görsel kip satır yüksekliği"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraf aralığı",
+        "description": "İki paragraf arasındaki boş satırın yüksekliğini ayarlayın."
+      },
+      "paragraphIndent": {
+        "label": "Paragraf girintisi",
+        "description": "Her paragrafın ilk satırını girintiler, PDF'in yaptığı gibi. LaTeX başlıktan sonraki paragrafı girintilemez, Typst ise yalnızca başka bir paragrafın ardından gelen paragrafı girintiler.",
+        "none": "Yok",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Metin hizalama",
+        "description": "Sağ kenarı düzensiz bırakın ya da satırları iki kenara yaslayın.",
+        "options": {
+          "start": "Sola",
+          "justify": "İki yana yaslı"
+        }
+      },
+      "headings": {
+        "title": "Başlıklar ve belge başlığı"
+      },
+      "headingTypeface": {
+        "label": "Başlık yazı stili",
+        "description": "Başlıklar ve belge başlığı için bir yazı stili seçin."
+      },
+      "headingFont": {
+        "label": "Başlık yazı tipi",
+        "description": "Başlıklar ve belge başlığı için yüklü bir yazı tipi seçin. Başlık yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "headingSize": {
+        "label": "Başlık boyutu",
+        "description": "Başlıkların metne göre ne kadar büyük olacağını ayarlayın."
+      },
+      "headingColor": {
+        "label": "Başlık rengi",
+        "description": "Başlıkların ve belge başlığının rengi. Düzenleyici teması, düzenleyici temanızın başlıklara verdiği rengi korur.",
+        "matchTheme": "Düzenleyici teması",
+        "customAriaLabel": "Özel bir başlık rengi seçin"
+      },
+      "layout": {
+        "title": "Düzen"
+      },
+      "width": {
+        "label": "Metin genişliği",
+        "description": "Bir satırın alt satıra geçmeden önce ne kadar uzayacağını ayarlayın.",
+        "options": {
+          "narrow": "Dar",
+          "standard": "Standart",
+          "wide": "Geniş",
+          "full": "Tam genişlik"
+        }
+      },
+      "markdown": {
+        "label": "Markdown için de kullan",
+        "description": "Bu görünümü Görsel kipteki Markdown dosyalarında da kullanın. Kapalıyken Markdown uygulama yazı tipini korur."
+      },
+      "preview": {
+        "label": "Görsel kip önizlemesi",
+        "heading": "Giriş",
+        "first": "Görsel kip, başlıkları ve paragrafları, onları oluşturan komutlar yerine gösterir.",
+        "second": "Bu paragraf boş bir satırdan sonra gelir. Paragraf girintisi ilk satırını içeri kaydırır.",
+        "subheading": "Yöntem",
+        "third": "Bir ayarı değiştirin, bu metin de onunla birlikte değişir."
+      }
     }
   },
   "checkpoints": {

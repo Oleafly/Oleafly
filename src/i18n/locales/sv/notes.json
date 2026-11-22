@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Anteckningarnas utseende",
-      "resetAriaLabel": "Återställ {{setting}} till standard",
       "text": {
         "title": "Text"
       },
       "typeface": {
         "label": "Typsnittsstil",
-        "description": "Välj typsnittsstil för anteckningstext.",
-        "options": {
-          "sans": "Sans serif",
-          "serif": "Serif",
-          "mono": "Fast bredd"
-        }
+        "description": "Välj typsnittsstil för anteckningstext."
       },
       "font": {
         "label": "Typsnitt för anteckningar",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Styckeavstånd",
-        "description": "Ange avståndet mellan stycken, listor och andra block.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Luftig",
-          "spacious": "Rymlig"
-        }
+        "description": "Ange avståndet mellan stycken, listor och andra block."
       },
       "headings": {
         "title": "Rubriker och titel"
       },
       "headingTypeface": {
         "label": "Typsnittsstil för rubriker",
-        "description": "Välj typsnittsstil för rubriker och anteckningens titel.",
-        "options": {
-          "text": "Samma som texten"
-        }
+        "description": "Välj typsnittsstil för rubriker och anteckningens titel."
       },
       "headingFont": {
         "label": "Typsnitt för rubriker",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Rubrikstorlek",
-        "description": "Ange hur stora rubrikerna är jämfört med texten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Normal",
-          "large": "Större"
-        }
+        "description": "Ange hur stora rubrikerna är jämfört med texten."
       },
       "titleSize": {
         "label": "Titelstorlek",

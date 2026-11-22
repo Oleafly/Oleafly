@@ -1,10 +1,11 @@
-import type { EditorState, Extension } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { atomicDecorations } from "./atomic-decorations";
 import { visualModeActive, visualPortsFacet } from "./facets";
 import { visualKeymap } from "./keymap";
 import { listItemMarker } from "./list-marker";
 import { markDecorations } from "./mark-decorations";
+import { latexParagraphs } from "./paragraphs";
 import { contentShownWhenParsed } from "./parsed-content";
 import { pasteHtml } from "./paste-html";
 import { pointerSelectionTracking, scrollAdjustment } from "./selection";
@@ -72,12 +73,10 @@ export function visualMode(ports: VisualPorts): Extension {
     listItemMarker,
     atomicDecorations,
     markDecorations,
+    latexParagraphs,
     visualKeymap,
     pasteHtml,
     contentShownWhenParsed,
   ];
 }
 
-export function isVisualMode(state: EditorState): boolean {
-  return state.facet(visualModeActive);
-}

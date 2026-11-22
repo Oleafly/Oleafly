@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #428, "Incorrect regex causes missing Typst section from Document Outline", and #429, "Have section number for Typst Document Outline".
+- [@Floresiensis](https://github.com/Floresiensis) for #485, "Visual mode: change font and other settings".
 - Angelk90 ([@Angelk90](https://github.com/Angelk90)) for #494, "Restoring an older version does not update the version indicator".
 - Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme", #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
 
 ### Added
 
+- Visual mode has its own settings in Settings > Appearance > Visual mode. Pick a typeface or any installed font, the text size, line height, paragraph spacing, a first-line indent, justified text, the line width, and the font, size and color of headings. A preview next to the options changes as you go. The settings cover LaTeX and Typst, and a switch gives Markdown in Visual mode the same look. In Visual mode, the settings button above the editor opens this tab, and Visual mode settings in the command palette opens it from anywhere, Zen mode included.
 - LaTeX compiles follow the open file. A file with its own `\documentclass` compiles by itself, and a chapter compiles the document that includes it. A paper, its supplement and a response letter can share a project without Set as main document or `% !TEX root` comments. Other files compile the main document, and while a `.bib` file or an image is open, Oleafly keeps compiling the last document. To always compile the main document, pick Always the main document under Compile target in the compile menu.
 - Right-click a file or folder in the file tree to copy its full path or its path inside the project, or to show it in Finder, File Explorer or your file manager. Editor tabs have the same items. Right-click the empty part of the tree to copy or show the project folder.
 - When characters are missing from the PDF because the default font, Latin Modern, doesn't have them, the Logs panel offers a setup for New Computer Modern, which looks nearly the same and has them. It only changes the text font, so math stays as it is.

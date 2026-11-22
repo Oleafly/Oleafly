@@ -1042,6 +1042,7 @@
     "tabs": {
       "app": "Aplicativo",
       "editor": "Editor",
+      "visual": "Modo Visual",
       "files": "Projeto",
       "pdf": "Visualização do PDF",
       "terminal": "Terminal",
@@ -1179,6 +1180,115 @@
         "label": "Mostrar o PDF ao compilar"
       },
       "title": "Modo Zen"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Sem serifa",
+        "serif": "Com serifa",
+        "mono": "Monoespaçada",
+        "text": "Igual ao texto"
+      },
+      "paragraphSpacings": {
+        "compact": "Compacto",
+        "normal": "Normal",
+        "relaxed": "Confortável",
+        "spacious": "Espaçoso"
+      },
+      "headingSizes": {
+        "small": "Menor",
+        "normal": "Normal",
+        "large": "Maior"
+      }
+    },
+    "resetSetting": "Redefinir {{setting}} para o padrão",
+    "visual": {
+      "intro": "Escolha como os arquivos LaTeX e Typst aparecem no modo Visual. Seus arquivos e o PDF não mudam. Para estilizar o Markdown também, ative a opção dele em Layout. As cores do texto e dos links ficam em Cores do editor, na aba Editor.",
+      "matchEditor": "Igual ao editor",
+      "text": {
+        "title": "Texto"
+      },
+      "typeface": {
+        "label": "Tipo de letra",
+        "description": "Escolha um tipo de letra para o texto no modo Visual."
+      },
+      "font": {
+        "label": "Fonte do modo Visual",
+        "description": "Escolha qualquer fonte instalada para o texto no modo Visual. Deixe em branco para usar a configuração Tipo de letra."
+      },
+      "fontSize": {
+        "label": "Tamanho do texto",
+        "description": "Defina o tamanho do texto no modo Visual. Igual ao editor segue o tamanho da fonte do editor.",
+        "customLabel": "Tamanho personalizado do texto no modo Visual, em pixels"
+      },
+      "lineHeight": {
+        "label": "Altura da linha",
+        "description": "Defina o espaço entre as linhas do texto. Igual ao editor segue a altura da linha do editor.",
+        "customLabel": "Altura da linha personalizada no modo Visual"
+      },
+      "paragraphSpacing": {
+        "label": "Espaçamento entre parágrafos",
+        "description": "Defina a altura da linha em branco entre dois parágrafos."
+      },
+      "paragraphIndent": {
+        "label": "Recuo do parágrafo",
+        "description": "Recua a primeira linha de cada parágrafo, como o PDF faz. O LaTeX não recua o parágrafo depois de um título, e o Typst recua só um parágrafo que vem depois de outro.",
+        "none": "Nenhum",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Alinhamento do texto",
+        "description": "Deixe a margem direita irregular ou justifique as linhas nas duas bordas.",
+        "options": {
+          "start": "À esquerda",
+          "justify": "Justificado"
+        }
+      },
+      "headings": {
+        "title": "Títulos e título do documento"
+      },
+      "headingTypeface": {
+        "label": "Tipo de letra dos títulos",
+        "description": "Escolha um tipo de letra para os títulos e para o título do documento."
+      },
+      "headingFont": {
+        "label": "Fonte dos títulos",
+        "description": "Escolha uma fonte instalada para os títulos e para o título do documento. Deixe em branco para usar a configuração Tipo de letra dos títulos."
+      },
+      "headingSize": {
+        "label": "Tamanho dos títulos",
+        "description": "Defina o tamanho dos títulos em relação ao texto."
+      },
+      "headingColor": {
+        "label": "Cor dos títulos",
+        "description": "Cor dos títulos e do título do documento. Tema do editor mantém a cor de título que o tema do editor dá a eles.",
+        "matchTheme": "Tema do editor",
+        "customAriaLabel": "Escolher uma cor personalizada para os títulos"
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Largura do texto",
+        "description": "Defina o comprimento que uma linha pode ter antes de quebrar.",
+        "options": {
+          "narrow": "Estreita",
+          "standard": "Padrão",
+          "wide": "Larga",
+          "full": "Largura total"
+        }
+      },
+      "markdown": {
+        "label": "Usar também para Markdown",
+        "description": "Usa este visual também em arquivos Markdown no modo Visual. Com a opção desativada, o Markdown mantém a fonte do aplicativo."
+      },
+      "preview": {
+        "label": "Pré-visualização do modo Visual",
+        "heading": "Introdução",
+        "first": "O modo Visual mostra títulos e parágrafos no lugar dos comandos que os criam.",
+        "second": "Este parágrafo vem depois de uma linha em branco. Um recuo de parágrafo move a primeira linha para dentro.",
+        "subheading": "Método",
+        "third": "Mude uma configuração e este texto muda junto."
+      }
     }
   },
   "checkpoints": {

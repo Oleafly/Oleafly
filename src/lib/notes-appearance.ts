@@ -1,38 +1,34 @@
 import { EDITOR_THEME_IDS, type EditorThemeId } from "@/lib/editor-themes";
 import { withoutControlCharacters } from "@/lib/font-families";
+import {
+  HEADING_SIZES,
+  HEADING_TYPEFACES,
+  PARAGRAPH_SPACINGS,
+  TEXT_LINE_HEIGHTS,
+  TEXT_TYPEFACES,
+  type HeadingSize,
+  type HeadingTypeface,
+  type Normalizers,
+  type ParagraphSpacing,
+  type TextLineHeightPreset,
+  type TextTypeface,
+  clampLineHeight,
+  clampTextFontSize,
+  fontFamilyValue,
+  hexColorValue,
+  listedNumberValue,
+  numberValue,
+  optionValue,
+  readAppearance,
+  toggleValue,
+} from "@/lib/text-appearance";
 
 export type NoteWidth = "standard" | "wide" | "full";
 export const NOTE_WIDTHS: readonly NoteWidth[] = ["standard", "wide", "full"];
 export const NOTE_WIDTH_KEY = "oleafly.notes.width";
 
-export type NotesTypeface = "sans" | "serif" | "mono";
-export const NOTES_TYPEFACES: readonly NotesTypeface[] = ["sans", "serif", "mono"];
-
-export type NotesHeadingTypeface = "text" | NotesTypeface;
-export const NOTES_HEADING_TYPEFACES: readonly NotesHeadingTypeface[] = ["text", ...NOTES_TYPEFACES];
-
-export const NOTES_FONT_SIZE_RANGE = { min: 10, max: 40, step: 1 } as const;
-
-export type NotesLineHeightPreset = "compact" | "normal" | "wide";
-export type NotesLineHeight = NotesLineHeightPreset | "custom";
-export const NOTES_LINE_HEIGHTS: Readonly<Record<NotesLineHeightPreset, number>> = {
-  compact: 1.5,
-  normal: 1.7,
-  wide: 2,
-};
+export type NotesLineHeight = TextLineHeightPreset | "custom";
 export const NOTES_LINE_HEIGHT_OPTIONS: readonly NotesLineHeight[] = ["compact", "normal", "wide", "custom"];
-export const NOTES_CUSTOM_LINE_HEIGHT = { min: 1, max: 3, step: 0.05 } as const;
-
-export type NotesParagraphSpacing = "compact" | "normal" | "relaxed" | "spacious";
-export const NOTES_PARAGRAPH_SPACING_OPTIONS: readonly NotesParagraphSpacing[] = [
-  "compact",
-  "normal",
-  "relaxed",
-  "spacious",
-];
-
-export type NotesHeadingSize = "small" | "normal" | "large";
-export const NOTES_HEADING_SIZES: readonly NotesHeadingSize[] = ["small", "normal", "large"];
 
 export const NOTES_TITLE_SIZES: readonly number[] = [20, 24, 28, 32, 36, 40];
 
@@ -102,15 +98,15 @@ export function normalizeTextReplacements(raw: unknown): TextReplacements {
 }
 
 export const NOTES_APPEARANCE_DEFAULTS = {
-  notesTypeface: "sans" as NotesTypeface,
+  notesTypeface: "sans" as TextTypeface,
   notesFontFamily: "",
   notesFontSize: 15,
   notesLineHeight: "normal" as NotesLineHeight,
-  notesCustomLineHeight: NOTES_LINE_HEIGHTS.normal,
-  notesParagraphSpacing: "normal" as NotesParagraphSpacing,
-  notesHeadingTypeface: "text" as NotesHeadingTypeface,
+  notesCustomLineHeight: TEXT_LINE_HEIGHTS.normal,
+  notesParagraphSpacing: "normal" as ParagraphSpacing,
+  notesHeadingTypeface: "text" as HeadingTypeface,
   notesHeadingFontFamily: "",
-  notesHeadingSize: "normal" as NotesHeadingSize,
+  notesHeadingSize: "normal" as HeadingSize,
   notesTitleSize: 24,
   notesWidth: "standard" as NoteWidth,
   notesCodeFontFamily: "",
@@ -162,36 +158,6 @@ export const NOTES_APPEARANCE_STORAGE_KEYS: Readonly<Record<NotesAppearanceKey, 
   notesTikzPreamble: "oleafly.notes.tikzPreamble",
 };
 
-export function notesOption<T extends string>(options: readonly T[], raw: unknown, fallback: T): T {
-  return options.find((option) => option === raw) ?? fallback;
-}
-
-type Normalizer<K extends NotesAppearanceKey> = (raw: unknown) => NotesAppearance[K];
-
-function option<K extends NotesAppearanceKey>(key: K, options: readonly string[]): Normalizer<K> {
-  return (raw) => notesOption(options, raw, NOTES_APPEARANCE_DEFAULTS[key] as string) as NotesAppearance[K];
-}
-
-function family(raw: unknown): string {
-  return typeof raw === "string" ? withoutControlCharacters(raw).slice(0, 200) : "";
-}
-
-function numeric(fallback: number, clamp: (value: number) => number): (raw: unknown) => number {
-  return (raw) => {
-    if (raw === null || raw === undefined || raw === "") return fallback;
-    const value = Number(raw);
-    return Number.isFinite(value) ? clamp(value) : fallback;
-  };
-}
-
-function toggle(fallback: boolean): (raw: unknown) => boolean {
-  return (raw) => {
-    if (raw === true || raw === "1") return true;
-    if (raw === false || raw === "0") return false;
-    return fallback;
-  };
-}
-
 export const NOTES_TIKZ_PREAMBLE_MAX = 8000;
 
 function preamble(raw: unknown): string {
@@ -202,40 +168,31 @@ function preamble(raw: unknown): string {
     .slice(0, NOTES_TIKZ_PREAMBLE_MAX);
 }
 
-function hex(raw: unknown): string {
-  return typeof raw === "string" && /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : "";
-}
-
-function titleSize(raw: unknown): number {
-  const value = Number(raw);
-  return raw !== "" && NOTES_TITLE_SIZES.includes(value) ? value : NOTES_APPEARANCE_DEFAULTS.notesTitleSize;
-}
-
-const NORMALIZERS: { readonly [K in NotesAppearanceKey]: Normalizer<K> } = {
-  notesTypeface: option("notesTypeface", NOTES_TYPEFACES),
-  notesFontFamily: family,
-  notesFontSize: numeric(NOTES_APPEARANCE_DEFAULTS.notesFontSize, clampNotesFontSize),
-  notesLineHeight: option("notesLineHeight", NOTES_LINE_HEIGHT_OPTIONS),
-  notesCustomLineHeight: numeric(NOTES_APPEARANCE_DEFAULTS.notesCustomLineHeight, clampNotesLineHeight),
-  notesParagraphSpacing: option("notesParagraphSpacing", NOTES_PARAGRAPH_SPACING_OPTIONS),
-  notesHeadingTypeface: option("notesHeadingTypeface", NOTES_HEADING_TYPEFACES),
-  notesHeadingFontFamily: family,
-  notesHeadingSize: option("notesHeadingSize", NOTES_HEADING_SIZES),
-  notesTitleSize: titleSize,
-  notesWidth: option("notesWidth", NOTE_WIDTHS),
-  notesCodeFontFamily: family,
-  notesCodeTheme: option("notesCodeTheme", NOTES_CODE_THEMES),
-  notesAccentColor: hex,
-  notesCalloutStyle: option("notesCalloutStyle", NOTES_CALLOUT_STYLES),
-  notesTaskBox: option("notesTaskBox", NOTES_TASK_BOXES),
-  notesFieldStyle: option("notesFieldStyle", NOTES_FIELD_STYLES),
-  notesInfo: option("notesInfo", NOTES_INFO_PLACES),
-  notesShowWordCount: toggle(NOTES_APPEARANCE_DEFAULTS.notesShowWordCount),
-  notesSpellcheck: toggle(NOTES_APPEARANCE_DEFAULTS.notesSpellcheck),
-  notesTextReplace: toggle(NOTES_APPEARANCE_DEFAULTS.notesTextReplace),
+const NORMALIZERS: Normalizers<NotesAppearance> = {
+  notesTypeface: optionValue(TEXT_TYPEFACES, NOTES_APPEARANCE_DEFAULTS.notesTypeface),
+  notesFontFamily: fontFamilyValue,
+  notesFontSize: numberValue(NOTES_APPEARANCE_DEFAULTS.notesFontSize, clampNotesFontSize),
+  notesLineHeight: optionValue(NOTES_LINE_HEIGHT_OPTIONS, NOTES_APPEARANCE_DEFAULTS.notesLineHeight),
+  notesCustomLineHeight: numberValue(NOTES_APPEARANCE_DEFAULTS.notesCustomLineHeight, clampLineHeight),
+  notesParagraphSpacing: optionValue(PARAGRAPH_SPACINGS, NOTES_APPEARANCE_DEFAULTS.notesParagraphSpacing),
+  notesHeadingTypeface: optionValue(HEADING_TYPEFACES, NOTES_APPEARANCE_DEFAULTS.notesHeadingTypeface),
+  notesHeadingFontFamily: fontFamilyValue,
+  notesHeadingSize: optionValue(HEADING_SIZES, NOTES_APPEARANCE_DEFAULTS.notesHeadingSize),
+  notesTitleSize: listedNumberValue(NOTES_TITLE_SIZES, NOTES_APPEARANCE_DEFAULTS.notesTitleSize),
+  notesWidth: optionValue(NOTE_WIDTHS, NOTES_APPEARANCE_DEFAULTS.notesWidth),
+  notesCodeFontFamily: fontFamilyValue,
+  notesCodeTheme: optionValue(NOTES_CODE_THEMES, NOTES_APPEARANCE_DEFAULTS.notesCodeTheme),
+  notesAccentColor: hexColorValue,
+  notesCalloutStyle: optionValue(NOTES_CALLOUT_STYLES, NOTES_APPEARANCE_DEFAULTS.notesCalloutStyle),
+  notesTaskBox: optionValue(NOTES_TASK_BOXES, NOTES_APPEARANCE_DEFAULTS.notesTaskBox),
+  notesFieldStyle: optionValue(NOTES_FIELD_STYLES, NOTES_APPEARANCE_DEFAULTS.notesFieldStyle),
+  notesInfo: optionValue(NOTES_INFO_PLACES, NOTES_APPEARANCE_DEFAULTS.notesInfo),
+  notesShowWordCount: toggleValue(NOTES_APPEARANCE_DEFAULTS.notesShowWordCount),
+  notesSpellcheck: toggleValue(NOTES_APPEARANCE_DEFAULTS.notesSpellcheck),
+  notesTextReplace: toggleValue(NOTES_APPEARANCE_DEFAULTS.notesTextReplace),
   notesTextReplacements: normalizeTextReplacements,
-  notesKeepUndo: toggle(NOTES_APPEARANCE_DEFAULTS.notesKeepUndo),
-  notesXPostsLive: toggle(NOTES_APPEARANCE_DEFAULTS.notesXPostsLive),
+  notesKeepUndo: toggleValue(NOTES_APPEARANCE_DEFAULTS.notesKeepUndo),
+  notesXPostsLive: toggleValue(NOTES_APPEARANCE_DEFAULTS.notesXPostsLive),
   notesTikzPreamble: preamble,
 };
 
@@ -244,21 +201,9 @@ export function normalizeNotesSetting<K extends NotesAppearanceKey>(key: K, raw:
 }
 
 export function readNotesAppearance(read: (storageKey: string) => string | null): NotesAppearance {
-  const appearance: Record<string, unknown> = {};
-  for (const key of NOTES_APPEARANCE_KEYS) {
-    appearance[key] = normalizeNotesSetting(key, read(NOTES_APPEARANCE_STORAGE_KEYS[key]));
-  }
-  return appearance as NotesAppearance;
+  return readAppearance(NORMALIZERS, NOTES_APPEARANCE_STORAGE_KEYS, read);
 }
 
 export function clampNotesFontSize(value: number): number {
-  if (!Number.isFinite(value)) return NOTES_APPEARANCE_DEFAULTS.notesFontSize;
-  const { min, max } = NOTES_FONT_SIZE_RANGE;
-  return Math.round(Math.min(max, Math.max(min, value)) * 10) / 10;
-}
-
-export function clampNotesLineHeight(value: number): number {
-  if (!Number.isFinite(value)) return NOTES_LINE_HEIGHTS.normal;
-  const { min, max } = NOTES_CUSTOM_LINE_HEIGHT;
-  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+  return clampTextFontSize(value, NOTES_APPEARANCE_DEFAULTS.notesFontSize);
 }

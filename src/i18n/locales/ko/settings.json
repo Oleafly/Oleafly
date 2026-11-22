@@ -1030,6 +1030,7 @@
     "tabs": {
       "app": "앱",
       "editor": "편집기",
+      "visual": "비주얼 모드",
       "files": "프로젝트",
       "pdf": "PDF 미리보기",
       "terminal": "터미널",
@@ -1165,6 +1166,115 @@
         "label": "컴파일할 때 PDF 표시"
       },
       "title": "Zen 모드"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "산세리프",
+        "serif": "세리프",
+        "mono": "고정폭",
+        "text": "본문과 같게"
+      },
+      "paragraphSpacings": {
+        "compact": "좁게",
+        "normal": "보통",
+        "relaxed": "여유 있게",
+        "spacious": "넓게"
+      },
+      "headingSizes": {
+        "small": "작게",
+        "normal": "보통",
+        "large": "크게"
+      }
+    },
+    "resetSetting": "{{setting}}을(를) 기본값으로 되돌리기",
+    "visual": {
+      "intro": "비주얼 모드에서 LaTeX와 Typst 파일이 어떻게 보일지 정합니다. 파일과 PDF는 바뀌지 않습니다. Markdown에도 적용하려면 레이아웃에서 해당 스위치를 켜세요. 텍스트와 링크 색상은 편집기 탭의 편집기 색상에서 설정합니다.",
+      "matchEditor": "편집기와 같게",
+      "text": {
+        "title": "텍스트"
+      },
+      "typeface": {
+        "label": "서체",
+        "description": "비주얼 모드 본문의 서체를 고르세요."
+      },
+      "font": {
+        "label": "비주얼 모드 글꼴",
+        "description": "비주얼 모드 본문에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 서체 설정을 따릅니다."
+      },
+      "fontSize": {
+        "label": "글자 크기",
+        "description": "비주얼 모드 본문의 글자 크기를 정합니다. “편집기와 같게”는 편집기의 글자 크기를 따릅니다.",
+        "customLabel": "사용자 지정 비주얼 모드 글자 크기(픽셀)"
+      },
+      "lineHeight": {
+        "label": "줄 높이",
+        "description": "줄 간격을 정합니다. “편집기와 같게”는 편집기의 줄 높이를 따릅니다.",
+        "customLabel": "사용자 지정 비주얼 모드 줄 높이"
+      },
+      "paragraphSpacing": {
+        "label": "문단 간격",
+        "description": "두 문단 사이의 빈 줄 높이를 정합니다."
+      },
+      "paragraphIndent": {
+        "label": "문단 들여쓰기",
+        "description": "PDF처럼 각 문단의 첫 줄을 들여씁니다. LaTeX는 제목 바로 다음 문단은 들여쓰지 않고, Typst는 다른 문단 다음에 오는 문단만 들여씁니다.",
+        "none": "없음",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "텍스트 정렬",
+        "description": "오른쪽 끝을 가지런히 맞추지 않거나, 줄을 양쪽 끝에 맞춥니다.",
+        "options": {
+          "start": "왼쪽 정렬",
+          "justify": "양쪽 정렬"
+        }
+      },
+      "headings": {
+        "title": "제목과 문서 제목"
+      },
+      "headingTypeface": {
+        "label": "제목 서체",
+        "description": "제목과 문서 제목의 서체를 고르세요."
+      },
+      "headingFont": {
+        "label": "제목 글꼴",
+        "description": "제목과 문서 제목에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 제목 서체 설정을 따릅니다."
+      },
+      "headingSize": {
+        "label": "제목 크기",
+        "description": "본문과 비교해 제목을 얼마나 크게 표시할지 정합니다."
+      },
+      "headingColor": {
+        "label": "제목 색상",
+        "description": "제목과 문서 제목의 색상입니다. “편집기 테마”를 고르면 편집기 테마가 제목에 지정한 색상을 그대로 씁니다.",
+        "matchTheme": "편집기 테마",
+        "customAriaLabel": "사용자 지정 제목 색상 선택"
+      },
+      "layout": {
+        "title": "레이아웃"
+      },
+      "width": {
+        "label": "텍스트 너비",
+        "description": "한 줄이 얼마나 길어지면 줄바꿈할지 정합니다.",
+        "options": {
+          "narrow": "좁게",
+          "standard": "표준",
+          "wide": "넓게",
+          "full": "전체 너비"
+        }
+      },
+      "markdown": {
+        "label": "Markdown에도 사용",
+        "description": "비주얼 모드의 Markdown 파일에도 이 모양을 사용합니다. 끄면 Markdown은 앱 글꼴을 그대로 씁니다."
+      },
+      "preview": {
+        "label": "비주얼 모드 미리보기",
+        "heading": "소개",
+        "first": "비주얼 모드는 제목과 문단을 만드는 명령 대신 제목과 문단 자체를 보여 줍니다.",
+        "second": "이 문단은 빈 줄 다음에 옵니다. 문단 들여쓰기를 켜면 첫 줄이 안쪽으로 들어갑니다.",
+        "subheading": "방법",
+        "third": "설정을 바꾸면 이 텍스트도 함께 바뀝니다."
+      }
     }
   },
   "checkpoints": {

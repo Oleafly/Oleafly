@@ -1036,6 +1036,7 @@
     "tabs": {
       "app": "App",
       "editor": "Editor",
+      "visual": "Visuell modus",
       "files": "Prosjekt",
       "pdf": "PDF-forhåndsvisning",
       "terminal": "Terminal",
@@ -1172,6 +1173,115 @@
         "label": "Vis PDF-en ved kompilering"
       },
       "title": "Zen-modus"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Uten seriffer",
+        "serif": "Med seriffer",
+        "mono": "Fast bredde",
+        "text": "Samme som teksten"
+      },
+      "paragraphSpacings": {
+        "compact": "Kompakt",
+        "normal": "Vanlig",
+        "relaxed": "Luftig",
+        "spacious": "Romslig"
+      },
+      "headingSizes": {
+        "small": "Mindre",
+        "normal": "Vanlig",
+        "large": "Større"
+      }
+    },
+    "resetSetting": "Tilbakestill {{setting}} til standard",
+    "visual": {
+      "intro": "Velg hvordan LaTeX- og Typst-filer ser ut i Visuell modus. Filene dine og PDF-en endres ikke. For å style Markdown også, slå på bryteren under Oppsett. Tekst- og lenkefarger angir du i Editorfarger på fanen Editor.",
+      "matchEditor": "Samme som editoren",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Skrifttype",
+        "description": "Velg en skrifttype for tekst i Visuell modus."
+      },
+      "font": {
+        "label": "Skrift i Visuell modus",
+        "description": "Velg hvilken som helst installert skrift for tekst i Visuell modus. La feltet stå tomt for å bruke innstillingen Skrifttype."
+      },
+      "fontSize": {
+        "label": "Tekststørrelse",
+        "description": "Angi størrelsen på tekst i Visuell modus. Samme som editoren følger skriftstørrelsen i editoren.",
+        "customLabel": "Egendefinert tekststørrelse i Visuell modus i piksler"
+      },
+      "lineHeight": {
+        "label": "Linjeavstand",
+        "description": "Angi avstanden mellom linjene i teksten. Samme som editoren følger linjeavstanden i editoren.",
+        "customLabel": "Egendefinert linjeavstand i Visuell modus"
+      },
+      "paragraphSpacing": {
+        "label": "Avsnittsavstand",
+        "description": "Angi hvor høy den tomme linjen mellom to avsnitt er."
+      },
+      "paragraphIndent": {
+        "label": "Avsnittsinnrykk",
+        "description": "Rykk inn første linje i hvert avsnitt, slik PDF-en gjør. LaTeX lar avsnittet etter en overskrift være, og Typst rykker bare inn et avsnitt som kommer etter et annet.",
+        "none": "Ingen",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Tekstjustering",
+        "description": "La høyre kant være ujevn, eller blokkjuster linjene til begge kantene.",
+        "options": {
+          "start": "Venstre",
+          "justify": "Blokkjustert"
+        }
+      },
+      "headings": {
+        "title": "Overskrifter og tittel"
+      },
+      "headingTypeface": {
+        "label": "Skrifttype for overskrifter",
+        "description": "Velg en skrifttype for overskrifter og dokumenttittelen."
+      },
+      "headingFont": {
+        "label": "Overskriftsskrift",
+        "description": "Velg en installert skrift for overskrifter og dokumenttittelen. La feltet stå tomt for å bruke innstillingen Skrifttype for overskrifter."
+      },
+      "headingSize": {
+        "label": "Overskriftsstørrelse",
+        "description": "Angi hvor store overskriftene er sammenlignet med teksten."
+      },
+      "headingColor": {
+        "label": "Overskriftsfarge",
+        "description": "Farge for overskrifter og dokumenttittelen. Editortema beholder fargen som editortemaet ditt gir overskriftene.",
+        "matchTheme": "Editortema",
+        "customAriaLabel": "Velg en egendefinert overskriftsfarge"
+      },
+      "layout": {
+        "title": "Oppsett"
+      },
+      "width": {
+        "label": "Tekstbredde",
+        "description": "Angi hvor lang en linje blir før den brytes.",
+        "options": {
+          "narrow": "Smal",
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Full bredde"
+        }
+      },
+      "markdown": {
+        "label": "Bruk for Markdown også",
+        "description": "Bruk dette utseendet også for Markdown-filer i Visuell modus. Når det er av, beholder Markdown appens skrift."
+      },
+      "preview": {
+        "label": "Forhåndsvisning av Visuell modus",
+        "heading": "Innledning",
+        "first": "Visuell modus viser overskrifter og avsnitt i stedet for kommandoene som lager dem.",
+        "second": "Dette avsnittet kommer etter en tom linje. Et avsnittsinnrykk flytter første linje inn.",
+        "subheading": "Metode",
+        "third": "Endre en innstilling, så endres denne teksten sammen med den."
+      }
     }
   },
   "checkpoints": {

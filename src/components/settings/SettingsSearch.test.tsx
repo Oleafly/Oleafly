@@ -25,7 +25,7 @@ function lookup(path: CatalogPath): unknown {
 }
 
 const SECTION_TABS: readonly (readonly [SettingsSearchSection, readonly string[]])[] = [
-  ["appearance", ["app", "editor", "terminal", "pdf", "files"]],
+  ["appearance", ["app", "editor", "visual", "terminal", "pdf", "files"]],
   ["data", ["local", "cloud"]],
   ["ai", ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"]],
   ["engine", ["latex", "typst", "markdown", "quarto", "calepin"]],

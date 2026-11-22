@@ -1036,6 +1036,7 @@
     "tabs": {
       "app": "Sovellus",
       "editor": "Editori",
+      "visual": "Visuaalinen tila",
       "files": "Projekti",
       "pdf": "PDF-esikatselu",
       "terminal": "Pääte",
@@ -1172,6 +1173,115 @@
         "label": "Näytä PDF käännettäessä"
       },
       "title": "Zen-tila"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Groteski",
+        "serif": "Antiikva",
+        "mono": "Tasalevyinen",
+        "text": "Sama kuin tekstissä"
+      },
+      "paragraphSpacings": {
+        "compact": "Tiivis",
+        "normal": "Normaali",
+        "relaxed": "Väljä",
+        "spacious": "Tilava"
+      },
+      "headingSizes": {
+        "small": "Pienempi",
+        "normal": "Normaali",
+        "large": "Suurempi"
+      }
+    },
+    "resetSetting": "Palauta oletusarvo: {{setting}}",
+    "visual": {
+      "intro": "Valitse, miltä LaTeX- ja Typst-tiedostot näyttävät visuaalisessa tilassa. Tiedostosi ja PDF eivät muutu. Jos haluat tyylitellä myös Markdownin, ota sen kytkin käyttöön kohdassa Asettelu. Tekstin ja linkkien värit asetetaan Editorin värit -kohdassa Editori-välilehdellä.",
+      "matchEditor": "Sama kuin editorissa",
+      "text": {
+        "title": "Teksti"
+      },
+      "typeface": {
+        "label": "Kirjaintyyppi",
+        "description": "Valitse visuaalisen tilan tekstin kirjaintyyppi."
+      },
+      "font": {
+        "label": "Visuaalisen tilan fontti",
+        "description": "Valitse visuaalisen tilan tekstille mikä tahansa asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Kirjaintyyppi-asetusta."
+      },
+      "fontSize": {
+        "label": "Tekstin koko",
+        "description": "Aseta visuaalisen tilan tekstin koko. Sama kuin editorissa seuraa editorin fonttikokoa.",
+        "customLabel": "Mukautettu visuaalisen tilan tekstikoko pikseleinä"
+      },
+      "lineHeight": {
+        "label": "Riviväli",
+        "description": "Aseta tekstirivien välinen tila. Sama kuin editorissa seuraa editorin riviväliä.",
+        "customLabel": "Mukautettu visuaalisen tilan riviväli"
+      },
+      "paragraphSpacing": {
+        "label": "Kappaleväli",
+        "description": "Aseta, kuinka korkea tyhjä rivi kahden kappaleen välissä on."
+      },
+      "paragraphIndent": {
+        "label": "Kappaleen sisennys",
+        "description": "Sisennä kunkin kappaleen ensimmäinen rivi, kuten PDF tekee. LaTeX jättää otsikon jälkeisen kappaleen ennalleen, ja Typst sisentää vain kappaleen, joka tulee toisen kappaleen jälkeen.",
+        "none": "Ei mitään",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Tekstin tasaus",
+        "description": "Jätä oikea reuna rosoiseksi tai tasaa rivit molempiin reunoihin.",
+        "options": {
+          "start": "Vasen",
+          "justify": "Tasattu"
+        }
+      },
+      "headings": {
+        "title": "Otsikot ja nimi"
+      },
+      "headingTypeface": {
+        "label": "Otsikoiden kirjaintyyppi",
+        "description": "Valitse otsikoiden ja dokumentin nimen kirjaintyyppi."
+      },
+      "headingFont": {
+        "label": "Otsikoiden fontti",
+        "description": "Valitse otsikoille ja dokumentin nimelle asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Otsikoiden kirjaintyyppi -asetusta."
+      },
+      "headingSize": {
+        "label": "Otsikoiden koko",
+        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna."
+      },
+      "headingColor": {
+        "label": "Otsikoiden väri",
+        "description": "Otsikoiden ja dokumentin nimen väri. Editorin teema säilyttää värin, jonka editorin teema niille antaa.",
+        "matchTheme": "Editorin teema",
+        "customAriaLabel": "Valitse mukautettu otsikoiden väri"
+      },
+      "layout": {
+        "title": "Asettelu"
+      },
+      "width": {
+        "label": "Tekstin leveys",
+        "description": "Aseta, kuinka pitkäksi rivi tulee ennen rivitystä.",
+        "options": {
+          "narrow": "Kapea",
+          "standard": "Tavallinen",
+          "wide": "Leveä",
+          "full": "Täysi leveys"
+        }
+      },
+      "markdown": {
+        "label": "Käytä myös Markdownille",
+        "description": "Käytä tätä ulkoasua myös Markdown-tiedostoille visuaalisessa tilassa. Kun asetus on pois päältä, Markdown käyttää sovelluksen fonttia."
+      },
+      "preview": {
+        "label": "Visuaalisen tilan esikatselu",
+        "heading": "Johdanto",
+        "first": "Visuaalinen tila näyttää otsikot ja kappaleet niitä tekevien komentojen sijaan.",
+        "second": "Tämä kappale tulee tyhjän rivin jälkeen. Kappaleen sisennys siirtää sen ensimmäistä riviä sisemmäs.",
+        "subheading": "Menetelmä",
+        "third": "Muuta asetusta, niin tämä teksti muuttuu sen mukana."
+      }
     }
   },
   "checkpoints": {

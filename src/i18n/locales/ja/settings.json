@@ -1030,6 +1030,7 @@
     "tabs": {
       "app": "アプリ",
       "editor": "エディタ",
+      "visual": "ビジュアルモード",
       "files": "プロジェクト",
       "pdf": "PDF プレビュー",
       "terminal": "ターミナル",
@@ -1165,6 +1166,115 @@
         "label": "コンパイル時に PDF を表示"
       },
       "title": "Zen モード"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "サンセリフ",
+        "serif": "セリフ",
+        "mono": "等幅",
+        "text": "本文と同じ"
+      },
+      "paragraphSpacings": {
+        "compact": "狭い",
+        "normal": "標準",
+        "relaxed": "ゆったり",
+        "spacious": "広い"
+      },
+      "headingSizes": {
+        "small": "小さめ",
+        "normal": "標準",
+        "large": "大きめ"
+      }
+    },
+    "resetSetting": "{{setting}} を既定に戻す",
+    "visual": {
+      "intro": "ビジュアルモードでの LaTeX と Typst ファイルの見た目を選びます。ファイルと PDF は変わりません。Markdown にも適用するには、「レイアウト」にあるスイッチをオンにします。文字とリンクの色は、「エディタ」タブの「エディタの色」で設定します。",
+      "matchEditor": "エディタに合わせる",
+      "text": {
+        "title": "テキスト"
+      },
+      "typeface": {
+        "label": "書体",
+        "description": "ビジュアルモードの本文の書体を選びます。"
+      },
+      "font": {
+        "label": "ビジュアルモードのフォント",
+        "description": "ビジュアルモードの本文に使うフォントを、インストール済みのものから選びます。空欄にすると「書体」の設定を使います。"
+      },
+      "fontSize": {
+        "label": "文字サイズ",
+        "description": "ビジュアルモードの文字サイズを設定します。「エディタに合わせる」はエディタの文字サイズに従います。",
+        "customLabel": "ビジュアルモードの文字サイズ（カスタム、ピクセル）"
+      },
+      "lineHeight": {
+        "label": "行の高さ",
+        "description": "行間を設定します。「エディタに合わせる」はエディタの行の高さに従います。",
+        "customLabel": "ビジュアルモードの行の高さ（カスタム）"
+      },
+      "paragraphSpacing": {
+        "label": "段落の間隔",
+        "description": "2 つの段落の間にある空白行の高さを設定します。"
+      },
+      "paragraphIndent": {
+        "label": "段落の字下げ",
+        "description": "各段落の最初の行を、PDF と同じように字下げします。LaTeX は見出しの直後の段落を字下げせず、Typst は別の段落に続く段落だけを字下げします。",
+        "none": "なし",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "文字の配置",
+        "description": "右端をそろえずにそのままにするか、行を両端にそろえます。",
+        "options": {
+          "start": "左揃え",
+          "justify": "両端揃え"
+        }
+      },
+      "headings": {
+        "title": "見出しとタイトル"
+      },
+      "headingTypeface": {
+        "label": "見出しの書体",
+        "description": "見出しとドキュメントのタイトルの書体を選びます。"
+      },
+      "headingFont": {
+        "label": "見出しのフォント",
+        "description": "見出しとドキュメントのタイトルに使うフォントを、インストール済みのものから選びます。空欄にすると「見出しの書体」の設定を使います。"
+      },
+      "headingSize": {
+        "label": "見出しのサイズ",
+        "description": "本文に対する見出しの大きさを設定します。"
+      },
+      "headingColor": {
+        "label": "見出しの色",
+        "description": "見出しとドキュメントのタイトルの色です。「エディタのテーマ」にすると、エディタのテーマが見出しに指定する色のままになります。",
+        "matchTheme": "エディタのテーマ",
+        "customAriaLabel": "見出しのカスタムカラーを選択"
+      },
+      "layout": {
+        "title": "レイアウト"
+      },
+      "width": {
+        "label": "テキストの幅",
+        "description": "行が折り返されるまでの長さを設定します。",
+        "options": {
+          "narrow": "狭い",
+          "standard": "標準",
+          "wide": "広い",
+          "full": "全幅"
+        }
+      },
+      "markdown": {
+        "label": "Markdown にも使う",
+        "description": "ビジュアルモードの Markdown ファイルにもこの見た目を使います。オフのときは、Markdown はアプリのフォントのままです。"
+      },
+      "preview": {
+        "label": "ビジュアルモードのプレビュー",
+        "heading": "はじめに",
+        "first": "ビジュアルモードでは、見出しや段落を、それを作るコマンドの代わりに表示します。",
+        "second": "この段落は空白行のあとに続きます。段落の字下げをすると、最初の行が内側に下がります。",
+        "subheading": "方法",
+        "third": "設定を変えると、この文章も一緒に変わります。"
+      }
     }
   },
   "checkpoints": {

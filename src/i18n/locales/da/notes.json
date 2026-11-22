@@ -1456,18 +1456,12 @@
   "appearance": {
     "notes": {
       "sectionName": "Udseende for noter",
-      "resetAriaLabel": "Nulstil {{setting}} til standard",
       "text": {
         "title": "Tekst"
       },
       "typeface": {
         "label": "Skriftstil",
-        "description": "Vælg en skriftstil til tekst i noter.",
-        "options": {
-          "sans": "Uden seriffer",
-          "serif": "Med seriffer",
-          "mono": "Monospace"
-        }
+        "description": "Vælg en skriftstil til tekst i noter."
       },
       "font": {
         "label": "Skrifttype i noter",
@@ -1486,23 +1480,14 @@
       },
       "paragraphSpacing": {
         "label": "Afstand mellem afsnit",
-        "description": "Indstil afstanden mellem afsnit, lister og andre blokke.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Luftig",
-          "spacious": "Rummelig"
-        }
+        "description": "Indstil afstanden mellem afsnit, lister og andre blokke."
       },
       "headings": {
         "title": "Overskrifter og titel"
       },
       "headingTypeface": {
         "label": "Skriftstil til overskrifter",
-        "description": "Vælg en skriftstil til overskrifter og notens titel.",
-        "options": {
-          "text": "Samme som teksten"
-        }
+        "description": "Vælg en skriftstil til overskrifter og notens titel."
       },
       "headingFont": {
         "label": "Skrifttype til overskrifter",
@@ -1510,12 +1495,7 @@
       },
       "headingSize": {
         "label": "Størrelse på overskrifter",
-        "description": "Indstil, hvor store overskrifter er i forhold til teksten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Normal",
-          "large": "Større"
-        }
+        "description": "Indstil, hvor store overskrifter er i forhold til teksten."
       },
       "titleSize": {
         "label": "Størrelse på titel",

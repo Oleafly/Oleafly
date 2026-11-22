@@ -317,6 +317,10 @@
       "keywords": "dikkat dağıtmayan odak tam ekran arayüzü gizle sade yazı",
       "label": "Zen Kipini Aç/Kapat"
     },
+    "visualSettings": {
+      "keywords": "görünüm yazı tipi yazı stili metin boyut paragraf girinti aralık yaslama başlık yazım",
+      "label": "Görsel kip ayarları"
+    },
     "togglePreview": {
       "keywords": "pdf önizleme göster gizle böl yalnızca düzenleyici",
       "label": "PDF önizlemesini aç/kapat"
@@ -1119,7 +1123,7 @@
       "empty": "Eşleşen ayar yok",
       "keywords": {
         "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
-        "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
+        "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen, görsel kip, yazı stili, paragraf girintisi, yaslama",
         "collaboration": "sunucular, oturum açma, cihazlar, üyeler, sorumlular, paylaşım, ekipler, laboratuvarlar, canlı düzenleme, gerçek zamanlı, güvenlik günlüğü",
         "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
         "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",

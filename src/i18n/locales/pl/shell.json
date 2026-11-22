@@ -319,6 +319,10 @@
       "keywords": "bez rozpraszaczy skupienie pełny ekran ukryj interfejs minimalny pisanie",
       "label": "Przełącz tryb Zen"
     },
+    "visualSettings": {
+      "keywords": "wygląd czcionka krój pisma rozmiar tekstu wcięcie akapitu odstępy wyjustowanie nagłówki pisanie",
+      "label": "Ustawienia trybu wizualnego"
+    },
     "togglePreview": {
       "keywords": "pdf podgląd pokaż ukryj podziel tylko edytor",
       "label": "Przełącz podgląd PDF"
@@ -1151,7 +1155,7 @@
       "empty": "Brak pasujących ustawień",
       "keywords": {
         "ai": "asystent, czat, modele, dostawcy, klucze API, agenci, prompty, budżet, serwery MCP",
-        "appearance": "motyw, tryb ciemny, tryb jasny, kolor, czcionki, rozmiar tekstu, powiększenie, zoom, układ",
+        "appearance": "motyw, tryb ciemny, tryb jasny, kolor, czcionki, rozmiar tekstu, powiększenie, zoom, układ, tryb wizualny, krój pisma, wcięcie akapitu, wyjustowanie",
         "collaboration": "serwery, logowanie, urządzenia, członkowie, opiekunowie, udostępnianie, zespoły, laboratoria, edycja na żywo, czas rzeczywisty, dziennik bezpieczeństwa",
         "data": "kopia zapasowa, folder biblioteki, folder projektów, przechowywanie, miejsce na dysku, kosz, usuwanie projektów, punkty kontrolne",
         "dictionary": "pisownia, ortografia, własne słowa, ignorowane słowa, korekta, reguły gramatyczne",

@@ -1036,6 +1036,7 @@
     "tabs": {
       "app": "App",
       "editor": "Editor",
+      "visual": "Visuele modus",
       "files": "Project",
       "pdf": "PDF-voorbeeld",
       "terminal": "Terminal",
@@ -1172,6 +1173,115 @@
         "label": "PDF tonen bij het compileren"
       },
       "title": "Zenmodus"
+    },
+    "text": {
+      "typefaces": {
+        "sans": "Schreefloos",
+        "serif": "Met schreef",
+        "mono": "Vaste breedte",
+        "text": "Zelfde als tekst"
+      },
+      "paragraphSpacings": {
+        "compact": "Compact",
+        "normal": "Normaal",
+        "relaxed": "Luchtig",
+        "spacious": "Ruim"
+      },
+      "headingSizes": {
+        "small": "Kleiner",
+        "normal": "Normaal",
+        "large": "Groter"
+      }
+    },
+    "resetSetting": "{{setting}} terugzetten naar standaard",
+    "visual": {
+      "intro": "Kies hoe LaTeX- en Typst-bestanden eruitzien in de visuele modus. Je bestanden en de PDF veranderen niet. Wil je ook Markdown opmaken, zet dan de schakelaar onder Indeling aan. Tekst- en linkkleuren stel je in bij Editorkleuren op het tabblad Editor.",
+      "matchEditor": "Zelfde als editor",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Lettersoort",
+        "description": "Kies een lettersoort voor tekst in de visuele modus."
+      },
+      "font": {
+        "label": "Lettertype van de visuele modus",
+        "description": "Kies een willekeurig geïnstalleerd lettertype voor tekst in de visuele modus. Laat het leeg om de instelling Lettersoort te gebruiken."
+      },
+      "fontSize": {
+        "label": "Tekstgrootte",
+        "description": "Stel de grootte van de tekst in de visuele modus in. Zelfde als editor volgt de tekstgrootte van de editor.",
+        "customLabel": "Aangepaste tekstgrootte in de visuele modus in pixels"
+      },
+      "lineHeight": {
+        "label": "Regelhoogte",
+        "description": "Stel de ruimte tussen de regels tekst in. Zelfde als editor volgt de regelhoogte van de editor.",
+        "customLabel": "Aangepaste regelhoogte in de visuele modus"
+      },
+      "paragraphSpacing": {
+        "label": "Alinea-afstand",
+        "description": "Stel in hoe hoog de lege regel tussen twee alinea's is."
+      },
+      "paragraphIndent": {
+        "label": "Alinea-inspringing",
+        "description": "Laat de eerste regel van elke alinea inspringen, zoals de PDF. LaTeX laat de alinea na een kop met rust, en Typst laat alleen een alinea inspringen die op een andere alinea volgt.",
+        "none": "Geen",
+        "option": "{{value}} em"
+      },
+      "textAlign": {
+        "label": "Tekstuitlijning",
+        "description": "Laat de rechterrand ongelijk lopen, of vul de regels uit tot beide randen.",
+        "options": {
+          "start": "Links",
+          "justify": "Uitgevuld"
+        }
+      },
+      "headings": {
+        "title": "Koppen en titel"
+      },
+      "headingTypeface": {
+        "label": "Lettersoort van koppen",
+        "description": "Kies een lettersoort voor koppen en de documenttitel."
+      },
+      "headingFont": {
+        "label": "Lettertype van koppen",
+        "description": "Kies een geïnstalleerd lettertype voor koppen en de documenttitel. Laat het leeg om de instelling Lettersoort van koppen te gebruiken."
+      },
+      "headingSize": {
+        "label": "Grootte van koppen",
+        "description": "Stel in hoe groot koppen zijn ten opzichte van de tekst."
+      },
+      "headingColor": {
+        "label": "Kleur van koppen",
+        "description": "Kleur voor koppen en de documenttitel. Editorthema behoudt de kleur die je editorthema aan koppen geeft.",
+        "matchTheme": "Editorthema",
+        "customAriaLabel": "Kies een aangepaste kleur voor koppen"
+      },
+      "layout": {
+        "title": "Indeling"
+      },
+      "width": {
+        "label": "Tekstbreedte",
+        "description": "Stel in hoe lang een regel wordt voordat hij afbreekt.",
+        "options": {
+          "narrow": "Smal",
+          "standard": "Standaard",
+          "wide": "Breed",
+          "full": "Volledige breedte"
+        }
+      },
+      "markdown": {
+        "label": "Ook voor Markdown gebruiken",
+        "description": "Gebruik deze opmaak ook voor Markdown-bestanden in de visuele modus. Als het uit staat, houdt Markdown het lettertype van de app."
+      },
+      "preview": {
+        "label": "Voorbeeld van de visuele modus",
+        "heading": "Inleiding",
+        "first": "De visuele modus toont koppen en alinea's in plaats van de commando's die ze maken.",
+        "second": "Deze alinea komt na een lege regel. Een alinea-inspringing schuift de eerste regel naar binnen.",
+        "subheading": "Methode",
+        "third": "Wijzig een instelling en deze tekst verandert mee."
+      }
     }
   },
   "checkpoints": {

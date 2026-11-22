@@ -318,6 +318,10 @@
       "keywords": "fără distrageri concentrare ecran complet ascunde interfața minimal scris",
       "label": "Comută modul Zen"
     },
+    "visualSettings": {
+      "keywords": "aspect font tip de literă text dimensiune paragraf indentare spațiere justificat titlu scriere",
+      "label": "Setările modului Vizual"
+    },
     "togglePreview": {
       "keywords": "pdf previzualizare afișează ascunde împarte doar editor",
       "label": "Arată sau ascunde previzualizarea PDF"
@@ -1135,7 +1139,7 @@
       "empty": "Nicio setare nu se potrivește",
       "keywords": {
         "ai": "asistent, chat, conversație, modele, furnizori, chei API, agenți, prompturi, buget, servere MCP",
-        "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere",
+        "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere, mod vizual, tip de literă, indentarea paragrafului, justificat",
         "collaboration": "servere, autentificare, dispozitive, membri, coordonatori, partajare, echipe, laboratoare, editare în timp real, timp real, jurnal de securitate",
         "data": "backup, copie de rezervă, folderul bibliotecii, folderul proiectelor, stocare, spațiu pe disc, coș de gunoi, ștergere proiecte, puncte de control",
         "dictionary": "ortografie, cuvinte proprii, cuvinte ignorate, corectură, reguli gramaticale",

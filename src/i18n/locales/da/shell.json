@@ -317,6 +317,10 @@
       "keywords": "uden distraktion fokus fuld skærm skjul brugerflade minimal skrivning",
       "label": "Slå Zen-tilstand til eller fra"
     },
+    "visualSettings": {
+      "keywords": "udseende skrifttype skriftstil tekst størrelse afsnit indrykning afstand justering overskrift skrivning",
+      "label": "Indstillinger for Visuel tilstand"
+    },
     "togglePreview": {
       "keywords": "pdf visning vis skjul opdel kun editor",
       "label": "Vis eller skjul PDF-visningen"
@@ -1119,7 +1123,7 @@
       "empty": "Ingen indstillinger matcher",
       "keywords": {
         "ai": "assistent, chat, modeller, udbydere, API-nøgler, agenter, prompter, budget, MCP-servere",
-        "appearance": "tema, udseende, mørk tilstand, lys tilstand, farve, farver, skrifttyper, tekststørrelse, zoom, layout",
+        "appearance": "tema, udseende, mørk tilstand, lys tilstand, farve, farver, skrifttyper, tekststørrelse, zoom, layout, visuel tilstand, skriftstil, indrykning af afsnit, lige margener",
         "collaboration": "servere, log ind, login, enheder, medlemmer, vedligeholdere, deling, teams, forskergrupper, laboratorier, redigering i realtid, realtid, sikkerhedslog",
         "data": "backup, sikkerhedskopi, biblioteksmappe, projektmappe, lagerplads, diskplads, papirkurv, slet projekter, kontrolpunkter",
         "dictionary": "stavning, egne ord, ignorerede ord, korrektur, grammatikregler",

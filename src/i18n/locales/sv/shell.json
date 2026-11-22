@@ -317,6 +317,10 @@
       "keywords": "störningsfri fokus helskärm dölj gränssnitt minimal skriva",
       "label": "Växla Zen-läge"
     },
+    "visualSettings": {
+      "keywords": "utseende typsnitt typsnittsstil text storlek stycke indrag avstånd marginaljustering rubrik skrivande",
+      "label": "Inställningar för visuellt läge"
+    },
     "togglePreview": {
       "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
       "label": "Visa eller dölj PDF-förhandsvisning"
@@ -1119,7 +1123,7 @@
       "empty": "Inga inställningar matchar",
       "keywords": {
         "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
-        "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
+        "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout, visuellt läge, typsnittsstil, styckeindrag, marginaljustering",
         "collaboration": "servrar, logga in, enheter, medlemmar, underhållare, delning, team, labb, liveredigering, realtid, säkerhetslogg",
         "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
         "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",

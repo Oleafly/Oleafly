@@ -2,6 +2,13 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import {
+  visualContentPadding,
+  visualHeadingColorSelectors,
+  visualHeadingSize,
+  visualTextWidthRules,
+  visualVariable,
+} from "./appearance";
 
 export const visualHighlightStyle: Extension = syntaxHighlighting(
   HighlightStyle.define([
@@ -17,11 +24,21 @@ export const visualHighlightStyle: Extension = syntaxHighlighting(
 const MONO = "var(--ofl-visual-mono)";
 const SERIF = "var(--ofl-visual-font)";
 const SANS = "var(--ofl-visual-sans)";
+const HEADING_FONT = visualVariable("--visual-heading-font");
+const HEADING_COLOR_SELECTORS = visualHeadingColorSelectors([
+  ".ofl-visual-heading",
+  ".ofl-visual-heading *",
+  ".ofl-visual-title",
+  ".ofl-visual-frame-title",
+]);
+const LINE_HEIGHT = "var(--ofl-visual-line-height)";
+const PARAGRAPH_GAP = visualVariable("--visual-paragraph-gap");
 
 export const visualTheme: Extension = EditorView.theme({
   "&.cm-editor": {
-    "--ofl-visual-font": '"Noto Serif", "Palatino Linotype", "Book Antiqua", Palatino, var(--cm-cjk-font, serif), serif',
-    "--ofl-visual-font-size": "calc(var(--cm-font-size, 13px) * 1.15)",
+    "--ofl-visual-font": visualVariable("--visual-text-font"),
+    "--ofl-visual-font-size": visualVariable("--visual-text-size"),
+    "--ofl-visual-line-height": visualVariable("--visual-line-height"),
     "--ofl-visual-mono": "var(--cm-font-family, var(--font-mono, ui-monospace, monospace))",
     "--ofl-visual-sans": "var(--font-sans, system-ui, sans-serif)",
     "--ofl-visual-panel": "color-mix(in srgb, var(--foreground) 5%, transparent)",
@@ -40,9 +57,22 @@ export const visualTheme: Extension = EditorView.theme({
   },
   ".cm-content.cm-content": {
     overflowX: "hidden",
-    padding: "0.75em max(calc((100% - 95ch) / 2), 6%)",
+    padding: visualContentPadding("standard"),
     fontFamily: SERIF,
     fontSize: "var(--ofl-visual-font-size)",
+    lineHeight: LINE_HEIGHT,
+    textAlign: visualVariable("--visual-text-align"),
+  },
+  ...visualTextWidthRules(".cm-content.cm-content"),
+  ".ofl-visual-paragraph-start": {
+    textIndent: visualVariable("--visual-paragraph-indent"),
+  },
+  ".ofl-visual-paragraph-start *": {
+    textIndent: "0",
+  },
+  ".ofl-visual-blank-line": {
+    lineHeight: `calc(${LINE_HEIGHT} * min(${PARAGRAPH_GAP}, 1))`,
+    paddingBottom: `calc(${LINE_HEIGHT} * max(${PARAGRAPH_GAP} - 1, 0) * 1em)`,
   },
   ".cm-line": {
     overflowX: "visible",
@@ -99,22 +129,26 @@ export const visualTheme: Extension = EditorView.theme({
     opacity: "0.7",
   },
   ".ofl-visual-heading": {
+    fontFamily: HEADING_FONT,
     fontWeight: "550",
     lineHeight: "1.35",
     color: "inherit",
     background: "inherit",
   },
+  [HEADING_COLOR_SELECTORS]: {
+    color: visualVariable("--visual-heading-color"),
+  },
   ".ofl-visual-command-book, .ofl-visual-command-part": {
-    fontSize: "2em",
+    fontSize: visualHeadingSize(2),
   },
   ".ofl-visual-command-chapter": {
-    fontSize: "1.6em",
+    fontSize: visualHeadingSize(1.6),
   },
   ".ofl-visual-command-section": {
-    fontSize: "1.44em",
+    fontSize: visualHeadingSize(1.44),
   },
   ".ofl-visual-command-subsection": {
-    fontSize: "1.2em",
+    fontSize: visualHeadingSize(1.2),
   },
   ".ofl-visual-command-subsubsection, .ofl-visual-command-paragraph, .ofl-visual-command-subparagraph": {
     fontSize: "1em",
@@ -217,7 +251,7 @@ export const visualTheme: Extension = EditorView.theme({
     padding: "0 1em",
   },
   ".ofl-visual-begin-abstract > .ofl-visual-environment-name": {
-    fontFamily: SERIF,
+    fontFamily: HEADING_FONT,
     fontSize: "1.2em",
     fontWeight: "550",
   },
@@ -271,6 +305,7 @@ export const visualTheme: Extension = EditorView.theme({
   },
   ".ofl-visual-environment-verbatim, .ofl-visual-environment-lstlisting": {
     fontFamily: MONO,
+    textAlign: "start",
   },
   ".ofl-visual-environment-centered.ofl-visual-caption-line, .ofl-visual-environment-centered.ofl-visual-label-line": {
     textAlign: "center",
@@ -300,7 +335,8 @@ export const visualTheme: Extension = EditorView.theme({
     borderTop: "1px solid var(--ofl-visual-rule)",
   },
   ".ofl-visual-frame-title": {
-    fontSize: "1.44em",
+    fontFamily: HEADING_FONT,
+    fontSize: visualHeadingSize(1.44),
     cursor: "pointer",
   },
   ".ofl-visual-frame-subtitle": {
@@ -312,7 +348,8 @@ export const visualTheme: Extension = EditorView.theme({
     paddingBottom: "2em",
   },
   ".ofl-visual-title": {
-    fontSize: "1.7em",
+    fontFamily: HEADING_FONT,
+    fontSize: visualHeadingSize(1.7),
     cursor: "pointer",
     padding: "0.5em",
     lineHeight: "1.3",
@@ -387,6 +424,7 @@ export const visualTheme: Extension = EditorView.theme({
   ".ofl-visual-preamble-line": {
     backgroundColor: "var(--ofl-visual-panel)",
     padding: "0 12px",
+    textAlign: "start",
   },
   ".ofl-visual-preamble-line.ofl-visual-environment-first-line": {
     borderRadius: "0",
