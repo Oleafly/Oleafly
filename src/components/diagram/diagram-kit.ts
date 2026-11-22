@@ -12,17 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSettingsStore } from "@/store/settings";
+import { useEffectiveAccentColor } from "@/hooks/use-theme-preset";
 import { useTheme } from "@/lib/theme";
 import { toast } from "@/lib/toast";
 
 function useThemeMode(): "light" | "dark" {
   const { theme } = useTheme();
   return theme === "dark" ? "dark" : "light";
-}
-
-function usePrimaryColor(): string {
-  return useSettingsStore((s) => s.accentColor);
 }
 
 export const KIT: Omit<DiagramKit, "t"> = {
@@ -39,5 +35,5 @@ export const KIT: Omit<DiagramKit, "t"> = {
   SelectValue,
   toast,
   useThemeMode,
-  usePrimaryColor,
+  usePrimaryColor: useEffectiveAccentColor,
 };

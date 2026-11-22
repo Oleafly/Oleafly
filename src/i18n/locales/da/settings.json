@@ -643,7 +643,9 @@
       "accent": {
         "description": "Bruges til knapper, markeringer og markøren i editoren.",
         "label": "Accentfarve",
-        "swatchAriaLabel": "Accenten {{name}}"
+        "swatchAriaLabel": "Accenten {{name}}",
+        "theme": "Temaets accent",
+        "themeAriaLabel": "Brug temaets accentfarve"
       },
       "appIcon": {
         "about": "Hvor appikonet vises",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "System følger styresystemet og skifter, når det skifter.",
         "label": "Udseende"
+      },
+      "themePresets": {
+        "dark": "Mørk tilstand",
+        "description": "Vælg et tema til lys tilstand og et til mørk tilstand. Indstillingen Udseende ovenfor bestemmer, hvilket du ser.",
+        "label": "Tema",
+        "light": "Lys tilstand",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "En anden app bruger allerede {{shortcut}}. Vælg en anden genvej til Noter: hurtig notering.",
       "invalid": "{{shortcut}} kan ikke virke uden for Oleafly. Vælg en genvej, der slutter med et bogstav, et tal eller en funktionstast.",
       "failed": "Oleafly kunne ikke konfigurere genvejen. Slå hurtig notering fra og til igen for at prøve igen.",
-      "wayland": "Wayland lader ikke apps lytte efter taster uden for deres egne vinduer. Hvis du vil åbne hurtig notering med en tast, skal du tilføje en brugerdefineret genvej i systemets tastaturindstillinger, der kører denne kommando:"
+      "wayland": "Wayland lader ikke apps lytte efter taster uden for deres egne vinduer. Hvis du vil åbne hurtig notering med en tast, skal du tilføje en brugerdefineret genvej i systemets tastaturindstillinger, der kører denne kommando:",
+      "background": {
+        "label": "Hold hurtig notering klar",
+        "descriptionMac": "Oleafly åbner i baggrunden, når du logger ind. Når du lukker vinduet, bliver Oleafly i menulinjen, så genvejen altid virker. Afslut det fra ikonet i menulinjen.",
+        "description": "Oleafly åbner i baggrunden, når du logger ind. Når du lukker vinduet, bliver Oleafly i systembakken, så genvejen altid virker. Afslut det fra ikonet i systembakken."
+      }
     }
   },
   "systemIntegration": {

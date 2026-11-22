@@ -647,7 +647,9 @@
       "accent": {
         "description": "Utilisée pour les boutons, les sélections et le curseur de l'éditeur.",
         "label": "Couleur d'accentuation",
-        "swatchAriaLabel": "Accentuation {{name}}"
+        "swatchAriaLabel": "Accentuation {{name}}",
+        "theme": "Accent du thème",
+        "themeAriaLabel": "Utiliser la couleur d'accentuation du thème"
       },
       "appIcon": {
         "about": "Où l'icône de l'application s'affiche",
@@ -704,6 +706,13 @@
       "theme": {
         "description": "Système suit le système d'exploitation et change en même temps que lui.",
         "label": "Apparence"
+      },
+      "themePresets": {
+        "dark": "Mode sombre",
+        "description": "Choisissez un thème pour le mode clair et un autre pour le mode sombre. Le réglage Apparence ci-dessus décide lequel s'affiche.",
+        "label": "Thème",
+        "light": "Mode clair",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2589,7 +2598,12 @@
       "taken": "Une autre application utilise déjà {{shortcut}}. Choisissez un autre raccourci pour Notes : capture rapide.",
       "invalid": "{{shortcut}} ne peut pas fonctionner en dehors d'Oleafly. Choisissez un raccourci qui se termine par une lettre, un chiffre ou une touche de fonction.",
       "failed": "Oleafly n'a pas pu configurer le raccourci. Désactivez puis réactivez la capture rapide pour réessayer.",
-      "wayland": "Wayland ne permet pas aux applications d'écouter les touches en dehors de leurs propres fenêtres. Pour ouvrir la capture rapide avec une touche, ajoutez dans les réglages clavier de votre système un raccourci personnalisé qui exécute cette commande :"
+      "wayland": "Wayland ne permet pas aux applications d'écouter les touches en dehors de leurs propres fenêtres. Pour ouvrir la capture rapide avec une touche, ajoutez dans les réglages clavier de votre système un raccourci personnalisé qui exécute cette commande :",
+      "background": {
+        "label": "Garder la capture rapide prête",
+        "descriptionMac": "Oleafly s'ouvre en arrière-plan quand vous vous connectez. Si vous fermez sa fenêtre, il reste dans la barre des menus, et le raccourci fonctionne toujours. Quittez-le depuis l'icône de la barre des menus.",
+        "description": "Oleafly s'ouvre en arrière-plan quand vous vous connectez. Si vous fermez sa fenêtre, il reste dans la zone de notification, et le raccourci fonctionne toujours. Quittez-le depuis l'icône de la zone de notification."
+      }
     }
   },
   "systemIntegration": {

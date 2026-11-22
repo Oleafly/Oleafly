@@ -647,7 +647,9 @@
       "accent": {
         "description": "Se folosește pentru butoane, selecții și cursorul din editor.",
         "label": "Culoare de accent",
-        "swatchAriaLabel": "Accent {{name}}"
+        "swatchAriaLabel": "Accent {{name}}",
+        "theme": "Accentul temei",
+        "themeAriaLabel": "Folosește culoarea de accent a temei"
       },
       "appIcon": {
         "about": "Unde apare pictograma aplicației",
@@ -704,6 +706,13 @@
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
         "label": "Aspect"
+      },
+      "themePresets": {
+        "dark": "Mod întunecat",
+        "description": "Alege o temă pentru modul luminos și una pentru modul întunecat. Setarea Aspect de mai sus decide pe care o vezi.",
+        "label": "Temă",
+        "light": "Mod luminos",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2589,7 +2598,12 @@
       "taken": "Altă aplicație folosește deja {{shortcut}}. Alege altă scurtătură pentru Notițe: notare rapidă.",
       "invalid": "{{shortcut}} nu poate funcționa în afara Oleafly. Alege o scurtătură care se termină cu o literă, o cifră sau o tastă funcțională.",
       "failed": "Oleafly nu a putut configura scurtătura. Dezactivează și reactivează notarea rapidă ca să încerci din nou.",
-      "wayland": "Wayland nu permite aplicațiilor să asculte tastele în afara propriilor ferestre. Ca să deschizi notarea rapidă cu o tastă, adaugă în setările de tastatură ale sistemului o scurtătură personalizată care rulează această comandă:"
+      "wayland": "Wayland nu permite aplicațiilor să asculte tastele în afara propriilor ferestre. Ca să deschizi notarea rapidă cu o tastă, adaugă în setările de tastatură ale sistemului o scurtătură personalizată care rulează această comandă:",
+      "background": {
+        "label": "Ține notarea rapidă pregătită",
+        "descriptionMac": "Oleafly se deschide în fundal când te conectezi. Când îi închizi fereastra, rămâne în bara de meniu, așa că scurtătura funcționează mereu. Ieși din aplicație folosind pictograma din bara de meniu.",
+        "description": "Oleafly se deschide în fundal când te conectezi. Când îi închizi fereastra, rămâne în zona de notificare, așa că scurtătura funcționează mereu. Ieși din aplicație folosind pictograma din zona de notificare."
+      }
     }
   },
   "systemIntegration": {

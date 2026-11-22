@@ -643,7 +643,9 @@
       "accent": {
         "description": "Düğmeler, seçimler ve düzenleyici imleci için kullanılır.",
         "label": "Vurgu rengi",
-        "swatchAriaLabel": "{{name}} vurgusu"
+        "swatchAriaLabel": "{{name}} vurgusu",
+        "theme": "Tema vurgusu",
+        "themeAriaLabel": "Temanın vurgu rengini kullan"
       },
       "appIcon": {
         "about": "Uygulama simgesinin göründüğü yerler",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
         "label": "Görünüm"
+      },
+      "themePresets": {
+        "dark": "Koyu mod",
+        "description": "Açık mod için bir tema, koyu mod için bir tema seçin. Hangisini göreceğinizi yukarıdaki Görünüm ayarı belirler.",
+        "label": "Tema",
+        "light": "Açık mod",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "{{shortcut}} kısayolunu zaten başka bir uygulama kullanıyor. Notlar: hızlı not için farklı bir kısayol seçin.",
       "invalid": "{{shortcut}} Oleafly dışında çalışamaz. Harf, rakam veya işlev tuşuyla biten bir kısayol seçin.",
       "failed": "Oleafly kısayolu ayarlayamadı. Yeniden denemek için hızlı notu kapatıp tekrar açın.",
-      "wayland": "Wayland, uygulamaların kendi pencereleri dışındaki tuşları dinlemesine izin vermez. Hızlı notu bir tuşla açmak için sistem klavye ayarlarınıza bu komutu çalıştıran özel bir kısayol ekleyin:"
+      "wayland": "Wayland, uygulamaların kendi pencereleri dışındaki tuşları dinlemesine izin vermez. Hızlı notu bir tuşla açmak için sistem klavye ayarlarınıza bu komutu çalıştıran özel bir kısayol ekleyin:",
+      "background": {
+        "label": "Hızlı notu hazır tut",
+        "descriptionMac": "Oleafly, oturum açtığınızda arka planda açılır. Penceresini kapattığınızda menü çubuğunda kalır, böylece kısayol her zaman çalışır. Menü çubuğu simgesinden çıkabilirsiniz.",
+        "description": "Oleafly, oturum açtığınızda arka planda açılır. Penceresini kapattığınızda sistem tepsisinde kalır, böylece kısayol her zaman çalışır. Tepsi simgesinden çıkabilirsiniz."
+      }
     }
   },
   "systemIntegration": {

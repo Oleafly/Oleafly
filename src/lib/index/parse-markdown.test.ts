@@ -39,6 +39,14 @@ describe("parseFile: Markdown edge cases", () => {
     expect(parsed.defs.map((d) => [d.name, d.level, d.line])).toEqual([["Title", 0, 1]]);
   });
 
+  it("reads every heading Pandoc reads: seven or more hashes and a one-character = underline", () => {
+    const parsed = parseFile("main.md", "####### Seven\n\nOne\n=\n\n#NoSpace\n");
+    expect(parsed.defs.map((d) => [d.name, d.level])).toEqual([
+      ["Seven", 6],
+      ["One", 0],
+    ]);
+  });
+
   it("treats a rule after a blank line as a rule, not a heading", () => {
     const parsed = parseFile("main.md", "Text\n\n---\nMore\n");
     expect(parsed.defs).toEqual([]);

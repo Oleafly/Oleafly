@@ -639,7 +639,9 @@
       "accent": {
         "description": "用于按钮、选中内容和编辑器光标。",
         "label": "强调色",
-        "swatchAriaLabel": "{{name}} 强调色"
+        "swatchAriaLabel": "{{name}} 强调色",
+        "theme": "主题强调色",
+        "themeAriaLabel": "使用主题的强调色"
       },
       "appIcon": {
         "about": "应用图标显示的位置",
@@ -696,6 +698,13 @@
       "theme": {
         "description": "“跟随系统”会随操作系统外观的变化自动切换。",
         "label": "外观"
+      },
+      "themePresets": {
+        "dark": "深色模式",
+        "description": "为浅色模式和深色模式各选一个主题。上方的“外观”设置决定你看到哪一个。",
+        "label": "主题",
+        "light": "浅色模式",
+        "sample": "文字"
       }
     },
     "customTheme": {
@@ -2547,7 +2556,12 @@
       "taken": "另一个应用已在使用 {{shortcut}}。请为“笔记：快速记录”选择其他快捷键。",
       "invalid": "{{shortcut}} 无法在 Oleafly 之外使用。请选择以字母、数字或功能键结尾的快捷键。",
       "failed": "Oleafly 无法设置该快捷键。请关闭快速记录后再重新开启以重试。",
-      "wayland": "Wayland 不允许应用监听其窗口之外的按键。要用按键打开快速记录，请在系统键盘设置中添加一个运行以下命令的自定义快捷键："
+      "wayland": "Wayland 不允许应用监听其窗口之外的按键。要用按键打开快速记录，请在系统键盘设置中添加一个运行以下命令的自定义快捷键：",
+      "background": {
+        "label": "让快速记录随时可用",
+        "descriptionMac": "登录时 Oleafly 会在后台打开。关闭窗口后它仍留在菜单栏中，因此快捷键始终可用。可从菜单栏图标退出。",
+        "description": "登录时 Oleafly 会在后台打开。关闭窗口后它仍留在系统托盘中，因此快捷键始终可用。可从托盘图标退出。"
+      }
     }
   },
   "systemIntegration": {

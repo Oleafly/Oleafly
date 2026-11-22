@@ -643,7 +643,9 @@
       "accent": {
         "description": "Brukes på knapper, merking og markøren i editoren.",
         "label": "Aksentfarge",
-        "swatchAriaLabel": "Aksenten {{name}}"
+        "swatchAriaLabel": "Aksenten {{name}}",
+        "theme": "Temaets aksent",
+        "themeAriaLabel": "Bruk temaets aksentfarge"
       },
       "appIcon": {
         "about": "Hvor appikonet vises",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "System følger operativsystemet og endrer seg når det gjør det.",
         "label": "Utseende"
+      },
+      "themePresets": {
+        "dark": "Mørk modus",
+        "description": "Velg et tema for lys modus og ett for mørk modus. Innstillingen Utseende over avgjør hvilket du ser.",
+        "label": "Tema",
+        "light": "Lys modus",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "En annen app bruker allerede {{shortcut}}. Velg en annen hurtigtast for Notater: hurtignotat.",
       "invalid": "{{shortcut}} kan ikke virke utenfor Oleafly. Velg en hurtigtast som slutter med en bokstav, et tall eller en funksjonstast.",
       "failed": "Oleafly kunne ikke sette opp hurtigtasten. Slå hurtignotat av og på igjen for å prøve på nytt.",
-      "wayland": "Wayland lar ikke apper lytte etter taster utenfor sine egne vinduer. For å åpne hurtignotat med en tast legger du til en egendefinert hurtigtast i tastaturinnstillingene for systemet, som kjører denne kommandoen:"
+      "wayland": "Wayland lar ikke apper lytte etter taster utenfor sine egne vinduer. For å åpne hurtignotat med en tast legger du til en egendefinert hurtigtast i tastaturinnstillingene for systemet, som kjører denne kommandoen:",
+      "background": {
+        "label": "Hold hurtignotat klart",
+        "descriptionMac": "Oleafly åpnes i bakgrunnen når du logger på. Når du lukker vinduet, blir Oleafly værende i menylinjen, så snarveien alltid virker. Avslutt det fra ikonet i menylinjen.",
+        "description": "Oleafly åpnes i bakgrunnen når du logger på. Når du lukker vinduet, blir Oleafly værende i systemstatusfeltet, så snarveien alltid virker. Avslutt det fra ikonet i systemstatusfeltet."
+      }
     }
   },
   "systemIntegration": {

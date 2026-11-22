@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Notare rapidă"
     }
+  },
+  "tray": {
+    "open": "Deschide Oleafly"
   }
 }

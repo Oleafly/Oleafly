@@ -42,6 +42,7 @@ import {
 import { isLintRuleName } from "@/lib/proofreading/lint-profile";
 import type { ThemePreference } from "@/lib/theme";
 import { parseThemeCustomizationImport, type ThemeCustomization } from "@/lib/theme-customization";
+import { themePresetIds } from "@/lib/theme-presets";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import type { CompileMode } from "@/store/compile";
 import {
@@ -496,7 +497,9 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   field("appearance.app.theme", oneOf(THEME_PREFERENCES), (snapshot) => snapshot.theme, (value, plan) => {
     plan.theme = value;
   }),
-  pref("appearance.app.accentColor", "accentColor", hexColor),
+  pref("appearance.app.lightTheme", "appThemeLight", oneOf(themePresetIds("light"))),
+  pref("appearance.app.darkTheme", "appThemeDark", oneOf(themePresetIds("dark"))),
+  pref("appearance.app.accentColor", "accentColor", hexColorOrEmpty),
   pref("appearance.app.commentColor", "commentColor", oneOf(COMMENT_COLORS)),
   pref("appearance.app.fontSize", "appFontSize", numberOf(APP_FONT_SIZES)),
   pref("appearance.app.zoom", "appZoom", numberOf(APP_ZOOM_LEVELS)),

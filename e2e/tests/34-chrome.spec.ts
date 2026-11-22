@@ -204,9 +204,11 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     expect(initialStructureGeometry.bottomPadding).toBeGreaterThan(8);
     expect(Math.abs(initialStructureGeometry.bottomGap - initialStructureGeometry.bottomPadding)).toBeLessThan(1);
     // WebView device-pixel rounding can report the 32px collapsed header just
-    // below 31 CSS px; keep the guard focused on actual clipping.
+    // below 31 CSS px, and react-resizable-panels rounds sizes to 0.001%, which
+    // can land a few thousandths of a pixel past 33. Keep the guard focused on
+    // actual clipping.
     expect(initialStructureGeometry.height).toBeGreaterThanOrEqual(30.5);
-    expect(initialStructureGeometry.height).toBeLessThanOrEqual(33);
+    expect(initialStructureGeometry.height).toBeLessThan(33.5);
 
     const sectionActions = [
       ["source-tree", "Expand all folders", "Collapse all folders"],
@@ -302,7 +304,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
         .slice(0, 3)
         .every((size) => Math.abs(size - expectedCollapsedSize) < 0.3),
     ).toBe(true);
-    expect(sectionHeights.every((height) => height >= 30.5 && height <= 33)).toBe(
+    expect(sectionHeights.every((height) => height >= 30.5 && height < 33.5)).toBe(
       true,
     );
     expect(fullyCollapsedSizes[3]).toBeGreaterThan(0);

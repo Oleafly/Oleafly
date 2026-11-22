@@ -1177,7 +1177,7 @@ pub struct BackgroundHelperStatus {
 
 fn login_exec() -> LoginExec {
     let exe = std::env::current_exe().unwrap_or_default();
-    login_item::login_exec(&exe, appimage().as_deref())
+    login_item::login_exec(&login_item::HELPER, &exe, appimage().as_deref())
 }
 
 fn current_status(data_root: &Path) -> BackgroundHelperStatus {

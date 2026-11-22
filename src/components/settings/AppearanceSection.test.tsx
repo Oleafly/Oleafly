@@ -30,6 +30,7 @@ vi.mock("@/lib/theme", () => ({
   applyTheme: themeMocks.applyTheme,
   currentTheme: () => "dark",
   subscribeTheme: () => () => undefined,
+  useAppTheme: () => (themeMocks.preference === "light" ? "light" : "dark"),
   useTheme: () => ({
     preference: themeMocks.preference,
     theme: themeMocks.preference === "light" ? "light" : "dark",
@@ -64,6 +65,8 @@ describe("Appearance settings tabs", () => {
       dockPlacement: "left",
       bgPattern: "dots",
       accentColor: ACCENTS[0].color,
+      appThemeLight: "oleafly",
+      appThemeDark: "oleafly",
       editorKeymap: "default",
       editorLineWrap: false,
       editorTabSize: 4,
@@ -208,6 +211,22 @@ describe("Appearance settings tabs", () => {
     fireEvent.wheel(tabList, { deltaY: 80 });
 
     expect(tabList.scrollLeft).toBe(80);
+  });
+
+  it("puts the theme picker under Appearance and offers the theme's own accent first", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ appThemeDark: "one-dark-pro" });
+    render(<AppearanceSection />);
+
+    expect(screen.getByRole("radiogroup", { name: appearance.app.themePresets.dark })).toBeInTheDocument();
+    const themeAccent = screen.getByRole("button", { name: appearance.app.accent.themeAriaLabel });
+    expect(themeAccent).toHaveStyle({ backgroundColor: "rgb(69, 112, 196)" });
+    expect(themeAccent).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(themeAccent);
+
+    expect(useSettingsStore.getState().accentColor).toBe("");
+    expect(themeAccent).toHaveAttribute("aria-pressed", "true");
   });
 
   it("updates the app and editor appearance controls", async () => {
