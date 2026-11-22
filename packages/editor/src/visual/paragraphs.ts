@@ -111,29 +111,29 @@ const LATEX_INLINE_NODES = new Set([
 const LATEX_FORMATTING_GROUPS = ["$ToggleTextFormattingCommand", "$OtherTextFormattingCommand"];
 
 const LATEX_LAYOUT_COMMANDS = new Set([
-  "\\noindent",
-  "\\par",
-  "\\vspace",
-  "\\vskip",
-  "\\smallskip",
-  "\\medskip",
-  "\\bigskip",
-  "\\newpage",
-  "\\clearpage",
-  "\\cleardoublepage",
-  "\\pagebreak",
-  "\\centering",
-  "\\raggedright",
-  "\\raggedleft",
-  "\\maketitle",
-  "\\tableofcontents",
-  "\\listoffigures",
-  "\\listoftables",
-  "\\appendix",
-  "\\frontmatter",
-  "\\mainmatter",
-  "\\backmatter",
-  "\\printbibliography",
+  "noindent",
+  "par",
+  "vspace",
+  "vskip",
+  "smallskip",
+  "medskip",
+  "bigskip",
+  "newpage",
+  "clearpage",
+  "cleardoublepage",
+  "pagebreak",
+  "centering",
+  "raggedright",
+  "raggedleft",
+  "maketitle",
+  "tableofcontents",
+  "listoffigures",
+  "listoftables",
+  "appendix",
+  "frontmatter",
+  "mainmatter",
+  "backmatter",
+  "printbibliography",
 ]);
 
 const LATEX_CONTAINERS = new Set(["Content", "Text", "LaTeX"]);
@@ -152,15 +152,26 @@ function isLatexInline(node: SyntaxNode): boolean {
   return LATEX_INLINE_NODES.has(node.name) || LATEX_FORMATTING_GROUPS.some((group) => node.type.is(group));
 }
 
+function latexNodeRole(state: EditorState, node: SyntaxNode): LineRole | null {
+  switch (node.name) {
+    case "SectioningCommand":
+      return "heading";
+    case "Comment":
+    case "Label":
+      return "aside";
+    case "DollarMath":
+      return node.getChild("DisplayMath") ? "block" : "text";
+    case "UnknownCommand":
+      return LATEX_LAYOUT_COMMANDS.has(commandName(state, node)?.slice(1) ?? "") ? "block" : "text";
+    default:
+      return isLatexInline(node) ? "text" : null;
+  }
+}
+
 function latexLeadRole(state: EditorState, node: SyntaxNode): LineRole {
   for (let current: SyntaxNode | null = node; current && !LATEX_CONTAINERS.has(current.name); current = current.parent) {
-    if (current.name === "SectioningCommand") return "heading";
-    if (current.name === "Comment" || current.name === "Label") return "aside";
-    if (current.name === "DollarMath") return current.getChild("DisplayMath") ? "block" : "text";
-    if (current.name === "UnknownCommand") {
-      return LATEX_LAYOUT_COMMANDS.has(commandName(state, current) ?? "") ? "block" : "text";
-    }
-    if (isLatexInline(current)) return "text";
+    const role = latexNodeRole(state, current);
+    if (role) return role;
   }
   return "block";
 }

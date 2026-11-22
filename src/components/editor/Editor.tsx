@@ -38,6 +38,7 @@ import { basename } from "@/lib/path-utils";
 import { cn, isMac } from "@/lib/utils";
 import { CollabRemovedFileSlot } from "@/components/collab/CollabSlots";
 import {
+  type FormattingProfile,
   formattingForPath,
   formattingProfileForPath,
   pathUsesEngineSource,
@@ -99,6 +100,10 @@ function keepEditorFocus(event: MouseEvent) {
   if (!(event.target instanceof Element) || !event.target.classList.contains("cm-scroller")) return;
   event.preventDefault();
   getEditorView()?.focus();
+}
+
+function appearanceTabFor(visual: boolean, markdownFile: boolean, profile: FormattingProfile): "visual" | "editor" {
+  return visual && (markdownFile || profile === "latex" || profile === "typst") ? "visual" : "editor";
 }
 
 function openFileKind(activePath: string | null) {
@@ -237,7 +242,7 @@ export function Editor() {
     if (projectId && activePath) useVisualModeStore.getState().remember(activePath);
   }, [projectId, activePath]);
   const toggleWysiwyg = () => setActiveFileMode(wysiwyg ? "code" : "visual");
-  const visualDocument = wysiwyg && (isMarkdownFile || toolbarProfile === "latex" || toolbarProfile === "typst");
+  const appearanceTab = appearanceTabFor(wysiwyg, isMarkdownFile, toolbarProfile);
   const splitCapable = isMarkdownFile || sourcePreview !== null;
   const markdownSplit = splitCapable && fileViewMode === "both";
   const stackMarkdownSplit = markdownSplitLayout === "stacked";
@@ -556,7 +561,7 @@ export function Editor() {
               <button
                 type="button"
                 aria-label={t(($) => $.editor.shell.editorSettings)}
-                onClick={() => useSettingsStore.getState().openSettingsAt("appearance", visualDocument ? "visual" : "editor")}
+                onClick={() => useSettingsStore.getState().openSettingsAt("appearance", appearanceTab)}
                 className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
               >
                 <Settings2 className="size-4" aria-hidden />

@@ -455,7 +455,7 @@ export function LineHeightRow<K extends KeysOf<string>>({
   );
 }
 
-export function ChoiceRow<K extends AppearanceKey>({
+export function ChoiceRow<K extends KeysOf<string | number>>({
   settingKey,
   testId,
   label,
