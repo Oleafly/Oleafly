@@ -14,6 +14,7 @@ import {
   applyThemeCustomization,
   THEME_CUSTOMIZATION_STORAGE_KEY,
 } from "@/lib/theme-customization";
+import { THEME_PRESET_STORAGE_KEYS, type ThemePreset } from "@/lib/theme-presets";
 
 export type Theme = "light" | "dark";
 export type ThemePreference = "system" | "light" | "dark";
@@ -81,9 +82,13 @@ export function subscribeTheme(listener: ThemeListener): () => void {
   };
 }
 
-export function applyAccentColor(theme: Theme, accentColor = window.localStorage.getItem(ACCENT_STORAGE_KEY)): void {
+export function applyAccentColor(
+  theme: Theme,
+  accentColor = window.localStorage.getItem(ACCENT_STORAGE_KEY),
+  preset?: ThemePreset,
+): void {
   const root = document.documentElement;
-  for (const [name, value] of Object.entries(accentTokenDefaults(theme, accentColor))) {
+  for (const [name, value] of Object.entries(accentTokenDefaults(theme, accentColor, preset))) {
     root.style.setProperty(name, value);
   }
 }
@@ -152,6 +157,8 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
       if (
         event.key === ACCENT_STORAGE_KEY ||
         event.key === THEME_CUSTOMIZATION_STORAGE_KEY ||
+        event.key === THEME_PRESET_STORAGE_KEYS.light ||
+        event.key === THEME_PRESET_STORAGE_KEYS.dark ||
         event.key === null
       ) {
         applyTheme(resolveTheme(getStoredPreference()));

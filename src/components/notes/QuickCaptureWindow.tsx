@@ -18,7 +18,7 @@ import { readString, removeKey, writeString } from "@/lib/local-storage";
 import { logError } from "@/lib/log";
 import { NOTES_PERIODIC_KEY, readPeriodic } from "@/lib/notes-periodic";
 import { quickCaptureOpenNotes, quickCaptureWindowButtons } from "@/lib/tauri";
-import { cn, isMac } from "@/lib/utils";
+import { cn, isMac, WINDOW_GLASS } from "@/lib/utils";
 import { withBlockViews } from "./block-views";
 import { calloutNodeView } from "./NoteCallout";
 import { NOTE_CORE_EXTENSIONS, noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
@@ -306,7 +306,7 @@ export function QuickCaptureWindow({ bridge = desktopBridge }: Readonly<{ bridge
       aria-label={t(($) => $.notes.quickCapture.title)}
       data-testid="quick-capture"
       data-hovered={hovered || undefined}
-      className="group/capture relative flex h-screen flex-col overflow-hidden bg-background text-foreground"
+      className={cn("group/capture relative flex h-screen flex-col overflow-hidden text-foreground", WINDOW_GLASS)}
     >
       <header data-tauri-drag-region className="relative flex h-9 shrink-0 items-center justify-center px-24">
         {!isMac && (

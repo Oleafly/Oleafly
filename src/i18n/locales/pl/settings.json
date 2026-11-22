@@ -651,7 +651,9 @@
       "accent": {
         "description": "Używany w przyciskach, zaznaczeniach i kursorze edytora.",
         "label": "Kolor akcentu",
-        "swatchAriaLabel": "Akcent {{name}}"
+        "swatchAriaLabel": "Akcent {{name}}",
+        "theme": "Akcent motywu",
+        "themeAriaLabel": "Użyj koloru akcentu motywu"
       },
       "appIcon": {
         "about": "Gdzie widać ikonę aplikacji",
@@ -708,6 +710,13 @@
       "theme": {
         "description": "Opcja systemowa podąża za systemem operacyjnym i zmienia się razem z nim.",
         "label": "Wygląd"
+      },
+      "themePresets": {
+        "dark": "Tryb ciemny",
+        "description": "Wybierz motyw dla trybu jasnego i drugi dla trybu ciemnego. To, który z nich widzisz, zależy od ustawienia Wygląd powyżej.",
+        "label": "Motyw",
+        "light": "Tryb jasny",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2610,7 +2619,12 @@
       "taken": "Inna aplikacja używa już {{shortcut}}. Wybierz inny skrót dla akcji Notatki: szybka notatka.",
       "invalid": "{{shortcut}} nie może działać poza Oleafly. Wybierz skrót, który kończy się literą, cyfrą lub klawiszem funkcyjnym.",
       "failed": "Oleafly nie mógł ustawić skrótu. Wyłącz i ponownie włącz szybką notatkę, aby spróbować jeszcze raz.",
-      "wayland": "Wayland nie pozwala aplikacjom nasłuchiwać klawiszy poza ich własnymi oknami. Aby otwierać szybką notatkę klawiszem, dodaj w systemowych ustawieniach klawiatury własny skrót, który uruchamia to polecenie:"
+      "wayland": "Wayland nie pozwala aplikacjom nasłuchiwać klawiszy poza ich własnymi oknami. Aby otwierać szybką notatkę klawiszem, dodaj w systemowych ustawieniach klawiatury własny skrót, który uruchamia to polecenie:",
+      "background": {
+        "label": "Szybka notatka zawsze w gotowości",
+        "descriptionMac": "Oleafly uruchamia się w tle po zalogowaniu. Po zamknięciu okna zostaje na pasku menu, więc skrót zawsze działa. Zamkniesz go ikoną na pasku menu.",
+        "description": "Oleafly uruchamia się w tle po zalogowaniu. Po zamknięciu okna zostaje w zasobniku systemowym, więc skrót zawsze działa. Zamkniesz go ikoną w zasobniku."
+      }
     }
   },
   "systemIntegration": {

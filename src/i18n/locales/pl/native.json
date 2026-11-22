@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Szybka notatka"
     }
+  },
+  "tray": {
+    "open": "Otwórz Oleafly"
   }
 }

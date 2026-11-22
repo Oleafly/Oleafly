@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Швидкий запис"
     }
+  },
+  "tray": {
+    "open": "Відкрити Oleafly"
   }
 }

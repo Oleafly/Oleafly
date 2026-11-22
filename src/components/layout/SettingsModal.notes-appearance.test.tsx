@@ -21,6 +21,7 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ preference: "dark", theme: "dark", setPreference: vi.fn(), toggleTheme: vi.fn() }),
   currentTheme: () => "dark",
   subscribeTheme: () => () => undefined,
+  useAppTheme: () => "dark",
 }));
 
 import { AppearanceSection } from "@/components/settings/AppearanceSection";

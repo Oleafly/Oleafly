@@ -1,3 +1,4 @@
+import { scrollBehavior } from "@/lib/reduced-motion";
 import { noteHeadings, uniqueSlugs } from "./note-link-format";
 
 export interface OutlineHeading {
@@ -14,14 +15,21 @@ export interface OutlineRow {
   collapsed: boolean;
 }
 
+export interface DomOutline {
+  headings: OutlineHeading[];
+  elements: HTMLElement[];
+}
+
 export const HEADING_SELECTOR = [1, 2, 3, 4, 5, 6].map((level) => `:scope > h${level}`).join(", ");
 export const ACTIVE_OFFSET_PX = 72;
+const READ_DELAY_MS = 120;
+const HEADING = "h1, h2, h3, h4, h5, h6";
 
 export function markdownOutline(markdown: string): OutlineHeading[] {
   return noteHeadings(markdown).map((heading, index) => ({ index, ...heading }));
 }
 
-export function domOutline(root: ParentNode): { headings: OutlineHeading[]; elements: HTMLElement[] } {
+export function domOutline(root: ParentNode): DomOutline {
   const found = [...root.querySelectorAll<HTMLElement>(HEADING_SELECTOR)]
     .map((element) => ({ element, text: `${element.textContent}`.replaceAll(/\s+/gu, " ").trim() }))
     .filter((entry) => entry.text !== "");
@@ -94,4 +102,61 @@ export function scrollParent(element: HTMLElement): HTMLElement | null {
 export function headingTops(elements: readonly HTMLElement[], container: HTMLElement): number[] {
   const top = container.getBoundingClientRect().top;
   return elements.map((element) => element.getBoundingClientRect().top - top);
+}
+
+export function scrollToHeading(element: HTMLElement): void {
+  element.scrollIntoView?.({ block: "start", behavior: scrollBehavior() });
+}
+
+function touchesHeading(node: Node): boolean {
+  if (!(node instanceof Element)) return node.parentElement?.closest(HEADING) != null;
+  return node.matches(HEADING) || node.closest(HEADING) !== null || node.querySelector(HEADING) !== null;
+}
+
+function changesHeadings(root: HTMLElement, records: readonly MutationRecord[]): boolean {
+  return records.some(
+    (record) =>
+      record.target === root ||
+      touchesHeading(record.target) ||
+      [...record.addedNodes, ...record.removedNodes].some(touchesHeading),
+  );
+}
+
+export interface HeadingWatch {
+  readonly onRead: (outline: DomOutline) => void;
+  readonly onActive: (index: number) => void;
+}
+
+export function watchHeadings(root: HTMLElement, { onRead, onActive }: HeadingWatch): () => void {
+  const container = scrollParent(root);
+  let elements: readonly HTMLElement[] = [];
+  let readTimer = 0;
+  let frame = 0;
+  const measure = () => {
+    frame = 0;
+    if (container) onActive(activeHeadingIndex(headingTops(elements, container)));
+  };
+  const onScroll = () => {
+    if (frame === 0) frame = window.requestAnimationFrame(measure);
+  };
+  const read = () => {
+    const outline = domOutline(root);
+    elements = outline.elements;
+    onRead(outline);
+    measure();
+  };
+  const observer = new MutationObserver((records) => {
+    if (!changesHeadings(root, records)) return;
+    window.clearTimeout(readTimer);
+    readTimer = window.setTimeout(read, READ_DELAY_MS);
+  });
+  container?.addEventListener("scroll", onScroll, { passive: true });
+  observer.observe(root, { childList: true, subtree: true, characterData: true });
+  read();
+  return () => {
+    window.clearTimeout(readTimer);
+    observer.disconnect();
+    container?.removeEventListener("scroll", onScroll);
+    if (frame !== 0) window.cancelAnimationFrame(frame);
+  };
 }

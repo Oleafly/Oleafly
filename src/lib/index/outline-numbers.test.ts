@@ -6,7 +6,14 @@ import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble
 import { legacyIndexFromProjectIntelligence } from "@/lib/project-intelligence/legacy-index";
 import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { outlineFromIndex, type ExtraOutlineSection } from "./outline";
-import { headingKey, latexHeadingMarks, outlineEntryMatches, type NumberingTocEntry } from "./outline-numbers";
+import {
+  headingKey,
+  headingMarksOf,
+  latexHeadingMarks,
+  outlineEntryMatches,
+  typstHeadingNumbers,
+  type NumberingTocEntry,
+} from "./outline-numbers";
 import { parseFile } from "./parse-file";
 import type { ProjectIndex } from "./types";
 
@@ -511,5 +518,41 @@ describe("latexHeadingMarks", () => {
     expect(numbersFor(texts, toc, "draft.tex", scope)).toEqual([["Intro", null]]);
     expect(numbersFor(texts, toc, "draft.tex")).toEqual([["Intro", null]]);
     expect(numbersFor(texts, toc, "main.tex", scope)).toEqual([["Intro", "1"]]);
+  });
+});
+
+describe("typstHeadingNumbers", () => {
+  it("numbers Typst headings from the compiled document, appendix letters and unnumbered headings included", () => {
+    const text = [
+      '#set heading(numbering: "1.1")',
+      "= Introduction",
+      "== *Background*",
+      "#set heading(numbering: none)",
+      "= Acknowledgements",
+      '#set heading(numbering: "A.1")',
+      "#counter(heading).update(0)",
+      "= Proofs",
+      "#heading(level: 2)[A lemma]",
+    ].join("\n");
+    const items = outlineFromIndex({ defs: parseFile("main.typ", text).defs, uses: [] } as unknown as ProjectIndex, "main.typ");
+    const toc: AuxToc = {
+      projectId: "p1",
+      mainDocument: "main.typ",
+      entries: [
+        { level: 0, number: "1", title: "Introduction", page: "1" },
+        { level: 1, number: "1.1", title: "Background", page: "1" },
+        { level: 0, number: null, title: "Acknowledgements", page: "2" },
+        { level: 0, number: "A", title: "Proofs", page: "3" },
+        { level: 1, number: "A.1", title: "A lemma", page: "3" },
+      ],
+    };
+    const plain = (item: { title: string }) => item.title.replaceAll("*", "");
+    expect(headingMarksOf(items, typstHeadingNumbers(items, toc, plain))).toEqual([
+      { number: "1", page: "1" },
+      { number: "1.1", page: "1" },
+      { number: null, page: "2" },
+      { number: "A", page: "3" },
+      { number: "A.1", page: "3" },
+    ]);
   });
 });

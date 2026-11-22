@@ -651,7 +651,9 @@
       "accent": {
         "description": "Používá se pro tlačítka, výběr a kurzor v editoru.",
         "label": "Barva zvýraznění",
-        "swatchAriaLabel": "Zvýraznění {{name}}"
+        "swatchAriaLabel": "Zvýraznění {{name}}",
+        "theme": "Barva motivu",
+        "themeAriaLabel": "Použít barvu zvýraznění motivu"
       },
       "appIcon": {
         "about": "Kde se ikona aplikace zobrazuje",
@@ -708,6 +710,13 @@
       "theme": {
         "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
         "label": "Vzhled"
+      },
+      "themePresets": {
+        "dark": "Tmavý režim",
+        "description": "Vyberte motiv pro světlý režim a jeden pro tmavý režim. Který z nich uvidíte, určuje nastavení Vzhled výše.",
+        "label": "Motiv",
+        "light": "Světlý režim",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2610,7 +2619,12 @@
       "taken": "Zkratku {{shortcut}} už používá jiná aplikace. Vyberte jinou zkratku pro akci Poznámky: rychlý záznam.",
       "invalid": "{{shortcut}} nemůže fungovat mimo Oleafly. Vyberte zkratku, která končí písmenem, číslicí nebo funkční klávesou.",
       "failed": "Oleafly nedokázal zkratku nastavit. Chcete-li to zkusit znovu, vypněte a znovu zapněte rychlý záznam.",
-      "wayland": "Wayland aplikacím nedovoluje sledovat klávesy mimo jejich vlastní okna. Chcete-li rychlý záznam otevírat klávesou, přidejte v systémovém nastavení klávesnice vlastní zkratku, která spustí tento příkaz:"
+      "wayland": "Wayland aplikacím nedovoluje sledovat klávesy mimo jejich vlastní okna. Chcete-li rychlý záznam otevírat klávesou, přidejte v systémovém nastavení klávesnice vlastní zkratku, která spustí tento příkaz:",
+      "background": {
+        "label": "Mít rychlý záznam vždy připravený",
+        "descriptionMac": "Oleafly se po přihlášení otevře na pozadí. Po zavření okna zůstane v řádku nabídek, takže zkratka funguje vždy. Ukončíte ho ikonou v řádku nabídek.",
+        "description": "Oleafly se po přihlášení otevře na pozadí. Po zavření okna zůstane v oznamovací oblasti, takže zkratka funguje vždy. Ukončíte ho ikonou v oznamovací oblasti."
+      }
     }
   },
   "systemIntegration": {

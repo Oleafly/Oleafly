@@ -7,6 +7,7 @@ import {
 } from "@oleafly/latex";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
+import { useTypstToc } from "@/features/typst-heading-numbers";
 import { currentAuxToc, subscribeAuxNumbers, type AuxToc } from "@/lib/aux-numbers";
 import { documentSourcePaths } from "@/lib/document-sources";
 import {
@@ -19,6 +20,7 @@ import {
 import {
   headingMarksOf,
   latexHeadingNumbers,
+  typstHeadingNumbers,
   type HeadingMark,
   type HeadingNumbers,
   type LatexHeadingNumbersInput,
@@ -44,6 +46,7 @@ const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> =
 const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
 const NO_MARKS: readonly (HeadingMark | null)[] = [];
 const NO_WALK: OutlineWalk = { items: [], trails: [] };
+const TYPST_FILE = /\.typ$/iu;
 
 let sharedNumbers: Readonly<{
   index: ProjectIndex;
@@ -83,7 +86,7 @@ export function jumpToOutlineItem(item: OutlineItem): void {
 }
 
 function useTypstTitles(items: readonly OutlineItem[]): boolean {
-  const wanted = items.some((item) => /\.typ$/iu.test(item.file));
+  const wanted = items.some((item) => TYPST_FILE.test(item.file));
   const [ready, setReady] = useState(() => typstTools() !== null);
   useEffect(() => {
     if (!wanted || ready) return;
@@ -110,7 +113,7 @@ function displayTitle(
   if (/\.(?:latex|ltx|tex)$/iu.test(item.file)) {
     return renderLatexOutlineTitle(item.title, latexMacros, headingsByLabel);
   }
-  if (typstTitles && /\.typ$/iu.test(item.file)) {
+  if (typstTitles && TYPST_FILE.test(item.file)) {
     return typstTools()?.typstPlainTitle(item.title) ?? item.title;
   }
   return item.title;
@@ -160,24 +163,40 @@ export function useDocumentOutline(scope: OutlineScope, numbered: boolean): Docu
   );
 
   const auxToc = useSyncExternalStore(subscribeAuxNumbers, currentAuxToc);
-  const marks = useMemo(
-    () =>
-      numbered && index && activePath && auxToc?.projectId === projectId && auxToc.mainDocument === mainDoc
-        ? headingMarksOf(
-            items,
-            documentNumbers({
-              viewer: activePath,
-              toc: auxToc,
-              index,
-              texts: useIndexStore.getState().texts,
-              extraSections,
-              render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
-              documentSections: root === mainDoc ? items : undefined,
-            }),
-          )
-        : NO_MARKS,
-    [activePath, auxToc, extraSections, headingsByLabel, index, items, latexMacros, mainDoc, numbered, projectId, root],
-  );
+  const typstToc = useTypstToc(numbered && root === mainDoc && TYPST_FILE.test(mainDoc));
+  const marks = useMemo(() => {
+    if (!numbered || !index || !activePath) return NO_MARKS;
+    if (root === mainDoc && typstToc?.projectId === projectId && typstToc.mainDocument === mainDoc) {
+      return headingMarksOf(items, typstHeadingNumbers(items, typstToc, title));
+    }
+    if (auxToc?.projectId !== projectId || auxToc.mainDocument !== mainDoc) return NO_MARKS;
+    return headingMarksOf(
+      items,
+      documentNumbers({
+        viewer: activePath,
+        toc: auxToc,
+        index,
+        texts: useIndexStore.getState().texts,
+        extraSections,
+        render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
+        documentSections: root === mainDoc ? items : undefined,
+      }),
+    );
+  }, [
+    activePath,
+    auxToc,
+    extraSections,
+    headingsByLabel,
+    index,
+    items,
+    latexMacros,
+    mainDoc,
+    numbered,
+    projectId,
+    root,
+    title,
+    typstToc,
+  ]);
 
   const reading = useEditorViewportSelection((anchor) => activeOutlineIndex(walk.items, anchor, walk.trails));
   const activeIndex = reading < 0 ? -1 : items.indexOf(walk.items[reading]);

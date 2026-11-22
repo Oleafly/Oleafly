@@ -639,7 +639,9 @@
       "accent": {
         "description": "Dùng cho nút, vùng chọn và con trỏ của trình biên tập.",
         "label": "Màu nhấn",
-        "swatchAriaLabel": "Màu nhấn {{name}}"
+        "swatchAriaLabel": "Màu nhấn {{name}}",
+        "theme": "Màu nhấn của chủ đề",
+        "themeAriaLabel": "Dùng màu nhấn của chủ đề"
       },
       "appIcon": {
         "about": "Nơi biểu tượng ứng dụng hiển thị",
@@ -696,6 +698,13 @@
       "theme": {
         "description": "Chế độ Hệ thống theo hệ điều hành và thay đổi cùng hệ điều hành.",
         "label": "Giao diện"
+      },
+      "themePresets": {
+        "dark": "Chế độ tối",
+        "description": "Chọn một chủ đề cho chế độ sáng và một chủ đề cho chế độ tối. Cài đặt Giao diện ở trên quyết định bạn thấy chủ đề nào.",
+        "label": "Chủ đề",
+        "light": "Chế độ sáng",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2547,7 +2556,12 @@
       "taken": "Một ứng dụng khác đã dùng {{shortcut}}. Hãy chọn phím tắt khác cho Ghi chú: ghi nhanh.",
       "invalid": "{{shortcut}} không thể hoạt động bên ngoài Oleafly. Hãy chọn phím tắt kết thúc bằng một chữ cái, chữ số hoặc phím chức năng.",
       "failed": "Oleafly không thể thiết lập phím tắt. Hãy tắt rồi bật lại ghi nhanh để thử lại.",
-      "wayland": "Wayland không cho ứng dụng nhận phím bên ngoài cửa sổ của chính nó. Để mở ghi nhanh bằng phím, hãy thêm một phím tắt tuỳ chỉnh trong cài đặt bàn phím của hệ thống để chạy lệnh này:"
+      "wayland": "Wayland không cho ứng dụng nhận phím bên ngoài cửa sổ của chính nó. Để mở ghi nhanh bằng phím, hãy thêm một phím tắt tuỳ chỉnh trong cài đặt bàn phím của hệ thống để chạy lệnh này:",
+      "background": {
+        "label": "Luôn sẵn sàng ghi nhanh",
+        "descriptionMac": "Oleafly mở ở chế độ nền khi bạn đăng nhập. Khi đóng cửa sổ, ứng dụng vẫn ở trên thanh menu nên phím tắt luôn hoạt động. Thoát ứng dụng từ biểu tượng trên thanh menu.",
+        "description": "Oleafly mở ở chế độ nền khi bạn đăng nhập. Khi đóng cửa sổ, ứng dụng vẫn ở trong khay hệ thống nên phím tắt luôn hoạt động. Thoát ứng dụng từ biểu tượng trong khay."
+      }
     }
   },
   "systemIntegration": {

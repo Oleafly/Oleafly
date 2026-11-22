@@ -4,8 +4,19 @@ import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { CodeBlock } from "@/components/ui/code-block";
 import { nativeAccelerator } from "@/lib/native-dock-shortcuts";
 import type { QuickCaptureStatus } from "@/lib/tauri";
+import { isMac } from "@/lib/utils";
 import { useQuickCaptureStore } from "@/store/quick-capture";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+
+function SignInNote({ status }: Readonly<{ status: QuickCaptureStatus | null }>) {
+  const { t } = useTranslation(["settings"]);
+  const atLogin = status?.atLogin;
+  if (atLogin?.state === "move_app") {
+    return <SettingsNote testId="settings-quick-capture-move-app">{t(($) => $.settings.research.background.atLogin.moveApp)}</SettingsNote>;
+  }
+  if (atLogin?.state === "unsupported") return <SettingsNote testId="settings-quick-capture-sign-in">{atLogin.reason}</SettingsNote>;
+  return null;
+}
 
 function StatusLine({
   status,
@@ -29,6 +40,8 @@ export function QuickCaptureSettings() {
   const { t } = useTranslation(["settings"]);
   const enabled = useQuickCaptureStore((state) => state.enabled);
   const setEnabled = useQuickCaptureStore((state) => state.setEnabled);
+  const background = useQuickCaptureStore((state) => state.background);
+  const setBackground = useQuickCaptureStore((state) => state.setBackground);
   const status = useQuickCaptureStore((state) => state.status);
   const binding = useShortcutStore((state) => state.bindings.notesQuickCapture);
   const shortcut = shortcutLabel(binding);
@@ -45,6 +58,19 @@ export function QuickCaptureSettings() {
         onChange={setEnabled}
         details={enabled && !unsupported ? <StatusLine status={status} shortcut={shortcut} usable={usable} /> : null}
       />
+      <SettingsToggleRow
+        testId="settings-row-quick-capture-background"
+        label={t(($) => $.settings.shortcuts.quickCapture.background.label)}
+        description={
+          isMac
+            ? t(($) => $.settings.shortcuts.quickCapture.background.descriptionMac)
+            : t(($) => $.settings.shortcuts.quickCapture.background.description)
+        }
+        checked={enabled && background}
+        disabled={!enabled}
+        onChange={setBackground}
+      />
+      {enabled && background ? <SignInNote status={status} /> : null}
       {unsupported ? (
         <SettingsNote testId="settings-quick-capture-wayland">
           {t(($) => $.settings.shortcuts.quickCapture.wayland)}

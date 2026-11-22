@@ -85,9 +85,10 @@ const FORMATTING_SHORTCUTS: ReadonlyMap<string, "bold" | "italic"> = new Map([
 ]);
 
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
-const OutlineRail = lazy(() => import("./OutlineRail").then((module) => ({ default: module.OutlineRail })), {
-  warm: true,
-});
+const EditorOutlineRail = lazy(
+  () => import("./EditorOutlineRail").then((module) => ({ default: module.EditorOutlineRail })),
+  { warm: true },
+);
 const BoardFileView = lazy(() => import("./board/BoardFileView").then((module) => ({ default: module.BoardFileView })));
 const PdfFileView = lazy(() => import("./PdfFileView").then((module) => ({ default: module.PdfFileView })));
 const ImageFileView = lazy(() => import("./ImageFileView").then((module) => ({ default: module.ImageFileView })));
@@ -372,7 +373,7 @@ export function Editor() {
                 <CodeMirrorEditor active={!sourceHidden} />
               </EditorContextMenu>
               <Suspense fallback={null}>
-                <OutlineRail />
+                <EditorOutlineRail />
               </Suspense>
             </div>
             <SelectionActionMenu />

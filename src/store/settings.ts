@@ -12,6 +12,7 @@ import {
   type EditorThemeId,
 } from "@/lib/editor-themes";
 import type { Theme } from "@/lib/theme";
+import { DEFAULT_THEME_PRESET, findThemePreset, readThemePresetId, THEME_PRESET_STORAGE_KEYS } from "@/lib/theme-presets";
 import { COMMENT_COLOR_STORAGE_KEY, type CommentColor, readCommentColor } from "@/lib/comment-color";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
@@ -1107,6 +1108,9 @@ interface SettingsState {
   removeHiddenFilePattern: (pattern: string) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
+  appThemeLight: string;
+  appThemeDark: string;
+  setAppTheme: (mode: Theme, id: string) => void;
   commentColor: CommentColor;
   setCommentColor: (v: CommentColor) => void;
   showTree: boolean;
@@ -1333,7 +1337,9 @@ const PREF_DEFAULTS = {
   terminalOptionIsMeta: false,
   terminalScrollback: 5_000 as number,
   terminalConfirmClose: true,
-  accentColor: "#2563eb",
+  accentColor: "",
+  appThemeLight: DEFAULT_THEME_PRESET,
+  appThemeDark: DEFAULT_THEME_PRESET,
   commentColor: "indigo" as CommentColor,
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
@@ -1435,6 +1441,8 @@ export const SECTION_SETTINGS = {
     openInTree: "oleafly.openInTree",
     hoverPreview: "oleafly.hoverPreview",
     accentColor: "oleafly.accent",
+    appThemeLight: THEME_PRESET_STORAGE_KEYS.light,
+    appThemeDark: THEME_PRESET_STORAGE_KEYS.dark,
     commentColor: COMMENT_COLOR_STORAGE_KEY,
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
@@ -2141,10 +2149,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       return { hiddenFilePatterns };
     });
   },
-  accentColor: ls("oleafly.accent", "#2563eb"),
+  accentColor: ls("oleafly.accent", ""),
   setAccentColor: (v) => {
     saveLs("oleafly.accent", v);
     set({ accentColor: v });
+  },
+  appThemeLight: readThemePresetId("light"),
+  appThemeDark: readThemePresetId("dark"),
+  setAppTheme: (mode, id) => {
+    const preset = findThemePreset(mode, id).id;
+    saveLs(THEME_PRESET_STORAGE_KEYS[mode], preset);
+    set(mode === "light" ? { appThemeLight: preset } : { appThemeDark: preset });
   },
   commentColor: readCommentColor(ls(COMMENT_COLOR_STORAGE_KEY, "indigo")),
   setCommentColor: (v) => {

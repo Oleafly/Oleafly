@@ -6,6 +6,7 @@ const theme = vi.hoisted(() => ({ current: "light" as "light" | "dark" }));
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: theme.current }),
+  useAppTheme: () => theme.current,
 }));
 
 import { useSettingsStore } from "@/store/settings";

@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "クイックメモ"
     }
+  },
+  "tray": {
+    "open": "Oleafly を開く"
   }
 }

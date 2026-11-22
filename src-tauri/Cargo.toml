@@ -29,7 +29,7 @@ oleafly-history = { path = "../crates/oleafly-history" }
 # them is gone; dropping the feature is a separate change (it changes how
 # every window hosts its webview). webview_frame.rs and webview_focus.rs cover
 # the child webview it gives every window.
-tauri = { version = "2", features = ["macos-private-api", "unstable"] }
+tauri = { version = "2", features = ["macos-private-api", "unstable", "tray-icon", "image-png"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs", "net"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 percent-encoding = "2"
@@ -130,7 +130,7 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 # draw installed apps' icons for the Computer Use app picker, find the allowed
 # apps that run, and hide the quick capture window's traffic lights until the
 # pointer is over it.
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSButton", "NSControl", "NSApplication", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSGraphicsContext", "NSWorkspace", "NSRunningApplication", "libc"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSButton", "NSControl", "NSApplication", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSGraphicsContext", "NSWorkspace", "NSRunningApplication", "NSStatusItem", "NSEvent", "NSScreen", "NSPanel", "libc"] }
 dispatch2 = "0.3"
 plist = "1"
 
@@ -160,6 +160,7 @@ windows-sys = { version = "0.61", features = [
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 webkit2gtk = "2.0"
+libloading = "0.8"
 
 [target.'cfg(not(windows))'.dependencies]
 # Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking

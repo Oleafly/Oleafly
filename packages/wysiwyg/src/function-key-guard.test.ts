@@ -22,6 +22,16 @@ describe("function key text", () => {
     expect(functionKeyTextOffsets(`a${END}b${F35}`)).toEqual([1, 3]);
     expect(withoutFunctionKeyText(`Say hello in five words.${END}${APPLE_LOGO}`)).toBe(`Say hello in five words.${APPLE_LOGO}`);
   });
+
+  it("knows the Carbon codes the arrow keys carry, and no other control character", () => {
+    expect(onlyFunctionKeyText("\u001D\u001D")).toBe(true);
+    expect(hasFunctionKeyText("\u001C")).toBe(true);
+    expect(hasFunctionKeyText("\u001F")).toBe(true);
+    expect(hasFunctionKeyText("\u001B")).toBe(false);
+    expect(hasFunctionKeyText("\u0020")).toBe(false);
+    expect(hasFunctionKeyText("\t\n")).toBe(false);
+    expect(withoutFunctionKeyText("note\u001D\u001C")).toBe("note");
+  });
 });
 
 describe("FunctionKeyTextGuard", () => {

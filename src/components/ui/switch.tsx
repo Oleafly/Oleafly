@@ -9,7 +9,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
         "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent shadow-xs transition-colors",
         "focus-visible:!border-ring",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input/60 data-[state=unchecked]:border-border dark:data-[state=unchecked]:bg-[#181818]",
+        "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input/60 data-[state=unchecked]:border-border dark:data-[state=unchecked]:bg-card",
         className,
       )}
       {...props}
