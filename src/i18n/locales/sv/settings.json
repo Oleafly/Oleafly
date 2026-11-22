@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} är inte installerat, så standardteckensnittet används i stället.",
     "preview": {
       "darkMode": {
-        "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
-        "label": "Mörkt läge för PDF"
+        "description": "Med Följ appens tema blir sidorna mörka när appen är mörk. I ljust läge ser de ut som tryckta, eller behåller den ljusa ton du har valt, till exempel sepia. Knappen för att invertera färger i förhandsvisningens verktygsfält ställer om detta till På eller Av.",
+        "label": "Mörkt läge för PDF",
+        "modes": {
+          "follow": "Följ appens tema",
+          "off": "Av",
+          "on": "På"
+        }
       },
       "darkColors": {
         "label": "Färger för mörk sida",

@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} er ikke installeret, så standardskrifttypen bruges i stedet.",
     "preview": {
       "darkMode": {
-        "description": "Vend PDF'ens farver om som udgangspunkt. Du kan stadig skifte farver på forhåndsvisningens værktøjslinje.",
-        "label": "Mørk tilstand til PDF"
+        "description": "Med Følg appens tema bliver siderne mørke, når appen er mørk. I lys tilstand ser de ud som på tryk, eller de beholder den lyse tone, du har valgt, fx sepia. Knappen til at vende farverne om på forhåndsvisningens værktøjslinje sætter dette til Til eller Fra.",
+        "label": "Mørk tilstand til PDF",
+        "modes": {
+          "follow": "Følg appens tema",
+          "off": "Fra",
+          "on": "Til"
+        }
       },
       "darkColors": {
         "label": "Farver til den mørke side",

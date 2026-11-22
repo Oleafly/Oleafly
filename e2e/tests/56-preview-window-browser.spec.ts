@@ -46,6 +46,42 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
   await expect(renderer.locator("[data-page] canvas").first()).toHaveCSS("filter", "none");
 });
 
+test("PDF dark mode matches the app theme, and every preview window shares it", async ({ page, context }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("pdf-dark-mode-seeded")) return;
+    localStorage.setItem("oleafly.pdf.darkMode", "follow");
+    localStorage.setItem("oleafly.theme", "light");
+    sessionStorage.setItem("pdf-dark-mode-seeded", "1");
+  });
+  await openHarness(page, 1);
+  const renderer = page.getByTestId("pdf-renderer");
+  const invert = page.getByLabel("Invert PDF preview colors");
+  const appTheme = (theme: "light" | "dark") =>
+    page.evaluate(async (next) => (await import("/src/lib/theme.tsx")).applyTheme(next), theme);
+
+  await expect(renderer).not.toHaveAttribute("data-pdf-colors");
+  await appTheme("dark");
+  await expect(renderer).toHaveAttribute("data-pdf-colors", "dark");
+  await expect(invert).toHaveAttribute("aria-pressed", "true");
+  await appTheme("light");
+  await expect(renderer).not.toHaveAttribute("data-pdf-colors");
+  await expect(invert).toHaveAttribute("aria-pressed", "false");
+
+  const other = await context.newPage();
+  await openHarness(other, 1);
+  const otherRenderer = other.getByTestId("pdf-renderer");
+  await other.getByLabel("Invert PDF preview colors").click();
+  await expect(otherRenderer).toHaveAttribute("data-pdf-colors", "dark");
+  await expect(renderer).toHaveAttribute("data-pdf-colors", "dark");
+
+  await invert.click();
+  await expect(renderer).not.toHaveAttribute("data-pdf-colors");
+  await expect(otherRenderer).not.toHaveAttribute("data-pdf-colors");
+  await appTheme("dark");
+  await expect(renderer).not.toHaveAttribute("data-pdf-colors");
+  expect(await page.evaluate(() => localStorage.getItem("oleafly.pdf.darkMode"))).toBe("0");
+});
+
 test("inverted pages keep a figure in its own colours, edge to edge", async ({ page }) => {
   await openHarness(page, 1, true);
   const renderer = page.getByTestId("pdf-renderer");

@@ -425,6 +425,20 @@ describe("reading a settings file", () => {
     );
   });
 
+  it("reads PDF dark mode as off, on or match app theme, old switch values included", () => {
+    const modes = [true, "on", false, "off", "follow"].map((darkMode) => {
+      const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode } } }), snapshot());
+      return read.ok ? read.plan.preferences.pdfDarkMode : read;
+    });
+    expect(modes).toEqual(["on", "on", "off", "off", "follow"]);
+
+    const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode: "night" } } }), snapshot());
+    if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
+    expect(read.problems).toEqual([
+      { path: "appearance.pdf.darkMode", issue: { kind: "oneOf", values: ["off", "on", "follow"] } },
+    ]);
+  });
+
   it("still reports keys it doesn't know", () => {
     const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode: true }, whatever: 1 } }), snapshot());
     expect(read.ok && read.ignored).toEqual(["appearance.whatever"]);

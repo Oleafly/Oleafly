@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} non è installato, quindi viene usato il carattere predefinito.",
     "preview": {
       "darkMode": {
-        "description": "Inverte i colori del PDF per impostazione predefinita. Puoi comunque cambiarli dalla barra dell'anteprima.",
-        "label": "Modalità scura del PDF"
+        "description": "Con Segui il tema dell'app, le pagine diventano scure quando l'app è scura. In modalità chiara appaiono come stampate, oppure mantengono la tinta chiara che hai scelto, come il seppia. Il pulsante per invertire i colori nella barra dell'anteprima imposta questa opzione su Attivata o Disattivata.",
+        "label": "Modalità scura del PDF",
+        "modes": {
+          "follow": "Segui il tema dell'app",
+          "off": "Disattivata",
+          "on": "Attivata"
+        }
       },
       "darkColors": {
         "label": "Colori scuri della pagina",
