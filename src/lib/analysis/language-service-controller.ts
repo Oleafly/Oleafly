@@ -1254,6 +1254,24 @@ export class LanguageServiceController {
     return false;
   }
 
+  private startIsBlocked(
+    desired: DesiredProject,
+    kind: LanguageServiceKind,
+    resolved: ResolvedRuntimeStart,
+    external: boolean,
+    matched: string | null,
+  ): boolean {
+    if (external) return this.externalBlocksStart(resolved.installStatus);
+    if (matched !== null) {
+      return this.matchedTinymistBlocksStart(desired, resolved.installStatus);
+    }
+    return this.installBlocksStart(
+      kind,
+      resolved.profile,
+      resolved.installStatus,
+    );
+  }
+
   private externalBlocksStart(
     installStatus: LanguageServiceInstallStatus,
   ): boolean {
@@ -1359,16 +1377,7 @@ export class LanguageServiceController {
       resolved.profile,
       resolved.installStatus,
     );
-    const blocked = external
-      ? this.externalBlocksStart(resolved.installStatus)
-      : matched !== null
-        ? this.matchedTinymistBlocksStart(desired, resolved.installStatus)
-        : this.installBlocksStart(
-            kind,
-            resolved.profile,
-            resolved.installStatus,
-          );
-    if (blocked) {
+    if (this.startIsBlocked(desired, kind, resolved, external, matched)) {
       if (
         !reused &&
         matched === null &&
