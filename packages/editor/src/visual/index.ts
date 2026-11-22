@@ -1,4 +1,4 @@
-import type { EditorState, Extension } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { atomicDecorations } from "./atomic-decorations";
 import { visualModeActive, visualPortsFacet } from "./facets";
@@ -80,6 +80,3 @@ export function visualMode(ports: VisualPorts): Extension {
   ];
 }
 
-export function isVisualMode(state: EditorState): boolean {
-  return state.facet(visualModeActive);
-}

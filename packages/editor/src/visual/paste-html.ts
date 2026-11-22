@@ -1,7 +1,7 @@
 import { type Extension, Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { htmlToLatex } from "@oleafly/latex";
-import { isVisualMode } from "./index";
+import { visualModeActive } from "./facets";
 
 const OPAQUE_CLIPBOARD_TYPES = ["application/vnd.code.copymetadata", "vscode-editor-data"];
 
@@ -26,7 +26,7 @@ export function latexFromClipboard(data: DataTransfer): string | null {
 export const pasteHtml: Extension = Prec.highest(
   EditorView.domEventHandlers({
     paste(event, view) {
-      if (!isVisualMode(view.state)) return false;
+      if (!view.state.facet(visualModeActive)) return false;
       const data = event.clipboardData;
       if (!data) return false;
 
