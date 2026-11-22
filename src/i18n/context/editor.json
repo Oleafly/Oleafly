@@ -63,10 +63,6 @@
     "splitView": "Shows the two versions side by side",
     "unifiedView": "Shows both versions in one column"
   },
-  "history": {
-    "restore": "Replaces every project file with this commit's version",
-    "overwriteAll": "Confirms the destructive restore"
-  },
   "checkpoints": {
     "justNow": "Relative time for a checkpoint less than a minute old",
     "fallbackName": "Placeholder name for a checkpoint with no version number yet",
@@ -75,7 +71,8 @@
       "advanced": "Expands the advanced checkpoint settings"
     },
     "entry": {
-      "restore": "Restores the files in this checkpoint over the current ones"
+      "restore": "Restores the files in this checkpoint over the current ones",
+      "current": "Tag on the checkpoint the project files are on: the newest one, or the one last restored"
     },
     "storeSummary": {
       "stored": "Bytes the checkpoint store occupies on disk after deduplication",
@@ -91,7 +88,7 @@
     },
     "maintenance": {
       "reset": "Deletes every checkpoint for the project",
-      "keepLatest": "Deletes every checkpoint except the newest one"
+      "keepLatest": "Deletes every checkpoint except the newest one and the one tagged Current"
     },
     "capture": {
       "paused": "Checkpoints panel line for a folder opened in place whose files exceed the checkpoint budget; files is a formatted file count and size a formatted byte size",
@@ -100,6 +97,9 @@
     },
     "files": {
       "folderSettings": "Shown in a checkpoint's file list instead of the internal path that stores this device's settings for a folder opened in place"
+    },
+    "toast": {
+      "restored": "Shown after a restore. version is V1, V2 and so on, or the checkpoint's label. Current is the tag from entry.current"
     }
   },
   "table": {

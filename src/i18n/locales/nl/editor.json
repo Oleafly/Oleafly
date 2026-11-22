@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Versies sluiten",
     "title": "Versies",
-    "close": "Versies sluiten",
-    "views": "Versieweergaven",
-    "gitHistory": "Git-geschiedenis",
-    "savedCheckpoints": "Bewaarde checkpoints"
+    "close": "Versies sluiten"
   },
   "wordCount": {
     "close": "Projectinfo sluiten"
@@ -453,20 +450,6 @@
     "fontPackAction": "Downloaden en compileren",
     "fontPackDownloading": "Downloaden…",
     "fontPackFailed": "Het lettertypepakket kon niet worden gedownload. Controleer je verbinding en probeer het opnieuw."
-  },
-  "history": {
-    "untitledCommit": "Naamloze commit",
-    "restoreFailed": "Kon die Git-versie niet terugzetten.",
-    "copyIdFailed": "Kon dat commit-ID niet kopiëren.",
-    "empty": "Nog geen Git-geschiedenis",
-    "emptyHint": "Initialiseer versiebeheer en commit wanneer je hier een versie wilt.",
-    "commitIdCopied": "Commit-ID gekopieerd",
-    "copyCommitId": "Volledig commit-ID kopiëren",
-    "copyCommitIdFor": "Commit-ID {{id}} kopiëren",
-    "overwriteTooltip": "Alle bestanden met deze versie overschrijven",
-    "overwriteAll": "Alles overschrijven",
-    "restoreTooltip": "Deze versie terugzetten (overschrijft alle bestanden)",
-    "restore": "Terugzetten"
   },
   "diff": {
     "reloadFailed": "De diff kon niet opnieuw worden geladen. Sluit dit tabblad en open het opnieuw.",
@@ -646,12 +629,13 @@
       "deleteCheckpoint": "Checkpoint verwijderen",
       "restoreFor": "{{version}} terugzetten",
       "restore": "Terugzetten",
-      "deleteFor": "{{version}} verwijderen"
+      "deleteFor": "{{version}} verwijderen",
+      "current": "Huidig"
     },
     "toast": {
       "copyIdFailed": "Kon dat checkpoint-id niet kopiëren.",
       "saveLabelFailed": "Kon het checkpointlabel niet opslaan.",
-      "restored": "Checkpoint teruggezet.",
+      "restored": "{{version}} teruggezet. Versies markeert deze nu als Huidig.",
       "restoreFailed": "Kon dit checkpoint niet terugzetten. Bekijk het app-logboek voor details.",
       "deleted": "Checkpoint verwijderd.",
       "deleteFailed": "Kon dit checkpoint niet verwijderen.",
@@ -710,7 +694,7 @@
     "maintenance": {
       "title": "Onderhoud",
       "description": "Verwijder checkpoints die dit project niet meer nodig heeft.",
-      "keepLatestPrompt": "Alle checkpoints op de laatste na verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "keepLatestPrompt": "Alle checkpoints verwijderen behalve de laatste en de checkpoint met het label Huidig? Dit kan niet ongedaan worden gemaakt.",
       "deleteOlder": "Oudere checkpoints verwijderen",
       "keepAll": "Alle checkpoints houden",
       "resetPrompt": "Alle checkpoints van dit project verwijderen? De huidige projectbestanden blijven ongewijzigd. Dit kan niet ongedaan worden gemaakt.",

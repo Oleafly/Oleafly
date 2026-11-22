@@ -399,10 +399,7 @@
   "versioning": {
     "dismiss": "忽略版本管理",
     "title": "版本管理",
-    "close": "关闭版本管理",
-    "views": "版本管理视图",
-    "gitHistory": "Git 历史",
-    "savedCheckpoints": "已保存的检查点"
+    "close": "关闭版本管理"
   },
   "wordCount": {
     "close": "关闭项目信息"
@@ -446,20 +443,6 @@
     "fontPackAction": "下载并编译",
     "fontPackDownloading": "正在下载…",
     "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
-  },
-  "history": {
-    "untitledCommit": "未命名提交",
-    "restoreFailed": "无法恢复该 Git 版本。",
-    "copyIdFailed": "无法复制该提交 ID。",
-    "empty": "暂无 Git 历史",
-    "emptyHint": "初始化源代码管理，之后在需要保存版本时提交即可。",
-    "commitIdCopied": "提交 ID 已复制",
-    "copyCommitId": "复制完整提交 ID。",
-    "copyCommitIdFor": "复制提交 ID {{id}}。",
-    "overwriteTooltip": "使用此版本覆盖所有文件。",
-    "overwriteAll": "全部覆盖",
-    "restoreTooltip": "恢复此版本（会覆盖所有文件）。",
-    "restore": "恢复"
   },
   "diff": {
     "reloadFailed": "无法重新加载差异。请关闭此标签页并重新打开。",
@@ -636,12 +619,13 @@
       "deleteCheckpoint": "删除检查点",
       "restoreFor": "恢复 {{version}}",
       "restore": "恢复",
-      "deleteFor": "删除 {{version}}"
+      "deleteFor": "删除 {{version}}",
+      "current": "当前"
     },
     "toast": {
       "copyIdFailed": "无法复制该检查点 ID。",
       "saveLabelFailed": "无法保存检查点标签。",
-      "restored": "检查点已恢复",
+      "restored": "已恢复 {{version}}。版本管理现已将其标为“当前”。",
       "restoreFailed": "无法恢复此检查点。详情请查看应用日志。",
       "deleted": "检查点已删除",
       "deleteFailed": "无法删除此检查点。",
@@ -700,7 +684,7 @@
     "maintenance": {
       "title": "维护",
       "description": "删除此项目不再需要的检查点。",
-      "keepLatestPrompt": "删除除最新检查点外的所有检查点？此操作无法撤销。",
+      "keepLatestPrompt": "删除除最新检查点和标为“当前”的检查点外的所有检查点？此操作无法撤销。",
       "deleteOlder": "删除较早的检查点",
       "keepAll": "保留所有检查点",
       "resetPrompt": "删除此项目的所有检查点？当前项目文件保持不变。此操作无法撤销。",

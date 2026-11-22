@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Stäng versionshanteringen",
     "title": "Versionshantering",
-    "close": "Stäng versionshanteringen",
-    "views": "Vyer för versionshantering",
-    "gitHistory": "Git-historik",
-    "savedCheckpoints": "Sparade kontrollpunkter"
+    "close": "Stäng versionshanteringen"
   },
   "wordCount": {
     "close": "Stäng projektinfo"
@@ -453,20 +450,6 @@
     "fontPackAction": "Ladda ned och kompilera",
     "fontPackDownloading": "Laddar ned…",
     "fontPackFailed": "Typsnittspaketet kunde inte laddas ned. Kontrollera anslutningen och försök igen."
-  },
-  "history": {
-    "untitledCommit": "Namnlös commit",
-    "restoreFailed": "Det gick inte att återställa den Git-versionen.",
-    "copyIdFailed": "Det gick inte att kopiera det commit-ID:t.",
-    "empty": "Ingen Git-historik än",
-    "emptyHint": "Initiera versionshanteringen och checka in när du vill ha en version här.",
-    "commitIdCopied": "Commit-ID kopierat",
-    "copyCommitId": "Kopiera hela commit-ID:t",
-    "copyCommitIdFor": "Kopiera commit-ID {{id}}",
-    "overwriteTooltip": "Skriv över alla filer med den här versionen",
-    "overwriteAll": "Skriv över alla",
-    "restoreTooltip": "Återställ den här versionen (skriver över alla filer)",
-    "restore": "Återställ"
   },
   "diff": {
     "reloadFailed": "Jämförelsen kunde inte läsas in på nytt. Stäng fliken och öppna den igen.",
@@ -646,12 +629,13 @@
       "deleteCheckpoint": "Radera kontrollpunkten",
       "restoreFor": "Återställ {{version}}",
       "restore": "Återställ",
-      "deleteFor": "Radera {{version}}"
+      "deleteFor": "Radera {{version}}",
+      "current": "Aktuell"
     },
     "toast": {
       "copyIdFailed": "Det gick inte att kopiera kontrollpunktens id.",
       "saveLabelFailed": "Det gick inte att spara kontrollpunktens etikett.",
-      "restored": "Kontrollpunkten är återställd.",
+      "restored": "{{version}} är återställd. Versionshantering markerar den nu som Aktuell.",
       "restoreFailed": "Det gick inte att återställa den här kontrollpunkten. Se appens logg för mer information.",
       "deleted": "Kontrollpunkten är raderad.",
       "deleteFailed": "Det gick inte att radera den här kontrollpunkten.",
@@ -710,7 +694,7 @@
     "maintenance": {
       "title": "Underhåll",
       "description": "Radera kontrollpunkter som projektet inte längre behöver.",
-      "keepLatestPrompt": "Vill du radera alla kontrollpunkter utom den senaste? Det går inte att ångra.",
+      "keepLatestPrompt": "Vill du radera alla kontrollpunkter utom den senaste och den som är markerad Aktuell? Det går inte att ångra.",
       "deleteOlder": "Radera äldre kontrollpunkter",
       "keepAll": "Behåll alla kontrollpunkter",
       "resetPrompt": "Vill du radera alla kontrollpunkter för det här projektet? De aktuella projektfilerna påverkas inte. Det går inte att ångra.",

@@ -44,6 +44,7 @@ const VERSION: CheckpointSummary = {
   file_count: 1,
   logical_bytes: EARLIER.length,
   label: null,
+  number: 1,
 };
 
 function open() {
@@ -106,7 +107,7 @@ describe("NoteVersionHistory", () => {
 
     fireEvent.click(screen.getByRole("button", { name: enNotes.versions.restore }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(order).toEqual(["save", "write"]);
+    expect(order).toEqual(["save", "write", "save"]);
     expect(saveNote).toHaveBeenCalledWith(NOTE.id, EARLIER, "v1");
     expect(noteWrittenHere(NOTE.id, EARLIER)).toBe(true);
     expect(checkpoints.checkpointRestore).not.toHaveBeenCalled();

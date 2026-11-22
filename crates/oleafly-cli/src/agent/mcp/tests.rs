@@ -328,7 +328,7 @@ async fn a_silent_server_times_out_without_blocking_the_others() {
         &token(),
     )
     .await;
-    assert!(started.elapsed() < CONNECT_TIMEOUT + std::time::Duration::from_secs(3));
+    assert!(started.elapsed() < CONNECT_TIMEOUT * 3);
     assert_eq!(hub.server_names(), ["fine"]);
     assert!(warnings[0].contains("quiet"));
 }

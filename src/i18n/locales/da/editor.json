@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Luk versionering",
     "title": "Versionering",
-    "close": "Luk versionering",
-    "views": "Visninger af versionering",
-    "gitHistory": "Git-historik",
-    "savedCheckpoints": "Gemte kontrolpunkter"
+    "close": "Luk versionering"
   },
   "wordCount": {
     "close": "Luk projektoplysninger"
@@ -453,20 +450,6 @@
     "fontPackAction": "Hent og kompilér",
     "fontPackDownloading": "Henter…",
     "fontPackFailed": "Skrifttypepakken kunne ikke hentes. Tjek din forbindelse, og prøv igen."
-  },
-  "history": {
-    "untitledCommit": "Commit uden titel",
-    "restoreFailed": "Kunne ikke gendanne den Git-version.",
-    "copyIdFailed": "Kunne ikke kopiere det commit-id.",
-    "empty": "Ingen Git-historik endnu",
-    "emptyHint": "Initialiser versionsstyring, og commit, når du vil have en version her.",
-    "commitIdCopied": "Commit-id er kopieret",
-    "copyCommitId": "Kopier hele commit-id'et",
-    "copyCommitIdFor": "Kopier commit-id {{id}}",
-    "overwriteTooltip": "Overskriv alle filer med denne version",
-    "overwriteAll": "Overskriv alle",
-    "restoreTooltip": "Gendan denne version (overskriver alle filer)",
-    "restore": "Gendan"
   },
   "diff": {
     "reloadFailed": "Forskellen kunne ikke indlæses igen. Luk denne fane, og åbn den igen.",
@@ -646,12 +629,13 @@
       "deleteCheckpoint": "Slet kontrolpunktet",
       "restoreFor": "Gendan {{version}}",
       "restore": "Gendan",
-      "deleteFor": "Slet {{version}}"
+      "deleteFor": "Slet {{version}}",
+      "current": "Aktuel"
     },
     "toast": {
       "copyIdFailed": "Kunne ikke kopiere det kontrolpunkt-id.",
       "saveLabelFailed": "Kunne ikke gemme navnet på kontrolpunktet.",
-      "restored": "Kontrolpunktet er gendannet.",
+      "restored": "{{version}} er gendannet. Versionering markerer den nu som Aktuel.",
       "restoreFailed": "Kunne ikke gendanne dette kontrolpunkt. Se app-loggen for detaljer.",
       "deleted": "Kontrolpunktet er slettet.",
       "deleteFailed": "Kunne ikke slette dette kontrolpunkt.",
@@ -710,7 +694,7 @@
     "maintenance": {
       "title": "Vedligeholdelse",
       "description": "Slet de kontrolpunkter, projektet ikke længere har brug for.",
-      "keepLatestPrompt": "Vil du slette alle kontrolpunkter på nær det nyeste? Det kan ikke fortrydes.",
+      "keepLatestPrompt": "Vil du slette alle kontrolpunkter på nær det nyeste og det, der er markeret Aktuel? Det kan ikke fortrydes.",
       "deleteOlder": "Slet de ældre kontrolpunkter",
       "keepAll": "Behold alle kontrolpunkter",
       "resetPrompt": "Vil du slette alle kontrolpunkter for dette projekt? De nuværende projektfiler bliver ikke ændret. Det kan ikke fortrydes.",

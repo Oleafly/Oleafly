@@ -399,10 +399,7 @@
   "versioning": {
     "dismiss": "バージョン管理を閉じる",
     "title": "バージョン管理",
-    "close": "バージョン管理を閉じる",
-    "views": "バージョン管理の表示",
-    "gitHistory": "Git の履歴",
-    "savedCheckpoints": "保存したチェックポイント"
+    "close": "バージョン管理を閉じる"
   },
   "wordCount": {
     "close": "プロジェクト情報を閉じる"
@@ -446,20 +443,6 @@
     "fontPackAction": "ダウンロードしてコンパイル",
     "fontPackDownloading": "ダウンロード中…",
     "fontPackFailed": "フォントパックをダウンロードできませんでした。接続を確認して、もう一度お試しください。"
-  },
-  "history": {
-    "untitledCommit": "無題のコミット",
-    "restoreFailed": "その Git のバージョンを復元できませんでした。",
-    "copyIdFailed": "そのコミット ID をコピーできませんでした。",
-    "empty": "Git の履歴はまだありません",
-    "emptyHint": "ソース管理を初期化し、バージョンとして残したいときにコミットしてください。",
-    "commitIdCopied": "コミット ID をコピーしました",
-    "copyCommitId": "コミット ID 全体をコピー",
-    "copyCommitIdFor": "コミット ID {{id}} をコピー",
-    "overwriteTooltip": "すべてのファイルをこのバージョンで上書きします",
-    "overwriteAll": "すべて上書き",
-    "restoreTooltip": "このバージョンを復元します（すべてのファイルを上書きします）",
-    "restore": "復元"
   },
   "diff": {
     "reloadFailed": "差分を再読み込みできませんでした。このタブを閉じて開き直してください。",
@@ -636,12 +619,13 @@
       "deleteCheckpoint": "チェックポイントを削除",
       "restoreFor": "{{version}} を復元",
       "restore": "復元",
-      "deleteFor": "{{version}} を削除"
+      "deleteFor": "{{version}} を削除",
+      "current": "現在"
     },
     "toast": {
       "copyIdFailed": "そのチェックポイント ID をコピーできませんでした。",
       "saveLabelFailed": "チェックポイントのラベルを保存できませんでした。",
-      "restored": "チェックポイントを復元しました。",
+      "restored": "{{version}} を復元しました。バージョン管理で「現在」と表示されます。",
       "restoreFailed": "このチェックポイントを復元できませんでした。詳細はアプリのログを確認してください。",
       "deleted": "チェックポイントを削除しました。",
       "deleteFailed": "このチェックポイントを削除できませんでした。",
@@ -700,7 +684,7 @@
     "maintenance": {
       "title": "メンテナンス",
       "description": "このプロジェクトに不要になったチェックポイントを削除します。",
-      "keepLatestPrompt": "最新のもの以外、すべてのチェックポイントを削除しますか？この操作は取り消せません。",
+      "keepLatestPrompt": "最新のものと「現在」のもの以外、すべてのチェックポイントを削除しますか？この操作は取り消せません。",
       "deleteOlder": "古いチェックポイントを削除",
       "keepAll": "すべて残す",
       "resetPrompt": "このプロジェクトのチェックポイントをすべて削除しますか？現在のプロジェクトのファイルは変わりません。この操作は取り消せません。",

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #428, "Incorrect regex causes missing Typst section from Document Outline", and #429, "Have section number for Typst Document Outline".
+- Angelk90 ([@Angelk90](https://github.com/Angelk90)) for #494, "Restoring an older version does not update the version indicator".
 - Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme", #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
 
 ### Added
@@ -44,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- After you restore an older checkpoint, Versioning tags it as Current and the restore message names it. Before, nothing showed which version your files were on. Compiling after a restore, with no edits, no longer works through the whole project again each time. Version history in Notes tags a restored version the same way.
+- Checkpoint version numbers stay put. Deleting V2 no longer turns V3 into V2, a number is never reused, and an exported archive brings checkpoints back under their own numbers. Keep latest also keeps the checkpoint tagged Current, so trimming history right after a restore no longer deletes the version your files are on.
 - In a folder you opened that has no main document, the compile button now works when the open file is a complete LaTeX document.
 - On Linux, the research roots menu says Show in file manager instead of Show in Explorer.
 - When a file left over from an earlier compile is damaged, the Logs panel says so and offers Recompile from scratch. Before, it suggested a typo in a command and pointed into the build folder, and with Stop on first error every later compile failed the same way. When the document itself writes a line LaTeX can't read back, the panel says that instead and names where it usually comes from, since recompiling from scratch won't help.

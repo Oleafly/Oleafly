@@ -125,7 +125,7 @@ fn outcome_from_failure(failure: AdapterFailure) -> CheckpointPublicationOutcome
     }
 }
 
-fn newest_checkpoint_matches(
+fn current_checkpoint_matches(
     project_id: &str,
     walk: &crate::checkpoint_capture::ProjectWalk,
 ) -> bool {
@@ -135,7 +135,7 @@ fn newest_checkpoint_matches(
     let Ok(Some(store)) = oleafly_history::Store::open_existing(store_path) else {
         return false;
     };
-    let Ok(Some(checkpoint)) = store.latest_checkpoint() else {
+    let Ok(Some(checkpoint)) = store.current_checkpoint() else {
         return false;
     };
     let Ok(Some(files)) = store.checkpoint_files(&checkpoint.snapshot_root) else {
@@ -407,6 +407,12 @@ async fn publish_once<R: tauri::Runtime>(
     let summary = match &result {
         Err(_) if !lane_started => "was cancelled before it started".to_owned(),
         Err(failure) => format!("failed after {elapsed_ms} ms: {}", failure.detail),
+        Ok(CheckpointPublicationOutcome::Published {
+            snapshot_root,
+            created: false,
+        }) => {
+            format!("matched the existing {snapshot_root} after {elapsed_ms} ms")
+        }
         Ok(CheckpointPublicationOutcome::Published { snapshot_root, .. }) => {
             format!("published {snapshot_root} after {elapsed_ms} ms")
         }
@@ -634,7 +640,7 @@ async fn walk_if_changed(
             .map_err(AdapterFailure::silent)?;
         let walk = crate::checkpoint_capture::walk_project(&walk_project_root)
             .map_err(AdapterFailure::incomplete)?;
-        if newest_checkpoint_matches(&walk_project_id, &walk) {
+        if current_checkpoint_matches(&walk_project_id, &walk) {
             return Ok(None);
         }
         Ok(Some(walk))
@@ -676,20 +682,18 @@ fn publish_outcome(
     committed: oleafly_history::PublicationCommitOutcome,
     snapshot_root: String,
 ) -> CheckpointPublicationOutcome {
-    if matches!(published, oleafly_history::PublishOutcome::Existing(_)) {
-        return CheckpointPublicationOutcome::Unchanged;
-    }
+    let created = matches!(published, oleafly_history::PublishOutcome::Created(_));
     match committed {
         oleafly_history::PublicationCommitOutcome::Durable(_store) => {
             CheckpointPublicationOutcome::Published {
                 snapshot_root,
-                created: true,
+                created,
             }
         }
         oleafly_history::PublicationCommitOutcome::InstalledDurabilityUncertain(_store) => {
             CheckpointPublicationOutcome::PublishedDurabilityUncertain {
                 snapshot_root,
-                created: true,
+                created,
             }
         }
     }
@@ -712,7 +716,7 @@ async fn attempt_publication(
     let Some(walk) = walk_if_changed(project_id, project_root).await? else {
         return Ok(CheckpointPublicationOutcome::Unchanged);
     };
-    trace_lane(project_id, "sources differ from the newest checkpoint");
+    trace_lane(project_id, "sources differ from the current checkpoint");
     let inputs = walk.capture_inputs().map_err(AdapterFailure::incomplete)?;
     let completed_at_unix_ms = completed_at_now();
     ensure_checkpoint_not_cancelled(cancel)?;
@@ -893,7 +897,7 @@ fn prepare_linked_publication(
     if let Some(pause) = capture.notice.paused.clone() {
         return Ok(LinkedPreparation::Paused(pause));
     }
-    if newest_checkpoint_matches(&request.project_id, &capture.walk) {
+    if current_checkpoint_matches(&request.project_id, &capture.walk) {
         return Ok(LinkedPreparation::Unchanged);
     }
     let inputs = capture.capture_inputs().map_err(AdapterFailure::silent)?;
@@ -973,7 +977,10 @@ async fn attempt_linked_publication(
             inputs,
         } => (location, policy, inputs),
     };
-    trace_lane(project_id, "folder files differ from the newest checkpoint");
+    trace_lane(
+        project_id,
+        "folder files differ from the current checkpoint",
+    );
     let completed_at_unix_ms = completed_at_now();
     ensure_checkpoint_not_cancelled(cancel)?;
     let publication = open_publication_store(project_id).await?;
@@ -1001,10 +1008,10 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        admit_publication, cancel_project_publications_and_wait, finish_publication,
-        lane_successor_document, newest_checkpoint_matches, outcome_from_failure,
-        publication_request, read_checkpoints_enabled, schedule_after_successful_compile,
-        AdapterFailure, CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
+        admit_publication, cancel_project_publications_and_wait, current_checkpoint_matches,
+        finish_publication, lane_successor_document, outcome_from_failure, publication_request,
+        read_checkpoints_enabled, schedule_after_successful_compile, AdapterFailure,
+        CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
     };
 
     fn publication_candidate(
@@ -1454,7 +1461,7 @@ mod tests {
     }
 
     #[test]
-    fn only_an_identical_project_tree_matches_the_newest_checkpoint() {
+    fn only_an_identical_project_tree_matches_the_current_checkpoint() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let directory = tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
@@ -1467,7 +1474,7 @@ mod tests {
         let walk_now = || crate::checkpoint_capture::walk_project(&project).unwrap();
 
         assert!(
-            !newest_checkpoint_matches("snapshot", &walk_now()),
+            !current_checkpoint_matches("snapshot", &walk_now()),
             "a project with no store yet has nothing to match"
         );
 
@@ -1480,25 +1487,25 @@ mod tests {
         store.publish(candidate, evidence).unwrap();
         drop(store);
 
-        assert!(newest_checkpoint_matches("snapshot", &walk_now()));
+        assert!(current_checkpoint_matches("snapshot", &walk_now()));
 
         fs::write(project.join("chapters/one.typ"), b"edited").unwrap();
         assert!(
-            !newest_checkpoint_matches("snapshot", &walk_now()),
+            !current_checkpoint_matches("snapshot", &walk_now()),
             "an edited file must not read as unchanged"
         );
         fs::write(project.join("chapters/one.typ"), b"chapter").unwrap();
 
         fs::write(project.join("notes.md"), b"added later").unwrap();
         assert!(
-            !newest_checkpoint_matches("snapshot", &walk_now()),
+            !current_checkpoint_matches("snapshot", &walk_now()),
             "a new file alone must not read as unchanged"
         );
         fs::remove_file(project.join("notes.md")).unwrap();
 
         fs::remove_file(project.join("chapters/one.typ")).unwrap();
         assert!(
-            !newest_checkpoint_matches("snapshot", &walk_now()),
+            !current_checkpoint_matches("snapshot", &walk_now()),
             "a removed file must not read as unchanged"
         );
 
@@ -1568,6 +1575,15 @@ mod tests {
 
     fn checkpoint_count(project_id: &str) -> usize {
         open_checkpoint_store(project_id).list().unwrap().len()
+    }
+
+    fn current_checkpoint_root(project_id: &str) -> String {
+        open_checkpoint_store(project_id)
+            .current_checkpoint()
+            .unwrap()
+            .expect("a current checkpoint must exist")
+            .snapshot_root
+            .to_string()
     }
 
     #[test]
@@ -2082,10 +2098,25 @@ mod tests {
 
         assert_eq!(
             reverted,
-            CheckpointPublicationOutcome::Unchanged,
+            CheckpointPublicationOutcome::Published {
+                snapshot_root: first_root.clone(),
+                created: false,
+            },
             "content already stored must not become a third checkpoint"
         );
         assert_eq!(checkpoint_count("revert-dedupe"), 2);
+        assert_eq!(
+            current_checkpoint_root("revert-dedupe"),
+            first_root,
+            "the matched checkpoint must become the current one"
+        );
+
+        let again = publish_checkpoint(&runtime, "revert-dedupe", &project, "latex", "main.tex");
+        assert_eq!(
+            again,
+            CheckpointPublicationOutcome::Unchanged,
+            "a compile that matches the current checkpoint must not seal the project again"
+        );
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
