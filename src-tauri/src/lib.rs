@@ -148,6 +148,7 @@ mod tex_distro;
 mod text_search;
 mod tinytex_archive;
 mod toolchain_download;
+mod tray;
 mod trust;
 mod typst_export;
 mod typst_forms;
@@ -206,6 +207,10 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     webview_frame::on_window_event(window, event);
     if let tauri::WindowEvent::Destroyed = event {
         folder_watch::release_window(window.label());
+        if window.label() == "main" {
+            use tauri::Manager;
+            quick_capture::close_window(window.app_handle());
+        }
     }
     if let tauri::WindowEvent::Focused(focused) = event {
         collab::live::window_focused(*focused);
@@ -217,6 +222,11 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             return;
         }
         if window.label() != "main" {
+            return;
+        }
+        if quick_capture::keeps_running(window.app_handle()) {
+            api.prevent_close();
+            quick_capture::to_background(window.app_handle());
             return;
         }
         let install_gate_pending =
@@ -250,6 +260,61 @@ fn quick_capture_state() -> quick_capture::QuickCaptureState {
         std::env::args_os().map(|arg| arg.to_string_lossy().into_owned()),
     );
     state
+}
+
+pub(crate) fn frost_window<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    {
+        let target = window.clone();
+        let queued = window.run_on_main_thread(move || {
+            #[cfg(target_os = "macos")]
+            let frosted = window_vibrancy::apply_vibrancy(
+                &target,
+                window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
+                Some(window_vibrancy::NSVisualEffectState::Active),
+                None,
+            );
+            #[cfg(target_os = "windows")]
+            let frosted = window_vibrancy::apply_acrylic(&target, Some((18, 18, 18, 125)));
+            if let Err(error) = frosted {
+                let _ = crate::project::append_app_log(format!(
+                    "Could not blur the {} window: {error}",
+                    target.label()
+                ));
+            }
+        });
+        if let Err(error) = queued {
+            let _ = crate::project::append_app_log(format!(
+                "Could not blur the {} window: {error}",
+                window.label()
+            ));
+        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let _ = window;
+}
+
+fn prepare_main_window(app: &mut tauri::App) {
+    use tauri::Manager;
+    let hidden = quick_capture::background_launch(&std::env::args().collect::<Vec<_>>());
+    if hidden {
+        quick_capture::note_hidden_launch();
+        #[cfg(target_os = "macos")]
+        app.set_dock_visibility(false);
+    }
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = window.set_decorations(false);
+        }
+        if !hidden {
+            let _ = window.maximize();
+        }
+    }
+    frost_window(&window);
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -309,31 +374,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     crate::stall_trace::mark_ui_thread();
     crate::stall_trace::start_watchdog();
-    if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
-        use tauri::Manager;
-        if let Some(window) = app.get_webview_window("main") {
-            #[cfg(target_os = "windows")]
-            {
-                let _ = window.set_decorations(false);
-            }
-            let _ = window.maximize();
-        }
-    }
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    {
-        use tauri::Manager;
-        if let Some(window) = app.get_webview_window("main") {
-            #[cfg(target_os = "macos")]
-            let _ = window_vibrancy::apply_vibrancy(
-                &window,
-                window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
-                Some(window_vibrancy::NSVisualEffectState::Active),
-                None,
-            );
-            #[cfg(target_os = "windows")]
-            let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
-        }
-    }
+    prepare_main_window(app);
     #[cfg(feature = "e2e-testing")]
     {
         use tauri::Manager;
@@ -442,6 +483,18 @@ pub fn run() {
         open_request::OpenSource::Launch,
     );
     i18n::startup();
+    let mut context = tauri::generate_context!();
+    if quick_capture::background_launch(&std::env::args().collect::<Vec<_>>()) {
+        if let Some(main) = context
+            .config_mut()
+            .app
+            .windows
+            .iter_mut()
+            .find(|window| window.label == "main")
+        {
+            main.visible = false;
+        }
+    }
     let mut builder = tauri::Builder::default();
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
@@ -1366,9 +1419,17 @@ pub fn run() {
             quick_capture::quick_capture_window_buttons,
             quick_capture::quick_capture_open_notes,
         ]))
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while running Oleafly")
-        .run(|_, event| {
+        .run(|_app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                single_instance::reveal_main_window(_app);
+            }
             if let tauri::RunEvent::Exit = event {
                 collab::live::finish_for_quit(collab::live::QUIT_WAIT);
                 cua_driver::shutdown_for_quit(std::time::Duration::from_millis(1500));

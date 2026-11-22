@@ -14,10 +14,36 @@ use serde::Serialize;
 
 use crate::app_paths::Platform;
 
-pub const LAUNCH_AGENT_LABEL: &str = "com.oleafly.app.background";
-pub const RUN_VALUE_NAME: &str = "OleaflyBackground";
-pub const AUTOSTART_FILE: &str = "com.oleafly.app.background.desktop";
-pub const DAEMON_ARGS: [&str; 2] = ["--oleafly-daemon", "--at-login"];
+#[derive(Debug, PartialEq, Eq)]
+pub struct LoginEntry {
+    pub label: &'static str,
+    pub run_value: &'static str,
+    pub autostart_file: &'static str,
+    pub name: &'static str,
+    pub comment: &'static str,
+    pub process_type: &'static str,
+    pub args: &'static [&'static str],
+}
+
+pub const HELPER: LoginEntry = LoginEntry {
+    label: "com.oleafly.app.background",
+    run_value: "OleaflyBackground",
+    autostart_file: "com.oleafly.app.background.desktop",
+    name: "Oleafly background helper",
+    comment: "Keeps Oleafly research tasks running after the app closes",
+    process_type: "Background",
+    args: &["--oleafly-daemon", "--at-login"],
+};
+
+pub const QUICK_CAPTURE: LoginEntry = LoginEntry {
+    label: "com.oleafly.app.quick-capture",
+    run_value: "OleaflyQuickCapture",
+    autostart_file: "com.oleafly.app.quick-capture.desktop",
+    name: "Oleafly quick capture",
+    comment: "Keeps Oleafly quick capture ready in the background",
+    process_type: "Interactive",
+    args: &["--background"],
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -34,6 +60,7 @@ pub enum LoginItemState {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoginExec {
+    pub entry: &'static LoginEntry,
     pub program: PathBuf,
     pub args: Vec<String>,
 }
@@ -79,10 +106,11 @@ fn windows_registry() -> Option<Box<dyn RunRegistry>> {
     None
 }
 
-pub fn login_exec(exe: &Path, appimage: Option<&Path>) -> LoginExec {
+pub fn login_exec(entry: &'static LoginEntry, exe: &Path, appimage: Option<&Path>) -> LoginExec {
     LoginExec {
+        entry,
         program: appimage.unwrap_or(exe).to_path_buf(),
-        args: DAEMON_ARGS.iter().map(|arg| (*arg).to_string()).collect(),
+        args: entry.args.iter().map(|arg| (*arg).to_string()).collect(),
     }
 }
 
@@ -108,18 +136,20 @@ pub fn launch_agent_plist(exec: &LoginExec) -> String {
 <plist version=\"1.0\">\n\
 <dict>\n\
   <key>Label</key>\n\
-  <string>{LAUNCH_AGENT_LABEL}</string>\n\
+  <string>{label}</string>\n\
   <key>ProgramArguments</key>\n\
   <array>\n\
 {arguments}  </array>\n\
   <key>RunAtLoad</key>\n\
   <true/>\n\
   <key>ProcessType</key>\n\
-  <string>Background</string>\n\
+  <string>{process_type}</string>\n\
   <key>LimitLoadToSessionType</key>\n\
   <string>Aqua</string>\n\
 </dict>\n\
-</plist>\n"
+</plist>\n",
+        label = exec.entry.label,
+        process_type = exec.entry.process_type,
     )
 }
 
@@ -172,30 +202,32 @@ pub fn autostart_entry(exec: &LoginExec) -> String {
     format!(
         "[Desktop Entry]\n\
 Type=Application\n\
-Name=Oleafly background helper\n\
-Comment=Keeps Oleafly research tasks running after the app closes\n\
+Name={name}\n\
+Comment={comment}\n\
 Exec={command}\n\
 TryExec={}\n\
 NoDisplay=true\n\
 Terminal=false\n\
 X-GNOME-Autostart-enabled=true\n",
-        desktop_string(&program)
+        desktop_string(&program),
+        name = exec.entry.name,
+        comment = exec.entry.comment,
     )
 }
 
-fn plist_path(env: &LoginEnv) -> PathBuf {
+fn plist_path(env: &LoginEnv, entry: &LoginEntry) -> PathBuf {
     env.home
         .join("Library")
         .join("LaunchAgents")
-        .join(format!("{LAUNCH_AGENT_LABEL}.plist"))
+        .join(format!("{}.plist", entry.label))
 }
 
-fn autostart_path(env: &LoginEnv) -> PathBuf {
+fn autostart_path(env: &LoginEnv, entry: &LoginEntry) -> PathBuf {
     env.xdg_config_home
         .clone()
         .unwrap_or_else(|| env.home.join(".config"))
         .join("autostart")
-        .join(AUTOSTART_FILE)
+        .join(entry.autostart_file)
 }
 
 fn translocated(exec: &LoginExec) -> bool {
@@ -220,15 +252,15 @@ pub fn status(env: &LoginEnv, exec: &LoginExec) -> LoginItemState {
             if translocated(exec) {
                 return LoginItemState::MoveApp;
             }
-            file_matches(&plist_path(env), &launch_agent_plist(exec))
+            file_matches(&plist_path(env, exec.entry), &launch_agent_plist(exec))
         }
         Platform::Windows => match &env.registry {
             Some(registry) => {
-                registry.get(RUN_VALUE_NAME).as_deref() == Some(run_value(exec).as_str())
+                registry.get(exec.entry.run_value).as_deref() == Some(run_value(exec).as_str())
             }
             None => return no_registry(),
         },
-        Platform::Linux => file_matches(&autostart_path(env), &autostart_entry(exec)),
+        Platform::Linux => file_matches(&autostart_path(env, exec.entry), &autostart_entry(exec)),
     };
     if enabled {
         LoginItemState::Enabled
@@ -259,7 +291,7 @@ pub fn set(env: &LoginEnv, exec: &LoginExec, enabled: bool) -> Result<LoginItemS
             if enabled && translocated(exec) {
                 return Ok(LoginItemState::MoveApp);
             }
-            let path = plist_path(env);
+            let path = plist_path(env, exec.entry);
             if enabled {
                 write_file(&path, &launch_agent_plist(exec))?;
             } else {
@@ -272,16 +304,16 @@ pub fn set(env: &LoginEnv, exec: &LoginExec, enabled: bool) -> Result<LoginItemS
             };
             if enabled {
                 registry
-                    .set(RUN_VALUE_NAME, &run_value(exec))
+                    .set(exec.entry.run_value, &run_value(exec))
                     .map_err(|error| format!("The sign-in entry could not be saved: {error}"))?;
-            } else if registry.get(RUN_VALUE_NAME).is_some() {
+            } else if registry.get(exec.entry.run_value).is_some() {
                 registry
-                    .delete(RUN_VALUE_NAME)
+                    .delete(exec.entry.run_value)
                     .map_err(|error| format!("The sign-in entry could not be removed: {error}"))?;
             }
         }
         Platform::Linux => {
-            let path = autostart_path(env);
+            let path = autostart_path(env, exec.entry);
             if enabled {
                 write_file(&path, &autostart_entry(exec))?;
             } else {
@@ -398,7 +430,7 @@ mod tests {
     use super::*;
 
     fn exec(program: &str) -> LoginExec {
-        login_exec(Path::new(program), None)
+        login_exec(&HELPER, Path::new(program), None)
     }
 
     #[derive(Default)]
@@ -451,7 +483,8 @@ mod tests {
             plist.contains("<string>--oleafly-daemon</string>")
                 && plist.contains("<string>--at-login</string>")
         );
-        assert!(plist.contains(LAUNCH_AGENT_LABEL));
+        assert!(plist.contains(HELPER.label));
+        assert!(plist.contains("<string>Background</string>"));
     }
 
     #[test]
@@ -487,6 +520,7 @@ mod tests {
     #[test]
     fn the_appimage_is_what_starts_at_sign_in() {
         let exec = login_exec(
+            &HELPER,
             Path::new("/tmp/.mount_Olea/usr/bin/oleafly"),
             Some(Path::new("/home/me/Oleafly.AppImage")),
         );
@@ -506,7 +540,7 @@ mod tests {
             assert_eq!(
                 status(
                     &env,
-                    &super::login_exec(Path::new("/elsewhere/oleafly"), None)
+                    &super::login_exec(&HELPER, Path::new("/elsewhere/oleafly"), None)
                 ),
                 LoginItemState::Disabled
             );
@@ -517,7 +551,7 @@ mod tests {
         assert!(!home
             .path()
             .join("Library/LaunchAgents")
-            .join(format!("{LAUNCH_AGENT_LABEL}.plist"))
+            .join(format!("{}.plist", HELPER.label))
             .exists());
 
         let registry = std::sync::Arc::new(FakeRegistry::default());
@@ -541,7 +575,42 @@ mod tests {
             registry.get("OneDrive").as_deref(),
             Some("\"C:\\OneDrive.exe\" /background")
         );
-        assert!(registry.get(RUN_VALUE_NAME).is_none());
+        assert!(registry.get(HELPER.run_value).is_none());
+    }
+
+    #[test]
+    fn quick_capture_starts_the_app_in_the_background_beside_the_helper() {
+        let home = tempfile::tempdir().unwrap();
+        let program = Path::new("/Applications/Oleafly.app/Contents/MacOS/Oleafly");
+        let capture = login_exec(&QUICK_CAPTURE, program, None);
+        let helper = login_exec(&HELPER, program, None);
+        let plist = launch_agent_plist(&capture);
+        assert!(plist.contains("<string>com.oleafly.app.quick-capture</string>"));
+        assert!(plist.contains("<string>--background</string>"));
+        assert!(plist.contains("<string>Interactive</string>"));
+        assert!(autostart_entry(&capture).contains("Name=Oleafly quick capture"));
+        for platform in [Platform::MacOs, Platform::Linux] {
+            let env = env(platform, home.path());
+            set(&env, &helper, true).unwrap();
+            assert_eq!(set(&env, &capture, true).unwrap(), LoginItemState::Enabled);
+            assert_eq!(
+                set(&env, &capture, false).unwrap(),
+                LoginItemState::Disabled
+            );
+            assert_eq!(status(&env, &helper), LoginItemState::Enabled);
+        }
+        let registry = std::sync::Arc::new(FakeRegistry::default());
+        let windows = LoginEnv {
+            registry: Some(Box::new(registry.clone())),
+            ..env(Platform::Windows, home.path())
+        };
+        let capture = login_exec(&QUICK_CAPTURE, Path::new(r"C:\Oleafly\Oleafly.exe"), None);
+        set(&windows, &capture, true).unwrap();
+        assert_eq!(
+            registry.get("OleaflyQuickCapture").as_deref(),
+            Some(r#""C:\Oleafly\Oleafly.exe" --background"#)
+        );
+        assert!(registry.get(HELPER.run_value).is_none());
     }
 
     #[test]
@@ -553,7 +622,10 @@ mod tests {
             ..env(Platform::Linux, home.path())
         };
         set(&env, &exec("/usr/bin/oleafly"), true).unwrap();
-        assert!(config.join("autostart").join(AUTOSTART_FILE).is_file());
+        assert!(config
+            .join("autostart")
+            .join(HELPER.autostart_file)
+            .is_file());
     }
 
     #[test]
@@ -592,16 +664,16 @@ mod tests {
         let registry = windows::HkcuRun::new(&key);
         registry
             .set(
-                RUN_VALUE_NAME,
+                HELPER.run_value,
                 r#""C:\Users\Zoë Müller\Oleafly.exe" --oleafly-daemon"#,
             )
             .unwrap();
         assert_eq!(
-            registry.get(RUN_VALUE_NAME).as_deref(),
+            registry.get(HELPER.run_value).as_deref(),
             Some(r#""C:\Users\Zoë Müller\Oleafly.exe" --oleafly-daemon"#)
         );
-        registry.delete(RUN_VALUE_NAME).unwrap();
-        assert!(registry.get(RUN_VALUE_NAME).is_none());
-        registry.delete(RUN_VALUE_NAME).unwrap();
+        registry.delete(HELPER.run_value).unwrap();
+        assert!(registry.get(HELPER.run_value).is_none());
+        registry.delete(HELPER.run_value).unwrap();
     }
 }

@@ -643,7 +643,9 @@
       "accent": {
         "description": "Käytetään painikkeissa, valinnoissa ja editorin kohdistimessa.",
         "label": "Korostusväri",
-        "swatchAriaLabel": "Korostusväri {{name}}"
+        "swatchAriaLabel": "Korostusväri {{name}}",
+        "theme": "Teeman korostus",
+        "themeAriaLabel": "Käytä teeman korostusväriä"
       },
       "appIcon": {
         "about": "Missä sovelluksen kuvake näkyy",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
         "label": "Ulkoasu"
+      },
+      "themePresets": {
+        "dark": "Tumma tila",
+        "description": "Valitse teema vaalealle tilalle ja toinen tummalle tilalle. Yllä oleva Ulkoasu-asetus ratkaisee, kumman näet.",
+        "label": "Teema",
+        "light": "Vaalea tila",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "Toinen sovellus käyttää jo pikanäppäintä {{shortcut}}. Valitse toinen pikanäppäin toiminnolle Muistiinpanot: pikakirjaus.",
       "invalid": "Pikanäppäin {{shortcut}} ei voi toimia muualla kuin sovelluksessa Oleafly. Valitse pikanäppäin, joka päättyy kirjaimeen, numeroon tai funktionäppäimeen.",
       "failed": "Oleafly ei voinut ottaa pikanäppäintä käyttöön. Yritä uudelleen poistamalla pikakirjaus käytöstä ja ottamalla se taas käyttöön.",
-      "wayland": "Wayland ei anna sovellusten kuunnella näppäimiä omien ikkunoidensa ulkopuolella. Jos haluat avata pikakirjauksen näppäimellä, lisää järjestelmän näppäimistöasetuksiin oma pikanäppäin, joka suorittaa tämän komennon:"
+      "wayland": "Wayland ei anna sovellusten kuunnella näppäimiä omien ikkunoidensa ulkopuolella. Jos haluat avata pikakirjauksen näppäimellä, lisää järjestelmän näppäimistöasetuksiin oma pikanäppäin, joka suorittaa tämän komennon:",
+      "background": {
+        "label": "Pidä pikakirjaus valmiina",
+        "descriptionMac": "Oleafly avautuu taustalle, kun kirjaudut sisään. Kun suljet ikkunan, Oleafly jää valikkoriville, joten pikanäppäin toimii aina. Lopeta se valikkorivin kuvakkeesta.",
+        "description": "Oleafly avautuu taustalle, kun kirjaudut sisään. Kun suljet ikkunan, Oleafly jää ilmoitusalueelle, joten pikanäppäin toimii aina. Lopeta se ilmoitusalueen kuvakkeesta."
+      }
     }
   },
   "systemIntegration": {

@@ -63,9 +63,9 @@ const READY: TypstDocumentInsightsResult = {
   method: "eval",
   truncated: false,
   elements: [
-    { kind: "heading", text: "Introduction", label: "sec:intro", level: 1, figureKind: null, numbered: true, page: 1 },
-    { kind: "citation", text: "smith", label: null, level: null, figureKind: null, numbered: false, page: 1 },
-    { kind: "figure", text: "Rig", label: "fig:rig", level: null, figureKind: "image", numbered: true, page: 1 },
+    { kind: "heading", text: "Introduction", label: "sec:intro", level: 1, figureKind: null, numbered: true, number: "1", page: 1 },
+    { kind: "citation", text: "smith", label: null, level: null, figureKind: null, numbered: false, number: null, page: 1 },
+    { kind: "figure", text: "Rig", label: "fig:rig", level: null, figureKind: "image", numbered: true, number: null, page: 1 },
   ],
 };
 
@@ -278,7 +278,7 @@ describe("DocumentInsightsDialog details", () => {
     mocks.invoke.mockResolvedValue({
       ...READY,
       truncated: true,
-      elements: [{ kind: "figure", text: "", label: null, level: null, figureKind: "image", numbered: false, page: null }],
+      elements: [{ kind: "figure", text: "", label: null, level: null, figureKind: "image", numbered: false, number: null, page: null }],
     });
     useEngine("typst", "main.typ", { "main.typ": "Plain text only.\n" });
     render(<DocumentInsightsDialog onClose={vi.fn()} />);

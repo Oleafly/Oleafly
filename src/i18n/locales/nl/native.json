@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Snel noteren"
     }
+  },
+  "tray": {
+    "open": "Oleafly openen"
   }
 }

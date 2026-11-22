@@ -65,6 +65,7 @@ import {
   notesTextFont,
 } from "@/lib/notes-appearance-style";
 import { cn } from "@/lib/utils";
+import { useEffectiveAccentColor } from "@/hooks/use-theme-preset";
 import { ACCENTS, EDITOR_THEMES, useSettingsStore } from "@/store/settings";
 
 const SETTING_CONTROL = 'button:not([disabled]), input:not([disabled]), [role="combobox"]';
@@ -489,7 +490,7 @@ function codeThemeLabel(theme: NotesCodeTheme, sameAsEditor: string): string {
 function AccentRow() {
   const { t } = useTranslation(["settings", "notes"]);
   const [accent, setAccent] = useNotesSetting("notesAccentColor");
-  const appAccent = useSettingsStore((state) => state.accentColor);
+  const appAccent = useEffectiveAccentColor();
   const label = t(($) => $.notes.appearance.notes.accent.label);
   const matchApp = t(($) => $.notes.appearance.notes.accent.matchApp);
   const preset = ACCENTS.some((option) => option.color === accent);

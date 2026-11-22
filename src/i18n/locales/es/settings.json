@@ -647,7 +647,9 @@
       "accent": {
         "description": "Se usa en botones, selecciones y el cursor del editor.",
         "label": "Color de acento",
-        "swatchAriaLabel": "Acento {{name}}"
+        "swatchAriaLabel": "Acento {{name}}",
+        "theme": "Acento del tema",
+        "themeAriaLabel": "Usar el color de acento del tema"
       },
       "appIcon": {
         "about": "Dónde aparece el icono de la aplicación",
@@ -704,6 +706,13 @@
       "theme": {
         "description": "Sistema sigue al sistema operativo y cambia cuando él cambia.",
         "label": "Apariencia"
+      },
+      "themePresets": {
+        "dark": "Modo oscuro",
+        "description": "Elige un tema para el modo claro y otro para el modo oscuro. El ajuste Apariencia de arriba decide cuál ves.",
+        "label": "Tema",
+        "light": "Modo claro",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2589,7 +2598,12 @@
       "taken": "Otra aplicación ya usa {{shortcut}}. Elige otro atajo para Notas: captura rápida.",
       "invalid": "{{shortcut}} no puede funcionar fuera de Oleafly. Elige un atajo que termine en una letra, un número o una tecla de función.",
       "failed": "Oleafly no pudo configurar el atajo. Desactiva y vuelve a activar la captura rápida para intentarlo de nuevo.",
-      "wayland": "Wayland no permite que las aplicaciones detecten teclas fuera de sus propias ventanas. Para abrir la captura rápida con una tecla, añade en los ajustes de teclado del sistema un atajo personalizado que ejecute este comando:"
+      "wayland": "Wayland no permite que las aplicaciones detecten teclas fuera de sus propias ventanas. Para abrir la captura rápida con una tecla, añade en los ajustes de teclado del sistema un atajo personalizado que ejecute este comando:",
+      "background": {
+        "label": "Mantener lista la captura rápida",
+        "descriptionMac": "Oleafly se abre en segundo plano al iniciar sesión. Al cerrar su ventana, sigue en la barra de menús, así que el atajo siempre funciona. Para salir, usa el icono de la barra de menús.",
+        "description": "Oleafly se abre en segundo plano al iniciar sesión. Al cerrar su ventana, sigue en la bandeja del sistema, así que el atajo siempre funciona. Para salir, usa el icono de la bandeja."
+      }
     }
   },
   "systemIntegration": {

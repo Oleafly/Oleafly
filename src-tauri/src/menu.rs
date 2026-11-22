@@ -460,6 +460,16 @@ fn reload_views<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+pub(crate) fn request_quit<R: Runtime>(app: &AppHandle<R>) {
+    if !crate::quit_gate::flush_confirmed() {
+        let _ = app.emit("quit-flush-requested", false);
+    } else if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed() {
+        let _ = app.emit("tinytex-quit-blocked", ());
+    } else {
+        app.exit(0);
+    }
+}
+
 pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
     if app
         .try_state::<crate::updater::UpdateState>()
@@ -503,17 +513,7 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 app.request_restart();
             }
         }
-        "quit_app" => {
-            if !crate::quit_gate::flush_confirmed() {
-                let _ = app.emit("quit-flush-requested", false);
-            } else if crate::latex_engine::install_in_progress()
-                && !crate::latex_engine::quit_confirmed()
-            {
-                let _ = app.emit("tinytex-quit-blocked", ());
-            } else {
-                app.exit(0);
-            }
-        }
+        "quit_app" => request_quit(app),
         _ => {}
     }
 }
@@ -521,6 +521,21 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quit_asks_the_open_editors_to_save_first() {
+        use tauri::Listener;
+        let app = tauri::test::mock_app();
+        let (sender, heard) = std::sync::mpsc::channel();
+        app.listen_any("quit-flush-requested", move |event| {
+            let _ = sender.send(event.payload().to_owned());
+        });
+        on_event(app.handle(), "quit_app");
+        assert_eq!(
+            heard.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok("false".to_owned())
+        );
+    }
 
     #[test]
     fn routes_dock_menu_items_to_frontend_events() {

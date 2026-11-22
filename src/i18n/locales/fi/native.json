@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Pikakirjaus"
     }
+  },
+  "tray": {
+    "open": "Avaa Oleafly"
   }
 }

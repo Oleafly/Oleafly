@@ -5,16 +5,13 @@ import { PanelState } from "@/components/layout/IntelligenceTree";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TreeRow } from "@/components/ui/tree-row";
 import { logError } from "@/lib/log";
-import { scrollBehavior } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 import {
-  activeHeadingIndex,
-  domOutline,
-  headingTops,
   markdownOutline,
   noteEditorRoot,
   outlineRows,
-  scrollParent,
+  scrollToHeading,
+  watchHeadings,
   type OutlineHeading,
 } from "./note-outline";
 import { useNotesData } from "./notes-data";
@@ -26,28 +23,7 @@ export interface NoteOutlineProps {
 
 const ALL_LEVELS = 6;
 const FIND_EVERY_MS = 400;
-const READ_DELAY_MS = 120;
 const LEVELS = [1, 2, 3, 4, 5] as const;
-
-const HEADING = "h1, h2, h3, h4, h5, h6";
-
-function scrollTo(element: HTMLElement): void {
-  element.scrollIntoView?.({ block: "start", behavior: scrollBehavior() });
-}
-
-function touchesHeading(node: Node): boolean {
-  if (!(node instanceof Element)) return node.parentElement?.closest(HEADING) != null;
-  return node.matches(HEADING) || node.closest(HEADING) !== null || node.querySelector(HEADING) !== null;
-}
-
-function changesHeadings(root: HTMLElement, records: readonly MutationRecord[]): boolean {
-  return records.some(
-    (record) =>
-      record.target === root ||
-      touchesHeading(record.target) ||
-      [...record.addedNodes, ...record.removedNodes].some(touchesHeading),
-  );
-}
 
 export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps>) {
   const { t } = useTranslation(["notes"]);
@@ -56,7 +32,7 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
   const [active, setActive] = useState(-1);
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
   const [maxLevel, setMaxLevel] = useState(ALL_LEVELS);
-  const elementsRef = useRef<HTMLElement[]>([]);
+  const elementsRef = useRef<readonly HTMLElement[]>([]);
   const liveRef = useRef(false);
   const pendingRef = useRef<number | null>(null);
 
@@ -71,55 +47,22 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
     const id = noteId;
     let disposed = false;
     let root: HTMLElement | null = null;
-    let container: HTMLElement | null = null;
-    let observer: MutationObserver | null = null;
-    let readTimer = 0;
+    let unwatch: (() => void) | null = null;
     let findTimer = 0;
-    let frame = 0;
 
-    const measure = () => {
-      frame = 0;
-      if (!container) return;
-      setActive(activeHeadingIndex(headingTops(elementsRef.current, container)));
-    };
-    const onScroll = () => {
-      if (frame === 0) frame = window.requestAnimationFrame(measure);
-    };
-    const read = (target: HTMLElement) => {
-      const outline = domOutline(target);
-      elementsRef.current = outline.elements;
-      setHeadings(outline.headings);
-      const pending = pendingRef.current;
-      if (pending !== null && outline.elements[pending]) {
-        pendingRef.current = null;
-        scrollTo(outline.elements[pending]);
-      }
-      measure();
-    };
     const watchesRemoval = typeof ResizeObserver !== "undefined";
     let sizes: ResizeObserver | null = null;
     const detach = () => {
-      window.clearTimeout(readTimer);
-      observer?.disconnect();
-      observer = null;
+      unwatch?.();
+      unwatch = null;
       sizes?.disconnect();
       sizes = null;
-      container?.removeEventListener("scroll", onScroll);
-      container = null;
       root = null;
       liveRef.current = false;
     };
     const attach = (found: HTMLElement) => {
       root = found;
       liveRef.current = true;
-      container = scrollParent(found);
-      container?.addEventListener("scroll", onScroll, { passive: true });
-      observer = new MutationObserver((records) => {
-        if (!changesHeadings(found, records)) return;
-        window.clearTimeout(readTimer);
-        readTimer = window.setTimeout(() => read(found), READ_DELAY_MS);
-      });
-      observer.observe(found, { childList: true, subtree: true, characterData: true });
       if (watchesRemoval) {
         sizes = new ResizeObserver(() => {
           if (found.isConnected || disposed) return;
@@ -128,7 +71,18 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
         });
         sizes.observe(found);
       }
-      read(found);
+      unwatch = watchHeadings(found, {
+        onRead: (outline) => {
+          elementsRef.current = outline.elements;
+          setHeadings(outline.headings);
+          const pending = pendingRef.current;
+          if (pending !== null && outline.elements[pending]) {
+            pendingRef.current = null;
+            scrollToHeading(outline.elements[pending]);
+          }
+        },
+        onActive: setActive,
+      });
     };
     function find() {
       if (root && !root.isConnected) detach();
@@ -151,7 +105,6 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
       disposed = true;
       detach();
       window.clearTimeout(findTimer);
-      if (frame !== 0) window.cancelAnimationFrame(frame);
     };
   }, [loadNote, noteId]);
 
@@ -180,7 +133,7 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
   const go = (heading: OutlineHeading) => {
     const element = elementsRef.current[heading.index];
     if (liveRef.current && element?.isConnected) {
-      scrollTo(element);
+      scrollToHeading(element);
       setActive(heading.index);
       return;
     }

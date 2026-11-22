@@ -48,7 +48,7 @@ function atxHeading(
   index: number,
   offset: number,
 ): Sym | null {
-  const heading = /^(#{1,6})\s+/.exec(visible);
+  const heading = /^(#+)\s+/.exec(visible);
   if (!heading) return null;
   const titleStart = heading[0].length;
   const name = line
@@ -79,7 +79,7 @@ function setextHeading(
   offset: number,
 ): Sym | null {
   if (!underline) return null;
-  if (!/^\s*(?:={2,}|-{2,})\s*$/.test(underline)) return null;
+  if (!/^\s*(?:=+|-{2,})\s*$/.test(underline)) return null;
   if (!visible.trim()) return null;
   const leading = line.length - line.trimStart().length;
   const name = line

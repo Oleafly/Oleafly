@@ -647,7 +647,9 @@
       "accent": {
         "description": "Usato per pulsanti, selezioni e cursore dell'editor.",
         "label": "Colore d'accento",
-        "swatchAriaLabel": "Accento {{name}}"
+        "swatchAriaLabel": "Accento {{name}}",
+        "theme": "Accento del tema",
+        "themeAriaLabel": "Usa il colore d'accento del tema"
       },
       "appIcon": {
         "about": "Dove compare l'icona dell'app",
@@ -704,6 +706,13 @@
       "theme": {
         "description": "Sistema segue il sistema operativo e cambia insieme a lui.",
         "label": "Aspetto"
+      },
+      "themePresets": {
+        "dark": "Modalità scura",
+        "description": "Scegli un tema per la modalità chiara e uno per la modalità scura. L'impostazione Aspetto qui sopra decide quale vedi.",
+        "label": "Tema",
+        "light": "Modalità chiara",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2589,7 +2598,12 @@
       "taken": "Un'altra app usa già {{shortcut}}. Scegli una scorciatoia diversa per Note: cattura rapida.",
       "invalid": "{{shortcut}} non può funzionare fuori da Oleafly. Scegli una scorciatoia che termini con una lettera, un numero o un tasto funzione.",
       "failed": "Oleafly non è riuscito a configurare la scorciatoia. Disattiva e riattiva la cattura rapida per riprovare.",
-      "wayland": "Wayland non permette alle app di ricevere i tasti premuti fuori dalle proprie finestre. Per aprire la cattura rapida con un tasto, aggiungi nelle impostazioni della tastiera del sistema una scorciatoia personalizzata che esegua questo comando:"
+      "wayland": "Wayland non permette alle app di ricevere i tasti premuti fuori dalle proprie finestre. Per aprire la cattura rapida con un tasto, aggiungi nelle impostazioni della tastiera del sistema una scorciatoia personalizzata che esegua questo comando:",
+      "background": {
+        "label": "Tieni pronta la cattura rapida",
+        "descriptionMac": "Oleafly si apre in background quando accedi. Se chiudi la finestra, resta nella barra dei menu, così la scorciatoia funziona sempre. Per uscire, usa l'icona nella barra dei menu.",
+        "description": "Oleafly si apre in background quando accedi. Se chiudi la finestra, resta nell'area di notifica, così la scorciatoia funziona sempre. Per uscire, usa l'icona nell'area di notifica."
+      }
     }
   },
   "systemIntegration": {

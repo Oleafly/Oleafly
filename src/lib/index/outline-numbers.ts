@@ -304,3 +304,21 @@ export function latexHeadingNumbers({
   });
   return marksBySource;
 }
+
+export function typstHeadingNumbers(
+  items: readonly OutlineItem[],
+  toc: AuxToc,
+  title: (item: OutlineItem) => string,
+): HeadingNumbers {
+  const headings = items.map((item) =>
+    item.kind === "section" ? { level: item.level, keys: [headingKey(title(item))] } : null,
+  );
+  const entries = toc.entries.map((entry) => ({ level: entry.level, key: headingKey(entry.title), number: entry.number }));
+  const marks = new Map<string, HeadingMark>();
+  outlineEntryMatches(headings, entries).forEach((entry, heading) => {
+    if (entry === null) return;
+    const { number, page } = toc.entries[entry];
+    marks.set(sourceKey(items[heading]), { number, page });
+  });
+  return marks;
+}

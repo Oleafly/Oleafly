@@ -192,6 +192,7 @@ fn query_json_becomes_elements_with_plain_text_and_bare_labels() {
                 level: Some(1),
                 figure_kind: None,
                 numbered: true,
+                number: None,
                 page: None,
             },
             TypstInsightElement {
@@ -201,6 +202,7 @@ fn query_json_becomes_elements_with_plain_text_and_bare_labels() {
                 level: None,
                 figure_kind: Some("table".into()),
                 numbered: true,
+                number: None,
                 page: None,
             },
             TypstInsightElement {
@@ -210,6 +212,7 @@ fn query_json_becomes_elements_with_plain_text_and_bare_labels() {
                 level: None,
                 figure_kind: None,
                 numbered: false,
+                number: None,
                 page: None,
             },
             TypstInsightElement {
@@ -219,6 +222,7 @@ fn query_json_becomes_elements_with_plain_text_and_bare_labels() {
                 level: None,
                 figure_kind: None,
                 numbered: false,
+                number: None,
                 page: None,
             },
         ]
@@ -233,6 +237,21 @@ fn eval_json_keeps_pages_and_unquotes_custom_figure_kinds() {
     assert_eq!(elements[0].figure_kind.as_deref(), Some("algorithm"));
     assert_eq!(elements[0].text, "Steps");
     assert!(parse_elements("not json").is_err());
+}
+
+#[test]
+fn eval_json_keeps_heading_numbers_as_plain_text() {
+    let json = r#"[
+        {"func":"heading","level":1,"numbered":true,"number":"A.1","body":{"func":"text","text":"Proofs"}},
+        {"func":"heading","level":1,"numbered":true,"number":{"func":"strong","body":{"func":"text","text":"4-1"}},"body":{"func":"text","text":"Fancy"}},
+        {"func":"heading","level":1,"numbered":false,"number":null,"body":{"func":"text","text":"Thanks"}}
+    ]"#;
+    let (elements, _) = parse_elements(json).unwrap();
+    let numbers: Vec<Option<&str>> = elements
+        .iter()
+        .map(|element| element.number.as_deref())
+        .collect();
+    assert_eq!(numbers, [Some("A.1"), Some("4-1"), None]);
 }
 
 #[test]
@@ -360,10 +379,17 @@ fn bundled_typst_lists_document_elements_with_both_methods() {
         assert_eq!(elements[2].figure_kind.as_deref(), Some("table"));
         assert!(elements.iter().all(|element| element.numbered));
         let pages: Vec<Option<u32>> = elements.iter().map(|element| element.page).collect();
+        let numbers: Vec<Option<&str>> = elements
+            .iter()
+            .filter(|element| element.kind == TypstInsightKind::Heading)
+            .map(|element| element.number.as_deref())
+            .collect();
         if method == TypstQueryMethod::Eval {
             assert!(pages.iter().all(|page| *page == Some(1)));
+            assert_eq!(numbers, [Some("1."), Some("1.1.")]);
         } else {
             assert!(pages.iter().all(Option::is_none));
+            assert_eq!(numbers, [None, None]);
         }
     }
 }

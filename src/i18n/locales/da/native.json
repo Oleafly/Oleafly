@@ -223,5 +223,8 @@
     "quickCapture": {
       "title": "Hurtig notering"
     }
+  },
+  "tray": {
+    "open": "Åbn Oleafly"
   }
 }

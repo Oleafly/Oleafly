@@ -639,7 +639,9 @@
       "accent": {
         "description": "用於按鈕、選取範圍與編輯器游標。",
         "label": "強調色",
-        "swatchAriaLabel": "{{name}} 強調色"
+        "swatchAriaLabel": "{{name}} 強調色",
+        "theme": "主題強調色",
+        "themeAriaLabel": "使用主題的強調色"
       },
       "appIcon": {
         "about": "應用程式圖示顯示的位置",
@@ -696,6 +698,13 @@
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
         "label": "外觀"
+      },
+      "themePresets": {
+        "dark": "深色模式",
+        "description": "為淺色模式和深色模式各選一個主題。上方的「外觀」設定決定你看到哪一個。",
+        "label": "主題",
+        "light": "淺色模式",
+        "sample": "文字"
       }
     },
     "customTheme": {
@@ -2547,7 +2556,12 @@
       "taken": "另一個應用程式已在使用 {{shortcut}}。請為「筆記：快速記錄」選擇其他快捷鍵。",
       "invalid": "{{shortcut}} 無法在 Oleafly 以外使用。請選擇以字母、數字或功能鍵結尾的快捷鍵。",
       "failed": "Oleafly 無法設定快捷鍵。請關閉快速記錄再重新開啟以重試。",
-      "wayland": "Wayland 不允許應用程式監聽自身視窗以外的按鍵。若要用按鍵開啟快速記錄，請在系統鍵盤設定中新增一個執行以下指令的自訂快捷鍵："
+      "wayland": "Wayland 不允許應用程式監聽自身視窗以外的按鍵。若要用按鍵開啟快速記錄，請在系統鍵盤設定中新增一個執行以下指令的自訂快捷鍵：",
+      "background": {
+        "label": "讓快速記錄隨時可用",
+        "descriptionMac": "登入時 Oleafly 會在背景開啟。關閉視窗後它仍留在選單列中，因此快速鍵一律可用。可從選單列圖示結束。",
+        "description": "登入時 Oleafly 會在背景開啟。關閉視窗後它仍留在系統匣中，因此快速鍵一律可用。可從系統匣圖示結束。"
+      }
     }
   },
   "systemIntegration": {

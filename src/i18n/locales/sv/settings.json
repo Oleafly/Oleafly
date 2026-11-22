@@ -643,7 +643,9 @@
       "accent": {
         "description": "Används för knappar, markeringar och redigerarens markör.",
         "label": "Accentfärg",
-        "swatchAriaLabel": "Accentfärgen {{name}}"
+        "swatchAriaLabel": "Accentfärgen {{name}}",
+        "theme": "Temats accent",
+        "themeAriaLabel": "Använd temats accentfärg"
       },
       "appIcon": {
         "about": "Var appikonen visas",
@@ -700,6 +702,13 @@
       "theme": {
         "description": "System följer operativsystemet och ändras när det gör det.",
         "label": "Utseende"
+      },
+      "themePresets": {
+        "dark": "Mörkt läge",
+        "description": "Välj ett tema för ljust läge och ett för mörkt läge. Inställningen Utseende ovan avgör vilket du ser.",
+        "label": "Tema",
+        "light": "Ljust läge",
+        "sample": "Aa"
       }
     },
     "customTheme": {
@@ -2568,7 +2577,12 @@
       "taken": "En annan app använder redan {{shortcut}}. Välj ett annat kortkommando för Anteckningar: snabbanteckning.",
       "invalid": "{{shortcut}} fungerar inte utanför Oleafly. Välj ett kortkommando som slutar med en bokstav, en siffra eller en funktionstangent.",
       "failed": "Oleafly kunde inte ställa in kortkommandot. Stäng av snabbanteckning och slå på den igen för att försöka på nytt.",
-      "wayland": "Wayland låter inte appar lyssna efter tangenter utanför sina egna fönster. Om du vill öppna snabbanteckningen med en tangent lägger du till ett eget kortkommando i systemets tangentbordsinställningar som kör det här kommandot:"
+      "wayland": "Wayland låter inte appar lyssna efter tangenter utanför sina egna fönster. Om du vill öppna snabbanteckningen med en tangent lägger du till ett eget kortkommando i systemets tangentbordsinställningar som kör det här kommandot:",
+      "background": {
+        "label": "Håll snabbanteckningen redo",
+        "descriptionMac": "Oleafly öppnas i bakgrunden när du loggar in. När du stänger fönstret finns Oleafly kvar i menyraden, så kortkommandot fungerar alltid. Avsluta det från symbolen i menyraden.",
+        "description": "Oleafly öppnas i bakgrunden när du loggar in. När du stänger fönstret finns Oleafly kvar i meddelandefältet, så kortkommandot fungerar alltid. Avsluta det från symbolen i meddelandefältet."
+      }
     }
   },
   "systemIntegration": {

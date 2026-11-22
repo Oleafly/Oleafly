@@ -48,6 +48,8 @@ pub(crate) const EVAL_EXPRESSION: &str = concat!(
     "level: if e.func() == heading { e.level } else { none }, ",
     "kind: if e.func() == figure { repr(e.kind) } else { none }, ",
     "numbered: if e.has(\"numbering\") { e.numbering != none } else { false }, ",
+    "number: if e.func() == heading and e.numbering != none { ",
+    "numbering(e.numbering, ..counter(heading).at(e.location())) } else { none }, ",
     "key: if e.func() == cite { str(e.key) } else { none }, ",
     "body: if e.func() == heading or e.func() == math.equation { e.body } else { none }, ",
     "caption: if e.func() == figure and e.caption != none { e.caption.body } else { none }",
@@ -79,6 +81,7 @@ pub struct TypstInsightElement {
     pub level: Option<u32>,
     pub figure_kind: Option<String>,
     pub numbered: bool,
+    pub number: Option<String>,
     pub page: Option<u32>,
 }
 
@@ -294,6 +297,10 @@ pub(crate) fn element_from_json(value: &Value) -> Option<TypstInsightElement> {
             .and_then(Value::as_str)
             .map(|kind| kind.trim_matches('"').to_owned()),
         numbered: numbered(object),
+        number: object
+            .get("number")
+            .map(plain_text)
+            .filter(|number| !number.is_empty()),
         page: object
             .get("page")
             .and_then(Value::as_u64)

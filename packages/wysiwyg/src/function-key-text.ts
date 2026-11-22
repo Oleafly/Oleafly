@@ -1,8 +1,9 @@
-// AppKit reserves U+F700-U+F747 for function keys (NSUpArrowFunctionKey to NSModeSwitchFunctionKey in NSEvent.h).
-// WKWebView can hand them to the page as typed text; U+F8FF (the Apple logo) is real text and stays outside the range.
-const FUNCTION_KEY_CHAR = /[-]/u;
-const FUNCTION_KEY_CHARS = /[-]/gu;
-const ONLY_FUNCTION_KEYS = /^[-]+$/u;
+// AppKit reserves U+F700-U+F747 for function keys (NSUpArrowFunctionKey to NSModeSwitchFunctionKey in NSEvent.h),
+// and the arrow keys also carry their Carbon character codes 0x1C-0x1F (kLeftArrowCharCode to kDownArrowCharCode).
+// WKWebView can hand either to the page as typed text; U+F8FF (the Apple logo) is real text and stays outside both ranges.
+const FUNCTION_KEY_CHAR = /[\u{1C}-\u{1F}\u{F700}-\u{F747}]/u;
+const FUNCTION_KEY_CHARS = /[\u{1C}-\u{1F}\u{F700}-\u{F747}]/gu;
+const ONLY_FUNCTION_KEYS = /^[\u{1C}-\u{1F}\u{F700}-\u{F747}]+$/u;
 
 export function hasFunctionKeyText(text: string): boolean {
   return FUNCTION_KEY_CHAR.test(text);

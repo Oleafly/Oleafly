@@ -304,7 +304,7 @@ describe("reading a settings file", () => {
       { path: "general.spellcheck", issue: { kind: "boolean" } },
       { path: "general.language", issue: expect.objectContaining({ kind: "oneOf" }) },
       { path: "appearance.app.zoom", issue: expect.objectContaining({ kind: "oneOf" }) },
-      { path: "appearance.app.accentColor", issue: { kind: "hexColor" } },
+      { path: "appearance.app.accentColor", issue: { kind: "hexColorOrEmpty" } },
       { path: "appearance.editor.fontSize", issue: { kind: "range", min: 6, max: 100 } },
       { path: "appearance.editor.tabSize", issue: { kind: "oneOf", values: [2, 4, 8] } },
       { path: "appearance.editor.colors.dracula.background", issue: { kind: "hexColor" } },
