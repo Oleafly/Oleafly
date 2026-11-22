@@ -13,7 +13,7 @@ export function noteVersionFile(noteId: string): string | null {
 
 function versionKept(outcome: CheckpointPublicationOutcome): boolean {
   if (outcome.status === "unchanged") return false;
-  if (outcome.status === "published" || outcome.status === "published_durability_uncertain") return true;
+  if (outcome.status === "published" || outcome.status === "published_durability_uncertain") return outcome.created;
   throw new Error(outcome.status === "skipped" ? outcome.message : `the version was not saved (${outcome.status})`);
 }
 
@@ -42,4 +42,7 @@ export async function restoreNoteVersion(
   await saveNoteVersion(noteId);
   const current = await data.loadNote(noteId);
   await data.saveNote(noteId, text, current.version);
+  await checkpointSave(noteId)
+    .then(versionKept)
+    .catch((error: unknown) => logError("mark the restored note version as current", error));
 }

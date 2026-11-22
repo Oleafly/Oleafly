@@ -86,6 +86,7 @@ const checkpoints = [
     file_count: 4,
     logical_bytes: 4096,
     label: null,
+    number: 2,
   },
   {
     snapshot_root: "root-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -97,6 +98,7 @@ const checkpoints = [
     file_count: 2,
     logical_bytes: 2048,
     label: null,
+    number: 1,
   },
 ];
 
@@ -177,7 +179,7 @@ afterEach(() => {
 });
 
 describe("CheckpointsPanel timeline", () => {
-  it("numbers versions from the oldest and shows the newest on top", async () => {
+  it("labels versions by their stored numbers and shows the newest on top", async () => {
     render(<CheckpointsPanel />);
 
     const timeline = await screen.findByTestId("checkpoint-timeline");
@@ -208,6 +210,42 @@ describe("CheckpointsPanel timeline", () => {
     expect(screen.queryByLabelText("Always include")).toBeNull();
     expect(screen.queryByLabelText("Ignored")).toBeNull();
     expect(screen.queryByText(/commit/i)).not.toBeInTheDocument();
+  });
+
+  it("marks the checkpoint the project is on as current and keeps it through a rename", async () => {
+    mocks.checkpointList.mockResolvedValue([checkpoints[0], { ...checkpoints[1], current: true }]);
+    mocks.checkpointSetLabel.mockResolvedValue({ ...checkpoints[1], label: "Submitted" });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    const timeline = await screen.findByTestId("checkpoint-timeline");
+    const [newest, restored] = within(timeline).getAllByTestId("checkpoint-entry");
+    expect(restored).toHaveAttribute("data-version", "V1");
+    expect(restored).toHaveAttribute("aria-current", "true");
+    expect(within(restored).getByTestId("checkpoint-current")).toHaveTextContent("Current");
+    expect(newest).not.toHaveAttribute("aria-current");
+    expect(within(newest).queryByTestId("checkpoint-current")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit label for V1" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Submitted{Enter}");
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("checkpoint-entry")[1]).toHaveAttribute("data-label", "Submitted"),
+    );
+    expect(screen.getAllByTestId("checkpoint-entry")[1]).toHaveAttribute("aria-current", "true");
+  });
+
+  it("keeps a version's number when an older one is gone and names one without a number", async () => {
+    mocks.checkpointList.mockResolvedValue([
+      { ...checkpoints[0], number: 5 },
+      { ...checkpoints[1], number: undefined },
+    ]);
+    render(<CheckpointsPanel />);
+
+    const entries = await screen.findAllByTestId("checkpoint-entry");
+    expect(entries[0]).toHaveAttribute("data-version", "V5");
+    expect(entries[1]).toHaveAttribute("data-version", "Checkpoint");
+    expect(screen.getByRole("button", { name: "Restore V5" })).toBeInTheDocument();
   });
 
   it("keeps the store details out of the basic view until Advanced is expanded", async () => {
@@ -555,6 +593,20 @@ describe("CheckpointsPanel actions", () => {
     );
     expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
     expect(useSettingsStore.getState().versioningOpen).toBe(false);
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Restored V2. Versioning now marks it as Current.");
+  });
+
+  it("names a restored checkpoint by its label", async () => {
+    mocks.checkpointList.mockResolvedValue([checkpoints[0], { ...checkpoints[1], label: "Submitted" }]);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Restore V1" }));
+    await user.click(screen.getByRole("button", { name: "Restore files" }));
+
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith("Restored Submitted. Versioning now marks it as Current."),
+    );
   });
 
   it("requires inline confirmation for deletion and reset, then refreshes", async () => {
@@ -595,6 +647,16 @@ describe("CheckpointsPanel actions", () => {
     expect(mocks.checkpointStats).toHaveBeenCalledTimes(3);
   });
 
+  it("offers no keep-latest sweep when only the latest and the current checkpoint are left", async () => {
+    mocks.checkpointList.mockResolvedValue([checkpoints[0], { ...checkpoints[1], current: true }]);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+
+    expect(await screen.findByRole("button", { name: "Keep latest" })).toBeDisabled();
+  });
+
   it("keeps only the latest checkpoint after confirmation", async () => {
     const user = userEvent.setup();
     render(<CheckpointsPanel />);
@@ -603,7 +665,9 @@ describe("CheckpointsPanel actions", () => {
     await user.click(await screen.findByRole("button", { name: "Keep latest" }));
     expect(mocks.checkpointKeepLatest).not.toHaveBeenCalled();
     expect(
-      screen.getByText("Delete every checkpoint except the latest one? This cannot be undone."),
+      screen.getByText(
+        "Delete every checkpoint except the latest one and the one marked Current? This cannot be undone.",
+      ),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Delete older checkpoints" }));

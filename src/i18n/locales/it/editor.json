@@ -407,10 +407,7 @@
   "versioning": {
     "dismiss": "Chiudi le versioni",
     "title": "Versioni",
-    "close": "Chiudi le versioni",
-    "views": "Viste delle versioni",
-    "gitHistory": "Cronologia Git",
-    "savedCheckpoints": "Checkpoint salvati"
+    "close": "Chiudi le versioni"
   },
   "wordCount": {
     "close": "Chiudi le informazioni sul progetto"
@@ -460,20 +457,6 @@
     "fontPackAction": "Scarica e compila",
     "fontPackDownloading": "Download in corso…",
     "fontPackFailed": "Non è stato possibile scaricare il pacchetto di font. Controlla la connessione e riprova."
-  },
-  "history": {
-    "untitledCommit": "Commit senza titolo",
-    "restoreFailed": "Non è stato possibile ripristinare quella versione Git.",
-    "copyIdFailed": "Non è stato possibile copiare quell'ID di commit.",
-    "empty": "Ancora nessuna cronologia Git",
-    "emptyHint": "Inizializza il controllo del codice, poi esegui un commit quando vuoi una versione qui.",
-    "commitIdCopied": "ID del commit copiato",
-    "copyCommitId": "Copia l'ID completo del commit",
-    "copyCommitIdFor": "Copia l'ID del commit {{id}}",
-    "overwriteTooltip": "Sovrascrivi tutti i file con questa versione",
-    "overwriteAll": "Sovrascrivi tutto",
-    "restoreTooltip": "Ripristina questa versione (sovrascrive tutti i file)",
-    "restore": "Ripristina"
   },
   "diff": {
     "reloadFailed": "Non è stato possibile ricaricare il diff. Chiudi questa scheda e riaprila.",
@@ -659,12 +642,13 @@
       "deleteCheckpoint": "Elimina il checkpoint",
       "restoreFor": "Ripristina {{version}}",
       "restore": "Ripristina",
-      "deleteFor": "Elimina {{version}}"
+      "deleteFor": "Elimina {{version}}",
+      "current": "Attuale"
     },
     "toast": {
       "copyIdFailed": "Non è stato possibile copiare quell'ID di checkpoint.",
       "saveLabelFailed": "Non è stato possibile salvare l'etichetta del checkpoint.",
-      "restored": "Checkpoint ripristinato.",
+      "restored": "{{version}} ripristinata. Versioni ora la segna come Attuale.",
       "restoreFailed": "Non è stato possibile ripristinare questo checkpoint. Controlla il log dell'app per i dettagli.",
       "deleted": "Checkpoint eliminato.",
       "deleteFailed": "Non è stato possibile eliminare questo checkpoint.",
@@ -723,7 +707,7 @@
     "maintenance": {
       "title": "Manutenzione",
       "description": "Elimina i checkpoint che questo progetto non usa più.",
-      "keepLatestPrompt": "Vuoi eliminare tutti i checkpoint tranne l'ultimo? L'operazione non può essere annullata.",
+      "keepLatestPrompt": "Vuoi eliminare tutti i checkpoint tranne l'ultimo e quello segnato come Attuale? L'operazione non può essere annullata.",
       "deleteOlder": "Elimina i checkpoint più vecchi",
       "keepAll": "Tieni tutti i checkpoint",
       "resetPrompt": "Vuoi eliminare tutti i checkpoint di questo progetto? I file attuali del progetto restano invariati. L'operazione non può essere annullata.",

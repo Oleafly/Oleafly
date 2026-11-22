@@ -403,10 +403,7 @@
   "versioning": {
     "dismiss": "Dismiss versioning",
     "title": "Versioning",
-    "close": "Close versioning",
-    "views": "Versioning views",
-    "gitHistory": "Git History",
-    "savedCheckpoints": "Saved Checkpoints"
+    "close": "Close versioning"
   },
   "wordCount": {
     "close": "Close project info"
@@ -453,20 +450,6 @@
     "fontPackAction": "Download and compile",
     "fontPackDownloading": "Downloading…",
     "fontPackFailed": "The font pack couldn't be downloaded. Check your connection and try again."
-  },
-  "history": {
-    "untitledCommit": "Untitled commit",
-    "restoreFailed": "Could not restore that Git version.",
-    "copyIdFailed": "Could not copy that commit ID.",
-    "empty": "No Git history yet",
-    "emptyHint": "Initialize Source Control, then commit when you want a version here.",
-    "commitIdCopied": "Commit ID copied",
-    "copyCommitId": "Copy full commit ID",
-    "copyCommitIdFor": "Copy commit ID {{id}}",
-    "overwriteTooltip": "Overwrite all files with this version",
-    "overwriteAll": "Overwrite all",
-    "restoreTooltip": "Restore this version (overwrites all files)",
-    "restore": "Restore"
   },
   "diff": {
     "reloadFailed": "The diff could not be reloaded. Close this tab and open it again.",
@@ -649,12 +632,13 @@
       "deleteCheckpoint": "Delete checkpoint",
       "restoreFor": "Restore {{version}}",
       "restore": "Restore",
-      "deleteFor": "Delete {{version}}"
+      "deleteFor": "Delete {{version}}",
+      "current": "Current"
     },
     "toast": {
       "copyIdFailed": "Couldn't copy that checkpoint id.",
       "saveLabelFailed": "Couldn't save the checkpoint label.",
-      "restored": "Checkpoint restored.",
+      "restored": "Restored {{version}}. Versioning now marks it as Current.",
       "restoreFailed": "Couldn't restore this checkpoint. See the app log for details.",
       "deleted": "Checkpoint deleted.",
       "deleteFailed": "Couldn't delete this checkpoint.",
@@ -713,7 +697,7 @@
     "maintenance": {
       "title": "Maintenance",
       "description": "Delete checkpoints this project no longer needs.",
-      "keepLatestPrompt": "Delete every checkpoint except the latest one? This cannot be undone.",
+      "keepLatestPrompt": "Delete every checkpoint except the latest one and the one marked Current? This cannot be undone.",
       "deleteOlder": "Delete older checkpoints",
       "keepAll": "Keep all checkpoints",
       "resetPrompt": "Delete all checkpoints for this project? Current project files stay unchanged. This cannot be undone.",

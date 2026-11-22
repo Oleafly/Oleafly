@@ -7,8 +7,10 @@ repository, create a commit, or change a branch.
 ## When Oleafly saves one
 
 Oleafly attempts a checkpoint when a compile succeeds and the project folder
-differs from the newest checkpoint on record. It publishes the snapshot only
-when the included files can all be read and stored.
+differs from the current checkpoint, the one your files were last saved as or
+restored to. It publishes the snapshot only when the included files can all be
+read and stored. If the folder matches an older checkpoint, say after you undo
+an edit, that checkpoint becomes current again and no copy is made.
 
 The save runs on its own background task. Starting it costs the compile nothing,
 because no file is read and no store is opened until after the compile has
@@ -66,18 +68,23 @@ Control, beside the repository's branches and working-tree changes.
 
 The window opens on the checkpoint timeline, newest on top, with the version
 number, time, engine, main document, file count, and stored size. Expand an
-entry to see the files it holds and their sizes.
+entry to see the files it holds and their sizes. The checkpoint your files are
+on has a Current tag. That's the newest one, unless you restored an older one.
 
 Restore writes the checkpoint's files back over your current copies. A file the
 checkpoint holds that you deleted afterwards comes back. A file you added after
 the checkpoint was taken stays where it is, since the checkpoint says nothing
 about it. `.git` and `.oleafly` are left alone. The write runs as one
 transaction, so an interrupted restore rolls back instead of leaving you with
-half a project.
+half a project. The restored checkpoint becomes current, and the timeline keeps
+its order and numbers. Compiling without changes afterwards adds nothing. Your
+next edit and compile make a new checkpoint at the top.
 
 Delete removes one checkpoint, and it is always safe to do. Every checkpoint
 stands on its own, and Oleafly reclaims only the stored data that no remaining
-checkpoint refers to.
+checkpoint refers to. Version numbers don't shift when you delete one. Delete
+V2 and you still have V1 and V3, and the next checkpoint is V4. A number is
+never given out twice.
 
 A checkpoint can also carry a label. The pencil on an entry opens a text field
 that takes up to 80 characters on one line. Saving puts the label in the entry
@@ -89,8 +96,8 @@ An Advanced section sits below the timeline and starts collapsed. It reports
 how many checkpoints exist and how much room they take. It shows where the
 store lives, opens that folder, and inspects the store's SQLite catalog:
 format version, lineage, table counts, and packs. Export and Import move a
-complete history as an encrypted archive. Keep latest and Reset trim the
-history.
+complete history as an encrypted archive. Keep latest deletes every checkpoint
+except the newest one and the one tagged Current, and Reset deletes them all.
 
 The toolbar's Versioning button opens the checkpoint window. The command
 palette has separate entries: "Git history" opens the Graph section in Source
@@ -125,6 +132,11 @@ Export and import use a password-encrypted history archive. Oleafly streams
 the records through authenticated encryption, so plaintext history is never
 written to a temporary file, and import verifies the complete archive before
 any new record becomes visible.
+
+An archive keeps each checkpoint's version number. Import gives a checkpoint
+its number back and puts it back in its place in the timeline. If another
+checkpoint already has that number, the imported one takes the next free
+number and goes behind the checkpoints you already had.
 
 Passwords are never stored, and a forgotten password cannot be recovered.
 Archives written by this version use envelope version 2 with an Argon2id

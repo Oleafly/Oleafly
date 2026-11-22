@@ -399,10 +399,7 @@
   "versioning": {
     "dismiss": "버전 관리 닫기",
     "title": "버전 관리",
-    "close": "버전 관리 닫기",
-    "views": "버전 관리 보기",
-    "gitHistory": "Git 이력",
-    "savedCheckpoints": "저장된 체크포인트"
+    "close": "버전 관리 닫기"
   },
   "wordCount": {
     "close": "프로젝트 정보 닫기"
@@ -446,20 +443,6 @@
     "fontPackAction": "내려받고 컴파일",
     "fontPackDownloading": "내려받는 중…",
     "fontPackFailed": "글꼴 팩을 내려받지 못했습니다. 연결을 확인하고 다시 시도하세요."
-  },
-  "history": {
-    "untitledCommit": "제목 없는 커밋",
-    "restoreFailed": "그 Git 버전을 복원하지 못했습니다.",
-    "copyIdFailed": "그 커밋 ID를 복사하지 못했습니다.",
-    "empty": "아직 Git 이력이 없습니다",
-    "emptyHint": "소스 관리를 초기화한 다음, 버전을 남기고 싶을 때 커밋하세요.",
-    "commitIdCopied": "커밋 ID를 복사했습니다",
-    "copyCommitId": "전체 커밋 ID 복사",
-    "copyCommitIdFor": "커밋 ID {{id}} 복사",
-    "overwriteTooltip": "모든 파일을 이 버전으로 덮어씁니다",
-    "overwriteAll": "모두 덮어쓰기",
-    "restoreTooltip": "이 버전을 복원합니다(모든 파일을 덮어씁니다)",
-    "restore": "복원"
   },
   "diff": {
     "reloadFailed": "diff를 다시 불러오지 못했습니다. 이 탭을 닫고 다시 여세요.",
@@ -639,12 +622,13 @@
       "deleteCheckpoint": "체크포인트 삭제",
       "restoreFor": "{{version}} 복원",
       "restore": "복원",
-      "deleteFor": "{{version}} 삭제"
+      "deleteFor": "{{version}} 삭제",
+      "current": "현재"
     },
     "toast": {
       "copyIdFailed": "그 체크포인트 아이디를 복사하지 못했습니다.",
       "saveLabelFailed": "체크포인트 레이블을 저장하지 못했습니다.",
-      "restored": "체크포인트를 복원했습니다.",
+      "restored": "{{version}}을(를) 복원했습니다. 버전 관리에 '현재'로 표시됩니다.",
       "restoreFailed": "이 체크포인트를 복원하지 못했습니다. 자세한 내용은 앱 로그를 확인하세요.",
       "deleted": "체크포인트를 삭제했습니다.",
       "deleteFailed": "이 체크포인트를 삭제하지 못했습니다.",
@@ -703,7 +687,7 @@
     "maintenance": {
       "title": "정리",
       "description": "이 프로젝트에 더 이상 필요 없는 체크포인트를 삭제합니다.",
-      "keepLatestPrompt": "최신 체크포인트만 남기고 모두 삭제할까요? 되돌릴 수 없습니다.",
+      "keepLatestPrompt": "최신 체크포인트와 '현재' 체크포인트만 남기고 모두 삭제할까요? 되돌릴 수 없습니다.",
       "deleteOlder": "이전 체크포인트 삭제",
       "keepAll": "모든 체크포인트 유지",
       "resetPrompt": "이 프로젝트의 체크포인트를 모두 삭제할까요? 현재 프로젝트 파일은 그대로 남습니다. 되돌릴 수 없습니다.",

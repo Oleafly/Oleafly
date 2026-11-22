@@ -330,6 +330,8 @@ export interface CheckpointSummary {
     file_count: number;
     logical_bytes: number;
     label: string | null;
+    number?: number;
+    current?: boolean;
 }
 export interface CheckpointCaptureNotice {
     readonly paused: {

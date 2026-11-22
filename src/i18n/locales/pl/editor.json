@@ -411,10 +411,7 @@
   "versioning": {
     "dismiss": "Zamknij wersjonowanie",
     "title": "Wersjonowanie",
-    "close": "Zamknij wersjonowanie",
-    "views": "Widoki wersjonowania",
-    "gitHistory": "Historia Git",
-    "savedCheckpoints": "Zapisane punkty kontrolne"
+    "close": "Zamknij wersjonowanie"
   },
   "wordCount": {
     "close": "Zamknij informacje o projekcie"
@@ -467,20 +464,6 @@
     "fontPackAction": "Pobierz i skompiluj",
     "fontPackDownloading": "Pobieranie…",
     "fontPackFailed": "Nie udało się pobrać pakietu czcionek. Sprawdź połączenie i spróbuj ponownie."
-  },
-  "history": {
-    "untitledCommit": "Commit bez tytułu",
-    "restoreFailed": "Nie udało się przywrócić tej wersji z Git.",
-    "copyIdFailed": "Nie udało się skopiować tego identyfikatora commita.",
-    "empty": "Nie ma jeszcze historii Git",
-    "emptyHint": "Zainicjuj kontrolę wersji, a potem twórz commity, gdy chcesz mieć tu wersję.",
-    "commitIdCopied": "Skopiowano identyfikator commita",
-    "copyCommitId": "Kopiuj pełny identyfikator commita",
-    "copyCommitIdFor": "Kopiuj identyfikator commita {{id}}",
-    "overwriteTooltip": "Zastąp wszystkie pliki tą wersją",
-    "overwriteAll": "Zastąp wszystkie",
-    "restoreTooltip": "Przywróć tę wersję (zastępuje wszystkie pliki)",
-    "restore": "Przywróć"
   },
   "diff": {
     "reloadFailed": "Nie udało się ponownie wczytać porównania. Zamknij tę kartę i otwórz ją jeszcze raz.",
@@ -669,12 +652,13 @@
       "deleteCheckpoint": "Usuń punkt kontrolny",
       "restoreFor": "Przywróć {{version}}",
       "restore": "Przywróć",
-      "deleteFor": "Usuń {{version}}"
+      "deleteFor": "Usuń {{version}}",
+      "current": "Bieżąca"
     },
     "toast": {
       "copyIdFailed": "Nie udało się skopiować tego identyfikatora punktu kontrolnego.",
       "saveLabelFailed": "Nie udało się zapisać etykiety punktu kontrolnego.",
-      "restored": "Przywrócono punkt kontrolny.",
+      "restored": "Przywrócono {{version}}. Wersjonowanie oznacza ją teraz jako Bieżąca.",
       "restoreFailed": "Nie udało się przywrócić tego punktu kontrolnego. Szczegóły znajdują się w dzienniku aplikacji.",
       "deleted": "Usunięto punkt kontrolny.",
       "deleteFailed": "Nie udało się usunąć tego punktu kontrolnego.",
@@ -733,7 +717,7 @@
     "maintenance": {
       "title": "Konserwacja",
       "description": "Usuń punkty kontrolne, których ten projekt już nie potrzebuje.",
-      "keepLatestPrompt": "Usunąć wszystkie punkty kontrolne poza najnowszym? Tej operacji nie można cofnąć.",
+      "keepLatestPrompt": "Usunąć wszystkie punkty kontrolne poza najnowszym i oznaczonym jako Bieżąca? Tej operacji nie można cofnąć.",
       "deleteOlder": "Usuń starsze punkty kontrolne",
       "keepAll": "Zachowaj wszystkie punkty kontrolne",
       "resetPrompt": "Usunąć wszystkie punkty kontrolne tego projektu? Bieżące pliki projektu pozostaną bez zmian. Tej operacji nie można cofnąć.",

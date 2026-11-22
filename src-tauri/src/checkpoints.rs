@@ -40,6 +40,10 @@ pub struct CheckpointSummary {
     pub file_count: u64,
     pub logical_bytes: u64,
     pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<u64>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub current: bool,
 }
 
 impl From<Checkpoint> for CheckpointSummary {
@@ -54,6 +58,8 @@ impl From<Checkpoint> for CheckpointSummary {
             file_count: checkpoint.file_count,
             logical_bytes: checkpoint.logical_bytes,
             label: checkpoint.label,
+            number: checkpoint.number,
+            current: false,
         }
     }
 }
@@ -244,10 +250,22 @@ fn checkpoint_list_sync(project_id: &str) -> Result<Vec<CheckpointSummary>, Stri
     let Some(store) = open_existing_store(project_id)? else {
         return Ok(Vec::new());
     };
-    store
-        .list()
-        .map(|checkpoints| checkpoints.into_iter().map(Into::into).collect())
+    list_marking_current(&store)
         .map_err(|_| "Could not read this project's Checkpoints history.".to_string())
+}
+
+fn list_marking_current(store: &Store) -> Result<Vec<CheckpointSummary>, HistoryError> {
+    let current = store
+        .current_checkpoint()?
+        .map(|checkpoint| checkpoint.snapshot_root);
+    Ok(store
+        .list()?
+        .into_iter()
+        .map(|checkpoint| CheckpointSummary {
+            current: current == Some(checkpoint.snapshot_root),
+            ..checkpoint.into()
+        })
+        .collect())
 }
 
 fn checkpoint_set_label_sync(
@@ -827,7 +845,20 @@ fn restore_checkpoint_into(
 
     conclude_restore(prepared, marker_dir, &transaction, fault, || {
         recover_restore_transaction(project_root, marker_dir, &transaction, fault)
-    })
+    })?;
+    mark_restored_checkpoint_current(&locked_store, snapshot_root);
+    Ok(())
+}
+
+fn mark_restored_checkpoint_current(
+    store: &oleafly_history::ExclusiveStoreGuard<'_>,
+    snapshot_root: &SnapshotRoot,
+) {
+    if let Err(error) = store.mark_current(snapshot_root) {
+        let _ = crate::project::append_app_log(format!(
+            "Could not mark Checkpoint {snapshot_root} as current after restoring it: {error}"
+        ));
+    }
 }
 
 fn conclude_restore(
@@ -1983,7 +2014,9 @@ fn restore_linked_checkpoint_into(
             &transaction,
             fault,
         )
-    })
+    })?;
+    mark_restored_checkpoint_current(&locked_store, snapshot_root);
+    Ok(())
 }
 
 fn prepare_linked_restore_plan(
@@ -2783,6 +2816,73 @@ mod tests {
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
+    fn current_roots(project_id: &str) -> Vec<String> {
+        checkpoint_list_sync(project_id)
+            .unwrap()
+            .into_iter()
+            .filter(|checkpoint| checkpoint.current)
+            .map(|checkpoint| checkpoint.snapshot_root)
+            .collect()
+    }
+
+    #[test]
+    fn restoring_an_older_checkpoint_marks_it_current_and_keeps_the_history_order() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "paper");
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
+        let first = publish(&store, &project, b"first source", 10).to_string();
+        let second = publish(&store, &project, b"second source", 20).to_string();
+        assert_eq!(current_roots("paper"), vec![second.clone()]);
+
+        let first_root = super::parse_snapshot_root(&first).unwrap();
+        restore_checkpoint_sync(
+            &store,
+            &first_root,
+            &project,
+            RestoreFault::AfterFirstInstall,
+        )
+        .unwrap_err();
+        assert_eq!(
+            current_roots("paper"),
+            vec![second.clone()],
+            "a restore that rolled back must leave the current checkpoint alone"
+        );
+
+        restore_checkpoint_sync(&store, &first_root, &project, RestoreFault::None).unwrap();
+
+        assert_eq!(fs::read(project.join("main.tex")).unwrap(), b"first source");
+        assert_eq!(current_roots("paper"), vec![first.clone()]);
+        let order = checkpoint_list_sync("paper")
+            .unwrap()
+            .into_iter()
+            .map(|checkpoint| checkpoint.snapshot_root)
+            .collect::<Vec<_>>();
+        assert_eq!(order, vec![second.clone(), first.clone()]);
+        let numbers = checkpoint_list_sync("paper")
+            .unwrap()
+            .into_iter()
+            .map(|checkpoint| checkpoint.number)
+            .collect::<Vec<_>>();
+        assert_eq!(numbers, vec![Some(2), Some(1)]);
+
+        checkpoint_keep_latest_sync("paper").unwrap();
+        assert_eq!(
+            checkpoint_list_sync("paper").unwrap().len(),
+            2,
+            "keep latest must not delete the checkpoint the files were restored to"
+        );
+        assert_eq!(current_roots("paper"), vec![first]);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     #[test]
     fn nested_backup_directory_must_be_durable_before_source_removal() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -3128,6 +3228,33 @@ mod tests {
         assert!(no_staging_files(&folder));
         assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
         assert!(!location.restore_marker().exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_restore_marks_the_restored_checkpoint_current() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        let newer = publish_linked(&store, &location, b"newer source", 20);
+        assert_eq!(
+            store.current_checkpoint().unwrap().unwrap().snapshot_root,
+            newer
+        );
+
+        super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+            .unwrap();
+
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"checkpoint source"
+        );
+        assert_eq!(
+            store.current_checkpoint().unwrap().unwrap().snapshot_root,
+            root
+        );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
@@ -3707,6 +3834,30 @@ mod tests {
                 "stored": true
             })
         );
+        let summary = super::CheckpointSummary {
+            snapshot_root: "root".into(),
+            completed_at_unix_ms: 1,
+            engine: "typst".into(),
+            toolchain_identity: "typst".into(),
+            main_document: "main.typ".into(),
+            output_hash: "output".into(),
+            file_count: 2,
+            logical_bytes: 3,
+            label: None,
+            number: None,
+            current: false,
+        };
+        let quiet = serde_json::to_value(&summary).unwrap();
+        assert!(quiet.get("current").is_none());
+        assert!(quiet.get("number").is_none());
+        let marked = serde_json::to_value(super::CheckpointSummary {
+            number: Some(4),
+            current: true,
+            ..summary
+        })
+        .unwrap();
+        assert_eq!(marked["current"], serde_json::json!(true));
+        assert_eq!(marked["number"], serde_json::json!(4));
     }
 
     #[test]

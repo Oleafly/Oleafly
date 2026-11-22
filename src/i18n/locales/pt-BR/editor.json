@@ -407,10 +407,7 @@
   "versioning": {
     "dismiss": "Dispensar o versionamento",
     "title": "Versionamento",
-    "close": "Fechar o versionamento",
-    "views": "Visualizações de versionamento",
-    "gitHistory": "Histórico do Git",
-    "savedCheckpoints": "Pontos de verificação salvos"
+    "close": "Fechar o versionamento"
   },
   "wordCount": {
     "close": "Fechar as informações do projeto"
@@ -460,20 +457,6 @@
     "fontPackAction": "Baixar e compilar",
     "fontPackDownloading": "Baixando…",
     "fontPackFailed": "Não foi possível baixar o pacote de fontes. Verifique sua conexão e tente de novo."
-  },
-  "history": {
-    "untitledCommit": "Commit sem título",
-    "restoreFailed": "Não foi possível restaurar essa versão do Git.",
-    "copyIdFailed": "Não foi possível copiar esse ID de commit.",
-    "empty": "Ainda não há histórico do Git",
-    "emptyHint": "Inicie o controle de versão e faça um commit quando quiser uma versão aqui.",
-    "commitIdCopied": "ID do commit copiado",
-    "copyCommitId": "Copiar o ID completo do commit",
-    "copyCommitIdFor": "Copiar o ID do commit {{id}}",
-    "overwriteTooltip": "Substituir todos os arquivos por esta versão",
-    "overwriteAll": "Substituir tudo",
-    "restoreTooltip": "Restaurar esta versão (substitui todos os arquivos)",
-    "restore": "Restaurar"
   },
   "diff": {
     "reloadFailed": "Não foi possível recarregar a comparação. Feche esta aba e abra de novo.",
@@ -659,12 +642,13 @@
       "deleteCheckpoint": "Excluir ponto de verificação",
       "restoreFor": "Restaurar {{version}}",
       "restore": "Restaurar",
-      "deleteFor": "Excluir {{version}}"
+      "deleteFor": "Excluir {{version}}",
+      "current": "Atual"
     },
     "toast": {
       "copyIdFailed": "Não foi possível copiar esse ID de ponto de verificação.",
       "saveLabelFailed": "Não foi possível salvar o rótulo do ponto de verificação.",
-      "restored": "Ponto de verificação restaurado.",
+      "restored": "{{version}} restaurada. O Versionamento agora a marca como Atual.",
       "restoreFailed": "Não foi possível restaurar este ponto de verificação. Consulte o log do aplicativo para ver os detalhes.",
       "deleted": "Ponto de verificação excluído.",
       "deleteFailed": "Não foi possível excluir este ponto de verificação.",
@@ -723,7 +707,7 @@
     "maintenance": {
       "title": "Manutenção",
       "description": "Exclua os pontos de verificação de que este projeto não precisa mais.",
-      "keepLatestPrompt": "Excluir todos os pontos de verificação, menos o mais recente? Isso não pode ser desfeito.",
+      "keepLatestPrompt": "Excluir todos os pontos de verificação, menos o mais recente e o marcado como Atual? Isso não pode ser desfeito.",
       "deleteOlder": "Excluir os pontos de verificação mais antigos",
       "keepAll": "Manter todos os pontos de verificação",
       "resetPrompt": "Excluir todos os pontos de verificação deste projeto? Os arquivos atuais do projeto não mudam. Isso não pode ser desfeito.",

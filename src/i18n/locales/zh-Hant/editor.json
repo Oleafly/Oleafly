@@ -399,10 +399,7 @@
   "versioning": {
     "dismiss": "隱藏版本管理",
     "title": "版本管理",
-    "close": "關閉版本管理",
-    "views": "版本管理檢視",
-    "gitHistory": "Git 歷史記錄",
-    "savedCheckpoints": "已儲存的檢查點"
+    "close": "關閉版本管理"
   },
   "wordCount": {
     "close": "關閉專案資訊"
@@ -446,20 +443,6 @@
     "fontPackAction": "下載並編譯",
     "fontPackDownloading": "正在下載…",
     "fontPackFailed": "無法下載字型套件。請檢查網路連線後再試一次。"
-  },
-  "history": {
-    "untitledCommit": "未命名的提交",
-    "restoreFailed": "無法還原那個 Git 版本。",
-    "copyIdFailed": "無法複製那個提交 ID。",
-    "empty": "尚無 Git 歷史記錄",
-    "emptyHint": "先初始化原始碼控管，之後想在這裡留下版本時再提交。",
-    "commitIdCopied": "已複製提交 ID",
-    "copyCommitId": "複製完整提交 ID",
-    "copyCommitIdFor": "複製提交 ID {{id}}",
-    "overwriteTooltip": "用這個版本覆寫所有檔案",
-    "overwriteAll": "全部覆寫",
-    "restoreTooltip": "還原這個版本（會覆寫所有檔案）",
-    "restore": "還原"
   },
   "diff": {
     "reloadFailed": "無法重新載入差異。請關閉此分頁後重新開啟。",
@@ -639,12 +622,13 @@
       "deleteCheckpoint": "刪除檢查點",
       "restoreFor": "還原 {{version}}",
       "restore": "還原",
-      "deleteFor": "刪除 {{version}}"
+      "deleteFor": "刪除 {{version}}",
+      "current": "目前"
     },
     "toast": {
       "copyIdFailed": "無法複製那個檢查點 ID。",
       "saveLabelFailed": "無法儲存檢查點標籤。",
-      "restored": "檢查點已還原。",
+      "restored": "已還原 {{version}}。版本管理現在將它標示為「目前」。",
       "restoreFailed": "無法還原這個檢查點。詳情請見應用程式記錄檔。",
       "deleted": "檢查點已刪除。",
       "deleteFailed": "無法刪除這個檢查點。",
@@ -703,7 +687,7 @@
     "maintenance": {
       "title": "維護",
       "description": "刪除這個專案不再需要的檢查點。",
-      "keepLatestPrompt": "要刪除最新檢查點以外的所有檢查點嗎？此動作無法復原。",
+      "keepLatestPrompt": "要刪除最新檢查點與標示為「目前」的檢查點以外的所有檢查點嗎？此動作無法復原。",
       "deleteOlder": "刪除較舊的檢查點",
       "keepAll": "保留所有檢查點",
       "resetPrompt": "要刪除這個專案的所有檢查點嗎？目前的專案檔案不會變動。此動作無法復原。",

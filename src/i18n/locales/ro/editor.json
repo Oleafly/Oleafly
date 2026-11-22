@@ -407,10 +407,7 @@
   "versioning": {
     "dismiss": "Închide versionarea",
     "title": "Versionare",
-    "close": "Închide versionarea",
-    "views": "Vizualizări de versionare",
-    "gitHistory": "Istoric Git",
-    "savedCheckpoints": "Puncte de control salvate"
+    "close": "Închide versionarea"
   },
   "wordCount": {
     "close": "Închide informațiile despre proiect"
@@ -460,20 +457,6 @@
     "fontPackAction": "Descarcă și compilează",
     "fontPackDownloading": "Se descarcă…",
     "fontPackFailed": "Pachetul de fonturi nu a putut fi descărcat. Verifică conexiunea și încearcă din nou."
-  },
-  "history": {
-    "untitledCommit": "Comitere fără titlu",
-    "restoreFailed": "Acea versiune Git nu a putut fi restabilită.",
-    "copyIdFailed": "ID-ul acelei comiteri nu a putut fi copiat.",
-    "empty": "Încă nu există istoric Git",
-    "emptyHint": "Inițializează controlul versiunilor, apoi comite atunci când vrei o versiune aici.",
-    "commitIdCopied": "ID-ul comiterii a fost copiat",
-    "copyCommitId": "Copiază ID-ul complet al comiterii",
-    "copyCommitIdFor": "Copiază ID-ul comiterii {{id}}",
-    "overwriteTooltip": "Suprascrie toate fișierele cu această versiune",
-    "overwriteAll": "Suprascrie tot",
-    "restoreTooltip": "Restabilește această versiune (suprascrie toate fișierele)",
-    "restore": "Restabilește"
   },
   "diff": {
     "reloadFailed": "Comparația nu a putut fi reîncărcată. Închide fila și deschide-o din nou.",
@@ -659,12 +642,13 @@
       "deleteCheckpoint": "Șterge punctul de control",
       "restoreFor": "Restabilește {{version}}",
       "restore": "Restabilește",
-      "deleteFor": "Șterge {{version}}"
+      "deleteFor": "Șterge {{version}}",
+      "current": "Curentă"
     },
     "toast": {
       "copyIdFailed": "Identificatorul acelui punct de control nu a putut fi copiat.",
       "saveLabelFailed": "Eticheta punctului de control nu a putut fi salvată.",
-      "restored": "Punctul de control a fost restabilit.",
+      "restored": "{{version}} a fost restabilită. Versionare o marchează acum ca Curentă.",
       "restoreFailed": "Acest punct de control nu a putut fi restabilit. Consultă jurnalul aplicației pentru detalii.",
       "deleted": "Punctul de control a fost șters.",
       "deleteFailed": "Acest punct de control nu a putut fi șters.",
@@ -723,7 +707,7 @@
     "maintenance": {
       "title": "Întreținere",
       "description": "Șterge punctele de control de care acest proiect nu mai are nevoie.",
-      "keepLatestPrompt": "Ștergi toate punctele de control în afară de cel mai recent? Această acțiune nu poate fi anulată.",
+      "keepLatestPrompt": "Ștergi toate punctele de control în afară de cel mai recent și de cel marcat Curentă? Această acțiune nu poate fi anulată.",
       "deleteOlder": "Șterge punctele de control mai vechi",
       "keepAll": "Păstrează toate punctele de control",
       "resetPrompt": "Ștergi toate punctele de control ale acestui proiect? Fișierele curente ale proiectului rămân neschimbate. Această acțiune nu poate fi anulată.",

@@ -407,10 +407,7 @@
   "versioning": {
     "dismiss": "Cerrar el control de versiones",
     "title": "Control de versiones",
-    "close": "Cerrar el control de versiones",
-    "views": "Vistas del control de versiones",
-    "gitHistory": "Historial de Git",
-    "savedCheckpoints": "Puntos de control guardados"
+    "close": "Cerrar el control de versiones"
   },
   "wordCount": {
     "close": "Cerrar la información del proyecto"
@@ -460,20 +457,6 @@
     "fontPackAction": "Descargar y compilar",
     "fontPackDownloading": "Descargando…",
     "fontPackFailed": "No se pudo descargar el paquete de fuentes. Revisa tu conexión y vuelve a intentarlo."
-  },
-  "history": {
-    "untitledCommit": "Commit sin título",
-    "restoreFailed": "No se pudo restaurar esa versión de Git.",
-    "copyIdFailed": "No se pudo copiar el ID de ese commit.",
-    "empty": "Todavía no hay historial de Git",
-    "emptyHint": "Inicializa el control de versiones y luego haz un commit cuando quieras una versión aquí.",
-    "commitIdCopied": "ID del commit copiado",
-    "copyCommitId": "Copiar el ID completo del commit",
-    "copyCommitIdFor": "Copiar el ID del commit {{id}}",
-    "overwriteTooltip": "Sobrescribir todos los archivos con esta versión",
-    "overwriteAll": "Sobrescribir todo",
-    "restoreTooltip": "Restaurar esta versión (sobrescribe todos los archivos)",
-    "restore": "Restaurar"
   },
   "diff": {
     "reloadFailed": "No se pudo volver a cargar la comparación. Cierra esta pestaña y vuelve a abrirla.",
@@ -659,12 +642,13 @@
       "deleteCheckpoint": "Eliminar el punto de control",
       "restoreFor": "Restaurar {{version}}",
       "restore": "Restaurar",
-      "deleteFor": "Eliminar {{version}}"
+      "deleteFor": "Eliminar {{version}}",
+      "current": "Actual"
     },
     "toast": {
       "copyIdFailed": "No se pudo copiar el ID de ese punto de control.",
       "saveLabelFailed": "No se pudo guardar la etiqueta del punto de control.",
-      "restored": "Punto de control restaurado.",
+      "restored": "Se restauró {{version}}. Control de versiones ahora la marca como Actual.",
       "restoreFailed": "No se pudo restaurar este punto de control. Consulta el registro de la aplicación para ver los detalles.",
       "deleted": "Punto de control eliminado.",
       "deleteFailed": "No se pudo eliminar este punto de control.",
@@ -723,7 +707,7 @@
     "maintenance": {
       "title": "Mantenimiento",
       "description": "Elimina los puntos de control que este proyecto ya no necesita.",
-      "keepLatestPrompt": "¿Eliminar todos los puntos de control salvo el último? Esta acción no se puede deshacer.",
+      "keepLatestPrompt": "¿Eliminar todos los puntos de control salvo el último y el marcado como Actual? Esta acción no se puede deshacer.",
       "deleteOlder": "Eliminar los puntos de control antiguos",
       "keepAll": "Conservar todos los puntos de control",
       "resetPrompt": "¿Eliminar todos los puntos de control de este proyecto? Los archivos actuales del proyecto no cambian. Esta acción no se puede deshacer.",
