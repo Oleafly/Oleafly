@@ -119,7 +119,21 @@ export async function placeAnnotation(
     return placed(annotation, build, found ?? [bounds(onFirstPage)], keep);
   }
   const found = await quoteOn(nearbyPages(annotation.page), annotation, deps, pageRuns);
-  return found ? placed(annotation, build, found, keep) : lost(annotation, build);
+  if (!found) return lost(annotation, build);
+  if (annotation.kind !== "region") return placed(annotation, build, found, keep);
+  const around = bounds(found);
+  const drawn = annotation.boxes[0];
+  return placed(annotation, build, drawn && holds(drawn, around) ? [drawn] : [around], keep);
+}
+
+function holds(outer: PdfAnnotationBox, inner: PdfAnnotationBox): boolean {
+  return (
+    outer.page === inner.page &&
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
 }
 
 export async function placeAnnotations(

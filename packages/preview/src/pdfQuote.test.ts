@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PdfTextRun } from "./pdfController";
-import { findQuoteBoxes } from "./pdfQuote";
+import { findQuoteBoxes, quoteInBox } from "./pdfQuote";
 
 function run(str: string, x: number, top: number, width = str.length * 10, height = 10): PdfTextRun {
   return { str, x, top, width, height };
@@ -50,5 +50,41 @@ describe("findQuoteBoxes", () => {
     expect(findQuoteBoxes(1, runs, { text: "omega" })).toBeNull();
     expect(findQuoteBoxes(1, runs, { text: "  " })).toBeNull();
     expect(findQuoteBoxes(1, [], { text: "alpha" })).toBeNull();
+  });
+});
+
+describe("quoteInBox", () => {
+  const page = [
+    run("Highlighted code", 72, 100, 160, 14),
+    run("def greet(name):", 80, 130),
+    run("return f\"Hello, {name}!\"", 100, 142),
+    run("Left column", 0, 136, 60),
+    run("Next section", 72, 180, 120, 14),
+  ];
+
+  it("reads the text inside the box line by line, with the lines above and below as context", () => {
+    expect(quoteInBox(page, { x: 75, y: 125, width: 400, height: 30 })).toEqual({
+      text: "def greet(name):\nreturn f\"Hello, {name}!\"",
+      before: "Highlighted code",
+      after: "Next section",
+    });
+  });
+
+  it("keeps only the characters whose middle is inside the box", () => {
+    const words = [run("alpha beta gamma", 0, 10)];
+    expect(quoteInBox(words, { x: 58, y: 5, width: 45, height: 20 }).text).toBe("beta");
+  });
+
+  it("puts a space between runs on one line that are apart, and none between touching runs", () => {
+    const runs = [run("one", 0, 10), run("two", 40, 10), run("three", 70, 10)];
+    expect(quoteInBox(runs, { x: 0, y: 0, width: 200, height: 30 }).text).toBe("one twothree");
+  });
+
+  it("returns empty text for a box over a figure with no text", () => {
+    expect(quoteInBox(page, { x: 72, y: 300, width: 228, height: 100 })).toEqual({
+      text: "",
+      before: "Next section",
+      after: "",
+    });
   });
 });

@@ -473,3 +473,15 @@ export async function typesetLinesOf(
 export function sourceText(path: string): string | null {
   return currentSource(path);
 }
+
+export function sourceTexts(): Record<string, string> {
+  const snapshot = useCompileStore.getState().compiledSources?.texts ?? {};
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  const paths = [...new Set([...(mainDoc ? [mainDoc] : []), ...Object.keys(snapshot)])];
+  const texts: Record<string, string> = {};
+  for (const path of paths) {
+    const text = currentSource(path) ?? snapshot[path];
+    if (text !== undefined && text !== null) texts[path] = text;
+  }
+  return texts;
+}

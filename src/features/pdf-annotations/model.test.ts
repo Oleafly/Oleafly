@@ -166,11 +166,30 @@ describe("annotationPrompt", () => {
     expect(annotationPrompt(note, currentSource(note, null))).toContain("were not checked again");
   });
 
-  it("handles a region note with no source", () => {
+  it("handles a region note with no source and no text", () => {
     const note = annotation({ source: null, kind: "region", quote: { text: "", before: "", after: "" } });
     const prompt = annotationPrompt(note, currentSource(note, null));
     expect(prompt).toContain("Location: page 4. No source location was found.");
     expect(prompt).toContain("Asked: The comment is about the marked region of the page");
+    expect(prompt).toContain("No text was read from inside the region.");
+    expect(prompt).not.toContain("Selected text");
+  });
+
+  it("describes a region by its place on the page, the lines around it and the text inside it", () => {
+    const note = annotation({
+      kind: "region",
+      comment: "What is this?",
+      quote: { text: "def greet(name):\nreturn f\"Hello, {name}!\"", before: "Highlighted code", after: "Next section" },
+      boxes: [{ page: 4, x: 79.6, y: 300.2, width: 240, height: 24.4 }],
+      source: { path: "main.tex", startLine: 9, endLine: 10, excerpt: "def greet(name):\n    return f\"Hello, {name}!\"" },
+    });
+    const prompt = annotationPrompt(note, currentSource(note, null));
+    expect(prompt).toContain("Region: page 4, x 80 to 320 pt and y 300 to 325 pt from the top-left corner of the page.");
+    expect(prompt).toContain('Just above the region on the PDF: "Highlighted code"');
+    expect(prompt).toContain('Text inside the region on the PDF:\n```\ndef greet(name):\nreturn f"Hello, {name}!"\n```');
+    expect(prompt).toContain('Just below the region on the PDF: "Next section"');
+    expect(prompt).toContain("Comment: What is this?");
+    expect(prompt).toContain("Source lines that hold the region's text");
     expect(prompt).not.toContain("Selected text");
   });
 });

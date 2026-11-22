@@ -72,7 +72,8 @@ PDF review.
   - **Replace** asks for the passage to be replaced with the text you write.
   - **Insert** asks for the text you write to go right after the selection.
 - For an equation, a figure or anything else you can't select as text, turn on
-  **Annotate a region** in the toolbar and drag a box around it.
+  **Annotate a region** in the toolbar and drag a box around it. The region
+  keeps the text inside the box and the lines just above and below it.
 - The card follows the selection while you scroll. Cmd+Enter or Ctrl+Enter
   adds the annotation and Escape cancels.
 - Each annotation is drawn on the page as a tinted box with a numbered badge.
@@ -80,18 +81,24 @@ PDF review.
   button lists them with their kind, status, quote, comment and where they
   come from in the source. Click one to scroll to it, click its comment to
   edit it, mark it resolved, or delete one or all of them.
+- **Hide annotations** in the toolbar takes the boxes and badges off the page.
+  Adding an annotation, or clicking one in the list, brings them back.
 - **Send to assistant** adds the ticked annotations to the assistant's message
   box as chips, for the built-in assistant or a connected CLI agent, which gets
   each one as a selection. Open annotations are ticked by default. The text for
   each one is written when the message goes out: what you asked for, the file
   and lines checked again against the current file, the section heading, the
-  quote with the words around it, the source lines and your comment. An
-  annotation is marked sent only once the message has gone out.
+  exact text you selected with the words around it, the source lines and your
+  comment. A region also sends where it sits on the page and the text inside
+  it. An annotation is marked sent only once the message has gone out.
 
 An annotation is saved as soon as you add it, and its source location is found
 in the background. It comes from the same sync as a click in the PDF: SyncTeX
-for LaTeX and Tinymist for Typst. When the project's engine has no sync, such
-as Markdown, an annotation keeps its page and quote but no source location.
+for LaTeX and Tinymist for Typst. When there is no sync, as in Markdown, or
+the sync finds nothing, as for a minted code block, the annotation's text is
+looked up in the project's source files instead. A region's text is also
+checked against the lines the sync found, and looked up the same way when it
+isn't there.
 
 Annotations are pinned to the source, not to one PDF. After a recompile each
 one follows its lines through any edits, finds where they are typeset now, and

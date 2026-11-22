@@ -3,7 +3,7 @@ import "@/i18n";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PdfMark, PdfTextSelectionInfo } from "@oleafly/preview";
+import type { PdfMark, PdfTextRun, PdfTextSelectionInfo } from "@oleafly/preview";
 import enAnnotations from "@/i18n/locales/en/annotations.json" with { type: "json" };
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import type { PdfAnnotation } from "@/lib/tauri";
@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   handoffToAssistant: vi.fn(),
   ensureAiProviderOrOpenSettings: vi.fn(async () => true),
   gotoRect: vi.fn(),
+  pdfPageText: vi.fn(async (): Promise<PdfTextRun[] | null> => null),
+  sourceTexts: vi.fn((): Record<string, string> => ({})),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -36,6 +38,7 @@ vi.mock("@/features/pdf-annotations/locate", async (importOriginal) => ({
 vi.mock("@/features/pdf-annotations/place", () => ({ placeAnnotations: mocks.placeAnnotations }));
 vi.mock("@/features/synctex", () => ({
   sourceText: () => null,
+  sourceTexts: mocks.sourceTexts,
   compiledSourceText: () => null,
   typesetLinesOf: async () => null,
 }));
@@ -43,7 +46,7 @@ vi.mock("@/features/assistant-handoff", () => ({
   handoffToAssistant: mocks.handoffToAssistant,
   ensureAiProviderOrOpenSettings: mocks.ensureAiProviderOrOpenSettings,
 }));
-vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: async () => null }));
+vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: mocks.pdfPageText }));
 
 const PLACING = { timeout: 5_000 };
 const strings = enAnnotations;
@@ -123,6 +126,8 @@ beforeEach(() => {
   });
   mocks.placeAnnotations.mockResolvedValue([]);
   mocks.locateSource.mockResolvedValue(source);
+  mocks.pdfPageText.mockResolvedValue(null);
+  mocks.sourceTexts.mockReturnValue({});
   mocks.update.mockImplementation(async () => usePdfAnnotationsStore.getState().items);
 });
 
@@ -145,6 +150,42 @@ describe("usePdfAnnotations", () => {
       origin: "pdf",
     });
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("project", [{ id: "n1", source }]));
+  });
+
+  it("saves a region with the text inside it and finds its source by that text when SyncTeX can't", async () => {
+    await mount();
+    mocks.pdfPageText.mockResolvedValue([
+      { str: "Highlighted code", x: 72, top: 100, width: 160, height: 14 },
+      { str: "def greet(name):", x: 80, top: 130, width: 160, height: 10 },
+      { str: "Next section", x: 72, top: 180, width: 120, height: 14 },
+    ]);
+    mocks.locateSource.mockResolvedValue(null);
+    mocks.sourceTexts.mockReturnValue({ "main.tex": "\\section*{Highlighted code}\ndef greet(name):\n" });
+    mocks.add.mockResolvedValue(note({ kind: "region", source: null }));
+    act(() =>
+      latest?.viewerProps.onSelectRegion?.({
+        page: 3,
+        rect: { page: 3, x: 75, y: 125, width: 200, height: 20 },
+        clientRect: { left: 75, top: 125, width: 200, height: 20 },
+      }),
+    );
+    await userEvent.type(await screen.findByRole("textbox"), "What is this?");
+    await userEvent.click(screen.getByRole("button", { name: strings.composer.save }));
+    await waitFor(() =>
+      expect(mocks.add).toHaveBeenCalledWith(
+        "project",
+        expect.objectContaining({
+          kind: "region",
+          comment: "What is this?",
+          quote: { text: "def greet(name):", before: "Highlighted code", after: "Next section" },
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith("project", [
+        { id: "n1", source: { path: "main.tex", startLine: 2, endLine: 2, excerpt: "def greet(name):" } },
+      ]),
+    );
   });
 
   it("adds a delete note straight from the action", async () => {

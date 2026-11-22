@@ -104,6 +104,7 @@ import {
   goToSyncTex,
   inverseFromClick,
   openFileAndGotoLine,
+  sourceTexts,
 } from "./synctex";
 
 beforeEach(() => {
@@ -255,6 +256,27 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     await inverseFromClick(1, 10, 10, "If");
     expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If", undefined);
     expect(mocks.gotoLine).toHaveBeenCalledWith(7);
+  });
+});
+
+describe("sourceTexts", () => {
+  it("gives the main document first, then each compiled source, in the editor's current text when it has one", () => {
+    mocks.compiledSnapshot = {
+      projectId: "proj",
+      filesystemEpoch: 0,
+      texts: { "sections/intro.tex": "old intro", "sections/gone.tex": "only compiled" },
+    };
+    const texts = sourceTexts();
+    expect(texts).toEqual({
+      "main.tex": "alpha\nbeta\ngamma",
+      "sections/intro.tex": "intro one\nintro two",
+      "sections/gone.tex": "only compiled",
+    });
+    expect(Object.keys(texts)[0]).toBe("main.tex");
+  });
+
+  it("still gives the main document before the first compile", () => {
+    expect(sourceTexts()).toEqual({ "main.tex": "alpha\nbeta\ngamma" });
   });
 });
 

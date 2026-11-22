@@ -11,7 +11,12 @@ import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { logError } from "@/lib/log";
 import { lazy } from "@/lib/preloadable";
 import { i18n, loadNamespace } from "@/i18n";
-import type { PdfAnnotation, PdfAnnotationBox, PdfAnnotationKind, PdfAnnotationQuote } from "@/lib/tauri";
+import type {
+  PdfAnnotation,
+  PdfAnnotationBox,
+  PdfAnnotationKind,
+  PdfAnnotationQuote,
+} from "@/lib/tauri";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
 import { useSettingsStore } from "@/store/settings";
 import type { TextAnnotationKind } from "./PdfAnnotationComposer";
@@ -77,6 +82,16 @@ function currentRange(): Range | null {
 
 function rectOf(box: { left: number; top: number; width: number; height: number }): DOMRect {
   return new DOMRect(box.left, box.top, box.width, box.height);
+}
+
+async function regionQuote(region: PdfRegionSelectionInfo): Promise<PdfAnnotationQuote> {
+  try {
+    const [{ quoteInBox }, runs] = await Promise.all([import("@oleafly/preview/pdfQuote"), pdfPageText(region.page)]);
+    return runs ? quoteInBox(runs, region.rect) : EMPTY_QUOTE;
+  } catch (error) {
+    void logError("read the text in a PDF region", error);
+    return EMPTY_QUOTE;
+  }
 }
 
 async function textOf(path: string): Promise<string | null> {
@@ -250,7 +265,7 @@ export function usePdfAnnotations({
     const text = current.from === "text";
     const quote: PdfAnnotationQuote = text
       ? { text: current.selection.text, before: current.selection.before, after: current.selection.after }
-      : EMPTY_QUOTE;
+      : await regionQuote(current.region);
     const page = text ? current.selection.page : current.region.page;
     const boxes: PdfAnnotationBox[] = text ? current.selection.rects : [current.region.rect];
     let id: string | null = null;
@@ -268,13 +283,17 @@ export function usePdfAnnotations({
     }
     finishDraft(current);
     setMarksShown(true);
-    if (!syncAvailable || madeOn !== build) return true;
+    if (madeOn !== build) return true;
     try {
-      const { locateSource, regionProbePoints } = await import("@/features/pdf-annotations/locate");
+      const [{ chooseSource, locateSource, regionProbePoints }, { sourceTexts }] = await Promise.all([
+        import("@/features/pdf-annotations/locate"),
+        import("@/features/synctex"),
+      ]);
       const [start, end] = text
         ? [current.selection.start, current.selection.end]
         : regionProbePoints(current.region.rect);
-      const source = await locateSource(start, end, checkpointRef.current, undefined, textOf);
+      const synced = syncAvailable ? await locateSource(start, end, checkpointRef.current, undefined, textOf) : null;
+      const source = chooseSource(quote, synced, !text, sourceTexts);
       if (source) await usePdfAnnotationsStore.getState().update([{ id, source }], { quiet: true });
     } catch (error) {
       void logError("find the source of a PDF annotation", error);

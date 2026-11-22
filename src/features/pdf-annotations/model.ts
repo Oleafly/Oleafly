@@ -198,7 +198,7 @@ const ASKS: Record<PdfAnnotationKind, string> = {
   delete: "Delete only the selected text. Keep the words around it.",
   replace: "Replace only the selected text with the replacement. Keep the words around it.",
   insert: "Insert the new text right after the selected text. Change nothing else.",
-  region: "The comment is about the marked region of the page, such as an equation, figure or table.",
+  region: "The comment is about the marked region of the page: the text, equation, figure or table inside it.",
 };
 
 const EXACT_TEXT: Partial<Record<PdfAnnotationKind, string>> = {
@@ -237,7 +237,28 @@ function locationLine(annotation: PdfAnnotation, current: CurrentSource): string
   return `Location: ${where}${section}${unchecked}.`;
 }
 
+function points(value: number): number {
+  return Math.round(value);
+}
+
+function regionLines(annotation: PdfAnnotation): string[] {
+  const lines: string[] = [];
+  const box = annotation.boxes[0];
+  if (box) {
+    lines.push(
+      `Region: page ${box.page}, x ${points(box.x)} to ${points(box.x + box.width)} pt and y ${points(box.y)} to ${points(box.y + box.height)} pt from the top-left corner of the page.`,
+    );
+  }
+  const { text, before, after } = annotation.quote;
+  if (before.trim()) lines.push(`Just above the region on the PDF: ${JSON.stringify(before.trim())}`);
+  if (text.trim()) lines.push("Text inside the region on the PDF:", fence(text, ""));
+  else lines.push("No text was read from inside the region.");
+  if (after.trim()) lines.push(`Just below the region on the PDF: ${JSON.stringify(after.trim())}`);
+  return lines;
+}
+
 function quoteLines(annotation: PdfAnnotation): string[] {
+  if (annotation.kind === "region") return regionLines(annotation);
   const { text, before, after } = annotation.quote;
   if (!text.trim()) return [];
   const lead = before.trim() ? `…${before.trimStart()}` : "";
@@ -252,6 +273,12 @@ function commentLine(annotation: PdfAnnotation): string | null {
   return comment ? `Comment: ${comment}` : null;
 }
 
+function sourceLabel(annotation: PdfAnnotation): string {
+  if (!annotation.quote.text.trim()) return "Source:";
+  const what = annotation.kind === "region" ? "the region's text" : "the selected text";
+  return `Source lines that hold ${what}, which may carry markup the PDF hides:`;
+}
+
 export function annotationPrompt(annotation: PdfAnnotation, current: CurrentSource): string {
   const quote = quoteLines(annotation);
   const lines = [
@@ -264,10 +291,7 @@ export function annotationPrompt(annotation: PdfAnnotation, current: CurrentSour
   if (comment) lines.push(comment);
   const excerpt = current.source?.excerpt ?? "";
   if (current.source && excerpt) {
-    lines.push(
-      quote.length > 0 ? "Source lines that hold the selected text, which may carry markup the PDF hides:" : "Source:",
-      fence(excerpt, fenceLanguage(current.source.path)),
-    );
+    lines.push(sourceLabel(annotation), fence(excerpt, fenceLanguage(current.source.path)));
   }
   return lines.join("\n");
 }

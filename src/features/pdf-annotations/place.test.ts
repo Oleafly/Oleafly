@@ -116,6 +116,26 @@ describe("placeAnnotation", () => {
     const moved = await placeAnnotation({ ...region, source: shifted }, "new", deps({ linesOf: async () => lines }));
     expect(moved).toMatchObject({ placement: "placed", page: 2, boxes: [{ page: 2, x: 72, y: 100, width: 400, height: 22 }] });
   });
+
+  it("finds a region by its text without SyncTeX, keeping the drawn box while the text is still inside it", async () => {
+    const drawn = { page: 3, x: 100, y: 90, width: 200, height: 40 };
+    const region = note({
+      kind: "region",
+      source: null,
+      quote: { text: "def greet(name):", before: "", after: "" },
+      boxes: [drawn],
+    });
+    const inside = { page: 3, x: 110, y: 100, width: 80, height: 10 };
+    const kept = await placeAnnotation(region, "new", deps({ findQuote: () => [inside] }));
+    expect(kept).toMatchObject({ placement: "placed", boxes: [drawn] });
+
+    const moved = [
+      { page: 3, x: 72, y: 400, width: 80, height: 10 },
+      { page: 3, x: 72, y: 412, width: 120, height: 10 },
+    ];
+    const followed = await placeAnnotation(region, "new", deps({ findQuote: () => moved }));
+    expect(followed).toMatchObject({ placement: "placed", boxes: [{ page: 3, x: 72, y: 400, width: 120, height: 22 }] });
+  });
 });
 
 describe("placeAnnotations", () => {
