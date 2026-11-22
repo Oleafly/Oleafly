@@ -1230,6 +1230,7 @@ pub fn run() {
             project::recycle_project,
             commands::reveal_in_dir,
             commands::reveal_project,
+            commands::project_file_path,
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,

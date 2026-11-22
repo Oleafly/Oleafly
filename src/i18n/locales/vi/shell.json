@@ -501,7 +501,15 @@
       "run": "Chạy mã trên máy này"
     },
     "sharedViewer": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các cài đặt này trong dự án chia sẻ.",
-    "coauthorsChanged": "Đồng tác giả đã thay đổi kể từ lần biên dịch trước của bạn"
+    "coauthorsChanged": "Đồng tác giả đã thay đổi kể từ lần biên dịch trước của bạn",
+    "texRootDocument": "root: {{path}} (có \\documentclass riêng)",
+    "texRootInclude": "root: {{path}} (chèn {{file}})",
+    "target": {
+      "title": "Đích biên dịch",
+      "help": "Với Theo tệp đang mở, tệp có \\documentclass riêng được biên dịch độc lập. Một chương hoặc mục sẽ biên dịch tài liệu chèn nó. Các tệp khác biên dịch tài liệu chính. Chú thích % !TEX root luôn được ưu tiên.",
+      "open": "Theo tệp đang mở",
+      "main": "Luôn là tài liệu chính"
+    }
   },
   "datePicker": {
     "placeholder": "Chọn ngày"

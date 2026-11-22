@@ -547,9 +547,6 @@
     "unsupported": "이 문서 형식은 교정을 지원하지 않습니다."
   },
   "checkpoints": {
-    "showInExplorer": "탐색기에서 보기",
-    "showInFinder": "Finder에서 보기",
-    "showInFileManager": "파일 관리자에서 보기",
     "timeNotRecorded": "시간이 기록되지 않음",
     "justNow": "방금",
     "fallbackName": "체크포인트",

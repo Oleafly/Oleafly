@@ -52,7 +52,6 @@ describe("on/off preferences", () => {
     ["setTerminalCursorBlink", "terminalCursorBlink", "oleafly.terminal.cursorBlink"],
     ["setTerminalStartWithProject", "terminalStartWithProject", "oleafly.terminal.startWithProject"],
     ["setOpenInTree", "openInTree", "oleafly.openInTree"],
-    ["setPdfDarkMode", "pdfDarkMode", "oleafly.pdf.darkMode"],
     ["setEditorUsesAppFont", "editorUsesAppFont", "oleafly.editor.useAppFont"],
   ];
 

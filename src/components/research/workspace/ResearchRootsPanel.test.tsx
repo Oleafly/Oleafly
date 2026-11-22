@@ -9,6 +9,7 @@ import type {
 } from "@/lib/research-workspace";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 
 let ResearchRootsPanel: typeof import("./ResearchRootsPanel").ResearchRootsPanel;
 let act: typeof import("@testing-library/react").act;
@@ -215,7 +216,7 @@ describe("ResearchRootsPanel", () => {
     render(<ResearchRootsPanel projectId="paper" />);
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
     openMenu("Study data");
-    fireEvent.click(page().getByRole("menuitem", { name: /Show in (Finder|Explorer)/ }));
+    fireEvent.click(page().getByRole("menuitem", { name: showInFileManagerLabel() }));
     expect(native.reveal).toHaveBeenCalledWith("/study/data");
   });
 

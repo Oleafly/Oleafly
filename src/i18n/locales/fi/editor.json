@@ -554,9 +554,6 @@
     "unsupported": "Kielentarkistusta ei tueta tälle dokumenttimuodolle."
   },
   "checkpoints": {
-    "showInExplorer": "Näytä Resurssienhallinnassa",
-    "showInFinder": "Näytä Finderissa",
-    "showInFileManager": "Näytä tiedostonhallinnassa",
     "timeNotRecorded": "Aikaa ei kirjattu",
     "justNow": "Juuri nyt",
     "fallbackName": "Tarkistuspiste",

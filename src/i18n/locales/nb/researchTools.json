@@ -50,8 +50,6 @@
       "readOnly": "Skrivebeskyttet",
       "browse": "Bla i filene",
       "moreActions": "Flere handlinger for {{label}}",
-      "showInFinder": "Vis i Finder",
-      "showInExplorer": "Vis i Utforsker",
       "unlink": "Fjern lenken",
       "listingTruncated": "Denne visningen stopper etter 2 000 filer eller åtte mappenivåer.",
       "emptyFolder": "Denne mappen er tom.",

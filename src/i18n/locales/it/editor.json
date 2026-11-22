@@ -561,9 +561,6 @@
     "unsupported": "La revisione non è supportata per questo formato di documento."
   },
   "checkpoints": {
-    "showInExplorer": "Mostra in Esplora file",
-    "showInFinder": "Mostra nel Finder",
-    "showInFileManager": "Mostra nel gestore file",
     "timeNotRecorded": "Orario non registrato",
     "justNow": "Adesso",
     "fallbackName": "Checkpoint",

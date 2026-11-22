@@ -561,9 +561,6 @@
     "unsupported": "La relecture n'est pas prise en charge pour ce format de document."
   },
   "checkpoints": {
-    "showInExplorer": "Afficher dans l'Explorateur",
-    "showInFinder": "Afficher dans le Finder",
-    "showInFileManager": "Afficher dans le gestionnaire de fichiers",
     "timeNotRecorded": "Heure non enregistrée",
     "justNow": "À l'instant",
     "fallbackName": "Point de contrôle",

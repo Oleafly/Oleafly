@@ -554,9 +554,6 @@
     "unsupported": "Korrekturlæsning understøttes ikke for dette dokumentformat."
   },
   "checkpoints": {
-    "showInExplorer": "Vis i Stifinder",
-    "showInFinder": "Vis i Finder",
-    "showInFileManager": "Vis i filhåndteringen",
     "timeNotRecorded": "Tidspunktet er ikke registreret",
     "justNow": "Lige nu",
     "fallbackName": "Kontrolpunkt",

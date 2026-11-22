@@ -621,9 +621,6 @@
       "permissionDenied": "Geen toestemming"
     },
     "menu": {
-      "showInFinder": "Tonen in Finder",
-      "showInExplorer": "Tonen in Verkenner",
-      "showInFileManager": "Tonen in de bestandsbeheerder",
       "copyToLibrary": "Naar bibliotheek kopiëren",
       "remove": "Uit Oleafly verwijderen"
     },

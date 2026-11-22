@@ -59,7 +59,8 @@ import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
-import { cn, isMac, isWindows } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { showInFileManagerLabel } from "@/lib/file-manager-label";
 import { runWithEditorMutationLease, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
@@ -92,12 +93,6 @@ type PanelActionToken = {
   session: number;
   request: number;
 };
-
-function revealLabel(): string {
-  if (isWindows) return i18n.t(($) => $.editor.checkpoints.showInExplorer);
-  if (isMac) return i18n.t(($) => $.editor.checkpoints.showInFinder);
-  return i18n.t(($) => $.editor.checkpoints.showInFileManager);
-}
 
 function checkpointsPanelIsActive(): boolean {
   const settings = useSettingsStore.getState();
@@ -1604,7 +1599,7 @@ export function CheckpointsPanel({
             onClick={() => void checkpointRevealStore(projectId)}
           >
             <FolderOpen className="size-3.5" aria-hidden />
-            {revealLabel()}
+            {showInFileManagerLabel()}
           </Button>
         </div>
         <dl className="grid grid-cols-3 gap-x-4 gap-y-1">

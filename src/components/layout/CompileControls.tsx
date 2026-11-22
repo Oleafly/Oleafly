@@ -10,7 +10,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
+import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -34,8 +34,8 @@ import {
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
-import { mainDocumentMissing } from "@/lib/main-document";
+import { effectiveMainDocMissing, useEffectiveMainDoc, type TexRootReason } from "@/lib/tex-root";
+import { useCompileRootStore } from "@/store/compile-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "@/lib/tauri";
@@ -62,19 +62,29 @@ import {
   useTypstToolchainStore,
 } from "@/store/typst-toolchain";
 
+function texRootTooltip(
+  t: TFunction<["shell"]>,
+  reason: TexRootReason | null,
+  path: string,
+  file: string,
+): string {
+  if (reason === "document") return t(($) => $.shell.compile.texRootDocument, { path });
+  if (reason === "include") return t(($) => $.shell.compile.texRootInclude, { path, file });
+  return t(($) => $.shell.compile.texRootOverride, { path, file });
+}
+
 function TexRootIndicator() {
   const { t } = useTranslation(["shell"]);
-  const [mainDoc, overriddenBy, brokenIn, brokenTarget, brokenReason] = useFilesStore(
-    useShallow(() => {
-      const effective = resolveEffectiveMainDoc();
-      return [
+  const [mainDoc, overriddenBy, reason, brokenIn, brokenTarget, brokenReason] = useEffectiveMainDoc(
+    (effective) =>
+      [
         effective.mainDoc,
         effective.overriddenBy,
+        effective.reason,
         effective.brokenRoot?.declaredIn ?? null,
         effective.brokenRoot?.target ?? null,
         effective.brokenRoot?.reason ?? null,
-      ] as const;
-    }),
+      ] as const,
   );
 
   if (brokenIn !== null) {
@@ -99,12 +109,7 @@ function TexRootIndicator() {
   }
   if (overriddenBy === null) return null;
   return (
-    <Tooltip
-      label={t(($) => $.shell.compile.texRootOverride, {
-        path: mainDoc,
-        file: overriddenBy,
-      })}
-    >
+    <Tooltip label={texRootTooltip(t, reason, mainDoc, overriddenBy)}>
       <span
         data-testid="tex-root-indicator"
         className="flex max-w-40 items-center gap-1 truncate text-xs text-muted-foreground"
@@ -155,7 +160,9 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
     (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
   );
   const { t } = useTranslation(["shell"]);
-  const noMainDocument = useFilesStore(mainDocumentMissing);
+  const noMainDocument = useEffectiveMainDoc(effectiveMainDocMissing);
+  const followOpenFile = useCompileRootStore((s) => s.followOpenFile);
+  const setFollowOpenFile = useCompileRootStore((s) => s.setFollowOpenFile);
   const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
   const grantTrust = useFolderAccessStore((s) => s.grant);
   const setTypstVersion = useFilesStore((s) => s.setTypstVersion);
@@ -194,6 +201,8 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       setCheckSyntaxBeforeCompile={setCheckSyntaxBeforeCompile}
       stopOnFirstError={stopOnFirstError}
       setStopOnFirstError={setStopOnFirstError}
+      followOpenFile={followOpenFile}
+      setFollowOpenFile={setFollowOpenFile}
       status={status}
       compileRevision={compileRevision}
       recompile={recompileWithPreview}
@@ -236,6 +245,8 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
       setTypstOptions?: (update: TypstOptionsUpdate) => Promise<unknown>;
       setCodeExecution?: (allow: boolean) => unknown;
       livePreview?: LivePreviewState;
+      followOpenFile?: boolean;
+      setFollowOpenFile?: (follow: boolean) => void;
     };
 
 const TYPST_NO_VARIANT = "\u0000none";
@@ -694,6 +705,7 @@ export function CompileControlsView({
   blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, coauthorsChanged = false, onTrustForSystemTex,
   typstToolchain = null, setTypstVersion, onOptionsOpen,
   typstVariant = null, setTypstVariant, setTypstOptions, setCodeExecution, livePreview,
+  followOpenFile = true, setFollowOpenFile,
 }: Readonly<CompileControlsViewProps>) {
   const { t } = useTranslation(["shell", "errors"]);
   const blocked = blockedReason !== null;
@@ -797,6 +809,27 @@ export function CompileControlsView({
           setAutoCompile={setAutoCompile}
           livePreview={livePreview}
         />
+
+        {engine.source_format === "latex" && setFollowOpenFile && (
+          <>
+            <DropdownMenuSeparator />
+            <MenuGroupLabel
+              title={t(($) => $.shell.compile.target.title)}
+              help={t(($) => $.shell.compile.target.help)}
+            />
+            <DropdownMenuRadioGroup
+              value={followOpenFile ? "open" : "main"}
+              onValueChange={(value) => setFollowOpenFile(value === "open")}
+            >
+              <DropdownMenuRadioItem value="open" data-testid="compile-target-open">
+                {t(($) => $.shell.compile.target.open)}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="main" data-testid="compile-target-main">
+                {t(($) => $.shell.compile.target.main)}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
 
         {settings.draftMode && (
           <>

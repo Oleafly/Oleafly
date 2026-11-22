@@ -621,9 +621,6 @@
       "permissionDenied": "İzin yok"
     },
     "menu": {
-      "showInFinder": "Finder'da göster",
-      "showInExplorer": "Dosya Gezgini'nde göster",
-      "showInFileManager": "Dosya yöneticisinde göster",
       "copyToLibrary": "Kitaplığa kopyala",
       "remove": "Oleafly'den kaldır"
     },

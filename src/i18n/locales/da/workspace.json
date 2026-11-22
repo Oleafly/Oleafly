@@ -55,7 +55,11 @@
     "insertLink": "Indsæt link",
     "copyLink": "Kopiér link",
     "linkCopied": "Linket er kopieret",
-    "copyLinkFailed": "Linket blev ikke kopieret. Tjek adgangen til udklipsholderen, og prøv igen."
+    "copyLinkFailed": "Linket blev ikke kopieret. Tjek adgangen til udklipsholderen, og prøv igen.",
+    "copyPath": "Kopiér sti",
+    "copyRelativePath": "Kopiér relativ sti",
+    "pathCopied": "Stien er kopieret",
+    "copyPathFailed": "Stien blev ikke kopieret. Tjek adgangen til udklipsholderen, og prøv igen."
   },
   "explorer": {
     "resizeSections": "Tilpas størrelsen på {{first}} og {{second}}"

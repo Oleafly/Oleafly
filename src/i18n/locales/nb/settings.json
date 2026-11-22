@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} er ikke installert, så standardskriften brukes i stedet.",
     "preview": {
       "darkMode": {
-        "description": "Inverter fargene i PDF-en som standard. Du kan fortsatt bytte farger fra verktøylinjen i forhåndsvisningen.",
-        "label": "Mørk modus for PDF"
+        "description": "Med Følg apptemaet blir sidene mørke når appen er mørk. I lys modus ser de ut som på trykk, eller de beholder den lyse tonen du har valgt, for eksempel sepia. Knappen for å invertere farger i verktøylinjen i forhåndsvisningen setter dette til På eller Av.",
+        "label": "Mørk modus for PDF",
+        "modes": {
+          "follow": "Følg apptemaet",
+          "off": "Av",
+          "on": "På"
+        }
       },
       "darkColors": {
         "label": "Farger for mørk side",

@@ -55,7 +55,11 @@
     "insertLink": "Link invoegen",
     "copyLink": "Link kopiëren",
     "linkCopied": "Link gekopieerd",
-    "copyLinkFailed": "De link is niet gekopieerd. Controleer de toegang tot het klembord en probeer het opnieuw."
+    "copyLinkFailed": "De link is niet gekopieerd. Controleer de toegang tot het klembord en probeer het opnieuw.",
+    "copyPath": "Pad kopiëren",
+    "copyRelativePath": "Relatief pad kopiëren",
+    "pathCopied": "Pad gekopieerd",
+    "copyPathFailed": "Het pad is niet gekopieerd. Controleer de toegang tot het klembord en probeer het opnieuw."
   },
   "explorer": {
     "resizeSections": "Formaat van {{first}} en {{second}} wijzigen"

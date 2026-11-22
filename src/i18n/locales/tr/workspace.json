@@ -55,7 +55,11 @@
     "insertLink": "Bağlantı ekle",
     "copyLink": "Bağlantıyı kopyala",
     "linkCopied": "Bağlantı kopyalandı",
-    "copyLinkFailed": "Bağlantı kopyalanmadı. Pano erişimini denetleyip yeniden deneyin."
+    "copyLinkFailed": "Bağlantı kopyalanmadı. Pano erişimini denetleyip yeniden deneyin.",
+    "copyPath": "Yolu kopyala",
+    "copyRelativePath": "Göreli yolu kopyala",
+    "pathCopied": "Yol kopyalandı",
+    "copyPathFailed": "Yol kopyalanmadı. Pano erişimini denetleyip yeniden deneyin."
   },
   "explorer": {
     "resizeSections": "{{first}} ve {{second}} bölümlerini yeniden boyutlandır"

@@ -31,6 +31,20 @@ and [Calepin](#calepin) for documents that run R, Python or Julia code.
   cache, Oleafly compiles again against the upstream bundle and says so in the
   log. In offline mode, a file that isn't cached yet gets its own message, which
   names the file when the log does.
+- **Which document compiles:** a `% !TEX root` comment in the open file wins.
+  Otherwise, with Follow the open file chosen under Compile target in the
+  compile menu (the default), an open `.tex` file with its own `\documentclass`
+  and `\begin{document}` compiles by itself, and a file that another document
+  includes compiles that document. The include check uses the compilation units
+  in [architecture.md](architecture.md#compilation-units), so it needs two or
+  more documents in the project. When several documents include the file, the
+  main document wins, then the last document you had open. `standalone` and
+  `subfiles` classes count as parts, so a figure or a subfile compiles the main
+  document. While a non-LaTeX file such as a `.bib` is open, the last document
+  stays the target until its tab closes. Always the main document keeps only
+  the `% !TEX root` rule. The choice is saved on this computer and exported in
+  the settings file as `engine.compile.followOpenFile`. The code is in
+  `src/lib/tex-root.ts`.
 - For a main document in a subfolder, Tectonic searches that folder first and
   latexmk runs from it when more of the document's references exist only there
   than from the project root. Library projects and linked folders work the same

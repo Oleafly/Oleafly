@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} is niet geïnstalleerd, dus het standaardlettertype wordt gebruikt.",
     "preview": {
       "darkMode": {
-        "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",
-        "label": "Donkere modus voor PDF"
+        "description": "Met App-thema volgen worden pagina's donker als de app donker is. In de lichte modus zien ze eruit zoals gedrukt, of houden ze de lichte tint die je hebt gekozen, zoals sepia. De knop om kleuren om te keren in de werkbalk van het voorbeeld zet dit op Aan of Uit.",
+        "label": "Donkere modus voor PDF",
+        "modes": {
+          "follow": "App-thema volgen",
+          "off": "Uit",
+          "on": "Aan"
+        }
       },
       "darkColors": {
         "label": "Kleuren van de donkere pagina",

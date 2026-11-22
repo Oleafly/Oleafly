@@ -502,7 +502,15 @@
       "run": "Kodu bu bilgisayarda çalıştır"
     },
     "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir.",
-    "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi"
+    "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi",
+    "texRootDocument": "kök: {{path}} (kendi \\documentclass komutu var)",
+    "texRootInclude": "kök: {{path}} ({{file}} dosyasını içeriyor)",
+    "target": {
+      "title": "Derleme hedefi",
+      "help": "Açık dosyayı izle seçiliyken kendi \\documentclass komutu olan bir dosya tek başına derlenir. Bir bölüm, onu içeren belgeyi derler. Diğer dosyalar ana belgeyi derler. % !TEX root yorumu her zaman önceliklidir.",
+      "open": "Açık dosyayı izle",
+      "main": "Her zaman ana belge"
+    }
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"

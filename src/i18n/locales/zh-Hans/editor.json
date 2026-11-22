@@ -547,9 +547,6 @@
     "unsupported": "此文档格式不支持校对。"
   },
   "checkpoints": {
-    "showInExplorer": "在资源管理器中显示",
-    "showInFinder": "在 Finder 中显示",
-    "showInFileManager": "在文件管理器中显示",
     "timeNotRecorded": "未记录时间",
     "justNow": "刚刚",
     "fallbackName": "检查点",

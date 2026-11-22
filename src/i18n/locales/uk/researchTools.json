@@ -50,8 +50,6 @@
       "readOnly": "Лише читання",
       "browse": "Переглянути файли",
       "moreActions": "Більше дій для {{label}}",
-      "showInFinder": "Показати у Finder",
-      "showInExplorer": "Показати у провіднику",
       "unlink": "Відв’язати",
       "listingTruncated": "Цей перегляд зупиняється після 2 000 файлів або восьми рівнів тек.",
       "emptyFolder": "Ця тека порожня.",

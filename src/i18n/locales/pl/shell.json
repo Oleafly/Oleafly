@@ -504,7 +504,15 @@
       "run": "Uruchamiaj kod na tym komputerze"
     },
     "sharedViewer": "Tylko właściciele i edytujący mogą zmieniać te ustawienia we współdzielonym projekcie.",
-    "coauthorsChanged": "Zmienione przez współautorów od ostatniej kompilacji"
+    "coauthorsChanged": "Zmienione przez współautorów od ostatniej kompilacji",
+    "texRootDocument": "root: {{path}} (ma własne \\documentclass)",
+    "texRootInclude": "root: {{path}} (dołącza {{file}})",
+    "target": {
+      "title": "Cel kompilacji",
+      "help": "Przy opcji Zgodnie z otwartym plikiem plik z własnym \\documentclass kompiluje się samodzielnie. Rozdział lub sekcja kompiluje dokument, który go dołącza. Pozostałe pliki kompilują dokument główny. Komentarz % !TEX root zawsze ma pierwszeństwo.",
+      "open": "Zgodnie z otwartym plikiem",
+      "main": "Zawsze dokument główny"
+    }
   },
   "datePicker": {
     "placeholder": "Wybierz datę"

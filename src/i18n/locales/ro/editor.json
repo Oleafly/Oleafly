@@ -561,9 +561,6 @@
     "unsupported": "Corectura nu este acceptată pentru acest format de document."
   },
   "checkpoints": {
-    "showInExplorer": "Arată în Explorer",
-    "showInFinder": "Arată în Finder",
-    "showInFileManager": "Arată în managerul de fișiere",
     "timeNotRecorded": "Ora nu a fost înregistrată",
     "justNow": "Chiar acum",
     "fallbackName": "Punct de control",

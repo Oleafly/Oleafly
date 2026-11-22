@@ -554,9 +554,6 @@
     "unsupported": "Redaksiyon bu belge biçiminde desteklenmiyor."
   },
   "checkpoints": {
-    "showInExplorer": "Dosya Gezgini'nde göster",
-    "showInFinder": "Finder'da göster",
-    "showInFileManager": "Dosya yöneticisinde göster",
     "timeNotRecorded": "Saat kaydedilmedi",
     "justNow": "Az önce",
     "fallbackName": "Kontrol noktası",

@@ -55,7 +55,11 @@
     "insertLink": "リンクを挿入",
     "copyLink": "リンクをコピー",
     "linkCopied": "リンクをコピーしました",
-    "copyLinkFailed": "リンクはコピーされませんでした。クリップボードへのアクセスを確認してもう一度お試しください。"
+    "copyLinkFailed": "リンクはコピーされませんでした。クリップボードへのアクセスを確認してもう一度お試しください。",
+    "copyPath": "パスをコピー",
+    "copyRelativePath": "相対パスをコピー",
+    "pathCopied": "パスをコピーしました",
+    "copyPathFailed": "パスはコピーされませんでした。クリップボードへのアクセスを確認してもう一度お試しください。"
   },
   "explorer": {
     "resizeSections": "{{first}} と {{second}} のサイズを変更"

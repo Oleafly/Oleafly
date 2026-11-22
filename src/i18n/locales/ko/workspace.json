@@ -55,7 +55,11 @@
     "insertLink": "링크 삽입",
     "copyLink": "링크 복사",
     "linkCopied": "링크를 복사했습니다",
-    "copyLinkFailed": "링크를 복사하지 못했습니다. 클립보드 접근 권한을 확인하고 다시 시도하세요."
+    "copyLinkFailed": "링크를 복사하지 못했습니다. 클립보드 접근 권한을 확인하고 다시 시도하세요.",
+    "copyPath": "경로 복사",
+    "copyRelativePath": "상대 경로 복사",
+    "pathCopied": "경로를 복사했습니다",
+    "copyPathFailed": "경로를 복사하지 못했습니다. 클립보드 접근 권한을 확인하고 다시 시도하세요."
   },
   "explorer": {
     "resizeSections": "{{first}}와(과) {{second}} 크기 조절"

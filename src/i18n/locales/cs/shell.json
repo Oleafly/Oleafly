@@ -504,7 +504,15 @@
       "run": "Spouštět kód v tomto počítači"
     },
     "sharedViewer": "Ve sdíleném projektu mohou tato nastavení měnit jen vlastníci a editoři.",
-    "coauthorsChanged": "Změněno spoluautory od vaší poslední kompilace"
+    "coauthorsChanged": "Změněno spoluautory od vaší poslední kompilace",
+    "texRootDocument": "kořen: {{path}} (má vlastní \\documentclass)",
+    "texRootInclude": "kořen: {{path}} (vkládá {{file}})",
+    "target": {
+      "title": "Cíl kompilace",
+      "help": "S volbou Podle otevřeného souboru se soubor s vlastním \\documentclass kompiluje samostatně. Kapitola nebo oddíl kompiluje dokument, který je vkládá. Ostatní soubory kompilují hlavní dokument. Komentář % !TEX root má vždy přednost.",
+      "open": "Podle otevřeného souboru",
+      "main": "Vždy hlavní dokument"
+    }
   },
   "datePicker": {
     "placeholder": "Vyberte datum"

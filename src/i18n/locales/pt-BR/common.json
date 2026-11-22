@@ -24,7 +24,10 @@
     "no": "Não",
     "learnMore": "Saiba mais",
     "showMore": "Mostrar mais",
-    "showLess": "Mostrar menos"
+    "showLess": "Mostrar menos",
+    "showInFinder": "Mostrar no Finder",
+    "showInExplorer": "Mostrar no Explorador de Arquivos",
+    "showInFileManager": "Mostrar no gerenciador de arquivos"
   },
   "state": {
     "loading": "Carregando…",
