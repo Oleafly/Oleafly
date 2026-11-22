@@ -5167,14 +5167,13 @@ mod tests {
     #[tokio::test]
     async fn download_progress_extends_the_limit_past_the_plain_timeout() {
         let root = tempfile::tempdir().unwrap();
-        let script =
-            "for i in 1 2 3 4; do echo \"note: downloading f$i.sty\"; sleep 0.2; done; echo done";
+        let script = "i=0; while [ $i -lt 12 ]; do i=$((i+1)); echo \"note: downloading f$i.sty\"; sleep 0.25; done; echo done";
         let (log, code) = run_supervised_process(
             Path::new("/bin/sh"),
             &["-c".into(), script.into()],
             root.path(),
             None,
-            std::time::Duration::from_millis(500),
+            std::time::Duration::from_secs(2),
             None,
         )
         .await

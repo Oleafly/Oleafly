@@ -150,7 +150,28 @@ pub(crate) fn snippet_typst(project_id: Option<&str>) -> Result<ResolvedTypst, S
 }
 
 fn current_status(lookup: SystemLookup) -> Result<TypstToolchainStatus, String> {
-    Ok(TypstToolchain::load(lookup)?.status(installing_version()))
+    Ok(with_external_tinymist(
+        TypstToolchain::load(lookup)?.status(installing_version()),
+    ))
+}
+
+fn with_external_tinymist(mut status: TypstToolchainStatus) -> TypstToolchainStatus {
+    let Some(server) = crate::language_service::external::configured(
+        crate::language_service::LanguageServiceKind::Tinymist,
+    ) else {
+        return status;
+    };
+    let server = server.ok();
+    for entry in &mut status.versions {
+        entry.tinymist_version = server
+            .as_ref()
+            .filter(|server| {
+                oleafly_core::typst_toolchain::ToolchainVersion::parse(&entry.version)
+                    .is_some_and(|typst| server.check_typst(&typst).is_ok())
+            })
+            .map(|server| server.version.to_string());
+    }
+    status
 }
 
 async fn blocking<T, F>(work: F) -> Result<T, String>
@@ -178,12 +199,14 @@ where
 fn remove_version_blocking(version: &str) -> Result<TypstToolchainStatus, String> {
     TypstToolchain::load(SystemLookup::Cached)?
         .remove_downloaded(version, installing_version().as_deref())
+        .map(with_external_tinymist)
         .map_err(String::from)
 }
 
 fn remove_unused_tinymist_blocking() -> Result<TypstToolchainStatus, String> {
     TypstToolchain::load(SystemLookup::Cached)?
         .remove_unused_tinymist()
+        .map(with_external_tinymist)
         .map_err(String::from)
 }
 

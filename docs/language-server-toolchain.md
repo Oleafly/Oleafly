@@ -116,6 +116,70 @@ For development and isolated tests,
 `OLEAFLY_LANGUAGE_SERVER_APP_DATA_DIR` replaces the identifier-scoped app-data
 base. The `language-servers` child is still appended.
 
+## Servers the system provides
+
+A distribution package or an administrator can run its own TexLab and Tinymist
+builds instead of the pinned ones. Set these variables in the environment
+Oleafly starts with, for example in a package's launcher wrapper:
+
+| Variable | Value |
+| --- | --- |
+| `OLEAFLY_TEXLAB` | Full path of a `texlab` executable |
+| `OLEAFLY_TINYMIST` | Full path of a `tinymist` executable |
+
+With a variable set, Oleafly starts that executable where it is. It doesn't
+download, extract or hash-check a pinned build for that server. Everything else
+stays as it is for the pinned servers: the profile's arguments (`texlab run`,
+`tinymist lsp`), the initialization options, the session limits and the process
+containment. TexLab still gets the no-op `latexmk` shim first on `PATH`, so
+analysis never builds the document.
+
+Oleafly reads the version from the program, so there's no version setting that
+can fall behind a package upgrade:
+
+- `texlab --version` has to print `texlab <version>`.
+- `tinymist -V` has to print `tinymist <version>`, and `tinymist --version` has
+  to print a `Typst Version:` line. Tinymist 0.12 and later print both.
+
+Oleafly keeps the answer, a refusal included, until the file at the resolved
+path changes, so a broken program isn't run again on every check. A check that
+doesn't finish within 5 seconds is tried again after a minute. Oleafly runs the
+path as configured and uses the resolved path only to notice changes, so a
+symlink to a launcher that picks the program by its name still works.
+
+The pinned profile is only read for its arguments, so this also works on a
+platform that has no pinned build.
+
+A Tinymist build serves one Typst minor line, the one it was built with. A
+project whose pinned or default Typst version is on another line is refused
+with a message that names both, and Oleafly doesn't download a matching build
+for it. Settings > Engines lists the external Tinymist only next to the Typst
+versions it serves.
+
+Each of these is an error, and none falls back to a download: an empty value, a
+relative path, a missing file, a folder, a file without execute permission, or
+a program that doesn't print the version line above. The editor shows the
+language service as unavailable and gives the reason, which also goes to the
+app log. It doesn't offer an install. Remove the variable to go back to the
+pinned server. Oleafly reads the variables from its own environment only,
+never from project files or `PATH`, so a project can't choose the program that
+runs.
+
+When Oleafly runs as an AppImage on Linux, an external server starts without the
+AppImage's library and data paths, like other programs from the host system.
+That holds for the version check, the language server and the Typst preview
+server that click-to-jump uses.
+
+The `language_service_install_status` response marks these servers with
+`external: true`. For a server that works, it also carries the version the
+program reported, and the frontend starts the server at that version instead of
+asking for the pinned one. For a broken setting, the state is `failed`, the
+message says why, and the version field holds the pinned version only because
+the response always has one.
+
+Settings that only one distribution needs, such as trimming the Typst compiler
+list or Nix wrapper options, belong in that distribution's package.
+
 ## Fetch and verify
 
 Install the current host according to each server's manifest policy:
@@ -234,9 +298,11 @@ one attempt at each and the same size and SHA-256 checks. A bad file or a
 refused request on the mirror moves on to GitHub. An attempt has 15 seconds to
 connect, fails after 30 seconds without data, and can't run past 30 minutes.
 
-At runtime, Rust resolves Tinymist only through Tauri v2's documented
-`BaseDirectory::Resource` API. It accepts no caller-provided path or environment
-override, verifies every resource-root/path node is a real directory or regular
+At runtime, Rust resolves the bundled Tinymist archive only through Tauri v2's
+documented `BaseDirectory::Resource` API. The archive lookup accepts no
+caller-provided path or environment override (`OLEAFLY_TINYMIST` replaces the
+whole bundled server, see above, and never points the archive lookup elsewhere),
+verifies every resource-root/path node is a real directory or regular
 file rather than a symlink/reparse point, enforces lexical and canonical
 containment, and rechecks the archive's exact size and SHA-256. It then repeats
 the safe exact-member extraction and binary verification before publishing the

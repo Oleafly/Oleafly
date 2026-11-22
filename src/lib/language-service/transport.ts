@@ -40,6 +40,7 @@ export interface LanguageServiceInstallStatus {
   version: string;
   state: LanguageServiceInstallStatusState;
   message?: string;
+  external?: true;
 }
 
 export type LanguageServiceTransportState =

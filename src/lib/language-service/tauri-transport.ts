@@ -514,10 +514,13 @@ function parseInstallStatus(
   value: unknown,
   expectedKind: LanguageServiceKind,
 ): LanguageServiceInstallStatus {
-  const expectedKeys =
-    isRecord(value) && typeof value.message === "string"
-      ? ["kind", "version", "state", "message"]
-      : ["kind", "version", "state"];
+  const expectedKeys = ["kind", "version", "state"];
+  if (isRecord(value) && typeof value.message === "string") {
+    expectedKeys.push("message");
+  }
+  if (isRecord(value) && value.external === true) {
+    expectedKeys.push("external");
+  }
   if (
     !hasExactKeys(value, expectedKeys) ||
     value.kind !== expectedKind ||
@@ -539,6 +542,7 @@ function parseInstallStatus(
     ...(typeof value.message === "string"
       ? { message: value.message }
       : {}),
+    ...(value.external === true ? { external: true as const } : {}),
   };
 }
 
