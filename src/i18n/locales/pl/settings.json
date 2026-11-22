@@ -1027,8 +1027,13 @@
     "fontNotInstalled": "Czcionka {{font}} nie jest zainstalowana, więc używana jest czcionka domyślna.",
     "preview": {
       "darkMode": {
-        "description": "Odwracaj kolory PDF domyślnie. Kolory nadal można przełączyć z paska narzędzi podglądu.",
-        "label": "Tryb ciemny PDF"
+        "description": "Przy opcji Zgodnie z motywem aplikacji strony ciemnieją, gdy aplikacja jest ciemna. W trybie jasnym wyglądają jak wydrukowane albo zachowują wybrany jasny odcień, na przykład sepię. Przycisk odwracania kolorów na pasku narzędzi podglądu ustawia tę opcję na Włączony lub Wyłączony.",
+        "label": "Tryb ciemny PDF",
+        "modes": {
+          "follow": "Zgodnie z motywem aplikacji",
+          "off": "Wyłączony",
+          "on": "Włączony"
+        }
       },
       "darkColors": {
         "label": "Kolory ciemnej strony",

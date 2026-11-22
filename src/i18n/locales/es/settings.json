@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} no está instalada, así que se usa la fuente predeterminada.",
     "preview": {
       "darkMode": {
-        "description": "Invierte los colores del PDF por omisión. Aun así puedes cambiarlos desde la barra de la vista previa.",
-        "label": "Modo oscuro del PDF"
+        "description": "Con Seguir el tema de la aplicación, las páginas se oscurecen cuando la aplicación está en modo oscuro. En modo claro se ven como impresas o conservan el tono claro que elegiste, como sepia. El botón para invertir colores de la barra de la vista previa cambia esto a Activado o Desactivado.",
+        "label": "Modo oscuro del PDF",
+        "modes": {
+          "follow": "Seguir el tema de la aplicación",
+          "off": "Desactivado",
+          "on": "Activado"
+        }
       },
       "darkColors": {
         "label": "Colores de página oscuros",

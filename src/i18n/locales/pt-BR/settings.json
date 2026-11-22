@@ -1021,8 +1021,13 @@
     "fontNotInstalled": "{{font}} não está instalada, então a fonte padrão é usada.",
     "preview": {
       "darkMode": {
-        "description": "Inverte as cores do PDF por padrão. Você ainda pode trocar as cores pela barra de ferramentas da visualização.",
-        "label": "Modo escuro no PDF"
+        "description": "Com Seguir o tema do aplicativo, as páginas escurecem quando o aplicativo está escuro. No modo claro, elas aparecem como impressas ou mantêm o tom claro que você escolheu, como sépia. O botão de inverter cores na barra de ferramentas da visualização muda isso para Ativado ou Desativado.",
+        "label": "Modo escuro no PDF",
+        "modes": {
+          "follow": "Seguir o tema do aplicativo",
+          "off": "Desativado",
+          "on": "Ativado"
+        }
       },
       "darkColors": {
         "label": "Cores escuras da página",

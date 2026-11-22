@@ -1009,8 +1009,13 @@
     "fontNotInstalled": "{{font}} chưa được cài nên phông chữ mặc định được dùng thay thế.",
     "preview": {
       "darkMode": {
-        "description": "Đảo màu PDF theo mặc định. Bạn vẫn có thể đổi màu từ thanh công cụ xem trước.",
-        "label": "Chế độ tối cho PDF"
+        "description": "Với Theo chủ đề ứng dụng, trang sẽ tối khi ứng dụng ở chế độ tối. Ở chế độ sáng, trang giữ màu như bản in, hoặc giữ tông màu sáng bạn đã chọn, chẳng hạn sepia. Nút đảo màu trên thanh công cụ xem trước sẽ chuyển tùy chọn này sang Bật hoặc Tắt.",
+        "label": "Chế độ tối cho PDF",
+        "modes": {
+          "follow": "Theo chủ đề ứng dụng",
+          "off": "Tắt",
+          "on": "Bật"
+        }
       },
       "darkColors": {
         "label": "Màu trang ở chế độ tối",

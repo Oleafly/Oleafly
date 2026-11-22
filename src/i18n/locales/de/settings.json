@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} ist nicht installiert, daher wird stattdessen die Standardschrift verwendet.",
     "preview": {
       "darkMode": {
-        "description": "PDF-Farben standardmäßig umkehren. Sie können die Farben weiterhin über die Werkzeugleiste der Vorschau umschalten.",
-        "label": "Dunkler Modus für PDFs"
+        "description": "Mit „An App-Design anpassen“ werden Seiten dunkel, wenn die App dunkel ist. Im hellen Modus sehen sie wie gedruckt aus oder behalten den hellen Farbton, den Sie gewählt haben, etwa Sepia. Die Schaltfläche zum Umkehren der Farben in der Werkzeugleiste der Vorschau stellt dies auf Ein oder Aus.",
+        "label": "Dunkler Modus für PDFs",
+        "modes": {
+          "follow": "An App-Design anpassen",
+          "off": "Aus",
+          "on": "Ein"
+        }
       },
       "darkColors": {
         "label": "Farben der dunklen Seite",

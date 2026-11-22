@@ -155,8 +155,8 @@ describe("Settings search", () => {
     await waitFor(() =>
       expect(screen.getByTestId("appearance-tab-pdf")).toHaveAttribute("aria-selected", "true"),
     );
-    const toggle = await screen.findByRole("switch", { name: "PDF dark mode" });
-    await waitFor(() => expect(toggle).toHaveAttribute("data-settings-search-hit"));
+    const row = await screen.findByTestId("settings-row-pdf-dark-mode");
+    await waitFor(() => expect(row).toHaveAttribute("data-settings-search-hit"));
     expect(screen.getByTestId("settings-section-appearance")).toHaveAttribute("aria-current", "page");
   });
 

@@ -1027,8 +1027,13 @@
     "fontNotInstalled": "Písmo {{font}} není nainstalované, proto se používá výchozí písmo.",
     "preview": {
       "darkMode": {
-        "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",
-        "label": "Tmavý režim PDF"
+        "description": "Možnost Podle motivu aplikace ztmaví stránky, když je aplikace tmavá. Ve světlém režimu vypadají jako vytištěné, nebo si ponechají světlý odstín, který jste vybrali, třeba sépiový. Tlačítko pro invertování barev na panelu nástrojů náhledu tuto volbu přepne na Zapnuto nebo Vypnuto.",
+        "label": "Tmavý režim PDF",
+        "modes": {
+          "follow": "Podle motivu aplikace",
+          "off": "Vypnuto",
+          "on": "Zapnuto"
+        }
       },
       "darkColors": {
         "label": "Barvy tmavé stránky",

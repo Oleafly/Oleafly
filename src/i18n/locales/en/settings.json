@@ -1015,8 +1015,13 @@
     "fontNotInstalled": "{{font}} isn't installed, so the default font is used instead.",
     "preview": {
       "darkMode": {
-        "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",
-        "label": "PDF dark mode"
+        "description": "Match app theme turns pages dark when the app is dark. In light mode they look as printed, or keep the light tint you picked, such as sepia. The invert button in the preview toolbar switches this to On or Off.",
+        "label": "PDF dark mode",
+        "modes": {
+          "follow": "Match app theme",
+          "off": "Off",
+          "on": "On"
+        }
       },
       "darkColors": {
         "label": "Dark page colors",

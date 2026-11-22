@@ -50,6 +50,7 @@ import {
   type EditorCursorHeight,
   type FileMoveReferences,
   EDITOR_THEMES,
+  PDF_DARK_MODES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
   TYPST_FORMATTER_INDENT_SIZES,
@@ -58,10 +59,12 @@ import {
   clampEditorFontSize,
   clampEditorLetterSpacing,
   clampEditorLineHeight,
+  followPdfDarkModeInOtherWindows,
   sectionDiffersFromDefaults,
   type AppIconId,
   type EditorLetterSpacing,
   type EditorSurface,
+  type PdfDarkMode,
   type TerminalColorThemeId,
   type TerminalCursorStyle,
   useSettingsStore,
@@ -1429,14 +1432,31 @@ function PdfPreviewTab() {
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
   const hoverPreview = useSettingsStore((state) => state.hoverPreview);
   const setHoverPreview = useSettingsStore((state) => state.setHoverPreview);
+  useEffect(followPdfDarkModeInOtherWindows, []);
 
   return (
     <div className="space-y-3">
-      <SettingsToggleRow
+      <SettingsRow
+        testId="settings-row-pdf-dark-mode"
         label={t(($) => $.settings.appearance.preview.darkMode.label)}
         description={t(($) => $.settings.appearance.preview.darkMode.description)}
-        checked={pdfDarkMode}
-        onChange={setPdfDarkMode}
+        control={
+          <Select value={pdfDarkMode} onValueChange={(value) => setPdfDarkMode(value as PdfDarkMode)}>
+            <SelectTrigger
+              className="w-[180px]"
+              aria-label={t(($) => $.settings.appearance.preview.darkMode.label)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {PDF_DARK_MODES.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {t(($) => $.settings.appearance.preview.darkMode.modes[mode])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
       <PdfDarkColorsRow />
       <SettingsToggleRow

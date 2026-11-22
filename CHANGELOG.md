@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Yuji Catadori ([@qgrav](https://github.com/qgrav)) for #484, "Support PhiTeX as a LaTeX engine".
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #428, "Incorrect regex causes missing Typst section from Document Outline", and #429, "Have section number for Typst Document Outline".
 - [@Floresiensis](https://github.com/Floresiensis) for #485, "Visual mode: change font and other settings".
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme".
 
 ### Added
 
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The command palette has Notation table, which builds a table of the symbols you define in the text, and Add chapter from another project, which copies a paper into a thesis as a chapter with its figures, definitions and bibliography and renames macros and labels that clash.
 - Settings > Appearance has a Theme picker under Appearance. Pick one theme for light mode and one for dark mode. Light mode has Oleafly, Charcoal, Ink, Quiet gray, Atom One Light, GitHub Light and Islands Light. Dark mode has Oleafly, Charcoal, Ink and Quiet gray too, plus One Dark Pro, One Dark Pro Darker, One Dark Pro Flat, GitHub Dark, Islands Dark, JetBrains Dark and Darcula. A theme sets the colors of the whole app, menus and dialogs included, and how round the corners are. Anything you set in Theme customization still wins. The accent colors now start with Theme accent, which follows the theme you picked, and any other accent you choose replaces it.
 - Notes have an outline rail like the source editor's: a short mark for each heading at the right edge of the note, with the section you're reading highlighted. Hover over it or click it to see the headings, and pick one to go there. It stays hidden when a note has fewer than two headings or no room beside the text.
+- PDF dark mode has a third choice in Settings > Appearance > PDF Preview: Match app theme. Pages go dark when the app does and look as printed again when it turns light, so dark mode at night no longer needs a second click in the PDF toolbar. Dark pages use the dark theme's page colors, which means One Dark Pro gets a One Dark page. If you picked a light tint such as sepia for light mode, light mode keeps it. Clicking the invert button in the preview toolbar sets the choice to On or Off. Off is still the default.
 - Quick capture can stay ready all the time. Turn on Keep quick capture ready in Settings > Shortcuts and Oleafly opens in the background when you sign in. Closing the window leaves Oleafly in the menu bar on macOS, or in the system tray on Windows and Linux, so the shortcut keeps working. The icon's menu has Quick capture, Open Oleafly and Quit. Linux desktops without tray support get no icon.
 
 ### Changed
@@ -38,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   GitHub only. The signature check is the same whichever address answers.
 - You can see through the quick capture window to what's behind it. On macOS it opens on the screen with the pointer, over full-screen apps too, and leaves Oleafly's main window where it was.
 - In the dark theme, dialogs, editor hover cards and switches take their colors from the theme, so Theme customization and theme files change them as well.
+- Turning PDF dark mode on or off in the preview window now does the same in the main window, and the other way round. Before, each window kept its own setting until you restarted Oleafly.
 
 ### Fixed
 
