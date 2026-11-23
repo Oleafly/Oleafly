@@ -9,6 +9,7 @@ import {
   cancelCompile,
   clearBuildDir,
   compileProject,
+  getProjectEngine,
   latexEngineInfo,
   readCompiledPdf,
   readFileContent,
@@ -94,7 +95,7 @@ import {
   readProjectSources,
   useIndexStore,
 } from "@/store/project-index";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { resolveCompileTarget } from "@/lib/tex-root";
 import { readStoredFlag, storeFlag } from "@/lib/stored-flag";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { compiledHtmlOutput, notebookOutput } from "@/lib/notebook-engines";
@@ -204,8 +205,15 @@ export function isCompileRequestIdentityCurrent(
   const files = useFilesStore.getState();
   return (
     files.projectId === identity.projectId &&
-    resolveEffectiveMainDoc().mainDoc === identity.mainDocument &&
+    resolveCompileTarget().mainDoc === identity.mainDocument &&
     projectRevisionFor(identity.projectId) === identity.projectRevision &&
+    compileIntentGeneration === identity.requestGeneration
+  );
+}
+
+export function isCompileGenerationCurrent(identity: CompileRequestIdentity): boolean {
+  return (
+    useFilesStore.getState().projectId === identity.projectId &&
     compileIntentGeneration === identity.requestGeneration
   );
 }
@@ -216,7 +224,7 @@ export function isCompileOutputStillWanted(
   const files = useFilesStore.getState();
   return (
     files.projectId === identity.projectId &&
-    resolveEffectiveMainDoc().mainDoc === identity.mainDocument &&
+    resolveCompileTarget().mainDoc === identity.mainDocument &&
     compileIntentGeneration === identity.requestGeneration
   );
 }
@@ -224,7 +232,7 @@ export function isCompileOutputStillWanted(
 function currentSourcePaths(projectId: string): string[] | null {
   const files = useFilesStore.getState();
   if (files.projectId !== projectId || files.loading) return null;
-  return currentProjectSourcePaths(resolveEffectiveMainDoc().mainDoc);
+  return currentProjectSourcePaths(resolveCompileTarget().mainDoc);
 }
 
 function samePaths(
@@ -291,7 +299,7 @@ export function isCompileCheckpointApplicable(
   return (
     checkpoint !== null &&
     useFilesStore.getState().projectId === checkpoint.projectId &&
-    resolveEffectiveMainDoc().mainDoc === checkpoint.mainDocument
+    resolveCompileTarget().mainDoc === checkpoint.mainDocument
   );
 }
 
@@ -323,6 +331,7 @@ export function compileLogCleared(state: Pick<CompileState, "clearedLog" | "log"
 
 export interface CompiledHtmlOutput {
   readonly projectId: string;
+  readonly mainDocument: string;
   readonly path: string;
   readonly builtAt: number;
 }
@@ -793,7 +802,7 @@ function showSystemPackagesNotice(projectId: string, packages: string[], info: E
 
 function maybeSuggestMissingPackages(ctx: CompileApplyContext, log: string): void {
   const { projectId } = ctx;
-  if (!isLatexmkProject(projectId) || packageInstallsRunning.has(projectId)) return;
+  if (ctx.crossFormat || !isLatexmkProject(projectId) || packageInstallsRunning.has(projectId)) return;
   const packages = missingLatexFiles(log);
   if (packages.length === 0) return;
   const gap = texDistributionGapNotice(projectId);
@@ -926,7 +935,7 @@ function maybeOfferEngineChoice(
   opening: boolean,
 ): void {
   const files = useFilesStore.getState();
-  if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
+  if (ctx.crossFormat || files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
   const classified = classifyCompileFailure(log, { bundledEngine: true });
   if (ctx.offline && offlineCacheMiss(log, classified)) {
     reportOfflineCacheMiss(ctx, missingLatexFiles(log));
@@ -953,7 +962,7 @@ function maybeOfferEngineChoice(
 
 function offerIndexGap(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
   const files = useFilesStore.getState();
-  if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
+  if (ctx.crossFormat || files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
   if (!errors.some((error) => error.code && INDEX_GAP_CODES.has(error.code))) return;
   const findings = [importCompatFinding("glossaries-index")];
   if (engineHintDismissed(ctx.projectId, findings)) return;
@@ -965,7 +974,7 @@ function pdflatexOfferForLostText(
   code: string | null | undefined,
 ): CompileOffer | null {
   const files = useFilesStore.getState();
-  if (code !== LOST_TEXT_CJK_PACKAGE_CODE) return null;
+  if (code !== LOST_TEXT_CJK_PACKAGE_CODE || ctx.crossFormat) return null;
   if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return null;
   const findings = [importCompatFinding("cjk-pdftex-package")];
   return engineHintDismissed(ctx.projectId, findings)
@@ -1199,13 +1208,18 @@ function saveFailureStopsCompile(
 }
 
 export async function saveAllForCompile(
-  options: { readonly mainDoc?: string; readonly explicit?: boolean } = {},
+  options: {
+    readonly mainDoc?: string;
+    readonly engine?: DocumentEngineDescriptor;
+    readonly explicit?: boolean;
+  } = {},
 ): Promise<void> {
   const files = useFilesStore.getState();
   try {
     await saveAllDirtyRetryingConflicts();
   } catch (error) {
-    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc, files.engine)) {
+    const engine = options.engine ?? files.engine;
+    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc, engine)) {
       throw error;
     }
     reportCompileSaveFailure("save before compile", useFilesStore.getState(), error, options.explicit);
@@ -1320,6 +1334,7 @@ interface CompileGateContext {
   readonly set: CompileSet;
   readonly get: CompileGet;
   readonly files: ReturnType<typeof useFilesStore.getState>;
+  readonly engine: DocumentEngineDescriptor;
   readonly capturedProjectId: string | null;
   readonly mainDoc: string;
   readonly intent: number;
@@ -1389,7 +1404,7 @@ function engineLoadedGate(ctx: CompileGateContext): boolean {
 }
 
 function typstVersionGate(ctx: CompileGateContext): boolean {
-  const missing = ctx.files.engine.typst_missing;
+  const missing = ctx.engine.typst_missing;
   if (!missing || !ctx.capturedProjectId) return true;
   ctx.set({
     status: "unavailable",
@@ -1403,7 +1418,7 @@ function typstVersionGate(ctx: CompileGateContext): boolean {
 }
 
 async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
-  if (ctx.files.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
+  if (ctx.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
   try {
     if (!(await ensurePandoc({ notify: ctx.origin === "explicit" }))) {
       if (!compileIdentityGate(ctx)) return false;
@@ -1469,7 +1484,7 @@ function withSharedTexNote(projectId: string | null, message: string): string {
 }
 
 async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
-  if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
+  if (ctx.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
   const engineStore = useEngineStore.getState();
   if (engineStore.installing) {
     engineStore.queueCompileAfterInstall(ctx.origin);
@@ -1521,7 +1536,7 @@ function folderLostDuringSave(projectId: string, error: unknown): boolean {
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
   if (formatsBeforeCompileSave(ctx)) await formatActiveFileBeforeCompileSave();
   try {
-    await saveAllForCompile({ mainDoc: ctx.mainDoc, explicit: ctx.origin === "explicit" });
+    await saveAllForCompile({ mainDoc: ctx.mainDoc, engine: ctx.engine, explicit: ctx.origin === "explicit" });
   } catch (e) {
     if (ctx.capturedProjectId && folderLostDuringSave(ctx.capturedProjectId, e)) {
       setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
@@ -1559,7 +1574,7 @@ function syntaxCheckFailureMessage(): string {
 
 async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Promise<boolean> {
   if (!ctx.get().checkSyntaxBeforeCompile) return true;
-  const { engine } = ctx.files;
+  const { engine } = ctx;
   if (!compileSettingsForEngine(engine).syntaxCheck || !pathUsesEngineSource(engine, ctx.mainDoc)) {
     return true;
   }
@@ -1599,17 +1614,45 @@ async function clearBuildDirGate(
   return compileIdentityGate(ctx);
 }
 
+async function engineForCompileTarget(ctx: CompileGateContext): Promise<DocumentEngineDescriptor | null> {
+  const projectId = ctx.capturedProjectId;
+  if (!projectId) return ctx.engine;
+  try {
+    const engine = await getProjectEngine(projectId, ctx.mainDoc);
+    return ctx.matchesProjectAndMain() ? engine : null;
+  } catch (error) {
+    if (!ctx.matchesProjectAndMain()) return null;
+    const message = decodeAppError(error) ? describeError(error) : String(error);
+    void logError("compile", error);
+    ctx.set({
+      status: "error",
+      phase: "idle",
+      failureReason: i18n.t(($) => $.core.compile.failedWithReason, { message }),
+      log: message,
+      lastAttemptIdentity: gateAttemptIdentity(ctx),
+    });
+    return null;
+  }
+}
+
 async function runCompileGates(
-  ctx: CompileGateContext,
+  base: CompileGateContext,
   options: RecompileOptions | undefined,
-): Promise<string | null> {
-  if (!mainDecisionGate(ctx)) return null;
-  if (!folderAvailableGate(ctx)) return null;
-  if (!mainDocumentGate(ctx)) return null;
-  if (!engineLoadedGate(ctx)) return null;
+  crossFormat: boolean,
+): Promise<{ readonly projectId: string; readonly engine: DocumentEngineDescriptor } | null> {
+  if (!mainDecisionGate(base)) return null;
+  if (!folderAvailableGate(base)) return null;
+  if (!mainDocumentGate(base)) return null;
+  if (!engineLoadedGate(base)) return null;
+  const engine = crossFormat ? await engineForCompileTarget(base) : base.engine;
+  if (engine === null) {
+    base.abortIntent();
+    return null;
+  }
+  const ctx: CompileGateContext = { ...base, engine };
   if (!typstVersionGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
-  const notebookTool = notebookPrerequisite(ctx.files.engine);
+  const notebookTool = notebookPrerequisite(ctx.engine);
   if (notebookTool && !(await notebookPrerequisiteGate(ctx, notebookTool))) return null;
   if (!(await systemTexPrerequisiteGate(ctx))) return null;
   if (!compileIdentityGate(ctx)) return null;
@@ -1631,7 +1674,7 @@ async function runCompileGates(
   if (!(await saveBeforeCompileGate(ctx))) return null;
   if (!(await syntaxCheckGate(ctx, projectId))) return null;
   if (!(await clearBuildDirGate(ctx, projectId, options?.fromScratch))) return null;
-  return projectId;
+  return { projectId, engine };
 }
 
 async function captureSnapshotIfCurrent(
@@ -1754,6 +1797,8 @@ interface CompileApplyContext {
   readonly get: CompileGet;
   readonly projectId: string;
   readonly mainDoc: string;
+  readonly engine: DocumentEngineDescriptor;
+  readonly crossFormat: boolean;
   readonly requestIdentity: CompileRequestIdentity;
   readonly checkpointAtStart: CompileSuccessCheckpoint | null;
   readonly identityStale: () => boolean;
@@ -1848,9 +1893,9 @@ function withoutUnneededT1Warning(
 async function explainedErrors(
   result: CompileResult,
   snapshot: CompileSourceSnapshot | null,
+  engineId: string,
 ): Promise<CompileError[]> {
   const errors = withoutUnneededT1Warning(explainCodedCompileErrors(result.errors), snapshot);
-  const engineId = useFilesStore.getState().engine.id;
   if (
     (engineId !== "typst" && engineId !== "calepin") ||
     !errors.some((error) => TYPST_PACKAGE_ERROR.test(error.message))
@@ -1914,7 +1959,7 @@ async function applyHtmlCompileResult(
   result: CompileResult,
   path: string,
 ): Promise<CompileResult> {
-  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot);
+  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot, ctx.engine.id);
   if (ctx.identityStale()) return result;
   let applied = false;
   ctx.set((state) => {
@@ -1934,7 +1979,7 @@ async function applyHtmlCompileResult(
       log: `${ctx.offlineNoticePrefix}${result.log}`,
       clearedLog: null,
       compileTimeMs: result.compile_time_ms ?? 0,
-      htmlOutput: { projectId: ctx.projectId, path, builtAt: Date.now() },
+      htmlOutput: { projectId: ctx.projectId, mainDocument: ctx.mainDoc, path, builtAt: Date.now() },
     };
   });
   if (applied) settleCompileNotices(ctx.projectId);
@@ -1942,7 +1987,7 @@ async function applyHtmlCompileResult(
   // read when the project opened. A document whose format changed since then
   // would keep its old PDF on screen, so read the engine again.
   const files = useFilesStore.getState();
-  if (applied && files.projectId === ctx.projectId && notebookOutput(files.engine) !== "html") {
+  if (applied && !ctx.crossFormat && files.projectId === ctx.projectId && notebookOutput(files.engine) !== "html") {
     void files.refreshEngine();
   }
   return result;
@@ -1962,7 +2007,7 @@ async function applyCompileResult(
   // still produces a best-effort PDF, and we want to keep showing it.
   const buf = result.has_pdf ? await readCompiledPdf(ctx.projectId) : null;
   const bytes = buf ? new Uint8Array(buf) : null;
-  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot);
+  const errors = await explainedErrors(result, ctx.compiledSourceSnapshot, ctx.engine.id);
   if (ctx.identityStale()) return result;
   const verified = verifiedCompileOutput(result, bytes);
   const checkpoint = compileSuccessCheckpointFor(ctx, result, verified);
@@ -2039,7 +2084,7 @@ export async function applyTypstLiveResult(live: TypstLiveResult): Promise<boole
     return (
       files.projectId === projectId &&
       files.engine.id === "typst" &&
-      resolveEffectiveMainDoc().mainDoc === mainDocument
+      resolveCompileTarget().mainDoc === mainDocument
     );
   };
   if (!stillWanted()) return false;
@@ -2050,6 +2095,8 @@ export async function applyTypstLiveResult(live: TypstLiveResult): Promise<boole
     get: useCompileStore.getState,
     projectId,
     mainDoc: mainDocument,
+    engine: useFilesStore.getState().engine,
+    crossFormat: false,
     requestIdentity: {
       projectId,
       mainDocument,
@@ -2212,6 +2259,7 @@ function maybeOfferTexSetup(ctx: CompileApplyContext, errors: readonly CompileEr
 }
 
 function maybeOfferCompilerSwitch(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
+  if (ctx.crossFormat) return;
   const params = errors.find((error) => error.code === UNICODE_ENGINE_CODE)?.params;
   const compiler = params?.compiler;
   if (compiler === "xelatex" || compiler === "lualatex") {
@@ -2230,7 +2278,7 @@ function codeNeededErrors(code: string | undefined, message: string): CompileErr
 }
 
 function maybeOfferJapaneseSupport(ctx: CompileApplyContext, code: string, names: string | undefined): void {
-  if (code !== JAPANESE_COMPILER_INSTALLABLE || !isLatexmkProject(ctx.projectId)) return;
+  if (code !== JAPANESE_COMPILER_INSTALLABLE || ctx.crossFormat || !isLatexmkProject(ctx.projectId)) return;
   const packages = (names ?? "").split(",").filter((name) => name.length > 0);
   if (packages.length > 0) {
     offerForAttempt(ctx, { kind: "tex-packages", projectId: ctx.projectId, packages });
@@ -2323,7 +2371,9 @@ function finishCompileAttempt(args: {
   if (ownsIntent && rerunQueued) {
     const origin = rerunOrigin;
     clearQueuedRerun();
-    if (!args.identityStale()) void args.get().recompile({ origin });
+    if (useFilesStore.getState().projectId === args.requestIdentity.projectId) {
+      void args.get().recompile({ origin });
+    }
   }
 }
 
@@ -2491,25 +2541,28 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       }
     };
 
-    const mainDoc = resolveEffectiveMainDoc().mainDoc;
+    const target = resolveCompileTarget();
+    const mainDoc = target.mainDoc;
+    const crossFormat = target.format !== null;
     const checkpointAtStart = get().lastCompileCheckpoint;
     const matchesProjectAndMain = () => {
       const currentFiles = useFilesStore.getState();
       return (
         activeCompileIntent === intent &&
         currentFiles.projectId === capturedProjectId &&
-        resolveEffectiveMainDoc().mainDoc === mainDoc
+        resolveCompileTarget().mainDoc === mainDoc
       );
     };
     const checkpointAdvanced = (
       current = get().lastCompileCheckpoint,
     ) => hasCompileCheckpointAdvanced(checkpointAtStart, current);
 
-    const projectId = await runCompileGates(
+    const gated = await runCompileGates(
       {
         set,
         get,
         files,
+        engine: files.engine,
         capturedProjectId,
         mainDoc,
         intent,
@@ -2519,8 +2572,10 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         abortIntent,
       },
       options,
+      crossFormat,
     );
-    if (projectId === null) return undefined;
+    if (gated === null) return undefined;
+    const { projectId, engine } = gated;
 
     const requestIdentity = identityForGeneration(
       projectId,
@@ -2538,7 +2593,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     nextIsRestart = false;
     outdatedStopRequested = false;
     const offlinePolicy = compileOfflineForEngine(
-      files.engine,
+      engine,
       useSettingsStore.getState().offline,
     );
     const offlineNoticePrefix = offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "";
@@ -2576,6 +2631,8 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       get,
       projectId,
       mainDoc,
+      engine,
+      crossFormat,
       requestIdentity,
       checkpointAtStart,
       identityStale,
@@ -2595,14 +2652,14 @@ export const useCompileStore = create<CompileState>((set, get) => ({
             offlinePolicy.offline,
             get().compileMode === "fast",
             get().stopOnFirstError,
-            activeTypstVariant(projectId, files.engine),
+            activeTypstVariant(projectId, engine),
           );
-        const result = livePreviewRoutes(get(), useFilesStore.getState(), projectId)
+        const result = !crossFormat && livePreviewRoutes(get(), useFilesStore.getState(), projectId)
           ? await compileThroughLivePreview(
               projectId,
               mainDoc,
               offlinePolicy.offline,
-              activeTypstVariant(projectId, files.engine),
+              activeTypstVariant(projectId, engine),
               origin !== "automatic" || options?.fromScratch === true,
               identityStale,
               compileOnce,

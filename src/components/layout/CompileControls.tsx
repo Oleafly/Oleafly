@@ -34,7 +34,9 @@ import {
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { effectiveMainDocMissing, useEffectiveMainDoc, type TexRootReason } from "@/lib/tex-root";
+import { effectiveMainDocMissing, useCompileTarget, type CompileTarget } from "@/lib/tex-root";
+import { projectEngineLabel } from "@/components/library/project-search";
+import { changeMainDocument } from "@/store/main-document";
 import { useCompileRootStore } from "@/store/compile-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
@@ -52,7 +54,7 @@ import { compileSettingsForEngine } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useCoauthorsChangedSince } from "@/lib/live-file-mirror";
 import { logError } from "@/lib/log";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
@@ -64,10 +66,13 @@ import {
 
 function texRootTooltip(
   t: TFunction<["shell"]>,
-  reason: TexRootReason | null,
+  reason: CompileTarget["reason"],
   path: string,
   file: string,
 ): string {
+  if (reason === "format") {
+    return t(($) => $.shell.compile.texRootFormat, { path, format: projectEngineLabel({ engine: "", main_doc: path }) });
+  }
   if (reason === "document") return t(($) => $.shell.compile.texRootDocument, { path });
   if (reason === "include") return t(($) => $.shell.compile.texRootInclude, { path, file });
   return t(($) => $.shell.compile.texRootOverride, { path, file });
@@ -75,7 +80,7 @@ function texRootTooltip(
 
 function TexRootIndicator() {
   const { t } = useTranslation(["shell"]);
-  const [mainDoc, overriddenBy, reason, brokenIn, brokenTarget, brokenReason] = useEffectiveMainDoc(
+  const [mainDoc, overriddenBy, reason, brokenIn, brokenTarget, brokenReason] = useCompileTarget(
     (effective) =>
       [
         effective.mainDoc,
@@ -160,7 +165,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
     (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
   );
   const { t } = useTranslation(["shell"]);
-  const noMainDocument = useEffectiveMainDoc(effectiveMainDocMissing);
+  const noMainDocument = useCompileTarget(effectiveMainDocMissing);
   const followOpenFile = useCompileRootStore((s) => s.followOpenFile);
   const setFollowOpenFile = useCompileRootStore((s) => s.setFollowOpenFile);
   const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
@@ -203,6 +208,11 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       setStopOnFirstError={setStopOnFirstError}
       followOpenFile={followOpenFile}
       setFollowOpenFile={setFollowOpenFile}
+      onChangeMainDocument={
+        sharedSettingsLocked
+          ? undefined
+          : () => void changeMainDocument().catch((error: unknown) => notifyError("list the documents", error))
+      }
       status={status}
       compileRevision={compileRevision}
       recompile={recompileWithPreview}
@@ -247,6 +257,7 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
       livePreview?: LivePreviewState;
       followOpenFile?: boolean;
       setFollowOpenFile?: (follow: boolean) => void;
+      onChangeMainDocument?: () => void;
     };
 
 const TYPST_NO_VARIANT = "\u0000none";
@@ -705,7 +716,7 @@ export function CompileControlsView({
   blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, coauthorsChanged = false, onTrustForSystemTex,
   typstToolchain = null, setTypstVersion, onOptionsOpen,
   typstVariant = null, setTypstVariant, setTypstOptions, setCodeExecution, livePreview,
-  followOpenFile = true, setFollowOpenFile,
+  followOpenFile = true, setFollowOpenFile, onChangeMainDocument,
 }: Readonly<CompileControlsViewProps>) {
   const { t } = useTranslation(["shell", "errors"]);
   const blocked = blockedReason !== null;
@@ -810,7 +821,7 @@ export function CompileControlsView({
           livePreview={livePreview}
         />
 
-        {engine.source_format === "latex" && setFollowOpenFile && (
+        {setFollowOpenFile && (
           <>
             <DropdownMenuSeparator />
             <MenuGroupLabel
@@ -828,6 +839,15 @@ export function CompileControlsView({
                 {t(($) => $.shell.compile.target.main)}
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
+            {onChangeMainDocument && (
+              <DropdownMenuItem
+                disabled={!engineLoaded}
+                onSelect={onChangeMainDocument}
+                data-testid="compile-change-main"
+              >
+                {t(($) => $.shell.compile.target.change)}
+              </DropdownMenuItem>
+            )}
           </>
         )}
 

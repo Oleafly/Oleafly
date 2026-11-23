@@ -8,6 +8,7 @@ import {
   type LivePreviewState,
 } from "@/store/compile";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
+import { useCompileRootStore } from "@/store/compile-root";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
@@ -20,14 +21,14 @@ import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
 import { mainDocumentMissing } from "@/lib/main-document";
-import { effectiveMainDocMissing } from "@/lib/tex-root";
+import { effectiveMainDocMissing, resolveCompileTarget } from "@/lib/tex-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
 import type { TypstOptionsUpdate } from "@/lib/typst-options";
 import { applyShellEscape, offerTexSetupAfterSwitch } from "@/lib/latex-compile-actions";
-import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
+import { isCalepinEngine, isNotebookEngine, shownHtmlOutput } from "@/lib/notebook-engines";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
 export interface PreviewWorkspaceSnapshot extends
@@ -82,12 +83,14 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       compileTimeMs: compile.compileTimeMs, compileRevision: compile.lastCompileCheckpoint?.outputRevision ?? 0,
       autoCompile: compile.autoCompile, compileMode: compile.compileMode,
       checkSyntaxBeforeCompile: compile.checkSyntaxBeforeCompile, stopOnFirstError: compile.stopOnFirstError,
-      noMainDocument: effectiveMainDocMissing(),
+      noMainDocument: effectiveMainDocMissing(resolveCompileTarget()),
       systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
       typstVariant: activeTypstVariant(projectId, files.engine),
       livePreview: compile.livePreview,
       ...(compileLogCleared(compile) ? { logCleared: true } : {}),
-      ...(compile.htmlOutput?.projectId === projectId ? { htmlOutput: compile.htmlOutput } : {}),
+      ...(shownHtmlOutput(compile.htmlOutput, files, resolveCompileTarget().mainDoc)
+        ? { htmlOutput: compile.htmlOutput }
+        : {}),
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
@@ -203,12 +206,16 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     timer = setTimeout(() => { timer = undefined; publish(); }, 100);
   };
   const offCompile = useCompileStore.subscribe(schedule);
+  const offRoots = useCompileRootStore.subscribe(schedule);
   const offDetached = usePreviewDetachedStore.subscribe(schedule);
-  let noMainDocument = effectiveMainDocMissing();
+  let noMainDocument = effectiveMainDocMissing(resolveCompileTarget());
+  let compileTarget = resolveCompileTarget().mainDoc;
   const offFiles = useFilesStore.subscribe((next, previous) => {
-    const missing = effectiveMainDocMissing();
-    const missingChanged = missing !== noMainDocument;
+    const target = resolveCompileTarget();
+    const missing = effectiveMainDocMissing(target);
+    const missingChanged = missing !== noMainDocument || target.mainDoc !== compileTarget;
     noMainDocument = missing;
+    compileTarget = target.mainDoc;
     if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc ||
       next.projectName !== previous.projectName || missingChanged ||
       mainDocumentMissing(next) !== mainDocumentMissing(previous)) schedule();
@@ -218,5 +225,5 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     if (folderIsRestricted(next, projectId) !== folderIsRestricted(previous, projectId)) schedule();
   });
   const offVariant = useTypstVariantStore.subscribe(schedule);
-  return () => { offRequest(); offCompile(); offDetached(); offFiles(); offAccess(); offVariant(); clearTimeout(timer); };
+  return () => { offRequest(); offCompile(); offRoots(); offDetached(); offFiles(); offAccess(); offVariant(); clearTimeout(timer); };
 }

@@ -510,11 +510,13 @@
     "coauthorsChanged": "Cambiado por coautores desde tu última compilación",
     "texRootDocument": "raíz: {{path}} (tiene su propio \\documentclass)",
     "texRootInclude": "raíz: {{path}} (incluye {{file}})",
+    "texRootFormat": "raíz: {{path}} (un documento {{format}}, compilado con su propio motor)",
     "target": {
       "title": "Destino de compilación",
-      "help": "Con Seguir el archivo abierto, un archivo con su propio \\documentclass se compila por sí solo. Un capítulo o una sección compila el documento que lo incluye. Los demás archivos compilan el documento principal. Un comentario % !TEX root siempre tiene prioridad.",
+      "help": "Con Seguir el archivo abierto, un archivo con su propio \\documentclass se compila por sí solo. Un capítulo o una sección compila el documento que lo incluye. Un documento Markdown, Typst o Quarto se compila por sí solo con su propio motor cuando el proyecto está en otro formato. Los demás archivos compilan el documento principal. Un comentario % !TEX root siempre tiene prioridad.",
       "open": "Seguir el archivo abierto",
-      "main": "Siempre el documento principal"
+      "main": "Siempre el documento principal",
+      "change": "Cambiar documento principal…"
     }
   },
   "datePicker": {
@@ -652,6 +654,7 @@
   },
   "codeExecution": {
     "allow": "Permitir código en este proyecto",
+    "followed": "{{name}} tiene que ejecutar código, y el código solo se ejecuta para el documento principal. Haz que {{name}} sea el documento principal y luego permite el código.",
     "needed": "Este documento tiene que ejecutar su código para generarse, y el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto.",
     "skipped": "El código de este documento no se ejecutó porque el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto.",
     "storedResults": "El PDF muestra resultados de código guardados de una ejecución anterior porque el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto."
@@ -777,6 +780,9 @@
       "open": "Abrir",
       "browse": "Solo explorar archivos",
       "bestMatch": "Mejor opción",
+      "current": "Actual",
+      "changeDescription": "Al compilar se genera el documento principal cuando el archivo abierto no es un documento propio ni parte de uno. Elige un documento en otro formato y el proyecto cambiará a ese formato.",
+      "use": "Usar como documento principal",
       "empty": "Oleafly no encontró documentos aquí. Haz clic derecho en un archivo del árbol de archivos y elige Establecer como documento principal.",
       "truncated": "Esta carpeta es grande, así que Oleafly dejó de buscar antes de tiempo. Puede que falten algunos documentos en la lista.",
       "openFailed": "No se pudo establecer {{path}} como documento principal."
@@ -802,6 +808,7 @@
       "has_bibliography": "Tiene bibliografía",
       "no_begin_document": "Sin \\begin{document}",
       "standalone_figure": "Figura independiente",
+      "notebook_output": "Generado por Quarto a partir de un cuaderno",
       "placeholder": "Aún no descargado"
     },
     "noMain": "Todavía no hay documento principal. Elige un archivo y selecciona Establecer como documento principal.",

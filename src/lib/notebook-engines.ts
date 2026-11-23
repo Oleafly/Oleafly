@@ -30,6 +30,15 @@ export function notebookOutput(engine: DocumentEngineDescriptor | null | undefin
   return output === "html" ? "html" : "pdf";
 }
 
+export function shownHtmlOutput<T extends { readonly projectId: string; readonly mainDocument: string }>(
+  output: T | null,
+  files: { readonly projectId: string | null; readonly mainDoc: string; readonly engine: DocumentEngineDescriptor },
+  target: string,
+): T | null {
+  if (output === null || output.projectId !== files.projectId || output.mainDocument !== target) return null;
+  return notebookOutput(files.engine) === "html" || output.mainDocument !== files.mainDoc ? output : null;
+}
+
 export function compiledHtmlOutput(result: CompileResult | null | undefined): string | null {
   const output = (result as { html_output?: unknown } | null | undefined)?.html_output;
   return typeof output === "string" && output.length > 0 ? output : null;

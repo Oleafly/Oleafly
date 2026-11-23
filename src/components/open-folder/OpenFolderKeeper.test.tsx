@@ -226,6 +226,18 @@ describe("OpenFolderKeeper", () => {
     expect(mocks.setShowTree).toHaveBeenCalledWith(true);
   });
 
+  it("keeps the picker open without moving the sidebar when the main document is being changed", async () => {
+    render(<OpenFolderKeeper />);
+    await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });
+    act(() =>
+      useOpenFolderStore
+        .getState()
+        .present({ project_id: "linked-a", file: null, detection: detection("ask", "main.tex") }, true),
+    );
+    expect(useOpenFolderStore.getState().opened).not.toBeNull();
+    expect(mocks.setShowTree).not.toHaveBeenCalled();
+  });
+
   it("leaves the settings alone on later edits once the tree is already showing", async () => {
     render(<OpenFolderKeeper />);
     await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });

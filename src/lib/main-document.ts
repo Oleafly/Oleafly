@@ -1,17 +1,44 @@
 import type { FileEntry, ManifestHome } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
-import type { DetectionCandidate, DetectionReason, DocumentKind } from "@/lib/folder-detection";
+import { basename } from "@/lib/path-utils";
+import type { DetectionCandidate, DetectionReason, DocumentKind, SourceFamily } from "@/lib/folder-detection";
 
-export const ALL_MAIN_EXTENSIONS: readonly string[] = [
-  "tex",
-  "ltx",
-  "latex",
-  "typ",
-  "md",
-  "markdown",
-  "qmd",
-  "rmd",
-];
+const MAIN_FAMILIES: Readonly<Record<string, SourceFamily>> = {
+  tex: "latex",
+  ltx: "latex",
+  latex: "latex",
+  typ: "typst",
+  md: "markdown",
+  markdown: "markdown",
+  qmd: "quarto",
+  rmd: "quarto",
+};
+
+export const ALL_MAIN_EXTENSIONS: readonly string[] = Object.keys(MAIN_FAMILIES);
+
+const REPOSITORY_NOTES: ReadonlySet<string> = new Set([
+  "readme",
+  "changelog",
+  "license",
+  "licence",
+  "contributing",
+  "code_of_conduct",
+  "security",
+  "agents",
+  "claude",
+  "gemini",
+]);
+
+export function documentFamily(path: string): SourceFamily | null {
+  const name = basename(path);
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? (MAIN_FAMILIES[name.slice(dot + 1).toLowerCase()] ?? null) : null;
+}
+
+export function isRepositoryNote(path: string): boolean {
+  const name = basename(path).toLowerCase();
+  return REPOSITORY_NOTES.has(name.split(".")[0] ?? "");
+}
 
 const REASON_ORDER: readonly DetectionReason[] = [
   "declared",
@@ -22,6 +49,7 @@ const REASON_ORDER: readonly DetectionReason[] = [
   "has_bibliography",
   "standalone_figure",
   "no_begin_document",
+  "notebook_output",
   "placeholder",
 ];
 
@@ -117,6 +145,8 @@ function reasonLabel(reason: DetectionReason): string {
       return i18n.t(($) => $.shell.openedFolder.reason.standalone_figure);
     case "no_begin_document":
       return i18n.t(($) => $.shell.openedFolder.reason.no_begin_document);
+    case "notebook_output":
+      return i18n.t(($) => $.shell.openedFolder.reason.notebook_output);
     default:
       return i18n.t(($) => $.shell.openedFolder.reason.placeholder);
   }

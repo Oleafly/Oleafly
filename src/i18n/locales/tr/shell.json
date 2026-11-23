@@ -509,11 +509,13 @@
     "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi",
     "texRootDocument": "kök: {{path}} (kendi \\documentclass komutu var)",
     "texRootInclude": "kök: {{path}} ({{file}} dosyasını içeriyor)",
+    "texRootFormat": "kök: {{path}} (kendi motoruyla derlenen bir {{format}} belgesi)",
     "target": {
       "title": "Derleme hedefi",
-      "help": "Açık dosyayı izle seçiliyken kendi \\documentclass komutu olan bir dosya tek başına derlenir. Bir bölüm, onu içeren belgeyi derler. Diğer dosyalar ana belgeyi derler. % !TEX root yorumu her zaman önceliklidir.",
+      "help": "Açık dosyayı izle seçiliyken kendi \\documentclass komutu olan bir dosya tek başına derlenir. Bir bölüm, onu içeren belgeyi derler. Proje başka bir biçimdeyse Markdown, Typst veya Quarto belgesi kendi motoruyla tek başına derlenir. Diğer dosyalar ana belgeyi derler. % !TEX root yorumu her zaman önceliklidir.",
       "open": "Açık dosyayı izle",
-      "main": "Her zaman ana belge"
+      "main": "Her zaman ana belge",
+      "change": "Ana belgeyi değiştir…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Bu projede kod çalıştırmaya izin ver",
+    "followed": "{{name}} kod çalıştırmalı, ancak kod yalnızca ana belge için çalışır. {{name}} belgesini ana belge yapın, ardından onun için koda izin verin.",
     "needed": "Bu belgenin derlenmesi için kodunun çalışması gerekiyor, ancak bu projede kod kapalı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
     "skipped": "Bu projede kod kapalı olduğu için bu belgedeki kod çalışmadı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
     "storedResults": "Bu projede kod kapalı olduğu için PDF, önceki bir çalıştırmadan kaydedilmiş kod sonuçlarını gösteriyor. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin."
@@ -775,6 +778,9 @@
       "open": "Aç",
       "browse": "Yalnızca dosyalara göz at",
       "bestMatch": "En iyi eşleşme",
+      "current": "Geçerli",
+      "changeDescription": "Açık dosya ne kendi başına bir belge ne de bir belgenin parçasıysa ana belge derlenir. Başka biçimde bir belge seçerseniz proje o biçime geçer.",
+      "use": "Ana belge olarak kullan",
       "empty": "Oleafly burada belge bulamadı. Dosya ağacında bir dosyaya sağ tıklayıp Ana belge olarak ayarla seçeneğini seçin.",
       "truncated": "Bu klasör büyük olduğu için Oleafly aramayı erken bıraktı. Bazı belgeler listede olmayabilir.",
       "openFailed": "{{path}} ana belge yapılamadı."
@@ -800,6 +806,7 @@
       "has_bibliography": "Kaynakçası var",
       "no_begin_document": "\\begin{document} yok",
       "standalone_figure": "Bağımsız şekil",
+      "notebook_output": "Quarto tarafından bir not defterinden üretildi",
       "placeholder": "Henüz indirilmedi"
     },
     "noMain": "Henüz ana belge yok. Bir dosya seçip Ana belge olarak ayarla seçeneğini seçin.",

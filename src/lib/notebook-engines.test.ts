@@ -9,6 +9,7 @@ import {
   isQuartoSourcePath,
   notebookEngineId,
   notebookOutput,
+  shownHtmlOutput,
   usesCalepin,
 } from "./notebook-engines";
 
@@ -79,6 +80,25 @@ describe("compiled HTML output", () => {
     expect(compiledHtmlOutput(result({ html_output: "" }))).toBeNull();
     expect(compiledHtmlOutput(result({ html_output: 42 }))).toBeNull();
     expect(compiledHtmlOutput(null)).toBeNull();
+  });
+});
+
+describe("the web page the preview shows", () => {
+  const files = { projectId: "p1", mainDoc: "paper.tex", engine: engine("latex") };
+  const page = { projectId: "p1", mainDocument: "slides.qmd" };
+
+  it("shows a page from another format only while its document is the compile target", () => {
+    expect(shownHtmlOutput(page, files, "slides.qmd")).toBe(page);
+    expect(shownHtmlOutput(page, files, "paper.tex")).toBeNull();
+    expect(shownHtmlOutput({ ...page, projectId: "other" }, files, "slides.qmd")).toBeNull();
+    expect(shownHtmlOutput(null, files, "slides.qmd")).toBeNull();
+  });
+
+  it("shows the main document's page only while the project builds web pages", () => {
+    const main = { projectId: "p1", mainDocument: "report.qmd" };
+    const quarto = { projectId: "p1", mainDoc: "report.qmd", engine: engine("quarto", { notebook_output: "html" }) };
+    expect(shownHtmlOutput(main, quarto, "report.qmd")).toBe(main);
+    expect(shownHtmlOutput(main, { ...quarto, engine: engine("quarto", { notebook_output: "pdf" }) }, "report.qmd")).toBeNull();
   });
 });
 

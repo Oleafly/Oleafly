@@ -52,6 +52,7 @@ export interface CompileToolOutcome {
   stopped?: boolean;
   reason?: string | null;
   offer?: string | null;
+  document?: string | null;
 }
 
 export interface LastCompileFailure {
@@ -212,6 +213,7 @@ function compileFindings(result: CompileToolOutcome | null | undefined): Record<
   if (result?.stopped) findings.stopped = true;
   if (result?.reason) findings.reason = result.reason;
   if (result?.offer) findings.offer = result.offer;
+  if (result?.document) findings.document = result.document;
   return findings;
 }
 
@@ -720,7 +722,7 @@ export function createOleaflyTools(
 
     compile: {
       description:
-        "Compile the current document project to PDF with its selected engine. Persists the active editor file first, runs the build, and returns the outcome. Always check `success`, `errors` and `reason`. If errors remain, read them, fix the file, then compile again until success is true. If `reason` is set, the build could not run or needs something outside the source (`offer` names the fix the app offers): tell the user and do not edit the source for it. `diagnostics` lists warnings from a finished build. `stopped` means the compile was stopped on request.",
+        "Compile the current document project to PDF with its selected engine. Persists the active editor file first, runs the build, and returns the outcome. Always check `success`, `errors` and `reason`. If errors remain, read them, fix the file, then compile again until success is true. If `reason` is set, the build could not run or needs something outside the source (`offer` names the fix the app offers): tell the user and do not edit the source for it. `diagnostics` lists warnings from a finished build. `stopped` means the compile was stopped on request. `document` names the file that was built: when the compile target follows the open file, that is the open document rather than the main document, so check it before you trust a result for the file you changed.",
       inputSchema: {
         type: "object",
         properties: {},

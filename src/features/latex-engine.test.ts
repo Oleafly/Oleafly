@@ -50,7 +50,7 @@ vi.mock("@/store/compile", () => ({
   beginCompileRequestIdentity: mocks.beginCompileRequestIdentity,
   captureCompileSourceSnapshot: mocks.captureCompileSourceSnapshot,
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
-  isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
+  isCompileGenerationCurrent: mocks.isCompileOutputStillWanted,
   offerPackagesForTaggedCompile: mocks.offerPackagesForTaggedCompile,
   reportCompileSaveFailure: mocks.reportCompileSaveFailure,
   compileSaveFailureReason: (error: unknown) => mocks.compileSaveFailureReason(error),

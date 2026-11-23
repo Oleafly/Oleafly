@@ -58,10 +58,10 @@ pub use compile_log::{
 };
 pub use detect::{
     compile_dir_for, declared_tex_flavor, detect_main_document, project_tex_flavor,
-    tex_magic_comments, typst_uses_calepin, Candidate, Decision, DeclaredFlavorSource,
-    DetectLimits, DetectOptions, Detection, DetectionSource, DocumentKind, Reason, SourceFamily,
-    TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES,
-    DETECT_MAX_SOURCES,
+    rank_main_documents, tex_magic_comments, typst_uses_calepin, Candidate, Decision,
+    DeclaredFlavorSource, DetectLimits, DetectOptions, Detection, DetectionSource, DocumentKind,
+    Reason, SourceFamily, TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH,
+    DETECT_MAX_ENTRIES, DETECT_MAX_SOURCES,
 };
 #[cfg(windows)]
 pub use engine_temp::long_path_name;

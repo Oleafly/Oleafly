@@ -41,9 +41,9 @@ import {
   type CompileStatus,
 } from "@/store/compile";
 import { CompileOfferButton } from "./CompileOfferButton";
-import { notebookOutput } from "@/lib/notebook-engines";
+import { notebookOutput, shownHtmlOutput } from "@/lib/notebook-engines";
 import { useFilesStore } from "@/store/files";
-import { mainDocumentMissing } from "@/lib/main-document";
+import { effectiveMainDocMissing, useCompileTarget } from "@/lib/tex-root";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
@@ -686,12 +686,14 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const htmlOutput = useCompileStore((state) => state.htmlOutput);
   const projectId = useFilesStore((s) => s.projectId);
   const htmlEngine = useFilesStore((s) => notebookOutput(s.engine) === "html");
+  const projectEngine = useFilesStore((s) => s.engine);
+  const compileTarget = useCompileTarget((target) => target.mainDoc);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const projectLoading = useFilesStore((s) => s.loading);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const noMainDocument = useFilesStore(mainDocumentMissing);
+  const noMainDocument = useCompileTarget(effectiveMainDocMissing);
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
   const viewMode = useSettingsStore((state) => state.viewMode);
@@ -872,15 +874,17 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const [annotationSlot, setAnnotationSlot] = useState<HTMLDivElement | null>(null);
   const [annotations, setAnnotations] = useState<PdfAnnotationsView | null>(null);
   const displayedBytes = viewerDocument?.bytes ?? null;
-  const htmlBuiltAt =
-    htmlEngine && htmlOutput !== null && htmlOutput.projectId === projectId
-      ? htmlOutput.builtAt
-      : null;
+  const shownHtml = shownHtmlOutput(htmlOutput, { projectId, mainDoc, engine: projectEngine }, compileTarget);
+  const htmlBuiltAt = shownHtml?.builtAt ?? null;
   const showHtmlOutput =
     projectId !== null &&
     !noMainDocument &&
     (htmlBuiltAt !== null ||
-      (htmlEngine && !displayedBytes && status !== "error" && status !== "unavailable"));
+      (htmlEngine &&
+        compileTarget === mainDoc &&
+        !displayedBytes &&
+        status !== "error" &&
+        status !== "unavailable"));
   const shownBytes = showHtmlOutput ? null : displayedBytes;
   const staleAnnouncement = displayedCheckpoint
     ? t(($) => $.preview.stale.explanation)
@@ -1232,7 +1236,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onSettings={() => useSettingsStore.getState().openSettingsAt("appearance", "pdf")}
           onOpenInBrowser={
             showHtmlOutput && htmlBuiltAt !== null && projectId
-              ? () => void openHtmlInBrowser(projectId)
+              ? () => void openHtmlInBrowser(projectId, shownHtml?.mainDocument)
               : undefined
           }
           onPresent={(mode) =>
@@ -1399,6 +1403,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         <Suspense fallback={null}>
           <HtmlOutputPanel
             projectId={projectId}
+            mainDocument={shownHtml?.mainDocument}
             builtAt={htmlBuiltAt}
             compiling={status === "compiling"}
             onCompile={() => void recompile()}

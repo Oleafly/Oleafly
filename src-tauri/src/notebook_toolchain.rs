@@ -829,13 +829,22 @@ fn compiled_html_in(build: &Path, document: Option<&Path>) -> Option<PathBuf> {
         .find(|html| is_plain_file(html))
 }
 
-pub(crate) fn compiled_html(project_id: &str) -> Result<PathBuf, String> {
+pub(crate) fn compiled_html(
+    project_id: &str,
+    main_document: Option<&str>,
+) -> Result<PathBuf, String> {
     let build = crate::paths::existing_build_dir(project_id)?
         .ok_or_else(|| String::from(AppError::new("notebook.no_html_output")))?;
-    let document = crate::project::read_meta(project_id)
-        .ok()
-        .zip(crate::paths::project_dir(project_id).ok())
-        .map(|(meta, root)| root.join(meta.main_doc));
+    let document = match main_document {
+        Some(main_document) => Some(crate::sandbox::resolve_in_project(
+            project_id,
+            main_document,
+        )?),
+        None => crate::project::read_meta(project_id)
+            .ok()
+            .zip(crate::paths::project_dir(project_id).ok())
+            .map(|(meta, root)| root.join(meta.main_doc)),
+    };
     compiled_html_in(&build, document.as_deref())
         .ok_or_else(|| String::from(AppError::new("notebook.no_html_output")))
 }
@@ -902,8 +911,11 @@ pub async fn remove_notebook_tool(tool: String) -> Result<NotebookToolchainStatu
 }
 
 #[tauri::command]
-pub async fn open_compiled_html(project_id: String) -> Result<(), String> {
-    let html = blocking(move || compiled_html(&project_id)).await?;
+pub async fn open_compiled_html(
+    project_id: String,
+    main_document: Option<String>,
+) -> Result<(), String> {
+    let html = blocking(move || compiled_html(&project_id, main_document.as_deref())).await?;
     open_output_in_browser(&html)
         .map_err(|error| String::from(AppError::new("notebook.open_html_failed").detail(error)))
 }

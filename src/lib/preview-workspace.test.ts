@@ -275,8 +275,9 @@ describe("detached compile commands", () => {
   });
 
   it("tells the detached window about the web page this project built, and not another's", async () => {
-    const page = { projectId: "current", path: "/current/.oleafly/build/report.html", builtAt: 1 };
+    const page = { projectId: "current", mainDocument: "main.tex", path: "/current/.oleafly/build/report.html", builtAt: 1 };
     mocks.htmlOutput = page;
+    mocks.files = { engine: { id: "quarto", label: "Quarto", notebook_output: "html" } };
     let cleanup = await startPreviewWorkspaceBridge();
     mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
     expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.objectContaining({ htmlOutput: page }));

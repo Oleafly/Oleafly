@@ -89,6 +89,7 @@ import {
   settleOpenCompile,
   shouldCompileOnOpen,
 } from "@/lib/open-compile";
+import { resolveCompileTarget } from "@/lib/tex-root";
 import { useGitStatusStore } from "@/store/git-status";
 import { forwardFromCursor } from "@/features/synctex";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
@@ -1264,6 +1265,7 @@ function OpenCompileKeeper() {
         {
           projectId: files.projectId,
           mainDocument: files.mainDoc,
+          compileTarget: resolveCompileTarget().mainDoc,
           loading: files.loading,
           analysisProjectId: analysis.projectId,
           analysisProjectRevision: analysis.projectRevision,

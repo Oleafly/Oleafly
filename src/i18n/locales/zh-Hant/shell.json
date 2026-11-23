@@ -508,11 +508,13 @@
     "coauthorsChanged": "自上次編譯以來共同作者有變更",
     "texRootDocument": "根檔案：{{path}}（它有自己的 \\documentclass）",
     "texRootInclude": "根檔案：{{path}}（它包含 {{file}}）",
+    "texRootFormat": "根檔案：{{path}}（{{format}} 文件，用自己的引擎編譯）",
     "target": {
       "title": "編譯目標",
-      "help": "選擇「跟隨開啟的檔案」時，有自己 \\documentclass 的檔案會單獨編譯。章節檔案會編譯包含它的文件。其他檔案編譯主要文件。% !TEX root 註解一律優先。",
+      "help": "選擇「跟隨開啟的檔案」時，有自己 \\documentclass 的檔案會單獨編譯。章節檔案會編譯包含它的文件。專案是其他格式時，Markdown、Typst 或 Quarto 文件會用各自的引擎單獨編譯。其他檔案編譯主要文件。% !TEX root 註解一律優先。",
       "open": "跟隨開啟的檔案",
-      "main": "一律編譯主要文件"
+      "main": "一律編譯主要文件",
+      "change": "變更主要文件…"
     }
   },
   "datePicker": {
@@ -648,6 +650,7 @@
   },
   "codeExecution": {
     "allow": "在此專案中允許程式碼",
+    "followed": "{{name}} 需要執行程式碼，而程式碼只會為主要文件執行。請先把 {{name}} 設為主要文件，再為它允許程式碼。",
     "needed": "這份文件需要執行其中的程式碼才能建置，但此專案的程式碼已關閉。只有在你信任專案中的每個檔案時，才允許程式碼。",
     "skipped": "此專案的程式碼已關閉，因此這份文件中的程式碼沒有執行。只有在你信任專案中的每個檔案時，才允許程式碼。",
     "storedResults": "此專案的程式碼已關閉，因此 PDF 顯示的是先前執行時儲存的程式碼結果。只有在你信任專案中的每個檔案時，才允許程式碼。"
@@ -773,6 +776,9 @@
       "open": "開啟",
       "browse": "只瀏覽檔案",
       "bestMatch": "最佳選擇",
+      "current": "目前",
+      "changeDescription": "開啟的檔案既不是獨立文件，也不是某份文件的一部分時，會編譯主要文件。選擇其他格式的文件，專案就會切換到該格式。",
+      "use": "設為主要文件",
       "empty": "Oleafly 在這裡找不到文件。請在檔案樹中以右鍵按一下檔案，然後選擇「設為主要文件」。",
       "truncated": "這個資料夾很大，所以 Oleafly 提早停止尋找。部分文件可能沒有列出。",
       "openFailed": "無法將 {{path}} 設為主要文件。"
@@ -798,6 +804,7 @@
       "has_bibliography": "含有參考文獻",
       "no_begin_document": "沒有 \\begin{document}",
       "standalone_figure": "獨立圖形",
+      "notebook_output": "由 Quarto 從筆記本產生",
       "placeholder": "尚未下載"
     },
     "noMain": "還沒有主要文件。請選擇一個檔案，然後選擇「設為主要文件」。",

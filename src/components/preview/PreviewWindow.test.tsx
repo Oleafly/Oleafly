@@ -594,7 +594,7 @@ describe("detached preview of a notebook", () => {
     status: "success", log: "", errors: [], diagnostics: null, compileTimeMs: 12,
     compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
     noMainDocument: false, systemTexLocked: false,
-    htmlOutput: { projectId: "alpha", path: "/alpha/.oleafly/build/report.html", builtAt: Date.UTC(2026, 9, 24, 9) },
+    htmlOutput: { projectId: "alpha", mainDocument: "report.qmd", path: "/alpha/.oleafly/build/report.html", builtAt: Date.UTC(2026, 9, 24, 9) },
   };
 
   it("shows the built page, opens it in the browser and sends the code choice to the main window", async () => {
@@ -608,7 +608,7 @@ describe("detached preview of a notebook", () => {
       `http://127.0.0.1:4321/0123abcd/report.html?v=${Date.UTC(2026, 9, 24, 9)}`,
     );
     await user.click(screen.getByRole("button", { name: enPreview.html.open }));
-    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("alpha");
+    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("alpha", "report.qmd");
 
     await user.click(screen.getByLabelText(enShell.compile.options));
     const menu = await screen.findByRole("menu");

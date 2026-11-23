@@ -79,18 +79,25 @@ pub fn app_version() -> &'static str {
 #[tauri::command]
 pub async fn project_engine(
     project_id: String,
+    root: Option<String>,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
-    tauri::async_runtime::spawn_blocking(move || project_engine_sync(project_id))
+    tauri::async_runtime::spawn_blocking(move || project_engine_sync(project_id, root))
         .await
         .map_err(|error| error.to_string())?
 }
 
 fn project_engine_sync(
     project_id: String,
+    root: Option<String>,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let meta =
-        crate::trust::restrict_compile_meta(&project_id, crate::project::read_meta(&project_id)?)?;
+    let meta = match root {
+        Some(root) => crate::project::read_compile_root(&project_id, &root)?.1,
+        None => crate::trust::restrict_compile_meta(
+            &project_id,
+            crate::project::read_meta(&project_id)?,
+        )?,
+    };
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     crate::typst_toolchain::describe_project(&mut descriptor, &meta);
     crate::typst_options::describe(&mut descriptor, &project_id, &meta);
@@ -439,6 +446,7 @@ pub async fn compile_project(
     drop(worktree);
     let MainCompile {
         meta,
+        root,
         engine,
         project_dir,
         build_dir,
@@ -469,7 +477,7 @@ pub async fn compile_project(
         result
             .log
             .push_str(&format!("\nOleafly rejected the compile output: {error}"));
-        crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
+        crate::logsafe::build_finished(&root.engine, &result, &project_id, &main_doc);
         return Ok(result);
     }
     let stopped = cancel_scope.finish();
@@ -496,27 +504,30 @@ pub async fn compile_project(
         record_compile_output(CompiledRecord {
             project_id: project_id.clone(),
             main_doc: main_doc.clone(),
-            engine: meta.engine.clone(),
+            engine: root.engine.clone(),
             output_id: result.output_id.clone(),
             output_revision: result.output_revision,
             compile_time_ms: result.compile_time_ms,
             log: result.log.clone(),
         });
-        crate::checkpoint_publication::schedule_after_successful_compile(
-            &app,
-            &project_id,
-            &project_dir,
-            &meta.engine,
-            &meta.main_doc,
-            &toolchain_identity,
-            pdf_plan.and_then(|plan| plan.compiled(result.has_pdf, result.output_id.as_deref())),
-        );
+        if root.engine == meta.engine {
+            crate::checkpoint_publication::schedule_after_successful_compile(
+                &app,
+                &project_id,
+                &project_dir,
+                &meta.engine,
+                &meta.main_doc,
+                &toolchain_identity,
+                pdf_plan
+                    .and_then(|plan| plan.compiled(result.has_pdf, result.output_id.as_deref())),
+            );
+        }
         if let (true, Some(output_id)) = (result.has_pdf, result.output_id.clone()) {
             crate::collab::output::upload_after_compile(
                 &app,
                 crate::collab::output::CompiledOutput {
                     project_id: project_id.clone(),
-                    engine: meta.engine.clone(),
+                    engine: root.engine.clone(),
                     main_file: main_doc.clone(),
                     output_id,
                     synctex: result.synctex_path.clone().map(std::path::PathBuf::from),
@@ -524,7 +535,7 @@ pub async fn compile_project(
             );
         }
     }
-    crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
+    crate::logsafe::build_finished(&root.engine, &result, &project_id, &main_doc);
     #[cfg(debug_assertions)]
     eprintln!(
         "compile: t{ticket} {project_id} done ok={} in {}ms",
@@ -566,12 +577,12 @@ pub async fn validate_compile_fingerprint(
     main_doc: String,
 ) -> Result<Option<ValidatedCompileFingerprint>, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
+    let (_, compiled) = crate::project::read_compile_root(&project_id, &main_doc)?;
     let Some(root) = compile_fingerprint_root(&project_id)? else {
         return Ok(None);
     };
     let validated = tauri::async_runtime::spawn_blocking(move || {
-        crate::compile_fingerprint::validated_with_log(&root, &main_doc, &meta.engine)
+        crate::compile_fingerprint::validated_with_log(&root, &main_doc, &compiled.engine)
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -638,6 +649,7 @@ pub(crate) fn requested_compile_options(
 pub(crate) struct MainCompile {
     pub(crate) location: crate::project_location::ProjectLocation,
     pub(crate) meta: crate::project::ProjectMeta,
+    pub(crate) root: crate::project::ProjectMeta,
     pub(crate) engine: &'static dyn crate::document_engine::DocumentEngine,
     pub(crate) project_dir: std::path::PathBuf,
     pub(crate) build_dir: std::path::PathBuf,
@@ -652,39 +664,39 @@ impl MainCompile {
         options: crate::document_engine::CompileOptions,
     ) -> Result<Self, String> {
         let location = crate::project_location::locate(project_id)?;
-        let meta = crate::project::read_compile_meta(project_id, main_doc)?;
-        crate::document_engine::require_notebook_trust(project_id, &meta.engine, main_doc)?;
+        let (meta, root) = crate::project::read_compile_root(project_id, main_doc)?;
+        crate::document_engine::require_notebook_trust(project_id, &root.engine, main_doc)?;
         let typst = {
-            let meta = meta.clone();
+            let root = root.clone();
             tauri::async_runtime::spawn_blocking(move || {
-                crate::typst_toolchain::resolve_for_compile(&meta)
+                crate::typst_toolchain::resolve_for_compile(&root)
             })
             .await
             .map_err(|error| format!("failed to resolve the Typst version: {error}"))??
         };
-        let workspace = desktop_workspace(&location, &meta, main_doc)?;
+        let workspace = desktop_workspace(&location, &root, main_doc)?;
         let prepared = workspace
             .prepare_build()
             .map_err(|error| error.to_string())?;
         let project_dir = prepared.project_root().to_path_buf();
         let build_dir = prepared.build_directory().to_path_buf();
         let typst_settings = {
-            let meta = meta.clone();
+            let root = root.clone();
             let project_dir = project_dir.clone();
             tauri::async_runtime::spawn_blocking(move || {
-                crate::typst_options::for_compile(&meta, &project_dir, typst_variant.as_deref())
+                crate::typst_options::for_compile(&root, &project_dir, typst_variant.as_deref())
             })
             .await
             .map_err(|error| format!("failed to read the Typst options: {error}"))?
         };
         let options = crate::document_engine::CompileOptions {
-            latex_flavor: meta
+            latex_flavor: root
                 .tex_flavor
                 .as_deref()
                 .and_then(crate::document_engine::LatexmkFlavor::parse),
-            allow_shell_escape: meta.allow_shell_escape,
+            allow_shell_escape: root.allow_shell_escape,
             external_build: location.kind == crate::project_location::ProjectKind::Linked,
-            typst_packages: crate::typst_packages::for_compile(&meta, &project_dir)?,
+            typst_packages: crate::typst_packages::for_compile(&root, &project_dir)?,
             typst_settings,
             typst,
             ..options
@@ -694,6 +706,7 @@ impl MainCompile {
         Ok(Self {
             location,
             meta,
+            root,
             engine,
             project_dir,
             build_dir,
@@ -702,7 +715,7 @@ impl MainCompile {
     }
 
     pub(crate) fn toolchain_identity(&self) -> String {
-        crate::typst_toolchain::compile_identity(&self.meta, self.options.typst.as_deref())
+        crate::typst_toolchain::compile_identity(&self.root, self.options.typst.as_deref())
     }
 
     pub(crate) async fn spec(
@@ -1238,7 +1251,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            super::project_engine_sync("restricted-engine".into())
+            super::project_engine_sync("restricted-engine".into(), None)
                 .unwrap()
                 .id,
             "latexmk"
@@ -1258,7 +1271,7 @@ mod tests {
             ),
             ("latex", None, false)
         );
-        let descriptor = super::project_engine_sync("restricted-engine".into()).unwrap();
+        let descriptor = super::project_engine_sync("restricted-engine".into(), None).unwrap();
         assert_eq!(
             (
                 descriptor.id.as_str(),
@@ -2075,7 +2088,10 @@ mod tests {
             ),
             ("xetex", None, false)
         );
-        assert_eq!(project_engine_sync(linked.clone()).unwrap().id, "latex");
+        assert_eq!(
+            project_engine_sync(linked.clone(), None).unwrap().id,
+            "latex"
+        );
         let location = crate::project_location::locate(&linked).unwrap();
         let prepared = desktop_workspace(&location, &meta, "main.tex")
             .unwrap()
@@ -2098,7 +2114,10 @@ mod tests {
             (trusted.engine.as_str(), trusted.tex_flavor.as_deref()),
             ("latexmk", Some("lualatex"))
         );
-        assert_eq!(project_engine_sync(linked.clone()).unwrap().id, "latexmk");
+        assert_eq!(
+            project_engine_sync(linked.clone(), None).unwrap().id,
+            "latexmk"
+        );
     }
 
     #[test]
@@ -2116,7 +2135,7 @@ mod tests {
                 format!(r#"{{"main_doc":"{main}","engine":"latexmk","tex_flavor":"lualatex"}}"#),
             )
             .unwrap();
-            let descriptor = project_engine_sync(linked.clone()).unwrap();
+            let descriptor = project_engine_sync(linked.clone(), None).unwrap();
             assert_eq!(
                 (
                     descriptor.id.as_str(),
