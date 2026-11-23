@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ModelSelector } from "@/components/ai/ModelSelector";
-import { useProviderConfig } from "@/components/ai/use-provider-config";
-import { SettingsRow } from "@/components/settings/SettingsRow";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import {
   effectiveProviderKeys,
@@ -10,17 +8,16 @@ import {
   isProviderConfigured,
   pickActiveProvider,
 } from "@/lib/ai-providers";
+import type { AppConfig } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 
-export function AiCompletionModelSetting() {
+export function AiCompletionModelSetting({ config }: Readonly<{ config: AppConfig }>) {
   const { t } = useTranslation(["settings"]);
-  const config = useProviderConfig();
   const providerId = useSettingsStore((s) => s.aiCompletionProvider);
   const modelId = useSettingsStore((s) => s.aiCompletionModel);
   const setModel = useSettingsStore((s) => s.setAiCompletionModel);
-  const ready = config !== null && hasConfiguredProvider(config);
   const { chosen, groups } = useMemo(() => {
-    if (!config || !ready) return { chosen: null, groups: [] };
+    if (!hasConfiguredProvider(config)) return { chosen: null, groups: [] };
     const keys = effectiveProviderKeys(config);
     const customProviders = config.ai_custom_providers ?? [];
     const saved = providerId && modelId && isProviderConfigured(providerId, keys, customProviders)
@@ -34,28 +31,22 @@ export function AiCompletionModelSetting() {
         { keep: { providerId: active.providerId, modelId: active.modelId } },
       ),
     };
-  }, [config, ready, providerId, modelId]);
+  }, [config, providerId, modelId]);
 
   return (
-    <SettingsRow
-      testId="settings-ai-completion-model"
-      label={t(($) => $.settings.appearance.editor.aiCompletionModel.label)}
-      description={
-        ready
-          ? t(($) => $.settings.appearance.editor.aiCompletionModel.description)
-          : t(($) => $.settings.appearance.editor.aiCompletionModel.needsProvider)
-      }
-      control={
-        <ModelSelector
-          providerId={chosen?.providerId ?? ""}
-          modelId={chosen?.modelId ?? ""}
-          groups={groups}
-          disabled={groups.length === 0}
-          contentClassName="z-[100]"
-          className="max-w-56"
-          onChange={setModel}
-        />
-      }
-    />
+    <div className="space-y-2" data-testid="settings-ai-completion-model">
+      <p className="font-medium">{t(($) => $.settings.ai.instructions.completionModelTitle)}</p>
+      <p className="text-xs text-muted-foreground">
+        {t(($) => $.settings.ai.instructions.completionModelDescription)}
+      </p>
+      <ModelSelector
+        providerId={chosen?.providerId ?? ""}
+        modelId={chosen?.modelId ?? ""}
+        groups={groups}
+        contentClassName="z-[100]"
+        disabled={groups.length === 0}
+        onChange={setModel}
+      />
+    </div>
   );
 }

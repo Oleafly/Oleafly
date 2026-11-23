@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Ajan yetenekleri",
+      "completionModelDescription": "Siz yazarken tamamlamaları yazan model. Hızlı modeller ve bu bilgisayarda çalışan modeller en çabuk yanıt verir.",
+      "completionModelTitle": "Yapay zeka tamamlama modeli",
       "customDescription": "Kişisel üslubunuz ve tercihleriniz olarak her yapay zeka isteğine eklenir. Asistan bunları kendi yerleşik davranışının üstüne uygular. Araçlarını veya güvenlik kurallarını geçersiz kılamazlar.",
       "customPlaceholder": "örneğin Her zaman İngiliz İngilizcesiyle yaz. Açıklamaları kısa tut. Listeler için enumitem paketini yeğle.",
       "customTitle": "Özel yönergeler",
@@ -816,11 +818,6 @@
       "ghostCompletion": {
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
         "label": "Satır içi öneri"
-      },
-      "aiCompletionModel": {
-        "description": "Siz yazarken tamamlamaları yazan model. Hızlı modeller ve bu bilgisayarda çalışan modeller en çabuk yanıt verir.",
-        "label": "Yapay zeka tamamlama modeli",
-        "needsProvider": "Yapay zeka tamamlamalarını kullanmak için Yapay Zeka Asistanı bölümünde bir yapay zeka sağlayıcısı ayarlayın."
       },
       "stickyScroll": {
         "description": "Siz kaydırırken geçerli bölümleri, başlıkları ve ortamları üstte tutar.",

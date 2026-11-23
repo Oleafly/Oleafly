@@ -399,7 +399,7 @@ interface PendingGhost {
 function requestAnchor(state: EditorState): number | null {
   const selection = state.selection;
   if (selection.ranges.length > 1 || !selection.main.empty || state.readOnly) return null;
-  if (completionStatus(state) !== null || state.field(ghostField, false)) return null;
+  if (completionStatus(state) === "active" || state.field(ghostField, false)) return null;
   const pos = selection.main.head;
   if (state.field(dismissedField, false) === pos) return null;
   const line = state.doc.lineAt(pos);
@@ -459,11 +459,17 @@ export function requestedGhostCompletion(
       private pending: PendingGhost | null = null;
       private ahead: PendingGhost | null = null;
       private contact = Number.NEGATIVE_INFINITY;
+      private awaitingPopup = false;
       private readonly cache: CachedGhost[] = [];
 
       constructor(readonly view: EditorView) {}
 
       update(update: ViewUpdate) {
+        const popup = completionStatus(update.state);
+        if (this.awaitingPopup && popup !== "pending") {
+          this.awaitingPopup = false;
+          if (popup === null) this.schedule(0);
+        }
         if (!update.docChanged && !update.selectionSet) return;
         const accepted = update.transactions.some((tr) => tr.isUserEvent("input.complete"));
         if (!accepted && !update.state.field(ghostField, false)) this.dropAhead();
@@ -516,16 +522,18 @@ export function requestedGhostCompletion(
         this.timer = null;
         const state = this.view.state;
         if (!enabled()) return;
-        if (completionStatus(state) === "pending") {
-          this.schedule(delay);
-          return;
-        }
         const pos = requestAnchor(state);
         if (pos === null) return;
         const { before, after } = requestWindow(state, pos);
         const cached = this.fromCache(before, after);
         if (cached) {
+          if (this.popupHides(state)) return;
           this.view.dispatch({ effects: setGhost.of({ pos, text: cached }) });
+          return;
+        }
+        const current = this.pending;
+        if (current && sameContext(current, before, after)) {
+          this.show(current, fittedGhostText(current.raw, current.before, current.after, false));
           return;
         }
         const ahead = this.ahead;
@@ -590,7 +598,7 @@ export function requestedGhostCompletion(
       }
 
       private lookAhead(pending: PendingGhost, text: string) {
-        if (this.ahead || !enabled()) return;
+        if (this.ahead || !enabled() || completionStatus(this.view.state) === "active") return;
         const before = pending.before + text;
         if (this.fromCache(before, pending.after) !== null) return;
         this.ahead = this.start(pending.origin + text.length, before, pending.after, true);
@@ -602,9 +610,18 @@ export function requestedGhostCompletion(
         const pos = pending.origin + pending.typed.length;
         const state = this.view.state;
         if (!rest || state.selection.main.head !== pos || !state.selection.main.empty) return true;
+        if (this.popupHides(state)) return true;
         const shown = state.field(ghostField, false);
         if (shown?.pos === pos && shown.text === rest) return true;
         this.view.dispatch({ effects: setGhost.of({ pos, text: rest }) });
+        return true;
+      }
+
+      private popupHides(state: EditorState): boolean {
+        const popup = completionStatus(state);
+        if (popup === "active") return true;
+        if (popup !== "pending" || state.field(ghostField, false)) return false;
+        this.awaitingPopup = true;
         return true;
       }
 
@@ -637,6 +654,7 @@ export function requestedGhostCompletion(
       }
 
       private cancel() {
+        this.awaitingPopup = false;
         this.ticket++;
         if (this.timer !== null) clearTimeout(this.timer);
         this.timer = null;

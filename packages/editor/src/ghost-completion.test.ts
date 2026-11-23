@@ -7,6 +7,7 @@ import {
   completionStatus,
   moveCompletionSelection,
   startCompletion,
+  type CompletionResult,
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import {
@@ -764,25 +765,75 @@ describe("requested ghost completion", () => {
     view.destroy();
   });
 
-  it("asks once the completion popup's own lookup has settled", async () => {
-    const requests = requester();
-    let settleLookup: (result: null) => void = () => {};
-    const slowSource: CompletionSource = () =>
+  function slowPopup() {
+    let settleLookup: (result: CompletionResult | null) => void = () => {};
+    const source: CompletionSource = () =>
       new Promise((resolve) => {
         settleLookup = resolve;
       });
-    const view = mountRequested("Hello", requests.request, {
-      extensions: [autocompletion({ override: [slowSource], activateOnTyping: true })],
-    });
+    return {
+      extension: autocompletion({ override: [source], activateOnTyping: true }),
+      settle: async (result: CompletionResult | null) => {
+        settleLookup(result);
+        await flush();
+        vi.advanceTimersByTime(100);
+        await flush();
+      },
+    };
+  }
+
+  it("asks while the completion popup is still looking and shows the answer once it finds nothing", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
     type(view, " w");
     vi.advanceTimersByTime(100);
     expect(completionStatus(view.state)).toBe("pending");
-    expect(requests.calls).toHaveLength(0);
-
-    settleLookup(null);
-    await flush();
-    vi.advanceTimersByTime(100);
     expect(requests.calls).toHaveLength(1);
+    await answer(requests.calls[0], "orld");
+    expect(pendingGhostCompletion(view)).toBeNull();
+
+    await popup.settle(null);
+    expect(completionStatus(view.state)).toBeNull();
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    expect(requests.calls).toHaveLength(2);
+    view.destroy();
+  });
+
+  it("keeps the answer hidden when the completion popup opens with options", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
+    type(view, " w");
+    vi.advanceTimersByTime(100);
+    await answer(requests.calls[0], "orld");
+
+    await popup.settle({ from: view.state.selection.main.head - 1, options: [{ label: "wonder" }] });
+    expect(completionStatus(view.state)).toBe("active");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    view.destroy();
+  });
+
+  it("shows a remembered answer as soon as the completion popup finds nothing", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
+    type(view, " w");
+    vi.advanceTimersByTime(100);
+    await answer(requests.calls[0], "orld");
+    await popup.settle(null);
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    const asked = requests.calls.length;
+
+    backspace(view);
+    type(view, "w");
+    vi.advanceTimersByTime(100);
+    await flush();
+    expect(completionStatus(view.state)).toBe("pending");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    await popup.settle(null);
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    expect(requests.calls).toHaveLength(asked);
     view.destroy();
   });
 

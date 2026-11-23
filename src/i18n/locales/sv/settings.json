@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Agentens förmågor",
+      "completionModelDescription": "Modellen som skriver kompletteringar medan du skriver. Snabba modeller, och modeller som körs på den här datorn, svarar snabbast.",
+      "completionModelTitle": "Modell för AI-kompletteringar",
       "customDescription": "Läggs till i varje AI-förfrågan som din personliga stil och dina preferenser. Assistenten följer dem utöver sitt inbyggda beteende. De kan inte åsidosätta dess verktyg eller säkerhetsregler.",
       "customPlaceholder": "t.ex. Skriv alltid på brittisk engelska. Håll förklaringarna korta. Använd helst paketet enumitem för listor.",
       "customTitle": "Egna instruktioner",
@@ -816,11 +818,6 @@
       "ghostCompletion": {
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
         "label": "Förslag i löptext"
-      },
-      "aiCompletionModel": {
-        "description": "Modellen som skriver kompletteringar medan du skriver. Snabba modeller, och modeller som körs på den här datorn, svarar snabbast.",
-        "label": "Modell för AI-kompletteringar",
-        "needsProvider": "Konfigurera en AI-leverantör i avsnittet AI-assistent för att använda AI-kompletteringar."
       },
       "stickyScroll": {
         "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",

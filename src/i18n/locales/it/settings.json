@@ -278,6 +278,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Capacità dell'agente",
+      "completionModelDescription": "Il modello che scrive i completamenti mentre digiti. I modelli veloci e quelli che girano su questo computer rispondono prima.",
+      "completionModelTitle": "Modello per i completamenti con AI",
       "customDescription": "Aggiunte a ogni richiesta AI come tuo stile e tue preferenze personali. L'assistente le segue oltre al suo comportamento di base. Non possono scavalcare i suoi strumenti né le regole di sicurezza.",
       "customPlaceholder": "ad esempio: scrivi sempre in inglese britannico. Tieni brevi le spiegazioni. Per gli elenchi preferisci il pacchetto enumitem.",
       "customTitle": "Istruzioni personalizzate",
@@ -822,11 +824,6 @@
       "ghostCompletion": {
         "description": "Mostra il completamento probabile dopo il cursore. Premi Tab per accettarlo.",
         "label": "Suggerimento in linea"
-      },
-      "aiCompletionModel": {
-        "description": "Il modello che scrive i completamenti mentre digiti. I modelli veloci e quelli che girano su questo computer rispondono prima.",
-        "label": "Modello per i completamenti con AI",
-        "needsProvider": "Configura un provider AI nella sezione Assistente AI per usare i completamenti con AI."
       },
       "stickyScroll": {
         "description": "Tieni in alto le sezioni, i titoli e gli ambienti correnti mentre scorri.",

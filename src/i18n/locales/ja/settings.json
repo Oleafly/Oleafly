@@ -276,6 +276,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "エージェントの機能",
+      "completionModelDescription": "入力中に補完を書くモデルです。高速なモデルや、このコンピューターで動くモデルほど早く応答します。",
+      "completionModelTitle": "AI 補完のモデル",
       "customDescription": "あなたの文体や好みとして、すべての AI のリクエストに追加されます。アシスタントは本来の動作に加えてこれに従います。ツールや安全上の規則を上書きすることはできません。",
       "customPlaceholder": "例: 常にイギリス英語で書く。説明は短くする。リストには enumitem パッケージを使う。",
       "customTitle": "カスタム指示",
@@ -810,11 +812,6 @@
       "ghostCompletion": {
         "description": "カーソルの後ろに、候補となる補完を表示します。Tab で確定します。",
         "label": "インラインの候補表示"
-      },
-      "aiCompletionModel": {
-        "description": "入力中に補完を書くモデルです。高速なモデルや、このコンピューターで動くモデルほど早く応答します。",
-        "label": "AI 補完のモデル",
-        "needsProvider": "AI 補完を使うには、AI アシスタントのセクションで AI プロバイダーを設定してください。"
       },
       "stickyScroll": {
         "description": "スクロール中も、現在のセクション、見出し、環境を上部に表示し続けます。",

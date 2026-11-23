@@ -276,6 +276,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "代理能力",
+      "completionModelDescription": "在你输入时生成补全内容的模型。速度快的模型和在这台电脑上运行的模型响应最快。",
+      "completionModelTitle": "AI 补全模型",
       "customDescription": "会作为你的个人风格和偏好添加到每个 AI 请求中。助手会在内置行为的基础上遵循这些内容，它们无法覆盖助手的工具或安全规则。",
       "customPlaceholder": "例如：始终用英式英语写作。解释保持简短。列表优先使用 enumitem 宏包。",
       "customTitle": "自定义指令",
@@ -810,11 +812,6 @@
       "ghostCompletion": {
         "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
         "label": "行内建议"
-      },
-      "aiCompletionModel": {
-        "description": "在你输入时生成补全内容的模型。速度快的模型和在这台电脑上运行的模型响应最快。",
-        "label": "AI 补全模型",
-        "needsProvider": "要使用 AI 补全，请先在 AI 助手部分设置 AI 服务商。"
       },
       "stickyScroll": {
         "description": "滚动时将当前章节、标题和环境固定在顶部。",

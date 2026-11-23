@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Fähigkeiten des Agenten",
+      "completionModelDescription": "Das Modell, das beim Schreiben Vervollständigungen vorschlägt. Schnelle Modelle und Modelle, die auf diesem Computer laufen, antworten am schnellsten.",
+      "completionModelTitle": "Modell für KI-Vervollständigung",
       "customDescription": "Wird jeder KI-Anfrage als Ihr persönlicher Stil und Ihre Vorlieben beigefügt. Der Assistent befolgt sie zusätzlich zu seinem eingebauten Verhalten. Seine Werkzeuge oder Sicherheitsregeln können sie nicht außer Kraft setzen.",
       "customPlaceholder": "z. B. Schreibe immer in britischem Englisch. Halte Erklärungen kurz. Bevorzuge das Paket enumitem für Listen.",
       "customTitle": "Eigene Anweisungen",
@@ -816,11 +818,6 @@
       "ghostCompletion": {
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
         "label": "Vorschlag im Text"
-      },
-      "aiCompletionModel": {
-        "description": "Das Modell, das beim Schreiben Vervollständigungen vorschlägt. Schnelle Modelle und Modelle, die auf diesem Computer laufen, antworten am schnellsten.",
-        "label": "Modell für KI-Vervollständigung",
-        "needsProvider": "Richten Sie im Bereich KI-Assistent einen KI-Anbieter ein, um die KI-Vervollständigung zu nutzen."
       },
       "stickyScroll": {
         "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",

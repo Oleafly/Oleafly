@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Hva agenten kan",
+      "completionModelDescription": "Modellen som skriver fullføringer mens du skriver. Raske modeller og modeller som kjører på denne datamaskinen, svarer raskest.",
+      "completionModelTitle": "Modell for AI-fullføringer",
       "customDescription": "Legges ved hver AI-forespørsel som din personlige stil og dine preferanser. Assistenten følger dem i tillegg til sin innebygde oppførsel. De kan ikke overstyre verktøyene eller sikkerhetsreglene den har.",
       "customPlaceholder": "for eksempel: Skriv alltid på britisk engelsk. Hold forklaringene korte. Bruk helst pakken enumitem til lister.",
       "customTitle": "Egne instruksjoner",
@@ -816,11 +818,6 @@
       "ghostCompletion": {
         "description": "Vis den sannsynlige fullføringen etter markøren. Trykk Tab for å godta den.",
         "label": "Forslag i linjen"
-      },
-      "aiCompletionModel": {
-        "description": "Modellen som skriver fullføringer mens du skriver. Raske modeller og modeller som kjører på denne datamaskinen, svarer raskest.",
-        "label": "Modell for AI-fullføringer",
-        "needsProvider": "Sett opp en AI-leverandør i delen AI-assistent for å bruke AI-fullføringer."
       },
       "stickyScroll": {
         "description": "Hold gjeldende seksjoner, overskrifter og miljøer øverst mens du ruller.",

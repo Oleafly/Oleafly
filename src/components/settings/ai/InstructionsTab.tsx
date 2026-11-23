@@ -10,6 +10,8 @@ import { suggestedProviderId } from "@/lib/ai-providers";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import { AiCompletionModelSetting } from "@/components/settings/AiCompletionModelSetting";
+import { useSettingsStore } from "@/store/settings";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
@@ -36,6 +38,7 @@ export function InstructionsTab({
 }: Readonly<InstructionsTabProps>) {
   const { t, i18n } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const aiCompletion = useSettingsStore((s) => s.aiCompletion);
   const defaultModelGroups = configuredModelGroups(
     {
       keys: savedKeys,
@@ -65,6 +68,8 @@ export function InstructionsTab({
           />
         </div>
       </div>
+
+      {aiCompletion ? <AiCompletionModelSetting config={cfg} /> : null}
 
       <div className="space-y-2" data-tour="ai-instructions">
         <p className="font-medium">{t(($) => $.settings.ai.instructions.customTitle)}</p>

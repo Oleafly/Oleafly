@@ -278,6 +278,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Capacidades del agente",
+      "completionModelDescription": "El modelo que escribe las sugerencias mientras escribes. Los modelos rápidos y los que se ejecutan en este equipo responden antes.",
+      "completionModelTitle": "Modelo para el autocompletado con IA",
       "customDescription": "Se añaden a cada petición de IA como tu estilo y tus preferencias personales. El asistente las sigue además de su comportamiento propio. No pueden anular sus herramientas ni sus reglas de seguridad.",
       "customPlaceholder": "Por ejemplo: escribe siempre en español de España. Explica las cosas brevemente. Usa el paquete enumitem para las listas.",
       "customTitle": "Instrucciones personalizadas",
@@ -822,11 +824,6 @@
       "ghostCompletion": {
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
         "label": "Sugerencia en línea"
-      },
-      "aiCompletionModel": {
-        "description": "El modelo que escribe las sugerencias mientras escribes. Los modelos rápidos y los que se ejecutan en este equipo responden antes.",
-        "label": "Modelo para el autocompletado con IA",
-        "needsProvider": "Configura un proveedor de IA en la sección Asistente de IA para usar el autocompletado con IA."
       },
       "stickyScroll": {
         "description": "Mantiene arriba las secciones, los títulos y los entornos actuales mientras te desplazas.",

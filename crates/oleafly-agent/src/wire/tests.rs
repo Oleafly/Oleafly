@@ -836,6 +836,41 @@ fn zai_keeps_its_own_thinking_defaults() {
 }
 
 #[test]
+fn zai_effort_off_stops_thinking_the_way_each_glm_model_allows() {
+    let zai = |model: &str| Resolved {
+        provider_id: "zai".into(),
+        model_id: model.into(),
+        ..openai()
+    };
+    let off = with_effort(Effort::Off);
+    for model in [
+        "glm-4.5-air",
+        "glm-4.6",
+        "glm-4.6v",
+        "glm-5",
+        "glm-5-turbo",
+        "glm-5.2",
+    ] {
+        assert_eq!(
+            thinking_fields(&zai(model), &off),
+            json!({"thinking": {"type": "disabled"}, "reasoning_effort": null, "max_tokens": null}),
+            "{model}"
+        );
+    }
+    for model in ["glm-5.3", "GLM-5.3-Flash", "glm-6"] {
+        assert_eq!(
+            thinking_fields(&zai(model), &off),
+            json!({"thinking": null, "reasoning_effort": "low", "max_tokens": null}),
+            "{model}"
+        );
+    }
+    assert_eq!(
+        thinking_fields(&zai("glm-4.6"), &with_effort(Effort::High)),
+        json!({"thinking": null, "reasoning_effort": null, "max_tokens": null})
+    );
+}
+
+#[test]
 fn google_renames_the_assistant_turn() {
     let req = CompletionRequest {
         messages: vec![
