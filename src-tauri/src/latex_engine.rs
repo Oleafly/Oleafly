@@ -2595,6 +2595,9 @@ async fn prepare_tagged_compile(
     main_doc: String,
 ) -> Result<TaggedCompilePlan, String> {
     crate::trust::require_trusted(&project_id, crate::trust::Capability::SystemTex)?;
+    if oleafly_core::SourceFamily::of(&main_doc) != Some(oleafly_core::SourceFamily::Latex) {
+        return Err(format!("{main_doc} is not a LaTeX document"));
+    }
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let lualatex = find_engine().await.lualatex.ok_or_else(|| {
         String::from(crate::app_error::AppError::new(

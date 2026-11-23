@@ -719,6 +719,9 @@ pub(crate) fn target_for_file(input: &Path, project_dir: Option<&Path>) -> Quart
 }
 
 fn yaml_mapping(text: &str) -> Option<serde_norway::Mapping> {
+    if oleafly_core::front_matter::yaml_uses_aliases(text) {
+        return None;
+    }
     match serde_norway::from_str::<serde_norway::Value>(text).ok()? {
         serde_norway::Value::Mapping(mapping) => Some(mapping),
         _ => None,

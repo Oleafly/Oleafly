@@ -508,11 +508,13 @@
     "coauthorsChanged": "自上次编译以来合作者有更改",
     "texRootDocument": "根文件：{{path}}（它有自己的 \\documentclass）",
     "texRootInclude": "根文件：{{path}}（它包含 {{file}}）",
+    "texRootFormat": "根文件：{{path}}（{{format}} 文档，用自己的引擎编译）",
     "target": {
       "title": "编译目标",
-      "help": "选择“跟随打开的文件”时，有自己 \\documentclass 的文件会单独编译。章节文件会编译包含它的文档。其他文件编译主文档。% !TEX root 注释始终优先。",
+      "help": "选择“跟随打开的文件”时，有自己 \\documentclass 的文件会单独编译。章节文件会编译包含它的文档。项目是其他格式时，Markdown、Typst 或 Quarto 文档会用各自的引擎单独编译。其他文件编译主文档。% !TEX root 注释始终优先。",
       "open": "跟随打开的文件",
-      "main": "始终编译主文档"
+      "main": "始终编译主文档",
+      "change": "更改主文档…"
     }
   },
   "datePicker": {
@@ -648,6 +650,7 @@
   },
   "codeExecution": {
     "allow": "在此项目中允许代码",
+    "followed": "{{name}} 需要运行代码，而代码只会为主文档运行。请先把 {{name}} 设为主文档，再为它允许运行代码。",
     "needed": "此文档需要运行其代码才能构建，但此项目的代码已关闭。仅在你信任项目中每个文件时才允许代码。",
     "skipped": "此项目的代码已关闭，因此此文档中的代码没有运行。仅在你信任项目中每个文件时才允许代码。",
     "storedResults": "此项目的代码已关闭，因此 PDF 显示的是之前运行时保存的代码结果。仅在你信任项目中每个文件时才允许代码。"
@@ -773,6 +776,9 @@
       "open": "打开",
       "browse": "仅浏览文件",
       "bestMatch": "最佳匹配",
+      "current": "当前",
+      "changeDescription": "打开的文件既不是独立文档，也不是某个文档的一部分时，会编译主文档。选择其他格式的文档，项目就会切换到该格式。",
+      "use": "设为主文档",
       "empty": "Oleafly 在这里没有找到文档。请在文件树中右键点击一个文件，然后选择“设为主文档”。",
       "truncated": "此文件夹较大，Oleafly 提前停止了查找。部分文档可能没有列出。",
       "openFailed": "无法将 {{path}} 设为主文档。"
@@ -798,6 +804,7 @@
       "has_bibliography": "带有参考文献",
       "no_begin_document": "没有 \\begin{document}",
       "standalone_figure": "独立图形",
+      "notebook_output": "由 Quarto 从笔记本生成",
       "placeholder": "尚未下载"
     },
     "noMain": "还没有主文档。请选择一个文件，然后选择“设为主文档”。",

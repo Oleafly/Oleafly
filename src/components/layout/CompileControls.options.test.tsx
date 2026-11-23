@@ -437,12 +437,34 @@ describe("CompileControls compile target", () => {
     await waitFor(() => expect(screen.queryByTestId("tex-root-indicator")).not.toBeInTheDocument());
   });
 
-  it("is offered only for LaTeX projects", async () => {
+  it("is offered in every format, with a way to change the main document", async () => {
     useFilesStore.setState({
       engine: { ...LATEX_ENGINE, id: "typst", source_format: "typst" },
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     render(<CompileControls />);
     await openOptions();
-    expect(screen.queryByTestId("compile-target-open")).not.toBeInTheDocument();
+    expect(screen.getByTestId("compile-target-open")).toBeInTheDocument();
+    expect(screen.getByTestId("compile-change-main")).toHaveTextContent(copy.target.change);
+  });
+
+  it("names the format when a document in another format is the compile root", async () => {
+    useFilesStore.setState({
+      mainDoc: "main.tex",
+      activePath: "notes/meeting.md",
+      openTabs: ["notes/meeting.md"],
+      files: { "notes/meeting.md": { content: "# Meeting\n" } },
+      tree: [
+        { path: "main.tex", is_dir: false },
+        { path: "notes/meeting.md", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    expect(screen.getByTestId("tex-root-indicator")).toHaveTextContent(
+      copy.texRootName.replace("{{name}}", "meeting.md"),
+    );
+    await userEvent.setup().hover(screen.getByTestId("tex-root-indicator"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.texRootFormat.replace("{{path}}", "notes/meeting.md").replace("{{format}}", "Markdown"),
+    );
   });
 });

@@ -511,11 +511,13 @@
     "coauthorsChanged": "Zmienione przez współautorów od ostatniej kompilacji",
     "texRootDocument": "root: {{path}} (ma własne \\documentclass)",
     "texRootInclude": "root: {{path}} (dołącza {{file}})",
+    "texRootFormat": "root: {{path}} (dokument {{format}}, kompilowany własnym silnikiem)",
     "target": {
       "title": "Cel kompilacji",
-      "help": "Przy opcji Zgodnie z otwartym plikiem plik z własnym \\documentclass kompiluje się samodzielnie. Rozdział lub sekcja kompiluje dokument, który go dołącza. Pozostałe pliki kompilują dokument główny. Komentarz % !TEX root zawsze ma pierwszeństwo.",
+      "help": "Przy opcji Zgodnie z otwartym plikiem plik z własnym \\documentclass kompiluje się samodzielnie. Rozdział lub sekcja kompiluje dokument, który go dołącza. Dokument Markdown, Typst lub Quarto w projekcie innego formatu kompiluje się samodzielnie własnym silnikiem. Pozostałe pliki kompilują dokument główny. Komentarz % !TEX root zawsze ma pierwszeństwo.",
       "open": "Zgodnie z otwartym plikiem",
-      "main": "Zawsze dokument główny"
+      "main": "Zawsze dokument główny",
+      "change": "Zmień dokument główny…"
     }
   },
   "datePicker": {
@@ -654,6 +656,7 @@
   },
   "codeExecution": {
     "allow": "Zezwól na kod w tym projekcie",
+    "followed": "{{name}} musi uruchomić kod, a kod działa tylko dla dokumentu głównego. Ustaw {{name}} jako dokument główny, a potem zezwól na kod.",
     "needed": "Ten dokument musi uruchomić swój kod, aby się skompilować, a kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie.",
     "skipped": "Kod w tym dokumencie nie został uruchomiony, bo kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie.",
     "storedResults": "PDF pokazuje wyniki kodu zapisane podczas wcześniejszego uruchomienia, bo kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie."
@@ -779,6 +782,9 @@
       "open": "Otwórz",
       "browse": "Tylko przeglądaj pliki",
       "bestMatch": "Najlepsze dopasowanie",
+      "current": "Bieżący",
+      "changeDescription": "Kompilacja tworzy dokument główny, gdy otwarty plik nie jest osobnym dokumentem ani częścią dokumentu. Wybierz dokument w innym formacie, a projekt przejdzie na ten format.",
+      "use": "Użyj jako dokumentu głównego",
       "empty": "Oleafly nie znalazł tu żadnych dokumentów. Kliknij plik prawym przyciskiem w drzewie plików i wybierz Ustaw jako dokument główny.",
       "truncated": "Ten folder jest duży, więc Oleafly wcześniej przerwał wyszukiwanie. Niektórych dokumentów może brakować na liście.",
       "openFailed": "Nie udało się ustawić {{path}} jako dokumentu głównego."
@@ -804,6 +810,7 @@
       "has_bibliography": "Ma bibliografię",
       "no_begin_document": "Brak \\begin{document}",
       "standalone_figure": "Samodzielna ilustracja",
+      "notebook_output": "Utworzony przez Quarto z notatnika",
       "placeholder": "Jeszcze nie pobrany"
     },
     "noMain": "Nie ma jeszcze dokumentu głównego. Wybierz plik i kliknij Ustaw jako dokument główny.",

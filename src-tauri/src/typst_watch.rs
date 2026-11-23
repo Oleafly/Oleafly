@@ -1134,7 +1134,7 @@ async fn prepare_target(
         let options = crate::commands::requested_compile_options(offline, None, None);
         crate::commands::MainCompile::prepare(project_id, main_doc, typst_variant, options).await?
     };
-    if main.engine.id() != DocumentEngineId::Typst {
+    if main.engine.id() != DocumentEngineId::Typst || main.root.engine != main.meta.engine {
         return Err("Live preview is only available for Typst projects.".into());
     }
     let staging = staging_dir(project_id)?;
@@ -1194,7 +1194,7 @@ async fn prepare_target(
         build_pdf,
         staged_deps: deps.as_ref().map(|(staged, _)| staged.clone()),
         build_deps: deps.map(|(_, build)| build),
-        engine_name: main.meta.engine.clone(),
+        engine_name: main.root.engine.clone(),
         toolchain_identity: main.toolchain_identity(),
         glyph_check,
     })

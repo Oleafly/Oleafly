@@ -4,7 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
 import { createEmitter } from "@/lib/emitter";
 import { errorStartsWith } from "@/lib/error-prefix";
-import type { OpenedFolder } from "@/lib/folder-detection";
+import type { FolderDetection, OpenedFolder } from "@/lib/folder-detection";
 import type { SearchMode } from "@/lib/search-modes";
 
 export interface McpRegistrySearchRequest {
@@ -211,8 +211,8 @@ export const focusCurrentWindow = async () => {
   await window.setFocus();
 };
 
-export const getProjectEngine = (projectId: string) =>
-  invoke<DocumentEngineDescriptor>("project_engine", { projectId });
+export const getProjectEngine = (projectId: string, root?: string) =>
+  invoke<DocumentEngineDescriptor>("project_engine", root === undefined ? { projectId } : { projectId, root });
 
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
@@ -871,6 +871,8 @@ export const projectCompileFolder = (projectId: string, mainDoc: string) =>
 
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
+export const mainDocumentCandidates = (projectId: string) =>
+  invoke<FolderDetection>("main_document_candidates", { projectId });
 
 export const setProjectEngineCmd = (
   projectId: string,

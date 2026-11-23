@@ -509,11 +509,13 @@
     "coauthorsChanged": "Changed by coauthors since your last compile",
     "texRootDocument": "root: {{path}} (it has its own \\documentclass)",
     "texRootInclude": "root: {{path}} (it includes {{file}})",
+    "texRootFormat": "root: {{path}} (a {{format}} document, built with its own engine)",
     "target": {
       "title": "Compile target",
-      "help": "With Follow the open file, a file that has its own \\documentclass compiles by itself. A chapter or section compiles the document that includes it. Other files compile the main document. A % !TEX root comment always wins.",
+      "help": "With Follow the open file, a file that has its own \\documentclass compiles by itself, and a chapter or section compiles the document that includes it. A Markdown, Typst or Quarto document compiles by itself with its own engine when the project is in another format. Other files compile the main document. A % !TEX root comment always wins.",
       "open": "Follow the open file",
-      "main": "Always the main document"
+      "main": "Always the main document",
+      "change": "Change main document…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Allow code in this project",
+    "followed": "{{name}} has to run code, and code only runs for the main document. Make {{name}} the main document, then allow code for it.",
     "needed": "This document has to run its code to build, and code is off for this project. Allow code only if you trust every file in the project.",
     "skipped": "The code in this document did not run because code is off for this project. Allow code only if you trust every file in the project.",
     "storedResults": "The PDF shows code results stored from an earlier run because code is off for this project. Allow code only if you trust every file in the project."
@@ -775,6 +778,9 @@
       "open": "Open",
       "browse": "Just browse files",
       "bestMatch": "Best match",
+      "current": "Current",
+      "changeDescription": "Compile builds the main document when the open file isn't a document of its own or part of one. Pick a document in another format and the project switches to that format.",
+      "use": "Use as main document",
       "empty": "Oleafly didn't find any documents here. Right-click a file in the file tree and choose Set as main document.",
       "truncated": "This folder is large, so Oleafly stopped looking early. Some documents may not be listed.",
       "openFailed": "Couldn't make {{path}} the main document."
@@ -800,6 +806,7 @@
       "has_bibliography": "Has a bibliography",
       "no_begin_document": "Has no \\begin{document}",
       "standalone_figure": "Standalone figure",
+      "notebook_output": "Made by Quarto from a notebook",
       "placeholder": "Not downloaded yet"
     },
     "noMain": "No main document yet. Pick a file and choose Set as main document.",

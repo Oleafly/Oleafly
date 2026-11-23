@@ -1,9 +1,21 @@
 import { useEffect, useRef } from "react";
 import { fromCoauthor } from "@/lib/live-file-mirror";
+import { resolveCompileTarget } from "@/lib/tex-root";
 import { stopOutdatedAutomaticCompile, typstLivePreviewWanted, useCompileStore } from "@/store/compile";
 import { useActiveContent, useFilesStore } from "@/store/files";
 
 export const AUTO_COMPILE_DEBOUNCE_MS = 2500;
+
+function livePreviewCompiles(): boolean {
+  return typstLivePreviewWanted() && resolveCompileTarget().format === null;
+}
+
+function showsAnotherDocument(): boolean {
+  const compile = useCompileStore.getState();
+  if (compile.status === "compiling") return false;
+  const shown = compile.htmlOutput?.mainDocument ?? compile.lastCompileCheckpoint?.mainDocument;
+  return shown !== undefined && shown !== resolveCompileTarget().mainDoc;
+}
 
 export function AutoCompileKeeper() {
   const projectId = useFilesStore((state) => state.projectId);
@@ -19,9 +31,12 @@ export function AutoCompileKeeper() {
       if (pendingRef.current !== null) clearTimeout(pendingRef.current);
       pendingRef.current = null;
     };
-    if (!autoCompile || !projectId || typstLivePreviewWanted()) {
+    if (!autoCompile || !projectId || livePreviewCompiles()) {
       pathRef.current = activePath;
       cancel();
+      if (autoCompile && projectId && livePreviewCompiles() && showsAnotherDocument()) {
+        void recompile({ origin: "automatic" });
+      }
       return;
     }
     if (pathRef.current !== activePath) {
@@ -34,7 +49,7 @@ export function AutoCompileKeeper() {
     const editedAt = Date.now();
     const attempt = () => {
       pendingRef.current = null;
-      if (typstLivePreviewWanted()) return;
+      if (livePreviewCompiles()) return;
       if (useCompileStore.getState().status === "compiling") {
         stopOutdatedAutomaticCompile(editedAt);
         pendingRef.current = setTimeout(attempt, 500);

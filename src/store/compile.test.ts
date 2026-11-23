@@ -1030,6 +1030,24 @@ describe("compile output lifecycle", () => {
     expect(mocks.compileProject.mock.calls[0][1]).toBe("chapter.tex");
   });
 
+  it("runs a compile asked for while a different document was building", async () => {
+    const building = deferred<unknown>();
+    const failed = { ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 };
+    mocks.compileProject.mockReturnValueOnce(building.promise).mockResolvedValue(failed);
+
+    const first = useCompileStore.getState().recompile({ origin: "automatic" });
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+    mocks.files.mainDoc = "chapter.tex";
+    mocks.files.tree = [...mocks.files.tree, { path: "chapter.tex", is_dir: false }];
+    mocks.index.texts["chapter.tex"] = "\\documentclass{article}\n";
+    await useCompileStore.getState().recompile();
+    building.resolve(failed);
+    await first;
+
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+    expect(mocks.compileProject.mock.calls[1][1]).toBe("chapter.tex");
+  });
+
   it("drops a request that waited behind a compile when another project opened", async () => {
     const pendingSave = deferred<void>();
     mocks.saveAllDirty.mockReturnValueOnce(pendingSave.promise);

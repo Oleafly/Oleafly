@@ -207,11 +207,20 @@ describe("an opened folder with a main document", () => {
     );
   });
 
-  it("keeps the current engine filter in a library project", async () => {
+  it("lets a library project make a document of another format its main", async () => {
     openFolder({ projectId: "paper", manifestHome: "library", mainDoc: "poster.typ", engine: TYPST_ENGINE });
     render(<FileTree />);
     fireEvent.click(screen.getByText("notes"));
     openRowMenu("draft.md");
+    expect(within(await screen.findByRole("menu")).getByText(files.setMain)).not.toHaveAttribute(
+      "data-disabled",
+    );
+  });
+
+  it("still refuses files that are not documents in a library project", async () => {
+    openFolder({ projectId: "paper", manifestHome: "library", mainDoc: "poster.typ", engine: TYPST_ENGINE });
+    render(<FileTree />);
+    openRowMenu("refs.bib");
     expect(within(await screen.findByRole("menu")).getByText(files.setMain)).toHaveAttribute(
       "data-disabled",
     );

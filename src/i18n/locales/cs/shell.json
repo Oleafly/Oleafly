@@ -511,11 +511,13 @@
     "coauthorsChanged": "Změněno spoluautory od vaší poslední kompilace",
     "texRootDocument": "kořen: {{path}} (má vlastní \\documentclass)",
     "texRootInclude": "kořen: {{path}} (vkládá {{file}})",
+    "texRootFormat": "kořen: {{path}} (dokument {{format}}, sestavený vlastním enginem)",
     "target": {
       "title": "Cíl kompilace",
-      "help": "S volbou Podle otevřeného souboru se soubor s vlastním \\documentclass kompiluje samostatně. Kapitola nebo oddíl kompiluje dokument, který je vkládá. Ostatní soubory kompilují hlavní dokument. Komentář % !TEX root má vždy přednost.",
+      "help": "S volbou Podle otevřeného souboru se soubor s vlastním \\documentclass kompiluje samostatně. Kapitola nebo oddíl kompiluje dokument, který je vkládá. Dokument Markdown, Typst nebo Quarto se v projektu jiného formátu kompiluje samostatně vlastním enginem. Ostatní soubory kompilují hlavní dokument. Komentář % !TEX root má vždy přednost.",
       "open": "Podle otevřeného souboru",
-      "main": "Vždy hlavní dokument"
+      "main": "Vždy hlavní dokument",
+      "change": "Změnit hlavní dokument…"
     }
   },
   "datePicker": {
@@ -654,6 +656,7 @@
   },
   "codeExecution": {
     "allow": "Povolit kód v tomto projektu",
+    "followed": "{{name}} musí spustit kód a kód se spouští jen pro hlavní dokument. Nastavte {{name}} jako hlavní dokument a pak pro něj povolte kód.",
     "needed": "Tento dokument musí při sestavení spustit svůj kód a kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
     "skipped": "Kód v tomto dokumentu se nespustil, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
     "storedResults": "PDF zobrazuje výsledky kódu uložené z dřívějšího spuštění, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu."
@@ -779,6 +782,9 @@
       "open": "Otevřít",
       "browse": "Jen procházet soubory",
       "bestMatch": "Nejlepší shoda",
+      "current": "Aktuální",
+      "changeDescription": "Kompilace sestaví hlavní dokument, když otevřený soubor není samostatný dokument ani jeho část. Když vyberete dokument v jiném formátu, projekt přejde na tento formát.",
+      "use": "Použít jako hlavní dokument",
       "empty": "Oleafly tu nenašel žádné dokumenty. Klikněte pravým tlačítkem na soubor ve stromu souborů a zvolte Nastavit jako hlavní dokument.",
       "truncated": "Tato složka je velká, a tak Oleafly přestal hledat dříve. Některé dokumenty nemusí být v seznamu.",
       "openFailed": "{{path}} se nepodařilo nastavit jako hlavní dokument."
@@ -804,6 +810,7 @@
       "has_bibliography": "Obsahuje bibliografii",
       "no_begin_document": "Bez \\begin{document}",
       "standalone_figure": "Samostatný obrázek",
+      "notebook_output": "Vytvořil ho Quarto z notebooku",
       "placeholder": "Ještě není stažen"
     },
     "noMain": "Zatím tu není hlavní dokument. Vyberte soubor a zvolte Nastavit jako hlavní dokument.",

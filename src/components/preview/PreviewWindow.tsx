@@ -812,7 +812,9 @@ export function PreviewWindow({
       aria-label={t(($) => $.preview.viewer.scrollArea)}
       className="isolate h-full overflow-auto focus-visible:bg-accent/20"
     >
-      {htmlBuiltAt !== null && <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />}
+      {htmlBuiltAt !== null && (
+        <HtmlOutputPanel projectId={projectId} mainDocument={workspace?.htmlOutput?.mainDocument} builtAt={htmlBuiltAt} />
+      )}
       {htmlBuiltAt === null && (previewDocument ? (
         <ErrorBoundary
           resetKey={`${previewDocument.identity}:${viewerReload}`}
@@ -1019,7 +1021,11 @@ export function PreviewWindow({
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
           detached onWindow={() => void getCurrentWindow().close()}
           onSettings={() => void command({ action: "pdf-settings" })}
-          onOpenInBrowser={htmlBuiltAt === null ? undefined : () => void openHtmlInBrowser(projectId)}
+          onOpenInBrowser={
+            htmlBuiltAt === null
+              ? undefined
+              : () => void openHtmlInBrowser(projectId, workspace?.htmlOutput?.mainDocument)
+          }
           onPresent={(mode) =>
             void present({
               projectId,

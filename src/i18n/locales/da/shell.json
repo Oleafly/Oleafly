@@ -509,11 +509,13 @@
     "coauthorsChanged": "Ændret af medforfattere siden din seneste kompilering",
     "texRootDocument": "rod: {{path}} (har sin egen \\documentclass)",
     "texRootInclude": "rod: {{path}} (inkluderer {{file}})",
+    "texRootFormat": "rod: {{path}} (et {{format}}-dokument, bygget med sin egen motor)",
     "target": {
       "title": "Kompileringsmål",
-      "help": "Med Følg den åbne fil kompileres en fil med sin egen \\documentclass for sig selv. Et kapitel eller afsnit kompilerer det dokument, der inkluderer det. Andre filer kompilerer hoveddokumentet. En % !TEX root-kommentar går altid forud.",
+      "help": "Med Følg den åbne fil kompileres en fil med sin egen \\documentclass for sig selv. Et kapitel eller afsnit kompilerer det dokument, der inkluderer det. Et Markdown-, Typst- eller Quarto-dokument kompileres for sig selv med sin egen motor, når projektet er i et andet format. Andre filer kompilerer hoveddokumentet. En % !TEX root-kommentar går altid forud.",
       "open": "Følg den åbne fil",
-      "main": "Altid hoveddokumentet"
+      "main": "Altid hoveddokumentet",
+      "change": "Skift hoveddokument…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Tillad kode i dette projekt",
+    "followed": "{{name}} skal køre kode, og kode kører kun for hoveddokumentet. Gør {{name}} til hoveddokumentet, og tillad derefter kode for det.",
     "needed": "Dette dokument skal køre sin kode for at blive bygget, og kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet.",
     "skipped": "Koden i dette dokument blev ikke kørt, fordi kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet.",
     "storedResults": "PDF'en viser koderesultater, der er gemt fra en tidligere kørsel, fordi kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet."
@@ -775,6 +778,9 @@
       "open": "Åbn",
       "browse": "Gennemse bare filerne",
       "bestMatch": "Bedste match",
+      "current": "Nuværende",
+      "changeDescription": "Kompilering bygger hoveddokumentet, når den åbne fil hverken er et selvstændigt dokument eller en del af et. Vælg et dokument i et andet format, så skifter projektet til det format.",
+      "use": "Brug som hoveddokument",
       "empty": "Oleafly fandt ingen dokumenter her. Højreklik på en fil i filtræet, og klik på Vælg som hoveddokument.",
       "truncated": "Mappen er stor, så Oleafly stoppede tidligt med at lede. Nogle dokumenter er måske ikke med på listen.",
       "openFailed": "Kunne ikke gøre {{path}} til hoveddokument."
@@ -800,6 +806,7 @@
       "has_bibliography": "Har en litteraturliste",
       "no_begin_document": "Har ingen \\begin{document}",
       "standalone_figure": "Selvstændig figur",
+      "notebook_output": "Lavet af Quarto ud fra en notebook",
       "placeholder": "Ikke hentet endnu"
     },
     "noMain": "Intet hoveddokument endnu. Vælg en fil, og klik på Vælg som hoveddokument.",

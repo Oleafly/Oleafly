@@ -509,11 +509,13 @@
     "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert",
     "texRootDocument": "root: {{path}} (hat eine eigene \\documentclass)",
     "texRootInclude": "root: {{path}} (bindet {{file}} ein)",
+    "texRootFormat": "root: {{path}} (ein {{format}}-Dokument, mit seiner eigenen Engine erstellt)",
     "target": {
       "title": "Kompilierziel",
-      "help": "Mit „Der geöffneten Datei folgen“ wird eine Datei mit eigener \\documentclass für sich kompiliert. Ein Kapitel oder Abschnitt kompiliert das Dokument, das es einbindet. Andere Dateien kompilieren das Hauptdokument. Ein % !TEX root-Kommentar hat immer Vorrang.",
+      "help": "Mit „Der geöffneten Datei folgen“ wird eine Datei mit eigener \\documentclass für sich kompiliert. Ein Kapitel oder Abschnitt kompiliert das Dokument, das es einbindet. Ein Markdown-, Typst- oder Quarto-Dokument wird in einem Projekt mit anderem Format für sich mit seiner eigenen Engine kompiliert. Andere Dateien kompilieren das Hauptdokument. Ein % !TEX root-Kommentar hat immer Vorrang.",
       "open": "Der geöffneten Datei folgen",
-      "main": "Immer das Hauptdokument"
+      "main": "Immer das Hauptdokument",
+      "change": "Hauptdokument ändern…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Code in diesem Projekt erlauben",
+    "followed": "{{name}} muss Code ausführen, und Code läuft nur für das Hauptdokument. Machen Sie {{name}} zum Hauptdokument und erlauben Sie dann Code dafür.",
     "needed": "Dieses Dokument muss zum Erstellen seinen Code ausführen, und Code ist für dieses Projekt ausgeschaltet. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen.",
     "skipped": "Der Code in diesem Dokument wurde nicht ausgeführt, weil Code für dieses Projekt ausgeschaltet ist. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen.",
     "storedResults": "Das PDF zeigt gespeicherte Code-Ergebnisse aus einem früheren Durchlauf, weil Code für dieses Projekt ausgeschaltet ist. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen."
@@ -775,6 +778,9 @@
       "open": "Öffnen",
       "browse": "Nur Dateien ansehen",
       "bestMatch": "Bester Treffer",
+      "current": "Aktuell",
+      "changeDescription": "Kompilieren erstellt das Hauptdokument, wenn die geöffnete Datei weder ein eigenes Dokument noch Teil eines Dokuments ist. Wählen Sie ein Dokument in einem anderen Format, wechselt das Projekt zu diesem Format.",
+      "use": "Als Hauptdokument verwenden",
       "empty": "Oleafly hat hier keine Dokumente gefunden. Klicken Sie im Dateibaum mit der rechten Maustaste auf eine Datei und wählen Sie Als Hauptdokument festlegen.",
       "truncated": "Dieser Ordner ist groß, daher hat Oleafly die Suche früh beendet. Möglicherweise fehlen einige Dokumente in der Liste.",
       "openFailed": "{{path}} konnte nicht zum Hauptdokument gemacht werden."
@@ -800,6 +806,7 @@
       "has_bibliography": "Hat ein Literaturverzeichnis",
       "no_begin_document": "Ohne \\begin{document}",
       "standalone_figure": "Eigenständige Grafik",
+      "notebook_output": "Von Quarto aus einem Notebook erzeugt",
       "placeholder": "Noch nicht heruntergeladen"
     },
     "noMain": "Noch kein Hauptdokument. Wählen Sie eine Datei und dann Als Hauptdokument festlegen.",

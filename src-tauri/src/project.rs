@@ -1140,11 +1140,42 @@ const MAIN_DOCUMENT_CHANGED: &str =
     "The main document changed. Refresh the project and compile again.";
 
 pub(crate) fn read_compile_meta(project_id: &str, main_doc: &str) -> Result<ProjectMeta, String> {
+    read_compile_root(project_id, main_doc).map(|(meta, _)| meta)
+}
+
+pub(crate) fn read_compile_root(
+    project_id: &str,
+    main_doc: &str,
+) -> Result<(ProjectMeta, ProjectMeta), String> {
     let meta = crate::trust::restrict_compile_meta(project_id, read_meta(project_id)?)?;
-    if meta.main_doc != main_doc && !is_tex_root_override(project_id, &meta, main_doc) {
-        return Err(MAIN_DOCUMENT_CHANGED.into());
+    let engine = compile_engine_for(project_id, &meta, main_doc).ok_or(MAIN_DOCUMENT_CHANGED)?;
+    let root = if engine == meta.engine {
+        meta.clone()
+    } else {
+        ProjectMeta {
+            main_doc: main_doc.to_owned(),
+            engine,
+            tex_flavor: None,
+            allow_shell_escape: false,
+            ..meta.clone()
+        }
+    };
+    Ok((meta, root))
+}
+
+fn compile_engine_for(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> Option<String> {
+    if meta.main_doc == main_doc {
+        return Some(meta.engine.clone());
     }
-    Ok(meta)
+    let format = oleafly_core::SourceFamily::of(main_doc)?;
+    if oleafly_core::SourceFamily::of(&meta.main_doc) == Some(format) {
+        return is_tex_root_override(project_id, meta, main_doc).then(|| meta.engine.clone());
+    }
+    if !resolve(project_id, main_doc).is_ok_and(|path| path.is_file()) {
+        return None;
+    }
+    let engine = engine_for_main_document(&meta.engine, main_doc).ok()?;
+    Some(detected_notebook_engine(project_id, main_doc, engine))
 }
 
 fn is_tex_root_override(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> bool {
@@ -4071,6 +4102,20 @@ fn remember_main_on_open(project_id: &str) {
             "Could not find the main document of {project_id}: {error}"
         ));
     }
+}
+
+#[tauri::command]
+pub async fn main_document_candidates(
+    project_id: String,
+) -> Result<oleafly_core::Detection, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let root = crate::project_location::locate(&project_id)?.root;
+        oleafly_core::rank_main_documents(&root, &oleafly_core::DetectOptions::default())
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 pub(crate) fn detect_main_on_open(project_id: &str) -> Result<oleafly_core::Detection, String> {
@@ -15120,10 +15165,11 @@ mod tests {
         for rejected in [
             "missing.tex",
             "folder.tex",
-            "notes.md",
-            "slides.typ",
+            "missing.md",
             "../escape.tex",
+            "../escape.md",
             "/etc/hosts.tex",
+            "refs.bib",
         ] {
             assert!(
                 super::read_compile_meta(project_id, rejected).is_err(),
@@ -15155,6 +15201,93 @@ mod tests {
         .unwrap();
         assert!(super::read_compile_meta(project_id, "slides.typ").is_ok());
         assert!(super::read_compile_meta(project_id, "handout.typ").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_document_in_another_format_compiles_with_its_own_engine() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("format-root");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "format-root";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(project_dir.join("notes")).unwrap();
+        for (path, text) in [
+            ("main.tex", "\\documentclass{article}\n"),
+            ("letter.tex", "\\documentclass{letter}\n"),
+            ("notes/meeting.md", "# Meeting\n"),
+            ("slides.typ", "= Slides\n"),
+            (
+                "report.typ",
+                "#import \"/.calepin/calepin.typ\" as calepin\n#show: calepin.document\n",
+            ),
+            ("analysis.Rmd", "# Analysis\n"),
+        ] {
+            std::fs::write(project_dir.join(path), text).unwrap();
+        }
+        let stored = ProjectMeta {
+            name: "Formats".into(),
+            main_doc: "main.tex".into(),
+            engine: "latexmk".into(),
+            tex_flavor: Some("lualatex".into()),
+            allow_shell_escape: true,
+            ..ProjectMeta::default()
+        };
+        write_meta_at(&project_dir.join("project.json"), &stored).unwrap();
+
+        let (meta, compiled) = super::read_compile_root(project_id, "notes/meeting.md").unwrap();
+        assert_eq!(
+            (meta.main_doc.as_str(), meta.engine.as_str()),
+            ("main.tex", "latexmk")
+        );
+        assert_eq!(compiled.engine, "markdown");
+        assert_eq!(compiled.tex_flavor, None);
+        assert!(!compiled.allow_shell_escape);
+        for (main, engine) in [
+            ("main.tex", "latexmk"),
+            ("letter.tex", "latexmk"),
+            ("slides.typ", "typst"),
+            ("report.typ", "calepin"),
+            ("analysis.Rmd", "quarto"),
+        ] {
+            assert_eq!(
+                super::read_compile_root(project_id, main).unwrap().1.engine,
+                engine,
+                "{main}"
+            );
+        }
+        let (_, latex) = super::read_compile_root(project_id, "letter.tex").unwrap();
+        assert_eq!(latex.tex_flavor.as_deref(), Some("lualatex"));
+        let (_, typst) = super::read_compile_root(project_id, "slides.typ").unwrap();
+        assert_eq!(typst.main_doc, "slides.typ");
+        assert!(crate::typst_toolchain::is_typst_project(&typst));
+
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                main_doc: "analysis.Rmd".into(),
+                engine: "quarto".into(),
+                tex_flavor: None,
+                ..stored
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            super::read_compile_root(project_id, "letter.tex")
+                .unwrap()
+                .1
+                .engine,
+            "xetex"
+        );
+        assert_eq!(
+            super::read_compile_root(project_id, "notes/meeting.md")
+                .unwrap()
+                .1
+                .engine,
+            "markdown"
+        );
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();

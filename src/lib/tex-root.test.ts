@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { effectiveMainDocMissing, resolveEffectiveMainDoc } from "./tex-root";
+import { effectiveMainDocMissing, resolveCompileTarget, resolveEffectiveMainDoc } from "./tex-root";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { LatexUnits } from "@/lib/project-intelligence/types";
 import { parseTexMagicComments } from "@/lib/tex-magic-comments";
@@ -463,5 +463,151 @@ Supplement.
     expect(effectiveMainDocMissing()).toBe(false);
     open("sections/intro.tex", { "sections/intro.tex": "x" }, { mainDoc: "", manifestHome: "folder" });
     expect(effectiveMainDocMissing()).toBe(true);
+  });
+});
+
+describe("resolveCompileTarget", () => {
+  const letter = String.raw`\documentclass{letter}
+\begin{document}
+Thanks.
+\end{document}
+`;
+  const tree = [
+    "paper.tex",
+    "letter.tex",
+    "index.qmd",
+    "paper.md",
+    "README.md",
+    "AGENTS.md",
+    "notes/meeting.md",
+    "slides.qmd",
+    "poster.typ",
+    "refs.bib",
+    "figure.png",
+    "_extensions/journal/partials/title.tex",
+  ].map((path) => ({ path, is_dir: false }));
+  const reset = {
+    projectId: null,
+    mainDoc: "main.tex",
+    activePath: null,
+    openTabs: [],
+    tree: [],
+    files: {},
+    engine: LATEX_ENGINE,
+    manifestHome: "library" as const,
+  };
+
+  function project(activePath: string | null, files: Record<string, string>, extra: Record<string, unknown> = {}) {
+    useFilesStore.setState({
+      projectId: "mixed",
+      mainDoc: "paper.tex",
+      activePath,
+      openTabs: Object.keys(files),
+      tree,
+      files: Object.fromEntries(
+        Object.entries(files).map(([path, content]) => [path, { content, dirty: false }]),
+      ),
+      engine: LATEX_ENGINE,
+      ...extra,
+    });
+  }
+
+  beforeEach(() => {
+    useFilesStore.setState(reset);
+    useCompileRootStore.setState({ followOpenFile: true, latexUnits: null, parts: null });
+    resolveCompileTarget();
+  });
+
+  afterEach(() => {
+    useFilesStore.setState(reset);
+    useCompileRootStore.setState({ followOpenFile: true, latexUnits: null, parts: null });
+  });
+
+  it("compiles an open document in another format by itself and leaves LaTeX tools on the paper", () => {
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" });
+    expect(resolveCompileTarget()).toEqual({
+      mainDoc: "notes/meeting.md",
+      overriddenBy: "notes/meeting.md",
+      reason: "format",
+      brokenRoot: null,
+      format: "markdown",
+    });
+    expect(resolveEffectiveMainDoc().mainDoc).toBe("paper.tex");
+    project("slides.qmd", { "slides.qmd": "# Slides\n" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "slides.qmd", format: "quarto" });
+    project("poster.typ", { "poster.typ": "= Poster\n" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "poster.typ", format: "typst" });
+  });
+
+  it("keeps the main document for repository notes, files outside the tree and files in its own format", () => {
+    project("README.md", { "README.md": "# Repo\n" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
+    project("AGENTS.md", { "AGENTS.md": "Rules\n" });
+    expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
+    project("elsewhere.md", { "elsewhere.md": "# Not in the tree\n" });
+    expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" }, { mainDoc: "paper.md" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.md", format: null });
+  });
+
+  it("compiles a complete LaTeX file in a Quarto project but not Quarto's own partials", () => {
+    const quarto = { mainDoc: "index.qmd", engine: { ...LATEX_ENGINE, id: "quarto", source_format: "markdown" } };
+    project("letter.tex", { "letter.tex": letter }, quarto);
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "letter.tex", format: "latex" });
+    project("_extensions/journal/partials/title.tex", { "_extensions/journal/partials/title.tex": "\\title{$title$}\n" }, quarto);
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "index.qmd", format: null });
+  });
+
+  it("keeps the last document while a bibliography or image is open, until its tab closes", () => {
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" });
+    expect(resolveCompileTarget().mainDoc).toBe("notes/meeting.md");
+    useFilesStore.setState({ activePath: "refs.bib", openTabs: ["notes/meeting.md", "refs.bib"] });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "notes/meeting.md", reason: "format" });
+    useFilesStore.setState({ activePath: "figure.png" });
+    expect(resolveCompileTarget().mainDoc).toBe("notes/meeting.md");
+    useFilesStore.setState({ openTabs: ["refs.bib", "figure.png"] });
+    expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
+  });
+
+  it("goes back to the paper when a LaTeX file is opened again", () => {
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n", "paper.tex": letter });
+    expect(resolveCompileTarget().mainDoc).toBe("notes/meeting.md");
+    useFilesStore.setState({ activePath: "paper.tex" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
+    useFilesStore.setState({ activePath: "refs.bib" });
+    expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
+  });
+
+  it("leaves Markdown in a Quarto project, Pandoc templates and files other documents use to the main document", () => {
+    const quarto = { mainDoc: "index.qmd", engine: { ...LATEX_ENGINE, id: "quarto", source_format: "markdown" } };
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" }, quarto);
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "index.qmd", format: null });
+
+    const template = String.raw`\documentclass{article}
+\begin{document}
+$body$
+\end{document}
+`;
+    project("letter.tex", { "letter.tex": template }, quarto);
+    expect(resolveCompileTarget().mainDoc).toBe("index.qmd");
+
+    useCompileRootStore.setState({ parts: { projectId: "mixed", files: new Set(["poster.typ"]) } });
+    project("poster.typ", { "poster.typ": "#let accent = blue\n" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
+    useCompileRootStore.setState({ parts: { projectId: "elsewhere", files: new Set(["poster.typ"]) } });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "poster.typ", format: "typst" });
+  });
+
+  it("names the format of a LaTeX root that a comment picks in a project of another format", () => {
+    useCompileRootStore.setState({ followOpenFile: false });
+    const quarto = { mainDoc: "index.qmd", engine: { ...LATEX_ENGINE, id: "quarto", source_format: "markdown" } };
+    project("chapter.tex", { "chapter.tex": "% !TEX root = letter.tex\n\\section{One}\n" }, quarto);
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "letter.tex", reason: "magic", format: "latex" });
+  });
+
+  it("follows nothing when the compile target is always the main document", () => {
+    useCompileRootStore.setState({ followOpenFile: false });
+    project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
   });
 });

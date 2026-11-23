@@ -1,4 +1,5 @@
 mod parse;
+mod quarto;
 #[cfg(test)]
 mod tests;
 
@@ -52,7 +53,7 @@ const SOURCE_SUFFIXES: [&str; 8] = [
 const LATEX_SUFFIXES: [&str; 3] = [".tex", ".ltx", ".latex"];
 const GRAPHIC_SUFFIXES: [&str; 6] = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
 const ROOT_MAINS: [&str; 4] = ["main.tex", "main.typ", "main.qmd", "main.md"];
-const REPOSITORY_NOTES: [&str; 7] = [
+const REPOSITORY_NOTES: [&str; 10] = [
     "readme",
     "changelog",
     "license",
@@ -60,6 +61,9 @@ const REPOSITORY_NOTES: [&str; 7] = [
     "contributing",
     "code_of_conduct",
     "security",
+    "agents",
+    "claude",
+    "gemini",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -122,6 +126,7 @@ pub enum Reason {
     HasBibliography,
     NoBeginDocument,
     StandaloneFigure,
+    NotebookOutput,
     Placeholder,
 }
 
@@ -141,6 +146,7 @@ pub enum DetectionSource {
     Latexmkrc,
     ArxivReadme,
     TypstToml,
+    QuartoProject,
     Subfiles,
     TexRoot,
     RootMain,
@@ -261,12 +267,23 @@ pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<
     if let Some(main) = manifest_main(&root, options) {
         return Ok(settled(&root, main, DetectionSource::Manifest, options));
     }
-    scan_folder(&root, options)
+    scan_folder(&root, options, false)
 }
 
-fn scan_folder(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+pub fn rank_main_documents(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+    scan_folder(&inspected_root(root)?, options, true)
+}
+
+fn scan_folder(root: &Path, options: &DetectOptions<'_>, list_all: bool) -> Result<Detection> {
     let root = root.to_path_buf();
-    let mut scan = Scan::run(&root, options)?;
+    let quarto = quarto_project(&root, options);
+    let mut scan = Scan::run(
+        &root,
+        options,
+        quarto
+            .as_ref()
+            .and_then(|project| project.output_dir.clone()),
+    )?;
     let graph = Graph::build(&scan);
     scan.complete_split_documents(&graph);
     let root_name = root
@@ -274,7 +291,7 @@ fn scan_folder(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
     let ranked = scan.ranked(&graph, &root_name);
-    let declarations = declarations(&root, &scan, options);
+    let declarations = declarations(&root, &scan, options, quarto.as_ref());
     if !declarations.is_empty() {
         let decisive = decisive(&declarations, &ranked);
         return Ok(match declarations.as_slice() {
@@ -293,7 +310,7 @@ fn scan_folder(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
                 &root_name,
                 &declarations,
                 options,
-                if decisive { &[] } else { &ranked },
+                if decisive && !list_all { &[] } else { &ranked },
             ),
         });
     }
@@ -758,10 +775,11 @@ struct Scan {
     index: HashMap<String, usize>,
     folded: HashMap<String, Vec<usize>>,
     truncated: bool,
+    output_dir: Option<String>,
 }
 
 impl Scan {
-    fn run(root: &Path, options: &DetectOptions<'_>) -> Result<Self> {
+    fn run(root: &Path, options: &DetectOptions<'_>, output_dir: Option<String>) -> Result<Self> {
         let limits = options.limits;
         let started = Instant::now();
         let mut scan = Self {
@@ -769,6 +787,7 @@ impl Scan {
             index: HashMap::new(),
             folded: HashMap::new(),
             truncated: false,
+            output_dir,
         };
         let mut entries = 0usize;
         let mut queue: VecDeque<(PathBuf, String, usize)> =
@@ -833,6 +852,13 @@ impl Scan {
         if file_type.is_dir() {
             if depth < limits.max_depth
                 && !is_skipped_scan_directory(OsStr::new(name))
+                && !crate::exclude::is_quarto_directory(name, || {
+                    quarto_config_in(&directory_of(entry))
+                })
+                && !self
+                    .output_dir
+                    .as_deref()
+                    .is_some_and(|output| output.eq_ignore_ascii_case(&relative))
                 && !(depth == 0 && name == TYPST_VENDOR_DIRECTORY)
                 && oleafly_manifest_in(&entry.path(), options).is_none()
             {
@@ -968,6 +994,15 @@ impl Scan {
         (facts.class.is_some() && facts.begin_document).then_some(facts)
     }
 
+    fn rendered_from_notebook(&self, index: usize, graph: &Graph) -> bool {
+        let source = &self.sources[index];
+        graph.outgoing[index] == 0
+            && crate::exclude::is_notebook_render(&source.path, |path| {
+                self.lookup(path)
+                    .is_some_and(|found| self.sources[found].family == SourceFamily::Quarto)
+            })
+    }
+
     fn ranked(&self, graph: &Graph, root_name: &str) -> Vec<Ranked> {
         let mut ranked: Vec<Ranked> = self
             .sources
@@ -975,12 +1010,14 @@ impl Scan {
             .enumerate()
             .filter_map(|(index, source)| {
                 let tier = tier_of(source, graph.included[index])?;
+                let rendered = self.rendered_from_notebook(index, graph);
                 Some(Ranked::new(
                     source,
-                    tier,
+                    if rendered { Tier::W } else { tier },
                     graph.outgoing[index],
                     root_name,
                     false,
+                    rendered,
                 ))
             })
             .collect();
@@ -1247,7 +1284,14 @@ struct Ranked {
 }
 
 impl Ranked {
-    fn new(source: &Source, tier: Tier, outgoing: usize, root_name: &str, declared: bool) -> Self {
+    fn new(
+        source: &Source,
+        tier: Tier,
+        outgoing: usize,
+        root_name: &str,
+        declared: bool,
+        rendered: bool,
+    ) -> Self {
         let kind = kind_of(source);
         let name = name_class(&source.path, root_name);
         let mut reasons = Vec::new();
@@ -1271,7 +1315,9 @@ impl Ranked {
         if source.facts.bibliography {
             reasons.push(Reason::HasBibliography);
         }
-        if tier == Tier::W && !source.placeholder {
+        if rendered {
+            reasons.push(Reason::NotebookOutput);
+        } else if tier == Tier::W && !source.placeholder {
             reasons.push(if kind == DocumentKind::Standalone {
                 Reason::StandaloneFigure
             } else {
@@ -1337,12 +1383,18 @@ fn automatic_choice(ranked: &[Ranked]) -> Option<usize> {
             .iter()
             .position(|ranked| ranked.candidate.tier == tier)
     };
+    let rival = ranked.iter().any(|ranked| {
+        ranked.candidate.tier == Tier::A
+            && ranked.candidate.depth == 0
+            && ranked.name <= NameClass::Paper
+    });
     match (
         count(Tier::S),
         count(Tier::A),
         count(Tier::M),
         count(Tier::W),
     ) {
+        (strong, _, _, _) if strong > 0 && rival => None,
         (1, _, _, _) => first(Tier::S),
         (strong, _, _, _) if strong > 1 => {
             let primary = &ranked[0];
@@ -1397,9 +1449,13 @@ fn root_main(
             .sources
             .iter()
             .position(|source| source.depth == 0 && source.path.eq_ignore_ascii_case(name));
-        let (source, included) = match scanned {
-            Some(index) => (scan.sources[index].clone(), graph.included[index]),
-            None if scan.truncated => (source_on_disk(root, name, options)?, false),
+        let (source, included, rendered) = match scanned {
+            Some(index) => (
+                scan.sources[index].clone(),
+                graph.included[index],
+                scan.rendered_from_notebook(index, graph),
+            ),
+            None if scan.truncated => (source_on_disk(root, name, options)?, false, false),
             None => return None,
         };
         let expected = match source.family {
@@ -1407,7 +1463,8 @@ fn root_main(
             SourceFamily::Typst | SourceFamily::Quarto => Tier::A,
             SourceFamily::Markdown => Tier::M,
         };
-        (!source.placeholder && tier_of(&source, included) == Some(expected)).then_some(source.path)
+        (!source.placeholder && !rendered && tier_of(&source, included) == Some(expected))
+            .then_some(source.path)
     })
 }
 
@@ -1417,7 +1474,33 @@ struct Declaration {
     votes: usize,
 }
 
-fn declarations(root: &Path, scan: &Scan, options: &DetectOptions<'_>) -> Vec<Declaration> {
+fn directory_of(entry: &std::fs::DirEntry) -> PathBuf {
+    entry
+        .path()
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default()
+}
+
+fn quarto_config_in(directory: &Path) -> bool {
+    quarto::PROJECT_FILES
+        .iter()
+        .any(|name| directory.join(name).is_file())
+}
+
+fn quarto_project(root: &Path, options: &DetectOptions<'_>) -> Option<quarto::QuartoProject> {
+    quarto::PROJECT_FILES
+        .iter()
+        .find(|name| root.join(name).is_file())
+        .map(|name| quarto::parse(&read_text(&root.join(name), options).unwrap_or_default()))
+}
+
+fn declarations(
+    root: &Path,
+    scan: &Scan,
+    options: &DetectOptions<'_>,
+    quarto: Option<&quarto::QuartoProject>,
+) -> Vec<Declaration> {
     let mut found: Vec<Declaration> = Vec::new();
     let mut add = |path: Option<String>, source: DetectionSource| {
         let Some(path) = path.map(|path| disk_spelling(root, Some(scan), path)) else {
@@ -1461,6 +1544,12 @@ fn declarations(root: &Path, scan: &Scan, options: &DetectOptions<'_>) -> Vec<De
             DetectionSource::TypstToml,
         );
     }
+    if let Some(project) = quarto {
+        add(
+            existing_source(root, &project.main, Some(SourceFamily::Quarto)),
+            DetectionSource::QuartoProject,
+        );
+    }
     for source in &scan.sources {
         let facts = &source.facts;
         if facts
@@ -1495,7 +1584,10 @@ fn decisive(declarations: &[Declaration], ranked: &[Ranked]) -> bool {
     if declarations.iter().any(|declaration| {
         matches!(
             declaration.source,
-            DetectionSource::Latexmkrc | DetectionSource::ArxivReadme | DetectionSource::TypstToml
+            DetectionSource::Latexmkrc
+                | DetectionSource::ArxivReadme
+                | DetectionSource::TypstToml
+                | DetectionSource::QuartoProject
         )
     }) {
         return true;
@@ -1534,14 +1626,18 @@ fn declared_choice(
     let mut declared: Vec<(&Declaration, Ranked)> = declarations
         .iter()
         .filter_map(|declaration| {
-            let (source, outgoing) = match scan.lookup(&declaration.path) {
-                Some(index) => (scan.sources[index].clone(), graph.outgoing[index]),
-                None => (source_on_disk(root, &declaration.path, options)?, 0),
+            let (source, outgoing, rendered) = match scan.lookup(&declaration.path) {
+                Some(index) => (
+                    scan.sources[index].clone(),
+                    graph.outgoing[index],
+                    scan.rendered_from_notebook(index, graph),
+                ),
+                None => (source_on_disk(root, &declaration.path, options)?, 0, false),
             };
             let tier = tier_of(&source, false).unwrap_or(Tier::W);
             Some((
                 declaration,
-                Ranked::new(&source, tier, outgoing, root_name, true),
+                Ranked::new(&source, tier, outgoing, root_name, true, rendered),
             ))
         })
         .collect();

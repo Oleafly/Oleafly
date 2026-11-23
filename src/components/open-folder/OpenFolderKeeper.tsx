@@ -27,10 +27,10 @@ function linkedFolderProject(): string | null {
 }
 
 function takePresentedFolder(): void {
-  const opened = useOpenFolderStore.getState().opened;
+  const { opened, changing } = useOpenFolderStore.getState();
   const files = useFilesStore.getState();
   if (!opened || files.loading || files.projectId !== opened.project_id) return;
-  if (opened.detection.decision !== "auto") {
+  if (opened.detection.decision !== "auto" && !changing) {
     const settings = useSettingsStore.getState();
     if (!settings.showTree) settings.setShowTree(true);
     if (settings.railTab !== "files") settings.setRailTab("files");

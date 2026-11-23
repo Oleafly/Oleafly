@@ -70,8 +70,11 @@ export async function installNotebookTool(
 export const removeNotebookTool = (tool: NotebookTool) =>
   invoke<NotebookToolchainStatus>("remove_notebook_tool", { tool });
 
-export const openCompiledHtml = (projectId: string) =>
-  invoke<void>("open_compiled_html", { projectId });
+export const openCompiledHtml = (projectId: string, mainDocument?: string) =>
+  invoke<void>("open_compiled_html", mainDocument === undefined ? { projectId } : { projectId, mainDocument });
 
-export const compiledHtmlPreviewUrl = (projectId: string) =>
-  invoke<string>("compiled_html_preview_url", { projectId });
+export const compiledHtmlPreviewUrl = (projectId: string, mainDocument?: string) =>
+  invoke<string>(
+    "compiled_html_preview_url",
+    mainDocument === undefined ? { projectId } : { projectId, mainDocument },
+  );

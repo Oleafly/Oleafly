@@ -24,6 +24,7 @@ function notebookEngine(id: "quarto" | "calepin"): DocumentEngineDescriptor {
 
 const mocks = vi.hoisted(() => ({
   compileProject: vi.fn(),
+  getProjectEngine: vi.fn(),
   readCompiledPdf: vi.fn(),
   refreshPreviewWindow: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
@@ -47,6 +48,7 @@ const mocks = vi.hoisted(() => ({
     engineError: null,
     loading: false,
     tree: [{ path: "report.qmd", is_dir: false }],
+    openTabs: [] as string[],
     files: { "report.qmd": { content: "# Hello", dirty: false } } as Record<string, { content: string; dirty: boolean }>,
     saveAllDirty: vi.fn(async () => {}),
     refreshEngine: vi.fn(async () => {}),
@@ -56,6 +58,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   withEventListener: (await importOriginal<typeof import("@/lib/tauri")>()).withEventListener,
   compileProject: mocks.compileProject,
+  getProjectEngine: mocks.getProjectEngine,
   readCompiledPdf: mocks.readCompiledPdf,
   validateCompileFingerprint: vi.fn(async () => null),
   readFileContent: vi.fn(async () => "# Hello"),
@@ -98,6 +101,7 @@ import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { fingerprintCompileOutput } from "@/lib/compile-checkpoint";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { QUARTO_SETTINGS_TARGET, useNotebookToolchainStore } from "@/store/notebook-toolchain";
+import { useCompileRootStore } from "@/store/compile-root";
 import { acceptCompileOffer, installMissingNotebookTool, useCompileStore } from "./compile";
 
 function toolStatus(name: "quarto" | "calepin", installed: boolean): NotebookToolStatus {
@@ -158,13 +162,16 @@ function refreshStatuses(): string[] {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getProjectEngine.mockReset();
   mocks.files.projectId = "project";
   mocks.files.engine = notebookEngine("quarto");
   mocks.files.engineLoaded = true;
   mocks.files.mainDoc = "report.qmd";
   mocks.files.activePath = "report.qmd";
   mocks.files.tree = [{ path: "report.qmd", is_dir: false }];
+  mocks.files.openTabs = [];
   mocks.files.files = { "report.qmd": { content: "# Hello", dirty: false } };
+  useCompileRootStore.setState({ followOpenFile: true, latexUnits: null });
   mocks.notebookToolchainStatus.mockResolvedValue(toolchain(true));
   useNotebookToolchainStore.setState({ status: toolchain(true), loading: false, loadFailed: false, installs: {}, removing: null });
   useProjectAnalysisStore.getState().reset();
@@ -181,6 +188,59 @@ beforeEach(() => {
   });
 });
 
+describe("a notebook open in a LaTeX project", () => {
+  beforeEach(() => {
+    mocks.files.engine = LATEX_ENGINE;
+    mocks.files.mainDoc = "paper.tex";
+    mocks.files.activePath = "slides.qmd";
+    mocks.files.openTabs = ["slides.qmd"];
+    mocks.files.tree = [
+      { path: "paper.tex", is_dir: false },
+      { path: "slides.qmd", is_dir: false },
+    ];
+    mocks.files.files = { "slides.qmd": { content: "# Slides", dirty: false } };
+    mocks.getProjectEngine.mockResolvedValue({ ...notebookEngine("quarto"), main_document: "slides.qmd" });
+  });
+
+  it("compiles the notebook with Quarto and leaves the project's engine alone", async () => {
+    mocks.compileProject.mockResolvedValue(htmlResult("/project/.oleafly/build/slides.html"));
+    await useCompileStore.getState().recompile();
+    expect(mocks.getProjectEngine).toHaveBeenCalledWith("project", "slides.qmd");
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+    expect(mocks.compileProject.mock.calls[0]?.slice(0, 2)).toEqual(["project", "slides.qmd"]);
+    expect(useCompileStore.getState().htmlOutput).toMatchObject({
+      mainDocument: "slides.qmd",
+      path: "/project/.oleafly/build/slides.html",
+    });
+    expect(mocks.files.refreshEngine).not.toHaveBeenCalled();
+  });
+
+  it("asks for Quarto when it isn't installed instead of running LaTeX on the notebook", async () => {
+    mocks.notebookToolchainStatus.mockResolvedValue(toolchain(false));
+    useNotebookToolchainStore.setState({ status: toolchain(false) });
+    await useCompileStore.getState().recompile({ origin: "explicit" });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("unavailable");
+    expect(useCompileStore.getState().offer).toMatchObject({ kind: "notebook-tool-missing", tool: "quarto" });
+  });
+
+  it("shows why when the notebook's engine can't be read, and compiles nothing", async () => {
+    mocks.getProjectEngine.mockRejectedValue(new Error("The main document changed."));
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().log).toContain("The main document changed.");
+  });
+
+  it("compiles the paper when the compile target is always the main document", async () => {
+    useCompileRootStore.setState({ followOpenFile: false });
+    mocks.compileProject.mockResolvedValue({ ...htmlResult(), ok: false, html_output: null });
+    await useCompileStore.getState().recompile();
+    expect(mocks.getProjectEngine).not.toHaveBeenCalled();
+    expect(mocks.compileProject.mock.calls[0]?.slice(0, 2)).toEqual(["project", "paper.tex"]);
+  });
+});
+
 describe("a compile that writes a web page", () => {
   it("records the page and reads no PDF", async () => {
     mocks.compileProject.mockResolvedValue(htmlResult());
@@ -190,6 +250,7 @@ describe("a compile that writes a web page", () => {
     expect(state.failureReason).toBeNull();
     expect(state.htmlOutput).toEqual({
       projectId: "project",
+      mainDocument: "report.qmd",
       path: "/project/.oleafly/build/report.html",
       builtAt: expect.any(Number),
     });
@@ -342,6 +403,7 @@ describe("a missing Quarto or Calepin", () => {
   it("stops before compiling when the tool is not installed", async () => {
     mocks.files.engine = notebookEngine("calepin");
     mocks.files.mainDoc = "report.typ";
+    mocks.files.activePath = "report.typ";
     useNotebookToolchainStore.setState({ status: toolchain(true, false) });
     mocks.notebookToolchainStatus.mockResolvedValue(toolchain(true, false));
     await useCompileStore.getState().recompile();
