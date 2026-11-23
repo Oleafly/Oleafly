@@ -537,6 +537,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Din biblioteca ta Zotero"
   },
+  "aiCompletion": {
+    "failed": "Completarea cu AI a eșuat: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Descrie modificarea…  (Shift+Enter pentru rând nou)",
     "close": "Închide",

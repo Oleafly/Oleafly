@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Zotero-kirjastostasi"
   },
+  "aiCompletion": {
+    "failed": "Tekoälytäydennys epäonnistui: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Kuvaile muutos…  (Shift+Enter lisää rivinvaihdon)",
     "close": "Sulje",

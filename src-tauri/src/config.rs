@@ -852,10 +852,12 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
     }
     crate::fsperm::harden_file(&tmp);
 
-    crate::sandbox::replace_file(&tmp, path).map_err(|e| {
+    let replaced = crate::sandbox::replace_file(&tmp, path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
         format!("failed to replace config: {e}")
-    })
+    });
+    crate::agent::forget_resolved_providers();
+    replaced
 }
 
 pub const REDACTED: &str = "__stored__";

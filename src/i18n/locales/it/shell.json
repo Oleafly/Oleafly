@@ -1029,6 +1029,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Quando fai una pausa mentre scrivi in un file LaTeX, Typst o Markdown, dopo il cursore compare in grigio una continuazione suggerita. Premi Tab per accettarla oppure continua a scrivere per scartarla. A ogni pausa il testo intorno al cursore viene inviato al tuo provider AI. Disattivato per impostazione predefinita finché è in beta.",
+        "label": "Completamenti con AI"
+      },
       "latexTools": {
         "description": "Mostra la galleria Oleafly Tools e i singoli strumenti (importazione PDF, equazioni, tabelle, BibTeX, ricerca di laboratori e letteratura, scadenze) più i relativi comandi slash. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Strumenti LaTeX"

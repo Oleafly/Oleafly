@@ -1015,6 +1015,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Wenn Sie beim Schreiben in einer LaTeX-, Typst- oder Markdown-Datei eine Pause machen, erscheint hinter dem Cursor eine vorgeschlagene Fortsetzung in blasser Schrift. Mit Tab übernehmen Sie sie, durch Weiterschreiben verwerfen Sie sie. Bei jeder Pause wird der Text um den Cursor an Ihren KI-Anbieter gesendet. Standardmäßig aus, solange die Funktion in der Beta ist.",
+        "label": "KI-Vervollständigung"
+      },
       "latexTools": {
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"

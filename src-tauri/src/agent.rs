@@ -253,7 +253,7 @@ pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProviderOverride {
     pub provider_id: String,
     #[serde(default)]
@@ -313,6 +313,26 @@ pub async fn agent_complete(
         result.map_err(tagged)
     })
     .await
+}
+
+const WARM_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[tauri::command]
+pub async fn agent_warm(
+    state: State<'_, AgentState>,
+    provider_override: Option<ProviderOverride>,
+) -> Result<(), String> {
+    if acp_route(provider_override.as_ref()).is_some() {
+        return Ok(());
+    }
+    let resolved = resolve_off_thread(provider_override).await?;
+    let client = state.inner().client()?;
+    let _ = client
+        .head(resolved.wire.base_url())
+        .timeout(WARM_TIMEOUT)
+        .send()
+        .await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -2225,11 +2245,95 @@ fn resolve_with(
     Ok(resolved)
 }
 
+const RESOLVED_TTL: Duration = Duration::from_secs(30);
+const RESOLVED_ENTRIES: usize = 4;
+
+type ResolveStamp = Vec<(std::path::PathBuf, Option<(std::time::SystemTime, u64)>)>;
+
+struct CachedResolve {
+    stamp: ResolveStamp,
+    provider_override: Option<ProviderOverride>,
+    at: std::time::Instant,
+    resolved: oleafly_agent::Resolved,
+}
+
+struct ResolvedCache {
+    entries: Vec<CachedResolve>,
+}
+
+impl ResolvedCache {
+    const fn new() -> Self {
+        Self {
+            entries: Vec::new(),
+        }
+    }
+
+    fn get(
+        &mut self,
+        stamp: &ResolveStamp,
+        provider_override: Option<&ProviderOverride>,
+    ) -> Option<oleafly_agent::Resolved> {
+        self.entries
+            .retain(|entry| entry.at.elapsed() < RESOLVED_TTL && &entry.stamp == stamp);
+        self.entries
+            .iter()
+            .find(|entry| entry.provider_override.as_ref() == provider_override)
+            .map(|entry| entry.resolved.clone())
+    }
+
+    fn put(
+        &mut self,
+        stamp: ResolveStamp,
+        provider_override: Option<ProviderOverride>,
+        resolved: oleafly_agent::Resolved,
+    ) {
+        self.entries
+            .retain(|entry| entry.provider_override != provider_override);
+        if self.entries.len() == RESOLVED_ENTRIES {
+            self.entries.remove(0);
+        }
+        self.entries.push(CachedResolve {
+            stamp,
+            provider_override,
+            at: std::time::Instant::now(),
+            resolved,
+        });
+    }
+}
+
+static RESOLVED: Mutex<ResolvedCache> = Mutex::new(ResolvedCache::new());
+
+pub(crate) fn forget_resolved_providers() {
+    lock_or_recover(&RESOLVED).entries.clear();
+}
+
+fn resolve_stamp() -> Result<ResolveStamp, String> {
+    let paths = [
+        crate::config::config_path()?,
+        crate::secrets::store()?.path_of(oleafly_secrets::SecretFile::Ai),
+    ];
+    Ok(paths
+        .into_iter()
+        .map(|path| {
+            let seen = std::fs::metadata(&path)
+                .ok()
+                .and_then(|meta| Some((meta.modified().ok()?, meta.len())));
+            (path, seen)
+        })
+        .collect())
+}
+
 fn resolve_for(
     provider_override: Option<ProviderOverride>,
 ) -> Result<oleafly_agent::Resolved, String> {
+    let stamp = resolve_stamp()?;
+    if let Some(resolved) = lock_or_recover(&RESOLVED).get(&stamp, provider_override.as_ref()) {
+        return Ok(resolved);
+    }
     let cfg = crate::config::read_config()?;
-    resolve_with(&cfg, provider_override)
+    let resolved = resolve_with(&cfg, provider_override.clone())?;
+    lock_or_recover(&RESOLVED).put(stamp, provider_override, resolved.clone());
+    Ok(resolved)
 }
 
 fn resolve_for_run(

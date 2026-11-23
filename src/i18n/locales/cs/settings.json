@@ -279,6 +279,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Schopnosti agenta",
+      "completionModelDescription": "Model, který při psaní navrhuje doplnění. Nejrychleji odpovídají rychlé modely a modely běžící na tomto počítači.",
+      "completionModelTitle": "Model pro AI doplňování",
       "customDescription": "Přidává se ke každému požadavku na AI jako váš osobní styl a preference. Asistent se jimi řídí nad rámec svého vestavěného chování. Nemohou přebít jeho nástroje ani bezpečnostní pravidla.",
       "customPlaceholder": "například: Piš vždy britskou angličtinou. Vysvětluj stručně. U seznamů dávej přednost balíčku enumitem.",
       "customTitle": "Vlastní instrukce",

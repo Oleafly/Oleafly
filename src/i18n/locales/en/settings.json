@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Agent capabilities",
+      "completionModelDescription": "The model that writes completions while you type. Fast models, and models running on this computer, answer quickest.",
+      "completionModelTitle": "AI completion model",
       "customDescription": "Added to every AI request as your personal style and preferences. The assistant follows these on top of its built-in behavior. They can't override its tools or safety rules.",
       "customPlaceholder": "e.g. Always write in British English. Keep explanations short. Prefer the enumitem package for lists.",
       "customTitle": "Custom instructions",

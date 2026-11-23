@@ -537,6 +537,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "De tu biblioteca de Zotero"
   },
+  "aiCompletion": {
+    "failed": "Falló el autocompletado con IA: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Describe el cambio…  (Shift+Enter para una línea nueva)",
     "close": "Cerrar",

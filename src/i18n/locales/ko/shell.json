@@ -1001,6 +1001,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "LaTeX, Typst, Markdown 파일에서 입력을 잠시 멈추면 커서 뒤에 이어질 내용이 흐린 글자로 제안됩니다. Tab을 누르면 적용되고, 계속 입력하면 사라집니다. 멈출 때마다 커서 주변의 텍스트가 AI 제공자에게 전송됩니다. 아직 베타라서 기본적으로 꺼져 있습니다.",
+        "label": "AI 자동 완성"
+      },
       "latexTools": {
         "description": "Oleafly 도구 갤러리와 개별 도구(PDF 가져오기, 수식, 표, BibTeX, 연구실 및 문헌 검색, 마감일)와 슬래시 명령을 표시합니다. 아직 베타라서 기본은 꺼짐입니다.",
         "label": "LaTeX 도구"

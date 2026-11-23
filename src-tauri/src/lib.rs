@@ -680,6 +680,7 @@ pub fn run() {
             agent_turns::agent_turn_revert,
             agent_turns::agent_turn_redo,
             agent::agent_complete,
+            agent::agent_warm,
             agent::agent_cancel,
             agent::agent_cancel_all,
             agent::agent_steer,

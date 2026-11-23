@@ -1,4 +1,5 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
+import { aiCompletionExtension } from "@/lib/ai-completion";
 import { functionKeyTextInput } from "@/lib/function-key-text";
 import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
@@ -382,14 +383,17 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i.test(path)) {
           return [];
         }
-        const clearance = isOutlineDocument(path) ? [outlineRailClearance] : [];
+        const pathTools = [
+          ...(isOutlineDocument(path) ? [outlineRailClearance] : []),
+          ...(/\.(?:tex|latex|ltx|typ|md|markdown|qmd|rmd)$/i.test(path) ? [aiCompletionExtension] : []),
+        ];
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
-          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
+          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...pathTools];
         }
-        if (/\.typ$/i.test(path)) return [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
+        if (/\.typ$/i.test(path)) return [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...pathTools];
         return /\.(?:md|markdown|qmd|rmd)$/i.test(path)
-          ? [markdownFormatKeymap, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance]
-          : [...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
+          ? [markdownFormatKeymap, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...pathTools]
+          : [...PROJECT_INTELLIGENCE_EXTENSIONS, ...pathTools];
       }}
       extraCompletionSourcesForPath={(path) =>
         editorCompletionSourcesForPath(path, languageServiceCompletion)

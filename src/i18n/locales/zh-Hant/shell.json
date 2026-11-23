@@ -1001,6 +1001,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "在 LaTeX、Typst 或 Markdown 檔案中輸入時稍作停頓，游標後會以淡色文字顯示建議的接續內容。按 Tab 接受，繼續輸入則會略過。每次停頓時，游標附近的文字都會傳送給你的 AI 服務供應商。仍在 beta 階段，預設為關閉。",
+        "label": "AI 補完"
+      },
       "latexTools": {
         "description": "顯示 Oleafly 工具庫與各項工具（PDF 匯入、方程式、表格、BibTeX、實驗與文獻搜尋、截止日期）以及它們的斜線指令。仍在 beta 階段，預設為關閉。",
         "label": "LaTeX 工具"

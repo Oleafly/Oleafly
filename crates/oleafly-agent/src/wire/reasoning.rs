@@ -167,6 +167,7 @@ pub(crate) fn chat_reasoning_fields(
             }
         }
         "deepseek" => deepseek_thinking(req, effort),
+        "zai" if req.effort == Some(Effort::Off) => zai_thinking_off(&resolved.model_id),
         custom if catalog_entry(custom).is_none() => match effort {
             Some(Effort::Off) => custom_thinking_off(),
             Some(effort) => vec![("reasoning_effort", json!(effort.as_str()))],
@@ -174,6 +175,31 @@ pub(crate) fn chat_reasoning_fields(
         },
         _ => Vec::new(),
     }
+}
+
+fn zai_thinking_off(model_id: &str) -> Vec<(&'static str, Value)> {
+    if zai_forces_thinking(model_id) {
+        vec![("reasoning_effort", json!("low"))]
+    } else {
+        vec![("thinking", json!({ "type": "disabled" }))]
+    }
+}
+
+fn zai_forces_thinking(model_id: &str) -> bool {
+    let id = model_id.to_ascii_lowercase();
+    let Some(rest) = id.strip_prefix("glm-") else {
+        return false;
+    };
+    let version = rest
+        .split(|c: char| !c.is_ascii_digit() && c != '.')
+        .next()
+        .unwrap_or_default();
+    let mut numbers = version
+        .split('.')
+        .map(|part| part.parse::<u32>().unwrap_or(0));
+    let major = numbers.next().unwrap_or(0);
+    let minor = numbers.next().unwrap_or(0);
+    (major, minor) >= (5, 3)
 }
 
 /// Turns thinking off on a self-hosted server: Lemonade reads

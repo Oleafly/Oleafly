@@ -1029,6 +1029,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Quand vous faites une pause en écrivant dans un fichier LaTeX, Typst ou Markdown, une suite proposée apparaît en texte estompé après le curseur. Appuyez sur Tab pour l'accepter, ou continuez à écrire pour l'ignorer. À chaque pause, le texte autour du curseur est envoyé à votre fournisseur d'IA. Désactivé par défaut tant que la fonction est en bêta.",
+        "label": "Complétions par IA"
+      },
       "latexTools": {
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"

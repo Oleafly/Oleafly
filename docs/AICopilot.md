@@ -37,6 +37,17 @@ it is not a second document model.
   chips, each written out when you send with what you asked for, the source
   file and lines checked again, the section, the quote and your comment.
   See [PDF preview](PDFPreview.md#annotations-experimental).
+- Suggest the rest of a line. With AI completions turned on in Settings >
+  Experimentation, a pause while typing in a LaTeX, Typst or Markdown file
+  shows a continuation in dim text after the cursor. Tab accepts it, and
+  typing on dismisses it. Words appear as they stream in. Typing the same
+  letters keeps the rest without a new request, a backspace brings back an
+  earlier suggestion, and the next one is fetched ahead so Tab shows it at
+  once. Pick the model in Settings > AI Assistant > Instructions. Until
+  you do, completions use the default chat model. Each request sends about
+  5,000 characters before the cursor and 1,000 after it, so a fast or local
+  model works best. Completions need a configured AI provider. CLI agents
+  aren't used for them.
 
 <div align="center">
   <img src="assets/readme/ai-personas.png" alt="Oleafly AI Assistant persona choices for research writing, document editing, critical review, and figure work" width="100%" />

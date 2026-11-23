@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Fähigkeiten des Agenten",
+      "completionModelDescription": "Das Modell, das beim Schreiben Vervollständigungen vorschlägt. Schnelle Modelle und Modelle, die auf diesem Computer laufen, antworten am schnellsten.",
+      "completionModelTitle": "Modell für KI-Vervollständigung",
       "customDescription": "Wird jeder KI-Anfrage als Ihr persönlicher Stil und Ihre Vorlieben beigefügt. Der Assistent befolgt sie zusätzlich zu seinem eingebauten Verhalten. Seine Werkzeuge oder Sicherheitsregeln können sie nicht außer Kraft setzen.",
       "customPlaceholder": "z. B. Schreibe immer in britischem Englisch. Halte Erklärungen kurz. Bevorzuge das Paket enumitem für Listen.",
       "customTitle": "Eigene Anweisungen",

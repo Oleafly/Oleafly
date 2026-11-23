@@ -1152,6 +1152,11 @@ interface SettingsState {
   setOverleafDeletes: (v: OverleafDeletes) => void;
   pdfReview: boolean;
   setPdfReview: (v: boolean) => void;
+  aiCompletion: boolean;
+  setAiCompletion: (v: boolean) => void;
+  aiCompletionProvider: string;
+  aiCompletionModel: string;
+  setAiCompletionModel: (providerId: string, modelId: string) => void;
   notesTypeface: NotesAppearance["notesTypeface"];
   notesFontFamily: string;
   notesFontSize: number;
@@ -1379,6 +1384,9 @@ const PREF_DEFAULTS = {
   overleafLive: false,
   overleafDeletes: "ask" as OverleafDeletes,
   pdfReview: false,
+  aiCompletion: false,
+  aiCompletionProvider: "",
+  aiCompletionModel: "",
   ...NOTES_APPEARANCE_DEFAULTS,
   ...VISUAL_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
@@ -1489,6 +1497,9 @@ export const SECTION_SETTINGS = {
     overleafLive: "oleafly.overleafLive",
     overleafDeletes: "oleafly.overleafDeletes",
     pdfReview: "oleafly.pdfReview",
+    aiCompletion: "oleafly.aiCompletion",
+    aiCompletionProvider: "oleafly.aiCompletion.provider",
+    aiCompletionModel: "oleafly.aiCompletion.model",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2263,6 +2274,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setPdfReview: (v) => {
     saveLs("oleafly.pdfReview", v ? "1" : "0");
     set({ pdfReview: v });
+  },
+  aiCompletion: ls("oleafly.aiCompletion", "0") === "1",
+  setAiCompletion: (v) => {
+    saveLs("oleafly.aiCompletion", v ? "1" : "0");
+    set({ aiCompletion: v });
+  },
+  aiCompletionProvider: ls("oleafly.aiCompletion.provider", ""),
+  aiCompletionModel: ls("oleafly.aiCompletion.model", ""),
+  setAiCompletionModel: (providerId, modelId) => {
+    saveLs("oleafly.aiCompletion.provider", providerId);
+    saveLs("oleafly.aiCompletion.model", modelId);
+    set({ aiCompletionProvider: providerId, aiCompletionModel: modelId });
   },
   ...readNotesAppearance((key) => ls(key, "")),
   setNotesAppearance: (key, v) => {

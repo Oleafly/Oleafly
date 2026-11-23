@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Uit je Zotero-bibliotheek"
   },
+  "aiCompletion": {
+    "failed": "AI-aanvulling mislukt: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Beschrijf de wijziging…  (Shift+Enter voor een nieuwe regel)",
     "close": "Sluiten",

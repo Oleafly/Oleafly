@@ -7,7 +7,14 @@ import {
   type CompletionResult,
   type CompletionSource,
 } from "@codemirror/autocomplete";
-import { Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
+import {
+  Prec,
+  StateEffect,
+  StateField,
+  type EditorState,
+  type Extension,
+  type Transaction,
+} from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -70,11 +77,30 @@ class GhostWidget extends WidgetType {
   }
 }
 
+function typedAt(tr: Transaction, pos: number): string | null {
+  if (!tr.isUserEvent("input.type")) return null;
+  let inserted: string | null = null;
+  let single = true;
+  tr.changes.iterChanges((fromA, toA, _fromB, _toB, text) => {
+    if (inserted !== null || fromA !== pos || toA !== pos) single = false;
+    else inserted = text.toString();
+  });
+  if (!single || !inserted) return null;
+  const head = tr.newSelection.main;
+  return head.empty && head.head === pos + (inserted as string).length ? inserted : null;
+}
+
 const ghostField = StateField.define<GhostSuggestion | null>({
   create: () => null,
   update(value, tr) {
     for (const effect of tr.effects) {
       if (effect.is(setGhost)) return effect.value;
+    }
+    if (value && tr.docChanged) {
+      const typed = typedAt(tr, value.pos);
+      if (typed && value.text.startsWith(typed) && value.text.length > typed.length) {
+        return { pos: value.pos + typed.length, text: value.text.slice(typed.length) };
+      }
     }
     if (tr.docChanged || tr.selection) return null;
     return value;
@@ -260,6 +286,18 @@ const ghostTheme = EditorView.baseTheme({
   },
 });
 
+const ghostCore: Extension = [
+  ghostField,
+  dismissedField,
+  ghostTheme,
+  Prec.highest(
+    keymap.of([
+      { key: "Tab", run: acceptGhostCompletion },
+      { key: "Escape", run: clearGhostCompletion },
+    ]),
+  ),
+];
+
 export function ghostCompletion(
   sources: CompletionSource[],
   syntax: CompletionSyntax = "generic",
@@ -315,18 +353,329 @@ export function ghostCompletion(
     },
   );
 
-  return [
-    ghostField,
-    dismissedField,
-    plugin,
-    ghostTheme,
-    Prec.highest(
-      keymap.of([
-        { key: "Tab", run: acceptGhostCompletion },
-        { key: "Escape", run: clearGhostCompletion },
-      ]),
-    ),
-  ];
+  return [ghostCore, plugin];
+}
+
+export interface GhostRequest {
+  before: string;
+  after: string;
+  signal: AbortSignal;
+  onText: (text: string) => void;
+}
+
+export type GhostRequester = (request: GhostRequest) => Promise<void>;
+
+export interface RequestedGhostOptions {
+  enabled?: () => boolean;
+  warm?: () => void;
+  delayMs?: number;
+}
+
+const REQUEST_DELAY_MS = 75;
+const WARM_AFTER_MS = 30_000;
+const REQUEST_BEFORE_CHARS = 4000;
+const REQUEST_BEFORE_BLOCK = 1024;
+const REQUEST_AFTER_CHARS = 1000;
+const CACHE_SIZE = 64;
+const CACHE_TAIL_CHARS = 200;
+const CLOSING_TAIL = /^[\s)\]}$]*$/u;
+
+interface CachedGhost {
+  tail: string;
+  after: string;
+  text: string;
+}
+
+interface PendingGhost {
+  controller: AbortController;
+  origin: number;
+  before: string;
+  after: string;
+  typed: string;
+  raw: string;
+  ahead: boolean;
+}
+
+function requestAnchor(state: EditorState): number | null {
+  const selection = state.selection;
+  if (selection.ranges.length > 1 || !selection.main.empty || state.readOnly) return null;
+  if (completionStatus(state) === "active" || state.field(ghostField, false)) return null;
+  const pos = selection.main.head;
+  if (state.field(dismissedField, false) === pos) return null;
+  const line = state.doc.lineAt(pos);
+  if (!/\S/u.test(state.sliceDoc(line.from, pos))) return null;
+  return CLOSING_TAIL.test(state.sliceDoc(pos, line.to)) ? pos : null;
+}
+
+function typedEdit(transaction: Transaction): boolean {
+  return (
+    transaction.docChanged &&
+    (transaction.isUserEvent("input") || transaction.isUserEvent("delete"))
+  );
+}
+
+function firstLine(text: string): string {
+  return text.split(/\r?\n/u, 1)[0] ?? "";
+}
+
+function requestWindow(state: EditorState, pos: number): { before: string; after: string } {
+  const from = Math.max(0, pos - REQUEST_BEFORE_CHARS);
+  const start = from - (from % REQUEST_BEFORE_BLOCK);
+  const doc = state.doc;
+  return {
+    before: doc.sliceString(start, pos),
+    after: doc.sliceString(pos, Math.min(doc.length, pos + REQUEST_AFTER_CHARS)),
+  };
+}
+
+function fittedGhostText(raw: string, before: string, after: string, done: boolean): string {
+  let fitted = firstLine(raw);
+  const lineBefore = before.slice(before.lastIndexOf("\n") + 1);
+  if (lineBefore.trim()) {
+    if (fitted.startsWith(lineBefore)) fitted = fitted.slice(lineBefore.length);
+    else if (!done && lineBefore.startsWith(fitted)) return "";
+  }
+  if (/\s$/u.test(before)) fitted = fitted.trimStart();
+  if (!done) {
+    const cut = fitted.search(/\s\S*$/u);
+    return cut > 0 ? fitted.slice(0, cut) : "";
+  }
+  fitted = fitted.trimEnd();
+  const tail = firstLine(after).trim();
+  if (tail && fitted.endsWith(tail)) fitted = fitted.slice(0, -tail.length).trimEnd();
+  return fitted;
+}
+
+export function requestedGhostCompletion(
+  request: GhostRequester,
+  options: RequestedGhostOptions = {},
+): Extension {
+  const delay = options.delayMs ?? REQUEST_DELAY_MS;
+  const enabled = () => !options.enabled || options.enabled();
+  const plugin = ViewPlugin.fromClass(
+    class {
+      private timer: ReturnType<typeof setTimeout> | null = null;
+      private ticket = 0;
+      private pending: PendingGhost | null = null;
+      private ahead: PendingGhost | null = null;
+      private contact = Number.NEGATIVE_INFINITY;
+      private awaitingPopup = false;
+      private readonly cache: CachedGhost[] = [];
+
+      constructor(readonly view: EditorView) {}
+
+      update(update: ViewUpdate) {
+        const popup = completionStatus(update.state);
+        if (this.awaitingPopup && popup !== "pending") {
+          this.awaitingPopup = false;
+          if (popup === null) this.schedule(0);
+        }
+        if (!update.docChanged && !update.selectionSet) return;
+        const accepted = update.transactions.some((tr) => tr.isUserEvent("input.complete"));
+        if (!accepted && !update.state.field(ghostField, false)) this.dropAhead();
+        if (this.followTyping(update)) return;
+        this.cancel();
+        if (!update.transactions.some(typedEdit) || !enabled()) return;
+        this.warm();
+        this.schedule(accepted || this.cachedAt(update.state) ? 0 : delay);
+      }
+
+      private cachedAt(state: EditorState): boolean {
+        const pos = requestAnchor(state);
+        if (pos === null) return false;
+        const { before, after } = requestWindow(state, pos);
+        return this.fromCache(before, after) !== null;
+      }
+
+      private warm() {
+        const now = Date.now();
+        if (now - this.contact < WARM_AFTER_MS) return;
+        this.contact = now;
+        options.warm?.();
+      }
+
+      private followTyping(update: ViewUpdate): boolean {
+        const pending = this.pending;
+        if (!pending) return false;
+        for (const tr of update.transactions) {
+          if (!tr.docChanged && !tr.selection) continue;
+          const typed = typedAt(tr, pending.origin + pending.typed.length);
+          if (!typed) return false;
+          pending.typed += typed;
+        }
+        const known = fittedGhostText(pending.raw, pending.before, pending.after, false);
+        return known.length >= pending.typed.length
+          ? known.startsWith(pending.typed)
+          : pending.typed.startsWith(known);
+      }
+
+      private schedule(wait: number) {
+        const ticket = ++this.ticket;
+        const run = () => {
+          if (this.ticket === ticket) this.fire();
+        };
+        if (wait <= 0) queueMicrotask(run);
+        else this.timer = setTimeout(run, wait);
+      }
+
+      private fire() {
+        this.timer = null;
+        const state = this.view.state;
+        if (!enabled()) return;
+        const pos = requestAnchor(state);
+        if (pos === null) return;
+        const { before, after } = requestWindow(state, pos);
+        const cached = this.fromCache(before, after);
+        if (cached) {
+          if (this.popupHides(state)) return;
+          this.view.dispatch({ effects: setGhost.of({ pos, text: cached }) });
+          return;
+        }
+        const current = this.pending;
+        if (current && sameContext(current, before, after)) {
+          this.show(current, fittedGhostText(current.raw, current.before, current.after, false));
+          return;
+        }
+        const ahead = this.ahead;
+        if (ahead && sameContext(ahead, before, after)) {
+          this.ahead = null;
+          ahead.ahead = false;
+          ahead.origin = pos;
+          this.pending = ahead;
+          this.show(ahead, fittedGhostText(ahead.raw, ahead.before, ahead.after, false));
+          return;
+        }
+        this.pending = this.start(pos, before, after, false);
+      }
+
+      private start(origin: number, before: string, after: string, ahead: boolean): PendingGhost {
+        this.contact = Date.now();
+        const pending: PendingGhost = {
+          controller: new AbortController(),
+          origin,
+          before,
+          after,
+          typed: "",
+          raw: "",
+          ahead,
+        };
+        const live = () => this.pending === pending || this.ahead === pending;
+        request({
+          before,
+          after,
+          signal: pending.controller.signal,
+          onText: (text) => {
+            if (!live()) return;
+            pending.raw = text;
+            if (/\r?\n/u.test(text)) this.finish(pending);
+            else if (!pending.ahead) this.show(pending, fittedGhostText(text, before, after, false));
+          },
+        }).then(
+          () => {
+            if (live()) this.finish(pending);
+          },
+          () => {
+            if (this.pending === pending) this.pending = null;
+            if (this.ahead === pending) this.ahead = null;
+          },
+        );
+        return pending;
+      }
+
+      private finish(pending: PendingGhost) {
+        if (this.pending === pending) this.pending = null;
+        if (this.ahead === pending) this.ahead = null;
+        pending.controller.abort();
+        const text = fittedGhostText(pending.raw, pending.before, pending.after, true);
+        if (!text) return;
+        this.remember(pending.before, pending.after, text);
+        if (pending.ahead) return;
+        if (!this.show(pending, text)) {
+          this.schedule(0);
+          return;
+        }
+        this.lookAhead(pending, text);
+      }
+
+      private lookAhead(pending: PendingGhost, text: string) {
+        if (this.ahead || !enabled() || completionStatus(this.view.state) === "active") return;
+        const before = pending.before + text;
+        if (this.fromCache(before, pending.after) !== null) return;
+        this.ahead = this.start(pending.origin + text.length, before, pending.after, true);
+      }
+
+      private show(pending: PendingGhost, text: string): boolean {
+        if (!text.startsWith(pending.typed)) return false;
+        const rest = text.slice(pending.typed.length);
+        const pos = pending.origin + pending.typed.length;
+        const state = this.view.state;
+        if (!rest || state.selection.main.head !== pos || !state.selection.main.empty) return true;
+        if (this.popupHides(state)) return true;
+        const shown = state.field(ghostField, false);
+        if (shown?.pos === pos && shown.text === rest) return true;
+        this.view.dispatch({ effects: setGhost.of({ pos, text: rest }) });
+        return true;
+      }
+
+      private popupHides(state: EditorState): boolean {
+        const popup = completionStatus(state);
+        if (popup === "active") return true;
+        if (popup !== "pending" || state.field(ghostField, false)) return false;
+        this.awaitingPopup = true;
+        return true;
+      }
+
+      private remember(before: string, after: string, text: string) {
+        const tail = before.slice(-CACHE_TAIL_CHARS);
+        const head = firstLine(after);
+        const index = this.cache.findIndex((entry) => entry.tail === tail && entry.after === head);
+        if (index >= 0) this.cache.splice(index, 1);
+        this.cache.push({ tail, after: head, text });
+        if (this.cache.length > CACHE_SIZE) this.cache.shift();
+      }
+
+      private fromCache(before: string, after: string): string | null {
+        const head = firstLine(after);
+        for (let index = this.cache.length - 1; index >= 0; index--) {
+          const entry = this.cache[index];
+          if (entry.after !== head) continue;
+          for (let typed = 0; typed < entry.text.length; typed++) {
+            if (before.endsWith(entry.tail + entry.text.slice(0, typed))) {
+              return entry.text.slice(typed);
+            }
+          }
+        }
+        return null;
+      }
+
+      private dropAhead() {
+        this.ahead?.controller.abort();
+        this.ahead = null;
+      }
+
+      private cancel() {
+        this.awaitingPopup = false;
+        this.ticket++;
+        if (this.timer !== null) clearTimeout(this.timer);
+        this.timer = null;
+        this.pending?.controller.abort();
+        this.pending = null;
+      }
+
+      destroy() {
+        this.cancel();
+        this.dropAhead();
+      }
+    },
+  );
+  return [ghostCore, plugin];
+}
+
+function sameContext(pending: PendingGhost, before: string, after: string): boolean {
+  return (
+    pending.before.slice(-CACHE_TAIL_CHARS) === before.slice(-CACHE_TAIL_CHARS) &&
+    firstLine(pending.after) === firstLine(after)
+  );
 }
 
 export function pendingGhostCompletion(view: EditorView): string | null {

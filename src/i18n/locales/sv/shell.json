@@ -1015,6 +1015,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "När du pausar medan du skriver i en LaTeX-, Typst- eller Markdown-fil visas en föreslagen fortsättning i svag text efter markören. Tryck på Tab för att acceptera den, eller fortsätt skriva för att avfärda den. Vid varje paus skickas texten runt markören till din AI-leverantör. Avstängt som standard så länge funktionen är i beta.",
+        "label": "AI-kompletteringar"
+      },
       "latexTools": {
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"

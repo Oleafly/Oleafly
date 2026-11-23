@@ -278,6 +278,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Capacités de l'agent",
+      "completionModelDescription": "Le modèle qui rédige les complétions pendant que vous écrivez. Les modèles rapides, et ceux qui tournent sur cet ordinateur, répondent le plus vite.",
+      "completionModelTitle": "Modèle des complétions par IA",
       "customDescription": "Ajoutées à chaque requête d'IA comme style et préférences personnels. L'assistant les suit en plus de son comportement intégré. Elles ne peuvent pas passer outre ses outils ni ses règles de sécurité.",
       "customPlaceholder": "par ex. Écrivez toujours en français soutenu. Gardez des explications courtes. Préférez le paquet enumitem pour les listes.",
       "customTitle": "Instructions personnalisées",

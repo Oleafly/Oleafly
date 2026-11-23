@@ -1001,6 +1001,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Khi bạn tạm dừng gõ trong tệp LaTeX, Typst hoặc Markdown, một đoạn viết tiếp được gợi ý sẽ hiện bằng chữ mờ sau con trỏ. Nhấn Tab để chấp nhận, hoặc gõ tiếp để bỏ qua. Mỗi lần tạm dừng, phần văn bản quanh con trỏ sẽ được gửi tới nhà cung cấp AI của bạn. Mặc định tắt vì vẫn đang ở giai đoạn beta.",
+        "label": "Gợi ý hoàn thành bằng AI"
+      },
       "latexTools": {
         "description": "Hiện thư viện Công cụ Oleafly và từng công cụ (nhập PDF, công thức, bảng, BibTeX, tìm kiếm phòng thí nghiệm và tài liệu, hạn chót) cùng các lệnh slash của chúng. Mặc định tắt khi còn beta.",
         "label": "Công cụ LaTeX"

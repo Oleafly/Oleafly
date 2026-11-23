@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Agentens evner",
+      "completionModelDescription": "Den model, der skriver fuldførelser, mens du skriver. Hurtige modeller og modeller, der kører på denne computer, svarer hurtigst.",
+      "completionModelTitle": "Model til AI-fuldførelser",
       "customDescription": "Føjes til hver AI-forespørgsel som din personlige stil og dine præferencer. Assistenten følger dem oven på sin indbyggede adfærd. De kan ikke tilsidesætte dens værktøjer eller sikkerhedsregler.",
       "customPlaceholder": "For eksempel: Skriv altid på britisk engelsk. Hold forklaringerne korte. Brug helst pakken enumitem til lister.",
       "customTitle": "Egne instruktioner",

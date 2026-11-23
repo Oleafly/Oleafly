@@ -1043,6 +1043,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Když se při psaní v souboru LaTeX, Typst nebo Markdown zastavíte, za kurzorem se šedě objeví navržené pokračování. Klávesou Tab ho přijmete, dalším psaním ho zahodíte. Při každém zastavení se text kolem kurzoru odešle vašemu poskytovateli AI. Dokud je funkce v betaverzi, je ve výchozím stavu vypnutá.",
+        "label": "AI doplňování"
+      },
       "latexTools": {
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"

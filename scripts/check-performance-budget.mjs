@@ -226,7 +226,7 @@ const limits = {
   // refusals shown on the live button, the windowed Logs list and five new
   // strings in every locale. macOS measured 27,259,966 bytes before them and
   // 27,300,271 after.
-  totalJavaScript: 27_590_000,
+  totalJavaScript: 27_600_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.

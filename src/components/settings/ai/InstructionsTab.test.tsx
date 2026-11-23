@@ -11,6 +11,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
+import { useSettingsStore } from "@/store/settings";
 import { InstructionsTab, type InstructionsTabProps } from "./InstructionsTab";
 
 const instructions = enSettings.ai.instructions;
@@ -25,8 +26,8 @@ const cfg = {
   ai_custom_providers: [],
 } as unknown as AppConfig;
 
-function renderTab(overrides: Partial<InstructionsTabProps> = {}) {
-  const props: InstructionsTabProps = {
+function baseProps(overrides: Partial<InstructionsTabProps> = {}): InstructionsTabProps {
+  return {
     cfg,
     configLoaded: true,
     savedKeys: {},
@@ -38,6 +39,10 @@ function renderTab(overrides: Partial<InstructionsTabProps> = {}) {
     setMsg: vi.fn(),
     ...overrides,
   };
+}
+
+function renderTab(overrides: Partial<InstructionsTabProps> = {}) {
+  const props = baseProps(overrides);
   render(<InstructionsTab {...props} />);
   return props;
 }
@@ -48,6 +53,22 @@ beforeEach(() => {
 });
 
 describe("InstructionsTab", () => {
+  it("lists the AI completion model under the default chat model only while AI completions are on", () => {
+    useSettingsStore.setState({ aiCompletion: false });
+    const { unmount } = render(<InstructionsTab {...baseProps()} />);
+    expect(screen.queryByText(instructions.completionModelTitle)).toBeNull();
+    unmount();
+
+    useSettingsStore.setState({ aiCompletion: true });
+    render(<InstructionsTab {...baseProps()} />);
+    const completion = screen.getByTestId("settings-ai-completion-model");
+    expect(completion).toHaveTextContent(instructions.completionModelTitle);
+    expect(screen.getByTestId("ai-default-model").compareDocumentPosition(completion)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    useSettingsStore.setState({ aiCompletion: false });
+  });
+
   it("explains each section and disables the model picker with no configured provider", () => {
     renderTab();
 

@@ -1015,6 +1015,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "When you pause typing in a LaTeX, Typst or Markdown file, a suggested continuation appears in dim text after the cursor. Press Tab to accept it, or keep typing to dismiss it. Each pause sends the text around the cursor to your AI provider. Off by default while still in beta.",
+        "label": "AI completions"
+      },
       "latexTools": {
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"

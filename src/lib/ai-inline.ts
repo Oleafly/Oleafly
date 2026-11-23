@@ -22,7 +22,7 @@ export const PRESETS: { id: string; label: string; instruction: string }[] = [
   { id: "translate", get label() { return i18n.t(($) => $.core.inlineAi.translate); }, instruction: "Translate the selected text to English." },
 ];
 
-function markupRule(profile: string): string {
+export function markupRule(profile: string): string {
   if (profile === "none") return "Do not introduce markup or engine-specific commands.";
   if (profile === "typst") {
     return "Preserve valid Typst markup and scripting syntax. Keep every @key reference, #cite call and <label> unchanged.";

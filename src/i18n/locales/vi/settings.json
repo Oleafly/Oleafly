@@ -276,6 +276,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Khả năng của agent",
+      "completionModelDescription": "Mô hình viết phần hoàn thành trong lúc bạn gõ. Các mô hình nhanh và mô hình chạy trên máy tính này phản hồi nhanh nhất.",
+      "completionModelTitle": "Mô hình cho gợi ý hoàn thành bằng AI",
       "customDescription": "Được thêm vào mọi yêu cầu AI như phong cách và sở thích cá nhân của bạn. Trợ lý tuân theo các hướng dẫn này bên cạnh hành vi tích hợp sẵn. Chúng không thể ghi đè công cụ hay quy tắc an toàn của trợ lý.",
       "customPlaceholder": "Ví dụ: Luôn viết bằng tiếng Anh Anh. Giữ phần giải thích ngắn gọn. Ưu tiên gói enumitem cho danh sách.",
       "customTitle": "Hướng dẫn tuỳ chỉnh",

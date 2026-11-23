@@ -278,6 +278,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Recursos do agente",
+      "completionModelDescription": "O modelo que escreve as sugestões enquanto você digita. Modelos rápidos e modelos que rodam neste computador respondem mais rápido.",
+      "completionModelTitle": "Modelo do autocompletar com IA",
       "customDescription": "Acrescentadas a cada pedido de IA como seu estilo e suas preferências pessoais. O assistente segue isso além do comportamento padrão dele. Elas não substituem as ferramentas nem as regras de segurança.",
       "customPlaceholder": "por exemplo: Escreva sempre em português do Brasil. Mantenha as explicações curtas. Prefira o pacote enumitem para listas.",
       "customTitle": "Instruções personalizadas",

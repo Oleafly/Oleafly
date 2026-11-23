@@ -1029,6 +1029,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Cuando haces una pausa al escribir en un archivo LaTeX, Typst o Markdown, aparece una continuación sugerida en texto atenuado después del cursor. Pulsa Tab para aceptarla o sigue escribiendo para descartarla. En cada pausa, el texto que rodea al cursor se envía a tu proveedor de IA. Desactivado de forma predeterminada mientras siga en beta.",
+        "label": "Autocompletado con IA"
+      },
       "latexTools": {
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"

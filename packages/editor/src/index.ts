@@ -151,3 +151,8 @@ export {
   uppercaseSelection,
   type EditorCommandId,
 } from "./editor-commands";
+export {
+  requestedGhostCompletion,
+  type GhostRequest,
+  type GhostRequester,
+} from "./ghost-completion";

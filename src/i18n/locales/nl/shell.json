@@ -1015,6 +1015,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Als je tijdens het typen in een LaTeX-, Typst- of Markdown-bestand even pauzeert, verschijnt er achter de cursor een voorgestelde vervolgtekst in vage letters. Druk op Tab om die over te nemen, of typ door om hem te negeren. Bij elke pauze wordt de tekst rond de cursor naar je AI-provider gestuurd. Standaard uit zolang de functie in bèta is.",
+        "label": "AI-aanvullingen"
+      },
       "latexTools": {
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"

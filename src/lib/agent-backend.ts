@@ -168,6 +168,9 @@ function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   });
 }
 
+export const warmAgentConnection = (providerOverride?: ProviderOverride) =>
+  invoke<void>("agent_warm", { providerOverride: providerOverride ?? null });
+
 export async function completeViaBackend(
   request: AgentCompletionRequest,
   signal?: AbortSignal,

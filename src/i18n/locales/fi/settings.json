@@ -277,6 +277,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Agentin kyvyt",
+      "completionModelDescription": "Malli, joka kirjoittaa täydennykset kirjoittaessasi. Nopeat mallit ja tällä tietokoneella toimivat mallit vastaavat nopeimmin.",
+      "completionModelTitle": "Tekoälytäydennysten malli",
       "customDescription": "Lisätään jokaiseen tekoälypyyntöön omana tyylinäsi ja mieltymyksinäsi. Avustaja noudattaa näitä sisäänrakennetun toimintansa päälle. Ne eivät voi ohittaa sen työkaluja eivätkä turvallisuussääntöjä.",
       "customPlaceholder": "Esimerkiksi: kirjoita aina brittienglannilla. Pidä selitykset lyhyinä. Käytä luetteloissa mieluiten enumitem-pakettia.",
       "customTitle": "Omat ohjeet",

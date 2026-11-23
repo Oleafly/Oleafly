@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Aus Ihrer Zotero-Bibliothek"
   },
+  "aiCompletion": {
+    "failed": "KI-Vervollständigung fehlgeschlagen: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Beschreiben Sie die Änderung…  (Shift+Enter für eine neue Zeile)",
     "close": "Schließen",

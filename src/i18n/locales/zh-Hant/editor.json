@@ -523,6 +523,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "來自你的 Zotero 文獻庫"
   },
+  "aiCompletion": {
+    "failed": "AI 補完失敗：{{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "描述要做的修改…（Shift+Enter 換行）",
     "close": "關閉",

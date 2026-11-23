@@ -544,6 +544,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Из вашей библиотеки Zotero"
   },
+  "aiCompletion": {
+    "failed": "Не удалось получить ИИ-дополнение: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Опишите изменение…  (Shift+Enter для новой строки)",
     "close": "Закрыть",

@@ -523,6 +523,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Zotero ライブラリから"
   },
+  "aiCompletion": {
+    "failed": "AI 補完に失敗しました: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "変更したい内容を書いてください…（Shift+Enter で改行）",
     "close": "閉じる",

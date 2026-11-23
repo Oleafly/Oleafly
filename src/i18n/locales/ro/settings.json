@@ -278,6 +278,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Capabilitățile agentului",
+      "completionModelDescription": "Modelul care scrie completările în timp ce tastezi. Modelele rapide și cele care rulează pe acest computer răspund cel mai repede.",
+      "completionModelTitle": "Modelul pentru completări cu AI",
       "customDescription": "Se adaugă la fiecare cerere AI, ca stil și preferințe personale. Asistentul le urmează peste comportamentul lui implicit. Ele nu îi pot schimba instrumentele sau regulile de siguranță.",
       "customPlaceholder": "de exemplu: Scrie întotdeauna în engleză britanică. Păstrează explicațiile scurte. Preferă pachetul enumitem pentru liste.",
       "customTitle": "Instrucțiuni personalizate",

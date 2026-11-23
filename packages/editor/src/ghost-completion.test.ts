@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
-import { EditorState } from "@codemirror/state";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   autocompletion,
   completionStatus,
   moveCompletionSelection,
   startCompletion,
+  type CompletionResult,
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import {
@@ -14,6 +15,7 @@ import {
   clearGhostCompletion,
   ghostCompletion,
   pendingGhostCompletion,
+  requestedGhostCompletion,
 } from "./ghost-completion";
 import { latexCompletions } from "./latex";
 
@@ -453,5 +455,419 @@ describe("ghost prefix follows the source result", () => {
   it("completes a Markdown anchor with an accented id", async () => {
     const source = keySource(/\]\(#[\p{L}\p{M}\p{N}_:.+/-]*$/u, ["\u00FAvod"]);
     expect(await ghostFor("Viz [x](#\u00FAvo", [source], "markdown")).toBe("d");
+  });
+});
+
+describe("requested ghost completion", () => {
+  type Call = {
+    before: string;
+    after: string;
+    signal: AbortSignal;
+    onText: (text: string) => void;
+    resolve: () => void;
+  };
+
+  function requester() {
+    const calls: Call[] = [];
+    const request = (input: Omit<Call, "resolve">) =>
+      new Promise<void>((resolve) => calls.push({ ...input, resolve }));
+    return { calls, request };
+  }
+
+  function mountRequested(
+    doc: string,
+    request: ReturnType<typeof requester>["request"],
+    options: { enabled?: () => boolean; warm?: () => void; extensions?: Extension[] } = {},
+  ): EditorView {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc,
+        selection: { anchor: doc.length },
+        extensions: [
+          ...(options.extensions ?? []),
+          requestedGhostCompletion(request, { delayMs: 50, enabled: options.enabled, warm: options.warm }),
+        ],
+      }),
+      parent: document.body,
+    });
+    view.focus();
+    return view;
+  }
+
+  function type(view: EditorView, text: string) {
+    const at = view.state.selection.main.head;
+    view.dispatch({
+      changes: { from: at, insert: text },
+      selection: { anchor: at + text.length },
+      userEvent: "input.type",
+    });
+  }
+
+  function backspace(view: EditorView) {
+    const at = view.state.selection.main.head;
+    view.dispatch({
+      changes: { from: at - 1, to: at },
+      selection: { anchor: at - 1 },
+      userEvent: "delete.backward",
+    });
+  }
+
+  async function flush() {
+    for (let round = 0; round < 5; round++) await Promise.resolve();
+  }
+
+  async function answer(call: Call | undefined, text: string) {
+    call?.onText(text);
+    call?.resolve();
+    await flush();
+  }
+
+  async function shown(view: EditorView, request: ReturnType<typeof requester>, text: string) {
+    vi.advanceTimersByTime(50);
+    await answer(request.calls.at(-1), text);
+    expect(pendingGhostCompletion(view)).not.toBeNull();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("asks after the pause and Tab inserts the answer", async () => {
+    const requests = requester();
+    const view = mountRequested("The results", requests.request);
+    type(view, " sh");
+    vi.advanceTimersByTime(49);
+    expect(requests.calls).toHaveLength(0);
+    vi.advanceTimersByTime(1);
+    expect(requests.calls).toHaveLength(1);
+    expect(requests.calls[0].before).toBe("The results sh");
+    expect(requests.calls[0].after).toBe("");
+
+    await answer(requests.calls[0], "ow a clear trend.");
+    expect(pendingGhostCompletion(view)).toBe("ow a clear trend.");
+    expect(view.dom.querySelector(".cm-ghostCompletion")?.textContent).toBe("ow a clear trend.");
+
+    expect(acceptGhostCompletion(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe("The results show a clear trend.");
+    view.destroy();
+  });
+
+  it("shows whole words as they stream and stops at the first line break", async () => {
+    const requests = requester();
+    const view = mountRequested("The results", requests.request);
+    type(view, "!");
+    backspace(view);
+    vi.advanceTimersByTime(50);
+    const call = requests.calls[0];
+    call.onText(" show a");
+    expect(pendingGhostCompletion(view)).toBe(" show");
+    call.onText(" show a clear");
+    expect(pendingGhostCompletion(view)).toBe(" show a");
+    call.onText(" show a clear trend.\nNext line");
+    expect(pendingGhostCompletion(view)).toBe(" show a clear trend.");
+    expect(call.signal.aborted).toBe(true);
+    view.destroy();
+  });
+
+  it("keeps the rest of the suggestion while typing matches it, without asking again", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    await shown(view, requests, "orld peace");
+    const asked = requests.calls.length;
+
+    type(view, "o");
+    expect(pendingGhostCompletion(view)).toBe("rld peace");
+    vi.advanceTimersByTime(1_000);
+    expect(requests.calls).toHaveLength(asked);
+
+    type(view, "x");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    vi.advanceTimersByTime(50);
+    expect(requests.calls).toHaveLength(asked + 1);
+    view.destroy();
+  });
+
+  it("keeps a stream going while typing matches it and drops it once typing leaves it", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    vi.advanceTimersByTime(50);
+    const first = requests.calls[0];
+    type(view, "o");
+    expect(first.signal.aborted).toBe(false);
+    await answer(first, "orld peace");
+    expect(pendingGhostCompletion(view)).toBe("rld peace");
+    expect(requests.calls.filter((call) => call.before.endsWith("Hello w"))).toHaveLength(1);
+
+    type(view, " ");
+    vi.advanceTimersByTime(50);
+    const second = requests.calls.at(-1) as Call;
+    second.onText("and calm now");
+    type(view, "x");
+    expect(second.signal.aborted).toBe(true);
+    view.destroy();
+  });
+
+  it("shows an earlier answer again at once after a backspace", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    await shown(view, requests, "orld");
+    type(view, "q");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    const asked = requests.calls.length;
+
+    backspace(view);
+    await flush();
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    expect(requests.calls).toHaveLength(asked);
+    view.destroy();
+  });
+
+  it("fetches the next suggestion ahead so Tab shows it at once", async () => {
+    const requests = requester();
+    const view = mountRequested("The results", requests.request);
+    type(view, " sh");
+    await shown(view, requests, "ow a clear trend.");
+    expect(requests.calls).toHaveLength(2);
+    expect(requests.calls[1].before).toBe("The results show a clear trend.");
+    await answer(requests.calls[1], " It holds for every model.");
+
+    acceptGhostCompletion(view);
+    await flush();
+    expect(pendingGhostCompletion(view)).toBe(" It holds for every model.");
+    expect(requests.calls).toHaveLength(2);
+    view.destroy();
+  });
+
+  it("picks up the look-ahead request still in flight after Tab", async () => {
+    const requests = requester();
+    const view = mountRequested("The results", requests.request);
+    type(view, " sh");
+    await shown(view, requests, "ow a clear trend.");
+    acceptGhostCompletion(view);
+    await flush();
+    expect(requests.calls).toHaveLength(2);
+    await answer(requests.calls[1], " It holds.");
+    expect(pendingGhostCompletion(view)).toBe(" It holds.");
+    view.destroy();
+  });
+
+  it("drops the look-ahead request when the suggestion is abandoned", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    await shown(view, requests, "orld");
+    const ahead = requests.calls[1];
+    view.dispatch({ selection: { anchor: 0 } });
+    expect(ahead.signal.aborted).toBe(true);
+    view.destroy();
+  });
+
+  it("warms the connection when typing starts after a quiet spell", async () => {
+    const requests = requester();
+    const warm = vi.fn();
+    const view = mountRequested("Hello", requests.request, { warm });
+    type(view, " w");
+    type(view, "o");
+    expect(warm).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(50);
+    await answer(requests.calls[0], "");
+    vi.advanceTimersByTime(29_000);
+    type(view, "r");
+    expect(warm).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(50);
+    await answer(requests.calls[1], "");
+    vi.advanceTimersByTime(31_000);
+    type(view, "l");
+    expect(warm).toHaveBeenCalledTimes(2);
+    view.destroy();
+  });
+
+  it("drops an answer once the cursor has moved", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    vi.advanceTimersByTime(50);
+    view.dispatch({ selection: { anchor: 0 } });
+    await answer(requests.calls[0], "orld");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    view.destroy();
+  });
+
+  it("keeps the answer to one line and drops what the model echoed", async () => {
+    const requests = requester();
+    const view = mountRequested("Intro\n\\section{Res", requests.request);
+    type(view, "u");
+    vi.advanceTimersByTime(50);
+    await answer(requests.calls[0], "\\section{Resu" + "lts}\nMore text");
+    expect(pendingGhostCompletion(view)).toBe("lts}");
+    view.destroy();
+  });
+
+  it("drops a leading space after a space and a closing brace the line already has", async () => {
+    const requests = requester();
+    const view = mountRequested("\\textbf{bold}", requests.request);
+    view.dispatch({ selection: { anchor: "\\textbf{bold".length } });
+    type(view, " ");
+    vi.advanceTimersByTime(50);
+    expect(requests.calls[0].after).toBe("}");
+    await answer(requests.calls[0], "  claim}  ");
+    expect(pendingGhostCompletion(view)).toBe("claim");
+    view.destroy();
+  });
+
+  it("sends a window that starts on a block boundary, so the prompt prefix stays the same while typing", async () => {
+    const requests = requester();
+    const text = `${"word ".repeat(1200)}end`;
+    const view = mountRequested(text, requests.request);
+    type(view, "s");
+    vi.advanceTimersByTime(50);
+    await answer(requests.calls[0], "");
+    type(view, " a");
+    vi.advanceTimersByTime(50);
+    const [first, second] = requests.calls;
+    expect(second.before.startsWith(first.before)).toBe(true);
+    expect((view.state.doc.length - second.before.length) % 1024).toBe(0);
+    view.destroy();
+  });
+
+  it.each([
+    ["with text after the cursor", (view: EditorView) => view.dispatch({ selection: { anchor: 3 } })],
+    ["with a selection", (view: EditorView) => view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } })],
+  ])("does not ask %s", (_name, move) => {
+    const requests = requester();
+    const view = mountRequested("Hello there", requests.request);
+    type(view, "!");
+    move(view);
+    vi.advanceTimersByTime(50);
+    expect(requests.calls).toHaveLength(0);
+    view.destroy();
+  });
+
+  it("does not ask on a blank line, for edits that were not typed, or while switched off", () => {
+    const requests = requester();
+    let enabled = false;
+    const view = mountRequested("Hello\n", requests.request, { enabled: () => enabled });
+    type(view, "x");
+    vi.advanceTimersByTime(50);
+    enabled = true;
+    view.dispatch({ changes: { from: view.state.doc.length, insert: "y" } });
+    vi.advanceTimersByTime(50);
+    type(view, "\n ");
+    vi.advanceTimersByTime(50);
+    expect(requests.calls).toHaveLength(0);
+    view.destroy();
+  });
+
+  function slowPopup() {
+    let settleLookup: (result: CompletionResult | null) => void = () => {};
+    const source: CompletionSource = () =>
+      new Promise((resolve) => {
+        settleLookup = resolve;
+      });
+    return {
+      extension: autocompletion({ override: [source], activateOnTyping: true }),
+      settle: async (result: CompletionResult | null) => {
+        settleLookup(result);
+        await flush();
+        vi.advanceTimersByTime(100);
+        await flush();
+      },
+    };
+  }
+
+  it("asks while the completion popup is still looking and shows the answer once it finds nothing", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
+    type(view, " w");
+    vi.advanceTimersByTime(100);
+    expect(completionStatus(view.state)).toBe("pending");
+    expect(requests.calls).toHaveLength(1);
+    await answer(requests.calls[0], "orld");
+    expect(pendingGhostCompletion(view)).toBeNull();
+
+    await popup.settle(null);
+    expect(completionStatus(view.state)).toBeNull();
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    expect(requests.calls).toHaveLength(2);
+    view.destroy();
+  });
+
+  it("keeps the answer hidden when the completion popup opens with options", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
+    type(view, " w");
+    vi.advanceTimersByTime(100);
+    await answer(requests.calls[0], "orld");
+
+    await popup.settle({ from: view.state.selection.main.head - 1, options: [{ label: "wonder" }] });
+    expect(completionStatus(view.state)).toBe("active");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    view.destroy();
+  });
+
+  it("shows a remembered answer as soon as the completion popup finds nothing", async () => {
+    const requests = requester();
+    const popup = slowPopup();
+    const view = mountRequested("Hello", requests.request, { extensions: [popup.extension] });
+    type(view, " w");
+    vi.advanceTimersByTime(100);
+    await answer(requests.calls[0], "orld");
+    await popup.settle(null);
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    const asked = requests.calls.length;
+
+    backspace(view);
+    type(view, "w");
+    vi.advanceTimersByTime(100);
+    await flush();
+    expect(completionStatus(view.state)).toBe("pending");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    await popup.settle(null);
+    expect(pendingGhostCompletion(view)).toBe("orld");
+    expect(requests.calls).toHaveLength(asked);
+    view.destroy();
+  });
+
+  it("leaves the word suggestion in place when one is showing", async () => {
+    const requests = requester();
+    const view = mountRequested("\\al", requests.request, { extensions: [ghostCompletion([sourceOf(["\\alpha"])])] });
+    type(view, "p");
+    await settle();
+    expect(pendingGhostCompletion(view)).toBe("ha");
+    vi.advanceTimersByTime(50);
+    expect(requests.calls).toHaveLength(0);
+    view.destroy();
+  });
+
+  it("Escape hides the answer and nothing is asked until the next keystroke", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    await shown(view, requests, "orld");
+    const asked = requests.calls.length;
+    expect(clearGhostCompletion(view)).toBe(true);
+    expect(pendingGhostCompletion(view)).toBeNull();
+    vi.advanceTimersByTime(500);
+    expect(requests.calls).toHaveLength(asked);
+    view.destroy();
+  });
+
+  it("aborts open requests when the editor closes", async () => {
+    const requests = requester();
+    const view = mountRequested("Hello", requests.request);
+    type(view, " w");
+    await shown(view, requests, "orld");
+    type(view, "o");
+    view.destroy();
+    expect(requests.calls.every((call) => call.signal.aborted)).toBe(true);
   });
 });

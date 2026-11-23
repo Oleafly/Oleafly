@@ -1043,6 +1043,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Gdy podczas pisania w pliku LaTeX, Typst lub Markdown zrobisz przerwę, za kursorem pojawi się wyszarzona propozycja dalszego ciągu. Naciśnij Tab, aby ją przyjąć, albo pisz dalej, aby ją odrzucić. Przy każdej przerwie tekst wokół kursora trafia do Twojego dostawcy AI. Domyślnie wyłączone, dopóki funkcja jest w wersji beta.",
+        "label": "Uzupełnianie przez AI"
+      },
       "latexTools": {
         "description": "Pokazuje galerię Narzędzi Oleafly i poszczególne narzędzia (import PDF, wzory, tabele, BibTeX, wyszukiwanie zespołów i literatury, terminy) wraz z ich poleceniami z ukośnikiem. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Narzędzia LaTeX"

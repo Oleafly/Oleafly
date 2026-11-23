@@ -276,6 +276,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "代理程式能力",
+      "completionModelDescription": "在你輸入時產生補完內容的模型。速度快的模型和在這台電腦上執行的模型回應最快。",
+      "completionModelTitle": "AI 補完模型",
       "customDescription": "會以你的個人風格與偏好加入每一次 AI 請求。助理會在內建行為之上遵循這些內容，但無法覆寫它的工具或安全規則。",
       "customPlaceholder": "例如：一律使用英式英文寫作。說明保持簡短。清單優先使用 enumitem 套件。",
       "customTitle": "自訂指示",

@@ -1015,6 +1015,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Når du holder pause i skrivningen i en LaTeX-, Typst- eller Markdown-fil, vises et forslag til, hvordan teksten fortsætter, med svag tekst efter markøren. Tryk Tab for at acceptere det, eller skriv videre for at afvise det. Ved hver pause sendes teksten omkring markøren til din AI-udbyder. Slået fra som standard, mens funktionen er i beta.",
+        "label": "AI-fuldførelser"
+      },
       "latexTools": {
         "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "LaTeX-værktøjer"

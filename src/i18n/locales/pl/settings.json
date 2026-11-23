@@ -279,6 +279,8 @@
     },
     "instructions": {
       "capabilitiesTitle": "Możliwości agenta",
+      "completionModelDescription": "Model, który podpowiada uzupełnienia podczas pisania. Najszybciej odpowiadają szybkie modele i modele działające na tym komputerze.",
+      "completionModelTitle": "Model do uzupełniania przez AI",
       "customDescription": "Dodawane do każdego żądania AI jako Twój osobisty styl i preferencje. Asystent stosuje je ponad swoim wbudowanym zachowaniem. Nie mogą obejść jego narzędzi ani zasad bezpieczeństwa.",
       "customPlaceholder": "Na przykład: pisz zawsze w brytyjskiej angielszczyźnie. Trzymaj wyjaśnienia krótkie. Do list używaj pakietu enumitem.",
       "customTitle": "Instrukcje własne",
