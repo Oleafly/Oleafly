@@ -543,6 +543,14 @@
     "setUpProviderHint": "加入 API 金鑰或本機 Ollama，或將 CLI 代理程式選為工具所用的模型，即可使用行內 AI 編輯。",
     "openAiSettings": "開啟設定 → AI"
   },
+  "savedInstructions": {
+    "label": "已儲存的指示",
+    "more_other": "還有 {{count}} 項",
+    "save": "儲存指示",
+    "nameLabel": "為這項指示命名",
+    "manage": "管理已儲存的指示",
+    "saveFailed": "無法儲存這項指示。"
+  },
   "proofreading": {
     "error": "校對無法完成這份文件。",
     "unavailable": "離線校對無法使用。",

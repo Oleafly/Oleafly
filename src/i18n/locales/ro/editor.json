@@ -557,6 +557,16 @@
     "setUpProviderHint": "Adaugă o cheie API sau Ollama local, ori alege un agent din linia de comandă ca model pentru Instrumente, ca să folosești modificările AI din text.",
     "openAiSettings": "Deschide Setări → AI"
   },
+  "savedInstructions": {
+    "label": "Instrucțiuni salvate",
+    "more_one": "Încă {{count}}",
+    "more_few": "Încă {{count}}",
+    "more_other": "Încă {{count}}",
+    "save": "Salvează instrucțiunea",
+    "nameLabel": "Denumește instrucțiunea",
+    "manage": "Gestionează instrucțiunile salvate",
+    "saveFailed": "Instrucțiunea nu a putut fi salvată."
+  },
   "proofreading": {
     "error": "Corectura nu a putut termina acest document.",
     "unavailable": "Corectura offline nu este disponibilă.",

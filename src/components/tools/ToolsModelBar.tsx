@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CloudUpload, ShieldCheck } from "lucide-react";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
-import { useProviderConfig } from "@/components/ai/use-provider-config";
 import { estimateScan, type PageSize } from "@/features/tools-ai/scan-estimate";
 import {
   choiceFromSelection,
@@ -23,6 +22,7 @@ import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import { mathpixKeyStatus } from "@/lib/mathpix";
 import { listOllamaModelDetails, ollamaUnreachable } from "@/lib/ollama";
+import { useProviderConfig } from "@/hooks/use-provider-config";
 import { getConfig, setAiToolsModel, type AppConfig, type ToolsModelChoice } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -99,7 +99,7 @@ function useToolsAgents() {
 }
 
 export function useToolsModel(): ToolsModelState {
-  const config = useProviderConfig();
+  const config = useProviderConfig().config;
   const ollama = useOllamaModels(config);
   const agents = useToolsAgents();
   const mathpix = useQuery({
@@ -167,7 +167,7 @@ export function ToolsModelNotice({
   editorFallback = true,
 }: Readonly<{ scope: "images" | "scans"; editorFallback?: boolean }>) {
   const { t } = useTranslation(["researchTools"]);
-  const config = useProviderConfig();
+  const config = useProviderConfig().config;
   const choice = config ? toolsChoice(config) : null;
   const checksFallback = editorFallback && scope === "images" && config !== null && choice === null;
   const ollama = useOllamaModels(config, checksFallback || choice?.provider === LOCAL_TOOLS_PROVIDER);
@@ -271,7 +271,7 @@ function estimateText(t: Translate, sizes: readonly PageSize[], summary: ToolsCh
 
 export function ScanEstimateText({ sizes }: Readonly<{ sizes: readonly PageSize[] }>) {
   const { t } = useTranslation(["researchTools"]);
-  const config = useProviderConfig();
+  const config = useProviderConfig().config;
   const ollama = useOllamaModels(config, config !== null && toolsChoice(config)?.provider === LOCAL_TOOLS_PROVIDER);
   if (!config) return null;
   return (

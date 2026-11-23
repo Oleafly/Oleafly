@@ -289,6 +289,23 @@
       "reasoningSummariesLabel": "Hiện tóm tắt lý luận",
       "save": "Lưu hướng dẫn",
       "saved": "Đã lưu",
+      "savedInstructions": {
+        "title": "Hướng dẫn đã lưu",
+        "description": "Các hướng dẫn dùng lại được cho bản sửa bằng AI, chẳng hạn \"Giữ nguyên định dạng gốc\" hoặc \"Chỉ sửa ngữ pháp\". Chọn một hoặc nhiều hướng dẫn trong \"Hỏi AI\", AI sẽ làm theo chúng cùng với yêu cầu của bạn. Những hướng dẫn bạn dùng nhiều nhất hiện ở đầu.",
+        "empty": "Chưa có hướng dẫn nào được lưu. Hãy thêm một hướng dẫn ở đây, hoặc nhập hướng dẫn trong \"Hỏi AI\" rồi chọn \"Lưu hướng dẫn\".",
+        "add": "Thêm hướng dẫn",
+        "name": "Tên",
+        "namePlaceholder": "Giữ định dạng",
+        "text": "Hướng dẫn",
+        "textPlaceholder": "Giữ nguyên định dạng gốc và không thay đổi văn bản trong dấu ngoặc kép.",
+        "required": "Hãy đặt tên và nhập nội dung cho hướng dẫn.",
+        "editNamed": "Sửa {{name}}",
+        "deleteNamed": "Xoá {{name}}",
+        "deleteTitle": "Xoá hướng dẫn đã lưu",
+        "deleteDescription": "Xoá \"{{name}}\"? Không thể hoàn tác.",
+        "uses_other": "Đã dùng {{count}} lần",
+        "limit": "Bạn có thể lưu tối đa {{max}} hướng dẫn. Hãy xoá một hướng dẫn để thêm hướng dẫn mới."
+      },
       "toolsHint": "Hãy yêu cầu những việc như \"sửa lỗi LaTeX\", \"thêm phần Công bố\" hoặc \"biên dịch lại và kiểm tra PDF\".",
       "toolsTitle": "Trợ lý hiện hỗ trợ các công cụ này"
     },

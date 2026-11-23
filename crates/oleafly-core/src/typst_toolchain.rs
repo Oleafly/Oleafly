@@ -157,10 +157,17 @@ impl<'de> Deserialize<'de> for ToolchainVersion {
 }
 
 pub fn parse_typst_version_output(output: &str) -> Option<ToolchainVersion> {
+    parse_program_version_output(output, &["typst", "typst-cli"])
+}
+
+pub fn parse_program_version_output(output: &str, programs: &[&str]) -> Option<ToolchainVersion> {
     output.lines().find_map(|line| {
         let mut tokens = line.split_whitespace();
         let program = tokens.next()?;
-        if !program.eq_ignore_ascii_case("typst") && !program.eq_ignore_ascii_case("typst-cli") {
+        if !programs
+            .iter()
+            .any(|name| program.eq_ignore_ascii_case(name))
+        {
             return None;
         }
         let token = tokens.next()?;

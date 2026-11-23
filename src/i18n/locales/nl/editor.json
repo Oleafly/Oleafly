@@ -550,6 +550,15 @@
     "setUpProviderHint": "Voeg een API-sleutel of het lokale Ollama toe, of kies een CLI-agent als model voor Hulpmiddelen, om AI-bewerkingen in de tekst te gebruiken.",
     "openAiSettings": "Instellingen → AI openen"
   },
+  "savedInstructions": {
+    "label": "Opgeslagen instructies",
+    "more_one": "Nog {{count}}",
+    "more_other": "Nog {{count}}",
+    "save": "Instructie opslaan",
+    "nameLabel": "Geef deze instructie een naam",
+    "manage": "Opgeslagen instructies beheren",
+    "saveFailed": "Kon de instructie niet opslaan."
+  },
   "proofreading": {
     "error": "Het proeflezen kon dit document niet afronden.",
     "unavailable": "Offline proeflezen is niet beschikbaar.",

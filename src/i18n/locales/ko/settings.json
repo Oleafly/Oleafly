@@ -289,6 +289,23 @@
       "reasoningSummariesLabel": "추론 요약 표시",
       "save": "지침 저장",
       "saved": "저장됨",
+      "savedInstructions": {
+        "title": "저장된 지침",
+        "description": "\"원래 서식을 유지해 줘\", \"문법만 고쳐 줘\"처럼 AI 편집에 다시 쓸 수 있는 지침입니다. \"AI에게 묻기\"에서 하나 이상 고르면 AI가 요청과 함께 이 지침을 따릅니다. 자주 쓰는 지침이 먼저 나옵니다.",
+        "empty": "저장된 지침이 아직 없습니다. 여기에서 추가하거나, \"AI에게 묻기\"에서 지침을 입력하고 \"지침 저장\"을 고르세요.",
+        "add": "지침 추가",
+        "name": "이름",
+        "namePlaceholder": "서식 유지",
+        "text": "지침",
+        "textPlaceholder": "원래 서식을 유지하고 따옴표 안의 텍스트는 바꾸지 마세요.",
+        "required": "지침의 이름과 내용을 입력하세요.",
+        "editNamed": "{{name}} 편집",
+        "deleteNamed": "{{name}} 삭제",
+        "deleteTitle": "저장된 지침 삭제",
+        "deleteDescription": "\"{{name}}\"을(를) 삭제할까요? 되돌릴 수 없습니다.",
+        "uses_other": "{{count}}회 사용",
+        "limit": "지침은 최대 {{max}}개까지 저장할 수 있습니다. 새로 추가하려면 하나를 삭제하세요."
+      },
       "toolsHint": "\"LaTeX 오류를 고쳐 줘\", \"발표 목록 절을 추가해 줘\", \"다시 컴파일하고 PDF를 확인해 줘\"처럼 요청해 보세요.",
       "toolsTitle": "어시스턴트가 현재 지원하는 도구"
     },

@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
-import { useProviderConfig } from "@/components/ai/use-provider-config";
+import { useProviderConfig } from "@/hooks/use-provider-config";
 import { describeToolsChoice, destinationName } from "@/features/tools-ai/tools-choice";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -293,7 +293,7 @@ function ScanNotice() {
 }
 
 function usePendingScanDestination(pending: boolean): string | null {
-  const config = useProviderConfig(pending);
+  const { config } = useProviderConfig();
   if (!pending || !config) return null;
   return destinationName(describeToolsChoice(config).destination);
 }

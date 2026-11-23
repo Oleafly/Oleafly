@@ -564,6 +564,17 @@
     "setUpProviderHint": "Dodaj klucz API albo lokalny Ollama lub wybierz agenta wiersza poleceń jako model dla Narzędzi, aby korzystać z edycji AI w wierszu.",
     "openAiSettings": "Otwórz Ustawienia → AI"
   },
+  "savedInstructions": {
+    "label": "Zapisane instrukcje",
+    "more_one": "Jeszcze {{count}}",
+    "more_few": "Jeszcze {{count}}",
+    "more_many": "Jeszcze {{count}}",
+    "more_other": "Jeszcze {{count}}",
+    "save": "Zapisz instrukcję",
+    "nameLabel": "Nazwij tę instrukcję",
+    "manage": "Zarządzaj zapisanymi instrukcjami",
+    "saveFailed": "Nie udało się zapisać instrukcji."
+  },
   "proofreading": {
     "error": "Korekta nie mogła ukończyć tego dokumentu.",
     "unavailable": "Korekta offline jest niedostępna.",

@@ -543,6 +543,14 @@
     "setUpProviderHint": "인라인 AI 편집을 쓰려면 API 키를 추가하거나 로컬 Ollama를 연결하거나, 명령줄 에이전트를 도구에 쓸 모델로 고르세요.",
     "openAiSettings": "설정 → AI 열기"
   },
+  "savedInstructions": {
+    "label": "저장된 지침",
+    "more_other": "{{count}}개 더",
+    "save": "지침 저장",
+    "nameLabel": "이 지침의 이름",
+    "manage": "저장된 지침 관리",
+    "saveFailed": "지침을 저장하지 못했습니다."
+  },
   "proofreading": {
     "error": "이 문서의 교정을 끝내지 못했습니다.",
     "unavailable": "오프라인 교정을 사용할 수 없습니다.",

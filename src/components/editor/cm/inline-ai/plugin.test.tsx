@@ -132,6 +132,17 @@ describe("accepting and rejecting", () => {
     expect(view.state.doc.toString()).toBe("hello world\nsecond line");
     expect(useInlineEditStore.getState().session).toBeNull();
   });
+
+  it("gives the keyboard back to the editor after accepting or rejecting", () => {
+    const focus = vi.spyOn(view, "focus");
+    open(6, 11, "world");
+    update({ phase: "reviewing", proposed: "there" });
+    acceptInlineEdit(view);
+    open(0, 5, "hello");
+    update({ phase: "reviewing", proposed: "howdy" });
+    rejectInlineEdit(view);
+    expect(focus).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("pending range under other people's edits", () => {

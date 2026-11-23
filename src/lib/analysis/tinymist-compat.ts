@@ -32,24 +32,19 @@ export function tinymistOptionsForVersion<T extends JsonObject | null>(
   ) as T;
 }
 
-export function tinymistProfileForVersion(
+export function profileForServerVersion(
   profile: LanguageServiceRuntimeProfile,
   version: string,
 ): LanguageServiceRuntimeProfile {
-  if (profile.kind !== "tinymist") return profile;
+  const initializationOptions =
+    profile.kind === "tinymist"
+      ? tinymistOptionsForVersion(profile.initializationOptions, version)
+      : profile.initializationOptions;
   if (
     profile.version === version &&
-    tinymistOptionsForVersion(profile.initializationOptions, version) ===
-      profile.initializationOptions
+    initializationOptions === profile.initializationOptions
   ) {
     return profile;
   }
-  return Object.freeze({
-    ...profile,
-    version,
-    initializationOptions: tinymistOptionsForVersion(
-      profile.initializationOptions,
-      version,
-    ),
-  });
+  return Object.freeze({ ...profile, version, initializationOptions });
 }

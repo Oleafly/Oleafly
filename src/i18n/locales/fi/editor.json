@@ -550,6 +550,15 @@
     "setUpProviderHint": "Lisää API-avain tai paikallinen Ollama, tai valitse komentoriviagentti työkalujen malliksi, niin tekstin sisäiset tekoälymuokkaukset toimivat.",
     "openAiSettings": "Avaa Asetukset → Tekoäly"
   },
+  "savedInstructions": {
+    "label": "Tallennetut ohjeet",
+    "more_one": "{{count}} lisää",
+    "more_other": "{{count}} lisää",
+    "save": "Tallenna ohje",
+    "nameLabel": "Anna ohjeelle nimi",
+    "manage": "Hallitse tallennettuja ohjeita",
+    "saveFailed": "Ohjetta ei voitu tallentaa."
+  },
   "proofreading": {
     "error": "Kielentarkistus ei saanut tätä dokumenttia valmiiksi.",
     "unavailable": "Offline-kielentarkistus ei ole käytettävissä.",

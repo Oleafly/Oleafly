@@ -120,6 +120,14 @@ pub struct Persona {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct SavedInstruction {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(tag = "transport", rename_all = "snake_case")]
 pub enum McpServerTransport {
     Stdio {
@@ -185,6 +193,10 @@ pub struct AppConfig {
     pub ai_personas: Vec<Persona>,
     #[serde(default)]
     pub ai_starter_personas_seeded: bool,
+    #[serde(default)]
+    pub ai_saved_instructions: Vec<SavedInstruction>,
+    #[serde(default)]
+    pub ai_saved_instruction_uses: BTreeMap<String, u32>,
     #[serde(default)]
     pub notes_starter_note_created: bool,
     #[serde(default = "default_true")]
@@ -285,6 +297,8 @@ impl Default for AppConfig {
             ai_model_lists_refreshed_at: BTreeMap::new(),
             ai_personas: Vec::new(),
             ai_starter_personas_seeded: false,
+            ai_saved_instructions: Vec::new(),
+            ai_saved_instruction_uses: BTreeMap::new(),
             notes_starter_note_created: false,
             checkpoints_enabled: true,
             checkpoint_notifications: true,
@@ -2170,6 +2184,38 @@ mod tests {
     fn legacy_config_defaults_starter_persona_seed_flag_to_false() {
         let config: AppConfig = serde_json::from_str("{}").unwrap();
         assert!(!config.ai_starter_personas_seeded);
+    }
+
+    #[test]
+    fn saved_instructions_and_their_use_counts_survive_a_full_config_write() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+
+        let legacy: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(legacy.ai_saved_instructions.is_empty());
+        assert!(legacy.ai_saved_instruction_uses.is_empty());
+
+        let kept = SavedInstruction {
+            id: "keep-format".into(),
+            name: "Keep formatting".into(),
+            text: "Keep the original formatting and don't change quoted text.".into(),
+        };
+        set_config_blocking(AppConfig {
+            ai_saved_instructions: vec![kept.clone()],
+            ai_saved_instruction_uses: BTreeMap::from([("keep-format".into(), 3)]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+
+        let read = get_config_blocking().unwrap();
+        assert_eq!(read.ai_saved_instructions, vec![kept]);
+        assert_eq!(read.ai_saved_instruction_uses.get("keep-format"), Some(&3));
+        let missing_text: SavedInstruction =
+            serde_json::from_str(r#"{"id":"a","name":"Short"}"#).unwrap();
+        assert_eq!(missing_text.text, "");
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

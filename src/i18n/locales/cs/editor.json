@@ -564,6 +564,17 @@
     "setUpProviderHint": "Přidejte klíč API nebo místní Ollama, nebo vyberte agenta CLI jako model pro Nástroje, a můžete používat úpravy AI přímo v textu.",
     "openAiSettings": "Otevřít Nastavení → AI"
   },
+  "savedInstructions": {
+    "label": "Uložené instrukce",
+    "more_one": "{{count}} další",
+    "more_few": "{{count}} další",
+    "more_many": "{{count}} dalších",
+    "more_other": "{{count}} dalších",
+    "save": "Uložit instrukci",
+    "nameLabel": "Pojmenujte instrukci",
+    "manage": "Spravovat uložené instrukce",
+    "saveFailed": "Instrukci se nepodařilo uložit."
+  },
   "proofreading": {
     "error": "Korektura nedokázala tento dokument dokončit.",
     "unavailable": "Offline korektura není k dispozici.",

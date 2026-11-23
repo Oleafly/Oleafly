@@ -550,6 +550,15 @@
     "setUpProviderHint": "Add an API key or local Ollama, or pick a CLI agent as the model for Tools, to use inline AI edits.",
     "openAiSettings": "Open Settings → AI"
   },
+  "savedInstructions": {
+    "label": "Saved instructions",
+    "more_one": "{{count}} more",
+    "more_other": "{{count}} more",
+    "save": "Save instruction",
+    "nameLabel": "Name this instruction",
+    "manage": "Manage saved instructions",
+    "saveFailed": "Couldn't save the instruction."
+  },
   "proofreading": {
     "error": "Proofreading could not finish this document.",
     "unavailable": "Offline proofreading is unavailable.",

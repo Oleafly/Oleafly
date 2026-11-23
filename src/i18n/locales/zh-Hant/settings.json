@@ -289,6 +289,23 @@
       "reasoningSummariesLabel": "顯示推理摘要",
       "save": "儲存指示",
       "saved": "已儲存",
+      "savedInstructions": {
+        "title": "已儲存的指示",
+        "description": "可在 AI 編輯中重複使用的指示，例如「保留原本的格式」或「只修正文法」。在「詢問 AI」中選擇一項或多項，AI 會連同你的要求一起遵循。最常用的會排在最前面。",
+        "empty": "還沒有已儲存的指示。你可以在這裡新增，或在「詢問 AI」中輸入指示後選擇「儲存指示」。",
+        "add": "新增指示",
+        "name": "名稱",
+        "namePlaceholder": "保留格式",
+        "text": "指示",
+        "textPlaceholder": "保留原本的格式，不要更改引號內的文字。",
+        "required": "請為指示填寫名稱和內容。",
+        "editNamed": "編輯 {{name}}",
+        "deleteNamed": "刪除 {{name}}",
+        "deleteTitle": "刪除已儲存的指示",
+        "deleteDescription": "要刪除「{{name}}」嗎？此操作無法復原。",
+        "uses_other": "已使用 {{count}} 次",
+        "limit": "最多可儲存 {{max}} 項指示。請先刪除一項再新增。"
+      },
       "toolsHint": "你可以要求它「修正 LaTeX 錯誤」、「新增 Publications 章節」或「重新編譯並檢查 PDF」。",
       "toolsTitle": "助理目前支援下列工具"
     },

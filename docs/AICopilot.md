@@ -25,6 +25,11 @@ it is not a second document model.
   open, and so does Oleafly's assistant when it has no provider and a CLI
   agent is connected. A hand-off with images still goes to Oleafly's
   assistant.
+- Save edit instructions you use often, such as "Keep the original
+  formatting", in Settings > AI > Instructions or with **Save instruction** in
+  the inline AI box. Pick one or more under **Ask AI** and they go with what
+  you type or the preset you pick, or run on their own. The ones you use most
+  come first. Inline edits also follow your Custom instructions.
 - Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
   feedback and strict Reviewer #2 critique of the current document).
 - Point at the PDF. With PDF review turned on in Settings > Experimentation,

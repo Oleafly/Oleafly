@@ -7,6 +7,7 @@ import { COMMENT_COLORS } from "@/lib/comment-color";
 import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
+import { SAVED_INSTRUCTION_LIMITS } from "@/lib/saved-instructions";
 import {
   NOTE_WIDTHS,
   NOTES_CALLOUT_STYLES,
@@ -53,7 +54,7 @@ import { isLintRuleName } from "@/lib/proofreading/lint-profile";
 import type { ThemePreference } from "@/lib/theme";
 import { parseThemeCustomizationImport, type ThemeCustomization } from "@/lib/theme-customization";
 import { themePresetIds } from "@/lib/theme-presets";
-import type { AppConfig, Persona } from "@/lib/tauri";
+import type { AppConfig, Persona, SavedInstruction } from "@/lib/tauri";
 import type { CompileMode } from "@/store/compile";
 import {
   EDITOR_KEY_DEFINITIONS,
@@ -132,6 +133,7 @@ export type ConfigPreferences = Pick<
   AppConfig,
   "ai_system_prompt" | "ai_pdf_capture" | "ai_personas" | "checkpoints_enabled" | "checkpoint_notifications"
 > & {
+  ai_saved_instructions: SavedInstruction[];
   ai_reasoning_summaries: boolean;
   research_keep_awake: boolean;
   research_notifications: boolean;
@@ -351,44 +353,75 @@ const words: ValueType<string[]> = {
   },
 };
 
-const PERSONA_KEYS: ReadonlySet<string> = new Set(["id", "name", "color", "prompt"]);
-const PERSONA_COLOR_KEYS = PERSONA_COLORS.map((color) => color.key);
-const personaId = text(200, { required: true });
-const personaName = text(200, { required: true });
-const personaColor = oneOf(PERSONA_COLOR_KEYS);
-const personaPrompt = text(200_000, { multiline: true, required: true });
+const recordId = text(200, { required: true });
 
-function parsePersona(raw: unknown, index: number, ids: Set<string>): Parsed<Persona> {
-  if (!isRecord(raw)) return fail({ kind: "object" }, `[${index}]`);
-  for (const key of Object.keys(raw)) {
-    if (!PERSONA_KEYS.has(key)) return fail({ kind: "unknownKey" }, `[${index}].${key}`);
+type FieldReader = <T>(key: string, type: ValueType<T>) => Parsed<T>;
+
+type NamedItemSpec<T> = {
+  known: ReadonlySet<string>;
+  idPrefix: string;
+  build: (id: string, read: FieldReader) => Parsed<T>;
+};
+
+function parseNamedItem<T>(item: unknown, at: string, ids: Set<string>, spec: NamedItemSpec<T>): Parsed<T> {
+  if (!isRecord(item)) return fail({ kind: "object" }, at);
+  for (const key of Object.keys(item)) {
+    if (!spec.known.has(key)) return fail({ kind: "unknownKey" }, `${at}.${key}`);
   }
-  const id = raw.id === undefined ? ok(`persona-${crypto.randomUUID()}`) : personaId.parse(raw.id);
-  if (!id.ok) return fail(id.issue, `[${index}].id`);
-  if (ids.has(id.value)) return fail({ kind: "duplicate" }, `[${index}].id`);
+  const id = item.id === undefined ? ok(`${spec.idPrefix}-${crypto.randomUUID()}`) : recordId.parse(item.id);
+  if (!id.ok) return fail(id.issue, `${at}.id`);
+  if (ids.has(id.value)) return fail({ kind: "duplicate" }, `${at}.id`);
   ids.add(id.value);
-  const name = personaName.parse(raw.name);
-  if (!name.ok) return fail(name.issue, `[${index}].name`);
-  const color = personaColor.parse(raw.color);
-  if (!color.ok) return fail(color.issue, `[${index}].color`);
-  const prompt = personaPrompt.parse(raw.prompt);
-  if (!prompt.ok) return fail(prompt.issue, `[${index}].prompt`);
-  return ok({ id: id.value, name: name.value.trim(), color: color.value, prompt: prompt.value });
+  return spec.build(id.value, (key, type) => {
+    const value = type.parse(item[key]);
+    return value.ok ? value : fail(value.issue, `${at}.${key}`);
+  });
 }
 
-const personas: ValueType<Persona[]> = {
-  parse(raw) {
-    if (!Array.isArray(raw) || raw.length > 50) return fail({ kind: "list", max: 50 });
-    const ids = new Set<string>();
-    const output: Persona[] = [];
-    for (const [index, item] of raw.entries()) {
-      const persona = parsePersona(item, index, ids);
-      if (!persona.ok) return persona;
-      output.push(persona.value);
-    }
-    return ok(output);
+function namedList<T extends { id: string }>(
+  keys: readonly string[],
+  max: number,
+  idPrefix: string,
+  build: (id: string, read: FieldReader) => Parsed<T>,
+): ValueType<T[]> {
+  const spec: NamedItemSpec<T> = { known: new Set(["id", ...keys]), idPrefix, build };
+  return {
+    parse(raw) {
+      if (!Array.isArray(raw) || raw.length > max) return fail({ kind: "list", max });
+      const ids = new Set<string>();
+      const output: T[] = [];
+      for (const [index, item] of raw.entries()) {
+        const entry = parseNamedItem(item, `[${index}]`, ids, spec);
+        if (!entry.ok) return entry;
+        output.push(entry.value);
+      }
+      return ok(output);
+    },
+  };
+}
+
+const personas = namedList<Persona>(["name", "color", "prompt"], 50, "persona", (id, read) => {
+  const name = read("name", text(200, { required: true }));
+  if (!name.ok) return name;
+  const color = read("color", oneOf(PERSONA_COLORS.map((entry) => entry.key)));
+  if (!color.ok) return color;
+  const prompt = read("prompt", text(200_000, { multiline: true, required: true }));
+  if (!prompt.ok) return prompt;
+  return ok({ id, name: name.value.trim(), color: color.value, prompt: prompt.value });
+});
+
+const savedInstructions = namedList<SavedInstruction>(
+  ["name", "text"],
+  SAVED_INSTRUCTION_LIMITS.count,
+  "instruction",
+  (id, read) => {
+    const name = read("name", text(SAVED_INSTRUCTION_LIMITS.name, { required: true }));
+    if (!name.ok) return name;
+    const body = read("text", text(SAVED_INSTRUCTION_LIMITS.text, { multiline: true, required: true }));
+    if (!body.ok) return body;
+    return ok({ id, name: name.value.trim(), text: body.value.trim() });
   },
-};
+);
 
 const hiddenFiles = textList(200, 256, (pattern) => pattern === pattern.trim());
 const lintRuleList = textList(2_000, 128, isLintRuleName);
@@ -693,6 +726,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   config("ai.includePdfPreview", "ai_pdf_capture", bool),
   config("ai.reasoningSummaries", "ai_reasoning_summaries", bool),
   config("ai.personas", "ai_personas", personas),
+  config("ai.savedInstructions", "ai_saved_instructions", savedInstructions),
 
   config("research.keepAwake", "research_keep_awake", bool),
   config("research.notifications", "research_notifications", bool),

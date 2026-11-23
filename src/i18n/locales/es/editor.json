@@ -557,6 +557,16 @@
     "setUpProviderHint": "Añade una clave de API u Ollama en local, o elige un agente de línea de comandos como modelo para Herramientas, para usar las ediciones con IA en línea.",
     "openAiSettings": "Abrir Ajustes → IA"
   },
+  "savedInstructions": {
+    "label": "Instrucciones guardadas",
+    "more_one": "{{count}} más",
+    "more_many": "{{count}} más",
+    "more_other": "{{count}} más",
+    "save": "Guardar instrucción",
+    "nameLabel": "Ponle nombre a la instrucción",
+    "manage": "Gestionar las instrucciones guardadas",
+    "saveFailed": "No se pudo guardar la instrucción."
+  },
   "proofreading": {
     "error": "La corrección no pudo terminar este documento.",
     "unavailable": "La corrección sin conexión no está disponible.",

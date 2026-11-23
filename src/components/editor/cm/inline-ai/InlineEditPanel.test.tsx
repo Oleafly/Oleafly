@@ -66,10 +66,14 @@ vi.mock("@/components/ai/ModelSelector", () => ({
   ),
 }));
 
+import { resetProviderConfigCache } from "@/components/ai/provider-config";
 import { setEditorView } from "@/components/editor/cm/controller";
 import { InlineEditPanel } from "./InlineEditPanel";
 
 const inlineAi = en.inlineAi;
+const savedUi = en.savedInstructions;
+const KEEP = { id: "keep", name: "Keep formatting", text: "Keep the formatting." };
+const QUOTES = { id: "quotes", name: "Quotes", text: "Don't change quoted text." };
 const CONFIGURED = { ai_provider: "openai", ai_model: "gpt-4o-mini", ai_keys: { openai: "sk-test" } };
 
 let view: EditorView | null = null;
@@ -101,6 +105,8 @@ function setPhase(phase: "prompting" | "streaming" | "reviewing" | "error", extr
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetProviderConfigCache();
+  useInlineEditStore.setState({ picked: [] });
   tauri.getConfig.mockResolvedValue(CONFIGURED);
   ollama.listOllamaModels.mockResolvedValue([]);
   inline.runInlineCompletion.mockResolvedValue(undefined);
@@ -129,6 +135,7 @@ describe("InlineEditPanel", () => {
     openSession();
     await renderPanel();
     expect(screen.getByText(inlineAi.setUpProvider)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: inlineAi.openAiSettings })).toHaveFocus();
     expect(screen.getByText(inlineAi.setUpProviderHint)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: inlineAi.openAiSettings }));
     expect(useInlineEditStore.getState().session).toBeNull();
@@ -568,6 +575,208 @@ describe("InlineEditPanel", () => {
         );
       });
       expect(promptBox()).toBeInTheDocument();
+    });
+  });
+
+  describe("saved instructions", () => {
+    const withSaved = { ...CONFIGURED, ai_saved_instructions: [KEEP, QUOTES] };
+
+    it("sends the picked ones with the request and counts the use", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      openSession();
+      await renderPanel();
+      fireEvent.click(screen.getByRole("button", { name: "Quotes" }));
+      expect(useInlineEditStore.getState().picked).toEqual(["quotes"]);
+      fireEvent.change(promptBox(), { target: { value: "Shorten" } });
+      fireEvent.click(screen.getByLabelText(inlineAi.submit));
+      await screen.findByLabelText(inlineAi.accept);
+
+      expect(inline.runInlineCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({ instruction: "Shorten", saved: [QUOTES.text] }),
+      );
+      await waitFor(() =>
+        expect(tauri.setConfig).toHaveBeenCalledWith(
+          expect.objectContaining({ ai_saved_instruction_uses: { quotes: 1 } }),
+        ),
+      );
+    });
+
+    it("runs a picked instruction on its own and keeps the pick for the next edit", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      useInlineEditStore.setState({ picked: ["keep", "deleted"] });
+      openSession();
+      await renderPanel();
+      expect(screen.getByRole("button", { name: "Keep formatting" })).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(screen.getByLabelText(inlineAi.submit));
+      await screen.findByLabelText(inlineAi.accept);
+
+      expect(inline.runInlineCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({ instruction: "", saved: [KEEP.text] }),
+      );
+      fireEvent.click(screen.getByLabelText(inlineAi.accept));
+      expect(useInlineEditStore.getState().picked).toEqual(["keep", "deleted"]);
+    });
+
+    it("sends the custom instructions from Settings", async () => {
+      tauri.getConfig.mockResolvedValue({ ...CONFIGURED, ai_system_prompt: "Use British English." });
+      openSession({ instruction: "Shorten" });
+      await renderPanel();
+      fireEvent.click(screen.getByLabelText(inlineAi.submit));
+      await screen.findByLabelText(inlineAi.accept);
+      expect(inline.runInlineCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: "Use British English." }),
+      );
+    });
+
+    it("keeps typed text when a preset runs", async () => {
+      openSession();
+      await renderPanel();
+      fireEvent.change(promptBox(), { target: { value: "Keep the citations" } });
+      fireEvent.click(screen.getByText(core.inlineAi.grammar));
+      await screen.findByLabelText(inlineAi.accept);
+      expect(inline.runInlineCompletion.mock.calls[0][0].instruction).toBe(
+        "Fix any spelling and grammar mistakes in the selected text.\nKeep the citations",
+      );
+    });
+
+    it("saves the typed instruction, picks it and clears the box", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      openSession();
+      await renderPanel();
+      fireEvent.change(promptBox(), { target: { value: "Use a formal tone" } });
+      fireEvent.click(screen.getByRole("button", { name: savedUi.save }));
+      const name = screen.getByRole("textbox", { name: savedUi.nameLabel });
+      fireEvent.change(name, { target: { value: "Formal" } });
+      fireEvent.keyDown(name, { key: "Enter" });
+
+      await waitFor(() => expect(tauri.setConfig).toHaveBeenCalled());
+      const written = tauri.setConfig.mock.calls[0][0] as AppConfig;
+      const added = written.ai_saved_instructions?.[2];
+      expect(added).toMatchObject({ name: "Formal", text: "Use a formal tone" });
+      await waitFor(() => expect(useInlineEditStore.getState().picked).toEqual([added?.id]));
+      expect(useInlineEditStore.getState().session?.instruction).toBe("");
+      expect(await screen.findByRole("button", { name: "Formal" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByRole("button", { name: savedUi.save })).not.toBeInTheDocument();
+    });
+
+    it("offers no save for text that is already saved", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      openSession({ instruction: QUOTES.text });
+      await renderPanel();
+      expect(screen.queryByRole("button", { name: savedUi.save })).not.toBeInTheDocument();
+    });
+
+    it("cancels naming with Escape and keeps the prompt open", async () => {
+      openSession({ instruction: "Use a formal tone" });
+      await renderPanel();
+      fireEvent.click(screen.getByRole("button", { name: savedUi.save }));
+      const name = screen.getByRole("textbox", { name: savedUi.nameLabel });
+      const escapeKey = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      act(() => {
+        name.dispatchEvent(escapeKey);
+      });
+      expect(useInlineEditStore.getState().session).not.toBeNull();
+      expect(screen.queryByRole("textbox", { name: savedUi.nameLabel })).not.toBeInTheDocument();
+    });
+
+    it("hands the picked instructions to the assistant", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      useInlineEditStore.setState({ picked: ["keep"] });
+      openSession();
+      await renderPanel();
+      setPhase("reviewing", { proposed: "HELLO" });
+      fireEvent.click(screen.getByLabelText(inlineAi.openInAgent));
+      const [prompt] = handoff.handoffToAssistant.mock.calls[0];
+      expect(prompt).toContain(`Instructions:\n- ${KEEP.text}`);
+      expect(prompt).not.toContain("(no instruction)");
+    });
+
+    it("opens Settings at the saved instructions", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      openSession();
+      await renderPanel();
+      fireEvent.click(screen.getByRole("button", { name: savedUi.manage }));
+      expect(useInlineEditStore.getState().session).toBeNull();
+      expect(useSettingsStore.getState()).toMatchObject({
+        settingsOpen: true,
+        settingsInitialSection: "ai",
+        settingsScrollTarget: "ai-saved-instructions",
+      });
+    });
+
+    it("tells the user when saving fails", async () => {
+      tauri.getConfig.mockResolvedValue(withSaved);
+      openSession({ instruction: "Use a formal tone" });
+      await renderPanel();
+      tauri.setConfig.mockRejectedValueOnce(new Error("disk full"));
+      fireEvent.click(screen.getByRole("button", { name: savedUi.save }));
+      fireEvent.keyDown(screen.getByRole("textbox", { name: savedUi.nameLabel }), { key: "Enter" });
+      await waitFor(() => expect(log.logError).toHaveBeenCalledWith("ai", expect.any(Error)));
+      expect(useInlineEditStore.getState().picked).toEqual([]);
+      expect(useInlineEditStore.getState().session?.instruction).toBe("Use a formal tone");
+    });
+  });
+
+  describe("keys meant for something else", () => {
+    function popup(role: string) {
+      const element = document.createElement("div");
+      element.setAttribute("role", role);
+      const field = document.createElement("input");
+      element.append(field);
+      document.body.append(element);
+      return { element, field };
+    }
+
+    function press(target: HTMLElement, key: string) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+      act(() => {
+        target.dispatchEvent(event);
+      });
+      return event;
+    }
+
+    it("leaves Escape to an open dialog or menu", async () => {
+      openSession({ instruction: "Shorten" });
+      await renderPanel();
+      for (const role of ["dialog", "menu", "listbox"]) {
+        const { element, field } = popup(role);
+        expect(press(field, "Escape").defaultPrevented).toBe(false);
+        expect(useInlineEditStore.getState().session).not.toBeNull();
+        element.remove();
+      }
+    });
+
+    it("leaves Enter to a dialog while a change waits for review", async () => {
+      openSession({ instruction: "Capitalise" });
+      await renderPanel();
+      setPhase("reviewing", { proposed: "HELLO" });
+      const { element, field } = popup("dialog");
+      expect(press(field, "Enter").defaultPrevented).toBe(false);
+      expect(view?.state.doc.toString()).toBe("hello world");
+      element.remove();
+      expect(press(document.body, "Enter").defaultPrevented).toBe(true);
+      expect(view?.state.doc.toString()).toBe("HELLO world");
+    });
+
+    it("gives the keyboard back to the editor when the prompt closes", async () => {
+      openSession({ instruction: "Shorten" });
+      await renderPanel();
+      const focus = vi.spyOn(view as EditorView, "focus");
+      press(document.body, "Escape");
+      expect(useInlineEditStore.getState().session).toBeNull();
+      expect(focus).toHaveBeenCalledOnce();
+    });
+
+    it("still handles keys inside a dialog that holds the editor", async () => {
+      const host = document.createElement("div");
+      host.setAttribute("role", "dialog");
+      document.body.append(host);
+      if (view) host.append(view.dom);
+      openSession({ instruction: "Shorten" });
+      await renderPanel();
+      press(view?.contentDOM ?? host, "Escape");
+      expect(useInlineEditStore.getState().session).toBeNull();
+      host.remove();
     });
   });
 });

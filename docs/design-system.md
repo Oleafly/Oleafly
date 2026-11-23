@@ -29,6 +29,12 @@ count that screen readers announce is a `<Badge asChild size="count"><output>`.
 If a component keeps a map from its own states to a tone, map to
 `BadgeVariant` names, not colour classes.
 
+A pill you press is a `Chip` from `ui/chip.tsx`, such as a preset in the
+inline AI box or a saved instruction. It tints on hover and focus, which a
+`Badge` doesn't. Pass `pressed` to make it a toggle. It sets `aria-pressed`
+and turns the primary tint on, and a check mark inside shows the state without
+colour. A chip that just runs something leaves `pressed` out.
+
 A small set of controls floating over content, such as the zoom controls on an
 image or the app zoom level, is a `FloatingBar` from `ui/floating-bar.tsx`: a
 rounded pill with the toolbar role, made of frosted glass (`GLASS_PANEL` from

@@ -289,6 +289,23 @@
       "reasoningSummariesLabel": "推論の要約を表示",
       "save": "指示を保存",
       "saved": "保存しました",
+      "savedInstructions": {
+        "title": "保存した指示",
+        "description": "「元の書式を保つ」「文法だけを直す」のように、AI 編集で繰り返し使える指示です。「AI に聞く」で 1 つ以上選ぶと、AI は依頼とあわせてそれに従います。よく使うものほど先に表示されます。",
+        "empty": "保存した指示はまだありません。ここで追加するか、「AI に聞く」で指示を入力して「指示を保存」を選んでください。",
+        "add": "指示を追加",
+        "name": "名前",
+        "namePlaceholder": "書式を保つ",
+        "text": "指示",
+        "textPlaceholder": "元の書式を保ち、引用符の中のテキストは変えないでください。",
+        "required": "指示の名前と内容を入力してください。",
+        "editNamed": "{{name}} を編集",
+        "deleteNamed": "{{name}} を削除",
+        "deleteTitle": "保存した指示を削除",
+        "deleteDescription": "「{{name}}」を削除しますか？この操作は取り消せません。",
+        "uses_other": "{{count}} 回使用",
+        "limit": "保存できる指示は {{max}} 件までです。追加するには 1 件削除してください。"
+      },
       "toolsHint": "「LaTeX のエラーを直して」「Publications のセクションを追加して」「再コンパイルして PDF を確認して」のように頼めます。",
       "toolsTitle": "アシスタントが現在使えるツール"
     },

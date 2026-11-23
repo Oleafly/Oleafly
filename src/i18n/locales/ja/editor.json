@@ -543,6 +543,14 @@
     "setUpProviderHint": "インラインの AI 編集を使うには、API キーかローカルの Ollama を追加するか、CLI エージェントをツール用のモデルに選んでください。",
     "openAiSettings": "設定 → AI を開く"
   },
+  "savedInstructions": {
+    "label": "保存した指示",
+    "more_other": "ほか {{count}} 件",
+    "save": "指示を保存",
+    "nameLabel": "この指示の名前",
+    "manage": "保存した指示を管理",
+    "saveFailed": "指示を保存できませんでした。"
+  },
   "proofreading": {
     "error": "この文書の校正を完了できませんでした。",
     "unavailable": "オフライン校正を利用できません。",

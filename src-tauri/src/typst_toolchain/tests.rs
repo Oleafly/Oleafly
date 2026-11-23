@@ -918,3 +918,36 @@ fn a_downloaded_typst_installs_resolves_and_compiles_the_journal_article_seed() 
     let pdf = compile_seed_with((*resolved).clone(), workspace.path());
     assert!(pdf.starts_with(b"%PDF"));
 }
+
+#[test]
+fn an_external_tinymist_shows_only_next_to_the_typst_line_it_serves() {
+    use crate::language_service::external::simulated;
+    use crate::language_service::LanguageServiceKind;
+    let entry = |version: &str| oleafly_downloads::typst::TypstVersionEntry {
+        version: version.into(),
+        released_at: None,
+        in_catalog: true,
+        sources: vec![TypstSource::Downloaded],
+        download_bytes: None,
+        tinymist_version: Some("0.13.30".into()),
+    };
+    let status = || TypstToolchainStatus {
+        bundled_version: "0.15.1".into(),
+        default_version: "0.15.1".into(),
+        default_choice: None,
+        system: None,
+        installing: None,
+        versions: vec![entry("0.15.1"), entry("0.13.1")],
+        unused_tinymist: Vec::new(),
+    };
+    assert_eq!(with_external_tinymist(status()), status());
+
+    let server = simulated::tinymist("0.15.12", "0.15.0");
+    let _configured = simulated::configure(LanguageServiceKind::Tinymist, &server.path);
+    let labels: Vec<Option<String>> = with_external_tinymist(status())
+        .versions
+        .into_iter()
+        .map(|entry| entry.tinymist_version)
+        .collect();
+    assert_eq!(labels, [Some("0.15.12".to_owned()), None]);
+}

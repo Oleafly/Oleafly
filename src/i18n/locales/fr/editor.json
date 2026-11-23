@@ -557,6 +557,16 @@
     "setUpProviderHint": "Ajoutez une clé API ou un Ollama local, ou choisissez un agent en ligne de commande comme modèle pour les Outils, pour utiliser les modifications IA en ligne.",
     "openAiSettings": "Ouvrir Paramètres → IA"
   },
+  "savedInstructions": {
+    "label": "Instructions enregistrées",
+    "more_one": "{{count}} de plus",
+    "more_many": "{{count}} de plus",
+    "more_other": "{{count}} de plus",
+    "save": "Enregistrer l'instruction",
+    "nameLabel": "Nommer cette instruction",
+    "manage": "Gérer les instructions enregistrées",
+    "saveFailed": "Impossible d'enregistrer l'instruction."
+  },
   "proofreading": {
     "error": "La relecture n'a pas pu traiter ce document jusqu'au bout.",
     "unavailable": "La relecture hors ligne est indisponible.",

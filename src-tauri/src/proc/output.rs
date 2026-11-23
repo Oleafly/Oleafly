@@ -37,6 +37,18 @@ pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io:
 }
 
 pub fn output_contained_with_bounds(command: Command, bounds: OutputBounds) -> io::Result<Output> {
+    contained_output(command, bounds, OUTPUT_LIMIT)
+}
+
+pub fn output_contained_with_limit(
+    command: Command,
+    timeout: Duration,
+    limit: usize,
+) -> io::Result<Output> {
+    contained_output(command, OutputBounds::total(timeout), limit)
+}
+
+fn contained_output(command: Command, bounds: OutputBounds, limit: usize) -> io::Result<Output> {
     static RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
     let runtime = RUNTIME
         .get_or_init(|| {
@@ -51,7 +63,7 @@ pub fn output_contained_with_bounds(command: Command, bounds: OutputBounds) -> i
         .map_err(|error| io::Error::other(error.clone()))?;
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     runtime.spawn(async move {
-        let _ = sender.send(collect_output(command, bounds, OUTPUT_LIMIT).await);
+        let _ = sender.send(collect_output(command, bounds, limit).await);
     });
     receiver
         .recv()
