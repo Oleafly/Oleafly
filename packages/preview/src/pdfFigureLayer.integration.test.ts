@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { createRequire } from "node:module";
+import { dirname, join, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pdfFigureBoxes, rememberPdfFigures } from "./pdfFigureLayer";
 
@@ -21,10 +22,13 @@ const SHADING = "<< /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 100 0] /F
 let pdfjs: PdfJs;
 let canvases: NodeCanvas;
 let installed: string[] = [];
+let standardFontDataUrl = "";
 
 beforeAll(async () => {
   await import("./polyfills");
-  const fromPdfjs = createRequire(createRequire(import.meta.url).resolve("pdfjs-dist"));
+  const pdfjsEntry = createRequire(import.meta.url).resolve("pdfjs-dist");
+  standardFontDataUrl = `${join(dirname(dirname(pdfjsEntry)), "standard_fonts")}${sep}`;
+  const fromPdfjs = createRequire(pdfjsEntry);
   const napi = fromPdfjs("@napi-rs/canvas") as NodeCanvas & Record<string, unknown>;
   canvases = napi;
   const scope = globalThis as Record<string, unknown>;
@@ -212,7 +216,7 @@ function expectBoxes(actual: readonly Box[], expected: readonly Box[]) {
 async function recordedPages() {
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   try {
-    const task = pdfjs.getDocument({ data: buildPdf(PAGES, SHARED, CATALOG), verbosity: 0 });
+    const task = pdfjs.getDocument({ data: buildPdf(PAGES, SHARED, CATALOG), verbosity: 0, standardFontDataUrl });
     const document = await task.promise;
     const pages: { page: PdfPage; images: Box[]; forms: Box[] }[] = [];
     for (let number = 1; number <= document.numPages; number++) {

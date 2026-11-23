@@ -1,8 +1,40 @@
 diff --git a/build/pdf.mjs b/build/pdf.mjs
-index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb9502b3c795 100644
+index c55a629aa4482ce73d02e19d4e5eddeba8976e97..a1825e5fe3a5fe860b9cd23c5e9f8ba0c4edc21f 100644
 --- a/build/pdf.mjs
 +++ b/build/pdf.mjs
-@@ -7216,6 +7216,7 @@ class CanvasBBoxTracker {
+@@ -1766,6 +1766,31 @@ function renderRichText({
+   fragment.firstElementChild.classList.add("richText", className);
+   container.append(fragment);
+ }
++const DRAW_OP_POINTS = [1, 1, 3, 2, 0];
++function glyphMeasure(data) {
++  let minX = Infinity;
++  let minY = Infinity;
++  let maxX = -Infinity;
++  let maxY = -Infinity;
++  for (let i = 0, ii = data?.length ?? 0; i < ii;) {
++    const end = i + 1 + 2 * (DRAW_OP_POINTS[data[i]] ?? 0);
++    for (i++; i < end; i += 2) {
++      minX = Math.min(minX, data[i]);
++      maxX = Math.max(maxX, data[i]);
++      minY = Math.min(minY, data[i + 1]);
++      maxY = Math.max(maxY, data[i + 1]);
++    }
++  }
++  if (!(minX <= maxX && minY <= maxY)) {
++    return null;
++  }
++  return {
++    actualBoundingBoxLeft: -minX,
++    actualBoundingBoxRight: maxX,
++    actualBoundingBoxAscent: -minY,
++    actualBoundingBoxDescent: maxY
++  };
++}
+ function makePathFromDrawOPS(data) {
+   const path = new Path2D();
+   if (!data) {
+@@ -7216,6 +7241,7 @@ class CanvasBBoxTracker {
    #bboxes;
    _savesStack = [];
    _markedContentStack = [];
@@ -10,7 +42,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
    constructor(canvas, operationsCount) {
      this.#canvasWidth = canvas.width;
      this.#canvasHeight = canvas.height;
-@@ -7349,6 +7350,9 @@ class CanvasBBoxTracker {
+@@ -7349,6 +7375,9 @@ class CanvasBBoxTracker {
      if (this._pendingBBoxIdx !== idx) {
        return this;
      }
@@ -20,7 +52,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      const minX = floor(this.#pendingBBox[0] * 256 / this.#canvasWidth);
      const minY = floor(this.#pendingBBox[1] * 256 / this.#canvasHeight);
      const maxX = ceil(this.#pendingBBox[2] * 256 / this.#canvasWidth);
-@@ -7409,8 +7413,35 @@ class CanvasBBoxTracker {
+@@ -7409,8 +7438,35 @@ class CanvasBBoxTracker {
      return this;
    }
    recordCharacterBBox(idx, ctx, font, scale = 1, x = 0, y = 0, getMeasure) {
@@ -56,7 +88,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
    getSimpleIndex(dependencyName) {
      return undefined;
    }
-@@ -7889,6 +7920,37 @@ class CanvasImagesTracker {
+@@ -7889,6 +7945,37 @@ class CanvasImagesTracker {
    take() {
      return this.#coords.subarray(0, this.#count * 6);
    }
@@ -94,7 +126,23 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
  }
  
  ;// ./src/shared/css_utils.js
-@@ -10904,6 +10966,16 @@ const LINE_CAP_STYLES = ["butt", "round", "square"];
+@@ -8155,6 +8242,7 @@ class FontLoader {
+ }
+ class FontFaceObject {
+   compiledGlyphs = Object.create(null);
++  glyphMeasures = Object.create(null);
+   #fontData;
+   constructor(translatedData, inspectFont = null, charProcOperatorList, extra) {
+     this.#fontData = translatedData;
+@@ -8216,6 +8304,7 @@ class FontFaceObject {
+       warn(`getPathGenerator - ignoring character: "${ex}".`);
+     }
+     const path = makePathFromDrawOPS(cmds?.path);
++    this.glyphMeasures[character] = glyphMeasure(cmds?.path);
+     if (!this.fontExtraProperties) {
+       objs.delete(objId);
+     }
+@@ -10904,6 +10993,16 @@ const LINE_CAP_STYLES = ["butt", "round", "square"];
  const LINE_JOIN_STYLES = ["miter", "round", "bevel"];
  const NORMAL_CLIP = {};
  const EO_CLIP = {};
@@ -111,7 +159,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
  class CanvasGraphics {
    static #SCALE_MATRIX = null;
    #knockoutGroupLevel = 0;
-@@ -10956,6 +11028,126 @@ class CanvasGraphics {
+@@ -10956,6 +11055,126 @@ class CanvasGraphics {
      this._cachedBitmapsMap = new Map();
      this.dependencyTracker = dependencyTracker ?? null;
      this.imagesTracker = imagesTracker ?? null;
@@ -238,7 +286,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
    }
    getObject(opIdx, data, fallback = null) {
      if (typeof data === "string") {
-@@ -11027,12 +11219,19 @@ class CanvasGraphics {
+@@ -11027,12 +11246,19 @@ class CanvasGraphics {
        if (!operationsFilter || operationsFilter(i)) {
          fnId = fnArray[i];
          fnArgs = argsArray[i] ?? null;
@@ -258,7 +306,17 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
          } else {
            for (const depObjId of fnArgs) {
              this.dependencyTracker?.recordNamedData(depObjId, i);
-@@ -12536,6 +12735,7 @@ class CanvasGraphics {
+@@ -12131,7 +12357,8 @@ class CanvasGraphics {
+       ctx.save();
+       ctx.translate(x, y);
+       ctx.scale(fontSize, -fontSize);
+-      this.dependencyTracker?.recordCharacterBBox(opIdx, ctx, font);
++      const measure = font.glyphMeasures[character];
++      this.dependencyTracker?.recordCharacterBBox(opIdx, ctx, font, 1, 0, 0, measure && (() => measure));
+       let currentTransform;
+       if (fillStrokeMode === TextRenderingMode.FILL || fillStrokeMode === TextRenderingMode.FILL_STROKE) {
+         if (patternFillTransform) {
+@@ -12536,6 +12763,7 @@ class CanvasGraphics {
      if (matrix) {
        this.transform(opIdx, ...matrix);
      }
@@ -266,7 +324,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      this.baseTransform = getCurrentTransform(this.ctx);
      if (bbox) {
        Util.axialAlignedBoundingBox(bbox, this.baseTransform, this.current.minMax);
-@@ -12551,6 +12751,7 @@ class CanvasGraphics {
+@@ -12551,6 +12779,7 @@ class CanvasGraphics {
      if (!this.contentVisible) {
        return;
      }
@@ -274,7 +332,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      this.restore(opIdx);
      this.baseTransform = this.baseTransformStack.pop();
    }
-@@ -12558,6 +12759,7 @@ class CanvasGraphics {
+@@ -12558,6 +12787,7 @@ class CanvasGraphics {
      if (!this.contentVisible) {
        return;
      }
@@ -282,7 +340,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      this.save(opIdx);
      const {
        inSMaskMode
-@@ -12678,6 +12880,7 @@ class CanvasGraphics {
+@@ -12678,6 +12908,7 @@ class CanvasGraphics {
      if (!this.contentVisible) {
        return;
      }
@@ -290,7 +348,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      this.groupLevel--;
      const groupCtx = this.ctx;
      const ctx = this.groupStack.pop();
-@@ -12822,6 +13025,7 @@ class CanvasGraphics {
+@@ -12822,6 +13053,7 @@ class CanvasGraphics {
      }
    }
    beginAnnotation(opIdx, id, rect, transform, matrix, hasOwnCanvas, canvasName) {
@@ -298,7 +356,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      this.#restoreInitialState();
      resetCtxToDefault(this.ctx);
      this.ctx.save();
-@@ -12879,6 +13083,7 @@ class CanvasGraphics {
+@@ -12879,6 +13111,7 @@ class CanvasGraphics {
      this.baseTransform = getCurrentTransform(this.ctx);
    }
    endAnnotation(opIdx) {
@@ -306,7 +364,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      if (this.annotationCanvas) {
        this.ctx.restore();
        this.#drawFilter();
-@@ -13069,7 +13274,9 @@ class CanvasGraphics {
+@@ -13069,7 +13302,9 @@ class CanvasGraphics {
      ctx.imageSmoothingEnabled = getImageSmoothingEnabled(getCurrentTransform(ctx), imgData.interpolate);
      if (this.dependencyTracker) {
        this.dependencyTracker.resetBBox(opIdx).recordBBox(opIdx, ctx, 0, width, -height, 0).recordDependencies(opIdx, Dependencies.imageXObject).recordOperation(opIdx);
@@ -317,7 +375,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
      }
      drawImageAtIntegerCoords(ctx, scaled.img, 0, 0, scaled.paintWidth, scaled.paintHeight, 0, -height, width, height);
      if (scaled.tmpCanvas) {
-@@ -15785,6 +15992,7 @@ class PDFPageProxy {
+@@ -15785,6 +16020,7 @@ class PDFPageProxy {
      this.recordedBBoxes = null;
      this.#pagesMapper = pagesMapper;
      this.imageCoordinates = null;
@@ -325,7 +383,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..d8f1f5c741b4bd86fc2e9a5d9f4dbb95
    }
    clone(id) {
      const clone = new PDFPageProxy(id, this._pageInfo, this._transport, this.#pagesMapper, this._pdfBug);
-@@ -15906,6 +16114,7 @@ class PDFPageProxy {
+@@ -15906,6 +16142,7 @@ class PDFPageProxy {
        }
        if (shouldRecordImages && !error) {
          this.imageCoordinates = internalRenderTask.gfx?.imagesTracker.take();
