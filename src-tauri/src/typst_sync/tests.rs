@@ -70,6 +70,60 @@ fn projects_whose_typst_matches_an_old_tinymist_hide_sync() {
 }
 
 #[test]
+fn an_external_tinymist_decides_where_sync_works() {
+    use crate::language_service::external::simulated;
+    use crate::language_service::LanguageServiceKind;
+    let current = simulated::tinymist("0.15.12", "0.15.0");
+    let configured = simulated::configure(LanguageServiceKind::Tinymist, &current.path);
+    assert!(supported_for_project(&typst_meta(Some("0.15.1"))));
+    assert!(!supported_for_project(&typst_meta(Some("0.13.1"))));
+    drop(configured);
+
+    let old = simulated::tinymist("0.13.10", "0.13.0");
+    let _configured = simulated::configure(LanguageServiceKind::Tinymist, &old.path);
+    assert!(!supported_for_project(&typst_meta(Some("0.13.1"))));
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_external_preview_server_leaves_the_appimage_paths_behind() {
+    let image = crate::proc::SimulatedAppImage::start();
+    let server = crate::language_service::external::simulated::fake_server(
+        "tinymist",
+        "echo 'tinymist 0.15.12'",
+        "",
+        "printf '%s' \"${PYTHONHOME-unset}\" > \"$(dirname \"$0\")/home\"",
+    );
+    let written = server.path.with_file_name("home");
+    let bundled = image.root.join("usr").into_os_string();
+    for (external, expected) in [
+        (true, "unset".to_owned()),
+        (false, bundled.to_string_lossy().into_owned()),
+    ] {
+        let _ = std::fs::remove_file(&written);
+        let spec = ServerSpec {
+            program: server.path.clone(),
+            root: PathBuf::from("."),
+            main: PathBuf::from("main.typ"),
+            environment: vec![("PYTHONHOME".to_owned(), bundled.clone())],
+            external,
+        };
+        let process = session::ServerProcess::spawn(&spec, 4001, 4002).unwrap();
+        let home =
+            crate::test_wait::read_until(&written, crate::test_wait::CHILD_PATIENCE, |text| {
+                (!text.is_empty()).then(|| text.to_owned())
+            })
+            .await;
+        drop(process);
+        assert_eq!(
+            home.as_deref(),
+            Some(expected.as_str()),
+            "external: {external}"
+        );
+    }
+}
+
+#[test]
 fn the_typst_descriptor_reports_sync_only_where_tinymist_answers() {
     let _env = crate::paths::data_dir_env_lock();
     let data = tempfile::tempdir().unwrap();
@@ -333,6 +387,7 @@ fn the_server_listens_on_loopback_for_both_planes() {
         root: PathBuf::from("/p"),
         main: PathBuf::from("/p/main.typ"),
         environment: Vec::new(),
+        external: false,
     };
     let args: Vec<String> = session::server_args(&spec, 4001, 4002)
         .into_iter()

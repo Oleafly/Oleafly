@@ -56,8 +56,8 @@ import {
   type LanguageServiceSettingsSource,
 } from "@/lib/analysis/tinymist-configuration";
 import {
+  profileForServerVersion,
   tinymistOptionsForVersion,
-  tinymistProfileForVersion,
 } from "@/lib/analysis/tinymist-compat";
 import { logError } from "@/lib/log";
 import { languageServiceContribution } from "@/lib/project-intelligence/language-service-contribution";
@@ -581,7 +581,9 @@ function matchedTinymistVersion(
   profile: LanguageServiceRuntimeProfile,
   installStatus: LanguageServiceInstallStatus,
 ): string | null {
-  return kind === "tinymist" && installStatus.version !== profile.version
+  return kind === "tinymist" &&
+    installStatus.external !== true &&
+    installStatus.version !== profile.version
     ? installStatus.version
     : null;
 }
@@ -1252,6 +1254,45 @@ export class LanguageServiceController {
     return false;
   }
 
+  private startIsBlocked(
+    desired: DesiredProject,
+    kind: LanguageServiceKind,
+    resolved: ResolvedRuntimeStart,
+    external: boolean,
+    matched: string | null,
+  ): boolean {
+    if (external) return this.externalBlocksStart(resolved.installStatus);
+    if (matched !== null) {
+      return this.matchedTinymistBlocksStart(desired, resolved.installStatus);
+    }
+    return this.installBlocksStart(
+      kind,
+      resolved.profile,
+      resolved.installStatus,
+    );
+  }
+
+  private externalBlocksStart(
+    installStatus: LanguageServiceInstallStatus,
+  ): boolean {
+    if (installStatus.state === "installed") return false;
+    const reason: AnalysisReason =
+      installStatus.message === undefined
+        ? { key: "startFailed" }
+        : { text: installStatus.message };
+    this.publishUnavailable(
+      {
+        name: "LanguageServiceExternalServerError",
+        message: analysisReasonEnglishText(reason),
+        reason,
+        code: "sidecar_unavailable",
+        retryable: true,
+      },
+      reason,
+    );
+    return true;
+  }
+
   private matchedTinymistBlocksStart(
     desired: DesiredProject,
     installStatus: LanguageServiceInstallStatus,
@@ -1330,20 +1371,13 @@ export class LanguageServiceController {
     const resolved =
       reused ?? (await this.resolveRuntimeStart(desired, kind, operation));
     if (!resolved) return;
+    const external = resolved.installStatus.external === true;
     const matched = matchedTinymistVersion(
       kind,
       resolved.profile,
       resolved.installStatus,
     );
-    const blocked =
-      matched !== null
-        ? this.matchedTinymistBlocksStart(desired, resolved.installStatus)
-        : this.installBlocksStart(
-            kind,
-            resolved.profile,
-            resolved.installStatus,
-          );
-    if (blocked) {
+    if (this.startIsBlocked(desired, kind, resolved, external, matched)) {
       if (
         !reused &&
         matched === null &&
@@ -1357,9 +1391,12 @@ export class LanguageServiceController {
       desired,
       kind,
       key,
-      matched === null
-        ? resolved.profile
-        : tinymistProfileForVersion(resolved.profile, matched),
+      external || matched !== null
+        ? profileForServerVersion(
+            resolved.profile,
+            resolved.installStatus.version,
+          )
+        : resolved.profile,
       operation,
     );
     if (!this.operationIsCurrent(operation, desired)) return;
@@ -1541,7 +1578,7 @@ export class LanguageServiceController {
 
     try {
       await client.start({
-        runtimeProfile: tinymistProfileForVersion(
+        runtimeProfile: profileForServerVersion(
           runtimeProfileForSettings(runtimeProfile, settings),
           runtimeProfile.version,
         ),
