@@ -817,6 +817,11 @@
         "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
         "label": "Tekstin sisäinen ehdotus"
       },
+      "aiCompletionModel": {
+        "description": "Malli, joka kirjoittaa täydennykset kirjoittaessasi. Nopeat mallit ja tällä tietokoneella toimivat mallit vastaavat nopeimmin.",
+        "label": "Tekoälytäydennysten malli",
+        "needsProvider": "Ota tekoälytäydennykset käyttöön määrittämällä tekoälypalveluntarjoaja Tekoälyavustaja-osiossa."
+      },
       "stickyScroll": {
         "description": "Pidä nykyiset luvut, otsikot ja ympäristöt ylhäällä vierittäessä.",
         "label": "Tarttuva vieritys"

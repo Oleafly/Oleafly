@@ -1022,6 +1022,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Când faci o pauză în timp ce scrii într-un fișier LaTeX, Typst sau Markdown, după cursor apare, cu text estompat, o continuare sugerată. Apasă Tab ca s-o accepți sau scrie mai departe ca s-o ignori. La fiecare pauză, textul din jurul cursorului este trimis furnizorului tău de AI. Dezactivat implicit cât timp funcția este în beta.",
+        "label": "Completări cu AI"
+      },
       "latexTools": {
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"

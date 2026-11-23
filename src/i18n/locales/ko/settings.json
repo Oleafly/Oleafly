@@ -811,6 +811,11 @@
         "description": "커서 뒤에 예상되는 완성을 표시합니다. Tab을 누르면 적용됩니다.",
         "label": "인라인 제안"
       },
+      "aiCompletionModel": {
+        "description": "입력하는 동안 자동 완성을 작성하는 모델입니다. 빠른 모델이나 이 컴퓨터에서 실행되는 모델이 가장 빨리 응답합니다.",
+        "label": "AI 자동 완성 모델",
+        "needsProvider": "AI 자동 완성을 사용하려면 AI 어시스턴트 섹션에서 AI 제공자를 설정하세요."
+      },
       "stickyScroll": {
         "description": "스크롤하는 동안 현재 절, 제목, 환경을 위쪽에 고정합니다.",
         "label": "고정 스크롤"

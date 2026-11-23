@@ -42,6 +42,7 @@ describe("on/off preferences", () => {
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
     ["setNotes", "notes", "oleafly.notes"],
     ["setPdfReview", "pdfReview", "oleafly.pdfReview"],
+    ["setAiCompletion", "aiCompletion", "oleafly.aiCompletion"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorGroupScripts", "editorGroupScripts", "oleafly.editor.groupScripts"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
@@ -77,6 +78,27 @@ describe("on/off preferences", () => {
   it("reads the saved PDF review switch after a restart", async () => {
     expect((await reload({})).pdfReview).toBe(false);
     expect((await reload({ "oleafly.pdfReview": "1" })).pdfReview).toBe(true);
+  });
+
+  it("keeps AI completions off and on the default model until chosen", async () => {
+    const fresh = await reload({});
+    expect(fresh.aiCompletion).toBe(false);
+    expect([fresh.aiCompletionProvider, fresh.aiCompletionModel]).toEqual(["", ""]);
+
+    useSettingsStore.getState().setAiCompletionModel("ollama", "qwen3:4b");
+    expect(localStorage.getItem("oleafly.aiCompletion.provider")).toBe("ollama");
+    expect(localStorage.getItem("oleafly.aiCompletion.model")).toBe("qwen3:4b");
+
+    const saved = await reload({
+      "oleafly.aiCompletion": "1",
+      "oleafly.aiCompletion.provider": "ollama",
+      "oleafly.aiCompletion.model": "qwen3:4b",
+    });
+    expect([saved.aiCompletion, saved.aiCompletionProvider, saved.aiCompletionModel]).toEqual([
+      true,
+      "ollama",
+      "qwen3:4b",
+    ]);
   });
 
   it("toggles spellcheck both ways", () => {

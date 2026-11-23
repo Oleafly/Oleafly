@@ -829,6 +829,11 @@
         "description": "Pokazuj prawdopodobne uzupełnienie za kursorem. Naciśnij Tab, aby je przyjąć.",
         "label": "Podpowiedź w wierszu"
       },
+      "aiCompletionModel": {
+        "description": "Model, który podpowiada uzupełnienia podczas pisania. Najszybciej odpowiadają szybkie modele i modele działające na tym komputerze.",
+        "label": "Model do uzupełniania przez AI",
+        "needsProvider": "Aby korzystać z uzupełniania przez AI, skonfiguruj dostawcę AI w sekcji Asystent AI."
+      },
       "stickyScroll": {
         "description": "Utrzymuj bieżące sekcje, nagłówki i środowiska na górze podczas przewijania.",
         "label": "Przypięte przewijanie"

@@ -73,6 +73,7 @@ import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { intended, lazy } from "@/lib/preloadable";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
+import { AiCompletionModelSetting } from "@/components/settings/AiCompletionModelSetting";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
@@ -643,6 +644,7 @@ function EditorAppearanceTab() {
   const setEditorGhostCompletion = useSettingsStore(
     (state) => state.setEditorGhostCompletion,
   );
+  const aiCompletion = useSettingsStore((state) => state.aiCompletion);
   const editorCursorBlinking = useSettingsStore((state) => state.editorCursorBlinking);
   const setEditorCursorBlinking = useSettingsStore((state) => state.setEditorCursorBlinking);
   const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
@@ -967,6 +969,7 @@ function EditorAppearanceTab() {
         checked={editorGhostCompletion}
         onChange={setEditorGhostCompletion}
       />
+      {aiCompletion ? <AiCompletionModelSetting /> : null}
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.stickyScroll.label)}
         description={t(($) => $.settings.appearance.editor.stickyScroll.description)}

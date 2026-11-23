@@ -823,6 +823,11 @@
         "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
         "label": "Sugestie în text"
       },
+      "aiCompletionModel": {
+        "description": "Modelul care scrie completările în timp ce tastezi. Modelele rapide și cele care rulează pe acest computer răspund cel mai repede.",
+        "label": "Modelul pentru completări cu AI",
+        "needsProvider": "Configurează un furnizor de AI în secțiunea Asistentul AI ca să folosești completările cu AI."
+      },
       "stickyScroll": {
         "description": "Păstrează în partea de sus secțiunile, titlurile și mediile curente în timp ce derulezi.",
         "label": "Derulare cu antet fix"

@@ -1022,6 +1022,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Quando você pausa a digitação em um arquivo LaTeX, Typst ou Markdown, uma continuação sugerida aparece em texto esmaecido depois do cursor. Pressione Tab para aceitar ou continue digitando para descartar. A cada pausa, o texto ao redor do cursor é enviado ao seu provedor de IA. Desativado por padrão enquanto estiver em beta.",
+        "label": "Autocompletar com IA"
+      },
       "latexTools": {
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"

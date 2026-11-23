@@ -369,6 +369,8 @@ export function SettingsModal() {
   const setNotesEnabled = useSettingsStore((s) => s.setNotes);
   const pdfReview = useSettingsStore((s) => s.pdfReview);
   const setPdfReview = useSettingsStore((s) => s.setPdfReview);
+  const aiCompletion = useSettingsStore((s) => s.aiCompletion);
+  const setAiCompletion = useSettingsStore((s) => s.setAiCompletion);
   const researchTasks = useResearchTasksEnabled();
   const phitexEnabled = useEngineStore((s) => s.info?.phitex_enabled === true);
   const setPhitex = useEngineStore((s) => s.setPhitex);
@@ -848,6 +850,13 @@ export function SettingsModal() {
           description={t(($) => $.shell.settings.experimentation.pdfReview.description)}
           checked={pdfReview}
           onChange={setPdfReview}
+        />
+        <SettingsToggleRow
+          testId="settings-ai-completion"
+          label={t(($) => $.shell.settings.experimentation.aiCompletion.label)}
+          description={t(($) => $.shell.settings.experimentation.aiCompletion.description)}
+          checked={aiCompletion}
+          onChange={setAiCompletion}
         />
         <SettingsToggleRow
           testId="settings-research-tasks"

@@ -829,6 +829,11 @@
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
         "label": "Návrh přímo v textu"
       },
+      "aiCompletionModel": {
+        "description": "Model, který při psaní navrhuje doplnění. Nejrychleji odpovídají rychlé modely a modely běžící na tomto počítači.",
+        "label": "Model pro AI doplňování",
+        "needsProvider": "Pro AI doplňování nastavte poskytovatele AI v části Asistent AI."
+      },
       "stickyScroll": {
         "description": "Při posouvání držet aktuální sekce, nadpisy a prostředí nahoře.",
         "label": "Přilepený posuv"

@@ -523,6 +523,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Từ thư viện Zotero của bạn"
   },
+  "aiCompletion": {
+    "failed": "Gợi ý hoàn thành bằng AI thất bại: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Mô tả thay đổi… (Shift+Enter để xuống dòng)",
     "close": "Đóng",

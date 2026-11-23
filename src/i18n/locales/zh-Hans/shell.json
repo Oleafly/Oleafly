@@ -994,6 +994,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "在 LaTeX、Typst 或 Markdown 文件中输入时稍作停顿，光标后会以浅色文字显示建议的续写内容。按 Tab 接受，继续输入则会忽略。每次停顿时，光标附近的文本都会发送给你的 AI 服务商。仍处于测试阶段，默认关闭。",
+        "label": "AI 补全"
+      },
       "latexTools": {
         "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
         "label": "LaTeX 工具"

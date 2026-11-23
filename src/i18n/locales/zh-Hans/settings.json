@@ -811,6 +811,11 @@
         "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
         "label": "行内建议"
       },
+      "aiCompletionModel": {
+        "description": "在你输入时生成补全内容的模型。速度快的模型和在这台电脑上运行的模型响应最快。",
+        "label": "AI 补全模型",
+        "needsProvider": "要使用 AI 补全，请先在 AI 助手部分设置 AI 服务商。"
+      },
       "stickyScroll": {
         "description": "滚动时将当前章节、标题和环境固定在顶部。",
         "label": "粘性滚动"

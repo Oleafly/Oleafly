@@ -823,6 +823,11 @@
         "description": "Mostra il completamento probabile dopo il cursore. Premi Tab per accettarlo.",
         "label": "Suggerimento in linea"
       },
+      "aiCompletionModel": {
+        "description": "Il modello che scrive i completamenti mentre digiti. I modelli veloci e quelli che girano su questo computer rispondono prima.",
+        "label": "Modello per i completamenti con AI",
+        "needsProvider": "Configura un provider AI nella sezione Assistente AI per usare i completamenti con AI."
+      },
       "stickyScroll": {
         "description": "Tieni in alto le sezioni, i titoli e gli ambienti correnti mentre scorri.",
         "label": "Scorrimento con intestazioni fisse"

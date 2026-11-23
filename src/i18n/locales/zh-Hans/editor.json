@@ -523,6 +523,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "来自你的 Zotero 库"
   },
+  "aiCompletion": {
+    "failed": "AI 补全失败：{{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "描述修改内容…（Shift+Enter 换行）",
     "close": "关闭",

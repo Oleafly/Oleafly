@@ -823,6 +823,11 @@
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
         "label": "Sugerencia en línea"
       },
+      "aiCompletionModel": {
+        "description": "El modelo que escribe las sugerencias mientras escribes. Los modelos rápidos y los que se ejecutan en este equipo responden antes.",
+        "label": "Modelo para el autocompletado con IA",
+        "needsProvider": "Configura un proveedor de IA en la sección Asistente de IA para usar el autocompletado con IA."
+      },
       "stickyScroll": {
         "description": "Mantiene arriba las secciones, los títulos y los entornos actuales mientras te desplazas.",
         "label": "Desplazamiento fijo"

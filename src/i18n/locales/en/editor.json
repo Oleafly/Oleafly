@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "From your Zotero library"
   },
+  "aiCompletion": {
+    "failed": "AI completion failed: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Describe the change…  (Shift+Enter for a new line)",
     "close": "Close",

@@ -1,13 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CloudUpload, ShieldCheck } from "lucide-react";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
-import {
-  knownProviderConfig,
-  loadProviderConfig,
-  subscribeProviderConfig,
-} from "@/components/ai/provider-config";
+import { useProviderConfig } from "@/components/ai/use-provider-config";
 import { estimateScan, type PageSize } from "@/features/tools-ai/scan-estimate";
 import {
   choiceFromSelection,
@@ -31,26 +27,6 @@ import { getConfig, setAiToolsModel, type AppConfig, type ToolsModelChoice } fro
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
-
-function useToolsConfig(): AppConfig | null {
-  const [config, setConfig] = useState<AppConfig | null>(() => knownProviderConfig());
-  useEffect(() => {
-    let active = true;
-    const unsubscribe = subscribeProviderConfig((next) => {
-      if (active) setConfig(next);
-    });
-    void loadProviderConfig()
-      .then((next) => {
-        if (active) setConfig(next);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-  return config;
-}
 
 export interface ToolsModelState {
   config: AppConfig | null;
@@ -123,7 +99,7 @@ function useToolsAgents() {
 }
 
 export function useToolsModel(): ToolsModelState {
-  const config = useToolsConfig();
+  const config = useProviderConfig();
   const ollama = useOllamaModels(config);
   const agents = useToolsAgents();
   const mathpix = useQuery({
@@ -191,7 +167,7 @@ export function ToolsModelNotice({
   editorFallback = true,
 }: Readonly<{ scope: "images" | "scans"; editorFallback?: boolean }>) {
   const { t } = useTranslation(["researchTools"]);
-  const config = useToolsConfig();
+  const config = useProviderConfig();
   const choice = config ? toolsChoice(config) : null;
   const checksFallback = editorFallback && scope === "images" && config !== null && choice === null;
   const ollama = useOllamaModels(config, checksFallback || choice?.provider === LOCAL_TOOLS_PROVIDER);
@@ -295,7 +271,7 @@ function estimateText(t: Translate, sizes: readonly PageSize[], summary: ToolsCh
 
 export function ScanEstimateText({ sizes }: Readonly<{ sizes: readonly PageSize[] }>) {
   const { t } = useTranslation(["researchTools"]);
-  const config = useToolsConfig();
+  const config = useProviderConfig();
   const ollama = useOllamaModels(config, config !== null && toolsChoice(config)?.provider === LOCAL_TOOLS_PROVIDER);
   if (!config) return null;
   return (

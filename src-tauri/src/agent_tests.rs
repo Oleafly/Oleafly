@@ -1666,3 +1666,80 @@ fn the_note_fetch_prompt_is_translated_and_shows_the_address() {
     });
     assert!(!bare.contains("\n\n"), "{bare}");
 }
+
+fn cached_provider(model: &str) -> oleafly_agent::Resolved {
+    oleafly_agent::Resolved {
+        provider_id: "openai".into(),
+        model_id: model.into(),
+        credential: "sk-test".into(),
+        auth: None,
+        wire: oleafly_agent::Wire::OpenAiChat {
+            base_url: "https://api.openai.com/v1".into(),
+            reasoning_content: false,
+        },
+        caps: oleafly_agent::ModelCaps::default(),
+    }
+}
+
+fn stamp(len: u64) -> super::ResolveStamp {
+    vec![(
+        std::path::PathBuf::from("/data/config.json"),
+        Some((std::time::SystemTime::UNIX_EPOCH, len)),
+    )]
+}
+
+fn chosen(model: &str) -> Option<super::ProviderOverride> {
+    Some(super::ProviderOverride {
+        provider_id: "openai".into(),
+        model_id: model.into(),
+    })
+}
+
+#[test]
+fn resolved_provider_is_reused_until_the_files_change() {
+    let mut cache = super::ResolvedCache::new();
+    cache.put(stamp(10), None, cached_provider("gpt-main"));
+    cache.put(stamp(10), chosen("gpt-fast"), cached_provider("gpt-fast"));
+
+    assert_eq!(cache.get(&stamp(10), None).unwrap().model_id, "gpt-main");
+    assert_eq!(
+        cache
+            .get(&stamp(10), chosen("gpt-fast").as_ref())
+            .unwrap()
+            .model_id,
+        "gpt-fast"
+    );
+    assert!(cache
+        .get(&stamp(10), chosen("gpt-other").as_ref())
+        .is_none());
+
+    assert!(cache.get(&stamp(11), None).is_none());
+    assert!(cache.get(&stamp(10), None).is_none());
+}
+
+#[test]
+fn resolved_provider_cache_keeps_the_latest_few_choices() {
+    let mut cache = super::ResolvedCache::new();
+    for index in 0..=super::RESOLVED_ENTRIES {
+        let model = format!("model-{index}");
+        cache.put(stamp(1), chosen(&model), cached_provider(&model));
+    }
+    assert!(cache.get(&stamp(1), chosen("model-0").as_ref()).is_none());
+    let latest = format!("model-{}", super::RESOLVED_ENTRIES);
+    assert_eq!(
+        cache
+            .get(&stamp(1), chosen(&latest).as_ref())
+            .unwrap()
+            .model_id,
+        latest
+    );
+
+    cache.put(stamp(1), chosen(&latest), cached_provider("replaced"));
+    assert_eq!(
+        cache
+            .get(&stamp(1), chosen(&latest).as_ref())
+            .unwrap()
+            .model_id,
+        "replaced"
+    );
+}

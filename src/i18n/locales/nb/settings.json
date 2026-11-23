@@ -817,6 +817,11 @@
         "description": "Vis den sannsynlige fullføringen etter markøren. Trykk Tab for å godta den.",
         "label": "Forslag i linjen"
       },
+      "aiCompletionModel": {
+        "description": "Modellen som skriver fullføringer mens du skriver. Raske modeller og modeller som kjører på denne datamaskinen, svarer raskest.",
+        "label": "Modell for AI-fullføringer",
+        "needsProvider": "Sett opp en AI-leverandør i delen AI-assistent for å bruke AI-fullføringer."
+      },
       "stickyScroll": {
         "description": "Hold gjeldende seksjoner, overskrifter og miljøer øverst mens du ruller.",
         "label": "Klebrig rulling"

@@ -823,6 +823,11 @@
         "description": "Afficher la complétion probable après le curseur. Appuyez sur Tab pour l'accepter.",
         "label": "Suggestion en ligne"
       },
+      "aiCompletionModel": {
+        "description": "Le modèle qui rédige les complétions pendant que vous écrivez. Les modèles rapides, et ceux qui tournent sur cet ordinateur, répondent le plus vite.",
+        "label": "Modèle des complétions par IA",
+        "needsProvider": "Configurez un fournisseur d'IA dans la section Assistant IA pour utiliser les complétions par IA."
+      },
       "stickyScroll": {
         "description": "Garder les sections, titres et environnements en cours affichés en haut pendant le défilement.",
         "label": "Défilement ancré"

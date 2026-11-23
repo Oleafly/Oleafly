@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Från ditt Zotero-bibliotek"
   },
+  "aiCompletion": {
+    "failed": "AI-kompletteringen misslyckades: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Beskriv ändringen…  (Shift+Enter för ny rad)",
     "close": "Stäng",

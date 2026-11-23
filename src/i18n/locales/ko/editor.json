@@ -523,6 +523,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "내 Zotero 라이브러리에서"
   },
+  "aiCompletion": {
+    "failed": "AI 자동 완성 실패: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "바꿀 내용을 설명하세요…  (줄을 바꾸려면 Shift+Enter)",
     "close": "닫기",

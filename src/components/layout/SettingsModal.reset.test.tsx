@@ -154,6 +154,8 @@ describe("Settings section resets", () => {
   it("resets only Experimentation preferences after confirmation", async () => {
     const settings = useSettingsStore.getState();
     settings.setLatexTools(true);
+    settings.setAiCompletion(true);
+    settings.setAiCompletionModel("openai", "gpt-fast");
     useVisualModeStore.getState().loadProject("visual-project");
     useVisualModeStore.getState().setMode("main.tex", "visual");
 
@@ -190,12 +192,17 @@ describe("Settings section resets", () => {
     expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState()).toMatchObject({
       latexTools: false,
+      aiCompletion: false,
+      aiCompletionProvider: "",
+      aiCompletionModel: "",
       grammarDialect: "british",
       accentColor: "#db2777",
       editorThemeDark: "dracula",
       defaultLatexEngine: "latexmk",
     });
     expect(localStorage.getItem("oleafly.latexTools")).toBe("0");
+    expect(localStorage.getItem("oleafly.aiCompletion")).toBe("0");
+    expect(localStorage.getItem("oleafly.aiCompletion.model")).toBe("");
     expect(fileMode(useVisualModeStore.getState(), "main.tex")).toBe("visual");
     expect(getKindModes("visual-project")).toEqual({ source: "visual" });
     expect(localStorage.getItem("oleafly.harper.dialect")).toBe("british");

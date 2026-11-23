@@ -817,6 +817,11 @@
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
         "label": "Inline suggestion"
       },
+      "aiCompletionModel": {
+        "description": "The model that writes completions while you type. Fast models, and models running on this computer, answer quickest.",
+        "label": "AI completion model",
+        "needsProvider": "Set up an AI provider in the AI Assistant section to use AI completions."
+      },
       "stickyScroll": {
         "description": "Keep the current sections, headings and environments at the top while you scroll.",
         "label": "Sticky scroll"

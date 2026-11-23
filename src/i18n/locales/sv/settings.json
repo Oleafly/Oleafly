@@ -817,6 +817,11 @@
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
         "label": "Förslag i löptext"
       },
+      "aiCompletionModel": {
+        "description": "Modellen som skriver kompletteringar medan du skriver. Snabba modeller, och modeller som körs på den här datorn, svarar snabbast.",
+        "label": "Modell för AI-kompletteringar",
+        "needsProvider": "Konfigurera en AI-leverantör i avsnittet AI-assistent för att använda AI-kompletteringar."
+      },
       "stickyScroll": {
         "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",
         "label": "Klistrig rullning"

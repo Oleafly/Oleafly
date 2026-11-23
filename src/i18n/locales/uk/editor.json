@@ -544,6 +544,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "З вашої бібліотеки Zotero"
   },
+  "aiCompletion": {
+    "failed": "Не вдалося отримати доповнення ШІ: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Опишіть зміну…  (Shift+Enter для нового рядка)",
     "close": "Закрити",

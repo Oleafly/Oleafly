@@ -530,6 +530,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Zotero kitaplığınızdan"
   },
+  "aiCompletion": {
+    "failed": "Yapay zeka tamamlaması başarısız oldu: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Değişikliği anlatın…  (yeni satır için Shift+Enter)",
     "close": "Kapat",

@@ -273,6 +273,21 @@ describe("Appearance settings tabs", () => {
     });
   }, 15_000);
 
+  it("lists the AI completion model under Editor only while AI completions are on", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ aiCompletion: false });
+    const { unmount } = render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByText(appearance.editor.aiCompletionModel.label)).not.toBeInTheDocument();
+    unmount();
+
+    useSettingsStore.setState({ aiCompletion: true });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.getByText(appearance.editor.aiCompletionModel.label)).toBeInTheDocument();
+    useSettingsStore.setState({ aiCompletion: false });
+  });
+
   it("switches the keybinding mode, tab size, and line height from the editor tab", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);

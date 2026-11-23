@@ -817,6 +817,11 @@
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
         "label": "Satır içi öneri"
       },
+      "aiCompletionModel": {
+        "description": "Siz yazarken tamamlamaları yazan model. Hızlı modeller ve bu bilgisayarda çalışan modeller en çabuk yanıt verir.",
+        "label": "Yapay zeka tamamlama modeli",
+        "needsProvider": "Yapay zeka tamamlamalarını kullanmak için Yapay Zeka Asistanı bölümünde bir yapay zeka sağlayıcısı ayarlayın."
+      },
       "stickyScroll": {
         "description": "Siz kaydırırken geçerli bölümleri, başlıkları ve ortamları üstte tutar.",
         "label": "Yapışkan kaydırma"

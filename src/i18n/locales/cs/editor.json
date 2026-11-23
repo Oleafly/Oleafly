@@ -544,6 +544,9 @@
     "entryLocation": "{{detail}} · {{file}}:{{line}}",
     "zoteroHeading": "Z vaší knihovny Zotero"
   },
+  "aiCompletion": {
+    "failed": "AI doplňování selhalo: {{reason}}"
+  },
   "inlineAi": {
     "promptPlaceholder": "Popište změnu…  (Shift+Enter vloží nový řádek)",
     "close": "Zavřít",

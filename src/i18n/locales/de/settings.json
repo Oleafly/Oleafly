@@ -817,6 +817,11 @@
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
         "label": "Vorschlag im Text"
       },
+      "aiCompletionModel": {
+        "description": "Das Modell, das beim Schreiben Vervollständigungen vorschlägt. Schnelle Modelle und Modelle, die auf diesem Computer laufen, antworten am schnellsten.",
+        "label": "Modell für KI-Vervollständigung",
+        "needsProvider": "Richten Sie im Bereich KI-Assistent einen KI-Anbieter ein, um die KI-Vervollständigung zu nutzen."
+      },
       "stickyScroll": {
         "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",
         "label": "Haftende Kopfzeile"

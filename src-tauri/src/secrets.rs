@@ -40,7 +40,9 @@ pub fn read_ai_secrets() -> Result<HashMap<String, String>, String> {
 }
 
 pub fn write_ai_secrets(values: &HashMap<String, String>) -> Result<(), String> {
-    store()?.write(SecretFile::Ai, values)
+    let written = store()?.write(SecretFile::Ai, values);
+    crate::agent::forget_resolved_providers();
+    written
 }
 
 pub fn read_connector_secrets() -> Result<HashMap<String, String>, String> {

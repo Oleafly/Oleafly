@@ -1008,6 +1008,10 @@
       }
     },
     "experimentation": {
+      "aiCompletion": {
+        "description": "Når du tar en pause mens du skriver i en LaTeX-, Typst- eller Markdown-fil, vises et forslag til fortsettelse med svak tekst etter markøren. Trykk Tab for å godta det, eller skriv videre for å forkaste det. Ved hver pause sendes teksten rundt markøren til AI-leverandøren din. Av som standard så lenge funksjonen er i beta.",
+        "label": "AI-fullføringer"
+      },
       "latexTools": {
         "description": "Vis galleriet Oleafly Tools og de enkelte verktøyene (PDF-import, ligninger, tabeller, BibTeX, søk etter forskningsgrupper og litteratur, frister) med skråstrekkommandoene sine. Av som standard mens det fortsatt er i beta.",
         "label": "LaTeX-verktøy"

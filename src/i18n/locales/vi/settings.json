@@ -811,6 +811,11 @@
         "description": "Hiện gợi ý hoàn thành khả dĩ sau con trỏ. Nhấn Tab để chấp nhận.",
         "label": "Gợi ý nội tuyến"
       },
+      "aiCompletionModel": {
+        "description": "Mô hình viết phần hoàn thành trong lúc bạn gõ. Các mô hình nhanh và mô hình chạy trên máy tính này phản hồi nhanh nhất.",
+        "label": "Mô hình cho gợi ý hoàn thành bằng AI",
+        "needsProvider": "Hãy thiết lập một nhà cung cấp AI trong mục Trợ lý AI để dùng gợi ý hoàn thành bằng AI."
+      },
       "stickyScroll": {
         "description": "Giữ phần, tiêu đề và môi trường hiện tại ở đầu khi bạn cuộn.",
         "label": "Cuộn dính"

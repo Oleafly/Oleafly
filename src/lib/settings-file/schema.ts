@@ -713,4 +713,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("experimentation.notes", "notes", bool),
   pref("experimentation.overleafLive", "overleafLive", bool),
   pref("experimentation.pdfReview", "pdfReview", bool),
+  pref("experimentation.aiCompletion.enabled", "aiCompletion", bool),
+  pref("experimentation.aiCompletion.provider", "aiCompletionProvider", text(200)),
+  pref("experimentation.aiCompletion.model", "aiCompletionModel", text(300)),
 ];

@@ -817,6 +817,11 @@
         "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
         "label": "Suggestie in de tekst"
       },
+      "aiCompletionModel": {
+        "description": "Het model dat aanvullingen schrijft terwijl je typt. Snelle modellen, en modellen die op deze computer draaien, reageren het snelst.",
+        "label": "Model voor AI-aanvullingen",
+        "needsProvider": "Stel een AI-provider in bij het onderdeel AI-assistent om AI-aanvullingen te gebruiken."
+      },
       "stickyScroll": {
         "description": "Houd de huidige secties, koppen en omgevingen bovenaan terwijl je scrolt.",
         "label": "Vastgezette scrollkoppen"

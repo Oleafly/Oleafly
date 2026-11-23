@@ -24,13 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
-import {
-  knownProviderConfig,
-  loadProviderConfig,
-  subscribeProviderConfig,
-} from "@/components/ai/provider-config";
+import { useProviderConfig } from "@/components/ai/use-provider-config";
 import { describeToolsChoice, destinationName } from "@/features/tools-ai/tools-choice";
-import type { AppConfig } from "@/lib/tauri";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
@@ -298,23 +293,7 @@ function ScanNotice() {
 }
 
 function usePendingScanDestination(pending: boolean): string | null {
-  const [config, setConfig] = useState<AppConfig | null>(() => knownProviderConfig());
-  useEffect(() => {
-    if (!pending) return;
-    let active = true;
-    const unsubscribe = subscribeProviderConfig((next) => {
-      if (active) setConfig(next);
-    });
-    void loadProviderConfig()
-      .then((next) => {
-        if (active) setConfig(next);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [pending]);
+  const config = useProviderConfig(pending);
   if (!pending || !config) return null;
   return destinationName(describeToolsChoice(config).destination);
 }
