@@ -1788,14 +1788,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       }
     }
     if (renderedRef.current.get(state.pageNumber) !== state) return;
-    const active = pageColorsRef.current !== undefined;
-    paintBaseFigures(state, active);
-    if (state.detail) paintDetailFigures(state, state.detail, active);
+    const active = pageColorsRef.current === "dark";
+    try {
+      paintBaseFigures(state, active);
+      if (state.detail) paintDetailFigures(state, state.detail, active);
+    } catch (error) {
+      reportWarningRef.current?.(`PDF figure colors on page ${state.pageNumber}`, error);
+    }
   }, []);
 
   useEffect(() => {
     for (const state of renderedRef.current.values()) {
-      if (pageColors === undefined) releaseFigures(state);
+      if (pageColors !== "dark") releaseFigures(state);
       else void showFigures(state);
     }
   }, [pageColors, showFigures]);
@@ -1859,8 +1863,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           state.nodes.push(canvas);
           detail.canvas = canvas;
           detail.area = area;
-          paintDetailFigures(state, detail, pageColorsRef.current !== undefined);
           wrap.dataset.pdfDetail = "ready";
+          try {
+            paintDetailFigures(state, detail, pageColorsRef.current === "dark");
+          } catch (error) {
+            reportWarningRef.current?.(`PDF figure colors on page ${pageNo}`, error);
+          }
         },
         () => {
           releaseCanvas(canvas);
@@ -2116,7 +2124,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
       const optionalContentConfigPromise =
         optionalContentConfigPromiseRef.current ?? undefined;
-      const recordFigures = pageColorsRef.current !== undefined && !knowsPdfFigures(page);
+      const recordFigures = pageColorsRef.current === "dark" && !knowsPdfFigures(page);
       const renderTask = page.render({
         canvas,
         canvasContext: ctx,
@@ -2150,7 +2158,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         state.baseRendered = painted;
         if (painted) {
           storePreview(pageNo, canvas);
-          if (pageColorsRef.current !== undefined) void showFigures(state);
+          if (pageColorsRef.current === "dark") void showFigures(state);
           scheduleDetailUpdate();
         }
       };

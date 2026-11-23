@@ -1,0 +1,393 @@
+diff --git a/build/pdf.mjs b/build/pdf.mjs
+index c55a629aa4482ce73d02e19d4e5eddeba8976e97..a1825e5fe3a5fe860b9cd23c5e9f8ba0c4edc21f 100644
+--- a/build/pdf.mjs
++++ b/build/pdf.mjs
+@@ -1766,6 +1766,31 @@ function renderRichText({
+   fragment.firstElementChild.classList.add("richText", className);
+   container.append(fragment);
+ }
++const DRAW_OP_POINTS = [1, 1, 3, 2, 0];
++function glyphMeasure(data) {
++  let minX = Infinity;
++  let minY = Infinity;
++  let maxX = -Infinity;
++  let maxY = -Infinity;
++  for (let i = 0, ii = data?.length ?? 0; i < ii;) {
++    const end = i + 1 + 2 * (DRAW_OP_POINTS[data[i]] ?? 0);
++    for (i++; i < end; i += 2) {
++      minX = Math.min(minX, data[i]);
++      maxX = Math.max(maxX, data[i]);
++      minY = Math.min(minY, data[i + 1]);
++      maxY = Math.max(maxY, data[i + 1]);
++    }
++  }
++  if (!(minX <= maxX && minY <= maxY)) {
++    return null;
++  }
++  return {
++    actualBoundingBoxLeft: -minX,
++    actualBoundingBoxRight: maxX,
++    actualBoundingBoxAscent: -minY,
++    actualBoundingBoxDescent: maxY
++  };
++}
+ function makePathFromDrawOPS(data) {
+   const path = new Path2D();
+   if (!data) {
+@@ -7216,6 +7241,7 @@ class CanvasBBoxTracker {
+   #bboxes;
+   _savesStack = [];
+   _markedContentStack = [];
++  painted = null;
+   constructor(canvas, operationsCount) {
+     this.#canvasWidth = canvas.width;
+     this.#canvasHeight = canvas.height;
+@@ -7349,6 +7375,9 @@ class CanvasBBoxTracker {
+     if (this._pendingBBoxIdx !== idx) {
+       return this;
+     }
++    if (this.painted) {
++      this.#unionPainted(this.#pendingBBox);
++    }
+     const minX = floor(this.#pendingBBox[0] * 256 / this.#canvasWidth);
+     const minY = floor(this.#pendingBBox[1] * 256 / this.#canvasHeight);
+     const maxX = ceil(this.#pendingBBox[2] * 256 / this.#canvasWidth);
+@@ -7409,8 +7438,35 @@ class CanvasBBoxTracker {
+     return this;
+   }
+   recordCharacterBBox(idx, ctx, font, scale = 1, x = 0, y = 0, getMeasure) {
++    if (!this.painted || this.#clipBox[0] === Infinity) {
++      return this;
++    }
++    const glyph = [0, 0, 0, 0];
++    if (getMeasure) {
++      const measure = getMeasure();
++      glyph[0] = x - measure.actualBoundingBoxLeft;
++      glyph[1] = y - measure.actualBoundingBoxAscent;
++      glyph[2] = x + measure.actualBoundingBoxRight;
++      glyph[3] = y + measure.actualBoundingBoxDescent;
++    } else if (font.bbox) {
++      Util.axialAlignedBoundingBox(font.bbox, font.fontMatrix, glyph);
++      if (scale !== 1 || x !== 0 || y !== 0) {
++        scaleCharBBox(scale, -scale, x, y, glyph);
++      }
++    } else {
++      return this;
++    }
++    const box = BBOX_INIT.slice();
++    Util.axialAlignedBoundingBox(glyph, Util.multiplyByDOMMatrix(this.#baseTransformStack.at(-1), ctx.getTransform()), box);
++    this.#unionPainted(Util.intersect(this.#clipBox, box) ?? BBOX_INIT);
+     return this;
+   }
++  #unionPainted(box) {
++    this.painted[0] = Math.min(this.painted[0], box[0]);
++    this.painted[1] = Math.min(this.painted[1], box[1]);
++    this.painted[2] = Math.max(this.painted[2], box[2]);
++    this.painted[3] = Math.max(this.painted[3], box[3]);
++  }
+   getSimpleIndex(dependencyName) {
+     return undefined;
+   }
+@@ -7889,6 +7945,37 @@ class CanvasImagesTracker {
+   take() {
+     return this.#coords.subarray(0, this.#count * 6);
+   }
++  get count() {
++    return this.#count;
++  }
++  area(index) {
++    const at = index * 6;
++    const c = this.#coords;
++    return Math.abs((c[at + 2] - c[at]) * (c[at + 5] - c[at + 1]) - (c[at + 3] - c[at + 1]) * (c[at + 4] - c[at]));
++  }
++  remove(index) {
++    if (index < this.#count) {
++      this.#coords.copyWithin(index * 6, (index + 1) * 6, this.#count * 6);
++      this.#count--;
++    }
++  }
++  narrow(index, painted) {
++    if (index >= this.#count || !(painted[0] < painted[2] && painted[1] < painted[3])) {
++      return;
++    }
++    const at = index * 6;
++    const c = this.#coords;
++    const xs = [c[at], c[at + 2], c[at + 4], c[at + 2] + c[at + 4] - c[at]].map(x => x * this.#canvasWidth);
++    const ys = [c[at + 1], c[at + 3], c[at + 5], c[at + 3] + c[at + 5] - c[at + 1]].map(y => y * this.#canvasHeight);
++    const margin = this.#canvasWidth * FIGURE_MARGIN;
++    const minX = Math.max(Math.min(...xs), painted[0] - margin) / this.#canvasWidth;
++    const minY = Math.max(Math.min(...ys), painted[1] - margin) / this.#canvasHeight;
++    const maxX = Math.min(Math.max(...xs), painted[2] + margin) / this.#canvasWidth;
++    const maxY = Math.min(Math.max(...ys), painted[3] + margin) / this.#canvasHeight;
++    if (minX < maxX && minY < maxY) {
++      c.set([minX, minY, minX, maxY, maxX, minY], at);
++    }
++  }
+ }
+ 
+ ;// ./src/shared/css_utils.js
+@@ -8155,6 +8242,7 @@ class FontLoader {
+ }
+ class FontFaceObject {
+   compiledGlyphs = Object.create(null);
++  glyphMeasures = Object.create(null);
+   #fontData;
+   constructor(translatedData, inspectFont = null, charProcOperatorList, extra) {
+     this.#fontData = translatedData;
+@@ -8216,6 +8304,7 @@ class FontFaceObject {
+       warn(`getPathGenerator - ignoring character: "${ex}".`);
+     }
+     const path = makePathFromDrawOPS(cmds?.path);
++    this.glyphMeasures[character] = glyphMeasure(cmds?.path);
+     if (!this.fontExtraProperties) {
+       objs.delete(objId);
+     }
+@@ -10904,6 +10993,16 @@ const LINE_CAP_STYLES = ["butt", "round", "square"];
+ const LINE_JOIN_STYLES = ["miter", "round", "bevel"];
+ const NORMAL_CLIP = {};
+ const EO_CLIP = {};
++const FIGURE_PAINT_OPS = new Set([OPS.constructPath, OPS.showText, OPS.showSpacedText, OPS.paintImageXObject, OPS.paintImageXObjectRepeat, OPS.paintInlineImageXObject, OPS.paintInlineImageXObjectGroup, OPS.paintImageMaskXObject, OPS.paintImageMaskXObjectGroup, OPS.paintImageMaskXObjectRepeat, OPS.paintSolidColorImageMask]);
++const MIN_FIGURE_PAINTS = 3;
++const FIGURE_TEXT_SHARE = 0.8;
++const LARGE_FORM_AREA = 0.5;
++const FIGURE_MARGIN = 0.005;
++const FIGURE_PICTURE_OPS = new Set([OPS.paintImageXObject, OPS.paintImageXObjectRepeat, OPS.paintInlineImageXObject, OPS.paintInlineImageXObjectGroup]);
++const FIGURE_EXTENT = 1;
++const FIGURE_PICTURE = 2;
++const FIGURE_SHAPE = 3;
++const FIGURE_TEXT = 4;
+ class CanvasGraphics {
+   static #SCALE_MATRIX = null;
+   #knockoutGroupLevel = 0;
+@@ -10956,6 +11055,126 @@ class CanvasGraphics {
+     this._cachedBitmapsMap = new Map();
+     this.dependencyTracker = dependencyTracker ?? null;
+     this.imagesTracker = imagesTracker ?? null;
++    this.formsTracker = imagesTracker ? new CanvasImagesTracker(canvasCtx.canvas) : null;
++    this.rootTracker = this.dependencyTracker;
++    this.formDepth = 0;
++    this.formPaints = 0;
++    this.formTexts = 0;
++    this.formShapes = 0;
++    this.formRecords = [];
++    this.paintedBox = new Float64Array(4);
++  }
++  onPage(ctx) {
++    let matrix = ctx.getTransform();
++    for (let i = this.groupStack.length - 1; i >= 0; i--) {
++      if (this.groupStack[i]) {
++        matrix = this.groupStack[i].getTransform().multiply(matrix);
++      }
++    }
++    return {
++      getTransform: () => matrix
++    };
++  }
++  recordForm(bbox, matrix) {
++    const ctx = this.ctx;
++    const depth = this.formDepth++;
++    if (!this.formsTracker || !bbox || this.dependencyTracker !== this.rootTracker || ctx.globalAlpha !== 1 || ctx.globalCompositeOperation !== "source-over") {
++      return;
++    }
++    if (depth !== 0 && (this.formRecords.length !== 1 || !this.formRecords[0].large)) {
++      return;
++    }
++    const index = this.formsTracker.count;
++    const [x0, y0, x1, y1] = bbox;
++    ctx.save();
++    if (matrix) {
++      ctx.transform(...matrix);
++    }
++    ctx.translate(x0, y1);
++    this.formsTracker.record(ctx, x1 - x0, y1 - y0, this.dependencyTracker.clipBox);
++    ctx.restore();
++    if (this.formsTracker.count === index) {
++      return;
++    }
++    this.formRecords.push({
++      depth,
++      index,
++      paints: this.formPaints,
++      texts: this.formTexts,
++      shapes: this.formShapes,
++      keptTexts: 0,
++      keptShapes: 0,
++      painted: BBOX_INIT.slice(),
++      large: this.formsTracker.area(index) >= LARGE_FORM_AREA
++    });
++  }
++  closeForm() {
++    const depth = --this.formDepth;
++    const record = this.formRecords.at(-1);
++    if (record?.depth !== depth) {
++      return;
++    }
++    this.formRecords.pop();
++    const paints = this.formPaints - record.paints;
++    const texts = this.formTexts - record.texts - record.keptTexts;
++    const shapes = this.formShapes - record.shapes - record.keptShapes;
++    if (paints < MIN_FIGURE_PAINTS || texts > 0 && texts >= (texts + shapes) * FIGURE_TEXT_SHARE) {
++      this.formsTracker.remove(record.index);
++      return;
++    }
++    if (!record.large) {
++      this.formsTracker.narrow(record.index, record.painted);
++    }
++    const parent = this.formRecords.at(-1);
++    if (parent) {
++      parent.keptTexts += this.formTexts - record.texts;
++      parent.keptShapes += this.formShapes - record.shapes;
++    }
++  }
++  figurePaint(fnId, fnArgs) {
++    if (!this.contentVisible || this.smaskStack.length !== 0 || this.dependencyTracker !== this.rootTracker) {
++      return 0;
++    }
++    if (fnId === OPS.shadingFill) {
++      return FIGURE_EXTENT;
++    }
++    if (!FIGURE_PAINT_OPS.has(fnId) || fnId === OPS.constructPath && fnArgs[0] === OPS.endPath) {
++      return 0;
++    }
++    if (FIGURE_PICTURE_OPS.has(fnId)) {
++      return FIGURE_PICTURE;
++    }
++    if (fnId !== OPS.showText && fnId !== OPS.showSpacedText) {
++      return FIGURE_SHAPE;
++    }
++    return (this.current.textRenderingMode & TextRenderingMode.FILL_STROKE_MASK) === TextRenderingMode.INVISIBLE ? 0 : FIGURE_TEXT;
++  }
++  beginFigurePaint(paint) {
++    if (paint !== FIGURE_EXTENT) {
++      this.formPaints++;
++    }
++    if (paint === FIGURE_TEXT) {
++      this.formTexts++;
++    } else if (paint === FIGURE_SHAPE) {
++      this.formShapes++;
++    }
++    this.paintedBox.set(BBOX_INIT);
++    this.rootTracker.painted = this.paintedBox;
++  }
++  endFigurePaint() {
++    this.rootTracker.painted = null;
++    let [minX, minY, maxX, maxY] = this.paintedBox;
++    if (!(minX < maxX && minY < maxY)) {
++      [minX, minY, maxX, maxY] = this.rootTracker.clipBox;
++    }
++    for (const {
++      painted
++    } of this.formRecords) {
++      painted[0] = Math.min(painted[0], minX);
++      painted[1] = Math.min(painted[1], minY);
++      painted[2] = Math.max(painted[2], maxX);
++      painted[3] = Math.max(painted[3], maxY);
++    }
+   }
+   getObject(opIdx, data, fallback = null) {
+     if (typeof data === "string") {
+@@ -11027,12 +11246,19 @@ class CanvasGraphics {
+       if (!operationsFilter || operationsFilter(i)) {
+         fnId = fnArray[i];
+         fnArgs = argsArray[i] ?? null;
++        const paint = this.formRecords.length === 0 ? 0 : this.figurePaint(fnId, fnArgs);
++        if (paint !== 0) {
++          this.beginFigurePaint(paint);
++        }
+         if (fnId !== OPS.dependency) {
+           if (fnArgs === null) {
+             this[fnId](i);
+           } else {
+             this[fnId](i, ...fnArgs);
+           }
++          if (paint !== 0) {
++            this.endFigurePaint();
++          }
+         } else {
+           for (const depObjId of fnArgs) {
+             this.dependencyTracker?.recordNamedData(depObjId, i);
+@@ -12131,7 +12357,8 @@ class CanvasGraphics {
+       ctx.save();
+       ctx.translate(x, y);
+       ctx.scale(fontSize, -fontSize);
+-      this.dependencyTracker?.recordCharacterBBox(opIdx, ctx, font);
++      const measure = font.glyphMeasures[character];
++      this.dependencyTracker?.recordCharacterBBox(opIdx, ctx, font, 1, 0, 0, measure && (() => measure));
+       let currentTransform;
+       if (fillStrokeMode === TextRenderingMode.FILL || fillStrokeMode === TextRenderingMode.FILL_STROKE) {
+         if (patternFillTransform) {
+@@ -12536,6 +12763,7 @@ class CanvasGraphics {
+     if (matrix) {
+       this.transform(opIdx, ...matrix);
+     }
++    this.recordForm(bbox, null);
+     this.baseTransform = getCurrentTransform(this.ctx);
+     if (bbox) {
+       Util.axialAlignedBoundingBox(bbox, this.baseTransform, this.current.minMax);
+@@ -12551,6 +12779,7 @@ class CanvasGraphics {
+     if (!this.contentVisible) {
+       return;
+     }
++    this.closeForm();
+     this.restore(opIdx);
+     this.baseTransform = this.baseTransformStack.pop();
+   }
+@@ -12558,6 +12787,7 @@ class CanvasGraphics {
+     if (!this.contentVisible) {
+       return;
+     }
++    this.recordForm(group.bbox, group.matrix);
+     this.save(opIdx);
+     const {
+       inSMaskMode
+@@ -12678,6 +12908,7 @@ class CanvasGraphics {
+     if (!this.contentVisible) {
+       return;
+     }
++    this.closeForm();
+     this.groupLevel--;
+     const groupCtx = this.ctx;
+     const ctx = this.groupStack.pop();
+@@ -12822,6 +13053,7 @@ class CanvasGraphics {
+     }
+   }
+   beginAnnotation(opIdx, id, rect, transform, matrix, hasOwnCanvas, canvasName) {
++    this.formDepth++;
+     this.#restoreInitialState();
+     resetCtxToDefault(this.ctx);
+     this.ctx.save();
+@@ -12879,6 +13111,7 @@ class CanvasGraphics {
+     this.baseTransform = getCurrentTransform(this.ctx);
+   }
+   endAnnotation(opIdx) {
++    this.closeForm();
+     if (this.annotationCanvas) {
+       this.ctx.restore();
+       this.#drawFilter();
+@@ -13069,7 +13302,9 @@ class CanvasGraphics {
+     ctx.imageSmoothingEnabled = getImageSmoothingEnabled(getCurrentTransform(ctx), imgData.interpolate);
+     if (this.dependencyTracker) {
+       this.dependencyTracker.resetBBox(opIdx).recordBBox(opIdx, ctx, 0, width, -height, 0).recordDependencies(opIdx, Dependencies.imageXObject).recordOperation(opIdx);
+-      this.imagesTracker?.record(ctx, width, height, this.dependencyTracker.clipBox);
++      if (this.smaskStack.length === 0) {
++        this.imagesTracker?.record(this.onPage(ctx), width, height, this.dependencyTracker.clipBox);
++      }
+     }
+     drawImageAtIntegerCoords(ctx, scaled.img, 0, 0, scaled.paintWidth, scaled.paintHeight, 0, -height, width, height);
+     if (scaled.tmpCanvas) {
+@@ -15785,6 +16020,7 @@ class PDFPageProxy {
+     this.recordedBBoxes = null;
+     this.#pagesMapper = pagesMapper;
+     this.imageCoordinates = null;
++    this.formCoordinates = null;
+   }
+   clone(id) {
+     const clone = new PDFPageProxy(id, this._pageInfo, this._transport, this.#pagesMapper, this._pdfBug);
+@@ -15906,6 +16142,7 @@ class PDFPageProxy {
+       }
+       if (shouldRecordImages && !error) {
+         this.imageCoordinates = internalRenderTask.gfx?.imagesTracker.take();
++        this.formCoordinates = internalRenderTask.gfx?.formsTracker.take();
+       }
+       if (intentPrint) {
+         this.#pendingCleanup = true;

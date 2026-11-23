@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [@Floresiensis](https://github.com/Floresiensis) for #485, "Visual mode: change font and other settings".
 - Angelk90 ([@Angelk90](https://github.com/Angelk90)) for #494, "Restoring an older version does not update the version indicator".
 - Masum ([@masumeee](https://github.com/masumeee)) for #487, "Custom AI Instructions and Reusable Setup Commands for Editing".
-- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme", #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme", #506, "PDF dark mode: vector figures (\includegraphics PDFs / Form XObjects) still invert; extend the figure-preserving layer to them", #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
 - Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)) for #470, "Support explicitly configured, externally managed TexLab and Tinymist".
 - Richard (Dien Giau) Bui ([@diengiau](https://github.com/diengiau)) for #515, "Not Allow to Change Project Type (Engine)".
 - Faisal Albasu ([@albas99](https://github.com/albas99)) for #518, "Remember previous window state on launch".
@@ -54,9 +54,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - You can see through the quick capture window to what's behind it. On macOS it opens on the screen with the pointer, over full-screen apps too, and leaves Oleafly's main window where it was.
 - In the dark theme, dialogs, editor hover cards and switches take their colors from the theme, so Theme customization and theme files change them as well.
 - Turning PDF dark mode on or off in the preview window now does the same in the main window, and the other way round. Before, each window kept its own setting until you restarted Oleafly.
+- In PDF dark mode, figures included from PDF or EPS files keep their colors, as photos and screenshots already did. That means `\includegraphics{plot.pdf}`, plots exported from matplotlib or Inkscape, and PDF images in Typst. Figures drawn in the document itself, such as TikZ, PGFPlots or an SVG image in Typst, still follow the dark page. So do small marks like plot markers and slide bullets, and text set inside an included PDF. A figure saved with wide empty margins keeps only what it draws, not a white box the size of its page (#506).
+- With a light page tint such as sepia, pictures now take the tint along with the page. They keep their own colors only on a dark page, where they would otherwise turn into negatives.
 
 ### Fixed
 
+- PDF dark mode turned every photo on a page into a negative once the page had more than 32 pictures, as in a grid of photos made in PowerPoint. Each one now keeps its colors (#506).
+- A photo that covers most of a page, such as a full-bleed image, keeps its colors in PDF dark mode. Scanned pages still go dark, whatever color the paper is. So do slide backgrounds and pages pulled in from another PDF at any size, while the photos and figures on them keep their colors.
+- In PDF dark mode, thin gaps between photos that almost touch stay dark. They used to show as white lines.
+- In PDF dark mode, a photo inside a figure with transparency no longer leaves a light patch in the top-left corner of the page.
 - Inline AI edits follow your Custom instructions in Settings > AI > Instructions. The setting says they go with every AI request, but only the assistant used them.
 - Typing in the inline AI box and then clicking a preset such as Improve sends both. Before, the preset replaced what you typed.
 - While the inline AI box is open, Escape in the command palette, a menu or a dialog closes that instead of the AI box, and Enter in a dialog no longer accepts the suggested edit.

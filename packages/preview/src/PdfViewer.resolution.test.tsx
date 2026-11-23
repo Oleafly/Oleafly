@@ -385,7 +385,7 @@ describe("PdfViewer raster resolution", () => {
     const first = scene.detail()!;
     await waitFor(() => expect(scene.wrap.querySelectorAll(":scope > canvas.pdf-figure")).toHaveLength(2));
     const reads = readFrom.length;
-    expect(reads).toBe(4);
+    expect(reads).toBe(1);
     expect(readFrom.every((canvas) => canvas === scene.base())).toBe(true);
 
     scene.place(0, -400);

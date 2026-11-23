@@ -12,7 +12,7 @@ const limits = {
   // +12 KB for 0.4.13's manual-test fixes, the figure layer that keeps
   // pictures in their own colors in PDF dark mode, and the sidebar's More
   // menu: 7,591,288 bytes before them, 7,603,699 after.
-  totalJavaScript: 6_285_000,
+  totalJavaScript: 6_295_000,
   wasm: {
     oleafly_synctex: 360_000,
   },
