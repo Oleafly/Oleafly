@@ -614,6 +614,20 @@ impl OverleafLive {
                 .retain(|mine| !removed.iter().any(|path| inside(mine, path)));
             kept.retain(|file| !files.iter().any(|gone| inside(&file.path, &gone.path)));
         }
+        if !files.is_empty() {
+            *guard(&self.mirror.told) = files
+                .iter()
+                .filter(|file| !file.yours)
+                .flat_map(|file| {
+                    previous
+                        .iter()
+                        .filter(|(_, placed)| {
+                            placed.kind == NodeKind::Text && inside(&placed.path, &file.path)
+                        })
+                        .map(|(text, _)| (text.clone(), file.clone()))
+                })
+                .collect();
+        }
         let disk = &self.mirror.disk;
         let told = (!files.is_empty()).then(|| RemovedPayload {
             project_id: disk.project_id.clone(),
