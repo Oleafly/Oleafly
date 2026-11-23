@@ -39,6 +39,7 @@ patchedDependencies:
   '@terrastruct/d2@0.1.33': c373fad1fa021548fd7165c910edc782b7372967bf66c24e8afdf597f6383c23
   emscripten-wasm-loader@3.0.3: 8eebb0ec457e29444d0f4c2ee9e4e45a8932e088e09b12a6a099daad3251fb65
   hunspell-asm@4.0.2: f5634e1c2ed4fdf8fe6c238d5f6d3c9006136c951a3ecfadea19ef30c7092726
+  pdfjs-dist@6.3.289: b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0
   tiptap-markdown@0.9.0: afd0b6ddee1a2cd6968ae84ec169c8315655e96ceb780345472ff2124d657f5a
 
 importers:
@@ -353,7 +354,7 @@ importers:
         version: 5.7.0
       pdfjs-dist:
         specifier: 6.3.289
-        version: 6.3.289
+        version: 6.3.289(patch_hash=b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -670,7 +671,7 @@ importers:
         version: link:../preview
       pdfjs-dist:
         specifier: 6.3.289
-        version: 6.3.289
+        version: 6.3.289(patch_hash=b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0)
 
   packages/preflight:
     dependencies:
@@ -688,7 +689,7 @@ importers:
         version: link:../preview
       pdfjs-dist:
         specifier: 6.3.289
-        version: 6.3.289
+        version: 6.3.289(patch_hash=b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0)
 
   packages/preview:
     dependencies:
@@ -697,7 +698,7 @@ importers:
         version: link:../i18n-contract
       pdfjs-dist:
         specifier: 6.3.289
-        version: 6.3.289
+        version: 6.3.289(patch_hash=b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0)
       react:
         specifier: '*'
         version: 19.3.0
@@ -11935,7 +11936,7 @@ snapshots:
       pako: 1.0.11
       tslib: 1.14.1
 
-  pdfjs-dist@6.3.289:
+  pdfjs-dist@6.3.289(patch_hash=b3d6ad58d632ad6824321a7fe9e010fbad5ecdc49f5829c39020e97faccd5ce0):
     optionalDependencies:
       '@napi-rs/canvas': 1.0.9
 

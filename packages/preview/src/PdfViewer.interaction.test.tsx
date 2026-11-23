@@ -1281,6 +1281,26 @@ describe("PdfViewer dark mode", () => {
 
     rerender({ pageColors: "dark" });
     await waitFor(() => expect(pageWrap(1).querySelectorAll("canvas.pdf-figure")).toHaveLength(1));
+
+    rerender({ pageColors: "light" });
+    expect(pageWrap(1).querySelector("canvas.pdf-figure")).toBeNull();
+  });
+
+  it("reports a figure layer that fails to paint and still shows the page", async () => {
+    harness.pages = [page("First page")];
+    harness.images.set(1, [0.1, 0.5, 0.1, 0.25, 0.6, 0.5]);
+    const broken = new Error("readback refused");
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: () => {
+        throw broken;
+      },
+    } as never);
+    const reportWarning = vi.fn();
+    renderViewer({ pageColors: "dark", reportWarning });
+    await waitFor(() => expect(reportWarning).toHaveBeenCalledWith("PDF figure colors on page 1", broken));
+    expect(pageWrap(1).querySelector("canvas.pdf-figure")).toBeNull();
+    await pageTextRendered(1);
   });
 });
 
