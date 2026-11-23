@@ -81,6 +81,7 @@ function configPreferences(config: AppConfig): ConfigPreferences {
     ai_pdf_capture: config.ai_pdf_capture,
     ai_reasoning_summaries: config.ai_reasoning_summaries === true,
     ai_personas: config.ai_personas,
+    ai_saved_instructions: config.ai_saved_instructions ?? [],
     checkpoints_enabled: config.checkpoints_enabled,
     checkpoint_notifications: config.checkpoint_notifications,
     research_keep_awake: config.research_keep_awake !== false,
@@ -488,6 +489,34 @@ describe("reading a settings file", () => {
     const read = personas([{ name: "Tutor", color: "forest", prompt: "Line one\nLine two" }]);
     if (!read.ok) throw new Error("expected a valid persona");
     expect(read.plan.config.ai_personas?.[0]).toMatchObject({ name: "Tutor", prompt: "Line one\nLine two" });
+  });
+
+  it("checks saved instructions one by one and keeps their use counts off the file", () => {
+    const saved = (value: unknown) =>
+      readSettingsFile(fileWith({ ai: { savedInstructions: value } }), snapshot());
+    expect(saved([{ id: "a", name: "Keep", text: " " }])).toMatchObject({
+      problems: [{ path: "ai.savedInstructions[0].text" }],
+    });
+    expect(saved([{ id: "a", name: "Keep", text: "Keep it", uses: 4 }])).toMatchObject({
+      problems: [{ path: "ai.savedInstructions[0].uses", issue: { kind: "unknownKey" } }],
+    });
+    expect(
+      saved([
+        { id: "a", name: "A", text: "x" },
+        { id: "a", name: "B", text: "y" },
+      ]),
+    ).toMatchObject({ problems: [{ path: "ai.savedInstructions[1].id", issue: { kind: "duplicate" } }] });
+    expect(saved([{ id: "a", name: "x".repeat(61), text: "y" }])).toMatchObject({
+      problems: [{ path: "ai.savedInstructions[0].name", issue: { kind: "text" } }],
+    });
+    expect(saved(Array.from({ length: 51 }, (_, index) => ({ name: `n${index}`, text: "t" })))).toMatchObject({
+      problems: [{ path: "ai.savedInstructions", issue: { kind: "list", max: 50 } }],
+    });
+    const read = saved([{ name: " Quotes ", text: "Don't change quoted text.\nKeep the format.\n" }]);
+    if (!read.ok) throw new Error("expected a valid saved instruction");
+    expect(read.plan.config.ai_saved_instructions).toEqual([
+      { id: expect.stringMatching(/^instruction-/), name: "Quotes", text: "Don't change quoted text.\nKeep the format." },
+    ]);
   });
 
   it("refuses shortcuts the operating system keeps for itself", () => {

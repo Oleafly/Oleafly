@@ -370,9 +370,15 @@ fn project_page_url(project: &Path, page: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn compiled_html_preview_url(project_id: String) -> Result<String, String> {
+pub async fn compiled_html_preview_url(
+    project_id: String,
+    main_document: Option<String>,
+) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        preview_url(&crate::notebook_toolchain::compiled_html(&project_id)?)
+        preview_url(&crate::notebook_toolchain::compiled_html(
+            &project_id,
+            main_document.as_deref(),
+        )?)
     })
     .await
     .map_err(|error| error.to_string())?

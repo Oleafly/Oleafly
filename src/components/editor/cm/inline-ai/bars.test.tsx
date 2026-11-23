@@ -159,3 +159,111 @@ describe("PromptPopover", () => {
     expect(props.onSubmit).not.toHaveBeenCalled();
   });
 });
+
+describe("PromptPopover saved instructions", () => {
+  const saved = en.savedInstructions;
+  const instructions = [
+    { id: "keep", name: "Keep formatting", text: "Keep the formatting." },
+    { id: "quotes", name: "Quotes", text: "Don't change quoted text." },
+  ];
+  const props = {
+    instruction: "",
+    onInstruction: vi.fn(),
+    onSubmit: vi.fn(),
+    onPreset: vi.fn(),
+    onClose: vi.fn(),
+    streaming: false,
+    onStop: vi.fn(),
+    providerId: "openai",
+    modelId: "gpt-5",
+    modelGroups: [],
+    onModelChange: vi.fn(),
+    saved: instructions,
+    picked: [] as string[],
+    onToggleSaved: vi.fn(),
+    onSave: vi.fn(),
+    onManage: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("lists the saved instructions as toggles and opens the manager", () => {
+    render(<PromptPopover {...props} picked={["quotes"]} />);
+
+    const group = screen.getByRole("group", { name: saved.label });
+    expect(group).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Keep formatting" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Quotes" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep formatting" }));
+    expect(props.onToggleSaved).toHaveBeenCalledWith("keep");
+
+    fireEvent.click(screen.getByRole("button", { name: saved.manage }));
+    expect(props.onManage).toHaveBeenCalledOnce();
+  });
+
+  it("submits with only a picked instruction and nothing typed", () => {
+    const { rerender } = render(<PromptPopover {...props} />);
+    expect(screen.getByLabelText(inlineAi.submit)).toBeDisabled();
+
+    rerender(<PromptPopover {...props} picked={["keep"]} />);
+    expect(screen.getByLabelText(inlineAi.submit)).toBeEnabled();
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(props.onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("names and saves the typed instruction, or cancels back to the prompt", () => {
+    const { rerender } = render(
+      <PromptPopover {...props} saved={[]} instruction="Keep the original formatting and don't change quotes" canSave />,
+    );
+    expect(screen.queryByRole("button", { name: saved.manage })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: saved.save }));
+    const name = screen.getByRole("textbox", { name: saved.nameLabel });
+    expect(name).toHaveFocus();
+    expect(name).toHaveValue("Keep the original formatting and");
+
+    fireEvent.keyDown(name, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: saved.nameLabel })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveFocus();
+    expect(props.onSave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: saved.save }));
+    fireEvent.change(screen.getByRole("textbox", { name: saved.nameLabel }), { target: { value: "  Keep  " } });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: saved.nameLabel }), { key: "Enter" });
+    expect(props.onSave).toHaveBeenCalledWith("Keep");
+    expect(props.onSubmit).not.toHaveBeenCalled();
+
+    rerender(<PromptPopover {...props} instruction="Already saved" canSave={false} />);
+    expect(screen.queryByRole("button", { name: saved.save })).not.toBeInTheDocument();
+  });
+
+  it("refuses an empty name", () => {
+    render(<PromptPopover {...props} instruction="Keep it" canSave />);
+    fireEvent.click(screen.getByRole("button", { name: saved.save }));
+    fireEvent.change(screen.getByRole("textbox", { name: saved.nameLabel }), { target: { value: "  " } });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: saved.nameLabel }), { key: "Enter" });
+    expect(props.onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: common.actions.save })).toBeDisabled();
+  });
+
+  it("suggests the most used five and keeps a picked one in view", () => {
+    const many = Array.from({ length: 8 }, (_, index) => ({ id: `i${index}`, name: `Rule ${index}`, text: `Text ${index}` }));
+    render(<PromptPopover {...props} saved={many} picked={["i7"]} />);
+
+    expect(screen.getByRole("button", { name: "Rule 4" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rule 5" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rule 7" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: saved.more_other.replace("{{count}}", "2") }));
+    expect(screen.getByRole("button", { name: "Rule 5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rule 6" })).toBeInTheDocument();
+  });
+
+  it("hides the saved instructions while streaming", () => {
+    render(<PromptPopover {...props} streaming />);
+    expect(screen.queryByRole("group", { name: saved.label })).not.toBeInTheDocument();
+  });
+});

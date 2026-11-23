@@ -31,6 +31,8 @@ const ENGINE_STATE_DIRECTORIES: [&str; 1] = [".quarto"];
 const NOTEBOOK_FIGURES_SUFFIX: &str = "_files";
 
 const NOTEBOOK_SOURCE_EXTENSIONS: [&str; 3] = ["qmd", "Rmd", "rmd"];
+const QUARTO_STATE_DIRECTORIES: [&str; 2] = ["_extensions", "_freeze"];
+const QUARTO_OUTPUT_DIRECTORIES: [&str; 3] = ["_book", "_site", "_manuscript"];
 
 pub fn new_repository_exclude_lines() -> impl Iterator<Item = &'static str> {
     [
@@ -118,6 +120,31 @@ pub fn is_notebook_figures_folder(relative_path: &str, has_sibling: impl Fn(&str
             None => format!("{stem}.{extension}"),
         })
     })
+}
+
+pub fn is_quarto_directory(name: &str, beside_quarto_config: impl FnOnce() -> bool) -> bool {
+    let named = |directories: &[&str]| {
+        directories
+            .iter()
+            .any(|directory| name.eq_ignore_ascii_case(directory))
+    };
+    named(&QUARTO_STATE_DIRECTORIES)
+        || (named(&QUARTO_OUTPUT_DIRECTORIES) && beside_quarto_config())
+}
+
+pub fn is_notebook_render(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let Some((stem, extension)) = normalized.rsplit_once('.') else {
+        return false;
+    };
+    ["tex", "typ"]
+        .iter()
+        .any(|rendered| extension.eq_ignore_ascii_case(rendered))
+        && !stem.is_empty()
+        && !stem.ends_with('/')
+        && NOTEBOOK_SOURCE_EXTENSIONS
+            .iter()
+            .any(|notebook| has_sibling(&format!("{stem}.{notebook}")))
 }
 
 pub fn is_generated_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {

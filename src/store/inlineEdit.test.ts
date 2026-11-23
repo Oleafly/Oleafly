@@ -74,4 +74,15 @@ describe("inline edit store", () => {
     s().relocate(4, 7);
     expect(s().session).toMatchObject({ phase: "withdrawn", from: 4, to: 7 });
   });
+
+  it("keeps picked saved instructions across sessions and toggles them one at a time", () => {
+    useInlineEditStore.setState({ picked: [] });
+    s().togglePicked("keep");
+    s().togglePicked("quotes");
+    s().open({ from: 0, to: 3, original: "abc" });
+    s().reset();
+    expect(s().picked).toEqual(["keep", "quotes"]);
+    s().togglePicked("keep");
+    expect(s().picked).toEqual(["quotes"]);
+  });
 });

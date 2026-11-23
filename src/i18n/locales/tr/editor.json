@@ -547,6 +547,15 @@
     "setUpProviderHint": "Satır içi yapay zeka düzenlemelerini kullanmak için bir API anahtarı veya yerel Ollama ekleyin ya da Araçlar için model olarak bir CLI ajanı seçin.",
     "openAiSettings": "Ayarlar → Yapay zeka bölümünü aç"
   },
+  "savedInstructions": {
+    "label": "Kayıtlı yönergeler",
+    "more_one": "{{count}} tane daha",
+    "more_other": "{{count}} tane daha",
+    "save": "Yönergeyi kaydet",
+    "nameLabel": "Bu yönergeyi adlandırın",
+    "manage": "Kayıtlı yönergeleri yönet",
+    "saveFailed": "Yönerge kaydedilemedi."
+  },
   "proofreading": {
     "error": "Redaksiyon bu belgeyi tamamlayamadı.",
     "unavailable": "Çevrimdışı redaksiyon kullanılamıyor.",

@@ -152,6 +152,7 @@ function settledCompileOutcome(before: CompileMarks, settled: boolean): CompileT
     log: state.log,
     reason: compiled ? null : (failureOutsideSource() ?? unfinished),
     offer: state.offer?.kind ?? null,
+    document: state.lastAttemptIdentity?.mainDocument ?? null,
   };
 }
 
@@ -162,11 +163,12 @@ async function runAgentCompile(): Promise<CompileToolOutcome> {
   if (!result) {
     return settledCompileOutcome({ lastCompiledAt, htmlOutput }, await compileSettled());
   }
-  const { offer } = useCompileStore.getState();
+  const { offer, lastAttemptIdentity } = useCompileStore.getState();
   return {
     ...result,
     reason: result.ok ? null : failureOutsideSource(),
     offer: offer?.kind ?? null,
+    document: lastAttemptIdentity?.mainDocument ?? null,
   };
 }
 

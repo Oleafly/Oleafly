@@ -15,6 +15,7 @@ import {
 import type {
   BibliographyEntryDetail,
   ExternalProjectIntelligence,
+  ProjectEdge,
   ProjectIntelligenceIdentity,
   ProjectIntelligenceReason,
   ProjectIntelligenceSnapshot,
@@ -1088,10 +1089,33 @@ export const useIndexStore = create<IndexStore>((set, get) => {
   };
 });
 
+function includedFiles(edges: readonly ProjectEdge[]): ReadonlySet<string> {
+  const files = new Set<string>();
+  for (const edge of edges) {
+    if (edge.kind !== "include" && edge.kind !== "import") continue;
+    for (const target of edge.targetFile ? [edge.targetFile] : edge.candidateFiles) {
+      if (target !== edge.fromFile) files.add(target);
+    }
+  }
+  return files;
+}
+
 useIndexStore.subscribe((state, previous) => {
   const data = state.intelligenceState.data;
-  if (data?.latexUnits === previous.intelligenceState.data?.latexUnits) return;
-  useCompileRootStore
-    .getState()
-    .setLatexUnits(data?.latexUnits ? { projectId: data.identity.projectId, units: data.latexUnits } : null);
+  const before = previous.intelligenceState.data;
+  const roots = useCompileRootStore.getState();
+  if (data?.latexUnits !== before?.latexUnits) {
+    roots.setLatexUnits(data?.latexUnits ? { projectId: data.identity.projectId, units: data.latexUnits } : null);
+  }
+  if (data?.hierarchy !== before?.hierarchy) {
+    const files = data ? includedFiles(data.hierarchy.edges) : null;
+    const known = roots.parts;
+    const same =
+      files !== null &&
+      known !== null &&
+      known.projectId === data?.identity.projectId &&
+      known.files.size === files.size &&
+      [...files].every((file) => known.files.has(file));
+    if (!same) roots.setParts(data && files ? { projectId: data.identity.projectId, files } : null);
+  }
 });

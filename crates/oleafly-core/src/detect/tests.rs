@@ -357,7 +357,7 @@ fn a_quarto_folder_opens_its_only_document() {
         ("README.md", "# Readme\n"),
     ]);
     let detection = detect(&quarto);
-    auto(&detection, "index.qmd", DetectionSource::Scan);
+    auto(&detection, "index.qmd", DetectionSource::QuartoProject);
     assert_eq!(
         candidate(&detection, "index.qmd").kind,
         DocumentKind::Quarto
@@ -390,6 +390,159 @@ fn a_quarto_folder_opens_its_only_document() {
 
     let two = tree(&[("paper.qmd", "# Paper\n"), ("slides.qmd", "# Slides\n")]);
     assert_eq!(detect(&two).decision, Decision::Ask);
+}
+
+#[test]
+fn a_notebook_wins_over_the_latex_and_typst_quarto_writes_beside_it() {
+    let kept = tree(&[
+        (
+            "paper.qmd",
+            "---\ntitle: Soil carbon\nformat:\n  pdf:\n    keep-tex: true\n---\n# Intro\n",
+        ),
+        (
+            "paper.tex",
+            "% Options for packages loaded elsewhere\n\\documentclass{scrartcl}\n\\begin{document}\nText.\n\\end{document}\n",
+        ),
+        ("references.bib", "@article{a,title={A}}\n"),
+    ]);
+    let detection = detect(&kept);
+    auto(&detection, "paper.qmd", DetectionSource::Scan);
+    let rendered = candidate(&detection, "paper.tex");
+    assert_eq!(rendered.tier, Tier::W);
+    assert!(rendered.reasons.contains(&Reason::NotebookOutput));
+    assert!(!rendered.reasons.contains(&Reason::NoBeginDocument));
+
+    let root = tree(&[("main.qmd", "# Paper\n"), ("main.tex", ARTICLE)]);
+    auto(&detect(&root), "main.qmd", DetectionSource::RootMain);
+
+    let typst = tree(&[
+        ("Report.Rmd", "# Report\n"),
+        ("Report.typ", "= Report\nText.\n"),
+    ]);
+    auto(&detect(&typst), "Report.Rmd", DetectionSource::Scan);
+
+    let own = tree(&[("paper.tex", ARTICLE), ("notes/paper.qmd", "# Notes\n")]);
+    auto(&detect(&own), "paper.tex", DetectionSource::Scan);
+}
+
+#[test]
+fn a_quarto_project_opens_the_document_its_config_names() {
+    let book = tree(&[
+        (
+            "_quarto.yml",
+            "project:\n  type: book\nbook:\n  chapters:\n    - index.qmd\n    - chapters/methods.qmd\n",
+        ),
+        ("index.qmd", "# Preface\n"),
+        ("chapters/methods.qmd", "# Methods\n"),
+        ("notes.md", "# Meeting notes\n"),
+        ("_book/Field-notes.tex", ARTICLE),
+        ("_site/index.qmd", "# Copied\n"),
+        (
+            "_extensions/quarto-journals/elsevier/template.tex",
+            "\\documentclass[$classoption$]{$documentclass$}\n\\begin{document}\n$body$\n\\end{document}\n",
+        ),
+        ("_freeze/index/figure.tex", ARTICLE),
+    ]);
+    let detection = detect(&book);
+    auto(&detection, "index.qmd", DetectionSource::QuartoProject);
+    assert_eq!(
+        paths(&detection),
+        ["index.qmd", "chapters/methods.qmd", "notes.md"]
+    );
+
+    let manuscript = tree(&[
+        (
+            "_quarto.yaml",
+            "project:\n  type: manuscript\n  output-dir: ./rendered/\nmanuscript:\n  article: paper.qmd\n",
+        ),
+        ("paper.qmd", "# Paper\n"),
+        ("response-letter.tex", ARTICLE),
+        ("rendered/paper.tex", ARTICLE),
+    ]);
+    let detection = detect(&manuscript);
+    auto(&detection, "paper.qmd", DetectionSource::QuartoProject);
+    assert_eq!(paths(&detection), ["response-letter.tex", "paper.qmd"]);
+
+    let missing = tree(&[
+        ("_quarto.yml", "project:\n  type: manuscript\n"),
+        ("analysis.qmd", "# Analysis\n"),
+    ]);
+    auto(&detect(&missing), "analysis.qmd", DetectionSource::Scan);
+}
+
+#[test]
+fn quarto_folders_are_skipped_only_where_quarto_owns_them() {
+    let latex = tree(&[
+        ("_manuscript/main.tex", ARTICLE),
+        ("_book/notes.md", "# Notes\n"),
+    ]);
+    let detection = detect(&latex);
+    auto(&detection, "_manuscript/main.tex", DetectionSource::Scan);
+
+    let nested = tree(&[
+        ("paper/_quarto.yml", "project:\n  type: book\n"),
+        ("paper/index.qmd", "# Paper\n"),
+        ("paper/_book/paper.tex", ARTICLE),
+        ("_extensions/journal/template.tex", ARTICLE),
+    ]);
+    assert_eq!(paths(&detect(&nested)), ["paper/index.qmd"]);
+}
+
+#[test]
+fn a_hand_written_paper_that_includes_files_is_not_taken_for_notebook_output() {
+    let thesis = tree(&[
+        (
+            "thesis.tex",
+            "\\documentclass{report}\n\\begin{document}\n\\input{chapters/one}\n\\end{document}\n",
+        ),
+        ("chapters/one.tex", "\\chapter{One}\n"),
+        ("thesis.Rmd", "# Analysis\n"),
+    ]);
+    let detection = detect(&thesis);
+    let written = candidate(&detection, "thesis.tex");
+    assert_eq!(written.tier, Tier::S);
+    assert!(!written.reasons.contains(&Reason::NotebookOutput));
+}
+
+#[test]
+fn the_document_list_keeps_every_candidate_when_several_files_declare_a_main() {
+    let declared = tree(&[
+        ("latexmkrc", "@default_files = ('paper.tex');\n"),
+        ("_quarto.yml", "project:\n  type: default\n"),
+        ("paper.tex", ARTICLE),
+        ("index.qmd", "# Site\n"),
+        ("notes.md", "# Notes\n"),
+        ("slides.typ", "= Slides\nText.\n"),
+    ]);
+    assert_eq!(detect(&declared).candidates.len(), 2);
+
+    let listed = rank_main_documents(declared.path(), &DetectOptions::default()).unwrap();
+    let mut found = paths(&listed);
+    found.sort_unstable();
+    assert_eq!(found, ["index.qmd", "notes.md", "paper.tex", "slides.typ"]);
+}
+
+#[test]
+fn a_latex_paper_beside_a_top_level_notebook_or_typst_document_asks() {
+    let notebook = tree(&[("paper.qmd", "# Paper\n"), ("response-letter.tex", ARTICLE)]);
+    let detection = detect(&notebook);
+    assert_eq!(detection.decision, Decision::Ask);
+    assert_eq!(paths(&detection), ["response-letter.tex", "paper.qmd"]);
+
+    let typst = tree(&[
+        ("paper.typ", "= Paper\nText.\n"),
+        ("draft/old.tex", ARTICLE),
+    ]);
+    assert_eq!(detect(&typst).decision, Decision::Ask);
+
+    let nested = tree(&[("paper.tex", ARTICLE), ("slides/talk.qmd", "# Talk\n")]);
+    auto(&detect(&nested), "paper.tex", DetectionSource::Scan);
+
+    let notes = tree(&[("paper.tex", ARTICLE), ("notes.md", "# Notes\n")]);
+    auto(&detect(&notes), "paper.tex", DetectionSource::Scan);
+
+    let analysis = tree(&[("paper.tex", ARTICLE), ("analysis.Rmd", "# Analysis\n")]);
+    auto(&detect(&analysis), "paper.tex", DetectionSource::Scan);
 }
 
 #[test]

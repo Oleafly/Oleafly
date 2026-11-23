@@ -10,6 +10,7 @@ import { suggestedProviderId } from "@/lib/ai-providers";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import { SavedInstructionsSection } from "./SavedInstructionsSection";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
@@ -93,6 +94,8 @@ export function InstructionsTab({
           )}
         </div>
       </div>
+
+      <SavedInstructionsSection cfg={cfg} configLoaded={configLoaded} persist={persist} />
 
       <div className="space-y-2 border-t pt-4">
         <p className="font-medium">{t(($) => $.settings.ai.instructions.capabilitiesTitle)}</p>

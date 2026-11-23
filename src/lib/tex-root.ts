@@ -1,5 +1,6 @@
 import { useShallow } from "zustand/react/shallow";
-import { mainDocumentMissing, treeHasFile } from "@/lib/main-document";
+import type { SourceFamily } from "@/lib/folder-detection";
+import { documentFamily, isRepositoryNote, mainDocumentMissing, treeHasFile } from "@/lib/main-document";
 import { isLibraryProject } from "@/lib/project-location";
 import { resolveProjectPath } from "@/lib/project-intelligence/source";
 import type { LatexUnits } from "@/lib/project-intelligence/types";
@@ -9,7 +10,7 @@ import { useFilesStore } from "@/store/files";
 
 export type BrokenTexRootReason = "missing" | "not_tex";
 
-export type TexRootReason = "magic" | "document" | "include";
+type TexRootReason = "magic" | "document" | "include";
 
 export interface EffectiveMainDoc {
   mainDoc: string;
@@ -157,7 +158,74 @@ export function resolveEffectiveMainDoc(): EffectiveMainDoc {
   };
 }
 
-export function effectiveMainDocMissing(root: EffectiveMainDoc = resolveEffectiveMainDoc()): boolean {
+export interface CompileTarget extends Omit<EffectiveMainDoc, "reason"> {
+  reason: TexRootReason | "format" | null;
+  format: SourceFamily | null;
+}
+
+const QUARTO_FOLDERS = /(?:^|\/)(?:_extensions|_freeze|_book|_site|_manuscript)\//;
+const PANDOC_TEMPLATE = /\$(?:body|if\(|for\()/;
+
+let lastFormatRoot: { readonly projectId: string; readonly root: string } | null = null;
+
+function sameFormat(family: SourceFamily | null, stored: SourceFamily | null): boolean {
+  return family === stored || (stored === "quarto" && family === "markdown");
+}
+
+function formatOf(target: string, stored: string): SourceFamily | null {
+  const family = documentFamily(target);
+  return sameFormat(family, documentFamily(stored)) ? null : family;
+}
+
+function partOfAnotherDocument(projectId: string, path: string): boolean {
+  const parts = useCompileRootStore.getState().parts;
+  return parts?.projectId === projectId && parts.files.has(path);
+}
+
+function keptLatexRoot(projectId: string, path: string): string | null {
+  const kept = lastFormatRoot;
+  const known = useCompileRootStore.getState().latexUnits;
+  if (kept?.projectId !== projectId || known?.projectId !== projectId) return null;
+  if (documentFamily(kept.root) !== "latex") return null;
+  return rootsReaching(known.units, path).includes(kept.root) ? kept.root : null;
+}
+
+function formatRoot(files: FilesState, projectId: string, path: string, stored: string): string | null {
+  const format = formatOf(path, stored);
+  if (format === null || QUARTO_FOLDERS.test(path)) return null;
+  if (!treeHasFile(files.tree, path) || isRepositoryNote(path)) return null;
+  const text = files.files[path]?.content;
+  const template = (format === "latex" || format === "typst") && text !== undefined && PANDOC_TEMPLATE.test(text);
+  if (format !== "latex") return template || partOfAnotherDocument(projectId, path) ? null : path;
+  if (text === undefined || template || parseTexMagicComments(text).root !== null) return null;
+  return isCompleteDocument(text) ? path : keptLatexRoot(projectId, path);
+}
+
+function keptFormatRoot(files: FilesState, projectId: string): string | null {
+  const kept = lastFormatRoot;
+  if (kept?.projectId !== projectId || !files.openTabs.includes(kept.root)) return null;
+  return treeHasFile(files.tree, kept.root) ? kept.root : null;
+}
+
+export function resolveCompileTarget(): CompileTarget {
+  const effective = resolveEffectiveMainDoc();
+  const files = useFilesStore.getState();
+  const { projectId, activePath } = files;
+  const stored = files.mainDoc || "main.tex";
+  if (!projectId || !useCompileRootStore.getState().followOpenFile) {
+    lastFormatRoot = null;
+    return { ...effective, format: projectId ? formatOf(effective.mainDoc, stored) : null };
+  }
+  const root =
+    activePath && documentFamily(activePath) !== null
+      ? formatRoot(files, projectId, activePath, stored)
+      : keptFormatRoot(files, projectId);
+  lastFormatRoot = root === null ? null : { projectId, root };
+  if (root === null) return { ...effective, format: formatOf(effective.mainDoc, stored) };
+  return { mainDoc: root, overriddenBy: root, reason: "format", brokenRoot: null, format: formatOf(root, stored) };
+}
+
+export function effectiveMainDocMissing(root: Pick<EffectiveMainDoc, "mainDoc"> = resolveEffectiveMainDoc()): boolean {
   const { projectId, manifestHome, tree } = useFilesStore.getState();
   return mainDocumentMissing({ projectId, manifestHome, tree, mainDoc: root.mainDoc });
 }
@@ -166,4 +234,11 @@ export function useEffectiveMainDoc<T>(pick: (root: EffectiveMainDoc) => T): T {
   useCompileRootStore((state) => state.followOpenFile);
   useCompileRootStore((state) => state.latexUnits);
   return useFilesStore(useShallow(() => pick(resolveEffectiveMainDoc())));
+}
+
+export function useCompileTarget<T>(pick: (target: CompileTarget) => T): T {
+  useCompileRootStore((state) => state.followOpenFile);
+  useCompileRootStore((state) => state.latexUnits);
+  useCompileRootStore((state) => state.parts);
+  return useFilesStore(useShallow(() => pick(resolveCompileTarget())));
 }

@@ -3,12 +3,17 @@ import { useTranslation } from "react-i18next";
 import { ShieldAlert } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { basename } from "@/lib/path-utils";
+import { useCompileTarget } from "@/lib/tex-root";
 import { isNotebookEngine } from "@/lib/notebook-engines";
 import type { CompileError } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
+import { notifyError } from "@/lib/toast";
+import { chooseMainDocument } from "@/store/main-document";
 
 type CodeExecutionNeed = "needed" | "skipped" | "storedResults";
 
@@ -38,15 +43,29 @@ export function CodeExecutionBanner() {
     (state) => isNotebookEngine(state.engine) && !state.engine.allow_shell_escape,
   );
   const need = useCompileStore((state) => codeExecutionNeed(state.errors));
+  const target = useCompileTarget((root) => (root.format === null ? null : root.mainDoc));
+  const compiled = useCompileStore((state) => state.lastAttemptIdentity?.mainDocument ?? null);
+  const followed = target !== null && target === compiled ? target : null;
   const restricted = useFolderAccessStore((state) => folderIsRestricted(state, projectId));
+  const viewer = useCollabSettingsLocked(projectId);
   const [saving, setSaving] = useState(false);
-  if (!projectId || !blocked || !need || restricted) return null;
+  if (!projectId || !need || restricted) return null;
+  if (followed === null ? !blocked : viewer) return null;
   const allow = async () => {
     setSaving(true);
-    await applyShellEscape(true, { recompile: true });
-    setSaving(false);
+    try {
+      if (followed === null) await applyShellEscape(true, { recompile: true });
+      else await chooseMainDocument(followed, { compile: true });
+    } catch (error) {
+      notifyError("choose the main document", error);
+    } finally {
+      setSaving(false);
+    }
   };
   const message = () => {
+    if (followed !== null) {
+      return t(($) => $.shell.codeExecution.followed, { name: basename(followed) });
+    }
     if (need === "needed") return t(($) => $.shell.codeExecution.needed);
     if (need === "skipped") return t(($) => $.shell.codeExecution.skipped);
     return t(($) => $.shell.codeExecution.storedResults);
@@ -62,7 +81,9 @@ export function CodeExecutionBanner() {
         onClick={() => void allow()}
       >
         {saving ? <Spinner size="xs" /> : null}
-        {t(($) => $.shell.codeExecution.allow)}
+        {followed === null
+          ? t(($) => $.shell.codeExecution.allow)
+          : t(($) => $.shell.openedFolder.picker.use)}
       </WorkspaceBannerButton>
     </WorkspaceBanner>
   );

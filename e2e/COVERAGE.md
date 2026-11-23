@@ -230,6 +230,7 @@ paths it expects to change. Trust prompts are answered through
 | ATS project-section aliases | a real compiled `GitHub Projects` heading is detected in reader text, store report, and accessible UI status; canonical matcher unit coverage includes singular/plural, 19 prefixes, Unicode/PDF run normalization, punctuation, and prose false positives | 13, `resume-sections.test.ts` |
 | Reader view, prep-export apply, tagged compile | | — / 🔑 [engine] |
 | AI keyless onboarding (connect buttons -> settings AI) | 20 |
+| Saved AI instructions | a saved instruction picked under Ask AI reaches the mock model with the Custom instructions and counts one use; an instruction typed in the inline AI box is saved, picked and sent on its own | 150 |
 | AI provider connect (settings UI), real conversation, real tool call | `E2E_AI_TOKEN` | 28 🔑 |
 | AI model selection (GLM-4.6) persists in settings | `E2E_AI_TOKEN` | 28 🔑 |
 | AI figure generation (figure mode -> preview_figure -> approve -> insert_figure lands TikZ) | `E2E_AI_TOKEN` | 31 🔑 |

@@ -67,7 +67,7 @@ import {
 import { useGitStatusStore } from "@/store/git-status";
 import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
 import { basename } from "@/lib/path-utils";
-import { ALL_MAIN_EXTENSIONS, isLinkedHome, mainDocumentMissing } from "@/lib/main-document";
+import { ALL_MAIN_EXTENSIONS, mainDocumentMissing } from "@/lib/main-document";
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
@@ -346,14 +346,10 @@ export function FileTree({
   const openedInPlace = useFilesStore((s) => s.manifestHome !== "library");
   const setMainDoc = useFilesStore((s) => s.setMainDoc);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const noMainDocument = useFilesStore(mainDocumentMissing);
-  const linkedFolder = useFilesStore((s) => isLinkedHome(s.manifestHome));
   const sharedViewer = useCollabSettingsLocked(projectId);
-  let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
-  if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
-  if (sharedViewer) mainExtensions = EMPTY_EXTENSIONS;
+  const mainExtensions = engineLoaded && !sharedViewer ? ALL_MAIN_EXTENSIONS : EMPTY_EXTENSIONS;
 
   const loading = useFilesStore((s) => s.loading);
   const [peerMarks, setPeerMarks] = useState<PeerMarks>(NO_PEERS);

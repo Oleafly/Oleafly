@@ -101,11 +101,13 @@ function CandidateRow({
 }
 
 export function MainDocumentPicker() {
-  const { t } = useTranslation(["shell"]);
+  const { t } = useTranslation(["shell", "common"]);
   const projectId = useFilesStore((state) => state.projectId);
   const projectLoading = useFilesStore((state) => state.loading);
   const opened = useOpenFolderStore((state) => state.opened);
+  const changing = useOpenFolderStore((state) => state.changing);
   const dismiss = useOpenFolderStore((state) => state.dismiss);
+  const mainDoc = useFilesStore((state) => state.mainDoc);
   const asking =
     opened?.detection.decision === "ask" && opened.project_id === projectId && !projectLoading;
   const detection = asking ? opened?.detection : undefined;
@@ -153,10 +155,14 @@ export function MainDocumentPicker() {
 
   const open = async (path: string | null) => {
     if (!path || busy || !asking || !projectId) return;
+    if (changing && path === mainDoc) {
+      dismiss();
+      return;
+    }
     const startedIn = projectId;
     setPendingIn(startedIn);
     try {
-      const chosen = await chooseMainDocument(path);
+      const chosen = await chooseMainDocument(path, { compile: changing });
       if (chosen && useOpenFolderStore.getState().opened?.project_id === startedIn) dismiss();
     } catch (error) {
       if (useFilesStore.getState().projectId !== startedIn) {
@@ -193,8 +199,16 @@ export function MainDocumentPicker() {
     focusChoice(next);
   };
 
-  const badgeFor = (candidate: DetectionCandidate): string | null =>
-    candidate.path === preferred ? t(($) => $.shell.openedFolder.picker.bestMatch) : null;
+  const badgeFor = (candidate: DetectionCandidate): string | null => {
+    if (changing) return candidate.path === mainDoc ? t(($) => $.shell.openedFolder.picker.current) : null;
+    return candidate.path === preferred ? t(($) => $.shell.openedFolder.picker.bestMatch) : null;
+  };
+  const description = (): string => {
+    if (changing) return t(($) => $.shell.openedFolder.picker.changeDescription);
+    return candidates.length === 1
+      ? t(($) => $.shell.openedFolder.picker.askDescriptionOne)
+      : t(($) => $.shell.openedFolder.picker.askDescription);
+  };
 
   const renderBody = () => {
     if (candidates.length === 0) {
@@ -262,11 +276,7 @@ export function MainDocumentPicker() {
       >
         <DialogHeader className="pr-6">
           <DialogTitle className="text-sm">{t(($) => $.shell.openedFolder.picker.askTitle)}</DialogTitle>
-          <DialogDescription className="text-xs leading-relaxed">
-            {candidates.length === 1
-              ? t(($) => $.shell.openedFolder.picker.askDescriptionOne)
-              : t(($) => $.shell.openedFolder.picker.askDescription)}
-          </DialogDescription>
+          <DialogDescription className="text-xs leading-relaxed">{description()}</DialogDescription>
         </DialogHeader>
         {renderBody()}
         {detection?.truncated ? (
@@ -276,7 +286,7 @@ export function MainDocumentPicker() {
         ) : null}
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={close} disabled={busy}>
-            {t(($) => $.shell.openedFolder.picker.browse)}
+            {changing ? t(($) => $.common.actions.cancel) : t(($) => $.shell.openedFolder.picker.browse)}
           </Button>
           <Button
             size="sm"
@@ -284,7 +294,7 @@ export function MainDocumentPicker() {
             disabled={busy || selected === null || selectedIndex < 0}
           >
             {busy ? <Spinner size="sm" /> : null}
-            {t(($) => $.shell.openedFolder.picker.open)}
+            {changing ? t(($) => $.shell.openedFolder.picker.use) : t(($) => $.shell.openedFolder.picker.open)}
           </Button>
         </DialogFooter>
       </DialogContent>

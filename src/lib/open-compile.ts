@@ -39,6 +39,7 @@ export interface OpenCompileRequest {
 export interface OpenCompileObservation {
   projectId: string | null;
   mainDocument: string;
+  compileTarget: string;
   loading: boolean;
   analysisProjectId: string | null;
   analysisProjectRevision: number;
@@ -69,7 +70,8 @@ export function settleOpenCompile(
   const attempt =
     sameOpen &&
     observed.attempt?.projectId === request.projectId &&
-    observed.attempt.mainDocument === request.mainDocument
+    (observed.attempt.mainDocument === request.mainDocument ||
+      observed.attempt.mainDocument === observed.compileTarget)
       ? observed.attempt
       : null;
   const revisionHeld =

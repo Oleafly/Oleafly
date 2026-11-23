@@ -540,6 +540,14 @@
     "setUpProviderHint": "添加 API 密钥或本地 Ollama，或将命令行代理选为工具所用模型，即可使用内联 AI 编辑。",
     "openAiSettings": "打开设置 → AI。"
   },
+  "savedInstructions": {
+    "label": "已保存的指令",
+    "more_other": "还有 {{count}} 条",
+    "save": "保存指令",
+    "nameLabel": "为此指令命名",
+    "manage": "管理已保存的指令",
+    "saveFailed": "无法保存指令。"
+  },
   "proofreading": {
     "error": "无法完成此文档的校对。",
     "unavailable": "离线校对不可用。",

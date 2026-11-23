@@ -7,11 +7,18 @@ import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 const controller = vi.hoisted(() => ({ getEditorView: vi.fn<() => unknown>(() => null) }));
 const session = vi.hoisted(() => ({ openInlineEditWithInstruction: vi.fn(() => true) }));
 const handoff = vi.hoisted(() => ({ handoffToAssistant: vi.fn() }));
+const providerConfig = vi.hoisted(() => ({ current: null as unknown }));
+const usage = vi.hoisted(() => ({ recordSavedInstructionUse: vi.fn(async (_ids: readonly string[]) => {}) }));
 
 vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("@/components/editor/cm/inline-ai/openSession", () => session);
 vi.mock("@/features/assistant-handoff", () => handoff);
+vi.mock("@/features/saved-instructions", () => usage);
+vi.mock("@/hooks/use-provider-config", () => ({
+  useProviderConfig: () => ({ config: providerConfig.current, failed: false }),
+}));
 
+import { useInlineEditStore } from "@/store/inlineEdit";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 
 const actions = en.selectionActions;
@@ -63,6 +70,8 @@ describe("SelectionActionMenu", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    providerConfig.current = null;
+    useInlineEditStore.setState({ picked: [] });
     controller.getEditorView.mockReturnValue(editorView());
     session.openInlineEditWithInstruction.mockReturnValue(true);
   });
@@ -248,5 +257,64 @@ describe("SelectionActionMenu", () => {
     fireEvent.click(screen.getByText(actions.askAi));
     expect(requestField()).toHaveValue("");
     expect(session.openInlineEditWithInstruction).not.toHaveBeenCalled();
+  });
+
+  describe("saved instructions", () => {
+    const saved = en.savedInstructions;
+    const keep = { id: "keep", name: "Keep formatting", text: "Keep the formatting." };
+    const quotes = { id: "quotes", name: "Quotes", text: "Don't change quoted text." };
+
+    beforeEach(() => {
+      providerConfig.current = {
+        ai_saved_instructions: [keep, quotes],
+        ai_saved_instruction_uses: { quotes: 3 },
+      };
+    });
+
+    it("shows nothing extra when none are saved", () => {
+      providerConfig.current = null;
+      openMenu();
+      expect(screen.queryByRole("group", { name: saved.label })).not.toBeInTheDocument();
+    });
+
+    it("lists them most used first and toggles one without closing the menu", () => {
+      openMenu();
+      const group = screen.getByRole("group", { name: saved.label });
+      const names = [...group.querySelectorAll("button")].map((button) => button.textContent);
+      expect(names).toEqual(["Quotes", "Keep formatting"]);
+
+      const chip = screen.getByRole("button", { name: "Keep formatting" });
+      expect(fireEvent.mouseDown(chip)).toBe(false);
+      fireEvent.click(chip);
+
+      expect(useInlineEditStore.getState().picked).toEqual(["keep"]);
+      expect(screen.getByRole("button", { name: "Keep formatting" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByText(actions.paraphrase)).toBeInTheDocument();
+      expect(session.openInlineEditWithInstruction).not.toHaveBeenCalled();
+    });
+
+    it("runs the picked instructions alone from the submit button", () => {
+      useInlineEditStore.setState({ picked: ["keep"] });
+      openMenu();
+      const submit = screen.getByRole("button", { name: en.inlineAi.submit });
+      expect(submit).toBeEnabled();
+      fireEvent.click(submit);
+      expect(session.openInlineEditWithInstruction).toHaveBeenCalledWith(controller.getEditorView(), "");
+      expect(usage.recordSavedInstructionUse).not.toHaveBeenCalled();
+    });
+
+    it("hands the picked instructions to the assistant and counts them there", () => {
+      session.openInlineEditWithInstruction.mockReturnValue(false);
+      useInlineEditStore.setState({ picked: ["quotes", "keep"] });
+      openMenu();
+
+      fireEvent.click(screen.getByText(actions.improveWriting));
+
+      const [prompt] = handoff.handoffToAssistant.mock.calls[0];
+      expect(prompt).toBe(
+        "Instruction: Improve the clarity, tone, and flow of the following text\n\nAlso follow these instructions:\n- Keep the formatting.\n- Don't change quoted text.\n\nText:\n\nselected",
+      );
+      expect(usage.recordSavedInstructionUse).toHaveBeenCalledWith(["keep", "quotes"]);
+    });
   });
 });

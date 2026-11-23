@@ -95,6 +95,7 @@ function pickConfig(config: AppConfig): ConfigPreferences {
     ai_pdf_capture: config.ai_pdf_capture !== false,
     ai_reasoning_summaries: config.ai_reasoning_summaries === true,
     ai_personas: config.ai_personas ?? [],
+    ai_saved_instructions: config.ai_saved_instructions ?? [],
     checkpoints_enabled: config.checkpoints_enabled !== false,
     checkpoint_notifications: config.checkpoint_notifications !== false,
     research_keep_awake: config.research_keep_awake !== false,

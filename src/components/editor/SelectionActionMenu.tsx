@@ -9,8 +9,15 @@ import { MenuRow } from "@/components/ui/menu-row";
 import { placeAboveSelection, useMeasuredBox } from "@/components/ui/selection-placement";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
+import { SavedInstructionChips } from "@/components/editor/cm/inline-ai/SavedInstructionChips";
 import { handoffToAssistant } from "@/features/assistant-handoff";
+import { useProviderConfig } from "@/hooks/use-provider-config";
 import { i18n } from "@/i18n";
+import { instructionBlock } from "@/lib/ai-inline";
+import { recordSavedInstructionUse } from "@/features/saved-instructions";
+import { pickedInstructions, rankSavedInstructions } from "@/lib/saved-instructions";
+import { logError } from "@/lib/log";
+import { useInlineEditStore } from "@/store/inlineEdit";
 
 interface Action {
   id: string;
@@ -83,6 +90,11 @@ function sameRect(a: Rect, b: Rect): boolean {
   return a.top === b.top && a.bottom === b.bottom && a.left === b.left && a.right === b.right;
 }
 
+function selectionPrompt(request: string, standing: readonly string[], text: string): string {
+  if (standing.length === 0) return `${request}:\n\n${text}`;
+  return `${instructionBlock(request, standing)}\n\nText:\n\n${text}`;
+}
+
 function CommentPill({ onDone }: Readonly<{ onDone: () => void }>) {
   const { t } = useTranslation(["collab"]);
   return (
@@ -112,6 +124,10 @@ export function SelectionActionMenu() {
   const [readOnly, setReadOnly] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [containerRef, box] = useMeasuredBox<HTMLDivElement>();
+  const { config } = useProviderConfig();
+  const picked = useInlineEditStore((state) => state.picked);
+  const saved = rankSavedInstructions(config);
+  const chosen = pickedInstructions(config, picked);
   const instructionRef = useRef<HTMLInputElement>(null);
   const canCommentRef = useRef(canComment);
   canCommentRef.current = canComment;
@@ -197,7 +213,7 @@ export function SelectionActionMenu() {
   };
 
   const runInstruction = (request: string) => {
-    const prompt = `${request}:\n\n${text}`;
+    const prompt = selectionPrompt(request, chosen.map((entry) => entry.text), text);
     const view = getEditorView();
     if (view?.state.readOnly) {
       close();
@@ -206,6 +222,11 @@ export function SelectionActionMenu() {
     const inline = view ? openInlineEditWithInstruction(view, request) : false;
     if (!inline) {
       handoffToAssistant(prompt, { autoSend: true });
+      if (chosen.length > 0) {
+        recordSavedInstructionUse(chosen.map((entry) => entry.id)).catch((error: unknown) => {
+          void logError("ai", error);
+        });
+      }
     }
     window.dispatchEvent(
       new CustomEvent("oleafly:ai-selection-action", {
@@ -215,9 +236,9 @@ export function SelectionActionMenu() {
     close();
   };
 
+  const ready = instruction.trim() !== "" || chosen.length > 0;
   const runTypedInstruction = () => {
-    const typed = instruction.trim();
-    if (typed) runInstruction(typed);
+    if (ready) runInstruction(instruction.trim());
   };
 
   return (
@@ -249,13 +270,23 @@ export function SelectionActionMenu() {
               type="button"
               onClick={runTypedInstruction}
               onMouseDown={keepFocus}
-              disabled={!instruction.trim()}
+              disabled={!ready}
               aria-label={t(($) => $.editor.inlineAi.submit)}
               className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
             >
               <ArrowUp className="size-3.5" />
             </button>
           </div>
+          {saved.length > 0 ? (
+            <div className="mb-1 border-b px-1 pb-2">
+              <SavedInstructionChips
+                instructions={saved}
+                picked={chosen.map((entry) => entry.id)}
+                onToggle={(id) => useInlineEditStore.getState().togglePicked(id)}
+                onMouseDown={keepFocus}
+              />
+            </div>
+          ) : null}
           {ACTIONS.map((action) => (
             <MenuRow
               key={action.id}

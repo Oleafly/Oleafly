@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiAgentsTarget, aiSettingsDestination } from "./ai-settings-navigation";
+import { aiAgentsTarget, aiSettingsDestination, SAVED_INSTRUCTIONS_TARGET } from "./ai-settings-navigation";
 
 describe("AI settings navigation", () => {
   it("routes approval links to the project rules on the Providers tab", () => {
@@ -12,6 +12,13 @@ describe("AI settings navigation", () => {
   it("keeps the existing persona deep link and ignores unrelated targets", () => {
     expect(aiSettingsDestination("ai-personas")).toEqual({ tab: "personas" });
     expect(aiSettingsDestination("editor-fonts")).toBeNull();
+  });
+
+  it("opens the Instructions tab at the saved instructions", () => {
+    expect(aiSettingsDestination(SAVED_INSTRUCTIONS_TARGET)).toEqual({
+      tab: "instructions",
+      elementId: "ai-saved-instructions",
+    });
   });
 
   it("routes skill recording links to the Skills preview", () => {

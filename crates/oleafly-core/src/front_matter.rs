@@ -1,3 +1,7 @@
+use regex::Regex;
+use std::collections::HashSet;
+use std::sync::LazyLock;
+
 pub struct FrontMatter<'a> {
     lines: Vec<&'a str>,
     body: &'a str,
@@ -29,6 +33,22 @@ fn bare(line: &str) -> &str {
 fn is_fence(line: &str, closing: bool) -> bool {
     let line = line.trim_end_matches([' ', '\t']);
     line == "---" || (closing && line == "...")
+}
+
+static ANCHOR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"&([A-Za-z0-9_-]+)").unwrap());
+static ALIAS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*([A-Za-z0-9_-]+)").unwrap());
+
+pub fn yaml_uses_aliases(text: &str) -> bool {
+    let anchors: HashSet<&str> = ANCHOR
+        .captures_iter(text)
+        .filter_map(|found| found.get(1))
+        .map(|name| name.as_str())
+        .collect();
+    !anchors.is_empty()
+        && ALIAS
+            .captures_iter(text)
+            .filter_map(|found| found.get(1))
+            .any(|name| anchors.contains(name.as_str()))
 }
 
 pub fn split(text: &str) -> Option<FrontMatter<'_>> {
@@ -150,7 +170,33 @@ pub fn scalar(lines: &[&str], key: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{key_of, quoted_scalar, scalar, scalar_value, split, value_of};
+    use super::{key_of, quoted_scalar, scalar, scalar_value, split, value_of, yaml_uses_aliases};
+
+    #[test]
+    fn yaml_that_reuses_an_anchor_is_found_in_every_form() {
+        for text in [
+            "a: &a [1, 2]\nb: *a\n",
+            "{\"k\":&a [1], \"j\":*a}\n",
+            "a: !!seq &a [x]\nb: [*a, *a]\n",
+            "? &a key\n: value\n? *a\n: other\n",
+            "base: &base\n  x: 1\nderived:\n  <<: *base\n",
+        ] {
+            assert!(yaml_uses_aliases(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn ordinary_yaml_with_stars_and_ampersands_is_not_taken_for_aliases() {
+        for text in [
+            "title: \"Drought response: *Arabidopsis* roots\"\n",
+            "page-footer: \"Jane Doe, &copy; 2024\"\n",
+            "subtitle: \"Part 1 - *Introduction*\"\n",
+            "abstract: |\n  *Important* results\n",
+            "# - &todo\nrender:\n  - \"*.qmd\"\n",
+        ] {
+            assert!(!yaml_uses_aliases(text), "{text}");
+        }
+    }
 
     fn read(text: &str, key: &str) -> Option<String> {
         split(text)?.scalar(key)

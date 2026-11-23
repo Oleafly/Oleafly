@@ -4,7 +4,7 @@ import {
   beginCompileRequestIdentity,
   captureCompileSourceSnapshot,
   compileSaveFailureReason,
-  isCompileOutputStillWanted,
+  isCompileGenerationCurrent,
   offerPackagesForTaggedCompile,
   reportCompileSaveFailure,
   saveAllForCompile,
@@ -27,7 +27,8 @@ import {
   notifyCompileSucceeded,
 } from "@/lib/cross-window";
 import { refreshPreviewWindow } from "@/lib/preview-window";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { documentFamily } from "@/lib/main-document";
+import { resolveCompileTarget, resolveEffectiveMainDoc } from "@/lib/tex-root";
 
 type TaggedCompileResult = Awaited<ReturnType<typeof compileTagged>>;
 type TaggedCompileIdentity = ReturnType<typeof beginCompileRequestIdentity>;
@@ -176,12 +177,21 @@ function taggedFailureMessage(e: unknown): string {
   return decodeAppError(e) ? describeError(e) : String(e);
 }
 
+function taggedRoot(): string {
+  const target = resolveCompileTarget().mainDoc;
+  return documentFamily(target) === "latex" ? target : resolveEffectiveMainDoc().mainDoc;
+}
+
+function taggedStillWanted(identity: TaggedCompileIdentity): boolean {
+  return isCompileGenerationCurrent(identity) && taggedRoot() === identity.mainDocument;
+}
+
 function markTaggedCompileFailed(
   requestIdentity: TaggedCompileIdentity,
   e: unknown,
   reason = i18n.t(($) => $.core.compile.taggedFailed, { message: taggedFailureMessage(e) }),
 ): boolean {
-  if (!isCompileOutputStillWanted(requestIdentity)) return false;
+  if (!taggedStillWanted(requestIdentity)) return false;
   useCompileStore.setState({
     status: "error",
     phase: "idle",
@@ -220,7 +230,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
   const files = useFilesStore.getState();
   const capturedProjectId = files.projectId;
   const projectId = files.projectId ?? "default";
-  const main = resolveEffectiveMainDoc().mainDoc;
+  const main = taggedRoot();
   const requestIdentity = beginCompileRequestIdentity(projectId, main);
   const checkpointAtStart =
     useCompileStore.getState().lastCompileCheckpoint;
@@ -228,8 +238,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
     const currentFiles = useFilesStore.getState();
     return (
       currentFiles.projectId === capturedProjectId &&
-      resolveEffectiveMainDoc().mainDoc === main &&
-      isCompileOutputStillWanted(requestIdentity)
+      taggedStillWanted(requestIdentity)
     );
   };
   const canContinueAfterBackendResult = (

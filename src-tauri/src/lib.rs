@@ -173,6 +173,7 @@ mod webview_frame;
 mod webview_user_agent;
 mod window_commands;
 mod window_frame;
+mod window_placement;
 mod worktree_lock;
 mod zotero;
 
@@ -206,6 +207,9 @@ where
 fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     #[cfg(target_os = "macos")]
     webview_frame::on_window_event(window, event);
+    if window.label() == "main" {
+        window_placement::observe(window, event);
+    }
     if let tauri::WindowEvent::Destroyed = event {
         folder_watch::release_window(window.label());
         if window.label() == "main" {
@@ -312,7 +316,7 @@ fn prepare_main_window(app: &mut tauri::App) {
             let _ = window.set_decorations(false);
         }
         if !hidden {
-            let _ = window.maximize();
+            window_placement::apply(&window.as_ref().window());
         }
     }
     frost_window(&window);
@@ -1096,6 +1100,7 @@ pub fn run() {
             zotero::commands::zotero_project_links,
             zotero::commands::zotero_update_project_links,
             project::set_main_doc,
+            project::main_document_candidates,
             project::set_project_engine,
             typst_toolchain::typst_toolchain_status,
             typst_toolchain::install_typst_version,
@@ -1427,16 +1432,20 @@ pub fn run() {
         ]))
         .build(context)
         .expect("error while running Oleafly")
-        .run(|_app, event| {
+        .run(|app, event| {
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen {
                 has_visible_windows: false,
                 ..
             } = event
             {
-                single_instance::reveal_main_window(_app);
+                single_instance::reveal_main_window(app);
+            }
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                window_placement::settle(app);
             }
             if let tauri::RunEvent::Exit = event {
+                window_placement::flush();
                 collab::live::finish_for_quit(collab::live::QUIT_WAIT);
                 cua_driver::shutdown_for_quit(std::time::Duration::from_millis(1500));
                 quit_gate::on_app_exit();

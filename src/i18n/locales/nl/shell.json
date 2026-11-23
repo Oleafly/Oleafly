@@ -509,11 +509,13 @@
     "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren",
     "texRootDocument": "root: {{path}} (heeft een eigen \\documentclass)",
     "texRootInclude": "root: {{path}} (neemt {{file}} op)",
+    "texRootFormat": "root: {{path}} (een {{format}}-document, gebouwd met een eigen engine)",
     "target": {
       "title": "Compileerdoel",
-      "help": "Met Het geopende bestand volgen wordt een bestand met een eigen \\documentclass op zichzelf gecompileerd. Een hoofdstuk of sectie compileert het document dat het opneemt. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking gaat altijd voor.",
+      "help": "Met Het geopende bestand volgen wordt een bestand met een eigen \\documentclass op zichzelf gecompileerd. Een hoofdstuk of sectie compileert het document dat het opneemt. Een Markdown-, Typst- of Quarto-document wordt op zichzelf gecompileerd met een eigen engine als het project een ander formaat heeft. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking gaat altijd voor.",
       "open": "Het geopende bestand volgen",
-      "main": "Altijd het hoofddocument"
+      "main": "Altijd het hoofddocument",
+      "change": "Hoofddocument wijzigen…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Code toestaan in dit project",
+    "followed": "{{name}} moet code uitvoeren, en code draait alleen voor het hoofddocument. Maak {{name}} het hoofddocument en sta daarna code toe.",
     "needed": "Dit document moet zijn code uitvoeren om te bouwen, en code staat uit voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
     "skipped": "De code in dit document is niet uitgevoerd, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
     "storedResults": "De PDF toont coderesultaten die bij een eerdere run zijn opgeslagen, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt."
@@ -775,6 +778,9 @@
       "open": "Openen",
       "browse": "Alleen bestanden bekijken",
       "bestMatch": "Beste keuze",
+      "current": "Huidig",
+      "changeDescription": "Compileren bouwt het hoofddocument als het geopende bestand geen eigen document is en ook geen deel van een document. Kies een document in een ander formaat en het project schakelt over naar dat formaat.",
+      "use": "Als hoofddocument gebruiken",
       "empty": "Oleafly heeft hier geen documenten gevonden. Klik met de rechtermuisknop op een bestand in de bestandsboom en kies Instellen als hoofddocument.",
       "truncated": "Deze map is groot, dus Oleafly is eerder gestopt met zoeken. Sommige documenten staan misschien niet in de lijst.",
       "openFailed": "Kan {{path}} niet instellen als hoofddocument."
@@ -800,6 +806,7 @@
       "has_bibliography": "Heeft een bibliografie",
       "no_begin_document": "Geen \\begin{document}",
       "standalone_figure": "Losse figuur",
+      "notebook_output": "Door Quarto gemaakt uit een notebook",
       "placeholder": "Nog niet gedownload"
     },
     "noMain": "Nog geen hoofddocument. Kies een bestand en daarna Instellen als hoofddocument.",

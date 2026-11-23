@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  mainDocumentCandidates: vi.fn(),
   setMainDoc: vi.fn(),
   openFile: vi.fn(),
   recompile: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("@/store/files", () => ({
     }),
   },
 }));
+vi.mock("@/lib/tauri", () => ({ mainDocumentCandidates: mocks.mainDocumentCandidates }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: { getState: () => ({ revealEditor: mocks.revealEditor }) },
 }));
@@ -32,10 +34,13 @@ vi.mock("@/store/compile", () => ({
   },
 }));
 
-import { chooseMainDocument } from "./main-document";
+import type { DetectionCandidate, FolderDetection } from "@/lib/folder-detection";
+import { useOpenFolderStore } from "@/store/open-folder";
+import { changeMainDocument, chooseMainDocument } from "./main-document";
 
 beforeEach(() => {
-  for (const fn of [mocks.setMainDoc, mocks.openFile, mocks.recompile, mocks.revealEditor]) {
+  useOpenFolderStore.getState().dismiss();
+  for (const fn of [mocks.mainDocumentCandidates, mocks.setMainDoc, mocks.openFile, mocks.recompile, mocks.revealEditor]) {
     fn.mockReset();
   }
   mocks.files.projectId = "linked-a";
@@ -73,5 +78,67 @@ describe("choosing the main document", () => {
     await expect(chooseMainDocument("a/paper.tex")).rejects.toThrow("refused");
     expect(mocks.openFile).not.toHaveBeenCalled();
     expect(mocks.recompile).not.toHaveBeenCalled();
+  });
+});
+
+describe("choosing a main document and compiling it", () => {
+  it("compiles once when asked to, even when the folder had no main", async () => {
+    await chooseMainDocument("a/paper.tex", { compile: true });
+    expect(mocks.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
+
+    mocks.recompile.mockClear();
+    mocks.files.manifestHome = "library";
+    await chooseMainDocument("a/paper.tex", { compile: true });
+    expect(mocks.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
+  });
+});
+
+describe("changing the main document", () => {
+  const candidate = (path: string, family: DetectionCandidate["family"]): DetectionCandidate => ({
+    path,
+    family,
+    tier: "a",
+    kind: "document",
+    class: null,
+    title: null,
+    depth: 0,
+    reasons: [],
+  });
+  const ranked: FolderDetection = {
+    main: "paper.qmd",
+    decision: "auto",
+    source: "quarto_project",
+    candidates: [candidate("paper.qmd", "quarto"), candidate("main.tex", "latex")],
+    truncated: false,
+    compile_dir: null,
+  };
+
+  it("lists every document and starts on the current main", async () => {
+    mocks.mainDocumentCandidates.mockResolvedValue(ranked);
+    await changeMainDocument();
+    expect(mocks.mainDocumentCandidates).toHaveBeenCalledWith("linked-a");
+    const { opened, changing } = useOpenFolderStore.getState();
+    expect(changing).toBe(true);
+    expect(opened).toEqual({
+      project_id: "linked-a",
+      file: null,
+      detection: { ...ranked, decision: "ask", main: "main.tex" },
+    });
+  });
+
+  it("suggests the best match when the current main is not a document it found", async () => {
+    mocks.files.mainDoc = "gone.tex";
+    mocks.mainDocumentCandidates.mockResolvedValue(ranked);
+    await changeMainDocument();
+    expect(useOpenFolderStore.getState().opened?.detection.main).toBe("paper.qmd");
+  });
+
+  it("shows nothing when another project opened while it looked", async () => {
+    mocks.mainDocumentCandidates.mockImplementation(async () => {
+      mocks.files.projectId = "other";
+      return ranked;
+    });
+    await changeMainDocument();
+    expect(useOpenFolderStore.getState().opened).toBeNull();
   });
 });

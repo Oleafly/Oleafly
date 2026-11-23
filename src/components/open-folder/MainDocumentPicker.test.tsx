@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { DetectionCandidate, FolderDetection, OpenedFolder } from "@/lib/folder-detection";
 
@@ -190,7 +191,7 @@ describe("MainDocumentPicker", () => {
     expect(options()[0]).toHaveFocus();
     press("ArrowDown");
     press("Enter");
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex"));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex", { compile: false }));
     await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -237,7 +238,7 @@ describe("MainDocumentPicker", () => {
     press("ArrowDown");
     expect(options()[1]).toBeChecked();
     press("Enter");
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex"));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex", { compile: false }));
   });
 
   it("gives the list a single tab stop on the selected choice", async () => {
@@ -256,7 +257,7 @@ describe("MainDocumentPicker", () => {
     present();
     fireEvent.click(row(options()[2]));
     fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("notes/index.md"));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("notes/index.md", { compile: false }));
     await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
   });
 
@@ -264,7 +265,7 @@ describe("MainDocumentPicker", () => {
     render(<MainDocumentPicker />);
     present();
     fireEvent.doubleClick(options()[1]);
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex"));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex", { compile: false }));
   });
 
   it("lets the user just browse files without choosing", async () => {
@@ -330,7 +331,7 @@ describe("MainDocumentPicker", () => {
     render(<MainDocumentPicker />);
     present();
     fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("paper/main.tex"));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("paper/main.tex", { compile: false }));
     act(() => {
       useFilesStore.setState({ projectId: "linked-b" });
     });
@@ -424,5 +425,40 @@ describe("MainDocumentPicker", () => {
 
     expect(options()[0]).toBeChecked();
   });
-});
 
+  it("changes the main document of an open project, marking the current one", async () => {
+    useFilesStore.setState({ mainDoc: "paper/main.tex" });
+    render(<MainDocumentPicker />);
+    act(() =>
+      useOpenFolderStore
+        .getState()
+        .present({ project_id: "linked-a", file: null, detection: { ...ambiguous, main: "paper/main.tex" } }, true),
+    );
+    const dialog = screen.getByRole("dialog", { name: labels.picker.askTitle });
+    expect(dialog).toHaveTextContent(labels.picker.changeDescription);
+    const rows = options().map(row);
+    expect(within(rows[0]).getByText(labels.picker.current)).toBeInTheDocument();
+    expect(within(dialog).queryByText(labels.picker.bestMatch)).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: enCommon.actions.cancel })).toBeEnabled();
+
+    fireEvent.click(options()[2]);
+    fireEvent.click(within(dialog).getByRole("button", { name: labels.picker.use }));
+
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("notes/index.md", { compile: true }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(useOpenFolderStore.getState().changing).toBe(false);
+  });
+
+  it("closes without changing anything when the current main document is kept", async () => {
+    useFilesStore.setState({ mainDoc: "paper/main.tex" });
+    render(<MainDocumentPicker />);
+    act(() =>
+      useOpenFolderStore
+        .getState()
+        .present({ project_id: "linked-a", file: null, detection: { ...ambiguous, main: "paper/main.tex" } }, true),
+    );
+    fireEvent.click(screen.getByRole("button", { name: labels.picker.use }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
+  });
+});
