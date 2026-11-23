@@ -317,6 +317,7 @@ pub(super) struct ServerSpec {
     pub(super) root: PathBuf,
     pub(super) main: PathBuf,
     pub(super) environment: Vec<(String, OsString)>,
+    pub(super) external: bool,
 }
 
 pub(super) fn server_args(spec: &ServerSpec, data_port: u16, control_port: u16) -> Vec<OsString> {
@@ -373,6 +374,9 @@ impl ServerProcess {
             .kill_on_drop(true);
         for (name, value) in &spec.environment {
             command.env(name, value);
+        }
+        if spec.external {
+            crate::proc::clear_appimage_env(command.as_std_mut());
         }
         isolate_process_tree(&mut command);
         let mut child = command
