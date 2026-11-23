@@ -657,6 +657,20 @@ border colour change such as `focus-visible:border-ring`. The last rule in
 `src/styles/globals.css` turns outlines off everywhere. Keep it, and do not
 work around it.
 
+## Text smoothing
+
+On macOS, `-webkit-font-smoothing: antialiased` makes dark text on a light
+background thinner and paler than the rest of the system draws it. Light text
+on a dark background looks better with it. The `--font-smoothing` token picks
+the right one for each surface. `:root` sets `auto` and `.dark` sets
+`antialiased`. A theme preset or a custom background sets it from how light
+that background is (`applyThemeCustomization` and `applyEditorColors`), each
+`[data-editor-theme]` block sets the value for its own background, and the
+editor and Notes code blocks read it from there. Don't set
+`-webkit-font-smoothing` or the `antialiased` class anywhere else. A new
+surface whose background can differ from the app's mode sets
+`--font-smoothing` itself.
+
 ## Guard tests
 
 The guards read the source files and fail when a known copy shows up.
@@ -671,6 +685,10 @@ cluster outside `SettingsRow`, a hand-written pill (a borderless
 a file that doesn't use `CodeBlock`. A pill that no `Badge` variant can
 express, or a `<pre>` that shows logs or plain text rather than code, goes in
 that file's allowlist, with the reason next to it.
+
+`src/styles/globals.test.ts` fails on a `-webkit-font-smoothing` value or an
+`antialiased` class outside the token, and on an editor theme whose smoothing
+doesn't match its background.
 
 `src/components/layout/SidebarSection.test.tsx` checks that every panel
 registered in `src/contributions/tabs.tsx` renders `SidebarPanelHeader`, and

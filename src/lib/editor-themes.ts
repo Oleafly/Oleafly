@@ -1,10 +1,12 @@
 import {
   EDITOR_COLOR_IDS,
+  EDITOR_USER_FONT_SMOOTHING,
   editorColorVariable,
   themeColorValue,
   type EditorColorId,
 } from "@oleafly/editor/color-roles";
 import { cssColorToHex, paintedColorToHex } from "@/lib/css-color";
+import { isLightHex } from "@/lib/peer-colors";
 import type { Theme } from "@/lib/theme";
 
 export const EDITOR_THEME_IDS = [
@@ -81,21 +83,31 @@ export function validateEditorColors(value: unknown): EditorColorSettings {
   return settings;
 }
 
+export function backgroundFontSmoothing(background: string | undefined): "auto" | "antialiased" | undefined {
+  const hex = background ? cssColorToHex(background) : null;
+  if (!hex) return undefined;
+  return isLightHex(hex) ? "auto" : "antialiased";
+}
+
+function userEditorVariables(overrides: EditorColorOverrides): [string, string | undefined][] {
+  return [
+    ...EDITOR_COLOR_IDS.map((id): [string, string | undefined] => [editorColorVariable(id), overrides[id]]),
+    [EDITOR_USER_FONT_SMOOTHING, backgroundFontSmoothing(overrides.background)],
+  ];
+}
+
 export function applyEditorColors(
   overrides: EditorColorOverrides,
   root: HTMLElement = document.documentElement,
 ): void {
-  for (const id of EDITOR_COLOR_IDS) {
-    const color = overrides[id];
-    if (color) root.style.setProperty(editorColorVariable(id), color);
-    else root.style.removeProperty(editorColorVariable(id));
+  for (const [name, value] of userEditorVariables(overrides)) {
+    if (value) root.style.setProperty(name, value);
+    else root.style.removeProperty(name);
   }
 }
 
 export function editorColorPreviewStyle(overrides: EditorColorOverrides): Record<string, string> {
-  return Object.fromEntries(
-    EDITOR_COLOR_IDS.map((id) => [editorColorVariable(id), overrides[id] ?? "initial"]),
-  );
+  return Object.fromEntries(userEditorVariables(overrides).map(([name, value]) => [name, value ?? "initial"]));
 }
 
 export function readEditorThemeColors(

@@ -53,6 +53,8 @@ function look(page: Page) {
       calloutLeft: style(".note-callout").borderLeftWidth,
       calloutTop: style(".note-callout").borderTopWidth,
       codeBackground: style("pre").backgroundColor,
+      textSmoothing: body.getPropertyValue("-webkit-font-smoothing"),
+      codeSmoothing: style("pre").getPropertyValue("-webkit-font-smoothing"),
       keyword: style(".tok-keyword").color,
       taskBox: style(".note-task-box").borderRadius,
       accent: style(".note-body").getPropertyValue("--primary").trim(),
@@ -218,6 +220,8 @@ for (const browserType of [chromium, webkit]) {
         calloutTop: "1px",
         taskBox: "9999px",
         fieldStyle: null,
+        textSmoothing: "auto",
+        codeSmoothing: "auto",
       });
 
       await page.getByTestId("settings-notes-typeface-serif").click();
@@ -239,6 +243,8 @@ for (const browserType of [chromium, webkit]) {
         calloutLeft: "3px",
         calloutTop: "0px",
         codeBackground: "rgb(40, 42, 54)",
+        textSmoothing: "auto",
+        codeSmoothing: "antialiased",
         accent: "#db2777",
         taskBox: "4px",
         fieldStyle: "outline",

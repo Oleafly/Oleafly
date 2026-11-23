@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)) for #470, "Support explicitly configured, externally managed TexLab and Tinymist".
 - Richard (Dien Giau) Bui ([@diengiau](https://github.com/diengiau)) for #515, "Not Allow to Change Project Type (Engine)".
 - Faisal Albasu ([@albas99](https://github.com/albas99)) for #518, "Remember previous window state on launch".
+- [@ssbodda-powern](https://github.com/ssbodda-powern) for #529, "Editor text renders noticeably thinner and lighter than VS Code on macOS (Font Smoothing & Variable Font Weight)".
 
 ### Added
 
@@ -60,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On macOS, text in light themes looked thinner and paler than in other apps, because Oleafly drew all of it with the lighter smoothing meant for light text on dark backgrounds. Light themes now draw text the way macOS and VS Code do, so the editor, Notes and the rest of the window show a font at its real weight. Dark themes look as before. A light editor theme or Notes code theme in a dark app, or a dark one in a light app, follows its own background, and so does a background color you set for the app or the editor (#529).
 - PDF dark mode turned every photo on a page into a negative once the page had more than 32 pictures, as in a grid of photos made in PowerPoint. Each one now keeps its colors (#506).
 - A photo that covers most of a page, such as a full-bleed image, keeps its colors in PDF dark mode. Scanned pages still go dark, whatever color the paper is. So do slide backgrounds and pages pulled in from another PDF at any size, while the photos and figures on them keep their colors.
 - In PDF dark mode, thin gaps between photos that almost touch stay dark. They used to show as white lines.

@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { EDITOR_THEME_IDS, editorThemeSurface } from "../lib/editor-themes";
 
 const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8").replace(/\r\n/gu, "\n");
 
@@ -210,5 +211,30 @@ describe("text selection policy", () => {
 
   it("uses no outline, ring or shadow ring in the selection rules", () => {
     expect(block(/(?:^|\n)html,\s*body\s*\{([^}]*)\}/u)).not.toMatch(/outline|ring|box-shadow/u);
+  });
+});
+
+describe("text smoothing", () => {
+  const smoothingOn = { light: "auto", dark: "antialiased" } as const;
+
+  it("keeps the system's smoothing for dark text on light surfaces and thins only light text on dark ones", () => {
+    expect(styles).toMatch(/\n {2}body \{[^}]*-webkit-font-smoothing: var\(--font-smoothing\);/u);
+    expect(styles).toMatch(/\n {2}:root \{[^}]*--font-smoothing: auto;/u);
+    expect(styles).toMatch(/\n {2}\.dark \{[^}]*--font-smoothing: antialiased;/u);
+  });
+
+  it("gives every editor theme the smoothing of the surface it draws on", () => {
+    for (const theme of EDITOR_THEME_IDS.filter((id) => id !== "system")) {
+      const block = new RegExp(`\\[data-editor-theme="${theme}"\\] \\{([^}]*)\\}`, "u").exec(styles)?.[1] ?? "";
+      expect(block, theme).toContain(`--font-smoothing: ${smoothingOn[editorThemeSurface(theme, "light")]};`);
+    }
+  });
+
+  it("never fixes the smoothing outside the surface tokens", () => {
+    const fixed =
+      /-webkit-font-smoothing:\s*(?!var\()[a-z]|WebkitFontSmoothing:\s*["'`](?!var\()[a-z]|\s(?:subpixel-)?antialiased[\s"'`]|["'`](?:subpixel-)?antialiased\s/u;
+    const roots = [new URL("../", import.meta.url), new URL("../../packages/", import.meta.url)];
+    const offenders = roots.flatMap(sourceFiles).filter((file) => fixed.test(readFileSync(file, "utf8")));
+    expect(offenders).toEqual([]);
   });
 });

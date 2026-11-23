@@ -118,6 +118,23 @@ describe("applying a theme preset", () => {
     expect(style.getPropertyValue("--radius")).toBe("");
   });
 
+  it("smooths text the way each theme's background needs, and follows a background the user sets", () => {
+    for (const mode of ["light", "dark"] as const) {
+      for (const preset of themePresets(mode)) {
+        applyThemeCustomization(mode, emptyThemeCustomization(), preset);
+        const smoothing = document.documentElement.style.getPropertyValue("--font-smoothing");
+        expect(smoothing, preset.id).toBe(preset.builtIn ? "" : { light: "auto", dark: "antialiased" }[mode]);
+      }
+    }
+
+    applyThemeCustomization("light", { ...emptyThemeCustomization(), light: { background: "#1b1b1f" } });
+    expect(document.documentElement.style.getPropertyValue("--font-smoothing")).toBe("antialiased");
+    applyThemeCustomization("dark", { ...emptyThemeCustomization(), dark: { background: "#fbf7ee" } }, findThemePreset("dark", "darcula"));
+    expect(document.documentElement.style.getPropertyValue("--font-smoothing")).toBe("auto");
+    clearThemeCustomization();
+    expect(document.documentElement.style.getPropertyValue("--font-smoothing")).toBe("");
+  });
+
   it("uses the theme's accent until the user picks one, and a custom primary over both", () => {
     localStorage.setItem(THEME_PRESET_STORAGE_KEYS.light, "atom-one-light");
     expect(accentTokenDefaults("light", "")).toEqual({ "--primary": "#4d64e8", "--primary-foreground": "#ffffff" });

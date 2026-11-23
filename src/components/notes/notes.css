@@ -698,6 +698,7 @@
 [data-notes-code-theme] .wysiwyg-content.note-body .ProseMirror pre {
   background: var(--notes-code-bg);
   color: var(--notes-code-fg);
+  -webkit-font-smoothing: var(--notes-code-font-smoothing);
 }
 [data-notes-code-theme] .note-body .note-code {
   --cm-comment: var(--notes-code-comment);

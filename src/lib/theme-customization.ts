@@ -1,5 +1,5 @@
 import { i18n } from "@/i18n";
-import { parseEditorThemeExport, type EditorThemeExport } from "@/lib/editor-themes";
+import { backgroundFontSmoothing, parseEditorThemeExport, type EditorThemeExport } from "@/lib/editor-themes";
 import type { Theme } from "@/lib/theme";
 import { activeThemePreset, themePresetStyle, type ThemePreset } from "@/lib/theme-presets";
 
@@ -384,6 +384,8 @@ export function applyThemeCustomization(
   }
   const radius = valid.radius ?? presetStyle.radius;
   if (radius) properties["--radius"] = radius;
+  const smoothing = backgroundFontSmoothing(properties["--background"]);
+  if (smoothing) properties["--font-smoothing"] = smoothing;
   if (preset.builtIn) delete root.dataset.themePreset;
   else root.dataset.themePreset = preset.id;
   for (const [property, value] of Object.entries(properties)) {
