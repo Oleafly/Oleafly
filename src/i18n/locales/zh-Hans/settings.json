@@ -287,6 +287,23 @@
       "reasoningSummariesLabel": "显示推理摘要",
       "save": "保存指令",
       "saved": "已保存",
+      "savedInstructions": {
+        "title": "已保存的指令",
+        "description": "可在 AI 编辑中重复使用的指令，例如“保留原有格式”或“只修正语法”。在“询问 AI”中选择一条或多条，AI 会在执行你的请求时一并遵循。最常用的排在最前。",
+        "empty": "还没有已保存的指令。可在此添加，或在“询问 AI”中输入指令后选择“保存指令”。",
+        "add": "添加指令",
+        "name": "名称",
+        "namePlaceholder": "保留格式",
+        "text": "指令",
+        "textPlaceholder": "保留原有格式，不要修改引号内的文本。",
+        "required": "请为指令填写名称和内容。",
+        "editNamed": "编辑 {{name}}",
+        "deleteNamed": "删除 {{name}}",
+        "deleteTitle": "删除已保存的指令",
+        "deleteDescription": "删除“{{name}}”？此操作无法撤销。",
+        "uses_other": "已使用 {{count}} 次",
+        "limit": "最多可保存 {{max}} 条指令。删除一条后才能添加新的。"
+      },
       "toolsHint": "例如，你可以让它“修复 LaTeX 错误”、“添加 Publications 章节”或“重新编译并检查 PDF”。",
       "toolsTitle": "助手目前支持以下工具"
     },

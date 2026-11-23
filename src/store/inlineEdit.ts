@@ -15,6 +15,8 @@ export interface Session {
 
 interface InlineEditState {
   session: Session | null;
+  picked: string[];
+  togglePicked: (id: string) => void;
   open: (r: {
     from: number;
     to: number;
@@ -38,6 +40,11 @@ function active(session: Session | null): session is Session {
 
 export const useInlineEditStore = create<InlineEditState>((set) => ({
   session: null,
+  picked: [],
+  togglePicked: (id) =>
+    set((st) => ({
+      picked: st.picked.includes(id) ? st.picked.filter((entry) => entry !== id) : [...st.picked, id],
+    })),
   open: (r) =>
     set({
       session: {
