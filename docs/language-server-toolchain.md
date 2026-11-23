@@ -134,6 +134,13 @@ stays as it is for the pinned servers: the profile's arguments (`texlab run`,
 containment. TexLab still gets the no-op `latexmk` shim first on `PATH`, so
 analysis never builds the document.
 
+That shim is also what stops TexLab from running a downloaded project's
+`.latexmkrc`, which is Perl code. So `OLEAFLY_TEXLAB` has to point at TexLab
+itself, or at a wrapper that leaves `PATH` alone. A wrapper that puts its own
+folders before Oleafly's on `PATH`, or a TexLab patched to call `latexmk` by its
+full path, lets any project it opens run code. Packaging changes that touch
+this need that check in review.
+
 Oleafly reads the version from the program, so there's no version setting that
 can fall behind a package upgrade:
 
@@ -157,13 +164,21 @@ for it. Settings > Engines lists the external Tinymist only next to the Typst
 versions it serves.
 
 Each of these is an error, and none falls back to a download: an empty value, a
-relative path, a missing file, a folder, a file without execute permission, or
-a program that doesn't print the version line above. The editor shows the
+relative path, a missing file, a folder, a file without execute permission, a
+network path on Windows, an interpreter such as Python or Node, a desktop app,
+a file or folder that another account on the computer can replace (world
+writable without the sticky bit, or owned by an account other than you or
+root), or a program that doesn't print the version line above. A version longer
+than 64 characters counts as not printing one, and Oleafly reads at most 64 KiB
+of a version check's output. The editor shows the
 language service as unavailable and gives the reason, which also goes to the
 app log. It doesn't offer an install. Remove the variable to go back to the
 pinned server. Oleafly reads the variables from its own environment only,
 never from project files or `PATH`, so a project can't choose the program that
 runs.
+
+Each start of an external server adds a line to the app log naming the server,
+its version and the variable it came from, never the path.
 
 When Oleafly runs as an AppImage on Linux, an external server starts without the
 AppImage's library and data paths, like other programs from the host system.

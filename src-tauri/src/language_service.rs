@@ -1177,10 +1177,12 @@ fn launch_for(
     resource: Option<&server_runtime::BundledResourcePaths>,
 ) -> Result<server_runtime::ServerLaunch, LanguageServiceError> {
     if let Some(server) = external_server(kind, Some(project_id)) {
+        let server = server?;
+        server.log_start(kind);
         return server_runtime::resolve_external_for_launch(
             app_local_data,
             kind,
-            server?.executable,
+            server.executable,
         );
     }
     match catalog_tinymist(kind, Some(project_id))? {
@@ -2864,6 +2866,13 @@ mod tests {
         assert_eq!(shims, launch.working_directory);
         assert!(!app_data.join("language-servers").join("texlab").exists());
         assert!(printed_by(&launch, &[]).await.contains("args:run"));
+        let log = std::fs::read_to_string(projects.root.join(crate::project::APP_LOG_FILE))
+            .unwrap_or_default();
+        assert!(
+            log.contains("Starting TexLab 5.27.1 from OLEAFLY_TEXLAB"),
+            "{log}"
+        );
+        assert!(!log.contains(&server.path.display().to_string()), "{log}");
 
         let status = external_install_status(
             LanguageServiceKind::TexLab,

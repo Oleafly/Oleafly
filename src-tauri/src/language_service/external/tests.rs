@@ -175,3 +175,64 @@ fn a_hanging_probe_gives_up_and_is_not_retried_at_once() {
     );
     assert_eq!(probes(&server), 1);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_program_other_accounts_can_replace_is_refused() {
+    use std::os::unix::fs::PermissionsExt;
+    let server = texlab("5.26.0");
+    let folder = server.path.parent().unwrap().to_path_buf();
+    let mode = |path: &std::path::Path, mode: u32| {
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    };
+
+    mode(&server.path, 0o777);
+    let message = refused(LanguageServiceKind::TexLab, &server.path);
+    assert!(
+        message.contains("other accounts on this computer can change"),
+        "{message}"
+    );
+    mode(&server.path, 0o755);
+
+    mode(&folder, 0o777);
+    let message = refused(LanguageServiceKind::TexLab, &server.path);
+    assert!(
+        message.contains("other accounts on this computer can change"),
+        "{message}"
+    );
+
+    mode(&folder, 0o1777);
+    let _configured = configure(LanguageServiceKind::TexLab, &server.path);
+    assert!(configured(LanguageServiceKind::TexLab).unwrap().is_ok());
+    mode(&folder, 0o700);
+}
+
+#[test]
+fn an_interpreter_is_not_a_language_server() {
+    let python = fake_server("python3", "echo 'texlab 5.26.0'", "echo texlab 5.26.0", "");
+    let message = refused(LanguageServiceKind::TexLab, &python.path);
+    assert!(message.contains("interpreter"), "{message}");
+}
+
+#[test]
+fn an_oversized_version_is_refused() {
+    let long = "x".repeat(200);
+    let server = fake_server(
+        "texlab",
+        &format!("echo 'texlab 5.26.0-{long}'"),
+        &format!("echo texlab 5.26.0-{long}"),
+        "",
+    );
+    let message = refused(LanguageServiceKind::TexLab, &server.path);
+    assert!(
+        message.contains("didn't report a TexLab version"),
+        "{message}"
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn a_network_path_is_refused_before_it_is_opened() {
+    let message = refused(LanguageServiceKind::TexLab, r"\\server\share\texlab.exe");
+    assert!(message.contains("network location"), "{message}");
+}

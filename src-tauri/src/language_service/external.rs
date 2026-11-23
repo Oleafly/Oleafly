@@ -9,9 +9,12 @@ use oleafly_core::typst_toolchain::{parse_program_version_output, ToolchainVersi
 
 use super::LanguageServiceKind;
 use crate::proc::NoConsole;
+use crate::program_locator::{Platform, RejectReason};
 
 const TYPST_VERSION_LABEL: &str = "Typst Version:";
 const TIMED_OUT_RETRY: Duration = Duration::from_secs(60);
+const PROBE_OUTPUT_LIMIT: usize = 64 * 1024;
+const MAX_VERSION_CHARS: usize = 64;
 
 type FileStamp = (u64, Option<SystemTime>);
 type ProbeKey = (&'static str, PathBuf);
@@ -44,6 +47,15 @@ pub(crate) struct ExternalServer {
 }
 
 impl ExternalServer {
+    pub(crate) fn log_start(&self, kind: LanguageServiceKind) {
+        let _ = crate::project::append_app_log(format!(
+            "Starting {} {} from {}",
+            display_name(kind),
+            self.version,
+            variable(kind)
+        ));
+    }
+
     pub(crate) fn check_typst(&self, project: &ToolchainVersion) -> Result<(), String> {
         let Some(built) = &self.typst else {
             return Ok(());
@@ -116,31 +128,23 @@ fn resolve(
              or remove it to use the {name} that Oleafly installs."
         ));
     }
-    let executable = PathBuf::from(value);
-    if !executable.is_absolute() {
+    if !Path::new(value).is_absolute() {
         return Err(format!(
             "{variable} has to be the full path of the {name} program."
         ));
     }
+    let executable = crate::program_locator::inspect_on(Path::new(value), Platform::current())
+        .map_err(|reason| rejected(kind, reason))?
+        .path;
     let unreadable = || format!("{variable} points to a file that Oleafly can't read.");
-    let canonical = executable.canonicalize().map_err(|error| {
-        if error.kind() == std::io::ErrorKind::NotFound {
-            format!("{variable} points to a file that doesn't exist.")
-        } else {
-            unreadable()
-        }
-    })?;
+    let canonical = executable.canonicalize().map_err(|_| unreadable())?;
+    if replaceable_by_others(&executable, &canonical) {
+        return Err(format!(
+            "{variable} points to a file that other accounts on this computer can change. \
+             Make the file and its folder writable only by you or the system."
+        ));
+    }
     let metadata = std::fs::metadata(&canonical).map_err(|_| unreadable())?;
-    if !metadata.is_file() {
-        return Err(format!(
-            "{variable} points to a folder, not to the {name} program."
-        ));
-    }
-    if !crate::cloud::engine::executable(&metadata, true) {
-        return Err(format!(
-            "{variable} points to a file that isn't executable."
-        ));
-    }
     let stamp = (metadata.len(), metadata.modified().ok());
     let key = (program_name(kind), canonical);
     let outcome = match cached(&key, stamp) {
@@ -170,6 +174,56 @@ fn resolve(
         version: probed.version,
         typst: probed.typst,
     })
+}
+
+fn rejected(kind: LanguageServiceKind, reason: RejectReason) -> String {
+    let (name, variable) = (display_name(kind), variable(kind));
+    match reason {
+        RejectReason::NotFound => format!("{variable} points to a file that doesn't exist."),
+        RejectReason::Directory => {
+            format!("{variable} points to a folder, not to the {name} program.")
+        }
+        RejectReason::NotExecutable => {
+            format!("{variable} points to a file that isn't executable.")
+        }
+        RejectReason::NetworkPath => format!(
+            "{variable} points to a network location. Copy {name} to this computer and point {variable} to that copy."
+        ),
+        RejectReason::Interpreter => format!(
+            "{variable} points to an interpreter such as Python or Node, not to the {name} program."
+        ),
+        RejectReason::GuiProgram => {
+            format!("{variable} points to a desktop app, not to the {name} program.")
+        }
+        RejectReason::PowerShellScript => format!(
+            "{variable} points to a PowerShell script. Point it to the {name} program itself."
+        ),
+    }
+}
+
+#[cfg(unix)]
+fn replaceable_by_others(executable: &Path, canonical: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    let user = unsafe { libc::geteuid() };
+    let foreign = |metadata: &std::fs::Metadata| metadata.uid() != 0 && metadata.uid() != user;
+    let shared = |metadata: &std::fs::Metadata| metadata.mode() & 0o002 != 0;
+    let file_open = std::fs::metadata(canonical)
+        .map_or(true, |metadata| foreign(&metadata) || shared(&metadata));
+    file_open
+        || [executable, canonical]
+            .into_iter()
+            .filter_map(Path::parent)
+            .any(|folder| {
+                std::fs::metadata(folder).map_or(true, |metadata| {
+                    foreign(&metadata) || (shared(&metadata) && metadata.mode() & 0o1000 == 0)
+                })
+            })
+}
+
+#[cfg(not(unix))]
+fn replaceable_by_others(_executable: &Path, _canonical: &Path) -> bool {
+    false
 }
 
 fn lock() -> std::sync::MutexGuard<'static, BTreeMap<ProbeKey, Probe>> {
@@ -205,7 +259,7 @@ fn probe(
         LanguageServiceKind::Tinymist => "-V",
     };
     let output = run(kind, executable, version_flag, timeout)?;
-    let version = parse_program_version_output(&output, &[program]).ok_or_else(|| {
+    let version = bounded(parse_program_version_output(&output, &[program])).ok_or_else(|| {
         unrecognized(format!(
             "The program in {variable} didn't report a {name} version, so it may not be {name}."
         ))
@@ -213,11 +267,13 @@ fn probe(
     let typst = match kind {
         LanguageServiceKind::TexLab => None,
         LanguageServiceKind::Tinymist => Some(
-            typst_version(&run(kind, executable, "--version", timeout)?).ok_or_else(|| {
-                unrecognized(format!(
+            bounded(typst_version(&run(kind, executable, "--version", timeout)?)).ok_or_else(
+                || {
+                    unrecognized(format!(
                     "The Tinymist in {variable} doesn't say which Typst version it was built with."
                 ))
-            })?,
+                },
+            )?,
         ),
     };
     Ok(Probed { version, typst })
@@ -237,7 +293,7 @@ fn run(
         message: format!("`{program} {flag}` failed for the program in {variable}."),
         timed_out: false,
     };
-    let output = crate::proc::output_contained_with_timeout(command, timeout).map_err(|error| {
+    let output = crate::proc::output_contained_with_limit(command, timeout, PROBE_OUTPUT_LIMIT).map_err(|error| {
         if error.kind() == std::io::ErrorKind::TimedOut {
             ProbeFailure {
                 message: format!(
@@ -257,6 +313,10 @@ fn run(
     text.push('\n');
     text.push_str(&String::from_utf8_lossy(&output.stderr));
     Ok(text)
+}
+
+fn bounded(version: Option<ToolchainVersion>) -> Option<ToolchainVersion> {
+    version.filter(|version| version.to_string().len() <= MAX_VERSION_CHARS)
 }
 
 fn typst_version(output: &str) -> Option<ToolchainVersion> {
