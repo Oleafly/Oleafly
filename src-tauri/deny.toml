@@ -16,7 +16,6 @@ ignore = [
   # statrs' nalgebra chain. No vulnerability, no maintained replacement the
   # upstream crates have moved to.
   "RUSTSEC-2024-0436",
-  # unic-* unmaintained (transitive; no maintained replacement in the chain).
   { id = "RUSTSEC-2023-0089", reason = "atomic-polyfill is unmaintained, reached only through loro via postcard and heapless; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0247", reason = "bitmaps is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0248", reason = "im is unmaintained, used by loro-internal for persistent maps; no vulnerability and no upgrade in that chain" },
