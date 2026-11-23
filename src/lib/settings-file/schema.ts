@@ -357,33 +357,41 @@ const recordId = text(200, { required: true });
 
 type FieldReader = <T>(key: string, type: ValueType<T>) => Parsed<T>;
 
+type NamedItemSpec<T> = {
+  known: ReadonlySet<string>;
+  idPrefix: string;
+  build: (id: string, read: FieldReader) => Parsed<T>;
+};
+
+function parseNamedItem<T>(item: unknown, at: string, ids: Set<string>, spec: NamedItemSpec<T>): Parsed<T> {
+  if (!isRecord(item)) return fail({ kind: "object" }, at);
+  for (const key of Object.keys(item)) {
+    if (!spec.known.has(key)) return fail({ kind: "unknownKey" }, `${at}.${key}`);
+  }
+  const id = item.id === undefined ? ok(`${spec.idPrefix}-${crypto.randomUUID()}`) : recordId.parse(item.id);
+  if (!id.ok) return fail(id.issue, `${at}.id`);
+  if (ids.has(id.value)) return fail({ kind: "duplicate" }, `${at}.id`);
+  ids.add(id.value);
+  return spec.build(id.value, (key, type) => {
+    const value = type.parse(item[key]);
+    return value.ok ? value : fail(value.issue, `${at}.${key}`);
+  });
+}
+
 function namedList<T extends { id: string }>(
   keys: readonly string[],
   max: number,
   idPrefix: string,
   build: (id: string, read: FieldReader) => Parsed<T>,
 ): ValueType<T[]> {
-  const known: ReadonlySet<string> = new Set(["id", ...keys]);
+  const spec: NamedItemSpec<T> = { known: new Set(["id", ...keys]), idPrefix, build };
   return {
     parse(raw) {
       if (!Array.isArray(raw) || raw.length > max) return fail({ kind: "list", max });
       const ids = new Set<string>();
       const output: T[] = [];
       for (const [index, item] of raw.entries()) {
-        const at = `[${index}]`;
-        if (!isRecord(item)) return fail({ kind: "object" }, at);
-        for (const key of Object.keys(item)) {
-          if (!known.has(key)) return fail({ kind: "unknownKey" }, `${at}.${key}`);
-        }
-        const id = item.id === undefined ? ok(`${idPrefix}-${crypto.randomUUID()}`) : recordId.parse(item.id);
-        if (!id.ok) return fail(id.issue, `${at}.id`);
-        if (ids.has(id.value)) return fail({ kind: "duplicate" }, `${at}.id`);
-        ids.add(id.value);
-        const read: FieldReader = (key, type) => {
-          const value = type.parse(item[key]);
-          return value.ok ? value : fail(value.issue, `${at}.${key}`);
-        };
-        const entry = build(id.value, read);
+        const entry = parseNamedItem(item, `[${index}]`, ids, spec);
         if (!entry.ok) return entry;
         output.push(entry.value);
       }
