@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { createRequire } from "node:module";
-import { dirname, join, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pdfFigureBoxes, rememberPdfFigures } from "./pdfFigureLayer";
 
@@ -27,7 +27,7 @@ let standardFontDataUrl = "";
 beforeAll(async () => {
   await import("./polyfills");
   const pdfjsEntry = createRequire(import.meta.url).resolve("pdfjs-dist");
-  standardFontDataUrl = `${join(dirname(dirname(pdfjsEntry)), "standard_fonts")}${sep}`;
+  standardFontDataUrl = `${join(dirname(dirname(pdfjsEntry)), "standard_fonts")}/`;
   const fromPdfjs = createRequire(pdfjsEntry);
   const napi = fromPdfjs("@napi-rs/canvas") as NodeCanvas & Record<string, unknown>;
   canvases = napi;
