@@ -30,7 +30,7 @@ services:
       - caddy-config:/config
 
   litestream:
-    image: litestream/litestream:0.5.17
+    image: litestream/litestream:0.5.18
     profiles:
       - litestream
     restart: unless-stopped
