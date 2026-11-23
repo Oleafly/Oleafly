@@ -88,9 +88,17 @@ struct ServerProfile {
 }
 
 #[derive(Debug)]
+struct PinnedServer {
+    version: String,
+    args: Vec<String>,
+}
+
+#[derive(Debug)]
 struct ValidatedManifest {
     allowed_download_hosts: Vec<String>,
+    servers: HashMap<LanguageServiceKind, PinnedServer>,
     profiles: HashMap<LanguageServiceKind, ServerProfile>,
+    target_error: Option<String>,
 }
 
 #[derive(Debug)]
@@ -99,6 +107,7 @@ pub(super) struct ServerLaunch {
     pub(super) args: Vec<String>,
     pub(super) search_path: Option<OsString>,
     pub(super) working_directory: PathBuf,
+    pub(super) external: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -161,14 +170,55 @@ pub(super) fn resolve_for_launch(
     kind: LanguageServiceKind,
     resource: Option<&BundledResourcePaths>,
 ) -> Result<ServerLaunch, LanguageServiceError> {
-    let inherited = inherited_search_path(std::env::var_os("PATH"), bundled_runtime_directory());
     resolve_profile_for_launch(
         app_local_data,
         state,
         profile(kind)?,
         resource,
-        inherited.as_deref(),
+        app_search_path().as_deref(),
     )
+}
+
+pub(super) fn resolve_external_for_launch(
+    app_local_data: &Path,
+    kind: LanguageServiceKind,
+    executable: PathBuf,
+) -> Result<ServerLaunch, LanguageServiceError> {
+    let shims =
+        crate::project_availability::without_verbatim_prefix(&ensure_tool_shims(app_local_data)?);
+    let search_path = match kind {
+        LanguageServiceKind::TexLab => {
+            Some(tool_search_path(&shims, app_search_path().as_deref())?)
+        }
+        LanguageServiceKind::Tinymist => None,
+    };
+    Ok(ServerLaunch {
+        executable,
+        args: pinned_server(kind)?.args.clone(),
+        search_path,
+        working_directory: shims,
+        external: true,
+    })
+}
+
+pub(super) fn pinned_version(kind: LanguageServiceKind) -> Result<String, LanguageServiceError> {
+    pinned_server(kind).map(|server| server.version.clone())
+}
+
+fn pinned_server(kind: LanguageServiceKind) -> Result<&'static PinnedServer, LanguageServiceError> {
+    profile_manifest()?.servers.get(&kind).ok_or_else(|| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::ManifestInvalid,
+            format!(
+                "language-server manifest has no {} entry",
+                kind.manifest_key()
+            ),
+        )
+    })
+}
+
+fn app_search_path() -> Option<OsString> {
+    inherited_search_path(std::env::var_os("PATH"), bundled_runtime_directory())
 }
 
 const WINDOWS_RUNTIME_DLL: &str = "vcruntime140.dll";
@@ -219,6 +269,7 @@ fn resolve_profile_for_launch(
         args: profile.args,
         search_path: launch_search_path(app_local_data, profile.kind, inherited)?,
         working_directory: ensure_tool_shims(app_local_data)?,
+        external: false,
     })
 }
 
@@ -241,6 +292,7 @@ pub(super) fn resolve_downloaded_tinymist_for_launch(
         args: profile.args,
         search_path: None,
         working_directory: ensure_tool_shims(app_local_data)?,
+        external: false,
     })
 }
 
@@ -406,10 +458,12 @@ fn profile(kind: LanguageServiceKind) -> Result<ServerProfile, LanguageServiceEr
     manifest.profiles.get(&kind).cloned().ok_or_else(|| {
         LanguageServiceError::new(
             LanguageServiceErrorCode::ManifestInvalid,
-            format!(
-                "language-server manifest has no {} profile",
-                kind.manifest_key()
-            ),
+            manifest.target_error.clone().unwrap_or_else(|| {
+                format!(
+                    "language-server manifest has no {} profile",
+                    kind.manifest_key()
+                )
+            }),
         )
     })
 }
@@ -466,7 +520,8 @@ fn parse_manifest(json: &str) -> Result<ValidatedManifest, String> {
         return Err("language-server manifest must contain only TexLab and Tinymist".into());
     }
 
-    let current_target = current_target_triple()?;
+    let current_target = current_target_triple();
+    let mut servers = HashMap::new();
     let mut profiles = HashMap::new();
     for kind in [LanguageServiceKind::TexLab, LanguageServiceKind::Tinymist] {
         let key = kind.manifest_key();
@@ -475,6 +530,16 @@ fn parse_manifest(json: &str) -> Result<ValidatedManifest, String> {
             .get(key)
             .ok_or_else(|| format!("language-server manifest is missing {key}"))?;
         validate_server(kind, server, &expected_targets, &host_set)?;
+        servers.insert(
+            kind,
+            PinnedServer {
+                version: server.version.clone(),
+                args: server.lsp.args.clone(),
+            },
+        );
+        let Ok(&current_target) = current_target.as_ref() else {
+            continue;
+        };
         let target =
             server.targets.get(current_target).cloned().ok_or_else(|| {
                 format!("{key} has no manifest entry for target {current_target}")
@@ -493,7 +558,9 @@ fn parse_manifest(json: &str) -> Result<ValidatedManifest, String> {
     }
     Ok(ValidatedManifest {
         allowed_download_hosts: manifest.allowed_download_hosts,
+        servers,
         profiles,
+        target_error: current_target.err(),
     })
 }
 
@@ -2012,6 +2079,22 @@ mod tests {
     }
 
     #[test]
+    fn the_pinned_arguments_and_versions_do_not_need_a_target() {
+        let manifest = parse_manifest(MANIFEST_JSON).unwrap();
+        assert_eq!(manifest.target_error, None);
+        for (kind, args) in [
+            (LanguageServiceKind::TexLab, ["run"]),
+            (LanguageServiceKind::Tinymist, ["lsp"]),
+        ] {
+            assert_eq!(manifest.servers[&kind].args, args);
+            assert_eq!(
+                pinned_version(kind).unwrap(),
+                manifest.profiles[&kind].version
+            );
+        }
+    }
+
+    #[test]
     fn every_pinned_target_names_a_github_fallback() {
         let manifest = profile_manifest().unwrap();
         assert!(!manifest.profiles.is_empty());
@@ -2755,6 +2838,7 @@ mod tests {
             args: shimmed.args.clone(),
             search_path: None,
             working_directory: shimmed.working_directory.clone(),
+            external: false,
         };
         assert!(latexmkrc_ran(&unshimmed, crate::test_wait::CHILD_PATIENCE).await);
         assert!(!latexmkrc_ran(&shimmed, Duration::from_secs(5)).await);

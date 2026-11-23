@@ -1987,6 +1987,56 @@ describe("LanguageServiceController setup status", () => {
   });
 });
 
+describe("LanguageServiceController external servers", () => {
+  it("starts a TexLab the computer provides at the version it reports", async () => {
+    const { controller, store, clients, installStatus, install } = harness();
+    installStatus.mockResolvedValueOnce({
+      kind: "texlab",
+      version: "5.27.1",
+      state: "installed",
+      external: true,
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    expect(install).not.toHaveBeenCalled();
+    expect(clients).toHaveLength(1);
+    expect(clients[0].starts[0]?.runtimeProfile).toMatchObject({
+      kind: "texlab",
+      version: "5.27.1",
+      args: getLanguageServiceRuntimeProfile("texlab").args,
+    });
+    expect(store.getState().snapshot.languageService.readiness).toBe("ready");
+  });
+
+  it("shows why an external server can't start and never offers an install", async () => {
+    const { controller, store, clients, installStatus, install } = harness();
+    const message =
+      "The Tinymist in OLEAFLY_TINYMIST is built for Typst 0.15, and this project uses Typst 0.13.1.";
+    installStatus.mockResolvedValueOnce({
+      kind: "tinymist",
+      version: "0.15.12",
+      state: "failed",
+      message,
+      external: true,
+    });
+    controller.update(typstProject());
+    await controller.whenIdle();
+
+    expect(install).not.toHaveBeenCalled();
+    expect(clients).toHaveLength(0);
+    expect(store.getState().snapshot.languageService).toMatchObject({
+      readiness: "unavailable",
+      reason: { text: message },
+      failure: { message, code: "sidecar_unavailable", retryable: true },
+    });
+    expect(store.getState().snapshot.features.hover).toMatchObject({
+      status: "unavailable",
+      reason: { text: message },
+    });
+  });
+});
+
 describe("LanguageServiceController failure logging", () => {
   const stderr = (client: FakeClient, message: string) =>
     client.emitRetained({
