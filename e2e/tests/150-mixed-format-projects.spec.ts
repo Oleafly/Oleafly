@@ -10,6 +10,7 @@ import {
   waitForCompileSuccess,
   waitForPdfPage,
 } from "../open-folder";
+import { scriptValue } from "../script-value";
 
 const fixtures = folderFixtures("formats");
 const ARTICLE = (mark: string) => `\\documentclass{article}\n\\begin{document}\n${mark}\n\\end{document}\n`;
@@ -18,7 +19,7 @@ test.afterAll(() => fixtures.remove());
 
 function pressWithPointer(selector: string): string {
   return `(() => {
-    const el = document.querySelector(${JSON.stringify(selector)});
+    const el = document.querySelector(${scriptValue(selector)});
     if (!el || el.matches(':disabled')) return false;
     el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
     el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
@@ -29,11 +30,11 @@ function pressWithPointer(selector: string): string {
 
 async function openInEditor(page: Page, path: string): Promise<void> {
   await page.evaluate(
-    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(${JSON.stringify(path)}))`,
+    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(${scriptValue(path)}))`,
   );
   await waitLong(
     page,
-    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().activePath === ${JSON.stringify(path)})`,
+    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().activePath === ${scriptValue(path)})`,
     20_000,
   );
 }
@@ -42,7 +43,7 @@ async function openCompileMenuItem(page: Page, item: string): Promise<void> {
   for (let attempt = 0; attempt < 5; attempt++) {
     if (!(await page.evaluate<boolean>(pressWithPointer('[data-testid="compile-options-button"]')))) continue;
     for (let tick = 0; tick < 20; tick++) {
-      if (await page.evaluate<boolean>(`!!document.querySelector('[data-testid="${item}"]')`)) {
+      if (await page.evaluate<boolean>(`!!document.querySelector(${scriptValue(`[data-testid="${item}"]`)})`)) {
         await page.evaluate(pressWithPointer(`[data-testid="${item}"]`));
         return;
       }
@@ -126,7 +127,7 @@ test("Change main document moves the project to the format of the file picked", 
   );
   await openCompileMenuItem(page, "compile-change-main");
   const choice = '[data-testid="main-document-candidates"] label[data-path="report.md"]';
-  await waitLong(page, `!!document.querySelector(${JSON.stringify(choice)})`, 20_000);
+  await waitLong(page, `!!document.querySelector(${scriptValue(choice)})`, 20_000);
   await page.click(choice);
   await page.evaluate(
     `[...document.querySelectorAll('[data-testid="main-document-picker"] button')].find((button) => button.textContent?.includes("Use as main document"))?.click()`,

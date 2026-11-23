@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../fixtures";
+import { scriptValue } from "../script-value";
 
 test("the window saves the size it was left at", async ({ tauriPage: page }) => {
+  // Ignored on purpose when the runner forces a window size, because the saved size is then not used.
   test.skip(Boolean(process.env.OLEAFLY_E2E_WINDOW), "OLEAFLY_E2E_WINDOW turns the remembered size off.");
   const saved = join(process.env.OLEAFLY_DATA_DIR ?? "", "window.json");
   const read = () =>
@@ -10,7 +12,7 @@ test("the window saves the size it was left at", async ({ tauriPage: page }) => 
       ? (JSON.parse(readFileSync(saved, "utf8")) as { width: number; height: number; maximized: boolean })
       : null;
   const invoke = (command: string) =>
-    page.evaluate(`window.__TAURI_INTERNALS__.invoke("plugin:window|${command}", { label: "main" })`);
+    page.evaluate(`window.__TAURI_INTERNALS__.invoke(${scriptValue(`plugin:window|${command}`)}, { label: "main" })`);
   const expected = () =>
     page.evaluate<{ width: number; height: number }>(`(async () => {
       const invoke = window.__TAURI_INTERNALS__.invoke;
@@ -30,6 +32,7 @@ test("the window saves the size it was left at", async ({ tauriPage: page }) => 
     .toBe(true);
   const normal = read();
 
+  // Ignored on purpose on Linux, because the CI display has no window manager that can maximize.
   test.skip(process.platform === "linux", "The Linux runner has no window manager to maximize with.");
   await invoke("maximize");
   await expect.poll(() => read()?.maximized ?? false, { timeout: 15_000 }).toBe(true);

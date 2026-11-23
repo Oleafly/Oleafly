@@ -1640,10 +1640,8 @@ async function runCompileGates(
   options: RecompileOptions | undefined,
   crossFormat: boolean,
 ): Promise<{ readonly projectId: string; readonly engine: DocumentEngineDescriptor } | null> {
-  if (!mainDecisionGate(base)) return null;
-  if (!folderAvailableGate(base)) return null;
-  if (!mainDocumentGate(base)) return null;
-  if (!engineLoadedGate(base)) return null;
+  const opening = [mainDecisionGate, folderAvailableGate, mainDocumentGate, engineLoadedGate];
+  if (!opening.every((gate) => gate(base))) return null;
   const engine = crossFormat ? await engineForCompileTarget(base) : base.engine;
   if (engine === null) {
     base.abortIntent();

@@ -35,7 +35,7 @@ export function shownHtmlOutput<T extends { readonly projectId: string; readonly
   files: { readonly projectId: string | null; readonly mainDoc: string; readonly engine: DocumentEngineDescriptor },
   target: string,
 ): T | null {
-  if (output === null || output.projectId !== files.projectId || output.mainDocument !== target) return null;
+  if (output?.mainDocument !== target || output.projectId !== files.projectId) return null;
   return notebookOutput(files.engine) === "html" || output.mainDocument !== files.mainDoc ? output : null;
 }
 
