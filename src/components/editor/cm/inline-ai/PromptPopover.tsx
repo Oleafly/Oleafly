@@ -1,11 +1,66 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUp, Square, X } from "lucide-react";
+import { ArrowUp, BookmarkPlus, Settings2, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
+import { SAVED_INSTRUCTION_LIMITS, suggestInstructionName } from "@/lib/saved-instructions";
+import type { SavedInstruction } from "@/lib/tauri";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
+import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { SavedInstructionChips } from "./SavedInstructionChips";
+
+export const NAMING_SELECTOR = "[data-instruction-naming]";
+
+function NamingRow({
+  initial,
+  onSave,
+  onCancel,
+}: Readonly<{ initial: string; onSave: (name: string) => void; onCancel: () => void }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const [name, setName] = useState(initial);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+    inputRef.current?.select();
+  }, []);
+  const save = () => {
+    if (name.trim()) onSave(name.trim());
+  };
+  return (
+    <div data-instruction-naming="" className="flex items-center gap-1.5">
+      <Input
+        ref={inputRef}
+        value={name}
+        maxLength={SAVED_INSTRUCTION_LIMITS.name}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !isImeEnter(event)) {
+            event.preventDefault();
+            save();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+          }
+        }}
+        aria-label={t(($) => $.editor.savedInstructions.nameLabel)}
+        placeholder={t(($) => $.editor.savedInstructions.nameLabel)}
+        className="h-7 min-w-0 flex-1 px-2 text-xs"
+      />
+      <Button size="xs" onClick={save} disabled={!name.trim()}>
+        {t(($) => $.common.actions.save)}
+      </Button>
+      <Button size="xs" variant="ghost" onClick={onCancel}>
+        {t(($) => $.common.actions.cancel)}
+      </Button>
+    </div>
+  );
+}
 
 export function PromptPopover({
   instruction,
@@ -19,6 +74,12 @@ export function PromptPopover({
   modelId,
   modelGroups,
   onModelChange,
+  saved = [],
+  picked = [],
+  onToggleSaved,
+  canSave = false,
+  onSave,
+  onManage,
 }: Readonly<{
   instruction: string;
   onInstruction: (v: string) => void;
@@ -31,9 +92,16 @@ export function PromptPopover({
   modelId: string;
   modelGroups: ModelSelectorGroup[];
   onModelChange: (providerId: string, modelId: string) => void;
+  saved?: readonly SavedInstruction[];
+  picked?: readonly string[];
+  onToggleSaved?: (id: string) => void;
+  canSave?: boolean;
+  onSave?: (name: string) => void;
+  onManage?: () => void;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [naming, setNaming] = useState(false);
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true });
   }, []);
@@ -44,6 +112,16 @@ export function PromptPopover({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [instruction]);
+  useEffect(() => {
+    if (!canSave) setNaming(false);
+  }, [canSave]);
+
+  const ready = instruction.trim() !== "" || picked.length > 0;
+  const stopNaming = () => {
+    setNaming(false);
+    inputRef.current?.focus({ preventScroll: true });
+  };
+  const showSaved = !streaming && (saved.length > 0 || canSave);
 
   return (
     <AiChrome
@@ -58,13 +136,7 @@ export function PromptPopover({
           value={instruction}
           onChange={(e) => onInstruction(e.target.value)}
           onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey &&
-              !isImeEnter(e) &&
-              !streaming &&
-              instruction.trim()
-            ) {
+            if (e.key === "Enter" && !e.shiftKey && !isImeEnter(e) && !streaming && ready) {
               e.preventDefault();
               onSubmit();
             }
@@ -84,17 +156,45 @@ export function PromptPopover({
         </button>
       </div>
 
+      {showSaved && (
+        <div className="mt-2">
+          {naming && onSave ? (
+            <NamingRow
+              initial={suggestInstructionName(instruction)}
+              onSave={(name) => {
+                onSave(name);
+                stopNaming();
+              }}
+              onCancel={stopNaming}
+            />
+          ) : (
+            <SavedInstructionChips instructions={saved} picked={picked} onToggle={(id) => onToggleSaved?.(id)}>
+              {canSave && onSave ? (
+                <Chip onClick={() => setNaming(true)}>
+                  <BookmarkPlus aria-hidden />
+                  {t(($) => $.editor.savedInstructions.save)}
+                </Chip>
+              ) : null}
+              {saved.length > 0 && onManage ? (
+                <TooltipIconButton
+                  label={t(($) => $.editor.savedInstructions.manage)}
+                  onClick={onManage}
+                  className="size-6 text-muted-foreground [&_svg]:size-3.5"
+                >
+                  <Settings2 />
+                </TooltipIconButton>
+              ) : null}
+            </SavedInstructionChips>
+          )}
+        </div>
+      )}
+
       {!streaming && (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5">
           {PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onPreset(p.instruction)}
-              className="flex-1 whitespace-nowrap rounded-full border border-border bg-muted px-2.5 py-1 text-center text-xs font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-accent"
-            >
+            <Chip key={p.id} onClick={() => onPreset(p.instruction)} className="flex-1">
               {p.label}
-            </button>
+            </Chip>
           ))}
         </div>
       )}
@@ -129,7 +229,7 @@ export function PromptPopover({
           <button
             type="button"
             onClick={onSubmit}
-            disabled={!instruction.trim()}
+            disabled={!ready}
             aria-label={t(($) => $.editor.inlineAi.submit)}
             className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
           >

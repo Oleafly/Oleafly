@@ -554,6 +554,16 @@
     "setUpProviderHint": "Adicione uma chave de API ou o Ollama local, ou escolha um agente de CLI como modelo para as Ferramentas, para usar as edições de IA em linha.",
     "openAiSettings": "Abrir Configurações → IA"
   },
+  "savedInstructions": {
+    "label": "Instruções salvas",
+    "more_one": "Mais {{count}}",
+    "more_many": "Mais {{count}}",
+    "more_other": "Mais {{count}}",
+    "save": "Salvar instrução",
+    "nameLabel": "Dê um nome à instrução",
+    "manage": "Gerenciar instruções salvas",
+    "saveFailed": "Não foi possível salvar a instrução."
+  },
   "proofreading": {
     "error": "A revisão de texto não conseguiu terminar este documento.",
     "unavailable": "A revisão de texto offline está indisponível.",

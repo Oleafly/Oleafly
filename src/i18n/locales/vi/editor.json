@@ -540,6 +540,14 @@
     "setUpProviderHint": "Thêm API key hoặc Ollama cục bộ, hoặc chọn một CLI agent làm mô hình cho Công cụ, để dùng sửa bằng AI trong dòng.",
     "openAiSettings": "Mở Cài đặt → AI"
   },
+  "savedInstructions": {
+    "label": "Hướng dẫn đã lưu",
+    "more_other": "Thêm {{count}}",
+    "save": "Lưu hướng dẫn",
+    "nameLabel": "Đặt tên cho hướng dẫn này",
+    "manage": "Quản lý hướng dẫn đã lưu",
+    "saveFailed": "Không thể lưu hướng dẫn."
+  },
   "proofreading": {
     "error": "Hiệu đính không hoàn tất được tài liệu này.",
     "unavailable": "Hiệu đính ngoại tuyến không khả dụng.",

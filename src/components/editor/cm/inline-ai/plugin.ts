@@ -167,8 +167,10 @@ export function acceptInlineEdit(view: EditorView): void {
   if (!s || s.phase === "withdrawn") return;
   view.dispatch({ changes: { from: s.from, to: s.to, insert: s.proposed } });
   useInlineEditStore.getState().reset();
+  view.focus();
 }
 
-export function rejectInlineEdit(_view: EditorView): void {
+export function rejectInlineEdit(view: EditorView): void {
   useInlineEditStore.getState().reset();
+  view.focus();
 }

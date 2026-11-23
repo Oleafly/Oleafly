@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/ai/provider-config", () => ({
-  knownProviderConfig: null,
+  knownProviderConfig: () => null,
   loadProviderConfig: vi.fn(async () => null),
   subscribeProviderConfig: vi.fn(() => () => {}),
   deriveProviderState: vi.fn(),

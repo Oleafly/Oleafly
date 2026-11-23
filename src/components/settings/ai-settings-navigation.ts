@@ -10,6 +10,8 @@ export interface AiSettingsDestination {
 
 const AGENT_TARGET_PREFIX = "ai-agents:";
 
+export const SAVED_INSTRUCTIONS_TARGET = "ai-saved-instructions";
+
 export function aiAgentsTarget(agentId?: string | null): string {
   return agentId ? `${AGENT_TARGET_PREFIX}${agentId}` : "ai-agents";
 }
@@ -26,6 +28,9 @@ export function aiSettingsDestination(
   if (scrollTarget === "ai-skills") return { tab: "skills" };
   if (scrollTarget === "ai-mcp") return { tab: "mcp" };
   if (scrollTarget === "ai-tools") return { tab: "tools" };
+  if (scrollTarget === SAVED_INSTRUCTIONS_TARGET) {
+    return { tab: "instructions", elementId: SAVED_INSTRUCTIONS_TARGET };
+  }
   if (scrollTarget === "ai-approvals") {
     return { tab: "providers", elementId: "ai-project-approvals" };
   }

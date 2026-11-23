@@ -554,6 +554,16 @@
     "setUpProviderHint": "Aggiungi una chiave API o Ollama in locale, oppure scegli un agente da riga di comando come modello per gli Strumenti, per usare le modifiche AI in linea.",
     "openAiSettings": "Apri Impostazioni → AI"
   },
+  "savedInstructions": {
+    "label": "Istruzioni salvate",
+    "more_one": "{{count}} in più",
+    "more_many": "{{count}} in più",
+    "more_other": "{{count}} in più",
+    "save": "Salva istruzione",
+    "nameLabel": "Dai un nome all'istruzione",
+    "manage": "Gestisci le istruzioni salvate",
+    "saveFailed": "Non è stato possibile salvare l'istruzione."
+  },
   "proofreading": {
     "error": "La revisione non è riuscita a completare questo documento.",
     "unavailable": "La revisione offline non è disponibile.",

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #428, "Incorrect regex causes missing Typst section from Document Outline", and #429, "Have section number for Typst Document Outline".
 - [@Floresiensis](https://github.com/Floresiensis) for #485, "Visual mode: change font and other settings".
 - Angelk90 ([@Angelk90](https://github.com/Angelk90)) for #494, "Restoring an older version does not update the version indicator".
+- Masum ([@masumeee](https://github.com/masumeee)) for #487, "Custom AI Instructions and Reusable Setup Commands for Editing".
 - Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #505, "PDF dark mode: add a 'follow appearance mode' option so the PDF darkens with the app theme", #509, "File tree: add Copy Path / Copy Relative Path to the context menu", and #510, "Compile target should follow the active file".
 
 ### Added
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF dark mode has a third choice in Settings > Appearance > PDF Preview: Match app theme. Pages go dark when the app does and look as printed again when it turns light, so dark mode at night no longer needs a second click in the PDF toolbar. Dark pages use the dark theme's page colors, which means One Dark Pro gets a One Dark page. If you picked a light tint such as sepia for light mode, light mode keeps it. Clicking the invert button in the preview toolbar sets the choice to On or Off. Off is still the default.
 - Quick capture can stay ready all the time. Turn on Keep quick capture ready in Settings > Shortcuts and Oleafly opens in the background when you sign in. Closing the window leaves Oleafly in the menu bar on macOS, or in the system tray on Windows and Linux, so the shortcut keeps working. The icon's menu has Quick capture, Open Oleafly and Quit. Linux desktops without tray support get no icon.
 - Annotate the PDF preview and send your annotations to the assistant (experimental, Settings > Experimentation > PDF review). Select text and pick Comment, Delete, Replace or Insert, or turn on Annotate a region and drag a box around an equation or figure. Each annotation is drawn on the page with a number and pinned to the source, so it's placed again after a recompile, and one that can't be found is marked Needs placing instead of disappearing. Send to assistant adds the ticked annotations as chips, for the built-in assistant or a CLI agent, with their file and lines checked again when the message goes out. Annotations are saved in the project's state folder and stay on this computer.
+- Save the instructions you add to AI edits again and again, such as "Keep the original formatting" or "Don't change quoted text", and pick them when you edit. Type one in the inline AI box and choose Save instruction, or add and edit them in Settings > AI > Instructions. They show as chips in the inline AI box and under Ask AI on a selection, with the ones you use most first. Pick several and they all go with your request, whether you type something, pick a preset or send them on their own. A pick stays on for your next edits until you turn it off (#487).
 
 ### Changed
 
@@ -48,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Inline AI edits follow your Custom instructions in Settings > AI > Instructions. The setting says they go with every AI request, but only the assistant used them.
+- Typing in the inline AI box and then clicking a preset such as Improve sends both. Before, the preset replaced what you typed.
+- While the inline AI box is open, Escape in the command palette, a menu or a dialog closes that instead of the AI box, and Enter in a dialog no longer accepts the suggested edit.
+- After you accept, reject or close an inline AI edit, the keyboard goes back to the editor. Before, focus stayed on the page and editor shortcuts such as Cmd+L did nothing until you clicked the editor again.
 - After you restore an older checkpoint, Versioning tags it as Current and the restore message names it. Before, nothing showed which version your files were on. Compiling after a restore, with no edits, no longer works through the whole project again each time. Version history in Notes tags a restored version the same way.
 - Checkpoint version numbers stay put. Deleting V2 no longer turns V3 into V2, a number is never reused, and an exported archive brings checkpoints back under their own numbers. Keep latest also keeps the checkpoint tagged Current, so trimming history right after a restore no longer deletes the version your files are on.
 - In a folder you opened that has no main document, the compile button now works when the open file is a complete LaTeX document.
