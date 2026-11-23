@@ -1,3 +1,4 @@
+pub(crate) mod external;
 mod server_runtime;
 
 use rand::{rngs::OsRng, RngCore};
@@ -226,6 +227,8 @@ pub struct LanguageServiceInstallStatusResponse {
     pub state: LanguageServiceInstallState,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub external: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -922,6 +925,9 @@ pub async fn language_service_install(
     state: State<'_, LanguageServiceState>,
     request: InstallLanguageServiceRequest,
 ) -> Result<InstallLanguageServiceResponse, LanguageServiceError> {
+    if let Some(server) = external_server_off_thread(&request).await? {
+        return external_install(request.kind, server);
+    }
     if let Some(choice) = catalog_tinymist_off_thread(&request).await? {
         let ensured = crate::typst_toolchain::tinymist::ensure_downloaded(&choice)
             .await
@@ -979,6 +985,9 @@ pub async fn language_service_install_status(
     state: State<'_, LanguageServiceState>,
     request: InstallLanguageServiceRequest,
 ) -> Result<LanguageServiceInstallStatusResponse, LanguageServiceError> {
+    if let Some(server) = external_server_off_thread(&request).await? {
+        return external_install_status(request.kind, server);
+    }
     if let Some(choice) = catalog_tinymist_off_thread(&request).await? {
         return tauri::async_runtime::spawn_blocking(move || catalog_install_status(&choice))
             .await
@@ -1009,6 +1018,98 @@ pub async fn language_service_install_status(
         version,
         state: status,
         message,
+        external: false,
+    })
+}
+
+fn invalid_project(message: &str) -> LanguageServiceError {
+    LanguageServiceError::new(LanguageServiceErrorCode::InvalidWorkspace, message)
+}
+
+fn checked_project_id(project_id: &str) -> Result<(), LanguageServiceError> {
+    if project_id.len() > 128 || paths::validate_project_id(project_id).is_err() {
+        return Err(invalid_project("invalid project id"));
+    }
+    Ok(())
+}
+
+fn external_server(
+    kind: LanguageServiceKind,
+    project_id: Option<&str>,
+) -> Option<Result<external::ExternalServer, LanguageServiceError>> {
+    let failure = |version: Option<String>, message: String| {
+        let mut error =
+            LanguageServiceError::new(LanguageServiceErrorCode::SidecarUnavailable, message);
+        error.kind = Some(kind);
+        error.version = version;
+        error
+    };
+    let configured = external::configured(kind)?.map_err(|message| failure(None, message));
+    Some(configured.and_then(|server| {
+        let (LanguageServiceKind::Tinymist, Some(project_id)) = (kind, project_id) else {
+            return Ok(server);
+        };
+        checked_project_id(project_id)?;
+        let meta = crate::project::read_meta(project_id)
+            .map_err(|_| invalid_project("project metadata is invalid or unreadable"))?;
+        server
+            .check_typst(&crate::typst_toolchain::tinymist::project_typst_version(
+                &meta,
+            ))
+            .map_err(|message| failure(Some(server.version.to_string()), message))?;
+        Ok(server)
+    }))
+}
+
+async fn external_server_off_thread(
+    request: &InstallLanguageServiceRequest,
+) -> Result<Option<Result<external::ExternalServer, LanguageServiceError>>, LanguageServiceError> {
+    let kind = request.kind;
+    let project_id = request.project_id.clone();
+    tauri::async_runtime::spawn_blocking(move || external_server(kind, project_id.as_deref()))
+        .await
+        .map_err(language_service_worker_error)
+}
+
+fn external_install(
+    kind: LanguageServiceKind,
+    server: Result<external::ExternalServer, LanguageServiceError>,
+) -> Result<InstallLanguageServiceResponse, LanguageServiceError> {
+    Ok(InstallLanguageServiceResponse {
+        kind,
+        version: server?.version.to_string(),
+        state: InstallLanguageServiceState::AlreadyInstalled,
+    })
+}
+
+fn external_install_status(
+    kind: LanguageServiceKind,
+    server: Result<external::ExternalServer, LanguageServiceError>,
+) -> Result<LanguageServiceInstallStatusResponse, LanguageServiceError> {
+    let (version, state, message) = match server {
+        Err(error) if error.code != LanguageServiceErrorCode::SidecarUnavailable => {
+            return Err(error)
+        }
+        Ok(server) => (
+            server.version.to_string(),
+            LanguageServiceInstallState::Installed,
+            None,
+        ),
+        Err(error) => (
+            match error.version {
+                Some(version) => version,
+                None => server_runtime::pinned_version(kind)?,
+            },
+            LanguageServiceInstallState::Failed,
+            Some(bounded_message(error.message)),
+        ),
+    };
+    Ok(LanguageServiceInstallStatusResponse {
+        kind,
+        version,
+        state,
+        message,
+        external: true,
     })
 }
 
@@ -1019,14 +1120,9 @@ fn catalog_tinymist(
     let (LanguageServiceKind::Tinymist, Some(project_id)) = (kind, project_id) else {
         return Ok(None);
     };
-    let invalid = |message: &str| {
-        LanguageServiceError::new(LanguageServiceErrorCode::InvalidWorkspace, message)
-    };
-    if project_id.len() > 128 || paths::validate_project_id(project_id).is_err() {
-        return Err(invalid("invalid project id"));
-    }
+    checked_project_id(project_id)?;
     match crate::typst_toolchain::tinymist::choice_for_project(project_id)
-        .map_err(|_| invalid("project metadata is invalid or unreadable"))?
+        .map_err(|_| invalid_project("project metadata is invalid or unreadable"))?
     {
         TinymistChoice::Catalog(choice) => Ok(Some(*choice)),
         TinymistChoice::Bundled => Ok(None),
@@ -1058,6 +1154,7 @@ fn catalog_install_status(choice: &CatalogTinymist) -> LanguageServiceInstallSta
         version: choice.version.to_string(),
         state,
         message,
+        external: false,
     }
 }
 
@@ -1079,6 +1176,15 @@ fn launch_for(
     project_id: &str,
     resource: Option<&server_runtime::BundledResourcePaths>,
 ) -> Result<server_runtime::ServerLaunch, LanguageServiceError> {
+    if let Some(server) = external_server(kind, Some(project_id)) {
+        let server = server?;
+        server.log_start(kind);
+        return server_runtime::resolve_external_for_launch(
+            app_local_data,
+            kind,
+            server.executable,
+        );
+    }
     match catalog_tinymist(kind, Some(project_id))? {
         Some(choice) => server_runtime::resolve_downloaded_tinymist_for_launch(
             app_local_data,
@@ -1107,10 +1213,9 @@ pub(crate) async fn tinymist_executable(
     let resource = bundled_resource_paths(app, kind)?;
     let installer = app.state::<LanguageServiceState>().installer.clone();
     let lookup = project_id.to_owned();
-    let catalog =
-        tauri::async_runtime::spawn_blocking(move || catalog_tinymist(kind, Some(&lookup)))
-            .await
-            .map_err(language_service_worker_error)??;
+    let catalog = tauri::async_runtime::spawn_blocking(move || tinymist_to_download(&lookup))
+        .await
+        .map_err(language_service_worker_error)??;
     if let Some(choice) = catalog {
         crate::typst_toolchain::tinymist::ensure_downloaded(&choice)
             .await
@@ -1131,10 +1236,21 @@ pub(crate) async fn tinymist_executable(
     .map(|launch| launch.executable)
 }
 
+fn tinymist_to_download(project_id: &str) -> Result<Option<CatalogTinymist>, LanguageServiceError> {
+    let kind = LanguageServiceKind::Tinymist;
+    if external::is_configured(kind) {
+        return Ok(None);
+    }
+    catalog_tinymist(kind, Some(project_id))
+}
+
 fn bundled_resource_paths(
     app: &AppHandle,
     kind: LanguageServiceKind,
 ) -> Result<Option<server_runtime::BundledResourcePaths>, LanguageServiceError> {
+    if external::is_configured(kind) {
+        return Ok(None);
+    }
     let Some(relative) = server_runtime::bundled_resource_relative_path(kind)? else {
         return Ok(None);
     };
@@ -1461,11 +1577,14 @@ fn spawn_sidecar_with(
     for (name, value) in environment {
         command.env(name, value);
     }
+    if launch.external {
+        crate::proc::clear_appimage_env(command.as_std_mut());
+    }
     isolate_process_tree(&mut command);
     let mut child = command.spawn().map_err(|error| {
         LanguageServiceError::new(
             LanguageServiceErrorCode::SidecarUnavailable,
-            format!("failed to start the pinned language server: {error}"),
+            format!("failed to start the language server: {error}"),
         )
     })?;
     let pid = child.id().ok_or_else(|| {
@@ -2698,6 +2817,220 @@ mod tests {
         }
     }
 
+    async fn printed_by(
+        launch: &server_runtime::ServerLaunch,
+        environment: &[(&str, std::ffi::OsString)],
+    ) -> String {
+        let SpawnedSession {
+            mut child,
+            stdin,
+            mut stdout,
+            stderr,
+            containment,
+            ..
+        } = spawn_sidecar_with(launch, environment).expect("spawn the fake language server");
+        drop(stdin);
+        drop(stderr);
+        let mut text = String::new();
+        tokio::time::timeout(Duration::from_secs(30), stdout.read_to_string(&mut text))
+            .await
+            .expect("the fake language server kept its output open")
+            .unwrap();
+        let _ = child.wait().await;
+        drop(containment);
+        text
+    }
+
+    #[tokio::test]
+    async fn an_external_texlab_runs_in_place_with_its_own_version() {
+        let projects = TypstProjects::new();
+        let app_data = projects.root.join("app-data");
+        std::fs::create_dir_all(&app_data).unwrap();
+        let server = external::simulated::texlab("5.27.1");
+        let _configured = external::simulated::configure(LanguageServiceKind::TexLab, &server.path);
+
+        let launch = launch_for(
+            &app_data,
+            &InstallerState::default(),
+            LanguageServiceKind::TexLab,
+            "paper",
+            None,
+        )
+        .unwrap();
+        assert!(launch.external);
+        assert_eq!(launch.args, ["run"]);
+        assert_eq!(launch.executable, server.path);
+        let shims = std::env::split_paths(launch.search_path.as_ref().unwrap())
+            .next()
+            .unwrap();
+        assert_eq!(shims, launch.working_directory);
+        assert!(!app_data.join("language-servers").join("texlab").exists());
+        assert!(printed_by(&launch, &[]).await.contains("args:run"));
+        let log = std::fs::read_to_string(projects.root.join(crate::project::APP_LOG_FILE))
+            .unwrap_or_default();
+        assert!(
+            log.contains("Starting TexLab 5.27.1 from OLEAFLY_TEXLAB"),
+            "{log}"
+        );
+        assert!(!log.contains(&server.path.display().to_string()), "{log}");
+
+        let status = external_install_status(
+            LanguageServiceKind::TexLab,
+            external_server(LanguageServiceKind::TexLab, None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(&status).unwrap(),
+            json!({ "kind": "texlab", "version": "5.27.1", "state": "installed", "external": true })
+        );
+        let installed = external_install(
+            LanguageServiceKind::TexLab,
+            external_server(LanguageServiceKind::TexLab, None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(installed.version, "5.27.1");
+        assert_eq!(
+            installed.state,
+            InstallLanguageServiceState::AlreadyInstalled
+        );
+    }
+
+    #[tokio::test]
+    async fn an_external_tinymist_serves_only_its_own_typst_line() {
+        let projects = TypstProjects::new();
+        projects.project("typst-current", Some("0.15.1"));
+        projects.project("typst-older", Some("0.13.1"));
+        let app_data = projects.root.join("app-data");
+        std::fs::create_dir_all(&app_data).unwrap();
+        let server = external::simulated::tinymist("0.15.12", "0.15.0");
+        let _configured =
+            external::simulated::configure(LanguageServiceKind::Tinymist, &server.path);
+
+        let launch = launch_for(
+            &app_data,
+            &InstallerState::default(),
+            LanguageServiceKind::Tinymist,
+            "typst-current",
+            None,
+        )
+        .unwrap();
+        assert!(launch.external);
+        assert_eq!(launch.args, ["lsp"]);
+        assert_eq!(launch.search_path, None);
+        assert!(printed_by(&launch, &[]).await.contains("args:lsp"));
+
+        let refused = launch_for(
+            &app_data,
+            &InstallerState::default(),
+            LanguageServiceKind::Tinymist,
+            "typst-older",
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(refused.code, LanguageServiceErrorCode::SidecarUnavailable);
+        assert_eq!(refused.kind, Some(LanguageServiceKind::Tinymist));
+        assert_eq!(refused.version.as_deref(), Some("0.15.12"));
+        assert!(
+            refused.message.contains("Typst 0.13.1"),
+            "{}",
+            refused.message
+        );
+        assert!(tinymist_to_download("typst-older").unwrap().is_none());
+        assert_eq!(
+            external_install(
+                LanguageServiceKind::Tinymist,
+                external_server(LanguageServiceKind::Tinymist, Some("typst-older")).unwrap(),
+            )
+            .unwrap_err()
+            .code,
+            LanguageServiceErrorCode::SidecarUnavailable
+        );
+        assert!(!projects.root.join("toolchains").join("tinymist").exists());
+
+        let status = external_install_status(
+            LanguageServiceKind::Tinymist,
+            external_server(LanguageServiceKind::Tinymist, Some("typst-older")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(status.state, LanguageServiceInstallState::Failed);
+        assert_eq!(status.version, "0.15.12");
+        assert!(status.external);
+        assert_eq!(
+            external_install_status(
+                LanguageServiceKind::Tinymist,
+                external_server(LanguageServiceKind::Tinymist, Some("../escape")).unwrap(),
+            )
+            .unwrap_err()
+            .code,
+            LanguageServiceErrorCode::InvalidWorkspace
+        );
+    }
+
+    #[test]
+    fn a_broken_external_setting_reports_failed_instead_of_missing() {
+        let _configured = external::simulated::configure(LanguageServiceKind::TexLab, "texlab");
+        let status = external_install_status(
+            LanguageServiceKind::TexLab,
+            external_server(LanguageServiceKind::TexLab, None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(status.state, LanguageServiceInstallState::Failed);
+        assert_eq!(
+            status.version,
+            server_runtime::pinned_version(LanguageServiceKind::TexLab).unwrap()
+        );
+        assert!(status.message.unwrap().contains("OLEAFLY_TEXLAB"));
+        let error = launch_for(
+            &std::env::temp_dir(),
+            &InstallerState::default(),
+            LanguageServiceKind::TexLab,
+            "paper",
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, LanguageServiceErrorCode::SidecarUnavailable);
+    }
+
+    #[test]
+    fn a_managed_install_status_keeps_its_shape() {
+        let projects = TypstProjects::new();
+        projects.project("typst-twelve", Some("0.12.0"));
+        let choice = catalog_tinymist(LanguageServiceKind::Tinymist, Some("typst-twelve"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(catalog_install_status(&choice)).unwrap(),
+            json!({ "kind": "tinymist", "version": "0.12.22", "state": "missing" })
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_external_server_leaves_the_appimage_paths_behind() {
+        let image = crate::proc::SimulatedAppImage::start();
+        let server = external::simulated::fake_server(
+            "texlab",
+            "echo 'texlab 5.27.1'",
+            "",
+            "printf 'home:%s\\n' \"${PYTHONHOME-unset}\"",
+        );
+        let bundled = image.root.join("usr").into_os_string();
+        let environment = [("PYTHONHOME", bundled.clone())];
+        let launch = |external| server_runtime::ServerLaunch {
+            executable: server.path.clone(),
+            args: vec!["run".into()],
+            search_path: None,
+            working_directory: PathBuf::from("."),
+            external,
+        };
+        assert!(printed_by(&launch(true), &environment)
+            .await
+            .contains("home:unset"));
+        assert!(printed_by(&launch(false), &environment)
+            .await
+            .contains(&format!("home:{}", bundled.to_string_lossy())));
+    }
+
     #[test]
     fn encoder_writes_one_canonical_content_length_header() {
         let value = request(7, "initialize");
@@ -3099,6 +3432,7 @@ mod tests {
             args: Vec::new(),
             search_path: None,
             working_directory: PathBuf::from("."),
+            external: false,
         };
         let error = match spawn_sidecar(&launch) {
             Ok(_) => panic!("nonexistent executable unexpectedly spawned"),
@@ -3117,6 +3451,7 @@ mod tests {
             args: vec!["/D".into(), "/S".into(), "/C".into(), "exit 0".into()],
             search_path: None,
             working_directory: PathBuf::from("."),
+            external: false,
         };
         let spawned = spawn_sidecar(&launch).expect("spawn contained language server");
         let SpawnedSession {
@@ -3170,6 +3505,7 @@ mod tests {
             ],
             search_path: None,
             working_directory: PathBuf::from("."),
+            external: false,
         };
         let spawned = spawn_sidecar(&launch).expect("spawn shell leader");
         let SpawnedSession {

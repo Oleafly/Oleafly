@@ -361,6 +361,26 @@ fn version_output_parses_across_typst_releases() {
 }
 
 #[test]
+fn program_version_lines_name_the_program_they_belong_to() {
+    assert_eq!(
+        parse_program_version_output("texlab 5.26.0\n", &["texlab"]),
+        Some(version("5.26.0"))
+    );
+    assert_eq!(
+        parse_program_version_output("tinymist v0.15.12\n", &["tinymist"]),
+        Some(version("0.15.12"))
+    );
+    assert_eq!(
+        parse_program_version_output("tinymist \nBuild Git Describe:  v0.15.2\n", &["tinymist"]),
+        None
+    );
+    assert_eq!(
+        parse_program_version_output("texlab 5.26.0\n", &["tinymist"]),
+        None
+    );
+}
+
+#[test]
 fn layout_places_toolchains_under_the_data_root() {
     let root = Path::new("/home/me/.oleafly");
     assert_eq!(toolchains_root(root), root.join("toolchains"));

@@ -174,6 +174,8 @@ describe("TauriLanguageServiceTransport install DTOs", () => {
     [{ kind: "texlab", version: "5.26.0", state: "installed", message: 5 }],
     [{ kind: "texlab", version: "5.26.0", state: "unknown" }],
     [{ kind: "texlab", version: "", state: "missing" }],
+    [{ kind: "texlab", version: "5.26.0", state: "installed", external: false }],
+    [{ kind: "texlab", version: "5.26.0", state: "installed", external: "yes" }],
   ])("rejects the install-status response %o", async (response) => {
     const { transport } = scripted({
       language_service_install_status: () => response,
@@ -197,6 +199,25 @@ describe("TauriLanguageServiceTransport install DTOs", () => {
       version: "5.26.0",
       state: "failed",
       message: "Checksum mismatch",
+    });
+  });
+
+  it("marks a server the computer provides itself", async () => {
+    const { transport } = scripted({
+      language_service_install_status: () => ({
+        kind: "tinymist",
+        version: "0.15.12",
+        state: "failed",
+        message: "Built for Typst 0.15",
+        external: true,
+      }),
+    });
+    await expect(transport.installStatus("tinymist", "paper")).resolves.toEqual({
+      kind: "tinymist",
+      version: "0.15.12",
+      state: "failed",
+      message: "Built for Typst 0.15",
+      external: true,
     });
   });
 });

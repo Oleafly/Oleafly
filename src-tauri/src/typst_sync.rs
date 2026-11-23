@@ -216,6 +216,9 @@ impl Registry {
                 root: target.root.clone(),
                 main: target.main.clone(),
                 environment: target.environment.clone(),
+                external: crate::language_service::external::is_configured(
+                    crate::language_service::LanguageServiceKind::Tinymist,
+                ),
             };
             let serial = self.serial.fetch_add(1, Ordering::Relaxed);
             let kills = self.kills.clone();
@@ -305,9 +308,13 @@ impl Registry {
 
 fn matched_tinymist(meta: &ProjectMeta) -> Option<String> {
     let typst = crate::typst_toolchain::tinymist::project_typst_version(meta);
-    let version = crate::typst_toolchain::tinymist::tinymist_version_for(&typst.to_string())?;
-    let parsed = ToolchainVersion::parse(&version)?;
-    protocol::tinymist_supports_sync(&parsed).then_some(version)
+    let version = match crate::language_service::external::tinymist_for(&typst) {
+        Some(external) => external.ok()?,
+        None => ToolchainVersion::parse(&crate::typst_toolchain::tinymist::tinymist_version_for(
+            &typst.to_string(),
+        )?)?,
+    };
+    protocol::tinymist_supports_sync(&version).then(|| version.to_string())
 }
 
 pub(crate) fn supported_for_project(meta: &ProjectMeta) -> bool {

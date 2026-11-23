@@ -18,7 +18,10 @@ mod output;
 #[cfg(all(test, unix))]
 pub(crate) use appimage::simulated::SimulatedAppImage;
 pub(crate) use appimage::{appimage_env_changes, clear_appimage_env};
-pub use output::{output_contained_with_bounds, output_contained_with_timeout, OutputBounds};
+pub use output::{
+    output_contained_with_bounds, output_contained_with_limit, output_contained_with_timeout,
+    OutputBounds,
+};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
