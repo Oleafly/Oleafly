@@ -849,6 +849,11 @@ export interface Persona {
     color: string;
     prompt: string;
 }
+export interface SavedInstruction {
+    id: string;
+    name: string;
+    text: string;
+}
 export interface AppConfig {
     github_token: string;
     github_user: string;
@@ -864,6 +869,8 @@ export interface AppConfig {
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
     ai_starter_personas_seeded: boolean;
+    ai_saved_instructions?: SavedInstruction[];
+    ai_saved_instruction_uses?: Record<string, number>;
     ai_model_probes?: Record<string, ModelProbe>;
     ai_model_lists_refreshed_at?: Record<string, number>;
     checkpoints_enabled: boolean;

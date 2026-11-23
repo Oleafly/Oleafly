@@ -4,12 +4,13 @@ import { FlaskConical, Settings2 } from "lucide-react";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useProviderConfig } from "@/hooks/use-provider-config";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { ResearchRootsPanel } from "@/components/research/workspace/ResearchRootsPanel";
 import { ResearchTasksPanel, type ResearchTaskAgentOption } from "@/components/research/tasks/ResearchTasksPanel";
-import { knownProviderConfig, loadProviderConfig, subscribeProviderConfig, deriveProviderState } from "@/components/ai/provider-config";
+import { deriveProviderState } from "@/components/ai/provider-config";
 import { useAgentTargets } from "@/components/ai/use-agent-targets";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import type { ResearchTask } from "@/lib/research-tasks";
@@ -18,7 +19,6 @@ import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
 import { useResearchTasksStore } from "@/store/research-tasks";
 import { useSettingsStore } from "@/store/settings";
-import { i18n } from "@/i18n";
 
 export function ResearchWorkspacePanel() {
   const { t } = useTranslation(["common", "researchTools"]);
@@ -39,20 +39,7 @@ export function ResearchWorkspacePanel() {
   }, [taskDetailOpen]);
   const foldersRef = useRef<HTMLDivElement>(null);
   useScrollMemory({ scrollRef: foldersRef, projectId, slot: "research.folders" });
-  const [config, setConfig] = useState(knownProviderConfig);
-  const [configError, setConfigError] = useState<string | null>(null);
-  useEffect(() => {
-    let current = true;
-    const unsubscribe = subscribeProviderConfig((next) => {
-      if (current) { setConfig(next); setConfigError(null); }
-    });
-    void loadProviderConfig().then((next) => {
-      if (current) { setConfig(next); setConfigError(null); }
-    }).catch(() => {
-      if (current) setConfigError(i18n.t(($) => $.researchTools.workspace.configError));
-    });
-    return () => { current = false; unsubscribe(); };
-  }, []);
+  const { config, failed: configFailed } = useProviderConfig();
   const groups = useMemo(() => {
     if (!config) return [];
     const state = deriveProviderState(config);
@@ -103,7 +90,7 @@ export function ResearchWorkspacePanel() {
           <Settings2 className="size-3.5" />
         </Button>
       </SidebarPanelHeader>
-      {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
+      {configFailed && <output className="block px-3 pt-2 text-xs text-destructive">{t(($) => $.researchTools.workspace.configError)}</output>}
       <Tabs
         value={tab}
         onValueChange={(next) => setTab(next === "folders" ? "folders" : "tasks")}

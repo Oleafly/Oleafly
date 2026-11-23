@@ -547,6 +547,15 @@
     "setUpProviderHint": "Fügen Sie einen API-Schlüssel hinzu, nutzen Sie lokales Ollama, oder wählen Sie einen Kommandozeilenagenten als Modell für Tools, um Änderungen mit KI im Text zu verwenden.",
     "openAiSettings": "Einstellungen → KI öffnen"
   },
+  "savedInstructions": {
+    "label": "Gespeicherte Anweisungen",
+    "more_one": "{{count}} weitere",
+    "more_other": "{{count}} weitere",
+    "save": "Anweisung speichern",
+    "nameLabel": "Anweisung benennen",
+    "manage": "Gespeicherte Anweisungen verwalten",
+    "saveFailed": "Die Anweisung konnte nicht gespeichert werden."
+  },
   "proofreading": {
     "error": "Die Korrekturprüfung konnte dieses Dokument nicht abschließen.",
     "unavailable": "Die Offline-Korrekturprüfung ist nicht verfügbar.",

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const { streamText } = vi.hoisted(() => ({ streamText: vi.fn() }));
 vi.mock("@/lib/agent-backend", () => ({ streamText }));
 
-import { runInlineCompletion, PRESETS } from "./ai-inline";
+import { instructionBlock, runInlineCompletion, PRESETS } from "./ai-inline";
 import { LATEX_ENGINE } from "./document-engine";
 
 type StreamArgs = {
@@ -140,6 +140,45 @@ describe("runInlineCompletion", () => {
       signal: controller.signal,
     });
     expect((streamText.mock.calls[0][0] as StreamArgs).signal).toBe(controller.signal);
+  });
+
+  it("adds the picked saved instructions after the request", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({
+      instruction: "Make it concise",
+      saved: ["Keep the formatting.", "  ", "Don't change quoted text.\nNot even punctuation."],
+      selection: "y",
+    });
+
+    const { user } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(user).toContain(
+      "Instruction: Make it concise\n\nAlso follow these instructions:\n- Keep the formatting.\n- Don't change quoted text.\n  Not even punctuation.",
+    );
+  });
+
+  it("runs the saved instructions alone when nothing was typed", () => {
+    expect(instructionBlock("  ", ["Only fix grammar."])).toBe("Instructions:\n- Only fix grammar.");
+    expect(instructionBlock("Shorten", [])).toBe("Instruction: Shorten");
+  });
+
+  it("follows the custom instructions from Settings without letting them change the output rules", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({ instruction: "x", selection: "y", preferences: "  Always write in British English. " });
+
+    const { system, user } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).toMatch(/^You edit a fragment/u);
+    expect(system).toContain("Return ONLY the replacement for the selected text.");
+    expect(system).toContain("<<<USER_PREFERENCES\nAlways write in British English.\nUSER_PREFERENCES");
+    expect(system.indexOf("USER_PREFERENCES")).toBeGreaterThan(system.indexOf("Return ONLY"));
+    expect(user).not.toContain("British English");
+  });
+
+  it("leaves the system prompt alone without custom instructions", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({ instruction: "x", selection: "y", preferences: "   " });
+
+    const { system } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).not.toContain("USER_PREFERENCES");
   });
 
   it("offers presets that cover the common edits", () => {

@@ -547,6 +547,15 @@
     "setUpProviderHint": "Lägg till en API-nyckel eller lokal Ollama, eller välj en CLI-agent som modell för Verktyg, för att använda AI-ändringar i löptext.",
     "openAiSettings": "Öppna Inställningar → AI"
   },
+  "savedInstructions": {
+    "label": "Sparade instruktioner",
+    "more_one": "{{count}} till",
+    "more_other": "{{count}} till",
+    "save": "Spara instruktion",
+    "nameLabel": "Namnge instruktionen",
+    "manage": "Hantera sparade instruktioner",
+    "saveFailed": "Det gick inte att spara instruktionen."
+  },
   "proofreading": {
     "error": "Korrekturläsningen kunde inte slutföra det här dokumentet.",
     "unavailable": "Korrekturläsning offline är inte tillgänglig.",
