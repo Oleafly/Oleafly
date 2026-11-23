@@ -61,7 +61,7 @@ pub(crate) fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         if crate::quick_capture::take_hidden_launch()
             && std::env::var("OLEAFLY_E2E_WINDOW").is_err()
         {
-            let _ = window.maximize();
+            crate::window_placement::apply(&window);
         }
         let _ = window.unminimize();
         let _ = window.show();

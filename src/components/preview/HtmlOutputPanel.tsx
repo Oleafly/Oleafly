@@ -17,11 +17,13 @@ function pageName(url: string): string {
 
 export function HtmlOutputPanel({
   projectId,
+  mainDocument,
   builtAt,
   compiling = false,
   onCompile,
 }: Readonly<{
   projectId: string;
+  mainDocument?: string;
   builtAt: number | null;
   compiling?: boolean;
   onCompile?: () => void;
@@ -31,7 +33,7 @@ export function HtmlOutputPanel({
   useEffect(() => {
     if (builtAt === null) return;
     let current = true;
-    compiledHtmlPreviewUrl(projectId).then(
+    compiledHtmlPreviewUrl(projectId, mainDocument).then(
       (url) => {
         if (current) setFrame({ projectId, builtAt, url });
       },
@@ -43,7 +45,7 @@ export function HtmlOutputPanel({
     return () => {
       current = false;
     };
-  }, [projectId, builtAt]);
+  }, [projectId, mainDocument, builtAt]);
   const shown = builtAt !== null && frame?.projectId === projectId ? frame : null;
   if (shown && "url" in shown) {
     return (
@@ -72,7 +74,7 @@ export function HtmlOutputPanel({
         {title() && <p className="mx-auto max-w-xs text-sm font-medium text-foreground">{title()}</p>}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {failure !== null && (
-            <Button size="sm" onClick={() => void openHtmlInBrowser(projectId)}>
+            <Button size="sm" onClick={() => void openHtmlInBrowser(projectId, mainDocument)}>
               {t(($) => $.preview.html.open)}
             </Button>
           )}

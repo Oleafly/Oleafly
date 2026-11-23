@@ -23,6 +23,7 @@ export type DetectionReason =
   | "has_bibliography"
   | "no_begin_document"
   | "standalone_figure"
+  | "notebook_output"
   | "placeholder";
 
 export type DetectionDecision = "auto" | "ask" | "no_main";
@@ -33,6 +34,7 @@ export type DetectionSource =
   | "latexmkrc"
   | "arxiv_readme"
   | "typst_toml"
+  | "quarto_project"
   | "subfiles"
   | "tex_root"
   | "root_main"

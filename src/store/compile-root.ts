@@ -9,11 +9,18 @@ export interface ProjectLatexUnits {
   readonly units: LatexUnits;
 }
 
+export interface ProjectParts {
+  readonly projectId: string;
+  readonly files: ReadonlySet<string>;
+}
+
 interface CompileRootState {
   followOpenFile: boolean;
   setFollowOpenFile: (follow: boolean) => void;
   latexUnits: ProjectLatexUnits | null;
   setLatexUnits: (latexUnits: ProjectLatexUnits | null) => void;
+  parts: ProjectParts | null;
+  setParts: (parts: ProjectParts | null) => void;
 }
 
 export const useCompileRootStore = create<CompileRootState>((set) => ({
@@ -24,4 +31,6 @@ export const useCompileRootStore = create<CompileRootState>((set) => ({
   },
   latexUnits: null,
   setLatexUnits: (latexUnits) => set({ latexUnits }),
+  parts: null,
+  setParts: (parts) => set({ parts }),
 }));

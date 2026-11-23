@@ -509,11 +509,13 @@
     "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen",
     "texRootDocument": "juuri: {{path}} (sillä on oma \\documentclass)",
     "texRootInclude": "juuri: {{path}} (sisältää tiedoston {{file}})",
+    "texRootFormat": "juuri: {{path}} ({{format}}-dokumentti, käännetty omalla moottorillaan)",
     "target": {
       "title": "Käännöskohde",
-      "help": "Kun Seuraa avointa tiedostoa on valittuna, tiedosto, jolla on oma \\documentclass, käännetään sellaisenaan. Luku tai osio kääntää dokumentin, joka sisältää sen. Muut tiedostot kääntävät päädokumentin. % !TEX root -kommentti ratkaisee aina.",
+      "help": "Kun Seuraa avointa tiedostoa on valittuna, tiedosto, jolla on oma \\documentclass, käännetään sellaisenaan. Luku tai osio kääntää dokumentin, joka sisältää sen. Markdown-, Typst- tai Quarto-dokumentti käännetään sellaisenaan omalla moottorillaan, kun projekti on toisessa muodossa. Muut tiedostot kääntävät päädokumentin. % !TEX root -kommentti ratkaisee aina.",
       "open": "Seuraa avointa tiedostoa",
-      "main": "Aina päädokumentti"
+      "main": "Aina päädokumentti",
+      "change": "Vaihda päädokumentti…"
     }
   },
   "datePicker": {
@@ -650,6 +652,7 @@
   },
   "codeExecution": {
     "allow": "Salli koodi tässä projektissa",
+    "followed": "{{name}} joutuu suorittamaan koodia, ja koodia suoritetaan vain päädokumentille. Tee {{name}} päädokumentiksi ja salli sitten koodi sille.",
     "needed": "Tämän dokumentin koodi täytyy suorittaa, jotta dokumentti kääntyy, ja koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
     "skipped": "Tämän dokumentin koodia ei suoritettu, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
     "storedResults": "PDF näyttää aiemmalla suorituskerralla tallennetut koodin tulokset, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon."
@@ -775,6 +778,9 @@
       "open": "Avaa",
       "browse": "Selaa vain tiedostoja",
       "bestMatch": "Paras osuma",
+      "current": "Nykyinen",
+      "changeDescription": "Kääntäminen tuottaa päädokumentin, kun avoin tiedosto ei ole oma dokumenttinsa eikä osa dokumenttia. Valitse toisen muodon dokumentti, niin projekti vaihtaa siihen muotoon.",
+      "use": "Käytä päädokumenttina",
       "empty": "Oleafly ei löytänyt täältä dokumentteja. Napsauta tiedostoa tiedostopuussa hiiren oikealla painikkeella ja valitse Aseta päädokumentiksi.",
       "truncated": "Kansio on suuri, joten Oleafly lopetti etsimisen aikaisin. Kaikki dokumentit eivät ehkä näy luettelossa.",
       "openFailed": "Tiedostoa {{path}} ei voitu asettaa päädokumentiksi."
@@ -800,6 +806,7 @@
       "has_bibliography": "Sisältää lähdeluettelon",
       "no_begin_document": "Ei \\begin{document} -komentoa",
       "standalone_figure": "Erillinen kuva",
+      "notebook_output": "Quarto teki tämän muistikirjasta",
       "placeholder": "Ei vielä ladattu"
     },
     "noMain": "Päädokumenttia ei ole vielä. Valitse tiedosto ja sitten Aseta päädokumentiksi.",

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,11 +59,13 @@ const recompile = vi.fn();
 function show({
   engine = quarto("html"),
   status = "success",
-  htmlOutput = { projectId: "p1", path: "/p1/.oleafly/build/report.html", builtAt: BUILT_AT },
+  htmlOutput = { projectId: "p1", mainDocument: "report.qmd", path: "/p1/.oleafly/build/report.html", builtAt: BUILT_AT },
+  activePath = null,
 }: {
   engine?: DocumentEngineDescriptor;
   status?: string;
   htmlOutput?: CompiledHtmlOutput | null;
+  activePath?: string | null;
 } = {}) {
   useFilesStore.setState({
     projectId: "p1",
@@ -71,7 +73,13 @@ function show({
     projectKind: "",
     manifestHome: "library",
     mainDoc: "report.qmd",
-    tree: [{ path: "report.qmd", is_dir: false }],
+    tree: [
+      { path: "report.qmd", is_dir: false },
+      { path: "slides.typ", is_dir: false },
+    ],
+    activePath,
+    openTabs: activePath ? [activePath] : [],
+    files: activePath ? { [activePath]: { content: "= Slides\n", dirty: false } } : {},
     engine,
     engineLoaded: true,
   } as unknown as ReturnType<typeof useFilesStore.getState>);
@@ -100,21 +108,21 @@ describe("preview of a document built as a web page", () => {
   it("shows the built page in the preview and still opens it in the browser from the toolbar", async () => {
     show();
     const page = await screen.findByTitle("report.html");
-    expect(mocks.compiledHtmlPreviewUrl).toHaveBeenCalledExactlyOnceWith("p1");
+    expect(mocks.compiledHtmlPreviewUrl).toHaveBeenCalledExactlyOnceWith("p1", "report.qmd");
     expect(page.tagName).toBe("IFRAME");
     expect(page).toHaveAttribute("src", `${PAGE_URL}?v=${BUILT_AT}`);
     expect(page.getAttribute("sandbox")?.split(" ")).not.toContain("allow-top-navigation");
     expect(page).toHaveAttribute("allow", "fullscreen");
     expect(screen.getByRole("button", { name: enPreview.actions.downloadPdf })).toBeDisabled();
     await userEvent.setup().click(screen.getByRole("button", { name: copy.open }));
-    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("p1");
+    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("p1", "report.qmd");
   });
 
   it("reloads the page after each build", async () => {
     show();
     expect(await screen.findByTitle("report.html")).toHaveAttribute("src", `${PAGE_URL}?v=${BUILT_AT}`);
     useCompileStore.setState({
-      htmlOutput: { projectId: "p1", path: "/p1/.oleafly/build/report.html", builtAt: BUILT_AT + 1 },
+      htmlOutput: { projectId: "p1", mainDocument: "report.qmd", path: "/p1/.oleafly/build/report.html", builtAt: BUILT_AT + 1 },
     });
     await waitFor(() =>
       expect(screen.getByTitle("report.html")).toHaveAttribute("src", `${PAGE_URL}?v=${BUILT_AT + 1}`),
@@ -131,7 +139,7 @@ describe("preview of a document built as a web page", () => {
     expect(screen.queryByTitle("report.html")).not.toBeInTheDocument();
     const [inPanel] = within(panel).getAllByRole("button", { name: copy.open });
     await userEvent.setup().click(inPanel);
-    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("p1");
+    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("p1", "report.qmd");
   });
 
   it("tells the user once when the page cannot open", async () => {
@@ -167,7 +175,7 @@ describe("preview of a document built as a web page", () => {
     show({
       engine: quarto("pdf"),
       status: "idle",
-      htmlOutput: { projectId: "other", path: "/other/index.html", builtAt: BUILT_AT },
+      htmlOutput: { projectId: "other", mainDocument: "index.qmd", path: "/other/index.html", builtAt: BUILT_AT },
     });
     expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();
   });
@@ -181,6 +189,16 @@ describe("preview of a document built as a web page", () => {
   it("drops the old page when the main document moves to another engine", () => {
     show({ engine: LATEX_ENGINE, status: "success" });
     expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument();
+  });
+
+  it("shows a page built from a document in another format only while it is the compile target", async () => {
+    const page = { projectId: "p1", mainDocument: "slides.typ", path: "/p1/.oleafly/build/slides.html", builtAt: BUILT_AT };
+    show({ engine: LATEX_ENGINE, htmlOutput: page, activePath: "slides.typ" });
+    expect(await screen.findByTestId("html-output-panel")).toBeInTheDocument();
+    expect(mocks.compiledHtmlPreviewUrl).toHaveBeenLastCalledWith("p1", "slides.typ");
+
+    act(() => useFilesStore.setState({ activePath: "report.qmd" }));
+    await waitFor(() => expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument());
   });
 
   it("leaves a failed first build to the usual error state", () => {

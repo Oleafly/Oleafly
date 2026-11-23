@@ -13,6 +13,9 @@ import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
 import { CodeExecutionBanner, codeExecutionNeed } from "./CodeExecutionBanner";
 
+const chooseMainDocument = vi.hoisted(() => vi.fn(async (_path: string) => true));
+vi.mock("@/store/main-document", () => ({ chooseMainDocument }));
+
 const copy = enShell.codeExecution;
 const recompile = vi.fn(async () => undefined);
 const setShellEscape = vi.fn(async (_allow: boolean) => {});
@@ -48,6 +51,9 @@ function project(engine: DocumentEngineDescriptor, errors: CompileError[]) {
 
 beforeEach(() => {
   recompile.mockClear();
+  chooseMainDocument.mockClear();
+  useCompileStore.setState({ lastAttemptIdentity: null });
+  useFilesStore.setState({ mainDoc: "main.tex", activePath: null, openTabs: [], tree: [], files: {} } as never);
   setShellEscape.mockReset().mockResolvedValue(undefined);
   useToastStore.getState().reset();
   useFolderAccessStore.getState().reset(null);
@@ -59,6 +65,50 @@ afterEach(() => {
 });
 
 describe("CodeExecutionBanner", () => {
+  it("offers to make a notebook open in a LaTeX project the main document when it needs code", async () => {
+    project(LATEX_ENGINE, [coded("notebook.code_needed", "error")]);
+    useFilesStore.setState({
+      mainDoc: "paper.tex",
+      activePath: "talk/slides.qmd",
+      openTabs: ["talk/slides.qmd"],
+      tree: [
+        { path: "paper.tex", is_dir: false },
+        { path: "talk/slides.qmd", is_dir: false },
+      ],
+      files: { "talk/slides.qmd": { content: "# Talk", dirty: false } },
+    } as never);
+    useCompileStore.setState({
+      lastAttemptIdentity: { projectId: "p1", mainDocument: "talk/slides.qmd", projectRevision: 1, requestGeneration: 1 },
+    });
+    render(<CodeExecutionBanner />);
+    expect(screen.getByTestId("code-execution-banner")).toHaveTextContent(
+      copy.followed.replaceAll("{{name}}", "slides.qmd"),
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: enShell.openedFolder.picker.use }));
+    expect(chooseMainDocument).toHaveBeenCalledExactlyOnceWith("talk/slides.qmd", { compile: true });
+    expect(setShellEscape).not.toHaveBeenCalled();
+  });
+
+  it("drops the offer once the notebook is no longer what Compile builds", () => {
+    project(LATEX_ENGINE, [coded("notebook.code_needed", "error")]);
+    useFilesStore.setState({
+      mainDoc: "paper.tex",
+      activePath: "paper.tex",
+      openTabs: ["paper.tex", "talk/slides.qmd"],
+      tree: [
+        { path: "paper.tex", is_dir: false },
+        { path: "talk/slides.qmd", is_dir: false },
+      ],
+      files: { "paper.tex": { content: "\\documentclass{article}", dirty: false } },
+    } as never);
+    useCompileStore.setState({
+      lastAttemptIdentity: { projectId: "p1", mainDocument: "talk/slides.qmd", projectRevision: 1, requestGeneration: 1 },
+    });
+    render(<CodeExecutionBanner />);
+    expect(screen.queryByTestId("code-execution-banner")).not.toBeInTheDocument();
+  });
+
+
   it("says the code did not run when Quarto skipped it", () => {
     project(notebookEngine("quarto"), [coded("notebook.code_skipped")]);
     render(<CodeExecutionBanner />);

@@ -435,7 +435,7 @@ fn resolve_project(
     variant: Option<&str>,
     offline: bool,
 ) -> Result<Option<ResolvedProject>, String> {
-    let meta = crate::project::read_compile_meta(project_id, main_doc)?;
+    let (_, meta) = crate::project::read_compile_root(project_id, main_doc)?;
     let Some(typst) = crate::typst_toolchain::resolve_for_compile(&meta)? else {
         return Ok(None);
     };

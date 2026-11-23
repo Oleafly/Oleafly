@@ -508,11 +508,13 @@
     "coauthorsChanged": "Đồng tác giả đã thay đổi kể từ lần biên dịch trước của bạn",
     "texRootDocument": "root: {{path}} (có \\documentclass riêng)",
     "texRootInclude": "root: {{path}} (chèn {{file}})",
+    "texRootFormat": "root: {{path}} (tài liệu {{format}}, biên dịch bằng engine riêng)",
     "target": {
       "title": "Đích biên dịch",
-      "help": "Với Theo tệp đang mở, tệp có \\documentclass riêng được biên dịch độc lập. Một chương hoặc mục sẽ biên dịch tài liệu chèn nó. Các tệp khác biên dịch tài liệu chính. Chú thích % !TEX root luôn được ưu tiên.",
+      "help": "Với Theo tệp đang mở, tệp có \\documentclass riêng được biên dịch độc lập. Một chương hoặc mục sẽ biên dịch tài liệu chèn nó. Tài liệu Markdown, Typst hoặc Quarto được biên dịch độc lập bằng engine riêng khi dự án thuộc định dạng khác. Các tệp khác biên dịch tài liệu chính. Chú thích % !TEX root luôn được ưu tiên.",
       "open": "Theo tệp đang mở",
-      "main": "Luôn là tài liệu chính"
+      "main": "Luôn là tài liệu chính",
+      "change": "Đổi tài liệu chính…"
     }
   },
   "datePicker": {
@@ -648,6 +650,7 @@
   },
   "codeExecution": {
     "allow": "Cho phép mã trong dự án này",
+    "followed": "{{name}} cần chạy mã, nhưng mã chỉ chạy cho tài liệu chính. Hãy đặt {{name}} làm tài liệu chính, rồi cho phép mã cho nó.",
     "needed": "Tài liệu này phải chạy mã để build, và mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
     "skipped": "Mã trong tài liệu này không chạy vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
     "storedResults": "PDF hiển thị kết quả mã đã lưu từ lần chạy trước vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án."
@@ -773,6 +776,9 @@
       "open": "Mở",
       "browse": "Chỉ duyệt tệp",
       "bestMatch": "Khớp nhất",
+      "current": "Hiện tại",
+      "changeDescription": "Khi tệp đang mở không phải là một tài liệu riêng hay một phần của tài liệu, lệnh biên dịch sẽ tạo tài liệu chính. Chọn một tài liệu ở định dạng khác thì dự án sẽ chuyển sang định dạng đó.",
+      "use": "Dùng làm tài liệu chính",
       "empty": "Oleafly không tìm thấy tài liệu nào ở đây. Nhấp chuột phải vào một tệp trong cây tệp và chọn Đặt làm tài liệu chính.",
       "truncated": "Thư mục này lớn nên Oleafly đã dừng tìm sớm. Một số tài liệu có thể không được liệt kê.",
       "openFailed": "Không đặt được {{path}} làm tài liệu chính."
@@ -798,6 +804,7 @@
       "has_bibliography": "Có tài liệu tham khảo",
       "no_begin_document": "Không có \\begin{document}",
       "standalone_figure": "Hình độc lập",
+      "notebook_output": "Do Quarto tạo từ notebook",
       "placeholder": "Chưa tải xuống"
     },
     "noMain": "Chưa có tài liệu chính. Chọn một tệp và chọn Đặt làm tài liệu chính.",

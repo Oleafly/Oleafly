@@ -75,6 +75,7 @@ describe("settleOpenCompile", () => {
   ): OpenCompileObservation => ({
     projectId: "project",
     mainDocument: "main.md",
+    compileTarget: "main.md",
     loading: false,
     analysisProjectId: "project",
     analysisProjectRevision,
@@ -91,6 +92,17 @@ describe("settleOpenCompile", () => {
     expect(
       settleOpenCompile(request(3), observed(3, null, { hasCurrentArtifact: true }), null),
     ).toEqual({ compiled: true, retries: null });
+  });
+
+  it("settles a compile of the open document it followed, even when it failed", () => {
+    const followed = { ...request(3), mainDocument: "notes.qmd" };
+    expect(
+      settleOpenCompile(request(3), observed(3, followed, { compileTarget: "notes.qmd" }), null),
+    ).toEqual({ compiled: true, retries: null });
+    expect(settleOpenCompile(request(3), observed(3, followed), null)).toEqual({
+      compiled: false,
+      retries: null,
+    });
   });
 
   it("retries once when the revision moved during a started compile, then settles", () => {
