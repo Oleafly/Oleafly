@@ -151,6 +151,7 @@ paths it expects to change. Trust prompts are answered through
 | Preview toolbar (full inventory) | single/two-page layouts, previous/next, valid + empty/non-numeric/zero/out-of-range page input, zoom in/out, all 7 presets, fit width/height, invert/restore, logs/PDF toggle, save actions | 17 |
 | Empty preview | real Recompile control invokes the compile handler | `PreviewPane.test.tsx` |
 | Preview window controls | native detached-window creation plus browser component harness for single/two-page, previous/input/next bounds, zoom +/−, invert, PDF dark mode matching the app theme and shared between windows, and layout state | 17, 56 |
+| PDF dark mode figures | the production viewer keeps an included vector figure, 40 separate photos and a full-bleed photo in their own colors in Chromium and WebKit, by layer position and screenshot pixels, while a scanned page and a figure drawn at half opacity follow the dark page | 150, `pdfFigureLayer.test.ts`, `pdfFigureLayer.integration.test.ts` |
 | Preview recovery/races | detached A→B retarget clears A immediately, rejects late A completion, and fails closed when B has no PDF; spread navigation advances by two; a new compiled byte payload resets a crashed scoped preview boundary | `PreviewWindow.test.tsx`, `ErrorBoundary.test.tsx` |
 | Save PDF/image into project | in-app dialog; exact requested nested relative path; PDF bytes equal compiled output and `%PDF-`; PNG signature/dimensions/nonblank pixels; invalid path surfaces standard failure UX | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |
@@ -253,9 +254,10 @@ smoke-testing.
 
 The macOS CI shards run against a packaged `tauri build --debug --features
 e2e-testing` binary (built once per run with VITE_E2E_HOOKS=1 and downloaded
-by every shard) instead of `tauri dev`. Coverage is identical with two
-deliberate exceptions: 24-pdf-selection-browser and 56-preview-window-browser
-load TSX fixtures through the Vite dev server, so packaged runs skip them —
+by every shard) instead of `tauri dev`. Coverage is identical with three
+deliberate exceptions: 24-pdf-selection-browser, 56-preview-window-browser and
+150-pdf-dark-figures-browser load TSX fixtures through the Vite dev server, so
+packaged runs skip them —
 their subject is Playwright's own Chromium/WebKit, which the Windows dev-mode
 lane still exercises on every push. It is the only dev-mode lane left now that
 Linux runs packaged too, so packaging Windows would end that coverage and has

@@ -34,6 +34,15 @@ pending or has failed.
   light tint the light theme's page colors give, such as sepia. The invert
   button in the toolbar sets the choice to On or Off. All windows share it, so
   a change in the preview window shows in the main window too.
+- In dark mode, pictures and included figures keep their colors: photos,
+  screenshots, plots saved as images, and figures included from PDF or EPS
+  files. Text, tables and anything drawn in the document itself, such as TikZ
+  or an SVG image in Typst, follow the dark page, and so do small marks such
+  as plot markers and slide bullets. A scanned page, a page pulled in from
+  another PDF and a slide background go dark with the rest of the document,
+  while the photos and figures on them keep their colors. A figure saved with
+  wide empty margins keeps only what it draws. A light tint such as sepia
+  tints pictures along with the page.
 - Download the displayed PDF with a chosen filename.
 - Document outline and in-document text search.
 - Compile-log and preview tabs in the same surface.
