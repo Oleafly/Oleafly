@@ -13,6 +13,32 @@ import time
 ANSI = re.compile(rb"\x1b\[[0-9;]*m")
 RUN_ID = re.compile(rb"\bNextest run ID ([0-9a-fA-F-]{36})\b")
 STALE_AFTER = 24 * 60 * 60
+RUNS = {
+    "workspace": ("nextest", "run", "--workspace", "--all-targets"),
+    "lib": ("nextest", "run", "--workspace", "--lib"),
+    "cli": ("nextest", "run", "-p", "oleafly-cli", "--test", "cli"),
+    "shared": (
+        "nextest", "run", "--all-targets",
+        "-p", "oleafly-core",
+        "-p", "oleafly-cli",
+        "-p", "oleafly-sandbox",
+        "-p", "oleafly-secrets",
+        "-p", "oleafly-online",
+        "-p", "oleafly-research",
+        "-p", "oleafly-acp",
+    ),
+    "server-web": (
+        "nextest", "run", "-p", "oleafly-server", "--all-targets", "--features", "web",
+    ),
+    "windows": (
+        "nextest", "run", "--workspace", "--exclude", "oleafly-server", "--all-targets",
+    ),
+    "history-msrv": ("+1.89.0", "nextest", "run", "-p", "oleafly-history", "--all-targets"),
+    "coverage": (
+        "llvm-cov", "nextest", "--workspace", "--all-targets",
+        "--lcov", "--output-path", "coverage/rust/lcov.info",
+    ),
+}
 
 
 def remove_stale_runs(root):
@@ -33,9 +59,13 @@ def remove_stale_runs(root):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"usage: {sys.argv[0]} COMMAND [ARG ...]", file=sys.stderr)
+    if len(sys.argv) != 2 or sys.argv[1] not in RUNS:
+        print(f"usage: {sys.argv[0]} {{{'|'.join(RUNS)}}}", file=sys.stderr)
         return 2
+    cargo = shutil.which("cargo")
+    if cargo is None:
+        print("cargo is not on PATH", file=sys.stderr)
+        return 127
 
     root = Path(tempfile.gettempdir()) / "oleafly-test-data"
     try:
@@ -57,7 +87,7 @@ def main():
     process = None
     try:
         process = subprocess.Popen(
-            sys.argv[1:],
+            [cargo, *RUNS[sys.argv[1]]],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

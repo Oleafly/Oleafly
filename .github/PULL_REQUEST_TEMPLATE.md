@@ -17,7 +17,7 @@ Closes #
 <!-- Commands you ran, platforms you tried, manual steps. -->
 
 - [ ] `pnpm build` passes
-- [ ] `python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets` passes
+- [ ] `python3 scripts/run-nextest.py workspace` passes
 - [ ] Ran the app (`pnpm tauri dev`) and exercised the change
 
 ## Checklist

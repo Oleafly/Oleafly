@@ -54,11 +54,11 @@ if printf '%s\n' "$staged" | grep -qE '^(src-tauri/|crates/|Cargo\.(toml|lock)$|
   echo "→ rust: tests"
   case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
-      OLEAFLY_EMBED_TEST_MANIFEST=1 python scripts/run-nextest.py cargo nextest run --workspace --lib || fail "cargo nextest"
-      python scripts/run-nextest.py cargo nextest run -p oleafly-cli --test cli || fail "cargo nextest (oleaflyc)"
+      OLEAFLY_EMBED_TEST_MANIFEST=1 python scripts/run-nextest.py lib || fail "cargo nextest"
+      python scripts/run-nextest.py cli || fail "cargo nextest (oleaflyc)"
       ;;
     *)
-      python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets || fail "cargo nextest"
+      python3 scripts/run-nextest.py workspace || fail "cargo nextest"
       ;;
   esac
 fi

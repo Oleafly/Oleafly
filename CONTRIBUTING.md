@@ -89,14 +89,14 @@ lowercase engineering references contain deeper contracts and release policy.
 
 ```bash
 pnpm test                    # frontend unit tests (Vitest)
-python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets
+python3 scripts/run-nextest.py workspace
 ```
 
 On Windows, run the Rust tests as
 ```powershell
 $env:OLEAFLY_EMBED_TEST_MANIFEST="1"
-python scripts/run-nextest.py cargo nextest run --workspace --lib
-python scripts/run-nextest.py cargo nextest run -p oleafly-cli --test cli
+python scripts/run-nextest.py lib
+python scripts/run-nextest.py cli
 ```
 
 The variable makes the build script link a Common Controls v6 manifest into
@@ -177,7 +177,7 @@ what counts as prose.
 
 1. Fork and branch from `main` (`git checkout -b fix/short-description`).
 2. Keep the change focused; unrelated refactors belong in their own PR.
-3. Make sure `pnpm lint`, `pnpm build`, and `python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets` pass locally.
+3. Make sure `pnpm lint`, `pnpm build`, and `python3 scripts/run-nextest.py workspace` pass locally.
 4. Fill out the PR template - link the issue, describe the change, note how you
    tested it.
 5. CI must be green (the frontend build and Rust tests are required checks).

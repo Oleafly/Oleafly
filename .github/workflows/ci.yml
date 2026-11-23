@@ -31,6 +31,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NEXTEST_PROFILE: ci
+
 # Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
 concurrency:
   group: ci-${{ github.ref }}
@@ -486,10 +489,9 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           LLVM_PROFILE_FILE_NAME: oleafly-%4m.profraw
-          NEXTEST_PROFILE: ci
         run: |
           mkdir -p coverage/rust
-          python3 scripts/run-nextest.py cargo llvm-cov nextest --workspace --all-targets --lcov --output-path coverage/rust/lcov.info
+          python3 scripts/run-nextest.py coverage
 
       - name: Upload Rust coverage
         if: github.event_name == 'push' || github.event_name == 'pull_request'
@@ -502,7 +504,7 @@ jobs:
 
       - name: Test
         if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets --profile ci
+        run: python3 scripts/run-nextest.py workspace
 
       - name: Format check
         run: cargo fmt --all -- --check
@@ -586,7 +588,7 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         run: |
           cargo clippy -p oleafly-server --all-targets --features web -- -D warnings
-          python3 scripts/run-nextest.py cargo nextest run -p oleafly-server --all-targets --features web --profile ci
+          python3 scripts/run-nextest.py server-web
 
   rust-windows:
     name: Rust checks (Windows)
@@ -638,7 +640,7 @@ jobs:
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: python scripts/run-nextest.py cargo nextest run --workspace --exclude oleafly-server --all-targets --profile ci
+        run: python scripts/run-nextest.py windows
 
       - name: Lint all native Windows targets
         run: cargo clippy --workspace --exclude oleafly-server --all-targets -- -D warnings
@@ -649,7 +651,7 @@ jobs:
           toolchain: 1.89.0
 
       - name: Test history on Rust 1.89
-        run: python scripts/run-nextest.py cargo +1.89.0 nextest run -p oleafly-history --all-targets --profile ci
+        run: python scripts/run-nextest.py history-msrv
 
   latexmk-windows:
     name: Real latexmk (Windows TinyTeX)
@@ -979,8 +981,8 @@ jobs:
       # online, research and ACP crates have macOS-only code (the Seatbelt
       # profile, the keychain, browser cookies, process isolation) that the
       # Linux and Windows jobs never compile, so this is the only job that
-      # tests and lints it. Keep the clippy list in step with the crates in
-      # scripts/run-macos-shared-rust-tests.sh.
+      # tests and lints it. Keep the clippy list in step with the shared run's
+      # crates in scripts/run-nextest.py.
       - name: Test the macOS Rust retry guard
         run: bash scripts/run-macos-shared-rust-tests.test.sh
 

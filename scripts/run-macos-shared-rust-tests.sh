@@ -11,9 +11,7 @@ cleanup_first_log() {
 trap cleanup_first_log EXIT
 
 run_shared_tests() {
-  python3 "$(dirname "$0")/run-nextest.py" cargo nextest run --profile ci --all-targets \
-    -p oleafly-core -p oleafly-cli -p oleafly-sandbox -p oleafly-secrets \
-    -p oleafly-online -p oleafly-research -p oleafly-acp
+  python3 "$(dirname "$0")/run-nextest.py" shared
 }
 
 set +e

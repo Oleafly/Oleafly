@@ -108,7 +108,7 @@ run_case retry_success 0 3
 run_case retry_failure 101 3
 
 grep -Fq 'clean -p oleafly-cli' "$TEST_ROOT/retry_success/calls.log"
-grep -Fq 'nextest run --profile ci --all-targets' "$TEST_ROOT/success/calls.log"
+grep -Fq 'nextest run --all-targets -p oleafly-core' "$TEST_ROOT/success/calls.log"
 grep -Fq 'Retrying shared Rust tests' "$TEST_ROOT/retry_success/output.log"
 if grep -Fq 'Retrying shared Rust tests' "$TEST_ROOT/ordinary_failure/output.log"; then
   exit 1
