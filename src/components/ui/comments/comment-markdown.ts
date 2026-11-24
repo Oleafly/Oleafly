@@ -181,7 +181,7 @@ function listLine(line: string): ListLine | null {
 function appendListLine(blocks: CommentBlock[], line: ListLine, options: CommentParseOptions): void {
   const item = parseInline(line.text, options);
   const last = blocks.at(-1);
-  if (last && last.kind === line.kind) last.items.push(item);
+  if (last?.kind === line.kind) last.items.push(item);
   else if (line.kind === "bullet") blocks.push({ kind: "bullet", items: [item] });
   else blocks.push({ kind: "ordered", start: line.start, items: [item] });
 }

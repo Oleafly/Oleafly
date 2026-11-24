@@ -1507,10 +1507,6 @@ function treeRowClass(active: boolean, selected: boolean, dropTarget: boolean): 
   );
 }
 
-function linkedRowHint(overleafLinked: boolean): string | undefined {
-  return overleafLinked ? i18n.t(($) => $.collab.overleafLinked.treeHint) : undefined;
-}
-
 function TreeRowLink({ readOnly, overleaf }: Readonly<{ readOnly: boolean; overleaf: boolean }>) {
   if (!readOnly && !overleaf) return null;
   return (
@@ -1547,7 +1543,8 @@ function TreeRow({
   const partial = expandable && node.partial;
   const overleafLinked = !node.isDir && ctx.overleafLinked.has(node.path);
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
-  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : linkedRowHint(overleafLinked);
+  const linkedHint = overleafLinked ? i18n.t(($) => $.collab.overleafLinked.treeHint) : undefined;
+  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : linkedHint;
   const rowRef = useRef<HTMLDivElement>(null);
 
   const dropDir = node.isDir ? node.path : parentOf(node.path);
