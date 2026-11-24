@@ -9,8 +9,6 @@ const REMOTE = "6af963ebc9037022065bb53f";
 const calls: { command: string; args: unknown }[] = [];
 
 const linked = params.get("linked") === "1";
-const reviewing = params.get("view") === "comments";
-const chatting = params.get("view") === "chat";
 const role = params.get("role") ?? "editor";
 const commentsOn = params.get("comments") !== "off";
 const canAccept = params.get("accept") !== "0";
@@ -537,26 +535,28 @@ async function pdfView() {
   return react.createElement(PdfReview);
 }
 
-const views = new Map<string, () => Promise<ReturnType<typeof react.createElement>>>([
-  ["pdf", pdfView],
-  ["words", wordsView],
-  ["history", historyView],
-  ["settings", settingsView],
-  ["linked", linkedView],
-]);
-
-let view: ReturnType<typeof react.createElement>;
-const extra = views.get(params.get("view") ?? "");
-if (extra) {
-  view = await extra();
-} else if (params.get("view") === "card") {
-  view = react.createElement("div", { className: "max-w-2xl space-y-2 p-6" }, react.createElement(OverleafLiveSetting));
-} else if (reviewing) {
-  view = await reviewView();
-} else if (chatting) {
-  view = await chatView();
-} else {
-  view = react.createElement("div", { className: "flex flex-col" }, toolbar, react.createElement(OverleafBanners));
+async function shownView() {
+  switch (params.get("view")) {
+    case "pdf":
+      return pdfView();
+    case "words":
+      return wordsView();
+    case "history":
+      return historyView();
+    case "settings":
+      return settingsView();
+    case "linked":
+      return linkedView();
+    case "card":
+      return react.createElement("div", { className: "max-w-2xl space-y-2 p-6" }, react.createElement(OverleafLiveSetting));
+    case "comments":
+      return reviewView();
+    case "chat":
+      return chatView();
+    default:
+      return react.createElement("div", { className: "flex flex-col" }, toolbar, react.createElement(OverleafBanners));
+  }
 }
-createRoot(document.getElementById("root") as HTMLElement).render(view);
+
+createRoot(document.getElementById("root") as HTMLElement).render(await shownView());
 document.body.dataset.fixtureState = "mounted";

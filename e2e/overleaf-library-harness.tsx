@@ -139,11 +139,16 @@ async function accountsView() {
   return react.createElement("div", { className: "max-w-2xl p-6" }, react.createElement(OverleafSection));
 }
 
-const views = new Map<string, () => Promise<ReturnType<typeof react.createElement>>>([
-  ["import", importView],
-  ["put", putView],
-  ["accounts", accountsView],
-]);
-const view = await (views.get(params.get("view") ?? "import") ?? importView)();
-createRoot(document.getElementById("root") as HTMLElement).render(view);
+async function shownView() {
+  switch (params.get("view")) {
+    case "put":
+      return putView();
+    case "accounts":
+      return accountsView();
+    default:
+      return importView();
+  }
+}
+
+createRoot(document.getElementById("root") as HTMLElement).render(await shownView());
 document.body.dataset.fixtureState = "mounted";
