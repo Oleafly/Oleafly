@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { syntaxHighlighting } from "@codemirror/language";
-import { editorColor, editorColorDeclarations } from "./color-roles";
+import { EDITOR_USER_FONT_SMOOTHING, editorColor, editorColorDeclarations } from "./color-roles";
 import { editorHighlightStyle } from "./syntax-colors";
 
 export const EDITOR_LINE_HEIGHT = "1.7";
@@ -16,6 +16,7 @@ const chromeTheme = EditorView.theme({
     backgroundColor: editorColor("background"),
     color: editorColor("text"),
     fontSize: "var(--cm-font-size, 13px)",
+    WebkitFontSmoothing: `var(${EDITOR_USER_FONT_SMOOTHING}, var(--font-smoothing))`,
   },
   "&.cm-editor": {
     height: "100%",

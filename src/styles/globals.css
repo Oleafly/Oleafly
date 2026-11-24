@@ -218,6 +218,7 @@
 
 [data-editor-theme="linear"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #08090a;
   --cm-editor-fg: #d0d6e0;
   --cm-gutter-fg: #52565f;
@@ -237,6 +238,7 @@
 
 [data-editor-theme="github-dark"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #0d1117;
   --cm-editor-fg: #c9d1d9;
   --cm-gutter-fg: #6e7681;
@@ -256,6 +258,7 @@
 
 [data-editor-theme="dracula"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #282a36;
   --cm-editor-fg: #f8f8f2;
   --cm-gutter-fg: #6272a4;
@@ -275,6 +278,7 @@
 
 [data-editor-theme="nord"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #2e3440;
   --cm-editor-fg: #d8dee9;
   --cm-gutter-fg: #4c566a;
@@ -294,6 +298,7 @@
 
 [data-editor-theme="tokyo-night"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #1a1b26;
   --cm-editor-fg: #a9b1d6;
   --cm-gutter-fg: #3b4261;
@@ -313,6 +318,7 @@
 
 [data-editor-theme="rose-pine"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #191724;
   --cm-editor-fg: #e0def4;
   --cm-gutter-fg: #6e6a86;
@@ -332,6 +338,7 @@
 
 [data-editor-theme="catppuccin"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #1e1e2e;
   --cm-editor-fg: #cdd6f4;
   --cm-gutter-fg: #6c7086;
@@ -351,6 +358,7 @@
 
 [data-editor-theme="one-dark"] {
   --cm-cursor-custom: var(--cm-cursor-custom-dark);
+  --font-smoothing: antialiased;
   --cm-editor-bg: #282c34;
   --cm-editor-fg: #abb2bf;
   --cm-gutter-fg: #636d83;
@@ -370,6 +378,7 @@
 
 [data-editor-theme="paper"] {
   --cm-cursor-custom: var(--cm-cursor-custom-light);
+  --font-smoothing: auto;
   --cm-editor-bg: #faf6ec;
   --cm-editor-fg: #2f2a23;
   --cm-gutter-fg: #a3967f;
@@ -392,6 +401,7 @@
 
 [data-editor-theme="one-light"] {
   --cm-cursor-custom: var(--cm-cursor-custom-light);
+  --font-smoothing: auto;
   --cm-editor-bg: #fafafa;
   --cm-editor-fg: #383a42;
   --cm-gutter-fg: #9d9d9f;
@@ -889,9 +899,11 @@
     --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
     --font-sans-default: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
     --cm-cursor-custom: var(--cm-cursor-custom-light);
+    --font-smoothing: auto;
   }
   .dark {
     --cm-cursor-custom: var(--cm-cursor-custom-dark);
+    --font-smoothing: antialiased;
   }
   html:lang(zh-Hans) {
     --font-sans: var(--app-font, "Geist"), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
@@ -914,7 +926,7 @@
     background-color: var(--app-surface, var(--background));
     color: var(--foreground);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: var(--font-smoothing);
     text-rendering: optimizeLegibility;
     overflow: hidden;
     cursor: default;

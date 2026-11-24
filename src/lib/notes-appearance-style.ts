@@ -1,7 +1,7 @@
 import type { EditorThemeId } from "@/lib/editor-themes";
 import { fontFamilyOr } from "@/lib/font-families";
 import type { NotesAppearance, NotesCodeTheme } from "@/lib/notes-appearance";
-import { hexLuminance } from "@/lib/peer-colors";
+import { isLightHex } from "@/lib/peer-colors";
 import {
   headingFont,
   lineHeightValue,
@@ -85,8 +85,7 @@ export function notesAppearanceAttributes(appearance: NotesAppearance): Record<s
 }
 
 export function readableForeground(hex: string): string {
-  const luminance = hexLuminance(hex);
-  return luminance !== null && luminance > 0.4 ? "#111111" : "#ffffff";
+  return isLightHex(hex) ? "#111111" : "#ffffff";
 }
 
 export function resolveNotesCodeTheme(
@@ -109,4 +108,5 @@ export const NOTES_CODE_PALETTE: readonly (readonly [source: string, target: str
   ["--cm-meta", "--notes-code-meta"],
   ["--cm-tag", "--notes-code-tag"],
   ["--cm-operator", "--notes-code-operator"],
+  ["--font-smoothing", "--notes-code-font-smoothing"],
 ];

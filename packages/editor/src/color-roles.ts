@@ -56,6 +56,8 @@ function isSurface(id: EditorColorId): id is SurfaceColor {
   return (SURFACE_COLORS as readonly string[]).includes(id);
 }
 
+export const EDITOR_USER_FONT_SMOOTHING = "--cm-user-font-smoothing";
+
 export function editorColorVariable(id: EditorColorId): string {
   return `--cm-user-${kebab(id)}`;
 }

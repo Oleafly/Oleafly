@@ -74,6 +74,20 @@ describe("editor themes", () => {
     expect(style["--cm-user-comment"]).toBe("#123456");
     expect(style["--cm-user-heading"]).toBe("initial");
     expect(style["--cm-user-background"]).toBe("initial");
+    expect(style["--cm-user-font-smoothing"]).toBe("initial");
+  });
+
+  it("smooths text for a custom background by how light it is, and leaves the theme's choice otherwise", () => {
+    applyEditorColors({ background: "#ffffff", text: "#1f2328" });
+    expect(root.style.getPropertyValue("--cm-user-font-smoothing")).toBe("auto");
+
+    applyEditorColors({ background: "#1e1e1e" });
+    expect(root.style.getPropertyValue("--cm-user-font-smoothing")).toBe("antialiased");
+
+    applyEditorColors({ text: "#1f2328" });
+    expect(root.style.getPropertyValue("--cm-user-font-smoothing")).toBe("");
+
+    expect(editorColorPreviewStyle({ background: "#faf6ec" })["--cm-user-font-smoothing"]).toBe("auto");
   });
 
   it("reads an imported editor section and ignores what it does not know", () => {

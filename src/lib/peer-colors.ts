@@ -37,6 +37,11 @@ export function hexLuminance(hex: string): number | null {
   return relativeLuminance(((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255);
 }
 
+export function isLightHex(hex: string): boolean {
+  const luminance = hexLuminance(hex);
+  return luminance !== null && luminance > 0.4;
+}
+
 export function contrastWithWhite(luminance: number): number {
   return 1.05 / (luminance + 0.05);
 }
