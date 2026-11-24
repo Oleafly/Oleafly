@@ -70,7 +70,7 @@ interface Match {
 
 function formulas(text: string, options: CommentParseOptions): ReadonlyMap<number, Match> {
   if (!options.math || !/[$\\]/u.test(text)) return new Map();
-  const environments = text.includes("\\begin{") ? scanMathEnvironments(text) : [];
+  const environments = text.includes(String.raw`\begin{`) ? scanMathEnvironments(text) : [];
   return new Map([
     ...environments.map(({ from, to, source }): [number, Match] => [
       from,
@@ -102,14 +102,12 @@ function linkAt(text: string, index: number): Match | null {
   return href.length > "https://".length ? { node: { kind: "link", href, text: href }, end } : null;
 }
 
-function matchAt(text: string, index: number, options: CommentParseOptions): Match | null {
-  if (options.markdown === false) return linkAt(text, index);
-  const char = text[index];
-  if (char === "`") {
-    const close = text.indexOf("`", index + 1);
-    if (close > index + 1) return { node: { kind: "code", text: text.slice(index + 1, close) }, end: close + 1 };
-    return null;
-  }
+function codeAt(text: string, index: number): Match | null {
+  const close = text.indexOf("`", index + 1);
+  return close > index + 1 ? { node: { kind: "code", text: text.slice(index + 1, close) }, end: close + 1 } : null;
+}
+
+function pairAt(text: string, index: number, options: CommentParseOptions): Match | null {
   for (const [marker, kind] of [
     ["**", "bold"],
     ["~~", "strike"],
@@ -120,19 +118,28 @@ function matchAt(text: string, index: number, options: CommentParseOptions): Mat
       return { node: { kind, children: parseInline(text.slice(index + 2, close), options) }, end: close + 2 };
     }
   }
+  return null;
+}
+
+function italicEnd(text: string, index: number): number {
+  const char = text[index];
   if (char === "*" && text[index - 1] !== "*" && text[index + 1] !== "*" && !isSpace(text[index + 1])) {
-    const close = closingStar(text, index + 1);
-    if (close !== -1) {
-      return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close), options) }, end: close + 1 };
-    }
+    return closingStar(text, index + 1);
   }
-  if (char === "_" && !isWord(text[index - 1]) && !isSpace(text[index + 1])) {
-    const close = closingUnderscore(text, index + 1);
-    if (close !== -1) {
-      return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close), options) }, end: close + 1 };
-    }
-  }
-  return linkAt(text, index);
+  if (char === "_" && !isWord(text[index - 1]) && !isSpace(text[index + 1])) return closingUnderscore(text, index + 1);
+  return -1;
+}
+
+function italicAt(text: string, index: number, options: CommentParseOptions): Match | null {
+  const close = italicEnd(text, index);
+  if (close === -1) return null;
+  return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close), options) }, end: close + 1 };
+}
+
+function matchAt(text: string, index: number, options: CommentParseOptions): Match | null {
+  if (options.markdown === false) return linkAt(text, index);
+  if (text[index] === "`") return codeAt(text, index);
+  return pairAt(text, index, options) ?? italicAt(text, index, options) ?? linkAt(text, index);
 }
 
 export function parseInline(text: string, options: CommentParseOptions = {}): CommentInline[] {
@@ -162,35 +169,43 @@ export function parseInline(text: string, options: CommentParseOptions = {}): Co
   return nodes;
 }
 
+type ListLine = { kind: "bullet"; text: string } | { kind: "ordered"; start: number; text: string };
+
+function listLine(line: string): ListLine | null {
+  const bullet = BULLET.exec(line);
+  if (bullet) return { kind: "bullet", text: bullet[1] };
+  const ordered = ORDERED.exec(line);
+  return ordered ? { kind: "ordered", start: Number(ordered[1]), text: ordered[2] } : null;
+}
+
+function appendListLine(blocks: CommentBlock[], line: ListLine, options: CommentParseOptions): void {
+  const item = parseInline(line.text, options);
+  const last = blocks.at(-1);
+  if (last && last.kind === line.kind) last.items.push(item);
+  else if (line.kind === "bullet") blocks.push({ kind: "bullet", items: [item] });
+  else blocks.push({ kind: "ordered", start: line.start, items: [item] });
+}
+
 export function parseComment(body: string, options: CommentParseOptions = {}): CommentBlock[] {
   const blocks: CommentBlock[] = [];
   let paragraph: string[] = [];
   const flush = () => {
-    if (paragraph.length === 0) return;
-    blocks.push({ kind: "paragraph", children: parseInline(paragraph.join("\n"), options) });
+    const text = paragraph.join("\n");
+    if (text.trim() !== "") blocks.push({ kind: "paragraph", children: parseInline(text, options) });
     paragraph = [];
   };
   const lists = options.markdown !== false;
   for (const line of body.replaceAll("\r\n", "\n").split("\n")) {
-    const bullet = lists ? BULLET.exec(line) : null;
-    const ordered = lists ? ORDERED.exec(line) : null;
-    const last = blocks.at(-1);
-    if (bullet) {
+    const listed = lists ? listLine(line) : null;
+    if (listed) {
       flush();
-      if (last?.kind === "bullet") last.items.push(parseInline(bullet[1], options));
-      else blocks.push({ kind: "bullet", items: [parseInline(bullet[1], options)] });
-      continue;
+      appendListLine(blocks, listed, options);
+    } else {
+      paragraph.push(line);
     }
-    if (ordered) {
-      flush();
-      if (last?.kind === "ordered") last.items.push(parseInline(ordered[2], options));
-      else blocks.push({ kind: "ordered", start: Number(ordered[1]), items: [parseInline(ordered[2], options)] });
-      continue;
-    }
-    paragraph.push(line);
   }
   flush();
-  return blocks.filter((block) => block.kind !== "paragraph" || block.children.length > 0);
+  return blocks;
 }
 
 function plainInline(nodes: readonly CommentInline[]): string {

@@ -804,38 +804,7 @@ impl RawDoc {
                 pending.next();
             }
             if run.mark.is_some() {
-                let kind = if deleted {
-                    ChangeKind::Delete
-                } else {
-                    ChangeKind::Insert
-                };
-                let (kind_name, user) = (
-                    field(&run.mark, "type").unwrap_or_default(),
-                    field(&run.mark, "userId"),
-                );
-                let ts = run
-                    .mark
-                    .as_ref()
-                    .and_then(|mark| mark.get("ts"))
-                    .map(Value::to_string)
-                    .unwrap_or_default();
-                let hash = fnv(&[kind_name, user.unwrap_or_default(), &ts]);
-                let ordinal = ordinals.entry(hash).or_default();
-                let id = format!("{hash:016x}{:04x}", *ordinal);
-                *ordinal += 1;
-                changes.push(VisibleChange {
-                    id,
-                    kind,
-                    from: visible,
-                    to: if deleted {
-                        visible
-                    } else {
-                        visible + run.length
-                    },
-                    text: String::from_utf16_lossy(&self.content[raw..raw + run.length]),
-                    user: user.map(str::to_string),
-                    ts: stamp(&run.mark),
-                });
+                changes.push(self.visible_change(run, raw, visible, &mut ordinals));
             }
             raw += run.length;
             if !deleted {
@@ -862,6 +831,43 @@ impl RawDoc {
             })
             .collect();
         Review { comments, changes }
+    }
+
+    fn visible_change(
+        &self,
+        run: &Run,
+        raw: usize,
+        visible: usize,
+        ordinals: &mut HashMap<u64, usize>,
+    ) -> VisibleChange {
+        let (kind, to) = if is_deleted(&run.mark) {
+            (ChangeKind::Delete, visible)
+        } else {
+            (ChangeKind::Insert, visible + run.length)
+        };
+        let (kind_name, user) = (
+            field(&run.mark, "type").unwrap_or_default(),
+            field(&run.mark, "userId"),
+        );
+        let ts = run
+            .mark
+            .as_ref()
+            .and_then(|mark| mark.get("ts"))
+            .map(Value::to_string)
+            .unwrap_or_default();
+        let hash = fnv(&[kind_name, user.unwrap_or_default(), &ts]);
+        let ordinal = ordinals.entry(hash).or_default();
+        let id = format!("{hash:016x}{:04x}", *ordinal);
+        *ordinal += 1;
+        VisibleChange {
+            id,
+            kind,
+            from: visible,
+            to,
+            text: String::from_utf16_lossy(&self.content[raw..raw + run.length]),
+            user: user.map(str::to_string),
+            ts: stamp(&run.mark),
+        }
     }
 
     fn tracked_spans(&self, ids: &[String]) -> Vec<(usize, usize, bool)> {

@@ -28,6 +28,7 @@ const TA = 'textarea[placeholder*="Ask AI"]';
 const COAUTHOR = "COAUTHOR-AGENT-OL ";
 const AGENT = " AGENT-WROTE-OL";
 
+// Ignored on purpose outside CI without OLEAFLY_E2E_OVERLEAF_STACK, because the spec drives the mock server it names.
 test.skip(
   !process.env.CI && !STACK,
   "Needs OLEAFLY_E2E_OVERLEAF_STACK, the mock Overleaf server built with `cargo build -p oleafly-online --features test-support --example e2e_overleaf`, answering the `text` and `peer_type` commands.",

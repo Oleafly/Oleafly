@@ -100,6 +100,35 @@ function ChatTypingLine() {
   );
 }
 
+function ChatEntry({
+  projectId,
+  canPost,
+  connected,
+  typing,
+}: Readonly<{ projectId: string | null; canPost: boolean; connected: boolean; typing: boolean }>) {
+  const { t } = useTranslation(["collab"]);
+  if (!canPost) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {connected ? t(($) => $.collab.chat.readOnly) : t(($) => $.collab.chat.offline)}
+      </p>
+    );
+  }
+  const pending = pendingChat(projectId);
+  return (
+    <CommentComposer
+      compact
+      initial={pending?.body ?? chatDraft(projectId)}
+      sending={pending?.sent}
+      label={t(($) => $.collab.chat.label)}
+      placeholder={t(($) => $.collab.chat.placeholder)}
+      submitLabel={t(($) => $.collab.chat.send)}
+      onSubmit={sendChat}
+      onActivity={typing ? chatActivity : undefined}
+    />
+  );
+}
+
 export function ChatPane() {
   const projectId = useChat((state) => state.projectId);
   return <ProjectChat key={projectId ?? ""} />;
@@ -143,7 +172,6 @@ function ProjectChat() {
   const reactions = chat.status?.reactions === true;
   const typing = useComments((state) => state.status?.typing === true);
   const actions = chat.status?.edit ? EDITABLE_CHAT_ACTIONS : CHAT_ACTIONS;
-  const pending = pendingChat(chat.projectId);
   const chatLabels = useMemo(
     () => ({
       deleted: t(($) => $.collab.chat.deleted),
@@ -353,22 +381,7 @@ function ProjectChat() {
           </div>
         ) : null}
         <div ref={composer} className="shrink-0 border-t border-sidebar-border px-3 py-2">
-          {canPost ? (
-            <CommentComposer
-              compact
-              initial={pending?.body ?? chatDraft(chat.projectId)}
-              sending={pending?.sent}
-              label={t(($) => $.collab.chat.label)}
-              placeholder={t(($) => $.collab.chat.placeholder)}
-              submitLabel={t(($) => $.collab.chat.send)}
-              onSubmit={sendChat}
-              onActivity={typing ? chatActivity : undefined}
-            />
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {connected ? t(($) => $.collab.chat.readOnly) : t(($) => $.collab.chat.offline)}
-            </p>
-          )}
+          <ChatEntry projectId={chat.projectId} canPost={canPost} connected={connected} typing={typing} />
         </div>
         <ConfirmationDialog
           open={clearing}

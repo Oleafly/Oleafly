@@ -109,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Importing from your online LaTeX service offered only Try again when the saved server couldn't be reached. It now lets you switch to another server.
 - Approval cards for assistant tools that don't change a file, such as a literature search, now say what the tool will do.
 - `oleafly build --watch` rebuilds when a folder is renamed or moved into the project.
+- A line of text between two list items in a comment or chat message stays where you wrote it. It used to move below the list.
 
 ## [0.4.13] - 2026-11-20
 

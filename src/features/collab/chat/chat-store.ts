@@ -99,11 +99,16 @@ async function shownBefore(
 ): Promise<OlderPages> {
   const messages: CollabChatMessage[] = [];
   let before = newest[0]?.id;
-  for (let page = 0; before && page <= Math.ceil(known.size / REFRESH_PAGE) && current(); page += 1) {
-    const older = await collabChatList(projectId, before, REFRESH_PAGE);
-    messages.unshift(...older);
-    if (older.length < REFRESH_PAGE || older.some((message) => message.id === cursor)) return { messages, complete: true };
-    before = older[0].id;
+  try {
+    for (let page = 0; before && page <= Math.ceil(known.size / REFRESH_PAGE) && current(); page += 1) {
+      const older = await collabChatList(projectId, before, REFRESH_PAGE);
+      messages.unshift(...older);
+      if (older.length < REFRESH_PAGE || older.some((message) => message.id === cursor)) return { messages, complete: true };
+      before = older[0].id;
+    }
+  } catch (error) {
+    void logWarning("collab chat refresh older", error);
+    return { messages: [], complete: false };
   }
   return { messages, complete: false };
 }
@@ -117,6 +122,16 @@ function cursorAfter(
   if (cursor === null || !gone(cursor)) return cursor;
   const shown = new Set(next.map((message) => message.id));
   return fetched.find((message) => shown.has(message.id))?.id ?? next[0]?.id ?? null;
+}
+
+function showLoadFailure(error: unknown): void {
+  const code = collabErrorCode(error);
+  if (code === "not_found") {
+    useChat.setState({ messages: [], phase: "ready", error: null, hasOlder: false, cursor: null });
+    return;
+  }
+  void logError("collab chat load", error);
+  useChat.setState({ phase: "failed", error: code });
 }
 
 export async function loadChat(): Promise<void> {
@@ -133,14 +148,7 @@ export async function loadChat(): Promise<void> {
   try {
     listed = await collabChatList(projectId, null, limit);
   } catch (error) {
-    if (!current()) return;
-    const code = collabErrorCode(error);
-    if (code === "not_found") {
-      useChat.setState({ messages: [], phase: "ready", error: null, hasOlder: false, cursor: null });
-      return;
-    }
-    void logError("collab chat load", error);
-    useChat.setState({ phase: "failed", error: code });
+    if (current()) showLoadFailure(error);
     return;
   }
   if (!current()) return;
@@ -149,11 +157,7 @@ export async function loadChat(): Promise<void> {
   let older: CollabChatMessage[] = [];
   let complete = listed.length < limit || listed.some((message) => message.id === cursor);
   if (!complete && cursor && listed.some((message) => known.has(message.id))) {
-    try {
-      ({ messages: older, complete } = await shownBefore(projectId, listed, cursor, known, current));
-    } catch (error) {
-      void logWarning("collab chat refresh older", error);
-    }
+    ({ messages: older, complete } = await shownBefore(projectId, listed, cursor, known, current));
     if (!current()) return;
   }
   const fetched = [...older, ...listed];

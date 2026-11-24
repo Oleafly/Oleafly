@@ -270,7 +270,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     }
   },
 
-  async signOut(keepLocalCopy = false, account) {
+  async signOut(keepLocalCopy = false, account = null) {
     const before = get();
     const leaving = account ?? before.unsentAccount ?? before.status?.userId ?? null;
     try {

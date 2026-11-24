@@ -2585,6 +2585,31 @@ fn text_operations(op: &Value) -> Result<Vec<Option<TextOperation>>, String> {
         .collect()
 }
 
+fn move_past(
+    ours: &mut [Option<TextOperation>],
+    edits: &mut [Edit],
+    applied: &Value,
+) -> Result<(), String> {
+    let mut theirs: Vec<TextOperation> = text_operations(applied)?.into_iter().flatten().collect();
+    for their in &theirs {
+        let moved = RawOp::from_json(&their.to_json()).map_err(|error| error.to_string())?;
+        for edit in edits.iter_mut() {
+            if let Edit::AddComment(comment) = edit {
+                *comment = comment.moved(&moved);
+            }
+        }
+    }
+    for own in ours.iter_mut().flatten() {
+        for their in theirs.iter_mut() {
+            let (own_after, their_after) =
+                TextOperation::transform(own, their).map_err(|error| error.0)?;
+            *own = own_after;
+            *their = their_after;
+        }
+    }
+    Ok(())
+}
+
 fn apply_history_ot(
     doc: &mut Doc,
     update: &Value,
@@ -2607,26 +2632,7 @@ fn apply_history_ot(
     let mut ours = text_operations(&update["op"])?;
     let mut edits = edits_from_json(&update["op"]).map_err(|error| error.to_string())?;
     for applied in doc.applied.iter().filter(|applied| applied.at >= v) {
-        let mut theirs: Vec<TextOperation> = text_operations(&applied.update["op"])?
-            .into_iter()
-            .flatten()
-            .collect();
-        for their in &theirs {
-            let moved = RawOp::from_json(&their.to_json()).map_err(|error| error.to_string())?;
-            for edit in edits.iter_mut() {
-                if let Edit::AddComment(comment) = edit {
-                    *comment = comment.moved(&moved);
-                }
-            }
-        }
-        for own in ours.iter_mut().flatten() {
-            for their in theirs.iter_mut() {
-                let (own_after, their_after) =
-                    TextOperation::transform(own, their).map_err(|error| error.0)?;
-                *own = own_after;
-                *their = their_after;
-            }
-        }
+        move_past(&mut ours, &mut edits, &applied.update["op"])?;
     }
     let (mut content, mut tracked) = (doc.content.clone(), doc.tracked.clone());
     let mut comments = doc.comments.clone();

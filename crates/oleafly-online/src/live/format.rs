@@ -388,6 +388,131 @@ pub enum FormatState {
     HistoryOt(RawDoc),
 }
 
+fn op_of(update: &AppliedUpdate) -> &Value {
+    update.op.as_ref().unwrap_or(&Value::Null)
+}
+
+fn past_sharejs(
+    ours: &mut TextOperation,
+    echo: &mut Echo,
+    step: TextOperation,
+) -> Result<Step, CodecError> {
+    let (ours_after, theirs) =
+        TextOperation::transform(ours, &step).map_err(|_| CodecError::Mismatch)?;
+    *ours = ours_after;
+    if let Echo::ShareJs {
+        comments,
+        accepts,
+        clashed,
+        ..
+    } = echo
+    {
+        for comment in comments.iter_mut() {
+            *comment = comment.moved(&theirs);
+        }
+        for accepted in accepts.iter_mut() {
+            let undone = accepted.kind == ChangeKind::Delete;
+            *clashed |= accepted.moved(&step) || undone;
+        }
+    }
+    Ok(Step {
+        confirmed: step,
+        past_inflight: theirs,
+    })
+}
+
+fn decode_sharejs(
+    ranges: &mut ShareJsRanges,
+    visible: &str,
+    update: &AppliedUpdate,
+    mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+) -> Result<(Vec<Step>, RangeChange), CodecError> {
+    let pieces = pieces_from_json(op_of(update))?;
+    let steps = steps_of(visible, &pieces)?;
+    let author = Author::of(update.user_id.as_deref(), update.ts, update.tc.as_deref());
+    let change = ranges.apply_update(&pieces, &author)?;
+    if let Some((ours, Echo::ShareJs { undo, clashed, .. })) = inflight.as_mut() {
+        let reinserts = ours
+            .components()
+            .iter()
+            .any(|component| matches!(component, Component::Insert(_)));
+        if *undo && reinserts {
+            *clashed = true;
+        } else {
+            *undo = false;
+        }
+    }
+    let steps = steps
+        .into_iter()
+        .map(|step| match inflight.as_mut() {
+            Some((ours, echo)) => past_sharejs(ours, echo, step),
+            None => Ok(Step {
+                past_inflight: step.clone(),
+                confirmed: step,
+            }),
+        })
+        .collect::<Result<Vec<Step>, CodecError>>()?;
+    Ok((steps, change))
+}
+
+fn past_history_ot(
+    raw: &mut RawDoc,
+    ours: &mut TextOperation,
+    echo: &mut Echo,
+    remote: &RawOp,
+) -> Result<(TextOperation, RangeChange), CodecError> {
+    let Echo::HistoryOt {
+        raw: sent, edits, ..
+    } = echo
+    else {
+        return Err(CodecError::Mismatch);
+    };
+    let (sent_after, remote_after) = RawOp::transform(sent, remote)?;
+    let mut mine = raw.clone();
+    mine.apply(sent)?;
+    let past_inflight = mine.project(&remote_after)?;
+    let change = raw.apply(remote)?;
+    *ours = raw.project(&sent_after)?;
+    *sent = sent_after;
+    for edit in edits.iter_mut() {
+        if let Edit::AddComment(comment) = edit {
+            *comment = comment.moved(&remote_after);
+        }
+    }
+    Ok((past_inflight, change))
+}
+
+fn decode_history_ot(
+    raw: &mut RawDoc,
+    update: &AppliedUpdate,
+    mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+) -> Result<(Vec<Step>, RangeChange), CodecError> {
+    let mut steps = Vec::new();
+    let mut change = RangeChange::Same;
+    for edit in edits_from_json(op_of(update))? {
+        let Edit::Text(remote) = edit else {
+            if let Some((_, Echo::HistoryOt { edits, .. })) = inflight.as_mut() {
+                for ours in edits.iter_mut() {
+                    yield_to(ours, &edit);
+                }
+            }
+            change = change.and(raw.edit_comments(&edit));
+            continue;
+        };
+        let confirmed = raw.project(&remote)?;
+        let (past_inflight, moved) = match inflight.as_mut() {
+            Some((ours, echo)) => past_history_ot(raw, ours, echo, &remote)?,
+            None => (confirmed.clone(), raw.apply(&remote)?),
+        };
+        change = change.and(moved);
+        steps.push(Step {
+            confirmed,
+            past_inflight,
+        });
+    }
+    Ok((steps, change))
+}
+
 fn yield_to(ours: &mut Edit, theirs: &Edit) {
     let Edit::AddComment(comment) = ours else {
         return;
@@ -478,111 +603,11 @@ impl FormatState {
         &mut self,
         visible: &str,
         update: &AppliedUpdate,
-        mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+        inflight: Option<(&mut TextOperation, &mut Echo)>,
     ) -> Result<(Vec<Step>, RangeChange), CodecError> {
-        let op = update.op.as_ref().unwrap_or(&Value::Null);
         match self {
-            FormatState::ShareJs(ranges) => {
-                let pieces = pieces_from_json(op)?;
-                let steps = steps_of(visible, &pieces)?;
-                let author = Author::of(update.user_id.as_deref(), update.ts, update.tc.as_deref());
-                let change = ranges.apply_update(&pieces, &author)?;
-                if let Some((ours, Echo::ShareJs { undo, clashed, .. })) = inflight.as_mut() {
-                    let reinserts = ours
-                        .components()
-                        .iter()
-                        .any(|component| matches!(component, Component::Insert(_)));
-                    if *undo && reinserts {
-                        *clashed = true;
-                    } else {
-                        *undo = false;
-                    }
-                }
-                let steps = steps
-                    .into_iter()
-                    .map(|step| match inflight.as_mut() {
-                        Some((ours, echo)) => {
-                            let (ours_after, theirs) = TextOperation::transform(ours, &step)
-                                .map_err(|_| CodecError::Mismatch)?;
-                            **ours = ours_after;
-                            if let Echo::ShareJs {
-                                comments,
-                                accepts,
-                                clashed,
-                                ..
-                            } = echo
-                            {
-                                for comment in comments.iter_mut() {
-                                    *comment = comment.moved(&theirs);
-                                }
-                                for accepted in accepts.iter_mut() {
-                                    let undone = accepted.kind == ChangeKind::Delete;
-                                    *clashed |= accepted.moved(&step) || undone;
-                                }
-                            }
-                            Ok(Step {
-                                confirmed: step,
-                                past_inflight: theirs,
-                            })
-                        }
-                        None => Ok(Step {
-                            past_inflight: step.clone(),
-                            confirmed: step,
-                        }),
-                    })
-                    .collect::<Result<Vec<Step>, CodecError>>()?;
-                Ok((steps, change))
-            }
-            FormatState::HistoryOt(raw) => {
-                let mut steps = Vec::new();
-                let mut change = RangeChange::Same;
-                for edit in edits_from_json(op)? {
-                    let Edit::Text(remote) = edit else {
-                        if let Some((_, Echo::HistoryOt { edits, .. })) = inflight.as_mut() {
-                            for ours in edits.iter_mut() {
-                                yield_to(ours, &edit);
-                            }
-                        }
-                        change = change.and(raw.edit_comments(&edit));
-                        continue;
-                    };
-                    let confirmed = raw.project(&remote)?;
-                    match inflight.as_mut() {
-                        Some((
-                            ours,
-                            Echo::HistoryOt {
-                                raw: sent, edits, ..
-                            },
-                        )) => {
-                            let (sent_after, remote_after) = RawOp::transform(sent, &remote)?;
-                            let mut mine = raw.clone();
-                            mine.apply(sent)?;
-                            let past_inflight = mine.project(&remote_after)?;
-                            change = change.and(raw.apply(&remote)?);
-                            **ours = raw.project(&sent_after)?;
-                            *sent = sent_after;
-                            for edit in edits.iter_mut() {
-                                if let Edit::AddComment(comment) = edit {
-                                    *comment = comment.moved(&remote_after);
-                                }
-                            }
-                            steps.push(Step {
-                                confirmed,
-                                past_inflight,
-                            });
-                        }
-                        Some((_, Echo::ShareJs { .. })) => return Err(CodecError::Mismatch),
-                        None => {
-                            change = change.and(raw.apply(&remote)?);
-                            steps.push(Step {
-                                past_inflight: confirmed.clone(),
-                                confirmed,
-                            });
-                        }
-                    }
-                }
-                Ok((steps, change))
-            }
+            FormatState::ShareJs(ranges) => decode_sharejs(ranges, visible, update, inflight),
+            FormatState::HistoryOt(raw) => decode_history_ot(raw, update, inflight),
         }
     }
 

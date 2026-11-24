@@ -147,6 +147,17 @@ function NoteDraftCard({ draft }: Readonly<{ draft: NoteDraftDetails }>) {
   );
 }
 
+function approvalKind(
+  tool: string,
+  details: Readonly<{ mcp: unknown; researchTask: unknown; noteDraft: unknown }>,
+) {
+  if (tool === "run_command") return "command";
+  if (details.mcp) return "externalTool";
+  if (details.researchTask) return "researchTask";
+  if (details.noteDraft) return "note";
+  return toolRisk(tool) === "network" ? "internet" : "edit";
+}
+
 export { AI_GRADIENT, AiChrome, AiMark } from "@/components/ai/AiChrome";
 export { isAutoApprovable } from "@/store/mcp-approvals";
 
@@ -175,21 +186,9 @@ export function ToolConfirm({
   const mcpApproval = mcpApprovalDetails(req);
   const researchTask = researchTaskDetails(req);
   const noteDraft = noteDraftDetails(req);
-  const networkApproval = toolRisk(req.tool) === "network";
-  let approvalLabel: string;
-  if (commandApproval) {
-    approvalLabel = t(($) => $.ai.approval.confirm.command);
-  } else if (mcpApproval) {
-    approvalLabel = t(($) => $.ai.approval.confirm.externalTool);
-  } else if (researchTask) {
-    approvalLabel = t(($) => $.ai.approval.confirm.researchTask);
-  } else if (noteDraft) {
-    approvalLabel = t(($) => $.ai.approval.confirm.note);
-  } else if (networkApproval) {
-    approvalLabel = t(($) => $.ai.approval.confirm.internet);
-  } else {
-    approvalLabel = t(($) => $.ai.approval.confirm.edit);
-  }
+  const kind = approvalKind(req.tool, { mcp: mcpApproval, researchTask, noteDraft });
+  const approvalLabel = t(($) => $.ai.approval.confirm[kind]);
+  const approvalHeadline = t(($) => $.ai.approval.headline[kind]);
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
   const plainSummary =
@@ -211,21 +210,6 @@ export function ToolConfirm({
       cancelled = true;
     };
   }, [filePath, changeLine]);
-
-  let approvalHeadline: string;
-  if (commandApproval) {
-    approvalHeadline = t(($) => $.ai.approval.headline.command);
-  } else if (mcpApproval) {
-    approvalHeadline = t(($) => $.ai.approval.headline.externalTool);
-  } else if (researchTask) {
-    approvalHeadline = t(($) => $.ai.approval.headline.researchTask);
-  } else if (noteDraft) {
-    approvalHeadline = t(($) => $.ai.approval.headline.note);
-  } else if (networkApproval) {
-    approvalHeadline = t(($) => $.ai.approval.headline.internet);
-  } else {
-    approvalHeadline = t(($) => $.ai.approval.headline.edit);
-  }
 
   const body = (
     <div className="flex flex-col gap-3">

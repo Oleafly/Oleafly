@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use oleafly_collab::CollabError;
 use oleafly_online::live::rest::SettingsUpdate;
+use oleafly_online::live::session::OverleafSession;
 use oleafly_online::realtime::events::ProjectEvent;
 use oleafly_online::realtime::project::flavor_for_compiler;
 use oleafly_online::realtime::{DocId, SpellLanguage};
@@ -483,6 +484,140 @@ pub(crate) fn decide(
     })
 }
 
+async fn project_meta(mirror: &Mirror) -> Option<ProjectMeta> {
+    let project_id = mirror.disk.project_id.clone();
+    match off_runtime(move || crate::project::read_meta(&project_id)).await {
+        Ok(Ok(meta)) => Some(meta),
+        Ok(Err(error)) | Err(error) => {
+            log(
+                mirror,
+                format!("could not read the project settings: {error}"),
+            );
+            None
+        }
+    }
+}
+
+#[derive(Default)]
+struct Plan {
+    update: SettingsUpdate,
+    pushed: Vec<(Setting, String, Option<String>)>,
+    followed: Vec<Setting>,
+}
+
+fn plan_settings(
+    mirror: &Mirror,
+    base: &mut Base,
+    local: &Sides,
+    remote: &Sides,
+    languages: &[SpellLanguage],
+) -> Plan {
+    let mut plan = Plan::default();
+    for setting in SHARED {
+        let wire = |local: &Option<String>| mirror.wire_value(setting, local, languages);
+        match decide(setting, base, local, remote, wire) {
+            None => {}
+            Some(Step::Follow) => {
+                plan.followed.push(setting);
+                base.remote.set(setting, remote.get(setting));
+            }
+            Some(Step::Agree) => {
+                base.local.set(setting, local.get(setting));
+                base.remote.set(setting, remote.get(setting));
+            }
+            Some(Step::Conflict) => {
+                plan.followed.push(setting);
+                base.remote.set(setting, remote.get(setting));
+                mirror.notice_not_sent(setting, NotSent::Conflict);
+            }
+            Some(Step::NoEquivalent) => {
+                base.local.set(setting, local.get(setting));
+                mirror.notice_not_sent(setting, NotSent::NoEquivalent);
+            }
+            Some(Step::Push { value, expected }) => {
+                match setting {
+                    Setting::MainDoc => plan.update.root_doc = Some(DocId(value.clone())),
+                    Setting::Compiler => plan.update.compiler = Some(value.clone()),
+                    _ => plan.update.spelling = Some(value.clone()),
+                }
+                plan.pushed.push((setting, value, expected));
+            }
+        }
+    }
+    plan
+}
+
+async fn follow_settings(
+    mirror: &Arc<Mirror>,
+    followed: &[Setting],
+    remote: &Sides,
+    base: &mut Base,
+) {
+    for setting in followed {
+        let value = remote.get(*setting);
+        let (worker, setting) = (Arc::clone(mirror), *setting);
+        if let Err(error) =
+            off_runtime(move || worker.follow_remote(setting, value.as_deref())).await
+        {
+            log(
+                mirror,
+                format!("could not follow a setting from Overleaf: {error}"),
+            );
+        }
+    }
+    if followed.is_empty() {
+        return;
+    }
+    if let Some(meta) = project_meta(mirror).await {
+        let now = Sides::local(&meta);
+        for setting in followed {
+            base.local.set(*setting, now.get(*setting));
+        }
+    }
+}
+
+async fn push_settings(
+    mirror: &Mirror,
+    session: &OverleafSession,
+    plan: &Plan,
+    local: &Sides,
+    base: &mut Base,
+) {
+    let Plan { update, pushed, .. } = plan;
+    if pushed.is_empty() {
+        return;
+    }
+    for (setting, value, _) in pushed {
+        mirror.settings.expect(*setting, value);
+    }
+    let Err(error) = session.update_settings(update).await else {
+        for (setting, _, expected) in pushed {
+            base.local.set(*setting, local.get(*setting));
+            base.remote.set(*setting, expected.clone());
+        }
+        return;
+    };
+    for (setting, value, _) in pushed {
+        mirror.settings.forget(*setting, value);
+    }
+    log(
+        mirror,
+        format!("could not send a project setting to Overleaf: {error}"),
+    );
+    let temporary = error.is_temporary();
+    let reason = if temporary {
+        NotSent::Failed
+    } else {
+        NotSent::Refused
+    };
+    for (setting, _, _) in pushed {
+        if !temporary {
+            base.local.set(*setting, local.get(*setting));
+        }
+        mirror.notice_not_sent(*setting, reason);
+    }
+}
+
 async fn reconcile(mirror: &Arc<Mirror>) -> bool {
     let Some(session) = mirror.session.get().and_then(Weak::upgrade) else {
         return false;
@@ -490,23 +625,8 @@ async fn reconcile(mirror: &Arc<Mirror>) -> bool {
     if session.nodes().is_empty() {
         return false;
     }
-    let project_id = mirror.disk.project_id.clone();
-    let meta = match off_runtime(move || crate::project::read_meta(&project_id)).await {
-        Ok(Ok(meta)) => meta,
-        Ok(Err(error)) => {
-            log(
-                mirror,
-                format!("could not read the project settings: {error}"),
-            );
-            return true;
-        }
-        Err(error) => {
-            log(
-                mirror,
-                format!("could not read the project settings: {error}"),
-            );
-            return true;
-        }
+    let Some(meta) = project_meta(mirror).await else {
+        return true;
     };
     let settings = session.project_settings();
     let mut remote = Sides {
@@ -533,96 +653,9 @@ async fn reconcile(mirror: &Arc<Mirror>) -> bool {
         }
     }
     let before = base.clone();
-    let languages = settings.languages.clone();
-    let mut update = SettingsUpdate::default();
-    let mut pushed: Vec<(Setting, String, Option<String>)> = Vec::new();
-    let mut followed = Vec::new();
-    for setting in SHARED {
-        let wire = |local: &Option<String>| mirror.wire_value(setting, local, &languages);
-        match decide(setting, &base, &local, &remote, wire) {
-            None => {}
-            Some(Step::Follow) => {
-                followed.push(setting);
-                base.remote.set(setting, remote.get(setting));
-            }
-            Some(Step::Agree) => {
-                base.local.set(setting, local.get(setting));
-                base.remote.set(setting, remote.get(setting));
-            }
-            Some(Step::Conflict) => {
-                followed.push(setting);
-                base.remote.set(setting, remote.get(setting));
-                mirror.notice_not_sent(setting, NotSent::Conflict);
-            }
-            Some(Step::NoEquivalent) => {
-                base.local.set(setting, local.get(setting));
-                mirror.notice_not_sent(setting, NotSent::NoEquivalent);
-            }
-            Some(Step::Push { value, expected }) => {
-                match setting {
-                    Setting::MainDoc => update.root_doc = Some(DocId(value.clone())),
-                    Setting::Compiler => update.compiler = Some(value.clone()),
-                    _ => update.spelling = Some(value.clone()),
-                }
-                pushed.push((setting, value, expected));
-            }
-        }
-    }
-    for setting in &followed {
-        let value = remote.get(*setting);
-        let (worker, setting) = (Arc::clone(mirror), *setting);
-        if let Err(error) =
-            off_runtime(move || worker.follow_remote(setting, value.as_deref())).await
-        {
-            log(
-                mirror,
-                format!("could not follow a setting from Overleaf: {error}"),
-            );
-        }
-    }
-    if !followed.is_empty() {
-        let project_id = mirror.disk.project_id.clone();
-        if let Ok(Ok(meta)) = off_runtime(move || crate::project::read_meta(&project_id)).await {
-            let now = Sides::local(&meta);
-            for setting in &followed {
-                base.local.set(*setting, now.get(*setting));
-            }
-        }
-    }
-    if !pushed.is_empty() {
-        for (setting, value, _) in &pushed {
-            mirror.settings.expect(*setting, value);
-        }
-        match session.update_settings(&update).await {
-            Ok(()) => {
-                for (setting, _, expected) in &pushed {
-                    base.local.set(*setting, local.get(*setting));
-                    base.remote.set(*setting, expected.clone());
-                }
-            }
-            Err(error) => {
-                for (setting, value, _) in &pushed {
-                    mirror.settings.forget(*setting, value);
-                }
-                let temporary = error.is_temporary();
-                log(
-                    mirror,
-                    format!("could not send a project setting to Overleaf: {error}"),
-                );
-                for (setting, _, _) in &pushed {
-                    if !temporary {
-                        base.local.set(*setting, local.get(*setting));
-                    }
-                    let reason = if temporary {
-                        NotSent::Failed
-                    } else {
-                        NotSent::Refused
-                    };
-                    mirror.notice_not_sent(*setting, reason);
-                }
-            }
-        }
-    }
+    let plan = plan_settings(mirror, &mut base, &local, &remote, &settings.languages);
+    follow_settings(mirror, &plan.followed, &remote, &mut base).await;
+    push_settings(mirror, &session, &plan, &local, &mut base).await;
     if base != before {
         mirror.save_base(base).await;
     }

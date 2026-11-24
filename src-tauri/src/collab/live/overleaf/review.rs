@@ -153,6 +153,12 @@ struct Moved {
     mentions: Vec<(String, ThreadMessage)>,
 }
 
+#[derive(Default)]
+struct Placed {
+    threads_at: BTreeMap<DocId, Vec<String>>,
+    mentioned: Vec<(DocId, String, ThreadMessage)>,
+}
+
 #[derive(Clone, Copy)]
 enum Act {
     Create,
@@ -586,6 +592,102 @@ impl Mirror {
             .collect()
     }
 
+    fn place_news(
+        &self,
+        view: &ThreadsView,
+        threads_changed: bool,
+        me: &str,
+        echo_threads: &mut BTreeSet<String>,
+    ) -> Placed {
+        let mut placed = Placed::default();
+        let pending: BTreeMap<String, DocId> = guard(&self.review.shown)
+            .pending
+            .iter()
+            .map(|(thread, pending)| (thread.clone(), pending.doc.clone()))
+            .collect();
+        let doc_of = |thread: &str| {
+            view.anchored
+                .get(thread)
+                .or_else(|| pending.get(thread))
+                .cloned()
+        };
+        let now = Instant::now();
+        let mut heard: Vec<(String, ThreadMessage, Instant)> = Vec::new();
+        if threads_changed {
+            let moved = self.threads_moved(view, me);
+            heard.extend(
+                moved
+                    .mentions
+                    .into_iter()
+                    .map(|(thread, message)| (thread, message, now)),
+            );
+            let quiet = moved.quiet.into_iter().map(|thread| (thread, true));
+            for (thread, quiet) in moved
+                .news
+                .into_iter()
+                .map(|thread| (thread, false))
+                .chain(quiet)
+            {
+                if let Some(doc) = doc_of(&thread) {
+                    placed
+                        .threads_at
+                        .entry(doc)
+                        .or_default()
+                        .push(thread.clone());
+                }
+                if quiet {
+                    echo_threads.insert(thread);
+                }
+            }
+        }
+        let mut waiting = guard(&self.review.unplaced);
+        heard.extend(waiting.drain(..).filter(|(_, _, at)| fresh(*at, now)));
+        for (thread, message, at) in heard {
+            match doc_of(&thread) {
+                Some(doc) => {
+                    placed
+                        .threads_at
+                        .entry(doc.clone())
+                        .or_default()
+                        .push(thread.clone());
+                    placed.mentioned.push((doc, thread, message));
+                }
+                None => waiting.push((thread, message, at)),
+            }
+        }
+        placed
+    }
+
+    fn quiet_docs(
+        &self,
+        docs: &[DocId],
+        fresh_digests: Vec<Digest>,
+        echo_docs: &BTreeSet<DocId>,
+    ) -> (BTreeSet<DocId>, BTreeSet<DocId>) {
+        let mut quiet_comments: BTreeSet<DocId> = BTreeSet::new();
+        let mut quiet_changes: BTreeSet<DocId> = BTreeSet::new();
+        let mut digests = guard(&self.review.digests);
+        for (doc, digest) in docs.iter().zip(fresh_digests) {
+            let before = digests.insert(doc.clone(), digest.clone());
+            let echoed = echo_docs.contains(doc);
+            if echoed
+                || before
+                    .as_ref()
+                    .is_none_or(|before| before.comments == digest.comments)
+            {
+                quiet_comments.insert(doc.clone());
+            }
+            if echoed
+                || before
+                    .as_ref()
+                    .is_none_or(|before| before.changes == digest.changes)
+            {
+                quiet_changes.insert(doc.clone());
+            }
+        }
+        (quiet_comments, quiet_changes)
+    }
+
     pub(super) fn review_noticed(&self, change: ReviewChange) {
         let me = self.review.me.get().cloned().unwrap_or_default();
         if change.support {
@@ -606,60 +708,13 @@ impl Mirror {
             .as_ref()
             .filter(|_| change.threads || unplaced)
             .map(|session| session.threads());
-        let mut threads_at: BTreeMap<DocId, Vec<String>> = BTreeMap::new();
-        let mut mentioned = Vec::new();
-        if let Some(view) = &view {
-            let pending: BTreeMap<String, DocId> = guard(&self.review.shown)
-                .pending
-                .iter()
-                .map(|(thread, pending)| (thread.clone(), pending.doc.clone()))
-                .collect();
-            let doc_of = |thread: &str| {
-                view.anchored
-                    .get(thread)
-                    .or_else(|| pending.get(thread))
-                    .cloned()
-            };
-            let now = Instant::now();
-            let mut heard: Vec<(String, ThreadMessage, Instant)> = Vec::new();
-            if change.threads {
-                let moved = self.threads_moved(view, &me);
-                heard.extend(
-                    moved
-                        .mentions
-                        .into_iter()
-                        .map(|(thread, message)| (thread, message, now)),
-                );
-                let quiet = moved.quiet.into_iter().map(|thread| (thread, true));
-                for (thread, quiet) in moved
-                    .news
-                    .into_iter()
-                    .map(|thread| (thread, false))
-                    .chain(quiet)
-                {
-                    if let Some(doc) = doc_of(&thread) {
-                        threads_at.entry(doc).or_default().push(thread.clone());
-                    }
-                    if quiet {
-                        echo_threads.insert(thread);
-                    }
-                }
-            }
-            let mut waiting = guard(&self.review.unplaced);
-            heard.extend(waiting.drain(..).filter(|(_, _, at)| fresh(*at, now)));
-            for (thread, message, at) in heard {
-                match doc_of(&thread) {
-                    Some(doc) => {
-                        threads_at
-                            .entry(doc.clone())
-                            .or_default()
-                            .push(thread.clone());
-                        mentioned.push((doc, thread, message));
-                    }
-                    None => waiting.push((thread, message, at)),
-                }
-            }
-        }
+        let Placed {
+            threads_at,
+            mentioned,
+        } = view
+            .as_ref()
+            .map(|view| self.place_news(view, change.threads, &me, &mut echo_threads))
+            .unwrap_or_default();
         let fresh_digests: Vec<Digest> = change
             .docs
             .iter()
@@ -672,29 +727,8 @@ impl Mirror {
                 )
             })
             .collect();
-        let mut quiet_comments: BTreeSet<DocId> = BTreeSet::new();
-        let mut quiet_changes: BTreeSet<DocId> = BTreeSet::new();
-        {
-            let mut digests = guard(&self.review.digests);
-            for (doc, digest) in change.docs.iter().zip(fresh_digests) {
-                let before = digests.insert(doc.clone(), digest.clone());
-                let echoed = echo_docs.contains(doc);
-                if echoed
-                    || before
-                        .as_ref()
-                        .is_none_or(|before| before.comments == digest.comments)
-                {
-                    quiet_comments.insert(doc.clone());
-                }
-                if echoed
-                    || before
-                        .as_ref()
-                        .is_none_or(|before| before.changes == digest.changes)
-                {
-                    quiet_changes.insert(doc.clone());
-                }
-            }
-        }
+        let (quiet_comments, quiet_changes) =
+            self.quiet_docs(&change.docs, fresh_digests, &echo_docs);
         let reshaped: BTreeSet<DocId> = change.docs.iter().cloned().collect();
         let mut own = Vec::new();
         let mut others = Vec::new();

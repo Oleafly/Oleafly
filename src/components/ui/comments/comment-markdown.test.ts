@@ -63,6 +63,25 @@ describe("comment Markdown subset", () => {
     ]);
   });
 
+  it("keeps text between two list lines where it was written", () => {
+    expect(commentPlainText("- a\ntext\n- b")).toBe("- a\ntext\n- b");
+    expect(commentPlainText("1. a\ntext\n2. b")).toBe("1. a\ntext\n2. b");
+    expect(commentPlainText("- a\n1. b\n- c")).toBe("- a\n1. b\n- c");
+  });
+
+  it.each(["- a\n\n- b\n- c", "- a\n\n\n- b\n- c", "- a\n  \n- b\n\n- c", "\n\n- a\n- b\n- c\n\n\n"])(
+    "lets blank lines join a list: %j",
+    (body) => {
+      expect(parseComment(body)).toEqual([
+        { kind: "bullet", items: ["a", "b", "c"].map((text) => [{ kind: "text", text }]) },
+      ]);
+    },
+  );
+
+  it("numbers a list on over blank lines", () => {
+    expect(commentPlainText("1. a\n\n\n1. b")).toBe("1. a\n2. b");
+  });
+
   it("turns a body into plain text for previews", () => {
     expect(commentPlainText("Use **median** not `mean`\n- _both_")).toBe("Use median not mean\n- both");
   });

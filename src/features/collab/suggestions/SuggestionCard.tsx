@@ -169,6 +169,26 @@ function SuggestionActions({
   );
 }
 
+function SuggestionReplies({
+  suggestion,
+  thread,
+  context,
+}: Readonly<{ suggestion: CollabSuggestion; thread: CollabCommentThread | null; context: SuggestionContext }>) {
+  const { t } = useTranslation(["collab"]);
+  if (!context.commentsOn) return null;
+  if (thread && thread.messages.length > 0) return <EmbeddedThread thread={thread} context={context} />;
+  if (!context.canWrite || !context.suggestionThreads) return null;
+  return (
+    <CommentComposer
+      compact
+      label={t(($) => $.collab.comments.replyLabel)}
+      placeholder={t(($) => $.collab.comments.replyPlaceholder)}
+      submitLabel={t(($) => $.collab.comments.send)}
+      onSubmit={(body) => replyToSuggestion(suggestion, body)}
+    />
+  );
+}
+
 export const SuggestionCard = memo(function SuggestionCard({
   suggestion,
   replaced = null,
@@ -221,7 +241,6 @@ export const SuggestionCard = memo(function SuggestionCard({
       .finally(() => setBusy(false));
   };
   const jump = () => (path === undefined ? selectSuggestion(suggestion.id, { reveal: true }) : openSuggestionIn(path, suggestion.id));
-  const messages = context.commentsOn && thread ? thread.messages : [];
 
   return (
     <li>
@@ -257,17 +276,7 @@ export const SuggestionCard = memo(function SuggestionCard({
           onWithdraw={() => setWithdrawing(true)}
         />
         {error ? <InlineAlert>{error}</InlineAlert> : null}
-        {messages.length > 0 && thread ? (
-          <EmbeddedThread thread={thread} context={context} />
-        ) : context.commentsOn && context.canWrite && context.suggestionThreads ? (
-          <CommentComposer
-            compact
-            label={t(($) => $.collab.comments.replyLabel)}
-            placeholder={t(($) => $.collab.comments.replyPlaceholder)}
-            submitLabel={t(($) => $.collab.comments.send)}
-            onSubmit={(body) => replyToSuggestion(suggestion, body)}
-          />
-        ) : null}
+        <SuggestionReplies suggestion={suggestion} thread={thread} context={context} />
       </article>
       <ConfirmationDialog
         open={withdrawing}

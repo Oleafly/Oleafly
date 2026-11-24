@@ -117,7 +117,7 @@ test("Accept stays off with the reason where Overleaf can't accept, and Reject s
   const accept = card.getByRole("button", { name: "Accept" });
   await expect(accept).toBeDisabled();
   await expect(page.getByRole("button", { name: "Accept all" })).toBeDisabled();
-  await accept.hover({ force: true });
+  await accept.locator("xpath=..").hover();
   await expect(page.getByRole("tooltip")).toHaveText(
     "This Overleaf server can't accept tracked changes in this file. You can still reject them.",
   );

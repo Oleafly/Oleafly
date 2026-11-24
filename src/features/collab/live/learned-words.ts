@@ -52,38 +52,41 @@ export function startLearnedWords(): () => void {
     return true;
   };
 
+  const pendingWords = (words: Synced): [string, boolean][] => {
+    const dictionary = useDictionary.getState();
+    const base = dictionary.synced[words.account] ?? null;
+    const merged = mergeLearnedWords(base, words.remote, dictionary.global);
+    dictionary.applyLearned(merged.addLocal, merged.removeLocal);
+    const queue: [string, boolean][] = [
+      ...merged.unlearn.map((word): [string, boolean] => [word, false]),
+      ...merged.learn.map((word): [string, boolean] => [word, true]),
+    ];
+    if (queue.length === 0) {
+      const local = useDictionary.getState().global;
+      useDictionary.getState().setSynced(words.account, syncedBase(words.remote, local, base));
+    }
+    return queue;
+  };
+
   const push = async (mine: number): Promise<void> => {
-    if (!current(mine)) return;
+    if (!current(mine) || !synced) return;
     if (pushing) {
       again = true;
       return;
     }
     pushing = true;
+    again = false;
+    let more = false;
     try {
-      let going = true;
-      while (going && current(mine) && synced) {
-        again = false;
-        const words = synced;
-        const dictionary = useDictionary.getState();
-        const base = dictionary.synced[words.account] ?? null;
-        const merged = mergeLearnedWords(base, words.remote, dictionary.global);
-        dictionary.applyLearned(merged.addLocal, merged.removeLocal);
-        const queue: [string, boolean][] = [
-          ...merged.unlearn.map((word): [string, boolean] => [word, false]),
-          ...merged.learn.map((word): [string, boolean] => [word, true]),
-        ];
-        if (queue.length === 0) {
-          const local = useDictionary.getState().global;
-          useDictionary.getState().setSynced(words.account, syncedBase(words.remote, local, base));
-        }
-        going = (await send(mine, words, queue)) && again;
-      }
+      const words = synced;
+      more = (await send(mine, words, pendingWords(words))) && again && current(mine);
     } catch (error) {
       if (current(mine)) void logWarning("send learned words to Overleaf", error);
     } finally {
       pushing = false;
       if (again && mine !== run) void push(run);
     }
+    if (more) await push(mine);
   };
 
   const watch = (mine: number) => {

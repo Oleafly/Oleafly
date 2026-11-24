@@ -1498,6 +1498,30 @@ function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecora
   return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
 }
 
+function treeRowClass(active: boolean, selected: boolean, dropTarget: boolean): string {
+  return cn(
+    "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
+    active && "bg-sidebar-accent",
+    selected && !active && "bg-sidebar-accent/60",
+    dropTarget && "bg-primary/15",
+  );
+}
+
+function linkedRowHint(overleafLinked: boolean): string | undefined {
+  return overleafLinked ? i18n.t(($) => $.collab.overleafLinked.treeHint) : undefined;
+}
+
+function TreeRowLink({ readOnly, overleaf }: Readonly<{ readOnly: boolean; overleaf: boolean }>) {
+  if (!readOnly && !overleaf) return null;
+  return (
+    <Link2
+      aria-hidden
+      data-testid={overleaf ? "tree-overleaf-linked" : undefined}
+      className="size-3 shrink-0 text-muted-foreground"
+    />
+  );
+}
+
 function TreeRow({
   node,
   depth,
@@ -1523,8 +1547,7 @@ function TreeRow({
   const partial = expandable && node.partial;
   const overleafLinked = !node.isDir && ctx.overleafLinked.has(node.path);
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
-  const linkedHint = overleafLinked ? i18n.t(($) => $.collab.overleafLinked.treeHint) : undefined;
-  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : linkedHint;
+  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : linkedRowHint(overleafLinked);
   const rowRef = useRef<HTMLDivElement>(null);
 
   const dropDir = node.isDir ? node.path : parentOf(node.path);
@@ -1603,12 +1626,7 @@ function TreeRow({
       aria-selected={isActive || isSelected}
       aria-disabled={unreadable ? true : undefined}
       title={hint}
-      className={cn(
-        "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
-        isActive && "bg-sidebar-accent",
-        isSelected && !isActive && "bg-sidebar-accent/60",
-        isDropTarget && "bg-primary/15"
-      )}
+      className={treeRowClass(isActive, isSelected, isDropTarget)}
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
       onClick={activate}
       onKeyDown={onRowKeyDown}
@@ -1624,13 +1642,7 @@ function TreeRow({
       >
         {node.name}
       </span>
-      {(readOnlyLink || overleafLinked) && (
-        <Link2
-          aria-hidden
-          data-testid={overleafLinked ? "tree-overleaf-linked" : undefined}
-          className="size-3 shrink-0 text-muted-foreground"
-        />
-      )}
+      <TreeRowLink readOnly={readOnlyLink} overleaf={overleafLinked} />
       <span className="ml-auto flex shrink-0 items-center gap-1">
         <TreeRowClash label={ctx.clashes.get(node.path)} />
         <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />
