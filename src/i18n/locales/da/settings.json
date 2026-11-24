@@ -1961,7 +1961,12 @@
       "signedIn": "Logget ind på {{server}}",
       "signOut": "Log ud",
       "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
+      "addAccount": "Tilføj endnu en konto",
+      "addAccountHint": "Loginvinduet starter uden tidligere login, så du kan logge ind med en hvilken som helst konto. Hvis du logger ind med en browser eller kopierer login fra en browser, bruges den konto, som browseren er logget ind med.",
+      "accountPick": "Konto til import",
+      "accountPickDescription": "Nye importer og skabeloner bruger denne konto. Projekter, du allerede har, beholder den konto, de kom fra.",
       "gitTitle": "Git-token til synkronisering",
+      "gitTitleFor": "Git-token til {{email}}",
       "gitSaved": "Et Git-token er gemt. Projekter, du kobler til, holdes synkroniseret med Overleaf.",
       "gitMissing": "Intet Git-token endnu. Opret et under Git-integration i dine kontoindstillinger på Overleaf for at synkronisere projekter.",
       "gitOpenSettings": "Åbn kontoindstillinger på Overleaf",
@@ -2333,6 +2338,7 @@
       "confirm": "Ryd ordene",
       "descriptionFallback": "Det fjerner alle termer fra denne ordbog. De bliver tjekket igen med det samme.",
       "descriptionGlobal": "Det fjerner alle termer fra den globale ordbog. De bliver tjekket igen med det samme.",
+      "descriptionOverleaf": "De fjernes også fra din Overleaf-konto.",
       "descriptionProject": "Det fjerner alle termer fra {{project}}. De bliver tjekket igen med det samme.",
       "descriptionSuppressed": "Det fjerner alle termer fra de lukkede fund i {{project}}. De bliver tjekket igen med det samme.",
       "suppressedConfirm": "Vis igen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Ord, du tilføjer her, springer korrekturlæsningen over i alle projekter.",
+      "overleafSynced": "Synkroniseres med de lærte ord på din Overleaf-konto, mens et projekt er live på Overleaf.",
       "scope": "Gælder for alle projekter"
     },
     "intro": "Føj ord til din personlige ordbog til stavekontrol. Ordene gemmes i de lokale indstillinger og ignoreres på tværs af projekter. Sammenligningen er Unicode-normaliseret og skelner ikke mellem store og små bogstaver.",

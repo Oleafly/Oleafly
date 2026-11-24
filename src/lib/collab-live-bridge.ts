@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { DocumentSession } from "@oleafly/editor/document-session";
-import type { OverleafLiveProject, OverleafPauseOutcome } from "@/lib/overleaf-live";
+import type { OverleafLinkedFile, OverleafLiveProject, OverleafPauseOutcome } from "@/lib/overleaf-live";
 import type { CollabProjectRole } from "@/lib/tauri";
 
 export interface LiveNoteSession {
@@ -214,6 +214,7 @@ export interface NoteLiveBindRequest {
   noticeId?: string;
   path: string;
   session: LiveNoteSession;
+  document?: DocumentSession;
   editor: NoteLiveEditor;
   baseline: { text: string; serialized: string };
   onOpen?(): void;
@@ -253,6 +254,7 @@ interface LiveBackendState {
   overleaf: OverleafLiveProject | null;
   pendingPaths: readonly string[];
   storedAsFiles: readonly string[];
+  linked: readonly OverleafLinkedFile[];
 }
 
 export const useLiveBackend = create<LiveBackendState>(() => ({
@@ -261,6 +263,7 @@ export const useLiveBackend = create<LiveBackendState>(() => ({
   overleaf: null,
   pendingPaths: [],
   storedAsFiles: [],
+  linked: [],
 }));
 
 function overleafLive(live: LiveBackendState, projectId: string | null): boolean {
@@ -275,10 +278,28 @@ export function useStoredAsFileOnOverleaf(projectId: string | null, path: string
   return useLiveBackend((live) => overleafLive(live, projectId) && live.storedAsFiles.includes(path));
 }
 
+const NO_LINKED: readonly OverleafLinkedFile[] = [];
+
+export function useOverleafLinkedFiles(projectId: string | null): readonly OverleafLinkedFile[] {
+  return useLiveBackend((live) => (overleafLive(live, projectId) ? live.linked : NO_LINKED));
+}
+
+const linkedAt = (live: LiveBackendState, projectId: string | null, path: string | null) =>
+  path !== null && overleafLive(live, projectId) ? (live.linked.find((file) => file.path === path) ?? null) : null;
+
+export function overleafLinkedAt(projectId: string | null, path: string | null): OverleafLinkedFile | null {
+  return linkedAt(useLiveBackend.getState(), projectId, path);
+}
+
+export function useOverleafLinked(projectId: string | null, path: string | null): OverleafLinkedFile | null {
+  return useLiveBackend((live) => linkedAt(live, projectId, path));
+}
+
 export interface OverleafLiveActions {
   pause(projectId: string, anyway: boolean): Promise<OverleafPauseOutcome>;
   resume(projectId: string): Promise<void>;
   unlink(projectId: string): Promise<void>;
+  errorText?(error: unknown): string;
 }
 
 let overleafActions: OverleafLiveActions | null = null;
@@ -315,6 +336,7 @@ interface CollabEditorGate {
   viewer: boolean;
   locked: boolean;
   connecting: boolean;
+  suggesting: boolean;
 }
 
 export const useCollabEditorGate = create<CollabEditorGate>(() => ({
@@ -322,6 +344,7 @@ export const useCollabEditorGate = create<CollabEditorGate>(() => ({
   viewer: false,
   locked: false,
   connecting: false,
+  suggesting: false,
 }));
 
 let port: CollabEditorPort | null = null;
@@ -337,8 +360,18 @@ export function collabDocumentSession(path: string): DocumentSession | null {
   return port?.documentSession(path) ?? null;
 }
 
+const relived = new Set<(path: string) => void>();
+
 export function collabRelive(path: string): void {
   port?.relive?.(path);
+  for (const listener of Array.from(relived)) listener(path);
+}
+
+export function onCollabRelive(listener: (path: string) => void): () => void {
+  relived.add(listener);
+  return () => {
+    relived.delete(listener);
+  };
 }
 
 export function collabHoldsDocument(path: string, projectId: string | null): boolean {
@@ -368,11 +401,20 @@ export async function collabHandBack(projectId: string | null): Promise<void> {
   if (projectId && port?.handBack) await port.handBack(projectId);
 }
 
-const projectReadOnly = (gate: CollabEditorGate, projectId: string | null) =>
-  projectId !== null && gate.projectId === projectId && (gate.viewer || gate.connecting);
-
-const visualReadOnly = (gate: CollabEditorGate, projectId: string | null) =>
+const projectLive = (gate: CollabEditorGate, projectId: string | null) =>
   projectId !== null && gate.projectId === projectId;
+
+const projectReadOnly = (gate: CollabEditorGate, projectId: string | null) =>
+  projectLive(gate, projectId) && (gate.viewer || gate.connecting);
+
+export type RichTextLock = "view" | "connecting" | "suggest";
+
+const richTextLock = (gate: CollabEditorGate, projectId: string | null): RichTextLock | null => {
+  if (!projectLive(gate, projectId)) return null;
+  if (gate.connecting) return "connecting";
+  if (gate.viewer) return "view";
+  return gate.locked || gate.suggesting ? "suggest" : null;
+};
 
 export function collabProjectReadOnly(projectId: string | null): boolean {
   return projectReadOnly(useCollabEditorGate.getState(), projectId);
@@ -382,16 +424,16 @@ export function useCollabProjectReadOnly(projectId: string | null): boolean {
   return useCollabEditorGate((gate) => projectReadOnly(gate, projectId));
 }
 
-export function collabVisualReadOnly(projectId: string | null): boolean {
-  return visualReadOnly(useCollabEditorGate.getState(), projectId);
+export function collabRichTextLock(projectId: string | null): RichTextLock | null {
+  return richTextLock(useCollabEditorGate.getState(), projectId);
 }
 
-export function useCollabVisualReadOnly(projectId: string | null): boolean {
-  return useCollabEditorGate((gate) => visualReadOnly(gate, projectId));
+export function useCollabRichTextLock(projectId: string | null): RichTextLock | null {
+  return useCollabEditorGate((gate) => richTextLock(gate, projectId));
 }
 
 const settingsLocked = (gate: CollabEditorGate, projectId: string | null) =>
-  projectId !== null && gate.projectId === projectId && (gate.viewer || gate.locked);
+  projectLive(gate, projectId) && (gate.viewer || gate.locked);
 
 export function collabSettingsLocked(projectId: string | null): boolean {
   return settingsLocked(useCollabEditorGate.getState(), projectId);
@@ -402,9 +444,15 @@ export function useCollabSettingsLocked(projectId: string | null): boolean {
 }
 
 export function collabProjectShared(projectId: string | null): boolean {
-  return collabVisualReadOnly(projectId);
+  return projectLive(useCollabEditorGate.getState(), projectId);
 }
 
 export function useCollabProjectShared(projectId: string | null): boolean {
-  return useCollabVisualReadOnly(projectId);
+  return useCollabEditorGate((gate) => projectLive(gate, projectId));
+}
+
+export const useOverleafFilling = create<{ projectId: string | null }>(() => ({ projectId: null }));
+
+export function useProjectFilling(projectId: string | null): boolean {
+  return useOverleafFilling((state) => projectId !== null && state.projectId === projectId);
 }

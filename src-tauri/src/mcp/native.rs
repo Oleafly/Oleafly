@@ -33,11 +33,14 @@ const MUTATING: &[&str] = &[
     "create_note",
     "append_to_note",
     "edit_note_section",
+    "open_overleaf_live",
 ];
 
 pub fn is_mutating(name: &str) -> bool {
     MUTATING.contains(&name)
 }
+
+const OPENS_A_PROJECT: &[&str] = &["open_overleaf_live"];
 
 const NOTE_TOOLS: &[&str] = &[
     "list_knowledge_notes",
@@ -60,7 +63,7 @@ pub fn handles_for_agent(name: &str) -> bool {
 }
 
 pub fn needs_project(name: &str) -> bool {
-    !SKILL_TOOLS.contains(&name) && !NOTE_TOOLS.contains(&name)
+    !SKILL_TOOLS.contains(&name) && !NOTE_TOOLS.contains(&name) && !OPENS_A_PROJECT.contains(&name)
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
@@ -396,6 +399,7 @@ mod tests {
             "remember_note",
             "forget_note",
             "run_command",
+            "open_overleaf_live",
         ] {
             let error = match call("unused", name, &json!({})).await {
                 Ok(_) => panic!("{name} unexpectedly ran natively"),
@@ -426,6 +430,17 @@ mod tests {
         ] {
             assert!(!is_mutating(name), "{name}");
         }
+    }
+
+    #[test]
+    fn opening_an_overleaf_project_live_needs_the_interface_and_no_open_project() {
+        for policy in ["ask", "auto_writes", "trust"] {
+            assert!(!handles("open_overleaf_live", policy), "{policy}");
+        }
+        assert!(!handles_for_agent("open_overleaf_live"));
+        assert!(is_mutating("open_overleaf_live"));
+        assert!(!needs_project("open_overleaf_live"));
+        assert!(needs_project("open_project"));
     }
 
     #[test]

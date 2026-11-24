@@ -1993,7 +1993,12 @@
       "signedIn": "Přihlášeno na {{server}}",
       "signOut": "Odhlásit se",
       "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "addAccount": "Přidat další účet",
+      "addAccountHint": "Přihlašovací okno začíná načisto, takže se můžete přihlásit libovolným účtem. Přihlášení přes prohlížeč nebo zkopírování přihlášení z prohlížeče použije účet, ke kterému je tento prohlížeč přihlášený.",
+      "accountPick": "Účet pro import",
+      "accountPickDescription": "Nové importy a šablony používají tento účet. Projekty, které už máte, si ponechají účet, ze kterého pocházejí.",
       "gitTitle": "Token Git pro synchronizaci",
+      "gitTitleFor": "Token Git pro {{email}}",
       "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
       "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
       "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
@@ -2373,6 +2378,7 @@
       "confirm": "Vymazat slova",
       "descriptionFallback": "Tím se z tohoto slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
       "descriptionGlobal": "Tím se z globálního slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
+      "descriptionOverleaf": "Odstraní se i z vašeho účtu Overleaf.",
       "descriptionProject": "Tím se z projektu {{project}} odstraní všechny termíny. Budou se hned zase kontrolovat.",
       "descriptionSuppressed": "Tím se odstraní všechny termíny ze zavřených nálezů v projektu {{project}}. Budou se hned zase kontrolovat.",
       "suppressedConfirm": "Zobrazit znovu",
@@ -2392,6 +2398,7 @@
     },
     "global": {
       "emptyDescription": "Slova, která tu přidáte, korektura přeskočí ve všech projektech.",
+      "overleafSynced": "Synchronizuje se s naučenými slovy ve vašem účtu Overleaf, když je projekt živě otevřený ve službě Overleaf.",
       "scope": "Platí pro každý projekt"
     },
     "intro": "Přidejte slova do svého osobního slovníku pro kontrolu pravopisu. Ukládají se do místního nastavení a ignorují se napříč projekty. Porovnání je normalizované podle Unicode a nerozlišuje velikost písmen.",

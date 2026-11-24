@@ -1,0 +1,829 @@
+{
+  "probe": "link-sharing-grants",
+  "description": "Alice turns on link sharing for a throwaway project while listening on a websocket. Erin uses the read-only link, Dave the read-and-write link, each first unconfirmed then confirmed; Erin then upgrades through the read-and-write link; Alice uses her own link; an unknown token; then link sharing off. Records each reply, the token pages' meta, the membership events, each visitor's join and which routes a restricted visitor may read.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "tokens: 200 {\"readAndWrite\":\"<22 characters, digits then a-z>\",\"readAndWritePrefix\":\"<10 characters, digits>\",\"readOnly\":\"<12 characters, a-z>\",\"readOnlyHashPrefix\":\"<6 characters, hex>\",\"readAndWriteHashPrefix\":\"<6 characters, hex>\"}",
+    "erin grants read-only with no confirmedByUser: page 200, grant 200 {\"requireAccept\":{\"projectName\":\"link-grants-20261124-031014\"}}; events []",
+    "erin grants read-only confirmedByUser false: page 200, grant 200 {\"requireAccept\":{\"projectName\":\"link-grants-20261124-031014\"}}; events []",
+    "erin grants read-only confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\",\"tokenAccessGranted\":\"readOnly\"}; events []",
+    "erin after the read-only grant: readOnly; owner keys _id",
+    "restricted reads: /updates?min_count=1 403, /labels 403, /version/1/zip 403, /messages 403, /members 403, /entities 200",
+    "dave grants read-and-write with no confirmedByUser: page 200, grant 200 {\"requireAccept\":{\"projectName\":\"link-grants-20261124-031014\"}}; events []",
+    "dave grants read-and-write confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\"}; events [[\"project:membership:changed\",[{\"members\":true,\"invites\":true}]]]",
+    "dave after the read-and-write grant: readAndWrite; members [{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"}]",
+    "erin grants read-and-write confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\"}; events [[\"project:membership:changed\",[{\"members\":true,\"invites\":true}]]]",
+    "erin after the read-and-write grant: readAndWrite",
+    "alice grants read-only confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\",\"higherAccess\":true}; events []",
+    "alice grants read-and-write confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\",\"higherAccess\":true}; events []",
+    "dave grants read-only confirmedByUser true: page 200, grant 200 {\"redirect\":\"/project/6b050016cb4fe3a455d4e0d4\",\"higherAccess\":true}; events []",
+    "unknown token: page 200, grant 404 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title translate=\\\"no\\\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\\\"twitter:title\\\" content=\\\"Page Not Found\\\"><meta name=\\\"og:title\\\" content=\\\"Page Not Found\\\"><meta name=\\\"description\\\" content=\\\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\\\"><…\"",
+    "members after the grants: {\"members\":[{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"},{\"_id\":\"6afab5bd1222cc50aa4c1704\",\"first_name\":\"Erin\",\"last_name\":\"Outsider\",\"email\":\"erin@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:21.992Z\"}]}",
+    "link sharing off: 204; events [[\"project:publicAccessLevel:changed\",[{\"newAccessLevel\":\"private\"}]]]",
+    "erin joins after link sharing is off: readAndWrite"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "link-grants-20261124-031014",
+          "template": "example"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b050016cb4fe3a455d4e0d4",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 1507,
+      "answeredAt": 1901
+    },
+    {
+      "label": "alice turns on link sharing",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/settings/admin",
+        "user": "alice",
+        "body": {
+          "publicAccessLevel": "tokenBased"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 2015,
+      "answeredAt": 2091,
+      "events": {
+        "alice": [
+          {
+            "t": 2078,
+            "name": "project:publicAccessLevel:changed",
+            "args": [
+              {
+                "newAccessLevel": "tokenBased"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/tokens",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "165",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "readAndWrite": "<22 characters, digits then a-z>",
+        "readAndWritePrefix": "<10 characters, digits>",
+        "readOnly": "<12 characters, a-z>",
+        "readOnlyHashPrefix": "<6 characters, hex>",
+        "readAndWriteHashPrefix": "<6 characters, hex>"
+      },
+      "sentAt": 3593,
+      "answeredAt": 3615
+    },
+    {
+      "label": "erin grants read-only with no confirmedByUser",
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "erin",
+        "body": {}
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "63",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "requireAccept": {
+          "projectName": "link-grants-20261124-031014"
+        }
+      },
+      "sentAt": 3630,
+      "answeredAt": 3648,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/read/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "erin@example.test",
+              "first_name": "Erin",
+              "last_name": "Outsider"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "erin grants read-only confirmedByUser false",
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "erin",
+        "body": {
+          "confirmedByUser": false
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "63",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "requireAccept": {
+          "projectName": "link-grants-20261124-031014"
+        }
+      },
+      "sentAt": 5161,
+      "answeredAt": 5177,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/read/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "erin@example.test",
+              "first_name": "Erin",
+              "last_name": "Outsider"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "erin grants read-only confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "erin",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "80",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4",
+        "tokenAccessGranted": "readOnly"
+      },
+      "sentAt": 6697,
+      "answeredAt": 6746,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/read/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "erin@example.test",
+              "first_name": "Erin",
+              "last_name": "Outsider"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/updates?min_count=1",
+        "user": "erin (restricted)"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 8358,
+      "answeredAt": 8376
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/labels",
+        "user": "erin (restricted)"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 8376,
+      "answeredAt": 8398
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/version/1/zip",
+        "user": "erin (restricted)"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 8399,
+      "answeredAt": 8422
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/messages",
+        "user": "erin (restricted)"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 8422,
+      "answeredAt": 8438
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/members",
+        "user": "erin (restricted)"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 8438,
+      "answeredAt": 8467
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/entities",
+        "user": "erin (restricted)"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "159",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b050016cb4fe3a455d4e0d4",
+        "entities": [
+          {
+            "path": "/frog.jpg",
+            "type": "file"
+          },
+          {
+            "path": "/main.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/sample.bib",
+            "type": "doc"
+          }
+        ]
+      },
+      "sentAt": 8467,
+      "answeredAt": 8483
+    },
+    {
+      "label": "dave grants read-and-write with no confirmedByUser",
+      "request": {
+        "method": "POST",
+        "route": "/[redacted]/grant",
+        "user": "dave",
+        "body": {}
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "63",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "requireAccept": {
+          "projectName": "link-grants-20261124-031014"
+        }
+      },
+      "sentAt": 8496,
+      "answeredAt": 8518,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "dave@example.test",
+              "first_name": "Dave",
+              "last_name": "Viewer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "dave grants read-and-write confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/[redacted]/grant",
+        "user": "dave",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "48",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4"
+      },
+      "sentAt": 10088,
+      "answeredAt": 10236,
+      "events": {
+        "alice": [
+          {
+            "t": 10221,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "members": true,
+                "invites": true
+              }
+            ]
+          }
+        ]
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "dave@example.test",
+              "first_name": "Dave",
+              "last_name": "Viewer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "join": {
+        "user": "dave",
+        "permissionsLevel": "readAndWrite",
+        "members": [
+          {
+            "_id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-16T07:50:21.366Z"
+          }
+        ],
+        "invites": [],
+        "owner": {
+          "_id": "6afab5bb1222cc50aa4c16ec",
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "privileges": "owner",
+          "signUpDate": "2026-11-16T07:50:19.753Z"
+        }
+      }
+    },
+    {
+      "label": "erin grants read-and-write confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/[redacted]/grant",
+        "user": "erin",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "48",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4"
+      },
+      "sentAt": 11857,
+      "answeredAt": 11895,
+      "events": {
+        "alice": [
+          {
+            "t": 11895,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "members": true,
+                "invites": true
+              }
+            ]
+          }
+        ]
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "erin@example.test",
+              "first_name": "Erin",
+              "last_name": "Outsider"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "alice grants read-only confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "alice",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "68",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4",
+        "higherAccess": true
+      },
+      "sentAt": 13521,
+      "answeredAt": 13539,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/read/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "alice@example.test",
+              "first_name": "Alice",
+              "last_name": "Owner"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "alice grants read-and-write confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/[redacted]/grant",
+        "user": "alice",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "68",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4",
+        "higherAccess": true
+      },
+      "sentAt": 15064,
+      "answeredAt": 15100,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "alice@example.test",
+              "first_name": "Alice",
+              "last_name": "Owner"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "dave grants read-only confirmedByUser true",
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "dave",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "68",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b050016cb4fe3a455d4e0d4",
+        "higherAccess": true
+      },
+      "sentAt": 16617,
+      "answeredAt": 16635,
+      "events": {
+        "alice": []
+      },
+      "page": {
+        "status": 200,
+        "meta": {
+          "ol-postUrl": {
+            "type": "string",
+            "contentAttribute": true,
+            "value": "/read/[redacted]/grant"
+          },
+          "ol-user": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": {
+              "email": "dave@example.test",
+              "first_name": "Dave",
+              "last_name": "Viewer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/read/<unknown 12 a-z>",
+        "status": 200
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/read/abcdefghijkl/grant",
+        "user": "erin",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 18155,
+      "answeredAt": 18184
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/members",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "359",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "members": [
+          {
+            "_id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-16T07:50:21.366Z"
+          },
+          {
+            "_id": "6afab5bd1222cc50aa4c1704",
+            "first_name": "Erin",
+            "last_name": "Outsider",
+            "email": "erin@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-16T07:50:21.992Z"
+          }
+        ]
+      },
+      "sentAt": 18184,
+      "answeredAt": 18236
+    },
+    {
+      "label": "alice turns link sharing off",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b050016cb4fe3a455d4e0d4/settings/admin",
+        "user": "alice",
+        "body": {
+          "publicAccessLevel": "private"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 18237,
+      "answeredAt": 18279,
+      "events": {
+        "alice": [
+          {
+            "t": 18269,
+            "name": "project:publicAccessLevel:changed",
+            "args": [
+              {
+                "newAccessLevel": "private"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/read/[redacted] after link sharing is off",
+        "status": 200
+      }
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "projectId": "6b050016cb4fe3a455d4e0d4",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1920,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1993,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.92K85UTpXOPAf4NvAACy\",\"project\":{\"_id\":\"6b050016cb4fe3a455d4e0d4\",\"name\":\"link-grants-20261124-031014\",\"rootDoc_id\":\"6b050016cb4fe3a455d4e0d9\",\"rootFolder\":[{\"_id\":\"6b050016cb4fe3a455d4e0d3\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[{\"_id\":\"6b050017cb4fe3a455d4e0e6\",\"name\":\"frog.jpg\",\"linkedFileData\":null,\"created\":\"2026-11-24T03:10:15.224Z\",\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\"}],\"docs\":[{\"_id\":\"6b050016cb4fe3a455d4e0d9\",\"name\":\"main.tex\"},{\"_id\":\"6b050017cb4fe3a455d4e0e0\",\"name\":\"sample.bib\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 2078,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:publicAccessLevel:changed\",\"args\":[{\"newAccessLevel\":\"tokenBased\"}]}"
+          },
+          {
+            "t": 8363,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.hRSROG-KS9GLt5jHAACz\"]}"
+          },
+          {
+            "t": 10221,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"members\":true,\"invites\":true}]}"
+          },
+          {
+            "t": 11850,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.Ezx7q7RtTaBjlipVAAC0\"]}"
+          },
+          {
+            "t": 11895,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"members\":true,\"invites\":true}]}"
+          },
+          {
+            "t": 13511,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.UGpTc5tmTwFcRD3wAAC1\"]}"
+          },
+          {
+            "t": 18269,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:publicAccessLevel:changed\",\"args\":[{\"newAccessLevel\":\"private\"}]}"
+          },
+          {
+            "t": 19902,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b050016cb4fe3a455d4e0d4"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 19902,
+      "answeredAt": 20052
+    }
+  ]
+}

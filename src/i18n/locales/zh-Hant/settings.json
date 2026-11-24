@@ -1945,7 +1945,12 @@
       "signedIn": "已在 {{server}} 上登入",
       "signOut": "登出",
       "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "addAccount": "新增其他帳號",
+      "addAccountHint": "登入視窗每次都是全新的，因此你可以用任何帳號登入。使用瀏覽器登入或複製瀏覽器的登入資訊時，會使用該瀏覽器目前登入的帳號。",
+      "accountPick": "用於匯入的帳號",
+      "accountPickDescription": "新的匯入和範本會使用這個帳號。你已有的專案會保留其來源帳號。",
       "gitTitle": "用於同步的 Git 權杖",
+      "gitTitleFor": "{{email}} 的 Git 權杖",
       "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
       "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
       "gitOpenSettings": "開啟 Overleaf 帳號設定",
@@ -2313,6 +2318,7 @@
       "confirm": "清除字詞",
       "descriptionFallback": "這會移除這個字典中的所有詞彙。它們會立刻重新接受檢查。",
       "descriptionGlobal": "這會移除全域字典中的所有詞彙。它們會立刻重新接受檢查。",
+      "descriptionOverleaf": "它們也會從你的 Overleaf 帳號中移除。",
       "descriptionProject": "這會移除 {{project}} 中的所有詞彙。它們會立刻重新接受檢查。",
       "descriptionSuppressed": "這會移除 {{project}} 中所有已關閉檢查結果的詞彙。它們會立刻重新接受檢查。",
       "suppressedConfirm": "重新顯示",
@@ -2329,6 +2335,7 @@
     },
     "global": {
       "emptyDescription": "你在這裡加入的字詞，校對工具在每個專案中都會略過。",
+      "overleafSynced": "當有專案在 Overleaf 上即時編輯時，會與你 Overleaf 帳號中已學習的字詞同步。",
       "scope": "套用於每個專案"
     },
     "intro": "把字詞加入你的個人拼字檢查字典。這些字詞會存在本機設定中，並在所有專案中略過。比對會經過 Unicode 正規化，且不分大小寫。",

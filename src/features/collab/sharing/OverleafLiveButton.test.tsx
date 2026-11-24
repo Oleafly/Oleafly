@@ -30,6 +30,7 @@ import { writeClipboardText } from "@/lib/clipboard";
 import { openInSystemBrowser } from "@/lib/system-browser";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 import { notifyError } from "@/lib/toast";
+import { collabErrorText } from "../errors";
 import { useOverleafNotices } from "../live/overleaf-notices";
 import type { OverleafLiveProject } from "@/lib/overleaf-live";
 import type { CollabLiveSyncState } from "@/lib/tauri";
@@ -65,8 +66,8 @@ beforeEach(() => {
   pause.mockReset();
   resume.mockReset();
   vi.mocked(notifyError).mockClear();
-  installOverleafLiveActions({ pause, resume, unlink: vi.fn() });
-  useCollabLiveStore.setState({ share: null, ended: null, refused: null, goLiveAgain: storeGoLiveAgain });
+  installOverleafLiveActions({ pause, resume, unlink: vi.fn(), errorText: (error) => collabErrorText(error) });
+  useCollabLiveStore.setState({ share: null, ended: null, refused: null, refusedParams: {}, goLiveAgain: storeGoLiveAgain });
 });
 
 describe("OverleafLiveButton", () => {
@@ -137,13 +138,42 @@ describe("OverleafLiveButton", () => {
     show({});
     let user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: live.pause }));
-    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("pause overleaf live editing", expect.anything()));
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith("pause overleaf live editing", expect.anything(), enCollab.errors.internal),
+    );
     cleanup();
     resume.mockRejectedValueOnce({ code: "internal", message: "journal busy" });
     show({ backend: null, status: null, overleaf: link({ paused: true }) });
     user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: live.resume }));
-    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("resume overleaf live editing", expect.anything()));
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith("resume overleaf live editing", expect.anything(), enCollab.errors.internal),
+    );
+  });
+
+  it("names the command line process when it refuses a resume", async () => {
+    const refusal = { code: "live_elsewhere", message: "live elsewhere", params: { by: "cli", pid: "41" } };
+    resume.mockRejectedValueOnce(refusal);
+    show({ backend: null, status: null, overleaf: link({ paused: true }) });
+    const user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: live.resume }));
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "resume overleaf live editing",
+        refusal,
+        enCollab.liveElsewhere.cli.replace("{{pid}}", "41"),
+      ),
+    );
+  });
+
+  it("names the command line process that holds the project", async () => {
+    const named = enCollab.liveElsewhere.cli.replace("{{pid}}", "41");
+    const holder = { by: "cli", pid: "41" };
+    show({ status: { state: "ended", reason: "failed" }, ended: "failed", refused: "live_elsewhere", refusedParams: holder });
+    await openMenu();
+    const notes = screen.getAllByTestId("overleaf-live-status-note").map((note) => note.textContent);
+    expect(notes).toContain(named);
+    expect(notes).not.toContain(enCollab.errors.live_elsewhere);
   });
 
   it("shows nothing for a project shared on an Oleafly Server, even with a link", () => {

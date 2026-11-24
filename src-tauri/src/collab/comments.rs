@@ -16,7 +16,11 @@ use oleafly_collab_protocol::projects::{
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
-use super::commands::{authed, now_ms, AppHost, CollabCommandError, CollabHost};
+use super::commands::{
+    authed, now_ms, parse_id, AppHost, ByBackend, CollabCommandError, CollabHost,
+};
+use super::live::overleaf::commands::live_now;
+use super::live::overleaf::review::{OnlineMember, OnlineMessage, OnlineThread};
 use super::live::LiveHost;
 use super::state::CollabState;
 
@@ -30,9 +34,9 @@ const SWITCHES_FILE: &str = "comments.json";
 pub struct MentionedPayload {
     pub file_id: String,
     pub path: Option<String>,
-    pub thread_id: CommentId,
-    pub message_id: CommentId,
-    pub author: AccountId,
+    pub thread_id: String,
+    pub message_id: String,
+    pub author: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -69,9 +73,9 @@ pub struct CommentsNotSentPayload {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentThreadList {
+pub struct CommentThreadList<Thread = CommentThread> {
     pub rev: Option<u64>,
-    pub threads: Vec<CommentThread>,
+    pub threads: Vec<Thread>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -108,6 +112,9 @@ pub struct CommentsStatus {
     pub project_enabled: bool,
     pub can_comment: bool,
     pub reactions: bool,
+    pub moderate: bool,
+    pub typing: bool,
+    pub suggestion_threads: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -222,7 +229,7 @@ pub(crate) fn reactions_allowed(switches: CommentSwitches) -> Result<(), CollabE
     ))
 }
 
-fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
+pub(crate) fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
     CommentsStatus {
         server_allowed: switches.server,
         project_enabled: switches.project,
@@ -230,6 +237,9 @@ fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
             && switches.project
             && project_role_allows(role, ProjectAction::Comment),
         reactions: switches.reactions && switches.server,
+        moderate: role == ProjectRole::Owner,
+        typing: true,
+        suggestion_threads: true,
     }
 }
 
@@ -541,9 +551,9 @@ fn payload_for(
             .map(|mention| MentionedPayload {
                 path: path_in(layout, &mention.file_id),
                 file_id: mention.file_id,
-                thread_id: mention.thread_id,
-                message_id: mention.message_id,
-                author: mention.author,
+                thread_id: mention.thread_id.to_string(),
+                message_id: mention.message_id.to_string(),
+                author: mention.author.to_string(),
             })
             .collect(),
         local: false,
@@ -757,12 +767,38 @@ pub(crate) fn tell_local(app: &tauri::AppHandle, project_id: &str, file_id: &str
     );
 }
 
+pub(crate) fn server_members(
+    members: Vec<OnlineMember>,
+) -> Result<Vec<CommentMember>, CollabCommandError> {
+    members
+        .into_iter()
+        .map(|member| {
+            Ok(CommentMember {
+                account_id: parse_id(&member.account_id, "member")?,
+                display_name: member.display_name,
+                login: member.login,
+            })
+        })
+        .collect()
+}
+
+fn thread_id(text: &str) -> Result<CommentId, CollabCommandError> {
+    parse_id(text, "comment thread")
+}
+
+fn message_id(text: &str) -> Result<CommentId, CollabCommandError> {
+    parse_id(text, "comment")
+}
+
 #[tauri::command]
 pub async fn collab_comments_status(
     app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     project_id: String,
 ) -> Result<CommentsStatus, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.comments_status());
+    }
     let host = AppHost::new(app);
     comments_status(state.inner(), &host, &project_id)
         .await
@@ -776,6 +812,9 @@ pub async fn collab_comments_set_enabled(
     project_id: String,
     enabled: bool,
 ) -> Result<ProjectSummary, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Err(live.comments_switch_refused());
+    }
     let host = AppHost::new(app.clone());
     let (summary, status) = set_comments_enabled(state.inner(), &host, &project_id, enabled)
         .await
@@ -792,9 +831,13 @@ pub async fn collab_comment_thread_list(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     path: String,
-) -> Result<CommentThreadList, CollabCommandError> {
+) -> Result<ByBackend<CommentThreadList, CommentThreadList<OnlineThread>>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.thread_list(&path).map(ByBackend::Online);
+    }
     list_threads(state.inner(), &project_id, &path)
         .await
+        .map(ByBackend::Server)
         .map_err(CollabCommandError::from)
 }
 
@@ -803,6 +846,9 @@ pub async fn collab_comment_counts(
     state: tauri::State<'_, CollabState>,
     project_id: String,
 ) -> Result<Vec<CommentCount>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.comment_counts());
+    }
     count_comments(state.inner(), &project_id)
         .await
         .map_err(CollabCommandError::from)
@@ -814,6 +860,9 @@ pub async fn collab_comment_file_path(
     project_id: String,
     file_id: String,
 ) -> Result<Option<String>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.file_path(&file_id));
+    }
     comment_file_path(state.inner(), &project_id, &file_id)
         .await
         .map_err(CollabCommandError::from)
@@ -830,14 +879,21 @@ pub async fn collab_comment_create(
     to: usize,
     rev: Option<u64>,
     body: String,
-    members: Vec<CommentMember>,
-) -> Result<CommentThread, CollabCommandError> {
+    members: Vec<OnlineMember>,
+) -> Result<ByBackend<CommentThread, OnlineThread>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .comment(&path, from, to, rev, &body, &members)
+            .await
+            .map(ByBackend::Online);
+    }
+    let members = server_members(members)?;
     let thread = write_comment(state.inner(), &project_id, |live, who| {
         create_at(live, who, &path, from, to, rev, &body, &members, now_ms())
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &thread.file_id);
-    Ok(thread)
+    Ok(ByBackend::Server(thread))
 }
 
 #[tauri::command]
@@ -846,16 +902,23 @@ pub async fn collab_comment_reply(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
+    thread_id: String,
     body: String,
-    members: Vec<CommentMember>,
-) -> Result<CommentMessage, CollabCommandError> {
+    members: Vec<OnlineMember>,
+) -> Result<ByBackend<CommentMessage, OnlineMessage>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .reply(&file_id, &thread_id, &body, &members)
+            .await
+            .map(ByBackend::Online);
+    }
+    let (thread, members) = (self::thread_id(&thread_id)?, server_members(members)?);
     let message = write_comment(state.inner(), &project_id, |live, who| {
-        reply_in(live, who, &file_id, thread_id, &body, &members, now_ms())
+        reply_in(live, who, &file_id, thread, &body, &members, now_ms())
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
-    Ok(message)
+    Ok(ByBackend::Server(message))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -865,18 +928,26 @@ pub async fn collab_comment_edit(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-    message_id: CommentId,
+    thread_id: String,
+    message_id: String,
     body: String,
-    members: Vec<CommentMember>,
-) -> Result<CommentMessage, CollabCommandError> {
+    members: Vec<OnlineMember>,
+) -> Result<ByBackend<CommentMessage, OnlineMessage>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .edit_message(&file_id, &thread_id, &message_id, &body, &members)
+            .await
+            .map(ByBackend::Online);
+    }
+    let (thread, message) = (self::thread_id(&thread_id)?, self::message_id(&message_id)?);
+    let members = server_members(members)?;
     let message = write_comment(state.inner(), &project_id, |live, who| {
         edit_in(
             live,
             who,
             &file_id,
-            thread_id,
-            message_id,
+            thread,
+            message,
             &body,
             &members,
             now_ms(),
@@ -884,7 +955,7 @@ pub async fn collab_comment_edit(
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
-    Ok(message)
+    Ok(ByBackend::Server(message))
 }
 
 #[tauri::command]
@@ -893,11 +964,17 @@ pub async fn collab_comment_delete(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-    message_id: CommentId,
+    thread_id: String,
+    message_id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .delete_message(&file_id, &thread_id, &message_id, true)
+            .await;
+    }
+    let (thread, message) = (self::thread_id(&thread_id)?, self::message_id(&message_id)?);
     write_comment(state.inner(), &project_id, |live, who| {
-        delete_in(live, who, &file_id, thread_id, message_id)
+        delete_in(live, who, &file_id, thread, message)
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
@@ -910,14 +987,21 @@ pub async fn collab_comment_resolve(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-) -> Result<CommentThread, CollabCommandError> {
+    thread_id: String,
+) -> Result<ByBackend<CommentThread, OnlineThread>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .set_resolved(&file_id, &thread_id, true)
+            .await
+            .map(ByBackend::Online);
+    }
+    let thread = self::thread_id(&thread_id)?;
     let thread = write_comment(state.inner(), &project_id, |live, who| {
-        resolve_in(live, who, &file_id, thread_id, now_ms())
+        resolve_in(live, who, &file_id, thread, now_ms())
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
-    Ok(thread)
+    Ok(ByBackend::Server(thread))
 }
 
 #[tauri::command]
@@ -926,14 +1010,21 @@ pub async fn collab_comment_reopen(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-) -> Result<CommentThread, CollabCommandError> {
+    thread_id: String,
+) -> Result<ByBackend<CommentThread, OnlineThread>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .set_resolved(&file_id, &thread_id, false)
+            .await
+            .map(ByBackend::Online);
+    }
+    let thread = self::thread_id(&thread_id)?;
     let thread = write_comment(state.inner(), &project_id, |live, who| {
-        reopen_in(live, who, &file_id, thread_id)
+        reopen_in(live, who, &file_id, thread)
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
-    Ok(thread)
+    Ok(ByBackend::Server(thread))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -943,22 +1034,17 @@ pub async fn collab_comment_react(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-    message_id: CommentId,
+    thread_id: String,
+    message_id: String,
     emoji: String,
     on: bool,
 ) -> Result<CommentThread, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Err(live.reactions_refused());
+    }
+    let (thread, message) = (self::thread_id(&thread_id)?, self::message_id(&message_id)?);
     let thread = write_comment(state.inner(), &project_id, |live, who| {
-        react_in(
-            live,
-            who,
-            &file_id,
-            thread_id,
-            message_id,
-            &emoji,
-            on,
-            now_ms(),
-        )
+        react_in(live, who, &file_id, thread, message, &emoji, on, now_ms())
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
@@ -971,11 +1057,17 @@ pub async fn collab_comment_remove(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
-    message_id: CommentId,
+    thread_id: String,
+    message_id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .delete_message(&file_id, &thread_id, &message_id, false)
+            .await;
+    }
+    let (thread, message) = (self::thread_id(&thread_id)?, self::message_id(&message_id)?);
     write_comment(state.inner(), &project_id, |live, who| {
-        remove_in(live, who, &file_id, thread_id, message_id)
+        remove_in(live, who, &file_id, thread, message)
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
@@ -988,10 +1080,14 @@ pub async fn collab_comment_thread_delete(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     file_id: String,
-    thread_id: CommentId,
+    thread_id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.delete_thread(&file_id, &thread_id).await;
+    }
+    let thread = self::thread_id(&thread_id)?;
     write_comment(state.inner(), &project_id, |live, who| {
-        delete_thread_in(live, who, &file_id, thread_id)
+        delete_thread_in(live, who, &file_id, thread)
     })
     .map_err(command_error)?;
     tell_local(&app, &project_id, &file_id);
@@ -1030,20 +1126,26 @@ mod tests {
         }
     }
 
-    impl LiveHost for HeardComments {
+    impl oleafly_live::DiskHost for HeardComments {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for HeardComments {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
+
         fn comments_changed(&self, payload: CommentsChangedPayload) {
             self.0.lock().unwrap().push(payload);
         }
+
         fn comments_not_sent(&self, payload: CommentsNotSentPayload) {
             self.1.lock().unwrap().push(payload);
         }
+
         fn comments_status(&self, payload: CommentsStatusPayload) {
             self.2.lock().unwrap().push(payload);
         }
@@ -1194,9 +1296,9 @@ mod tests {
                 mentioned: vec![MentionedPayload {
                     file_id: intro.clone(),
                     path: Some("chapters/intro.tex".to_owned()),
-                    thread_id: thread.id,
-                    message_id: thread.messages[0].id,
-                    author: alice.who.account,
+                    thread_id: thread.id.to_string(),
+                    message_id: thread.messages[0].id.to_string(),
+                    author: alice.who.account.to_string(),
                 }],
                 local: false,
             }]
@@ -1447,6 +1549,9 @@ mod tests {
                         project_enabled: project,
                         can_comment: refused.is_none(),
                         reactions: false,
+                        moderate: false,
+                        typing: true,
+                        suggestion_threads: true,
                     },
                 })
             );
@@ -1487,6 +1592,9 @@ mod tests {
                 project_enabled: false,
                 can_comment: false,
                 reactions: true,
+                moderate: false,
+                typing: true,
+                suggestion_threads: true,
             }
         );
         let offline = settle_status(
@@ -2033,6 +2141,88 @@ mod tests {
         assert_eq!(
             command_error(CollabError::Network("offline".to_owned())).code,
             "unreachable"
+        );
+    }
+
+    #[test]
+    fn a_server_thread_reads_the_same_through_either_backend_and_ids_arrive_as_text() {
+        let (alice, _bob, _intro) = sides();
+        let mut live = alice.live.lock().unwrap();
+        let thread = create_at(
+            &mut live,
+            &alice.who,
+            "chapters/intro.tex",
+            4,
+            9,
+            None,
+            "Quick?",
+            &[],
+            1,
+        )
+        .unwrap();
+        let wrapped: ByBackend<CommentThread, OnlineThread> = ByBackend::Server(thread.clone());
+        assert_eq!(
+            serde_json::to_string(&wrapped).unwrap(),
+            serde_json::to_string(&thread).unwrap()
+        );
+        let listed = CommentThreadList {
+            rev: Some(3),
+            threads: vec![thread.clone()],
+        };
+        let wrapped: ByBackend<CommentThreadList, CommentThreadList<OnlineThread>> =
+            ByBackend::Server(listed.clone());
+        assert_eq!(
+            serde_json::to_value(&wrapped).unwrap(),
+            serde_json::to_value(&listed).unwrap()
+        );
+        assert_eq!(self::thread_id(&thread.id.to_string()).unwrap(), thread.id);
+        assert_eq!(
+            message_id(&thread.messages[0].id.to_string()).unwrap(),
+            thread.messages[0].id
+        );
+        for bad in ["", "6b04e5f6c0ffee0010000001"] {
+            assert_eq!(self::thread_id(bad).unwrap_err().code, "not_found");
+        }
+        let text = |id: &str| OnlineMember {
+            account_id: id.to_owned(),
+            display_name: "Alice Chen".to_owned(),
+            login: Some("alice".to_owned()),
+        };
+        let parsed = server_members(vec![text(&alice.who.account.to_string())]).unwrap();
+        assert_eq!(
+            parsed,
+            vec![CommentMember {
+                login: Some("alice".to_owned()),
+                ..member(alice.who.account, "Alice Chen")
+            }]
+        );
+        assert_eq!(
+            server_members(vec![text("6b04e5f6c0ffee0010000001")])
+                .unwrap_err()
+                .code,
+            "not_found"
+        );
+    }
+
+    #[test]
+    fn a_server_status_says_who_moderates_and_that_typing_and_suggestion_threads_work() {
+        let owner = status_of(CommentSwitches::default(), ProjectRole::Owner);
+        let editor = status_of(CommentSwitches::default(), ProjectRole::Editor);
+        assert!(owner.moderate && !editor.moderate);
+        for status in [owner, editor] {
+            assert!(status.typing && status.suggestion_threads && status.can_comment);
+        }
+        assert_eq!(
+            serde_json::to_value(owner).unwrap(),
+            serde_json::json!({
+                "serverAllowed": true,
+                "projectEnabled": true,
+                "canComment": true,
+                "reactions": false,
+                "moderate": true,
+                "typing": true,
+                "suggestionThreads": true,
+            })
         );
     }
 

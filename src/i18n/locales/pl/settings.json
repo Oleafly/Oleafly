@@ -1993,7 +1993,12 @@
       "signedIn": "Zalogowano na {{server}}",
       "signOut": "Wyloguj się",
       "signOutFailed": "Oleafly nie mógł wylogować się z Overleaf.",
+      "addAccount": "Dodaj kolejne konto",
+      "addAccountHint": "Okno logowania startuje od zera, więc możesz zalogować się na dowolne konto. Logowanie przez przeglądarkę lub skopiowanie logowania z przeglądarki używa konta, na które zalogowano się w tej przeglądarce.",
+      "accountPick": "Konto do importu",
+      "accountPickDescription": "Nowe importy i szablony używają tego konta. Projekty, które już masz, zachowują konto, z którego pochodzą.",
       "gitTitle": "Token Git do synchronizacji",
+      "gitTitleFor": "Token Git dla {{email}}",
       "gitSaved": "Token Git jest zapisany. Połączone projekty pozostają zsynchronizowane z Overleaf.",
       "gitMissing": "Nie ma jeszcze tokenu Git. Aby synchronizować projekty, utwórz go w sekcji Integracja z Git w ustawieniach konta Overleaf.",
       "gitOpenSettings": "Otwórz ustawienia konta Overleaf",
@@ -2373,6 +2378,7 @@
       "confirm": "Wyczyść słowa",
       "descriptionFallback": "Spowoduje to usunięcie wszystkich terminów z tego słownika. Zostaną znów sprawdzone od razu.",
       "descriptionGlobal": "Spowoduje to usunięcie wszystkich terminów ze słownika globalnego. Zostaną znów sprawdzone od razu.",
+      "descriptionOverleaf": "Zostaną usunięte także z Twojego konta Overleaf.",
       "descriptionProject": "Spowoduje to usunięcie wszystkich terminów z projektu {{project}}. Zostaną znów sprawdzone od razu.",
       "descriptionSuppressed": "Spowoduje to usunięcie wszystkich terminów z ukrytych uwag w projekcie {{project}}. Zostaną znów sprawdzone od razu.",
       "suppressedConfirm": "Pokaż ponownie",
@@ -2392,6 +2398,7 @@
     },
     "global": {
       "emptyDescription": "Słowa dodane tutaj są pomijane przez korektę we wszystkich projektach.",
+      "overleafSynced": "Synchronizowane z nauczonymi słowami na Twoim koncie Overleaf, gdy projekt jest edytowany na żywo w Overleaf.",
       "scope": "Dotyczy każdego projektu"
     },
     "intro": "Dodawaj słowa do osobistego słownika pisowni. Te słowa są przechowywane w ustawieniach lokalnych i pomijane we wszystkich projektach. Dopasowanie jest znormalizowane w Unicode i nie rozróżnia wielkości liter.",

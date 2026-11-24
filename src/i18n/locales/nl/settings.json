@@ -1961,7 +1961,12 @@
       "signedIn": "Aangemeld op {{server}}",
       "signOut": "Afmelden",
       "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "addAccount": "Nog een account toevoegen",
+      "addAccountHint": "Het aanmeldvenster begint zonder eerdere aanmelding, dus je kunt je met elk account aanmelden. Meld je je aan met een browser of kopieer je de aanmelding uit een browser, dan wordt het account gebruikt waarmee die browser is aangemeld.",
+      "accountPick": "Account voor importeren",
+      "accountPickDescription": "Nieuwe imports en sjablonen gebruiken dit account. Projecten die je al hebt, houden het account waar ze vandaan komen.",
       "gitTitle": "Git-token voor synchronisatie",
+      "gitTitleFor": "Git-token voor {{email}}",
       "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
       "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
       "gitOpenSettings": "Overleaf-accountinstellingen openen",
@@ -2333,6 +2338,7 @@
       "confirm": "Woorden wissen",
       "descriptionFallback": "Hiermee verdwijnen alle termen uit dit woordenboek. Ze worden meteen weer gecontroleerd.",
       "descriptionGlobal": "Hiermee verdwijnen alle termen uit het algemene woordenboek. Ze worden meteen weer gecontroleerd.",
+      "descriptionOverleaf": "Ze worden ook uit je Overleaf-account verwijderd.",
       "descriptionProject": "Hiermee verdwijnen alle termen uit {{project}}. Ze worden meteen weer gecontroleerd.",
       "descriptionSuppressed": "Hiermee verdwijnen alle termen uit de gesloten bevindingen in {{project}}. Ze worden meteen weer gecontroleerd.",
       "suppressedConfirm": "Weer tonen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Woorden die je hier toevoegt slaat de proeflezer in elk project over.",
+      "overleafSynced": "Wordt gesynchroniseerd met de geleerde woorden in je Overleaf-account zolang een project live is op Overleaf.",
       "scope": "Geldt voor elk project"
     },
     "intro": "Voeg woorden toe aan je persoonlijke spellingwoordenboek. Deze woorden staan in je lokale instellingen en worden in alle projecten genegeerd. Het vergelijken is Unicode-genormaliseerd en niet hoofdlettergevoelig.",

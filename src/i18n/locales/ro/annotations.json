@@ -26,6 +26,10 @@
       "region": "Comentați această zonă…"
     },
     "placeHere": "Plasează aici",
+    "coauthors": "Comentează pentru coautori",
+    "noSource": "Acest pasaj nu a fost găsit în fișierele sursă.",
+    "commentFailed": "Fișierul pentru acest comentariu nu a putut fi deschis.",
+    "commentsClosed": "Comentariile nu sunt disponibile pentru acest proiect în acest moment.",
     "cancel": "Anulează",
     "save": "Adaugă",
     "saving": "Se salvează",

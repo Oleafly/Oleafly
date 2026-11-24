@@ -19,6 +19,8 @@ pub(crate) fn legacy_code(kind: OnlineErrorKind) -> &'static str {
         Kind::NotAnArchive => "overleaf.not_an_archive",
         Kind::TemplateUnavailable => "overleaf.template_unavailable",
         Kind::TemplateLinkInvalid => "overleaf.template_link_invalid",
+        Kind::LinkInvalid => "overleaf.link_invalid",
+        Kind::LinkUnavailable => "overleaf.link_unavailable",
         Kind::GitTokenInvalid => "overleaf.git_token_invalid",
         Kind::GitTokenMissing => "overleaf.git_token_missing",
         Kind::GitTokenRejected => "overleaf.git_token_rejected",
@@ -65,6 +67,28 @@ pub(crate) fn app_error(error: OnlineError) -> String {
     app.into()
 }
 
+pub(crate) fn rest_error(
+    base: &str,
+    error: &oleafly_online::live::rest::RestError,
+    refused: impl FnOnce(&str) -> AppError,
+) -> String {
+    use oleafly_online::live::rest::RestError;
+    match error {
+        RestError::SignedOut => AppError::new("overleaf.session_expired"),
+        RestError::RateLimited(_) => AppError::new("overleaf.rate_limited"),
+        RestError::Refused { message, .. } => refused(message),
+        RestError::NotAllowed => refused("restricted"),
+        RestError::TooLarge => AppError::new("overleaf.create_too_large"),
+        RestError::Lost(detail)
+        | RestError::Unreachable(detail)
+        | RestError::Unreadable(detail) => AppError::new("overleaf.unreachable")
+            .param("server", base)
+            .detail(detail),
+        RestError::Short => AppError::new("overleaf.unreachable").param("server", base),
+    }
+    .into()
+}
+
 const SYNC_INCOMPLETE: &str = "overleaf.sync_incomplete";
 
 fn envelope(error: &str) -> Option<serde_json::Value> {
@@ -105,7 +129,7 @@ pub(crate) fn after_files_changed(error: String) -> String {
 mod tests {
     use super::*;
 
-    const ALL_KINDS: [OnlineErrorKind; 30] = [
+    const ALL_KINDS: [OnlineErrorKind; 32] = [
         OnlineErrorKind::InvalidServer,
         OnlineErrorKind::SignedOut,
         OnlineErrorKind::SessionExpired,
@@ -119,6 +143,8 @@ mod tests {
         OnlineErrorKind::NotAnArchive,
         OnlineErrorKind::TemplateUnavailable,
         OnlineErrorKind::TemplateLinkInvalid,
+        OnlineErrorKind::LinkInvalid,
+        OnlineErrorKind::LinkUnavailable,
         OnlineErrorKind::GitTokenInvalid,
         OnlineErrorKind::GitTokenMissing,
         OnlineErrorKind::GitTokenRejected,

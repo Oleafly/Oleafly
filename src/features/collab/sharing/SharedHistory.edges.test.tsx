@@ -18,6 +18,9 @@ import {
   collabError,
   deferred,
   fill,
+  historyStatus,
+  overleafLink,
+  overleafLive,
   person,
   projectMember,
   shareInfo,
@@ -30,11 +33,25 @@ const mocks = vi.hoisted(() => ({
   collabHistoryRestore: vi.fn(),
   collabVersionName: vi.fn(),
   collabVersionUnname: vi.fn(),
+  collabHistoryStatus: vi.fn(),
+  collabHistoryZip: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   ...mocks,
+}));
+
+const saving = vi.hoisted(() => ({ pickSavePath: vi.fn(), exportResultToast: vi.fn() }));
+
+vi.mock("@/lib/native-file-dialog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/native-file-dialog")>()),
+  pickSavePath: saving.pickSavePath,
+}));
+
+vi.mock("@/features/export", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/export")>()),
+  exportResultToast: saving.exportResultToast,
 }));
 
 vi.mock("@/components/ai/turns/DiffPreview", () => ({
@@ -67,6 +84,7 @@ function live(role: CollabProjectRole, shared = true) {
     members: MEMBERS,
     share: shared ? shareInfo({ project_id: "paper", role, account_id: ALICE_ID }) : null,
   });
+  mocks.collabHistoryStatus.mockResolvedValue(historyStatus(role));
 }
 
 function show(role: CollabProjectRole = "editor") {
@@ -163,10 +181,11 @@ describe("replies that arrive out of order", () => {
     const slow = deferred<CollabHistoryPage>();
     mocks.collabHistoryList.mockReturnValueOnce(slow.promise).mockResolvedValueOnce({ entries: [today], nextBefore: null });
     show();
+    await waitFor(() => expect(mocks.collabHistoryList).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole("button", { name: copy.refresh }));
     expect(await screen.findByText(formatTime(today.at))).toBeInTheDocument();
     await act(async () => {
-      slow.resolve({ entries: [yesterday], nextBefore: "cursor-1" });
+      slow.resolve({ entries: [yesterday], nextBefore: "cursor-1", limited: false });
       await slow.promise;
     });
     expect(screen.queryByRole("region", { name: yesterdayHeading })).toBeNull();
@@ -177,6 +196,7 @@ describe("replies that arrive out of order", () => {
     const slow = deferred<CollabHistoryPage>();
     mocks.collabHistoryList.mockReturnValueOnce(slow.promise).mockResolvedValueOnce({ entries: [today], nextBefore: null });
     show();
+    await waitFor(() => expect(mocks.collabHistoryList).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole("button", { name: copy.refresh }));
     expect(await screen.findByText(formatTime(today.at))).toBeInTheDocument();
     await act(async () => {
@@ -209,7 +229,7 @@ describe("replies that arrive out of order", () => {
     fireEvent.click(screen.getByRole("button", { name: copy.refresh }));
     expect(await screen.findByText("Sent to reviewers")).toBeInTheDocument();
     await act(async () => {
-      more.resolve({ entries: [yesterday], nextBefore: "cursor-2" });
+      more.resolve({ entries: [yesterday], nextBefore: "cursor-2", limited: false });
       await more.promise;
     });
     expect(screen.queryByRole("region", { name: yesterdayHeading })).toBeNull();
@@ -338,5 +358,133 @@ describe("comparing versions", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.close }));
     await waitFor(() => expect(screen.queryByTestId("collab-history-version")).toBeNull());
     expect(mocks.collabHistoryRestore).not.toHaveBeenCalled();
+  });
+});
+
+describe("history of a project live on Overleaf", () => {
+  function onOverleaf(role: CollabProjectRole, status = historyStatus(role, { download: true })) {
+    useCollabLiveStore.setState({
+      projectId: "paper",
+      members: MEMBERS,
+      status: { state: "online" },
+      ...overleafLive(),
+      role,
+    });
+    mocks.collabHistoryStatus.mockResolvedValue(status);
+    return render(<SharedHistory open onOpenChange={() => undefined} />);
+  }
+
+  afterEach(() => {
+    useCollabLiveStore.setState({ backend: null, overleaf: null, selfId: null, restricted: false });
+  });
+
+  it("asks Overleaf for its history only while the project is live there", async () => {
+    useCollabLiveStore.setState({ projectId: "paper", ...overleafLive({ overleaf: overleafLink({ paused: true }) }) });
+    const { unmount } = render(<SharedHistory open onOpenChange={() => undefined} />);
+    expect(mocks.collabHistoryList).not.toHaveBeenCalled();
+    unmount();
+    onOverleaf("editor");
+    expect(await screen.findByText("Sent to reviewers")).toBeInTheDocument();
+    expect(mocks.collabHistoryList).toHaveBeenCalledWith("paper", null, 50);
+    expect(mocks.collabHistoryStatus).toHaveBeenCalledWith("paper");
+  });
+
+  it("says history isn't available to a view-only link user, and asks for no list", async () => {
+    onOverleaf("viewer", historyStatus("viewer", { available: false, name: false, restore: false }));
+    expect(await screen.findByText(copy.unavailable)).toBeInTheDocument();
+    expect(mocks.collabHistoryList).not.toHaveBeenCalled();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.refresh })).toBeNull();
+  });
+
+  it("reads the status again when the session turns out to be a view-only link, and stops there", async () => {
+    onOverleaf("viewer");
+    expect(await screen.findByText("Sent to reviewers")).toBeInTheDocument();
+    expect(mocks.collabHistoryList).toHaveBeenCalledTimes(1);
+    mocks.collabHistoryStatus.mockResolvedValue(historyStatus("viewer", { available: false }));
+    act(() => useCollabLiveStore.setState({ restricted: true }));
+    expect(await screen.findByText(copy.unavailable)).toBeInTheDocument();
+    expect(mocks.collabHistoryStatus).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Sent to reviewers")).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.refresh })).toBeNull();
+    expect(mocks.collabHistoryList).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for nothing until the Overleaf session has started", async () => {
+    useCollabLiveStore.setState({ projectId: "paper", members: MEMBERS, status: null, ...overleafLive(), role: null, selfId: null });
+    render(<SharedHistory open onOpenChange={() => undefined} />);
+    await act(async () => undefined);
+    expect(mocks.collabHistoryStatus).not.toHaveBeenCalled();
+    expect(mocks.collabHistoryList).not.toHaveBeenCalled();
+  });
+
+  it("still lists the history when its status can't be read, without offering changes", async () => {
+    useCollabLiveStore.setState({ projectId: "paper", members: MEMBERS, status: { state: "online" }, ...overleafLive(), role: "owner" });
+    mocks.collabHistoryStatus.mockRejectedValue(collabError("internal"));
+    render(<SharedHistory open onOpenChange={() => undefined} />);
+    const row = await rowOf(formatTime(today.at));
+    expect(within(row).queryByRole("button", { name: copy.name })).toBeNull();
+    expect(within(row).queryByRole("button", { name: copy.download })).toBeNull();
+  });
+
+  it("says older history needs a full plan when Overleaf cuts the list", async () => {
+    mocks.collabHistoryList.mockResolvedValue({ entries: [today], nextBefore: null, limited: true });
+    onOverleaf("owner");
+    expect(await screen.findByTestId("collab-history-limited")).toHaveTextContent(copy.limited);
+    expect(screen.queryByRole("button", { name: copy.loadMore })).toBeNull();
+  });
+
+  it("shows the plan line instead of a failure when the plan keeps no history", async () => {
+    mocks.collabHistoryList.mockRejectedValue(collabError("history_plan_limit"));
+    onOverleaf("owner");
+    expect(await screen.findByTestId("collab-history-limited")).toHaveTextContent(copy.limited);
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+  });
+
+  it("lets an Overleaf reviewer name versions but not restore them", async () => {
+    const user = userEvent.setup();
+    onOverleaf("reviewer", historyStatus("reviewer", { name: true, restore: false }));
+    const row = await rowOf(formatTime(today.at));
+    expect(within(row).getByRole("button", { name: copy.name })).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: copy.open }));
+    const dialog = await screen.findByTestId("collab-history-version");
+    expect(within(dialog).queryByRole("button", { name: copy.restoreProject })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: copy.restoreFile })).toBeNull();
+  });
+
+  it("downloads a version as a ZIP where the save dialog points", async () => {
+    const user = userEvent.setup();
+    saving.pickSavePath.mockResolvedValue("/Users/alice/Paper (version v3).zip");
+    mocks.collabHistoryZip.mockResolvedValue(1024);
+    onOverleaf("viewer", historyStatus("viewer", { download: true }));
+    const row = await rowOf(formatTime(today.at));
+    await user.click(within(row).getByRole("button", { name: copy.download }));
+    await waitFor(() =>
+      expect(mocks.collabHistoryZip).toHaveBeenCalledWith("paper", "v3", "/Users/alice/Paper (version v3).zip"),
+    );
+    await waitFor(() =>
+      expect(saving.exportResultToast).toHaveBeenCalledWith(copy.downloadKind, "/Users/alice/Paper (version v3).zip"),
+    );
+    expect(within(row).queryByRole("button", { name: copy.name })).toBeNull();
+  });
+
+  it("asks again what the role allows when the role changes", async () => {
+    onOverleaf("editor");
+    const row = await rowOf(formatTime(today.at));
+    expect(within(row).getByRole("button", { name: copy.name })).toBeInTheDocument();
+    mocks.collabHistoryStatus.mockResolvedValue(historyStatus("viewer"));
+    act(() => useCollabLiveStore.setState({ role: "viewer" }));
+    await waitFor(() => expect(within(row).queryByRole("button", { name: copy.name })).toBeNull());
+    expect(mocks.collabHistoryStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("downloads nothing when the save dialog is closed", async () => {
+    const user = userEvent.setup();
+    saving.pickSavePath.mockResolvedValue(null);
+    onOverleaf("editor");
+    const row = await rowOf(formatTime(today.at));
+    await user.click(within(row).getByRole("button", { name: copy.download }));
+    await waitFor(() => expect(saving.pickSavePath).toHaveBeenCalled());
+    expect(mocks.collabHistoryZip).not.toHaveBeenCalled();
   });
 });

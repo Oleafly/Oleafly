@@ -346,6 +346,7 @@
       "saveServer": "Usar este servidor",
       "signedInAs": "Sesión iniciada como {{email}}",
       "signedIn": "Sesión iniciada en Overleaf",
+      "accountPick": "Cuenta de Overleaf",
       "signOut": "Cerrar sesión",
       "searchLabel": "Buscar proyectos de Overleaf",
       "searchPlaceholder_one": "Buscar entre {{count}} proyecto",
@@ -370,6 +371,8 @@
       "import_other": "Importar {{count}} proyectos",
       "imported": "Importado",
       "open": "Abrir",
+      "openLive": "Abrir en directo",
+      "opening": "Abriendo",
       "ownedByYou": "Tuyo",
       "owner": "Propiedad de {{name}}",
       "archived": "Archivado",
@@ -387,6 +390,36 @@
         "downloading": "Descargando {{percent}} %",
         "downloadingUnknown": "Descargando",
         "importing": "Preparando"
+      },
+      "invitations": {
+        "title": "Invitaciones",
+        "from": "Invitación enviada por {{name}}",
+        "join": "Unirme",
+        "joined": "Te uniste a este proyecto"
+      },
+      "link": {
+        "checking": "Comprobando el enlace",
+        "unnamed": "Un proyecto en Overleaf",
+        "join": "Unirme",
+        "importInstead": "Importar",
+        "grants": {
+          "edit": "Al unirte, podrás editarlo como colaborador.",
+          "view": "Al unirte, solo podrás verlo. Quienes lo ven mediante un enlace no tienen comentarios ni chat.",
+          "already": "Ya tienes este proyecto.",
+          "invite": "Al unirte, aceptas la invitación."
+        }
+      },
+      "put": {
+        "menu": "Subir a Overleaf",
+        "title": "Subir a Overleaf",
+        "description": "Oleafly sube este proyecto como un proyecto nuevo de Overleaf y luego mantiene ambos sincronizados mientras editas en directo.",
+        "name": "Nombre en Overleaf",
+        "account": "Cuenta de Overleaf",
+        "submit": "Subir a Overleaf",
+        "working": "Subiendo",
+        "signedOut": "Primero inicia sesión en Overleaf en Ajustes.",
+        "openSettings": "Abrir Ajustes",
+        "cancel": "Cancelar"
       }
     }
   },

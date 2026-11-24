@@ -9,10 +9,12 @@ import {
   overleafLiveStop,
   overleafLiveUnlink,
 } from "@/lib/overleaf-live";
-import { useOverleafImportStore } from "@/store/overleaf-import";
+import { accountsOf, useOverleafImportStore } from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
 import type { CollabErrorCode } from "@/lib/tauri";
+import { collabErrorText } from "../errors";
 import type { CollabLiveStoreState, LiveBackendDriver, StartRefusal } from "./live-store";
+import { startLearnedWords } from "./learned-words";
 import { useCollabLiveStore } from "./live-store";
 import { startOverleafNotices } from "./overleaf-notices";
 import { startOverleafTree } from "./overleaf-tree";
@@ -80,7 +82,7 @@ export function startOverleafLive(): () => void {
     if (state.overleafLive !== previous.overleafLive) void reload();
   });
   const unsubscribeSignIn = useOverleafImportStore.subscribe((state, previous) => {
-    if (state.status?.signedIn !== previous.status?.signedIn) void reload();
+    if (accountsOf(state.status) !== accountsOf(previous.status)) void reload();
   });
   const stopMembers = onOverleafLiveMembers((projectId) => {
     const state = useCollabLiveStore.getState();
@@ -103,9 +105,12 @@ export function startOverleafLive(): () => void {
       await overleafLiveUnlink(projectId);
       await loadOverleaf(projectId);
     },
+    errorText: (error) => collabErrorText(error),
   });
   const stopNotices = startOverleafNotices();
+  const stopLearnedWords = startLearnedWords();
   return () => {
+    stopLearnedWords();
     stopNotices();
     void stopMembers.then((stop) => stop());
     uninstall();

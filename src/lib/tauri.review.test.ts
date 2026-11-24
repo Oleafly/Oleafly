@@ -27,7 +27,13 @@ describe("review, chat and history IPC contract", () => {
       "collabEditModeSet",
       () => tauri.collabEditModeSet("p", "suggesting"),
       "collab_edit_mode_set",
-      { projectId: "p", mode: "suggesting" },
+      { projectId: "p", mode: "suggesting", scope: "me" },
+    ],
+    [
+      "collabEditModeSet for everyone",
+      () => tauri.collabEditModeSet("p", "suggesting", "everyone"),
+      "collab_edit_mode_set",
+      { projectId: "p", mode: "suggesting", scope: "everyone" },
     ],
     [
       "collabSuggestionList",
@@ -79,6 +85,14 @@ describe("review, chat and history IPC contract", () => {
       { projectId: "p", before: "c1", limit: 50 },
     ],
     ["collabChatSend", () => tauri.collabChatSend("p", "Hi"), "collab_chat_send", { projectId: "p", body: "Hi", members: [] }],
+    [
+      "collabChatEdit",
+      () => tauri.collabChatEdit("p", "64f1c2a3b4c5d6e7f80901ab", "Hi again", members),
+      "collab_chat_edit",
+      { projectId: "p", id: "64f1c2a3b4c5d6e7f80901ab", body: "Hi again", members },
+    ],
+    ["collabChatEdit without members", () => tauri.collabChatEdit("p", "c1", "Hi"), "collab_chat_edit", { projectId: "p", id: "c1", body: "Hi", members: [] }],
+    ["collabChatStatus", () => tauri.collabChatStatus("p"), "collab_chat_status", { projectId: "p" }],
     ["collabChatDelete", () => tauri.collabChatDelete("p", "c1"), "collab_chat_delete", { projectId: "p", id: "c1" }],
     ["collabChatClear", () => tauri.collabChatClear("p"), "collab_chat_clear", { projectId: "p" }],
     [
@@ -117,6 +131,13 @@ describe("review, chat and history IPC contract", () => {
       "collab_version_unname",
       { projectId: "p", versionId: "v1" },
     ],
+    ["collabHistoryStatus", () => tauri.collabHistoryStatus("p"), "collab_history_status", { projectId: "p" }],
+    [
+      "collabHistoryZip",
+      () => tauri.collabHistoryZip("p", "7", "/out/v7.zip"),
+      "collab_history_zip",
+      { projectId: "p", versionId: "7", dest: "/out/v7.zip" },
+    ],
     ["collabOutputInfo", () => tauri.collabOutputInfo("p"), "collab_output_info", { projectId: "p" }],
   ] as const)("sends %s", async (_label, call, command, args) => {
     await call();
@@ -129,6 +150,8 @@ describe("review, chat and history IPC contract", () => {
       "suggestion_not_yours",
       "suggestion_role",
       "chat_role",
+      "chat_edit_off",
+      "chat_off_server",
       "history_unavailable",
       "account_storage_full",
       "too_many_projects",

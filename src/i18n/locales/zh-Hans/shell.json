@@ -515,7 +515,8 @@
       "open": "跟随打开的文件",
       "main": "始终编译主文档",
       "change": "更改主文档…"
-    }
+    },
+    "filling": "项目仍在从 Overleaf 下载。所有文件下载完成后即可编译。"
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -1669,6 +1670,7 @@
     "open": "在 Overleaf 中打开",
     "share": "在 Overleaf 上共享…",
     "signIn": "登录…",
+    "signInAs": "以 {{email}} 身份登录",
     "reconnectingIn": "{{seconds}} 秒后重试。",
     "notConfirmed": "Overleaf 尚未确认。",
     "copyDetails": "复制连接详情",

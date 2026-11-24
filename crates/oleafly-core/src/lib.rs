@@ -1,3 +1,4 @@
+pub mod app_log;
 pub mod atomic;
 pub mod biber_env;
 pub mod bibkey;
@@ -26,6 +27,7 @@ pub mod linked_capture;
 pub mod locking;
 mod manifest;
 pub mod markdown_scan;
+pub mod own_writes;
 pub mod pandoc;
 mod pandoc_log;
 pub mod pdf_sync;

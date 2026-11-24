@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { History, RotateCw } from "lucide-react";
+import type { CollabHistoryStatus } from "@oleafly/backend-port";
 import { useShallow } from "zustand/react/shallow";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Badge } from "@/components/ui/badge";
@@ -9,14 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDate, formatDateTime, formatNameList, formatNumber, formatTime } from "@/lib/intl";
+import { exportResultToast } from "@/features/export";
 import { logError } from "@/lib/log";
+import { pickSavePath } from "@/lib/native-file-dialog";
+import { exportFileStem } from "@/lib/path-utils";
 import type { CollabHistoryEntry } from "@/lib/tauri";
-import { collabHistoryList, collabVersionName, collabVersionUnname } from "@/lib/tauri-collab";
+import {
+  collabHistoryList,
+  collabHistoryStatus,
+  collabHistoryZip,
+  collabVersionName,
+  collabVersionUnname,
+} from "@/lib/tauri-collab";
+import { notifyError } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
-import { collabErrorText } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
-import { useCollabLiveStore } from "../live/live-store";
-import { canEditProjectRole } from "../roles";
+import { liveJoinedProjectId, useCollabLiveStore } from "../live/live-store";
 import { HistoryCompareDialog } from "./HistoryCompareDialog";
 import { historyDays, mergeHistory, olderFirst } from "./history-days";
 import { HistoryVersionDialog } from "./HistoryVersionDialog";
@@ -33,6 +43,7 @@ interface HistoryState {
   phase: "idle" | "loading" | "ready" | "failed";
   failure: string | null;
   loadingMore: boolean;
+  limited: boolean;
 }
 
 const EMPTY: HistoryState = {
@@ -42,7 +53,41 @@ const EMPTY: HistoryState = {
   phase: "idle",
   failure: null,
   loadingMore: false,
+  limited: false,
 };
+
+function planLimited(error: unknown): boolean {
+  return collabErrorCode(error) === "history_plan_limit";
+}
+
+const UNCHECKED_STATUS: CollabHistoryStatus = { available: true, name: false, restore: false, download: false, limited: false };
+
+function useHistoryStatus(
+  projectId: string | null,
+  open: boolean,
+  role: string | null,
+  restricted: boolean,
+): CollabHistoryStatus | null {
+  const [status, setStatus] = useState<{ projectId: string; status: CollabHistoryStatus } | null>(null);
+  const asked = open && projectId ? `${projectId}:${role ?? ""}:${restricted}` : null;
+  useEffect(() => {
+    if (!asked || !projectId) return;
+    let current = true;
+    collabHistoryStatus(projectId).then(
+      (next) => {
+        if (current) setStatus({ projectId, status: next });
+      },
+      (error: unknown) => {
+        void logError("collab history status", error);
+        if (current) setStatus({ projectId, status: UNCHECKED_STATUS });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [asked, projectId]);
+  return status?.projectId === projectId ? status.status : null;
+}
 
 function useSharedHistory(projectId: string | null, open: boolean) {
   const [state, setState] = useState<HistoryState>(EMPTY);
@@ -67,10 +112,15 @@ function useSharedHistory(projectId: string | null, open: boolean) {
         phase: "ready",
         failure: null,
         loadingMore: false,
+        limited: page.limited,
       });
     } catch (error) {
-      void logError("collab history list", error);
       if (ticket !== request.current || latest.current !== projectId) return;
+      if (planLimited(error)) {
+        setState({ ...EMPTY, projectId, phase: "ready", limited: true });
+        return;
+      }
+      void logError("collab history list", error);
       setState((current) => ({ ...current, projectId, phase: "failed", failure: collabErrorText(error) }));
     }
   }, [projectId]);
@@ -87,6 +137,7 @@ function useSharedHistory(projectId: string | null, open: boolean) {
         entries: mergeHistory(current.entries, page.entries),
         nextBefore: page.nextBefore,
         loadingMore: false,
+        limited: page.limited,
       }));
     } catch (error) {
       void logError("collab history more", error);
@@ -185,6 +236,7 @@ function EntryFiles({ files }: Readonly<{ files: readonly string[] }>) {
 function EntryActions({
   entry,
   canEdit,
+  download,
   picking,
   pickedHere,
   onOpen,
@@ -195,6 +247,7 @@ function EntryActions({
 }: Readonly<{
   entry: CollabHistoryEntry;
   canEdit: boolean;
+  download: Download | null;
   picking: boolean;
   pickedHere: boolean;
   onOpen: (entry: CollabHistoryEntry) => void;
@@ -231,14 +284,60 @@ function EntryActions({
           {t(($) => $.collab.history.unname)}
         </Button>
       ) : null}
+      {download ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          disabled={download.busy !== null}
+          onClick={() => download.start(entry)}
+        >
+          {download.busy === entry.id ? t(($) => $.collab.history.downloading) : t(($) => $.collab.history.download)}
+        </Button>
+      ) : null}
     </>
   );
+}
+
+interface Download {
+  busy: string | null;
+  start: (entry: CollabHistoryEntry) => void;
+}
+
+function useDownload(projectId: string | null, allowed: boolean): Download | null {
+  const { t } = useTranslation(["collab"]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const start = useCallback(
+    (entry: CollabHistoryEntry) => {
+      if (!projectId || busy) return;
+      const stem = exportFileStem(useFilesStore.getState().projectName, "project");
+      void (async () => {
+        const destination = await pickSavePath({
+          defaultPath: `${stem} (version ${entry.id}).zip`,
+          filters: [{ name: "ZIP", extensions: ["zip"] }],
+        });
+        if (!destination) return;
+        setBusy(entry.id);
+        try {
+          await collabHistoryZip(projectId, entry.id, destination);
+          exportResultToast(t(($) => $.collab.history.downloadKind), destination);
+        } catch (error) {
+          notifyError("download an overleaf version", error, collabErrorText(error));
+        } finally {
+          setBusy(null);
+        }
+      })().catch((error: unknown) => notifyError("download an overleaf version", error));
+    },
+    [projectId, busy, t],
+  );
+  return useMemo(() => (allowed && projectId ? { busy, start } : null), [allowed, projectId, busy, start]);
 }
 
 const EntryRow = memo(function EntryRow({
   entry,
   names,
   canEdit,
+  download,
   picking,
   pickedHere,
   onOpen,
@@ -249,6 +348,7 @@ const EntryRow = memo(function EntryRow({
   entry: CollabHistoryEntry;
   names: ReadonlyMap<string, string>;
   canEdit: boolean;
+  download: Download | null;
   picking: boolean;
   pickedHere: boolean;
   onOpen: (entry: CollabHistoryEntry) => void;
@@ -259,7 +359,7 @@ const EntryRow = memo(function EntryRow({
   const { t } = useTranslation(["collab"]);
   const [naming, setNaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const projectId = useCollabLiveStore((state) => state.projectId);
+  const projectId = useCollabLiveStore(liveJoinedProjectId);
   const unknown = t(($) => $.collab.toolbar.unknownPerson);
   const authors = formatNameList(
     entry.authors.map((accountId) => names.get(accountId) || unknown),
@@ -307,6 +407,7 @@ const EntryRow = memo(function EntryRow({
           <EntryActions
             entry={entry}
             canEdit={canEdit}
+            download={download}
             picking={picking}
             pickedHere={pickedHere}
             onOpen={onOpen}
@@ -329,14 +430,18 @@ export function SharedHistory({
   const { t } = useTranslation(["collab"]);
   const live = useCollabLiveStore(
     useShallow((state) => ({
-      projectId: state.share ? state.projectId : null,
-      members: state.members,
+      projectId: liveJoinedProjectId(state),
       role: state.role ?? state.share?.role ?? null,
+      restricted: state.restricted,
+      members: state.members,
       liveState: state.status?.state ?? null,
+      overleaf: state.share === null && state.backend === "overleaf",
     })),
   );
   const activePath = useFilesStore((state) => state.activePath);
-  const history = useSharedHistory(live.projectId, open);
+  const status = useHistoryStatus(live.projectId, open, live.role, live.restricted);
+  const unavailable = status?.available === false;
+  const history = useSharedHistory(status?.available ? live.projectId : null, open);
   const [viewing, setViewing] = useState<CollabHistoryEntry | null>(null);
   const [first, setFirst] = useState<CollabHistoryEntry | null>(null);
   const [comparing, setComparing] = useState<[CollabHistoryEntry, CollabHistoryEntry] | null>(null);
@@ -345,7 +450,9 @@ export function SharedHistory({
     [live.members],
   );
   const connected = live.liveState !== null && live.liveState !== "ended";
-  const canEdit = connected && canEditProjectRole(live.role);
+  const canEdit = connected && status?.name === true;
+  const canRestore = connected && status?.restore === true;
+  const download = useDownload(live.projectId, connected && status?.download === true);
   const title = t(($) => $.collab.history.title);
   const refresh = t(($) => $.collab.history.refresh);
   const days = historyDays(history.entries);
@@ -363,6 +470,9 @@ export function SharedHistory({
   );
 
   const body = () => {
+    if (unavailable) {
+      return <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.history.unavailable)}</p>;
+    }
     if (history.phase === "failed" && history.entries.length === 0) {
       return (
         <LoadFailed
@@ -379,8 +489,18 @@ export function SharedHistory({
         </div>
       );
     }
+    const limitLine = history.limited ? (
+      <p className="px-1 text-xs text-muted-foreground" data-testid="collab-history-limited">
+        {t(($) => $.collab.history.limited)}
+      </p>
+    ) : null;
     if (history.entries.length === 0) {
-      return <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.history.empty)}</p>;
+      return (
+        <>
+          <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.history.empty)}</p>
+          {limitLine}
+        </>
+      );
     }
     return (
       <>
@@ -404,6 +524,7 @@ export function SharedHistory({
                     entry={entry}
                     names={names}
                     canEdit={canEdit}
+                    download={download}
                     picking={first !== null}
                     pickedHere={first?.id === entry.id}
                     onOpen={onOpen}
@@ -429,6 +550,7 @@ export function SharedHistory({
             </Button>
           </div>
         ) : null}
+        {limitLine}
         {history.failure && history.entries.length > 0 ? <InlineAlert>{history.failure}</InlineAlert> : null}
       </>
     );
@@ -442,7 +564,7 @@ export function SharedHistory({
       open={open}
       onOpenChange={onOpenChange}
       actions={
-        open ? (
+        open && !unavailable ? (
           <Tooltip label={refresh}>
             <Button
               type="button"
@@ -466,7 +588,8 @@ export function SharedHistory({
           projectId={live.projectId}
           entry={viewing}
           initialPath={activePath}
-          canRestore={canEdit}
+          canRestore={canRestore}
+          overleaf={live.overleaf}
           onRestored={onNamed}
           onClose={() => setViewing(null)}
         />

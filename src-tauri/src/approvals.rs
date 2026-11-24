@@ -84,6 +84,7 @@ const KNOWN_TOOLS: &[&str] = &[
     "load_image",
     "load_skill",
     "note_backlinks",
+    "open_overleaf_live",
     "open_project",
     "preview_figure",
     "project_library_search",
@@ -696,6 +697,18 @@ mod tests {
         assert!(warnings.is_empty(), "{warnings:?}");
         assert!(KNOWN_TOOLS.contains(&"desktop_apps"));
         assert!(!KNOWN_TOOLS.contains(&"computer_use"));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_rule_for_opening_an_overleaf_project_live_is_known() {
+        let root = temp_root("overleaf-live");
+        let warnings = write_raw(&root, "[proj]\nopen_overleaf_live = \"deny\"\n").unwrap();
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(
+            decision_for(&root, "proj", "open_overleaf_live"),
+            Some(ToolDecision::Deny)
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 

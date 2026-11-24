@@ -1961,7 +1961,12 @@
       "signedIn": "Logget inn på {{server}}",
       "signOut": "Logg ut",
       "signOutFailed": "Oleafly kunne ikke logge ut av Overleaf.",
+      "addAccount": "Legg til en konto til",
+      "addAccountHint": "Innloggingsvinduet starter uten tidligere innlogging, så du kan logge inn med hvilken som helst konto. Hvis du logger inn med en nettleser eller kopierer innloggingen fra en nettleser, brukes kontoen nettleseren er logget inn med.",
+      "accountPick": "Konto for import",
+      "accountPickDescription": "Nye importer og maler bruker denne kontoen. Prosjekter du allerede har, beholder kontoen de kom fra.",
       "gitTitle": "Git-token for synkronisering",
+      "gitTitleFor": "Git-token for {{email}}",
       "gitSaved": "Et Git-token er lagret. Prosjekter du kobler til, holdes synkronisert med Overleaf.",
       "gitMissing": "Ikke noe Git-token ennå. Opprett et under Git-integrasjon i kontoinnstillingene dine på Overleaf for å synkronisere prosjekter.",
       "gitOpenSettings": "Åpne kontoinnstillingene på Overleaf",
@@ -2333,6 +2338,7 @@
       "confirm": "Tøm ordlisten",
       "descriptionFallback": "Dette fjerner alle uttrykkene fra denne ordlisten. De blir sjekket igjen med en gang.",
       "descriptionGlobal": "Dette fjerner alle uttrykkene fra den globale ordlisten. De blir sjekket igjen med en gang.",
+      "descriptionOverleaf": "De fjernes også fra Overleaf-kontoen din.",
       "descriptionProject": "Dette fjerner alle uttrykkene fra {{project}}. De blir sjekket igjen med en gang.",
       "descriptionSuppressed": "Dette fjerner alle uttrykkene fra funn du har lukket i {{project}}. De blir sjekket igjen med en gang.",
       "suppressedConfirm": "Vis igjen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Ord du legger inn her, hoppes over av korrekturlesingen i alle prosjekter.",
+      "overleafSynced": "Synkroniseres med de lærte ordene på Overleaf-kontoen din mens et prosjekt er live på Overleaf.",
       "scope": "Gjelder alle prosjekter"
     },
     "intro": "Legg ord inn i din egen stavekontrollordliste. Ordene lagres i lokale innstillinger, og korrekturlesingen ser bort fra dem i alle prosjekter. Sammenligningen er Unicode-normalisert og skiller ikke mellom store og små bokstaver.",

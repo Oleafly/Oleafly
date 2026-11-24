@@ -318,6 +318,15 @@
     "spellLanguageFolderHint": "Se guarda en el project.json de esta carpeta, así que se aplica a cualquiera que la abra. Descarga más idiomas en Ajustes.",
     "spellLanguageReadOnly": "Esta carpeta es de solo lectura, así que no se puede cambiar el idioma de su project.json.",
     "spellLanguageFailed": "No se pudo cambiar el idioma de la revisión ortográfica.",
+    "onOverleaf": "En Overleaf",
+    "texLive": "Versión de TeX Live",
+    "texLiveAriaLabel": "Versión de TeX Live en Overleaf",
+    "bibliography": "Bibliografía principal",
+    "bibliographyAriaLabel": "Bibliografía principal en Overleaf",
+    "bibliographyNone": "Ninguna elegida",
+    "overleafHint": "Estos ajustes se guardan en Overleaf y se aplican a todas las personas del proyecto.",
+    "overleafReadOnly": "Solo los propietarios y los editores pueden cambiarlos en Overleaf.",
+    "overleafFailed": "No se pudo cambiar este ajuste en Overleaf.",
     "notChecked": "Sin revisar",
     "dictionaryMissing": "{{name}} no está descargado, así que no se revisa la ortografía. Descárgalo en Ajustes o elige otro idioma.",
     "grammarEnglishOnly": "La revisión gramatical solo funciona en documentos en inglés.",
@@ -747,13 +756,13 @@
     "ignoreEverywhere": "Ignorar en todas partes",
     "keyboardHint": "Usa Tab o las flechas para moverte entre las acciones. Pulsa Esc para cerrar.",
     "endOfDocument": "Fin del documento",
-    "hidePreamble": "Ocultar el preámbulo del documento",
-    "showPreamble": "Mostrar el preámbulo del documento",
-    "sharedReadOnly": "En un proyecto compartido, el modo visual solo muestra el archivo. Cambia a la vista de código para editarlo.",
     "findingLabel": "{{message}}. Abrir sugerencias de corrección.",
     "rawBlockFindings_one": "{{count}} hallazgo de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
     "rawBlockFindings_many": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
-    "rawBlockFindings_other": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias."
+    "rawBlockFindings_other": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
+    "liveViewOnly": "Puedes ver este archivo compartido, pero no editarlo.",
+    "liveConnecting": "Este archivo compartido todavía se está conectando. Podrás editarlo cuando esté listo.",
+    "suggestInSource": "Aquí tus cambios serían sugerencias, y el modo Visual no puede mostrarlas. Cambia a la vista de código para sugerir ediciones."
   },
   "package": {
     "search": {

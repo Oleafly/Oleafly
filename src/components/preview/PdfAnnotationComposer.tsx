@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Crosshair, Eraser, MessageSquarePlus, Replace, TextCursorInput } from "lucide-react";
+import { Crosshair, Eraser, MessageSquarePlus, MessagesSquare, Replace, TextCursorInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnchoredPopover, type PopoverAnchor } from "@/components/ui/popover";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
@@ -19,8 +19,11 @@ const ACTIONS: readonly { kind: TextAnnotationKind; icon: typeof Eraser }[] = [
 export function PdfAnnotationComposer({
   anchor,
   contextElement,
+  annotate,
   kind,
   placing,
+  commenting = false,
+  onComment,
   onPick,
   onSave,
   onPlace,
@@ -28,8 +31,11 @@ export function PdfAnnotationComposer({
 }: Readonly<{
   anchor: PopoverAnchor;
   contextElement: Element | null;
+  annotate: boolean;
   kind: Exclude<PdfAnnotationKind, "delete"> | null;
   placing: boolean;
+  commenting?: boolean;
+  onComment?: () => void;
   onPick: (kind: TextAnnotationKind) => void;
   onSave: (comment: string) => Promise<void>;
   onPlace: () => void;
@@ -91,20 +97,36 @@ export function PdfAnnotationComposer({
         </Button>
       ) : (
         <div className="flex items-center gap-0.5">
-          {ACTIONS.map(({ kind: action, icon: Icon }) => (
+          {onComment ? (
             <Button
-              key={action}
               type="button"
               size="xs"
               variant="ghost"
               className="gap-1"
+              disabled={commenting}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onPick(action)}
+              onClick={onComment}
             >
-              <Icon className="size-3.5" />
-              {t(($) => $.annotations.composer.action[action])}
+              <MessagesSquare className="size-3.5" />
+              {t(($) => $.annotations.composer.coauthors)}
             </Button>
-          ))}
+          ) : null}
+          {annotate
+            ? ACTIONS.map(({ kind: action, icon: Icon }) => (
+                <Button
+                  key={action}
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  className="gap-1"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onPick(action)}
+                >
+                  <Icon className="size-3.5" />
+                  {t(($) => $.annotations.composer.action[action])}
+                </Button>
+              ))
+            : null}
         </div>
       )}
     </AnchoredPopover>

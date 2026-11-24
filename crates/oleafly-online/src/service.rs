@@ -1,6 +1,7 @@
 pub const DEFAULT_SERVER: &str = "https://www.overleaf.com";
 pub const SESSIONS_ACCOUNT: &str = "overleaf_sessions";
 pub const GIT_TOKENS_ACCOUNT: &str = "overleaf_git_tokens";
+pub const ACCOUNT_GIT_TOKENS: &str = "overleaf_account_git_tokens";
 pub const SERVICE_ID: &str = "overleaf";
 pub const APP_SYNC_DIR: &str = "overleaf-sync";
 pub(crate) const ERROR_PREFIX: &str = "overleaf";

@@ -1,16 +1,31 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import type { EditorView } from "@codemirror/view";
 import { setEditorView } from "@oleafly/editor";
 import { loadNamespace } from "@/i18n";
-import type { CollabCommentThread, CollabProjectRole, CollabSuggestion } from "@/lib/tauri";
+import type { CollabCommentsStatus, CollabCommentThread, CollabProjectRole, CollabSuggestion } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
 import { useSuggestions } from "../suggestions/suggestions-store";
-import { ALICE_ID, BOB, BOB_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
-import { AT, commentMessage, commentsStatus, commentThread, INTRO_FILE } from "../tests/comment-fixtures";
+import {
+  ALICE_ID,
+  BOB,
+  BOB_ID,
+  fill,
+  liveReset,
+  OVERLEAF_PROJECT,
+  OVERLEAF_SEED,
+  OVERLEAF_SERVER,
+  person,
+  projectMember,
+  shareInfo,
+} from "../tests/fixtures";
+import { AT, commentFixtures, commentMessage, commentsStatus, commentThread } from "../tests/comment-fixtures";
+import { suggestion, suggestionFixtures } from "../tests/suggestion-fixtures";
 import { allowRadixSelect } from "../tests/select";
 
 const mocks = vi.hoisted(() => ({
@@ -22,11 +37,16 @@ const mocks = vi.hoisted(() => ({
   collabSuggestionCounts: vi.fn(),
   collabSuggestionList: vi.fn(),
   collabCommentThreadList: vi.fn(),
+  writeClipboardText: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   ...mocks,
+}));
+vi.mock("@/lib/clipboard", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/clipboard")>()),
+  writeClipboardText: mocks.writeClipboardText,
 }));
 
 import { useComments } from "./comments-store";
@@ -34,22 +54,6 @@ import { CommentsPane } from "./CommentsPane";
 
 const copy = enCollab.suggestions;
 const MEMBERS = [projectMember(person(), "editor"), projectMember(BOB, "owner")];
-
-function suggestion(id: string, overrides: Partial<CollabSuggestion> = {}): CollabSuggestion {
-  return {
-    id,
-    fileId: INTRO_FILE,
-    kind: "insert",
-    author: BOB_ID,
-    createdAt: AT,
-    from: 4,
-    to: 10,
-    text: "quick ",
-    threadId: null,
-    verified: true,
-    ...overrides,
-  };
-}
 
 const added = suggestion("s-added");
 const removed = suggestion("s-removed", { kind: "delete", from: 20, to: 20, text: "lazy ", author: ALICE_ID });
@@ -65,11 +69,18 @@ function viewAs(role: CollabProjectRole) {
 
 function show(
   suggestions: CollabSuggestion[],
-  options: { threads?: CollabCommentThread[]; comments?: boolean; counts?: { path: string; pending: number }[] } = {},
+  options: {
+    threads?: CollabCommentThread[];
+    comments?: boolean;
+    counts?: { path: string; pending: number }[];
+    status?: CollabCommentsStatus;
+    canAccept?: boolean;
+  } = {},
 ) {
+  const off = commentsStatus({ projectEnabled: false, canComment: false });
   useComments.setState({
     projectId: "paper",
-    status: options.comments === false ? commentsStatus({ projectEnabled: false, canComment: false }) : commentsStatus(),
+    status: options.status ?? (options.comments === false ? off : commentsStatus()),
     path: options.comments === false ? null : "chapters/intro.tex",
     threads: options.threads ?? [],
     phase: options.comments === false ? "idle" : "ready",
@@ -80,6 +91,7 @@ function show(
     projectId: "paper",
     path: "chapters/intro.tex",
     suggestions,
+    canAccept: options.canAccept ?? true,
     phase: "ready",
     error: null,
     counts: options.counts ?? [{ path: "chapters/intro.tex", pending: suggestions.length }],
@@ -96,6 +108,7 @@ function cardFor(name: string): HTMLElement {
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  await loadNamespace("editor");
   allowRadixSelect();
 });
 
@@ -113,7 +126,7 @@ beforeEach(() => {
     call.mockResolvedValue(undefined);
   }
   mocks.collabSuggestionCounts.mockResolvedValue([]);
-  mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [] });
+  mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [], canAccept: true });
   mocks.collabCommentThreadList.mockResolvedValue({ rev: null, threads: [] });
   useCollabLiveStore.setState({ projectId: "paper" });
   viewAs("owner");
@@ -132,8 +145,9 @@ afterEach(() => {
     elsewhere: {},
     selectedId: null,
     hoveredId: null,
+    canAccept: true,
   });
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
+  useCollabLiveStore.setState(liveReset());
 });
 
 describe("suggestions in the Comments pane", () => {
@@ -229,6 +243,7 @@ describe("suggestions in the Comments pane", () => {
     mocks.collabSuggestionList.mockResolvedValue({
       rev: null,
       suggestions: [suggestion("s-methods", { fileId: "file-methods", text: "carefully " })],
+      canAccept: true,
     });
     show([], { counts: [{ path: "chapters/methods.tex", pending: 1 }] });
     expect(screen.queryByText(enCollab.comments.emptyTitle)).toBeNull();
@@ -243,5 +258,110 @@ describe("suggestions in the Comments pane", () => {
     show([], { counts: [] });
     expect(screen.getByText(enCollab.comments.emptyTitle)).toBeInTheDocument();
     expect(screen.queryAllByRole("region")).toEqual([]);
+  });
+
+  it("shows a replacement by one person as one card and accepts or rejects both changes together", async () => {
+    const inserted = suggestion("s-big", { from: 4, to: 7, text: "big" });
+    const deleted = suggestion("s-small", { kind: "delete", from: 7, to: 7, text: "small" });
+    show([inserted, deleted]);
+    const list = screen.getByRole("list", { name: "intro.tex" });
+    expect(within(list).getAllByRole("article")).toHaveLength(1);
+    const card = cardFor("Bob Smith");
+    expect(card).toHaveAttribute("data-suggestion-replaced", "s-small");
+    expect(within(card).getByText(copy.replaced)).toBeInTheDocument();
+    expect(within(card).getByText("small")).toHaveClass("line-through");
+    expect(within(card).getByText("big")).not.toHaveClass("line-through");
+    fireEvent.click(within(card).getByRole("button", { name: copy.accept }));
+    await waitFor(() => expect(mocks.collabSuggestionAccept).toHaveBeenCalledWith("paper", ["s-big", "s-small"]));
+    act(() => useSuggestions.setState({ suggestions: [inserted, deleted] }));
+    fireEvent.click(within(cardFor("Bob Smith")).getByRole("button", { name: copy.reject }));
+    await waitFor(() => expect(mocks.collabSuggestionReject).toHaveBeenCalledWith("paper", ["s-big", "s-small"]));
+  });
+
+  it("shows a replacement of blank space as an addition, still acting on both", async () => {
+    const inserted = suggestion("s-word", { from: 4, to: 8, text: "word" });
+    const deleted = suggestion("s-space", { kind: "delete", from: 8, to: 8, text: " " });
+    show([inserted, deleted]);
+    const card = cardFor("Bob Smith");
+    expect(within(card).getByText(copy.added)).toBeInTheDocument();
+    expect(within(card).queryByText(copy.replaced)).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: copy.reject }));
+    await waitFor(() => expect(mocks.collabSuggestionReject).toHaveBeenCalledWith("paper", ["s-word", "s-space"]));
+  });
+
+  it("keeps Accept off with the reason when this server can't accept the file's changes, and Reject on", async () => {
+    const user = userEvent.setup();
+    show([added], { canAccept: false });
+    const card = cardFor("Bob Smith");
+    const accept = within(card).getByRole("button", { name: copy.accept });
+    expect(accept).toBeDisabled();
+    const actions = screen.getByRole("group", { name: fill(copy.fileActions, { file: "intro.tex" }) });
+    expect(within(actions).getByRole("button", { name: copy.acceptAll })).toBeDisabled();
+    expect(within(actions).getByRole("button", { name: copy.rejectAll })).toBeEnabled();
+    await user.hover(accept.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(copy.acceptOffServer);
+    fireEvent.click(within(card).getByRole("button", { name: copy.reject }));
+    await waitFor(() => expect(mocks.collabSuggestionReject).toHaveBeenCalledWith("paper", ["s-added"]));
+    expect(mocks.collabSuggestionAccept).not.toHaveBeenCalled();
+  });
+
+  it("offers no reply on a suggestion where the backend has no threads for them", () => {
+    show([added], { status: commentsStatus({ suggestionThreads: false }) });
+    expect(within(cardFor("Bob Smith")).queryByRole("textbox")).toBeNull();
+  });
+});
+
+describe("the Comments pane on Overleaf", () => {
+  const { commentThread: overleafThread, commentMessage: overleafMessage, INTRO_FILE: DOC } = commentFixtures(OVERLEAF_SEED);
+  const { suggestion: overleafSuggestion } = suggestionFixtures(OVERLEAF_SEED);
+  const NO_MODULE = commentsStatus({ serverAllowed: false, canComment: false, typing: false, suggestionThreads: false });
+
+  beforeEach(() => {
+    useCollabLiveStore.setState({
+      ...OVERLEAF_SEED.live("paper", "owner"),
+      status: { state: "online" },
+      members: [projectMember(OVERLEAF_SEED.alice, "owner"), projectMember(OVERLEAF_SEED.bob, "editor")],
+    });
+  });
+
+  it("says this server has no comments, and shows tracked changes with no way to comment", () => {
+    show([overleafSuggestion("s-added")], { status: NO_MODULE });
+    expect(screen.getByText(enCollab.comments.overleafOff)).toBeInTheDocument();
+    expect(cardFor("Bob Smith")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Comments shown/u })).toBeNull();
+  });
+
+  it("says there are no tracked changes rather than no comments when there is nothing", () => {
+    show([], { status: NO_MODULE, counts: [] });
+    expect(screen.getByText(enCollab.comments.noChanges)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.comments.emptyTitle)).toBeNull();
+    expect(screen.getByText(enCollab.comments.overleafOff)).toBeInTheDocument();
+  });
+
+  it("shows and writes comments as plain text, the way Overleaf does", () => {
+    const body = "**not bold** and `not code`";
+    const thread = overleafThread("64f1c2a3b4c5d6e7f80900ab", { from: 4, to: 9 }, {
+      messages: [overleafMessage("m-plain", OVERLEAF_SEED.bob.account_id, body)],
+    });
+    show([], { threads: [thread] });
+    expect(screen.getByText(body)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: enCollab.comments.reply }));
+    expect(screen.getByRole("textbox", { name: enCollab.comments.replyLabel })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enEditor.toolbar.bold })).toBeNull();
+    act(() => useCollabLiveStore.setState({ backend: "server" }));
+    expect(screen.getByRole("button", { name: enEditor.toolbar.bold })).toBeInTheDocument();
+  });
+
+  it("copies a link that opens the comment in the Overleaf project", async () => {
+    const user = userEvent.setup();
+    const thread = overleafThread("64f1c2a3b4c5d6e7f80900aa", { from: 4, to: 9 });
+    show([], { threads: [thread] });
+    fireEvent.keyDown(screen.getByRole("button", { name: enCollab.comments.messageActions }), { key: "Enter" });
+    await user.click(await screen.findByRole("menuitem", { name: enCollab.comments.copyLink }));
+    const link = new URL(`${OVERLEAF_SERVER}/project/${OVERLEAF_PROJECT}`);
+    link.searchParams.set("doc", DOC);
+    link.searchParams.set("comment", thread.id);
+    await waitFor(() => expect(mocks.writeClipboardText).toHaveBeenCalledWith(link.toString()));
   });
 });

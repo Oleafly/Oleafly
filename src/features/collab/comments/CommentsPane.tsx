@@ -18,23 +18,27 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
 import { formatNumber } from "@/lib/intl";
+import { overleafProjectUrl } from "@/lib/overleaf-live";
 import { basename } from "@/lib/path-utils";
-import { canCommentProjectRole } from "@/lib/collab-roles";
 import type { CollabCommentCount, CollabCommentNotSent, CollabCommentThread, CollabSuggestion } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { collabErrorMessage } from "../errors";
 import { LoadFailed } from "../feedback";
-import { useCollabLiveStore } from "../live/live-store";
-import { canEditProjectRole, canSuggestProjectRole } from "../roles";
+import { liveSelfId, useCollabLiveStore } from "../live/live-store";
+import { onRoster, peopleById } from "../people";
+import { canCommentProjectRole, canEditProjectRole, canSuggestProjectRole } from "../roles";
 import { FileSuggestionActions } from "../suggestions/FileSuggestionActions";
 import { SuggestionCard, type SuggestionContext } from "../suggestions/SuggestionCard";
 import {
   collapseSuggestionsFile,
   expandSuggestionsFile,
+  groupIds,
+  groupSuggestions,
   pendingIn,
   reloadSuggestions,
   useSuggestions,
   type FileSuggestions,
+  type SuggestionGroup,
   type SuggestionsState,
 } from "../suggestions/suggestions-store";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
@@ -52,13 +56,21 @@ import {
   reloadThreads,
   resolveThread,
   setCommentFilter,
+  trackedChangesOnly,
   useComments,
   type CommentsState,
   type FileThreads,
   type RefusedComment,
 } from "./comments-store";
 import { commentFailure } from "./refusals";
-import { notSentEntry, refusedEntry, ThreadCard, useNotSentReason } from "./ThreadCard";
+import {
+  notSentEntry,
+  overleafThreadLinks,
+  refusedEntry,
+  serverThreadLinks,
+  ThreadCard,
+  useNotSentReason,
+} from "./ThreadCard";
 
 const TICK_MS = 60_000;
 const COMMENT_LIMIT = 20_000;
@@ -101,7 +113,7 @@ async function resolveEvery(threads: readonly CollabCommentThread[]): Promise<vo
 
 type ReviewItem =
   | { kind: "thread"; at: number; thread: CollabCommentThread }
-  | { kind: "suggestion"; at: number; suggestion: CollabSuggestion };
+  | { kind: "suggestion"; at: number; group: SuggestionGroup };
 
 function linkedThreads(suggestions: readonly CollabSuggestion[]): Set<string> {
   const linked = new Set<string>();
@@ -115,7 +127,7 @@ function reviewItems(
 ): ReviewItem[] {
   const linked = linkedThreads(suggestions);
   const items: ReviewItem[] = [
-    ...suggestions.map((suggestion) => ({ kind: "suggestion" as const, at: suggestion.from, suggestion })),
+    ...groupSuggestions(suggestions).map((group) => ({ kind: "suggestion" as const, at: group.suggestion.from, group })),
     ...threads
       .filter((thread) => !linked.has(thread.id))
       .map((thread) => ({ kind: "thread" as const, at: thread.anchor.range?.from ?? Number.MAX_SAFE_INTEGER, thread })),
@@ -142,6 +154,14 @@ function pendingCount(threads: readonly CollabCommentThread[]): number {
   );
 }
 
+function groupThread(
+  group: SuggestionGroup,
+  byId: ReadonlyMap<string, CollabCommentThread>,
+): CollabCommentThread | null {
+  const threadId = group.suggestion.threadId ?? group.replaced?.threadId ?? null;
+  return threadId ? (byId.get(threadId) ?? null) : null;
+}
+
 function ReviewList({
   label,
   items,
@@ -151,6 +171,7 @@ function ReviewList({
   focus,
   suggestionFocus,
   context,
+  canAccept,
   path,
   outdated,
 }: Readonly<{
@@ -162,6 +183,7 @@ function ReviewList({
   focus: number;
   suggestionFocus: number;
   context: SuggestionContext;
+  canAccept: boolean;
   path?: string;
   outdated?: ReadonlySet<string>;
 }>) {
@@ -181,12 +203,14 @@ function ReviewList({
           />
         ) : (
           <SuggestionCard
-            key={item.suggestion.id}
-            suggestion={item.suggestion}
-            thread={item.suggestion.threadId ? (byId.get(item.suggestion.threadId) ?? null) : null}
-            selected={item.suggestion.id === suggestionId}
+            key={item.group.suggestion.id}
+            suggestion={item.group.suggestion}
+            replaced={item.group.replaced}
+            thread={groupThread(item.group, byId)}
+            selected={suggestionId !== null && groupIds(item.group).includes(suggestionId)}
             focus={suggestionFocus}
             context={context}
+            canAccept={canAccept}
             path={path}
           />
         ),
@@ -300,9 +324,12 @@ function FileSection({
         </div>
       );
     }
+    const canAccept = suggested?.canAccept ?? true;
     return (
       <>
-        {context.canResolve ? <FileSuggestionActions path={tally.path} pending={suggestions.length} /> : null}
+        {context.canResolve ? (
+          <FileSuggestionActions path={tally.path} pending={suggestions.length} canAccept={canAccept} />
+        ) : null}
         <ReviewList
           label={title}
           items={items}
@@ -312,6 +339,7 @@ function FileSection({
           focus={focus}
           suggestionFocus={focus}
           context={context}
+          canAccept={canAccept}
           path={tally.path}
         />
       </>
@@ -357,6 +385,7 @@ type PaneSuggestions = Pick<
   | "projectId"
   | "path"
   | "suggestions"
+  | "canAccept"
   | "phase"
   | "error"
   | "counts"
@@ -417,14 +446,17 @@ interface PaneBodyProps {
   outdated: ReadonlySet<string>;
   notSent: readonly LostThread[];
   noResolved: boolean;
+  changesOnly: boolean;
 }
 
 function EmptyPane({
   hiddenResolved,
   canWrite,
   noResolved,
-}: Readonly<{ hiddenResolved: number; canWrite: boolean; noResolved: boolean }>) {
+  changesOnly,
+}: Readonly<{ hiddenResolved: number; canWrite: boolean; noResolved: boolean; changesOnly: boolean }>) {
   const { t } = useTranslation(["collab"]);
+  if (changesOnly) return <CommentsEmpty title={t(($) => $.collab.comments.noChanges)} />;
   if (noResolved) return <CommentsEmpty title={t(($) => $.collab.comments.noResolved)} />;
   if (hiddenResolved > 0) return <CommentsEmpty title={t(($) => $.collab.comments.allResolved)} />;
   return (
@@ -518,6 +550,7 @@ function PaneBody({
   outdated,
   notSent,
   noResolved,
+  changesOnly,
 }: Readonly<PaneBodyProps>) {
   const { t } = useTranslation(["collab"]);
   const [foldedPath, setFoldedPath] = useState<string | null>(null);
@@ -533,7 +566,14 @@ function PaneBody({
     );
   }
   if (nothing && notSent.length === 0) {
-    return <EmptyPane hiddenResolved={hiddenResolved} canWrite={context.canWrite} noResolved={noResolved} />;
+    return (
+      <EmptyPane
+        hiddenResolved={hiddenResolved}
+        canWrite={context.canWrite}
+        noResolved={noResolved}
+        changesOnly={changesOnly}
+      />
+    );
   }
   return (
     <>
@@ -572,7 +612,9 @@ function PaneBody({
           onOpenChange={(open) => setFoldedPath(open ? null : activePath)}
           contentClassName="px-3 py-3"
         >
-          {canResolve ? <FileSuggestionActions path={activePath} pending={activeSuggestions.length} /> : null}
+          {canResolve ? (
+            <FileSuggestionActions path={activePath} pending={activeSuggestions.length} canAccept={review.canAccept} />
+          ) : null}
           <ReviewList
             label={fileTitle}
             items={activeItems}
@@ -582,6 +624,7 @@ function PaneBody({
             focus={state.focus}
             suggestionFocus={review.focus}
             context={context}
+            canAccept={review.canAccept}
             outdated={outdated}
           />
         </SidebarSection>
@@ -726,6 +769,7 @@ export function CommentsPane() {
       projectId: store.projectId,
       path: store.path,
       suggestions: store.suggestions,
+      canAccept: store.canAccept,
       phase: store.phase,
       error: store.error,
       counts: store.counts,
@@ -740,36 +784,44 @@ export function CommentsPane() {
       members: store.members,
       role: store.role,
       liveState: store.status?.state ?? null,
-      self: store.share?.account_id ?? null,
-      projectLink: store.share?.link ?? null,
+      self: liveSelfId(store),
+      backend: store.backend,
+      shareLink: store.share?.link ?? null,
+      overleafLink:
+        store.share === null && store.backend === "overleaf" && store.overleaf ? overleafProjectUrl(store.overleaf) : null,
       commentsNotSent: store.commentsNotSent,
     })),
   );
+  const changesOnly = useCollabLiveStore((store) => trackedChangesOnly(state.status, store));
   const now = useNow(TICK_MS);
   const commentsOn = commentsShown(state.status);
   const canWrite = canWriteComments(state.status, live.role, live.liveState);
   const connected = live.liveState !== null && live.liveState !== "ended";
   const canResolve = connected && canEditProjectRole(live.role);
   const canSuggest = connected && canSuggestProjectRole(live.role);
-  const members = useMemo(() => live.members.map(commentMember), [live.members]);
+  const members = useMemo(() => live.members.filter(onRoster).map(commentMember), [live.members]);
   const mentionMembers = useMentionMembers();
-  const people = useMemo(
-    () => new Map(live.members.map((member) => [member.person.account_id, member.person])),
-    [live.members],
+  const people = useMemo(() => peopleById(live.members), [live.members]);
+  const links = useMemo(
+    () => serverThreadLinks(live.shareLink) ?? overleafThreadLinks(live.overleafLink),
+    [live.shareLink, live.overleafLink],
   );
+  const suggestionThreads = state.status?.suggestionThreads === true;
   const context = useMemo<SuggestionContext>(
     () => ({
       now,
       canWrite,
       self: live.self,
+      backend: live.backend,
       people,
       members,
       canResolve,
       canSuggest,
       commentsOn,
-      projectLink: live.projectLink,
+      suggestionThreads,
+      links,
     }),
-    [now, canWrite, live.self, people, members, canResolve, canSuggest, commentsOn, live.projectLink],
+    [now, canWrite, live.self, live.backend, people, members, canResolve, canSuggest, commentsOn, suggestionThreads, links],
   );
   const activePath = state.path ?? review.path;
   const activeSuggestions = review.path !== null && review.path === activePath ? review.suggestions : NO_SUGGESTIONS;
@@ -853,7 +905,7 @@ export function CommentsPane() {
   const offline = live.liveState === "offline" || live.liveState === "connecting";
   const projectWaiting = (state.counts ?? []).reduce((total, count) => total + (count.waiting ?? 0), 0);
   const waiting = offline ? Math.max(projectWaiting, pendingCount(loadedThreads)) : 0;
-  const moderate = connected && live.role === "owner";
+  const moderate = connected && state.status?.moderate === true;
 
   return (
     <DesktopCommentKit
@@ -862,8 +914,10 @@ export function CommentsPane() {
       members={mentionMembers}
       people={people}
       reactions={state.status?.reactions === true}
+      typing={state.status?.typing === true}
       moderate={moderate}
       maxLength={COMMENT_LIMIT}
+      markdown={live.backend !== "overleaf"}
     >
       <div className="flex h-full min-h-0 flex-col" data-testid="comments-pane" data-comments-pane>
         <SidebarPanelHeader
@@ -935,11 +989,13 @@ export function CommentsPane() {
             outdated={outdated}
             notSent={notSent}
             noResolved={noResolved}
+            changesOnly={changesOnly}
           />
         </CommentScrollArea>
         {commentsOn && live.role !== null && !canCommentProjectRole(live.role) ? (
           <CommentsFootnote>{t(($) => $.collab.comments.readOnlyNote)}</CommentsFootnote>
         ) : null}
+        {changesOnly ? <CommentsFootnote>{t(($) => $.collab.comments.overleafOff)}</CommentsFootnote> : null}
       </div>
     </DesktopCommentKit>
   );

@@ -1961,7 +1961,12 @@
       "signedIn": "{{server}} üzerinde oturum açıldı",
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "addAccount": "Başka bir hesap ekle",
+      "addAccountHint": "Oturum açma penceresi önceki oturumlar olmadan açılır, böylece herhangi bir hesapla oturum açabilirsiniz. Tarayıcıyla oturum açmak ya da bir tarayıcının oturumunu kopyalamak, o tarayıcıda açık olan hesabı kullanır.",
+      "accountPick": "İçe aktarma hesabı",
+      "accountPickDescription": "Yeni içe aktarmalar ve şablonlar bu hesabı kullanır. Mevcut projeleriniz geldikleri hesabı korur.",
       "gitTitle": "Eşitleme için Git belirteci",
+      "gitTitleFor": "{{email}} için Git belirteci",
       "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
       "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
       "gitOpenSettings": "Overleaf hesap ayarlarını aç",
@@ -2333,6 +2338,7 @@
       "confirm": "Sözcükleri temizle",
       "descriptionFallback": "Bu işlem, bu sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionGlobal": "Bu işlem, genel sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionOverleaf": "Overleaf hesabınızdan da kaldırılırlar.",
       "descriptionProject": "Bu işlem, {{project}} projesindeki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionSuppressed": "Bu işlem, {{project}} projesinde kapatılmış bulguların tümünü kaldırır. Hemen yeniden denetlenirler.",
       "suppressedConfirm": "Yeniden göster",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Buraya eklediğiniz sözcükler her projede redaksiyon tarafından atlanır.",
+      "overleafSynced": "Bir proje Overleaf üzerinde canlı olduğu sürece Overleaf hesabınızdaki öğrenilmiş sözcüklerle eşitlenir.",
       "scope": "Her projede geçerlidir"
     },
     "intro": "Kişisel yazım denetimi sözlüğünüze sözcük ekleyin. Bu sözcükler yerel ayarlarda saklanır ve projeler genelinde yok sayılır. Eşleştirme Unicode normalleştirmesi kullanır ve büyük küçük harfe duyarsızdır.",

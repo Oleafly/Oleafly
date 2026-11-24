@@ -2,7 +2,12 @@ import { memo, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { CommentQuoteState } from "@/components/ui/comments/comment-quote";
 import { mentionedIn } from "@/components/ui/comments/mentions";
-import { type CommentEntry, type CommentMessageActions, messageEntry } from "@/components/ui/comments/comment-entry";
+import {
+  type CommentAuthor,
+  type CommentEntry,
+  type CommentMessageActions,
+  messageEntry,
+} from "@/components/ui/comments/comment-entry";
 import { CommentThread, type CommentThreadActions, type CommentThreadModel } from "@/components/ui/comments/comment-thread";
 import { useShallow } from "zustand/react/shallow";
 import type {
@@ -11,9 +16,9 @@ import type {
   CollabCommentMessage,
   CollabCommentNotSent,
   CollabCommentThread,
-  CollabPerson,
 } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
+import type { ListedPerson } from "../people";
 import {
   deleteMessage,
   deleteThread,
@@ -31,21 +36,35 @@ import {
 } from "./comments-store";
 import { refusalText } from "./refusals";
 
+export interface ThreadLinks {
+  url: string;
+  file: string;
+  thread: string;
+}
+
 export interface ThreadContext {
   now: number;
   canWrite: boolean;
   self: string | null;
-  people: ReadonlyMap<string, CollabPerson>;
+  people: ReadonlyMap<string, ListedPerson>;
   members: readonly CollabCommentMember[];
-  projectLink?: string | null;
+  links?: ThreadLinks | null;
 }
 
-export function threadLink(projectLink: string | null | undefined, thread: CollabCommentThread): string | undefined {
-  if (!projectLink) return undefined;
+export function serverThreadLinks(projectLink: string | null): ThreadLinks | null {
+  return projectLink ? { url: projectLink, file: "file", thread: "thread" } : null;
+}
+
+export function overleafThreadLinks(projectUrl: string | null): ThreadLinks | null {
+  return projectUrl ? { url: projectUrl, file: "doc", thread: "comment" } : null;
+}
+
+export function threadLink(links: ThreadLinks | null | undefined, thread: CollabCommentThread): string | undefined {
+  if (!links) return undefined;
   try {
-    const url = new URL(projectLink);
-    url.searchParams.set("file", thread.fileId);
-    url.searchParams.set("thread", thread.id);
+    const url = new URL(links.url);
+    url.searchParams.set(links.file, thread.fileId);
+    url.searchParams.set(links.thread, thread.id);
     return url.toString();
   } catch {
     return undefined;
@@ -66,26 +85,44 @@ export function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
 export interface AuthorNames {
   unknown: string;
   unverified: string;
+  invited: string;
+  former: string;
 }
 
 export function useAuthorNames(): AuthorNames {
   const { t } = useTranslation(["collab"]);
   const unknown = t(($) => $.collab.toolbar.unknownPerson);
   const unverified = t(($) => $.collab.comments.unverifiedAuthor);
-  return useMemo(() => ({ unknown, unverified }), [unknown, unverified]);
+  const invited = t(($) => $.collab.people.invited);
+  const former = t(($) => $.collab.people.former);
+  return useMemo(() => ({ unknown, unverified, invited, former }), [unknown, unverified, invited, former]);
+}
+
+function standingNote(person: ListedPerson | undefined, names: AuthorNames): string | undefined {
+  if (person?.standing === "invited") return names.invited;
+  return person?.standing === "former" ? names.former : undefined;
+}
+
+export function authorFor(
+  written: { author: string; verified: boolean },
+  person: ListedPerson | undefined,
+  names: AuthorNames,
+): CommentAuthor {
+  return {
+    id: written.author,
+    name: written.verified ? person?.display_name || names.unknown : names.unverified,
+    imageUrl: person?.avatar_url,
+    verified: written.verified,
+    note: written.verified ? standingNote(person, names) : undefined,
+  };
 }
 
 export function entryFor(
   message: CollabCommentMessage | CollabChatMessage,
-  person: CollabPerson | undefined,
+  person: ListedPerson | undefined,
   names: AuthorNames,
 ): CommentEntry {
-  return messageEntry(message, {
-    id: message.author,
-    name: message.verified ? person?.display_name || names.unknown : names.unverified,
-    imageUrl: person?.avatar_url,
-    verified: message.verified,
-  });
+  return messageEntry(message, authorFor(message, person, names));
 }
 
 function useEntryOf(context: ThreadContext): (message: CollabCommentMessage) => CommentEntry {
@@ -197,7 +234,7 @@ function useThreadView(
       }),
       ...unsent.added,
     ],
-    link: threadLink(context.projectLink, thread),
+    link: threadLink(context.links, thread),
     deletable:
       thread.verified &&
       thread.createdBy === context.self &&

@@ -232,8 +232,16 @@
     "suggestion_role": "Tu rol en este proyecto no permite sugerencias.",
     "suggestion_changed": "El texto alrededor de esta sugerencia cambió, así que un propietario o un editor tiene que aceptarla o rechazarla.",
     "suggestion_too_long": "Una eliminación sugerida puede tener como máximo 20 000 caracteres. Elimina una parte más pequeña cada vez.",
+    "suggestion_gone": "Ese cambio ya no existe. Puede que alguien lo haya aceptado, rechazado o editado.",
+    "review_off_server": "Este servidor no puede hacer eso con los cambios con seguimiento.",
     "chat_role": "Tu rol en este proyecto no permite hacer eso en el chat.",
+    "chat_edit_off": "Este servidor no puede editar mensajes del chat.",
+    "chat_off_server": "Este servidor de Overleaf no tiene chat.",
     "history_unavailable": "El historial de este proyecto todavía no está en este equipo. Vuelve a intentarlo cuando se haya sincronizado.",
+    "history_plan_limit": "El plan de Overleaf de este proyecto no conserva las versiones anteriores.",
+    "restore_off_server": "Este servidor de Overleaf no puede restaurar versiones anteriores. En su lugar, copia el texto de la versión.",
+    "linked_off_server": "Este servidor de Overleaf no actualiza los archivos vinculados.",
+    "linked_refresh_failed": "Overleaf no pudo actualizar este archivo desde su origen.",
     "account_storage_full": "La cuenta de la persona propietaria del proyecto se quedó sin almacenamiento en este servidor. Quita algunos archivos para liberar espacio o pide más espacio al administrador del servidor.",
     "too_many_projects": "Ya tienes tantos proyectos compartidos como permite este servidor. Deja de compartir uno antes de compartir otro.",
     "too_many_uploads": "Has subido demasiados archivos en la última hora. Vuelve a intentarlo más tarde.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Ya tienes todas las páginas públicas que permite este servidor. Deja de publicar una y vuelve a intentarlo.",
     "page_too_large": "Esta nota es demasiado grande para publicarla. Quita algunas imágenes y vuelve a intentarlo.",
     "page_taken_down": "Un administrador retiró esta página, así que no se puede volver a publicar esta nota hasta que la restablezca."
+  },
+  "liveElsewhere": {
+    "cli": "Este proyecto está en directo en la línea de comandos, en el proceso {{pid}}. Detén allí la edición en directo y vuelve a intentarlo."
   },
   "roles": {
     "admin": "Administrador",
@@ -1051,6 +1062,8 @@
     "add": "Añadir comentario",
     "allResolved": "Todos los comentarios están resueltos.",
     "noResolved": "No hay comentarios resueltos",
+    "noChanges": "No hay cambios con seguimiento",
+    "overleafOff": "Este servidor de Overleaf no tiene comentarios, así que aquí solo se muestran los cambios con seguimiento.",
     "emptyTitle": "Todavía no hay comentarios",
     "emptyHint": "Selecciona texto y elige Añadir comentario, o pulsa {keys}",
     "readOnlyNote": "Puedes leer los comentarios de este proyecto. Para responder o reaccionar, pide a un propietario acceso de comentador.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Sugerencia de alguien que Oleafly no pudo verificar",
     "added": "Insertado",
     "deleted": "Eliminado",
+    "replaced": "Cambiado",
+    "replacedWith": "por",
     "accept": "Aceptar",
     "reject": "Rechazar",
     "withdraw": "Retirar",
@@ -1157,6 +1172,7 @@
     "fileActions": "Sugerencias en {{file}}",
     "pendingCount": "Sugerencias pendientes: {{number}}",
     "loadFailed": "No se pudieron cargar las sugerencias de este archivo.",
+    "acceptOffServer": "Este servidor de Overleaf no puede aceptar los cambios con seguimiento de este archivo. Aun así, puedes rechazarlos.",
     "rejectAllConfirm": {
       "title": "¿Rechazar todas las sugerencias de {{file}}?",
       "description": "El texto original vuelve al archivo para todas las personas de este proyecto. Sugerencias pendientes: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Sugiriendo",
       "editingHint": "Editando: tus ediciones cambian el texto al instante",
       "suggestingHint": "Sugiriendo: tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte",
-      "reviewerHint": "Eres revisor, así que tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte"
+      "reviewerHint": "Eres revisor, así que tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte",
+      "locked": {
+        "everyone": "El control de cambios está activado para todas las personas de este proyecto, así que tus ediciones se convierten en sugerencias",
+        "plan": "El plan de Overleaf de este proyecto no incluye el control de cambios",
+        "server": "Este servidor de Overleaf no puede activar ni desactivar el control de cambios"
+      },
+      "others": "Control de cambios para los demás",
+      "forEveryone": "Para todos",
+      "forGuests": "Para quienes se unieron con un enlace"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Los lectores pueden leer el chat, pero no escribir en él.",
     "offline": "Este proyecto no está conectado ahora mismo, así que no puedes enviar mensajes.",
     "messageActions": "Más acciones para este mensaje",
+    "editLabel": "Editar el mensaje",
     "deleteConfirm": {
       "title": "¿Eliminar este mensaje?",
       "description": "Se elimina para todas las personas de este proyecto."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly no pudo cargar el chat.",
     "loadOlder": "Mostrar mensajes anteriores"
+  },
+  "people": {
+    "invited": "Invitado",
+    "former": "(dejó el proyecto)"
   },
   "history": {
     "title": "Historial",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "El texto de cada archivo vuelve al estado que tenía el {{time}} para todas las personas de este proyecto, y los archivos eliminados regresan. Los archivos renombrados conservan su nuevo nombre, y las figuras y los archivos añadidos después se quedan como están. El texto actual se queda en el historial, así que puedes volver a él.",
       "confirm": "Restaurar proyecto"
     },
+    "limited": "Los cambios más antiguos requieren un plan de Overleaf con historial completo.",
+    "unavailable": "Tu acceso a este proyecto no incluye su historial.",
+    "download": "Descargar como ZIP",
+    "downloading": "Descargando…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Cada archivo vuelve al estado que tenía el {{time}} para todas las personas en Overleaf, y los archivos añadidos desde entonces se eliminan. Overleaf conserva la versión actual en su historial, así que puedes volver a ella.",
     "compareTitle": "Cambios entre dos versiones",
     "compareDescription": "De {{from}} a {{to}}",
     "changedFiles": "Archivos modificados: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Ahora eres comentador. Puedes leer y comentar este proyecto, pero no editarlo.",
     "reviewerBy": "{{name}} te cambió el rol a revisor. Tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte.",
     "reviewer": "Ahora eres revisor. Tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte.",
-    "reviewing": "Eres revisor en este proyecto, así que tus ediciones entran como sugerencias.",
-    "trackingChanges": "El control de cambios está activado en este proyecto, así que tus ediciones entran como sugerencias.",
     "viewOnly": "Puedes ver este proyecto compartido, pero no editarlo.",
     "askOnOverleaf": "Pedir acceso en Overleaf",
     "connecting": "Este proyecto compartido aún se está conectando, así que todavía no se puede cambiar. Vuelve a intentarlo en un momento.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Cerraste sesión en {{server}}, así que este proyecto no se está sincronizando. Puedes seguir escribiendo. Tus cambios se quedan en este equipo y pasan a Overleaf cuando vuelvas a iniciar sesión.",
+    "signedOutAs": "Este proyecto pertenece a la cuenta {{email}} en {{server}}. Esa cuenta no tiene la sesión iniciada, así que el proyecto no se está sincronizando. Puedes seguir escribiendo. Tus cambios se quedan en este equipo y pasan a Overleaf cuando inicies sesión como {{email}}.",
+    "signInAs": "Iniciar sesión como {{email}}",
     "accountChangedOne": "Ahora has iniciado sesión con otra cuenta, así que los cambios que hiciste como {{email}} no se enviaron. Se guardaron como {{copy}}.",
     "accountChangedMany": "Ahora has iniciado sesión con otra cuenta, así que los cambios que hiciste como {{email}} no se enviaron. Se guardaron como copias junto a sus archivos:",
     "keptAs": "{{file}} se guardó como {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Algunos caracteres de {{file}}, como los emojis, se reemplazaron porque Overleaf no puede guardarlos.",
     "tryLiveAgain": "Volver a probar en directo",
     "keepMineAsCopy": "Guardar la mía como copia",
-    "stoppedActionFailed": "No funcionó para {{file}}. Espera un momento y vuelve a hacer clic."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf no tiene nada que corresponda al ajuste “{{setting}}” de este proyecto, así que en Overleaf el ajuste “{{setting}}” sigue igual.",
+      "refused": "Overleaf rechazó el cambio en el ajuste “{{setting}}”.",
+      "failed": "Oleafly no pudo enviar a Overleaf el cambio en el ajuste “{{setting}}”. Lo vuelve a intentar con el siguiente cambio.",
+      "conflict": "El ajuste “{{setting}}” cambió aquí y en Overleaf al mismo tiempo. Se mantiene la opción de Overleaf."
+    },
+    "settingNames": {
+      "main_doc": "documento principal",
+      "compiler": "compilador",
+      "spelling": "idioma de la revisión ortográfica",
+      "image": "versión de TeX Live",
+      "bibliography": "bibliografía principal"
+    },
+    "stoppedActionFailed": "No funcionó para {{file}}. Espera un momento y vuelve a hacer clic.",
+    "filling": "Abriendo el proyecto desde Overleaf: {{done}} de {{total}} archivos",
+    "fillingFiles": "Abriendo el proyecto desde Overleaf: descargando los últimos archivos",
+    "emptyCopy": "Este proyecto ya no está en Overleaf y ninguno de sus archivos llegó a este equipo.",
+    "removeEmptyCopy": "Quitar la copia vacía",
+    "removeFailed": "Oleafly no pudo quitar la copia vacía."
   },
   "overleafTree": {
     "deleteTitle": "¿Eliminar también en Overleaf?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Eliminar también en Overleaf",
     "keep": "Mantener en Overleaf",
     "notAllowed": "No puedes cambiar archivos de este proyecto en Overleaf, así que tus cambios en {{files}} se quedan en este equipo.",
-    "keptAway": "Archivos eliminados aquí pero aún en Overleaf: {{files}}"
+    "keptAway": "Archivos eliminados aquí pero aún en Overleaf: {{files}}",
+    "linkedKept": "Overleaf vincula {{files}} a un origen, así que tus cambios se quedan en este equipo. Elige Actualizar desde el origen para recuperar la copia de Overleaf."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} está vinculado a {{source}} en Overleaf.",
+    "bannerNoSource": "{{file}} está vinculado a un origen en Overleaf.",
+    "readOnly": "{{file}} está vinculado a un origen en Overleaf. Para actualizarlo, elige Actualizar desde el origen.",
+    "treeHint": "Vinculado a un origen en Overleaf",
+    "refresh": "Actualizar desde el origen",
+    "refreshing": "Actualizando",
+    "refusedWith": "Overleaf no pudo actualizarlo: {{message}}"
   }
 }

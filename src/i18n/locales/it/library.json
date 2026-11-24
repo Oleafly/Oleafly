@@ -346,6 +346,7 @@
       "saveServer": "Usa questo server",
       "signedInAs": "Accesso effettuato come {{email}}",
       "signedIn": "Accesso a Overleaf effettuato",
+      "accountPick": "Account Overleaf",
       "signOut": "Esci",
       "searchLabel": "Cerca nei progetti Overleaf",
       "searchPlaceholder_one": "Cerca tra {{count}} progetto",
@@ -370,6 +371,8 @@
       "import_other": "Importa {{count}} progetti",
       "imported": "Importato",
       "open": "Apri",
+      "openLive": "Apri dal vivo",
+      "opening": "Apertura",
       "ownedByYou": "Tuo",
       "owner": "Di proprietà di {{name}}",
       "archived": "Archiviato",
@@ -387,6 +390,36 @@
         "downloading": "Download {{percent}}%",
         "downloadingUnknown": "Download",
         "importing": "Preparazione"
+      },
+      "invitations": {
+        "title": "Inviti",
+        "from": "Mittente: {{name}}",
+        "join": "Unisciti",
+        "joined": "Ti sei unito a questo progetto"
+      },
+      "link": {
+        "checking": "Verifica del link",
+        "unnamed": "Un progetto su Overleaf",
+        "join": "Unisciti",
+        "importInstead": "Importa",
+        "grants": {
+          "edit": "Unendoti, potrai modificarlo come collaboratore.",
+          "view": "Unendoti, potrai solo visualizzarlo. Chi lo visualizza tramite link non ha commenti né chat.",
+          "already": "Hai già questo progetto.",
+          "invite": "Unendoti, accetti l'invito."
+        }
+      },
+      "put": {
+        "menu": "Carica su Overleaf",
+        "title": "Carica su Overleaf",
+        "description": "Oleafly carica questo progetto come nuovo progetto Overleaf, poi mantiene entrambi sincronizzati mentre modifichi dal vivo.",
+        "name": "Nome su Overleaf",
+        "account": "Account Overleaf",
+        "submit": "Carica su Overleaf",
+        "working": "Caricamento in corso",
+        "signedOut": "Prima accedi a Overleaf nelle Impostazioni.",
+        "openSettings": "Apri le Impostazioni",
+        "cancel": "Annulla"
       }
     }
   },

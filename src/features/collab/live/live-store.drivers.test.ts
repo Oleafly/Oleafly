@@ -59,7 +59,8 @@ vi.mock("@/store/files", async () => {
 
 import { liveOnOverleaf } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
-import { startCollabLive, useCollabLiveStore } from "./live-store";
+import { deferred } from "../tests/fixtures";
+import { liveJoinedProjectId, startCollabLive, useCollabLiveStore } from "./live-store";
 
 const ON_SERVER = "project-on-server";
 const ON_OVERLEAF = "project-on-overleaf";
@@ -163,6 +164,31 @@ describe("live backend drivers", () => {
     await settle();
     expect(calls).toEqual([`overleaf start ${ON_OVERLEAF}`, `overleaf stop ${ON_OVERLEAF}`, `server start ${ON_OVERLEAF}`]);
     expect(useCollabLiveStore.getState().backend).toBe("server");
+  });
+
+  it("counts a project as joined again only once a second start has returned", async () => {
+    const calls: string[] = [];
+    const overleaf = driverFor("overleaf", ON_OVERLEAF, calls);
+    openProject(ON_OVERLEAF);
+    stop = startCollabLive({ drivers: [overleaf] });
+    useCollabLiveStore.setState({
+      overleaf: { server: "https://www.overleaf.com", remoteId: "6af963ebc9037022065bb53f", signedIn: true, paused: false },
+    });
+    await settle();
+    expect(liveJoinedProjectId(useCollabLiveStore.getState())).toBe(ON_OVERLEAF);
+    mocks.handlers.status?.({ projectId: ON_OVERLEAF, status: { state: "ended", reason: "failed" }, pending: 0 });
+    const restart = deferred<CollabLiveInfo>();
+    vi.mocked(overleaf.start).mockReturnValueOnce(restart.promise);
+    useCollabLiveStore.getState().goLiveAgain();
+    await settle();
+    expect(overleaf.start).toHaveBeenCalledTimes(2);
+    mocks.handlers.role?.({ projectId: ON_OVERLEAF, role: "editor", tracking: false, restricted: false, deletedExternally: false });
+    expect(useCollabLiveStore.getState()).toMatchObject({ role: "editor", selfId: null });
+    expect(liveJoinedProjectId(useCollabLiveStore.getState())).toBeNull();
+    restart.resolve({ role: "editor", account_id: "overleaf-account", device_id: "overleaf-device" });
+    await settle();
+    expect(useCollabLiveStore.getState().selfId).toBe("overleaf-account");
+    expect(liveJoinedProjectId(useCollabLiveStore.getState())).toBe(ON_OVERLEAF);
   });
 
   it("switching projects stops the previous driver first", async () => {

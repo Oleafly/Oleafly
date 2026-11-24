@@ -192,6 +192,8 @@ export function ToolConfirm({
   }
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
+  const plainSummary =
+    commandApproval || mcpApproval || researchTask || noteDraft || filePath || req.image ? null : req.summary;
 
   useEffect(() => {
     if (!filePath) return;
@@ -236,6 +238,11 @@ export function ToolConfirm({
           {mcpApproval && (
             <p className="text-[0.6875rem] leading-snug text-muted-foreground">
               {t(($) => $.ai.approval.mcpNote)}
+            </p>
+          )}
+          {plainSummary && (
+            <p data-testid="tool-confirm-summary" className="select-text text-xs leading-snug text-foreground/80">
+              {displayText(plainSummary)}
             </p>
           )}
           {researchTask && (

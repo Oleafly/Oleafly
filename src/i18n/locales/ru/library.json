@@ -351,6 +351,7 @@
       "saveServer": "Использовать этот сервер",
       "signedInAs": "Вы вошли как {{email}}",
       "signedIn": "Вы вошли в Overleaf",
+      "accountPick": "Аккаунт Overleaf",
       "signOut": "Выйти",
       "searchLabel": "Поиск проектов Overleaf",
       "searchPlaceholder_one": "Поиск по {{count}} проекту",
@@ -378,6 +379,8 @@
       "import_other": "Импортировать {{count}} проекта",
       "imported": "Импортирован",
       "open": "Открыть",
+      "openLive": "Открыть вживую",
+      "opening": "Открываем",
       "ownedByYou": "Ваш",
       "owner": "Владелец: {{name}}",
       "archived": "В архиве",
@@ -397,6 +400,36 @@
         "downloading": "Скачивание {{percent}}%",
         "downloadingUnknown": "Скачивание",
         "importing": "Настройка"
+      },
+      "invitations": {
+        "title": "Приглашения",
+        "from": "От {{name}}",
+        "join": "Присоединиться",
+        "joined": "Вы присоединились к этому проекту"
+      },
+      "link": {
+        "checking": "Проверяем ссылку",
+        "unnamed": "Проект в Overleaf",
+        "join": "Присоединиться",
+        "importInstead": "Импортировать",
+        "grants": {
+          "edit": "Присоединившись, вы сможете редактировать его как соавтор.",
+          "view": "Присоединившись, вы сможете только просматривать его. При просмотре по ссылке комментарии и чат недоступны.",
+          "already": "Этот проект у вас уже есть.",
+          "invite": "Присоединившись, вы примете приглашение."
+        }
+      },
+      "put": {
+        "menu": "Разместить в Overleaf",
+        "title": "Разместить в Overleaf",
+        "description": "Oleafly загружает этот проект в Overleaf как новый проект, а затем синхронизирует оба проекта, пока вы редактируете вживую.",
+        "name": "Название в Overleaf",
+        "account": "Аккаунт Overleaf",
+        "submit": "Разместить в Overleaf",
+        "working": "Загружаем",
+        "signedOut": "Сначала войдите в Overleaf в настройках.",
+        "openSettings": "Открыть настройки",
+        "cancel": "Отмена"
       }
     }
   },

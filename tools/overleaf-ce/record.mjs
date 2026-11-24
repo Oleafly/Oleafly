@@ -4,11 +4,13 @@ import path from 'node:path'
 import readline from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
+import { featureProbes } from './feature-probes.mjs'
+import { reviewSafe } from './review-safe.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repo = path.resolve(here, '../..')
 const fixtures = path.join(repo, 'crates/oleafly-online/tests/fixtures/overleaf-rt')
-const forbidden = /overleaf_session2|sharelatex\.sid|overleaf\.sid|csrf|"cookie"|"set-cookie"/i
+const forbidden = /overleaf_session2|sharelatex\.sid|overleaf\.sid|csrf|password|"cookie"|"set-cookie"/i
 const image =
   'sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712'
 const keptMeta = [
@@ -63,20 +65,26 @@ function cookieJar() {
 }
 
 async function signIn(site, email, password, secrets) {
-  const jar = cookieJar()
-  const login = await fetch(`${site}/login`)
-  jar.absorb(login)
-  const loginToken = (await login.text()).match(/name="ol-csrfToken" content="([^"]+)"/)[1]
-  const signedIn = await fetch(`${site}/login`, {
-    method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json', cookie: jar.header() },
-    body: JSON.stringify({ email, password, _csrf: loginToken }),
-  })
-  jar.absorb(signedIn)
-  if (!signedIn.ok) throw new Error(`sign-in as ${email} failed with HTTP ${signedIn.status}`)
-  secrets.add(loginToken)
-  for (const value of jar.values()) secrets.add(value)
-  return jar
+  for (let attempt = 1; ; attempt++) {
+    const jar = cookieJar()
+    const login = await fetch(`${site}/login`)
+    jar.absorb(login)
+    const loginToken = (await login.text()).match(/name="ol-csrfToken" content="([^"]+)"/)[1]
+    secrets.add(loginToken)
+    const signedIn = await fetch(`${site}/login`, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json', cookie: jar.header() },
+      body: JSON.stringify({ email, password, _csrf: loginToken }),
+    })
+    jar.absorb(signedIn)
+    if (signedIn.status === 429 && attempt < 4) {
+      await sleep(20000 * attempt)
+      continue
+    }
+    if (!signedIn.ok) throw new Error(`sign-in as ${email} failed with HTTP ${signedIn.status}`)
+    for (const value of jar.values()) secrets.add(value)
+    return jar
+  }
 }
 
 function packets(payload) {
@@ -107,15 +115,29 @@ class ScriptedClient {
     this.frames.push({ t: Date.now() - this.clock.start, dir, frame })
   }
 
-  async connect(site, email, password, projectId, secrets) {
+  async connect(site, email, password, projectId, secrets, options = {}) {
     const jar = await signIn(site, email, password, secrets)
-    await this.open(site, jar, projectId, secrets)
+    await this.open(site, jar, projectId, secrets, options)
     await until(`${this.name} to join the project`, () =>
       this.events.some(event => event.name === 'joinProjectResponse')
     )
   }
 
-  async open(site, jar, projectId, secrets, { websocket = false, query: extra = '' } = {}) {
+  async reconnect() {
+    if (!this.closed) await this.close()
+    await this.loop
+    const seen = this.events.length
+    this.closed = false
+    this.socket = null
+    await this.open(this.site, this.jar, this.projectId, this.secrets, this.options)
+    await until(`${this.name} to join the project again`, () =>
+      this.events.slice(seen).some(event => event.name === 'joinProjectResponse')
+    )
+  }
+
+  async open(site, jar, projectId, secrets, options = {}) {
+    const { websocket = false, query: extra = '' } = options
+    Object.assign(this, { site, projectId, secrets, options })
     this.jar = jar ?? cookieJar()
     const query = `projectId=${encodeURIComponent(projectId)}${extra}`
     const handshake = await fetch(`${site}/socket.io/1/?${query}&t=${Date.now()}`, {
@@ -125,14 +147,15 @@ class ScriptedClient {
     for (const value of this.jar.values()) secrets.add(value)
     const sid = (await handshake.text()).split(':')[0]
     if (websocket) {
-      this.socket = new WebSocket(`${site.replace('http', 'ws')}/socket.io/1/websocket/${sid}?${query}`, {
+      const socket = new WebSocket(`${site.replace('http', 'ws')}/socket.io/1/websocket/${sid}?${query}`, {
         headers: { cookie: this.jar.header() },
       })
-      this.socket.onmessage = message => this.receive(String(message.data))
-      this.socket.onclose = () => {
-        this.closed = true
+      this.socket = socket
+      socket.onmessage = message => this.receive(String(message.data))
+      socket.onclose = () => {
+        if (this.socket === socket) this.closed = true
       }
-      await until(`${this.name}'s websocket to open`, () => this.socket.readyState === 1 || this.closed)
+      await until(`${this.name}'s websocket to open`, () => socket.readyState === 1 || this.closed)
     } else {
       this.channel = `${site}/socket.io/1/xhr-polling/${sid}?${query}`
       this.loop = this.poll()
@@ -186,19 +209,47 @@ class ScriptedClient {
   async call(name, args) {
     const id = this.nextId++
     await this.send(`5:${id}+::${JSON.stringify({ name, args })}`)
-    await until(`${this.name} to get a reply to ${name}`, () => this.acks.has(id), 30000)
+    await until(`${this.name} to get a reply to ${name}`, () => this.acks.has(id) || this.closed, 30000)
+    if (!this.acks.has(id)) throw new Error(`${this.name} was disconnected before ${name} was answered`)
     return this.acks.get(id)
   }
 
-  async update(docId, update) {
+  joinDoc(docId) {
+    return this.call('joinDoc', [docId, { encodeRanges: true, supportsHistoryOT: true }])
+  }
+
+  async attempt(docId, update, wait = 10000) {
     const seen = this.events.length
-    const reply = await this.call('applyOtUpdate', [docId, update])
-    if (reply[0]) throw new Error(`${this.name}'s update was refused: ${JSON.stringify(reply[0])}`)
-    await until(`${this.name}'s update to be applied`, () =>
-      this.events
-        .slice(seen)
-        .some(event => event.name === 'otUpdateApplied' && event.args[0].doc === docId && !event.args[0].op)
-    )
+    const reply = await this.call('applyOtUpdate', [docId, update]).catch(() => null)
+    if (!reply) return { outcome: 'disconnected', disconnected: true }
+    const disconnect = () => until(`${this.name} to be disconnected`, () => this.closed, 5000).catch(() => {})
+    if (reply[0]) {
+      await disconnect()
+      return { outcome: 'refused', error: reply[0], disconnected: this.closed }
+    }
+    const started = Date.now()
+    while (Date.now() - started < wait) {
+      const later = this.events.slice(seen)
+      const ack = later.find(
+        event => event.name === 'otUpdateApplied' && event.args[0].doc === docId && !event.args[0].op
+      )
+      if (ack) return { outcome: 'applied', ack: ack.args[0] }
+      const error = later.find(event => event.name === 'otUpdateError')
+      if (error) {
+        await disconnect()
+        return { outcome: 'error', error: error.args, disconnected: this.closed }
+      }
+      if (this.closed) return { outcome: 'disconnected', disconnected: true }
+      await sleep(100)
+    }
+    return { outcome: 'no ack' }
+  }
+
+  async update(docId, update) {
+    const result = await this.attempt(docId, update, 60000)
+    if (result.outcome !== 'applied') {
+      throw new Error(`${this.name}'s update was not applied: ${JSON.stringify(result)}`)
+    }
   }
 
   async close() {
@@ -245,6 +296,14 @@ class Participant {
     this.pendingJoins = new Map()
     this.lastTraffic = 0
     this.closed = false
+    this.console = []
+    this.listening = false
+  }
+
+  log(type, text) {
+    if (!this.listening) return
+    const clean = forbidden.test(text) ? '[dropped: matched the fixture secrets filter]' : text.slice(0, 2000)
+    this.console.push({ t: Date.now() - this.clock.start, type, text: clean })
   }
 
   note(dir, data) {
@@ -272,6 +331,8 @@ class Participant {
       recordHar: { path: harPath, mode: 'minimal', content: 'omit' },
     })
     this.page = await this.context.newPage()
+    this.page.on('console', message => this.log(message.type(), message.text()))
+    this.page.on('pageerror', error => this.log('pageerror', String(error?.stack ?? error)))
     await this.page.routeWebSocket(/\/socket\.io\//, ws => {
       const server = ws.connectToServer()
       this.server = server
@@ -300,6 +361,7 @@ class Participant {
   }
 
   async openProject(site, projectId) {
+    this.listening = true
     await this.page.goto(`${site}/project/${projectId}`)
     await this.page.waitForSelector('.cm-content', { timeout: 120000 })
     const token = await this.page.evaluate(
@@ -362,6 +424,19 @@ class Participant {
 
   press(key) {
     return this.page.keyboard.press(key)
+  }
+
+  async undo() {
+    await this.page.evaluate(() => document.querySelector('.cm-content').cmView.view.focus())
+    await this.page.keyboard.press('ControlOrMeta+z')
+  }
+
+  marks() {
+    return this.page.evaluate(() =>
+      Object.fromEntries(
+        ['c', 'i', 'd'].map(kind => [kind, document.querySelectorAll(`.cm-content .ol-cm-change-${kind}`).length])
+      )
+    )
   }
 
   hold() {
@@ -427,6 +502,193 @@ async function releaseAll(people) {
     15000
   )
   for (const person of people) person.release()
+}
+
+let seeds = 0
+
+function idSeed() {
+  seeds += 1
+  return `${Math.floor(Date.now() / 1000).toString(16).padStart(8, '0')}c0ffee${seeds.toString(16).padStart(4, '0')}`
+}
+
+const objectId = () => `${idSeed()}000001`
+const changeId = (seed, n) => `${seed}${n.toString(16).padStart(6, '0')}`
+
+function at(text, needle, offset = 0) {
+  const index = text.indexOf(needle)
+  if (index < 0) throw new Error(`${JSON.stringify(needle)} is not in ${JSON.stringify(text)}`)
+  return index + offset
+}
+
+function textOperation(length, start, ...parts) {
+  const consumed = parts.reduce((sum, part) => {
+    if (typeof part === 'number') return sum + Math.abs(part)
+    if (typeof part === 'object' && 'r' in part) return sum + part.r
+    return sum
+  }, 0)
+  const rest = length - start - consumed
+  if (rest < 0) throw new Error('the text operation runs past the end of the document')
+  return { textOperation: [...(start > 0 ? [start] : []), ...parts, ...(rest > 0 ? [rest] : [])] }
+}
+
+function changeOf(server, kind, text) {
+  const found = (server.ranges.changes ?? []).find(change => change.op[kind] === text)
+  if (!found) throw new Error(`no tracked ${kind === 'i' ? 'insert' : 'delete'} of ${JSON.stringify(text)}`)
+  return found
+}
+
+function trackedAt(raw, type, text) {
+  const found = (raw.trackedChanges ?? []).find(
+    change =>
+      change.tracking.type === type &&
+      raw.content.slice(change.range.pos, change.range.pos + change.range.length) === text
+  )
+  if (!found) throw new Error(`no tracked ${type} of ${JSON.stringify(text)}`)
+  return found.range.pos
+}
+
+async function failure(act) {
+  try {
+    await act()
+    return {}
+  } catch (error) {
+    return { error: String(error.message).split('\n').slice(0, 2).join(' ') }
+  }
+}
+
+function reviewKit({ people, doc, format, settle, extra }) {
+  const steps = []
+  const seen = new Map(people.map(person => [person, { frames: 0, console: 0 }]))
+  let known = []
+  const kit = {
+    matched: true,
+    server: () => documentUpdater(doc.projectId, doc.id),
+    async join(...clients) {
+      for (const client of clients) {
+        const reply = await client.joinDoc(doc.id)
+        if (reply[0]) throw new Error(`${client.name} could not join the doc: ${JSON.stringify(reply[0])}`)
+      }
+    },
+    async send(client, label, build, detail = {}) {
+      const before = await kit.server()
+      const update = { doc: doc.id, v: before.version, ...build(before) }
+      const result = await client.attempt(doc.id, update)
+      if (result.disconnected) {
+        await client.reconnect()
+        await kit.join(client)
+      }
+      return kit.capture(label, { who: client.name, sent: update, result, ...detail })
+    },
+    async edit(person, label, change, userEvent = 'input.type') {
+      const changes = change(await person.text())
+      const error = await failure(() => person.change(changes, userEvent))
+      return kit.capture(label, { who: person.name, edit: { changes, userEvent, ...error } })
+    },
+    async undo(person, label) {
+      const error = await failure(() => person.undo())
+      return kit.capture(label, { who: person.name, edit: { undo: true, ...error } })
+    },
+    async capture(label, detail = {}) {
+      await settle({ open: false })
+      let server = await kit.server()
+      const web = {}
+      for (const person of people) {
+        const read = () => person.text().catch(() => null)
+        let text = await read()
+        for (let tries = 1; tries <= 30 && text !== server.text; tries++) {
+          await sleep(200)
+          if (tries % 10 === 0) server = await kit.server()
+          text = await read()
+        }
+        const mark = seen.get(person)
+        web[person.name] = {
+          matchesServer: text === server.text,
+          ...(text === server.text ? {} : { text }),
+          marks: await person.marks().catch(() => null),
+          sent: person.frames
+            .slice(mark.frames)
+            .filter(frame => frame.dir === 'out' && frame.frame.includes('"applyOtUpdate"'))
+            .map(frame => JSON.parse(frame.frame.slice(frame.frame.indexOf('{'))).args[1]),
+          ...webHealth(person, mark.frames),
+          console: person.console
+            .slice(mark.console)
+            .filter(entry => ['error', 'warning', 'pageerror'].includes(entry.type)),
+        }
+        seen.set(person, { frames: person.frames.length, console: person.console.length })
+      }
+      const entry = { step: steps.length + 1, label, ...detail }
+      if (format !== 'history-ot') {
+        const ids = (server.ranges.changes ?? []).map(change => change.id)
+        const beyond = (list, other) => {
+          const left = [...other]
+          return list.filter(id => {
+            const index = left.indexOf(id)
+            if (index < 0) return true
+            left.splice(index, 1)
+            return false
+          })
+        }
+        entry.changeIds = { added: beyond(ids, known), removed: beyond(known, ids) }
+        const duplicated = ids.filter((id, index) => ids.indexOf(id) !== index)
+        if (duplicated.length) entry.changeIds.duplicated = duplicated
+        known = ids
+        if (detail.expect) {
+          entry.predictionHeld =
+            JSON.stringify([...detail.expect].sort()) === JSON.stringify([...entry.changeIds.added].sort())
+        }
+      }
+      entry.server = { version: server.version, text: server.text, ...(server.raw ? { raw: server.raw } : {}), ranges: server.ranges }
+      entry.web = web
+      kit.matched = Object.values(web).every(person => person.matchesServer)
+      steps.push(entry)
+      extra.set('steps.json', `${JSON.stringify({ doc: doc.id, format, steps }, null, 2)}\n`)
+      const outcome = detail.result ? ` -> ${detail.result.outcome}` : ''
+      const held = 'predictionHeld' in entry ? ` (prediction ${entry.predictionHeld ? 'held' : 'failed'})` : ''
+      const desync = Object.values(web).some(person => !person.matchesServer) ? ' [web editor differs from the server]' : ''
+      console.log(`  ${entry.step}. ${label}${outcome}${held}${desync}`)
+      return entry
+    },
+  }
+  return kit
+}
+
+const commentBase = 'The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n'
+const suggestionBase =
+  'Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n'
+const pasteBase =
+  'First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n'
+
+const shareJsAnchor = (needle, t, extra = {}) => ({ text }) => ({ op: [{ p: at(text, needle), c: needle, t }], ...extra })
+const historyRange = (raw, needle) => ({ pos: at(raw.content, needle), length: needle.length })
+const historyComment = (commentId, needles, extra = {}) => ({ raw }) => ({
+  op: [{ commentId, ranges: needles.map(needle => historyRange(raw, needle)), ...extra }],
+})
+const historyText = (raw, start, ...parts) => ({ op: [textOperation(raw.content.length, start, ...parts)] })
+const trackedShareJs = (...op) => ({ op, meta: { tc: idSeed() } })
+const tracking = (state, who, type) => ({ type, userId: state.users[who].id, ts: new Date().toISOString() })
+const untracked = { type: 'none' }
+
+async function suggestOnHistoryOT(review, carol, state) {
+  const by = type => tracking(state, 'carol', type)
+  await review.send(carol, 'carol suggests inserting "whole "', ({ raw }) =>
+    historyText(raw, at(raw.content, 'sentence'), { i: 'whole ', tracking: by('insert') })
+  )
+  await review.send(carol, 'carol suggests deleting "word "', ({ raw }) =>
+    historyText(raw, at(raw.content, 'word '), { r: 5, tracking: by('delete') })
+  )
+  await review.send(carol, 'carol suggests inserting "NEW " on line 2', ({ raw }) =>
+    historyText(raw, at(raw.content, 'line to change'), { i: 'NEW ', tracking: by('insert') })
+  )
+  await review.send(carol, 'carol suggests deleting "change " on line 2', ({ raw }) =>
+    historyText(raw, at(raw.content, 'change '), { r: 7, tracking: by('delete') })
+  )
+  await review.send(carol, 'carol suggests an insert and a delete on line 3 in one text operation', ({ raw }) => {
+    const x = at(raw.content, 'with')
+    return historyText(raw, x, { i: 'X', tracking: by('insert') }, at(raw.content, 'more ') - x, {
+      r: 5,
+      tracking: by('delete'),
+    })
+  })
 }
 
 const pasteBlock = (() => {
@@ -550,22 +812,20 @@ const scenarios = {
       const content = 'Keep this sentence. Remove this word please.\nSecond line.\n'
       await alice.change({ from: 0, insert: content })
       await settle()
-      const options = { encodeRanges: true, supportsHistoryOT: true }
-      const joined = await carol.call('joinDoc', [doc.id, options])
+      const joined = await carol.joinDoc(doc.id)
       let version = joined[2]
-      const tracking = type => ({ type, userId: state.users.carol.id, ts: new Date().toISOString() })
       const removeAt = 'Keep this sentence. Remove this '.length
       const removed = 'word '.length
       await carol.update(doc.id, {
         doc: doc.id,
-        op: [{ textOperation: [removeAt, { r: removed, tracking: tracking('delete') }, content.length - removeAt - removed] }],
+        op: [{ textOperation: [removeAt, { r: removed, tracking: tracking(state, 'carol', 'delete') }, content.length - removeAt - removed] }],
         v: version,
       })
       version += 1
       const insertAt = 'Keep this '.length
       await carol.update(doc.id, {
         doc: doc.id,
-        op: [{ textOperation: [insertAt, { i: 'whole ', tracking: tracking('insert') }, content.length - insertAt] }],
+        op: [{ textOperation: [insertAt, { i: 'whole ', tracking: tracking(state, 'carol', 'insert') }, content.length - insertAt] }],
         v: version,
       })
       await settle()
@@ -573,7 +833,7 @@ const scenarios = {
       await bob.cursor(visible.indexOf('please'))
       await bob.type('big ')
       await settle()
-      const after = await carol.call('joinDoc', [doc.id, options])
+      const after = await carol.joinDoc(doc.id)
       extra.set('final.raw.json', `${JSON.stringify({ version: after[2], raw: after[1], ranges: after[4] }, null, 2)}\n`)
       notes.push('final.raw.json is the raw history-ot snapshot a fresh joinDoc returned at the end')
     },
@@ -658,6 +918,555 @@ const scenarios = {
       await releaseAll(people)
     },
   },
+  'sharejs-comment-anchors': {
+    description:
+      'Comment anchors on a ShareJS doc. Scripted clients for Dave (viewer), Carol (reviewer) and Alice (owner) send {p, c, t} ops, including mixes the server refuses, then Bob types inside, at the edges of and across the comments in the CE web editor. steps.json holds the document-updater ranges after every step.',
+    project: 'sharejs-project',
+    people: ['bob'],
+    scripted: ['dave', 'carol', 'alice'],
+    transport: 'websocket',
+    server: true,
+    async run({ bob, dave, carol, alice, doc, review, settle }) {
+      await bob.change({ from: 0, insert: commentBase })
+      await settle()
+      await review.join(dave, carol, alice)
+      await review.capture('bob types the base text', { who: 'bob' })
+      const quick = objectId()
+      const lazy = objectId()
+      await review.send(dave, 'dave (viewer) comments on "quick brown"', shareJsAnchor('quick brown', quick))
+      await review.send(carol, 'carol (reviewer) comments on "lazy dog"', shareJsAnchor('lazy dog', lazy))
+      await review.send(alice, 'alice (owner) comments on "brown fox", overlapping the first comment', shareJsAnchor('brown fox', objectId()))
+      await review.send(alice, 'alice comments on accented text and an emoji', shareJsAnchor('Größe ☕', objectId()))
+      await review.send(
+        carol,
+        'carol (reviewer) comments on "second" with meta.tc set',
+        shareJsAnchor('second', objectId(), { meta: { tc: idSeed() } })
+      )
+      await review.send(dave, 'dave (viewer) sends a comment and an insert in one update', ({ text }) => ({
+        op: [{ p: at(text, 'jumps'), c: 'jumps', t: objectId() }, { p: 0, i: 'x' }],
+      }))
+      await review.send(dave, 'dave (viewer) sends a plain insert', () => ({ op: [{ p: 0, i: 'x' }] }))
+      await review.edit(bob, 'bob types strictly inside "quick brown"', text => ({
+        from: at(text, 'quick', 'quick'.length),
+        insert: ' very',
+      }))
+      await review.edit(bob, 'bob types at the start edge of the first comment', text => ({ from: at(text, 'quick very'), insert: 'so ' }))
+      await review.edit(bob, 'bob types at the end edge of the first comment, inside "brown fox"', text => ({
+        from: at(text, 'quick very brown', 'quick very brown'.length),
+        insert: '-ish',
+      }))
+      await review.edit(
+        bob,
+        'bob deletes across the start edge of "lazy dog"',
+        text => ({ from: at(text, 'the lazy'), to: at(text, 'the lazy', 'the la'.length) }),
+        'delete'
+      )
+      await review.edit(
+        bob,
+        'bob deletes the rest of the "lazy dog" comment',
+        text => ({ from: at(text, 'zy dog'), to: at(text, 'zy dog', 'zy dog'.length) }),
+        'delete'
+      )
+      await review.edit(bob, 'bob types where the detached comment sits', text => ({ from: at(text, 'over ', 'over '.length), insert: 'sleepy cat' }))
+      await review.send(dave, 'dave (viewer) re-sends the detached comment with an empty c', ({ text }) => ({
+        op: [{ p: at(text, 'sleepy'), c: '', t: lazy }],
+      }))
+      await review.send(dave, 'dave (viewer) re-anchors the detached comment on "sleepy cat"', shareJsAnchor('sleepy cat', lazy))
+      await review.edit(bob, 'bob replaces text across the end of the accented comment', text => ({
+        from: at(text, '☕'),
+        to: at(text, '☕', '☕ to'.length),
+        insert: 'tea for',
+      }))
+      const reply = await alice.joinDoc(doc.id)
+      await review.capture('alice joins the doc again', { who: 'alice', joinDoc: { version: reply[2], ranges: reply[4] } })
+    },
+  },
+  'history-ot-comment-anchors': {
+    description:
+      'Comment anchors on a history-ot doc. Dave (viewer), Carol (reviewer) and Alice (owner) send AddComment, SetCommentState and DeleteComment, with the refusals recorded, then Bob types inside, at the edges of and across the comments in the CE web editor, which adds commentIds itself. steps.json holds the raw snapshot after every step.',
+    project: 'history-ot-project',
+    people: ['bob'],
+    scripted: ['dave', 'carol', 'alice'],
+    transport: 'websocket',
+    server: true,
+    async run({ bob, dave, carol, alice, doc, review, settle }) {
+      await bob.change({ from: 0, insert: commentBase })
+      await settle()
+      await review.join(dave, carol, alice)
+      await review.capture('bob types the base text', { who: 'bob' })
+      const quick = objectId()
+      const lazy = objectId()
+      const brown = objectId()
+      await review.send(dave, 'dave (viewer) adds a comment on "quick brown"', historyComment(quick, ['quick brown']))
+      await review.send(carol, 'carol (reviewer) adds a comment on "lazy dog"', historyComment(lazy, ['lazy dog']))
+      await review.send(alice, 'alice (owner) adds a comment on "brown fox", overlapping the first', historyComment(brown, ['brown fox']))
+      await review.send(dave, 'dave adds one comment with two ranges', historyComment(objectId(), ['The', 'second line']))
+      await review.send(dave, 'dave adds two comments in one update', ({ raw }) => ({
+        op: [
+          { commentId: objectId(), ranges: [historyRange(raw, 'jumps')] },
+          { commentId: objectId(), ranges: [historyRange(raw, 'Größe ☕')] },
+        ],
+      }))
+      await review.send(dave, 'dave (viewer) resolves his comment with SetCommentState', () => ({ op: [{ commentId: quick, resolved: true }] }))
+      await review.send(carol, 'carol (reviewer) resolves her own comment with SetCommentState', () => ({
+        op: [{ commentId: lazy, resolved: true }],
+      }))
+      await review.send(carol, 'carol (reviewer) deletes her own comment with DeleteComment', () => ({ op: [{ deleteComment: lazy }] }))
+      await review.send(dave, 'dave (viewer) re-adds his comment with resolved: true', historyComment(quick, ['quick brown'], { resolved: true }))
+      await review.send(alice, 'alice (owner) reopens that comment with SetCommentState', () => ({ op: [{ commentId: quick, resolved: false }] }))
+      await review.send(alice, 'alice resolves "brown fox" with SetCommentState', () => ({ op: [{ commentId: brown, resolved: true }] }))
+      await review.send(dave, 'dave (viewer) sends AddComment and a text operation in one update', ({ raw }) => ({
+        op: [{ commentId: objectId(), ranges: [historyRange(raw, 'dog')] }, textOperation(raw.content.length, 0, 'x')],
+      }))
+      await review.edit(bob, 'bob types strictly inside "quick brown"', text => ({
+        from: at(text, 'quick', 'quick'.length),
+        insert: ' very',
+      }))
+      await review.edit(bob, 'bob types at the start edge of the first comment', text => ({ from: at(text, 'quick very'), insert: 'so ' }))
+      await review.edit(bob, 'bob types at the end edge of the first comment, inside the resolved "brown fox"', text => ({
+        from: at(text, 'quick very brown', 'quick very brown'.length),
+        insert: '-ish',
+      }))
+      await review.edit(
+        bob,
+        'bob deletes across the start edge of "lazy dog"',
+        text => ({ from: at(text, 'the lazy'), to: at(text, 'the lazy', 'the la'.length) }),
+        'delete'
+      )
+      await review.edit(
+        bob,
+        'bob deletes the rest of the "lazy dog" comment',
+        text => ({ from: at(text, 'zy dog'), to: at(text, 'zy dog', 'zy dog'.length) }),
+        'delete'
+      )
+      await review.edit(bob, 'bob types where the emptied comment sits', text => ({ from: at(text, 'over ', 'over '.length), insert: 'sleepy cat' }))
+      await review.edit(bob, 'bob replaces text across the end of the accented comment', text => ({
+        from: at(text, '☕'),
+        to: at(text, '☕', '☕ to'.length),
+        insert: 'tea for',
+      }))
+      await review.send(alice, 'alice (owner) deletes the "lazy dog" comment with DeleteComment', () => ({ op: [{ deleteComment: lazy }] }))
+      const reply = await alice.joinDoc(doc.id)
+      await review.capture('alice joins the doc again', { who: 'alice', joinDoc: { version: reply[2], comments: reply[1]?.comments ?? null } })
+      await review.send(alice, 'alice sends DeleteComment for an id the doc does not have', () => ({ op: [{ deleteComment: objectId() }] }))
+    },
+  },
+  'sharejs-tracked-change-ids': {
+    description:
+      "Tracked change ids on a ShareJS doc. Carol (reviewer) and Alice send tracked ops with known meta.tc seeds: one and two inserts per update, a delete, an insert that splits another user's insert, Bob's untracked typing in the CE web editor that splits one, a merge, a reused seed and a delete merge. Each step in steps.json lists the ids added and removed and the predicted ids.",
+    project: 'sharejs-project',
+    people: ['bob'],
+    scripted: ['carol', 'alice'],
+    transport: 'websocket',
+    server: true,
+    async run({ bob, carol, alice, review, settle }) {
+      await bob.change({ from: 0, insert: 'Alpha beta gamma delta epsilon zeta eta theta iota kappa.\nA plain second line.\n' })
+      await settle()
+      await review.join(carol, alice)
+      await review.capture('bob types the base text', { who: 'bob' })
+      const tracked = (tc, ...op) => ({ op, meta: { tc } })
+      const first = idSeed()
+      await review.send(carol, 'carol inserts "NEW " before "beta"', ({ text }) => tracked(first, { p: at(text, 'beta'), i: 'NEW ' }), {
+        tc: first,
+        expect: [changeId(first, 1)],
+      })
+      const pair = idSeed()
+      await review.send(
+        carol,
+        'carol sends two tracked inserts in one update, the later position first',
+        ({ text }) => tracked(pair, { p: at(text, 'theta'), i: 'two ' }, { p: at(text, 'delta'), i: 'one ' }),
+        { tc: pair, expect: [changeId(pair, 1), changeId(pair, 2)] }
+      )
+      const removal = idSeed()
+      await review.send(carol, 'carol deletes "epsilon "', ({ text }) => tracked(removal, { p: at(text, 'epsilon '), d: 'epsilon ' }), {
+        tc: removal,
+        expect: [changeId(removal, 1)],
+      })
+      const split = idSeed()
+      await review.send(
+        alice,
+        "alice inserts inside Carol's \"NEW \", splitting it",
+        ({ text }) => tracked(split, { p: at(text, 'NEW ', 2), i: 'ALICE' }),
+        { tc: split, expect: [changeId(split, 1), changeId(split, 2)] }
+      )
+      await review.edit(bob, "bob (untracked, web editor) types inside Carol's \"two \", splitting it", text => ({
+        from: at(text, 'two ', 1),
+        insert: 'bob',
+      }))
+      const merge = idSeed()
+      await review.send(
+        carol,
+        'carol inserts "more " touching the end of her own "one "',
+        ({ text }) => tracked(merge, { p: at(text, 'one ', 'one '.length), i: 'more ' }),
+        { tc: merge, expect: [] }
+      )
+      const overlap = idSeed()
+      await review.send(
+        carol,
+        'carol deletes "more delta", the end of her own insert and plain text',
+        ({ text }) => tracked(overlap, { p: at(text, 'more delta'), d: 'more delta' }),
+        { tc: overlap, expect: [changeId(overlap, 1)] }
+      )
+      await review.send(
+        carol,
+        'carol reuses the first seed for a new insert before "kappa"',
+        ({ text }) => tracked(first, { p: at(text, 'kappa'), i: 'dup ' }),
+        { tc: first, expect: [changeId(first, 1)] }
+      )
+      const touching = idSeed()
+      await review.send(
+        carol,
+        'carol deletes "zeta ", touching her earlier delete of "epsilon "',
+        ({ text }) => tracked(touching, { p: at(text, 'zeta '), d: 'zeta ' }),
+        { tc: touching, expect: [] }
+      )
+      const cancel = idSeed()
+      await review.send(
+        alice,
+        "alice (tracked) deletes \"NE\", the part of Carol's insert before her own",
+        ({ text }) => tracked(cancel, { p: at(text, 'NEALICE'), d: 'NE' }),
+        { tc: cancel, expect: [] }
+      )
+      await review.edit(
+        bob,
+        "bob (untracked) deletes \"W \", the rest of Carol's split insert",
+        text => ({ from: at(text, 'ALICEW ', 5), to: at(text, 'ALICEW ', 7) }),
+        'delete'
+      )
+      const twice = idSeed()
+      await review.send(
+        carol,
+        'carol deletes two ranges in one update, the later position first',
+        ({ text }) => tracked(twice, { p: at(text, 'plain'), d: 'plain' }, { p: at(text, 'Alpha'), d: 'Alpha' }),
+        { tc: twice, expect: [changeId(twice, 1), changeId(twice, 2)] }
+      )
+    },
+  },
+  'sharejs-reject': {
+    description:
+      'Rejecting suggestions on a ShareJS doc with inverse ops. Carol (reviewer) suggests, then a scripted Bob (editor) sends deletes and re-inserts with u: true, one re-insert without u, several in one update, and the two-component ops that accept a change without the REST route CE lacks. Alice watches in the CE web editor.',
+    project: 'sharejs-project',
+    people: ['alice'],
+    scripted: ['carol', 'bob'],
+    transport: 'websocket',
+    server: true,
+    async run({ alice, carol, bob, review, settle }) {
+      await alice.change({ from: 0, insert: suggestionBase })
+      await settle()
+      await review.join(carol, bob)
+      await review.capture('alice types the base text', { who: 'alice' })
+      await review.send(carol, 'carol suggests inserting "whole "', ({ text }) => trackedShareJs({ p: at(text, 'sentence'), i: 'whole ' }))
+      await review.send(carol, 'carol suggests deleting "word "', ({ text }) => trackedShareJs({ p: at(text, 'word '), d: 'word ' }))
+      await review.send(carol, 'carol suggests inserting "NEW " on line 2', ({ text }) => trackedShareJs({ p: at(text, 'line to change'), i: 'NEW ' }))
+      await review.send(carol, 'carol suggests deleting "change " on line 2', ({ text }) => trackedShareJs({ p: at(text, 'change '), d: 'change ' }))
+      await review.send(carol, 'carol suggests a delete and an insert on line 3 in one update', ({ text }) =>
+        trackedShareJs({ p: at(text, 'more '), d: 'more ' }, { p: at(text, 'with'), i: 'X' })
+      )
+      await review.send(carol, 'carol suggests an insert and a delete on line 4 in one update', ({ text }) =>
+        trackedShareJs({ p: at(text, 'to accept'), i: 'ACCEPT ' }, { p: at(text, 'Fourth line ', 'Fourth '.length), d: 'line ' })
+      )
+      await review.send(bob, 'bob rejects the insert "whole " with a delete marked u', server => ({
+        op: [{ p: changeOf(server, 'i', 'whole ').op.p, d: 'whole ', u: true }],
+      }))
+      await review.send(bob, 'bob rejects the delete "word " by re-inserting it with u', server => ({
+        op: [{ p: changeOf(server, 'd', 'word ').op.p, i: 'word ', u: true }],
+      }))
+      await review.send(bob, 'bob re-inserts the deleted "change " without u', server => ({
+        op: [{ p: changeOf(server, 'd', 'change ').op.p, i: 'change ' }],
+      }))
+      await review.send(bob, 'bob rejects both line-3 suggestions in one update, highest position first', server => ({
+        op: [
+          { p: changeOf(server, 'd', 'more ').op.p, i: 'more ', u: true },
+          { p: changeOf(server, 'i', 'X').op.p, d: 'X', u: true },
+        ],
+      }))
+      await review.send(bob, 'bob accepts the insert "ACCEPT " by deleting and re-inserting it plainly', server => {
+        const p = changeOf(server, 'i', 'ACCEPT ').op.p
+        return { op: [{ p, d: 'ACCEPT ' }, { p, i: 'ACCEPT ' }] }
+      })
+      await review.send(bob, 'bob accepts the delete "line " by re-inserting it with u and deleting it plainly', server => {
+        const p = changeOf(server, 'd', 'line ').op.p
+        return { op: [{ p, i: 'line ', u: true }, { p, d: 'line ' }] }
+      })
+      await review.send(bob, 'bob rejects the insert "NEW " with a plain delete', server => ({
+        op: [{ p: changeOf(server, 'i', 'NEW ').op.p, d: 'NEW ' }],
+      }))
+    },
+  },
+  'history-ot-reject': {
+    description:
+      'Rejecting suggestions on a history-ot doc with raw ops. Carol (reviewer) suggests, then a scripted Bob (editor) removes tracked inserts and clears the tracking on tracked deletes, one and several per text operation. Alice watches in the CE web editor and types once more at the end.',
+    project: 'history-ot-project',
+    people: ['alice'],
+    scripted: ['carol', 'bob'],
+    transport: 'websocket',
+    server: true,
+    async run({ alice, carol, bob, review, settle, state }) {
+      await alice.change({ from: 0, insert: suggestionBase })
+      await settle()
+      await review.join(carol, bob)
+      await review.capture('alice types the base text', { who: 'alice' })
+      await suggestOnHistoryOT(review, carol, state)
+      await review.send(bob, 'bob rejects the insert "whole " with a raw delete', ({ raw }) => historyText(raw, trackedAt(raw, 'insert', 'whole '), -6))
+      await review.send(bob, 'bob rejects the inserts "NEW " and "X" in one text operation', ({ raw }) => {
+        const first = trackedAt(raw, 'insert', 'NEW ')
+        return historyText(raw, first, -4, trackedAt(raw, 'insert', 'X') - first - 4, -1)
+      })
+      await review.send(bob, 'bob rejects the delete "word " by clearing its tracking', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'delete', 'word '), { r: 5, tracking: untracked })
+      )
+      await review.send(bob, 'bob rejects the deletes "change " and "more " in one text operation', ({ raw }) => {
+        const first = trackedAt(raw, 'delete', 'change ')
+        return historyText(raw, first, { r: 7, tracking: untracked }, trackedAt(raw, 'delete', 'more ') - first - 7, {
+          r: 5,
+          tracking: untracked,
+        })
+      })
+      await review.edit(alice, 'alice types at the end of line 1 after the rejects', text => ({
+        from: at(text, 'please.', 'please.'.length),
+        insert: ' Alice was here.',
+      }))
+    },
+  },
+  'history-ot-accept': {
+    description:
+      'Accepting suggestions on a history-ot doc by op. Carol (reviewer) suggests and tries to accept her own, then a scripted Bob (editor) clears the tracking on tracked inserts and removes tracked deletes, one and several per text operation. Alice watches in the CE web editor.',
+    project: 'history-ot-project',
+    people: ['alice'],
+    scripted: ['carol', 'bob'],
+    transport: 'websocket',
+    server: true,
+    async run({ alice, carol, bob, review, settle, state }) {
+      await alice.change({ from: 0, insert: suggestionBase })
+      await settle()
+      await review.join(carol, bob)
+      await review.capture('alice types the base text', { who: 'alice' })
+      await suggestOnHistoryOT(review, carol, state)
+      await review.send(carol, 'carol (reviewer) accepts her own insert by clearing its tracking', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'insert', 'whole '), { r: 6, tracking: untracked })
+      )
+      await review.send(carol, 'carol (reviewer) accepts her own delete with a raw delete', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'delete', 'word '), -5)
+      )
+      await review.send(bob, 'bob accepts the insert "whole " by clearing its tracking', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'insert', 'whole '), { r: 6, tracking: untracked })
+      )
+      await review.send(bob, 'bob accepts the delete "word " with a raw delete', ({ raw }) => historyText(raw, trackedAt(raw, 'delete', 'word '), -5))
+      await review.send(bob, 'bob accepts the insert "NEW " and the delete "change " in one text operation', ({ raw }) => {
+        const first = trackedAt(raw, 'insert', 'NEW ')
+        return historyText(raw, first, { r: 4, tracking: untracked }, trackedAt(raw, 'delete', 'change ') - first - 4, -7)
+      })
+      await review.send(bob, 'bob accepts both line-3 suggestions in one text operation', ({ raw }) => {
+        const first = trackedAt(raw, 'insert', 'X')
+        return historyText(raw, first, { r: 1, tracking: untracked }, trackedAt(raw, 'delete', 'more ') - first - 1, -5)
+      })
+      await review.edit(alice, 'alice types at the end of line 1 after the accepts', text => ({
+        from: at(text, 'please.', 'please.'.length),
+        insert: ' Alice was here.',
+      }))
+    },
+  },
+  'sharejs-withdraw-own': {
+    description:
+      'Carol (reviewer) withdraws her own suggestions on a ShareJS doc: she deletes her own tracked insert and re-inserts her own tracked delete with u, each with meta.tc, plus the same ops without u or without meta.tc, a partial delete and a partial re-insert. Alice watches in the CE web editor.',
+    project: 'sharejs-project',
+    people: ['alice'],
+    scripted: ['carol'],
+    transport: 'websocket',
+    server: true,
+    async run({ alice, carol, review, settle }) {
+      await alice.change({ from: 0, insert: suggestionBase })
+      await settle()
+      await review.join(carol)
+      await review.capture('alice types the base text', { who: 'alice' })
+      await review.send(carol, 'carol suggests inserting "MINE "', ({ text }) => trackedShareJs({ p: at(text, 'sentence'), i: 'MINE ' }))
+      await review.send(carol, 'carol deletes her own insert "MINE " with meta.tc', server =>
+        trackedShareJs({ p: changeOf(server, 'i', 'MINE ').op.p, d: 'MINE ' })
+      )
+      await review.send(carol, 'carol suggests deleting "word "', ({ text }) => trackedShareJs({ p: at(text, 'word '), d: 'word ' }))
+      await review.send(carol, 'carol re-inserts her own deleted "word " with u and meta.tc', server =>
+        trackedShareJs({ p: changeOf(server, 'd', 'word ').op.p, i: 'word ', u: true })
+      )
+      await review.send(carol, 'carol suggests deleting "change "', ({ text }) => trackedShareJs({ p: at(text, 'change '), d: 'change ' }))
+      await review.send(carol, 'carol re-inserts "change " with meta.tc but without u', server =>
+        trackedShareJs({ p: changeOf(server, 'd', 'change ').op.p, i: 'change ' })
+      )
+      await review.send(carol, 'carol re-inserts the still-deleted "change " with u but without meta.tc', server => ({
+        op: [{ p: changeOf(server, 'd', 'change ').op.p, i: 'change ', u: true }],
+      }))
+      await review.send(carol, 'carol deletes her own tracked insert "change " without meta.tc', server => ({
+        op: [{ p: changeOf(server, 'i', 'change ').op.p, d: 'change ' }],
+      }))
+      await review.send(carol, 'carol suggests inserting "PARTIAL "', ({ text }) => trackedShareJs({ p: at(text, 'Third'), i: 'PARTIAL ' }))
+      await review.send(carol, 'carol deletes "TIA" from the middle of her own insert with meta.tc', server =>
+        trackedShareJs({ p: changeOf(server, 'i', 'PARTIAL ').op.p + 'PAR'.length, d: 'TIA' })
+      )
+      await review.send(carol, 'carol suggests deleting "more words"', ({ text }) => trackedShareJs({ p: at(text, 'more words'), d: 'more words' }))
+      await review.send(carol, 'carol re-inserts only "more " of her deleted "more words" with u and meta.tc', server =>
+        trackedShareJs({ p: changeOf(server, 'd', 'more words').op.p, i: 'more ', u: true })
+      )
+    },
+  },
+  'history-ot-withdraw-own': {
+    description:
+      'What Carol (reviewer) can do to withdraw her own suggestions on a history-ot doc: remove her tracked insert, mark it deleted, clear or flip the tracking on her tracked delete, or insert the text again. Alice watches in the CE web editor.',
+    project: 'history-ot-project',
+    people: ['alice'],
+    scripted: ['carol'],
+    transport: 'websocket',
+    server: true,
+    async run({ alice, carol, review, settle, state }) {
+      await alice.change({ from: 0, insert: suggestionBase })
+      await settle()
+      await review.join(carol)
+      await review.capture('alice types the base text', { who: 'alice' })
+      const by = type => tracking(state, 'carol', type)
+      await review.send(carol, 'carol suggests inserting "MINE "', ({ raw }) =>
+        historyText(raw, at(raw.content, 'sentence'), { i: 'MINE ', tracking: by('insert') })
+      )
+      await review.send(carol, 'carol suggests deleting "word "', ({ raw }) => historyText(raw, at(raw.content, 'word '), { r: 5, tracking: by('delete') }))
+      await review.send(carol, 'carol removes her own insert "MINE " with a raw delete', ({ raw }) => historyText(raw, trackedAt(raw, 'insert', 'MINE '), -5))
+      await review.send(carol, 'carol marks her own insert "MINE " as a tracked delete', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'insert', 'MINE '), { r: 5, tracking: by('delete') })
+      )
+      await review.send(carol, 'carol clears the tracking on her own delete "word "', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'delete', 'word '), { r: 5, tracking: untracked })
+      )
+      await review.send(carol, 'carol flips her own delete "word " to a tracked insert', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'delete', 'word '), { r: 5, tracking: by('insert') })
+      )
+      await review.send(carol, 'carol suggests deleting "change "', ({ raw }) => historyText(raw, at(raw.content, 'change '), { r: 7, tracking: by('delete') }))
+      await review.send(carol, 'carol inserts "change " again as a tracked insert just before her delete', ({ raw }) =>
+        historyText(raw, trackedAt(raw, 'delete', 'change '), { i: 'change ', tracking: by('insert') })
+      )
+      await review.edit(alice, 'alice types at the end of line 1', text => ({ from: at(text, 'please.', 'please.'.length), insert: ' Alice was here.' }))
+    },
+  },
+  'sharejs-cut-paste-comment': {
+    description:
+      'Comments through cut, paste and undo on a ShareJS doc. Bob cuts commented text and pastes it elsewhere in the CE web editor, then deletes a commented word and undoes; scripted clients re-send {p, c, t} with an existing thread id to move a comment.',
+    project: 'sharejs-project',
+    people: ['bob'],
+    scripted: ['alice', 'dave'],
+    transport: 'websocket',
+    server: true,
+    async run({ bob, alice, dave, review, settle }) {
+      await bob.change({ from: 0, insert: pasteBase })
+      await settle()
+      await review.join(alice, dave)
+      await review.capture('bob types the base text', { who: 'bob' })
+      const phrase = objectId()
+      const second = objectId()
+      await review.send(alice, 'alice comments on "commented phrase"', shareJsAnchor('commented phrase', phrase))
+      await review.send(alice, 'alice comments on "Second paragraph"', shareJsAnchor('Second paragraph', second))
+      await review.send(alice, 'alice comments on "word"', shareJsAnchor('word', objectId()))
+      const cut = 'a commented phrase '
+      await review.edit(bob, 'bob cuts "a commented phrase " in the web editor', text => ({ from: at(text, cut), to: at(text, cut, cut.length) }), 'delete.cut')
+      await review.edit(bob, 'bob pastes the same text into line 2', text => ({ from: at(text, 'goes.'), insert: cut }), 'input.paste')
+      await review.send(dave, 'dave (viewer) re-sends the "Second paragraph" thread on "Third paragraph"', shareJsAnchor('Third paragraph', second))
+      await review.send(dave, 'dave (viewer) re-sends the pasted comment on its new text', shareJsAnchor('commented phrase', phrase))
+      await review.edit(bob, 'bob deletes "word " in the web editor', text => ({ from: at(text, 'word '), to: at(text, 'word ', 'word '.length) }), 'delete')
+      await review.undo(bob, 'bob undoes the delete in the web editor')
+    },
+  },
+  'sharejs-comment-mismatch': {
+    description:
+      'Dave (viewer) sends ShareJS comment anchors that do not fit the doc: one whose c is not the text at p and one that runs past the end, the failure a client gets when it builds an anchor against the wrong version. Bob has the doc open in the CE web editor and types after the errors.',
+    project: 'sharejs-project',
+    people: ['bob'],
+    scripted: ['dave'],
+    transport: 'websocket',
+    server: true,
+    settle: { open: false },
+    async run({ bob, dave, review, settle }) {
+      await bob.change({ from: 0, insert: commentBase })
+      await settle()
+      await review.join(dave)
+      await review.capture('bob types the base text', { who: 'bob' })
+      await review.send(dave, 'dave sends an anchor whose c is not the text at p', ({ text }) => ({
+        op: [{ p: at(text, 'quick'), c: 'slow', t: objectId() }],
+      }))
+      await review.send(dave, 'dave sends an anchor that runs past the end of the doc', ({ text }) => ({
+        op: [{ p: text.length - 2, c: 'beyond the end', t: objectId() }],
+      }))
+      await bob.page.waitForSelector('.cm-content', { timeout: 120000 })
+      await review.edit(bob, 'bob types after the errors', () => ({ from: 0, insert: 'Still here. ' }))
+    },
+  },
+  'history-ot-comment-out-of-range': {
+    description:
+      'Dave (viewer) sends history-ot AddComment ops that do not fit the doc: a range past the end, an empty range and an id that is not an ObjectId. Bob has the doc open in the CE web editor and types after them.',
+    project: 'history-ot-project',
+    people: ['bob'],
+    scripted: ['dave'],
+    transport: 'websocket',
+    server: true,
+    settle: { open: false },
+    async run({ bob, dave, review, settle }) {
+      await bob.change({ from: 0, insert: commentBase })
+      await settle()
+      await review.join(dave)
+      await review.capture('bob types the base text', { who: 'bob' })
+      await review.send(dave, 'dave adds a comment whose range runs past the end of the doc', ({ raw }) => ({
+        op: [{ commentId: objectId(), ranges: [{ pos: raw.content.length - 2, length: 10 }] }],
+      }))
+      await review.send(dave, 'dave adds a comment with an empty range', ({ raw }) => ({
+        op: [{ commentId: objectId(), ranges: [{ pos: at(raw.content, 'quick'), length: 0 }] }],
+      }))
+      await review.send(dave, 'dave adds a comment whose id is not an ObjectId', ({ raw }) => ({
+        op: [{ commentId: 'not-an-object-id', ranges: [historyRange(raw, 'quick')] }],
+      }))
+      await bob.page.waitForSelector('.cm-content', { timeout: 120000 })
+      await review.edit(bob, 'bob types after the bad comments', () => ({ from: 0, insert: 'Still here. ' }))
+    },
+  },
+  'history-ot-cut-paste-comment': {
+    description:
+      'Comments through cut, paste and undo on a history-ot doc. Bob types inside a comment, cuts the commented text and pastes it in the CE web editor, then deletes a commented word and undoes; a scripted Alice inserts inside comments with and without commentIds, re-adds a comment by id in the same update as an insert, and re-adds a resolved comment without resolved.',
+    project: 'history-ot-project',
+    people: ['bob'],
+    scripted: ['alice'],
+    transport: 'websocket',
+    server: true,
+    async run({ bob, alice, review, settle }) {
+      await bob.change({ from: 0, insert: pasteBase })
+      await settle()
+      await review.join(alice)
+      await review.capture('bob types the base text', { who: 'bob' })
+      const phrase = objectId()
+      const third = objectId()
+      await review.send(alice, 'alice comments on "commented phrase"', historyComment(phrase, ['commented phrase']))
+      await review.send(alice, 'alice comments on "Second paragraph"', historyComment(objectId(), ['Second paragraph']))
+      await review.send(alice, 'alice comments on "Third paragraph"', historyComment(third, ['Third paragraph']))
+      await review.send(alice, 'alice comments on "word"', historyComment(objectId(), ['word']))
+      await review.edit(bob, 'bob types strictly inside "commented phrase"', text => ({
+        from: at(text, 'commented', 'commented'.length),
+        insert: ' long',
+      }))
+      const cut = 'a commented long phrase '
+      await review.edit(bob, 'bob cuts the commented text in the web editor', text => ({ from: at(text, cut), to: at(text, cut, cut.length) }), 'delete.cut')
+      await review.edit(bob, 'bob pastes the same text into line 2', text => ({ from: at(text, 'goes.'), insert: cut }), 'input.paste')
+      await review.send(alice, 'alice inserts strictly inside "Second paragraph" without commentIds', ({ raw }) =>
+        historyText(raw, at(raw.content, 'Second', 'Second'.length), ' new')
+      )
+      await review.send(alice, 'alice inserts strictly inside "Third paragraph" with commentIds', ({ raw }) =>
+        historyText(raw, at(raw.content, 'Third', 'Third'.length), { i: ' next', commentIds: [third] })
+      )
+      await review.send(alice, 'alice appends a line and re-adds the "Third paragraph" comment on it in the same update', ({ raw }) => {
+        const line = 'Moved comment text.\n'
+        const end = raw.content.length
+        return {
+          op: [textOperation(end, end, line), { commentId: third, ranges: [{ pos: end, length: line.length - 1 }] }],
+        }
+      })
+      await review.send(alice, 'alice resolves the pasted comment', () => ({ op: [{ commentId: phrase, resolved: true }] }))
+      await review.send(alice, 'alice re-adds the resolved comment with its ranges and no resolved field', ({ raw }) => ({
+        op: [{ commentId: phrase, ranges: raw.comments.find(comment => comment.id === phrase).ranges }],
+      }))
+      await review.edit(bob, 'bob deletes "word " in the web editor', text => ({ from: at(text, 'word '), to: at(text, 'word ', 'word '.length) }), 'delete')
+      await review.undo(bob, 'bob undoes the delete in the web editor')
+    },
+  },
 }
 
 function stamp() {
@@ -696,13 +1505,14 @@ function cleanHar(raw) {
 async function record(name, browser, env, state) {
   const scenario = scenarios[name]
   if (!scenario) throw new Error(`unknown scenario ${name}`)
-  const project = state.projects[scenario.project]
   const site = state.site
   const secrets = new Set(
     Object.entries(env)
       .filter(([key]) => /PASSWORD|SECRET/.test(key))
       .map(([, value]) => value)
   )
+  const context = { site, state, env, secrets }
+  const project = scenario.prepare ? await scenario.prepare(context) : state.projects[scenario.project]
   const owner = await restSession(site, state.users.alice.email, env.ALICE_PASSWORD, project.id, secrets)
   const docName = `${name}-${stamp()}.tex`
   const created = await owner.post(`/project/${project.id}/doc`, {
@@ -735,7 +1545,9 @@ async function record(name, browser, env, state) {
     }
     for (const key of scenario.scripted || []) {
       const client = new ScriptedClient(key, clock)
-      await client.connect(site, state.users[key].email, env[`${key.toUpperCase()}_PASSWORD`], project.id, secrets)
+      await client.connect(site, state.users[key].email, env[`${key.toUpperCase()}_PASSWORD`], project.id, secrets, {
+        websocket: scenario.transport === 'websocket',
+      })
       scripted.push(client)
     }
     const byName = Object.fromEntries([...people, ...scripted].map(person => [person.name, person]))
@@ -748,9 +1560,18 @@ async function record(name, browser, env, state) {
       }
       return result
     }
-    await scenario.run({ ...byName, people, notes, doc, state, extra, settle: step })
+    const review = reviewKit({ people, doc, format: project.format, settle: step, extra })
+    await scenario.run({ ...byName, people, notes, doc, state, extra, settle: step, review, context })
     await releaseAll(people)
     const final = await step(scenario.settle)
+    const serverText = scenario.server ? (await documentUpdater(project.id, doc.id)).text : null
+    const agreed =
+      final.converged && review.matched && (serverText === null || (final.texts ?? []).every(text => text === serverText))
+    if (!agreed && serverText !== null) {
+      notes.push(
+        `a web editor ended with text that differs from the server; ${final.texts ? 'final.server.txt' : 'the last entry in steps.json'} holds the server text`
+      )
+    }
     const target = path.join(fixtures, name)
     await fs.rm(target, { recursive: true, force: true })
     await fs.mkdir(target, { recursive: true })
@@ -763,6 +1584,7 @@ async function record(name, browser, env, state) {
         userId: state.users[person.name].id,
         frames: `${person.name}.frames.jsonl`,
         har: `${person.name}.har`,
+        console: person.console.length ? `${person.name}.console.jsonl` : null,
         client: 'web',
         joinDocType: joined?.type ?? null,
       })
@@ -788,31 +1610,31 @@ async function record(name, browser, env, state) {
       format: participants[0].joinDocType,
       pageMeta: people[0].meta,
       participants,
-      converged: diverged === 0,
+      converged: diverged === 0 && agreed,
       finalText:
         final.texts === null
           ? null
           : Object.fromEntries(
-              people.map(person => [person.name, final.converged ? 'final.txt' : `final.${person.name}.txt`])
+              people.map(person => [person.name, agreed ? 'final.txt' : `final.${person.name}.txt`])
             ),
       notes,
     }
     const outputs = new Map()
     outputs.set('scenario.json', `${JSON.stringify(summary, null, 2)}\n`)
+    const lines = list => list.map(item => JSON.stringify(item)).join('\n') + '\n'
     for (const person of people) {
-      outputs.set(
-        `${person.name}.frames.jsonl`,
-        person.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n'
-      )
+      outputs.set(`${person.name}.frames.jsonl`, lines(person.frames))
+      if (person.console.length) outputs.set(`${person.name}.console.jsonl`, lines(person.console))
     }
     for (const client of scripted) {
       await client.close()
-      outputs.set(`${client.name}.frames.jsonl`, client.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n')
+      outputs.set(`${client.name}.frames.jsonl`, lines(client.frames))
     }
     for (const [file, content] of extra) outputs.set(file, content)
     if (final.texts !== null) {
-      if (final.converged) outputs.set('final.txt', final.texts[0])
+      if (agreed) outputs.set('final.txt', final.texts[0])
       else people.forEach((person, index) => outputs.set(`final.${person.name}.txt`, final.texts[index]))
+      if (!agreed && serverText !== null) outputs.set('final.server.txt', serverText)
     }
     for (const person of people) {
       await person.context.close()
@@ -830,6 +1652,7 @@ async function record(name, browser, env, state) {
     for (const client of scripted) await client.close()
     for (const person of people) await person.context?.close().catch(() => {})
     await fs.rm(scratch, { recursive: true, force: true })
+    await project.cleanup?.()
   }
 }
 
@@ -866,15 +1689,67 @@ async function httpStep(site, jar, method, route, { body, token, secrets } = {})
   return { request: { method, route }, status: response.status, headers, body: parsed }
 }
 
-function dockerExec(command) {
+function dockerExec(command, input) {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       'docker',
       ['compose', '--env-file', '.env.local', '-f', 'compose.yml', 'exec', '-T', 'overleaf', 'bash', '-c', command],
-      { cwd: here },
+      { cwd: here, maxBuffer: 64 * 1024 * 1024 },
       (error, stdout, stderr) => (error ? reject(new Error(stderr || error.message)) : resolve(stdout))
     )
+    child.stdin.end(input ?? '')
   })
+}
+
+function webNode(script) {
+  return dockerExec('source /etc/container_environment.sh && cd /overleaf/services/web && node --input-type=module -', script)
+}
+
+async function addMember(projectId, ownerId, userId, level) {
+  const output = await webNode(`
+    const { default: CollaboratorsHandler } = await import('/overleaf/services/web/app/src/Features/Collaborators/CollaboratorsHandler.mjs')
+    await CollaboratorsHandler.promises.addUserIdToProject(${JSON.stringify(projectId)}, ${JSON.stringify(ownerId)}, ${JSON.stringify(userId)}, ${JSON.stringify(level)})
+    console.log('OLEAFLY_ADDED')
+    process.exit(0)
+  `)
+  if (!output.includes('OLEAFLY_ADDED')) throw new Error(`could not add ${userId} to ${projectId}: ${output}`)
+}
+
+async function toHistoryOT(projectId) {
+  const output = await webNode(`
+    const { advanceOTMigrationStage } = await import('/overleaf/services/web/app/src/Features/History/HistoryOTMigration.mjs')
+    const { otMigrationStage } = await advanceOTMigrationStage(${JSON.stringify(projectId)}, 1)
+    console.log('OLEAFLY_STAGE ' + otMigrationStage)
+    process.exit(0)
+  `)
+  const stage = output.match(/OLEAFLY_STAGE (\d+)/)?.[1]
+  if (stage !== '1') throw new Error(`project ${projectId} did not reach history-ot stage 1: ${output}`)
+}
+
+function visibleContent(raw) {
+  const deletes = (raw.trackedChanges ?? [])
+    .filter(change => change.tracking.type === 'delete')
+    .map(change => change.range)
+    .sort((a, b) => a.pos - b.pos)
+  let visible = ''
+  let at = 0
+  for (const range of deletes) {
+    visible += raw.content.slice(at, range.pos)
+    at = range.pos + range.length
+  }
+  return visible + raw.content.slice(at)
+}
+
+async function documentUpdater(projectId, docId) {
+  const route = `http://127.0.0.1:3003/project/${projectId}/doc/${docId}`
+  const [own, converted] = (await dockerExec(`curl -fsS '${route}?historyOTSupport=true'; echo; curl -fsS '${route}'`))
+    .trim()
+    .split('\n')
+    .map(line => JSON.parse(line))
+  if (Array.isArray(own.lines)) {
+    return { type: own.type, version: own.version, text: own.lines.join('\n'), ranges: own.ranges ?? {} }
+  }
+  return { type: own.type, version: own.version, text: visibleContent(own.lines), raw: own.lines, ranges: converted.ranges ?? {} }
 }
 
 async function rejectionProbe(ctx, who, projectId, notes) {
@@ -920,6 +1795,19 @@ async function watcher(ctx, who, projectId) {
   await client.open(ctx.site, await ctx.signInAs(who), projectId, ctx.secrets, { websocket: true })
   await client.outcome()
   return client
+}
+
+function reviewMeta(html) {
+  const meta = {}
+  for (const [, name, attributes] of html.matchAll(/<meta name="(ol-[^"]+)"([^>]*)>/g)) {
+    if (forbidden.test(name) || !/track|review|comment|thread|chat|feature|capabilit|permission|token|ShareJsHash/i.test(name)) continue
+    const type = attributes.match(/data-type="([^"]*)"/)?.[1] ?? null
+    const content = attributes.match(/content="([^"]*)"/)?.[1]
+    const present = /\scontent(=|\s|$)/.test(attributes)
+    const text = (content ?? '').replaceAll('&quot;', '"').replaceAll('&amp;', '&')
+    meta[name] = { type, contentAttribute: present, value: type === 'boolean' ? present : type === 'json' && text ? JSON.parse(text) : text }
+  }
+  return meta
 }
 
 function eventsAfter(client, seen, names) {
@@ -1258,6 +2146,179 @@ const probes = {
       return [created, share, grant, members, { socket: { user: 'erin', projectId, transport: 'websocket', frames: client.frames } }]
     },
   },
+  'review-routes-absent': {
+    description:
+      'Every review route Overleaf web calls (threads, messages, edit, delete own and any message, resolve, reopen and delete thread, accept changes, track changes, ranges, change authors), asked of CE on both projects as the owner, a reviewer and a viewer, plus the page meta and join fields a client reads to tell whether the review module is there.',
+    async run(ctx, notes) {
+      const steps = []
+      const jars = {}
+      for (const who of ['alice', 'carol', 'dave']) jars[who] = await ctx.signInAs(who)
+      for (const key of ['sharejs-project', 'history-ot-project']) {
+        const project = ctx.state.projects[key]
+        const base = `/project/${project.id}`
+        const thread = objectId()
+        const message = objectId()
+        const docId = project.rootDocId
+        const short = route => route.replace(base, '').replace(thread, ':thread').replace(message, ':id').replace(docId, ':doc')
+        const tokens = {}
+        for (const who of Object.keys(jars)) {
+          const page = await fetch(`${ctx.site}${base}`, { headers: { cookie: jars[who].header() } })
+          jars[who].absorb(page)
+          const html = await page.text()
+          tokens[who] = html.match(/name="ol-csrfToken" content="([^"]+)"/)?.[1]
+          ctx.secrets.add(tokens[who])
+          const meta = reviewMeta(html)
+          steps.push({ page: { project: key, user: who, route: base, status: page.status, meta } })
+          notes.push(`${key} page meta for ${who}: ${JSON.stringify(meta)}`)
+        }
+        const routes = [
+          ['GET', `${base}/threads`],
+          ['POST', `${base}/thread/${thread}/messages`, { content: 'A probe comment.' }],
+          ['POST', `${base}/thread/${thread}/messages/${message}/edit`, { content: 'An edited probe comment.' }],
+          ['DELETE', `${base}/thread/${thread}/own-messages/${message}`],
+          ['DELETE', `${base}/thread/${thread}/messages/${message}`],
+          ['POST', `${base}/doc/${docId}/thread/${thread}/resolve`, {}],
+          ['POST', `${base}/doc/${docId}/thread/${thread}/reopen`, {}],
+          ['DELETE', `${base}/doc/${docId}/thread/${thread}`],
+          ['POST', `${base}/doc/${docId}/changes/accept`, { change_ids: [message] }],
+          ['POST', `${base}/track_changes`, { on_for: { [ctx.state.users.carol.id]: true } }],
+          ['POST', `${base}/track_changes`, { on_for_guests: true }],
+          ['POST', `${base}/track_changes`, { on: true }],
+          ['GET', `${base}/ranges`],
+          ['GET', `${base}/changes/users`],
+          ['GET', `${base}/messages?limit=1`],
+        ]
+        const answered = []
+        for (const [method, route, body] of routes) {
+          const step = await httpStep(ctx.site, jars.alice, method, route, { body, token: tokens.alice, secrets: ctx.secrets })
+          step.request.user = 'alice'
+          steps.push(step)
+          answered.push(`${method} ${short(route)} ${step.status}`)
+        }
+        notes.push(`${key} as alice: ${answered.join(', ')}`)
+        for (const who of ['carol', 'dave']) {
+          for (const [method, route, body] of [routes[0], routes[1], routes[5]]) {
+            const step = await httpStep(ctx.site, jars[who], method, route, { body, token: tokens[who], secrets: ctx.secrets })
+            step.request.user = who
+            steps.push(step)
+            notes.push(`${key} as ${who}: ${method} ${short(route)} ${step.status}`)
+          }
+        }
+        const unsigned = await httpStep(ctx.site, jars.alice, 'POST', `${base}/thread/${thread}/messages`, {
+          body: { content: 'A probe comment.' },
+          secrets: ctx.secrets,
+        })
+        unsigned.request.user = 'alice'
+        unsigned.request.withoutToken = true
+        steps.push(unsigned)
+        notes.push(`${key}: the same POST without the anti-forgery header answered ${unsigned.status}`)
+        for (const who of ['alice', 'carol', 'dave']) {
+          const client = new ScriptedClient(who, ctx.clock)
+          await client.open(ctx.site, jars[who], project.id, ctx.secrets, { websocket: true })
+          await client.outcome()
+          const join = client.events.find(event => event.name === 'joinProjectResponse')?.args?.[0]
+          notes.push(
+            `${key} join for ${who}: permissionsLevel ${join?.permissionsLevel}, features.trackChanges ${JSON.stringify(join?.project?.features?.trackChanges)}, trackChangesState ${JSON.stringify(join?.project?.trackChangesState)}, isRestrictedUser ${JSON.stringify(join?.isRestrictedUser)}`
+          )
+          await client.close()
+          if (who === 'alice') steps.push({ socket: { user: who, project: key, projectId: project.id, transport: 'websocket', frames: client.frames } })
+        }
+      }
+      return steps
+    },
+  },
+  'restricted-join-comments': {
+    description:
+      'Alice makes a throwaway ShareJS project and a throwaway history-ot project, comments on each doc and turns on link sharing; Erin opens each read-only link and joins the doc. Records what a restricted (token read-only) user gets of comments in joinDoc and in later ops, and whether her own comment ops are accepted. Both projects are deleted at the end.',
+    async run(ctx, notes) {
+      const steps = []
+      const alice = await ctx.signInAs('alice')
+      const erin = await ctx.signInAs('erin')
+      const token = await csrfFor(ctx.site, alice, ctx.state.projects['sharejs-project'].id)
+      for (const format of ['sharejs-text-ot', 'history-ot']) {
+        const created = await httpStep(ctx.site, alice, 'POST', '/project/new', {
+          token,
+          secrets: ctx.secrets,
+          body: { projectName: `restricted-comments-${format}-${stamp()}`, template: 'none' },
+        })
+        const projectId = created.body.project_id
+        try {
+          if (format === 'history-ot') await toHistoryOT(projectId)
+          const share = await httpStep(ctx.site, alice, 'POST', `/project/${projectId}/settings/admin`, {
+            token,
+            secrets: ctx.secrets,
+            body: { publicAccessLevel: 'tokenBased' },
+          })
+          const links = await httpStep(ctx.site, alice, 'GET', `/project/${projectId}/tokens`, { secrets: ctx.secrets })
+          const readOnly = links.body?.readOnly
+          if (!readOnly) throw new Error(`no read-only link for ${format}: ${JSON.stringify(links)}`)
+          ctx.secrets.add(readOnly)
+          const owner = new ScriptedClient('alice', ctx.clock)
+          await owner.open(ctx.site, alice, projectId, ctx.secrets, { websocket: true })
+          await owner.outcome()
+          const docId = owner.events.find(event => event.name === 'joinProjectResponse').args[0].project.rootDoc_id
+          const joined = await owner.joinDoc(docId)
+          if (joined[5] !== format) throw new Error(`the throwaway project serves ${joined[5]}, expected ${format}`)
+          let version = joined[2]
+          const text = 'Restricted users and comments.\n'
+          const first = objectId()
+          const later = objectId()
+          const history = format === 'history-ot'
+          const length = history ? joined[1].content.length : joined[1].join('\n').length
+          const insert = history ? [{ textOperation: [text, ...(length ? [length] : [])] }] : [{ p: 0, i: text }]
+          const comment = (id, needle) =>
+            history
+              ? [{ commentId: id, ranges: [{ pos: text.indexOf(needle), length: needle.length }] }]
+              : [{ p: text.indexOf(needle), c: needle, t: id }]
+          await owner.update(docId, { doc: docId, op: insert, v: version++ })
+          await owner.update(docId, { doc: docId, op: comment(first, 'Restricted users'), v: version++ })
+          const landing = await fetch(`${ctx.site}/read/${readOnly}`, { headers: { cookie: erin.header() } })
+          erin.absorb(landing)
+          const erinToken = (await landing.text()).match(/name="ol-csrfToken" content="([^"]+)"/)?.[1]
+          const grant = await httpStep(ctx.site, erin, 'POST', `/read/${readOnly}/grant`, {
+            token: erinToken,
+            secrets: ctx.secrets,
+            body: { confirmedByUser: true },
+          })
+          const editor = await fetch(`${ctx.site}/project/${projectId}`, { headers: { cookie: erin.header() } })
+          erin.absorb(editor)
+          const html = await editor.text()
+          ctx.secrets.add(html.match(/name="ol-csrfToken" content="([^"]+)"/)?.[1])
+          const meta = reviewMeta(html)
+          notes.push(`${format}: erin's editor page meta ${JSON.stringify(meta)}`)
+          const visitor = new ScriptedClient('erin', ctx.clock)
+          await visitor.open(ctx.site, erin, projectId, ctx.secrets, { websocket: true })
+          await visitor.outcome()
+          const join = visitor.events.find(event => event.name === 'joinProjectResponse')?.args?.[0]
+          const reply = await visitor.joinDoc(docId)
+          const ownerReply = await owner.joinDoc(docId)
+          const shown = reply => (history ? reply[1]?.comments ?? null : reply[4]?.comments ?? null)
+          notes.push(
+            `${format}: erin joins with permissionsLevel ${join?.permissionsLevel}; her joinDoc comments ${JSON.stringify(shown(reply))}; alice's ${JSON.stringify(shown(ownerReply))}`
+          )
+          const seen = visitor.events.length
+          await owner.update(docId, { doc: docId, op: comment(later, 'comments'), v: version++ })
+          await sleep(1500)
+          const relayed = visitor.events.slice(seen).filter(event => event.name === 'otUpdateApplied')
+          notes.push(`${format}: when alice adds a comment, erin receives ${JSON.stringify(relayed.map(event => event.args[0].op ?? null))}`)
+          const attempt = await visitor.attempt(docId, { doc: docId, op: comment(objectId(), 'users'), v: version })
+          notes.push(`${format}: erin's own comment op: ${JSON.stringify(attempt)}`)
+          if (attempt.outcome === 'applied') version += 1
+          const server = await documentUpdater(projectId, docId)
+          notes.push(`${format}: the server keeps ${JSON.stringify(history ? server.raw.comments : server.ranges.comments)}`)
+          await visitor.close()
+          await owner.close()
+          steps.push(created, share, grant, { page: { user: 'erin', format, status: editor.status, meta } })
+          steps.push({ socket: { user: 'alice', format, projectId, docId, transport: 'websocket', frames: owner.frames } })
+          steps.push({ socket: { user: 'erin', format, projectId, docId, transport: 'websocket', frames: visitor.frames } })
+          steps.push({ server: { format, docId, version: server.version, ...(server.raw ? { raw: server.raw } : {}), ranges: server.ranges } })
+        } finally {
+          await httpStep(ctx.site, alice, 'DELETE', `/project/${projectId}`, { token, secrets: ctx.secrets })
+        }
+      }
+      return steps
+    },
+  },
   'rest-reads': {
     description: 'The read routes a live session uses: entities, members, history updates, the file-tree diff, threads and chat.',
     async run(ctx) {
@@ -1284,6 +2345,10 @@ const probes = {
   },
 }
 
+const features = featureProbes({ ScriptedClient, Participant, csrfFor, webNode, addMember, stamp, sleep, until, objectId, here })
+Object.assign(probes, features.probes)
+Object.assign(scenarios, features.scenarios)
+
 async function runProbe(name, env, state) {
   const probe = probes[name]
   if (!probe) throw new Error(`unknown probe ${name}`)
@@ -1295,6 +2360,7 @@ async function runProbe(name, env, state) {
   const ctx = {
     site: state.site,
     state,
+    env,
     secrets,
     clock: { start: Date.now() },
     signInAs: key => signIn(state.site, state.users[key].email, env[`${key.toUpperCase()}_PASSWORD`], secrets),
@@ -1379,15 +2445,7 @@ function snapshotOf(reply) {
       type: change.tracking.type,
       user: change.tracking.userId,
     }))
-    let visible = ''
-    let at = 0
-    for (const change of [...tracked].sort((a, b) => a.pos - b.pos)) {
-      if (change.type !== 'delete') continue
-      visible += raw.content.slice(at, change.pos)
-      at = change.pos + change.length
-    }
-    visible += raw.content.slice(at)
-    return { format: 'history-ot', text: visible, content: raw.content, tracked }
+    return { format: 'history-ot', text: visibleContent(raw), content: raw.content, tracked }
   }
   const text = reply[1].map(line => Buffer.from(line, 'latin1').toString('utf8')).join('\n')
   const changes = (reply[4]?.changes ?? []).map(change => ({
@@ -1409,8 +2467,8 @@ function rangesOf(state) {
     : { changes: byPosition(state.ranges.changes.map(shareJsChange)) }
 }
 
-function webHealth(person) {
-  const incoming = person.frames.filter(frame => frame.dir === 'in').map(frame => frame.frame)
+function webHealth(person, from = 0) {
+  const incoming = person.frames.slice(from).filter(frame => frame.dir === 'in').map(frame => frame.frame)
   return {
     closed: person.closed,
     disconnects: incoming.filter(frame => frame.startsWith('0::')).length,
@@ -1530,7 +2588,7 @@ async function gateProject(key, browser, env, state, folder) {
   const checker = new ScriptedClient('dave', { start: Date.now() })
   await checker.open(site, await signInAs('dave'), project.id, secrets)
   await checker.outcome()
-  const server = snapshotOf(await checker.call('joinDoc', [docId, { encodeRanges: true, supportsHistoryOT: true }]))
+  const server = snapshotOf(await checker.joinDoc(docId))
   await checker.close()
   const finals = Object.fromEntries(await Promise.all(rust.map(async client => [client.name, await client.doc(docId)])))
   const serverRanges = server.format === 'history-ot'
@@ -1575,6 +2633,7 @@ async function runGate(env, state, only) {
 }
 
 async function main() {
+  Object.assign(scenarios, reviewSafe({ GateClient, signIn, webNode, addMember, toHistoryOT, httpStep, csrfFor, stamp, sleep, at }))
   const asked = process.argv.slice(2)
   if (asked.includes('--list')) {
     for (const [name, scenario] of Object.entries(scenarios)) console.log(`${name}: ${scenario.description}`)

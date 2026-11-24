@@ -336,6 +336,7 @@
       "saveServer": "このサーバーを使う",
       "signedInAs": "{{email}} でサインイン中",
       "signedIn": "Overleaf にサインイン中",
+      "accountPick": "Overleaf アカウント",
       "signOut": "サインアウト",
       "searchLabel": "Overleaf のプロジェクトを検索",
       "searchPlaceholder_other": "{{count}} 件のプロジェクトを検索",
@@ -354,6 +355,8 @@
       "import_other": "{{count}} 件のプロジェクトを読み込む",
       "imported": "読み込み済み",
       "open": "開く",
+      "openLive": "ライブで開く",
+      "opening": "開いています",
       "ownedByYou": "自分のもの",
       "owner": "所有者: {{name}}",
       "archived": "アーカイブ済み",
@@ -367,6 +370,36 @@
         "downloading": "ダウンロード中 {{percent}}%",
         "downloadingUnknown": "ダウンロード中",
         "importing": "準備中"
+      },
+      "invitations": {
+        "title": "招待",
+        "from": "{{name}} から",
+        "join": "参加する",
+        "joined": "このプロジェクトに参加しました"
+      },
+      "link": {
+        "checking": "リンクを確認中",
+        "unnamed": "Overleaf 上のプロジェクト",
+        "join": "参加する",
+        "importInstead": "読み込む",
+        "grants": {
+          "edit": "参加すると、共同編集者としてこのプロジェクトを編集できます。",
+          "view": "参加しても閲覧のみです。リンクから閲覧する人は、コメントやチャットを使えません。",
+          "already": "すでにこのプロジェクトを持っています。",
+          "invite": "参加すると招待を承諾します。"
+        }
+      },
+      "put": {
+        "menu": "Overleaf にアップロード",
+        "title": "Overleaf にアップロード",
+        "description": "Oleafly はこのプロジェクトを新しい Overleaf プロジェクトとしてアップロードし、ライブ編集中は両方を同期した状態に保ちます。",
+        "name": "Overleaf での名前",
+        "account": "Overleaf アカウント",
+        "submit": "Overleaf にアップロード",
+        "working": "アップロード中",
+        "signedOut": "先に設定で Overleaf にサインインしてください。",
+        "openSettings": "設定を開く",
+        "cancel": "キャンセル"
       }
     }
   },

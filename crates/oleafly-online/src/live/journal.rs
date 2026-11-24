@@ -11,10 +11,14 @@ use oleafly_ot::TextOperation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::doc::ReviewOp;
+use super::format::{Accepted, SentComment};
+use super::session::now_ms;
 use super::tree_queue::Queued;
 use super::{DocId, PublicId};
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::realtime::events::plain_id;
+use crate::sync::FOLDER_STATE;
 
 pub const LIVE_DIR: &str = "overleaf-live";
 pub const SCHEMA: u64 = 1;
@@ -23,9 +27,11 @@ const MANIFEST: &str = "project.json";
 const JOINED: &str = "project-join.json";
 const TREE: &str = "tree-queue.json";
 const LOCK: &str = "lock";
+const OWNER: &str = "lock.owner";
 const KEPT: &str = "kept";
-const FOLDER_LOCK: [&str; 3] = [".oleafly", "online", "live.lock"];
+const FOLDER_LOCK: &str = "live.lock";
 const LOCK_PATIENCE: Duration = Duration::from_secs(5);
+const FOLDER_PATIENCE: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectManifest {
@@ -58,7 +64,7 @@ impl Default for ProjectManifest {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct InflightRecord {
     pub op: TextOperation,
     #[serde(default)]
@@ -67,6 +73,20 @@ pub struct InflightRecord {
     pub tracked_by: Option<String>,
     pub public_ids: Vec<PublicId>,
     pub base_version: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tc: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ts: Option<i64>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub undo: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<SentComment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edits: Option<Value>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub fixed: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub accepts: Vec<Accepted>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -84,12 +104,45 @@ pub struct DocRecord {
     pub provisional: bool,
     #[serde(default)]
     pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queued: Vec<ReviewOp>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HolderKind {
+    App,
+    Cli,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Holder {
+    pub by: HolderKind,
+    pub pid: u32,
+    pub since_ms: u64,
+}
+
+fn live_where(holder: Option<&Holder>) -> String {
+    match holder {
+        Some(Holder {
+            by: HolderKind::App,
+            ..
+        }) => "in the Oleafly app".to_string(),
+        Some(Holder {
+            by: HolderKind::Cli,
+            pid,
+            ..
+        }) => format!("on the command line (process {pid})"),
+        None => "in another Oleafly window or on the command line".to_string(),
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum JournalError {
-    #[error("this project is live in another Oleafly window")]
+    #[error("this project is live {}", live_where(None))]
     Busy,
+    #[error("this project is live {}", live_where(.0.as_ref()))]
+    LiveElsewhere(Option<Holder>),
     #[error("the journal location is not usable: {0}")]
     Invalid(String),
     #[error("the journal could not be read or written: {0}")]
@@ -99,7 +152,7 @@ pub enum JournalError {
 impl From<JournalError> for OnlineError {
     fn from(error: JournalError) -> OnlineError {
         let kind = match error {
-            JournalError::Busy => OnlineErrorKind::LiveElsewhere,
+            JournalError::Busy | JournalError::LiveElsewhere(_) => OnlineErrorKind::LiveElsewhere,
             JournalError::Invalid(_) | JournalError::Io(_) => OnlineErrorKind::Io,
         };
         OnlineError::new(kind).detail(error)
@@ -117,6 +170,7 @@ pub struct Journal {
     dir: PathBuf,
     _lock: File,
     _folder_lock: Option<File>,
+    owned: bool,
     manifest: ProjectManifest,
     docs: BTreeMap<DocId, DocRecord>,
     #[cfg(test)]
@@ -181,7 +235,7 @@ pub fn journal_dir(
         .join(project_id))
 }
 
-fn take_lock(path: &Path) -> Result<File, JournalError> {
+fn take_lock(path: &Path, patience: Duration) -> Result<File, JournalError> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -191,17 +245,67 @@ fn take_lock(path: &Path) -> Result<File, JournalError> {
         .write(true)
         .truncate(false)
         .open(path)?;
-    match oleafly_core::locking::lock_file(&file, true, LOCK_PATIENCE) {
+    match oleafly_core::locking::lock_file(&file, true, patience) {
         Ok(()) => Ok(file),
         Err(error) if error.kind() == io::ErrorKind::TimedOut => Err(JournalError::Busy),
         Err(error) => Err(error.into()),
     }
 }
 
-fn folder_lock(folder: &Path) -> PathBuf {
-    FOLDER_LOCK
+pub fn folder_lock_path(folder: &Path) -> PathBuf {
+    FOLDER_STATE
         .iter()
         .fold(folder.to_path_buf(), |path, part| path.join(part))
+        .join(FOLDER_LOCK)
+}
+
+fn held(lock: &Path) -> bool {
+    let Ok(file) = OpenOptions::new().read(true).open(lock) else {
+        return false;
+    };
+    matches!(
+        oleafly_core::locking::lock_file(&file, false, Duration::ZERO),
+        Err(error) if error.kind() == io::ErrorKind::TimedOut
+    )
+}
+
+pub fn live_in(folder: &Path) -> bool {
+    held(&folder_lock_path(folder))
+}
+
+pub fn holder(data_root: &Path, base: &str, project_id: &str) -> Option<Holder> {
+    let dir = journal_dir(data_root, base, project_id).ok()?;
+    if !held(&dir.join(LOCK)) {
+        return None;
+    }
+    serde_json::from_slice(&std::fs::read(dir.join(OWNER)).ok()?).ok()
+}
+
+pub fn manifest_of(data_root: &Path, base: &str, project_id: &str) -> Option<ProjectManifest> {
+    let dir = journal_dir(data_root, base, project_id).ok()?;
+    match read_json::<ProjectManifest>(&dir.join(MANIFEST)) {
+        Some((SCHEMA, found)) => found,
+        _ => None,
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StandDown {
+    Live(Option<Holder>),
+    Unsent(Vec<String>),
+}
+
+pub fn stands_down(
+    data_root: &Path,
+    base: &str,
+    project_id: &str,
+    folder: Option<&Path>,
+) -> Option<StandDown> {
+    if folder.is_some_and(live_in) {
+        return Some(StandDown::Live(holder(data_root, base, project_id)));
+    }
+    let paths = unsent_paths(&journal_dir(data_root, base, project_id).ok()?);
+    (!paths.is_empty()).then_some(StandDown::Unsent(paths))
 }
 
 fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Option<(u64, Option<T>)> {
@@ -211,6 +315,22 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Option<(u64, Option
     Some((schema, serde_json::from_value(value).ok()))
 }
 
+fn placed(
+    data_root: &Path,
+    base: &str,
+    project_id: &str,
+    folder: Option<&Path>,
+) -> Result<PathBuf, JournalError> {
+    let dir = journal_dir(data_root, base, project_id)?;
+    if folder.is_some_and(|folder| dir.starts_with(folder)) {
+        return Err(JournalError::Invalid(
+            "the journal would be inside the project".into(),
+        ));
+    }
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
 impl Journal {
     pub fn open(
         data_root: &Path,
@@ -218,23 +338,49 @@ impl Journal {
         project_id: &str,
         folder: Option<&Path>,
     ) -> Result<Journal, JournalError> {
-        let dir = journal_dir(data_root, base, project_id)?;
-        if let Some(folder) = folder {
-            if dir.starts_with(folder) {
-                return Err(JournalError::Invalid(
-                    "the journal would be inside the project".into(),
-                ));
-            }
-        }
-        std::fs::create_dir_all(&dir)?;
-        let lock = take_lock(&dir.join(LOCK))?;
+        let dir = placed(data_root, base, project_id, folder)?;
         let folder_lock = folder
-            .map(|folder| take_lock(&folder_lock(folder)))
+            .map(|folder| take_lock(&folder_lock_path(folder), LOCK_PATIENCE))
             .transpose()?;
+        let lock = take_lock(&dir.join(LOCK), LOCK_PATIENCE)?;
+        Journal::assembled(dir, lock, folder_lock, false)
+    }
+
+    pub fn open_live(
+        data_root: &Path,
+        base: &str,
+        project_id: &str,
+        folder: &Path,
+        by: HolderKind,
+    ) -> Result<Journal, JournalError> {
+        let dir = placed(data_root, base, project_id, Some(folder))?;
+        let elsewhere = |error| match error {
+            JournalError::Busy => JournalError::LiveElsewhere(holder(data_root, base, project_id)),
+            other => other,
+        };
+        let folder_lock =
+            take_lock(&folder_lock_path(folder), FOLDER_PATIENCE).map_err(elsewhere)?;
+        let lock = take_lock(&dir.join(LOCK), LOCK_PATIENCE).map_err(elsewhere)?;
+        let owner = Holder {
+            by,
+            pid: std::process::id(),
+            since_ms: now_ms(),
+        };
+        write_json(&dir.join(OWNER), &owner).map_err(JournalError::Io)?;
+        Journal::assembled(dir, lock, Some(folder_lock), true)
+    }
+
+    fn assembled(
+        dir: PathBuf,
+        lock: File,
+        folder_lock: Option<File>,
+        owned: bool,
+    ) -> Result<Journal, JournalError> {
         let mut journal = Journal {
             dir,
             _lock: lock,
             _folder_lock: folder_lock,
+            owned,
             manifest: ProjectManifest::default(),
             docs: BTreeMap::new(),
             #[cfg(test)]
@@ -403,7 +549,15 @@ impl Journal {
     }
 }
 
-pub fn unsent_on(data_root: &Path, base: &str) -> Vec<(String, Vec<String>)> {
+impl Drop for Journal {
+    fn drop(&mut self) {
+        if self.owned {
+            let _ = remove(&self.dir.join(OWNER));
+        }
+    }
+}
+
+pub fn unsent_on(data_root: &Path, base: &str, user: Option<&str>) -> Vec<(String, Vec<String>)> {
     let Ok(origin) = origin_dir(base) else {
         return Vec::new();
     };
@@ -418,12 +572,22 @@ pub fn unsent_on(data_root: &Path, base: &str) -> Vec<(String, Vec<String>)> {
                 .to_str()
                 .filter(|id| plain_id(id))?
                 .to_string();
+            if user.is_some_and(|user| !kept_by(&entry.path(), user)) {
+                return None;
+            }
             let paths = unsent_paths(&entry.path());
             (!paths.is_empty()).then_some((project, paths))
         })
         .collect();
     found.sort();
     found
+}
+
+fn kept_by(dir: &Path, user: &str) -> bool {
+    match read_json::<ProjectManifest>(&dir.join(MANIFEST)) {
+        Some((_, Some(manifest))) => manifest.user_id.is_empty() || manifest.user_id == user,
+        _ => true,
+    }
 }
 
 fn unsent_paths(dir: &Path) -> Vec<String> {

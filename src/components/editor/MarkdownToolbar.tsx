@@ -3,7 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Redo2, ScanSearch, SlidersHorizontal, Undo2 } from "lucide-react";
+import { MessageSquarePlus, Redo2, ScanSearch, SlidersHorizontal, Undo2 } from "lucide-react";
 import { isQuartoEngine } from "@/lib/notebook-engines";
 import type { EditorMode, MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import { Divider, IconBtn, WysiwygModeSwitch } from "@/components/editor/EditorToolbar";
@@ -13,7 +13,8 @@ import { ToolbarOverflow } from "@/components/ui/toolbar-overflow";
 import { editorRedo, editorUndo, getEditorView } from "@/components/editor/cm/controller";
 import { editorSelectionRevision, editorSelectionTyped, subscribeEditorSelection } from "@/components/editor/cm/cursor-signal";
 import { useEditorHistory } from "@/components/editor/history-signal";
-import { useCollabVisualReadOnly } from "@/lib/collab-live-bridge";
+import { noteCommentSurface, onNoteCommentSurfaces, useCollabRichTextLock } from "@/lib/collab-live-bridge";
+import { requestLiveNoteComment, showCommentsTab, useCommentsRail } from "@/components/collab/comments-rail";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { cn, shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
@@ -116,6 +117,28 @@ function useWrapped(bar: RefObject<HTMLDivElement | null>, group: RefObject<HTML
   return wrapped;
 }
 
+function useVisualCommentSurface(wysiwyg: boolean): { projectId: string; path: string } | null {
+  const projectId = useFilesStore((state) => state.projectId);
+  const path = useFilesStore((state) => state.activePath);
+  const canCompose = useCommentsRail((rail) => rail.visible && rail.canCompose);
+  const live = useSyncExternalStore(onNoteCommentSurfaces, () => noteCommentSurface(projectId, path) !== null);
+  return wysiwyg && canCompose && live && projectId && path ? { projectId, path } : null;
+}
+
+function VisualCommentButton({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <IconBtn
+      onClick={() => {
+        if (requestLiveNoteComment(projectId, path)) showCommentsTab();
+      }}
+      title={`${t(($) => $.collab.comments.add)} (${shortcut("⌘⌥M")})`}
+    >
+      <MessageSquarePlus data-testid="visual-comment-button" className="size-4" />
+    </IconBtn>
+  );
+}
+
 export function MarkdownToolbar({
   wysiwyg,
   onToggleWysiwyg,
@@ -136,8 +159,8 @@ export function MarkdownToolbar({
   const markdownSettings = useFilesStore((state) => !isQuartoEngine(state.engine));
   const projectId = useFilesStore((state) => state.projectId);
   const fileReadOnly = useActiveFileReadOnly();
-  const collabReadOnly = useCollabVisualReadOnly(projectId);
-  const readOnly = fileReadOnly || (wysiwyg && collabReadOnly);
+  const liveLock = useCollabRichTextLock(projectId);
+  const readOnly = fileReadOnly || (wysiwyg && liveLock !== null);
   const visualEditor = useWysiwygEditor();
   const editor = wysiwyg ? visualEditor : null;
   const controls = useControlsModule();
@@ -153,6 +176,7 @@ export function MarkdownToolbar({
   }, [controls, editor, sourceState, t, visualState, wysiwyg]);
 
   const history = useEditorHistory(wysiwyg);
+  const commentSurface = useVisualCommentSurface(wysiwyg);
   const barRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<HTMLDivElement>(null);
   const wrapped = useWrapped(barRef, groupRef);
@@ -185,6 +209,7 @@ export function MarkdownToolbar({
         </fieldset>
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {commentSurface && <VisualCommentButton {...commentSurface} />}
           {markdownProject && (
             <IconBtn
               onClick={() => useTypstDocumentPanelStore.getState().openPanel("insights")}

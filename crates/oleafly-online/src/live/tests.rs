@@ -5,8 +5,11 @@ use oleafly_ot::testing::Rng;
 use oleafly_ot::{utf16_len, TextOperation};
 use serde_json::{json, Value};
 
-use super::doc::{Applied, OverleafDoc};
-use super::format::{operation_of, pieces_from_json, DocFormat, FormatState};
+use super::doc::{Applied, OverleafDoc, ReviewOp, Target};
+use super::format::{
+    accepted_pieces, operation_of, pieces_from_json, Accepted, Author, ChangeKind, Decision,
+    DocFormat, FormatState, Piece, ShareJsRanges,
+};
 use super::harness::{Editor, Wire};
 use super::join::parse_join;
 use super::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
@@ -47,7 +50,10 @@ struct Oleafly {
     id: String,
     tracking: Tracking,
     rejoins: usize,
+    repaired: usize,
     mock: MockOverleaf,
+    check_ranges: bool,
+    refresh: bool,
 }
 
 impl Oleafly {
@@ -62,10 +68,16 @@ impl Oleafly {
             let Some(update) = self.inbox.pop_front() else {
                 return;
             };
+            let clashed = self.doc.clashed();
             let outcome = self.doc.applied(&update, &self.wire.own);
+            self.refresh |= self.doc.take_doubt();
             match outcome {
                 Ok(Applied::Remote(op)) => self.editor.remote(op),
                 Ok(_) => {}
+                Err(super::doc::DocError::OutOfStep) if clashed => {
+                    self.resync();
+                    return;
+                }
                 Err(error) => panic!("round {round}: {error} on {update:?}"),
             }
             self.check_caught_up(round, &update);
@@ -73,6 +85,23 @@ impl Oleafly {
     }
 
     fn check_caught_up(&self, round: usize, update: &AppliedUpdate) {
+        if self.check_ranges
+            && !self.refresh
+            && !self.doc.in_flight()
+            && self.doc.version() == self.mock.doc_version(&self.id)
+        {
+            if let FormatState::ShareJs(ranges) = self.doc.format() {
+                let (ours, theirs) = (
+                    sharejs_ranges(&ranges.to_json(false)),
+                    sharejs_ranges(&self.mock.ranges(&self.id)),
+                );
+                assert!(
+                    ours == theirs,
+                    "round {round}: ranges out of step after {update:?}: {}",
+                    shape_difference(&ours, &theirs)
+                );
+            }
+        }
         if !self.doc.is_settled() || self.doc.version() != self.mock.doc_version(&self.id) {
             return;
         }
@@ -92,11 +121,30 @@ impl Oleafly {
 
     fn send(&mut self, mode: &SendMode, now: Instant, round: usize) {
         let on = self.wire.public_id();
-        match self.doc.next_update(&on, mode, now) {
+        let next = self.doc.next_update(&on, mode, now);
+        for op in self.doc.take_shown() {
+            self.editor.remote(op);
+        }
+        match next {
             Ok(Some(update)) => self.wire.send(&update),
             Ok(None) => {}
+            Err(super::doc::DocError::OutOfStep) => self.resync(),
             Err(error) => panic!("round {round}: the gate refused a send: {error}"),
         }
+    }
+
+    fn resync(&mut self) {
+        self.inbox.clear();
+        let fresh = self.wire.join(&self.id, None).unwrap();
+        self.rejoins += 1;
+        let repairs = self.doc.repairs();
+        let rejoin = self
+            .doc
+            .rejoin_fresh(fresh.version, fresh.text, fresh.format);
+        if self.doc.repairs() > repairs {
+            self.repaired += 1;
+        }
+        self.editor.rejoined(rejoin);
     }
 
     fn reconnect(&mut self, mock: &MockOverleaf, round: usize) {
@@ -110,6 +158,9 @@ impl Oleafly {
                     .unwrap_or_else(|error| panic!("round {round}: catch-up failed: {error}"));
                 for op in ops {
                     self.editor.remote(op);
+                }
+                if self.doc.needs_rejoin() {
+                    self.resync();
                 }
             }
             Err(_) => {
@@ -140,12 +191,15 @@ fn peer_edit(peer: &mut MockPeer, id: &str, rng: &mut Rng, tracked_deletes: bool
         }
         peer.delete(id, at, count);
     } else {
-        let typed: String = (0..1 + rng.below(3))
-            .map(|_| *rng.pick(&["p", "q", " ", "\n", "ü"]))
-            .collect();
-        peer.type_at(id, rng.below(length + 1), &typed);
+        peer.type_at(id, rng.below(length + 1), &peer_text(rng));
     }
     false
+}
+
+fn peer_text(rng: &mut Rng) -> String {
+    (0..1 + rng.below(3))
+        .map(|_| *rng.pick(&["p", "q", " ", "\n", "ü"]))
+        .collect()
 }
 
 fn comment(mock: &MockOverleaf, commenter: &mut MockPeer, id: &str, rng: &mut Rng, count: usize) {
@@ -191,6 +245,16 @@ struct Converged {
     reconnects: usize,
     tracked_deletes: usize,
     comments: usize,
+    review: Option<ReviewRun>,
+}
+
+struct ReviewRun {
+    rest: MockPeer,
+    refreshes: usize,
+    anchors: usize,
+    rejects: usize,
+    accepts: usize,
+    tracked_inserts: usize,
 }
 
 impl Converged {
@@ -218,7 +282,10 @@ impl Converged {
             },
             id: id.clone(),
             rejoins: 0,
+            repaired: 0,
             mock: mock.clone(),
+            check_ranges: false,
+            refresh: false,
         };
         Converged {
             seed: seed(),
@@ -232,10 +299,18 @@ impl Converged {
             reconnects: 0,
             tracked_deletes: 0,
             comments: 0,
+            review: None,
         }
     }
 
     fn round(&mut self, rng: &mut Rng, round: usize, now: Instant) {
+        if self.review.is_some() && rng.chance(12) {
+            self.review_unit(rng);
+            return;
+        }
+        if rng.chance(5) {
+            self.refresh_ranges(round);
+        }
         match rng.below(100) {
             0..=17 => self.peer_edits(rng),
             18..=21 => self.toggle_hold(rng),
@@ -261,6 +336,95 @@ impl Converged {
         self.oleafly.pull();
         if self.oleafly.inbox.len() > 30 {
             self.oleafly.process(usize::MAX, round);
+        }
+    }
+
+    fn refresh_ranges(&mut self, round: usize) {
+        if self.review.is_none() || !self.oleafly.refresh {
+            return;
+        }
+        self.oleafly.process(usize::MAX, round);
+        if self.oleafly.doc.in_flight() {
+            return;
+        }
+        let version = self.oleafly.doc.version();
+        let Ok(joined) = self.oleafly.wire.join(&self.id, Some(version)) else {
+            return;
+        };
+        if self
+            .oleafly
+            .doc
+            .adopt_ranges(joined.version, &joined.format)
+        {
+            self.oleafly.refresh = false;
+            if let Some(review) = self.review.as_mut() {
+                review.refreshes += 1;
+            }
+        }
+    }
+
+    fn review_unit(&mut self, rng: &mut Rng) {
+        let Some(review) = self.review.as_mut() else {
+            return;
+        };
+        let doc = &mut self.oleafly.doc;
+        match rng.below(4) {
+            0 => {
+                let index = rng.below(PEERS.len());
+                let peer = &mut self.peers[index];
+                let length = utf16_len(&peer.text(&self.id));
+                peer.track_insert(&self.id, rng.below(length + 1), &peer_text(rng));
+                review.tracked_inserts += 1;
+            }
+            1 => {
+                let text = doc.text().to_string();
+                let length = utf16_len(&text);
+                if length < 2 {
+                    return;
+                }
+                let from = rng.below(length - 1);
+                let to = (from + 1 + rng.below(6)).min(length);
+                let units: Vec<u16> = text.encode_utf16().collect();
+                let quoted = String::from_utf16(&units[from..to]);
+                if quoted.is_err() {
+                    return;
+                }
+                review.anchors += 1;
+                doc.queue_review(ReviewOp::Anchor {
+                    thread: format!("{:024x}", 0x5eed_0000 + review.anchors),
+                    ranges: vec![(from, to)],
+                    ride: false,
+                });
+            }
+            _ => {
+                let changes = doc.review().changes;
+                if changes.is_empty() {
+                    return;
+                }
+                let change = &changes[rng.below(changes.len())];
+                let accept = rng.chance(50);
+                if accept && !self.history_ot && rng.chance(50) {
+                    if let Some(id) = doc.server_change_id(&change.id) {
+                        let reply = review.rest.accept(&self.id, std::slice::from_ref(&id));
+                        assert_eq!(reply.status, 204, "{reply:?}");
+                        doc.accept_locally(&[id]);
+                        review.accepts += 1;
+                        self.oleafly.refresh = true;
+                    }
+                    return;
+                }
+                let decision = if accept {
+                    review.accepts += 1;
+                    Decision::Accept
+                } else {
+                    review.rejects += 1;
+                    Decision::Reject
+                };
+                doc.queue_review(ReviewOp::Decide {
+                    changes: vec![Target::of(change)],
+                    decision,
+                });
+            }
         }
     }
 
@@ -315,13 +479,19 @@ impl Converged {
         }
         for pass in 0..200 {
             clock += Duration::from_secs(6);
+            self.refresh_ranges(ROUNDS + pass);
             let oleafly = &mut self.oleafly;
             oleafly.editor.drain(&mut oleafly.doc);
             oleafly.send(&SendMode::Edit, start + clock, ROUNDS + pass);
             oleafly.process(usize::MAX, ROUNDS + pass);
             self.peers.iter_mut().for_each(MockPeer::sync);
             oleafly.pull();
-            if oleafly.doc.is_settled() && !oleafly.editor.has_work() && oleafly.inbox.is_empty() {
+            let refreshed = self.review.is_none() || !oleafly.refresh;
+            if refreshed
+                && oleafly.doc.is_settled()
+                && !oleafly.editor.has_work()
+                && oleafly.inbox.is_empty()
+            {
                 return;
             }
         }
@@ -329,11 +499,15 @@ impl Converged {
 }
 
 async fn converge(format: MockFormat) -> Converged {
-    let mut run = Converged::start(format).await;
+    let run = Converged::start(format).await;
+    drive(run, ROUNDS).await
+}
+
+async fn drive(mut run: Converged, rounds: usize) -> Converged {
     let mut rng = Rng::new(run.seed);
     let start = Instant::now();
     let mut clock = Duration::ZERO;
-    for round in 0..ROUNDS {
+    for round in 0..rounds {
         clock += Duration::from_millis(rng.below(1_200) as u64);
         run.round(&mut rng, round, start + clock);
     }
@@ -391,6 +565,243 @@ fn assert_converged(run: &mut Converged) -> String {
         mock.doc_version(id)
     );
     server
+}
+
+const REVIEW_ROUNDS: usize = 3_000;
+const REVIEW_SEEDS: u64 = 3;
+
+type ShareJsShape = (
+    Vec<(String, u64, String, String)>,
+    Vec<(String, u64, String)>,
+);
+
+fn shape_difference(ours: &ShareJsShape, theirs: &ShareJsShape) -> String {
+    let only = |a: &ShareJsShape, b: &ShareJsShape| {
+        let changes: Vec<_> = a.0.iter().filter(|item| !b.0.contains(item)).collect();
+        let comments: Vec<_> = a.1.iter().filter(|item| !b.1.contains(item)).collect();
+        format!("{changes:?} {comments:?}")
+    };
+    format!(
+        "only ours {}, only theirs {}",
+        only(ours, theirs),
+        only(theirs, ours)
+    )
+}
+
+fn sharejs_ranges(ranges: &Value) -> ShareJsShape {
+    let list = |name: &str| ranges[name].as_array().cloned().unwrap_or_default();
+    let mut changes: Vec<(String, u64, String, String)> = list("changes")
+        .iter()
+        .map(|change| {
+            let (kind, text) = match change["op"]["i"].as_str() {
+                Some(text) => ("i", text),
+                None => ("d", change["op"]["d"].as_str().unwrap_or_default()),
+            };
+            (
+                kind.to_string(),
+                change["op"]["p"].as_u64().unwrap(),
+                text.to_string(),
+                change["metadata"]["user_id"].to_string(),
+            )
+        })
+        .collect();
+    let mut comments: Vec<(String, u64, String)> = list("comments")
+        .iter()
+        .map(|comment| {
+            (
+                comment["op"]["t"].as_str().unwrap_or_default().to_string(),
+                comment["op"]["p"].as_u64().unwrap(),
+                comment["op"]["c"].as_str().unwrap_or_default().to_string(),
+            )
+        })
+        .collect();
+    changes.sort();
+    comments.sort();
+    (changes, comments)
+}
+
+type RawShape = (
+    String,
+    Vec<(u64, u64, Value, Value)>,
+    Vec<(String, Value, bool)>,
+);
+
+fn history_ot_ranges(raw: &Value) -> RawShape {
+    let tracked = raw["trackedChanges"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|change| {
+            (
+                change["range"]["pos"].as_u64().unwrap(),
+                change["range"]["length"].as_u64().unwrap(),
+                change["tracking"]["type"].clone(),
+                change["tracking"]["userId"].clone(),
+            )
+        })
+        .collect();
+    let mut comments: Vec<(String, Value, bool)> = raw["comments"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|comment| {
+            (
+                comment["id"].as_str().unwrap_or_default().to_string(),
+                comment["ranges"].clone(),
+                comment["resolved"].as_bool().unwrap_or(false),
+            )
+        })
+        .collect();
+    comments.sort_by(|a, b| a.0.cmp(&b.0));
+    (
+        raw["content"].as_str().unwrap_or_default().to_string(),
+        tracked,
+        comments,
+    )
+}
+
+fn assert_review_converged(run: &mut Converged) {
+    let Converged {
+        seed,
+        mock,
+        id,
+        oleafly,
+        peers,
+        review,
+        ..
+    } = run;
+    let review = review.as_ref().unwrap();
+    let server = mock.doc_text(id);
+    assert!(oleafly.doc.is_settled(), "seed {seed}: unsent work");
+    assert_eq!(oleafly.doc.text(), server, "seed {seed}: OverleafDoc");
+    assert_eq!(
+        oleafly.editor.channel.text(),
+        server,
+        "seed {seed}: channel"
+    );
+    assert_eq!(oleafly.editor.doc.content, server, "seed {seed}: editor");
+    assert_eq!(oleafly.doc.version(), mock.doc_version(id), "seed {seed}");
+    for (name, peer) in PEERS.iter().zip(peers.iter_mut()) {
+        assert!(peer.is_connected(), "seed {seed}: {name} was dropped");
+        assert_eq!(peer.text(id), server, "seed {seed}: {name}");
+    }
+    oleafly.wire.assert_healthy();
+    match oleafly.doc.format() {
+        FormatState::ShareJs(ranges) => {
+            let (ours, theirs) = (ranges.to_json(false), mock.ranges(id));
+            let (our_changes, our_comments) = sharejs_ranges(&ours);
+            let (their_changes, their_comments) = sharejs_ranges(&theirs);
+            assert_eq!(our_changes, their_changes, "seed {seed}: tracked changes");
+            assert_eq!(our_comments, their_comments, "seed {seed}: comments");
+            for change in ranges.changes() {
+                let Some(known) = change.id() else {
+                    continue;
+                };
+                let matching = theirs["changes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|entry| entry["id"] == known);
+                assert!(
+                    matching,
+                    "seed {seed}: change id {known} is not on the server"
+                );
+            }
+        }
+        FormatState::HistoryOt(raw) => {
+            let ours = history_ot_ranges(&raw.to_json().unwrap());
+            let theirs = history_ot_ranges(&mock.raw_doc(id));
+            assert_eq!(ours, theirs, "seed {seed}: raw doc");
+        }
+    }
+    assert!(
+        review.anchors > 20,
+        "seed {seed}: {} anchors",
+        review.anchors
+    );
+    assert!(
+        review.rejects > 10,
+        "seed {seed}: {} rejects",
+        review.rejects
+    );
+    assert!(
+        review.accepts > 5,
+        "seed {seed}: {} accepts",
+        review.accepts
+    );
+    assert!(
+        review.tracked_inserts > 20,
+        "seed {seed}: {} tracked inserts",
+        review.tracked_inserts
+    );
+}
+
+async fn review_converges(format: MockFormat) {
+    for offset in 0..REVIEW_SEEDS {
+        let mut run = Converged::start(format).await;
+        run.mock.configure(|config| config.review = true);
+        run.seed = seed().wrapping_add(offset);
+        run.oleafly.check_ranges = true;
+        run.review = Some(ReviewRun {
+            rest: run.mock.peer("alice"),
+            refreshes: 0,
+            anchors: 0,
+            rejects: 0,
+            accepts: 0,
+            tracked_inserts: 0,
+        });
+        let mut run = drive(run, REVIEW_ROUNDS).await;
+        assert_review_converged(&mut run);
+        if run.history_ot {
+            assert_eq!(run.oleafly.repaired, 0, "seed {}", run.seed);
+        }
+    }
+}
+
+#[tokio::test]
+async fn random_sharejs_review_units_converge_with_the_server() {
+    review_converges(MockFormat::ShareJs).await;
+}
+
+#[tokio::test]
+async fn random_history_ot_review_units_converge_with_the_server() {
+    review_converges(MockFormat::HistoryOt).await;
+}
+
+#[tokio::test]
+async fn a_reject_a_concurrent_edit_transformed_converges_with_the_text_once_and_no_marker() {
+    let mut run = Converged::start(MockFormat::ShareJs).await;
+    run.oleafly.check_ranges = true;
+    let id = run.id.clone();
+    run.peers[0].track_delete(&id, 1, 7);
+    run.peers[0].sync();
+    run.oleafly.process(usize::MAX, 0);
+    let changes = run.oleafly.doc.review().changes;
+    assert_eq!(changes.len(), 1, "{changes:?}");
+    assert_eq!(changes[0].text, "section");
+    run.oleafly.doc.queue_review(ReviewOp::Decide {
+        changes: vec![Target::of(&changes[0])],
+        decision: Decision::Reject,
+    });
+    run.peers[1].type_at(&id, 7, "x");
+    run.peers[1].sync();
+    let start = Instant::now();
+    run.oleafly.send(&SendMode::Edit, start, 1);
+    run.oleafly.process(usize::MAX, 2);
+    assert_eq!(run.oleafly.rejoins, 1);
+    assert_eq!(run.oleafly.repaired, 1);
+    run.settle(start, Duration::ZERO);
+    let server = run.mock.doc_text(&id);
+    assert_eq!(server, "\\section{Introx}\nShared text.\n");
+    assert_eq!(server.matches("section").count(), 1);
+    assert_eq!(run.mock.ranges(&id), json!({}));
+    assert!(run.oleafly.doc.review().changes.is_empty());
+    assert_eq!(run.oleafly.doc.text(), server);
+    assert_eq!(run.oleafly.editor.doc.content, server);
+    assert!(run.oleafly.doc.take_dropped().is_empty());
+    run.oleafly.wire.assert_healthy();
 }
 
 #[tokio::test]
@@ -1011,4 +1422,466 @@ fn recorded_history_ot_sessions_replay_through_overleaf_doc() {
         "only {} remote updates replayed",
         totals.remote
     );
+}
+
+const REVIEW_FIXTURES: [&str; 12] = [
+    "sharejs-tracked-change-ids",
+    "sharejs-comment-anchors",
+    "sharejs-comment-mismatch",
+    "sharejs-reject",
+    "sharejs-withdraw-own",
+    "sharejs-cut-paste-comment",
+    "history-ot-comment-anchors",
+    "history-ot-comment-out-of-range",
+    "history-ot-accept",
+    "history-ot-reject",
+    "history-ot-withdraw-own",
+    "history-ot-cut-paste-comment",
+];
+
+fn fixture(name: &str, file: &str) -> Value {
+    let path = std::path::Path::new(crate::test_support::overleaf_rt::FIXTURES)
+        .join(name)
+        .join(file);
+    serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap()
+}
+
+fn packed_ranges(ranges: &Value) -> Value {
+    let mut packed = ranges.clone();
+    for (list, fields) in [
+        ("changes", ["i", "d"].as_slice()),
+        ("comments", ["c"].as_slice()),
+    ] {
+        for entry in packed[list].as_array_mut().into_iter().flatten() {
+            for field in fields {
+                if let Some(text) = entry["op"][field].as_str() {
+                    entry["op"][field] = json!(super::format::pack(text));
+                }
+            }
+        }
+    }
+    packed
+}
+
+fn server_state(format: DocFormat, server: &Value) -> FormatState {
+    match format {
+        DocFormat::ShareJs => {
+            FormatState::from_join(
+                format,
+                &json!(server["text"]
+                    .as_str()
+                    .unwrap()
+                    .split('\n')
+                    .map(super::format::pack)
+                    .collect::<Vec<_>>()),
+                &packed_ranges(&server["ranges"]),
+            )
+            .unwrap()
+            .1
+        }
+        DocFormat::HistoryOt => {
+            FormatState::from_join(format, &server["raw"], &Value::Null)
+                .unwrap()
+                .1
+        }
+    }
+}
+
+fn sent_updates(step: &Value) -> Vec<Value> {
+    let mut updates = Vec::new();
+    if step["result"]["outcome"] == "applied" {
+        updates.push(step["sent"].clone());
+    }
+    for (_, web) in step["web"].as_object().into_iter().flatten() {
+        updates.extend(web["sent"].as_array().cloned().unwrap_or_default());
+    }
+    updates
+}
+
+fn assert_like_server(name: &str, step: u64, state: &FormatState, text: &str, server: &Value) {
+    assert_eq!(text, server["text"].as_str().unwrap(), "{name} step {step}");
+    match state {
+        FormatState::ShareJs(ranges) => {
+            let ours = sharejs_ranges(&ranges.to_json(false));
+            let theirs = sharejs_ranges(&server["ranges"]);
+            assert!(
+                ours == theirs,
+                "{name} step {step}: {}",
+                shape_difference(&ours, &theirs)
+            );
+            for change in ranges.changes() {
+                let Some(id) = change.id() else {
+                    continue;
+                };
+                let listed = server["ranges"]["changes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|entry| entry["id"] == id);
+                assert!(listed, "{name} step {step}: {id} was never given out");
+            }
+        }
+        FormatState::HistoryOt(raw) => {
+            let ours = history_ot_ranges(&raw.to_json().unwrap());
+            let mut theirs = server["raw"].clone();
+            for comment in theirs["comments"].as_array_mut().into_iter().flatten() {
+                if comment.get("ranges").is_none() {
+                    comment["ranges"] = json!([]);
+                }
+            }
+            assert_eq!(ours, history_ot_ranges(&theirs), "{name} step {step}");
+        }
+    }
+}
+
+fn recorded_decision(label: &str) -> Option<Decision> {
+    let label = label.to_lowercase();
+    if label.contains("bob accepts") {
+        Some(Decision::Accept)
+    } else if label.contains("bob rejects") {
+        Some(Decision::Reject)
+    } else {
+        None
+    }
+}
+
+fn check_decision_encoding(
+    name: &str,
+    step: &Value,
+    state: &FormatState,
+    text: &str,
+    sent: &Value,
+) -> bool {
+    let Some(decision) = recorded_decision(step["label"].as_str().unwrap_or_default()) else {
+        return false;
+    };
+    let number = step["step"].as_u64().unwrap();
+    match state {
+        FormatState::HistoryOt(raw) => {
+            let op = RawOpOf::from_json(&sent["op"][0]["textOperation"]).unwrap();
+            let touched: Vec<String> = raw
+                .review()
+                .changes
+                .into_iter()
+                .filter(|change| {
+                    raw.decision_op(std::slice::from_ref(&change.id), decision)
+                        .is_some_and(|single| touches(&single, &op))
+                })
+                .map(|change| change.id)
+                .collect();
+            let ours = raw.decision_op(&touched, decision).unwrap();
+            let wire = ours.to_json().unwrap();
+            if decision == Decision::Reject {
+                assert!(!unhides(&wire), "{name} step {number}: {wire}");
+            }
+            if decision == Decision::Reject && unhides(&sent["op"][0]["textOperation"]) {
+                let (mut mine, mut theirs) = (raw.clone(), raw.clone());
+                mine.apply(&ours).unwrap();
+                theirs.apply(&op).unwrap();
+                assert_eq!(
+                    mine.to_json().unwrap(),
+                    theirs.to_json().unwrap(),
+                    "{name} step {number}"
+                );
+            } else {
+                assert_eq!(wire, sent["op"][0]["textOperation"], "{name} step {number}");
+            }
+            true
+        }
+        FormatState::ShareJs(ranges) if decision == Decision::Reject => {
+            let pieces = pieces_from_json(&sent["op"]).unwrap();
+            if !pieces.iter().all(|piece| match piece {
+                Piece::Insert { undo, .. } | Piece::Delete { undo, .. } => *undo,
+                Piece::Comment { .. } => false,
+            }) {
+                return false;
+            }
+            let theirs = operation_of(text, &pieces).unwrap();
+            let keys: Vec<u64> = ranges
+                .changes()
+                .iter()
+                .filter(|change| {
+                    ranges
+                        .reject_op(&[change.key()], utf16_len(text))
+                        .is_some_and(|single| touches_text(&single, &theirs))
+                })
+                .map(super::format::TrackedChange::key)
+                .collect();
+            let ours = ranges.reject_op(&keys, utf16_len(text)).unwrap();
+            assert_eq!(ours, theirs, "{name} step {number}");
+            true
+        }
+        FormatState::ShareJs(ranges) => {
+            let pieces = pieces_from_json(&sent["op"]).unwrap();
+            let accepts = recorded_accepts(&pieces);
+            if accepts.is_empty() {
+                return false;
+            }
+            let ours = accepted_pieces(&accepts);
+            let after = |pieces: &[Piece]| operation_of(text, pieces).unwrap().apply(text).unwrap();
+            assert_eq!(after(&ours), after(&pieces), "{name} step {number}");
+            assert_eq!(after(&ours), text, "{name} step {number}");
+            let (mut mine, mut theirs) = (ranges.clone(), ranges.clone());
+            mine.apply_update(&ours, &Author::default()).unwrap();
+            theirs.apply_update(&pieces, &Author::default()).unwrap();
+            let shape = |ranges: &ShareJsRanges| -> Vec<(ChangeKind, Vec<u16>)> {
+                let mut shape: Vec<_> = ranges
+                    .changes()
+                    .iter()
+                    .map(|change| (change.kind, change.text.clone()))
+                    .collect();
+                shape.sort_by(|a, b| a.1.cmp(&b.1));
+                shape
+            };
+            assert_eq!(shape(&mine), shape(&theirs), "{name} step {number}");
+            for change in mine.changes() {
+                assert!(
+                    ranges
+                        .changes()
+                        .iter()
+                        .any(|before| before.kind == change.kind
+                            && before.at == change.at
+                            && before.text == change.text),
+                    "{name} step {number}: accepting moved {change:?}"
+                );
+            }
+            true
+        }
+    }
+}
+
+fn recorded_accepts(pieces: &[Piece]) -> Vec<Accepted> {
+    pieces
+        .chunks(2)
+        .filter_map(|pair| match pair {
+            [Piece::Delete {
+                p,
+                text,
+                undo: false,
+            }, Piece::Insert {
+                p: again,
+                text: back,
+                undo: false,
+            }] if p == again && text == back => Some(Accepted {
+                kind: ChangeKind::Insert,
+                at: *p,
+                text: text.clone(),
+            }),
+            [Piece::Insert {
+                p,
+                text,
+                undo: true,
+            }, Piece::Delete {
+                p: again,
+                text: gone,
+                undo: false,
+            }] if p == again && text == gone => Some(Accepted {
+                kind: ChangeKind::Delete,
+                at: *p,
+                text: text.clone(),
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+use super::history_ot::RawOp as RawOpOf;
+
+fn unhides(op: &Value) -> bool {
+    op.as_array()
+        .into_iter()
+        .flatten()
+        .any(|part| part.get("r").is_some() && part["tracking"]["type"].as_str() == Some("none"))
+}
+
+fn check_comment_encoding(state: &FormatState, text: &str, sent: &Value) -> bool {
+    let edits = sent["op"].as_array().unwrap();
+    match state {
+        FormatState::ShareJs(_) => {
+            let Ok(pieces) = pieces_from_json(&sent["op"]) else {
+                return false;
+            };
+            let all_comments = pieces
+                .iter()
+                .all(|piece| matches!(piece, Piece::Comment { text, .. } if !text.is_empty()));
+            if !all_comments {
+                return false;
+            }
+            for (piece, wire) in pieces.iter().zip(edits) {
+                let Piece::Comment {
+                    p,
+                    text: quoted,
+                    thread,
+                } = piece
+                else {
+                    return false;
+                };
+                let ours =
+                    super::format::comment_piece(text, *p, p + utf16_len(quoted), thread).unwrap();
+                assert_eq!(super::format::piece_to_json(&ours), *wire);
+            }
+            true
+        }
+        FormatState::HistoryOt(raw) => {
+            let inside = |edit: &Value| {
+                edit["ranges"].as_array().is_some_and(|ranges| {
+                    ranges.iter().all(|range| {
+                        range["pos"].as_u64().unwrap_or(u64::MAX)
+                            + range["length"].as_u64().unwrap_or(u64::MAX)
+                            <= raw.length() as u64
+                    })
+                })
+            };
+            let adds = edits
+                .iter()
+                .all(|edit| inside(edit) && edit.get("resolved").is_none());
+            if !adds {
+                return false;
+            }
+            for wire in edits {
+                let ranges: Vec<(usize, usize)> = wire["ranges"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|range| {
+                        let pos = range["pos"].as_u64().unwrap() as usize;
+                        let end = pos + range["length"].as_u64().unwrap() as usize;
+                        (raw.to_visible(pos), raw.to_visible(end))
+                    })
+                    .collect();
+                if ranges.iter().any(|(from, to)| from >= to) || raw.visible_len() < 1 {
+                    return false;
+                }
+                let ours = raw
+                    .comment_edit(wire["commentId"].as_str().unwrap(), &ranges, false)
+                    .unwrap();
+                assert_eq!(ours.to_json().unwrap(), *wire);
+            }
+            true
+        }
+    }
+}
+
+fn touches(single: &RawOpOf, recorded: &RawOpOf) -> bool {
+    let changed = |op: &RawOpOf| -> Vec<(usize, usize)> {
+        let mut spans = Vec::new();
+        let mut at = 0;
+        for part in op.to_json().unwrap().as_array().unwrap() {
+            match part.as_i64() {
+                Some(count) if count >= 0 => at += count as usize,
+                Some(count) => {
+                    let count = count.unsigned_abs() as usize;
+                    spans.push((at, at + count));
+                    at += count;
+                }
+                None if part.get("r").is_some() => {
+                    let count = part["r"].as_u64().unwrap() as usize;
+                    if part.get("tracking").is_some() {
+                        spans.push((at, at + count));
+                    }
+                    at += count;
+                }
+                None => {}
+            }
+        }
+        spans
+    };
+    let recorded = changed(recorded);
+    changed(single).iter().all(|span| {
+        recorded
+            .iter()
+            .any(|other| other.0 <= span.0 && span.1 <= other.1)
+    })
+}
+
+fn touches_text(single: &TextOperation, recorded: &TextOperation) -> bool {
+    let composed = |op: &TextOperation| -> Vec<(usize, bool)> {
+        let mut at = 0;
+        let mut points = Vec::new();
+        for component in op.components() {
+            match component {
+                oleafly_ot::Component::Retain(count) => at += count,
+                oleafly_ot::Component::Insert(text) => points.push((at, !text.is_empty())),
+                oleafly_ot::Component::Delete(count) => {
+                    points.push((at, false));
+                    at += count;
+                }
+            }
+        }
+        points
+    };
+    let recorded = composed(recorded);
+    composed(single)
+        .iter()
+        .all(|point| recorded.iter().any(|other| other.0 == point.0))
+}
+
+#[test]
+fn recorded_review_sessions_replay_ranges_ids_and_encodings_like_ce() {
+    let (mut replayed, mut encoded, mut anchored) = (0, 0, 0);
+    for name in REVIEW_FIXTURES {
+        let steps = fixture(name, "steps.json");
+        let scenario = fixture(name, "scenario.json");
+        let users: std::collections::BTreeMap<String, String> = scenario["participants"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|user| {
+                (
+                    user["name"].as_str().unwrap().to_string(),
+                    user["userId"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect();
+        let format = DocFormat::from_join_type(steps["format"].as_str().unwrap()).unwrap();
+        let doc = DocId(steps["doc"].as_str().unwrap().to_string());
+        let list = steps["steps"].as_array().unwrap();
+        let mut state = server_state(format, &list[0]["server"]);
+        let mut text = list[0]["server"]["text"].as_str().unwrap().to_string();
+        let mut version = list[0]["server"]["version"].as_u64().unwrap();
+        let mut checked = 0;
+        for step in &list[1..] {
+            let number = step["step"].as_u64().unwrap();
+            let server = &step["server"];
+            let target = server["version"].as_u64().unwrap();
+            let updates = sent_updates(step);
+            if target == version {
+                assert_like_server(name, number, &state, &text, server);
+                continue;
+            }
+            if updates.len() as u64 != target - version {
+                state = server_state(format, server);
+                text = server["text"].as_str().unwrap().to_string();
+                version = target;
+                continue;
+            }
+            let who = users[step["who"].as_str().unwrap()].clone();
+            for sent in updates {
+                encoded += usize::from(check_decision_encoding(name, step, &state, &text, &sent));
+                anchored += usize::from(check_comment_encoding(&state, &text, &sent));
+                let update = AppliedUpdate {
+                    doc: doc.clone(),
+                    v: version,
+                    op: Some(sent["op"].clone()),
+                    source: None,
+                    user_id: Some(who.clone()),
+                    tc: sent["meta"]["tc"].as_str().map(str::to_string),
+                    ts: None,
+                    dup: false,
+                    external: false,
+                };
+                let (steps, _) = state.decode_ranges(&text, &update, None).unwrap();
+                for step in steps {
+                    text = step.confirmed.apply(&text).unwrap();
+                }
+                version += 1;
+            }
+            assert_like_server(name, number, &state, &text, server);
+            checked += 1;
+        }
+        replayed += checked;
+    }
+    assert!(replayed > 80, "only {replayed} steps replayed");
+    assert!(encoded >= 11, "only {encoded} decisions checked");
+    assert!(anchored >= 10, "only {anchored} comment anchors checked");
 }

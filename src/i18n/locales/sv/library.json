@@ -341,6 +341,7 @@
       "saveServer": "Använd den här servern",
       "signedInAs": "Inloggad som {{email}}",
       "signedIn": "Inloggad på Overleaf",
+      "accountPick": "Overleaf-konto",
       "signOut": "Logga ut",
       "searchLabel": "Sök bland Overleaf-projekt",
       "searchPlaceholder_one": "Sök bland {{count}} projekt",
@@ -362,6 +363,8 @@
       "import_other": "Importera {{count}} projekt",
       "imported": "Importerat",
       "open": "Öppna",
+      "openLive": "Öppna live",
+      "opening": "Öppnar",
       "ownedByYou": "Ditt",
       "owner": "Ägs av {{name}}",
       "archived": "Arkiverat",
@@ -377,6 +380,36 @@
         "downloading": "Laddar ner {{percent}} %",
         "downloadingUnknown": "Laddar ner",
         "importing": "Förbereder"
+      },
+      "invitations": {
+        "title": "Inbjudningar",
+        "from": "Från {{name}}",
+        "join": "Gå med",
+        "joined": "Du har gått med i det här projektet"
+      },
+      "link": {
+        "checking": "Kontrollerar länken",
+        "unnamed": "Ett projekt på Overleaf",
+        "join": "Gå med",
+        "importInstead": "Importera",
+        "grants": {
+          "edit": "När du går med kan du redigera det som medarbetare.",
+          "view": "När du går med kan du bara visa det. Läsare via länk får inga kommentarer eller chatt.",
+          "already": "Du har redan det här projektet.",
+          "invite": "När du går med accepterar du inbjudan."
+        }
+      },
+      "put": {
+        "menu": "Lägg på Overleaf",
+        "title": "Lägg på Overleaf",
+        "description": "Oleafly laddar upp det här projektet som ett nytt Overleaf-projekt och håller sedan båda synkade medan du redigerar live.",
+        "name": "Namn på Overleaf",
+        "account": "Overleaf-konto",
+        "submit": "Lägg på Overleaf",
+        "working": "Laddar upp",
+        "signedOut": "Logga in på Overleaf i Inställningar först.",
+        "openSettings": "Öppna Inställningar",
+        "cancel": "Avbryt"
       }
     }
   },

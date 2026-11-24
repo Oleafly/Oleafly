@@ -13,8 +13,11 @@ use super::{
     Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
     Resolution, Seed, SignedIn, UnsentDoc,
 };
-use crate::live::doc::{Applied, DocError, DocFault, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
-use crate::live::format::{CodecError, DocFormat, FormatState};
+use crate::live::doc::{
+    Applied, DocError, DocFault, Limit, Origin, OutgoingUpdate, OverleafDoc, Rejoin,
+};
+use crate::live::format::{pieces_from_json, CodecError, DocFormat, FormatState, Piece};
+use crate::live::history_ot::{edits_from_json, Edit};
 use crate::live::join::{JoinFailure, JoinedDoc};
 use crate::live::journal::{plain_doc_id, DocRecord, Journal, ProjectManifest, WRITE_EVERY};
 use crate::live::tree_queue::Queued;
@@ -23,9 +26,15 @@ use crate::realtime::events::{AccessEvent, EntityId, ProjectEvent};
 use crate::realtime::project::{Members, ProjectState, Rejoined, Role};
 use crate::realtime::tree::{NodeKind, PathChange};
 
+mod chat;
+mod fill;
 mod peers;
+mod people;
+mod review;
 mod tree;
 
+pub(super) use chat::{ChatTicket, Paged};
+pub(super) use review::IdsReady;
 pub(super) use tree::{name_of, parent_of, Finished, Job};
 
 const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
@@ -39,6 +48,7 @@ pub(super) enum Notice {
     Flags(bool, bool),
     MembersChanged,
     Texts(Vec<DocId>),
+    RemoteEdit(DocId, Option<String>),
     Tree(Vec<PathChange>),
     Peer(LivePeer),
     PeerLeft(PublicId),
@@ -60,6 +70,9 @@ pub(super) enum Notice {
     },
     External(DocId),
     Replaced(DocId),
+    Review(super::ReviewChange),
+    Chat(super::ChatChange),
+    Filling(usize, usize),
 }
 
 pub(super) fn deliver_to_editors(notices: Vec<Notice>) -> Vec<Notice> {
@@ -74,6 +87,7 @@ pub(super) fn deliver_to_editors(notices: Vec<Notice>) -> Vec<Notice> {
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
+    let mut edited = BTreeSet::new();
     for notice in notices {
         match notice {
             Notice::State(state) => port.state(state),
@@ -81,6 +95,11 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Flags(restricted, deleted) => port.project_flags(restricted, deleted),
             Notice::MembersChanged => port.members_changed(),
             Notice::Texts(docs) => port.texts_changed(docs),
+            Notice::RemoteEdit(doc, user_id) => {
+                if edited.insert((doc.clone(), user_id.clone())) {
+                    port.remote_edit(&doc, user_id.as_deref());
+                }
+            }
             Notice::Tree(changes) => port.tree_changed(changes),
             Notice::Peer(peer) => port.peer(peer),
             Notice::PeerLeft(id) => port.peer_left(&id),
@@ -98,46 +117,22 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Unsteady(doc) => port.doc_unsteady(&doc),
             Notice::Queue(changes) => port.tree_queue(changes),
             Notice::Uploaded { path, tag, hash } => port.uploaded(&path, &tag, hash.as_deref()),
+            Notice::Review(change) => port.review_changed(change),
+            Notice::Chat(change) => port.chat_changed(change),
+            Notice::Filling(done, total) => port.filling(done, total),
         }
     }
 }
 
-pub(super) fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as u64)
         .unwrap_or_default()
 }
 
-fn civil(days: u64) -> (u64, u64, u64) {
-    let shifted = days + 719_468;
-    let era = shifted / 146_097;
-    let day_of_era = shifted % 146_097;
-    let year_of_era =
-        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let shifted_month = (5 * day_of_year + 2) / 153;
-    let day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
-    let month = if shifted_month < 10 {
-        shifted_month + 3
-    } else {
-        shifted_month - 9
-    };
-    let year = year_of_era + era * 400 + u64::from(month <= 2);
-    (year, month, day)
-}
-
 pub(super) fn iso_time(ms: u64) -> String {
-    let seconds = ms / 1_000;
-    let (year, month, day) = civil(seconds / 86_400);
-    let in_day = seconds % 86_400;
-    format!(
-        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
-        in_day / 3_600,
-        in_day / 60 % 60,
-        in_day % 60,
-        ms % 1_000
-    )
+    crate::realtime::events::iso_time(i64::try_from(ms).unwrap_or(i64::MAX))
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -170,6 +165,7 @@ struct Slot {
     shown_pending: bool,
     dirty: bool,
     missed_fresh: bool,
+    reloading: Option<String>,
 }
 
 impl Slot {
@@ -192,6 +188,12 @@ impl Slot {
         }
         let known = self.doc.as_ref().filter(|known| !known.is_settled())?;
         known.record().ok()
+    }
+
+    fn unsent_edits(&self) -> bool {
+        self.resume.is_some()
+            || (self.phase == Phase::Held && self.held.is_some())
+            || self.doc.as_ref().is_some_and(OverleafDoc::has_unsent_text)
     }
 
     fn unsent_text(&mut self) -> Option<String> {
@@ -255,6 +257,10 @@ pub(super) struct State {
     unreadable: u8,
     after_change: Option<BTreeSet<DocId>>,
     peers: peers::Peers,
+    review: review::ReviewBook,
+    chat: chat::ChatBook,
+    people: people::PeopleBook,
+    filling: Option<fill::Filling>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -311,6 +317,10 @@ impl State {
             unreadable: 0,
             after_change: None,
             peers: peers::Peers::default(),
+            review: review::ReviewBook::default(),
+            chat: chat::ChatBook::default(),
+            people: people::PeopleBook::default(),
+            filling: None,
         };
         state.take_journal(journal.docs());
         state.take_tree_queue(journal.tree_queue());
@@ -364,6 +374,13 @@ impl State {
         self.signed_out
     }
 
+    pub(super) fn account(&self) -> Account {
+        Account {
+            user_id: self.me.clone(),
+            email: self.email.clone(),
+        }
+    }
+
     pub(super) fn signed_in(&mut self, account: Account) -> SignedIn {
         self.signed_out = false;
         if account.user_id == self.me {
@@ -387,7 +404,7 @@ impl State {
 
     fn hand_back_unsendable(&mut self) {
         if !self.project.role.can_review() {
-            self.hand_back(Slot::unconfirmed);
+            self.hand_back(Slot::unsent_edits);
         }
     }
 
@@ -489,10 +506,15 @@ impl State {
         if !self.tracking() {
             return SendMode::Edit;
         }
-        SendMode::Suggest(Tracking {
+        let tracking = Tracking {
             user_id: self.me.clone(),
             ts: iso_time(now_ms()),
-        })
+        };
+        if self.project.role == Role::Reviewer {
+            SendMode::Review(tracking)
+        } else {
+            SendMode::Suggest(tracking)
+        }
     }
 
     fn pending(&self) -> u64 {
@@ -579,6 +601,8 @@ impl State {
                 self.keep_unsent();
             }
             self.forget_peers();
+            self.forget_chat();
+            self.forget_people();
             self.online = false;
             self.ended = Some(end.clone());
             self.notices.push(Notice::State(LiveState::Ended(end)));
@@ -908,6 +932,7 @@ impl State {
         doc: &DocId,
         rev: u64,
         op: TextOperation,
+        origin: Option<Origin>,
     ) -> Result<(), LiveError> {
         if self.ended.is_some() {
             return Err(LiveError::Ended);
@@ -946,7 +971,7 @@ impl State {
                 Ok(())
             }
             Phase::Stopped => Ok(()),
-            _ => self.take_local(doc, applied, before),
+            _ => self.take_local(doc, applied, before, origin),
         }
     }
 
@@ -955,6 +980,7 @@ impl State {
         doc: &DocId,
         op: TextOperation,
         before: Option<String>,
+        origin: Option<Origin>,
     ) -> Result<(), LiveError> {
         if self
             .slots
@@ -968,7 +994,7 @@ impl State {
         let local = slot.doc.get_or_insert_with(|| {
             OverleafDoc::provisional(doc.clone(), before.unwrap_or_default())
         });
-        match local.local(op) {
+        match local.local_from(op, origin) {
             Ok(correction) => {
                 slot.dirty = true;
                 if let Some(correction) = correction {
@@ -1017,7 +1043,11 @@ impl State {
         if phase == Some(Phase::Held) || self.mode() == SendMode::Hold {
             return Err(LiveError::NotWritable);
         }
-        let before = self.text(doc).or(on_disk).unwrap_or_default();
+        let reloading = self.slots.get(doc).and_then(|slot| slot.reloading.clone());
+        let before = reloading
+            .or_else(|| self.text(doc))
+            .or(on_disk)
+            .unwrap_or_default();
         let Some(op) = edit(&before).filter(|op| !op.is_noop()) else {
             return Ok(false);
         };
@@ -1025,7 +1055,7 @@ impl State {
             return Err(LiveError::Invalid(OtError::LengthMismatch));
         }
         self.forward(doc, op.clone());
-        self.take_local(doc, op, Some(before)).map(|()| true)
+        self.take_local(doc, op, Some(before), None).map(|()| true)
     }
 
     pub(super) fn on_applied(&mut self, update: AppliedUpdate) {
@@ -1055,12 +1085,19 @@ impl State {
         let Some(known) = slot.doc.as_mut() else {
             return;
         };
-        match known.applied(update, &own) {
+        let applied = known.applied(update, &own);
+        self.note_review_doc(doc);
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        match applied {
             Ok(Applied::Remote(op)) => {
                 slot.dirty = true;
                 if !held {
                     self.forward(doc, op);
                     self.notices.push(Notice::Texts(vec![doc.clone()]));
+                    self.notices
+                        .push(Notice::RemoteEdit(doc.clone(), update.user_id.clone()));
                 }
                 if update.external {
                     self.notices.push(Notice::External(doc.clone()));
@@ -1128,6 +1165,7 @@ impl State {
     }
 
     fn stop_doc(&mut self, doc: &DocId, reason: DocStopReason) {
+        self.review_dirty(doc);
         let resumed = self.take_base(doc);
         if let Some(slot) = self.slots.get_mut(doc) {
             slot.doc = resumed;
@@ -1152,6 +1190,7 @@ impl State {
         slot.buffer.clear();
         slot.phase = Phase::Stopped;
         slot.dirty = true;
+        self.review.dirty_doc(doc);
         if let Some(text) = unsent {
             self.notices
                 .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
@@ -1315,6 +1354,7 @@ impl State {
     fn install(&mut self, doc: &DocId, known: OverleafDoc) {
         let slot = self.slots.entry(doc.clone()).or_default();
         slot.missed_fresh = false;
+        slot.reloading = None;
         if slot.phase != Phase::Held {
             slot.phase = Phase::Joined;
         }
@@ -1324,19 +1364,52 @@ impl State {
         slot.doc = Some(known);
         slot.dirty = true;
         self.notices.push(Notice::Texts(vec![doc.clone()]));
+        self.note_review_doc(doc);
+        self.review_dirty(doc);
     }
 
     fn apply_buffered(&mut self, doc: &DocId, format: DocFormat, version: u64) {
-        let buffered = self
-            .slots
-            .get_mut(doc)
-            .map(|slot| std::mem::take(&mut slot.buffer))
-            .unwrap_or_default();
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        let buffered = std::mem::take(&mut slot.buffer);
+        let mirrored = slot.phase != Phase::Held;
+        let folded_below = match format {
+            DocFormat::HistoryOt => version,
+            DocFormat::ShareJs => slot.doc.as_ref().map_or(version, OverleafDoc::version),
+        };
         for update in buffered {
-            if format == DocFormat::HistoryOt && update.v < version {
+            let folded = update.v < folded_below;
+            if folded && mirrored && self.foreign_edit(&update, format) {
+                self.notices
+                    .push(Notice::RemoteEdit(doc.clone(), update.user_id.clone()));
+            }
+            if folded && format == DocFormat::HistoryOt {
                 continue;
             }
             self.apply_remote(doc, &update);
+        }
+    }
+
+    fn foreign_edit(&self, update: &AppliedUpdate, format: DocFormat) -> bool {
+        let theirs = update
+            .source
+            .as_ref()
+            .is_none_or(|source| !self.own.contains(source));
+        let Some(op) = update.op.as_ref().filter(|_| theirs && !update.dup) else {
+            return false;
+        };
+        match format {
+            DocFormat::ShareJs => pieces_from_json(op).is_ok_and(|pieces| {
+                pieces
+                    .iter()
+                    .any(|piece| !matches!(piece, Piece::Comment { .. }))
+            }),
+            DocFormat::HistoryOt => edits_from_json(op).is_ok_and(|edits| {
+                edits
+                    .iter()
+                    .any(|edit| matches!(edit, Edit::Text(raw) if !raw.is_noop()))
+            }),
         }
     }
 
@@ -1356,6 +1429,10 @@ impl State {
         };
         for op in remote {
             self.forward(doc, op);
+        }
+        if known.needs_rejoin() {
+            self.keep_and_rejoin(doc, known);
+            return;
         }
         let kind = joined.format.format();
         let version = joined.version;
@@ -1398,7 +1475,20 @@ impl State {
             let Some(known) = slot.doc.as_mut() else {
                 continue;
             };
-            match known.next_update(&on, &mode, now) {
+            let next = known.next_update(&on, &mode, now);
+            let shown = known.take_shown();
+            if !shown.is_empty() {
+                slot.dirty = true;
+                for op in shown {
+                    self.forward(&doc, op);
+                }
+                self.notices.push(Notice::Texts(vec![doc.clone()]));
+            }
+            self.note_review_doc(&doc);
+            let Some(slot) = self.slots.get_mut(&doc) else {
+                continue;
+            };
+            match next {
                 Ok(Some(update)) => {
                     slot.dirty = true;
                     sends.push(update);
@@ -1498,6 +1588,7 @@ impl State {
             slot.doc = None;
             slot.resume = None;
             slot.held = None;
+            slot.reloading = Some(mine.clone());
         }
         self.notices.push(Notice::Merged(
             doc.clone(),
@@ -1565,6 +1656,8 @@ impl State {
             Err(unsupported) => return self.unreadable(&unsupported),
         }
         self.unreadable = 0;
+        self.review_rejoined();
+        self.chat_rejoined();
         self.connected(public_id, now_ms());
         self.seed(Vec::new());
         self.hand_back_unsendable();
@@ -1639,6 +1732,12 @@ impl State {
                 self.announce_role();
                 false
             }
+            AccessEvent::MembersChanged { invites, .. } => {
+                if *invites {
+                    self.want_invites();
+                }
+                self.project.apply_access(event)
+            }
             _ => self.project.apply_access(event),
         }
     }
@@ -1657,7 +1756,20 @@ impl State {
         }
     }
 
-    pub(super) fn start_history(&mut self, history: History, trickle: Duration) {
+    pub(super) fn report_tick(&mut self) {
+        self.report_review();
+        self.report_chat();
+        self.report_people();
+        self.report_fill();
+    }
+
+    pub(super) fn start_history(
+        &mut self,
+        history: History,
+        trickle: Duration,
+        fill: Option<(usize, Duration)>,
+    ) {
+        self.review_trickle(trickle);
         self.history_target = history.latest;
         match history.changed {
             Some(paths) => {
@@ -1668,9 +1780,15 @@ impl State {
                 {
                     self.want(&doc);
                 }
+                if fill.is_some() {
+                    self.close_fill();
+                }
             }
-            None if self.pace.is_none() => self.pace_all(1, trickle),
-            None => {}
+            None => match fill {
+                Some((batch, every)) => self.start_fill(batch, every),
+                None if self.pace.is_none() => self.pace_all(1, trickle),
+                None => {}
+            },
         }
         self.settle_history();
     }

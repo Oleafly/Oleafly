@@ -351,6 +351,7 @@
       "saveServer": "Użyj tego serwera",
       "signedInAs": "Zalogowano jako {{email}}",
       "signedIn": "Zalogowano do Overleaf",
+      "accountPick": "Konto Overleaf",
       "signOut": "Wyloguj się",
       "searchLabel": "Szukaj projektów Overleaf",
       "searchPlaceholder_one": "Przeszukaj {{count}} projekt",
@@ -378,6 +379,8 @@
       "import_other": "Importuj {{count}} projektu",
       "imported": "Zaimportowano",
       "open": "Otwórz",
+      "openLive": "Otwórz na żywo",
+      "opening": "Otwieranie",
       "ownedByYou": "Twój",
       "owner": "Właściciel: {{name}}",
       "archived": "Zarchiwizowany",
@@ -397,6 +400,36 @@
         "downloading": "Pobieranie {{percent}}%",
         "downloadingUnknown": "Pobieranie",
         "importing": "Przygotowywanie"
+      },
+      "invitations": {
+        "title": "Zaproszenia",
+        "from": "Od {{name}}",
+        "join": "Dołącz",
+        "joined": "Dołączono do tego projektu"
+      },
+      "link": {
+        "checking": "Sprawdzanie linku",
+        "unnamed": "Projekt w Overleaf",
+        "join": "Dołącz",
+        "importInstead": "Importuj",
+        "grants": {
+          "edit": "Po dołączeniu możesz go edytować jako współpracownik.",
+          "view": "Po dołączeniu możesz go tylko wyświetlać. Przy przeglądaniu przez link komentarze i czat są niedostępne.",
+          "already": "Masz już ten projekt.",
+          "invite": "Dołączenie oznacza przyjęcie zaproszenia."
+        }
+      },
+      "put": {
+        "menu": "Umieść w Overleaf",
+        "title": "Umieść w Overleaf",
+        "description": "Oleafly przesyła ten projekt do Overleaf jako nowy projekt, a potem synchronizuje oba projekty podczas edycji na żywo.",
+        "name": "Nazwa w Overleaf",
+        "account": "Konto Overleaf",
+        "submit": "Umieść w Overleaf",
+        "working": "Przesyłanie",
+        "signedOut": "Najpierw zaloguj się do Overleaf w Ustawieniach.",
+        "openSettings": "Otwórz Ustawienia",
+        "cancel": "Anuluj"
       }
     }
   },

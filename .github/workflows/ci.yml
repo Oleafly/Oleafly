@@ -512,6 +512,16 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # The Overleaf Community Edition gates in crates/oleafly-online/tests/ce.rs
+      # and crates/oleafly-cli/tests/remote_live_ce.rs build only with the
+      # ce-e2e feature, so the workspace clippy above skips them. This compiles
+      # and lints them without running them, because they need the CE stack
+      # from tools/overleaf-ce.
+      - name: Clippy the Overleaf CE gates
+        run: |
+          cargo clippy -p oleafly-online --all-targets --features test-support,ce-e2e -- -D warnings
+          cargo clippy -p oleafly-cli --all-targets --features ce-e2e -- -D warnings
+
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
@@ -550,8 +560,8 @@ jobs:
         with:
           toolchain: 1.89.0
 
-      - name: Check the CLI, online import, research and the shared OT and network crates against their Rust 1.89 MSRV
-        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online -p oleafly-research -p oleafly-ot -p oleafly-net --all-targets
+      - name: Check the CLI, online import, live editing, research and the shared OT and network crates against their Rust 1.89 MSRV
+        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online -p oleafly-live -p oleafly-research -p oleafly-ot -p oleafly-net --all-targets
 
   server-web:
     name: Server with browser access
@@ -978,11 +988,11 @@ jobs:
 
       # Third-platform coverage for the shared crates, moved here from the
       # shard jobs so shards stay pure test runners. The sandbox, secrets,
-      # online, research and ACP crates have macOS-only code (the Seatbelt
-      # profile, the keychain, browser cookies, process isolation) that the
-      # Linux and Windows jobs never compile, so this is the only job that
-      # tests and lints it. Keep the clippy list in step with the shared run's
-      # crates in scripts/run-nextest.py.
+      # online, live, research and ACP crates have macOS-only code (the
+      # Seatbelt profile, the keychain, browser cookies, file name folding,
+      # process isolation) that the Linux and Windows jobs never run, so this
+      # is the only job that tests and lints it. Keep the clippy list in step
+      # with the shared run's crates in scripts/run-nextest.py.
       - name: Test the macOS Rust retry guard
         run: bash scripts/run-macos-shared-rust-tests.test.sh
 
@@ -993,7 +1003,7 @@ jobs:
         run: >-
           cargo clippy --all-targets
           -p oleafly-core -p oleafly-cli -p oleafly-sandbox -p oleafly-secrets
-          -p oleafly-online -p oleafly-research -p oleafly-acp
+          -p oleafly-online -p oleafly-live -p oleafly-research -p oleafly-acp
           -- -D warnings
 
       - name: Build the packaged e2e app

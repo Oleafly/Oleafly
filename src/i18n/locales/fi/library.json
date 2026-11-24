@@ -341,6 +341,7 @@
       "saveServer": "Käytä tätä palvelinta",
       "signedInAs": "Kirjautunut käyttäjänä {{email}}",
       "signedIn": "Kirjautunut Overleafiin",
+      "accountPick": "Overleaf-tili",
       "signOut": "Kirjaudu ulos",
       "searchLabel": "Hae Overleaf-projekteja",
       "searchPlaceholder_one": "Hae {{count}} projektista",
@@ -362,6 +363,8 @@
       "import_other": "Tuo {{count}} projektia",
       "imported": "Tuotu",
       "open": "Avaa",
+      "openLive": "Avaa reaaliaikaiseen muokkaukseen",
+      "opening": "Avataan",
       "ownedByYou": "Oma",
       "owner": "Omistaja: {{name}}",
       "archived": "Arkistoitu",
@@ -377,6 +380,36 @@
         "downloading": "Ladataan {{percent}} %",
         "downloadingUnknown": "Ladataan",
         "importing": "Valmistellaan"
+      },
+      "invitations": {
+        "title": "Kutsut",
+        "from": "Lähettäjä: {{name}}",
+        "join": "Liity",
+        "joined": "Liityit tähän projektiin"
+      },
+      "link": {
+        "checking": "Tarkistetaan linkkiä",
+        "unnamed": "Projekti Overleaf-palvelussa",
+        "join": "Liity",
+        "importInstead": "Tuo",
+        "grants": {
+          "edit": "Liittymällä voit muokata sitä yhteistyökumppanina.",
+          "view": "Liittymällä voit vain katsella sitä. Linkillä katselevilla ei ole kommentteja eikä keskustelua.",
+          "already": "Sinulla on jo tämä projekti.",
+          "invite": "Liittyminen hyväksyy kutsun."
+        }
+      },
+      "put": {
+        "menu": "Vie Overleaf-palveluun",
+        "title": "Vie Overleaf-palveluun",
+        "description": "Oleafly lähettää tämän projektin uutena Overleaf-projektina ja pitää molemmat synkronoituina, kun muokkaat reaaliaikaisesti.",
+        "name": "Nimi Overleaf-palvelussa",
+        "account": "Overleaf-tili",
+        "submit": "Vie Overleaf-palveluun",
+        "working": "Lähetetään",
+        "signedOut": "Kirjaudu ensin Overleaf-palveluun asetuksissa.",
+        "openSettings": "Avaa asetukset",
+        "cancel": "Peruuta"
       }
     }
   },

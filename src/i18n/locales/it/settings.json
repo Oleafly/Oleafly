@@ -1977,7 +1977,12 @@
       "signedIn": "Accesso effettuato su {{server}}",
       "signOut": "Esci",
       "signOutFailed": "Oleafly non è riuscito a uscire da Overleaf.",
+      "addAccount": "Aggiungi un altro account",
+      "addAccountHint": "La finestra di accesso parte da zero, quindi puoi accedere con qualsiasi account. Accedere con un browser, o copiare l'accesso di un browser, usa l'account con cui quel browser ha effettuato l'accesso.",
+      "accountPick": "Account per l'importazione",
+      "accountPickDescription": "Le nuove importazioni e i modelli usano questo account. I progetti che hai già mantengono l'account da cui provengono.",
       "gitTitle": "Token Git per la sincronizzazione",
+      "gitTitleFor": "Token Git per {{email}}",
       "gitSaved": "Un token Git è salvato. I progetti che colleghi restano sincronizzati con Overleaf.",
       "gitMissing": "Nessun token Git per ora. Creane uno nella sezione Integrazione Git delle impostazioni del tuo account Overleaf per sincronizzare i progetti.",
       "gitOpenSettings": "Apri le impostazioni dell'account Overleaf",
@@ -2353,6 +2358,7 @@
       "confirm": "Svuota l'elenco",
       "descriptionFallback": "Questo rimuove tutti i termini da questo dizionario. Verranno controllati di nuovo subito.",
       "descriptionGlobal": "Questo rimuove tutti i termini dal dizionario globale. Verranno controllati di nuovo subito.",
+      "descriptionOverleaf": "Vengono rimossi anche dal tuo account Overleaf.",
       "descriptionProject": "Questo rimuove tutti i termini da {{project}}. Verranno controllati di nuovo subito.",
       "descriptionSuppressed": "Questo rimuove tutti i termini dalle segnalazioni ignorate in {{project}}. Verranno controllati di nuovo subito.",
       "suppressedConfirm": "Mostra di nuovo",
@@ -2371,6 +2377,7 @@
     },
     "global": {
       "emptyDescription": "Le parole che aggiungi qui vengono saltate dal correttore in tutti i progetti.",
+      "overleafSynced": "Sincronizzato con le parole apprese del tuo account Overleaf mentre un progetto è in modifica dal vivo su Overleaf.",
       "scope": "Vale per tutti i progetti"
     },
     "intro": "Aggiungi parole al tuo dizionario personale per il controllo ortografico. Queste parole vengono salvate nelle impostazioni locali e ignorate in tutti i progetti. Il confronto normalizza Unicode e non distingue maiuscole e minuscole.",

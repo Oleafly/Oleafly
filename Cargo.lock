@@ -6319,6 +6319,7 @@ dependencies = [
  "oleafly-downloads",
  "oleafly-forge",
  "oleafly-history",
+ "oleafly-live",
  "oleafly-online",
  "oleafly-ot",
  "oleafly-research",
@@ -6446,6 +6447,7 @@ dependencies = [
  "oleafly-forge",
  "oleafly-history",
  "oleafly-lint",
+ "oleafly-live",
  "oleafly-online",
  "oleafly-preflight",
  "oleafly-research",
@@ -6614,6 +6616,27 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "oleafly-live"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "libc",
+ "oleafly-collab",
+ "oleafly-collab-protocol",
+ "oleafly-core",
+ "oleafly-history",
+ "oleafly-online",
+ "oleafly-ot",
+ "ring",
+ "serde",
+ "serde_json",
+ "tar",
+ "tempfile",
+ "tokio",
  "unicode-normalization",
 ]
 

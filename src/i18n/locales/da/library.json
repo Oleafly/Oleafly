@@ -341,6 +341,7 @@
       "saveServer": "Brug denne server",
       "signedInAs": "Logget ind som {{email}}",
       "signedIn": "Logget ind på Overleaf",
+      "accountPick": "Overleaf-konto",
       "signOut": "Log ud",
       "searchLabel": "Søg i Overleaf-projekter",
       "searchPlaceholder_one": "Søg i {{count}} projekt",
@@ -362,6 +363,8 @@
       "import_other": "Importer {{count}} projekter",
       "imported": "Importeret",
       "open": "Åbn",
+      "openLive": "Åbn live",
+      "opening": "Åbner",
       "ownedByYou": "Dit",
       "owner": "Ejes af {{name}}",
       "archived": "Arkiveret",
@@ -377,6 +380,36 @@
         "downloading": "Downloader {{percent}} %",
         "downloadingUnknown": "Downloader",
         "importing": "Klargør"
+      },
+      "invitations": {
+        "title": "Invitationer",
+        "from": "Fra {{name}}",
+        "join": "Deltag",
+        "joined": "Du deltager nu i dette projekt"
+      },
+      "link": {
+        "checking": "Tjekker linket",
+        "unnamed": "Et projekt på Overleaf",
+        "join": "Deltag",
+        "importInstead": "Importer",
+        "grants": {
+          "edit": "Når du deltager, kan du redigere det som samarbejdspartner.",
+          "view": "Når du deltager, kan du kun se det. Læsere via link får ikke kommentarer eller chat.",
+          "already": "Du har allerede dette projekt.",
+          "invite": "Når du deltager, accepterer du invitationen."
+        }
+      },
+      "put": {
+        "menu": "Læg på Overleaf",
+        "title": "Læg på Overleaf",
+        "description": "Oleafly uploader dette projekt som et nyt Overleaf-projekt og holder derefter begge synkroniseret, mens du redigerer live.",
+        "name": "Navn på Overleaf",
+        "account": "Overleaf-konto",
+        "submit": "Læg på Overleaf",
+        "working": "Uploader",
+        "signedOut": "Log først ind på Overleaf under Indstillinger.",
+        "openSettings": "Åbn Indstillinger",
+        "cancel": "Annuller"
       }
     }
   },

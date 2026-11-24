@@ -1,0 +1,925 @@
+{
+  "probe": "people-invites",
+  "description": "Alice invites Erin (an existing user), Frank (no account) and Carol to a throwaway project while she listens on a websocket; Erin reads her dashboard notifications, opens and accepts her invite; Alice revokes Frank's. Records project:membership:changed for each step, the join's project.invites, the members and invites routes and GET /changes/users.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "invite erin: 200 {\"invite\":{\"_id\":\"6b04ff7acb4fe3a455d4dea3\",\"email\":\"erin@example.test\",\"privileges\":\"readAndWrite\"}}; events [[\"project:membership:changed\",[{\"invites\":true}]]]",
+    "invite frank: 200 {\"invite\":{\"_id\":\"6b04ff7bcb4fe3a455d4deab\",\"email\":\"frank@example.test\",\"privileges\":\"readOnly\"}}; events [[\"project:membership:changed\",[{\"invites\":true}]]]",
+    "invite carol: 200 {\"invite\":{\"_id\":\"6b04ff7dcb4fe3a455d4deb2\",\"email\":\"carol@example.test\",\"privileges\":\"review\"}}; events [[\"project:membership:changed\",[{\"invites\":true}]]]",
+    "second invite to erin: 200 {\"invite\":{\"_id\":\"6b04ff7fcb4fe3a455d4deb9\",\"email\":\"erin@example.test\",\"privileges\":\"readOnly\"}}",
+    "GET invites: {\"invites\":[{\"_id\":\"6b04ff7acb4fe3a455d4dea3\",\"email\":\"erin@example.test\",\"privileges\":\"readAndWrite\"},{\"_id\":\"6b04ff7bcb4fe3a455d4deab\",\"email\":\"frank@example.test\",\"privileges\":\"readOnly\"},{\"_id\":\"6b04ff7dcb4fe3a455d4deb2\",\"email\":\"carol@example.test\",\"privileges\":\"review\"},{\"_id\":\"6b04ff7fcb4fe3a455d4deb9\",\"email\":\"erin@example.test\",\"privileges\":\"readOnly\"}]}",
+    "the owner's join project.invites [{\"_id\":\"6b04ff7acb4fe3a455d4dea3\",\"email\":\"erin@example.test\",\"privileges\":\"readAndWrite\"},{\"_id\":\"6b04ff7bcb4fe3a455d4deab\",\"email\":\"frank@example.test\",\"privileges\":\"readOnly\"},{\"_id\":\"6b04ff7dcb4fe3a455d4deb2\",\"email\":\"carol@example.test\",\"privileges\":\"review\"},{\"_id\":\"6b04ff7fcb4fe3a455d4deb9\",\"email\":\"erin@example.test\",\"privileges\":\"readOnly\"}]; members []",
+    "erin's dashboard ol-notifications: [{\"_id\":\"6b04ff7aa0e4609e9a54e570\",\"key\":\"project-invite-6b04ff7acb4fe3a455d4dea3\",\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"expires\":\"2026-12-24T03:07:38.322Z\",\"messageOpts\":{\"userName\":\"Alice\",\"projectName\":\"people-invites-20261124-030737\",\"projectId\":\"6b04ff79cb4fe3a455d4de95\",\"token\":\"[redacted]\"},\"templateKey\":\"notification_project_invite\",\"html\":\"notification_project_invite\"},{\"_id\":\"6b04ff7fa0e4609e9a54e572\",\"key\":\"project-invite-6b04ff7fcb4fe3a455d4deb9\",\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"expires\":\"2026-12-24T03:07:43.156Z\",\"messageOpts\":{\"userName\":\"Alice\",\"projectName\":\"people-invites-20261124-030737\",\"projectId\":\"6b04ff79cb4fe3a455d4de95\",\"token\":\"[redacted]\"},\"templateKey\":\"notification_project_invite\",\"html\":\"notification_project_invite\"}]",
+    "GET /notifications for erin: 200 [{\"_id\":\"6b04ff7aa0e4609e9a54e570\",\"key\":\"project-invite-6b04ff7acb4fe3a455d4dea3\",\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"expires\":\"2026-12-24T03:07:38.322Z\",\"messageOpts\":{\"userName\":\"Alice\",\"projectName\":\"people-invites-20261124-030737\",\"projectId\":\"6b04ff79cb4fe3a455d4de95\",\"token\":\"[redacted]\"},\"templateKey\":\"notification_project_invite\",\"html\":\"notificatio",
+    "erin opens the invite page: 200",
+    "accept: 302 {\"content-length\":\"62\",\"content-type\":\"text/html; charset=utf-8\",\"location\":\"/project/6b04ff79cb4fe3a455d4de95\"}; events [[\"project:membership:changed\",[{\"invites\":true,\"members\":true}]]]",
+    "accept again (XMLHttpRequest): 404 {\"content-type\":\"text/html; charset=utf-8\",\"transfer-encoding\":\"chunked\"}",
+    "carol accepts: 204; events [[\"toggle-track-changes\",[{\"6afab5bc1222cc50aa4c16f8\":true}]],[\"project:membership:changed\",[{\"invites\":true,\"members\":true}]]]",
+    "revoke: 204; events [[\"project:membership:changed\",[{\"invites\":true}]]]",
+    "members after: {\"members\":[{\"_id\":\"6afab5bd1222cc50aa4c1704\",\"first_name\":\"Erin\",\"last_name\":\"Outsider\",\"email\":\"erin@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:21.992Z\"},{\"_id\":\"6afab5bc1222cc50aa4c16f8\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-16T07:50:20.935Z\"}]}",
+    "erin's join as an accepted member: permissionsLevel readAndWrite; invites [{\"_id\":\"6b04ff7fcb4fe3a455d4deb9\",\"email\":\"erin@example.test\",\"privileges\":\"readOnly\"}]",
+    "remove erin: 204; events [[\"userRemovedFromProject\",[\"6afab5bd1222cc50aa4c1704\"]],[\"project:membership:changed\",[{\"members\":true}]]]",
+    "erin's notifications after the project was deleted: [\"this deleted project\"]",
+    "cleanup: removed 3 notifications that still pointed at the deleted project"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "people-invites-20261124-030737",
+          "template": "none"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04ff79cb4fe3a455d4de95",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 1393,
+      "answeredAt": 1645
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/members",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "14",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "members": []
+      },
+      "sentAt": 1764,
+      "answeredAt": 1837
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invites",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "14",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invites": []
+      },
+      "sentAt": 1837,
+      "answeredAt": 1886
+    },
+    {
+      "label": "alice invites erin as readAndWrite",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "erin@example.test",
+          "privileges": "readAndWrite"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "101",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invite": {
+          "_id": "6b04ff7acb4fe3a455d4dea3",
+          "email": "erin@example.test",
+          "privileges": "readAndWrite"
+        }
+      },
+      "sentAt": 1886,
+      "answeredAt": 2066,
+      "events": {
+        "alice": [
+          {
+            "t": 2063,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice invites frank as readOnly",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "frank@example.test",
+          "privileges": "readOnly"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "98",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invite": {
+          "_id": "6b04ff7bcb4fe3a455d4deab",
+          "email": "frank@example.test",
+          "privileges": "readOnly"
+        }
+      },
+      "sentAt": 3568,
+      "answeredAt": 3654,
+      "events": {
+        "alice": [
+          {
+            "t": 3637,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice invites carol as review",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "carol@example.test",
+          "privileges": "review"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "96",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invite": {
+          "_id": "6b04ff7dcb4fe3a455d4deb2",
+          "email": "carol@example.test",
+          "privileges": "review"
+        }
+      },
+      "sentAt": 5156,
+      "answeredAt": 5266,
+      "events": {
+        "alice": [
+          {
+            "t": 5264,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice invites erin again",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "erin@example.test",
+          "privileges": "readOnly"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "97",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invite": {
+          "_id": "6b04ff7fcb4fe3a455d4deb9",
+          "email": "erin@example.test",
+          "privileges": "readOnly"
+        }
+      },
+      "sentAt": 6766,
+      "answeredAt": 6828,
+      "events": {
+        "alice": [
+          {
+            "t": 6822,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "not-an-email",
+          "privileges": "readOnly"
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "31",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "errorReason": "invalid_email"
+      },
+      "sentAt": 8331,
+      "answeredAt": 8349
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite",
+        "user": "alice",
+        "body": {
+          "email": "alice@example.test",
+          "privileges": "readOnly"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invite": null,
+        "error": "cannot_invite_self"
+      },
+      "sentAt": 8350,
+      "answeredAt": 8365
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invites",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "365",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invites": [
+          {
+            "_id": "6b04ff7acb4fe3a455d4dea3",
+            "email": "erin@example.test",
+            "privileges": "readAndWrite"
+          },
+          {
+            "_id": "6b04ff7bcb4fe3a455d4deab",
+            "email": "frank@example.test",
+            "privileges": "readOnly"
+          },
+          {
+            "_id": "6b04ff7dcb4fe3a455d4deb2",
+            "email": "carol@example.test",
+            "privileges": "review"
+          },
+          {
+            "_id": "6b04ff7fcb4fe3a455d4deb9",
+            "email": "erin@example.test",
+            "privileges": "readOnly"
+          }
+        ]
+      },
+      "sentAt": 8365,
+      "answeredAt": 8384
+    },
+    {
+      "join": {
+        "user": "alice",
+        "invites": [
+          {
+            "_id": "6b04ff7acb4fe3a455d4dea3",
+            "email": "erin@example.test",
+            "privileges": "readAndWrite"
+          },
+          {
+            "_id": "6b04ff7bcb4fe3a455d4deab",
+            "email": "frank@example.test",
+            "privileges": "readOnly"
+          },
+          {
+            "_id": "6b04ff7dcb4fe3a455d4deb2",
+            "email": "carol@example.test",
+            "privileges": "review"
+          },
+          {
+            "_id": "6b04ff7fcb4fe3a455d4deb9",
+            "email": "erin@example.test",
+            "privileges": "readOnly"
+          }
+        ],
+        "members": [],
+        "owner": {
+          "_id": "6afab5bb1222cc50aa4c16ec",
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "privileges": "owner",
+          "signUpDate": "2026-11-16T07:50:19.753Z"
+        }
+      }
+    },
+    {
+      "notificationsInMongo": [
+        {
+          "key": "project-invite-6b04ff7acb4fe3a455d4dea3",
+          "templateKey": "notification_project_invite",
+          "messageOpts": {
+            "userName": "Alice",
+            "projectName": "people-invites-20261124-030737",
+            "projectId": "6b04ff79cb4fe3a455d4de95",
+            "token": "[redacted]"
+          },
+          "expires": "2026-12-24T03:07:38.322Z",
+          "user_id": "6afab5bd1222cc50aa4c1704"
+        }
+      ]
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/project",
+        "status": 200,
+        "meta": {
+          "ol-notifications": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "_id": "6b04ff7aa0e4609e9a54e570",
+                "key": "project-invite-6b04ff7acb4fe3a455d4dea3",
+                "user_id": "6afab5bd1222cc50aa4c1704",
+                "expires": "2026-12-24T03:07:38.322Z",
+                "messageOpts": {
+                  "userName": "Alice",
+                  "projectName": "people-invites-20261124-030737",
+                  "projectId": "6b04ff79cb4fe3a455d4de95",
+                  "token": "[redacted]"
+                },
+                "templateKey": "notification_project_invite",
+                "html": "notification_project_invite"
+              },
+              {
+                "_id": "6b04ff7fa0e4609e9a54e572",
+                "key": "project-invite-6b04ff7fcb4fe3a455d4deb9",
+                "user_id": "6afab5bd1222cc50aa4c1704",
+                "expires": "2026-12-24T03:07:43.156Z",
+                "messageOpts": {
+                  "userName": "Alice",
+                  "projectName": "people-invites-20261124-030737",
+                  "projectId": "6b04ff79cb4fe3a455d4de95",
+                  "token": "[redacted]"
+                },
+                "templateKey": "notification_project_invite",
+                "html": "notification_project_invite"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/notifications",
+        "user": "erin"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "837",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [
+        {
+          "_id": "6b04ff7aa0e4609e9a54e570",
+          "key": "project-invite-6b04ff7acb4fe3a455d4dea3",
+          "user_id": "6afab5bd1222cc50aa4c1704",
+          "expires": "2026-12-24T03:07:38.322Z",
+          "messageOpts": {
+            "userName": "Alice",
+            "projectName": "people-invites-20261124-030737",
+            "projectId": "6b04ff79cb4fe3a455d4de95",
+            "token": "[redacted]"
+          },
+          "templateKey": "notification_project_invite",
+          "html": "notification_project_invite"
+        },
+        {
+          "_id": "6b04ff7fa0e4609e9a54e572",
+          "key": "project-invite-6b04ff7fcb4fe3a455d4deb9",
+          "user_id": "6afab5bd1222cc50aa4c1704",
+          "expires": "2026-12-24T03:07:43.156Z",
+          "messageOpts": {
+            "userName": "Alice",
+            "projectName": "people-invites-20261124-030737",
+            "projectId": "6b04ff79cb4fe3a455d4de95",
+            "token": "[redacted]"
+          },
+          "templateKey": "notification_project_invite",
+          "html": "notification_project_invite"
+        }
+      ],
+      "sentAt": 12791,
+      "answeredAt": 12868
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/token/[redacted]",
+        "status": 200,
+        "location": null,
+        "meta": {}
+      }
+    },
+    {
+      "label": "erin accepts without X-Requested-With",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/token/[redacted]/accept",
+        "user": "erin",
+        "body": {}
+      },
+      "status": 302,
+      "headers": {
+        "content-length": "62",
+        "content-type": "text/html; charset=utf-8",
+        "location": "/project/6b04ff79cb4fe3a455d4de95"
+      },
+      "body": "<p>Found. Redirecting to /project/6b04ff79cb4fe3a455d4de95</p>",
+      "sentAt": 12942,
+      "answeredAt": 13028,
+      "events": {
+        "alice": [
+          {
+            "t": 13020,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true,
+                "members": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/token/[redacted]/accept",
+        "user": "erin",
+        "body": {}
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 14530,
+      "answeredAt": 14554
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/project",
+        "status": 200,
+        "meta": {
+          "ol-notifications": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "_id": "6b04ff7fa0e4609e9a54e572",
+                "key": "project-invite-6b04ff7fcb4fe3a455d4deb9",
+                "user_id": "6afab5bd1222cc50aa4c1704",
+                "expires": "2026-12-24T03:07:43.156Z",
+                "messageOpts": {
+                  "userName": "Alice",
+                  "projectName": "people-invites-20261124-030737",
+                  "projectId": "6b04ff79cb4fe3a455d4de95",
+                  "token": "[redacted]"
+                },
+                "templateKey": "notification_project_invite",
+                "html": "notification_project_invite"
+              }
+            ]
+          }
+        },
+        "note": "after accepting"
+      }
+    },
+    {
+      "label": "carol accepts a review invite with X-Requested-With",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/token/[redacted]/accept",
+        "user": "carol",
+        "body": {}
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 20759,
+      "answeredAt": 20870,
+      "events": {
+        "alice": [
+          {
+            "t": 20834,
+            "name": "toggle-track-changes",
+            "args": [
+              {
+                "6afab5bc1222cc50aa4c16f8": true
+              }
+            ]
+          },
+          {
+            "t": 20861,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true,
+                "members": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice revokes frank's invite",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/6b04ff7bcb4fe3a455d4deab",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 22372,
+      "answeredAt": 22420,
+      "events": {
+        "alice": [
+          {
+            "t": 22415,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "invites": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invite/6b04ff90c0ffee0001000001",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 23920,
+      "answeredAt": 23942
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/members",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "357",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "members": [
+          {
+            "_id": "6afab5bd1222cc50aa4c1704",
+            "first_name": "Erin",
+            "last_name": "Outsider",
+            "email": "erin@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-16T07:50:21.992Z"
+          },
+          {
+            "_id": "6afab5bc1222cc50aa4c16f8",
+            "first_name": "Carol",
+            "last_name": "Reviewer",
+            "email": "carol@example.test",
+            "privileges": "review",
+            "signUpDate": "2026-11-16T07:50:20.935Z"
+          }
+        ]
+      },
+      "sentAt": 23942,
+      "answeredAt": 23997
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invites",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "100",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "invites": [
+          {
+            "_id": "6b04ff7fcb4fe3a455d4deb9",
+            "email": "erin@example.test",
+            "privileges": "readOnly"
+          }
+        ]
+      },
+      "sentAt": 23998,
+      "answeredAt": 24037
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/changes/users",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 24037,
+      "answeredAt": 24058
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/members",
+        "user": "bob"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 24058,
+      "answeredAt": 24091
+    },
+    {
+      "join": {
+        "user": "erin",
+        "permissionsLevel": "readAndWrite",
+        "invites": [
+          {
+            "_id": "6b04ff7fcb4fe3a455d4deb9",
+            "email": "erin@example.test",
+            "privileges": "readOnly"
+          }
+        ],
+        "members": [
+          {
+            "_id": "6afab5bd1222cc50aa4c1704",
+            "first_name": "Erin",
+            "last_name": "Outsider",
+            "email": "erin@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-16T07:50:21.992Z"
+          },
+          {
+            "_id": "6afab5bc1222cc50aa4c16f8",
+            "first_name": "Carol",
+            "last_name": "Reviewer",
+            "email": "carol@example.test",
+            "privileges": "review",
+            "signUpDate": "2026-11-16T07:50:20.935Z"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/invites",
+        "user": "erin"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 24201,
+      "answeredAt": 24235
+    },
+    {
+      "label": "alice removes erin",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff79cb4fe3a455d4de95/users/6afab5bd1222cc50aa4c1704",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 24236,
+      "answeredAt": 24285,
+      "events": {
+        "alice": [
+          {
+            "t": 24273,
+            "name": "userRemovedFromProject",
+            "args": [
+              "6afab5bd1222cc50aa4c1704"
+            ]
+          },
+          {
+            "t": 24278,
+            "name": "project:membership:changed",
+            "args": [
+              {
+                "members": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "projectId": "6b04ff79cb4fe3a455d4de95",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1672,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1739,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.kYYAu0ljaSuOKdXHAACo\",\"project\":{\"_id\":\"6b04ff79cb4fe3a455d4de95\",\"name\":\"people-invites-20261124-030737\",\"rootDoc_id\":\"6b04ff79cb4fe3a455d4de9a\",\"rootFolder\":[{\"_id\":\"6b04ff79cb4fe3a455d4de94\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04ff79cb4fe3a455d4de9a\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 2063,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true}]}"
+          },
+          {
+            "t": 3637,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true}]}"
+          },
+          {
+            "t": 5264,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true}]}"
+          },
+          {
+            "t": 6822,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true}]}"
+          },
+          {
+            "t": 8501,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.MiSjZMSqNhywnrbAAACp\"]}"
+          },
+          {
+            "t": 13020,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true,\"members\":true}]}"
+          },
+          {
+            "t": 20834,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"toggle-track-changes\",\"args\":[{\"6afab5bc1222cc50aa4c16f8\":true}]}"
+          },
+          {
+            "t": 20861,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true,\"members\":true}]}"
+          },
+          {
+            "t": 22415,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"invites\":true}]}"
+          },
+          {
+            "t": 24210,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.U2HqoqHbZDClNbMqAACq\"]}"
+          },
+          {
+            "t": 24273,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"userRemovedFromProject\",\"args\":[\"6afab5bd1222cc50aa4c1704\"]}"
+          },
+          {
+            "t": 24278,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"project:membership:changed\",\"args\":[{\"members\":true}]}"
+          },
+          {
+            "t": 25786,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff79cb4fe3a455d4de95"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 25786,
+      "answeredAt": 26012
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/project",
+        "status": 200,
+        "meta": {
+          "ol-notifications": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "_id": "6b04ff7fa0e4609e9a54e572",
+                "key": "project-invite-6b04ff7fcb4fe3a455d4deb9",
+                "user_id": "6afab5bd1222cc50aa4c1704",
+                "expires": "2026-12-24T03:07:43.156Z",
+                "messageOpts": {
+                  "userName": "Alice",
+                  "projectName": "people-invites-20261124-030737",
+                  "projectId": "6b04ff79cb4fe3a455d4de95",
+                  "token": "[redacted]"
+                },
+                "templateKey": "notification_project_invite",
+                "html": "notification_project_invite"
+              }
+            ]
+          }
+        },
+        "note": "after the project was deleted"
+      }
+    }
+  ]
+}

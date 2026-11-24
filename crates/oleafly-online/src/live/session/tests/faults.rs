@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -387,6 +388,37 @@ async fn keep_mine_as_a_copy_reloads_from_overleaf() {
         rig.mock.doc_text(&main.0) == "Bob: Hello again"
     })
     .await;
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn an_outside_edit_racing_keep_mine_as_a_copy_sends_nothing_stale() {
+    let rig = Rig::start(project()).await;
+    let port = Port::new(&FILES);
+    let (live, _tab, main) = stranded(&rig, &port).await;
+    on_disk(&port, "Hello mine");
+    let server = rig.mock.doc_text(&main.0);
+    let sent = rig.mock.received("applyOtUpdate").len();
+    rig.mock.stall();
+    live.keep_and_reload(&main).unwrap();
+    on_disk(&port, "Hello kept");
+    let edited = live
+        .local_edit_with(&main, |current| {
+            (current != "Hello mine").then(|| oleafly_ot::diff(current, "Hello mine"))
+        })
+        .unwrap();
+    assert!(
+        !edited,
+        "the kept text is what the disk holds, so there is nothing to send"
+    );
+    rig.mock.resume();
+    eventually("the doc reloads from the server", || {
+        live.text(&main).as_deref() == Some(server.as_str())
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(rig.mock.doc_text(&main.0), server);
+    assert_eq!(rig.mock.received("applyOtUpdate").len(), sent);
     live.stop().await;
 }
 

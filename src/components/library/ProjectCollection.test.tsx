@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/i18n";
@@ -229,5 +229,38 @@ describe("project kind label", () => {
     render(<Grid />);
     expect(screen.getByText(enLibrary.projects.kind.note)).toBeInTheDocument();
     expect(projectKindLabel(i18n.t.bind(i18n) as never, "note")).toBe(enLibrary.projects.kind.note);
+  });
+
+  it("offers Put on Overleaf only for projects not yet on Overleaf or a server", async () => {
+    const putOnOverleaf = vi.fn();
+    const projects = [
+      project(1),
+      { ...project(2), imported_from: "overleaf" },
+      { ...project(3), shared: { server_name: "Smith Lab", role: "owner" as const } },
+    ];
+    function Grid() {
+      const scrollRef = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={scrollRef}>
+          <ProjectGrid projects={projects} data={{ ...data, actions: { ...actions, putOnOverleaf } }} scrollRef={scrollRef} />
+        </div>
+      );
+    }
+    render(<Grid />);
+    const menuOf = (name: string) =>
+      fireEvent.pointerDown(screen.getByRole("button", { name: enLibrary.projects.actions.replace("{{name}}", name) }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    menuOf("Project 1");
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.import.overleaf.put.menu }));
+    expect(putOnOverleaf).toHaveBeenCalledWith(projects[0]);
+    for (const name of ["Project 2", "Project 3"]) {
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+      menuOf(name);
+      await screen.findAllByRole("menuitem");
+      expect(screen.queryByRole("menuitem", { name: enLibrary.import.overleaf.put.menu })).toBeNull();
+    }
   });
 });

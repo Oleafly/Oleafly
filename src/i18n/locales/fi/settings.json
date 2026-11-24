@@ -1961,7 +1961,12 @@
       "signedIn": "Kirjautunut palvelimelle {{server}}",
       "signOut": "Kirjaudu ulos",
       "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "addAccount": "Lisää toinen tili",
+      "addAccountHint": "Kirjautumisikkuna avautuu ilman aiempaa kirjautumista, joten voit kirjautua millä tahansa tilillä. Kun kirjaudut selaimella tai kopioit selaimen kirjautumisen, käytetään tiliä, jolla selain on kirjautunut.",
+      "accountPick": "Tuonnissa käytettävä tili",
+      "accountPickDescription": "Uudet tuonnit ja mallipohjat käyttävät tätä tiliä. Jo olemassa olevat projektisi säilyttävät tilin, josta ne tuotiin.",
       "gitTitle": "Git-tokeni synkronointia varten",
+      "gitTitleFor": "Git-tokeni tilille {{email}}",
       "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
       "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
       "gitOpenSettings": "Avaa Overleafin tiliasetukset",
@@ -2333,6 +2338,7 @@
       "confirm": "Tyhjennä sanat",
       "descriptionFallback": "Tämä poistaa kaikki termit tästä sanakirjasta. Ne tarkistetaan heti uudelleen.",
       "descriptionGlobal": "Tämä poistaa kaikki termit yleisestä sanakirjasta. Ne tarkistetaan heti uudelleen.",
+      "descriptionOverleaf": "Ne poistetaan myös Overleaf-tililtäsi.",
       "descriptionProject": "Tämä poistaa kaikki termit projektista {{project}}. Ne tarkistetaan heti uudelleen.",
       "descriptionSuppressed": "Tämä poistaa kaikki termit projektin {{project}} ohitetuista huomioista. Ne tarkistetaan heti uudelleen.",
       "suppressedConfirm": "Näytä uudelleen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Tähän lisätyt sanat ohitetaan kielentarkistuksessa jokaisessa projektissa.",
+      "overleafSynced": "Synkronoidaan Overleaf-tilisi opittujen sanojen kanssa, kun projekti on reaaliaikaisessa muokkauksessa Overleaf-palvelussa.",
       "scope": "Koskee jokaista projektia"
     },
     "intro": "Lisää sanoja henkilökohtaiseen oikolukusanakirjaasi. Nämä sanat tallennetaan paikallisiin asetuksiin ja ohitetaan kaikissa projekteissa. Vertailu on Unicode-normalisoitua eikä erota kirjainkokoa.",

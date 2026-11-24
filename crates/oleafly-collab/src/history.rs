@@ -29,21 +29,32 @@ const RESTORE_TIMEOUT_MS: f64 = 2_000.0;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HistoryEntry {
+pub struct HistoryEntry<A = AccountId, V = VersionId> {
     pub id: String,
     pub at: i64,
     pub until: i64,
-    pub authors: Vec<AccountId>,
+    pub authors: Vec<A>,
     pub files: Vec<String>,
     pub name: Option<String>,
-    pub version_id: Option<VersionId>,
+    pub version_id: Option<V>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HistoryPage {
-    pub entries: Vec<HistoryEntry>,
+pub struct HistoryPage<A = AccountId, V = VersionId> {
+    pub entries: Vec<HistoryEntry<A, V>>,
     pub next_before: Option<String>,
+    pub limited: bool,
+}
+
+impl<A, V> Default for HistoryPage<A, V> {
+    fn default() -> Self {
+        HistoryPage {
+            entries: Vec::new(),
+            next_before: None,
+            limited: false,
+        }
+    }
 }
 
 struct Step {
@@ -102,7 +113,7 @@ fn decode_frontiers(version: &str) -> Result<Frontiers, CollabError> {
     Frontiers::decode(&bytes).map_err(|_| history_unavailable())
 }
 
-fn checked_name(name: &str) -> Result<&str, CollabError> {
+pub fn checked_name(name: &str) -> Result<&str, CollabError> {
     let name = name.trim();
     if name.is_empty() {
         return Err(refused(400, "empty", "a version name needs some text"));
@@ -388,6 +399,7 @@ impl ProjectDoc {
         HistoryPage {
             entries: page,
             next_before,
+            limited: false,
         }
     }
 

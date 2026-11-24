@@ -12,6 +12,7 @@ export interface CommentAuthor {
   name: string;
   imageUrl?: string | null;
   verified: boolean;
+  note?: string;
 }
 
 export type CommentDelivery =

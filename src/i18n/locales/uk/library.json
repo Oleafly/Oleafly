@@ -351,6 +351,7 @@
       "saveServer": "Використати цей сервер",
       "signedInAs": "Ви увійшли як {{email}}",
       "signedIn": "Ви увійшли в Overleaf",
+      "accountPick": "Обліковий запис Overleaf",
       "signOut": "Вийти",
       "searchLabel": "Пошук проєктів Overleaf",
       "searchPlaceholder_one": "Пошук серед {{count}} проєкту",
@@ -378,6 +379,8 @@
       "import_other": "Імпортувати {{count}} проєкту",
       "imported": "Імпортовано",
       "open": "Відкрити",
+      "openLive": "Відкрити наживо",
+      "opening": "Відкриття",
       "ownedByYou": "Ваш",
       "owner": "Власник: {{name}}",
       "archived": "В архіві",
@@ -397,6 +400,36 @@
         "downloading": "Завантаження {{percent}}%",
         "downloadingUnknown": "Завантаження",
         "importing": "Налаштування"
+      },
+      "invitations": {
+        "title": "Запрошення",
+        "from": "Від {{name}}",
+        "join": "Приєднатися",
+        "joined": "Ви приєдналися до цього проєкту"
+      },
+      "link": {
+        "checking": "Перевіряємо посилання",
+        "unnamed": "Проєкт в Overleaf",
+        "join": "Приєднатися",
+        "importInstead": "Імпортувати",
+        "grants": {
+          "edit": "Приєднавшись, ви зможете редагувати його як співавтор.",
+          "view": "Приєднавшись, ви зможете лише переглядати його. Під час перегляду за посиланням коментарі й чат недоступні.",
+          "already": "Цей проєкт у вас уже є.",
+          "invite": "Приєднавшись, ви приймете запрошення."
+        }
+      },
+      "put": {
+        "menu": "Розмістити в Overleaf",
+        "title": "Розмістити в Overleaf",
+        "description": "Oleafly завантажує цей проєкт в Overleaf як новий проєкт, а потім синхронізує обидва проєкти, поки ви редагуєте наживо.",
+        "name": "Назва в Overleaf",
+        "account": "Обліковий запис Overleaf",
+        "submit": "Розмістити в Overleaf",
+        "working": "Надсилання",
+        "signedOut": "Спершу увійдіть в Overleaf у налаштуваннях.",
+        "openSettings": "Відкрити налаштування",
+        "cancel": "Скасувати"
       }
     }
   },

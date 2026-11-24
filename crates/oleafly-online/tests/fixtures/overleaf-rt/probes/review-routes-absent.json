@@ -1,0 +1,906 @@
+{
+  "probe": "review-routes-absent",
+  "description": "Every review route Overleaf web calls (threads, messages, edit, delete own and any message, resolve, reopen and delete thread, accept changes, track changes, ranges, change authors), asked of CE on both projects as the owner, a reviewer and a viewer, plus the page meta and join fields a client reads to tell whether the review module is there.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "sharejs-project page meta for alice: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "sharejs-project page meta for carol: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "sharejs-project page meta for dave: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "sharejs-project as alice: GET /threads 404, POST /thread/:thread/messages 404, POST /thread/:thread/messages/:id/edit 404, DELETE /thread/:thread/own-messages/:id 404, DELETE /thread/:thread/messages/:id 404, POST /doc/:doc/thread/:thread/resolve 404, POST /doc/:doc/thread/:thread/reopen 404, DELETE /doc/:doc/thread/:thread 404, POST /doc/:doc/changes/accept 404, POST /track_changes 404, POST /track_changes 404, POST /track_changes 404, GET /ranges 404, GET /changes/users 404, GET /messages?limit=1 200",
+    "sharejs-project as carol: GET /threads 404",
+    "sharejs-project as carol: POST /thread/:thread/messages 404",
+    "sharejs-project as carol: POST /doc/:doc/thread/:thread/resolve 404",
+    "sharejs-project as dave: GET /threads 404",
+    "sharejs-project as dave: POST /thread/:thread/messages 404",
+    "sharejs-project as dave: POST /doc/:doc/thread/:thread/resolve 404",
+    "sharejs-project: the same POST without the anti-forgery header answered 403",
+    "sharejs-project join for alice: permissionsLevel owner, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined",
+    "sharejs-project join for carol: permissionsLevel review, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined",
+    "sharejs-project join for dave: permissionsLevel readOnly, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined",
+    "history-ot-project page meta for alice: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "history-ot-project page meta for carol: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "history-ot-project page meta for dave: {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "history-ot-project as alice: GET /threads 404, POST /thread/:thread/messages 404, POST /thread/:thread/messages/:id/edit 404, DELETE /thread/:thread/own-messages/:id 404, DELETE /thread/:thread/messages/:id 404, POST /doc/:doc/thread/:thread/resolve 404, POST /doc/:doc/thread/:thread/reopen 404, DELETE /doc/:doc/thread/:thread 404, POST /doc/:doc/changes/accept 404, POST /track_changes 404, POST /track_changes 404, POST /track_changes 404, GET /ranges 404, GET /changes/users 404, GET /messages?limit=1 200",
+    "history-ot-project as carol: GET /threads 404",
+    "history-ot-project as carol: POST /thread/:thread/messages 404",
+    "history-ot-project as carol: POST /doc/:doc/thread/:thread/resolve 404",
+    "history-ot-project as dave: GET /threads 404",
+    "history-ot-project as dave: POST /thread/:thread/messages 404",
+    "history-ot-project as dave: POST /doc/:doc/thread/:thread/resolve 404",
+    "history-ot-project: the same POST without the anti-forgery header answered 403",
+    "history-ot-project join for alice: permissionsLevel owner, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined",
+    "history-ot-project join for carol: permissionsLevel review, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined",
+    "history-ot-project join for dave: permissionsLevel readOnly, features.trackChanges true, trackChangesState {\"6afab5bc1222cc50aa4c16f8\":true}, isRestrictedUser undefined"
+  ],
+  "steps": [
+    {
+      "page": {
+        "project": "sharejs-project",
+        "user": "alice",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "page": {
+        "project": "sharejs-project",
+        "user": "carol",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "page": {
+        "project": "sharejs-project",
+        "user": "dave",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/threads",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages/6b04e090c0ffee0002000001/edit",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages/6b04e090c0ffee0002000001/edit</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/own-messages/6b04e090c0ffee0002000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/own-messages/6b04e090c0ffee0002000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages/6b04e090c0ffee0002000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages/6b04e090c0ffee0002000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/reopen",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/reopen</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/changes/accept",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/changes/accept</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/ranges",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/changes/users",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": []
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/threads",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/threads",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5be1222cc50aa4c170b/doc/6afab5bf1222cc50aa4c170f/thread/6b04e090c0ffee0001000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/thread/6b04e090c0ffee0001000001/messages",
+        "user": "alice",
+        "withoutToken": true
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Forbidden"
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "project": "sharejs-project",
+        "projectId": "6afab5be1222cc50aa4c170b",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 982,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 992,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.9yvGzZ_qKMzTyeipAAAU\",\"project\":{\"_id\":\"6afab5be1222cc50aa4c170b\",\"name\":\"sharejs-project\",\"rootDoc_id\":\"6afab5bf1222cc50aa4c170f\",\"rootFolder\":[{\"_id\":\"6afab5be1222cc50aa4c170a\",\"name\":\"rootFolder\",\"folders\":[{\"_id\":\"6afab5bf1222cc50aa4c1715\",\"name\":\"sections\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6afab5bf1222cc50aa4c171b\",\"name\":\"intro.tex\"},{\"_id\":\"6afab5c01222cc50aa4c1722\",\"name\":\"method.tex\"}]}],\"fileRefs\":[{\"_id\":\"6afab5c11222cc50aa4c1733\",\"name\":\"figure.png\",\"linkedFileData\":null,\"created\":\"2026-11-16T07:50:25.758Z\",\"hash\":\"487e7c6aa16bc66f79769355b2b998813b7f8f90\"}],\"docs\":[{\"_id\":\"6afab5bf1222cc50aa4c170f\",\"name\":\"main.tex\"},{\"_id\":\"6afab5c01222cc50aa4c172a\",\"name\":\"refs.bib\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[{\"_id\":\"6afab5bc1222cc50aa4c16f2\",\"first_name\":\"Bob\",\"last_name\":\"Editor\",\"email\":\"bob@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:20.391Z\"},{\"_id\":\"6afab5bc1222cc50aa4c16f8\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-16T07:50:20.935Z\"},{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readOnly\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"}],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":{\"6afab5bc1222cc50aa4c16f8\":true}},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 1083,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "page": {
+        "project": "history-ot-project",
+        "user": "alice",
+        "route": "/project/6afab5c71222cc50aa4c1741",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "page": {
+        "project": "history-ot-project",
+        "user": "carol",
+        "route": "/project/6afab5c71222cc50aa4c1741",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "page": {
+        "project": "history-ot-project",
+        "user": "dave",
+        "route": "/project/6afab5c71222cc50aa4c1741",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/threads",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages/6b04e090c0ffee0004000001/edit",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages/6b04e090c0ffee0004000001/edit</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/own-messages/6b04e090c0ffee0004000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/own-messages/6b04e090c0ffee0004000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages/6b04e090c0ffee0004000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages/6b04e090c0ffee0004000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/reopen",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/reopen</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/changes/accept",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/changes/accept</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/track_changes",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/track_changes</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/ranges",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/changes/users",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/messages?limit=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": []
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/threads",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve",
+        "user": "carol"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5c71222cc50aa4c1741/threads",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve",
+        "user": "dave"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /project/6afab5c71222cc50aa4c1741/doc/6afab5c71222cc50aa4c1745/thread/6b04e090c0ffee0003000001/resolve</pre>\n</body>\n</html>\n"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5c71222cc50aa4c1741/thread/6b04e090c0ffee0003000001/messages",
+        "user": "alice",
+        "withoutToken": true
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Forbidden"
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "project": "history-ot-project",
+        "projectId": "6afab5c71222cc50aa4c1741",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1518,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1537,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.vPrHr-HQ0WYB_YsTAAAX\",\"project\":{\"_id\":\"6afab5c71222cc50aa4c1741\",\"name\":\"history-ot-project\",\"rootDoc_id\":\"6afab5c71222cc50aa4c1745\",\"rootFolder\":[{\"_id\":\"6afab5c71222cc50aa4c1740\",\"name\":\"rootFolder\",\"folders\":[{\"_id\":\"6afab5c71222cc50aa4c174b\",\"name\":\"sections\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6afab5c71222cc50aa4c1751\",\"name\":\"intro.tex\"},{\"_id\":\"6afab5c71222cc50aa4c1758\",\"name\":\"method.tex\"}]}],\"fileRefs\":[{\"_id\":\"6afab5c81222cc50aa4c1769\",\"name\":\"figure.png\",\"linkedFileData\":null,\"created\":\"2026-11-16T07:50:32.291Z\",\"hash\":\"487e7c6aa16bc66f79769355b2b998813b7f8f90\"}],\"docs\":[{\"_id\":\"6afab5c71222cc50aa4c1745\",\"name\":\"main.tex\"},{\"_id\":\"6afab5c81222cc50aa4c1760\",\"name\":\"refs.bib\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[{\"_id\":\"6afab5bc1222cc50aa4c16f2\",\"first_name\":\"Bob\",\"last_name\":\"Editor\",\"email\":\"bob@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:20.391Z\"},{\"_id\":\"6afab5bc1222cc50aa4c16f8\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-16T07:50:20.935Z\"},{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readOnly\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"}],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":{\"6afab5bc1222cc50aa4c16f8\":true}},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 1619,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    }
+  ]
+}

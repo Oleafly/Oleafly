@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafSignOut: vi.fn(),
+  overleafSignIn: vi.fn(),
+  overleafUseAccount: vi.fn(),
   overleafSignInWithAppCookies: vi.fn(),
   overleafSignInBrowsers: vi.fn(async () => [] as unknown[]),
   overleafSignInWithBrowser: vi.fn(),
@@ -46,6 +48,9 @@ const SERVER = "https://www.overleaf.com";
 beforeEach(() => {
   api.overleafStatus.mockReset();
   api.overleafSignOut.mockReset();
+  api.overleafSignIn.mockReset();
+  api.overleafUseAccount.mockReset();
+  git.overleafGitTokenStatus.mockClear();
   api.overleafSignInWithAppCookies.mockReset();
   api.overleafSignInBrowsers.mockReset().mockResolvedValue([]);
   api.overleafSignInWithBrowser.mockReset();
@@ -59,6 +64,7 @@ beforeEach(() => {
     server: SERVER,
     status: null,
     unsent: null,
+    unsentAccount: null,
     phase: "idle",
     signingWith: null,
     error: null,
@@ -77,6 +83,60 @@ describe("OverleafSection", () => {
     await waitFor(() => expect(screen.queryByTestId("overleaf-connected")).not.toBeInTheDocument());
     expect(screen.queryByText(/Not signed in/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows a row per account, picks the one for imports and signs out of one", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const bea = { userId: "u-bea", email: "bea@lab.org" };
+    const both = { server: SERVER, signedIn: true, email: bea.email, userId: bea.userId, accounts: [bea, ada] };
+    api.overleafStatus.mockResolvedValue(both);
+    api.overleafUseAccount.mockResolvedValue({ ...both, email: ada.email, userId: ada.userId, accounts: [ada, bea] });
+    api.overleafSignOut.mockResolvedValue({ server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    await waitFor(() => expect(screen.getAllByTestId("overleaf-connected")).toHaveLength(2));
+    const rows = screen.getAllByTestId("overleaf-account");
+    expect(rows[0]).toHaveTextContent("Signed in as bea@lab.org on www.overleaf.com");
+    expect(rows[1]).toHaveTextContent("Signed in as ada@uni.edu on www.overleaf.com");
+    expect(await screen.findByText("Git token for bea@lab.org")).toBeInTheDocument();
+    expect(git.overleafGitTokenStatus).toHaveBeenLastCalledWith(SERVER, "u-bea");
+    const picker = screen.getByTestId("overleaf-account-picker");
+    expect(within(picker).getByRole("combobox", { name: "Account for importing" })).toHaveTextContent("bea@lab.org");
+    await user.click(within(picker).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "ada@uni.edu" }));
+    expect(api.overleafUseAccount).toHaveBeenCalledWith(SERVER, "u-ada");
+    expect(await screen.findByText("Git token for ada@uni.edu")).toBeInTheDocument();
+    await waitFor(() => expect(git.overleafGitTokenStatus).toHaveBeenLastCalledWith(SERVER, "u-ada"));
+    const beaRow = screen.getAllByTestId("overleaf-account")[1];
+    expect(beaRow).toHaveTextContent("bea@lab.org");
+    await user.click(within(beaRow).getByTestId("overleaf-settings-sign-out"));
+    expect(api.overleafSignOut).toHaveBeenCalledWith(SERVER, false, "u-bea");
+    await waitFor(() => expect(screen.getAllByTestId("overleaf-connected")).toHaveLength(1));
+    expect(screen.getByTestId("overleaf-connected")).toHaveTextContent("ada@uni.edu");
+    expect(screen.queryByTestId("overleaf-account-picker")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("adds another account through a fresh sign-in window and says what a browser sign-in uses", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const bea = { userId: "u-bea", email: "bea@lab.org" };
+    const one = { server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] };
+    const two = { server: SERVER, signedIn: true, email: bea.email, userId: bea.userId, accounts: [bea, ada] };
+    api.overleafStatus.mockResolvedValue(one);
+    api.overleafSignIn.mockResolvedValue(two);
+    api.overleafListProjects.mockResolvedValue({ status: two, projects: [] });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    expect(screen.queryByTestId("window-sign-in-row")).not.toBeInTheDocument();
+    await user.click(screen.getByTestId("overleaf-add-account"));
+    const options = screen.getByTestId("overleaf-add-account-options");
+    expect(options).toHaveTextContent("uses the account that browser is signed in to");
+    await user.click(within(options).getByTestId("window-sign-in"));
+    expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, expect.any(String));
+    await waitFor(() => expect(screen.getAllByTestId("overleaf-connected")).toHaveLength(2));
+    expect(screen.queryByTestId("overleaf-add-account-options")).not.toBeInTheDocument();
+    expect(screen.getByTestId("overleaf-add-account")).toBeInTheDocument();
   });
 
   it("names the server when the account has no email and reports a failed sign-out", async () => {
@@ -109,8 +169,8 @@ describe("OverleafSection", () => {
     await userEvent.click(within(question).getByRole("button", { name: /^Sign out anyway/ }));
     await waitFor(() => expect(screen.queryByTestId("overleaf-connected")).not.toBeInTheDocument());
     expect(api.overleafSignOut.mock.calls).toEqual([
-      [SERVER, false],
-      [SERVER, true],
+      [SERVER, false, null],
+      [SERVER, true, null],
     ]);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
@@ -137,10 +197,10 @@ describe("OverleafSection", () => {
     expect(await screen.findByText(/No Git token yet/)).toBeInTheDocument();
     fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "  olp_token_value  " } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(git.overleafGitTokenSet).toHaveBeenCalledWith(SERVER, "olp_token_value"));
+    await waitFor(() => expect(git.overleafGitTokenSet).toHaveBeenCalledWith(SERVER, "olp_token_value", null));
     expect(await screen.findByText(/A Git token is saved/)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("overleaf-git-token-clear"));
-    await waitFor(() => expect(git.overleafGitTokenClear).toHaveBeenCalledWith(SERVER));
+    await waitFor(() => expect(git.overleafGitTokenClear).toHaveBeenCalledWith(SERVER, null));
     expect(await screen.findByText(/No Git token yet/)).toBeInTheDocument();
     git.overleafGitTokenSet.mockRejectedValueOnce(new Error("io"));
     fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "olp_other" } });

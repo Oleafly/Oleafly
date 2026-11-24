@@ -12,11 +12,13 @@ use super::pacing::{JoinPacer, Wait};
 use super::state::{now_ms, Handshake, JoinKind, State};
 use super::{catch_up, off_runtime, persist_soon, LiveEnd, SessionConfig, Shared};
 use crate::error::OnlineErrorKind;
-use crate::live::join::parse_join;
+use crate::live::join::{parse_join, JoinedDoc};
+use crate::live::rest::ProjectRest;
 use crate::live::DocId;
 use crate::locked;
 use crate::realtime::connection::{connect_tuned, Connection, JoinProject, RealtimeError};
 use crate::realtime::events::{PeerPosition, Rejection, ServerEvent, LONGEST_SERVER_WAIT};
+use crate::realtime::project::Members;
 use crate::realtime::ProjectPage;
 
 const PATIENCE_DOUBLINGS: u32 = 4;
@@ -103,6 +105,7 @@ fn end_of(error: &RealtimeError) -> LiveEnd {
 pub(super) struct Driver {
     shared: Arc<Shared>,
     page: Arc<ProjectPage>,
+    rest: Arc<ProjectRest>,
     config: SessionConfig,
     connection: Option<Connection>,
     connected_at: Instant,
@@ -128,6 +131,7 @@ impl Driver {
         shared: Arc<Shared>,
         connection: Option<Connection>,
         page: Arc<ProjectPage>,
+        rest: Arc<ProjectRest>,
         config: SessionConfig,
     ) -> Driver {
         let now = tokio::time::Instant::now();
@@ -139,6 +143,7 @@ impl Driver {
         Driver {
             shared,
             page,
+            rest,
             config,
             connection,
             connected_at: Instant::now(),
@@ -332,6 +337,10 @@ impl Driver {
         if !matches!(users, Step::Go) {
             return users;
         }
+        let checked = self.id_checks(connection).await;
+        if !matches!(checked, Step::Go) {
+            return checked;
+        }
         self.presence(connection);
         let every = self.config.tuning.peer_reemit;
         self.shared
@@ -345,6 +354,28 @@ impl Driver {
         });
         self.legacy_check().await;
         self.refresh().await;
+        self.shared.with(State::report_tick);
+        Step::Go
+    }
+
+    async fn id_checks(&mut self, connection: &mut Connection) -> Step {
+        let checks = self.shared.with(State::take_range_checks);
+        for (doc, version) in checks {
+            let args = join_args(&doc, JoinKind::From(version), None);
+            let reply = match self.ask(connection, "joinDoc", args).await {
+                Asked::Reply(reply) => reply,
+                Asked::Lost => return Step::Lost,
+                Asked::Stopping => return Step::Stopping,
+            };
+            let fresh = parse_join(&doc, &reply).ok();
+            self.shared.with(|state| match fresh {
+                Some(JoinedDoc {
+                    version, format, ..
+                }) => state.ranges_checked(&doc, version, Some(format)),
+                None => state.ranges_checked(&doc, version, None),
+            });
+            self.drain(connection);
+        }
         Step::Go
     }
 
@@ -367,6 +398,7 @@ impl Driver {
             if self.stopping() {
                 return None;
             }
+            self.shared.with(State::report_tick);
             self.write_journal(false).await;
         }
     }
@@ -512,10 +544,14 @@ impl Driver {
             }
             ServerEvent::PeerMoved(peer) => self.shared.with(|state| state.peer(peer)),
             ServerEvent::PeerLeft(id) => self.shared.with(|state| state.peer_left(id)),
-            ServerEvent::Tree(event) => self.shared.with(|state| state.tree_event(&event)),
+            ServerEvent::Tree(event) => {
+                self.shared.with(|state| state.tree_event(&event));
+                self.shared.tree_wake.notify_one();
+            }
             ServerEvent::Project(event) => self.shared.with(|state| state.project_event(event)),
             ServerEvent::Access(event) => {
                 self.refresh_members |= self.shared.with(|state| state.access(&event));
+                self.shared.review_wake.notify_one();
             }
             ServerEvent::ReconnectGracefully => self.graceful(),
             ServerEvent::ForceDisconnect { message, delay } => {
@@ -525,6 +561,8 @@ impl Driver {
             }
             ServerEvent::Rejected(rejection) => self.rejected(rejection),
             ServerEvent::PeersRefresh => self.shared.with(State::presence_asked),
+            ServerEvent::Review(event) => self.shared.with(|state| state.review_event(event)),
+            ServerEvent::Chat(event) => self.shared.with(|state| state.chat_event(event)),
             ServerEvent::Unknown { .. } => {}
         }
     }
@@ -566,22 +604,21 @@ impl Driver {
 
     async fn catch_up(&mut self) {
         let version = self.shared.with(|state| state.history_version());
-        let SessionConfig {
-            http,
-            session,
-            project_id,
-            tuning,
-            ..
-        } = &self.config;
+        let session = &self.config.session;
         let Some(history) = self
-            .guard(catch_up::since(http, session, project_id, version))
+            .guard(catch_up::since(&self.rest, session, version))
             .await
         else {
             return;
         };
+        let tuning = &self.config.tuning;
         let trickle = tuning.trickle_every;
+        let fill = self
+            .config
+            .fill
+            .then_some((tuning.legacy_batch, tuning.legacy_every));
         self.shared
-            .with(|state| state.start_history(history, trickle));
+            .with(|state| state.start_history(history, trickle, fill));
     }
 
     async fn legacy_check(&mut self) {
@@ -593,13 +630,7 @@ impl Driver {
         let after = self.shared.with(|state| state.connected_wall_ms());
         let before = now_ms().saturating_sub(tuning.legacy_grace.as_millis() as u64);
         let (batch, every) = (tuning.legacy_batch, tuning.legacy_every);
-        let SessionConfig {
-            http,
-            session,
-            project_id,
-            ..
-        } = &self.config;
-        let changed = catch_up::changed_between(http, session, project_id, after, before);
+        let changed = catch_up::changed_between(&self.rest, &self.config.session, after, before);
         let Some(Some(paths)) = self.guard(changed).await else {
             return;
         };
@@ -611,10 +642,7 @@ impl Driver {
         if !std::mem::take(&mut self.refresh_members) {
             return;
         }
-        let (mut members, restricted) = self
-            .shared
-            .with(|state| (state.project.members.clone(), state.project.restricted));
-        if restricted {
+        if self.shared.with(|state| state.project.restricted) {
             return;
         }
         let SessionConfig {
@@ -623,9 +651,13 @@ impl Driver {
             project_id,
             ..
         } = &self.config;
-        let refreshed = self.guard(members.refresh(http, session, project_id)).await;
-        if matches!(refreshed, Some(Ok(()))) {
-            self.shared.with(|state| state.members_refreshed(members));
+        let fetched = Members::fetch_collaborators(http, session, project_id);
+        if let Some(Ok(collaborators)) = self.guard(fetched).await {
+            self.shared.with(|state| {
+                let mut members = std::mem::take(&mut state.project.members);
+                members.collaborators = collaborators;
+                state.members_refreshed(members);
+            });
         }
     }
 
@@ -645,6 +677,8 @@ impl Driver {
                 Ok((connection, join)) => match self.rejoined(&connection, &join) {
                     Handshake::Joined => {
                         self.save_join(join).await;
+                        self.shared.review_wake.notify_one();
+                        self.shared.tree_wake.notify_one();
                         return Some(connection);
                     }
                     Handshake::Ended => return None,
@@ -779,6 +813,8 @@ impl Driver {
             };
             state.end(end);
         });
+        self.shared.tree_wake.notify_one();
+        self.shared.review_wake.notify_one();
         self.write_journal(true).await;
     }
 }

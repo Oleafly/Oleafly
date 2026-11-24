@@ -1,5 +1,6 @@
 import type { Utf16Edit } from "@oleafly/editor/document-session";
 import type { CollabTextOperation } from "@/lib/tauri";
+import { commonAffixBounds, myersEditScript } from "@/lib/myers-diff";
 
 export type OtErrorCode = "length_mismatch" | "incompatible" | "splits_character" | "invalid";
 
@@ -314,9 +315,11 @@ export function replacementOperation(before: string, after: string): TextOperati
     .retain(suffix);
 }
 
-const MAX_LINE_EDITS = 400;
+const LINE_WORK = 80_000;
+const TOKEN_WORK = 40_000;
+const TOKEN = /[\p{L}\p{M}\p{N}]+|[^\S\n]+|[\s\S]/gu;
 
-type LineStep = "equal" | "delete" | "insert";
+type Refine = (operation: TextOperation, removed: string, added: string) => void;
 
 function linesOf(text: string): string[] {
   const lines: string[] = [];
@@ -333,56 +336,43 @@ function linesOf(text: string): string[] {
   return lines;
 }
 
-function walkBack(trace: readonly Int32Array[], n: number, m: number, offset: number, last: number): LineStep[] {
-  const steps: LineStep[] = [];
-  let x = n;
-  let y = m;
-  for (let d = last; d > 0; d -= 1) {
-    const v = trace[d];
-    const k = x - y;
-    const down = k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1]);
-    const previousK = down ? k + 1 : k - 1;
-    const previousX = v[offset + previousK];
-    const previousY = previousX - previousK;
-    while (x > previousX && y > previousY) {
-      steps.push("equal");
-      x -= 1;
-      y -= 1;
-    }
-    steps.push(down ? "insert" : "delete");
-    if (down) y -= 1;
-    else x -= 1;
-  }
-  while (x > 0 && y > 0) {
-    steps.push("equal");
-    x -= 1;
-    y -= 1;
-  }
-  return steps.reverse();
+function joined(pieces: readonly string[], from: number, to: number): string {
+  return pieces.slice(from, to).join("");
 }
 
-function lineScript(a: readonly string[], b: readonly string[], limit: number): LineStep[] | null {
-  const n = a.length;
-  const m = b.length;
-  const max = Math.min(n + m, limit);
-  const offset = max + 1;
-  const v = new Int32Array(2 * max + 3);
-  const trace: Int32Array[] = [];
-  for (let d = 0; d <= max; d += 1) {
-    trace.push(v.slice());
-    for (let k = -d; k <= d; k += 2) {
-      const down = k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1]);
-      let x = down ? v[offset + k + 1] : v[offset + k - 1] + 1;
-      let y = x - k;
-      while (x < n && y < m && a[x] === b[y]) {
-        x += 1;
-        y += 1;
-      }
-      v[offset + k] = x;
-      if (x >= n && y >= m) return walkBack(trace, n, m, offset, d);
+function appendPieces(
+  operation: TextOperation,
+  before: readonly string[],
+  after: readonly string[],
+  workLimit: number,
+  refine: Refine,
+): boolean {
+  const { prefix, oldEnd, newEnd } = commonAffixBounds(before, after);
+  const script = myersEditScript(before.slice(prefix, oldEnd), after.slice(prefix, newEnd), workLimit);
+  if (script === null) return false;
+  operation.retain(joined(before, 0, prefix).length);
+  let removed = "";
+  let added = "";
+  const changed = () => {
+    if (removed !== "" || added !== "") refine(operation, removed, added);
+    removed = "";
+    added = "";
+  };
+  for (const edit of script) {
+    const oldStart = prefix + edit.oldStart;
+    const newStart = prefix + edit.newStart;
+    if (edit.kind === "same") {
+      changed();
+      operation.retain(joined(before, oldStart, oldStart + edit.length).length);
+    } else if (edit.kind === "del") {
+      removed += joined(before, oldStart, oldStart + edit.length);
+    } else {
+      added += joined(after, newStart, newStart + edit.length);
     }
   }
-  return null;
+  changed();
+  operation.retain(joined(before, oldEnd, before.length).length);
+  return true;
 }
 
 function appendReplacement(operation: TextOperation, removed: string, added: string): void {
@@ -393,48 +383,20 @@ function appendReplacement(operation: TextOperation, removed: string, added: str
   });
 }
 
-export function diffOperation(before: string, after: string): TextOperation {
-  if (before === after) return new TextOperation().retain(before.length);
-  const a = linesOf(before);
-  const b = linesOf(after);
-  let head = 0;
-  while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
-  let tail = 0;
-  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) {
-    tail += 1;
+function appendWords(operation: TextOperation, removed: string, added: string): void {
+  if (removed === "" || added === "") {
+    appendReplacement(operation, removed, added);
+    return;
   }
-  const script = lineScript(a.slice(head, a.length - tail), b.slice(head, b.length - tail), MAX_LINE_EDITS);
-  if (script === null) return replacementOperation(before, after);
-  const operation = new TextOperation();
-  let kept = 0;
-  for (let index = 0; index < head; index += 1) kept += a[index].length;
-  operation.retain(kept);
-  let i = head;
-  let j = head;
-  let step = 0;
-  while (step < script.length) {
-    if (script[step] === "equal") {
-      operation.retain(a[i].length);
-      i += 1;
-      j += 1;
-      step += 1;
-      continue;
-    }
-    let removed = "";
-    let added = "";
-    while (step < script.length && script[step] !== "equal") {
-      if (script[step] === "delete") {
-        removed += a[i];
-        i += 1;
-      } else {
-        added += b[j];
-        j += 1;
-      }
-      step += 1;
-    }
+  const words = (text: string) => text.match(TOKEN) ?? [];
+  if (!appendPieces(operation, words(removed), words(added), TOKEN_WORK, appendReplacement)) {
     appendReplacement(operation, removed, added);
   }
-  let rest = 0;
-  for (let index = a.length - tail; index < a.length; index += 1) rest += a[index].length;
-  return operation.retain(rest);
+}
+
+export function diffOperation(before: string, after: string): TextOperation {
+  if (before === after) return new TextOperation().retain(before.length);
+  const operation = new TextOperation();
+  if (appendPieces(operation, linesOf(before), linesOf(after), LINE_WORK, appendWords)) return operation;
+  return replacementOperation(before, after);
 }

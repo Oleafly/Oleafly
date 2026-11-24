@@ -1,6 +1,13 @@
 mod catch_up;
+pub mod chat;
 mod driver;
+pub mod history;
+pub mod linked;
 mod pacing;
+pub mod people;
+pub mod review;
+mod review_worker;
+pub mod spelling;
 mod state;
 #[cfg(test)]
 mod tests;
@@ -18,9 +25,17 @@ use serde::Serialize;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
-use super::doc::DocFault;
+pub use chat::{ChatChange, ChatEntry, ChatSupport};
+pub use people::{People, Person, Standing};
+pub use review::{
+    Decided, DocReview, EditModeView, ModeLock, NewComment, ReviewChange, ReviewCounts,
+    ReviewSupport, ReviewWriteError, ThreadsView, TrackScope,
+};
+pub(crate) use state::now_ms;
+
+use super::doc::{DocFault, Origin};
 use super::journal::Journal;
-use super::rest::{RestError, TreeRest};
+use super::rest::{ProjectRest, RestError, REVIEW_DEADLINE};
 use super::tree_queue::{LocalFile, Queued, TreeChange, TreeRefusal};
 use super::DocId;
 use crate::client::Http;
@@ -28,7 +43,7 @@ use crate::error::{OnlineError, OnlineErrorKind};
 use crate::locked;
 use crate::realtime::connection::{connect_tuned, Carrier, Connection, RealtimeError, Tuning};
 use crate::realtime::events::{EntityId, ProjectEvent, PublicId, Rejection};
-use crate::realtime::project::{Member, ProjectState, Role};
+use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::{OverleafNode, PathChange};
 use crate::realtime::ProjectPage;
 use crate::session::SessionHandle;
@@ -68,6 +83,10 @@ pub trait LivePort: Send + Sync + 'static {
     }
     fn external_update(&self, _doc: &DocId) {}
     fn characters_replaced(&self, _doc: &DocId) {}
+    fn review_changed(&self, _change: ReviewChange) {}
+    fn chat_changed(&self, _change: ChatChange) {}
+    fn filling(&self, _done: usize, _total: usize) {}
+    fn remote_edit(&self, _doc: &DocId, _user_id: Option<&str>) {}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -192,6 +211,9 @@ pub struct SessionTuning {
     pub presence_alone: Duration,
     pub peer_reemit: Duration,
     pub project_check_every: Duration,
+    pub review_deadline: Duration,
+    pub review_retry: Duration,
+    pub stop_within: Duration,
 }
 
 impl Default for SessionTuning {
@@ -224,6 +246,9 @@ impl Default for SessionTuning {
             presence_alone: Duration::from_secs(5 * 60),
             peer_reemit: Duration::from_secs(10),
             project_check_every: Duration::from_secs(60),
+            review_deadline: REVIEW_DEADLINE,
+            review_retry: Duration::from_secs(1),
+            stop_within: Duration::from_secs(8),
         }
     }
 }
@@ -236,6 +261,7 @@ pub struct SessionConfig {
     pub carriers: Vec<Carrier>,
     pub tuning: SessionTuning,
     pub seeds: Vec<Seed>,
+    pub fill: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -265,6 +291,7 @@ struct Shared {
     session: Mutex<SessionHandle>,
     wake: Notify,
     tree_wake: Notify,
+    review_wake: Notify,
     nudge: Notify,
     nudged: AtomicBool,
     stopping: AtomicBool,
@@ -291,6 +318,7 @@ impl Shared {
             session: Mutex::new(session),
             wake: Notify::new(),
             tree_wake: Notify::new(),
+            review_wake: Notify::new(),
             nudge: Notify::new(),
             nudged: AtomicBool::new(false),
             stopping: AtomicBool::new(false),
@@ -446,7 +474,10 @@ pub struct OverleafSession {
     shared: Arc<Shared>,
     driver: Mutex<Option<JoinHandle<()>>>,
     tree: Mutex<Option<JoinHandle<()>>>,
-    rest: Arc<TreeRest>,
+    review: Mutex<Option<JoinHandle<()>>>,
+    rest: Arc<ProjectRest>,
+    review_deadline: Duration,
+    stop_within: Duration,
 }
 
 pub(super) fn online_error(error: RealtimeError) -> OnlineError {
@@ -545,9 +576,13 @@ impl OverleafSession {
                 connection.carrier().wire_name(),
                 connection.public_id().clone(),
             );
-            shared.with(state::State::announce);
+            shared.with(|state| {
+                state.announce();
+                state.review_rejoined();
+                state.chat_rejoined();
+            });
         }
-        let rest = Arc::new(TreeRest::new(
+        let rest = Arc::new(ProjectRest::new(
             config.http.clone(),
             Arc::clone(&page),
             &config.project_id,
@@ -557,14 +592,34 @@ impl OverleafSession {
             Arc::clone(&rest),
             config.tuning.clone(),
         );
-        let driver = driver::Driver::new(Arc::clone(&shared), connection, page, config);
+        let reviews = review_worker::ReviewWorker::new(
+            Arc::clone(&shared),
+            Arc::clone(&rest),
+            config.http.clone(),
+            Arc::clone(&page),
+            config.project_id.clone(),
+            &config.tuning,
+        );
+        let (review_deadline, stop_within) =
+            (config.tuning.review_deadline, config.tuning.stop_within);
+        let driver = driver::Driver::new(
+            Arc::clone(&shared),
+            connection,
+            page,
+            Arc::clone(&rest),
+            config,
+        );
         let handle = tokio::spawn(watched(Arc::clone(&shared), driver.run()));
         let tree = tokio::spawn(watched(Arc::clone(&shared), worker.run()));
+        let review = tokio::spawn(watched(Arc::clone(&shared), reviews.run()));
         Ok(Arc::new(OverleafSession {
             shared,
             driver: Mutex::new(Some(handle)),
             tree: Mutex::new(Some(tree)),
+            review: Mutex::new(Some(review)),
             rest,
+            review_deadline,
+            stop_within,
         }))
     }
 
@@ -583,7 +638,19 @@ impl OverleafSession {
     }
 
     pub fn editor_change(&self, doc: &DocId, rev: u64, op: TextOperation) -> Result<(), LiveError> {
-        let result = self.shared.with(|state| state.editor_change(doc, rev, op));
+        self.editor_change_from(doc, rev, op, None)
+    }
+
+    pub fn editor_change_from(
+        &self,
+        doc: &DocId,
+        rev: u64,
+        op: TextOperation,
+        origin: Option<Origin>,
+    ) -> Result<(), LiveError> {
+        let result = self
+            .shared
+            .with(|state| state.editor_change(doc, rev, op, origin));
         self.shared.touched(true);
         self.poke();
         result
@@ -673,10 +740,6 @@ impl OverleafSession {
         self.shared.lock().doc_at(path)
     }
 
-    pub fn members(&self) -> Vec<Member> {
-        self.shared.lock().project.members.all().cloned().collect()
-    }
-
     pub fn nodes(&self) -> Vec<OverleafNode> {
         self.shared.lock().project.tree.nodes()
     }
@@ -722,7 +785,6 @@ impl OverleafSession {
     }
 
     fn after_tree_change(&self) {
-        self.shared.persist(true);
         self.shared.touched(false);
         self.shared.tree_wake.notify_one();
         self.poke();
@@ -770,6 +832,10 @@ impl OverleafSession {
         }
     }
 
+    pub fn account(&self) -> Account {
+        self.shared.lock().account()
+    }
+
     pub fn signed_in(&self, session: SessionHandle) -> SignedIn {
         let account = Account {
             user_id: session.user_id().to_string(),
@@ -786,29 +852,44 @@ impl OverleafSession {
         self.shared.lock().unsent()
     }
 
+    fn tasks(&self) -> Vec<JoinHandle<()>> {
+        [&self.driver, &self.tree, &self.review]
+            .into_iter()
+            .filter_map(|task| locked(task).take())
+            .collect()
+    }
+
     pub async fn stop(&self) {
+        self.stop_within(self.stop_within).await;
+    }
+
+    pub async fn stop_within(&self, within: Duration) -> bool {
         self.shared.stopping.store(true, Ordering::SeqCst);
         self.shared.wake.notify_waiters();
         self.poke();
         self.shared.tree_wake.notify_waiters();
-        let handle = locked(&self.driver).take();
-        if let Some(handle) = handle {
-            let _ = handle.await;
+        self.shared.review_wake.notify_waiters();
+        let tasks = self.tasks();
+        let aborts: Vec<_> = tasks.iter().map(JoinHandle::abort_handle).collect();
+        let joined = async {
+            for task in tasks {
+                let _ = task.await;
+            }
+        };
+        let finished = tokio::time::timeout(within, joined).await.is_ok();
+        if !finished {
+            for abort in aborts {
+                abort.abort();
+            }
         }
-        let tree = locked(&self.tree).take();
-        if let Some(tree) = tree {
-            let _ = tree.await;
-        }
+        finished
     }
 }
 
 impl Drop for OverleafSession {
     fn drop(&mut self) {
-        if let Some(handle) = locked(&self.driver).take() {
-            handle.abort();
-        }
-        if let Some(tree) = locked(&self.tree).take() {
-            tree.abort();
+        for task in self.tasks() {
+            task.abort();
         }
     }
 }

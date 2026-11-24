@@ -5,7 +5,7 @@ use std::time::Duration;
 use super::pacing::JoinPacer;
 use super::state::{name_of, parent_of, Finished, Job};
 use super::{persist_soon, SessionTuning, Shared};
-use crate::live::rest::{RestError, TreeRest};
+use crate::live::rest::{ProjectRest, RestError};
 use crate::live::tree_queue::{stays_a_file, TreeChange, TreeFailure, MAX_UPLOAD_BYTES};
 use crate::realtime::events::{EntityId, TreeEvent};
 use crate::session::SessionHandle;
@@ -14,6 +14,7 @@ const LONGEST_RETRY: Duration = Duration::from_secs(60);
 const SHORTEST_RATE_WAIT: Duration = Duration::from_secs(1);
 const LONGEST_RATE_WAIT: Duration = Duration::from_secs(15 * 60);
 const STOP_GRACE: Duration = Duration::from_secs(2);
+const IDLE_CHECK: Duration = Duration::from_secs(5);
 const ALREADY_THERE: &str = "already exists";
 
 enum Outcome {
@@ -29,7 +30,7 @@ impl From<Finished> for Outcome {
 
 pub(super) struct TreeWorker {
     shared: Arc<Shared>,
-    rest: Arc<TreeRest>,
+    rest: Arc<ProjectRest>,
     tuning: SessionTuning,
     docs: JoinPacer,
     folders: JoinPacer,
@@ -66,7 +67,7 @@ async fn until_stopped<T>(
 impl TreeWorker {
     pub(super) fn new(
         shared: Arc<Shared>,
-        rest: Arc<TreeRest>,
+        rest: Arc<ProjectRest>,
         tuning: SessionTuning,
     ) -> TreeWorker {
         TreeWorker {
@@ -91,6 +92,19 @@ impl TreeWorker {
         }
     }
 
+    async fn idle(&self) {
+        let notified = self.shared.tree_wake.notified();
+        let mut notified = pin!(notified);
+        notified.as_mut().enable();
+        if self.over() || self.shared.lock().next_tree_job().is_some() {
+            return;
+        }
+        tokio::select! {
+            () = notified => {}
+            () = tokio::time::sleep(IDLE_CHECK) => {}
+        }
+    }
+
     async fn hold(&self, wait: Duration) {
         let until = tokio::time::Instant::now() + wait;
         while !self.over() {
@@ -106,7 +120,7 @@ impl TreeWorker {
         while !self.over() {
             let next = self.shared.lock().next_tree_job();
             let Some(job) = next else {
-                self.pause(self.tuning.tick).await;
+                self.idle().await;
                 continue;
             };
             persist_soon(&self.shared, true).await;

@@ -7,7 +7,7 @@ pub mod tree;
 
 pub use connection::{connect, Carrier, Connection, JoinProject, RealtimeError};
 pub use events::{DocId, EntityId, PublicId, ServerEvent};
-pub use page::ProjectPage;
+pub use page::{ImageChoice, ProjectPage, SpellLanguage};
 
 #[cfg(test)]
 mod tests;

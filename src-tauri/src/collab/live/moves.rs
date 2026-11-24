@@ -1,88 +1,21 @@
 use std::collections::{BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
+use std::path::PathBuf;
 
 use oleafly_collab::doc::{NodeKind, NodeParent, Trashed};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout, Placed};
-use oleafly_collab::{load_binding, write_atomic, CollabError};
-use serde::{Deserialize, Serialize};
+use oleafly_collab::{load_binding, CollabError};
 
-use super::super::disk::{safe_target, DiskState};
+pub use oleafly_live::live::moves::*;
+
+use super::super::disk::DiskState;
 use super::super::state::CollabState;
 use super::{
-    active_for, by_path, ensure_dir, guard, live_for, lock, name_of, parent_of, writable, Active,
-    Live, LiveDisk, LocalImport, WrittenTexts,
+    active_for, by_path, ensure_dir, guard, live_for, lock, name_of, parent_of, Active, Live,
+    LocalImport, WrittenTexts,
 };
 
 pub const LIVE_REMOVED_EVENT: &str = "collab-live-removed";
-const NOTICES_FILE: &str = "removed-notices.json";
-static NOTICES: Mutex<()> = Mutex::new(());
-static ANNOUNCED: LazyLock<Mutex<HashMap<PathBuf, BTreeSet<String>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemovedFile {
-    pub path: String,
-    pub id: String,
-    pub kind: NodeKind,
-    pub by: Option<String>,
-    pub yours: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub copy: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemovedPayload {
-    pub project_id: String,
-    pub files: Vec<RemovedFile>,
-    pub restored: Vec<String>,
-}
-
-fn covers(parent: &str, path: &str) -> bool {
-    path == parent
-        || path
-            .strip_prefix(parent)
-            .is_some_and(|rest| rest.starts_with('/'))
-}
-
-pub(super) fn moved_to(from: &str, to: &str, path: &str) -> String {
-    format!("{to}{}", &path[from.len()..])
-}
-
-fn on_disk(
-    disk: &DiskState,
-    live: &LiveProject,
-    path: &str,
-) -> Result<Option<String>, CollabError> {
-    if let Some((id, _)) = disk.layout.iter().find(|(_, placed)| placed.path == path) {
-        if live.doc().contains(id) {
-            return Ok(Some(id.clone()));
-        }
-    }
-    Ok(by_path(&materialize::layout(&live.doc().nodes()?))
-        .get(path)
-        .map(|(id, _, _)| id.clone()))
-}
-
-pub(super) fn paths_under(disk: &DiskState, path: &str) -> BTreeSet<String> {
-    disk.layout
-        .values()
-        .map(|placed| placed.path.clone())
-        .chain(disk.hashes.keys().cloned())
-        .chain(std::iter::once(path.to_owned()))
-        .filter(|known| covers(path, known))
-        .collect()
-}
-
-fn forget_under(disk: &mut DiskState, bases: &mut WrittenTexts, path: &str) {
-    disk.layout.retain(|_, placed| !covers(path, &placed.path));
-    disk.hashes.retain(|known, _| !covers(path, known));
-    bases.0.retain(|known, _| !covers(path, known));
-}
-
 pub(super) fn adopt_move(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -151,7 +84,7 @@ pub(super) fn adopt_move(
         })
         .collect();
     let written: Vec<String> = bases
-        .0
+        .texts
         .keys()
         .filter(|path| covers(from, path))
         .cloned()
@@ -211,115 +144,6 @@ pub(super) fn adopt_folder_moves(
     Ok(moved)
 }
 
-pub(super) fn arrived_paths(import: &LocalImport) -> BTreeSet<String> {
-    import
-        .texts
-        .iter()
-        .map(|(path, _, _)| path.clone())
-        .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
-        .collect()
-}
-
-pub(super) fn outermost_gone_dirs(
-    import: &LocalImport,
-    placed: &HashMap<String, (String, NodeKind, Option<String>)>,
-) -> Vec<String> {
-    let gone: Vec<String> = import
-        .removed
-        .iter()
-        .filter(|path| matches!(placed.get(*path), Some((_, NodeKind::Dir, _))))
-        .cloned()
-        .collect();
-    gone.iter()
-        .filter(|dir| !gone.iter().any(|other| other != *dir && covers(other, dir)))
-        .cloned()
-        .collect()
-}
-
-pub(super) fn folder_arrival(
-    dirs: &[String],
-    arrived: &BTreeSet<String>,
-    disk: &DiskState,
-    old: &str,
-) -> Option<String> {
-    let inside: Vec<String> = disk
-        .hashes
-        .keys()
-        .filter(|path| covers(old, path) && *path != old)
-        .map(|path| path[old.len() + 1..].to_owned())
-        .collect();
-    if inside.is_empty() {
-        return None;
-    }
-    let candidates: Vec<&String> = dirs
-        .iter()
-        .filter(|new| {
-            !covers(old, new)
-                && inside
-                    .iter()
-                    .all(|relative| arrived.contains(&format!("{new}/{relative}")))
-        })
-        .collect();
-    match candidates.as_slice() {
-        [new] => Some((*new).clone()),
-        _ => None,
-    }
-}
-
-pub(super) fn took_folder_move(import: &mut LocalImport, disk: &DiskState, old: &str, new: &str) {
-    import.removed.retain(|path| !covers(old, path));
-    let unchanged = |path: &str, hash: &str| {
-        covers(new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
-    };
-    import
-        .texts
-        .retain(|(path, _, hash)| !unchanged(path, hash));
-    import
-        .blobs
-        .retain(|(path, hash, _)| !unchanged(path, hash));
-}
-
-pub(super) fn deleted_here(root: &Path, disk: &DiskState, path: &str) -> bool {
-    disk.hashes.contains_key(path)
-        && safe_target(root, path).is_some_and(|target| std::fs::symlink_metadata(target).is_err())
-}
-
-#[derive(Default)]
-pub(super) struct RemovedFirst {
-    pub(super) gone: Vec<String>,
-    pub(super) conflicts: Vec<String>,
-}
-
-pub(super) fn remove_files_first(
-    root: &Path,
-    disk: &mut DiskState,
-    bases: &mut WrittenTexts,
-    removed: &mut Vec<String>,
-) -> RemovedFirst {
-    let mut first = RemovedFirst::default();
-    let files: BTreeSet<String> = disk
-        .layout
-        .values()
-        .filter(|placed| placed.kind != NodeKind::Dir)
-        .map(|placed| placed.path.clone())
-        .collect();
-    removed.retain(|path| {
-        if !files.contains(path) {
-            return true;
-        }
-        if writable(root, disk, path) {
-            super::super::disk::remove_path(root, path);
-            disk.hashes.remove(path);
-            bases.forget(path);
-            first.gone.push(path.clone());
-        } else {
-            first.conflicts.push(path.clone());
-        }
-        false
-    });
-    first
-}
-
 pub(super) fn removed_notices(
     project_id: &str,
     live: &mut LiveProject,
@@ -366,58 +190,6 @@ pub(super) fn removed_notices(
     })
 }
 
-pub(super) fn remembered(file: &Path) -> Vec<RemovedFile> {
-    std::fs::read(file)
-        .ok()
-        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-        .unwrap_or_default()
-}
-
-fn keep_remembered(file: &Path, notices: &[RemovedFile]) {
-    let written = if notices.is_empty() {
-        match std::fs::remove_file(file) {
-            Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error.to_string()),
-            _ => Ok(()),
-        }
-    } else {
-        serde_json::to_vec(notices)
-            .map_err(|error| error.to_string())
-            .and_then(|json| write_atomic(file, &json).map_err(|error| error.to_string()))
-    };
-    if let Err(error) = written {
-        let _ = crate::project::append_app_log(format!(
-            "Live collaboration could not keep the deleted-file notices in {}: {error}",
-            file.display()
-        ));
-    }
-}
-
-pub(super) fn remember_lost(file: &Path, payload: &RemovedPayload) {
-    let lost: Vec<&RemovedFile> = payload.files.iter().filter(|file| file.yours).collect();
-    if lost.is_empty() {
-        return;
-    }
-    let _turn = guard(&NOTICES);
-    let mut notices = remembered(file);
-    notices.retain(|known| !lost.iter().any(|gone| gone.id == known.id));
-    notices.extend(lost.into_iter().cloned());
-    keep_remembered(file, &notices);
-}
-
-fn forget_notices(file: &Path, ids: &BTreeSet<String>) {
-    let _turn = guard(&NOTICES);
-    let mut notices = remembered(file);
-    let before = notices.len();
-    notices.retain(|known| !ids.contains(&known.id));
-    if notices.len() != before {
-        keep_remembered(file, &notices);
-    }
-}
-
-pub(super) fn forget_notice(file: &Path, id: &str) {
-    forget_notices(file, &BTreeSet::from([id.to_owned()]));
-}
-
 fn notices_in(state: &CollabState, project_id: &str) -> Result<PathBuf, CollabError> {
     if let Some(live) = live_for(project_id) {
         return Ok(live.local().notices_file());
@@ -446,13 +218,17 @@ pub(crate) fn dismiss_notice(
     project_id: &str,
     id: &str,
 ) -> Result<(), CollabError> {
-    forget_notice(&notices_in(state, project_id)?, id);
+    if let Err(line) = forget_notice(&notices_in(state, project_id)?, id) {
+        let _ = crate::project::append_app_log(line);
+    }
     Ok(())
 }
 
 pub(crate) fn restored(project_id: &str, id: &str) {
     if let Some(active) = active_for(project_id) {
-        forget_notice(&active.local.notices_file(), id);
+        if let Err(line) = forget_notice(&active.local.notices_file(), id) {
+            active.local.log(line);
+        }
     }
 }
 
@@ -583,77 +359,10 @@ pub(crate) fn deleting<R>(
     }
 }
 
-impl LiveDisk {
-    pub(super) fn notices_file(&self) -> PathBuf {
-        self.disk_file.with_file_name(NOTICES_FILE)
-    }
-
-    pub(super) fn tell_removed(&self, previous: &Layout, told: Option<RemovedPayload>) {
-        let back = self.came_back(previous, told.as_ref());
-        if let Some(payload) = &told {
-            remember_lost(&self.notices_file(), payload);
-        }
-        if !back.is_empty() {
-            forget_notices(&self.notices_file(), &back);
-        }
-        let payload = match told {
-            Some(payload) => Some(payload),
-            None if !back.is_empty() => Some(RemovedPayload {
-                project_id: self.project_id.clone(),
-                files: Vec::new(),
-                restored: Vec::new(),
-            }),
-            None => None,
-        };
-        if let Some(mut payload) = payload {
-            payload.restored = back.into_iter().collect();
-            self.host.removed(payload);
-        }
-    }
-
-    fn came_back(&self, previous: &Layout, told: Option<&RemovedPayload>) -> BTreeSet<String> {
-        let appeared: BTreeSet<String> = guard(&self.disk)
-            .layout
-            .keys()
-            .filter(|id| !previous.contains_key(*id))
-            .cloned()
-            .collect();
-        let mut announced = guard(&ANNOUNCED);
-        let known = announced.entry(self.root.clone()).or_default();
-        let mut back = BTreeSet::new();
-        if !appeared.is_empty() {
-            let saved: BTreeSet<String> = remembered(&self.notices_file())
-                .into_iter()
-                .map(|notice| notice.id)
-                .collect();
-            back = appeared
-                .into_iter()
-                .filter(|id| known.contains(id) || saved.contains(id))
-                .collect();
-            known.retain(|id| !back.contains(id));
-        }
-        if let Some(payload) = told {
-            known.extend(payload.files.iter().map(|file| file.id.clone()));
-        }
-        back
-    }
-
-    pub(super) fn note_own(&self, path: &str, present: bool) {
-        let Some(target) = safe_target(&self.root, path) else {
-            return;
-        };
-        if present {
-            crate::folder_watch::note_own_write(&target);
-        } else {
-            crate::folder_watch::note_own_removal(&target);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::sync::{Arc, Mutex};
 
     use oleafly_collab::doc::ProjectDoc;
@@ -1253,11 +962,13 @@ mod tests {
 
     struct Heard(Mutex<Vec<RemovedPayload>>);
 
-    impl LiveHost for Heard {
+    impl oleafly_live::DiskHost for Heard {
         fn removed(&self, payload: RemovedPayload) {
             guard(&self.0).push(payload);
         }
     }
+
+    impl LiveHost for Heard {}
 
     struct Rig {
         root: PathBuf,
@@ -1313,11 +1024,12 @@ mod tests {
                 project_dir.join("materializer-index.json"),
                 disk,
                 bases,
-                Arc::clone(&host) as Arc<dyn LiveHost>,
+                host.clone(),
                 writer,
             );
             Arc::new(Active::assembled(
                 local,
+                Arc::clone(&host) as Arc<dyn LiveHost>,
                 dir.path().join("document"),
                 shared,
                 handle,

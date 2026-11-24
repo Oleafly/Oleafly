@@ -1,0 +1,4 @@
+{"t":585,"type":"warning","text":"Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."}
+{"t":707,"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)"}
+{"t":707,"type":"error","text":"FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"}
+{"t":708,"type":"error","text":"FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"}

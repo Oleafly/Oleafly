@@ -2401,6 +2401,34 @@ pub(crate) fn update_pdf_sync(
     })
 }
 
+pub(crate) fn record_online_origin(
+    project_id: &str,
+    origin: serde_json::Value,
+) -> Result<(), String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        meta.extra.insert("importedFrom".to_string(), origin);
+        write_meta(project_id, &meta)
+    })
+}
+
+pub(crate) fn update_imported_from(
+    project_id: &str,
+    change: impl FnOnce(&mut serde_json::Value) -> bool,
+) -> Result<bool, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        let Some(record) = meta.extra.get_mut("importedFrom") else {
+            return Ok(false);
+        };
+        if !change(record) {
+            return Ok(false);
+        }
+        write_meta(project_id, &meta)?;
+        Ok(true)
+    })
+}
+
 pub(crate) fn write_project_bytes(
     project_id: &str,
     target: &Path,
@@ -3339,7 +3367,7 @@ fn ensure_private_directory(root: &Path, directory: &Path) -> Result<(), String>
     Ok(())
 }
 
-fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
+pub(crate) fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
     for suffix in 0..10_000_u32 {
         let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
         if portable_collision(&candidate)?.is_none() {
@@ -3717,238 +3745,15 @@ fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, Stri
     Ok(bytes)
 }
 
-pub(crate) const APP_LOG_FILE: &str = "app.log";
-pub(crate) const PREVIOUS_APP_LOG_FILE: &str = "app.log.1";
-const APP_LOG_LIMIT_BYTES: u64 = 8 * 1024 * 1024;
+pub(crate) use oleafly_core::app_log::{APP_LOG_FILE, PREVIOUS_APP_LOG_FILE};
 
 pub fn append_app_log(message: String) -> Result<(), String> {
-    let log_path = paths::oleafly_root()?.join(APP_LOG_FILE);
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    append_log_line(&log_path, secs, &message, APP_LOG_LIMIT_BYTES)
-}
-
-const APP_LOG_ROTATION_RETRY: std::time::Duration = std::time::Duration::from_secs(60);
-
-fn breaks_log_line(character: char) -> bool {
-    (character.is_control() && character != '\t') || matches!(character, '\u{2028}' | '\u{2029}')
-}
-
-fn single_log_line(message: &str) -> std::borrow::Cow<'_, str> {
-    if !message.chars().any(breaks_log_line) {
-        return std::borrow::Cow::Borrowed(message);
-    }
-    let mut line = String::with_capacity(message.len() + 16);
-    for character in message.chars() {
-        match character {
-            '\n' => line.push_str("\\n"),
-            '\r' => line.push_str("\\r"),
-            other if breaks_log_line(other) => line.extend(other.escape_unicode()),
-            other => line.push(other),
-        }
-    }
-    std::borrow::Cow::Owned(line)
-}
-
-fn rotate_app_log(log_path: &Path, secs: u64) -> bool {
-    use std::io::Write;
-    let previous = log_path.with_file_name(PREVIOUS_APP_LOG_FILE);
-    let Err(error) = std::fs::rename(log_path, &previous) else {
-        return true;
-    };
-    let Ok(mut file) = std::fs::OpenOptions::new().write(true).open(log_path) else {
-        return false;
-    };
-    let copied = std::fs::copy(log_path, &previous).is_ok();
-    if file.set_len(0).is_err() {
-        return false;
-    }
-    let kept = if copied {
-        "copied its lines to app.log.1"
-    } else {
-        "dropped its older lines"
-    };
-    let _ = writeln!(
-        file,
-        "[{secs}] app.log could not be moved aside ({}), so Oleafly {kept}",
-        single_log_line(&error.to_string())
-    );
-    true
-}
-
-fn append_log_line(log_path: &Path, secs: u64, message: &str, limit: u64) -> Result<(), String> {
-    use std::io::Write;
-    static WRITING: Mutex<Option<std::time::Instant>> = Mutex::new(None);
-    let line = format!("[{secs}] {}\n", single_log_line(message));
-    let mut retry_rotation_at = WRITING
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let open = || {
-        std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_path)
-            .map_err(|e| format!("failed to open app log: {e}"))
-    };
-    let size = |file: &std::fs::File| file.metadata().map_or(0, |meta| meta.len());
-    let mut file = open()?;
-    if size(&file) > limit && retry_rotation_at.is_none_or(|at| std::time::Instant::now() >= at) {
-        drop(file);
-        *retry_rotation_at = (!rotate_app_log(log_path, secs))
-            .then(|| std::time::Instant::now() + APP_LOG_ROTATION_RETRY);
-        file = open()?;
-    }
-    if size(&file) > limit.saturating_mul(2) {
-        return Err("the app log is full and could not be moved aside".into());
-    }
-    file.write_all(line.as_bytes())
-        .map_err(|e| format!("failed to write app log: {e}"))
-}
-
-fn log_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
-    use std::io::{Read, Seek, SeekFrom};
-    let mut file = match std::fs::File::open(path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(format!("failed to read app log: {error}")),
-    };
-    let len = file
-        .metadata()
-        .map_err(|e| format!("failed to read app log: {e}"))?
-        .len();
-    let wanted = u64::try_from(max_bytes).unwrap_or(u64::MAX).min(len);
-    file.seek(SeekFrom::Start(len - wanted))
-        .map_err(|e| format!("failed to read app log: {e}"))?;
-    let mut tail = Vec::with_capacity(usize::try_from(wanted).unwrap_or(0));
-    file.take(wanted)
-        .read_to_end(&mut tail)
-        .map_err(|e| format!("failed to read app log: {e}"))?;
-    Ok(tail)
-}
-
-fn read_app_log_in(dir: &Path, max_bytes: usize) -> Result<String, String> {
-    let current = log_tail(&dir.join(APP_LOG_FILE), max_bytes)?;
-    let left = max_bytes.saturating_sub(current.len());
-    let mut text = if left > 0 {
-        log_tail(&dir.join(PREVIOUS_APP_LOG_FILE), left)?
-    } else {
-        Vec::new()
-    };
-    text.extend_from_slice(&current);
-    Ok(String::from_utf8_lossy(&text).into_owned())
-}
-
-#[cfg(test)]
-mod app_log_tests {
-    use super::{append_log_line, read_app_log_in, APP_LOG_FILE, PREVIOUS_APP_LOG_FILE};
-
-    #[test]
-    fn a_full_log_moves_aside_and_reading_joins_both_files() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(APP_LOG_FILE);
-        for line in 0..10 {
-            append_log_line(&path, line, &format!("first {line}"), 60).unwrap();
-        }
-        let previous = std::fs::read_to_string(dir.path().join(PREVIOUS_APP_LOG_FILE)).unwrap();
-        let current = std::fs::read_to_string(&path).unwrap();
-        assert!(previous.ends_with("first 9\n") || current.ends_with("first 9\n"));
-        assert!(std::fs::metadata(&path).unwrap().len() <= 60 + 16);
-        assert!(previous.len() <= 60 + 16);
-
-        let everything = read_app_log_in(dir.path(), 10_000).unwrap();
-        assert_eq!(everything, format!("{previous}{current}"));
-        assert!(everything.ends_with("first 9\n"));
-        let tail = read_app_log_in(dir.path(), 12).unwrap();
-        assert_eq!(tail.len(), 12);
-        assert!(everything.ends_with(&tail));
-        assert_eq!(read_app_log_in(dir.path(), 0).unwrap(), "");
-        assert_eq!(
-            read_app_log_in(tempfile::tempdir().unwrap().path(), 100).unwrap(),
-            ""
-        );
-    }
-
-    #[test]
-    fn a_message_cannot_start_a_line_of_its_own() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(APP_LOG_FILE);
-        let forged = "opened\n[1795000001] Navigation guard kept main\r[2] x\u{2028}y\u{1b}[31m";
-        append_log_line(&path, 1_795_000_000, forged, u64::MAX).unwrap();
-        append_log_line(&path, 1_795_000_002, "plain\ttabbed", u64::MAX).unwrap();
-        let text = std::fs::read_to_string(&path).unwrap();
-        let lines: Vec<&str> = text.split('\n').filter(|line| !line.is_empty()).collect();
-        assert_eq!(
-            lines,
-            [
-                "[1795000000] opened\\n[1795000001] Navigation guard kept main\\r[2] x\\u{2028}y\\u{1b}[31m",
-                "[1795000002] plain\ttabbed",
-            ]
-        );
-    }
-
-    #[test]
-    fn a_log_that_cannot_be_moved_aside_is_still_kept_small() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(APP_LOG_FILE);
-        let blocked = dir.path().join(PREVIOUS_APP_LOG_FILE);
-        std::fs::create_dir(&blocked).unwrap();
-        std::fs::write(blocked.join("keep"), "x").unwrap();
-        for line in 0..200 {
-            append_log_line(&path, line, &format!("line {line}"), 120).unwrap();
-            assert!(
-                std::fs::metadata(&path).unwrap().len() <= 120 + 160,
-                "{line}"
-            );
-        }
-        let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.contains("app.log could not be moved aside"), "{text}");
-        assert!(text.contains("dropped its older lines"), "{text}");
-        assert!(text.ends_with("line 199\n"), "{text}");
-        assert!(blocked.is_dir());
-    }
-
-    #[test]
-    fn lines_logged_at_the_same_time_never_interleave() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("app.log");
-        let padding = "x".repeat(300);
-        let writers: Vec<_> = (0..12)
-            .map(|writer| {
-                let path = path.clone();
-                let padding = padding.clone();
-                std::thread::spawn(move || {
-                    for line in 0..150 {
-                        let message = format!("writer {writer} line {line} {padding}");
-                        append_log_line(&path, 1_795_000_000 + line, &message, u64::MAX).unwrap();
-                    }
-                })
-            })
-            .collect();
-        for writer in writers {
-            writer.join().unwrap();
-        }
-        let text = std::fs::read_to_string(&path).unwrap();
-        let lines: Vec<&str> = text.lines().collect();
-        assert_eq!(lines.len(), 12 * 150);
-        for line in lines {
-            let (stamp, message) = line.split_once("] ").unwrap();
-            assert!(
-                stamp.strip_prefix('[').unwrap().parse::<u64>().is_ok(),
-                "{line}"
-            );
-            let words: Vec<&str> = message.splitn(5, ' ').collect();
-            assert_eq!(words[0], "writer", "{line}");
-            assert_eq!(words[2], "line", "{line}");
-            assert_eq!(words[4], padding, "{line}");
-        }
-    }
+    oleafly_core::app_log::AppLog::at(&paths::oleafly_root()?).write(&message)
 }
 
 #[tauri::command(async)]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
-    read_app_log_in(&paths::oleafly_root()?, max_bytes)
+    oleafly_core::app_log::AppLog::at(&paths::oleafly_root()?).read(max_bytes)
 }
 
 async fn set_main_doc_synchronized(
@@ -5470,28 +5275,48 @@ pub(crate) fn create_blank_project(name: String) -> Result<String, String> {
         std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_TEX).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
-            &ProjectMeta {
-                dictionary_locale: None,
-                name,
-                main_doc: default_main_doc(),
-                engine,
-                color: String::new(),
-                kind: String::new(),
-                exports: Vec::new(),
-                hidden: false,
-                forked_from: None,
-                tex: None,
-                tex_flavor: None,
-                typst: None,
-                allow_shell_escape: false,
-                checkpoints: oleafly_core::CheckpointPolicy::default(),
-                pdf_sync: None,
-                extra: HashMap::new(),
-            },
+            &fresh_meta(name, default_main_doc(), engine),
         )
     })?;
     initialize_git_for_new_project(&project_id);
     Ok(project_id)
+}
+
+fn fresh_meta(name: String, main_doc: String, engine: String) -> ProjectMeta {
+    ProjectMeta {
+        name,
+        main_doc,
+        engine,
+        checkpoints: oleafly_core::CheckpointPolicy::default(),
+        ..Default::default()
+    }
+}
+
+pub(crate) fn create_online_shell(
+    name: String,
+    main_doc: Option<&str>,
+    flavor: Option<&str>,
+    origin: serde_json::Value,
+    finalize: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<String, String> {
+    let main_doc = main_doc
+        .map(str::trim)
+        .filter(|main| !main.is_empty() && engine_for_untrusted_project(main).is_ok())
+        .map_or_else(default_main_doc, str::to_owned);
+    let engine = engine_for_new_project(&main_doc).unwrap_or_else(|_| default_engine());
+    let root = paths::projects_root()?;
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let dir = reservation.path().to_path_buf();
+    let project_id = reservation.project_id().to_owned();
+    let created = create_project_transaction(reservation, || {
+        let mut meta = fresh_meta(name, main_doc, engine);
+        adopt_online_engine(&mut meta, flavor);
+        meta.extra.insert("importedFrom".to_string(), origin);
+        write_meta_at(&dir.join("project.json"), &meta)?;
+        finalize(&project_id)
+    })?;
+    initialize_git_for_new_project(&created);
+    Ok(created)
 }
 
 #[derive(Deserialize)]
@@ -5974,13 +5799,7 @@ fn import_overleaf_project_blocking_with(
                 };
                 let engine =
                     engine_for_untrusted_project(&main_doc).unwrap_or_else(|_| default_engine());
-                ProjectMeta {
-                    name: project_name.clone(),
-                    main_doc,
-                    engine,
-                    checkpoints: oleafly_core::CheckpointPolicy::default(),
-                    ..Default::default()
-                }
+                fresh_meta(project_name.clone(), main_doc, engine)
             }
         };
         let imported_flavor = if meta.engine == crate::config::LATEXMK_ENGINE {
@@ -6068,17 +5887,21 @@ pub(crate) fn adopt_online_settings(
             meta.main_doc = main.to_string();
         }
     }
+    adopt_online_engine(meta, flavor);
+    (
+        meta.main_doc.clone(),
+        meta.engine.clone(),
+        meta.tex_flavor.clone(),
+    ) != before
+}
+
+fn adopt_online_engine(meta: &mut ProjectMeta, flavor: Option<&str>) {
     if meta.main_doc.to_ascii_lowercase().ends_with(".tex")
         && crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, &meta.main_doc).is_ok()
     {
         meta.engine = crate::config::LATEXMK_ENGINE.to_string();
         meta.tex_flavor = validate_tex_flavor(&meta.engine, flavor).ok().flatten();
     }
-    (
-        meta.main_doc.clone(),
-        meta.engine.clone(),
-        meta.tex_flavor.clone(),
-    ) != before
 }
 
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
@@ -6485,8 +6308,7 @@ pub(crate) fn create_diagram_project_from(
     Ok(project_id)
 }
 
-pub const NOTE_KIND: &str = "note";
-pub const NOTE_FILE: &str = "note.md";
+pub use oleafly_core::front_matter::{NOTE_FILE, NOTE_KIND, NOTE_ORIGINS};
 const NOTE_HEAD_BYTES: usize = 8 * 1024;
 const RELATED_PROJECT_KEY: &str = "relatedProject";
 
@@ -6621,22 +6443,14 @@ pub(crate) fn note_related_project(note_id: &str) -> Option<String> {
 }
 
 fn text_head(bytes: &[u8]) -> String {
-    crate::note_index::utf8_prefix(&bytes[..bytes.len().min(NOTE_HEAD_BYTES)])
+    oleafly_core::encoding::utf8_prefix(&bytes[..bytes.len().min(NOTE_HEAD_BYTES)])
 }
 
 pub const NOTE_ASSETS: &str = "assets";
-pub const NOTE_ORIGINS: &str = "assets/origins";
 const NOTE_ORIGIN_VERSION: u32 = 1;
 const NOTE_ASSET_STEM_CHARS: usize = 60;
 const NOTE_ASSET_STEM_BYTES: usize = 120;
 const NOTE_ASSET_HASH_CHARS: usize = 8;
-pub(crate) const NOTE_DECLARATION_BYTES: usize = 4 * 1024;
-
-pub(crate) fn front_matter_declares_note(text: &str) -> bool {
-    oleafly_core::front_matter::split(text)
-        .and_then(|front| front.scalar("kind"))
-        .is_some_and(|kind| kind == NOTE_KIND)
-}
 
 fn adopts_declared_note(
     project_id: &str,
@@ -6649,15 +6463,15 @@ fn adopts_declared_note(
     let Ok(path) = crate::sandbox::resolve_readable(project_id, &meta.main_doc) else {
         return false;
     };
-    let mut bytes = Vec::with_capacity(NOTE_DECLARATION_BYTES);
+    let limit = oleafly_core::front_matter::NOTE_DECLARATION_BYTES;
+    let mut bytes = Vec::with_capacity(limit);
     let read = std::fs::File::open(&path).and_then(|file| {
         use std::io::Read;
-        file.take(NOTE_DECLARATION_BYTES as u64)
-            .read_to_end(&mut bytes)
+        file.take(limit as u64).read_to_end(&mut bytes)
     });
     let head = text_head(&bytes);
     read.is_ok()
-        && front_matter_declares_note(&head)
+        && oleafly_core::front_matter::declares_note(&head)
         && (oleafly_core::front_matter::split(&head)
             .and_then(|front| front.scalar("id"))
             .is_some_and(|id| !id.is_empty())
@@ -9013,7 +8827,8 @@ fn give_duplicated_note_a_new_id(dir: &Path, meta: &ProjectMeta) -> Result<(), S
         return Ok(());
     };
     let declared = meta.kind == NOTE_KIND
-        || (meta.kind.is_empty() && front_matter_declares_note(&text_head(text.as_bytes())));
+        || (meta.kind.is_empty()
+            && oleafly_core::front_matter::declares_note(&text_head(text.as_bytes())));
     if !declared {
         return Ok(());
     }
@@ -9448,6 +9263,9 @@ async fn recycle_admitted(project_id: String, admission: MutationAdmission) -> R
     crate::collab::live::stop(&project_id).await;
     let recycled_id = project_id.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let overleaf = crate::overleaf::overleaf_link_of(&project_id)
+            .ok()
+            .flatten();
         let ((), _) = admission.run_with_change_status(|| {
             with_project_metadata_lock_held(&project_id, || {
                 let root = paths::projects_root()?
@@ -9462,10 +9280,17 @@ async fn recycle_admitted(project_id: String, admission: MutationAdmission) -> R
                     .map(|meta| meta.name)
                     .unwrap_or_else(|_| project_id.clone());
                 revoke_shell_escape_trust(&project_id)?;
+                if overleaf.is_some() {
+                    let _ = crate::collab::live::overleaf::remove_folder_lock(verified.path());
+                }
                 crate::storage::recycle_project_directory(&verified, &project_name)?;
                 Ok(((), true))
             })
         })?;
+        if let Some(link) = overleaf {
+            let _ =
+                crate::collab::live::overleaf::forget_overleaf_project(&link, &project_id, None);
+        }
         Ok(())
     })
     .await
@@ -9485,12 +9310,11 @@ mod tests {
         create_typst_project_in, declared_template_engine, duplicate_project,
         engine_for_main_document, engine_for_untrusted_project, engine_runs_notebook_code,
         engine_runs_project_code, export_would_write_inside_project, extract_pandoc,
-        flatten_single_root_folder, front_matter_declares_note,
-        get_or_create_scratch_project_blocking, import_file_into_note, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, is_table_import_extension, list_projects_blocking,
-        normalize_loaded_tex_flavor, normalize_relative, note_asset_name, note_asset_path,
-        note_origin_path, pandoc_asset_for, pandoc_version_supported, read_meta,
+        flatten_single_root_folder, get_or_create_scratch_project_blocking, import_file_into_note,
+        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
+        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
+        list_projects_blocking, normalize_loaded_tex_flavor, normalize_relative, note_asset_name,
+        note_asset_path, note_origin_path, pandoc_asset_for, pandoc_version_supported, read_meta,
         read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
         safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         set_note_related_project_blocking, text_head, try_reserve_project_directory,
@@ -18277,32 +18101,6 @@ mod tests {
 
     #[test]
     fn a_note_is_recognised_from_its_own_front_matter() {
-        assert!(front_matter_declares_note(
-            "---\ntitle: A\nkind: note\n---\nBody"
-        ));
-        assert!(front_matter_declares_note("---\nkind: \"note\"\n---\n"));
-        assert!(!front_matter_declares_note("---\nkind: paper\n---\n"));
-        assert!(!front_matter_declares_note(
-            "---\ntitle: A\n---\nkind: note\n"
-        ));
-        assert!(!front_matter_declares_note("kind: note\n"));
-        assert!(front_matter_declares_note("\u{feff}---\nkind: note\n---\n"));
-        assert!(front_matter_declares_note(
-            "---\nkind: paper\nkind: note\n---\n"
-        ));
-        assert!(!front_matter_declares_note(
-            "---\nkind: note\nkind: paper\n---\n"
-        ));
-        assert!(!front_matter_declares_note("---\nkind: note\n"));
-        assert!(!front_matter_declares_note(
-            "---\ntitle: A\n...\nkind: note"
-        ));
-        assert!(front_matter_declares_note(
-            "---  \nkind : note # since 0.4\n---\n"
-        ));
-        assert!(front_matter_declares_note("---\nkind: 'note'\n...  \n"));
-        assert!(!front_matter_declares_note("---\nkind: # note\n---\n"));
-
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("note-declared");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
@@ -18604,7 +18402,9 @@ mod tests {
         assert!(head.chars().all(|c| c == 'a'));
         assert_eq!(text_head("short".as_bytes()), "short");
         let latin1 = b"---\ntitle: caf\xe9\nkind: note\n---\nBody";
-        assert!(front_matter_declares_note(&text_head(latin1)));
+        assert!(oleafly_core::front_matter::declares_note(&text_head(
+            latin1
+        )));
         let invalid = vec![0xffu8; NOTE_HEAD_BYTES * 4];
         assert_eq!(
             text_head(&invalid).chars().count(),

@@ -29,6 +29,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PdfViewer, type PdfLoadState } from "@/components/pdf/PdfViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -870,6 +871,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const pdfReview = useSettingsStore((state) => state.pdfReview);
+  const commentable = useCommentsRail((state) => state.canCompose);
   const annotationLayerRef = useRef<HTMLDivElement>(null);
   const [annotationSlot, setAnnotationSlot] = useState<HTMLDivElement | null>(null);
   const [annotations, setAnnotations] = useState<PdfAnnotationsView | null>(null);
@@ -1466,10 +1468,12 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       className="relative flex h-full flex-col bg-background"
     >
       {isFs && fsToolbarHidden && <PdfShowToolbarButton onShow={() => setFsToolbarHidden(false)} />}
-      {pdfReview && !isImage && projectId ? (
+      {(pdfReview || commentable) && !isImage && projectId ? (
         <Suspense fallback={null}>
           <PdfAnnotationsHost
             projectId={projectId}
+            annotate={pdfReview}
+            comment={commentable}
             build={viewerDocument?.identity ?? null}
             documentReady={
               pdfLoadState.status === "ready" && pdfLoadState.documentIdentity === (viewerDocument?.identity ?? null)

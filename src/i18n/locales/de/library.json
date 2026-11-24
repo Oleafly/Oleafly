@@ -341,6 +341,7 @@
       "saveServer": "Diesen Server verwenden",
       "signedInAs": "Angemeldet als {{email}}",
       "signedIn": "Bei Overleaf angemeldet",
+      "accountPick": "Overleaf-Konto",
       "signOut": "Abmelden",
       "searchLabel": "Overleaf-Projekte durchsuchen",
       "searchPlaceholder_one": "{{count}} Projekt durchsuchen",
@@ -362,6 +363,8 @@
       "import_other": "{{count}} Projekte importieren",
       "imported": "Importiert",
       "open": "Öffnen",
+      "openLive": "Live öffnen",
+      "opening": "Wird geöffnet",
       "ownedByYou": "Gehört Ihnen",
       "owner": "Gehört {{name}}",
       "archived": "Archiviert",
@@ -377,6 +380,36 @@
         "downloading": "Wird geladen: {{percent}} %",
         "downloadingUnknown": "Wird geladen",
         "importing": "Wird eingerichtet"
+      },
+      "invitations": {
+        "title": "Einladungen",
+        "from": "Von {{name}}",
+        "join": "Beitreten",
+        "joined": "Sie sind diesem Projekt beigetreten"
+      },
+      "link": {
+        "checking": "Der Link wird geprüft",
+        "unnamed": "Ein Projekt bei Overleaf",
+        "join": "Beitreten",
+        "importInstead": "Importieren",
+        "grants": {
+          "edit": "Wenn Sie beitreten, können Sie es als Mitarbeiter bearbeiten.",
+          "view": "Wenn Sie beitreten, können Sie es nur ansehen. Betrachter per Link sehen weder Kommentare noch Chat.",
+          "already": "Sie haben dieses Projekt bereits.",
+          "invite": "Mit dem Beitreten nehmen Sie die Einladung an."
+        }
+      },
+      "put": {
+        "menu": "Auf Overleaf stellen",
+        "title": "Auf Overleaf stellen",
+        "description": "Oleafly lädt dieses Projekt als neues Overleaf-Projekt hoch und hält danach beide synchron, während Sie live bearbeiten.",
+        "name": "Name bei Overleaf",
+        "account": "Overleaf-Konto",
+        "submit": "Auf Overleaf stellen",
+        "working": "Wird hochgeladen",
+        "signedOut": "Melden Sie sich zuerst in den Einstellungen bei Overleaf an.",
+        "openSettings": "Einstellungen öffnen",
+        "cancel": "Abbrechen"
       }
     }
   },

@@ -1,0 +1,422 @@
+{
+  "doc": "6b050a8ccb4fe3a455d4e2d9",
+  "format": "sharejs-text-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "alice types the base text",
+      "who": "alice",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b050a8ccb4fe3a455d4e2d9",
+              "op": [
+                {
+                  "p": 0,
+                  "i": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n"
+                }
+              ],
+              "v": 0,
+              "hash": "11179d44785797d607cc83f23c70a101abcd0750"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": [
+            {
+              "t": 665,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 814,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 818,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 818,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "carol (live doc client, reviewer) inserts \"whole \" and deletes \"sentence\" and \"change \" with tracking",
+      "who": "carol",
+      "changeIds": {
+        "added": [
+          "8586d01a2e8db936b4000001",
+          "fea87fb515d7857137000001",
+          "89cae8abe254b805cc000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 4,
+        "text": "Keep this whole . Remove this word please.\nAnother line to here.\nThird line with more words.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "8586d01a2e8db936b4000001",
+              "op": {
+                "i": "whole ",
+                "p": 10
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:00.419Z"
+              }
+            },
+            {
+              "id": "fea87fb515d7857137000001",
+              "op": {
+                "p": 16,
+                "d": "sentence"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:03.436Z"
+              }
+            },
+            {
+              "id": "89cae8abe254b805cc000001",
+              "op": {
+                "p": 59,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:06.453Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "bob (live doc client) comments on \"whole\", the inserted text",
+      "who": "bob",
+      "thread": "6b050a9de462bdd72d000001",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 5,
+        "text": "Keep this whole . Remove this word please.\nAnother line to here.\nThird line with more words.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "8586d01a2e8db936b4000001",
+              "op": {
+                "i": "whole ",
+                "p": 10
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:00.419Z"
+              }
+            },
+            {
+              "id": "fea87fb515d7857137000001",
+              "op": {
+                "p": 16,
+                "d": "sentence"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:03.436Z"
+              }
+            },
+            {
+              "id": "89cae8abe254b805cc000001",
+              "op": {
+                "p": 59,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:06.453Z"
+              }
+            }
+          ],
+          "comments": [
+            {
+              "id": "6b050a9de462bdd72d000001",
+              "op": {
+                "c": "whole",
+                "p": 10,
+                "t": "6b050a9de462bdd72d000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f2",
+                "ts": "2026-11-24T03:55:09.738Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "bob accepts the insert \"whole \" and the delete \"sentence\" by ops and re-anchors the comment",
+      "who": "bob",
+      "ids": [
+        "8586d01a2e8db936b4000001",
+        "fea87fb515d7857137000001"
+      ],
+      "thread": "6b050a9de462bdd72d000001",
+      "changeIds": {
+        "added": [],
+        "removed": [
+          "8586d01a2e8db936b4000001",
+          "fea87fb515d7857137000001"
+        ]
+      },
+      "server": {
+        "version": 6,
+        "text": "Keep this whole . Remove this word please.\nAnother line to here.\nThird line with more words.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "89cae8abe254b805cc000001",
+              "op": {
+                "p": 59,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:06.453Z"
+              }
+            }
+          ],
+          "comments": [
+            {
+              "id": "6b050a9de462bdd72d000001",
+              "op": {
+                "c": "whole",
+                "p": 10,
+                "t": "6b050a9de462bdd72d000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f2",
+                "ts": "2026-11-24T03:55:09.738Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "alice types at the end of line 1 after the accept",
+      "who": "alice",
+      "edit": {
+        "changes": {
+          "from": 42,
+          "insert": " Alice was here."
+        },
+        "userEvent": "input.type"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this whole . Remove this word please. Alice was here.\nAnother line to here.\nThird line with more words.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "89cae8abe254b805cc000001",
+              "op": {
+                "p": 75,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:06.453Z"
+              }
+            }
+          ],
+          "comments": [
+            {
+              "id": "6b050a9de462bdd72d000001",
+              "op": {
+                "c": "whole",
+                "p": 10,
+                "t": "6b050a9de462bdd72d000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f2",
+                "ts": "2026-11-24T03:55:09.738Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b050a8ccb4fe3a455d4e2d9",
+              "op": [
+                {
+                  "p": 42,
+                  "i": " Alice was here."
+                }
+              ],
+              "v": 6,
+              "lastV": 0,
+              "hash": "eea98cbd5e205f19ef4bd4ffa82faf739d889512"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "everyone agrees after alice typed",
+      "who": "alice",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this whole . Remove this word please. Alice was here.\nAnother line to here.\nThird line with more words.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "89cae8abe254b805cc000001",
+              "op": {
+                "p": 75,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:55:06.453Z"
+              }
+            }
+          ],
+          "comments": [
+            {
+              "id": "6b050a9de462bdd72d000001",
+              "op": {
+                "c": "whole",
+                "p": 10,
+                "t": "6b050a9de462bdd72d000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f2",
+                "ts": "2026-11-24T03:55:09.738Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

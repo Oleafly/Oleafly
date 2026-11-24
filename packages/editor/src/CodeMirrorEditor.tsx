@@ -93,7 +93,7 @@ import { gateCompletionSource, type CompletionSyntax } from "./completion-trigge
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
-import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
+import { changesToUtf16Edits, localOrigin, remoteChange, sessionLineBreaks } from "./collaboration";
 import {
   capturePathViewState,
   editedPathViewState,
@@ -337,7 +337,11 @@ class EditorSessions {
         continue;
       }
       try {
-        session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+        session.applyLocal(
+          lfEdits(changesToUtf16Edits(transaction.changes)),
+          this.currentVersion,
+          localOrigin(transaction),
+        );
       } catch (error) {
         logException(view.state, error, "shared document");
         this.keepAligned(view, session, true);

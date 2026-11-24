@@ -555,9 +555,9 @@ so the Tooltip always works. A failed send keeps the text
 and shows "Not sent." with the reason, plus Retry when the host says retrying
 can help. The kit has no strings of its own: the host wraps it in a
 `CommentKitProvider` with its labels, time formats, names, error text,
-confirm dialog and reaction support (`DesktopCommentKit` on the desktop,
-`WebCommentKit` in the web client). An error line under an action is an
-`InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
+error logging (`reportError`), confirm dialog and reaction support
+(`DesktopCommentKit` on the desktop, `WebCommentKit` in the web client). An
+error line under an action is an `InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
 for callers that must close it themselves, as the reaction picker does.
 
 Live states come from the same kit. A `CommentEntry` can carry a `delivery`:

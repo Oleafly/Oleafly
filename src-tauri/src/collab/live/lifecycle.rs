@@ -1,5 +1,6 @@
+use std::collections::BTreeSet;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use oleafly_collab::live::LiveProject;
@@ -15,8 +16,8 @@ use super::live_disk::writer_loop;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
 use super::session::{
-    active_for, cancel_start, guard, io, live_for, lock, not_live, Active, Live, LiveDisk,
-    WriterSignal, ACTIVE, FRESH_JOINS, LIFECYCLE,
+    active_for, app_log, app_runtime, cancel_start, forget_live, guard, io, live_for, lock,
+    not_live, Active, Live, LiveDisk, WriterSignal, ACTIVE, FRESH_JOINS, LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
 use crate::collab::commands::signed_out;
@@ -94,6 +95,7 @@ async fn start_locked(
         });
     };
     let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
+    let log = app_log()?;
     let client = Arc::new(ServerClient::new(ServerUrl::parse(&binding.server_url)?)?);
     let link = LiveLink {
         client,
@@ -143,10 +145,13 @@ async fn start_locked(
             disk_file,
             disk: Mutex::new(disk),
             bases: Mutex::new(bases),
-            host,
+            host: Arc::clone(&host) as _,
             writer: writer_tx,
             upkeep: Default::default(),
+            runtime: app_runtime(),
+            log,
         },
+        host,
         document_dir,
         live: Arc::clone(&shared),
         handle,
@@ -197,6 +202,7 @@ async fn finish(live: Live) {
     active.save_now();
     active.local.announce_written();
     active.handle.stop();
+    forget_live(&active.local);
     crate::folder_watch::release_live(&active.local.project_id);
 }
 
@@ -296,26 +302,23 @@ pub fn reconnect_now() -> bool {
     })
 }
 
-pub fn window_focused(focused: bool) {
-    let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() else {
-        return;
-    };
+static FOCUSED: LazyLock<Mutex<BTreeSet<String>>> = LazyLock::new(|| Mutex::new(BTreeSet::new()));
+
+fn focused_anywhere(label: &str, focused: bool) -> bool {
+    let mut windows = guard(&FOCUSED);
     if focused {
-        live.set_focused(true);
-        return;
+        windows.insert(label.to_owned());
+    } else {
+        windows.remove(label);
     }
-    let Some(app) = live.mirror.disk.host.app() else {
-        live.set_focused(false);
-        return;
-    };
-    tauri::async_runtime::spawn(async move {
-        use tauri::Manager as _;
-        let elsewhere = app
-            .webview_windows()
-            .values()
-            .any(|window| window.is_focused().unwrap_or(false));
-        live.set_focused(elsewhere);
-    });
+    !windows.is_empty()
+}
+
+pub fn window_focused(label: &str, focused: bool) {
+    let anywhere = focused_anywhere(label, focused);
+    if let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() {
+        live.set_focused(anywhere);
+    }
 }
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);
@@ -349,4 +352,20 @@ pub async fn forget(project_id: &str, paths: &oleafly_collab::CollabPaths) {
         let _ = tokio::fs::remove_dir_all(dir).await;
     }
     crate::collab::registry::invalidate(project_id);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::focused_anywhere;
+
+    #[test]
+    fn focus_moving_between_windows_stays_focused_in_either_event_order() {
+        assert!(focused_anywhere("focus-main", true));
+        assert!(focused_anywhere("focus-pdf", true));
+        assert!(focused_anywhere("focus-main", false));
+        assert!(!focused_anywhere("focus-pdf", false));
+        assert!(!focused_anywhere("focus-pdf", false));
+        assert!(focused_anywhere("focus-main", true));
+        assert!(!focused_anywhere("focus-main", false));
+    }
 }

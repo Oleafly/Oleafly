@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use oleafly_online::test_support::mock_overleaf::{MockProject, MockUser, Privilege};
+use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser, Privilege};
 use oleafly_ot::DocMessage;
 
 use std::sync::Arc;
@@ -15,6 +15,8 @@ use super::account::overleaf_signed_in;
 use super::notices::{self, OverleafNotice};
 use super::refuse_overleaf_linked;
 use super::rig::{eventually, run, session_of, OverleafRig, Place, Quiet};
+use crate::collab::live::disk_pass;
+use crate::collab::live::host::LiveHost;
 use crate::collab::live::kept::{KeptFile, KeptKind};
 use crate::collab::live::session::{guard, live_for};
 use crate::collab::live::UnsentProject;
@@ -261,14 +263,74 @@ fn an_agent_write_becomes_one_op_and_shows_in_the_open_tab() {
     });
 }
 
+async fn agent_write_after_bob_typed(base: Option<&str>) {
+    let rig = OverleafRig::start(
+        project("Hello\n", "Intro\n"),
+        &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+    )
+    .await;
+    let doc = rig.doc(MAIN);
+    crate::collab::live::write::note_read(&rig.project_id, MAIN, "Hello\n");
+    let mut bob = rig.mock.peer("bob");
+    bob.join(&doc);
+    bob.type_at(&doc, 0, "Hi ");
+    eventually("bob's edit reaches disk", || rig.read(MAIN) == "Hi Hello\n").await;
+    let outcome =
+        crate::collab::live::write::write_text(&rig.project_id, MAIN, base, "Hello\nthere\n")
+            .await
+            .unwrap();
+    assert!(outcome.handled);
+    eventually("both edits reach the server", || {
+        rig.mock.doc_text(&doc) == "Hi Hello\nthere\n"
+    })
+    .await;
+    assert_eq!(rig.read(MAIN), "Hi Hello\nthere\n");
+    rig.finish().await;
+}
+
+#[test]
+fn an_mcp_write_after_a_native_read_keeps_a_coauthor_edit() {
+    run(agent_write_after_bob_typed(None));
+}
+
+#[test]
+fn an_agent_write_with_its_own_base_keeps_that_base() {
+    run(agent_write_after_bob_typed(Some("Hello\n")));
+}
+
+#[test]
+fn an_agent_can_write_back_the_text_it_replaced() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        crate::collab::live::write::note_read(&rig.project_id, MAIN, "Hello\n");
+        for text in ["Hello\nthere\n", "Hello\n"] {
+            let outcome = crate::collab::live::write::write_text(&rig.project_id, MAIN, None, text)
+                .await
+                .unwrap();
+            assert!(outcome.handled);
+            eventually("the write reaches the server", || {
+                rig.mock.doc_text(&doc) == text
+            })
+            .await;
+            assert_eq!(rig.read(MAIN), text);
+        }
+        rig.finish().await;
+    });
+}
+
 const SERVER: &str = "https://www.overleaf.com";
 const LINKED: &str = "6af963ebc9037022065bb53f";
 
-fn imported_project() -> String {
+pub(super) fn imported_project() -> String {
     linked_to(SERVER, LINKED)
 }
 
-fn linked_to(server: &str, remote: &str) -> String {
+pub(super) fn linked_to(server: &str, remote: &str) -> String {
     let project_id = crate::project::create_blank_project("Imported".into()).unwrap();
     let mut meta = crate::project::read_meta(&project_id).unwrap();
     meta.extra.insert(
@@ -294,12 +356,13 @@ fn journal_unsent(server: &str, remote: &str, path: &str) {
             inflight: None,
             provisional: false,
             path: Some(path.to_owned()),
+            queued: Vec::new(),
         }),
     );
     journal.flush().unwrap();
 }
 
-fn collab_paths() -> CollabPaths {
+pub(super) fn collab_paths() -> CollabPaths {
     CollabPaths::new(crate::paths::collab_root().unwrap())
 }
 
@@ -564,7 +627,7 @@ async fn strand_unsent(rig: &OverleafRig) {
     .await;
 }
 
-fn signed_in_as(base: &str, user: &MockUser) {
+pub(super) fn signed_in_as(base: &str, user: &MockUser) {
     let store = crate::secrets::store().unwrap();
     oleafly_online::session::save(&store, base, &session_of(user)).unwrap();
 }
@@ -609,7 +672,7 @@ fn sign_out_lists_unsent_overleaf_docs() {
         journal_unsent(&base, LINKED, INTRO);
 
         let asked =
-            crate::overleaf::sign_out_within(base.clone(), false, Duration::from_millis(300))
+            crate::overleaf::sign_out_within(base.clone(), None, false, Duration::from_millis(300))
                 .await
                 .unwrap();
 
@@ -633,7 +696,7 @@ fn sign_out_lists_unsent_overleaf_docs() {
         ];
         journals.sort();
         let data = crate::paths::oleafly_root().unwrap();
-        assert_eq!(journal::unsent_on(&data, &base), journals);
+        assert_eq!(journal::unsent_on(&data, &base, None), journals);
         rig.finish().await;
     });
     drop(library);
@@ -656,9 +719,10 @@ fn keep_local_copy_stops_live_and_keeps_the_journal() {
             (rig.project_id.clone(), rig.mock.project_id(), rig.doc(MAIN));
         let _rest = rig.let_go();
 
-        let out = crate::overleaf::sign_out_within(base.clone(), true, Duration::from_millis(300))
-            .await
-            .unwrap();
+        let out =
+            crate::overleaf::sign_out_within(base.clone(), None, true, Duration::from_millis(300))
+                .await
+                .unwrap();
 
         assert!(!out.status.signed_in);
         assert_eq!(
@@ -669,7 +733,7 @@ fn keep_local_copy_stops_live_and_keeps_the_journal() {
         assert!(live_for(&project_id).is_none());
         let data = crate::paths::oleafly_root().unwrap();
         assert_eq!(
-            journal::unsent_on(&data, &base),
+            journal::unsent_on(&data, &base, None),
             vec![(remote.clone(), vec![MAIN.to_owned()])]
         );
         assert_eq!(
@@ -685,13 +749,19 @@ fn sign_out_with_nothing_live_and_nothing_unsent_answers_as_before() {
     let library = TempLibrary::new();
     signed_in_as(SERVER, &MockUser::named("alice"));
     run(async {
-        let out =
-            crate::overleaf::sign_out_within(SERVER.to_owned(), false, Duration::from_millis(300))
-                .await
-                .unwrap();
+        let out = crate::overleaf::sign_out_within(
+            SERVER.to_owned(),
+            None,
+            false,
+            Duration::from_millis(300),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             serde_json::to_value(&out).unwrap(),
-            serde_json::json!({ "server": SERVER, "signedIn": false, "email": null })
+            serde_json::json!({
+                "server": SERVER, "signedIn": false, "email": null, "userId": null, "accounts": []
+            })
         );
     });
     assert!(!stored_session(SERVER));
@@ -720,13 +790,16 @@ fn sign_out_with_nothing_unsent_stops_live_and_signs_out_without_asking() {
         let project_id = rig.project_id.clone();
         let _rest = rig.let_go();
 
-        let out = crate::overleaf::sign_out_within(base.clone(), false, Duration::from_secs(2))
-            .await
-            .unwrap();
+        let out =
+            crate::overleaf::sign_out_within(base.clone(), None, false, Duration::from_secs(2))
+                .await
+                .unwrap();
 
         assert_eq!(
             serde_json::to_value(&out).unwrap(),
-            serde_json::json!({ "server": base, "signedIn": false, "email": null })
+            serde_json::json!({
+                "server": base, "signedIn": false, "email": null, "userId": null, "accounts": []
+            })
         );
         assert!(!stored_session(&base));
         assert!(live_for(&project_id).is_none());
@@ -810,55 +883,96 @@ fn ended(rig: &OverleafRig) -> Option<EndReason> {
     }
 }
 
+async fn removal_finds_the_unsent_text_in_the_file(while_recording: bool) {
+    let rig = OverleafRig::start_at(
+        project("Hello\n", "Intro\n"),
+        &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        Place::Library,
+    )
+    .await;
+    let mut tab = rig.open(MAIN);
+    rig.mock.hold_updates();
+    if while_recording {
+        disk_pass::pause_at(
+            &disk_pass::RECORD_LATE,
+            &rig.root,
+            Some(Duration::from_secs(10)),
+        );
+    }
+    tab.typed(&rig.live, "Hello\nunsent\n");
+    eventually("the edit is sent and still unapplied", || {
+        !rig.mock.received("applyOtUpdate").is_empty()
+    })
+    .await;
+    eventually("the unsent text is in the file", || {
+        rig.read(MAIN) == "Hello\nunsent\n"
+    })
+    .await;
+    if while_recording {
+        eventually("the writer has not recorded the text yet", || {
+            disk_pass::writer_paused(&rig.root)
+        })
+        .await;
+    }
+    rig.mock.emit_to_room("project:access:revoked", &[]);
+    eventually("live ends as removed", || {
+        ended(&rig) == Some(EndReason::Removed)
+    })
+    .await;
+    disk_pass::pause_at(&disk_pass::RECORD_LATE, &rig.root, None);
+    let kept = || -> Vec<KeptFile> {
+        rig.host
+            .kept
+            .lock()
+            .unwrap()
+            .iter()
+            .flat_map(|payload| payload.files.clone())
+            .collect()
+    };
+    eventually("the unsent change is announced", || !kept().is_empty()).await;
+    let kept = kept();
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(
+        (kept[0].path.as_str(), kept[0].kind, kept[0].copy.as_deref()),
+        (MAIN, KeptKind::Unsent, None)
+    );
+    assert_eq!(rig.read(MAIN), "Hello\nunsent\n");
+    let project_id = rig.project_id.clone();
+    rig.finish().await;
+    super::commands::unlink(&project_id).await.unwrap();
+    let meta = crate::project::read_meta(&project_id).unwrap();
+    assert!(!meta.extra.contains_key("importedFrom"));
+}
+
 #[test]
 fn removal_says_unsent_text_stayed_in_the_file_and_lets_the_project_go_local() {
     let library = TempLibrary::new();
-    run(async {
-        let rig = OverleafRig::start_at(
-            project("Hello\n", "Intro\n"),
-            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
-            Place::Library,
-        )
-        .await;
-        let mut tab = rig.open(MAIN);
-        rig.mock.hold_updates();
-        tab.typed(&rig.live, "Hello\nunsent\n");
-        eventually("the edit is sent and still unapplied", || {
-            !rig.mock.received("applyOtUpdate").is_empty()
-        })
-        .await;
-        eventually("the unsent text is in the file", || {
-            rig.read(MAIN) == "Hello\nunsent\n"
-        })
-        .await;
-        rig.mock.emit_to_room("project:access:revoked", &[]);
-        eventually("live ends as removed", || {
-            ended(&rig) == Some(EndReason::Removed)
-        })
-        .await;
-        let kept = || -> Vec<KeptFile> {
-            rig.host
-                .kept
-                .lock()
-                .unwrap()
-                .iter()
-                .flat_map(|payload| payload.files.clone())
-                .collect()
-        };
-        eventually("the unsent change is announced", || !kept().is_empty()).await;
-        let kept = kept();
-        assert_eq!(kept.len(), 1, "{kept:?}");
-        assert_eq!(
-            (kept[0].path.as_str(), kept[0].kind, kept[0].copy.as_deref()),
-            (MAIN, KeptKind::Unsent, None)
-        );
-        assert_eq!(rig.read(MAIN), "Hello\nunsent\n");
-        let project_id = rig.project_id.clone();
-        rig.finish().await;
-        super::commands::unlink(&project_id).await.unwrap();
-        let meta = crate::project::read_meta(&project_id).unwrap();
-        assert!(!meta.extra.contains_key("importedFrom"));
-    });
+    run(removal_finds_the_unsent_text_in_the_file(false));
+    drop(library);
+}
+
+#[test]
+fn removal_finds_the_unsent_text_in_the_file_before_the_writer_records_it() {
+    let library = TempLibrary::new();
+    run(removal_finds_the_unsent_text_in_the_file(true));
+    drop(library);
+}
+
+#[test]
+fn unlinking_a_project_whose_import_names_a_path_keeps_the_project_folder() {
+    let library = TempLibrary::new();
+    let project_id = linked_to(SERVER, "../../projects");
+    let data = crate::paths::oleafly_root().unwrap();
+    std::fs::create_dir_all(
+        data.join("overleaf-mirror")
+            .join(journal::origin_dir(SERVER).unwrap()),
+    )
+    .unwrap();
+    let root = crate::paths::project_dir(&project_id).unwrap();
+    run(async { super::commands::unlink(&project_id).await.unwrap() });
+    assert!(root.join("project.json").is_file());
+    let meta = crate::project::read_meta(&project_id).unwrap();
+    assert!(!meta.extra.contains_key("importedFrom"));
     drop(library);
 }
 
@@ -1167,4 +1281,335 @@ fn an_external_update_is_noticed() {
         .await;
         rig.finish().await;
     });
+}
+
+fn journal_dir_of(base: &str, remote: &str) -> std::path::PathBuf {
+    journal::journal_dir(&crate::paths::oleafly_root().unwrap(), base, remote).unwrap()
+}
+
+fn mirror_dir_of(base: &str, remote: &str, project_id: &str) -> std::path::PathBuf {
+    let link = crate::overleaf::OverleafLink {
+        server: base.to_owned(),
+        project_id: remote.to_owned(),
+        user_id: None,
+    };
+    super::mirror_dir(&crate::paths::oleafly_root().unwrap(), &link, project_id).unwrap()
+}
+
+fn live_lock(project_id: &str) -> std::path::PathBuf {
+    crate::paths::project_dir(project_id)
+        .unwrap()
+        .join(".oleafly")
+        .join("online")
+        .join("live.lock")
+}
+
+async fn within<T>(what: &str, wait: Duration, work: impl std::future::Future<Output = T>) -> T {
+    tokio::time::timeout(wait, work)
+        .await
+        .unwrap_or_else(|_| panic!("timed out waiting until {what}"))
+}
+
+#[test]
+fn a_session_that_ends_by_itself_leaves_and_trying_again_starts_afresh() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        signed_in_as(&rig.mock.base, &rig.mock.user("alice"));
+        let project_id = rig.project_id.clone();
+        let host: Arc<dyn LiveHost> = Arc::clone(&rig.host) as Arc<dyn LiveHost>;
+        rig.mock.emit_to_room("project:access:revoked", &[]);
+        eventually("live ends as removed", || {
+            ended(&rig) == Some(EndReason::Removed)
+        })
+        .await;
+        let rest = rig.let_go();
+        eventually("the ended session leaves", || {
+            live_for(&project_id).is_none()
+        })
+        .await;
+
+        within(
+            "trying again goes live",
+            Duration::from_secs(15),
+            super::commands::start(host, &collab_paths(), &project_id),
+        )
+        .await
+        .unwrap();
+        let again = live_for(&project_id)
+            .and_then(|live| live.overleaf().cloned())
+            .expect("a fresh session");
+        assert!(!again.ended());
+        drop(again);
+        crate::collab::live::stop(&project_id).await;
+        drop(rest);
+    });
+    drop(library);
+}
+
+async fn start_on_a_stalled_server(
+    mock: &MockOverleaf,
+) -> (
+    String,
+    tauri::async_runtime::JoinHandle<Result<crate::collab::live::payloads::LiveInfo, CollabError>>,
+) {
+    let project_id = linked_to(&mock.base, &mock.project_id());
+    signed_in_as(&mock.base, &mock.user("alice"));
+    mock.stall();
+    let starting = {
+        let id = project_id.clone();
+        tauri::async_runtime::spawn(async move {
+            super::commands::start(Arc::new(Quiet::default()), &collab_paths(), &id).await
+        })
+    };
+    let handshake = format!("/socket.io/1/?projectId={}", mock.project_id());
+    eventually("the start waits on the stalled server", || {
+        !mock.requests(&handshake).is_empty()
+    })
+    .await;
+    (project_id, starting)
+}
+
+async fn never_goes_live(mock: &MockOverleaf, project_id: &str) {
+    mock.resume();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(live_for(project_id).is_none());
+}
+
+#[test]
+fn unlinking_during_a_stalled_first_connect_cancels_it_and_removes_what_it_kept() {
+    let library = TempLibrary::new();
+    run(async {
+        let mock = MockOverleaf::start(project("Hello\n", "Intro\n")).await;
+        let (project_id, starting) = start_on_a_stalled_server(&mock).await;
+        assert!(live_lock(&project_id).is_file());
+
+        super::commands::unlink(&project_id).await.unwrap();
+
+        let started = within("the start gives up", Duration::from_secs(5), starting)
+            .await
+            .unwrap();
+        assert_eq!(code(started.unwrap_err()), "not_found");
+        never_goes_live(&mock, &project_id).await;
+        let meta = crate::project::read_meta(&project_id).unwrap();
+        assert!(!meta.extra.contains_key("importedFrom"));
+        assert!(!journal_dir_of(&mock.base, &mock.project_id()).exists());
+        assert!(!mirror_dir_of(&mock.base, &mock.project_id(), &project_id).exists());
+        assert!(!live_lock(&project_id).exists());
+    });
+    drop(library);
+}
+
+#[test]
+fn signing_out_during_a_stalled_first_connect_cancels_it() {
+    let library = TempLibrary::new();
+    run(async {
+        let mock = MockOverleaf::start(project("Hello\n", "Intro\n")).await;
+        let (project_id, starting) = start_on_a_stalled_server(&mock).await;
+
+        let out = crate::overleaf::sign_out_within(
+            mock.base.clone(),
+            None,
+            false,
+            Duration::from_millis(300),
+        )
+        .await
+        .unwrap();
+
+        assert!(!out.status.signed_in);
+        let started = within("the start gives up", Duration::from_secs(5), starting)
+            .await
+            .unwrap();
+        assert!(started.is_err());
+        never_goes_live(&mock, &project_id).await;
+        assert!(!stored_session(&mock.base));
+    });
+    drop(library);
+}
+
+#[test]
+fn unlinking_keeps_a_journal_another_linked_project_still_uses() {
+    let library = TempLibrary::new();
+    let first = imported_project();
+    let second = imported_project();
+    let data = crate::paths::oleafly_root().unwrap();
+    Journal::open(&data, SERVER, LINKED, None)
+        .unwrap()
+        .flush()
+        .unwrap();
+    let journal = journal_dir_of(SERVER, LINKED);
+    assert!(journal.is_dir());
+    tauri::async_runtime::block_on(super::commands::unlink(&first)).unwrap();
+    assert!(journal.is_dir());
+    tauri::async_runtime::block_on(super::commands::unlink(&second)).unwrap();
+    assert!(!journal.exists());
+    drop(library);
+}
+
+#[test]
+fn recycling_a_linked_project_removes_what_it_kept_for_overleaf() {
+    let library = TempLibrary::new();
+    let project_id = imported_project();
+    let data = crate::paths::oleafly_root().unwrap();
+    let root = crate::paths::project_dir(&project_id).unwrap();
+    drop(Journal::open(&data, SERVER, LINKED, Some(&root)).unwrap());
+    let mirror = mirror_dir_of(SERVER, LINKED, &project_id);
+    std::fs::create_dir_all(&mirror).unwrap();
+    std::fs::write(mirror.join(super::IMPORT_BASES), b"{}").unwrap();
+    assert!(live_lock(&project_id).is_file());
+
+    tauri::async_runtime::block_on(crate::project::recycle_project_synchronized(
+        &crate::state::AppState::default(),
+        project_id.clone(),
+    ))
+    .unwrap();
+
+    assert!(!root.exists());
+    assert!(!journal_dir_of(SERVER, LINKED).exists());
+    assert!(!mirror.exists());
+    drop(library);
+}
+
+#[test]
+fn stopping_detaches_open_tabs_and_forgets_what_the_editor_read() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let tab = rig.open(MAIN);
+        crate::collab::live::write::note_read(&rig.project_id, MAIN, "Hello\n");
+        let project_id = rig.project_id.clone();
+        assert!(crate::collab::live::write::reads_kept(&project_id));
+
+        rig.finish().await;
+
+        assert!(!crate::collab::live::write::reads_kept(&project_id));
+        assert!(tab.inbox.lock().unwrap().iter().any(|message| matches!(
+            message,
+            DocMessage::Detached { reason } if reason == "stopped"
+        )));
+    });
+}
+
+fn slow_writes(root: &std::path::Path, late: Option<Duration>) {
+    disk_pass::pause_at(&disk_pass::WRITE_LATE, root, late);
+}
+
+#[test]
+fn a_slow_file_write_holds_up_neither_the_disk_text_nor_paths() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(INTRO);
+        slow_writes(&rig.root, Some(Duration::from_millis(1_500)));
+        let mut bob = rig.mock.peer("bob");
+        bob.join(&doc);
+        bob.type_at(&doc, 0, "New ");
+        eventually("the writer is inside a slow write", || {
+            disk_pass::writer_paused(&rig.root)
+        })
+        .await;
+
+        let started = std::time::Instant::now();
+        let text = rig.live.mirror.mirrored_text(MAIN);
+        let path = rig.live.mirror.path_of(&DocId(doc.clone()));
+        let waited = started.elapsed();
+        slow_writes(&rig.root, None);
+
+        assert!(waited < Duration::from_millis(500), "{waited:?}");
+        assert_eq!(text.as_deref(), Some("Hello\n"));
+        assert_eq!(path.as_deref(), Some(INTRO));
+        eventually("the edit lands on disk", || {
+            rig.read(INTRO) == "New Intro\n"
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn quitting_writes_what_arrived_before_it_stops_the_session() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(INTRO);
+        slow_writes(&rig.root, Some(Duration::from_millis(600)));
+        let mut bob = rig.mock.peer("bob");
+        bob.join(&doc);
+        bob.type_at(&doc, 0, "Late ");
+        eventually("the writer is inside a slow write", || {
+            disk_pass::writer_paused(&rig.root)
+        })
+        .await;
+
+        rig.live.quit(Duration::from_secs(5)).await;
+        slow_writes(&rig.root, None);
+
+        assert_eq!(rig.read(INTRO), "Late Intro\n");
+        let order = rig.host.order.lock().unwrap().clone();
+        let written = order
+            .iter()
+            .position(|event| event.starts_with("changed") && event.contains(INTRO))
+            .expect("the edit is written");
+        let stopped = order
+            .iter()
+            .position(|event| event.starts_with("status Ended"))
+            .expect("the session stops");
+        assert!(written < stopped, "{order:?}");
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_rename_waiting_for_the_project_lock_holds_up_no_typing() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let project_id = rig.project_id.clone();
+        let held = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id).unwrap();
+        rig.mock
+            .emit_to_room("projectNameUpdated", &[serde_json::json!("Held name")]);
+        let doc = rig.doc(INTRO);
+        let mut bob = rig.mock.peer("bob");
+        bob.join(&doc);
+        bob.type_at(&doc, 0, "Typed ");
+
+        within(
+            "the typing lands while the rename waits",
+            Duration::from_secs(4),
+            async {
+                while rig.read(INTRO) != "Typed Intro\n" {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+            },
+        )
+        .await;
+        let name = || crate::project::read_meta(&project_id).map(|meta| meta.name);
+        assert_ne!(name().as_deref(), Ok("Held name"));
+        drop(held);
+        eventually("the rename lands once the lock is free", || {
+            name().as_deref() == Ok("Held name")
+        })
+        .await;
+        rig.finish().await;
+    });
+    drop(library);
 }

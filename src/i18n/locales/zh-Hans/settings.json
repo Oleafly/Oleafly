@@ -1945,7 +1945,12 @@
       "signedIn": "已在 {{server}} 上登录",
       "signOut": "退出登录",
       "signOutFailed": "Oleafly 无法退出 Overleaf 登录。",
+      "addAccount": "添加其他账户",
+      "addAccountHint": "登录窗口每次都是全新的，因此你可以用任意账户登录。使用浏览器登录或复制浏览器的登录信息时，会使用该浏览器当前登录的账户。",
+      "accountPick": "用于导入的账户",
+      "accountPickDescription": "新的导入和模板会使用此账户。你已有的项目会保留其来源账户。",
       "gitTitle": "用于同步的 Git 令牌",
+      "gitTitleFor": "{{email}} 的 Git 令牌",
       "gitSaved": "已保存 Git 令牌。你关联的项目会与 Overleaf 保持同步。",
       "gitMissing": "尚无 Git 令牌。请在 Overleaf 账户设置的“Git 集成”中创建一个，以便同步项目。",
       "gitOpenSettings": "打开 Overleaf 账户设置",
@@ -2313,6 +2318,7 @@
       "confirm": "清除词语",
       "descriptionFallback": "这会从该词典中移除所有词语，它们将立即重新接受检查。",
       "descriptionGlobal": "这会从全局词典中移除所有词语，它们将立即重新接受检查。",
+      "descriptionOverleaf": "它们也会从你的 Overleaf 账户中移除。",
       "descriptionProject": "这会从 {{project}} 中移除所有词语，它们将立即重新接受检查。",
       "descriptionSuppressed": "这会从 {{project}} 中已忽略的检查结果里移除所有词语，它们将立即重新接受检查。",
       "suppressedConfirm": "重新显示",
@@ -2329,6 +2335,7 @@
     },
     "global": {
       "emptyDescription": "你在这里添加的词语会在所有项目中被校对工具跳过。",
+      "overleafSynced": "当有项目在 Overleaf 上实时编辑时，会与你 Overleaf 账户中已学习的词语同步。",
       "scope": "适用于所有项目"
     },
     "intro": "向你的个人拼写检查词典添加词语。这些词语存储在本地设置中，并在所有项目中被忽略。匹配基于 Unicode 规范化，且不区分大小写。",

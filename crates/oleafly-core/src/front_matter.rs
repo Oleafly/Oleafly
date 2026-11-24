@@ -2,6 +2,11 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
+pub const NOTE_FILE: &str = "note.md";
+pub const NOTE_KIND: &str = "note";
+pub const NOTE_ORIGINS: &str = "assets/origins";
+pub const NOTE_DECLARATION_BYTES: usize = 4 * 1024;
+
 pub struct FrontMatter<'a> {
     lines: Vec<&'a str>,
     body: &'a str,
@@ -168,9 +173,18 @@ pub fn scalar(lines: &[&str], key: &str) -> Option<String> {
         .and_then(|line| scalar_value(value_of(line)))
 }
 
+pub fn declares_note(text: &str) -> bool {
+    split(text)
+        .and_then(|front| front.scalar("kind"))
+        .is_some_and(|kind| kind == NOTE_KIND)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{key_of, quoted_scalar, scalar, scalar_value, split, value_of, yaml_uses_aliases};
+    use super::{
+        declares_note, key_of, quoted_scalar, scalar, scalar_value, split, value_of,
+        yaml_uses_aliases,
+    };
 
     #[test]
     fn yaml_that_reuses_an_anchor_is_found_in_every_form() {
@@ -301,5 +315,22 @@ mod tests {
         assert_eq!(quoted_scalar("plain"), None);
         assert_eq!(quoted_scalar("'open"), None);
         assert_eq!(quoted_scalar("\"open"), None);
+    }
+
+    #[test]
+    fn declares_note_reads_the_front_matter_kind() {
+        assert!(declares_note("---\ntitle: A\nkind: note\n---\nBody"));
+        assert!(declares_note("---\nkind: \"note\"\n---\n"));
+        assert!(!declares_note("---\nkind: paper\n---\n"));
+        assert!(!declares_note("---\ntitle: A\n---\nkind: note\n"));
+        assert!(!declares_note("kind: note\n"));
+        assert!(declares_note("\u{feff}---\nkind: note\n---\n"));
+        assert!(declares_note("---\nkind: paper\nkind: note\n---\n"));
+        assert!(!declares_note("---\nkind: note\nkind: paper\n---\n"));
+        assert!(!declares_note("---\nkind: note\n"));
+        assert!(!declares_note("---\ntitle: A\n...\nkind: note"));
+        assert!(declares_note("---  \nkind : note # since 0.4\n---\n"));
+        assert!(declares_note("---\nkind: 'note'\n...  \n"));
+        assert!(!declares_note("---\nkind: # note\n---\n"));
     }
 }

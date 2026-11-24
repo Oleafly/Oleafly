@@ -20,6 +20,11 @@ const UPLOAD_BYTES_PER_SECOND: u64 = 32 * 1024;
 pub const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(150);
 const API_PAGE_SIZE: u64 = 1_000;
+const GET_RETRIES: u32 = 2;
+const GET_PAUSE: Duration = Duration::from_millis(200);
+const INVITE_TEMPLATE: &str = "notification_project_invite";
+const INVITE_KEY: &str = "project-invite-";
+const MAX_INVITES: usize = 200;
 
 pub struct Dashboard {
     pub user_id: String,
@@ -27,7 +32,33 @@ pub struct Dashboard {
     pub csrf: Option<String>,
     pub projects: Option<Vec<Value>>,
     pub total: Option<u64>,
+    pub invites: Vec<ProjectInvite>,
     pub set_cookies: Vec<String>,
+}
+
+#[derive(Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectInvite {
+    pub id: String,
+    pub project_id: String,
+    pub project_name: String,
+    pub inviter: Option<String>,
+    pub expires: Option<String>,
+    #[serde(skip)]
+    pub token: String,
+}
+
+impl std::fmt::Debug for ProjectInvite {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProjectInvite")
+            .field("id", &self.id)
+            .field("project_id", &self.project_id)
+            .field("project_name", &self.project_name)
+            .field("inviter", &self.inviter)
+            .field("expires", &self.expires)
+            .field("token", &"[redacted]")
+            .finish()
+    }
 }
 
 impl std::fmt::Debug for Dashboard {
@@ -38,6 +69,7 @@ impl std::fmt::Debug for Dashboard {
             .field("csrf", &self.csrf.as_ref().map(|_| "[redacted]"))
             .field("projects", &self.projects.as_ref().map(Vec::len))
             .field("total", &self.total)
+            .field("invites", &self.invites.len())
             .field("set_cookies", &"[redacted]")
             .finish()
     }
@@ -136,6 +168,25 @@ pub(crate) async fn read_counted(
     Ok(body)
 }
 
+pub(crate) async fn retried<T, E, F>(
+    again: impl Fn(&E) -> bool,
+    mut call: impl FnMut() -> F,
+) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+{
+    let mut attempt = 0;
+    loop {
+        match call().await {
+            Err(error) if again(&error) && attempt < GET_RETRIES => {
+                attempt += 1;
+                tokio::time::sleep(GET_PAUSE * attempt).await;
+            }
+            done => return done,
+        }
+    }
+}
+
 pub(crate) async fn read_capped(response: Response, limit: usize) -> Result<Vec<u8>, BodyError> {
     read_counted(response, limit, |_| {}).await
 }
@@ -147,6 +198,41 @@ pub(crate) fn lossy_text(body: Vec<u8>) -> String {
 
 pub(crate) async fn text_capped(response: Response, limit: usize) -> Result<String, BodyError> {
     read_capped(response, limit).await.map(lossy_text)
+}
+
+pub(crate) fn boundary() -> String {
+    format!(
+        "----oleafly{:016x}{:016x}",
+        rand::random::<u64>(),
+        rand::random::<u64>()
+    )
+}
+
+pub(crate) fn multipart(boundary: &str, name: &str, bytes: &[u8]) -> Vec<u8> {
+    let quoted: String = name
+        .chars()
+        .map(|character| match character {
+            '"' => "%22".to_string(),
+            '\r' | '\n' => " ".to_string(),
+            other => other.to_string(),
+        })
+        .collect();
+    let mut body = Vec::with_capacity(bytes.len() + 512);
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\n{quoted}\r\n"
+        )
+        .as_bytes(),
+    );
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"qqfile\"; filename=\"{quoted}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+        )
+        .as_bytes(),
+    );
+    body.extend_from_slice(bytes);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    body
 }
 
 pub(crate) fn expired() -> OnlineError {
@@ -289,8 +375,7 @@ impl Http {
         }
         self.classify(&response)?;
         let set_cookies = set_cookie_lines(response.headers());
-        let page = response
-            .text()
+        let page = text_capped(response, oleafly_net::MAX_MESSAGE_BYTES)
             .await
             .map_err(|error| unreachable(&self.base, error))?;
         let mut dashboard = parse_dashboard(&page).map_err(|error| {
@@ -325,10 +410,11 @@ impl Http {
             )
             .await?;
         self.classify(&response)?;
-        let value: Value = response
-            .json()
+        let body = read_capped(response, oleafly_net::MAX_MESSAGE_BYTES)
             .await
             .map_err(|error| unreachable(&self.base, error))?;
+        let value: Value =
+            serde_json::from_slice(&body).map_err(|error| unreachable(&self.base, error))?;
         value
             .get("projects")
             .and_then(Value::as_array)
@@ -378,7 +464,7 @@ impl Http {
         cookie: &str,
         project_id: &str,
         destination: &Path,
-        mut progress: impl FnMut(u64, Option<u64>),
+        progress: impl FnMut(u64, Option<u64>),
     ) -> Result<u64, OnlineError> {
         if !valid_project_id(project_id) {
             return Err(OnlineError::new(OnlineErrorKind::ProjectUnavailable));
@@ -394,6 +480,22 @@ impl Http {
             }
             _ => self.classify(&response)?,
         }
+        self.save_archive(response, destination, progress).await
+    }
+
+    pub(crate) fn get_unhurried(&self, path: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.uploads
+            .get(self.url(path))
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
+    pub(crate) async fn save_archive(
+        &self,
+        response: Response,
+        destination: &Path,
+        mut progress: impl FnMut(u64, Option<u64>),
+    ) -> Result<u64, OnlineError> {
         let total = response.content_length();
         if total.is_some_and(|total| total > MAX_ARCHIVE_BYTES) {
             return Err(OnlineError::new(OnlineErrorKind::TooLarge));
@@ -432,6 +534,19 @@ impl Http {
         progress(received, total.or(Some(received)));
         Ok(received)
     }
+
+    pub(crate) fn post_unhurried(
+        &self,
+        path: &str,
+        cookie: &str,
+        total: Duration,
+    ) -> reqwest::RequestBuilder {
+        self.uploads
+            .post(self.url(path))
+            .timeout(total)
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
 }
 
 pub fn project_id_in(location: &str) -> Option<String> {
@@ -456,8 +571,61 @@ pub fn parse_dashboard(page: &str) -> Result<Dashboard, OnlineError> {
         csrf,
         projects,
         total,
+        invites: invites_from_tags(&tags),
         set_cookies: Vec::new(),
     })
+}
+
+fn invite_text(value: &Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(html::decode_entities)
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty())
+}
+
+fn invite_of(notification: &Value) -> Option<ProjectInvite> {
+    if notification.get("templateKey").and_then(Value::as_str) != Some(INVITE_TEMPLATE) {
+        return None;
+    }
+    let id = notification
+        .get("key")
+        .and_then(Value::as_str)?
+        .strip_prefix(INVITE_KEY)?
+        .to_string();
+    let options = notification.get("messageOpts")?;
+    let project_id = invite_text(options, "projectId")?;
+    let token = invite_text(options, "token")?;
+    let plain = |text: &str| valid_project_id(text);
+    if !plain(&id) || !plain(&project_id) || !plain(&token) {
+        return None;
+    }
+    Some(ProjectInvite {
+        project_name: invite_text(options, "projectName")
+            .unwrap_or_else(|| "Untitled project".to_string()),
+        inviter: invite_text(options, "userName"),
+        expires: invite_text(notification, "expires"),
+        id,
+        project_id,
+        token,
+    })
+}
+
+fn invites_from_tags(tags: &HashMap<String, String>) -> Vec<ProjectInvite> {
+    let Some(Value::Array(notifications)) = tags
+        .get("ol-notifications")
+        .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+    else {
+        return Vec::new();
+    };
+    let mut invites: Vec<ProjectInvite> = notifications
+        .iter()
+        .filter_map(invite_of)
+        .take(MAX_INVITES)
+        .collect();
+    invites.dedup_by(|later, earlier| later.id == earlier.id);
+    invites
 }
 
 fn projects_from_tags(tags: &HashMap<String, String>) -> (Option<Vec<Value>>, Option<u64>) {

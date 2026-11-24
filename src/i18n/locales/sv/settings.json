@@ -1961,7 +1961,12 @@
       "signedIn": "Inloggad på {{server}}",
       "signOut": "Logga ut",
       "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
+      "addAccount": "Lägg till ett konto till",
+      "addAccountHint": "Inloggningsfönstret startar utan tidigare inloggning, så du kan logga in med vilket konto som helst. Om du loggar in med en webbläsare eller kopierar inloggningen från en webbläsare används det konto som webbläsaren är inloggad med.",
+      "accountPick": "Konto för import",
+      "accountPickDescription": "Nya importer och mallar använder det här kontot. Projekt som du redan har behåller kontot de kom från.",
       "gitTitle": "Git-token för synkning",
+      "gitTitleFor": "Git-token för {{email}}",
       "gitSaved": "En Git-token är sparad. Projekt som du länkar hålls synkade med Overleaf.",
       "gitMissing": "Ingen Git-token än. Skapa en under Git-integration i dina kontoinställningar på Overleaf för att synka projekt.",
       "gitOpenSettings": "Öppna kontoinställningarna på Overleaf",
@@ -2333,6 +2338,7 @@
       "confirm": "Rensa orden",
       "descriptionFallback": "Det här tar bort alla uttryck ur den här ordlistan. De kontrolleras igen direkt.",
       "descriptionGlobal": "Det här tar bort alla uttryck ur den globala ordlistan. De kontrolleras igen direkt.",
+      "descriptionOverleaf": "De tas också bort från ditt Overleaf-konto.",
       "descriptionProject": "Det här tar bort alla uttryck ur {{project}}. De kontrolleras igen direkt.",
       "descriptionSuppressed": "Det här tar bort alla uttryck ur de bortvalda fynden i {{project}}. De kontrolleras igen direkt.",
       "suppressedConfirm": "Visa igen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Ord du lägger till här hoppas över av korrekturläsaren i alla projekt.",
+      "overleafSynced": "Synkas med de inlärda orden på ditt Overleaf-konto medan ett projekt är live på Overleaf.",
       "scope": "Gäller alla projekt"
     },
     "intro": "Lägg till ord i din personliga ordlista för stavningskontroll. Orden lagras i lokala inställningar och ignoreras i alla projekt. Matchningen är Unicode-normaliserad och skiljer inte på gemener och versaler.",

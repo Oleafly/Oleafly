@@ -1194,6 +1194,7 @@
     "elsewhere": "La edición en tiempo real está activa en otra nota",
     "makeLive": "Editar en tiempo real aquí",
     "viewOnly": "Puedes leer esta nota, pero no editarla.",
+    "suggesting": "Las sugerencias están activadas, así que no puedes editar esta nota aquí. Desactiva las sugerencias para editarla.",
     "someone": "Alguien",
     "unsentReadOnly": "Tus últimos cambios en esta nota no se enviaron porque ahora solo puedes verla.",
     "unsentRefused": "Oleafly no pudo enviar tus últimos cambios en esta nota, así que se descartaron."

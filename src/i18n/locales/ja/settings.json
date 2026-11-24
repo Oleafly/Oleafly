@@ -1945,7 +1945,12 @@
       "signedIn": "{{server}} にサインイン中",
       "signOut": "サインアウト",
       "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。",
+      "addAccount": "別のアカウントを追加",
+      "addAccountHint": "サインイン用のウィンドウは毎回まっさらな状態で開くため、どのアカウントでもサインインできます。ブラウザでサインインする場合や、ブラウザのサインイン情報をコピーする場合は、そのブラウザでサインインしているアカウントが使われます。",
+      "accountPick": "読み込みに使うアカウント",
+      "accountPickDescription": "新しい読み込みとテンプレートにはこのアカウントが使われます。すでにあるプロジェクトは、取り込んだときのアカウントのままです。",
       "gitTitle": "同期用の Git トークン",
+      "gitTitleFor": "{{email}} の Git トークン",
       "gitSaved": "Git トークンが保存されています。リンクしたプロジェクトは Overleaf と同期されます。",
       "gitMissing": "Git トークンはまだありません。プロジェクトを同期するには、Overleaf のアカウント設定の「Git 連携」でトークンを作成してください。",
       "gitOpenSettings": "Overleaf のアカウント設定を開く",
@@ -2313,6 +2318,7 @@
       "confirm": "単語を消去",
       "descriptionFallback": "この辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
       "descriptionGlobal": "全体の辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
+      "descriptionOverleaf": "Overleaf アカウントからも削除されます。",
       "descriptionProject": "{{project}} からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
       "descriptionSuppressed": "{{project}} で非表示にした指摘をすべて解除します。それらはすぐにまたチェックの対象になります。",
       "suppressedConfirm": "また表示する",
@@ -2329,6 +2335,7 @@
     },
     "global": {
       "emptyDescription": "ここに追加した単語は、すべてのプロジェクトで校正の対象から外れます。",
+      "overleafSynced": "Overleaf でプロジェクトをライブ編集している間は、Overleaf アカウントの学習済みの単語と同期されます。",
       "scope": "すべてのプロジェクトに適用されます"
     },
     "intro": "自分用のスペルチェック辞書に単語を追加します。これらの単語はローカルの設定に保存され、プロジェクトをまたいで無視されます。照合は Unicode 正規化のうえ、大文字と小文字を区別せずに行われます。",

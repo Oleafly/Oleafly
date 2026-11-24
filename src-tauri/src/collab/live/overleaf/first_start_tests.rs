@@ -312,6 +312,11 @@ fn a_hooks_git_variables_never_reach_the_repository_the_rig_builds() {
         "a git command wrote into the hook's repository"
     );
     assert!(repo.join(".git").is_dir());
-    let first = super::FirstBases::load(dir.path(), Some(&repo), &[MAIN.to_owned()]);
+    let git = super::GitBase {
+        repo,
+        git: std::sync::Arc::new(crate::overleaf::AppMirrorGit),
+    };
+    let log = oleafly_core::app_log::AppLog::at(dir.path());
+    let first = super::FirstBases::load(dir.path(), Some(&git), &[MAIN.to_owned()], &log);
     assert_eq!(first.base_of(MAIN).as_deref(), Some(IMPORTED));
 }

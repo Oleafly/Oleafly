@@ -1,8 +1,9 @@
-use oleafly_collab::sync::LiveStatus;
 use oleafly_collab_protocol::frames::MemberChangeKind;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
-use oleafly_collab_protocol::projects::{PresenceActivity, PresenceActivityKind, ProjectRole};
-use serde::{Deserialize, Serialize};
+use oleafly_collab_protocol::projects::ProjectRole;
+use serde::Serialize;
+
+pub use oleafly_live::live::payloads::*;
 
 pub const LIVE_STATUS_EVENT: &str = "collab-live-status";
 pub const LIVE_ROLE_EVENT: &str = "collab-live-role";
@@ -17,72 +18,6 @@ pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
 pub const ACCOUNT_CHANGED_EVENT: &str = "overleaf-live-account-changed";
 pub const DOC_PENDING_EVENT: &str = "collab-live-doc-pending";
 pub const OVERLEAF_MEMBERS_EVENT: &str = "overleaf-live-members";
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TypedAs {
-    pub user_id: String,
-    pub email: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DocPendingPayload {
-    pub project_id: String,
-    pub path: String,
-    pub pending: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AccountChangedPayload {
-    pub project_id: String,
-    pub typed_as: TypedAs,
-    pub files: Vec<super::kept::KeptFile>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WrittenFile {
-    pub path: String,
-    pub hash: String,
-    pub crlf: bool,
-    pub length: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WrittenPayload {
-    pub project_id: String,
-    pub files: Vec<WrittenFile>,
-}
-
-pub(super) fn window_hash(bytes: &[u8]) -> String {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in bytes {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{hash:016x}")
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StatusPayload {
-    pub project_id: String,
-    pub status: LiveStatus,
-    pub pending: u64,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RolePayload {
-    pub project_id: String,
-    pub role: ProjectRole,
-    pub tracking: bool,
-    pub restricted: bool,
-    pub deleted_externally: bool,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MergedFile {
@@ -141,82 +76,6 @@ pub struct ChangeSkippedPayload {
 #[serde(rename_all = "camelCase")]
 pub struct ProjectFullPayload {
     pub project_id: String,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PresencePayload {
-    pub project_id: String,
-    pub device_id: String,
-    pub account_id: String,
-    pub path: Option<String>,
-    pub cursor: Option<u32>,
-    pub anchor: Option<u32>,
-    pub person: Option<PresencePerson>,
-    pub activity: Option<ActivityPayload>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct PresencePerson {
-    pub name: Option<String>,
-    pub email: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActivityPayload {
-    pub kind: PresenceActivityKind,
-    #[serde(default)]
-    pub thread_id: Option<String>,
-}
-
-impl ActivityPayload {
-    pub fn shown(activity: Option<PresenceActivity>) -> Option<ActivityPayload> {
-        activity
-            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
-            .map(|activity| ActivityPayload {
-                kind: activity.kind,
-                thread_id: activity.thread_id,
-            })
-    }
-
-    pub fn sent(activity: Option<ActivityPayload>) -> Option<PresenceActivity> {
-        activity
-            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
-            .map(|activity| PresenceActivity {
-                kind: activity.kind,
-                thread_id: activity.thread_id.filter(|thread| thread.len() <= 256),
-            })
-    }
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OverleafMembersPayload {
-    pub project_id: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct OverleafMember {
-    pub person: OverleafPerson,
-    pub role: ProjectRole,
-    pub granted_at: i64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct OverleafPerson {
-    pub account_id: String,
-    pub display_name: String,
-    pub avatar_url: Option<String>,
-    pub email: Option<String>,
-    pub login: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PresenceLeftPayload {
-    pub project_id: String,
-    pub device_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]

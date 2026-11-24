@@ -61,10 +61,10 @@ export class LiveSessions {
       transport: this.options.transport,
       readOnly: this.options.readOnly,
       onText: (next) => this.options.mirror(session.path, next),
-      onPhase: (phase) => {
-        if (phase === "detached") this.detach(session.path, session);
-      },
       onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
+    });
+    session.subscribePhase((phase) => {
+      if (phase === "detached") this.detach(session.path, session);
     });
     session.subscribe(() => this.options.coauthorEdited?.(session.path, session.text()));
     this.sessions.set(path, session);

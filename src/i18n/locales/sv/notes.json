@@ -1178,6 +1178,7 @@
     "elsewhere": "Liveredigering är på i en annan anteckning",
     "makeLive": "Redigera live här",
     "viewOnly": "Du kan läsa anteckningen men inte redigera den.",
+    "suggesting": "Förslag är på, så du kan inte redigera anteckningen här. Stäng av förslag för att redigera den.",
     "someone": "Någon",
     "unsentReadOnly": "Dina senaste ändringar i anteckningen skickades inte eftersom du bara kan visa den nu.",
     "unsentRefused": "Oleafly kunde inte skicka dina senaste ändringar i anteckningen, så de förkastades."

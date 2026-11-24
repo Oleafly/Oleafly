@@ -1,0 +1,1561 @@
+{
+  "clientIdPrefix": "<name>-<uuid>",
+  "steps": [
+    {
+      "label": "messages before the scenario",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=50",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [],
+      "sentAt": 7049,
+      "answeredAt": 7112
+    },
+    {
+      "label": "bob sends with client_id",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "bob",
+        "body": {
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "client_id": "bob-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 7114,
+      "answeredAt": 7228,
+      "events": {
+        "alice": {
+          "t": 7233,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e26",
+              "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+              "timestamp": 1795489237009,
+              "user_id": "6afab5bc1222cc50aa4c16f2",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bc1222cc50aa4c16f2",
+                "first_name": "Bob",
+                "last_name": "Editor",
+                "email": "bob@example.test"
+              },
+              "clientId": "bob-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 7233,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e26",
+              "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+              "timestamp": 1795489237009,
+              "user_id": "6afab5bc1222cc50aa4c16f2",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bc1222cc50aa4c16f2",
+                "first_name": "Bob",
+                "last_name": "Editor",
+                "email": "bob@example.test"
+              },
+              "clientId": "bob-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 7230,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e26",
+              "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+              "timestamp": 1795489237009,
+              "user_id": "6afab5bc1222cc50aa4c16f2",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bc1222cc50aa4c16f2",
+                "first_name": "Bob",
+                "last_name": "Editor",
+                "email": "bob@example.test"
+              },
+              "clientId": "bob-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice sends without client_id",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "Alice answers without a client id."
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 7535,
+      "answeredAt": 7624,
+      "events": {
+        "alice": {
+          "t": 7633,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e27",
+              "content": "Alice answers without a client id.",
+              "timestamp": 1795489237439,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              }
+            }
+          ]
+        },
+        "bob": {
+          "t": 7633,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e27",
+              "content": "Alice answers without a client id.",
+              "timestamp": 1795489237439,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              }
+            }
+          ]
+        },
+        "dave": {
+          "t": 7625,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e27",
+              "content": "Alice answers without a client id.",
+              "timestamp": 1795489237439,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "dave (viewer) sends",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "dave",
+        "body": {
+          "content": "Dave the viewer can chat too.",
+          "client_id": "dave-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 7933,
+      "answeredAt": 7981,
+      "events": {
+        "alice": {
+          "t": 7983,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e28",
+              "content": "Dave the viewer can chat too.",
+              "timestamp": 1795489237807,
+              "user_id": "6afab5bd1222cc50aa4c16fe",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bd1222cc50aa4c16fe",
+                "first_name": "Dave",
+                "last_name": "Viewer",
+                "email": "dave@example.test"
+              },
+              "clientId": "dave-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 7983,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e28",
+              "content": "Dave the viewer can chat too.",
+              "timestamp": 1795489237807,
+              "user_id": "6afab5bd1222cc50aa4c16fe",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bd1222cc50aa4c16fe",
+                "first_name": "Dave",
+                "last_name": "Viewer",
+                "email": "dave@example.test"
+              },
+              "clientId": "dave-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 7982,
+          "args": [
+            {
+              "id": "6b04fdd5296ea5fec7324e28",
+              "content": "Dave the viewer can chat too.",
+              "timestamp": 1795489237807,
+              "user_id": "6afab5bd1222cc50aa4c16fe",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bd1222cc50aa4c16fe",
+                "first_name": "Dave",
+                "last_name": "Viewer",
+                "email": "dave@example.test"
+              },
+              "clientId": "dave-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice sends page message 1",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "Paging message 1 from Alice.",
+          "client_id": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 8384,
+      "answeredAt": 8435,
+      "events": {
+        "alice": {
+          "t": 8437,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e29",
+              "content": "Paging message 1 from Alice.",
+              "timestamp": 1795489238256,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 8437,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e29",
+              "content": "Paging message 1 from Alice.",
+              "timestamp": 1795489238256,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 8434,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e29",
+              "content": "Paging message 1 from Alice.",
+              "timestamp": 1795489238256,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice sends page message 2",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "Paging message 2 from Alice.",
+          "client_id": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 8739,
+      "answeredAt": 8798,
+      "events": {
+        "alice": {
+          "t": 8797,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2a",
+              "content": "Paging message 2 from Alice.",
+              "timestamp": 1795489238619,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 8798,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2a",
+              "content": "Paging message 2 from Alice.",
+              "timestamp": 1795489238619,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 8796,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2a",
+              "content": "Paging message 2 from Alice.",
+              "timestamp": 1795489238619,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice sends page message 3",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "Paging message 3 from Alice.",
+          "client_id": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 9101,
+      "answeredAt": 9178,
+      "events": {
+        "alice": {
+          "t": 9180,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2b",
+              "content": "Paging message 3 from Alice.",
+              "timestamp": 1795489238994,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 9178,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2b",
+              "content": "Paging message 3 from Alice.",
+              "timestamp": 1795489238994,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 9177,
+          "args": [
+            {
+              "id": "6b04fdd6296ea5fec7324e2b",
+              "content": "Paging message 3 from Alice.",
+              "timestamp": 1795489238994,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice sends page message 4",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "Paging message 4 from Alice.",
+          "client_id": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 9481,
+      "answeredAt": 9538,
+      "events": {
+        "alice": {
+          "t": 9538,
+          "args": [
+            {
+              "id": "6b04fdd7296ea5fec7324e2c",
+              "content": "Paging message 4 from Alice.",
+              "timestamp": 1795489239357,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "bob": {
+          "t": 9538,
+          "args": [
+            {
+              "id": "6b04fdd7296ea5fec7324e2c",
+              "content": "Paging message 4 from Alice.",
+              "timestamp": 1795489239357,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        },
+        "dave": {
+          "t": 9537,
+          "args": [
+            {
+              "id": "6b04fdd7296ea5fec7324e2c",
+              "content": "Paging message 4 from Alice.",
+              "timestamp": 1795489239357,
+              "user_id": "6afab5bb1222cc50aa4c16ec",
+              "room_id": "6afab5be1222cc50aa4c170b",
+              "user": {
+                "id": "6afab5bb1222cc50aa4c16ec",
+                "first_name": "Alice",
+                "last_name": "Owner",
+                "email": "alice@example.test"
+              },
+              "clientId": "alice-52132c43-e90c-4c03-887d-3e6066305de4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "page 1: limit=3",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=3",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd7296ea5fec7324e2c",
+          "content": "Paging message 4 from Alice.",
+          "timestamp": 1795489239357,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        }
+      ],
+      "sentAt": 9841,
+      "answeredAt": 9889
+    },
+    {
+      "label": "page 2: limit=3, before = the oldest timestamp of page 1",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=3&before=1795489238619",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer can chat too.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers without a client id.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        }
+      ],
+      "sentAt": 9893,
+      "answeredAt": 9932
+    },
+    {
+      "label": "page 3: limit=3, before = the oldest timestamp of page 2",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=3&before=1795489237439",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 9934,
+      "answeredAt": 9983
+    },
+    {
+      "label": "page 4: before = the oldest of page 3",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=3&before=1795489237009",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [],
+      "sentAt": 9983,
+      "answeredAt": 10015
+    },
+    {
+      "label": "no limit (default 50)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd7296ea5fec7324e2c",
+          "content": "Paging message 4 from Alice.",
+          "timestamp": 1795489239357,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer can chat too.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers without a client id.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 10016,
+      "answeredAt": 10054
+    },
+    {
+      "label": "before = a timestamp equal to the newest message (strictly older only)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?before=1795489239357",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer can chat too.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers without a client id.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 10055,
+      "answeredAt": 10110
+    },
+    {
+      "label": "limit=0",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=0",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd7296ea5fec7324e2c",
+          "content": "Paging message 4 from Alice.",
+          "timestamp": 1795489239357,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer can chat too.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers without a client id.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 10111,
+      "answeredAt": 10159
+    },
+    {
+      "label": "limit=abc",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=abc",
+        "user": "alice"
+      },
+      "status": 400,
+      "body": {
+        "error": "Validation error: Invalid input: expected number, received NaN at \"query.limit\"",
+        "statusCode": 400
+      },
+      "sentAt": 10160,
+      "answeredAt": 10192
+    },
+    {
+      "label": "alice edits her own message",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e27/edit",
+        "user": "alice",
+        "body": {
+          "content": "Alice answers, edited."
+        }
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 10193,
+      "answeredAt": 10251,
+      "events": {
+        "alice": {
+          "t": 10252,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e27",
+              "userId": "6afab5bb1222cc50aa4c16ec",
+              "content": "Alice answers, edited."
+            }
+          ]
+        },
+        "bob": {
+          "t": 10254,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e27",
+              "userId": "6afab5bb1222cc50aa4c16ec",
+              "content": "Alice answers, edited."
+            }
+          ]
+        },
+        "dave": {
+          "t": 10250,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e27",
+              "userId": "6afab5bb1222cc50aa4c16ec",
+              "content": "Alice answers, edited."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "bob edits alice's message",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e27/edit",
+        "user": "bob",
+        "body": {
+          "content": "Bob rewrites Alice."
+        }
+      },
+      "status": 403,
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 11755,
+      "answeredAt": 11792,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "alice (owner) edits bob's message",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e26/edit",
+        "user": "alice",
+        "body": {
+          "content": "Alice rewrites Bob."
+        }
+      },
+      "status": 403,
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 13293,
+      "answeredAt": 13323,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "dave (viewer) edits his own message",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e28/edit",
+        "user": "dave",
+        "body": {
+          "content": "Dave the viewer edited this."
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 14827,
+      "answeredAt": 14929,
+      "events": {
+        "alice": {
+          "t": 14933,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e28",
+              "userId": "6afab5bd1222cc50aa4c16fe",
+              "content": "Dave the viewer edited this."
+            }
+          ]
+        },
+        "bob": {
+          "t": 14933,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e28",
+              "userId": "6afab5bd1222cc50aa4c16fe",
+              "content": "Dave the viewer edited this."
+            }
+          ]
+        },
+        "dave": {
+          "t": 14926,
+          "args": [
+            {
+              "messageId": "6b04fdd5296ea5fec7324e28",
+              "userId": "6afab5bd1222cc50aa4c16fe",
+              "content": "Dave the viewer edited this."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice edits with empty content",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e27/edit",
+        "user": "alice",
+        "body": {
+          "content": ""
+        }
+      },
+      "status": 500,
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 16431,
+      "answeredAt": 16524,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "messages after the edits",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=20",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd7296ea5fec7324e2c",
+          "content": "Paging message 4 from Alice.",
+          "timestamp": 1795489239357,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer edited this.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "edited_at": 1795489244746,
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers, edited.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "edited_at": 1795489240074,
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 18030,
+      "answeredAt": 18084
+    },
+    {
+      "label": "alice sends empty content",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": ""
+        }
+      },
+      "status": 500,
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 18085,
+      "answeredAt": 18108
+    },
+    {
+      "label": "alice sends 10241 characters",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "<10241 x characters>"
+        }
+      },
+      "status": 500,
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 18109,
+      "answeredAt": 18134
+    },
+    {
+      "label": "alice sends an unknown key",
+      "request": {
+        "method": "POST",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages",
+        "user": "alice",
+        "body": {
+          "content": "strict body?",
+          "extra": true
+        }
+      },
+      "status": 400,
+      "body": {
+        "error": "Validation error: Unrecognized key: \"extra\" at \"body\"",
+        "statusCode": 400
+      },
+      "sentAt": 18135,
+      "answeredAt": 18164
+    },
+    {
+      "label": "alice (owner) deletes bob's message",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e26",
+        "user": "alice"
+      },
+      "status": 403,
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 19666,
+      "answeredAt": 19727,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "bob deletes alice's message",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e27",
+        "user": "bob"
+      },
+      "status": 403,
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 21231,
+      "answeredAt": 21273,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "alice deletes an unknown message id",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fde4c0ffee0001000001",
+        "user": "alice"
+      },
+      "status": 500,
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 22775,
+      "answeredAt": 22821,
+      "events": {
+        "alice": null,
+        "bob": null,
+        "dave": null
+      }
+    },
+    {
+      "label": "messages before cleanup",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=100",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [
+        {
+          "id": "6b04fdd7296ea5fec7324e2c",
+          "content": "Paging message 4 from Alice.",
+          "timestamp": 1795489239357,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2b",
+          "content": "Paging message 3 from Alice.",
+          "timestamp": 1795489238994,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e2a",
+          "content": "Paging message 2 from Alice.",
+          "timestamp": 1795489238619,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd6296ea5fec7324e29",
+          "content": "Paging message 1 from Alice.",
+          "timestamp": 1795489238256,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e28",
+          "content": "Dave the viewer edited this.",
+          "timestamp": 1795489237807,
+          "user_id": "6afab5bd1222cc50aa4c16fe",
+          "edited_at": 1795489244746,
+          "user": {
+            "id": "6afab5bd1222cc50aa4c16fe",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e27",
+          "content": "Alice answers, edited.",
+          "timestamp": 1795489237439,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "edited_at": 1795489240074,
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        },
+        {
+          "id": "6b04fdd5296ea5fec7324e26",
+          "content": "Hello from Bob, with $x^2$ and a link https://example.test/page.",
+          "timestamp": 1795489237009,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "user": {
+            "id": "6afab5bc1222cc50aa4c16f2",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test"
+          }
+        }
+      ],
+      "sentAt": 24324,
+      "answeredAt": 24371
+    },
+    {
+      "label": "alice deletes own message",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd7296ea5fec7324e2c",
+        "user": "alice"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 24372,
+      "answeredAt": 24427,
+      "events": {
+        "alice": {
+          "t": 24429,
+          "args": [
+            {
+              "messageId": "6b04fdd7296ea5fec7324e2c",
+              "userId": "6afab5bb1222cc50aa4c16ec"
+            }
+          ]
+        },
+        "bob": {
+          "t": 24430,
+          "args": [
+            {
+              "messageId": "6b04fdd7296ea5fec7324e2c",
+              "userId": "6afab5bb1222cc50aa4c16ec"
+            }
+          ]
+        },
+        "dave": {
+          "t": 24429,
+          "args": [
+            {
+              "messageId": "6b04fdd7296ea5fec7324e2c",
+              "userId": "6afab5bb1222cc50aa4c16ec"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "alice deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd6296ea5fec7324e2b",
+        "user": "alice"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 25930,
+      "answeredAt": 25969
+    },
+    {
+      "label": "alice deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd6296ea5fec7324e2a",
+        "user": "alice"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 25971,
+      "answeredAt": 26020
+    },
+    {
+      "label": "alice deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd6296ea5fec7324e29",
+        "user": "alice"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 26022,
+      "answeredAt": 26078
+    },
+    {
+      "label": "dave deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e28",
+        "user": "dave"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 26080,
+      "answeredAt": 26134
+    },
+    {
+      "label": "alice deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e27",
+        "user": "alice"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 26134,
+      "answeredAt": 26189
+    },
+    {
+      "label": "bob deletes own message (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages/6b04fdd5296ea5fec7324e26",
+        "user": "bob"
+      },
+      "status": 204,
+      "body": "",
+      "sentAt": 26190,
+      "answeredAt": 26246
+    },
+    {
+      "label": "messages after cleanup",
+      "request": {
+        "method": "GET",
+        "route": "/project/6afab5be1222cc50aa4c170b/messages?limit=100",
+        "user": "alice"
+      },
+      "status": 200,
+      "body": [],
+      "sentAt": 27748,
+      "answeredAt": 27782
+    }
+  ],
+  "paged": [
+    "6b04fdd6296ea5fec7324e29",
+    "6b04fdd6296ea5fec7324e2a",
+    "6b04fdd6296ea5fec7324e2b",
+    "6b04fdd7296ea5fec7324e2c"
+  ]
+}

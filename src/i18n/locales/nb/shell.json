@@ -516,7 +516,8 @@
       "open": "Følg den åpne filen",
       "main": "Alltid hoveddokumentet",
       "change": "Bytt hoveddokument…"
-    }
+    },
+    "filling": "Prosjektet lastes fortsatt ned fra Overleaf. Du kan kompilere når alle filene er her."
   },
   "datePicker": {
     "placeholder": "Velg en dato"
@@ -1704,6 +1705,7 @@
     "open": "Åpne i Overleaf",
     "share": "Del på Overleaf…",
     "signIn": "Logg inn…",
+    "signInAs": "Logg inn som {{email}}",
     "reconnectingIn": "Prøver igjen om {{seconds}} s.",
     "notConfirmed": "Ikke bekreftet av Overleaf ennå.",
     "copyDetails": "Kopier tilkoblingsdetaljer",

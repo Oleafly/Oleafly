@@ -518,7 +518,8 @@
       "open": "Podle otevřeného souboru",
       "main": "Vždy hlavní dokument",
       "change": "Změnit hlavní dokument…"
-    }
+    },
+    "filling": "Projekt se ještě stahuje ze služby Overleaf. Zkompilovat ho můžete, až tu budou všechny soubory."
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
@@ -1774,6 +1775,7 @@
     "open": "Otevřít v Overleafu",
     "share": "Sdílet v Overleafu…",
     "signIn": "Přihlásit se…",
+    "signInAs": "Přihlásit se jako {{email}}",
     "reconnectingIn": "Další pokus za {{seconds}} s.",
     "notConfirmed": "Overleaf zatím nepotvrdil.",
     "copyDetails": "Zkopírovat podrobnosti připojení",

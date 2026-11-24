@@ -1977,7 +1977,12 @@
       "signedIn": "Sesión iniciada en {{server}}",
       "signOut": "Cerrar sesión",
       "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf.",
+      "addAccount": "Añadir otra cuenta",
+      "addAccountHint": "La ventana de inicio de sesión se abre sin ninguna sesión, así que puedes iniciar sesión con cualquier cuenta. Iniciar sesión con un navegador, o copiar el inicio de sesión de un navegador, usa la cuenta con la que ese navegador tiene la sesión iniciada.",
+      "accountPick": "Cuenta para importar",
+      "accountPickDescription": "Las nuevas importaciones y las plantillas usan esta cuenta. Los proyectos que ya tienes conservan la cuenta de la que vinieron.",
       "gitTitle": "Token de Git para sincronizar",
+      "gitTitleFor": "Token de Git para {{email}}",
       "gitSaved": "Hay un token de Git guardado. Los proyectos que vincules se mantienen sincronizados con Overleaf.",
       "gitMissing": "Todavía no hay ningún token de Git. Crea uno en la sección Integración con Git de la configuración de tu cuenta de Overleaf para sincronizar proyectos.",
       "gitOpenSettings": "Abrir la configuración de la cuenta de Overleaf",
@@ -2353,6 +2358,7 @@
       "confirm": "Borrar las palabras",
       "descriptionFallback": "Esto quita todos los términos de este diccionario. Volverán a revisarse al momento.",
       "descriptionGlobal": "Esto quita todos los términos del diccionario global. Volverán a revisarse al momento.",
+      "descriptionOverleaf": "También se quitan de tu cuenta de Overleaf.",
       "descriptionProject": "Esto quita todos los términos de {{project}}. Volverán a revisarse al momento.",
       "descriptionSuppressed": "Esto quita todos los términos de los hallazgos descartados en {{project}}. Volverán a revisarse al momento.",
       "suppressedConfirm": "Volver a mostrarlos",
@@ -2371,6 +2377,7 @@
     },
     "global": {
       "emptyDescription": "El corrector pasa por alto en todos los proyectos las palabras que añadas aquí.",
+      "overleafSynced": "Se sincroniza con las palabras aprendidas de tu cuenta de Overleaf mientras un proyecto está en directo con Overleaf.",
       "scope": "Se aplica a todos los proyectos"
     },
     "intro": "Añade palabras a tu diccionario personal de revisión ortográfica. Estas palabras se guardan en los ajustes locales y se ignoran en todos los proyectos. La comparación normaliza Unicode y no distingue mayúsculas.",

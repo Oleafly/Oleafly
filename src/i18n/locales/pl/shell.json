@@ -518,7 +518,8 @@
       "open": "Zgodnie z otwartym plikiem",
       "main": "Zawsze dokument główny",
       "change": "Zmień dokument główny…"
-    }
+    },
+    "filling": "Projekt wciąż się pobiera z Overleaf. Możesz go skompilować, gdy będą tu wszystkie pliki."
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
@@ -1774,6 +1775,7 @@
     "open": "Otwórz w Overleaf",
     "share": "Udostępnij w Overleaf…",
     "signIn": "Zaloguj się…",
+    "signInAs": "Zaloguj się jako {{email}}",
     "reconnectingIn": "Kolejna próba za {{seconds}} s.",
     "notConfirmed": "Overleaf jeszcze nie potwierdził.",
     "copyDetails": "Skopiuj dane połączenia",

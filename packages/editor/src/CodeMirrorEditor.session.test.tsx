@@ -266,7 +266,7 @@ describe("an editor bound to a document session", () => {
       await Promise.resolve();
     });
     const from = text.indexOf('"Old"');
-    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from, to: from + 5, insert: '"New"' }], 0);
+    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from, to: from + 5, insert: '"New"' }], 0, undefined);
     expect(session.text()).toBe(text.replace('"Old"', '"New"'));
   });
 
@@ -280,13 +280,26 @@ describe("an editor bound to a document session", () => {
     expect(view().state.doc.toString()).toBe("hello");
 
     await act(async () => view().dispatch({ changes: { from: 1, to: 5, insert: "i" } }));
-    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from: 1, to: 5, insert: "i" }], 0);
+    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from: 1, to: 5, insert: "i" }], 0, undefined);
     expect(session.text()).toBe("hi");
     expect(setContent).not.toHaveBeenCalled();
 
     await act(async () => session.pushRemote([{ from: 0, to: 0, insert: "A" }]));
     expect(view().state.doc.toString()).toBe("Ahi");
     expect(applyLocal).toHaveBeenCalledOnce();
+  });
+
+  it("tells the session which edits came from undo, redo, cut or paste", async () => {
+    const session = new LocalDocumentSession("main.tex", "abc");
+    const applyLocal = vi.spyOn(session, "applyLocal");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+
+    await act(async () => view().dispatch({ changes: { from: 3, insert: "d" }, userEvent: "input.paste" }));
+    await act(async () => view().dispatch({ changes: { from: 0, to: 1 }, userEvent: "delete.cut" }));
+    await act(async () => view().dispatch({ changes: { from: 0, insert: "e" }, userEvent: "input.type" }));
+
+    expect(applyLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual(["paste", "cut", undefined]);
+    expect(session.text()).toBe("ebcd");
   });
 
   it("sends each local transaction of one update with the version it was based on", async () => {
@@ -300,8 +313,8 @@ describe("an editor bound to a document session", () => {
     await act(async () => view().dispatch([first, moved, second]));
 
     expect(applyLocal.mock.calls).toEqual([
-      [[{ from: 0, to: 0, insert: "1" }], 0],
-      [[{ from: 4, to: 4, insert: "2" }], 1],
+      [[{ from: 0, to: 0, insert: "1" }], 0, undefined],
+      [[{ from: 4, to: 4, insert: "2" }], 1, undefined],
     ]);
     expect(session.text()).toBe("1abc2");
     expect(view().state.doc.toString()).toBe("1abc2");
@@ -372,7 +385,7 @@ describe("an editor bound to a document session", () => {
     expect(applyLocal).not.toHaveBeenCalled();
 
     await act(async () => typeAt(11, "!"));
-    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from: 11, to: 11, insert: "!" }], 1);
+    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from: 11, to: 11, insert: "!" }], 1, undefined);
     expect(session.text()).toBe("hello there!");
   });
 
@@ -409,9 +422,9 @@ describe("an editor bound to a document session", () => {
     expect(view().state.doc.toString()).toBe("a😀b\nline two\n");
 
     await act(async () => typeAt(3, "!"));
-    expect(applyLocal).toHaveBeenLastCalledWith([{ from: 3, to: 3, insert: "!" }], 0);
+    expect(applyLocal).toHaveBeenLastCalledWith([{ from: 3, to: 3, insert: "!" }], 0, undefined);
     await act(async () => view().dispatch({ changes: { from: 1, to: 3 } }));
-    expect(applyLocal).toHaveBeenLastCalledWith([{ from: 1, to: 3, insert: "" }], 1);
+    expect(applyLocal).toHaveBeenLastCalledWith([{ from: 1, to: 3, insert: "" }], 1, undefined);
 
     const lineTwo = view().state.doc.line(2).from;
     expect(lineTwo).toBe(4);
@@ -683,7 +696,7 @@ describe("switching between session files", () => {
     await act(async () => b.pushRemote([{ from: 4, to: 4, insert: "!" }]));
     await act(async () => typeAt(0, "x"));
 
-    expect(applyB).toHaveBeenCalledExactlyOnceWith([{ from: 0, to: 0, insert: "x" }], 1);
+    expect(applyB).toHaveBeenCalledExactlyOnceWith([{ from: 0, to: 0, insert: "x" }], 1, undefined);
     expect(applyA).not.toHaveBeenCalled();
     expect(b.text()).toBe("xbeta!");
     expect(view().state.doc.toString()).toBe("xbeta!");

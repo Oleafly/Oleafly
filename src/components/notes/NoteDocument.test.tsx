@@ -16,7 +16,6 @@ import {
   registerNoteCommentSurface,
   showNoteLiveNotice,
   useCollabEditorGate,
-  useCollabLiveNote,
   useNoteCommentsRequest,
 } from "@/lib/collab-live-bridge";
 import { useCommentsRail } from "@/components/collab/comments-rail";
@@ -2128,31 +2127,35 @@ describe("selection bubble", () => {
     await openWithSelection(fakeData());
     expect(bubbleButton(enNotes.document.addComment)).toBeNull();
     const target = vi.fn(() => ({ from: 4, to: 14, quote: "mask ratio" }));
-    const release = registerNoteCommentSurface({
-      projectId: NOTE.id,
-      path: "note.md",
-      session: {} as never,
-      flush: vi.fn(),
-      show: vi.fn(),
-      draft: vi.fn(() => null),
-      target,
-      reveal: vi.fn(() => false),
-    });
+    let release = () => {};
     try {
       act(() => useCommentsRail.setState({ visible: true, canCompose: true }));
       expect(bubbleButton(enNotes.document.addComment)).toBeNull();
-      act(() => useCollabLiveNote.setState({ noteId: NOTE.id }));
+      act(() => {
+        release = registerNoteCommentSurface({
+          projectId: NOTE.id,
+          path: "note.md",
+          session: {} as never,
+          flush: vi.fn(),
+          show: vi.fn(),
+          draft: vi.fn(() => null),
+          target,
+          reveal: vi.fn(() => false),
+        });
+      });
       const asked = useNoteCommentsRequest.getState().count;
       fireEvent.click(bubbleButton(enNotes.document.addComment) as HTMLElement);
       expect(useCommentsRail.getState().request).toEqual({ path: "note.md", from: 4, to: 14, quote: "mask ratio" });
       expect(useNoteCommentsRequest.getState().count).toBe(asked + 1);
       act(() => useCommentsRail.setState({ canCompose: false }));
       expect(bubbleButton(enNotes.document.addComment)).toBeNull();
+      act(() => useCommentsRail.setState({ canCompose: true }));
+      act(() => release());
+      expect(bubbleButton(enNotes.document.addComment)).toBeNull();
     } finally {
       release();
       act(() => {
         useCommentsRail.setState({ visible: false, canCompose: false, request: null });
-        useCollabLiveNote.setState({ noteId: null });
       });
     }
   });

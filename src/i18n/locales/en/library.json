@@ -341,6 +341,7 @@
       "saveServer": "Use this server",
       "signedInAs": "Signed in as {{email}}",
       "signedIn": "Signed in to Overleaf",
+      "accountPick": "Overleaf account",
       "signOut": "Sign out",
       "searchLabel": "Search Overleaf projects",
       "searchPlaceholder_one": "Search {{count}} project",
@@ -362,6 +363,8 @@
       "import_other": "Import {{count}} projects",
       "imported": "Imported",
       "open": "Open",
+      "openLive": "Open live",
+      "opening": "Opening",
       "ownedByYou": "Yours",
       "owner": "Owned by {{name}}",
       "archived": "Archived",
@@ -377,6 +380,36 @@
         "downloading": "Downloading {{percent}}%",
         "downloadingUnknown": "Downloading",
         "importing": "Setting up"
+      },
+      "invitations": {
+        "title": "Invitations",
+        "from": "From {{name}}",
+        "join": "Join",
+        "joined": "You joined this project"
+      },
+      "link": {
+        "checking": "Checking the link",
+        "unnamed": "A project on Overleaf",
+        "join": "Join",
+        "importInstead": "Import",
+        "grants": {
+          "edit": "Joining lets you edit it as a collaborator.",
+          "view": "Joining lets you view it only. Link viewers get no comments or chat.",
+          "already": "You already have this project.",
+          "invite": "Joining accepts the invitation."
+        }
+      },
+      "put": {
+        "menu": "Put on Overleaf",
+        "title": "Put on Overleaf",
+        "description": "Oleafly uploads this project as a new Overleaf project, then keeps both in sync while you edit live.",
+        "name": "Name on Overleaf",
+        "account": "Overleaf account",
+        "submit": "Put on Overleaf",
+        "working": "Uploading",
+        "signedOut": "Sign in to Overleaf in Settings first.",
+        "openSettings": "Open Settings",
+        "cancel": "Cancel"
       }
     }
   },

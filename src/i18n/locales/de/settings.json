@@ -1961,7 +1961,12 @@
       "signedIn": "Angemeldet auf {{server}}",
       "signOut": "Abmelden",
       "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden.",
+      "addAccount": "Weiteres Konto hinzufügen",
+      "addAccountHint": "Das Anmeldefenster startet ohne bestehende Anmeldung, daher können Sie sich mit jedem Konto anmelden. Wenn Sie sich mit einem Browser anmelden oder die Anmeldung aus einem Browser kopieren, wird das Konto verwendet, mit dem dieser Browser angemeldet ist.",
+      "accountPick": "Konto für Importe",
+      "accountPickDescription": "Neue Importe und Vorlagen verwenden dieses Konto. Projekte, die Sie bereits haben, behalten das Konto, aus dem sie stammen.",
       "gitTitle": "Git-Token für die Synchronisierung",
+      "gitTitleFor": "Git-Token für {{email}}",
       "gitSaved": "Ein Git-Token ist gespeichert. Verknüpfte Projekte bleiben mit Overleaf synchron.",
       "gitMissing": "Noch kein Git-Token. Erstellen Sie eines in Ihren Overleaf-Kontoeinstellungen unter Git-Integration, um Projekte zu synchronisieren.",
       "gitOpenSettings": "Overleaf-Kontoeinstellungen öffnen",
@@ -2333,6 +2338,7 @@
       "confirm": "Wörter leeren",
       "descriptionFallback": "Damit werden alle Begriffe aus diesem Wörterbuch entfernt. Sie werden sofort wieder geprüft.",
       "descriptionGlobal": "Damit werden alle Begriffe aus dem globalen Wörterbuch entfernt. Sie werden sofort wieder geprüft.",
+      "descriptionOverleaf": "Sie werden auch aus Ihrem Overleaf-Konto entfernt.",
       "descriptionProject": "Damit werden alle Begriffe aus {{project}} entfernt. Sie werden sofort wieder geprüft.",
       "descriptionSuppressed": "Damit werden alle Begriffe aus den ausgeblendeten Funden in {{project}} entfernt. Sie werden sofort wieder geprüft.",
       "suppressedConfirm": "Wieder anzeigen",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Wörter, die Sie hier hinzufügen, überspringt die Korrekturprüfung in jedem Projekt.",
+      "overleafSynced": "Wird mit den gelernten Wörtern in Ihrem Overleaf-Konto abgeglichen, solange ein Projekt bei Overleaf live ist.",
       "scope": "Gilt für jedes Projekt"
     },
     "intro": "Fügen Sie Wörter zu Ihrem persönlichen Wörterbuch für die Rechtschreibprüfung hinzu. Diese Wörter liegen in den lokalen Einstellungen und werden projektübergreifend ignoriert. Der Abgleich erfolgt Unicode-normalisiert und ohne Rücksicht auf Groß- und Kleinschreibung.",

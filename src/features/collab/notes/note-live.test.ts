@@ -4,8 +4,22 @@ import { myersEditScript } from "@/lib/myers-diff";
 import { TextOperation } from "../live/ot";
 import { RemoteDocumentSession } from "../live/remote-session";
 import { FakeChannel } from "../live/tests/fake-channel";
-import { browserClock, LIVE_SEND_MS, NoteLiveBinding, type NoteLiveClock, type NoteLiveEditor } from "./note-live";
+import {
+  browserClock,
+  COMPOSITION_WAIT_MS,
+  LIVE_SEND_MS,
+  NoteLiveBinding,
+  type NoteLiveClock,
+  type NoteLiveEditor,
+} from "./note-live";
 import { propertySeeds } from "@/components/notes/tests/property-seeds";
+
+const logs = vi.hoisted(() => ({ logWarning: vi.fn(async () => undefined) }));
+
+vi.mock("@/lib/log", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/log")>()),
+  logWarning: logs.logWarning,
+}));
 
 interface Block {
   kind: "p" | "li";
@@ -63,6 +77,7 @@ function withSources(blocks: readonly Block[], shown: readonly Block[]): Block[]
 class FakeEditor implements NoteLiveEditor {
   blocks: Block[];
   isComposing = false;
+  showsWhileComposing = false;
   shows = 0;
 
   constructor(text: string) {
@@ -74,7 +89,7 @@ class FakeEditor implements NoteLiveEditor {
   }
 
   show(previous: string, next: string, keepLocal: boolean): void {
-    if (this.isComposing) throw new Error("The editor changed during a composition.");
+    if (this.isComposing && !this.showsWhileComposing) throw new Error("The editor changed during a composition.");
     this.shows += 1;
     const theirs = parseBlocks(next);
     const base = parseBlocks(previous);
@@ -133,6 +148,21 @@ class ManualClock implements NoteLiveClock {
 
   idle(): boolean {
     return this.live().length === 0 && this.micro.length === 0;
+  }
+}
+
+class TimedClock extends ManualClock {
+  time = 0;
+
+  now(): number {
+    return this.time;
+  }
+
+  step(ms: number): void {
+    this.time += ms;
+    const due = this.live().length;
+    for (let index = 0; index < due; index += 1) this.fire(0);
+    this.settle();
   }
 }
 
@@ -309,9 +339,8 @@ function rendered(blocks: readonly Block[]): string[] {
   return blocks.map((block) => `${block.kind}:${block.text.trimEnd()}`);
 }
 
-async function setup(text: string, count = 2) {
+async function setup(text: string, count = 2, clock = new ManualClock()) {
   const channel = new FakeChannel(text);
-  const clock = new ManualClock();
   const peers: Peer[] = [];
   for (let index = 0; index < count; index += 1) peers.push(await connect(channel, clock));
   return { channel, clock, peers };
@@ -348,7 +377,7 @@ describe("NoteLiveBinding", () => {
     alice.editor.edit(1, (block) => ({ text: `${block.text}s` }));
     alice.binding.localChanged();
     clock.fireAll();
-    expect(channel.sent.at(-1)?.op).toEqual([6, "- twos", -5, 10]);
+    expect(channel.sent.at(-1)?.op).toEqual([6, "-", -1, 4, "s", 10]);
     quiesce(channel, clock, peers);
     expect(channel.text).toBe("* one\n- twos\n* three  ");
   });
@@ -429,6 +458,42 @@ describe("NoteLiveBinding", () => {
     expect(channel.text).toBe("ab你\nXcd");
     expect(alice.editor.serialize()).toBe("ab你\nXcd");
     expect(bob.editor.serialize()).toBe("ab你\nXcd");
+  });
+
+  it("keeps holding local text however long a composition lasts, and warns about nothing", async () => {
+    logs.logWarning.mockClear();
+    const clock = new TimedClock();
+    const { channel, peers } = await setup("ab\ncd", 2, clock);
+    const [alice] = peers;
+    alice.editor.isComposing = true;
+    alice.editor.edit(0, (block) => ({ text: `${block.text}n` }));
+    alice.binding.localChanged();
+    for (let elapsed = 0; elapsed < COMPOSITION_WAIT_MS * 3; elapsed += LIVE_SEND_MS) clock.step(LIVE_SEND_MS);
+    expect(channel.sent).toEqual([]);
+    expect(logs.logWarning).not.toHaveBeenCalled();
+  });
+
+  it("shows a coauthor's edit after a composition has held it back for 5 s, and says so once", async () => {
+    logs.logWarning.mockClear();
+    const clock = new TimedClock();
+    const { channel, peers } = await setup("ab\ncd", 2, clock);
+    const [alice, bob] = peers;
+    alice.editor.isComposing = true;
+    alice.editor.showsWhileComposing = true;
+    bob.editor.edit(1, (block) => ({ text: `X${block.text}` }));
+    bob.binding.localChanged();
+    clock.step(LIVE_SEND_MS);
+    channel.drain();
+    clock.settle();
+    while (clock.time < COMPOSITION_WAIT_MS - LIVE_SEND_MS) clock.step(LIVE_SEND_MS);
+    expect(alice.editor.shows).toBe(0);
+    expect(logs.logWarning).not.toHaveBeenCalled();
+    clock.step(LIVE_SEND_MS * 2);
+    expect(alice.editor.shows).toBe(1);
+    expect(alice.editor.serialize()).toBe("ab\nXcd");
+    expect(logs.logWarning).toHaveBeenCalledExactlyOnceWith("live note", expect.any(Error));
+    for (let elapsed = 0; elapsed < COMPOSITION_WAIT_MS * 2; elapsed += LIVE_SEND_MS) clock.step(LIVE_SEND_MS);
+    expect(logs.logWarning).toHaveBeenCalledTimes(1);
   });
 
   it("replaces the document on a reset and keeps converging", async () => {

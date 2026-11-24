@@ -1,6 +1,7 @@
 import { publishLiveProject, useCollabEditorGate, useCollabLiveNote } from "@/lib/collab-live-bridge";
 import type { CollabProjectRole } from "@/lib/tauri";
 import { canEditProjectRole, isReadOnlyProjectRole } from "../roles";
+import { useEditMode } from "../suggestions/edit-mode";
 import { startLiveEditing } from "./live-editing";
 import { type LiveSession, useCollabLiveStore } from "./live-store";
 
@@ -12,6 +13,28 @@ export function isNoteSession(live: LiveSession): boolean {
   return useCollabLiveNote.getState().noteId === live.projectId;
 }
 
+function trackSuggesting(projectId: string): () => void {
+  const sync = () => {
+    const gate = useCollabEditorGate.getState();
+    const mode = useEditMode.getState();
+    const suggesting = gate.projectId === projectId && mode.projectId === projectId && mode.mode === "suggesting";
+    if (gate.suggesting !== suggesting) useCollabEditorGate.setState({ suggesting });
+  };
+  sync();
+  const stopMode = useEditMode.subscribe(sync);
+  const stopGate = useCollabEditorGate.subscribe((state, previous) => {
+    if (state.projectId !== previous.projectId) sync();
+  });
+  return () => {
+    stopMode();
+    stopGate();
+    const gate = useCollabEditorGate.getState();
+    if (gate.suggesting && (gate.projectId === projectId || gate.projectId === null)) {
+      useCollabEditorGate.setState({ suggesting: false });
+    }
+  };
+}
+
 export function startNoteLive(live: LiveSession): () => void {
   const { projectId } = live;
   useCollabEditorGate.setState({ projectId, ...access(useCollabLiveStore.getState().role), connecting: false });
@@ -20,6 +43,7 @@ export function startNoteLive(live: LiveSession): () => void {
       useCollabEditorGate.setState(access(state.role));
     }
   });
+  const stopSuggesting = trackSuggesting(projectId);
   useCollabLiveNote.setState({ session: { ...live } });
   return () => {
     unsubscribeRole();
@@ -27,16 +51,18 @@ export function startNoteLive(live: LiveSession): () => void {
     if (useCollabEditorGate.getState().projectId === projectId) {
       useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
     }
+    stopSuggesting();
   };
 }
 
 export function startLiveTarget(live: LiveSession): () => void {
   if (isNoteSession(live)) return startNoteLive(live);
   const stopEditing = startLiveEditing(live);
-  const unpublish =
-    useCollabLiveStore.getState().backend === "overleaf" ? () => undefined : publishLiveProject(live);
+  const stopSuggesting = trackSuggesting(live.projectId);
+  const unpublish = publishLiveProject(live);
   return () => {
     unpublish();
     stopEditing();
+    stopSuggesting();
   };
 }

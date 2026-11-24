@@ -1977,7 +1977,12 @@
       "signedIn": "Conectado em {{server}}",
       "signOut": "Sair",
       "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
+      "addAccount": "Adicionar outra conta",
+      "addAccountHint": "A janela de login abre do zero, então você pode entrar com qualquer conta. Fazer login com um navegador, ou copiar o login de um navegador, usa a conta conectada nesse navegador.",
+      "accountPick": "Conta para importar",
+      "accountPickDescription": "Novas importações e modelos usam esta conta. Os projetos que você já tem mantêm a conta de onde vieram.",
       "gitTitle": "Token Git para sincronização",
+      "gitTitleFor": "Token Git para {{email}}",
       "gitSaved": "Há um token Git salvo. Os projetos que você vincular ficam sincronizados com o Overleaf.",
       "gitMissing": "Nenhum token Git ainda. Crie um em Integração com Git nas configurações da sua conta do Overleaf para sincronizar projetos.",
       "gitOpenSettings": "Abrir configurações da conta do Overleaf",
@@ -2353,6 +2358,7 @@
       "confirm": "Limpar as palavras",
       "descriptionFallback": "Isso remove todos os termos deste dicionário. Eles voltam a ser verificados na hora.",
       "descriptionGlobal": "Isso remove todos os termos do dicionário global. Eles voltam a ser verificados na hora.",
+      "descriptionOverleaf": "Eles também são removidos da sua conta do Overleaf.",
       "descriptionProject": "Isso remove todos os termos de {{project}}. Eles voltam a ser verificados na hora.",
       "descriptionSuppressed": "Isso remove todos os termos das ocorrências dispensadas em {{project}}. Eles voltam a ser verificados na hora.",
       "suppressedConfirm": "Mostrar de novo",
@@ -2371,6 +2377,7 @@
     },
     "global": {
       "emptyDescription": "As palavras que você adiciona aqui são puladas pela revisão de texto em todos os projetos.",
+      "overleafSynced": "Sincronizado com as palavras aprendidas da sua conta do Overleaf enquanto um projeto está ao vivo no Overleaf.",
       "scope": "Vale para todos os projetos"
     },
     "intro": "Adicione palavras ao seu dicionário pessoal de verificação ortográfica. Elas ficam nas configurações locais e são ignoradas em todos os projetos. A comparação é normalizada em Unicode e não diferencia maiúsculas de minúsculas.",

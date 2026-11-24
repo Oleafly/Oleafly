@@ -1178,6 +1178,7 @@
     "elsewhere": "Reaaliaikainen muokkaus on käytössä toisessa muistiinpanossa",
     "makeLive": "Muokkaa reaaliaikaisesti tässä",
     "viewOnly": "Voit lukea tätä muistiinpanoa mutta et muokata sitä.",
+    "suggesting": "Ehdottaminen on käytössä, joten et voi muokata tätä muistiinpanoa täällä. Poista ehdottaminen käytöstä, niin voit muokata sitä.",
     "someone": "Joku",
     "unsentReadOnly": "Viimeisimpiä muutoksiasi tähän muistiinpanoon ei lähetetty, koska voit nyt vain katsella sitä.",
     "unsentRefused": "Oleafly ei voinut lähettää viimeisimpiä muutoksiasi tähän muistiinpanoon, joten ne hylättiin."

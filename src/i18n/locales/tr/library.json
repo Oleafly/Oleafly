@@ -341,6 +341,7 @@
       "saveServer": "Bu sunucuyu kullan",
       "signedInAs": "{{email}} olarak oturum açıldı",
       "signedIn": "Overleaf'te oturum açıldı",
+      "accountPick": "Overleaf hesabı",
       "signOut": "Oturumu kapat",
       "searchLabel": "Overleaf projelerinde ara",
       "searchPlaceholder_one": "{{count}} projede ara",
@@ -362,6 +363,8 @@
       "import_other": "{{count}} projeyi içe aktar",
       "imported": "İçe aktarıldı",
       "open": "Aç",
+      "openLive": "Canlı olarak aç",
+      "opening": "Açılıyor",
       "ownedByYou": "Size ait",
       "owner": "Sahibi: {{name}}",
       "archived": "Arşivlendi",
@@ -377,6 +380,36 @@
         "downloading": "İndiriliyor %{{percent}}",
         "downloadingUnknown": "İndiriliyor",
         "importing": "Hazırlanıyor"
+      },
+      "invitations": {
+        "title": "Davetler",
+        "from": "Gönderen: {{name}}",
+        "join": "Katıl",
+        "joined": "Bu projeye katıldınız"
+      },
+      "link": {
+        "checking": "Bağlantı denetleniyor",
+        "unnamed": "Overleaf üzerinde bir proje",
+        "join": "Katıl",
+        "importInstead": "İçe aktar",
+        "grants": {
+          "edit": "Katılırsanız projeyi ortak çalışan olarak düzenleyebilirsiniz.",
+          "view": "Katılırsanız projeyi yalnızca görüntüleyebilirsiniz. Bağlantıyla görüntüleyenler yorum ve sohbet kullanamaz.",
+          "already": "Bu proje zaten sizde var.",
+          "invite": "Katıldığınızda davet kabul edilir."
+        }
+      },
+      "put": {
+        "menu": "Overleaf projesi olarak yükle",
+        "title": "Overleaf projesi olarak yükle",
+        "description": "Oleafly bu projeyi yeni bir Overleaf projesi olarak yükler, ardından siz canlı düzenlerken ikisini eşitlenmiş tutar.",
+        "name": "Overleaf üzerindeki ad",
+        "account": "Overleaf hesabı",
+        "submit": "Overleaf projesi olarak yükle",
+        "working": "Yükleniyor",
+        "signedOut": "Önce Ayarlar bölümünde Overleaf hesabınızla oturum açın.",
+        "openSettings": "Ayarlar'ı aç",
+        "cancel": "İptal"
       }
     }
   },

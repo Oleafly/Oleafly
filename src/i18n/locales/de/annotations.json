@@ -26,6 +26,10 @@
       "region": "Kommentar zu diesem Bereich …"
     },
     "placeHere": "Hier platzieren",
+    "coauthors": "Kommentar für Koautoren",
+    "noSource": "Diese Stelle wurde in den Quelldateien nicht gefunden.",
+    "commentFailed": "Die Datei für diesen Kommentar konnte nicht geöffnet werden.",
+    "commentsClosed": "Kommentare sind für dieses Projekt gerade nicht verfügbar.",
     "cancel": "Abbrechen",
     "save": "Hinzufügen",
     "saving": "Wird gespeichert",

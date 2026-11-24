@@ -341,6 +341,7 @@
       "saveServer": "Deze server gebruiken",
       "signedInAs": "Aangemeld als {{email}}",
       "signedIn": "Aangemeld bij Overleaf",
+      "accountPick": "Overleaf-account",
       "signOut": "Afmelden",
       "searchLabel": "Overleaf-projecten zoeken",
       "searchPlaceholder_one": "Zoek in {{count}} project",
@@ -362,6 +363,8 @@
       "import_other": "{{count}} projecten importeren",
       "imported": "Geïmporteerd",
       "open": "Openen",
+      "openLive": "Live openen",
+      "opening": "Openen",
       "ownedByYou": "Van jou",
       "owner": "Eigendom van {{name}}",
       "archived": "Gearchiveerd",
@@ -377,6 +380,36 @@
         "downloading": "Downloaden {{percent}}%",
         "downloadingUnknown": "Downloaden",
         "importing": "Instellen"
+      },
+      "invitations": {
+        "title": "Uitnodigingen",
+        "from": "Van {{name}}",
+        "join": "Deelnemen",
+        "joined": "Je bent toegetreden tot dit project"
+      },
+      "link": {
+        "checking": "De link controleren",
+        "unnamed": "Een project op Overleaf",
+        "join": "Deelnemen",
+        "importInstead": "Importeren",
+        "grants": {
+          "edit": "Als je deelneemt, kun je het als medewerker bewerken.",
+          "view": "Als je deelneemt, kun je het alleen bekijken. Lezers via een link krijgen geen opmerkingen of chat.",
+          "already": "Je hebt dit project al.",
+          "invite": "Door deel te nemen accepteer je de uitnodiging."
+        }
+      },
+      "put": {
+        "menu": "Op Overleaf zetten",
+        "title": "Op Overleaf zetten",
+        "description": "Oleafly uploadt dit project als nieuw Overleaf-project en houdt daarna beide gesynchroniseerd terwijl je live bewerkt.",
+        "name": "Naam op Overleaf",
+        "account": "Overleaf-account",
+        "submit": "Op Overleaf zetten",
+        "working": "Uploaden",
+        "signedOut": "Meld je eerst aan bij Overleaf via Instellingen.",
+        "openSettings": "Instellingen openen",
+        "cancel": "Annuleren"
       }
     }
   },

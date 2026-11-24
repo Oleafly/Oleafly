@@ -79,6 +79,10 @@ struct Seen {
     external: Vec<DocId>,
     replaced: Vec<DocId>,
     flags: Vec<(bool, bool)>,
+    review: Vec<super::ReviewChange>,
+    chat: Vec<super::ChatChange>,
+    filling: Vec<(usize, usize)>,
+    remote_edits: Vec<(DocId, Option<String>)>,
 }
 
 #[derive(Default)]
@@ -208,6 +212,24 @@ impl LivePort for Port {
     fn members_changed(&self) {
         self.seen().members_changed += 1;
     }
+
+    fn review_changed(&self, change: super::ReviewChange) {
+        self.seen().review.push(change);
+    }
+
+    fn chat_changed(&self, change: super::ChatChange) {
+        self.seen().chat.push(change);
+    }
+
+    fn filling(&self, done: usize, total: usize) {
+        self.seen().filling.push((done, total));
+    }
+
+    fn remote_edit(&self, doc: &DocId, user_id: Option<&str>) {
+        self.seen()
+            .remote_edits
+            .push((doc.clone(), user_id.map(str::to_string)));
+    }
 }
 
 struct Rig {
@@ -257,6 +279,7 @@ impl Rig {
             carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
             tuning,
             seeds: Vec::new(),
+            fill: false,
         }
     }
 
@@ -710,7 +733,7 @@ async fn joining_three_hundred_docs_is_paced() {
         .map(|index| (format!("{index:024x}"), format!("c{index:03}.tex")))
         .collect();
     let mut state = watcher(&docs);
-    state.start_history(History::default(), Duration::from_secs(1));
+    state.start_history(History::default(), Duration::from_secs(1), None);
     let start = Instant::now();
     let mut joined = 0;
     for second in 0..300 {
@@ -1026,6 +1049,7 @@ async fn a_journal_from_another_user_is_not_sent() {
                 inflight: None,
                 provisional: false,
                 path: None,
+                queued: Vec::new(),
             }),
         );
         journal.flush().unwrap();
@@ -1577,6 +1601,7 @@ async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
                 inflight: None,
                 provisional: false,
                 path: None,
+                queued: Vec::new(),
             }),
         );
         journal.flush().unwrap();
@@ -1938,7 +1963,7 @@ fn a_doc_id_that_cannot_name_a_journal_file_is_never_joined_or_journaled() {
         .open("plain.tex", sink, None)
         .expect("the plain doc opens");
     state
-        .editor_change(&evil, opened.rev, insertion(0, 0, "typed"))
+        .editor_change(&evil, opened.rev, insertion(0, 0, "typed"), None)
         .unwrap();
     let joins = state.next_joins(Instant::now(), 8);
     assert_eq!(joins, vec![(plain.clone(), JoinKind::Fresh)]);
@@ -2118,8 +2143,123 @@ fn recorded_sessions_replay_through_the_session_state() {
     assert!(history_ot.0 >= 1, "history-ot {history_ot:?}");
 }
 
+#[tokio::test]
+async fn remote_edit_carries_the_author() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let (main, intro) = (rig.id(MAIN), rig.id(INTRO));
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("alice joins the open doc", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    tab.type_end(&live, "!");
+    eventually("alice's edit is sent", || {
+        rig.mock.doc_text(&main.0) == "Hello!"
+    })
+    .await;
+    let mut bob = rig.mock.peer("bob");
+    bob.join(&main.0);
+    bob.join(&intro.0);
+    bob.type_at(&main.0, 5, " world");
+    bob.type_at(&intro.0, 0, "An ");
+    eventually("the tab follows bob", || tab.text(&live) == "Hello world!").await;
+    eventually("the unopened doc follows bob", || {
+        live.text(&intro).as_deref() == Some("An Intro")
+    })
+    .await;
+    let bob_id = Some(rig.user_id("bob"));
+    eventually("both of bob's edits are told", || {
+        let told = &port.seen().remote_edits;
+        told.contains(&(main.clone(), bob_id.clone()))
+            && told.contains(&(intro.clone(), bob_id.clone()))
+    })
+    .await;
+    assert!(port
+        .seen()
+        .remote_edits
+        .iter()
+        .all(|(_, author)| *author == bob_id));
+    live.stop().await;
+}
+
+#[test]
+fn remote_edits_are_told_once_per_doc_and_author_in_a_delivery() {
+    let port = Port::new(&[]);
+    let main = DocId("aaaaaaaaaaaaaaaaaaaaaaaa".into());
+    let notes = DocId("bbbbbbbbbbbbbbbbbbbbbbbb".into());
+    let bob = Some("u-bob".to_string());
+    let edits = || {
+        vec![
+            Notice::RemoteEdit(main.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), None),
+            Notice::RemoteEdit(notes.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), None),
+        ]
+    };
+    super::state::deliver(port.as_ref(), edits());
+    let once = vec![
+        (main.clone(), bob.clone()),
+        (main.clone(), None),
+        (notes.clone(), bob.clone()),
+    ];
+    assert_eq!(port.seen().remote_edits, once);
+    super::state::deliver(port.as_ref(), edits());
+    assert_eq!(port.seen().remote_edits, [once.clone(), once].concat());
+}
+
+#[test]
+fn a_buffered_edit_is_told_once_when_its_join_lands() {
+    let docs = vec![
+        ("aaaaaaaaaaaaaaaaaaaaaaaa".to_string(), "a.tex".to_string()),
+        ("bbbbbbbbbbbbbbbbbbbbbbbb".to_string(), "b.tex".to_string()),
+    ];
+    let mut state = watcher(&docs);
+    let (a, b) = (DocId(docs[0].0.clone()), DocId(docs[1].0.clone()));
+    let update = |doc: &DocId, v: u64, op: Value, user: &str| {
+        let meta = json!({ "source": format!("P.{user}"), "user_id": user });
+        AppliedUpdate::from_value(&json!({ "v": v, "op": op, "meta": meta }), Some(doc)).unwrap()
+    };
+    let comment = json!([{ "p": 0, "c": "Hi", "t": "cccccccccccccccccccccccc" }]);
+    state.on_applied(update(&a, 0, json!([{ "p": 0, "i": "Hi " }]), "bob"));
+    state.on_applied(update(&a, 1, comment, "carol"));
+    state.on_applied(update(&a, 2, json!([{ "p": 8, "i": "!" }]), "dave"));
+    state.on_applied(update(&b, 0, json!([{ "p": 0, "i": "Lost " }]), "erin"));
+    state.deliver();
+    assert!(state.port.seen().remote_edits.is_empty());
+    let reply = |text: &str, version: u64, kind: &str| {
+        vec![
+            Value::Null,
+            json!([text]),
+            json!(version),
+            json!([]),
+            json!({}),
+            json!(kind),
+        ]
+    };
+    let joined = parse_join(&a, &reply("Hi there", 2, "sharejs-text-ot"));
+    state.joined(&a, JoinKind::Fresh, joined);
+    let refused = parse_join(&b, &reply("b", 0, "sharejs-json"));
+    state.joined(&b, JoinKind::Fresh, refused);
+    state.deliver();
+    state.deliver();
+    assert_eq!(state.text(&a).as_deref(), Some("Hi there!"));
+    assert_eq!(
+        state.port.seen().remote_edits,
+        vec![(a.clone(), Some("bob".into())), (a, Some("dave".into()))]
+    );
+}
+
 mod access;
+mod chat;
 mod faults;
+mod fill;
+mod history;
+mod linked;
 mod presence;
 mod resilience;
+mod review;
 mod tree;

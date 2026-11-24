@@ -10,7 +10,7 @@ import { formatDate, formatTime } from "@/lib/intl";
 import type { CollabHistoryEntry, CollabProjectRole } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "../live/live-store";
-import { ALICE_ID, BOB, BOB_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
+import { ALICE_ID, BOB, BOB_ID, fill, historyStatus, person, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabHistoryList: vi.fn(),
@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   collabHistoryRestore: vi.fn(),
   collabVersionName: vi.fn(),
   collabVersionUnname: vi.fn(),
+  collabHistoryStatus: vi.fn(),
+  collabHistoryZip: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
@@ -56,6 +58,7 @@ function live(role: CollabProjectRole) {
     members: MEMBERS,
     share: shareInfo({ project_id: "paper", role, account_id: ALICE_ID }),
   });
+  mocks.collabHistoryStatus.mockResolvedValue(historyStatus(role));
 }
 
 function show(role: CollabProjectRole = "editor") {

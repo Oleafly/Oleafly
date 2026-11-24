@@ -8,7 +8,10 @@ vi.mock("@/store/files", async () => {
   return { useFilesStore: create(() => ({ projectId: null, projects: [] as { id: string; main_doc: string }[] })) };
 });
 
+import { LocalDocumentSession } from "@oleafly/editor/document-session";
 import {
+  collabRelive,
+  installCollabEditorPort,
   installNoteLivePort,
   type NoteLiveBindRequest,
   type NoteLiveHandle,
@@ -28,6 +31,8 @@ const SESSION = { projectId: "paper", role: "editor" as const, accountId: "me", 
 
 let editor: Editor;
 let uninstall: () => void = () => {};
+let uninstallDocuments: () => void = () => {};
+let shared: LocalDocumentSession | null = null;
 const bound: NoteLiveBindRequest[] = [];
 const handle: NoteLiveHandle = {
   localChanged: vi.fn(),
@@ -65,13 +70,19 @@ beforeEach(() => {
       return handle;
     },
   });
+  shared = new LocalDocumentSession(TARGET.path, TEXT);
+  uninstallDocuments = installCollabEditorPort({
+    documentSession: (path) => (path === TARGET.path ? shared : null),
+    flush: async () => {},
+  });
   useCollabLiveNote.setState({ noteId: null, session: null });
   useCollabLiveProject.setState({ session: null });
-  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
+  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false, suggesting: false });
 });
 
 afterEach(() => {
   uninstall();
+  uninstallDocuments();
   editor.destroy();
 });
 
@@ -86,7 +97,8 @@ describe("live project notes", () => {
     });
     expect(bound).toHaveLength(1);
     expect(bound[0]).toMatchObject({ noteId: "paper", noticeId: KEY, path: "notes/Plan.md", session: SESSION });
-    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false });
+    expect(bound[0].document).toBe(shared);
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false, suggesting: false });
     expect(hook.result.current.control.holds()).toBe(true);
     hook.unmount();
     expect(handle.end).toHaveBeenCalled();
@@ -102,7 +114,56 @@ describe("live project notes", () => {
       useCollabLiveProject.setState({ session: { ...SESSION, role: "viewer" } });
       await settle();
     });
-    expect(hook.result.current.state).toEqual({ live: true, readOnly: true, viewOnly: true });
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: true, viewOnly: true, suggesting: false });
+  });
+
+  it("shares the editor's live session for the file and stays local when the file has none", async () => {
+    shared = null;
+    const hook = renderHook(() => useNoteLiveEditor(KEY, editor, host(), TARGET));
+    await act(async () => {
+      useCollabEditorGate.setState({ projectId: "paper" });
+      useCollabLiveProject.setState({ session: SESSION });
+      await settle();
+    });
+    expect(bound).toHaveLength(0);
+    expect(hook.result.current.state.live).toBe(false);
+  });
+
+  it("binds a project note that had no live session once its file is made live again", async () => {
+    const waiting = shared;
+    shared = null;
+    renderHook(() => useNoteLiveEditor(KEY, editor, host(), TARGET));
+    await act(async () => {
+      useCollabEditorGate.setState({ projectId: "paper" });
+      useCollabLiveProject.setState({ session: SESSION });
+      await settle();
+    });
+    expect(bound).toHaveLength(0);
+    await act(async () => {
+      collabRelive("notes/Other.md");
+      await settle();
+    });
+    expect(bound).toHaveLength(0);
+    shared = waiting;
+    await act(async () => {
+      collabRelive(TARGET.path);
+      await settle();
+    });
+    expect(bound).toHaveLength(1);
+    expect(bound[0].document).toBe(waiting);
+    await act(async () => {
+      collabRelive(TARGET.path);
+      await settle();
+    });
+    expect(bound).toHaveLength(1);
+  });
+
+  it("is read-only while my edits in the project are suggestions, and says so", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", suggesting: true });
+    const hook = renderHook(() => useNoteLiveEditor(KEY, editor, host(), TARGET));
+    expect(hook.result.current.state).toMatchObject({ readOnly: true, viewOnly: false, suggesting: true });
+    act(() => useCollabEditorGate.setState({ suggesting: false }));
+    expect(hook.result.current.state).toMatchObject({ readOnly: false, suggesting: false });
   });
 
   it("ignores a library note session and another project's session", async () => {

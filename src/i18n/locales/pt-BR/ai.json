@@ -390,7 +390,8 @@
       "runCommand": "Executar um comando shell na pasta do projeto, com limite de dois minutos.",
       "toggleTheme": "Alternar entre o modo claro e o escuro.",
       "listOverleafProjects": "Listar seus projetos do Overleaf, fazendo login antes quando necessário.",
-      "importOverleafProjects": "Importar projetos do Overleaf para a sua biblioteca, com o compilador e o arquivo principal."
+      "importOverleafProjects": "Importar projetos do Overleaf para a sua biblioteca, com o compilador e o arquivo principal.",
+      "openOverleafLive": "Abrir um projeto do Overleaf para edição ao vivo, importando-o antes se ainda não estiver na sua biblioteca."
     },
     "disableAll": "Desativar todas",
     "emptyContext": "Nenhuma ferramenta está disponível neste contexto.",
@@ -416,7 +417,8 @@
       "latexOnly": "Só em projetos LaTeX",
       "latexAndTypstOnly": "Só em projetos LaTeX e Typst",
       "pdfCaptureSetting": "Precisa da configuração de captura de páginas do PDF",
-      "chatApproval": "Aprovada na conversa, um comando de cada vez"
+      "chatApproval": "Aprovada na conversa, um comando de cada vez",
+      "overleafLiveSetting": "Precisa da opção Edição ao vivo com o Overleaf em Experimentação"
     },
     "sourceGroups": {
       "figure": "Figura",

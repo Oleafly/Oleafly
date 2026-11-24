@@ -318,6 +318,15 @@
     "spellLanguageFolderHint": "Salvata nel project.json di questa cartella, quindi vale per chiunque la apra. Scarica altre lingue nelle impostazioni.",
     "spellLanguageReadOnly": "Questa cartella è di sola lettura, quindi la lingua nel suo project.json non può essere cambiata.",
     "spellLanguageFailed": "Impossibile cambiare la lingua del controllo ortografico.",
+    "onOverleaf": "Su Overleaf",
+    "texLive": "Versione di TeX Live",
+    "texLiveAriaLabel": "Versione di TeX Live su Overleaf",
+    "bibliography": "Bibliografia principale",
+    "bibliographyAriaLabel": "Bibliografia principale su Overleaf",
+    "bibliographyNone": "Nessuna scelta",
+    "overleafHint": "Queste impostazioni sono su Overleaf e valgono per tutti nel progetto.",
+    "overleafReadOnly": "Solo i proprietari e gli editor possono modificarle su Overleaf.",
+    "overleafFailed": "Impossibile cambiare questa impostazione su Overleaf.",
     "notChecked": "Non controllato",
     "dictionaryMissing": "{{name}} non è scaricato, quindi l’ortografia non viene controllata. Scaricalo nelle Impostazioni o scegli un’altra lingua.",
     "grammarEnglishOnly": "Il controllo grammaticale funziona solo per i documenti in inglese.",
@@ -747,13 +756,13 @@
     "ignoreEverywhere": "Ignora ovunque",
     "keyboardHint": "Usa Tab o le frecce per spostarti tra le azioni. Premi Escape per chiudere.",
     "endOfDocument": "Fine del documento",
-    "hidePreamble": "Nascondi il preambolo del documento",
-    "showPreamble": "Mostra il preambolo del documento",
-    "sharedReadOnly": "In un progetto condiviso, la modalità visuale mostra soltanto il file. Passa alla vista sorgente per modificarlo.",
     "findingLabel": "{{message}}. Apri i suggerimenti di correzione.",
     "rawBlockFindings_one": "{{count}} segnalazione di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
     "rawBlockFindings_many": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
-    "rawBlockFindings_other": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti."
+    "rawBlockFindings_other": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
+    "liveViewOnly": "Puoi visualizzare questo file condiviso ma non modificarlo.",
+    "liveConnecting": "Questo file condiviso si sta ancora connettendo. Potrai modificarlo quando sarà pronto.",
+    "suggestInSource": "Qui le tue modifiche sarebbero suggerimenti, e la modalità Visuale non può mostrarli. Passa alla vista sorgente per suggerire modifiche."
   },
   "package": {
     "search": {

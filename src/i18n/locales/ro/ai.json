@@ -390,7 +390,8 @@
       "runCommand": "Rulează o comandă shell în folderul proiectului, cu o limită de două minute.",
       "toggleTheme": "Comută între tema deschisă și cea întunecată.",
       "listOverleafProjects": "Listează proiectele tale Overleaf și se autentifică mai întâi, dacă e nevoie.",
-      "importOverleafProjects": "Importă proiecte Overleaf în biblioteca ta, cu compilatorul și fișierul principal."
+      "importOverleafProjects": "Importă proiecte Overleaf în biblioteca ta, cu compilatorul și fișierul principal.",
+      "openOverleafLive": "Deschide un proiect Overleaf pentru editare live și îl importă mai întâi dacă nu este încă în biblioteca ta."
     },
     "disableAll": "Dezactivează tot",
     "emptyContext": "Niciun instrument nu este disponibil în acest context.",
@@ -416,7 +417,8 @@
       "latexOnly": "Doar pentru proiecte LaTeX",
       "latexAndTypstOnly": "Doar pentru proiecte LaTeX și Typst",
       "pdfCaptureSetting": "Necesită setarea de captură a paginilor PDF",
-      "chatApproval": "Aprobat în conversație, câte o comandă pe rând"
+      "chatApproval": "Aprobat în conversație, câte o comandă pe rând",
+      "overleafLiveSetting": "Necesită opțiunea Editare live cu Overleaf din Experimente"
     },
     "sourceGroups": {
       "figure": "Figură",

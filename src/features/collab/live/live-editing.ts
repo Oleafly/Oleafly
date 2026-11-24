@@ -1,5 +1,5 @@
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
-import { setCollabEditorExtension } from "@/components/editor/cm/collab-slot";
+import { setCollabEditorExtension } from "@/components/editor/cm/editor-slots";
 import {
   installCollabEditorPort,
   noteLiveHolds,

@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use tauri::AppHandle;
 
-use super::client::{self, Http};
+use super::client::Http;
 use super::html;
 use super::import;
 use super::session;
@@ -50,10 +50,6 @@ fn unavailable() -> String {
     AppError::new("overleaf.template_unavailable").into()
 }
 
-fn gallery_host(host: &str) -> bool {
-    host == "overleaf.com" || host.ends_with(".overleaf.com")
-}
-
 fn safe_segment(segment: &str) -> bool {
     !segment.is_empty()
         && segment != "."
@@ -64,37 +60,10 @@ fn safe_segment(segment: &str) -> bool {
 }
 
 pub(crate) fn parse_link(input: &str, server: &str) -> Result<TemplateLink, String> {
-    let raw = input.trim();
-    let with_scheme = if raw.contains("://") {
-        raw.to_string()
-    } else {
-        format!("https://{raw}")
-    };
-    let url = tauri::Url::parse(&with_scheme).map_err(|_| invalid_link())?;
-    if !matches!(url.scheme(), "https" | "http") {
-        return Err(invalid_link());
-    }
-    let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
-    let (base, path) = if gallery_host(&host) {
-        (session::DEFAULT_SERVER.to_string(), url.path().to_string())
-    } else {
-        let base = session::normalize_server(Some(server))?;
-        let origin = url.origin().ascii_serialization();
-        let base_path = base
-            .strip_prefix(&session::origin_of(&base))
-            .unwrap_or_default()
-            .to_string();
-        if origin != session::origin_of(&base) {
-            return Err(invalid_link());
-        }
-        let path = url
-            .path()
-            .strip_prefix(&base_path)
-            .filter(|rest| rest.starts_with('/'))
-            .ok_or_else(invalid_link)?
-            .to_string();
-        (base, path)
-    };
+    let split = oleafly_online::live::rest::split_link(input, server)
+        .map_err(super::errors::app_error)?
+        .ok_or_else(invalid_link)?;
+    let (base, path) = (split.base, split.path);
     let mut segments: Vec<String> = path
         .split('/')
         .filter(|segment| !segment.is_empty())
@@ -358,38 +327,6 @@ pub(crate) fn create_body(open: &OpenAsTemplate, name: &str) -> Value {
     Value::Object(body)
 }
 
-async fn signed_in(base: &str) -> Result<(Http, String, String), String> {
-    let stored =
-        session::load(base)?.ok_or_else(|| String::from(AppError::new("overleaf.signed_out")))?;
-    let http = Http::new(base)?;
-    let dashboard = match http.dashboard(&stored.cookie).await {
-        Ok(dashboard) => dashboard,
-        Err(error) => {
-            if client::is_expired(&error) {
-                let _ = session::forget(base);
-            }
-            return Err(error);
-        }
-    };
-    let cookie = session::merge_set_cookies(
-        &stored.cookie,
-        dashboard.set_cookies.iter().map(String::as_str),
-    );
-    let _ = session::refresh_cookie(base, &stored, &cookie);
-    let csrf = dashboard
-        .csrf
-        .ok_or_else(|| String::from(AppError::new("overleaf.unrecognized")))?;
-    Ok((http, cookie, csrf))
-}
-
-struct Download(std::path::PathBuf);
-
-impl Drop for Download {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
-}
-
 async fn download_and_publish(
     http: &Http,
     cookie: &str,
@@ -398,13 +335,14 @@ async fn download_and_publish(
     draft: TemplateDraft,
 ) -> Result<String, String> {
     let custom_root = crate::templates::custom_templates_root()?;
-    let download = Download(custom_templates::download_path(&custom_root)?);
+    let download =
+        crate::staging::StagedFile::in_dir(&custom_root, custom_templates::DOWNLOAD_PREFIX)?;
     let result = match http
-        .download_zip(cookie, project_id, &download.0, |_, _| {})
+        .download_zip(cookie, project_id, download.path(), |_, _| {})
         .await
     {
         Ok(_) => {
-            let archive = download.0.clone();
+            let archive = download.path().to_path_buf();
             tauri::async_runtime::spawn_blocking(move || {
                 custom_templates::publish_template(
                     &custom_root,
@@ -422,11 +360,13 @@ async fn download_and_publish(
     result
 }
 
-fn forget_if_expired(base: &str, result: Result<String, String>) -> Result<String, String> {
+async fn forget_if_expired(
+    base: &str,
+    user_id: &str,
+    result: Result<String, String>,
+) -> Result<String, String> {
     if let Err(error) = &result {
-        if client::is_expired(error) {
-            let _ = session::forget(base);
-        }
+        session::forget_if_expired(base, user_id, error).await;
     }
     result
 }
@@ -462,16 +402,26 @@ pub async fn overleaf_template_pdf(
 pub async fn overleaf_import_template(
     app: AppHandle,
     server: Option<String>,
+    account: Option<String>,
     link: String,
     name: String,
     preview_png_base64: Option<String>,
 ) -> Result<String, String> {
     let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
-    import_template(server.as_deref(), &link, name, preview_png_base64, reserved).await
+    import_template(
+        server.as_deref(),
+        account.as_deref(),
+        &link,
+        name,
+        preview_png_base64,
+        reserved,
+    )
+    .await
 }
 
 pub(crate) async fn import_template(
     server: Option<&str>,
+    account: Option<&str>,
     link: &str,
     name: String,
     preview_png_base64: Option<String>,
@@ -479,8 +429,16 @@ pub(crate) async fn import_template(
 ) -> Result<String, String> {
     let server = session::normalize_server(server)?;
     let link = parse_link(link, &server)?;
+    let account = if link.base == server { account } else { None };
+    let signed = session::signed_in(&link.base, account).await?;
+    let user_id = signed.session.user_id.clone();
     let result = async {
-        let (http, cookie, csrf) = signed_in(&link.base).await?;
+        let session::Signed {
+            http,
+            session: signed_in,
+            csrf,
+        } = signed;
+        let cookie = signed_in.cookie;
         let page = read_page(&http, &link).await?;
         let open = page.open.clone().ok_or_else(unavailable)?;
         let project_id = http
@@ -503,29 +461,41 @@ pub(crate) async fn import_template(
         download_and_publish(&http, &cookie, &project_id, reserved, draft).await
     }
     .await;
-    forget_if_expired(&link.base, result)
+    forget_if_expired(&link.base, &user_id, result).await
 }
 
 #[tauri::command]
 pub async fn overleaf_save_project_as_template(
     app: AppHandle,
     server: Option<String>,
+    account: Option<String>,
     project_id: String,
     name: String,
 ) -> Result<String, String> {
     let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
-    save_project_as_template(server.as_deref(), &project_id, name, reserved).await
+    save_project_as_template(
+        server.as_deref(),
+        account.as_deref(),
+        &project_id,
+        name,
+        reserved,
+    )
+    .await
 }
 
 pub(crate) async fn save_project_as_template(
     server: Option<&str>,
+    account: Option<&str>,
     project_id: &str,
     name: String,
     reserved: Vec<String>,
 ) -> Result<String, String> {
     let base = session::normalize_server(server)?;
+    let import::Listing {
+        session, projects, ..
+    } = import::list(&base, account).await?;
+    let user_id = session.user_id.clone();
     let result = async {
-        let (session, projects) = import::list(&base).await?;
         if !projects.iter().any(|project| project.id == project_id) {
             return Err(AppError::new("overleaf.project_unavailable").into());
         }
@@ -547,5 +517,5 @@ pub(crate) async fn save_project_as_template(
         download_and_publish(&http, &session.cookie, project_id, reserved, draft).await
     }
     .await;
-    forget_if_expired(&base, result)
+    forget_if_expired(&base, &user_id, result).await
 }

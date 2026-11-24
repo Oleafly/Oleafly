@@ -15,7 +15,20 @@ use tokio_tungstenite::WebSocketStream;
 use super::history_ot_text::{Marks, Part, TextOperation};
 use super::sharejs_text::{self, Component, Side};
 use super::{read_message, Reply, Request};
+use crate::live::format::{Author, Piece, ShareJsRanges, MAX_CHANGES, MAX_COMMENTS};
+use crate::live::history_ot::{edit_comment_list, edits_from_json, CommentRanges, Edit, RawOp};
 use crate::realtime::codec::{self, Frame, FrameError};
+use crate::realtime::events::stamp_ms;
+
+mod chat;
+mod create;
+mod history;
+mod linked;
+mod links;
+mod people;
+mod review;
+mod settings;
+mod spelling;
 
 pub const MOCK_CSRF: &str = "mock-csrf-token";
 pub const WS_URL_PATH: &str = "/rt/socket.io";
@@ -131,6 +144,7 @@ pub struct MockProject {
     pub members: Vec<(MockUser, Privilege)>,
     pub outsiders: Vec<MockUser>,
     pub token_viewers: Vec<MockUser>,
+    invites: Vec<people::Invite>,
     pub format: DocFormat,
     pub compiler: String,
     pub track_changes: Value,
@@ -147,6 +161,7 @@ impl MockProject {
             members: Vec::new(),
             outsiders: Vec::new(),
             token_viewers: Vec::new(),
+            invites: Vec::new(),
             format: DocFormat::ShareJs,
             compiler: "pdflatex".into(),
             track_changes: json!({}),
@@ -204,6 +219,17 @@ impl MockProject {
 
     pub fn token_viewer(mut self, user: MockUser) -> Self {
         self.token_viewers.push(user);
+        self
+    }
+
+    pub fn invited(mut self, email: &str, privilege: Privilege) -> Self {
+        let id = object_id(&format!("invite:{email}"));
+        self.invites.push(people::Invite {
+            token: format!("{id}{id}"),
+            id,
+            email: email.to_string(),
+            privilege,
+        });
         self
     }
 
@@ -282,6 +308,7 @@ pub struct RateLimits {
     pub docs_per_minute: usize,
     pub folders_per_minute: usize,
     pub uploads_per_quarter_hour: usize,
+    pub chat_messages_per_minute: usize,
 }
 
 impl Default for RateLimits {
@@ -291,6 +318,7 @@ impl Default for RateLimits {
             docs_per_minute: 30,
             folders_per_minute: 60,
             uploads_per_quarter_hour: 500,
+            chat_messages_per_minute: 100,
         }
     }
 }
@@ -311,8 +339,8 @@ pub struct MockConfig {
     pub rate_limits: RateLimits,
     pub retry_after: Option<u64>,
     pub history_status: u16,
-    pub threads_status: u16,
-    pub messages_status: u16,
+    pub review: bool,
+    pub chat: bool,
     pub kept_ops: usize,
     pub max_op_age: u64,
     pub history_ot_applied_version: bool,
@@ -324,6 +352,14 @@ pub struct MockConfig {
     pub doc_type_override: Option<String>,
     pub sign_in_as: Option<String>,
     pub download_length: bool,
+    pub versioning: bool,
+    pub zip_status: u16,
+    pub restore_gap: Duration,
+    pub ranges_support: bool,
+    pub image_names: Vec<(String, String)>,
+    pub languages: Vec<(String, String)>,
+    pub max_upload_bytes: u64,
+    pub dictionary_bytes: usize,
 }
 
 impl Default for MockConfig {
@@ -343,8 +379,8 @@ impl Default for MockConfig {
             rate_limits: RateLimits::default(),
             retry_after: None,
             history_status: 200,
-            threads_status: 404,
-            messages_status: 200,
+            review: false,
+            chat: true,
             kept_ops: 100,
             max_op_age: 80,
             history_ot_applied_version: false,
@@ -356,6 +392,14 @@ impl Default for MockConfig {
             doc_type_override: None,
             sign_in_as: None,
             download_length: false,
+            versioning: true,
+            zip_status: 200,
+            restore_gap: Duration::ZERO,
+            ranges_support: false,
+            image_names: Vec::new(),
+            languages: settings::default_languages(),
+            max_upload_bytes: 50 * 1024 * 1024,
+            dictionary_bytes: spelling::DICTIONARY_BYTES,
         }
     }
 }
@@ -399,7 +443,8 @@ struct Doc {
     version: u64,
     applied: VecDeque<Applied>,
     failing: Option<(String, usize)>,
-    ranges: Value,
+    ranges: ShareJsRanges,
+    comments: Vec<CommentRanges>,
 }
 
 impl Doc {
@@ -413,7 +458,8 @@ impl Doc {
             version: 0,
             applied: VecDeque::new(),
             failing: None,
-            ranges: json!({}),
+            ranges: ShareJsRanges::default(),
+            comments: Vec::new(),
         }
     }
 
@@ -443,6 +489,24 @@ impl Doc {
             .map_or(self.version, |applied| applied.at)
     }
 
+    fn comments_json(&self) -> Vec<Value> {
+        self.comments
+            .iter()
+            .map(|comment| {
+                let ranges: Vec<Value> = comment
+                    .ranges
+                    .iter()
+                    .map(|(pos, length)| json!({ "pos": pos, "length": length }))
+                    .collect();
+                let mut entry = json!({ "id": comment.id, "ranges": ranges });
+                if comment.resolved {
+                    entry["resolved"] = json!(true);
+                }
+                entry
+            })
+            .collect()
+    }
+
     fn tracked_changes(&self) -> Vec<Value> {
         let mut changes: Vec<Value> = Vec::new();
         let mut run: Option<(usize, usize, Value)> = None;
@@ -469,6 +533,115 @@ impl Doc {
 
 fn is_deleted(mark: &Option<Value>) -> bool {
     mark.as_ref().and_then(|mark| mark["type"].as_str()) == Some("delete")
+}
+
+fn joined_marks(marks: &mut [Option<Value>]) {
+    let same_change = |a: &Value, b: &Value| a["type"] == b["type"] && a["userId"] == b["userId"];
+    let mut start = 0;
+    while start < marks.len() {
+        let Some(first) = marks[start].clone() else {
+            start += 1;
+            continue;
+        };
+        let mut end = start + 1;
+        let mut earliest = first.clone();
+        while let Some(Some(next)) = marks.get(end) {
+            if !same_change(&first, next) {
+                break;
+            }
+            if stamp_ms(&next["ts"]) < stamp_ms(&earliest["ts"]) {
+                earliest = next.clone();
+            }
+            end += 1;
+        }
+        for mark in &mut marks[start..end] {
+            *mark = Some(earliest.clone());
+        }
+        start = end;
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Needed {
+    View,
+    Review,
+    Edit,
+}
+
+fn tracked_scan(part: &Value) -> bool {
+    match part {
+        Value::Number(count) => count.as_i64().is_some_and(|count| count > 0),
+        Value::Object(object) if object.contains_key("i") => object.contains_key("tracking"),
+        Value::Object(object) if object.contains_key("r") => {
+            object
+                .get("tracking")
+                .and_then(|tracking| tracking.get("type"))
+                != Some(&json!("none"))
+        }
+        _ => false,
+    }
+}
+
+fn needed_permission(format: Option<DocFormat>, update: &Value) -> Needed {
+    let ops = update["op"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    match format {
+        Some(DocFormat::HistoryOt) => {
+            let adds = ops
+                .iter()
+                .all(|op| op.get("commentId").is_some() && op.get("ranges").is_some());
+            let tracked = ops.iter().all(|op| {
+                op["textOperation"]
+                    .as_array()
+                    .is_some_and(|scan| scan.iter().all(tracked_scan))
+            });
+            if adds {
+                Needed::View
+            } else if tracked {
+                Needed::Review
+            } else {
+                Needed::Edit
+            }
+        }
+        _ => {
+            let comments = ops
+                .iter()
+                .all(|op| op["c"].as_str().is_some_and(|text| !text.is_empty()));
+            if comments {
+                Needed::View
+            } else if update.pointer("/meta/tc").is_some_and(|tc| !tc.is_null()) {
+                Needed::Review
+            } else {
+                Needed::Edit
+            }
+        }
+    }
+}
+
+fn piece_of(component: &Component, undo: bool) -> Piece {
+    match component {
+        Component::Insert { p, i } => Piece::Insert {
+            p: *p,
+            text: sharejs_text::text(i),
+            undo,
+        },
+        Component::Delete { p, d } => Piece::Delete {
+            p: *p,
+            text: sharejs_text::text(d),
+            undo,
+        },
+        Component::Comment { p, c, t } => Piece::Comment {
+            p: *p,
+            text: sharejs_text::text(c),
+            thread: t
+                .as_ref()
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        },
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -554,6 +727,12 @@ struct Client {
     connected_at: u128,
 }
 
+struct UpdateFrom {
+    sid: String,
+    user_id: String,
+    public_id: String,
+}
+
 struct State {
     config: MockConfig,
     next_id: u64,
@@ -585,9 +764,25 @@ struct State {
     counters: HashMap<String, VecDeque<tokio::time::Instant>>,
     stalled: bool,
     down: bool,
-    held_updates: Option<Vec<(String, String, Value)>>,
+    held_updates: Option<Vec<(UpdateFrom, String, Value)>>,
     held_room: Option<Vec<HeldRoomEvent>>,
     csrf: String,
+    threads: BTreeMap<String, review::Thread>,
+    chat: Vec<chat::ChatMessage>,
+    invites: Vec<people::Invite>,
+    next_seed: u64,
+    snapshots: Vec<history::Snapshot>,
+    labels: Vec<history::Label>,
+    deferred: Vec<history::Deferred>,
+    last_history_ms: u128,
+    created: u64,
+    created_projects: Vec<create::Created>,
+    taken_names: Vec<String>,
+    read_token: Option<String>,
+    edit_token: Option<String>,
+    grants: Vec<Value>,
+    linked: BTreeMap<String, linked::Linked>,
+    learned: BTreeMap<String, Vec<String>>,
 }
 
 const RATE_LIMITED: &str = "Rate limit reached, please try again later";
@@ -650,6 +845,22 @@ impl State {
             held_updates: None,
             held_room: None,
             down: false,
+            threads: BTreeMap::new(),
+            chat: Vec::new(),
+            invites: project.invites.clone(),
+            next_seed: 0,
+            snapshots: Vec::new(),
+            labels: Vec::new(),
+            deferred: Vec::new(),
+            last_history_ms: 0,
+            created: 0,
+            created_projects: Vec::new(),
+            taken_names: vec![project.name.clone()],
+            read_token: None,
+            edit_token: None,
+            grants: Vec::new(),
+            linked: BTreeMap::new(),
+            learned: BTreeMap::new(),
         };
         state.root = Folder {
             id: state.new_id(),
@@ -688,12 +899,22 @@ impl State {
             })
         });
         state.root_doc = root_doc.and_then(|path| state.id_for_path(&path));
+        state.snapshots = vec![state.snapshot()];
         state
     }
 
     fn new_id(&mut self) -> String {
         self.next_id += 1;
         format!("{}{:08x}", self.project_id_seed(), self.next_id)
+    }
+
+    fn random_seed(&mut self) -> String {
+        self.next_seed += 1;
+        format!(
+            "{:010x}{:08x}",
+            (now_ms() as u64) & 0xff_ffff_ffff,
+            self.next_seed
+        )
     }
 
     fn project_id_seed(&self) -> String {
@@ -767,6 +988,13 @@ impl State {
             .map(|(_, _, id)| id)
     }
 
+    fn path_of(&self, id: &str) -> Option<String> {
+        self.paths()
+            .into_iter()
+            .find(|(_, _, candidate)| candidate == id)
+            .map(|(path, _, _)| path)
+    }
+
     fn people(&self) -> impl Iterator<Item = &MockUser> {
         std::iter::once(&self.owner)
             .chain(self.members.iter().map(|(user, _)| user))
@@ -814,7 +1042,7 @@ impl State {
             "name": folder.name,
             "folders": folder.folders.iter().map(|child| self.folder_json(child)).collect::<Vec<_>>(),
             "fileRefs": folder.files.iter().filter_map(|id| self.files.get(id).map(|file| json!({
-                "_id": id, "name": file.name, "linkedFileData": null, "created": "2026-11-15T00:00:00.000Z", "hash": file.hash,
+                "_id": id, "name": file.name, "linkedFileData": self.linked_data(id), "created": "2026-11-15T00:00:00.000Z", "hash": file.hash,
             }))).collect::<Vec<_>>(),
             "docs": folder.docs.iter().filter_map(|id| self.docs.get(id).map(|doc| json!({ "_id": id, "name": doc.name }))).collect::<Vec<_>>(),
         })
@@ -846,8 +1074,8 @@ impl State {
             "deletedByExternalDataSource": self.deleted_externally,
             "owner": if restricted { json!({ "_id": self.owner.id }) } else { State::person_json(&self.owner, Privilege::Owner) },
             "members": if restricted { Vec::new() } else { self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>() },
-            "invites": [],
-            "features": { "collaborators": -1, "versioning": true, "trackChanges": true, "compileTimeout": 180, "compileGroup": "standard" },
+            "invites": if restricted { Vec::new() } else { self.invites_json() },
+            "features": { "collaborators": -1, "versioning": self.config.versioning, "trackChanges": true, "trackChangesVisible": self.config.review, "compileTimeout": 180, "compileGroup": "standard" },
             "trackChangesState": self.track_changes,
         });
         if let Some(image) = &self.image_name {
@@ -858,6 +1086,11 @@ impl State {
         }
         project["editAccessRequests"] = json!([]);
         project
+    }
+
+    fn set_track_changes(&mut self, value: Value) {
+        self.track_changes = value.clone();
+        self.emit_room("toggle-track-changes", &[value], None);
     }
 
     fn push(&mut self, sid: &str, packet: String) {
@@ -887,8 +1120,13 @@ impl State {
             });
             return;
         }
+        let hidden = review::hidden_from_restricted(name) || chat::hidden_from_restricted(name);
         for sid in self.live() {
-            if Some(sid.as_str()) != except {
+            let restricted = self.clients[&sid]
+                .user
+                .as_deref()
+                .is_some_and(|user| self.restricted(user));
+            if Some(sid.as_str()) != except && !(hidden && restricted) {
                 self.push(&sid, event(name, args));
             }
         }
@@ -1000,6 +1238,12 @@ impl State {
             self.login()
         } else if method == "GET" && path == "/project" {
             self.dashboard(headers)
+        } else if let Some(reply) = self.create_route(method, path, headers, body) {
+            reply
+        } else if let Some(reply) = self.links_route(method, path, headers, body) {
+            reply
+        } else if let Some(reply) = self.spelling_route(method, path, headers, body) {
+            reply
         } else {
             self.rest(method, path, query, headers, body)
         }
@@ -1109,6 +1353,10 @@ impl State {
             ("ol-user_id", user.id.clone()),
             ("ol-usersEmail", user.email.clone()),
             ("ol-prefetchedProjectsBlob", self.listed(&user).to_string()),
+            (
+                "ol-notifications",
+                self.notifications_for(&user).to_string(),
+            ),
         ];
         let tags: String = metas
             .iter()
@@ -1426,15 +1674,26 @@ impl State {
                 if !tracked.is_empty() {
                     raw.insert("trackedChanges".into(), Value::Array(tracked));
                 }
+                let comments = doc.comments_json();
+                if !comments.is_empty() {
+                    raw.insert("comments".into(), Value::Array(comments));
+                }
                 Value::Object(raw)
             }
         };
+        let mut ranges = doc
+            .ranges
+            .to_json(options["encodeRanges"].as_bool() == Some(true));
+        let viewer = self.clients.get(sid).and_then(|client| client.user.clone());
+        if viewer.is_some_and(|user| self.restricted(&user)) && ranges.get("comments").is_some() {
+            ranges["comments"] = json!([]);
+        }
         let reply = [
             Value::Null,
             lines,
             json!(doc.version),
             Value::Array(updates),
-            doc.ranges.clone(),
+            ranges,
             json!(self
                 .config
                 .doc_type_override
@@ -1475,36 +1734,40 @@ impl State {
         }
         let client = &self.clients[sid];
         let user_id = client.user.clone().unwrap_or_default();
+        let public_id = client.public_id.clone();
         let joined = client.joined.contains(&doc_id);
-        let tracked = update.pointer("/meta/tc").is_some()
-            || update["op"].to_string().contains("\"tracking\"");
+        let format = self.docs.get(&doc_id).map(|doc| doc.format);
+        let needed = needed_permission(format, &update);
         let privilege = self.privilege(&user_id);
-        let permitted = privilege.is_some_and(|privilege| {
-            if tracked {
-                privilege.can_review()
-            } else {
-                privilege.can_write()
-            }
+        let permitted = privilege.is_some_and(|privilege| match needed {
+            Needed::View => true,
+            Needed::Review => privilege.can_review(),
+            Needed::Edit => privilege.can_write(),
         });
         if !joined || !permitted {
             self.reply(sid, id, &[error_value("not authorized")]);
             self.close(sid);
             return;
         }
+        let from = UpdateFrom {
+            sid: sid.to_string(),
+            user_id,
+            public_id,
+        };
         self.reply(sid, id, &[]);
         if let Some(held) = self.held_updates.as_mut() {
-            held.push((sid.to_string(), doc_id, update));
+            held.push((from, doc_id, update));
             return;
         }
-        self.commit_update(sid, &doc_id, &update);
+        self.commit_update(&from, &doc_id, &update);
     }
 
-    fn commit_update(&mut self, sid: &str, doc_id: &str, update: &Value) {
-        let Some(client) = self.clients.get(sid) else {
-            return;
-        };
-        let user_id = client.user.clone().unwrap_or_default();
-        let public_id = client.public_id.clone();
+    fn commit_update(&mut self, from: &UpdateFrom, doc_id: &str, update: &Value) {
+        let UpdateFrom {
+            sid,
+            user_id,
+            public_id,
+        } = from;
         let doc_id = doc_id.to_string();
         let update = update.clone();
         let Some(doc) = self.docs.get_mut(&doc_id) else {
@@ -1518,10 +1781,14 @@ impl State {
         let kept = self.config.kept_ops;
         let max_age = self.config.max_op_age;
         let applied_version = self.config.history_ot_applied_version;
+        let seed = self.random_seed();
+        let Some(doc) = self.docs.get_mut(&doc_id) else {
+            return;
+        };
         let outcome = match doc.format {
-            DocFormat::ShareJs => apply_sharejs(doc, &update, &public_id, &user_id, max_age),
+            DocFormat::ShareJs => apply_sharejs(doc, &update, public_id, user_id, max_age, &seed),
             DocFormat::HistoryOt => {
-                apply_history_ot(doc, &update, &public_id, &user_id, applied_version)
+                apply_history_ot(doc, &update, public_id, user_id, applied_version)
             }
         };
         match outcome {
@@ -1538,28 +1805,10 @@ impl State {
                 }
                 doc.applied.push_back(applied.clone());
                 let path = doc.name.clone();
-                self.record_history(&user_id, &path);
+                self.record_history(user_id, &path);
                 self.broadcast(&doc_id, sid, &applied.update);
             }
         }
-    }
-
-    fn record_history(&mut self, user_id: &str, name: &str) {
-        let version = self.history.len() as u64;
-        let user = self.user(user_id).cloned();
-        let ts = now_ms();
-        self.history.push(json!({
-            "fromV": version,
-            "toV": version + 1,
-            "meta": {
-                "users": user.map(|user| vec![json!({ "id": user.id, "first_name": user.first_name, "last_name": user.last_name, "email": user.email })]).unwrap_or_default(),
-                "start_ts": ts,
-                "end_ts": ts,
-            },
-            "labels": [],
-            "pathnames": [name],
-            "project_ops": [],
-        }));
     }
 
     fn broadcast(&mut self, doc_id: &str, sender: &str, update: &Value) {
@@ -1582,11 +1831,13 @@ impl State {
 
     fn external_edit(&mut self, doc_id: &str, at: usize, text: &str) {
         let max_age = self.config.max_op_age;
+        let seed = self.random_seed();
         let Some(doc) = self.docs.get_mut(doc_id) else {
             return;
         };
         let update = json!({ "doc": doc_id, "op": [{ "p": at, "i": text }], "v": doc.version });
-        let Ok(Outcome::Applied(mut applied)) = apply_sharejs(doc, &update, "", "", max_age) else {
+        let Ok(Outcome::Applied(mut applied)) = apply_sharejs(doc, &update, "", "", max_age, &seed)
+        else {
             return;
         };
         applied.update["meta"]["type"] = json!("external");
@@ -1632,6 +1883,21 @@ impl State {
         };
         let json_body = || serde_json::from_slice::<Value>(body).unwrap_or(Value::Null);
         let parts: Vec<&str> = route.split('/').collect();
+        if let Some(reply) = self.review_route(method, &parts, &user, body) {
+            return reply;
+        }
+        if let Some(reply) = self.chat_route(method, &parts, query, &user, body) {
+            return reply;
+        }
+        if let Some(reply) = self.people_route(method, &parts, &user) {
+            return reply;
+        }
+        if let Some(reply) = self.history_route(method, &parts, query, &user, body) {
+            return reply;
+        }
+        if let Some(reply) = self.linked_route(method, &parts, &user, body) {
+            return reply;
+        }
         match (method, parts.as_slice()) {
             ("GET", [""]) => self.page(&user, query),
             ("GET", ["entities"]) => self.entities(),
@@ -1647,23 +1913,17 @@ impl State {
             ("POST", [_, id, "rename"]) => self.rename_entity(id, &json_body()),
             ("POST", [_, id, "move"]) => self.move_entity(id, &json_body()),
             ("DELETE", [_, id]) => self.delete_entity(id),
-            ("GET", ["updates"]) => self.updates(),
-            ("GET", ["filetree", "diff"]) => self.filetree_diff(query),
-            ("GET", ["threads"]) => match self.config.threads_status {
-                200 => json_reply(&json!({})),
-                status => Reply::status(status),
-            },
-            ("GET", ["messages"]) => match self.config.messages_status {
-                200 => json_reply(&json!([])),
-                status => Reply::status(status),
-            },
             ("GET", ["members"]) if self.restricted(&user) => {
                 json_reply(&json!({ "message": "restricted" })).with_status(403)
             }
             ("GET", ["members"]) => json_reply(&json!({
                 "members": self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>(),
             })),
-            ("POST", ["settings"]) => self.update_settings(body),
+            ("POST", ["settings"]) => self.update_settings(body, &user),
+            ("POST", ["rename"]) if self.privilege(&user) == Some(Privilege::Owner) => {
+                self.rename_project(&json_body())
+            }
+            ("POST", ["rename"]) => restricted(),
             _ => Reply::status(404),
         }
     }
@@ -1684,7 +1944,12 @@ impl State {
         let Some(privilege) = self.privilege(&user) else {
             return Err(restricted());
         };
-        if writes && !privilege.can_write() {
+        if writes
+            && !privilege.can_write()
+            && !review::is_review_route(route)
+            && !chat::is_chat_route(route)
+            && !State::is_label_route(route)
+        {
             return Err(restricted());
         }
         match self.rate_limited(method, route, &user) {
@@ -1702,6 +1967,11 @@ impl State {
                 "upload",
                 limits.uploads_per_quarter_hour,
                 Duration::from_secs(900),
+            ),
+            ("POST", "messages") => (
+                "messages",
+                limits.chat_messages_per_minute,
+                Duration::from_secs(60),
             ),
             _ => return None,
         };
@@ -1896,7 +2166,7 @@ impl State {
     }
 
     fn delete_entity(&mut self, id: &str) -> Reply {
-        if self.remove_entity(id, "editor") {
+        if self.remove_entity(id, json!("editor")) {
             Reply::status(204)
         } else {
             Reply::status(404)
@@ -1933,20 +2203,20 @@ impl State {
                 ));
             }
             (Some(_), None, Some(file)) => {
-                self.remove_entity(&file, "convertFileToDoc");
+                self.remove_entity(&file, json!("convertFileToDoc"));
             }
             (None, Some(doc), _) => {
-                self.remove_entity(&doc, "convertDocToFile");
+                self.remove_entity(&doc, json!("convertDocToFile"));
             }
             (None, None, Some(file)) => {
-                self.remove_entity(&file, "upload");
+                self.remove_entity(&file, json!("upload"));
             }
             _ => {}
         }
         None
     }
 
-    fn remove_entity(&mut self, id: &str, source: &str) -> bool {
+    fn remove_entity(&mut self, id: &str, source: Value) -> bool {
         let Some(detached) = self.root.detach(id) else {
             return false;
         };
@@ -1957,53 +2227,13 @@ impl State {
         for entity in &gone {
             self.docs.remove(entity);
             self.files.remove(entity);
+            self.linked.remove(entity);
         }
         if self.root_doc.as_deref() == Some(id) {
             self.root_doc = None;
         }
-        self.emit_room("removeEntity", &[json!(id), json!(source)], None);
+        self.emit_room("removeEntity", &[json!(id), source], None);
         true
-    }
-
-    fn updates(&self) -> Reply {
-        if self.config.history_status != 200 {
-            return Reply::status(self.config.history_status);
-        }
-        let updates: Vec<Value> = self.history.iter().rev().cloned().collect();
-        json_reply(&json!({ "updates": updates }))
-    }
-
-    fn filetree_diff(&self, query: &HashMap<String, String>) -> Reply {
-        if self.config.history_status != 200 {
-            return Reply::status(self.config.history_status);
-        }
-        let bound = |key: &str| query.get(key).and_then(|value| value.parse::<u64>().ok());
-        let from = bound("from").unwrap_or(0);
-        let to = bound("to").unwrap_or(self.history.len() as u64);
-        let edited: BTreeSet<String> = self
-            .history
-            .iter()
-            .filter(|entry| {
-                entry["fromV"].as_u64().unwrap_or_default() >= from
-                    && entry["toV"].as_u64().unwrap_or_default() <= to
-            })
-            .flat_map(|entry| entry["pathnames"].as_array().cloned().unwrap_or_default())
-            .filter_map(|name| name.as_str().map(str::to_string))
-            .collect();
-        let diff: Vec<Value> = self
-            .paths()
-            .into_iter()
-            .filter(|(_, kind, _)| *kind != "folder")
-            .map(|(path, kind, _)| {
-                let name = path.rsplit('/').next().unwrap_or_default().to_string();
-                if edited.contains(&name) {
-                    json!({ "pathname": path, "operation": "edited" })
-                } else {
-                    json!({ "pathname": path, "editable": kind == "doc" })
-                }
-            })
-            .collect();
-        json_reply(&json!({ "diff": diff }))
     }
 
     fn replace_doc_text(&mut self, doc_id: &str, text: &str, user: &str) {
@@ -2023,43 +2253,6 @@ impl State {
         doc.version += 1;
         let update = json!({ "doc": doc_id, "op": op, "v": v, "meta": { "source": "upload", "user_id": user, "ts": now_ms() as u64 } });
         self.emit_room("otUpdateApplied", &[update], None);
-    }
-
-    fn update_settings(&mut self, body: &[u8]) -> Reply {
-        let Ok(settings) = serde_json::from_slice::<Value>(body) else {
-            return Reply::status(400);
-        };
-        let field = |key: &str| {
-            settings
-                .get(key)
-                .and_then(Value::as_str)
-                .map(str::to_string)
-        };
-        if let Some(compiler) = field("compiler") {
-            self.compiler.clone_from(&compiler);
-            self.emit_room("compilerUpdated", &[json!(compiler)], None);
-        }
-        if let Some(image) = field("imageName") {
-            self.image_name = Some(image.rsplit('/').next().unwrap_or_default().to_string());
-            self.emit_room("imageNameUpdated", &[json!(image)], None);
-        }
-        if let Some(name) = field("name") {
-            self.project_name.clone_from(&name);
-            self.emit_room("projectNameUpdated", &[json!(name)], None);
-        }
-        if let Some(language) = field("spellCheckLanguage") {
-            self.spell_language.clone_from(&language);
-            self.emit_room("spellCheckLanguageUpdated", &[json!(language)], None);
-        }
-        if let Some(doc) = field("rootDocId") {
-            self.root_doc = Some(doc.clone());
-            self.emit_room("rootDocUpdated", &[json!(doc)], None);
-        }
-        if let Some(doc) = field("mainBibliographyDocId") {
-            self.main_bibliography = Some(doc.clone());
-            self.emit_room("mainBibliographyDocUpdated", &[json!(doc)], None);
-        }
-        Reply::status(204)
     }
 
     fn add_doc(
@@ -2121,7 +2314,9 @@ impl State {
                 interval.to_string(),
             ));
         }
-        let tags: String = metas
+        metas.extend(self.settings_metas());
+        metas.push(self.learned_meta(user));
+        let mut tags: String = metas
             .iter()
             .map(|(name, kind, content)| {
                 let kind = if kind.is_empty() {
@@ -2135,6 +2330,18 @@ impl State {
                 )
             })
             .collect();
+        let capabilities = if self.config.chat {
+            "[&quot;chat&quot;,&quot;link-sharing&quot;]"
+        } else {
+            "[&quot;link-sharing&quot;]"
+        };
+        tags.push_str(&format!(
+            "<meta name=\"ol-capabilities\" data-type=\"json\" content=\"{capabilities}\">"
+        ));
+        let feature = if self.config.review { " content" } else { "" };
+        tags.push_str(&format!(
+            "<meta name=\"ol-hasTrackChangesFeature\" data-type=\"boolean\"{feature}>"
+        ));
         Reply::ok(format!(
             "<!DOCTYPE html><html><head>{tags}</head><body></body></html>"
         ))
@@ -2286,6 +2493,7 @@ fn apply_sharejs(
     source: &str,
     user_id: &str,
     max_age: u64,
+    seed: &str,
 ) -> Result<Outcome, String> {
     let v = update["v"].as_u64().unwrap_or_default();
     if v > doc.version {
@@ -2298,29 +2506,68 @@ fn apply_sharejs(
     if let Some(at) = duplicate(doc, update, v) {
         return Ok(Outcome::Dup { v: at });
     }
+    let mut transformed = false;
     for applied in doc.applied.iter().filter(|applied| applied.at >= v) {
         let concurrent =
             sharejs_text::op_from_json(&applied.update["op"]).map_err(|error| error.0)?;
         op = sharejs_text::transform(&op, &concurrent, Side::Left).map_err(|error| error.0)?;
+        transformed = true;
     }
     for component in &mut op {
         if let Component::Insert { i, .. } = component {
             sanitize(i);
         }
     }
+    let undo: Vec<bool> = update["op"]
+        .as_array()
+        .map(|components| {
+            components
+                .iter()
+                .map(|component| !transformed && component["u"] == json!(true))
+                .collect()
+        })
+        .unwrap_or_default();
     let mut content = doc.content.clone();
     sharejs_text::apply_units(&mut content, &op).map_err(|error| error.0)?;
     if content.len() > MAX_DOC_LENGTH {
         return Err("Update takes doc over max doc size".into());
     }
+    let pieces: Vec<Piece> = op
+        .iter()
+        .enumerate()
+        .map(|(at, component)| piece_of(component, undo.get(at).copied().unwrap_or(false)))
+        .collect();
+    let tc = update.pointer("/meta/tc").and_then(Value::as_str);
+    let ts = now_ms() as i64;
+    let author = Author {
+        user: Some(user_id).filter(|user| !user.is_empty()),
+        ts: Some(ts),
+        tracked: tc.is_some(),
+        seed: Some(tc.unwrap_or(seed)),
+    };
+    let mut ranges = doc.ranges.clone();
+    ranges
+        .apply_update(&pieces, &author)
+        .map_err(|error| format!("the ranges do not match the text: {error}"))?;
+    let (comments, changes) = ranges.counts();
+    if comments > MAX_COMMENTS || changes > MAX_CHANGES {
+        return Err("too many comments or tracked changes".into());
+    }
+    let mut wire = sharejs_text::op_to_json(&op);
+    for (component, flagged) in wire.as_array_mut().into_iter().flatten().zip(&undo) {
+        if *flagged {
+            component["u"] = json!(true);
+        }
+    }
     let at = doc.version;
+    doc.ranges = ranges;
     doc.tracked = vec![None; content.len()];
     doc.content = content;
     doc.version += 1;
     Ok(Outcome::Applied(Applied {
         at,
         source: source.to_string(),
-        update: broadcast_update(update, sharejs_text::op_to_json(&op), at, source, user_id),
+        update: broadcast_update(update, wire, at, source, user_id),
     }))
 }
 
@@ -2358,11 +2605,20 @@ fn apply_history_ot(
         });
     }
     let mut ours = text_operations(&update["op"])?;
+    let mut edits = edits_from_json(&update["op"]).map_err(|error| error.to_string())?;
     for applied in doc.applied.iter().filter(|applied| applied.at >= v) {
         let mut theirs: Vec<TextOperation> = text_operations(&applied.update["op"])?
             .into_iter()
             .flatten()
             .collect();
+        for their in &theirs {
+            let moved = RawOp::from_json(&their.to_json()).map_err(|error| error.to_string())?;
+            for edit in edits.iter_mut() {
+                if let Edit::AddComment(comment) = edit {
+                    *comment = comment.moved(&moved);
+                }
+            }
+        }
         for own in ours.iter_mut().flatten() {
             for their in theirs.iter_mut() {
                 let (own_after, their_after) =
@@ -2373,7 +2629,17 @@ fn apply_history_ot(
         }
     }
     let (mut content, mut tracked) = (doc.content.clone(), doc.tracked.clone());
-    for operation in ours.iter_mut().flatten() {
+    let mut comments = doc.comments.clone();
+    for (operation, edit) in ours.iter_mut().zip(&edits) {
+        let Some(operation) = operation else {
+            if let Edit::AddComment(comment) = edit {
+                if comment.ranges.iter().any(|(_, length)| *length == 0) {
+                    return Err("AddCommentOperation can't be built with empty ranges".into());
+                }
+            }
+            edit_comment_list(&mut comments, edit);
+            continue;
+        };
         for part in &mut operation.parts {
             if let Part::Insert { text, .. } = part {
                 sanitize(text);
@@ -2382,30 +2648,38 @@ fn apply_history_ot(
         (content, tracked) = operation
             .apply(&content, &tracked)
             .map_err(|error| error.0)?;
+        joined_marks(&mut tracked);
+        let moved = RawOp::from_json(&operation.to_json()).map_err(|error| error.to_string())?;
+        comments = comments
+            .iter()
+            .map(|comment| comment.moved(&moved))
+            .collect();
     }
-    let edits: Vec<Value> = update["op"]
+    let wire_edits: Vec<Value> = update["op"]
         .as_array()
         .unwrap()
         .iter()
-        .zip(&ours)
-        .map(|(edit, operation)| match operation {
-            Some(operation) => {
+        .zip(ours.iter().zip(&edits))
+        .map(|(edit, (operation, parsed))| match (operation, parsed) {
+            (Some(operation), _) => {
                 let mut edit = edit.clone();
                 edit["textOperation"] = operation.to_json();
                 edit
             }
-            None => edit.clone(),
+            (None, Edit::AddComment(_)) => parsed.to_json().unwrap_or_else(|_| edit.clone()),
+            (None, _) => edit.clone(),
         })
         .collect();
     let at = doc.version;
     doc.content = content;
     doc.tracked = tracked;
+    doc.comments = comments;
     doc.version += 1;
     let reported = if applied_version { at } else { v };
     Ok(Outcome::Applied(Applied {
         at,
         source: source.to_string(),
-        update: broadcast_update(update, Value::Array(edits), reported, source, user_id),
+        update: broadcast_update(update, Value::Array(wire_edits), reported, source, user_id),
     }))
 }
 
@@ -2528,6 +2802,11 @@ impl MockOverleaf {
             Some(sid) => (self.polling(sid, &method, &headers, &body).await, None),
             None => self.answer(&method, &target, &headers, &body),
         };
+        let deferred = std::mem::take(&mut self.state().deferred);
+        for later in deferred {
+            tokio::time::sleep(later.after).await;
+            (later.work)(&mut self.state());
+        }
         match fault {
             Some(Fault::LoseReply) => return,
             Some(Fault::Delay(delay)) => tokio::time::sleep(delay).await,
@@ -2766,11 +3045,7 @@ impl MockOverleaf {
 
     pub fn set_privilege(&self, name: &str, privilege: Option<Privilege>) {
         let mut state = self.state();
-        let user = state
-            .people()
-            .find(|user| user.first_name.eq_ignore_ascii_case(name))
-            .cloned()
-            .unwrap_or_else(|| MockUser::named(name));
+        let user = state.person_named(name);
         let known = state
             .members
             .iter()
@@ -2818,9 +3093,7 @@ impl MockOverleaf {
     }
 
     pub fn set_track_changes(&self, value: Value) {
-        let mut state = self.state();
-        state.track_changes = value.clone();
-        state.emit_room("toggle-track-changes", &[value], None);
+        self.state().set_track_changes(value);
     }
 
     pub fn ws_url(&self) -> String {
@@ -2870,7 +3143,15 @@ impl MockOverleaf {
     pub fn raw_doc(&self, doc_id: &str) -> Value {
         let state = self.state();
         let doc = &state.docs[doc_id];
-        json!({ "content": sharejs_text::text(&doc.content), "trackedChanges": doc.tracked_changes() })
+        json!({ "content": sharejs_text::text(&doc.content), "trackedChanges": doc.tracked_changes(), "comments": doc.comments_json() })
+    }
+
+    pub fn ranges(&self, doc_id: &str) -> Value {
+        self.state().docs[doc_id].ranges.to_json(false)
+    }
+
+    pub fn threads(&self) -> Value {
+        self.state().threads_json()
     }
 
     pub fn doc_version(&self, doc_id: &str) -> u64 {
@@ -3035,14 +3316,18 @@ impl MockOverleaf {
         self.state().lost_ops.insert(doc_id.to_string());
     }
 
+    pub fn restore_ops(&self, doc_id: &str) {
+        self.state().lost_ops.remove(doc_id);
+    }
+
     pub fn hold_updates(&self) {
         self.state().held_updates.get_or_insert_with(Vec::new);
     }
 
     pub fn release_updates(&self) {
         let mut state = self.state();
-        for (sid, doc_id, update) in state.held_updates.take().unwrap_or_default() {
-            state.commit_update(&sid, &doc_id, &update);
+        for (from, doc_id, update) in state.held_updates.take().unwrap_or_default() {
+            state.commit_update(&from, &doc_id, &update);
         }
     }
 
@@ -3055,6 +3340,18 @@ impl MockOverleaf {
         for held in state.held_room.take().unwrap_or_default() {
             state.emit_room(&held.name, &held.args, held.except.as_deref());
         }
+    }
+
+    pub fn release_first_room_event(&self) {
+        let mut state = self.state();
+        let Some(mut held) = state.held_room.take() else {
+            return;
+        };
+        if !held.is_empty() {
+            let first = held.remove(0);
+            state.emit_room(&first.name, &first.args, first.except.as_deref());
+        }
+        state.held_room = Some(held);
     }
 
     pub fn fail_next_update(&self, doc_id: &str, message: &str) {
@@ -3070,8 +3367,31 @@ impl MockOverleaf {
         self.state().external_edit(doc_id, at, text);
     }
 
+    pub fn record_version(&self, user: &str, path: &str) {
+        let user = self.user(user).id;
+        self.state().record_history(&user, path);
+    }
+
+    fn run_deferred(&self) {
+        let deferred = std::mem::take(&mut self.state().deferred);
+        if deferred.is_empty() {
+            return;
+        }
+        let shared = Arc::downgrade(&self.shared);
+        tokio::spawn(async move {
+            for later in deferred {
+                tokio::time::sleep(later.after).await;
+                let Some(shared) = shared.upgrade() else {
+                    return;
+                };
+                (later.work)(&mut shared.lock().unwrap_or_else(PoisonError::into_inner));
+            }
+        });
+    }
+
     pub fn set_ranges(&self, doc_id: &str, ranges: Value) {
-        self.state().docs.get_mut(doc_id).unwrap().ranges = ranges;
+        self.state().docs.get_mut(doc_id).unwrap().ranges =
+            ShareJsRanges::from_join(&ranges).expect("ranges in the joinDoc form");
     }
 
     pub fn doc_error(&self, doc_id: &str, message: &str) {
@@ -3104,6 +3424,7 @@ impl MockOverleaf {
             acks: HashMap::new(),
             events: Vec::new(),
             next_ack: 1,
+            sent_tc: 0,
             held: false,
             connected: true,
         };
@@ -3167,6 +3488,7 @@ async fn heartbeats(shared: Weak<Mutex<State>>) {
 enum PeerOp {
     ShareJs(sharejs_text::Op),
     HistoryOt(TextOperation),
+    Comment(Edit),
 }
 
 #[derive(Clone, Debug)]
@@ -3177,6 +3499,31 @@ struct PeerDoc {
     version: u64,
     inflight: Option<(PeerOp, bool)>,
     pending: VecDeque<(PeerOp, bool)>,
+    caret: Option<usize>,
+}
+
+fn moved_caret(op: &PeerOp, raw: usize) -> usize {
+    match op {
+        PeerOp::ShareJs(op) => sharejs_text::transform_cursor(raw, op, Side::Left),
+        PeerOp::HistoryOt(op) => {
+            let (mut base, mut target) = (0, 0);
+            for part in &op.parts {
+                match part {
+                    Part::Retain { n, .. } if base + n > raw => return target + raw - base,
+                    Part::Retain { n, .. } => {
+                        base += n;
+                        target += n;
+                    }
+                    Part::Insert { .. } if base == raw => return target,
+                    Part::Insert { text, .. } => target += text.len(),
+                    Part::Delete { n } if base + n > raw => return target,
+                    Part::Delete { n } => base += n,
+                }
+            }
+            target
+        }
+        PeerOp::Comment(_) => raw,
+    }
 }
 
 impl PeerDoc {
@@ -3188,8 +3535,18 @@ impl PeerDoc {
             }
             PeerOp::HistoryOt(op) => {
                 (self.content, self.tracked) = op.apply(&self.content, &self.tracked).unwrap();
+                joined_marks(&mut self.tracked);
             }
+            PeerOp::Comment(_) => {}
         }
+    }
+
+    fn visible_index(&self, raw: usize) -> usize {
+        self.tracked
+            .iter()
+            .take(raw)
+            .filter(|mark| !is_deleted(mark))
+            .count()
     }
 
     fn raw_index(&self, visible: usize) -> usize {
@@ -3226,12 +3583,27 @@ pub struct MockPeer {
     acks: HashMap<u64, Vec<Value>>,
     events: Vec<(String, Vec<Value>)>,
     next_ack: u64,
+    sent_tc: u64,
     held: bool,
     connected: bool,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct PeerReply {
+    pub status: u16,
+    pub body: Value,
+}
+
 fn transform_against(own: &PeerOp, remote: &PeerOp) -> (PeerOp, PeerOp) {
     match (own, remote) {
+        (PeerOp::Comment(Edit::AddComment(comment)), PeerOp::HistoryOt(text)) => {
+            let moved = RawOp::from_json(&text.to_json()).unwrap();
+            (
+                PeerOp::Comment(Edit::AddComment(comment.moved(&moved))),
+                remote.clone(),
+            )
+        }
+        (PeerOp::Comment(_), _) | (_, PeerOp::Comment(_)) => (own.clone(), remote.clone()),
         (PeerOp::ShareJs(own), PeerOp::ShareJs(remote)) => {
             let (own, remote) = sharejs_text::transform_x(own, remote).unwrap();
             (PeerOp::ShareJs(own), PeerOp::ShareJs(remote))
@@ -3329,7 +3701,11 @@ impl MockPeer {
             *own = own_after;
             remote = after;
         }
+        let caret = doc.caret.map(|caret| doc.raw_index(caret));
         doc.apply(&remote);
+        if let Some(raw) = caret {
+            doc.caret = Some(doc.visible_index(moved_caret(&remote, raw)));
+        }
         doc.version += 1;
     }
 
@@ -3390,6 +3766,7 @@ impl MockPeer {
             version: reply[2].as_u64().unwrap_or_default(),
             inflight: None,
             pending: VecDeque::new(),
+            caret: None,
         };
         let text = doc.visible_text();
         self.docs.insert(doc_id.to_string(), doc);
@@ -3417,7 +3794,6 @@ impl MockPeer {
     }
 
     fn local(&mut self, doc_id: &str, op: PeerOp, tracked: bool) {
-        self.sync();
         let doc = self.docs.get_mut(doc_id).expect("join the doc first");
         doc.apply(&op);
         doc.pending.push_back((op, tracked));
@@ -3449,10 +3825,13 @@ impl MockPeer {
                 PeerOp::ShareJs(op) => {
                     update["op"] = sharejs_text::op_to_json(&op);
                     if tracked {
-                        update["meta"] = json!({ "tc": "0123456789abcdef01" });
+                        self.sent_tc += 1;
+                        let tc = format!("{}{:08x}", &self.user.id[..10], self.sent_tc);
+                        update["meta"] = json!({ "tc": tc });
                     }
                 }
                 PeerOp::HistoryOt(op) => update["op"] = json!([{ "textOperation": op.to_json() }]),
+                PeerOp::Comment(edit) => update["op"] = json!([edit.to_json().unwrap()]),
             }
             let id = self.next_ack;
             self.next_ack += 1;
@@ -3466,10 +3845,9 @@ impl MockPeer {
         }
     }
 
-    pub fn type_at(&mut self, doc_id: &str, at: usize, inserted: &str) {
-        self.sync();
+    fn insertion(&self, doc_id: &str, at: usize, inserted: &str) -> PeerOp {
         let doc = &self.docs[doc_id];
-        let op = match doc.format {
+        match doc.format {
             DocFormat::ShareJs => PeerOp::ShareJs(vec![Component::insert(at, inserted)]),
             DocFormat::HistoryOt => {
                 let raw = doc.raw_index(at);
@@ -3479,7 +3857,31 @@ impl MockPeer {
                     .retain(doc.content.len() - raw);
                 PeerOp::HistoryOt(op)
             }
+        }
+    }
+
+    pub fn type_at(&mut self, doc_id: &str, at: usize, inserted: &str) {
+        self.sync();
+        let op = self.insertion(doc_id, at, inserted);
+        self.local(doc_id, op, false);
+    }
+
+    pub fn place_caret_after(&mut self, doc_id: &str, needle: &str) -> bool {
+        self.sync();
+        let doc = self.docs.get_mut(doc_id).expect("join the doc first");
+        let text = doc.visible_text();
+        let Some(byte) = text.find(needle) else {
+            return false;
         };
+        doc.caret = Some(sharejs_text::units(&text[..byte + needle.len()]).len());
+        true
+    }
+
+    pub fn type_at_caret(&mut self, doc_id: &str, inserted: &str) {
+        self.sync();
+        let at = self.docs[doc_id].caret.expect("place the caret first");
+        let op = self.insertion(doc_id, at, inserted);
+        self.docs.get_mut(doc_id).unwrap().caret = Some(at + sharejs_text::units(inserted).len());
         self.local(doc_id, op, false);
     }
 
@@ -3535,6 +3937,134 @@ impl MockPeer {
             json!({ "type": "delete", "userId": self.user.id, "ts": "2026-11-15T00:00:00.000Z" });
         let op = self.removal(doc_id, at, length, Some(tracking));
         self.local(doc_id, op, true);
+    }
+
+    pub fn track_insert(&mut self, doc_id: &str, at: usize, inserted: &str) {
+        self.sync();
+        let doc = &self.docs[doc_id];
+        let op = match doc.format {
+            DocFormat::ShareJs => PeerOp::ShareJs(vec![Component::insert(at, inserted)]),
+            DocFormat::HistoryOt => {
+                let raw = doc.raw_index(at);
+                let tracking = json!({ "type": "insert", "userId": self.user.id, "ts": "2026-11-15T00:00:00.000Z" });
+                let mut op = TextOperation::new();
+                op.retain(raw)
+                    .insert_marked(
+                        sharejs_text::units(inserted),
+                        Marks {
+                            tracking: Some(tracking),
+                            comment_ids: None,
+                        },
+                    )
+                    .retain(doc.content.len() - raw);
+                PeerOp::HistoryOt(op)
+            }
+        };
+        self.local(doc_id, op, true);
+    }
+
+    pub fn comment(&mut self, doc_id: &str, at: usize, length: usize, thread: &str) {
+        self.sync();
+        let doc = &self.docs[doc_id];
+        let op = match doc.format {
+            DocFormat::ShareJs => {
+                let visible = sharejs_text::units(&doc.visible_text());
+                let quoted = sharejs_text::text(&visible[at..at + length]);
+                PeerOp::ShareJs(vec![Component::comment(at, &quoted, Some(json!(thread)))])
+            }
+            DocFormat::HistoryOt => {
+                let start = doc.raw_index(at);
+                let end = doc.raw_index(at + length).max(start + 1);
+                PeerOp::Comment(Edit::AddComment(CommentRanges {
+                    id: thread.to_string(),
+                    ranges: vec![(start, end - start)],
+                    resolved: false,
+                }))
+            }
+        };
+        self.local(doc_id, op, false);
+    }
+
+    pub fn comment_edit(&mut self, doc_id: &str, edit: Value) {
+        self.sync();
+        let edit = edits_from_json(&json!([edit])).unwrap().remove(0);
+        self.local(doc_id, PeerOp::Comment(edit), false);
+    }
+
+    pub fn rest(&self, method: &str, path: &str, body: Option<Value>) -> PeerReply {
+        let mut state = self.mock.state();
+        let mut headers = HashMap::new();
+        headers.insert("cookie".to_string(), self.user.cookie());
+        headers.insert("x-csrf-token".to_string(), state.csrf.clone());
+        headers.insert("accept".to_string(), "application/json".to_string());
+        let (route, query) = split_target(&format!("/project/{}{path}", state.project_id));
+        let bytes = body.map(|body| body.to_string()).unwrap_or_default();
+        let reply = state.route(method, &route, &query, &headers, bytes.as_bytes());
+        drop(state);
+        self.mock.run_deferred();
+        let body = serde_json::from_slice(&reply.body)
+            .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&reply.body).into_owned()));
+        PeerReply {
+            status: reply.status,
+            body,
+        }
+    }
+
+    pub fn post_message(&self, thread: &str, content: &str) -> PeerReply {
+        self.rest(
+            "POST",
+            &format!("/thread/{thread}/messages"),
+            Some(json!({ "content": content })),
+        )
+    }
+
+    pub fn edit_message(&self, thread: &str, message: &str, content: &str) -> PeerReply {
+        self.rest(
+            "POST",
+            &format!("/thread/{thread}/messages/{message}/edit"),
+            Some(json!({ "content": content })),
+        )
+    }
+
+    pub fn delete_message(&self, thread: &str, message: &str, own: bool) -> PeerReply {
+        let kind = if own { "own-messages" } else { "messages" };
+        self.rest(
+            "DELETE",
+            &format!("/thread/{thread}/{kind}/{message}"),
+            None,
+        )
+    }
+
+    pub fn resolve(&self, doc_id: &str, thread: &str) -> PeerReply {
+        self.rest(
+            "POST",
+            &format!("/doc/{doc_id}/thread/{thread}/resolve"),
+            None,
+        )
+    }
+
+    pub fn reopen(&self, doc_id: &str, thread: &str) -> PeerReply {
+        self.rest(
+            "POST",
+            &format!("/doc/{doc_id}/thread/{thread}/reopen"),
+            None,
+        )
+    }
+
+    pub fn delete_thread(&self, doc_id: &str, thread: &str) -> PeerReply {
+        self.rest("DELETE", &format!("/doc/{doc_id}/thread/{thread}"), None)
+    }
+
+    pub fn accept(&self, doc_id: &str, changes: &[String]) -> PeerReply {
+        self.rest(
+            "POST",
+            &format!("/doc/{doc_id}/changes/accept"),
+            Some(json!({ "change_ids": changes })),
+        )
+    }
+
+    pub fn set_track_changes(&self, body: Value) -> PeerReply {
+        self.rest("POST", "/track_changes", Some(body))
     }
 
     pub fn drop_connection(&mut self) {

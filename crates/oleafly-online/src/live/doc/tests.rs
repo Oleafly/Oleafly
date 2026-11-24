@@ -5,8 +5,9 @@ use oleafly_ot::{utf16_len, TextOperation};
 use serde_json::{json, Value};
 
 use super::*;
-use crate::live::format::{ChangeKind, DocFormat, FormatState};
+use crate::live::format::{ChangeKind, Decision, DocFormat, FormatState};
 use crate::live::harness::{Editor, Wire};
+use crate::live::journal::DocRecord;
 use crate::live::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 use crate::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser, Privilege};
 
@@ -35,6 +36,7 @@ fn ack(v: u64) -> AppliedUpdate {
         source: None,
         user_id: None,
         tc: None,
+        ts: None,
         dup: false,
         external: false,
     }
@@ -48,6 +50,7 @@ fn remote(v: u64, op: Value) -> AppliedUpdate {
         source: Some(PublicId("P.them".into())),
         user_id: Some("them".into()),
         tc: None,
+        ts: None,
         dup: false,
         external: false,
     }
@@ -809,4 +812,1055 @@ fn a_fresh_rejoin_merges_unsent_work_or_keeps_both() {
     );
     assert_eq!(conflict.text(), "hello WORLD");
     assert!(conflict.is_settled());
+}
+
+const T1: &str = "6b04e5f6c0ffee0010000001";
+const T2: &str = "6b04e5f6c0ffee0011000001";
+
+fn formats() -> [crate::test_support::mock_overleaf::DocFormat; 2] {
+    [
+        crate::test_support::mock_overleaf::DocFormat::ShareJs,
+        crate::test_support::mock_overleaf::DocFormat::HistoryOt,
+    ]
+}
+
+fn edit_as(user: &str) -> SendMode {
+    SendMode::Review(Tracking {
+        user_id: user.into(),
+        ts: "2026-11-15T09:00:00.000Z".into(),
+    })
+}
+
+fn settle_on(
+    wire: &mut Wire,
+    doc: &mut OverleafDoc,
+    id: &str,
+    mode: &SendMode,
+    start: Instant,
+) -> Vec<Value> {
+    let mut sent = Vec::new();
+    let mut now = start;
+    for _ in 0..40 {
+        let on = wire.public_id();
+        if let Some(update) = doc.next_update(&on, mode, now).unwrap() {
+            assert_strict_review(&update.payload());
+            sent.push(update.payload());
+            wire.send(&update);
+        }
+        for update in wire.incoming(id) {
+            doc.applied(&update, &wire.own).unwrap();
+        }
+        if doc.is_settled() {
+            return sent;
+        }
+        now += 6 * SECOND;
+    }
+    panic!("the doc never settled: {sent:?}");
+}
+
+fn assert_strict_review(update: &Value) {
+    let op = update["op"].as_array().expect("op is a list");
+    assert!(!op.is_empty(), "an empty op: {update}");
+}
+
+fn catch_up(wire: &mut Wire, doc: &mut OverleafDoc, id: &str) {
+    for update in wire.incoming(id) {
+        doc.applied(&update, &wire.own).unwrap();
+    }
+}
+
+fn comment_of(doc: &OverleafDoc, thread: &str) -> CommentSpan {
+    doc.review()
+        .comments
+        .into_iter()
+        .find(|comment| comment.thread == thread)
+        .unwrap_or_else(|| panic!("no comment {thread}"))
+}
+
+fn server_comment(mock: &MockOverleaf, id: &str, thread: &str, history_ot: bool) -> (usize, usize) {
+    if history_ot {
+        let raw = mock.raw_doc(id);
+        let entry = raw["comments"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|comment| comment["id"] == thread)
+            .unwrap()
+            .clone();
+        let range = &entry["ranges"][0];
+        let pos = range["pos"].as_u64().unwrap() as usize;
+        (pos, pos + range["length"].as_u64().unwrap() as usize)
+    } else {
+        let ranges = mock.ranges(id);
+        let entry = ranges["comments"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|comment| comment["id"] == thread)
+            .unwrap()
+            .clone();
+        let at = entry["op"]["p"].as_u64().unwrap() as usize;
+        (
+            at,
+            at + entry["op"]["c"].as_str().unwrap().encode_utf16().count(),
+        )
+    }
+}
+
+#[tokio::test]
+async fn a_comment_anchor_travels_alone_and_follows_a_concurrent_edit() {
+    for format in formats() {
+        let history_ot = format == crate::test_support::mock_overleaf::DocFormat::HistoryOt;
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let id = mock.doc_id("main.tex");
+        let mut wire = Wire::connect(&mock, "alice");
+        let mut doc = wire.open(&id);
+        let mut bob = mock.peer("bob");
+        bob.join(&id);
+        doc.queue_review(ReviewOp::Anchor {
+            thread: T1.into(),
+            ranges: vec![(6, 11)],
+            ride: false,
+        });
+        let start = Instant::now();
+        let update = doc
+            .next_update(&wire.public_id(), &SendMode::Edit, start)
+            .unwrap()
+            .unwrap();
+        let expected = if history_ot {
+            json!([{ "commentId": T1, "ranges": [{ "pos": 6, "length": 5 }] }])
+        } else {
+            json!([{ "p": 6, "c": "world", "t": T1 }])
+        };
+        assert_eq!(update.op, expected, "{format:?}");
+        assert_eq!(update.tc, None);
+        bob.type_at(&id, 0, ">> ");
+        wire.send(&update);
+        catch_up(&mut wire, &mut doc, &id);
+        assert!(doc.is_settled(), "{format:?}");
+        assert_eq!(doc.text(), ">> Hello world\n");
+        let comment = comment_of(&doc, T1);
+        assert_eq!(
+            (comment.ranges[0], comment.quote.as_str()),
+            ((9, 14), "world"),
+            "{format:?}"
+        );
+        assert_eq!(server_comment(&mock, &id, T1, history_ot), (9, 14));
+        assert!(doc.take_reshaped());
+        assert_eq!(doc.version(), mock.doc_version(&id));
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn a_viewer_sends_comment_anchors_but_never_text() {
+    for format in formats() {
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let id = mock.doc_id("main.tex");
+        let mut wire = Wire::connect(&mock, "dave");
+        let mut doc = wire.open(&id);
+        let total = utf16_len(doc.text());
+        doc.local(insertion(total, 0, "x")).unwrap();
+        doc.queue_review(ReviewOp::Anchor {
+            thread: T1.into(),
+            ranges: vec![(1, 6)],
+            ride: false,
+        });
+        let start = Instant::now();
+        assert_eq!(
+            doc.next_update(&wire.public_id(), &SendMode::Hold, start)
+                .unwrap(),
+            None,
+            "{format:?}: the text unit is first and waits"
+        );
+        let mut viewer = wire.open(&id);
+        viewer.queue_review(ReviewOp::Anchor {
+            thread: T1.into(),
+            ranges: vec![(0, 5)],
+            ride: false,
+        });
+        let sent = settle_on(&mut wire, &mut viewer, &id, &SendMode::Hold, start);
+        assert_eq!(sent.len(), 1, "{format:?}");
+        assert!(sent[0].get("meta").is_none());
+        assert_eq!(comment_of(&viewer, T1).quote, "Hello");
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn rejecting_a_tracked_insert_and_delete_sends_undo_pieces_and_shows_the_result() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_insert(&id, 6, "brave ");
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    bob.track_delete(&id, 0, 6);
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    assert_eq!(doc.text(), "brave world\n");
+    let changes = doc.review().changes;
+    assert_eq!(changes.len(), 2, "{changes:?}");
+    let ids: Vec<String> = changes.iter().map(|change| change.id.clone()).collect();
+    doc.queue_review(ReviewOp::Decide {
+        changes: doc.targets(&ids).unwrap(),
+        decision: Decision::Reject,
+    });
+    type_at(&mut doc, 12, "!");
+    let start = Instant::now();
+    let update = doc
+        .next_update(&wire.public_id(), &SendMode::Edit, start)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        update.op,
+        json!([{ "p": 0, "i": "Hello ", "u": true }, { "p": 6, "d": "brave ", "u": true }])
+    );
+    let shown = doc.take_shown();
+    assert_eq!(shown.len(), 1);
+    assert_eq!(doc.text(), "Hello world\n!");
+    wire.send(&update);
+    catch_up(&mut wire, &mut doc, &id);
+    let sent = settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, start);
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0]["op"], json!([{ "p": 12, "i": "!" }]));
+    assert_eq!(mock.doc_text(&id), "Hello world\n!");
+    assert_eq!(doc.text(), mock.doc_text(&id));
+    assert_eq!(mock.ranges(&id), json!({}));
+    assert!(doc.review().changes.is_empty());
+    wire.assert_healthy();
+}
+
+fn applied_until_out_of_step(wire: &mut Wire, doc: &mut OverleafDoc, id: &str) -> bool {
+    for update in wire.incoming(id) {
+        match doc.applied(&update, &wire.own) {
+            Ok(_) => {}
+            Err(DocError::OutOfStep) => return true,
+            Err(error) => panic!("{error} on {update:?}"),
+        }
+    }
+    false
+}
+
+#[tokio::test]
+async fn a_rejected_deletion_a_concurrent_edit_transformed_is_repaired_after_the_rejoin() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_delete(&id, 0, 6);
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    assert_eq!(doc.text(), "world\n");
+    let marker = doc.review().changes[0].id.clone();
+    doc.queue_review(ReviewOp::Decide {
+        changes: doc.targets(std::slice::from_ref(&marker)).unwrap(),
+        decision: Decision::Reject,
+    });
+    bob.type_at(&id, 6, "!");
+    bob.sync();
+    let start = Instant::now();
+    let update = doc
+        .next_update(&wire.public_id(), &SendMode::Edit, start)
+        .unwrap()
+        .unwrap();
+    assert_eq!(update.op, json!([{ "p": 0, "i": "Hello ", "u": true }]));
+    assert_eq!(doc.text(), "Hello world\n");
+    wire.send(&update);
+    assert!(applied_until_out_of_step(&mut wire, &mut doc, &id));
+    assert_eq!(mock.doc_text(&id), "Hello world\n!");
+    assert_eq!(
+        mock.ranges(&id)["changes"][0]["op"],
+        json!({ "p": 6, "d": "Hello " }),
+        "the server lost the u and kept the marker"
+    );
+    let fresh = wire.join(&id, None).unwrap();
+    let rejoin = doc.rejoin_fresh(fresh.version, fresh.text, fresh.format);
+    assert!(
+        matches!(&rejoin, Rejoin::Clean(op) if op.is_noop()),
+        "{rejoin:?}"
+    );
+    let sent = settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, start);
+    assert_eq!(
+        sent[0]["op"],
+        json!([{ "p": 6, "i": "Hello ", "u": true }, { "p": 6, "d": "Hello " }])
+    );
+    assert_eq!(mock.doc_text(&id), "Hello world\n!");
+    assert_eq!(doc.text(), mock.doc_text(&id));
+    assert_eq!(mock.ranges(&id), json!({}));
+    assert!(doc.review().changes.is_empty());
+    assert!(doc.take_dropped().is_empty());
+    let again = doc.next_update(&wire.public_id(), &SendMode::Edit, start + 60 * SECOND);
+    assert_eq!(again, Ok(None));
+    wire.assert_healthy();
+}
+
+#[tokio::test]
+async fn a_reject_or_accept_the_server_never_took_is_reported_and_never_replayed_as_text() {
+    for decision in [Decision::Reject, Decision::Accept] {
+        let mock = MockOverleaf::start(project()).await;
+        let id = mock.doc_id("main.tex");
+        let mut wire = Wire::connect(&mock, "alice");
+        let mut doc = wire.open(&id);
+        let mut bob = mock.peer("bob");
+        bob.join(&id);
+        bob.track_delete(&id, 0, 6);
+        bob.sync();
+        catch_up(&mut wire, &mut doc, &id);
+        let marker = doc.review().changes[0].id.clone();
+        doc.queue_review(ReviewOp::Decide {
+            changes: doc.targets(std::slice::from_ref(&marker)).unwrap(),
+            decision,
+        });
+        let start = Instant::now();
+        let lost = doc
+            .next_update(&wire.public_id(), &SendMode::Edit, start)
+            .unwrap()
+            .unwrap();
+        assert!(
+            lost.op[0]["u"] == json!(true),
+            "{decision:?}: {:?}",
+            lost.op
+        );
+        bob.type_at(&id, 6, "!");
+        bob.sync();
+        catch_up(&mut wire, &mut doc, &id);
+        assert!(doc.clashed(), "{decision:?}");
+        wire.reconnect(&mock, "alice");
+        let joined = wire.join(&id, Some(doc.version())).unwrap();
+        assert!(doc.catch_up(&joined.updates, &wire.own).unwrap().is_empty());
+        assert_eq!(
+            doc.next_update(&wire.public_id(), &SendMode::Edit, start + SECOND),
+            Err(DocError::OutOfStep),
+            "{decision:?}"
+        );
+        let fresh = wire.join(&id, None).unwrap();
+        let rejoin = doc.rejoin_fresh(fresh.version, fresh.text, fresh.format);
+        assert!(
+            matches!(rejoin, Rejoin::Clean(_)),
+            "{decision:?}: {rejoin:?}"
+        );
+        assert_eq!(doc.text(), "world\n!", "{decision:?}");
+        assert!(doc.is_settled(), "{decision:?}: nothing is replayed");
+        let dropped = doc.take_dropped();
+        let ids: Vec<(String, Decision)> = dropped
+            .iter()
+            .filter_map(|review| match review {
+                ReviewOp::Decide { changes, decision } => {
+                    Some((changes.first()?.id.clone(), *decision))
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(ids, [(marker.clone(), decision)]);
+        assert_eq!(mock.doc_text(&id), "world\n!");
+        assert_eq!(doc.review().changes.len(), 1, "{decision:?}");
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn accepting_sharejs_changes_by_ops_keeps_the_text_the_other_marks_and_the_comments() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_insert(&id, 6, "brave ");
+    bob.track_delete(&id, 12, 5);
+    bob.track_delete(&id, 5, 1);
+    bob.comment(&id, 5, 5, T1);
+    bob.comment(&id, 3, 4, T2);
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    assert_eq!(doc.text(), "Hellobrave \n");
+    let changes = doc.review().changes;
+    assert_eq!(changes.len(), 3, "{changes:?}");
+    let inserted = changes
+        .iter()
+        .find(|change| change.kind == ChangeKind::Insert)
+        .unwrap();
+    let world = changes
+        .iter()
+        .find(|change| change.text == "world")
+        .unwrap();
+    let accepted = doc
+        .targets(&[inserted.id.clone(), world.id.clone()])
+        .unwrap();
+    let mut reviewer = doc.clone();
+    reviewer.queue_review(ReviewOp::Decide {
+        changes: accepted.clone(),
+        decision: Decision::Accept,
+    });
+    assert_eq!(
+        reviewer
+            .next_update(&wire.public_id(), &edit_as("carol"), Instant::now())
+            .unwrap(),
+        None
+    );
+    assert_eq!(reviewer.take_dropped().len(), 1);
+    doc.queue_review(ReviewOp::Decide {
+        changes: accepted,
+        decision: Decision::Accept,
+    });
+    let start = Instant::now();
+    let update = doc
+        .next_update(&wire.public_id(), &suggest("alice"), start)
+        .unwrap()
+        .unwrap();
+    assert_eq!(update.tc, None);
+    assert_eq!(
+        update.op,
+        json!([
+            { "p": 11, "i": "world", "u": true },
+            { "p": 11, "d": "world" },
+            { "p": 11, "i": "brave " },
+            { "p": 5, "d": "brave " },
+            { "p": 5, "c": "brave", "t": T1 },
+            { "p": 3, "c": "lobr", "t": T2 },
+        ])
+    );
+    assert!(doc.take_shown().is_empty());
+    wire.send(&update);
+    catch_up(&mut wire, &mut doc, &id);
+    assert!(doc.is_settled());
+    assert_eq!(doc.text(), "Hellobrave \n");
+    assert_eq!(mock.doc_text(&id), "Hellobrave \n");
+    let left = doc.review().changes;
+    assert_eq!(left.len(), 1, "{left:?}");
+    assert_eq!(
+        (left[0].kind, left[0].from, left[0].text.as_str()),
+        (ChangeKind::Delete, 5, " ")
+    );
+    assert_eq!(server_comment(&mock, &id, T1, false), (5, 10));
+    assert_eq!(server_comment(&mock, &id, T2, false), (3, 7));
+    assert_eq!(comment_of(&doc, T1).quote, "brave");
+    assert_eq!(comment_of(&doc, T2).quote, "lobr");
+    assert_eq!(doc.version(), mock.doc_version(&id));
+    wire.assert_healthy();
+}
+
+#[test]
+fn an_accept_that_a_concurrent_edit_lands_inside_rejoins_instead_of_guessing() {
+    let ranges = json!({
+        "changes": [{
+            "id": "6b04e1bac0ffee0006000001",
+            "op": { "p": 6, "i": "brave " },
+            "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+        }],
+    });
+    let text = "Hello brave world\n";
+    let joined = |text: &str| {
+        let (text, format) =
+            FormatState::from_join(DocFormat::ShareJs, &json!([text]), &ranges).unwrap();
+        OverleafDoc::joined(DocId("doc".into()), 0, text, format)
+    };
+    for (remote_op, clashes, after) in [
+        (
+            json!([{ "p": 0, "i": ">> " }]),
+            false,
+            ">> Hello brave world\n",
+        ),
+        (
+            json!([{ "p": 17, "i": "!" }]),
+            false,
+            "Hello brave world!\n",
+        ),
+        (json!([{ "p": 8, "i": "X" }]), true, "Hello brXave world\n"),
+        (json!([{ "p": 12, "i": "Y" }]), true, "Hello brave Yworld\n"),
+    ] {
+        let mut doc = joined(text);
+        let targets = doc.targets(&["6b04e1bac0ffee0006000001".into()]).unwrap();
+        doc.queue_review(ReviewOp::Decide {
+            changes: targets,
+            decision: Decision::Accept,
+        });
+        let sent = send(&mut doc, Instant::now());
+        assert_eq!(
+            sent.op,
+            json!([{ "p": 12, "i": "brave " }, { "p": 6, "d": "brave " }])
+        );
+        assert!(matches!(
+            doc.applied(&remote(0, remote_op.clone()), &[me()]),
+            Ok(Applied::Remote(_))
+        ));
+        assert_eq!(doc.text(), after, "{remote_op}");
+        let acked = doc.applied(&ack(1), &[me()]);
+        if clashes {
+            assert_eq!(acked, Err(DocError::OutOfStep), "{remote_op}");
+        } else {
+            assert_eq!(acked, Ok(Applied::Acknowledged), "{remote_op}");
+            assert!(doc.review().changes.is_empty(), "{remote_op}");
+            assert_eq!(doc.text(), after);
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_reviewer_withdraws_only_their_own_suggestions() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let carol = mock.user("carol").id;
+    let mut wire = Wire::connect(&mock, "carol");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_insert(&id, 0, "Bob ");
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    let total = utf16_len(doc.text());
+    doc.local(insertion(total, total, " mine")).unwrap();
+    let mode = edit_as(&carol);
+    settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+    let changes = doc.review().changes;
+    assert_eq!(changes.len(), 2);
+    doc.queue_review(ReviewOp::Decide {
+        changes: changes.iter().map(Target::of).collect(),
+        decision: Decision::Reject,
+    });
+    let sent = settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0]["op"], json!([{ "p": 16, "d": " mine", "u": true }]));
+    assert!(sent[0]["meta"]["tc"].is_string(), "{}", sent[0]);
+    assert_eq!(mock.doc_text(&id), "Bob Hello world\n");
+    let left = doc.review().changes;
+    assert_eq!(left.len(), 1);
+    assert_eq!(left[0].user, Some(mock.user("bob").id));
+    wire.assert_healthy();
+}
+
+#[tokio::test]
+async fn history_ot_accept_and_reject_are_raw_ops_and_reviewers_cannot_send_them() {
+    let mock = MockOverleaf::start(
+        project().format(crate::test_support::mock_overleaf::DocFormat::HistoryOt),
+    )
+    .await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_insert(&id, 6, "brave ");
+    bob.track_delete(&id, 0, 6);
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    assert_eq!(doc.text(), "brave world\n");
+    let changes = doc.review().changes;
+    assert_eq!(changes.len(), 2, "{changes:?}");
+    let deleted = changes
+        .iter()
+        .find(|change| change.kind == ChangeKind::Delete)
+        .unwrap()
+        .id
+        .clone();
+    let inserted = changes
+        .iter()
+        .find(|change| change.kind == ChangeKind::Insert)
+        .unwrap()
+        .id
+        .clone();
+    let mut reviewer = doc.clone();
+    reviewer.queue_review(ReviewOp::Decide {
+        changes: reviewer.targets(std::slice::from_ref(&inserted)).unwrap(),
+        decision: Decision::Accept,
+    });
+    assert_eq!(
+        reviewer
+            .next_update(&wire.public_id(), &edit_as("carol"), Instant::now())
+            .unwrap(),
+        None
+    );
+    assert_eq!(reviewer.take_dropped().len(), 1);
+    let accepted = doc.targets(&[inserted]).unwrap();
+    let rejected = doc.targets(&[deleted]).unwrap();
+    doc.queue_review(ReviewOp::Decide {
+        changes: accepted,
+        decision: Decision::Accept,
+    });
+    doc.queue_review(ReviewOp::Decide {
+        changes: rejected,
+        decision: Decision::Reject,
+    });
+    let sent = settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, Instant::now());
+    assert_eq!(
+        sent[0]["op"],
+        json!([{ "textOperation": [6, { "r": 6, "tracking": { "type": "none" } }, 6] }])
+    );
+    assert_eq!(
+        sent[1]["op"],
+        json!([{ "textOperation": ["Hello ", -6, 12] }])
+    );
+    assert_eq!(doc.text(), "Hello brave world\n");
+    assert_eq!(doc.take_shown().len(), 2);
+    assert_eq!(mock.doc_text(&id), "Hello brave world\n");
+    assert_eq!(mock.raw_doc(&id)["trackedChanges"], json!([]));
+    wire.assert_healthy();
+}
+
+#[tokio::test]
+async fn undoing_your_own_tracked_delete_cancels_it_in_both_formats() {
+    for format in formats() {
+        let history_ot = format == crate::test_support::mock_overleaf::DocFormat::HistoryOt;
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let id = mock.doc_id("main.tex");
+        let alice = mock.user("alice").id;
+        let mut wire = Wire::connect(&mock, "alice");
+        let mut doc = wire.open(&id);
+        let mode = suggest(&alice);
+        doc.local(deletion(12, 6, 5)).unwrap();
+        settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+        assert_eq!(doc.review().changes.len(), 1, "{format:?}");
+        doc.local_from(insertion(7, 6, "world"), Some(Origin::Undo))
+            .unwrap();
+        let sent = settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+        if history_ot {
+            assert_eq!(
+                sent[0]["op"],
+                json!([{ "textOperation": [6, "world", -5, 1] }]),
+                "{format:?}"
+            );
+            assert_eq!(mock.raw_doc(&id)["trackedChanges"], json!([]));
+        } else {
+            assert_eq!(sent[0]["op"], json!([{ "p": 6, "i": "world", "u": true }]));
+            assert_eq!(mock.ranges(&id), json!({}));
+        }
+        assert_eq!(doc.text(), "Hello world\n");
+        assert!(doc.review().changes.is_empty(), "{format:?}");
+        assert_eq!(mock.doc_text(&id), "Hello world\n");
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn cut_and_paste_carries_the_comment_with_the_text() {
+    for format in formats() {
+        let history_ot = format == crate::test_support::mock_overleaf::DocFormat::HistoryOt;
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let id = mock.doc_id("main.tex");
+        let mut wire = Wire::connect(&mock, "alice");
+        let mut doc = wire.open(&id);
+        let mut bob = mock.peer("bob");
+        bob.join(&id);
+        bob.comment(&id, 6, 5, T2);
+        bob.sync();
+        catch_up(&mut wire, &mut doc, &id);
+        assert_eq!(comment_of(&doc, T2).quote, "world");
+        doc.local_from(deletion(12, 5, 6), Some(Origin::Cut))
+            .unwrap();
+        settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, Instant::now());
+        let detached = comment_of(&doc, T2).ranges.clone();
+        assert!(
+            detached.iter().all(|(from, to)| from == to),
+            "{format:?}: {detached:?}"
+        );
+        doc.local_from(insertion(6, 0, " world"), Some(Origin::Paste))
+            .unwrap();
+        let sent = settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, Instant::now());
+        assert_eq!(sent.len(), 1, "{format:?}: {sent:?}");
+        if history_ot {
+            assert_eq!(
+                sent[0]["op"],
+                json!([
+                    { "textOperation": [" world", 6] },
+                    { "commentId": T2, "ranges": [{ "pos": 1, "length": 5 }] },
+                ])
+            );
+        } else {
+            assert_eq!(
+                sent[0]["op"],
+                json!([{ "p": 0, "i": " world" }, { "p": 1, "c": "world", "t": T2 }])
+            );
+        }
+        assert_eq!(doc.text(), " worldHello\n");
+        assert_eq!(comment_of(&doc, T2).ranges[0], (1, 6), "{format:?}");
+        assert_eq!(server_comment(&mock, &id, T2, history_ot), (1, 6));
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn a_reviewer_restores_a_history_ot_comment_in_its_own_update() {
+    let mock = MockOverleaf::start(
+        project().format(crate::test_support::mock_overleaf::DocFormat::HistoryOt),
+    )
+    .await;
+    let id = mock.doc_id("main.tex");
+    let carol = mock.user("carol").id;
+    let mut wire = Wire::connect(&mock, "carol");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.comment(&id, 6, 5, T2);
+    bob.sync();
+    catch_up(&mut wire, &mut doc, &id);
+    let mode = edit_as(&carol);
+    doc.local_from(deletion(12, 5, 6), Some(Origin::Cut))
+        .unwrap();
+    settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+    assert_eq!(doc.text(), "Hello\n");
+    doc.local_from(insertion(6, 0, " world"), Some(Origin::Paste))
+        .unwrap();
+    let sent = settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+    assert_eq!(sent.len(), 2, "{sent:?}");
+    assert!(sent[0]["op"][0]["textOperation"].is_array(), "{sent:?}");
+    assert_eq!(sent[1]["op"][0]["commentId"], T2, "{sent:?}");
+    assert_eq!(comment_of(&doc, T2).quote, "world");
+    wire.assert_healthy();
+}
+
+#[test]
+fn a_comment_inflight_and_queued_review_units_survive_the_journal() {
+    let start = Instant::now();
+    let mut doc = doc("Hello world\n");
+    doc.queue_review(ReviewOp::Anchor {
+        thread: T1.into(),
+        ranges: vec![(6, 11)],
+        ride: false,
+    });
+    doc.queue_review(ReviewOp::Decide {
+        changes: vec![target("c1")],
+        decision: Decision::Reject,
+    });
+    let update = send(&mut doc, start);
+    assert_eq!(update.op, json!([{ "p": 6, "c": "world", "t": T1 }]));
+    type_at(&mut doc, 0, ">> ");
+    let record = doc.record().unwrap();
+    assert_eq!(record.inflight.as_ref().unwrap().comments.len(), 1);
+    assert_eq!(
+        record.queued,
+        vec![ReviewOp::Decide {
+            changes: vec![Target {
+                at: 9,
+                ..target("c1")
+            }],
+            decision: Decision::Reject,
+        }]
+    );
+    let text = serde_json::to_string(&record).unwrap();
+    let back: DocRecord = serde_json::from_str(&text).unwrap();
+    assert_eq!(back, record);
+    let mut resumed = OverleafDoc::resume(DocId("doc".into()), &back, start).unwrap();
+    assert_eq!(resumed.text(), ">> Hello world\n");
+    let fresh = PublicId("P.fresh".into());
+    let again = resumed
+        .next_update(&fresh, &SendMode::Edit, start)
+        .unwrap()
+        .unwrap();
+    assert_eq!(again.op, json!([{ "p": 6, "c": "world", "t": T1 }]));
+    assert_eq!(again.dup_if_source, vec![me()]);
+    let plain: DocRecord =
+        serde_json::from_str(&serde_json::to_string(&doc_record_without_review()).unwrap())
+            .unwrap();
+    assert!(plain.queued.is_empty());
+    assert!(!serde_json::to_string(&plain).unwrap().contains("queued"));
+}
+
+fn target(id: &str) -> Target {
+    Target {
+        id: id.into(),
+        kind: ChangeKind::Insert,
+        at: 6,
+        text: "world".into(),
+        user: None,
+    }
+}
+
+fn doc_record_without_review() -> DocRecord {
+    let mut doc = doc("abc");
+    type_at(&mut doc, 0, "x");
+    doc.record().unwrap()
+}
+
+#[test]
+fn an_anchor_whose_text_is_gone_is_dropped_and_reported() {
+    let start = Instant::now();
+    let mut doc = doc("Hello world\n");
+    type_at(&mut doc, 0, ">");
+    let first = send(&mut doc, start);
+    assert_eq!(first.op, json!([{ "p": 0, "i": ">" }]));
+    doc.queue_review(ReviewOp::Anchor {
+        thread: T1.into(),
+        ranges: vec![(7, 12)],
+        ride: false,
+    });
+    doc.applied(&remote(0, json!([{ "p": 5, "d": " world" }])), &[me()])
+        .unwrap();
+    doc.applied(&ack(1), &[me()]).unwrap();
+    assert_eq!(doc.text(), ">Hello\n");
+    assert_eq!(
+        doc.next_update(&me(), &SendMode::Edit, start).unwrap(),
+        None
+    );
+    assert!(doc.is_settled());
+    assert_eq!(
+        doc.take_dropped(),
+        vec![ReviewOp::Anchor {
+            thread: T1.into(),
+            ranges: vec![(6, 6)],
+            ride: false,
+        }]
+    );
+}
+
+#[test]
+fn an_accept_is_never_resent_once_the_server_may_have_changed_it() {
+    let ranges = json!({
+        "changes": [
+            {
+                "id": "6b04e1bac0ffee0006000001",
+                "op": { "p": 6, "i": "brave " },
+                "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+            },
+            {
+                "id": "6b04e1bac0ffee0007000001",
+                "op": { "p": 12, "d": "old " },
+                "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+            },
+        ],
+    });
+    let joined = || {
+        let (text, format) =
+            FormatState::from_join(DocFormat::ShareJs, &json!(["Hello brave world\n"]), &ranges)
+                .unwrap();
+        OverleafDoc::joined(DocId("doc".into()), 0, text, format)
+    };
+    let accept = |doc: &mut OverleafDoc, id: &str| {
+        let targets = doc.targets(&[id.to_string()]).unwrap();
+        doc.queue_review(ReviewOp::Decide {
+            changes: targets,
+            decision: Decision::Accept,
+        });
+    };
+    let start = Instant::now();
+    let mut far = joined();
+    accept(&mut far, "6b04e1bac0ffee0007000001");
+    let sent = send(&mut far, start);
+    assert_eq!(
+        sent.op,
+        json!([{ "p": 12, "i": "old ", "u": true }, { "p": 12, "d": "old " }])
+    );
+    far.applied(&remote(0, json!([{ "p": 0, "i": ">" }])), &[me()])
+        .unwrap();
+    assert!(far.clashed(), "a transformed re-insert loses its u");
+    assert_eq!(far.applied(&ack(1), &[me()]), Err(DocError::OutOfStep));
+    let mut late = joined();
+    accept(&mut late, "6b04e1bac0ffee0006000001");
+    send(&mut late, start);
+    late.applied(&remote(0, json!([{ "p": 8, "i": "X" }])), &[me()])
+        .unwrap();
+    assert_eq!(
+        late.next_update(&me(), &SendMode::Edit, start + 6 * SECOND),
+        Err(DocError::OutOfStep)
+    );
+    let mut moved = joined();
+    accept(&mut moved, "6b04e1bac0ffee0006000001");
+    send(&mut moved, start);
+    assert_eq!(
+        moved.next_update(&PublicId("P.again".into()), &SendMode::Edit, start + SECOND),
+        Err(DocError::OutOfStep)
+    );
+    let mut quiet = joined();
+    accept(&mut quiet, "6b04e1bac0ffee0006000001");
+    let first = send(&mut quiet, start);
+    let again = quiet
+        .next_update(&me(), &SendMode::Edit, start + 6 * SECOND)
+        .unwrap()
+        .unwrap();
+    assert_eq!(again.op, first.op);
+    assert_eq!(again.dup_if_source, vec![me()]);
+}
+
+fn ce_fixture(name: &str, file: &str) -> Value {
+    let path = std::path::Path::new(crate::test_support::overleaf_rt::FIXTURES)
+        .join(name)
+        .join(file);
+    serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap()
+}
+
+fn watched_ops(name: &str) -> Vec<(String, Value)> {
+    let path = std::path::Path::new(crate::test_support::overleaf_rt::FIXTURES)
+        .join(name)
+        .join("dave.frames.jsonl");
+    std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|frame| frame["dir"] == "in")
+        .filter_map(|frame| {
+            let packet = crate::realtime::codec::decode(frame["frame"].as_str()?).ok()?;
+            let (event, args) = packet.into_event()?;
+            let update = args
+                .into_iter()
+                .next()
+                .filter(|_| event == "otUpdateApplied")?;
+            let user = update["meta"]["user_id"].as_str()?.to_string();
+            Some((user, update.get("op")?.clone()))
+        })
+        .collect()
+}
+
+fn comment_only(op: &Value) -> bool {
+    op.as_array().is_some_and(|parts| {
+        parts
+            .iter()
+            .all(|part| part.get("commentId").is_some() || part.get("c").is_some())
+    })
+}
+
+fn assert_web_kept_up(name: &str, steps: &[Value]) {
+    for step in steps {
+        let web = &step["web"]["alice"];
+        let label = step["label"].as_str().unwrap();
+        assert_eq!(web["matchesServer"], true, "{name}: {label}");
+        assert_eq!(web["disconnects"], 0, "{name}: {label}");
+        assert_eq!(web["updateErrors"], json!([]), "{name}: {label}");
+        if step["step"] != 1 {
+            assert_eq!(web["console"], json!([]), "{name}: {label}");
+        }
+    }
+}
+
+fn decision_steps(steps: &[Value], verb: &str) -> Vec<(usize, Vec<String>)> {
+    steps
+        .iter()
+        .enumerate()
+        .filter(|(_, step)| {
+            step["ids"].is_array() && step["label"].as_str().unwrap().contains(verb)
+        })
+        .map(|(index, step)| {
+            let ids = step["ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|id| id.as_str().unwrap().to_string())
+                .collect();
+            (index, ids)
+        })
+        .collect()
+}
+
+#[test]
+fn recorded_ce_rejects_of_hidden_text_are_plain_copies_the_web_editor_follows() {
+    let name = "history-ot-reject-safe";
+    let scenario = ce_fixture(name, "scenario.json");
+    assert_eq!(scenario["converged"], true);
+    let steps = ce_fixture(name, "steps.json")["steps"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_web_kept_up(name, &steps);
+    let ops = watched_ops(name);
+    let bob = ops
+        .iter()
+        .find(|(_, op)| comment_only(op))
+        .map(|(user, _)| user.clone())
+        .unwrap();
+    let sent: Vec<&Value> = ops
+        .iter()
+        .filter(|(user, op)| *user == bob && !comment_only(op))
+        .map(|(_, op)| op)
+        .collect();
+    let decisions = decision_steps(&steps, "rejects");
+    assert_eq!((sent.len(), decisions.len()), (2, 2));
+    for ((index, ids), wire) in decisions.into_iter().zip(sent) {
+        let before = &steps[index - 1]["server"];
+        let raw = crate::live::history_ot::RawDoc::from_raw(&before["raw"]).unwrap();
+        let ours = raw.decision_op(&ids, Decision::Reject).unwrap();
+        assert_eq!(json!([{ "textOperation": ours.to_json().unwrap() }]), *wire);
+        let shape = ours.to_json().unwrap().to_string();
+        assert!(!shape.contains("\"none\""), "{shape}");
+        let mut after = raw.clone();
+        after.apply(&ours).unwrap();
+        let server = &steps[index]["server"];
+        assert_eq!(after.visible().unwrap(), server["text"].as_str().unwrap());
+        let theirs = crate::live::history_ot::RawDoc::from_raw(&server["raw"]).unwrap();
+        assert_eq!(after.comments(), theirs.comments());
+        assert_eq!(after.tracked(), theirs.tracked());
+    }
+    let last = &steps.last().unwrap()["server"]["raw"];
+    assert_eq!(
+        last["comments"],
+        json!([{ "id": steps[1]["thread"], "ranges": [{ "pos": 27, "length": 16 }] }])
+    );
+    assert!(last
+        .get("trackedChanges")
+        .is_none_or(|tracked| tracked == &json!([])));
+}
+
+#[test]
+fn recorded_ce_accepts_by_ops_keep_the_text_and_the_comment_on_the_accepted_insert() {
+    let name = "sharejs-accept-by-ops";
+    let scenario = ce_fixture(name, "scenario.json");
+    assert_eq!(scenario["converged"], true);
+    let steps = ce_fixture(name, "steps.json")["steps"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_web_kept_up(name, &steps);
+    let ops = watched_ops(name);
+    let bob = ops
+        .iter()
+        .find(|(_, op)| comment_only(op))
+        .map(|(user, _)| user.clone())
+        .unwrap();
+    let sent: Vec<&Value> = ops
+        .iter()
+        .filter(|(user, op)| *user == bob && !comment_only(op))
+        .map(|(_, op)| op)
+        .collect();
+    let decisions = decision_steps(&steps, "accepts");
+    assert_eq!((sent.len(), decisions.len()), (1, 1));
+    let (index, ids) = &decisions[0];
+    let before = &steps[index - 1]["server"];
+    let text = before["text"].as_str().unwrap();
+    let packed: String = text.bytes().map(char::from).collect();
+    let (text, format) =
+        FormatState::from_join(DocFormat::ShareJs, &json!([packed]), &before["ranges"]).unwrap();
+    let mut doc = OverleafDoc::joined(DocId("doc".into()), 0, text.clone(), format);
+    doc.queue_review(ReviewOp::Decide {
+        changes: doc.targets(ids).unwrap(),
+        decision: Decision::Accept,
+    });
+    let update = doc
+        .next_update(&me(), &SendMode::Edit, Instant::now())
+        .unwrap()
+        .unwrap();
+    assert_eq!(update.op, *sent[0]);
+    assert_eq!(update.tc, None);
+    assert_eq!(doc.applied(&ack(0), &[me()]), Ok(Applied::Acknowledged));
+    let server = &steps[*index]["server"];
+    assert_eq!(doc.text(), server["text"].as_str().unwrap());
+    let kept: Vec<(String, String)> = doc
+        .review()
+        .changes
+        .into_iter()
+        .map(|change| (change.id, change.text))
+        .collect();
+    let theirs: Vec<(String, String)> = server["ranges"]["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|change| {
+            (
+                change["id"].as_str().unwrap().to_string(),
+                change["op"]["d"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(kept, theirs);
+    let comment = &server["ranges"]["comments"][0]["op"];
+    assert_eq!(
+        (comment["p"].clone(), comment["c"].clone()),
+        (json!(10), json!("whole"))
+    );
+    assert_eq!(
+        comment_of(&doc, steps[2]["thread"].as_str().unwrap()).quote,
+        "whole"
+    );
 }

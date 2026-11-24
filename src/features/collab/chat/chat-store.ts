@@ -2,26 +2,30 @@ import { create } from "zustand";
 import { useChatRail } from "@/components/collab/chat-rail";
 import { logError, logWarning } from "@/lib/log";
 import { withPending } from "@/components/ui/comments/comment-reactions";
-import type { CollabChatChanged, CollabChatMessage, CollabErrorCode } from "@/lib/tauri";
+import type { CollabChatChanged, CollabChatMessage, CollabChatStatus, CollabErrorCode } from "@/lib/tauri";
 import {
   collabChatClear,
   collabChatDelete,
+  collabChatEdit,
   collabChatList,
   collabChatReact,
   collabChatSend,
+  collabChatStatus,
   onCollabChatChanged,
+  onCollabCommentsStatus,
 } from "@/lib/tauri-collab";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";
-import { commentMembers } from "../comments/comments-store";
+import { commentMembers, sameData } from "../comments/comments-store";
 import { reported } from "../comments/refusals";
-import { useCollabLiveStore } from "../live/live-store";
+import { liveJoinedProjectId, liveSelfId, useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
 
 export type ChatPhase = "idle" | "loading" | "ready" | "failed";
 
 export interface ChatState {
   projectId: string | null;
+  status: CollabChatStatus | null;
   messages: CollabChatMessage[];
   phase: ChatPhase;
   error: CollabErrorCode | null;
@@ -35,10 +39,23 @@ const REFRESH_PAGE = 200;
 const RELOAD_DELAY_MS = 150;
 
 function blank(projectId: string | null): ChatState {
-  return { projectId, messages: [], phase: "idle", error: null, hasOlder: false, loadingOlder: false, cursor: null };
+  return {
+    projectId,
+    status: null,
+    messages: [],
+    phase: "idle",
+    error: null,
+    hasOlder: false,
+    loadingOlder: false,
+    cursor: null,
+  };
 }
 
 export const useChat = create<ChatState>(() => blank(null));
+
+function chatAvailable(status: CollabChatStatus | null): boolean {
+  return status?.available === true;
+}
 
 function chronological(messages: readonly CollabChatMessage[]): CollabChatMessage[] {
   return [...messages].sort((left, right) => left.at - right.at);
@@ -50,16 +67,28 @@ function merged(...lists: readonly (readonly CollabChatMessage[])[]): CollabChat
   return chronological([...byId.values()]);
 }
 
-function same(left: readonly CollabChatMessage[], right: readonly CollabChatMessage[]): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function chatOpen(): boolean {
   const settings = useSettingsStore.getState();
   return settings.railTab === "chat" && settings.showTree;
 }
 
+function mine(message: CollabChatMessage, self: string | null): boolean {
+  return message.verified && message.author === self;
+}
+
+function othersWrote(listed: readonly CollabChatMessage[], seen: ReadonlySet<string>, self: string | null): boolean {
+  for (let index = listed.length - 1; index >= 0 && !seen.has(listed[index].id); index -= 1) {
+    if (!listed[index].deleted && !mine(listed[index], self)) return true;
+  }
+  return false;
+}
+
 let loadToken = 0;
+
+interface OlderPages {
+  messages: CollabChatMessage[];
+  complete: boolean;
+}
 
 async function shownBefore(
   projectId: string,
@@ -67,25 +96,38 @@ async function shownBefore(
   cursor: string,
   known: ReadonlySet<string>,
   current: () => boolean,
-): Promise<CollabChatMessage[]> {
-  const found: CollabChatMessage[] = [];
+): Promise<OlderPages> {
+  const messages: CollabChatMessage[] = [];
   let before = newest[0]?.id;
   for (let page = 0; before && page <= Math.ceil(known.size / REFRESH_PAGE) && current(); page += 1) {
     const older = await collabChatList(projectId, before, REFRESH_PAGE);
-    found.push(...older.filter((message) => known.has(message.id)));
-    if (older.length === 0 || older.some((message) => message.id === cursor)) break;
+    messages.unshift(...older);
+    if (older.length < REFRESH_PAGE || older.some((message) => message.id === cursor)) return { messages, complete: true };
     before = older[0].id;
   }
-  return found;
+  return { messages, complete: false };
+}
+
+function cursorAfter(
+  cursor: string | null,
+  gone: (id: string) => boolean,
+  fetched: readonly CollabChatMessage[],
+  next: readonly CollabChatMessage[],
+): string | null {
+  if (cursor === null || !gone(cursor)) return cursor;
+  const shown = new Set(next.map((message) => message.id));
+  return fetched.find((message) => shown.has(message.id))?.id ?? next[0]?.id ?? null;
 }
 
 export async function loadChat(): Promise<void> {
-  const { projectId } = useChat.getState();
-  if (!projectId) return;
+  const shown = useChat.getState();
+  const { projectId } = shown;
+  if (!projectId || !chatAvailable(shown.status)) return;
   const token = ++loadToken;
   const current = () => token === loadToken && useChat.getState().projectId === projectId;
-  const shown = useChat.getState();
-  if (shown.phase !== "ready") useChat.setState({ phase: "loading", error: null });
+  const seen = new Set(shown.messages.map((message) => message.id));
+  const settled = shown.phase === "ready";
+  if (!settled) useChat.setState({ phase: "loading", error: null });
   const limit = shown.messages.length === 0 ? CHAT_PAGE : Math.min(REFRESH_PAGE, shown.messages.length + CHAT_PAGE);
   let listed: CollabChatMessage[];
   try {
@@ -105,28 +147,36 @@ export async function loadChat(): Promise<void> {
   const { messages, cursor } = useChat.getState();
   const known = new Set(messages.map((message) => message.id));
   let older: CollabChatMessage[] = [];
-  if (cursor && listed.some((message) => known.has(message.id)) && !listed.some((message) => message.id === cursor)) {
+  let complete = listed.length < limit || listed.some((message) => message.id === cursor);
+  if (!complete && cursor && listed.some((message) => known.has(message.id))) {
     try {
-      older = await shownBefore(projectId, listed, cursor, known, current);
+      ({ messages: older, complete } = await shownBefore(projectId, listed, cursor, known, current));
     } catch (error) {
       void logWarning("collab chat refresh older", error);
     }
     if (!current()) return;
   }
+  const fetched = [...older, ...listed];
+  const present = new Set(fetched.map((message) => message.id));
+  const gone = (id: string) => complete && seen.has(id) && !present.has(id);
+  const self = liveSelfId(useCollabLiveStore.getState());
   useChat.setState((state) => {
     const known = new Set(state.messages.map((message) => message.id));
     const joins = listed.some((message) => known.has(message.id));
     const start = joins ? listed.findIndex((message) => message.id === state.cursor) : -1;
     const fresh = start > 0 ? listed.slice(start) : listed;
-    const next = joins ? merged(state.messages, older, fresh) : chronological(listed);
+    const kept = state.messages.filter((message) => !gone(message.id));
+    const refreshed = older.filter((message) => known.has(message.id));
+    const next = joins ? merged(kept, refreshed, fresh) : chronological(listed);
     return {
-      messages: same(state.messages, next) ? state.messages : next,
+      messages: sameData(state.messages, next) ? state.messages : next,
       phase: "ready",
       error: null,
       hasOlder: joins ? state.hasOlder : listed.length >= CHAT_PAGE,
-      cursor: joins ? state.cursor : (listed[0]?.id ?? null),
+      cursor: joins ? cursorAfter(state.cursor, gone, fetched, next) : (listed[0]?.id ?? null),
     };
   });
+  if (settled && !chatOpen() && othersWrote(listed, seen, self)) useChatRail.setState({ unread: true });
 }
 
 export async function loadOlderChat(): Promise<void> {
@@ -146,8 +196,13 @@ export async function loadOlderChat(): Promise<void> {
       };
     });
   } catch (error) {
+    const here = useChat.getState().projectId === projectId;
+    if (here && collabErrorCode(error) === "not_found") {
+      await loadChat();
+      return;
+    }
     void logError("collab chat older", error);
-    if (useChat.getState().projectId === projectId) throw error;
+    if (here) throw error;
   } finally {
     if (useChat.getState().projectId === projectId) useChat.setState({ loadingOlder: false });
   }
@@ -194,10 +249,13 @@ export function showPendingChat(projectId: string | null): () => void {
   };
 }
 
-async function postChat(projectId: string, body: string): Promise<void> {
-  const message = await reported("collab chat send", () => collabChatSend(projectId, body, commentMembers()));
+function showWritten(projectId: string, message: CollabChatMessage): void {
   if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({ messages: merged(state.messages, [message]) }));
+}
+
+async function postChat(projectId: string, body: string): Promise<void> {
+  showWritten(projectId, await reported("collab chat send", () => collabChatSend(projectId, body, commentMembers())));
 }
 
 export async function sendChat(body: string): Promise<void> {
@@ -216,19 +274,28 @@ export async function sendChat(body: string): Promise<void> {
   }
 }
 
+export async function editChat(id: string, body: string): Promise<void> {
+  const projectId = requireProject();
+  showWritten(projectId, await reported("collab chat edit", () => collabChatEdit(projectId, id, body, commentMembers())));
+}
+
 export async function deleteChat(id: string): Promise<void> {
   const projectId = requireProject();
   await reported("collab chat delete", () => collabChatDelete(projectId, id));
   if (useChat.getState().projectId !== projectId) return;
+  await loadChat();
+  if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({
-    messages: state.messages.map((message) => (message.id === id ? { ...message, body: "", deleted: true } : message)),
+    messages: state.messages.map((message) =>
+      message.id === id && !message.deleted ? { ...message, body: "", deleted: true } : message,
+    ),
   }));
 }
 
 export async function reactToChat(id: string, emoji: string, on: boolean): Promise<void> {
   const projectId = requireProject();
   await reported("collab chat react", () => collabChatReact(projectId, id, emoji, on));
-  const self = useCollabLiveStore.getState().share?.account_id;
+  const self = liveSelfId(useCollabLiveStore.getState());
   if (useChat.getState().projectId !== projectId || !self) return;
   useChat.setState((state) => ({
     messages: state.messages.map((message) =>
@@ -266,6 +333,8 @@ function noteChatMentions(payload: CollabChatChanged): void {
 
 export function startChat(): () => void {
   let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+  let statusToken = 0;
+  let heard: CollabChatStatus | null = null;
   drafts.clear();
   pending.clear();
 
@@ -274,30 +343,67 @@ export function startChat(): () => void {
     reloadTimer = null;
   };
 
-  const live = () => {
-    const state = useCollabLiveStore.getState();
-    return state.share !== null && state.projectId !== null && state.role !== null;
+  const live = () =>
+    liveJoinedProjectId(useCollabLiveStore.getState()) !== null && chatAvailable(useChat.getState().status);
+
+  const syncRail = () => {
+    const { projectId, status } = useChat.getState();
+    const visible = projectId !== null && chatAvailable(status);
+    if (useChatRail.getState().visible !== visible) useChatRail.setState(visible ? { visible } : { visible, unread: false });
+  };
+
+  const applyStatus = (raw: CollabChatStatus) => {
+    heard = raw;
+    const status = useCollabLiveStore.getState().restricted ? { ...raw, available: false, post: false } : raw;
+    const shown = useChat.getState();
+    const was = chatAvailable(shown.status);
+    if (was && !status.available) {
+      cancelReload();
+      loadToken += 1;
+      useChat.setState({ ...blank(shown.projectId), status });
+      useChatRail.setState({ reveal: null });
+    } else if (!sameData(shown.status, status)) {
+      useChat.setState({ status });
+    }
+    syncRail();
+    if (status.available && !was && live()) void loadChat();
+  };
+
+  const refreshStatus = async () => {
+    const projectId = useChat.getState().projectId;
+    if (!projectId) return;
+    const token = ++statusToken;
+    try {
+      const status = await collabChatStatus(projectId);
+      if (token === statusToken && useChat.getState().projectId === projectId) applyStatus(status);
+    } catch (error) {
+      void logError("collab chat status", error);
+    }
   };
 
   const openProject = () => {
-    const state = useCollabLiveStore.getState();
-    const projectId = state.share && state.projectId ? state.projectId : null;
-    const rail = useChatRail.getState();
-    if (rail.visible !== (projectId !== null)) {
-      useChatRail.setState(projectId ? { visible: true } : { visible: false, unread: false });
+    const projectId = liveJoinedProjectId(useCollabLiveStore.getState());
+    if (projectId === useChat.getState().projectId) {
+      syncRail();
+      return;
     }
-    if (projectId === useChat.getState().projectId) return;
     cancelReload();
     loadToken += 1;
+    statusToken += 1;
+    heard = null;
     useChat.setState(blank(projectId));
-    useChatRail.setState({ unread: false, reveal: null });
-    if (projectId && live()) void loadChat();
+    useChatRail.setState({ visible: false, unread: false, reveal: null });
+    if (projectId) void refreshStatus();
   };
 
   const onChanged = (payload: CollabChatChanged) => {
-    if (payload.projectId !== useChat.getState().projectId) return;
+    const chat = useChat.getState();
+    if (payload.projectId !== chat.projectId) return;
     noteChatMentions(payload);
-    if (!payload.local && !chatOpen()) useChatRail.setState({ unread: true });
+    if (!chatAvailable(chat.status)) {
+      void refreshStatus();
+      return;
+    }
     cancelReload();
     reloadTimer = setTimeout(() => {
       reloadTimer = null;
@@ -306,12 +412,15 @@ export function startChat(): () => void {
   };
 
   const stopLive = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.projectId !== previous.projectId || state.share !== previous.share) {
+    if (liveJoinedProjectId(state) !== liveJoinedProjectId(previous)) {
       openProject();
       return;
     }
+    if (state.restricted !== previous.restricted && heard) applyStatus(heard);
     const cameOnline = state.status?.state === "online" && previous.status?.state !== "online";
-    if ((state.role !== previous.role || cameOnline) && live()) void loadChat();
+    if (state.role === previous.role && !cameOnline) return;
+    void refreshStatus();
+    if (live()) void loadChat();
   });
   const stopSettings = useSettingsStore.subscribe((settings, previous) => {
     if (settings.railTab === previous.railTab && settings.showTree === previous.showTree) return;
@@ -319,19 +428,28 @@ export function startChat(): () => void {
     if (open && useChatRail.getState().unread) useChatRail.setState({ unread: false });
     if (!open && previous.railTab === "chat" && previous.showTree) useChatRail.setState({ reveal: null });
   });
-  const listening = onCollabChatChanged(onChanged).catch((error: unknown) => {
-    void logError("collab chat listen", error);
-    return () => undefined;
-  });
+  const listening = [
+    onCollabChatChanged(onChanged),
+    onCollabCommentsStatus((payload) => {
+      if (payload.projectId === useChat.getState().projectId) void refreshStatus();
+    }),
+  ].map((listener) =>
+    listener.catch((error: unknown) => {
+      void logError("collab chat listen", error);
+      return () => undefined;
+    }),
+  );
 
   openProject();
 
   return () => {
     stopLive();
     stopSettings();
-    void listening.then((unlisten) => unlisten());
+    for (const listener of listening) void listener.then((unlisten) => unlisten());
     cancelReload();
     loadToken += 1;
+    statusToken += 1;
+    heard = null;
     useChat.setState(blank(null));
     useChatRail.setState({ visible: false, unread: false, reveal: null });
   };

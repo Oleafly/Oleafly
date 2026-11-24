@@ -4,6 +4,8 @@ export interface Utf16Edit {
   insert: string;
 }
 
+export type LocalOrigin = "undo" | "redo" | "cut" | "paste";
+
 export interface RemoteChange {
   edits: Utf16Edit[];
   version: number;
@@ -14,7 +16,7 @@ export interface DocumentSession {
   readonly readOnly: boolean;
   version(): number;
   text(): string;
-  applyLocal(edits: Utf16Edit[], baseVersion: number): void;
+  applyLocal(edits: Utf16Edit[], baseVersion: number, origin?: LocalOrigin): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
   holdLocal?(): void;
   releaseLocal?(): void;

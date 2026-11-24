@@ -395,10 +395,6 @@ enum EntryDecision {
     Capture(LinkedEntry),
 }
 
-pub(crate) fn is_oleafly_owned(name: &str) -> bool {
-    oleafly_core::exclude::is_oleafly_owned_name(name)
-}
-
 fn probe_entry(_path: &Path, metadata: &std::fs::Metadata) -> EntryProbe {
     if oleafly_core::is_cloud_placeholder(metadata) {
         EntryProbe::Placeholder

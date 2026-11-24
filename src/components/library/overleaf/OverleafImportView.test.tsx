@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   overleafSignInWithBrowser: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
+  overleafUseAccount: vi.fn(),
 }));
 const cookies = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(async () => [] as unknown[]),
@@ -271,7 +272,7 @@ describe("OverleafImportView", () => {
     const failed = screen.getByTestId("overleaf-status-b2");
     expect(failed).toHaveTextContent("You may no longer have access to it.");
     fireEvent.click(within(failed).getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(api.overleafImportProjects).toHaveBeenLastCalledWith(SERVER, ["b2"], expect.any(Function)));
+    await waitFor(() => expect(api.overleafImportProjects).toHaveBeenLastCalledWith(SERVER, ["b2"], expect.any(Function), undefined));
     await waitFor(() => expect(screen.getByTestId("overleaf-import-done")).toBeEnabled());
     fireEvent.click(screen.getByTestId("overleaf-import-done"));
     expect(onDone).toHaveBeenCalledOnce();
@@ -312,6 +313,38 @@ describe("OverleafImportView", () => {
     expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
   });
 
+  it("switches between two signed-in accounts and lists each one's projects", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const bea = { userId: "u-bea", email: "bea@lab.org" };
+    const asAda = { server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada, bea] };
+    const asBea = { ...asAda, email: bea.email, userId: bea.userId, accounts: [bea, ada] };
+    api.overleafStatus.mockResolvedValue(asAda);
+    api.overleafListProjects.mockImplementation(async (_server: string, account: string | null) => ({
+      status: account === "u-bea" ? asBea : asAda,
+      projects: account === "u-bea" ? [project("z9", "Lab notes")] : PROJECTS,
+    }));
+    api.overleafUseAccount.mockResolvedValue(asBea);
+    const user = userEvent.setup();
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    expect(await screen.findByText("Thesis")).toBeInTheDocument();
+    expect(api.overleafListProjects).toHaveBeenLastCalledWith(SERVER, "u-ada");
+    const picker = screen.getByTestId("overleaf-account-picker");
+    expect(picker).toHaveTextContent("ada@uni.edu");
+    await user.click(picker);
+    await user.click(await screen.findByRole("option", { name: "bea@lab.org" }));
+    expect(api.overleafUseAccount).toHaveBeenCalledWith(SERVER, "u-bea");
+    expect(await screen.findByText("Lab notes")).toBeInTheDocument();
+    expect(screen.queryByText("Thesis")).not.toBeInTheDocument();
+    expect(api.overleafListProjects).toHaveBeenLastCalledWith(SERVER, "u-bea");
+  });
+
+  it("shows no account picker with one account", async () => {
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    expect(await screen.findByText("Thesis")).toBeInTheDocument();
+    expect(screen.queryByTestId("overleaf-account-picker")).not.toBeInTheDocument();
+    expect(screen.getByText("Signed in as ada@uni.edu")).toBeInTheDocument();
+  });
+
   it("offers a retry when the list cannot load", async () => {
     api.overleafListProjects.mockRejectedValueOnce(new Error("socket hang up"));
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
@@ -319,6 +352,18 @@ describe("OverleafImportView", () => {
     expect(screen.getByText(/socket hang up/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
+  });
+
+  it("lets another server be chosen when the saved one cannot be reached", async () => {
+    api.overleafListProjects.mockRejectedValueOnce(new Error("connection refused"));
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Oleafly could not load your Overleaf projects.");
+    fireEvent.click(screen.getByTestId("overleaf-change-server"));
+    fireEvent.change(screen.getByTestId("overleaf-server-input"), { target: { value: "https://latex.uni.edu" } });
+    api.overleafStatus.mockResolvedValue({ server: "https://latex.uni.edu", signedIn: false, email: null });
+    fireEvent.click(screen.getByRole("button", { name: "Use this server" }));
+    await waitFor(() => expect(api.overleafStatus).toHaveBeenLastCalledWith("https://latex.uni.edu"));
+    expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
   });
 
   it("names a page it cannot read and suggests the zip instead", async () => {

@@ -515,7 +515,8 @@
       "open": "跟隨開啟的檔案",
       "main": "一律編譯主要文件",
       "change": "變更主要文件…"
-    }
+    },
+    "filling": "專案仍在從 Overleaf 下載。所有檔案都下載完成後即可編譯。"
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -1669,6 +1670,7 @@
     "open": "在 Overleaf 中開啟",
     "share": "在 Overleaf 上分享…",
     "signIn": "登入…",
+    "signInAs": "以 {{email}} 身分登入",
     "reconnectingIn": "{{seconds}} 秒後重試。",
     "notConfirmed": "Overleaf 尚未確認。",
     "copyDetails": "複製連線詳細資料",

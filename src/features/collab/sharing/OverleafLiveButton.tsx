@@ -46,12 +46,13 @@ function useOverleafWords(state: SyncState): { words: string; plain: string; not
   const { t } = useTranslation(["shell"]);
   const pending = useCollabLiveStore((live) => live.pending);
   const refused = useCollabLiveStore((live) => live.refused);
+  const refusedParams = useCollabLiveStore((live) => live.refusedParams);
   const slowAck = useOverleafNotices((notices) => notices.slowAck);
   const until = useRetryUntil();
   const plain = useSyncWords(state, pending);
   const words = useLiveWords(state, plain);
   const notes: string[] = [];
-  if (refused) notes.push(collabErrorMessage(refused));
+  if (refused) notes.push(collabErrorMessage(refused, undefined, refusedParams));
   if (slowAck) notes.push(t(($) => $.shell.overleafLive.notConfirmed));
   const dropped = state === "offline" || state === "reconnecting";
   return { words, plain, notes, retryUntil: dropped ? until : null };
@@ -201,7 +202,9 @@ export function OverleafLiveButton() {
               onSelect={() => useSettingsStore.getState().openSettingsAt("integrations")}
             >
               <LogIn className="size-4 text-muted-foreground" />
-              {t(($) => $.shell.overleafLive.signIn)}
+              {link.account?.email
+                ? t(($) => $.shell.overleafLive.signInAs, { email: link.account.email })
+                : t(($) => $.shell.overleafLive.signIn)}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem data-testid="overleaf-live-open" onSelect={() => void openOverleafProject(link)}>

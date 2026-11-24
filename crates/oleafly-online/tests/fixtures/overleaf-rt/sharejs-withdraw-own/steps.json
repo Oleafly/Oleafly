@@ -1,0 +1,939 @@
+{
+  "doc": "6b04e292cb4fe3a455d4cfcc",
+  "format": "sharejs-text-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "alice types the base text",
+      "who": "alice",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e292cb4fe3a455d4cfcc",
+              "op": [
+                {
+                  "p": 0,
+                  "i": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n"
+                }
+              ],
+              "v": 0,
+              "hash": "9da3e1274d7067d00ac34af4e0711a6f83025a0f"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 629,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 769,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 811,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 811,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "carol suggests inserting \"MINE \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 1,
+        "op": [
+          {
+            "p": 10,
+            "i": "MINE "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e299c0ffee0001"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e299c0ffee0001000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 2,
+        "text": "Keep this MINE sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e299c0ffee0001000001",
+              "op": {
+                "p": 10,
+                "i": "MINE "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:25.580Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "carol deletes her own insert \"MINE \" with meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 2,
+        "op": [
+          {
+            "p": 10,
+            "d": "MINE "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e29cc0ffee0002"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": [
+          "6b04e299c0ffee0001000001"
+        ]
+      },
+      "server": {
+        "version": 3,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "carol suggests deleting \"word \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 3,
+        "op": [
+          {
+            "p": 32,
+            "d": "word "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e29fc0ffee0003"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e29fc0ffee0003000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 4,
+        "text": "Keep this sentence. Remove this please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e29fc0ffee0003000001",
+              "op": {
+                "p": 32,
+                "d": "word "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:31.412Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "carol re-inserts her own deleted \"word \" with u and meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 4,
+        "op": [
+          {
+            "p": 32,
+            "i": "word ",
+            "u": true
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2a2c0ffee0004"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 4,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": [
+          "6b04e29fc0ffee0003000001"
+        ]
+      },
+      "server": {
+        "version": 5,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "carol suggests deleting \"change \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 5,
+        "op": [
+          {
+            "p": 61,
+            "d": "change "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2a5c0ffee0005"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 5,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e2a5c0ffee0005000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 6,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 61,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "carol re-inserts \"change \" with meta.tc but without u",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 6,
+        "op": [
+          {
+            "p": 61,
+            "i": "change "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2a8c0ffee0006"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 6,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e2a8c0ffee0006000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "carol re-inserts the still-deleted \"change \" with u but without meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 7,
+        "op": [
+          {
+            "p": 68,
+            "i": "change ",
+            "u": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "carol deletes her own tracked insert \"change \" without meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 7,
+        "op": [
+          {
+            "p": 61,
+            "d": "change "
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "carol suggests inserting \"PARTIAL \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 7,
+        "op": [
+          {
+            "p": 74,
+            "i": "PARTIAL "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2b1c0ffee0007"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 7,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e2b1c0ffee0007000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 8,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nPARTIAL Third line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            },
+            {
+              "id": "6b04e2b1c0ffee0007000001",
+              "op": {
+                "p": 74,
+                "i": "PARTIAL "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:49.206Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 11,
+      "label": "carol deletes \"TIA\" from the middle of her own insert with meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 8,
+        "op": [
+          {
+            "p": 77,
+            "d": "TIA"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2b4c0ffee0008"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 8,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 9,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nPARL Third line with more words.\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            },
+            {
+              "id": "6b04e2b1c0ffee0007000001",
+              "op": {
+                "p": 74,
+                "i": "PARL "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:49.206Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 12,
+      "label": "carol suggests deleting \"more words\"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 9,
+        "op": [
+          {
+            "p": 95,
+            "d": "more words"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2b7c0ffee0009"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 9,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [
+          "6b04e2b7c0ffee0009000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 10,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nPARL Third line with .\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            },
+            {
+              "id": "6b04e2b1c0ffee0007000001",
+              "op": {
+                "p": 74,
+                "i": "PARL "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:49.206Z"
+              }
+            },
+            {
+              "id": "6b04e2b7c0ffee0009000001",
+              "op": {
+                "p": 95,
+                "d": "more words"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:55.068Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 13,
+      "label": "carol re-inserts only \"more \" of her deleted \"more words\" with u and meta.tc",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e292cb4fe3a455d4cfcc",
+        "v": 10,
+        "op": [
+          {
+            "p": 95,
+            "i": "more ",
+            "u": true
+          }
+        ],
+        "meta": {
+          "tc": "6b04e2b9c0ffee000a"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 10,
+          "doc": "6b04e292cb4fe3a455d4cfcc"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 11,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nPARL Third line with more .\nFourth line to accept.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e2a8c0ffee0006000001",
+              "op": {
+                "p": 61,
+                "i": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:40.135Z"
+              }
+            },
+            {
+              "id": "6b04e2a5c0ffee0005000001",
+              "op": {
+                "p": 68,
+                "d": "change "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:37.215Z"
+              }
+            },
+            {
+              "id": "6b04e2b1c0ffee0007000001",
+              "op": {
+                "p": 74,
+                "i": "PARL "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:49.206Z"
+              }
+            },
+            {
+              "id": "6b04e2b7c0ffee0009000001",
+              "op": {
+                "p": 100,
+                "d": "words"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:04:55.068Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

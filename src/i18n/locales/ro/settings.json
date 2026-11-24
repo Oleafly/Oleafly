@@ -1977,7 +1977,12 @@
       "signedIn": "Autentificat pe {{server}}",
       "signOut": "Deconectează-te",
       "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
+      "addAccount": "Adaugă alt cont",
+      "addAccountHint": "Fereastra de autentificare pornește de la zero, așa că te poți autentifica cu orice cont. Autentificarea cu un browser sau copierea autentificării unui browser folosește contul cu care este autentificat acel browser.",
+      "accountPick": "Cont pentru import",
+      "accountPickDescription": "Importurile noi și șabloanele folosesc acest cont. Proiectele pe care le ai deja păstrează contul din care provin.",
       "gitTitle": "Token Git pentru sincronizare",
+      "gitTitleFor": "Token Git pentru {{email}}",
       "gitSaved": "Un token Git este salvat. Proiectele pe care le asociezi rămân sincronizate cu Overleaf.",
       "gitMissing": "Niciun token Git încă. Creează unul la Integrare Git în setările contului tău Overleaf ca să sincronizezi proiecte.",
       "gitOpenSettings": "Deschide setările contului Overleaf",
@@ -2353,6 +2358,7 @@
       "confirm": "Șterge cuvintele",
       "descriptionFallback": "Aceasta elimină toți termenii din acest dicționar. Ei vor fi verificați din nou imediat.",
       "descriptionGlobal": "Aceasta elimină toți termenii din dicționarul global. Ei vor fi verificați din nou imediat.",
+      "descriptionOverleaf": "Sunt eliminați și din contul tău Overleaf.",
       "descriptionProject": "Aceasta elimină toți termenii din {{project}}. Ei vor fi verificați din nou imediat.",
       "descriptionSuppressed": "Aceasta elimină toți termenii din rezultatele ignorate în {{project}}. Ei vor fi verificați din nou imediat.",
       "suppressedConfirm": "Arată-le din nou",
@@ -2371,6 +2377,7 @@
     },
     "global": {
       "emptyDescription": "Cuvintele pe care le adaugi aici sunt sărite de corector în toate proiectele.",
+      "overleafSynced": "Sincronizat cu cuvintele învățate din contul tău Overleaf cât timp un proiect este live în Overleaf.",
       "scope": "Se aplică fiecărui proiect"
     },
     "intro": "Adaugă cuvinte în dicționarul tău personal de verificare ortografică. Aceste cuvinte se păstrează în setările locale și sunt ignorate în toate proiectele. Potrivirea se face normalizat Unicode și fără să țină cont de majuscule.",

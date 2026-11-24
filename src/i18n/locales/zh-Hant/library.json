@@ -336,6 +336,7 @@
       "saveServer": "使用這個伺服器",
       "signedInAs": "已以 {{email}} 的身分登入",
       "signedIn": "已登入 Overleaf",
+      "accountPick": "Overleaf 帳號",
       "signOut": "登出",
       "searchLabel": "搜尋 Overleaf 專案",
       "searchPlaceholder_other": "搜尋 {{count}} 個專案",
@@ -354,6 +355,8 @@
       "import_other": "匯入 {{count}} 個專案",
       "imported": "已匯入",
       "open": "開啟",
+      "openLive": "開啟即時編輯",
+      "opening": "正在開啟",
       "ownedByYou": "我的",
       "owner": "擁有者：{{name}}",
       "archived": "已封存",
@@ -367,6 +370,36 @@
         "downloading": "正在下載 {{percent}}%",
         "downloadingUnknown": "正在下載",
         "importing": "正在設定"
+      },
+      "invitations": {
+        "title": "邀請",
+        "from": "來自 {{name}}",
+        "join": "加入",
+        "joined": "你已加入這個專案"
+      },
+      "link": {
+        "checking": "正在檢查連結",
+        "unnamed": "Overleaf 上的一個專案",
+        "join": "加入",
+        "importInstead": "匯入",
+        "grants": {
+          "edit": "加入後，你可以作為協作者編輯它。",
+          "view": "加入後，你只能檢視它。透過連結檢視的人無法使用留言或聊天。",
+          "already": "你已經有這個專案了。",
+          "invite": "加入即表示接受邀請。"
+        }
+      },
+      "put": {
+        "menu": "上傳到 Overleaf",
+        "title": "上傳到 Overleaf",
+        "description": "Oleafly 會將這個專案上傳為新的 Overleaf 專案，然後在你即時編輯時讓兩者保持同步。",
+        "name": "在 Overleaf 上的名稱",
+        "account": "Overleaf 帳號",
+        "submit": "上傳到 Overleaf",
+        "working": "上傳中",
+        "signedOut": "請先在設定中登入 Overleaf。",
+        "openSettings": "開啟設定",
+        "cancel": "取消"
       }
     }
   },

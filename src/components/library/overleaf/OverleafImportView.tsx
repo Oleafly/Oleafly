@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { RotateCw, Search } from "lucide-react";
@@ -8,18 +8,21 @@ import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
 import { LINK_BUTTON, OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
+import { OverleafInvitations, OverleafLinkCard } from "@/components/library/overleaf/OverleafJoin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
-import { isOverleafError, type OverleafProject } from "@/lib/overleaf";
+import { isOverleafError, looksLikeOverleafLink, type OverleafProject } from "@/lib/overleaf";
+import { importAndRefresh, openLiveAndRefresh } from "@/lib/overleaf-open";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { cn, isLinux } from "@/lib/utils";
-import { useFilesStore } from "@/store/files";
 import { useOverleafImportStore, type OverleafRowProgress } from "@/store/overleaf-import";
+import { useSettingsStore } from "@/store/settings";
 
 type Filter = "all" | "owned" | "shared";
 type LibraryTranslate = ReturnType<typeof useTranslation<["library"]>>["t"];
@@ -88,13 +91,6 @@ function matches(project: OverleafProject, filter: Filter, needle: string): bool
   return `${project.name} ${project.ownerName ?? ""}`.toLocaleLowerCase().includes(needle);
 }
 
-async function importAndRefresh(ids?: readonly string[]): Promise<void> {
-  const outcomes = await useOverleafImportStore.getState().importSelected(ids);
-  if (outcomes.some((outcome) => outcome.projectId)) {
-    await useFilesStore.getState().refreshProjects();
-  }
-}
-
 function retryImport(id: string): void {
   void importAndRefresh([id]);
 }
@@ -148,6 +144,7 @@ function ErrorState() {
         <RotateCw aria-hidden className="size-3.5" />
         {t(($) => $.library.import.tryAgain)}
       </Button>
+      <OverleafServerField onChanged={() => void open()} />
     </div>
   );
 }
@@ -156,16 +153,19 @@ function ProjectPicker({ onOpenProject }: Readonly<{ onOpenProject: (projectId: 
   const projects = useOverleafImportStore((state) => state.projects);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const link = looksLikeOverleafLink(query) ? query.trim() : null;
   const visible = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
+    const needle = link ? "" : query.trim().toLocaleLowerCase();
     return projects.filter((project) => matches(project, filter, needle));
-  }, [projects, query, filter]);
+  }, [projects, query, filter, link]);
 
   return (
     <div data-testid="overleaf-import-view" className="flex min-h-0 flex-1 flex-col gap-3">
       <PickerToolbar query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} total={projects.length} />
       <SelectionBar visibleIds={visible.filter((project) => !project.importedAs).map((project) => project.id)} />
-      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+      <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1">
+        {link ? <OverleafLinkCard key={link} link={link} onOpenProject={onOpenProject} /> : null}
+        <OverleafInvitations onOpenProject={onOpenProject} />
         <ProjectArea projects={projects} visible={visible} onOpenProject={onOpenProject} />
       </div>
       <PickerFooter />
@@ -230,6 +230,9 @@ function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
   const selected = useOverleafImportStore((state) => state.selected);
   const importing = useOverleafImportStore((state) => state.importing);
   const email = useOverleafImportStore((state) => state.status?.email ?? null);
+  const userId = useOverleafImportStore((state) => state.status?.userId ?? null);
+  const accounts = useOverleafImportStore((state) => state.status?.accounts) ?? [];
+  const chooseAccount = useOverleafImportStore((state) => state.chooseAccount);
   const setSelected = useOverleafImportStore((state) => state.setSelected);
   const signOut = useOverleafImportStore((state) => state.signOut);
   const chosen = new Set(selected);
@@ -253,11 +256,30 @@ function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
           : t(($) => $.library.import.overleaf.selectAll)}
       </button>
       <span className="flex items-center gap-2">
-        <span className="truncate">
-          {email
-            ? t(($) => $.library.import.overleaf.signedInAs, { email })
-            : t(($) => $.library.import.overleaf.signedIn)}
-        </span>
+        {accounts.length > 1 ? (
+          <Select value={userId ?? undefined} onValueChange={(value) => void chooseAccount(value)} disabled={importing}>
+            <SelectTrigger
+              className="h-7 w-[220px] text-xs"
+              data-testid="overleaf-account-picker"
+              aria-label={t(($) => $.library.import.overleaf.accountPick)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((account) => (
+                <SelectItem key={account.userId} value={account.userId} className="text-xs">
+                  {account.email ?? account.userId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="truncate">
+            {email
+              ? t(($) => $.library.import.overleaf.signedInAs, { email })
+              : t(($) => $.library.import.overleaf.signedIn)}
+          </span>
+        )}
         <button
           type="button"
           data-testid="overleaf-sign-out"
@@ -288,6 +310,8 @@ function ProjectArea({
   const progress = useOverleafImportStore((state) => state.progress);
   const importing = useOverleafImportStore((state) => state.importing);
   const toggle = useOverleafImportStore((state) => state.toggle);
+  const live = useSettingsStore((state) => state.overleafLive);
+  const openLive = useCallback((id: string) => void openLiveAndRefresh(id, onOpenProject), [onOpenProject]);
 
   if (projects.length === 0) {
     return <p className="py-10 text-center text-sm text-muted-foreground">{t(($) => $.library.import.overleaf.empty)}</p>;
@@ -307,6 +331,7 @@ function ProjectArea({
     onToggle: project.importedAs ? undefined : toggle,
     onOpen: onOpenProject,
     onRetry: retryImport,
+    onOpenLive: live && !importing ? openLive : undefined,
   });
   if (layout === "grid") {
     return (
@@ -414,6 +439,7 @@ type ItemProps = Readonly<{
   onToggle?: (id: string) => void;
   onOpen: (projectId: string) => void;
   onRetry: (id: string) => void;
+  onOpenLive?: (id: string) => void;
 }>;
 
 function ProjectStatus({
@@ -421,14 +447,24 @@ function ProjectStatus({
   progress,
   onOpen,
   onRetry,
+  onOpenLive,
 }: Readonly<{
   project: OverleafProject;
   progress: OverleafRowProgress | undefined;
   onOpen: (projectId: string) => void;
-  onRetry: () => void;
+  onRetry: (id: string) => void;
+  onOpenLive?: (id: string) => void;
 }>) {
   const { t } = useTranslation(["library"]);
   const testId = `overleaf-status-${project.id}`;
+  if (progress?.phase === "opening") {
+    return (
+      <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Spinner size="sm" />
+        {t(($) => $.library.import.overleaf.opening)}
+      </span>
+    );
+  }
   if (progress?.phase === "queued") {
     return <span data-testid={testId} className="text-xs text-muted-foreground">{t(($) => $.library.import.overleaf.progress.queued)}</span>;
   }
@@ -457,14 +493,30 @@ function ProjectStatus({
         <span className="max-w-56 truncate text-destructive" title={describeError(progress.error)}>
           {describeError(progress.error)}
         </span>
-        <button type="button" onClick={onRetry} className={LINK_BUTTON}>
+        <button
+          type="button"
+          onClick={() => (progress.opening ? onOpenLive?.(project.id) : onRetry(project.id))}
+          className={LINK_BUTTON}
+        >
           {t(($) => $.library.import.tryAgain)}
         </button>
       </span>
     );
   }
   const imported = importedId(project, progress);
-  if (!imported) return null;
+  if (!imported) {
+    if (!onOpenLive) return null;
+    return (
+      <button
+        type="button"
+        data-testid={`overleaf-open-live-${project.id}`}
+        onClick={() => onOpenLive(project.id)}
+        className={cn(LINK_BUTTON, "text-xs")}
+      >
+        {t(($) => $.library.import.overleaf.openLive)}
+      </button>
+    );
+  }
   return (
     <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <CheckBadge tone="success" />
@@ -480,7 +532,7 @@ function importedId(project: OverleafProject, progress: OverleafRowProgress | un
   return progress?.phase === "done" ? progress.projectId : project.importedAs;
 }
 
-const ProjectRow = memo(function ProjectRow({ project, mode, checked, named, progress, busy, onToggle, onOpen, onRetry }: ItemProps) {
+const ProjectRow = memo(function ProjectRow({ project, mode, checked, named, progress, busy, onToggle, onOpen, onRetry, onOpenLive }: ItemProps) {
   const { t } = useTranslation(["library"]);
   const picking = mode === "pick";
   const details = [ownerLabel(t, project), editedLabel(project)].filter(Boolean).join(" · ");
@@ -515,13 +567,13 @@ const ProjectRow = memo(function ProjectRow({ project, mode, checked, named, pro
         <div className="min-w-0 flex-1">{text}</div>
       )}
       {project.archived ? <Badge variant="outline" size="sm">{t(($) => $.library.import.overleaf.archived)}</Badge> : null}
-      <ProjectStatus project={project} progress={progress} onOpen={onOpen} onRetry={() => onRetry(project.id)} />
+      <ProjectStatus project={project} progress={progress} onOpen={onOpen} onRetry={onRetry} onOpenLive={onOpenLive} />
       {picking && checked ? <CheckBadge /> : null}
     </li>
   );
 });
 
-const ProjectBook = memo(function ProjectBook({ project, mode, checked, named, progress, busy, onToggle, onOpen, onRetry }: ItemProps) {
+const ProjectBook = memo(function ProjectBook({ project, mode, checked, named, progress, busy, onToggle, onOpen, onRetry, onOpenLive }: ItemProps) {
   const { t } = useTranslation(["library"]);
   const picking = mode === "pick";
   const imported = importedId(project, progress);
@@ -543,7 +595,7 @@ const ProjectBook = memo(function ProjectBook({ project, mode, checked, named, p
           badge={picking && checked ? <CheckBadge className="size-[1.125rem] shadow-sm [&_svg]:size-2.5" /> : undefined}
         />
       </div>
-      <ProjectStatus project={project} progress={progress} onOpen={onOpen} onRetry={() => onRetry(project.id)} />
+      <ProjectStatus project={project} progress={progress} onOpen={onOpen} onRetry={onRetry} onOpenLive={onOpenLive} />
     </div>
   );
 });

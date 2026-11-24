@@ -1,24 +1,47 @@
+use std::collections::HashSet;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Args;
-use notify::{Config, Event, EventKind, PollWatcher, RecursiveMode, Watcher};
+use notify::event::ModifyKind;
+use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
 use oleafly_core::engine_spec::EngineFlags;
 use oleafly_core::exclude::is_quietly_ignored_name;
 use oleafly_core::{is_generated_directory, Engine};
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
 use super::common::{build_json, print_build, CliCompiler};
 use super::CommandModule;
-use crate::contract::{path_arg, CliError, Context, ErrorKind, Exit, LogMode, Outcome, Warning};
+use crate::contract::{
+    event_line, path_arg, CliError, Context, ErrorKind, Exit, LogMode, Outcome, Warning,
+};
 use crate::engine::{build_opened, open_project, output_destination, BuildRequest, OpenedProject};
 use crate::native::{ignored_flags, CompilerLog};
 
 pub const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(300);
+const FALLBACK_POLL: Duration = Duration::from_secs(1);
+const FORCED_POLL: Duration = Duration::from_millis(100);
+
+type WatchEvents = mpsc::UnboundedSender<notify::Result<Event>>;
+
+pub(crate) struct FolderWatcher {
+    _watcher: Box<dyn Watcher + Send>,
+    native_failure: Option<notify::Error>,
+}
+
+impl FolderWatcher {
+    pub(crate) fn fallback_warning(&self) -> Option<String> {
+        self.native_failure.as_ref().map(|error| {
+            format!(
+                "Oleafly checks the project for changes every second, because the system's file watcher failed: {error}"
+            )
+        })
+    }
+}
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Commands {
@@ -114,13 +137,7 @@ fn request_for(ctx: &Context, args: &BuildArgs) -> BuildRequest {
         let command = ctx.command();
         Arc::new(move || {
             if events {
-                let line = json!({
-                    "schema_version": crate::contract::SCHEMA_VERSION,
-                    "type": "event",
-                    "command": command,
-                    "event": "lock_wait",
-                });
-                crate::human::out_line(&line.to_string());
+                crate::human::out_line(&event_line(command, "lock_wait", Value::Null));
             } else if !json && !quiet {
                 crate::human::note("Waiting for another Oleafly build of this project to finish.");
             }
@@ -194,15 +211,15 @@ async fn run_build(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
 }
 
 async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> {
-    let mut stop = Box::pin(crate::stop_requested());
+    let mut stop = Box::pin(crate::daemon::serve::termination());
     let opened = open(ctx, &args)?;
     crate::engine::typst_variant(&opened.workspace, args.variant.as_deref())?;
     let root = opened.workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
-    let mut watcher = create_watcher(sender)?;
-    watcher
-        .watch(&root, RecursiveMode::Recursive)
-        .map_err(notify_error)?;
+    let watcher = create_watcher(&root, sender)?;
+    if let Some(warning) = watcher.fallback_warning() {
+        ctx.warn("watch.polling", warning);
+    }
     ctx.stream_event(
         "watching",
         json!({"ok": true, "project": opened.workspace.info()?, "warnings": ctx.warnings()}),
@@ -246,23 +263,97 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
     }
 }
 
-fn create_watcher(
-    sender: mpsc::UnboundedSender<notify::Result<Event>>,
-) -> Result<Box<dyn Watcher + Send>, CliError> {
-    let handler = move |event| {
-        let _ = sender.send(event);
-    };
+pub(crate) fn create_watcher(root: &Path, events: WatchEvents) -> Result<FolderWatcher, CliError> {
     if std::env::var_os("OLEAFLY_WATCH_POLL").is_some() {
-        PollWatcher::new(
-            handler,
-            Config::default().with_poll_interval(Duration::from_millis(100)),
-        )
-        .map(|watcher| Box::new(watcher) as Box<dyn Watcher + Send>)
-        .map_err(notify_error)
-    } else {
-        notify::recommended_watcher(handler)
-            .map(|watcher| Box::new(watcher) as Box<dyn Watcher + Send>)
-            .map_err(notify_error)
+        return polling(root, events, FORCED_POLL, None);
+    }
+    native_or_polling(root, events, native_watcher)
+}
+
+fn native_watcher(root: &Path, events: WatchEvents) -> notify::Result<Box<dyn Watcher + Send>> {
+    let mut watcher = RecommendedWatcher::new(
+        move |event| {
+            let _ = events.send(event);
+        },
+        Config::default().with_follow_symlinks(false),
+    )?;
+    watcher.watch(root, RecursiveMode::Recursive)?;
+    Ok(Box::new(watcher))
+}
+
+fn native_or_polling(
+    root: &Path,
+    events: WatchEvents,
+    native: impl FnOnce(&Path, WatchEvents) -> notify::Result<Box<dyn Watcher + Send>>,
+) -> Result<FolderWatcher, CliError> {
+    match native(root, events.clone()) {
+        Ok(watcher) => Ok(FolderWatcher {
+            _watcher: watcher,
+            native_failure: None,
+        }),
+        Err(error) if out_of_watches(&error) => polling(root, events, FALLBACK_POLL, Some(error)),
+        Err(error) => Err(notify_error(error)),
+    }
+}
+
+fn out_of_watches(error: &notify::Error) -> bool {
+    match &error.kind {
+        notify::ErrorKind::MaxFilesWatch | notify::ErrorKind::Generic(_) => true,
+        notify::ErrorKind::Io(io) => {
+            io.kind() == std::io::ErrorKind::OutOfMemory || out_of_handles(io)
+        }
+        _ => false,
+    }
+}
+
+#[cfg(unix)]
+fn out_of_handles(error: &std::io::Error) -> bool {
+    matches!(
+        error.raw_os_error(),
+        Some(libc::EMFILE | libc::ENFILE | libc::ENOSPC)
+    )
+}
+
+#[cfg(not(unix))]
+fn out_of_handles(_: &std::io::Error) -> bool {
+    false
+}
+
+fn polling(
+    root: &Path,
+    events: WatchEvents,
+    every: Duration,
+    native_failure: Option<notify::Error>,
+) -> Result<FolderWatcher, CliError> {
+    let mut watcher = PollWatcher::new(
+        each_error_once(root, events),
+        Config::default()
+            .with_poll_interval(every)
+            .with_follow_symlinks(false),
+    )
+    .map_err(notify_error)?;
+    watcher
+        .watch(root, RecursiveMode::Recursive)
+        .map_err(notify_error)?;
+    Ok(FolderWatcher {
+        _watcher: Box::new(watcher),
+        native_failure,
+    })
+}
+
+fn each_error_once(
+    root: &Path,
+    events: WatchEvents,
+) -> impl FnMut(notify::Result<Event>) + Send + 'static {
+    let root = root.to_path_buf();
+    let mut reported = HashSet::new();
+    move |event| {
+        if let Err(error) = &event {
+            if !vanished_during_scan(error, &root) && !reported.insert(error.to_string()) {
+                return;
+            }
+        }
+        let _ = events.send(event);
     }
 }
 
@@ -330,7 +421,10 @@ pub(crate) fn relevant_event(event: &Event, root: &Path, output: Option<&Path>) 
 }
 
 fn folder_changed(kind: EventKind, path: &Path) -> bool {
-    matches!(kind, EventKind::Modify(_)) && path.is_dir()
+    matches!(
+        kind,
+        EventKind::Modify(ModifyKind::Data(_) | ModifyKind::Metadata(_) | ModifyKind::Any)
+    ) && path.is_dir()
 }
 
 fn written_by_oleafly(path: &Path, root: &Path, output: Option<&Path>) -> bool {
@@ -373,7 +467,7 @@ pub(crate) fn ignored_path(path: &Path, root: &Path) -> bool {
     })
 }
 
-fn vanished_during_scan(error: &notify::Error, root: &Path) -> bool {
+pub(crate) fn vanished_during_scan(error: &notify::Error, root: &Path) -> bool {
     let not_found = matches!(&error.kind, notify::ErrorKind::Io(io) if io.kind() == std::io::ErrorKind::NotFound);
     not_found
         && !error.paths.is_empty()
@@ -409,7 +503,7 @@ fn watch_error_text(error: &CliError) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use notify::event::{AccessKind, CreateKind, ModifyKind, RemoveKind};
+    use notify::event::{AccessKind, CreateKind, RemoveKind};
 
     #[test]
     fn a_failed_watch_build_shows_the_hint_before_it_waits() {
@@ -521,7 +615,7 @@ mod tests {
     }
 
     #[test]
-    fn a_folders_own_time_moving_is_not_an_edit() {
+    fn a_folders_own_time_moving_is_not_an_edit_but_its_rename_is() {
         use notify::event::MetadataKind;
         let project = tempfile::tempdir().unwrap();
         let root = project.path();
@@ -537,6 +631,26 @@ mod tests {
             root,
             None
         ));
+        for kind in [
+            ModifyKind::Any,
+            ModifyKind::Data(notify::event::DataChange::Content),
+        ] {
+            assert!(!relevant_event(
+                &Event::new(EventKind::Modify(kind)).add_path(root.join("out")),
+                root,
+                None
+            ));
+        }
+        for mode in [
+            notify::event::RenameMode::Any,
+            notify::event::RenameMode::To,
+        ] {
+            assert!(relevant_event(
+                &Event::new(EventKind::Modify(ModifyKind::Name(mode))).add_path(root.join("out")),
+                root,
+                None
+            ));
+        }
     }
 
     #[test]
@@ -611,10 +725,94 @@ mod tests {
         ));
     }
 
+    #[tokio::test]
+    async fn the_watcher_falls_back_to_polling() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        let file = root.join("main.tex");
+        std::fs::write(&file, "before").unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&file)
+            .unwrap()
+            .set_modified(std::time::SystemTime::now() - Duration::from_secs(60))
+            .unwrap();
+        let (native_events, _native_received) = mpsc::unbounded_channel();
+        let native = native_or_polling(root, native_events, native_watcher).unwrap();
+        assert!(native.fallback_warning().is_none());
+        let (events, mut received) = mpsc::unbounded_channel();
+        let watcher = native_or_polling(root, events, |_, _| {
+            Err(notify::Error::new(notify::ErrorKind::MaxFilesWatch))
+        })
+        .unwrap();
+        let warning = watcher.fallback_warning().unwrap();
+        assert!(warning.contains("OS file watch limit reached"), "{warning}");
+        let (refused_events, _refused_received) = mpsc::unbounded_channel();
+        let Err(refused) = native_or_polling(root, refused_events, |_, _| {
+            Err(
+                notify::Error::io(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                    .add_path(root.join("private")),
+            )
+        }) else {
+            panic!("an unreadable folder fell back to polling");
+        };
+        assert_eq!(refused.code, "watch.failed");
+        #[cfg(unix)]
+        assert!(out_of_watches(&notify::Error::io(
+            std::io::Error::from_raw_os_error(libc::EMFILE)
+        )));
+        std::fs::write(&file, "after").unwrap();
+        let seen = tokio::time::timeout(Duration::from_secs(20), async {
+            while let Some(event) = received.recv().await {
+                if event.is_ok_and(|event| {
+                    relevant_event(&event, root, None) && event.paths.contains(&file)
+                }) {
+                    return true;
+                }
+            }
+            false
+        })
+        .await;
+        assert_eq!(seen, Ok(true), "polling never saw the edit");
+    }
+
     #[test]
-    fn watcher_errors_keep_context_and_stable_kinds() {
-        let watcher = notify_error(notify::Error::generic("backend unavailable"));
-        assert_eq!(watcher.kind, ErrorKind::Io);
-        assert!(watcher.message.contains("backend unavailable"));
+    fn a_poller_reports_each_lasting_error_once() {
+        let root = Path::new("/project");
+        let (events, mut received) = mpsc::unbounded_channel();
+        let mut forward = each_error_once(root, events);
+        let denied = || {
+            notify::Error::io(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                .add_path(root.join("private"))
+        };
+        let vanished = || {
+            notify::Error::io(std::io::Error::from(std::io::ErrorKind::NotFound))
+                .add_path(root.join("main.aux"))
+        };
+        for _ in 0..3 {
+            forward(Err(denied()));
+            forward(Err(vanished()));
+            forward(Ok(
+                Event::new(EventKind::Any).add_path(root.join("main.tex"))
+            ));
+        }
+        let mut errors = Vec::new();
+        let mut changes = 0;
+        while let Ok(event) = received.try_recv() {
+            match event {
+                Ok(_) => changes += 1,
+                Err(error) => errors.push(error.to_string()),
+            }
+        }
+        assert_eq!(changes, 3);
+        assert_eq!(
+            errors,
+            [
+                denied().to_string(),
+                vanished().to_string(),
+                vanished().to_string(),
+                vanished().to_string()
+            ]
+        );
     }
 }

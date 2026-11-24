@@ -88,11 +88,11 @@ function ResolvedSummary({
   onToggle,
   ref,
 }: Readonly<{ thread: CommentThreadModel; expanded: boolean; onToggle: () => void; ref?: Ref<HTMLButtonElement> }>) {
-  const { labels } = useCommentKit();
+  const { labels, markdown } = useCommentKit();
   const replies = thread.messages.length - 1;
   const first = thread.messages[0];
   const opening = first && !first.deleted ? first.body : null;
-  const plain = useMemo(() => (opening === null ? null : commentPlainText(opening)), [opening]);
+  const plain = useMemo(() => (opening === null ? null : commentPlainText(opening, { markdown })), [opening, markdown]);
   return (
     <button
       ref={ref}

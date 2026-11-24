@@ -346,6 +346,7 @@
       "saveServer": "Folosește acest server",
       "signedInAs": "Autentificat ca {{email}}",
       "signedIn": "Autentificat în Overleaf",
+      "accountPick": "Cont Overleaf",
       "signOut": "Deconectează-te",
       "searchLabel": "Caută proiecte Overleaf",
       "searchPlaceholder_one": "Caută în {{count}} proiect",
@@ -370,6 +371,8 @@
       "import_other": "Importă {{count}} de proiecte",
       "imported": "Importat",
       "open": "Deschide",
+      "openLive": "Deschide live",
+      "opening": "Se deschide",
       "ownedByYou": "Al tău",
       "owner": "Proprietar: {{name}}",
       "archived": "Arhivat",
@@ -387,6 +390,36 @@
         "downloading": "Se descarcă {{percent}}%",
         "downloadingUnknown": "Se descarcă",
         "importing": "Se pregătește"
+      },
+      "invitations": {
+        "title": "Invitații",
+        "from": "Expeditor: {{name}}",
+        "join": "Alătură-te",
+        "joined": "Te-ai alăturat acestui proiect"
+      },
+      "link": {
+        "checking": "Se verifică linkul",
+        "unnamed": "Un proiect din Overleaf",
+        "join": "Alătură-te",
+        "importInstead": "Importă",
+        "grants": {
+          "edit": "Dacă te alături, îl poți edita ca colaborator.",
+          "view": "Dacă te alături, îl poți doar vizualiza. Cei care îl vizualizează printr-un link nu au comentarii sau chat.",
+          "already": "Ai deja acest proiect.",
+          "invite": "Dacă te alături, accepți invitația."
+        }
+      },
+      "put": {
+        "menu": "Încarcă în Overleaf",
+        "title": "Încarcă în Overleaf",
+        "description": "Oleafly încarcă acest proiect ca proiect Overleaf nou, apoi le păstrează sincronizate pe amândouă cât timp editezi live.",
+        "name": "Nume în Overleaf",
+        "account": "Cont Overleaf",
+        "submit": "Încarcă în Overleaf",
+        "working": "Se încarcă",
+        "signedOut": "Autentifică-te mai întâi în Overleaf din Setări.",
+        "openSettings": "Deschide Setările",
+        "cancel": "Anulează"
       }
     }
   },

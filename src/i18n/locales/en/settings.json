@@ -1961,7 +1961,12 @@
       "signedIn": "Signed in on {{server}}",
       "signOut": "Sign out",
       "signOutFailed": "Oleafly could not sign out of Overleaf.",
+      "addAccount": "Add another account",
+      "addAccountHint": "The sign-in window starts fresh, so you can sign in with any account. Signing in with a browser, or copying a browser's sign-in, uses the account that browser is signed in to.",
+      "accountPick": "Account for importing",
+      "accountPickDescription": "New imports and templates use this account. Projects you already have keep the account they came from.",
       "gitTitle": "Git token for sync",
+      "gitTitleFor": "Git token for {{email}}",
       "gitSaved": "A Git token is saved. Projects you link stay in sync with Overleaf.",
       "gitMissing": "No Git token yet. Create one under Git integration in your Overleaf account settings to sync projects.",
       "gitOpenSettings": "Open Overleaf account settings",
@@ -2333,6 +2338,7 @@
       "confirm": "Clear words",
       "descriptionFallback": "This removes all terms from this dictionary. They will be checked again immediately.",
       "descriptionGlobal": "This removes all terms from the global dictionary. They will be checked again immediately.",
+      "descriptionOverleaf": "They're removed from your Overleaf account too.",
       "descriptionProject": "This removes all terms from {{project}}. They will be checked again immediately.",
       "descriptionSuppressed": "This removes all terms from dismissed findings in {{project}}. They will be checked again immediately.",
       "suppressedConfirm": "Show again",
@@ -2350,6 +2356,7 @@
     },
     "global": {
       "emptyDescription": "Words you add here are skipped by the proofreader across every project.",
+      "overleafSynced": "Synced with the learned words on your Overleaf account while a project is live on Overleaf.",
       "scope": "Applies to every project"
     },
     "intro": "Add words to your personal spellcheck dictionary. These words are stored in local settings and ignored across projects. Matching is Unicode-normalized and case-insensitive.",

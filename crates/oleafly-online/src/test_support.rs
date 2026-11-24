@@ -1,3 +1,5 @@
+#[cfg(feature = "ce-e2e")]
+pub mod ce;
 pub mod history_ot_text;
 pub mod mock_overleaf;
 pub mod overleaf_rt;

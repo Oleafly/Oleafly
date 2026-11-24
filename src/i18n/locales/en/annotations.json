@@ -26,6 +26,10 @@
       "region": "Comment on this region…"
     },
     "placeHere": "Place here",
+    "coauthors": "Comment for coauthors",
+    "noSource": "This passage wasn't found in the source files.",
+    "commentFailed": "The file for this comment couldn't be opened.",
+    "commentsClosed": "Comments aren't available for this project right now.",
     "cancel": "Cancel",
     "save": "Add",
     "saving": "Saving",

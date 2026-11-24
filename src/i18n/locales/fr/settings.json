@@ -1977,7 +1977,12 @@
       "signedIn": "Connecté sur {{server}}",
       "signOut": "Se déconnecter",
       "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf.",
+      "addAccount": "Ajouter un autre compte",
+      "addAccountHint": "La fenêtre de connexion s'ouvre sans session existante, vous pouvez donc vous connecter avec n'importe quel compte. Se connecter avec un navigateur, ou copier la connexion d'un navigateur, utilise le compte auquel ce navigateur est connecté.",
+      "accountPick": "Compte pour l'import",
+      "accountPickDescription": "Les nouveaux imports et les modèles utilisent ce compte. Les projets que vous avez déjà gardent le compte d'où ils viennent.",
       "gitTitle": "Jeton Git pour la synchronisation",
+      "gitTitleFor": "Jeton Git pour {{email}}",
       "gitSaved": "Un jeton Git est enregistré. Les projets que vous liez restent synchronisés avec Overleaf.",
       "gitMissing": "Aucun jeton Git pour l'instant. Créez-en un dans la section Intégration Git des paramètres de votre compte Overleaf pour synchroniser des projets.",
       "gitOpenSettings": "Ouvrir les paramètres du compte Overleaf",
@@ -2353,6 +2358,7 @@
       "confirm": "Effacer les mots",
       "descriptionFallback": "Cela retire tous les termes de ce dictionnaire. Ils seront à nouveau vérifiés immédiatement.",
       "descriptionGlobal": "Cela retire tous les termes du dictionnaire global. Ils seront à nouveau vérifiés immédiatement.",
+      "descriptionOverleaf": "Ils sont aussi retirés de votre compte Overleaf.",
       "descriptionProject": "Cela retire tous les termes de {{project}}. Ils seront à nouveau vérifiés immédiatement.",
       "descriptionSuppressed": "Cela retire tous les termes des observations écartées dans {{project}}. Ils seront à nouveau vérifiés immédiatement.",
       "suppressedConfirm": "Afficher à nouveau",
@@ -2371,6 +2377,7 @@
     },
     "global": {
       "emptyDescription": "Les mots que vous ajoutez ici sont ignorés par le correcteur dans tous les projets.",
+      "overleafSynced": "Synchronisé avec les mots appris de votre compte Overleaf tant qu'un projet est en direct sur Overleaf.",
       "scope": "S'applique à tous les projets"
     },
     "intro": "Ajoutez des mots à votre dictionnaire orthographique personnel. Ces mots sont conservés dans les réglages locaux et ignorés dans tous les projets. La correspondance est normalisée en Unicode et insensible à la casse.",

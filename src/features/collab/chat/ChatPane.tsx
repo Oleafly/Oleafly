@@ -10,25 +10,27 @@ import { presenceText, TypingLine, useChatTyping } from "@/components/ui/comment
 import { chatGroups } from "@/components/ui/comments/comment-bubble";
 import { CommentItem } from "@/components/ui/comments/comment-item";
 import { Button } from "@/components/ui/button";
+import type { CommentMessageActions } from "@/components/ui/comments/comment-entry";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
 import { formatNumber } from "@/lib/intl";
-import type { CollabChatMessage, CollabPerson } from "@/lib/tauri";
+import type { CollabChatMessage } from "@/lib/tauri";
 import { useComments } from "../comments/comments-store";
 import { DesktopCommentKit, useMentionMembers } from "../comments/desktop-comment-kit";
 import { commentFailure } from "../comments/refusals";
 import { entryFor, useAuthorNames } from "../comments/ThreadCard";
 import { collabErrorMessage } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
-import { useCollabLiveStore } from "../live/live-store";
+import { liveSelfId, useCollabLiveStore } from "../live/live-store";
 import { sendPresenceActivity } from "../live/peer-activity";
-import { canChatProjectRole } from "../roles";
+import { type ListedPerson, peopleById } from "../people";
 import {
   chatDraft,
   clearChat,
   deleteChat,
+  editChat,
   keepChatDraft,
   loadChat,
   loadOlderChat,
@@ -48,24 +50,22 @@ function chatActivity(active: boolean): void {
   sendPresenceActivity(CHAT_SCOPE, active);
 }
 
-const CHAT_LIMIT = 4_000;
-
-const CHAT_ACTIONS = {
-  remove: deleteChat,
-  react: reactToChat,
-};
+const CHAT_ACTIONS: CommentMessageActions = { remove: deleteChat, react: reactToChat };
+const EDITABLE_CHAT_ACTIONS: CommentMessageActions = { ...CHAT_ACTIONS, edit: editChat };
 
 const MessageRow = memo(function MessageRow({
   message,
   person,
   canPost,
   reactions,
+  actions,
   continued,
 }: Readonly<{
   message: CollabChatMessage;
-  person: CollabPerson | undefined;
+  person: ListedPerson | undefined;
   canPost: boolean;
   reactions: boolean;
+  actions: CommentMessageActions;
   continued: boolean;
 }>) {
   const names = useAuthorNames();
@@ -76,7 +76,7 @@ const MessageRow = memo(function MessageRow({
       entry={entryFor(message, person, names)}
       canWrite={canPost}
       canReact={canPost && reactions}
-      actions={CHAT_ACTIONS}
+      actions={actions}
     />
   );
 });
@@ -110,6 +110,7 @@ function ProjectChat() {
   const chat = useChat(
     useShallow((state) => ({
       projectId: state.projectId,
+      status: state.status,
       messages: state.messages,
       phase: state.phase,
       error: state.error,
@@ -121,9 +122,8 @@ function ProjectChat() {
   const live = useCollabLiveStore(
     useShallow((state) => ({
       members: state.members,
-      role: state.role,
       liveState: state.status?.state ?? null,
-      self: state.share?.account_id ?? null,
+      self: liveSelfId(state),
     })),
   );
   const [clearing, setClearing] = useState(false);
@@ -134,21 +134,21 @@ function ProjectChat() {
   const placed = useRef(0);
   const now = useNow(TICK_MS);
   const members = useMentionMembers();
-  const people = useMemo(
-    () => new Map(live.members.map((member) => [member.person.account_id, member.person])),
-    [live.members],
-  );
+  const people = useMemo(() => peopleById(live.members), [live.members]);
   const connected = live.liveState !== null && live.liveState !== "ended";
-  const canPost = connected && canChatProjectRole(live.role);
-  const canClear = connected && live.role === "owner" && chat.messages.some((message) => !message.deleted);
+  const canPost = connected && chat.status?.post === true;
+  const canClear = connected && chat.status?.clear === true && chat.messages.some((message) => !message.deleted);
   const title = t(($) => $.collab.chat.title);
   const clearLabel = t(($) => $.collab.chat.clear);
-  const reactions = useComments((state) => state.status?.reactions === true);
+  const reactions = chat.status?.reactions === true;
+  const typing = useComments((state) => state.status?.typing === true);
+  const actions = chat.status?.edit ? EDITABLE_CHAT_ACTIONS : CHAT_ACTIONS;
   const pending = pendingChat(chat.projectId);
   const chatLabels = useMemo(
     () => ({
       deleted: t(($) => $.collab.chat.deleted),
       messageActions: t(($) => $.collab.chat.messageActions),
+      editLabel: t(($) => $.collab.chat.editLabel),
       deleteMessageConfirm: {
         title: t(($) => $.collab.chat.deleteConfirm.title),
         description: t(($) => $.collab.chat.deleteConfirm.description),
@@ -289,6 +289,7 @@ function ProjectChat() {
               person={message.verified ? people.get(message.author) : undefined}
               canPost={canPost}
               reactions={reactions}
+              actions={actions}
               continued={groups[index]}
             />
           ))}
@@ -304,8 +305,11 @@ function ProjectChat() {
       members={members}
       people={people}
       reactions={reactions}
+      typing={typing}
+      math={chat.status?.math === true}
+      markdown={chat.status?.markdown !== false}
       labels={chatLabels}
-      maxLength={CHAT_LIMIT}
+      maxLength={chat.status?.maxLength}
     >
       <div className="flex h-full min-h-0 flex-col" data-testid="chat-pane">
         <SidebarPanelHeader icon={MessagesSquare} title={title}>
@@ -336,7 +340,7 @@ function ProjectChat() {
         >
           {body()}
         </CommentScrollArea>
-        <ChatTypingLine />
+        {typing ? <ChatTypingLine /> : null}
         {reveal !== null && !revealLoaded && !loadFailed ? (
           <output className="flex items-center gap-2 px-3 pb-2 text-xs text-muted-foreground">
             <Spinner size="xs" />
@@ -358,7 +362,7 @@ function ProjectChat() {
               placeholder={t(($) => $.collab.chat.placeholder)}
               submitLabel={t(($) => $.collab.chat.send)}
               onSubmit={sendChat}
-              onActivity={chatActivity}
+              onActivity={typing ? chatActivity : undefined}
             />
           ) : (
             <p className="text-xs text-muted-foreground">

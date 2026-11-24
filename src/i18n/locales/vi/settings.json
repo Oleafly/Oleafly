@@ -1945,7 +1945,12 @@
       "signedIn": "Đã đăng nhập trên {{server}}",
       "signOut": "Đăng xuất",
       "signOutFailed": "Oleafly không thể đăng xuất khỏi Overleaf.",
+      "addAccount": "Thêm tài khoản khác",
+      "addAccountHint": "Cửa sổ đăng nhập mở ra mà không có phiên đăng nhập cũ nào nên bạn có thể đăng nhập bằng bất kỳ tài khoản nào. Đăng nhập bằng trình duyệt hoặc sao chép đăng nhập từ trình duyệt sẽ dùng tài khoản đang đăng nhập trên trình duyệt đó.",
+      "accountPick": "Tài khoản dùng để nhập",
+      "accountPickDescription": "Các lần nhập và mẫu mới dùng tài khoản này. Các dự án bạn đã có vẫn dùng tài khoản ban đầu của chúng.",
       "gitTitle": "Token Git để đồng bộ",
+      "gitTitleFor": "Token Git cho {{email}}",
       "gitSaved": "Đã lưu token Git. Các dự án bạn liên kết vẫn đồng bộ với Overleaf.",
       "gitMissing": "Chưa có token Git. Hãy tạo một token trong phần tích hợp Git trong cài đặt tài khoản Overleaf để đồng bộ dự án.",
       "gitOpenSettings": "Mở cài đặt tài khoản Overleaf",
@@ -2313,6 +2318,7 @@
       "confirm": "Xóa các từ",
       "descriptionFallback": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển này. Chúng sẽ được kiểm tra lại ngay.",
       "descriptionGlobal": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển chung. Chúng sẽ được kiểm tra lại ngay.",
+      "descriptionOverleaf": "Chúng cũng bị xoá khỏi tài khoản Overleaf của bạn.",
       "descriptionProject": "Thao tác này gỡ mọi thuật ngữ khỏi {{project}}. Chúng sẽ được kiểm tra lại ngay.",
       "descriptionSuppressed": "Thao tác này gỡ mọi thuật ngữ khỏi các phát hiện đã bỏ qua trong {{project}}. Chúng sẽ được kiểm tra lại ngay.",
       "suppressedConfirm": "Hiện lại",
@@ -2329,6 +2335,7 @@
     },
     "global": {
       "emptyDescription": "Những từ bạn thêm ở đây được trình hiệu đính bỏ qua trong mọi dự án.",
+      "overleafSynced": "Được đồng bộ với các từ đã học trong tài khoản Overleaf của bạn khi có dự án đang chỉnh sửa trực tiếp trên Overleaf.",
       "scope": "Áp dụng cho mọi dự án"
     },
     "intro": "Thêm từ vào từ điển chính tả cá nhân của bạn. Những từ này được lưu trong cài đặt cục bộ và bị bỏ qua trên mọi dự án. Việc so khớp được chuẩn hoá Unicode và không phân biệt chữ hoa chữ thường.",

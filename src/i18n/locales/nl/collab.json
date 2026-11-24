@@ -232,8 +232,16 @@
     "suggestion_role": "Je rol in dit project staat geen suggesties toe.",
     "suggestion_changed": "De tekst rond deze suggestie is veranderd, dus een eigenaar of bewerker moet haar accepteren of weigeren.",
     "suggestion_too_long": "Een voorgestelde verwijdering mag maximaal 20.000 tekens lang zijn. Verwijder telkens een kleiner deel.",
+    "suggestion_gone": "Die wijziging bestaat niet meer. Misschien heeft iemand haar geaccepteerd, geweigerd of bewerkt.",
+    "review_off_server": "Deze server kan dat niet met bijgehouden wijzigingen.",
     "chat_role": "Je rol in dit project staat dat niet toe in de chat.",
+    "chat_edit_off": "Deze server kan geen chatberichten bewerken.",
+    "chat_off_server": "Deze Overleaf-server heeft geen chat.",
     "history_unavailable": "De geschiedenis van dit project staat nog niet op deze computer. Probeer het opnieuw zodra die is gesynchroniseerd.",
+    "history_plan_limit": "Het Overleaf-abonnement van dit project bewaart geen oudere versies.",
+    "restore_off_server": "Deze Overleaf-server kan geen oudere versies herstellen. Kopieer in plaats daarvan de tekst uit de versie.",
+    "linked_off_server": "Deze Overleaf-server vernieuwt geen gekoppelde bestanden.",
+    "linked_refresh_failed": "Overleaf kon dit bestand niet vernieuwen vanuit de bron.",
     "account_storage_full": "Het account van de projecteigenaar heeft geen opslag meer op deze server. Haal wat bestanden weg om ruimte te maken, of vraag de beheerder van de server om meer ruimte.",
     "too_many_projects": "Je hebt al zoveel gedeelde projecten als deze server toestaat. Stop met het delen van een project voordat je een ander deelt.",
     "too_many_uploads": "Je hebt het afgelopen uur te veel bestanden geüpload. Probeer het later opnieuw.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Je hebt zoveel openbare pagina's als deze server toestaat. Trek de publicatie van een pagina in en probeer het opnieuw.",
     "page_too_large": "Deze notitie is te groot om te publiceren. Verwijder wat afbeeldingen en probeer het opnieuw.",
     "page_taken_down": "Een beheerder heeft deze pagina offline gehaald, dus deze notitie kan pas weer worden gepubliceerd als de pagina weer online staat."
+  },
+  "liveElsewhere": {
+    "cli": "Dit project is live op de opdrachtregel in proces {{pid}}. Stop daar met live bewerken en probeer het dan opnieuw."
   },
   "roles": {
     "admin": "Beheerder",
@@ -1051,6 +1062,8 @@
     "add": "Opmerking toevoegen",
     "allResolved": "Alle opmerkingen zijn opgelost.",
     "noResolved": "Geen opgeloste opmerkingen",
+    "noChanges": "Geen bijgehouden wijzigingen",
+    "overleafOff": "Deze Overleaf-server heeft geen opmerkingen, dus hier staan alleen bijgehouden wijzigingen.",
     "emptyTitle": "Nog geen opmerkingen",
     "emptyHint": "Selecteer tekst en kies Opmerking toevoegen, of druk op {keys}",
     "readOnlyNote": "Je kunt de opmerkingen in dit project lezen. Vraag een eigenaar om de rol Reageerder als je wilt antwoorden of reageren.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Suggestie van iemand die Oleafly niet kon verifiëren",
     "added": "Ingevoegd",
     "deleted": "Verwijderd",
+    "replaced": "Vervangen",
+    "replacedWith": "door",
     "accept": "Accepteren",
     "reject": "Weigeren",
     "withdraw": "Intrekken",
@@ -1157,6 +1172,7 @@
     "fileActions": "Suggesties in {{file}}",
     "pendingCount": "Wachtende suggesties: {{number}}",
     "loadFailed": "De suggesties bij dit bestand konden niet worden geladen.",
+    "acceptOffServer": "Deze Overleaf-server kan bijgehouden wijzigingen in dit bestand niet accepteren. Je kunt ze nog wel weigeren.",
     "rejectAllConfirm": {
       "title": "Alle suggesties in {{file}} weigeren?",
       "description": "De oorspronkelijke tekst komt terug in het bestand, voor iedereen in dit project. Wachtende suggesties: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Suggereren",
       "editingHint": "Bewerken: je bewerkingen veranderen de tekst direct",
       "suggestingHint": "Suggereren: je bewerkingen worden suggesties die een eigenaar of bewerker kan accepteren",
-      "reviewerHint": "Je bent beoordelaar, dus je bewerkingen worden suggesties die een eigenaar of bewerker kan accepteren"
+      "reviewerHint": "Je bent beoordelaar, dus je bewerkingen worden suggesties die een eigenaar of bewerker kan accepteren",
+      "locked": {
+        "everyone": "Wijzigingen bijhouden staat aan voor iedereen in dit project, dus je bewerkingen worden suggesties",
+        "plan": "Wijzigingen bijhouden zit niet in het Overleaf-abonnement van dit project",
+        "server": "Deze Overleaf-server kan wijzigingen bijhouden niet aan- of uitzetten"
+      },
+      "others": "Wijzigingen van anderen bijhouden",
+      "forEveryone": "Voor iedereen",
+      "forGuests": "Voor mensen die via een link zijn toegetreden"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Lezers kunnen de chat lezen, maar er niets in plaatsen.",
     "offline": "Dit project is nu niet verbonden, dus je kunt niets plaatsen.",
     "messageActions": "Meer acties voor dit bericht",
+    "editLabel": "Bericht bewerken",
     "deleteConfirm": {
       "title": "Dit bericht verwijderen?",
       "description": "Het wordt voor iedereen in dit project verwijderd."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly kon de chat niet laden.",
     "loadOlder": "Oudere berichten tonen"
+  },
+  "people": {
+    "invited": "Uitgenodigd",
+    "former": "(heeft het project verlaten)"
   },
   "history": {
     "title": "Geschiedenis",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "De tekst van elk bestand gaat voor iedereen in dit project terug naar hoe die was op {{time}}, en verwijderde bestanden komen terug. Hernoemde bestanden houden hun nieuwe naam, en figuren en bestanden die later zijn toegevoegd blijven zoals ze zijn. De huidige tekst blijft in de geschiedenis staan, dus je kunt ernaar teruggaan.",
       "confirm": "Project herstellen"
     },
+    "limited": "Voor oudere wijzigingen is een Overleaf-abonnement met volledige geschiedenis nodig.",
+    "unavailable": "Je toegang tot dit project omvat de geschiedenis niet.",
+    "download": "Downloaden als ZIP",
+    "downloading": "Downloaden…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Elk bestand gaat voor iedereen op Overleaf terug naar hoe het was op {{time}}, en bestanden die sindsdien zijn toegevoegd, worden verwijderd. Overleaf bewaart de huidige versie in de geschiedenis, dus je kunt ernaar teruggaan.",
     "compareTitle": "Wijzigingen tussen twee versies",
     "compareDescription": "Van {{from}} tot {{to}}",
     "changedFiles": "Gewijzigde bestanden: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Je bent nu reageerder. Je kunt dit project lezen en er opmerkingen bij plaatsen, maar niet bewerken.",
     "reviewerBy": "{{name}} heeft je beoordelaar gemaakt. Je bewerkingen worden suggesties die een eigenaar of bewerker kan accepteren.",
     "reviewer": "Je bent nu beoordelaar. Je bewerkingen worden suggesties die een eigenaar of bewerker kan accepteren.",
-    "reviewing": "Je bent beoordelaar in dit project, dus je bewerkingen worden suggesties.",
-    "trackingChanges": "Wijzigingen bijhouden staat aan in dit project, dus je bewerkingen worden suggesties.",
     "viewOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken.",
     "askOnOverleaf": "Toegang vragen op Overleaf",
     "connecting": "Dit gedeelde project maakt nog verbinding, dus het kan nog niet worden gewijzigd. Probeer het zo opnieuw.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Je bent afgemeld bij {{server}}, dus dit project wordt niet gesynchroniseerd. Je kunt gewoon doortypen. Je wijzigingen blijven op deze computer en gaan naar Overleaf zodra je je weer aanmeldt.",
+    "signedOutAs": "Dit project hoort bij {{email}} op {{server}}. Dat account is niet aangemeld, dus het project wordt niet gesynchroniseerd. Je kunt gewoon doortypen. Je wijzigingen blijven op deze computer en gaan naar Overleaf zodra je je aanmeldt als {{email}}.",
+    "signInAs": "Aanmelden als {{email}}",
     "accountChangedOne": "Je bent nu met een ander account aangemeld, dus de wijzigingen die je als {{email}} hebt gemaakt, zijn niet verstuurd. Ze zijn bewaard als {{copy}}.",
     "accountChangedMany": "Je bent nu met een ander account aangemeld, dus de wijzigingen die je als {{email}} hebt gemaakt, zijn niet verstuurd. Ze zijn bewaard als kopieën naast hun bestanden:",
     "keptAs": "{{file}} is bewaard als {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Sommige tekens in {{file}}, zoals emoji, zijn vervangen omdat Overleaf ze niet kan opslaan.",
     "tryLiveAgain": "Live opnieuw proberen",
     "keepMineAsCopy": "Mijn versie als kopie bewaren",
-    "stoppedActionFailed": "Dat is niet gelukt voor {{file}}. Wacht even en klik er dan nog eens op."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf heeft niets dat overeenkomt met {{setting}} van dit project, dus {{setting}} op Overleaf blijft ongewijzigd.",
+      "refused": "Overleaf heeft de wijziging van {{setting}} geweigerd.",
+      "failed": "Oleafly kon de wijziging van {{setting}} niet naar Overleaf sturen. Bij de volgende wijziging probeert Oleafly het opnieuw.",
+      "conflict": "Hier en op Overleaf is tegelijk {{setting}} gewijzigd. De keuze van Overleaf blijft staan."
+    },
+    "settingNames": {
+      "main_doc": "het hoofddocument",
+      "compiler": "de compiler",
+      "spelling": "de taal voor de spellingcontrole",
+      "image": "de TeX Live-versie",
+      "bibliography": "de hoofdbibliografie"
+    },
+    "stoppedActionFailed": "Dat is niet gelukt voor {{file}}. Wacht even en klik er dan nog eens op.",
+    "filling": "Het project openen vanaf Overleaf: {{done}} van {{total}} bestanden",
+    "fillingFiles": "Het project openen vanaf Overleaf: de laatste bestanden downloaden",
+    "emptyCopy": "Dit project is verdwenen van Overleaf, en geen van de bestanden heeft deze computer bereikt.",
+    "removeEmptyCopy": "De lege kopie verwijderen",
+    "removeFailed": "Oleafly kon de lege kopie niet verwijderen."
   },
   "overleafTree": {
     "deleteTitle": "Ook op Overleaf verwijderen?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Ook op Overleaf verwijderen",
     "keep": "Houden op Overleaf",
     "notAllowed": "Je mag bestanden in dit project op Overleaf niet wijzigen, dus je wijzigingen in {{files}} blijven op deze computer.",
-    "keptAway": "Hier verwijderd, maar nog op Overleaf: {{files}}"
+    "keptAway": "Hier verwijderd, maar nog op Overleaf: {{files}}",
+    "linkedKept": "Overleaf koppelt {{files}} aan een bron, dus je wijzigingen blijven op deze computer. Kies Vernieuwen vanuit bron om de kopie van Overleaf terug te krijgen."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} is op Overleaf gekoppeld aan {{source}}.",
+    "bannerNoSource": "{{file}} is op Overleaf gekoppeld aan een bron.",
+    "readOnly": "{{file}} is op Overleaf gekoppeld aan een bron. Kies Vernieuwen vanuit bron om het bij te werken.",
+    "treeHint": "Op Overleaf gekoppeld aan een bron",
+    "refresh": "Vernieuwen vanuit bron",
+    "refreshing": "Vernieuwen",
+    "refusedWith": "Overleaf kon het niet vernieuwen: {{message}}"
   }
 }

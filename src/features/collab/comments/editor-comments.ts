@@ -88,9 +88,13 @@ const setSelected = StateEffect.define<string | null>();
 const setDraft = StateEffect.define<CommentDraftRange | null>();
 const setFlash = StateEffect.define<string | null>();
 
-interface Reported {
+export interface Reported {
   from: number;
   to: number;
+}
+
+interface PlacedSpan extends Reported {
+  id: string;
 }
 
 interface CommentField {
@@ -103,13 +107,13 @@ interface CommentField {
   markers: RangeSet<GutterMarker>;
 }
 
-function clamp(doc: Text, position: number): number {
+export function clampPosition(doc: Text, position: number): number {
   return Math.max(0, Math.min(doc.length, Number.isFinite(position) ? Math.trunc(position) : 0));
 }
 
 function clampRange<T extends CommentDraftRange>(doc: Text, range: T): T {
-  const from = clamp(doc, range.from);
-  return { ...range, from, to: Math.max(from, clamp(doc, range.to)) };
+  const from = clampPosition(doc, range.from);
+  return { ...range, from, to: Math.max(from, clampPosition(doc, range.to)) };
 }
 
 function mapRange<T extends CommentDraftRange>(range: T, changes: ChangeDesc): T {
@@ -213,21 +217,50 @@ function linesChanged(transaction: Transaction): boolean {
   return changed;
 }
 
-function placed(
-  doc: Text,
-  incoming: readonly CommentSpan[],
-  current: readonly CommentSpan[],
+export function reportedOf(spans: readonly PlacedSpan[]): ReadonlyMap<string, Reported> {
+  return new Map(spans.map((span) => [span.id, { from: span.from, to: span.to }]));
+}
+
+export function placedSpans<T extends PlacedSpan>(
+  incoming: readonly T[],
+  current: readonly T[],
   reported: ReadonlyMap<string, Reported>,
-): readonly CommentSpan[] {
+  clamp: (span: T) => T,
+  same: (mine: T, span: T) => boolean = () => true,
+): readonly T[] {
   const kept = new Map(current.map((span) => [span.id, span]));
   return incoming.map((span) => {
     const before = reported.get(span.id);
     const mine = kept.get(span.id);
-    if (mine && before?.from === span.from && before.to === span.to) {
+    if (mine && same(mine, span) && before?.from === span.from && before.to === span.to) {
       return { ...span, from: mine.from, to: mine.to };
     }
-    return clampRange(doc, span);
+    return clamp(span);
   });
+}
+
+export function pushSoon(subscribe: (listener: () => void) => () => void, push: () => void): () => void {
+  let scheduled = false;
+  let destroyed = false;
+  const refresh = () => {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      if (!destroyed) push();
+    });
+  };
+  const unsubscribe = subscribe(refresh);
+  refresh();
+  return () => {
+    destroyed = true;
+    unsubscribe();
+  };
+}
+
+export function plainClick(event: MouseEvent, view: EditorView): boolean {
+  if (event.button !== 0 || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
+  return view.state.selection.main.empty;
 }
 
 function newlyEmptied(before: readonly CommentSpan[], after: readonly CommentSpan[]): boolean {
@@ -265,8 +298,8 @@ const commentField = StateField.define<CommentField>({
     const doc = transaction.state.doc;
     for (const effect of transaction.effects) {
       if (effect.is(setSpans)) {
-        spans = placed(doc, effect.value, spans, reported);
-        reported = new Map(effect.value.map((span) => [span.id, { from: span.from, to: span.to }]));
+        spans = placedSpans(effect.value, spans, reported, (span) => clampRange(doc, span));
+        reported = reportedOf(effect.value);
         changed = true;
       } else if (effect.is(setSelected)) {
         selected = effect.value;
@@ -319,8 +352,7 @@ function commentGutter(source: EditorCommentsSource): Extension {
 function commentClicks(source: EditorCommentsSource): Extension {
   return EditorView.domEventHandlers({
     click: (event, view) => {
-      if (event.button !== 0 || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
-      if (!view.state.selection.main.empty) return;
+      if (!plainClick(event, view)) return;
       const [id] = idsAt(event.target, "data-comment-id");
       if (id) source.open(id, "text");
     },
@@ -336,8 +368,6 @@ interface Pushed {
 function commentSync(source: EditorCommentsSource): Extension {
   return ViewPlugin.define((view) => {
     let last: Pushed | null = null;
-    let scheduled = false;
-    let destroyed = false;
     const push = () => {
       const snapshot = source.snapshot();
       const own = snapshot.path !== null && snapshot.path === source.documentPath();
@@ -353,16 +383,7 @@ function commentSync(source: EditorCommentsSource): Extension {
       last = next;
       if (effects.length > 0) view.dispatch({ effects });
     };
-    const refresh = () => {
-      if (scheduled) return;
-      scheduled = true;
-      queueMicrotask(() => {
-        scheduled = false;
-        if (!destroyed) push();
-      });
-    };
-    const unsubscribe = source.subscribe(refresh);
-    refresh();
+    const stop = pushSoon((listener) => source.subscribe(listener), push);
     let emptied: readonly string[] = [];
     return {
       update: (update: ViewUpdate) => {
@@ -375,10 +396,7 @@ function commentSync(source: EditorCommentsSource): Extension {
         emptied = next;
         source.anchorsChanged({ emptied: next, edited });
       },
-      destroy: () => {
-        destroyed = true;
-        unsubscribe();
-      },
+      destroy: stop,
     };
   });
 }

@@ -351,6 +351,7 @@
       "saveServer": "Použít tento server",
       "signedInAs": "Přihlášeno jako {{email}}",
       "signedIn": "Přihlášeno k Overleafu",
+      "accountPick": "Účet Overleaf",
       "signOut": "Odhlásit se",
       "searchLabel": "Hledat projekty v Overleafu",
       "searchPlaceholder_one": "Prohledat {{count}} projekt",
@@ -378,6 +379,8 @@
       "import_other": "Importovat {{count}} projektů",
       "imported": "Importováno",
       "open": "Otevřít",
+      "openLive": "Otevřít živě",
+      "opening": "Otevírá se",
       "ownedByYou": "Váš",
       "owner": "Vlastník: {{name}}",
       "archived": "Archivováno",
@@ -397,6 +400,36 @@
         "downloading": "Stahuje se {{percent}} %",
         "downloadingUnknown": "Stahuje se",
         "importing": "Připravuje se"
+      },
+      "invitations": {
+        "title": "Pozvánky",
+        "from": "Od {{name}}",
+        "join": "Připojit se",
+        "joined": "K tomuto projektu jste se připojili"
+      },
+      "link": {
+        "checking": "Kontroluje se odkaz",
+        "unnamed": "Projekt ve službě Overleaf",
+        "join": "Připojit se",
+        "importInstead": "Importovat",
+        "grants": {
+          "edit": "Po připojení ho můžete upravovat jako spolupracovník.",
+          "view": "Po připojení ho můžete jen zobrazit. Při prohlížení přes odkaz nejsou komentáře ani chat k dispozici.",
+          "already": "Tento projekt už máte.",
+          "invite": "Připojením přijmete pozvánku."
+        }
+      },
+      "put": {
+        "menu": "Nahrát do služby Overleaf",
+        "title": "Nahrát do služby Overleaf",
+        "description": "Oleafly nahraje tento projekt do služby Overleaf jako nový projekt a pak během živých úprav udržuje oba projekty synchronizované.",
+        "name": "Název ve službě Overleaf",
+        "account": "Účet Overleaf",
+        "submit": "Nahrát do služby Overleaf",
+        "working": "Nahrává se",
+        "signedOut": "Nejdřív se přihlaste ke službě Overleaf v Nastavení.",
+        "openSettings": "Otevřít Nastavení",
+        "cancel": "Zrušit"
       }
     }
   },

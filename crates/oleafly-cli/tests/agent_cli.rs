@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 mod support;
 
 #[path = "support/mock_provider.rs"]
