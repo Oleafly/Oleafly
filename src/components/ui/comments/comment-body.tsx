@@ -58,9 +58,9 @@ function BesideDisplay({
   text,
   members,
 }: Readonly<{ nodes: readonly CommentInline[]; index: number; text: string; members: readonly CommentMember[] }>) {
-  const lead = displayMath(nodes[index - 1]) ? (/^\s*/u.exec(text)?.[0] ?? "") : "";
+  const lead = displayMath(nodes[index - 1]) ? text.slice(0, text.length - text.trimStart().length) : "";
   const rest = text.slice(lead.length);
-  const tail = displayMath(nodes[index + 1]) ? (/\s*$/u.exec(rest)?.[0] ?? "") : "";
+  const tail = displayMath(nodes[index + 1]) ? rest.slice(rest.trimEnd().length) : "";
   const middle = rest.slice(0, rest.length - tail.length);
   return (
     <>

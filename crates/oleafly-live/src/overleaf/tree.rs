@@ -294,6 +294,16 @@ impl Mirror {
     }
 }
 
+fn put_back(root: &Path, copy: &str, path: &str) -> std::io::Result<()> {
+    let (Some(source), Some(target)) = (safe_target(root, copy), safe_target(root, path)) else {
+        return Err(std::io::ErrorKind::InvalidInput.into());
+    };
+    if std::fs::symlink_metadata(&target).is_ok() {
+        return Err(std::io::ErrorKind::AlreadyExists.into());
+    }
+    std::fs::rename(source, target)
+}
+
 fn restore_refused(status: u16, code: &str, path: &str) -> CollabError {
     CollabError::Api {
         status,
@@ -387,18 +397,9 @@ impl OverleafLive {
         };
         let root = self.mirror.disk.root.clone();
         let (from, to) = (copy.clone(), path.to_owned());
-        let moved = super::off_runtime(move || {
-            let (Some(source), Some(target)) = (safe_target(&root, &from), safe_target(&root, &to))
-            else {
-                return Err(std::io::ErrorKind::InvalidInput.into());
-            };
-            if std::fs::symlink_metadata(&target).is_ok() {
-                return Err(std::io::ErrorKind::AlreadyExists.into());
-            }
-            std::fs::rename(source, target)
-        })
-        .await
-        .map_err(crate::live::session::io)?;
+        let moved = super::off_runtime(move || put_back(&root, &from, &to))
+            .await
+            .map_err(crate::live::session::io)?;
         match moved {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {

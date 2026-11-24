@@ -231,6 +231,14 @@ async fn run(mirror: Weak<Mirror>, wake: Arc<Notify>) {
     }
 }
 
+fn store_base(path: &std::path::Path, base: &Base) -> std::io::Result<()> {
+    let bytes = serde_json::to_vec(base).map_err(std::io::Error::other)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    oleafly_core::atomic::write_atomic_private(path, &bytes)
+}
+
 fn log(mirror: &Mirror, message: impl std::fmt::Display) {
     let _ = crate::project::append_app_log(format!(
         "Live editing with Overleaf, project {}: {message}",
@@ -387,11 +395,9 @@ impl Mirror {
         if let Some(base) = guard(&self.settings.state).base.clone() {
             return Some(base);
         }
-        let path = self.base_path();
-        let loaded = off_runtime(move || std::fs::read(path).ok())
+        let loaded = tokio::fs::read(self.base_path())
             .await
             .ok()
-            .flatten()
             .and_then(|bytes| serde_json::from_slice::<Base>(&bytes).ok());
         guard(&self.settings.state).base.clone_from(&loaded);
         loaded
@@ -400,14 +406,7 @@ impl Mirror {
     async fn save_base(&self, base: Base) {
         guard(&self.settings.state).base = Some(base.clone());
         let path = self.base_path();
-        let saved = off_runtime(move || {
-            let bytes = serde_json::to_vec(&base).map_err(std::io::Error::other)?;
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            oleafly_core::atomic::write_atomic_private(&path, &bytes)
-        })
-        .await;
+        let saved = off_runtime(move || store_base(&path, &base)).await;
         match saved {
             Ok(Ok(())) => {}
             Ok(Err(error)) => log(

@@ -1,6 +1,6 @@
 import type { Utf16Edit } from "@oleafly/editor/document-session";
 import type { CollabTextOperation } from "@/lib/tauri";
-import { commonAffixBounds, myersEditScript } from "@/lib/myers-diff";
+import { commonAffixBounds, myersEditScript } from "../../../lib/myers-diff.ts";
 
 export type OtErrorCode = "length_mismatch" | "incompatible" | "splits_character" | "invalid";
 

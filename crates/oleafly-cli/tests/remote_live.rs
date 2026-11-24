@@ -175,9 +175,16 @@ fn result_of(output: &Output) -> Value {
     serde_json::from_str(last).unwrap_or_else(|_| panic!("not a JSON line: {last}"))
 }
 
-fn refused_at_once(world: &World, args: &[&str]) -> Value {
+async fn output_of(command: Command) -> Output {
+    tokio::process::Command::from(command)
+        .output()
+        .await
+        .unwrap()
+}
+
+async fn refused_at_once(world: &World, args: &[&str]) -> Value {
     let started = Instant::now();
-    let output = world.command(args).output().unwrap();
+    let output = output_of(world.command(args)).await;
     assert!(
         started.elapsed() < Duration::from_secs(5),
         "{args:?} took {:?}",
@@ -221,7 +228,7 @@ fn stopping_with_an_edit_unacked(world: &World, live: &Running, signal: i32) {
 async fn cli_live_and_app_live_exclude_each_other() {
     let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
     let app = world.app_journal().unwrap();
-    let result = refused_at_once(&world, &["remote", "live"]);
+    let result = refused_at_once(&world, &["remote", "live"]).await;
     assert_eq!(result["error"]["details"]["holder"]["by"], "app");
     assert!(
         result["error"]["message"]
@@ -335,7 +342,7 @@ async fn cli_live_sends_a_renamed_folder_as_one_move() {
     let wanted = [None, Some(folder.clone()), Some(a.clone()), Some(b.clone())];
     let deadline = Instant::now() + WAIT;
     while online() != wanted && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(50));
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
     #[cfg(unix)]
     assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
@@ -496,10 +503,7 @@ async fn cli_live_refuses_a_server_shared_project() {
         },
     )
     .unwrap();
-    let output = world
-        .command_in(&library, &["remote", "live"])
-        .output()
-        .unwrap();
+    let output = output_of(world.command_in(&library, &["remote", "live"])).await;
     let result = result_of(&output);
     assert_eq!(output.status.code(), Some(8), "{result}");
     assert_eq!(result["error"]["code"], "remote.server_shared");
@@ -512,7 +516,7 @@ async fn cli_live_refuses_while_a_git_sync_runs() {
     let syncing =
         oleafly_online::sync::claim(&oleafly_online::sync::SyncPaths::for_folder(&world.root))
             .unwrap();
-    let output = world.command(&["remote", "live"]).output().unwrap();
+    let output = output_of(world.command(&["remote", "live"])).await;
     let result = result_of(&output);
     assert_eq!(output.status.code(), Some(8), "{result}");
     assert_eq!(result["error"]["code"], "remote.busy");
@@ -526,7 +530,7 @@ async fn cli_live_signed_out_at_start_exits_6() {
     let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
     let alice = world.mock.user("alice");
     session::forget_account(&SecretStore::at(&world.data), &world.mock.base, &alice.id).unwrap();
-    let output = world.command(&["remote", "live"]).output().unwrap();
+    let output = output_of(world.command(&["remote", "live"])).await;
     let result = result_of(&output);
     assert_eq!(output.status.code(), Some(6), "{result}");
     assert_eq!(result["error"]["code"], "online.signed_out");
@@ -559,7 +563,7 @@ async fn cli_live_journal_resumes_once() {
     world.mock.hold_updates();
     std::fs::write(world.root.join(MAIN), "Hello again\n").unwrap();
     eventually("the edit is sent and held", || alice_updates(&world) >= 1);
-    std::thread::sleep(Duration::from_millis(750));
+    tokio::time::sleep(Duration::from_millis(750)).await;
     live.process.kill().unwrap();
     live.process.wait().unwrap();
     world.mock.release_updates();
@@ -577,7 +581,7 @@ async fn cli_live_journal_resumes_once() {
         assert_eq!(stopped["unsent"], json!([]), "{stopped}");
     }
     #[cfg(not(unix))]
-    std::thread::sleep(Duration::from_secs(2));
+    tokio::time::sleep(Duration::from_secs(2)).await;
     assert_eq!(world.mock.doc_text(&doc), "Hello again\n");
     assert_eq!(world.read(MAIN), "Hello again\n");
 }
@@ -617,7 +621,7 @@ async fn cli_live_exit_never_waits_on_a_stuck_blocking_task() {
     oleafly_core::locking::lock_file(&lock, true, Duration::from_secs(5)).unwrap();
     world.sign_out_alice();
     state(&live, "signed_out");
-    std::thread::sleep(Duration::from_secs(7));
+    tokio::time::sleep(Duration::from_secs(7)).await;
     let started = Instant::now();
     let status = terminate(&mut live, libc::SIGTERM);
     assert_eq!(status.code(), Some(0));
@@ -639,7 +643,7 @@ async fn remote_sync_link_unlink_stand_down_while_live() {
         &["remote", "link"][..],
         &["remote", "unlink"][..],
     ] {
-        let result = refused_at_once(&world, args);
+        let result = refused_at_once(&world, args).await;
         let holder = &result["error"]["details"]["holder"];
         assert_eq!(holder["by"], "cli", "{args:?}: {result}");
         assert_eq!(holder["pid"], live.process.id(), "{args:?}");
@@ -651,18 +655,16 @@ async fn remote_sync_link_unlink_stand_down_while_live() {
 async fn remote_import_records_import_bases() {
     let world = World::start(project(), "out").await;
     let id = world.mock.project_id();
-    let output = world
-        .command(&[
-            "remote",
-            "import",
-            &id,
-            "--server",
-            &world.mock.base,
-            "--into",
-            &world.root.display().to_string(),
-        ])
-        .output()
-        .unwrap();
+    let output = output_of(world.command(&[
+        "remote",
+        "import",
+        &id,
+        "--server",
+        &world.mock.base,
+        "--into",
+        &world.root.display().to_string(),
+    ]))
+    .await;
     let result = result_of(&output);
     assert_eq!(output.status.code(), Some(0), "{result}");
     let folder = PathBuf::from(result["imported"][0]["folder"].as_str().unwrap());

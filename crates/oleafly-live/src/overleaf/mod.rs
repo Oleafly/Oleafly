@@ -427,6 +427,20 @@ struct GoLive {
     adopted: BTreeSet<String>,
 }
 
+fn open_mirror(
+    root: &Path,
+    mirror_dir: &Path,
+    disk_file: &Path,
+    git: Option<&GitBase>,
+    log: &AppLog,
+) -> std::io::Result<(DiskState, GoLive, binaries::BlobMap)> {
+    std::fs::create_dir_all(mirror_dir)?;
+    let mut disk = DiskState::load(disk_file);
+    let first = disk.hashes.is_empty().then_some((mirror_dir, git));
+    let found = go_live_bases(root, &mut disk, first, log);
+    Ok((disk, found, binaries::BlobMap::load(mirror_dir)))
+}
+
 fn go_live_bases(
     root: &Path,
     disk: &mut DiskState,
@@ -509,20 +523,10 @@ impl OverleafLive {
             blobs,
         ) = {
             let (disk_file, root, log) = (disk_file.clone(), root.clone(), log.clone());
-            off_runtime(move || {
-                std::fs::create_dir_all(&mirror_dir)?;
-                let mut disk = DiskState::load(&disk_file);
-                let first = disk
-                    .hashes
-                    .is_empty()
-                    .then_some((mirror_dir.as_path(), git.as_ref()));
-                let found = go_live_bases(&root, &mut disk, first, &log);
-                let blobs = binaries::BlobMap::load(&mirror_dir);
-                Ok::<_, std::io::Error>((disk, found, blobs))
-            })
-            .await
-            .map_err(io)?
-            .map_err(io)?
+            off_runtime(move || open_mirror(&root, &mirror_dir, &disk_file, git.as_ref(), &log))
+                .await
+                .map_err(io)?
+                .map_err(io)?
         };
         let (writer, signals) = mpsc::unbounded_channel();
         let mirror = Arc::new(Mirror::new(
