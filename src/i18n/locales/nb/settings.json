@@ -276,6 +276,16 @@
       "submitAddAnyway": "Legg til uten modeller"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Agentens kjørebudsjetter",
+        "description": "Gjelder bare den innebygde assistenten. Tomt felt bruker den eksisterende standardverdien. Mer enn 50 trinn aktiverer en åttetimersgrense per tur. Det samlede tokenmålet sjekkes mellom modelltrinn basert på rapportert forbruk. Forespørsler kan overskride det, og forbruk fra separat kjørende subagenter er ikke inkludert.",
+        "stepsLabel": "Maksimalt antall trinn (1-2000)",
+        "outputLabel": "Maksimalt antall utdata-tokens per forespørsel",
+        "totalLabel": "Totalt rapporterte tokens per tur (myk grense)",
+        "auto": "Automatisk",
+        "save": "Lagre budsjetter",
+        "invalid": "Ugyldig budsjett: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Hva agenten kan",
       "completionModelDescription": "Modellen som skriver fullføringer mens du skriver. Raske modeller og modeller som kjører på denne datamaskinen, svarer raskest.",
       "completionModelTitle": "Modell for AI-fullføringer",

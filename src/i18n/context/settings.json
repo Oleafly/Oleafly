@@ -85,7 +85,17 @@
       "submitAddAnyway": "Button that replaces Add provider after the model list could not be read from the address. Adds the provider without any models. The person then adds a model by name."
     },
     "instructions": {
-      "saved": "Confirmation shown beside the button after custom instructions are saved"
+      "saved": "Confirmation shown beside the button after custom instructions are saved",
+      "agentBudgets": {
+        "title": "Section for the built-in assistant's execution limits (steps and tokens), not the dollar AI budget under ai.budget",
+        "description": "Explains that blank fields keep the defaults, that more than 50 steps enables an eight-hour limit per turn, and that the token target is a soft check between model steps that excludes separately run subagents",
+        "stepsLabel": "Label of the number input for the maximum agent steps; the range 1-2000 stays as written",
+        "outputLabel": "Label of the number input for the maximum output tokens per model request",
+        "totalLabel": "Label of the number input for the soft total token target per turn, counted from provider-reported usage",
+        "auto": "Placeholder of an empty budget field that follows the model's own limit",
+        "save": "Button that saves the three execution budget fields; distinct from Save instructions above it",
+        "invalid": "Error when a budget field is out of range. {{field}} is the untranslated config field name, {{max}} the allowed maximum"
+      }
     },
     "models": {
       "custom": "Badge on a model the user typed in by hand rather than one the provider listed",

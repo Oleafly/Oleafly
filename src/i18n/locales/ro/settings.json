@@ -277,6 +277,16 @@
       "submitAddAnyway": "Adaugă fără modele"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Bugetele de execuție ale agentului",
+        "description": "Doar pentru asistentul încorporat. Lăsarea necompletată folosește valoarea implicită existentă. Mai mult de 50 de pași activează o limită de opt ore per tură. Ținta totală de tokenuri este verificată între pașii modelului pe baza utilizării raportate. Solicitările o pot depăși, iar utilizarea subagenților rulați separat nu este inclusă.",
+        "stepsLabel": "Numărul maxim de pași (1-2000)",
+        "outputLabel": "Numărul maxim de tokenuri de ieșire per solicitare",
+        "totalLabel": "Totalul de tokenuri raportate per tură (limită flexibilă)",
+        "auto": "Automat",
+        "save": "Salvează bugetele",
+        "invalid": "Buget nevalid: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Capabilitățile agentului",
       "completionModelDescription": "Modelul care scrie completările în timp ce tastezi. Modelele rapide și cele care rulează pe acest computer răspund cel mai repede.",
       "completionModelTitle": "Modelul pentru completări cu AI",

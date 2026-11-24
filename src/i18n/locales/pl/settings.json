@@ -278,6 +278,16 @@
       "submitAddAnyway": "Dodaj bez modeli"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Budżety wykonywania agenta",
+        "description": "Dotyczy tylko wbudowanego asystenta. Puste pole używa istniejącej wartości domyślnej. Ponad 50 kroków włącza ośmiogodzinny limit na turę. Łączny cel tokenów jest sprawdzany między krokami modelu na podstawie zgłoszonego zużycia. Żądania mogą go przekroczyć, a zużycie osobno uruchamianych subagentów nie jest wliczane.",
+        "stepsLabel": "Maksymalna liczba kroków (1-2000)",
+        "outputLabel": "Maksymalna liczba tokenów wyjściowych na żądanie",
+        "totalLabel": "Łączna liczba zgłoszonych tokenów na turę (miękki limit)",
+        "auto": "Automatycznie",
+        "save": "Zapisz budżety",
+        "invalid": "Nieprawidłowy budżet: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Możliwości agenta",
       "completionModelDescription": "Model, który podpowiada uzupełnienia podczas pisania. Najszybciej odpowiadają szybkie modele i modele działające na tym komputerze.",
       "completionModelTitle": "Model do uzupełniania przez AI",

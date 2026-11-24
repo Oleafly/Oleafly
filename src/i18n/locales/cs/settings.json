@@ -278,6 +278,16 @@
       "submitAddAnyway": "Přidat bez modelů"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Rozpočty běhu agenta",
+        "description": "Pouze pro vestavěného asistenta. Prázdné pole použije stávající výchozí hodnotu. Více než 50 kroků zapne osmihodinový limit na tah. Celkový cíl tokenů se kontroluje mezi kroky modelu podle nahlášeného využití. Požadavky jej mohou překročit a využití samostatně spouštěných subagentů se nezahrnuje.",
+        "stepsLabel": "Maximální počet kroků (1-2000)",
+        "outputLabel": "Maximální počet výstupních tokenů na požadavek",
+        "totalLabel": "Celkem nahlášených tokenů na tah (měkký limit)",
+        "auto": "Automaticky",
+        "save": "Uložit rozpočty",
+        "invalid": "Neplatný rozpočet: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Schopnosti agenta",
       "completionModelDescription": "Model, který při psaní navrhuje doplnění. Nejrychleji odpovídají rychlé modely a modely běžící na tomto počítači.",
       "completionModelTitle": "Model pro AI doplňování",

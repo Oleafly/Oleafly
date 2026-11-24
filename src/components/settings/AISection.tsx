@@ -683,6 +683,9 @@ export function AISection() {
       ai_system_prompt: "",
       ai_pdf_capture: true,
       ai_reasoning_summaries: false,
+      ai_agent_max_steps: null,
+      ai_agent_max_output_tokens: null,
+      ai_agent_total_tokens: null,
     };
     try {
       await persist(next);

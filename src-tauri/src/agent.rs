@@ -847,6 +847,20 @@ pub async fn agent_run(
         .await
         .map_err(|error| error.to_string())??;
         let mut request = resolved_request;
+        let (config, output_limit) = tauri::async_runtime::spawn_blocking(move || {
+            let settings = crate::config::read_config().unwrap_or_default();
+            apply_agent_budgets(config, &settings)
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+        if let Some(limit) = output_limit {
+            let limit = resolved
+                .caps
+                .output_limit
+                .filter(|cap| *cap > 0)
+                .map_or(limit, |cap| limit.min(cap));
+            request.max_tokens = Some(request.max_tokens.map_or(limit, |asked| asked.min(limit)));
+        }
         let trust_project = pinned_project.clone();
         let (search_key, reasoning_summaries, hosted_web, fetch_gate) =
             tauri::async_runtime::spawn_blocking(move || {
@@ -1720,7 +1734,28 @@ fn sanitized_run_config(config: Option<RunConfig>) -> RunConfig {
         .clamp(MIN_RETRY_BASE_MS, MAX_RETRY_BASE_MS);
     config.allow_long_runs = false;
     config.max_duration_ms = None;
+    config.max_total_tokens = None;
     config
+}
+
+// Only persisted user preferences can opt into larger desktop budgets.
+fn apply_agent_budgets(mut config: RunConfig, settings: &AppConfig) -> (RunConfig, Option<u32>) {
+    if let Some(steps) = settings.ai_agent_max_steps {
+        config.max_steps = steps.clamp(1, 2_000);
+        config.allow_long_runs = config.max_steps > MAX_RUN_STEPS;
+        if config.allow_long_runs {
+            config.max_duration_ms = Some(8 * 60 * 60 * 1_000);
+        }
+    }
+    config.max_total_tokens = settings
+        .ai_agent_total_tokens
+        .filter(|n| *n > 0)
+        .map(|n| n.min(100_000_000));
+    let output = settings
+        .ai_agent_max_output_tokens
+        .filter(|n| *n > 0)
+        .map(|n| n.min(1_048_576));
+    (config, output)
 }
 
 fn endpoint_override_allowed(

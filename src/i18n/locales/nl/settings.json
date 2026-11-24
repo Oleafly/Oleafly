@@ -276,6 +276,16 @@
       "submitAddAnyway": "Toevoegen zonder modellen"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Uitvoeringsbudgetten van de agent",
+        "description": "Alleen voor de ingebouwde assistent. Leeg laten gebruikt de bestaande standaardwaarde. Meer dan 50 stappen schakelt een tijdslimiet van acht uur per beurt in. Het totale tokendoel wordt tussen modelstappen gecontroleerd op basis van het gerapporteerde gebruik. Verzoeken kunnen eroverheen gaan, en apart uitgevoerde subagenten tellen niet mee.",
+        "stepsLabel": "Maximaal aantal stappen (1-2000)",
+        "outputLabel": "Maximaal aantal uitvoertokens per verzoek",
+        "totalLabel": "Totaal gerapporteerde tokens per beurt (zachte limiet)",
+        "auto": "Automatisch",
+        "save": "Budgetten opslaan",
+        "invalid": "Ongeldig budget: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Wat de agent kan",
       "completionModelDescription": "Het model dat aanvullingen schrijft terwijl je typt. Snelle modellen, en modellen die op deze computer draaien, reageren het snelst.",
       "completionModelTitle": "Model voor AI-aanvullingen",

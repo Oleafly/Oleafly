@@ -277,6 +277,16 @@
       "submitAddAnyway": "Adicionar sem modelos"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Orçamentos de execução do agente",
+        "description": "Somente para o assistente integrado. Deixar em branco usa o padrão existente. Mais de 50 etapas ativa um limite de oito horas por turno. A meta total de tokens é verificada entre as etapas do modelo com base no uso relatado. As solicitações podem ultrapassá-la, e o uso de subagentes executados separadamente não está incluído.",
+        "stepsLabel": "Máximo de etapas (1-2000)",
+        "outputLabel": "Máximo de tokens de saída por solicitação",
+        "totalLabel": "Total de tokens relatados por turno (limite flexível)",
+        "auto": "Automático",
+        "save": "Salvar os orçamentos",
+        "invalid": "Orçamento inválido: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Recursos do agente",
       "completionModelDescription": "O modelo que escreve as sugestões enquanto você digita. Modelos rápidos e modelos que rodam neste computador respondem mais rápido.",
       "completionModelTitle": "Modelo do autocompletar com IA",

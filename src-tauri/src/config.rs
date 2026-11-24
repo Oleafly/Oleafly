@@ -180,6 +180,12 @@ pub struct AppConfig {
     #[serde(default)]
     pub ai_reasoning_summaries: bool,
     #[serde(default)]
+    pub ai_agent_max_steps: Option<u32>,
+    #[serde(default)]
+    pub ai_agent_max_output_tokens: Option<u32>,
+    #[serde(default)]
+    pub ai_agent_total_tokens: Option<u64>,
+    #[serde(default)]
     pub ai_provider_models: std::collections::HashMap<String, Vec<StoredModel>>,
     #[serde(default)]
     pub ai_custom_providers: Vec<CustomProvider>,
@@ -290,6 +296,9 @@ impl Default for AppConfig {
             ai_system_prompt: String::new(),
             ai_pdf_capture: true,
             ai_reasoning_summaries: false,
+            ai_agent_max_steps: None,
+            ai_agent_max_output_tokens: None,
+            ai_agent_total_tokens: None,
             ai_provider_models: std::collections::HashMap::new(),
             ai_custom_providers: Vec::new(),
             ai_tools_model: None,

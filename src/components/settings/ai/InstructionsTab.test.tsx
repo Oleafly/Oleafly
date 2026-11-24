@@ -110,6 +110,70 @@ describe("InstructionsTab", () => {
     expect(saveSystemPrompt).toHaveBeenCalled();
   });
 
+  it("shows the execution budgets with their own save button", () => {
+    renderTab();
+
+    expect(screen.getByText(instructions.agentBudgets.title)).toBeInTheDocument();
+    expect(screen.getByText(instructions.agentBudgets.description)).toBeInTheDocument();
+    expect(screen.getByLabelText(instructions.agentBudgets.stepsLabel)).toHaveAttribute(
+      "placeholder",
+      "50",
+    );
+    expect(screen.getByLabelText(instructions.agentBudgets.outputLabel)).toHaveAttribute(
+      "placeholder",
+      instructions.agentBudgets.auto,
+    );
+    expect(screen.getByLabelText(instructions.agentBudgets.totalLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: instructions.agentBudgets.save })).toBeDisabled();
+    expect(screen.getByRole("button", { name: instructions.save })).toBeInTheDocument();
+  });
+
+  it("saves edited execution budgets as numbers", async () => {
+    const user = userEvent.setup();
+    const props = renderTab();
+
+    await user.type(screen.getByLabelText(instructions.agentBudgets.stepsLabel), "500");
+    await user.type(screen.getByLabelText(instructions.agentBudgets.totalLabel), "5000000");
+    await user.click(screen.getByRole("button", { name: instructions.agentBudgets.save }));
+
+    expect(props.persist).toHaveBeenCalledWith({
+      ...cfg,
+      ai_agent_max_steps: 500,
+      ai_agent_total_tokens: 5000000,
+    });
+    expect(props.setMsg).not.toHaveBeenCalled();
+  });
+
+  it("rejects an out-of-range budget without saving", async () => {
+    const user = userEvent.setup();
+    const setMsg = vi.fn();
+    const props = renderTab({ setMsg });
+
+    await user.type(screen.getByLabelText(instructions.agentBudgets.stepsLabel), "3000");
+    await user.click(screen.getByRole("button", { name: instructions.agentBudgets.save }));
+
+    expect(setMsg).toHaveBeenCalledWith({
+      ok: false,
+      text: instructions.agentBudgets.invalid
+        .replace("{{field}}", "ai_agent_max_steps")
+        .replace("{{max}}", "2000"),
+    });
+    expect(props.persist).not.toHaveBeenCalled();
+  });
+
+  it("clears a stored budget back to the default", async () => {
+    const user = userEvent.setup();
+    const stored = { ...cfg, ai_agent_max_steps: 500 } as unknown as AppConfig;
+    const props = renderTab({ cfg: stored });
+
+    const steps = screen.getByLabelText(instructions.agentBudgets.stepsLabel);
+    expect(steps).toHaveValue(500);
+    await user.clear(steps);
+    await user.click(screen.getByRole("button", { name: instructions.agentBudgets.save }));
+
+    expect(props.persist).toHaveBeenCalledWith({ ...stored, ai_agent_max_steps: null });
+  });
+
   it("saves the PDF capture switch through the merging save", async () => {
     const user = userEvent.setup();
     localStorage.removeItem("oleafly:ai_pdf_capture");

@@ -277,6 +277,16 @@
       "submitAddAnyway": "Aggiungi senza modelli"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Budget di esecuzione dell'agente",
+        "description": "Solo per l'assistente integrato. Lasciare vuoto usa il valore predefinito esistente. Più di 50 passaggi attiva un limite di otto ore per turno. L'obiettivo totale di token viene verificato tra i passaggi del modello in base all'utilizzo segnalato. Le richieste possono superarlo e l'utilizzo dei sottoagenti eseguiti separatamente non è incluso.",
+        "stepsLabel": "Numero massimo di passaggi (1-2000)",
+        "outputLabel": "Token di output massimi per richiesta",
+        "totalLabel": "Token totali segnalati per turno (limite flessibile)",
+        "auto": "Automatico",
+        "save": "Salva i budget",
+        "invalid": "Budget non valido: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Capacità dell'agente",
       "completionModelDescription": "Il modello che scrive i completamenti mentre digiti. I modelli veloci e quelli che girano su questo computer rispondono prima.",
       "completionModelTitle": "Modello per i completamenti con AI",

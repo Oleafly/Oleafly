@@ -275,6 +275,16 @@
       "submitAddAnyway": "モデルなしで追加"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "エージェントの実行バジェット",
+        "description": "内蔵アシスタントのみが対象です。空欄の場合は既存の既定値を使います。50 ステップを超えると 8 時間のターン制限が有効になります。合計 token の目標は、報告された使用量に基づきモデルのステップ間で確認されます。リクエストが目標を超える場合があり、別途実行されるサブエージェントの使用量は含まれません。",
+        "stepsLabel": "最大ステップ数（1-2000）",
+        "outputLabel": "リクエストあたりの最大出力 token 数",
+        "totalLabel": "ターンあたりの報告 token 合計（ソフトリミット）",
+        "auto": "自動",
+        "save": "バジェットを保存",
+        "invalid": "無効なバジェット：{{field}}（1-{{max}}）"
+      },
       "capabilitiesTitle": "エージェントの機能",
       "completionModelDescription": "入力中に補完を書くモデルです。高速なモデルや、このコンピューターで動くモデルほど早く応答します。",
       "completionModelTitle": "AI 補完のモデル",

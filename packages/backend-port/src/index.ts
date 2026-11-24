@@ -865,6 +865,9 @@ export interface AppConfig {
     ai_system_prompt: string;
     ai_pdf_capture: boolean;
     ai_reasoning_summaries?: boolean;
+    ai_agent_max_steps?: number | null;
+    ai_agent_max_output_tokens?: number | null;
+    ai_agent_total_tokens?: number | null;
     ai_provider_models: Record<string, StoredModel[]>;
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];

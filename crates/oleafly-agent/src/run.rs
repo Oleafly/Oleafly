@@ -33,6 +33,9 @@ pub struct RunConfig {
     pub max_duration_ms: Option<u64>,
     #[serde(default)]
     pub allow_long_runs: bool,
+    /// Optional soft ceiling on provider-reported input + output tokens per turn.
+    #[serde(default)]
+    pub max_total_tokens: Option<u64>,
 }
 
 fn default_auto_compact() -> bool {
@@ -48,6 +51,7 @@ impl Default for RunConfig {
             auto_compact: true,
             max_duration_ms: None,
             allow_long_runs: false,
+            max_total_tokens: None,
         }
     }
 }
@@ -1111,6 +1115,7 @@ mod tests {
             serde_json::from_str(r#"{"max_steps":50,"max_retries":4,"retry_base_ms":800}"#)
                 .unwrap();
         assert!(!old.allow_long_runs);
+        assert_eq!(old.max_total_tokens, None);
     }
 
     #[tokio::test]
@@ -1144,6 +1149,36 @@ mod tests {
         assert_eq!(outcome.steps, 61);
         assert!(!outcome.stopped_at_cap);
         assert_eq!(outcome.text, "done");
+    }
+
+    #[tokio::test]
+    async fn reported_token_budget_stops_before_another_model_step() {
+        let first = sse(&[
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_0","function":{"name":"read_file","arguments":"{}"}}]}}]}"#,
+            r#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#,
+            r#"{"choices":[],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120}}"#,
+            "[DONE]",
+        ]);
+        let (addr, _receiver) = serve_replies(vec![first]);
+        let outcome = run_agent(
+            &crate::build_client().unwrap(),
+            &local_resolved(addr),
+            CompletionRequest::prompt("system", "prompt"),
+            &RunConfig {
+                max_total_tokens: Some(100),
+                max_retries: 0,
+                ..RunConfig::default()
+            },
+            ok_tools(),
+            |_| {},
+        )
+        .await
+        .unwrap();
+        assert_eq!(outcome.steps, 1);
+        assert!(outcome.stopped_at_cap);
+        assert_eq!(outcome.stop_reason.as_deref(), Some("token_budget"));
+        assert_eq!(outcome.usage.input, 100);
+        assert_eq!(outcome.usage.output, 20);
     }
 
     #[tokio::test]

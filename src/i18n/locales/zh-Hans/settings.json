@@ -275,6 +275,16 @@
       "submitAddAnyway": "添加但不含模型"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "代理执行预算",
+        "description": "仅适用于内置助手。留空使用现有默认值。超过 50 步会启用八小时的单轮时限。总 token 目标在模型步骤之间按报告的用量检查。单次请求可能超出该目标，且不包含单独运行的子代理用量。",
+        "stepsLabel": "最大步数（1-2000）",
+        "outputLabel": "每次请求的最大输出 token 数",
+        "totalLabel": "每轮报告的 token 总量（软限制）",
+        "auto": "自动",
+        "save": "保存预算",
+        "invalid": "预算无效：{{field}}（1-{{max}}）"
+      },
       "capabilitiesTitle": "代理能力",
       "completionModelDescription": "在你输入时生成补全内容的模型。速度快的模型和在这台电脑上运行的模型响应最快。",
       "completionModelTitle": "AI 补全模型",

@@ -276,6 +276,16 @@
       "submitAddAnyway": "Ohne Modelle hinzufügen"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Ausführungsbudgets des Agenten",
+        "description": "Nur für den integrierten Assistenten. Leer lassen verwendet den bestehenden Standardwert. Mehr als 50 Schritte aktivieren ein Achtstunden-Limit pro Zug. Das gesamte Token-Ziel wird zwischen den Modellschritten anhand des gemeldeten Verbrauchs geprüft. Anfragen können es überschreiten, und separat ausgeführte Subagenten sind nicht enthalten.",
+        "stepsLabel": "Maximale Schritte (1-2000)",
+        "outputLabel": "Maximale Ausgabe-Tokens pro Anfrage",
+        "totalLabel": "Gemeldete Tokens pro Zug insgesamt (weiches Limit)",
+        "auto": "Automatisch",
+        "save": "Budgets speichern",
+        "invalid": "Ungültiges Budget: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Fähigkeiten des Agenten",
       "completionModelDescription": "Das Modell, das beim Schreiben Vervollständigungen vorschlägt. Schnelle Modelle und Modelle, die auf diesem Computer laufen, antworten am schnellsten.",
       "completionModelTitle": "Modell für KI-Vervollständigung",

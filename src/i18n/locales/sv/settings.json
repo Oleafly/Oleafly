@@ -276,6 +276,16 @@
       "submitAddAnyway": "Lägg till utan modeller"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Agentens körningsbudgetar",
+        "description": "Endast för den inbyggda assistenten. Tomt fält använder det befintliga standardvärdet. Fler än 50 steg aktiverar en åttatimmarsgräns per tur. Det totala tokenmålet kontrolleras mellan modellsteg utifrån den rapporterade användningen. Förfrågningar kan överskrida det, och användning från separat körda subagenter ingår inte.",
+        "stepsLabel": "Maximalt antal steg (1-2000)",
+        "outputLabel": "Maximalt antal utdatatokens per förfrågan",
+        "totalLabel": "Totalt rapporterade tokens per tur (mjuk gräns)",
+        "auto": "Automatiskt",
+        "save": "Spara budgetar",
+        "invalid": "Ogiltig budget: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Agentens förmågor",
       "completionModelDescription": "Modellen som skriver kompletteringar medan du skriver. Snabba modeller, och modeller som körs på den här datorn, svarar snabbast.",
       "completionModelTitle": "Modell för AI-kompletteringar",

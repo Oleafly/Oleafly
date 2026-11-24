@@ -170,6 +170,28 @@ fn renderer_runs_cannot_ask_for_long_runs() {
 }
 
 #[test]
+fn persisted_agent_budgets_opt_into_long_runs() {
+    let settings = AppConfig {
+        ai_agent_max_steps: Some(500),
+        ai_agent_max_output_tokens: Some(32_768),
+        ai_agent_total_tokens: Some(5_000_000),
+        ..Default::default()
+    };
+    let (config, output) = super::apply_agent_budgets(sanitized_run_config(None), &settings);
+    assert_eq!(config.max_steps, 500);
+    assert!(config.allow_long_runs);
+    assert_eq!(config.max_duration_ms, Some(8 * 60 * 60 * 1_000));
+    assert_eq!(config.max_total_tokens, Some(5_000_000));
+    assert_eq!(output, Some(32_768));
+    let (default, output) =
+        super::apply_agent_budgets(sanitized_run_config(None), &AppConfig::default());
+    assert_eq!(default.max_steps, 50);
+    assert!(!default.allow_long_runs);
+    assert_eq!(default.max_total_tokens, None);
+    assert_eq!(output, None);
+}
+
+#[test]
 fn renderer_run_budgets_have_safe_minimums() {
     let config = sanitized_run_config(Some(RunConfig {
         max_steps: 0,

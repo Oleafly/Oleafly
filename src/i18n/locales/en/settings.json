@@ -276,6 +276,16 @@
       "submitAddAnyway": "Add without models"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Agent execution budgets",
+        "description": "Built-in assistant only. Blank uses the existing default. More than 50 steps opts into an eight-hour turn limit. The total token target is checked between model steps using reported usage. Requests may overshoot it, and separate subagent usage is not included.",
+        "stepsLabel": "Maximum steps (1-2000)",
+        "outputLabel": "Maximum output tokens per request",
+        "totalLabel": "Total reported tokens per turn (soft limit)",
+        "auto": "Auto",
+        "save": "Save budgets",
+        "invalid": "Invalid budget: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Agent capabilities",
       "completionModelDescription": "The model that writes completions while you type. Fast models, and models running on this computer, answer quickest.",
       "completionModelTitle": "AI completion model",

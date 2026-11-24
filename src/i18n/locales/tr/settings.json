@@ -276,6 +276,16 @@
       "submitAddAnyway": "Modelsiz ekle"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Ajan yürütme bütçeleri",
+        "description": "Yalnızca yerleşik asistan için. Boş bırakmak mevcut varsayılanı kullanır. 50'den fazla adım, tur başına sekiz saatlik bir sınırı etkinleştirir. Toplam token hedefi, bildirilen kullanıma göre model adımları arasında denetlenir. İstekler hedefi aşabilir ve ayrı çalıştırılan alt ajanların kullanımı buna dahil değildir.",
+        "stepsLabel": "En fazla adım sayısı (1-2000)",
+        "outputLabel": "İstek başına en fazla çıktı token sayısı",
+        "totalLabel": "Tur başına bildirilen toplam token (yumuşak sınır)",
+        "auto": "Otomatik",
+        "save": "Bütçeleri kaydet",
+        "invalid": "Geçersiz bütçe: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Ajan yetenekleri",
       "completionModelDescription": "Siz yazarken tamamlamaları yazan model. Hızlı modeller ve bu bilgisayarda çalışan modeller en çabuk yanıt verir.",
       "completionModelTitle": "Yapay zeka tamamlama modeli",

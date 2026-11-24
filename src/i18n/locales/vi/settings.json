@@ -275,6 +275,16 @@
       "submitAddAnyway": "Thêm không có mô hình"
     },
     "instructions": {
+      "agentBudgets": {
+        "title": "Ngân sách thực thi của agent",
+        "description": "Chỉ dành cho trợ lý tích hợp. Để trống sẽ dùng giá trị mặc định hiện có. Hơn 50 bước sẽ bật giới hạn tám giờ cho mỗi lượt. Mục tiêu tổng token được kiểm tra giữa các bước của mô hình dựa trên mức sử dụng được báo cáo. Các yêu cầu có thể vượt quá mục tiêu đó, và mức sử dụng của các agent con chạy riêng không được tính vào.",
+        "stepsLabel": "Số bước tối đa (1-2000)",
+        "outputLabel": "Số token đầu ra tối đa mỗi yêu cầu",
+        "totalLabel": "Tổng token được báo cáo mỗi lượt (giới hạn mềm)",
+        "auto": "Tự động",
+        "save": "Lưu ngân sách",
+        "invalid": "Ngân sách không hợp lệ: {{field}} (1-{{max}})"
+      },
       "capabilitiesTitle": "Khả năng của agent",
       "completionModelDescription": "Mô hình viết phần hoàn thành trong lúc bạn gõ. Các mô hình nhanh và mô hình chạy trên máy tính này phản hồi nhanh nhất.",
       "completionModelTitle": "Mô hình cho gợi ý hoàn thành bằng AI",

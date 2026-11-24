@@ -75,6 +75,9 @@ where
         config.max_steps.min(MAX_AGENT_STEPS)
     };
     for step in 0..step_limit {
+        if token_budget_reached(config, ledger.usage.total) {
+            break;
+        }
         if pipeline
             .suspend
             .as_ref()
@@ -110,7 +113,8 @@ where
         if let Some(container) = &outcome.container {
             request.anthropic_container = Some(container.clone());
         }
-        let has_next_step = step.saturating_add(1) < step_limit;
+        let has_next_step = step.saturating_add(1) < step_limit
+            && !token_budget_reached(config, ledger.usage.total);
         if should_continue_paused_turn(&outcome, has_next_step, pauses) {
             pauses += 1;
             continuing = true;
@@ -188,8 +192,17 @@ where
 
     result.usage = ledger.usage.total;
     result.stopped_at_cap = true;
+    if token_budget_reached(config, result.usage) {
+        result.stop_reason = Some("token_budget".into());
+    }
     result.history = request.messages;
     Ok(result)
+}
+
+fn token_budget_reached(config: &RunConfig, usage: Usage) -> bool {
+    config
+        .max_total_tokens
+        .is_some_and(|limit| u64::from(usage.input) + u64::from(usage.output) >= limit)
 }
 
 async fn ensure_budget<F>(
