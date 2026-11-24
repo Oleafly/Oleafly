@@ -1,66 +1,40 @@
 {
   "probe": "online-user-hues",
-  "description": "Alice and Bob open main.tex in CE's web editor; Carol and Dave connect as scripted clients and report cursor positions in main.tex. Reads the online-users widget circles and the remote cursor markers in Alice's and Bob's editors and compares each colour with getHueForUserId (md5 of the user id).",
+  "description": "Alice and Bob open main.tex in CE's web editor; Carol and Dave connect as scripted clients and report cursor positions in main.tex. Reads the online-users widget circles and the remote cursor markers in Alice's and Bob's editors and records the hue each one was drawn in, read back from its colour, with the user it belongs to.",
   "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
   "recordedAt": "2026-11-24",
   "notes": [
-    "alice sees circles [\"B:rgb(59, 38, 217) ok\",\"C:rgb(62, 217, 38) ok\",\"D:rgb(38, 217, 83) ok\"]; cursor hues [247,112,135] expected [\"bob:247\",\"carol:112\",\"dave:135\"]",
-    "bob sees circles [\"A:rgb(98, 217, 38) ok\",\"C:rgb(62, 217, 38) ok\",\"D:rgb(38, 217, 83) ok\"]; cursor hues [100,112,135] expected [\"alice:100\",\"carol:112\",\"dave:135\"]",
-    "vectors from the mapping report: [{\"id\":\"5f9a1b2c3d4e5f6a7b8c9d0e\",\"hue\":89},{\"id\":\"000000000000000000000001\",\"hue\":351},{\"id\":\"64b7f0c2a1e3d4b5c6a7e8f9\",\"hue\":325}]"
+    "alice sees circles [\"bob:247\",\"carol:112\",\"dave:135\"] and cursors [\"bob:247\",\"carol:112\",\"dave:135\"]",
+    "bob sees circles [\"alice:100\",\"carol:112\",\"dave:135\"] and cursors [\"alice:100\",\"carol:112\",\"dave:135\"]"
   ],
   "steps": [
     {
       "viewer": "alice",
       "viewerId": "6afab5bb1222cc50aa4c16ec",
-      "expected": {
-        "alice": {
-          "userId": "6afab5bb1222cc50aa4c16ec",
-          "hue": 200,
-          "rgb": "rgb(38, 157, 217)"
-        },
-        "bob": {
-          "userId": "6afab5bc1222cc50aa4c16f2",
-          "hue": 247,
-          "rgb": "rgb(59, 38, 217)"
-        },
-        "carol": {
-          "userId": "6afab5bc1222cc50aa4c16f8",
-          "hue": 112,
-          "rgb": "rgb(62, 217, 38)"
-        },
-        "dave": {
-          "userId": "6afab5bd1222cc50aa4c16fe",
-          "hue": 135,
-          "rgb": "rgb(38, 217, 83)"
-        }
-      },
       "circles": [
         {
           "text": "B",
           "inline": "background-color: rgb(59, 38, 217);",
           "computed": "rgb(59, 38, 217)",
           "user": "bob",
-          "expectedHue": 247,
-          "expectedRgb": "rgb(59, 38, 217)",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f2",
+          "hue": 247
         },
         {
           "text": "C",
           "inline": "background-color: rgb(62, 217, 38);",
           "computed": "rgb(62, 217, 38)",
           "user": "carol",
-          "expectedHue": 112,
-          "expectedRgb": "rgb(62, 217, 38)",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "hue": 112
         },
         {
           "text": "D",
           "inline": "background-color: rgb(38, 217, 83);",
           "computed": "rgb(38, 217, 83)",
           "user": "dave",
-          "expectedHue": 135,
-          "expectedRgb": "rgb(38, 217, 83)",
-          "matches": true
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "hue": 135
         }
       ],
       "cursors": [
@@ -68,74 +42,52 @@
           "hue": "247",
           "computed": "rgb(59, 38, 217)",
           "user": "bob",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f2",
+          "drawnInItsHue": true
         },
         {
           "hue": "112",
           "computed": "rgb(62, 217, 38)",
           "user": "carol",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "drawnInItsHue": true
         },
         {
           "hue": "135",
           "computed": "rgb(38, 217, 83)",
           "user": "dave",
-          "matches": true
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "drawnInItsHue": true
         }
       ]
     },
     {
       "viewer": "bob",
       "viewerId": "6afab5bc1222cc50aa4c16f2",
-      "expected": {
-        "alice": {
-          "userId": "6afab5bb1222cc50aa4c16ec",
-          "hue": 100,
-          "rgb": "rgb(98, 217, 38)"
-        },
-        "bob": {
-          "userId": "6afab5bc1222cc50aa4c16f2",
-          "hue": 200,
-          "rgb": "rgb(38, 157, 217)"
-        },
-        "carol": {
-          "userId": "6afab5bc1222cc50aa4c16f8",
-          "hue": 112,
-          "rgb": "rgb(62, 217, 38)"
-        },
-        "dave": {
-          "userId": "6afab5bd1222cc50aa4c16fe",
-          "hue": 135,
-          "rgb": "rgb(38, 217, 83)"
-        }
-      },
       "circles": [
         {
           "text": "A",
           "inline": "background-color: rgb(98, 217, 38);",
           "computed": "rgb(98, 217, 38)",
           "user": "alice",
-          "expectedHue": 100,
-          "expectedRgb": "rgb(98, 217, 38)",
-          "matches": true
+          "userId": "6afab5bb1222cc50aa4c16ec",
+          "hue": 100
         },
         {
           "text": "C",
           "inline": "background-color: rgb(62, 217, 38);",
           "computed": "rgb(62, 217, 38)",
           "user": "carol",
-          "expectedHue": 112,
-          "expectedRgb": "rgb(62, 217, 38)",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "hue": 112
         },
         {
           "text": "D",
           "inline": "background-color: rgb(38, 217, 83);",
           "computed": "rgb(38, 217, 83)",
           "user": "dave",
-          "expectedHue": 135,
-          "expectedRgb": "rgb(38, 217, 83)",
-          "matches": true
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "hue": 135
         }
       ],
       "cursors": [
@@ -143,35 +95,22 @@
           "hue": "100",
           "computed": "rgb(98, 217, 38)",
           "user": "alice",
-          "matches": true
+          "userId": "6afab5bb1222cc50aa4c16ec",
+          "drawnInItsHue": true
         },
         {
           "hue": "112",
           "computed": "rgb(62, 217, 38)",
           "user": "carol",
-          "matches": true
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "drawnInItsHue": true
         },
         {
           "hue": "135",
           "computed": "rgb(38, 217, 83)",
           "user": "dave",
-          "matches": true
-        }
-      ]
-    },
-    {
-      "vectors": [
-        {
-          "id": "5f9a1b2c3d4e5f6a7b8c9d0e",
-          "hue": 89
-        },
-        {
-          "id": "000000000000000000000001",
-          "hue": 351
-        },
-        {
-          "id": "64b7f0c2a1e3d4b5c6a7e8f9",
-          "hue": 325
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "drawnInItsHue": true
         }
       ]
     }

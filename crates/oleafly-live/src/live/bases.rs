@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -14,10 +14,17 @@ const WRITTEN_KEPT: usize = 4;
 #[derive(Default)]
 pub struct WrittenTexts {
     pub texts: HashMap<String, VecDeque<String>>,
-    writing: BTreeSet<String>,
+    writing: BTreeMap<String, Option<String>>,
 }
 
 impl WrittenTexts {
+    pub fn found(&mut self, path: &str, text: &str) {
+        if let Some(found) = self.writing.get_mut(path) {
+            *found = Some(text.to_owned());
+        }
+        self.record(path, text);
+    }
+
     pub fn record(&mut self, path: &str, text: &str) {
         let kept = self.texts.entry(path.to_owned()).or_default();
         if kept.back().is_some_and(|last| last == text) {
@@ -34,7 +41,7 @@ impl WrittenTexts {
     }
 
     pub fn latest_settled(&self, path: &str) -> Option<&String> {
-        if self.writing.contains(path) {
+        if self.writing.contains_key(path) {
             return None;
         }
         self.latest(path)
@@ -42,10 +49,20 @@ impl WrittenTexts {
 
     pub fn writing(&mut self, path: &str, writing: bool) {
         if writing {
-            self.writing.insert(path.to_owned());
+            self.writing.insert(path.to_owned(), None);
         } else {
             self.writing.remove(path);
         }
+    }
+
+    pub fn written(&mut self, path: &str, text: &str, replaced: Option<&str>) -> bool {
+        let found_later = self.writing.remove(path).flatten().is_some_and(|found| {
+            found != text && replaced.is_none_or(|replaced| !written_as(&found, replaced))
+        });
+        if !found_later {
+            self.record(path, text);
+        }
+        !found_later
     }
 
     pub fn kept(&self, path: &str) -> impl Iterator<Item = &String> {
@@ -77,6 +94,7 @@ impl WrittenTexts {
 pub trait Bases {
     fn record(&mut self, path: &str, text: &str);
     fn writing(&mut self, path: &str, writing: bool);
+    fn written(&mut self, path: &str, text: &str, replaced: Option<&str>) -> bool;
     fn forget(&mut self, path: &str);
     fn rename(&mut self, from: &str, to: &str);
 }
@@ -88,6 +106,10 @@ impl Bases for WrittenTexts {
 
     fn writing(&mut self, path: &str, writing: bool) {
         WrittenTexts::writing(self, path, writing);
+    }
+
+    fn written(&mut self, path: &str, text: &str, replaced: Option<&str>) -> bool {
+        WrittenTexts::written(self, path, text, replaced)
     }
 
     fn forget(&mut self, path: &str) {
@@ -106,6 +128,10 @@ impl Bases for &Mutex<WrittenTexts> {
 
     fn writing(&mut self, path: &str, writing: bool) {
         guard(self).writing(path, writing);
+    }
+
+    fn written(&mut self, path: &str, text: &str, replaced: Option<&str>) -> bool {
+        guard(self).written(path, text, replaced)
     }
 
     fn forget(&mut self, path: &str) {
@@ -167,4 +193,30 @@ pub fn merged_onto(base: &str, disk: &str, current: &str) -> Option<TextOperatio
         return None;
     }
     oleafly_ot::rebase(base, disk, current).map(|rebased| rebased.operation)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WrittenTexts;
+    use crate::disk::sha256_hex;
+
+    const MAIN: &str = "main.tex";
+
+    #[test]
+    fn a_text_found_while_the_pass_writes_stays_the_base_unless_the_pass_replaced_it() {
+        let mut bases = WrittenTexts::default();
+        bases.record(MAIN, "before");
+        bases.writing(MAIN, true);
+        bases.found(MAIN, "before");
+        assert!(bases.written(MAIN, "ours", Some(&sha256_hex(b"before"))));
+        assert_eq!(bases.latest(MAIN).map(String::as_str), Some("ours"));
+        bases.writing(MAIN, true);
+        bases.found(MAIN, "outside");
+        assert!(!bases.written(MAIN, "next", Some(&sha256_hex(b"ours"))));
+        assert_eq!(
+            bases.latest_settled(MAIN).map(String::as_str),
+            Some("outside")
+        );
+        assert!(bases.kept(MAIN).all(|text| text != "next"));
+    }
 }

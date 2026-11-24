@@ -1219,35 +1219,63 @@ fn a_fault_is_noticed_and_trying_again_sends_the_trimmed_text() {
     });
 }
 
+async fn keeping_a_copy_reloads_the_server_text(while_recording: bool) {
+    let rig = OverleafRig::start(
+        project("Hello\n", "Intro\n"),
+        &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+    )
+    .await;
+    if while_recording {
+        disk_pass::pause_at(
+            &disk_pass::RECORD_LATE,
+            &rig.root,
+            Some(Duration::from_secs(10)),
+        );
+    }
+    faulted(&rig).await;
+    eventually("the refused text reaches the disk", || {
+        rig.read(MAIN) == "Hello\nkept\n"
+    })
+    .await;
+    if while_recording {
+        eventually("the writer has not recorded the refused text yet", || {
+            disk_pass::writer_paused(&rig.root)
+        })
+        .await;
+    }
+    rig.edit(MAIN, "Hello\nmine\n");
+    notices::keep_copy(&rig.project_id, MAIN).unwrap();
+    if while_recording {
+        eventually("the doc reloads from the server", || {
+            rig.live.text_at(MAIN).as_deref() == Some("Hello\n")
+        })
+        .await;
+        disk_pass::pause_at(&disk_pass::RECORD_LATE, &rig.root, None);
+    }
+    eventually("the copy is written and the file reloads", || {
+        let kept = std::fs::read_dir(&rig.root)
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|entry| {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                name != MAIN && name.starts_with("main") && rig.read(&name) == "Hello\nmine\n"
+            });
+        kept && rig.read(MAIN) == "Hello\n"
+    })
+    .await;
+    assert!(notices::retry(&rig.project_id, MAIN).is_err());
+    assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), "Hello\n");
+    rig.finish().await;
+}
+
 #[test]
 fn keeping_a_copy_writes_it_beside_the_file_and_reloads_the_server_text() {
-    run(async {
-        let rig = OverleafRig::start(
-            project("Hello\n", "Intro\n"),
-            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
-        )
-        .await;
-        faulted(&rig).await;
-        eventually("the refused text reaches the disk", || {
-            rig.read(MAIN) == "Hello\nkept\n"
-        })
-        .await;
-        rig.edit(MAIN, "Hello\nmine\n");
-        notices::keep_copy(&rig.project_id, MAIN).unwrap();
-        eventually("the copy is written and the file reloads", || {
-            let kept = std::fs::read_dir(&rig.root)
-                .unwrap()
-                .filter_map(Result::ok)
-                .any(|entry| {
-                    let name = entry.file_name().to_string_lossy().into_owned();
-                    name != MAIN && name.starts_with("main") && rig.read(&name) == "Hello\nmine\n"
-                });
-            kept && rig.read(MAIN) == "Hello\n"
-        })
-        .await;
-        assert!(notices::retry(&rig.project_id, MAIN).is_err());
-        rig.finish().await;
-    });
+    run(keeping_a_copy_reloads_the_server_text(false));
+}
+
+#[test]
+fn keeping_a_copy_while_the_refused_text_is_recorded_sends_nothing_stale() {
+    run(keeping_a_copy_reloads_the_server_text(true));
 }
 
 #[test]

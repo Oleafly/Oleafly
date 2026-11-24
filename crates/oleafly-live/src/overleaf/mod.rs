@@ -183,7 +183,7 @@ impl Mirror {
 
     pub fn adopt_file_text(&self, path: &str) -> Option<String> {
         let (text, hash) = self.read_exact(path)?;
-        guard(&self.disk.bases).record(path, &text);
+        guard(&self.disk.bases).found(path, &text);
         guard(&self.disk.disk).hashes.insert(path.to_owned(), hash);
         Some(text)
     }

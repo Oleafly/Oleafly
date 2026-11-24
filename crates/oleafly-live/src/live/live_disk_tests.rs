@@ -9,7 +9,7 @@ use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
 use super::host::DiskHost;
-use super::live_disk::Mirrored;
+use super::live_disk::{publish, Mirrored};
 use super::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use super::payloads::FolderChange;
 use super::session::{guard, WriterSignal};
@@ -318,4 +318,24 @@ fn a_kept_copy_lands_beside_the_file_and_never_over_another() {
     assert_eq!(mirror.read(&first), b"typed by the other account\n");
     assert_eq!(mirror.read(&second), b"typed later\n");
     assert_eq!(mirror.read("sections/intro.tex"), b"current\n");
+}
+
+#[test]
+fn a_pass_never_publishes_over_a_hash_found_after_its_snapshot() {
+    let state = |main: &str, intro: &str| DiskState {
+        hashes: BTreeMap::from([
+            ("main.tex".to_owned(), main.to_owned()),
+            ("intro.tex".to_owned(), intro.to_owned()),
+        ]),
+        ..DiskState::default()
+    };
+    let mut shared = state("found", "before");
+
+    publish(
+        &mut shared,
+        &state("before", "before"),
+        state("ours", "ours"),
+    );
+
+    assert_eq!(shared, state("found", "ours"));
 }

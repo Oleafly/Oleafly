@@ -336,6 +336,7 @@ function parseChatMessage(value: unknown): CollabChatMessage | null {
     author: text(value.author) ?? "",
     at: finite(value.at),
     body: text(value.body) ?? "",
+    editedAt: typeof value.editedAt === "number" ? value.editedAt : null,
     deleted: value.deleted === true,
     verified: value.verified === true,
     reactions: list(value.reactions, parseReaction),

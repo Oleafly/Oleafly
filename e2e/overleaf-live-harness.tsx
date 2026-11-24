@@ -537,16 +537,16 @@ async function pdfView() {
   return react.createElement(PdfReview);
 }
 
-const views: Record<string, () => Promise<ReturnType<typeof react.createElement>>> = {
-  pdf: pdfView,
-  words: wordsView,
-  history: historyView,
-  settings: settingsView,
-  linked: linkedView,
-};
+const views = new Map<string, () => Promise<ReturnType<typeof react.createElement>>>([
+  ["pdf", pdfView],
+  ["words", wordsView],
+  ["history", historyView],
+  ["settings", settingsView],
+  ["linked", linkedView],
+]);
 
 let view: ReturnType<typeof react.createElement>;
-const extra = views[params.get("view") ?? ""];
+const extra = views.get(params.get("view") ?? "");
 if (extra) {
   view = await extra();
 } else if (params.get("view") === "card") {

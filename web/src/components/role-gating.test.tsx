@@ -293,9 +293,9 @@ describe("comments pane by role", () => {
 
 describe("chat by role", () => {
   const messages = [
-    { id: "c1", author: "ana", at: Date.now() - 5_000, body: "Hi all", deleted: false, verified: true, reactions: [], pending: false, mentions: [] },
-    { id: "c2", author: "me", at: Date.now(), body: "Hello", deleted: false, verified: true, reactions: [], pending: false, mentions: [] },
-    { id: "c3", author: "ana", at: Date.now(), body: "gone", deleted: true, verified: true, reactions: [], pending: false, mentions: [] },
+    { id: "c1", author: "ana", at: Date.now() - 5_000, body: "Hi all", deleted: false, verified: true, reactions: [], pending: false, mentions: [], editedAt: null },
+    { id: "c2", author: "me", at: Date.now(), body: "Hello", deleted: false, verified: true, reactions: [], pending: false, mentions: [], editedAt: null },
+    { id: "c3", author: "ana", at: Date.now(), body: "gone", deleted: true, verified: true, reactions: [], pending: false, mentions: [], editedAt: null },
   ];
 
   it("lets viewers read the chat but not post", () => {
@@ -467,7 +467,7 @@ describe("web pane review fixes", () => {
   });
 
   it("flags a chat message that arrives as New when the chat runs under StrictMode, as the app does", () => {
-    const first = { id: "c1", author: "ana", at: Date.now() - 5_000, body: "Hi all", deleted: false, verified: true, reactions: [], pending: false, mentions: [] };
+    const first = { id: "c1", author: "ana", at: Date.now() - 5_000, body: "Hi all", deleted: false, verified: true, reactions: [], pending: false, mentions: [], editedAt: null };
     withRole("commenter", { chat: [first] });
     render(
       <StrictMode>
@@ -527,13 +527,13 @@ describe("web pane review fixes", () => {
     act(() => {
       useWeb.setState({
         chatLoaded: true,
-        chat: [{ id: "h1", author: "ana", at: at - 10_000, body: "From before", deleted: false, verified: true, reactions: [], pending: false, mentions: [] }],
+        chat: [{ id: "h1", author: "ana", at: at - 10_000, body: "From before", deleted: false, verified: true, reactions: [], pending: false, mentions: [], editedAt: null }],
       });
     });
     expect(screen.getByText("From before").closest("[data-comment-entry]")).not.toHaveAttribute("data-fresh");
     act(() => {
       useWeb.setState((state) => ({
-        chat: [...state.chat, { id: "h2", author: "ana", at: at + 1, body: "Live one", deleted: false, verified: true, reactions: [], pending: false, mentions: [] }],
+        chat: [...state.chat, { id: "h2", author: "ana", at: at + 1, body: "Live one", deleted: false, verified: true, reactions: [], pending: false, mentions: [], editedAt: null }],
       }));
     });
     expect(screen.getByText("Live one").closest("[data-comment-entry]")).toHaveAttribute("data-fresh");
@@ -546,8 +546,8 @@ describe("web pane review fixes", () => {
     act(() => {
       useWeb.setState({
         chat: [
-          { id: "n1", author: "ana", at, body: "First!", deleted: false, verified: true, reactions: [], pending: false, mentions: [] },
-          { id: "n2", author: "me", at, body: "Not me", deleted: false, verified: false, reactions: [], pending: false, mentions: [] },
+          { id: "n1", author: "ana", at, body: "First!", editedAt: null, deleted: false, verified: true, reactions: [], pending: false, mentions: [] },
+          { id: "n2", author: "me", at, body: "Not me", editedAt: null, deleted: false, verified: false, reactions: [], pending: false, mentions: [] },
         ],
       });
     });
@@ -674,7 +674,7 @@ describe("unsent new comments on the web", () => {
 describe("chat mentions on the web", () => {
   it("highlights a mention the server resolved in a chat message", () => {
     withRole("commenter", {
-      chat: [{ id: "c1", author: "ana", at: Date.now(), body: "Thanks @Me", deleted: false, verified: true, reactions: [], pending: false, mentions: ["me"] }],
+      chat: [{ id: "c1", author: "ana", at: Date.now(), body: "Thanks @Me", deleted: false, verified: true, reactions: [], pending: false, mentions: ["me"], editedAt: null }],
       discussion: "chat",
     });
     renderWith(<ChatPane />);

@@ -563,7 +563,7 @@ impl OverleafLive {
                 return;
             }
         }
-        guard(&disk.bases).record(&path, &text);
+        guard(&disk.bases).found(&path, &text);
         guard(&disk.disk).hashes.insert(path, hash);
     }
 

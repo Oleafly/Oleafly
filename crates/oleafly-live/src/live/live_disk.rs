@@ -88,7 +88,7 @@ pub async fn writer_loop<W: LiveWriter>(
     }
 }
 
-fn publish(shared: &mut DiskState, before: &DiskState, after: DiskState) {
+pub(super) fn publish(shared: &mut DiskState, before: &DiskState, after: DiskState) {
     let DiskState { layout, hashes, .. } = after;
     for path in before
         .hashes
@@ -98,7 +98,8 @@ fn publish(shared: &mut DiskState, before: &DiskState, after: DiskState) {
         shared.hashes.remove(path);
     }
     for (path, hash) in hashes {
-        if before.hashes.get(&path) != Some(&hash) {
+        let known = before.hashes.get(&path);
+        if known != Some(&hash) && shared.hashes.get(&path) == known {
             shared.hashes.insert(path, hash);
         }
     }

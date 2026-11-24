@@ -94,14 +94,6 @@ export function zipEntries(bytes) {
   return entries
 }
 
-export function overleafHue(userId, viewerId) {
-  if (userId == null || userId === 'anonymous-user') return 100
-  if (userId === viewerId) return 200
-  let hue = parseInt(crypto.createHash('md5').update(userId).digest('hex').slice(0, 8), 16) % 320
-  if (hue > 180 && hue < 220) hue = hue - 200 + 360 - 20
-  return hue
-}
-
 function hslToRgb(hue, saturation, lightness) {
   const s = saturation / 100
   const l = lightness / 100
@@ -111,6 +103,10 @@ function hslToRgb(hue, saturation, lightness) {
   const [r, g, b] =
     hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x]
   return `rgb(${Math.round((r + m) * 255)}, ${Math.round((g + m) * 255)}, ${Math.round((b + m) * 255)})`
+}
+
+function hueDrawnAs(rgb) {
+  return Array.from({ length: 360 }, (_, hue) => hue).find(hue => hslToRgb(hue, 70, 50) === rgb) ?? null
 }
 
 function metaOf(html, wanted) {
@@ -1277,7 +1273,7 @@ export function featureProbes(kit) {
     },
     'online-user-hues': {
       description:
-        "Alice and Bob open main.tex in CE's web editor; Carol and Dave connect as scripted clients and report cursor positions in main.tex. Reads the online-users widget circles and the remote cursor markers in Alice's and Bob's editors and compares each colour with getHueForUserId (md5 of the user id).",
+        "Alice and Bob open main.tex in CE's web editor; Carol and Dave connect as scripted clients and report cursor positions in main.tex. Reads the online-users widget circles and the remote cursor markers in Alice's and Bob's editors and records the hue each one was drawn in, read back from its colour, with the user it belongs to.",
       async run(ctx, notes) {
         const project = ctx.state.projects['sharejs-project']
         const users = ctx.state.users
@@ -1306,13 +1302,6 @@ export function featureProbes(kit) {
           await people[1].cursor(5)
           await people[0].cursor(12)
           await sleep(4000)
-          const expected = viewer =>
-            Object.fromEntries(
-              ['alice', 'bob', 'carol', 'dave'].map(who => {
-                const hue = overleafHue(users[who].id, users[viewer].id)
-                return [who, { userId: users[who].id, hue, rgb: hslToRgb(hue, 70, 50) }]
-              })
-            )
           for (const person of people) {
             const seen = await person.page.evaluate(() => ({
               circles: [...document.querySelectorAll('.online-users-row .online-user-circle')].map(circle => ({
@@ -1325,24 +1314,19 @@ export function featureProbes(kit) {
                 computed: getComputedStyle(marker).borderLeftColor,
               })),
             }))
-            const wanted = expected(person.name)
-            const byInitial = Object.fromEntries(Object.entries(wanted).map(([who, value]) => [who[0].toUpperCase(), { who, ...value }]))
+            const byInitial = Object.fromEntries(['alice', 'bob', 'carol', 'dave'].map(who => [who[0].toUpperCase(), who]))
             const circles = seen.circles.map(circle => {
-              const match = byInitial[circle.text?.trim()?.[0]?.toUpperCase()]
-              return { ...circle, user: match?.who ?? null, expectedHue: match?.hue ?? null, expectedRgb: match?.rgb ?? null, matches: match ? circle.computed === match.rgb : null }
+              const user = byInitial[circle.text?.trim()?.[0]?.toUpperCase()] ?? null
+              return { ...circle, user, userId: user ? users[user].id : null, hue: hueDrawnAs(circle.computed) }
             })
-            const others = Object.entries(wanted).filter(([who]) => who !== person.name)
-            const cursorHues = seen.cursors.map(cursor => Number(cursor.hue))
             const cursors = seen.cursors.map(cursor => {
-              const match = others.find(([, value]) => value.hue === Number(cursor.hue))
-              return { ...cursor, user: match?.[0] ?? null, matches: match ? cursor.computed === match[1].rgb : false }
+              const owners = circles.filter(circle => circle.hue === Number(cursor.hue))
+              const user = owners.length === 1 ? owners[0].user : null
+              return { ...cursor, user, userId: user ? users[user].id : null, drawnInItsHue: cursor.computed === hslToRgb(Number(cursor.hue), 70, 50) }
             })
-            steps.push({ viewer: person.name, viewerId: users[person.name].id, expected: wanted, circles, cursors })
-            notes.push(`${person.name} sees circles ${JSON.stringify(circles.map(circle => `${circle.text}:${circle.computed}${circle.matches ? ' ok' : ' MISMATCH'}`))}; cursor hues ${JSON.stringify(cursorHues)} expected ${JSON.stringify(others.map(([who, value]) => `${who}:${value.hue}`))}`)
+            steps.push({ viewer: person.name, viewerId: users[person.name].id, circles, cursors })
+            notes.push(`${person.name} sees circles ${JSON.stringify(circles.map(circle => `${circle.user}:${circle.hue}`))} and cursors ${JSON.stringify(cursors.map(cursor => `${cursor.user}:${cursor.hue}${cursor.drawnInItsHue ? '' : ' not drawn in its hue'}`))}`)
           }
-          const vectors = ['5f9a1b2c3d4e5f6a7b8c9d0e', '000000000000000000000001', '64b7f0c2a1e3d4b5c6a7e8f9'].map(id => ({ id, hue: overleafHue(id, null) }))
-          steps.push({ vectors })
-          notes.push(`vectors from the mapping report: ${JSON.stringify(vectors)}`)
         } finally {
           for (const client of scripted) await client.close()
           for (const person of people) await person.context?.close().catch(() => {})

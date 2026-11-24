@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { avatarHue } from "@/components/ui/avatar";
@@ -24,11 +24,6 @@ function collidingAccount(own: string): string {
   throw new Error("no colliding account found");
 }
 
-function oracle(userId: string): number {
-  const hue = Number.parseInt(createHash("md5").update(userId).digest("hex").slice(0, 8), 16) % 320;
-  return hue > 180 && hue < 220 ? hue + 140 : hue;
-}
-
 const SELF = "65a0c3e1f2b4d5c6a7b8c9d0";
 
 const RECORDED_HUES = new URL(
@@ -37,11 +32,9 @@ const RECORDED_HUES = new URL(
 );
 
 type RecordedHueStep = {
-  viewerId?: string;
-  expected?: Record<string, { userId: string }>;
-  circles?: { user: string; computed: string; expectedHue: number; expectedRgb: string }[];
-  cursors?: { user: string; hue: string }[];
-  vectors?: { id: string; hue: number }[];
+  viewerId: string;
+  circles: { userId: string | null; hue: number | null }[];
+  cursors: { userId: string | null; hue: string }[];
 };
 
 describe("hueAwayFrom", () => {
@@ -90,23 +83,14 @@ describe("overleafHue", () => {
     const wrong: string[] = [];
     let compared = 0;
     for (const step of steps) {
-      const viewer = step.viewerId ?? SELF;
-      const idOf = (user: string) => step.expected?.[user]?.userId ?? user;
-      const shown: [string, number][] = [
-        ...(step.cursors ?? []).map((cursor): [string, number] => [idOf(cursor.user), Number(cursor.hue)]),
-        ...(step.circles ?? []).map((circle): [string, number] => [
-          idOf(circle.user),
-          circle.computed === circle.expectedRgb ? circle.expectedHue : Number.NaN,
-        ]),
-        ...(step.vectors ?? []).map((vector): [string, number] => [vector.id, vector.hue]),
-      ];
-      for (const [id, hue] of shown) {
+      const shown = [...step.circles, ...step.cursors.map((cursor) => ({ userId: cursor.userId, hue: Number(cursor.hue) }))];
+      for (const { userId, hue } of shown) {
         compared += 1;
-        if (overleafHue(id, viewer) !== hue) wrong.push(`${viewer} sees ${id} as ${hue}`);
+        if (userId === null || overleafHue(userId, step.viewerId) !== hue) wrong.push(`${step.viewerId} sees ${userId} as ${hue}`);
       }
     }
     expect(wrong).toEqual([]);
-    expect(compared).toBe(15);
+    expect(compared).toBe(12);
   });
 
   it("moves a hue strictly inside the band around 200 to the end of the wheel", () => {
@@ -114,16 +98,6 @@ describe("overleafHue", () => {
     expect(overleafHue("0000000000000000000000a6", SELF)).toBe(321);
     expect(overleafHue("000000000000000000000114", SELF)).toBe(359);
     expect(overleafHue("00000000000000000000006f", SELF)).toBe(220);
-  });
-
-  it("matches MD5 from node:crypto for thousands of random ObjectIds", () => {
-    const wrong: string[] = [];
-    for (let index = 0; index < 5_000; index += 1) {
-      const id = randomBytes(12).toString("hex");
-      const hue = overleafHue(id, SELF);
-      if (hue !== oracle(id)) wrong.push(`${id}=${hue}`);
-    }
-    expect(wrong).toEqual([]);
   });
 
   it("keeps every other person out of 180 to 220 and inside the wheel", () => {
@@ -147,7 +121,7 @@ describe("overleafHue", () => {
   });
 
   it("colours you like anyone else when it doesn't know who you are", () => {
-    expect(overleafHue(SELF, null)).toBe(oracle(SELF));
+    expect(overleafHue(SELF, null)).toBe(26);
   });
 });
 

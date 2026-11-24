@@ -8,6 +8,7 @@ import {
   typeInRichEditorAtCaret,
   waitRichEditorText,
 } from "../rich-editor";
+import { scriptValue } from "../script-value";
 
 const STACK = process.env.OLEAFLY_E2E_OVERLEAF_STACK ?? "";
 const MAIN = "main.tex";
@@ -38,7 +39,7 @@ test.afterAll(() => {
 });
 
 async function openInEditor(page: Page, path: string) {
-  await page.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(${JSON.stringify(path)}))`);
+  await page.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(${scriptValue(path)}))`);
 }
 
 async function expectSameEverywhere(page: Page, path: string, needles: string[]) {
@@ -86,7 +87,7 @@ test("a Markdown Visual edit reaches Overleaf, and a coauthor's typing keeps the
 
   await page.click('[aria-label="Switch to source view"]');
   const merged = await expectSameEverywhere(page, NOTES, [`${APP_VISUAL}!`, COAUTHOR_VISUAL]);
-  await waitLong(page, `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${JSON.stringify(merged)})`, 30_000);
+  await waitLong(page, `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${scriptValue(merged)})`, 30_000);
   expect(await editorSource(page)).toBe(merged);
 });
 

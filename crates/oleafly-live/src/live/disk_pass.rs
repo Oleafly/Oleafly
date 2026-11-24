@@ -243,8 +243,10 @@ pub fn apply_to_disk(
                     changed.insert(path.clone());
                     written.insert(path.clone());
                 }
-                disk.hashes.insert(path.clone(), sha256_hex(&bytes));
-                bases.record(path, text);
+                let replaced = disk.hashes.get(path).map(String::as_str);
+                if bases.written(path, text, replaced) {
+                    disk.hashes.insert(path.clone(), sha256_hex(&bytes));
+                }
                 done.insert(path.clone());
             }
             Err(error) => failed.push((path.clone(), reason_of(root, path, &error))),

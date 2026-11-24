@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { test, expect } from "../fixtures";
 import {
   clickButton,
@@ -82,11 +81,6 @@ function anchoredQuote(ranges: Ranges, thread: string): string | null {
     return comment ? (comment.ranges ?? []).map(({ pos, length }) => content.slice(pos, pos + length)).join("") : null;
   }
   return (ranges.ranges?.comments ?? []).find((entry) => entry.op.t === thread)?.op.c ?? null;
-}
-
-function overleafHueOf(userId: string): number {
-  const hue = Number.parseInt(createHash("md5").update(userId).digest("hex").slice(0, 8), 16) % 320;
-  return hue > 180 && hue < 220 ? hue + 140 : hue;
 }
 
 function pendingChanges(ranges: Ranges): number {
@@ -204,7 +198,10 @@ for (const format of FORMATS) {
       const hue = await page.evaluate<string>(
         `document.querySelector(".cm-remote-caret")?.style.getPropertyValue("--remote-hue") ?? ""`,
       );
-      expect(Number(hue), "a coauthor's caret takes Overleaf's own hue").toBe(overleafHueOf(users.bob));
+      const overleafHue = await page.evaluate<number>(
+        `import("/src/features/collab/live/peer-hue.ts").then(({ overleafHue }) => overleafHue(${scriptValue(users.bob)}, ${scriptValue(users.alice)}))`,
+      );
+      expect(Number(hue), "a coauthor's caret takes Overleaf's own hue").toBe(overleafHue);
     });
 
     test(`a coauthor's suggestions are accepted and rejected from the app (${format.name})`, async ({ tauriPage: page }) => {
