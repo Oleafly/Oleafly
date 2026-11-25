@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - README.md
+      - fork/README.md
       - docs/readme-translations/**
       - docs/assets/readme/**
       - .github/workflows/readme.yml
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - README.md
+      - fork/README.md
       - docs/readme-translations/**
       - docs/assets/readme/**
       - .github/workflows/readme.yml
@@ -26,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Check README formatting and local image references
+      - name: Check README formatting, local links and image references
         run: |
           set -euo pipefail
           git diff --check
@@ -37,7 +39,7 @@ jobs:
           const translationFiles = fs.readdirSync("docs/readme-translations")
             .filter((name) => /^README\.[^.]+\.md$/.test(name))
             .map((name) => `docs/readme-translations/${name}`);
-          const files = ["README.md", ...translationFiles];
+          const files = ["README.md", "fork/README.md", ...translationFiles];
           const expectedLocales = ["ar", "de", "es", "fr", "ja", "ko", "pt", "ru", "zh"];
           const missingTranslationFiles = expectedLocales
             .map((locale) => "docs/readme-translations/README." + locale + ".md")
@@ -70,9 +72,12 @@ jobs:
           const sharedRelativeLinkTargets = (file, readme) => relativeLinkTargets(file, readme)
             .filter((target) => target !== "README.md" && !target.startsWith("docs/readme-translations/"));
 
-          const sourceReadme = fs.readFileSync("README.md", "utf8");
+          // The fork has its own README. Retained upstream translations must
+          // agree with one another, not with the fork's different feature set.
+          const sourceFile = translationFiles[0];
+          const sourceReadme = fs.readFileSync(sourceFile, "utf8");
           const sourceAssets = localAssetNames(sourceReadme);
-          const sourceLinks = sharedRelativeLinkTargets("README.md", sourceReadme);
+          const sourceLinks = sharedRelativeLinkTargets(sourceFile, sourceReadme);
           const sourceHeadingLevels = [...sourceReadme.matchAll(/^(##|###) /gm)]
             .map(([, level]) => level.length);
           const sourceTableRows = sourceReadme.split("\n").filter((line) => /^\| /.test(line)).length;
@@ -105,7 +110,7 @@ jobs:
             const fences = readme.split("\n")
               .filter((line) => line.startsWith(fenceMarker)).length;
             const images = (readme.match(/^<img /gm) || []).length;
-            if (file !== "README.md" && (
+            if (translationFiles.includes(file) && (
               headingLevels.join(",") !== sourceHeadingLevels.join(",")
               || assetsByFile.get(file).join(",") !== sourceAssets.join(",")
               || tableRows !== sourceTableRows
@@ -117,6 +122,9 @@ jobs:
             }
             for (const ref of resolvedRefs) {
               if (!fs.existsSync(ref)) missing.push(`${file}: ${ref}`);
+            }
+            for (const target of relativeLinkTargets(file, readme)) {
+              if (!fs.existsSync(target)) missing.push(`${file}: ${target}`);
             }
           }
 
@@ -146,14 +154,14 @@ jobs:
           }
 
           if (structuralMismatches.length > 0) {
-            console.error("README translations do not match the English structure:");
+            console.error("Upstream README translations have inconsistent structure:");
             console.error([...new Set(structuralMismatches)].join("\n"));
             process.exit(1);
           }
 
           if (missing.length > 0) {
-            console.error("Missing README assets:");
-            console.error(missing.join("\n"));
+            console.error("Missing README assets or local link targets:");
+            console.error([...new Set(missing)].join("\n"));
             process.exit(1);
           }
 
