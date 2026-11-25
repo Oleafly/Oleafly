@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { overleafLiveResolve } from "@/lib/overleaf-live";
+import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "./live-store";
 import { OverleafBanners } from "./OverleafBanners";
 import { useOverleafNotices } from "./overleaf-notices";
@@ -14,7 +15,7 @@ import { useOverleafNotices } from "./overleaf-notices";
 const removal = vi.hoisted(() => ({
   overleafLiveProject: vi.fn(),
   recycleProject: vi.fn(async () => undefined),
-  closeProject: vi.fn(async () => undefined),
+  closeProject: vi.fn<() => Promise<void>>(),
   refreshProjects: vi.fn(async () => undefined),
 }));
 
@@ -66,9 +67,16 @@ beforeAll(async () => {
   await loadNamespace("collab");
 });
 
+beforeEach(() => {
+  removal.recycleProject.mockClear();
+  removal.closeProject.mockReset().mockImplementation(async () => useFilesStore.setState({ projectId: null }));
+  useFilesStore.setState({ projectId: "p1" });
+});
+
 afterEach(() => {
   useCollabLiveStore.setState({ status: null, overleaf: null, accountChanged: null });
   notices({ projectId: null });
+  useFilesStore.setState({ projectId: null });
   vi.restoreAllMocks();
 });
 
@@ -296,6 +304,32 @@ describe("OverleafBanners", () => {
     await userEvent.setup().click(within(banner).getByRole("button", { name: banners.removeEmptyCopy }));
     await waitFor(() => expect(removal.recycleProject).toHaveBeenCalledWith("p1"));
     expect(removal.closeProject).toHaveBeenCalled();
+  });
+
+  it("removes the empty copy without closing a project opened in the meantime", async () => {
+    removal.overleafLiveProject.mockResolvedValue({ ...LINK, unfilled: true });
+    useCollabLiveStore.setState({ projectId: "p1", status: { state: "ended", reason: "project_deleted" }, overleaf: LINK });
+    render(<OverleafBanners />);
+    const banner = await screen.findByTestId("overleaf-empty-copy-banner");
+    let answer: (project: unknown) => void = () => {};
+    removal.overleafLiveProject.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    await userEvent.setup().click(within(banner).getByRole("button", { name: banners.removeEmptyCopy }));
+    useFilesStore.setState({ projectId: "p2" });
+    answer({ ...LINK, unfilled: true });
+    await waitFor(() => expect(removal.recycleProject).toHaveBeenCalledWith("p1"));
+    expect(removal.closeProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps the empty copy when the project couldn't be closed", async () => {
+    removal.overleafLiveProject.mockResolvedValue({ ...LINK, unfilled: true });
+    removal.closeProject.mockImplementationOnce(async () => undefined);
+    useCollabLiveStore.setState({ projectId: "p1", status: { state: "ended", reason: "project_deleted" }, overleaf: LINK });
+    render(<OverleafBanners />);
+    const banner = await screen.findByTestId("overleaf-empty-copy-banner");
+    await userEvent.setup().click(within(banner).getByRole("button", { name: banners.removeEmptyCopy }));
+    await waitFor(() => expect(removal.closeProject).toHaveBeenCalled());
+    await waitFor(() => expect(within(banner).getByRole("button", { name: banners.removeEmptyCopy })).toBeEnabled());
+    expect(removal.recycleProject).not.toHaveBeenCalled();
   });
 
   it("never offers to remove a copy that has files or a project that is still there", async () => {

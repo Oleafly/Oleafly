@@ -1,14 +1,18 @@
-#[allow(dead_code)]
+#[path = "support/exits.rs"]
+mod exits;
+#[cfg(unix)]
+#[path = "support/hangup.rs"]
+mod hangup;
 #[path = "support/live_cli.rs"]
 mod live_cli;
-#[allow(dead_code)]
-mod support;
+#[path = "support/running.rs"]
+mod running;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{Duration, Instant};
 
-use live_cli::{event, ready, rest_of, state, wait_for, WAIT};
+use live_cli::{ready, rest_of, wait_for, WAIT};
 #[cfg(unix)]
 use live_cli::{send, terminate};
 use oleafly_online::live::journal::{Holder, HolderKind, Journal, JournalError};
@@ -17,8 +21,8 @@ use oleafly_online::service::SERVICE_ID;
 use oleafly_online::session::{self, Session};
 use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser, Privilege};
 use oleafly_secrets::SecretStore;
+use running::Running;
 use serde_json::{json, Value};
-use support::Running;
 
 const MAIN: &str = "main.tex";
 const INTRO: &str = "intro.tex";
@@ -156,6 +160,16 @@ impl World {
         self.mock.drop_client(&connection);
         renewed
     }
+}
+
+fn event(live: &Running, name: &str) -> Value {
+    wait_for(live, name, |value| value["event"] == name)
+}
+
+fn state(live: &Running, name: &str) -> Value {
+    wait_for(live, name, |value| {
+        value["event"] == "state" && value["state"] == name
+    })
 }
 
 fn eventually(what: &str, mut check: impl FnMut() -> bool) {
@@ -446,7 +460,7 @@ async fn cli_live_quits_at_once_on_a_second_interrupt() {
     ready(&live);
     stopping_with_an_edit_unacked(&world, &live, libc::SIGINT);
     send(&live, libc::SIGINT);
-    let status = support::exit_within(&mut live.process, Duration::from_millis(500));
+    let status = exits::exit_within(&mut live.process, Duration::from_millis(500));
     world.mock.release_updates();
     assert_eq!(status.code(), Some(130));
     eventually("the app can go live once the CLI quit", || {
@@ -478,7 +492,7 @@ async fn cli_live_stops_cleanly_on_ctrl_break() {
         "Ctrl+Break was not sent: {}",
         std::io::Error::last_os_error()
     );
-    let status = support::exit_within(&mut live.process, live_cli::STOP_WAIT);
+    let status = exits::exit_within(&mut live.process, live_cli::STOP_WAIT);
     let rest = rest_of(&live);
     assert_eq!(status.code(), Some(0), "{rest:?}");
     assert!(rest.iter().any(|value| value["event"] == "stopped"));
@@ -568,11 +582,11 @@ async fn cli_live_journal_resumes_once() {
     live.process.wait().unwrap();
     world.mock.release_updates();
     assert_eq!(world.mock.doc_text(&doc), "Hello again\n");
-    #[cfg_attr(not(unix), allow(unused_mut))]
-    let mut live = world.live(&[]);
+    let live = world.live(&[]);
     ready(&live);
     #[cfg(unix)]
     {
+        let mut live = live;
         assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
         let stopped = rest_of(&live)
             .into_iter()
@@ -581,9 +595,195 @@ async fn cli_live_journal_resumes_once() {
         assert_eq!(stopped["unsent"], json!([]), "{stopped}");
     }
     #[cfg(not(unix))]
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        drop(live);
+    }
     assert_eq!(world.mock.doc_text(&doc), "Hello again\n");
     assert_eq!(world.read(MAIN), "Hello again\n");
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_restart_keeps_a_coauthors_edit_beside_an_offline_one() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let doc = world.mock.doc_id(MAIN);
+    let mut live = world.live(&[]);
+    ready(&live);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    std::fs::write(world.root.join(MAIN), "Hello\nmine\n").unwrap();
+    let mut bob = world.mock.peer("bob");
+    bob.join(&doc);
+    bob.type_at(&doc, 0, "Theirs\n");
+    eventually("Bob's edit is on the server", || {
+        world.mock.doc_text(&doc) == "Theirs\nHello\n"
+    });
+    let mut live = world.live(&[]);
+    ready(&live);
+    tokio::time::sleep(Duration::from_secs(4)).await;
+    let server = world.mock.doc_text(&doc);
+    let folder = world.read(MAIN);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    assert!(
+        server.contains("Theirs"),
+        "the coauthor's edit was replaced: {server:?}"
+    );
+    assert!(
+        folder.contains("mine")
+            || std::fs::read_dir(&world.root).unwrap().any(|entry| {
+                let name = entry.unwrap().file_name().to_string_lossy().into_owned();
+                name.starts_with("main (")
+                    && std::fs::read_to_string(world.root.join(&name))
+                        .unwrap()
+                        .contains("mine")
+            }),
+        "the offline edit was lost: folder {folder:?}, server {server:?}"
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_restart_sends_an_offline_edit_nobody_else_touched() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let doc = world.mock.doc_id(INTRO);
+    let mut live = world.live(&[]);
+    ready(&live);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    std::fs::write(world.root.join(INTRO), "Intro\noffline\n").unwrap();
+    let mut live = world.live(&[]);
+    ready(&live);
+    let mut sent = false;
+    for _ in 0..60 {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        sent = world.mock.doc_text(&doc) == "Intro\noffline\n";
+        if sent {
+            break;
+        }
+    }
+    let rest = rest_of_now(&live);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    assert!(
+        sent,
+        "the offline edit never reached the server; events {rest:#?}"
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_restart_asks_about_an_offline_delete_and_never_says_it_cannot_edit() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let mut live = world.live(&[]);
+    ready(&live);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    std::fs::write(world.root.join(MAIN), "Hello again\n").unwrap();
+    std::fs::remove_file(world.root.join(INTRO)).unwrap();
+    let mut live = world.live(&[]);
+    let mut seen = Vec::new();
+    let asked = wait_for(&live, "the delete to be asked about", |value| {
+        seen.push(value.clone());
+        value["event"] == "delete_asked"
+    });
+    assert_eq!(asked["paths"], json!([INTRO]));
+    eventually("the offline edit reaches the server", || {
+        world.mock.doc_text(&world.mock.doc_id(MAIN)) == "Hello again\n"
+    });
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    seen.extend(rest_of(&live));
+    assert!(
+        !seen.iter().any(|value| value["kind"] == "not_allowed"),
+        "{seen:#?}"
+    );
+}
+
+const TOO_LARGE: &str = "update is too large";
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_tries_a_refused_file_once_more() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let doc = world.mock.doc_id(MAIN);
+    let live = world.live(&[]);
+    ready(&live);
+    world.mock.fail_updates(&doc, TOO_LARGE, 1);
+    std::fs::write(world.root.join(MAIN), "Hello again\n").unwrap();
+    let fault = wait_for(&live, "a fault", |value| value["kind"] == "fault");
+    assert_eq!(fault["path"], MAIN);
+    eventually("the second try reaches the server", || {
+        world.mock.doc_text(&doc) == "Hello again\n"
+    });
+    assert_eq!(world.read(MAIN), "Hello again\n");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_keeps_your_text_as_a_copy_when_the_server_refuses_it_twice() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let doc = world.mock.doc_id(MAIN);
+    let live = world.live(&[]);
+    ready(&live);
+    world.mock.fail_updates(&doc, TOO_LARGE, usize::MAX);
+    std::fs::write(world.root.join(MAIN), "Hello again\n").unwrap();
+    let kept = event(&live, "kept");
+    let copy = kept["files"][0]["copy"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no copy named: {kept}"))
+        .to_owned();
+    eventually("the online text is back in the file", || {
+        world.read(MAIN) == "Hello\n"
+    });
+    assert_eq!(world.read(&copy), "Hello again\n");
+    assert_eq!(world.mock.doc_text(&doc), "Hello\n");
+    world.mock.fail_updates(&doc, TOO_LARGE, 0);
+    std::fs::write(world.root.join(MAIN), "Hello, shorter\n").unwrap();
+    eventually("a later edit is sent", || {
+        world.mock.doc_text(&doc) == "Hello, shorter\n"
+    });
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_stops_when_its_folder_is_moved() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let mut live = world.live(&[]);
+    ready(&live);
+    std::fs::rename(&world.root, world.root.with_file_name("moved")).unwrap();
+    std::fs::create_dir(&world.root).unwrap();
+    let status = exits::exit_within(&mut live.process, WAIT);
+    let rest = rest_of(&live);
+    let result = rest.last().unwrap();
+    assert_eq!(status.code(), Some(3), "{rest:#?}");
+    assert_eq!(result["error"]["code"], "remote.folder_gone", "{result}");
+    assert!(
+        !rest.iter().any(|value| value["event"] == "delete_asked"),
+        "{rest:#?}"
+    );
+    assert!(world.mock.entity_id(MAIN).is_some());
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_live_keeps_trying_a_server_it_cannot_reach_and_names_what_it_never_sent() {
+    let world = World::imported(project(), &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+    let mut live = world.live(&[]);
+    ready(&live);
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    std::fs::write(world.root.join(MAIN), "Hello again\n").unwrap();
+    std::fs::write(world.root.join("notes.tex"), "Notes\n").unwrap();
+    world.mock.crash();
+    let mut live = world.live(&[]);
+    state(&live, "offline");
+    assert_eq!(terminate(&mut live, libc::SIGTERM).code(), Some(0));
+    let rest = rest_of(&live);
+    let stopped = rest
+        .iter()
+        .find(|value| value["event"] == "stopped")
+        .unwrap_or_else(|| panic!("no stopped event: {rest:#?}"));
+    assert_eq!(stopped["unsent"], json!([MAIN, "notes.tex"]), "{stopped}");
+}
+
+#[cfg(unix)]
+fn rest_of_now(live: &Running) -> Vec<Value> {
+    std::iter::from_fn(|| live.lines.try_recv().ok())
+        .filter_map(|line| serde_json::from_str(&line).ok())
+        .collect()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

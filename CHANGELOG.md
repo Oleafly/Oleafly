@@ -111,6 +111,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `oleafly build --watch` rebuilds when a folder is renamed or moved into the project.
 - A line of text between two list items in a comment or chat message stays where you wrote it. It used to move below the list.
 - Copying your sign-in from a browser asks you to confirm once, in the system dialog. It used to ask twice.
+- When a file changed both in your folder and online while live editing was off, the next start put your version over your coauthor's. Both changes are kept now, and where they touch the same words Oleafly asks which to keep.
+- Edits you make while live editing is off are sent at the next start. Before, some stayed in the folder until you changed the file again, a new text file was never created online, and edits made before a first start that couldn't connect could be overwritten later.
+- One file or folder that can't be read no longer keeps the rest of a live project from being sent.
+- When your sign-in to an online LaTeX service ends, Oleafly asks you to sign in again. Before, it could say you no longer had access to the project.
+- Pausing live editing while a request was still running could fail and say another window had the project live.
 
 ## [0.4.13] - 2026-11-20
 

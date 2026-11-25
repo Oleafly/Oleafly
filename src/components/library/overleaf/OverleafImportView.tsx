@@ -417,7 +417,7 @@ function SignInPanel() {
       </div>
       {inWindow ? null : <BrowserSignIn variant="button" />}
       {signing ? null : (
-        <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.load()} />
+        <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.open()} />
       )}
       {store.error && !expired && !signing ? (
         <p role="alert" className="max-w-md select-text text-xs text-destructive">
@@ -457,6 +457,10 @@ function ProjectStatus({
 }>) {
   const { t } = useTranslation(["library"]);
   const testId = `overleaf-status-${project.id}`;
+  const named = (label: string) => `${label} ${project.name}`;
+  const tryAgain = t(($) => $.library.import.tryAgain);
+  const openLabel = t(($) => $.library.import.overleaf.open);
+  const openLiveLabel = t(($) => $.library.import.overleaf.openLive);
   if (progress?.phase === "opening") {
     return (
       <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -495,10 +499,11 @@ function ProjectStatus({
         </span>
         <button
           type="button"
+          aria-label={named(tryAgain)}
           onClick={() => (progress.opening ? onOpenLive?.(project.id) : onRetry(project.id))}
           className={LINK_BUTTON}
         >
-          {t(($) => $.library.import.tryAgain)}
+          {tryAgain}
         </button>
       </span>
     );
@@ -510,10 +515,11 @@ function ProjectStatus({
       <button
         type="button"
         data-testid={`overleaf-open-live-${project.id}`}
+        aria-label={named(openLiveLabel)}
         onClick={() => onOpenLive(project.id)}
         className={cn(LINK_BUTTON, "text-xs")}
       >
-        {t(($) => $.library.import.overleaf.openLive)}
+        {openLiveLabel}
       </button>
     );
   }
@@ -521,8 +527,8 @@ function ProjectStatus({
     <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <CheckBadge tone="success" />
       {t(($) => $.library.import.overleaf.imported)}
-      <button type="button" onClick={() => onOpen(imported)} className={LINK_BUTTON}>
-        {t(($) => $.library.import.overleaf.open)}
+      <button type="button" aria-label={named(openLabel)} onClick={() => onOpen(imported)} className={LINK_BUTTON}>
+        {openLabel}
       </button>
     </span>
   );

@@ -359,7 +359,8 @@ async fn place_figure<H: FigureHost>(
     if last {
         let saved = guard(&local.disk).clone();
         let saver = Arc::clone(host);
-        if let Err(error) = off_runtime(move || saver.local().save_index_if_changed(&saved)).await {
+        let saving = off_runtime(move || saver.save_index(saver.local(), &saved));
+        if let Err(error) = saving.await {
             local.log_once("figure index", || {
                 format!("could not save its file state after a figure arrived: {error}")
             });

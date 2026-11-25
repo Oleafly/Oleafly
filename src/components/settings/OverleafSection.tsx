@@ -47,6 +47,7 @@ export function OverleafSection() {
   const current = status?.server ?? server;
   const host = serverHost(current);
   const accounts = accountsIn(status);
+  const tokenAccount = signedIn ? (status?.userId ?? null) : null;
 
   return (
     <IntegrationCard
@@ -93,8 +94,9 @@ export function OverleafSection() {
         </>
       )}
       <GitTokenField
+        key={`${current} ${tokenAccount}`}
         server={current}
-        account={signedIn ? (status?.userId ?? null) : null}
+        account={tokenAccount}
         email={accounts.length > 1 ? (status?.email ?? null) : null}
       />
       <LiveDeletesField />

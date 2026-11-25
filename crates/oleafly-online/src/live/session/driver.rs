@@ -603,7 +603,11 @@ impl Driver {
     }
 
     async fn catch_up(&mut self) {
-        let version = self.shared.with(|state| state.history_version());
+        let fill = self.config.fill && !self.shared.lock().filled();
+        let version = self
+            .shared
+            .with(|state| state.history_version())
+            .filter(|_| !fill);
         let session = &self.config.session;
         let Some(history) = self
             .guard(catch_up::since(&self.rest, session, version))
@@ -613,10 +617,7 @@ impl Driver {
         };
         let tuning = &self.config.tuning;
         let trickle = tuning.trickle_every;
-        let fill = self
-            .config
-            .fill
-            .then_some((tuning.legacy_batch, tuning.legacy_every));
+        let fill = fill.then_some((tuning.legacy_batch, tuning.legacy_every));
         self.shared
             .with(|state| state.start_history(history, trickle, fill));
     }

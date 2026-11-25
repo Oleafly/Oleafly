@@ -34,14 +34,11 @@ impl State {
         self.filling = Some(Filling { docs, told });
     }
 
-    pub(in crate::live::session) fn close_fill(&mut self) {
-        self.filling = Some(Filling {
-            docs: BTreeSet::new(),
-            told: None,
-        });
+    pub(in crate::live::session) fn filled(&self) -> bool {
+        self.filled
     }
 
-    fn filled(&self, doc: &DocId) -> bool {
+    fn has_text(&self, doc: &DocId) -> bool {
         self.project.tree.node(&EntityId::from(doc)).is_none()
             || self.slots.get(doc).is_some_and(|slot| {
                 matches!(slot.phase, Phase::Joined | Phase::Held | Phase::Stopped)
@@ -53,13 +50,14 @@ impl State {
             return;
         };
         let total = filling.docs.len();
-        let done = filling.docs.iter().filter(|doc| self.filled(doc)).count();
+        let done = filling.docs.iter().filter(|doc| self.has_text(doc)).count();
         let now = Some((done, total));
         if filling.told != now {
             self.notices.push(Notice::Filling(done, total));
         }
         if done >= total {
             self.filling = None;
+            self.filled = true;
         } else if let Some(filling) = self.filling.as_mut() {
             filling.told = now;
         }

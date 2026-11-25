@@ -1,5 +1,15 @@
-#[allow(dead_code)]
-mod support;
+#[path = "support/compiler.rs"]
+mod compiler;
+#[cfg(unix)]
+#[path = "support/exits.rs"]
+mod exits;
+#[cfg(unix)]
+#[path = "support/hangup.rs"]
+mod hangup;
+#[path = "support/running.rs"]
+mod running;
+#[path = "support/rust_fixture.rs"]
+mod rust_fixture;
 
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
@@ -23,7 +33,7 @@ fn json(output: &Output) -> Value {
 }
 
 fn compiler_fixture(directory: &TempDir) -> PathBuf {
-    support::compiler_fixture(directory.path(), false)
+    compiler::compiler_fixture(directory.path(), false)
 }
 
 fn latexmk_installed_outside_path() -> bool {
@@ -517,7 +527,7 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     let compiler = tools
         .path()
         .join(oleafly_cli::executable_name("fixture-success"));
-    let mut child = support::Running::start(
+    let mut child = running::Running::start(
         Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
             .args(["--json", "watch"])
             .current_dir(project.path())
@@ -566,7 +576,7 @@ fn watch_command(project: &std::path::Path, compiler: &std::path::Path, extra: &
         .env("OLEAFLY_WATCH_POLL", "1")
         .stderr(Stdio::piped());
     #[cfg(unix)]
-    support::set_hangup(&mut command, libc::SIG_DFL);
+    hangup::set_hangup(&mut command, libc::SIG_DFL);
     command
 }
 
@@ -574,8 +584,8 @@ fn spawn_watch(
     project: &std::path::Path,
     compiler: &std::path::Path,
     extra: &[&str],
-) -> support::Running {
-    support::Running::start(&mut watch_command(project, compiler, extra))
+) -> running::Running {
+    running::Running::start(&mut watch_command(project, compiler, extra))
 }
 
 #[test]
@@ -619,7 +629,7 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
         std::thread::sleep(Duration::from_millis(300));
         unsafe { libc::kill(watch.process.id() as i32, signal) };
         assert_eq!(
-            support::exit_within(&mut watch.process, Duration::from_secs(20)).code(),
+            exits::exit_within(&mut watch.process, Duration::from_secs(20)).code(),
             Some(0),
             "watch {signal}"
         );
@@ -635,7 +645,7 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
             .env("FIXTURE_SLEEP_MS", "60000")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        support::set_hangup(&mut build, libc::SIG_DFL);
+        hangup::set_hangup(&mut build, libc::SIG_DFL);
         let mut build = build.spawn().unwrap();
         let mut lines = BufReader::new(build.stdout.take().unwrap()).lines();
         let started = lines.next().unwrap().unwrap();
@@ -643,7 +653,7 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
         std::thread::sleep(Duration::from_millis(500));
         unsafe { libc::kill(build.id() as i32, signal) };
         let rest: Vec<String> = lines.map_while(Result::ok).collect();
-        let status = support::exit_within(&mut build, Duration::from_secs(20));
+        let status = exits::exit_within(&mut build, Duration::from_secs(20));
         assert_eq!(status.code(), Some(130), "build {signal}: {rest:?}");
         let result: Value = serde_json::from_str(rest.last().unwrap()).unwrap();
         assert_eq!(result["error"]["code"], "interrupted");
@@ -1251,7 +1261,7 @@ fn open_refuses_missing_folders_files_and_a_missing_app() {
 
 fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
-    let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
+    let binary = rust_fixture::rust_fixture(directory, "typst.rs", "typst", None);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
     warm_up_typst(&binary);
     binary
@@ -2502,7 +2512,7 @@ fn a_headless_mcp_server_exits_on_sigterm_while_its_client_keeps_stdin_open() {
     let project = TempDir::new().unwrap();
     let data = TempDir::new().unwrap();
     std::fs::write(project.path().join("main.tex"), ARTICLE).unwrap();
-    let mut server = support::Running::start(
+    let mut server = running::Running::start(
         Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
             .args(["mcp", "--bridge", "never"])
             .current_dir(project.path())
@@ -2524,7 +2534,7 @@ fn a_headless_mcp_server_exits_on_sigterm_while_its_client_keeps_stdin_open() {
     // SAFETY: signals the child this test started.
     unsafe { libc::kill(server.process.id() as i32, libc::SIGTERM) };
     assert_eq!(
-        support::exit_within(&mut server.process, Duration::from_secs(20)).code(),
+        exits::exit_within(&mut server.process, Duration::from_secs(20)).code(),
         Some(0)
     );
 }

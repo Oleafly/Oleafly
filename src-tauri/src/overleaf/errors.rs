@@ -77,6 +77,13 @@ pub(crate) fn rest_error(
         RestError::SignedOut => AppError::new("overleaf.session_expired"),
         RestError::RateLimited(_) => AppError::new("overleaf.rate_limited"),
         RestError::Refused { message, .. } => refused(message),
+        RestError::ServerFailed {
+            status: 500,
+            message,
+        } if !message.is_empty() => refused(message),
+        RestError::ServerFailed { status, .. } => AppError::new("overleaf.unreachable")
+            .param("server", base)
+            .detail(format!("HTTP {status}")),
         RestError::NotAllowed => refused("restricted"),
         RestError::TooLarge => AppError::new("overleaf.create_too_large"),
         RestError::Lost(detail)

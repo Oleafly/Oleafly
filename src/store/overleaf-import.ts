@@ -117,6 +117,68 @@ function progressFor(event: OverleafImportEvent): OverleafRowProgress {
 }
 
 type SetState = (partial: Partial<OverleafImportState>) => void;
+type Asked = Pick<OverleafImportState, "server" | "status">;
+
+const NO_LIST = { projects: [], invites: [], selected: [], progress: {}, run: null } satisfies Partial<OverleafImportState>;
+const LISTED: ReadonlySet<OverleafPhase> = new Set(["loading", "ready", "error"]);
+
+function signedOutBy(error: unknown): boolean {
+  return isOverleafError(error, "session_expired") || isOverleafError(error, "signed_out");
+}
+
+function movedOn(asked: Asked, now: Asked): boolean {
+  return now.server !== asked.server || (now.status?.userId ?? null) !== (asked.status?.userId ?? null);
+}
+
+function withOutcomes(
+  state: OverleafImportState,
+  outcomes: readonly OverleafImportOutcome[],
+): Pick<OverleafImportState, "progress" | "selected" | "projects"> {
+  const progress = { ...state.progress };
+  const importedAs = new Map<string, string>();
+  for (const { remoteId, projectId, error } of outcomes) {
+    if (projectId) {
+      progress[remoteId] = { phase: "done", projectId };
+      importedAs.set(remoteId, projectId);
+    } else if (error) {
+      progress[remoteId] = { phase: "failed", error };
+    }
+  }
+  return {
+    progress,
+    selected: state.selected.filter((id) => !importedAs.has(id)),
+    projects: state.projects.map((project) =>
+      importedAs.has(project.id) ? { ...project, importedAs: importedAs.get(project.id) ?? null } : project,
+    ),
+  };
+}
+
+async function follow(set: SetState, get: () => OverleafImportState, status: OverleafStatus): Promise<void> {
+  const before = get();
+  const was = before.status?.userId;
+  if (!was || was === status.userId) {
+    set({ status, server: status.server });
+    return;
+  }
+  set({ status, server: status.server, ...NO_LIST });
+  if (LISTED.has(before.phase)) await get().load();
+}
+
+async function showList(
+  set: SetState,
+  get: () => OverleafImportState,
+  shown: Partial<OverleafImportState> = {},
+): Promise<void> {
+  const asked = get();
+  const was = asked.status?.userId;
+  const { status, projects, invites = [] } = await overleafListProjects(asked.server, was);
+  if (movedOn(asked, get())) return;
+  if (was && status.userId !== was) {
+    await follow(set, get, status);
+    return;
+  }
+  set({ status, projects, invites, selected: selectable(projects, get().selected), ...shown });
+}
 
 async function signInVia(
   set: SetState,
@@ -168,23 +230,15 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   setServer(server) {
     const next = server.trim() || DEFAULT_OVERLEAF_SERVER;
     writeServer(next);
-    set({
-      server: next,
-      status: null,
-      projects: [],
-      invites: [],
-      selected: [],
-      progress: {},
-      run: null,
-      phase: "idle",
-      error: null,
-    });
+    set({ server: next, status: null, ...NO_LIST, phase: "idle", error: null });
   },
 
   async refreshStatus() {
+    const asked = get();
     try {
-      const status = await overleafStatus(get().server);
-      set({ status, server: status.server });
+      const status = await overleafStatus(asked.server);
+      if (movedOn(asked, get())) return;
+      await follow(set, get, status);
     } catch (error) {
       void logError("overleaf status", error);
     }
@@ -193,33 +247,36 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   async open() {
     if (get().importing || get().phase === "signing-in") return;
     set({ phase: "checking", error: null });
+    const asked = get();
+    const left = (answered?: string) => {
+      const { phase, server } = get();
+      return phase !== "checking" || (server !== asked.server && server !== answered);
+    };
     try {
-      const status = await overleafStatus(get().server);
-      set({ status, server: status.server });
-      if (!status.signedIn) {
+      const status = await overleafStatus(asked.server);
+      if (left(status.server)) return;
+      if (!movedOn(asked, get())) set({ status, server: status.server });
+      if (!get().status?.signedIn) {
         set({ phase: "signed-out" });
         return;
       }
       await get().load();
     } catch (error) {
       void logError("overleaf status", error);
-      set({ phase: "error", error });
+      if (!left()) set({ phase: "error", error });
     }
   },
 
   async load() {
     set({ phase: "loading", error: null });
+    const asked = get();
     try {
-      const listed = await overleafListProjects(get().server, get().status?.userId);
-      set({
-        status: listed.status,
-        projects: listed.projects,
-        invites: listed.invites ?? [],
-        selected: selectable(listed.projects, get().selected),
-        phase: "ready",
-      });
+      await showList(set, get, { phase: "ready" });
     } catch (error) {
-      if (isOverleafError(error, "session_expired") || isOverleafError(error, "signed_out")) {
+      const signedOut = signedOutBy(error);
+      if (!signedOut) void logError("overleaf projects", error);
+      if (movedOn(asked, get())) return;
+      if (signedOut) {
         set((state) => ({
           phase: "signed-out",
           error: isOverleafError(error, "session_expired") ? error : null,
@@ -227,20 +284,13 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
         }));
         return;
       }
-      void logError("overleaf projects", error);
       set({ phase: "error", error });
     }
   },
 
   async refresh() {
     try {
-      const listed = await overleafListProjects(get().server, get().status?.userId);
-      set({
-        status: listed.status,
-        projects: listed.projects,
-        invites: listed.invites ?? [],
-        selected: selectable(listed.projects, get().selected),
-      });
+      await showList(set, get);
     } catch (error) {
       void logError("overleaf projects", error);
     }
@@ -259,9 +309,9 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     if (before.importing || before.status?.userId === userId) return false;
     try {
       const status = await overleafUseAccount(before.server, userId);
-      const listed = before.phase === "ready" || before.phase === "error" || before.phase === "loading";
-      set({ status, server: status.server, projects: [], invites: [], selected: [], progress: {}, run: null, error: null });
-      if (listed) await get().load();
+      if (get().server !== before.server) return false;
+      set({ error: null });
+      await follow(set, get, status);
       return true;
     } catch (error) {
       void logError("overleaf choose account", error);
@@ -284,11 +334,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
           status,
           unsent: null,
           unsentAccount: null,
-          projects: [],
-          invites: [],
-          selected: [],
-          progress: {},
-          run: null,
+          ...NO_LIST,
           phase: "signed-out",
           error: null,
         });
@@ -297,7 +343,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
       const listed = before.status?.userId === leaving && before.status?.userId !== status.userId;
       set({ status, unsent: null, unsentAccount: null, error: null });
       if (listed && before.phase !== "idle" && before.phase !== "signed-out") {
-        set({ projects: [], invites: [], selected: [], progress: {}, run: null });
+        set(NO_LIST);
         await get().load();
       }
       return true;
@@ -346,12 +392,11 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
       return opened.projectId;
     } catch (error) {
       void logError("overleaf open live", error);
+      if (movedOn(before, get())) return null;
       set((state) => ({
         progress: { ...state.progress, [remoteId]: { phase: "failed", error: String(error), opening: true } },
       }));
-      if (isOverleafError(error, "session_expired") || isOverleafError(error, "signed_out")) {
-        set({ phase: "signed-out" });
-      }
+      if (signedOutBy(error)) set({ phase: "signed-out" });
       return null;
     }
   },
@@ -400,40 +445,23 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   },
 
   async importSelected(ids) {
-    const wanted = [...new Set(ids ?? get().selected)];
-    if (wanted.length === 0 || get().importing) return [];
-    const queued: Record<string, OverleafRowProgress> = { ...get().progress };
+    const asked = get();
+    const wanted = [...new Set(ids ?? asked.selected)];
+    if (wanted.length === 0 || asked.importing) return [];
+    const queued: Record<string, OverleafRowProgress> = { ...asked.progress };
     for (const id of wanted) queued[id] = { phase: "queued" };
     set({ importing: true, progress: queued, error: null });
     try {
       const outcomes = await overleafImportProjects(
-        get().server,
+        asked.server,
         wanted,
         (event) => {
           set((state) => ({ progress: { ...state.progress, [event.remoteId]: progressFor(event) } }));
         },
-        get().status?.userId,
+        asked.status?.userId,
       );
-      set((state) => {
-        const progress = { ...state.progress };
-        const importedAs = new Map<string, string>();
-        for (const outcome of outcomes) {
-          if (outcome.projectId) {
-            progress[outcome.remoteId] = { phase: "done", projectId: outcome.projectId };
-            importedAs.set(outcome.remoteId, outcome.projectId);
-          } else if (outcome.error) {
-            progress[outcome.remoteId] = { phase: "failed", error: outcome.error };
-          }
-        }
-        return {
-          progress,
-          selected: state.selected.filter((id) => !importedAs.has(id)),
-          projects: state.projects.map((project) =>
-            importedAs.has(project.id) ? { ...project, importedAs: importedAs.get(project.id) ?? null } : project,
-          ),
-        };
-      });
-      if (outcomes.some((outcome) => outcome.error && isOverleafError(outcome.error, "session_expired"))) {
+      set((state) => withOutcomes(state, outcomes));
+      if (outcomes.some(({ error }) => isOverleafError(error, "session_expired")) && !movedOn(asked, get())) {
         set((state) => ({
           phase: "signed-out",
           status: state.status ? { ...state.status, signedIn: false, email: null } : null,
@@ -449,9 +477,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
         }
         return { progress, error };
       });
-      if (isOverleafError(error, "session_expired") || isOverleafError(error, "signed_out")) {
-        set({ phase: "signed-out" });
-      }
+      if (signedOutBy(error) && !movedOn(asked, get())) set({ phase: "signed-out" });
       return [];
     } finally {
       set({ importing: false });

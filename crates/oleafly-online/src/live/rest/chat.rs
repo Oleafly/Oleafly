@@ -1,5 +1,4 @@
-use reqwest::Response;
-use serde_json::{json, Value};
+use serde_json::json;
 
 use super::review::{comment_text, reviewed, segment};
 use super::{json_of, ProjectRest, RestError};
@@ -32,20 +31,6 @@ impl ProjectRest {
             .collect())
     }
 
-    async fn chat_write(
-        &self,
-        session: &SessionHandle,
-        path: &str,
-        body: Option<&Value>,
-    ) -> Result<Response, ReviewError> {
-        self.write(session, |cookie| match body {
-            Some(body) => self.http.post(path, cookie).json(body),
-            None => self.http.delete(path, cookie),
-        })
-        .await
-        .map_err(reviewed)
-    }
-
     pub async fn post_chat(
         &self,
         session: &SessionHandle,
@@ -54,7 +39,9 @@ impl ProjectRest {
     ) -> Result<(), ReviewError> {
         let body = json!({ "content": comment_text(content)?, "client_id": client_id });
         let path = self.route("/messages");
-        self.chat_write(session, &path, Some(&body)).await.map(drop)
+        self.review_write(session, &path, Some(&body))
+            .await
+            .map(drop)
     }
 
     pub async fn edit_chat(
@@ -65,7 +52,9 @@ impl ProjectRest {
     ) -> Result<(), ReviewError> {
         let body = json!({ "content": comment_text(content)? });
         let path = self.route(&format!("/messages/{}/edit", segment(message)?));
-        self.chat_write(session, &path, Some(&body)).await.map(drop)
+        self.review_write(session, &path, Some(&body))
+            .await
+            .map(drop)
     }
 
     pub async fn delete_chat(
@@ -74,7 +63,7 @@ impl ProjectRest {
         message: &str,
     ) -> Result<(), ReviewError> {
         let path = self.route(&format!("/messages/{}", segment(message)?));
-        self.chat_write(session, &path, None).await.map(drop)
+        self.review_write(session, &path, None).await.map(drop)
     }
 }
 

@@ -20,6 +20,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tokio::sync::Notify;
 
+use super::folder::Folder;
 use crate::auth::shared::one_line;
 use crate::contract::event_line;
 use crate::contract::printer::PrintSender;
@@ -33,8 +34,16 @@ const EDITS_KEPT: usize = 256;
 pub(crate) struct Work {
     pub(crate) status: Option<LiveStatus>,
     pub(crate) reviews: Vec<String>,
+    pub(crate) faults: Vec<Fault>,
     pub(crate) deletes: Vec<String>,
     pub(crate) members: bool,
+    pub(crate) edited: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Fault {
+    pub(crate) path: String,
+    pub(crate) times: u32,
 }
 
 #[derive(Clone)]
@@ -97,8 +106,11 @@ struct Seen {
     state: Option<String>,
     status: Option<LiveStatus>,
     reviews: BTreeSet<String>,
+    faults: BTreeSet<String>,
+    faulted: HashMap<String, u32>,
     deletes: BTreeSet<String>,
     members: bool,
+    edited: bool,
     role: Option<(ProjectRole, bool)>,
     pending: HashSet<String>,
     peers: HashMap<String, Peer>,
@@ -152,9 +164,21 @@ impl CliHost {
         Work {
             status: seen.status.take(),
             reviews: std::mem::take(&mut seen.reviews).into_iter().collect(),
+            faults: std::mem::take(&mut seen.faults)
+                .into_iter()
+                .map(|path| Fault {
+                    times: seen.faulted.get(&path).copied().unwrap_or_default(),
+                    path,
+                })
+                .collect(),
             deletes: std::mem::take(&mut seen.deletes).into_iter().collect(),
             members: std::mem::take(&mut seen.members),
+            edited: std::mem::take(&mut seen.edited),
         }
+    }
+
+    pub(crate) fn put_aside(&self, path: &str) {
+        self.seen().pending.remove(path);
     }
 
     pub(crate) fn know(&self, members: Vec<OverleafMember>) {
@@ -389,29 +413,29 @@ impl DiskHost for CliHost {
     }
 
     fn removed(&self, payload: RemovedPayload) {
-        if payload.files.is_empty() {
+        if payload.files.is_empty() && payload.restored.is_empty() {
             return;
         }
         self.out.emit("removed", fields_of(&payload), || {
-            payload
-                .files
-                .iter()
-                .map(|file| {
-                    let gone = match &file.by {
-                        Some(by) => {
-                            format!("{} deleted {} online.", one_line(by), one_line(&file.path))
-                        }
-                        None => format!("{} was deleted online.", one_line(&file.path)),
-                    };
-                    match &file.copy {
-                        Some(copy) => {
-                            format!("{gone} Your version is kept as {}.", one_line(copy))
-                        }
-                        None => gone,
+            let gone = payload.files.iter().map(|file| {
+                let gone = match &file.by {
+                    Some(by) => {
+                        format!("{} deleted {} online.", one_line(by), one_line(&file.path))
                     }
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
+                    None => format!("{} was deleted online.", one_line(&file.path)),
+                };
+                match &file.copy {
+                    Some(copy) => {
+                        format!("{gone} Your version is kept as {}.", one_line(copy))
+                    }
+                    None => gone,
+                }
+            });
+            let back = payload
+                .restored
+                .iter()
+                .map(|_| "A file that was deleted online is back.".to_owned());
+            gone.chain(back).collect::<Vec<_>>().join("\n")
         });
     }
 
@@ -511,7 +535,11 @@ impl DiskHost for CliHost {
                 seen.pending.insert(payload.path.clone());
                 false
             } else {
-                seen.pending.remove(&payload.path)
+                let sent = seen.pending.remove(&payload.path);
+                if sent {
+                    seen.faulted.remove(&payload.path);
+                }
+                sent
             }
         };
         if sent {
@@ -531,10 +559,15 @@ impl DiskHost for CliHost {
         self.out.emit("notice", notice_fields(&payload), || {
             notice_line(&payload.notice)
         });
-        if let OverleafNotice::NeedsReview { path, .. } = payload.notice {
-            self.owe(|seen| {
+        match payload.notice {
+            OverleafNotice::NeedsReview { path, .. } => self.owe(|seen| {
                 seen.reviews.insert(path);
-            });
+            }),
+            OverleafNotice::Fault { path, .. } => self.owe(|seen| {
+                *seen.faulted.entry(path.clone()).or_default() += 1;
+                seen.faults.insert(path);
+            }),
+            _ => {}
         }
     }
 
@@ -557,6 +590,7 @@ impl DiskHost for CliHost {
     fn remote_edit(&self, payload: RemoteEditPayload) {
         let (admitted, name) = {
             let mut seen = self.seen();
+            seen.edited = true;
             let admitted =
                 seen.edits
                     .admit(&payload.path, payload.user_id.as_deref(), Instant::now());
@@ -566,6 +600,7 @@ impl DiskHost for CliHost {
                 .and_then(|user_id| seen.name_of(user_id));
             (admitted, name)
         };
+        self.wake.notify_one();
         if !admitted {
             return;
         }
@@ -586,13 +621,15 @@ impl DiskHost for CliHost {
 pub(crate) struct CliHooks {
     out: Out,
     mirror: Weak<Mirror>,
+    folder: Folder,
 }
 
 impl CliHooks {
-    pub(crate) fn new(out: Out, mirror: &Arc<Mirror>) -> CliHooks {
+    pub(crate) fn new(out: Out, mirror: &Arc<Mirror>, folder: Folder) -> CliHooks {
         CliHooks {
             out,
             mirror: Arc::downgrade(mirror),
+            folder,
         }
     }
 
@@ -602,6 +639,10 @@ impl CliHooks {
 }
 
 impl MirrorHooks for CliHooks {
+    fn folder_here(&self) -> bool {
+        self.folder.here()
+    }
+
     fn project_event(&self, event: ProjectEvent) {
         let (setting, what, value) = match event {
             ProjectEvent::RootDoc(doc) => ("rootDoc", "main document", self.path_of(&doc)),
@@ -774,6 +815,79 @@ mod tests {
         assert_eq!(work.deletes, vec!["gone.tex", "old.tex"]);
         assert!(work.members);
         assert_eq!(host.work(), Work::default());
+    }
+
+    #[test]
+    fn a_fault_counts_up_until_the_file_is_sent() {
+        let Rig { host, _printer, .. } = rig(true, false);
+        let fault = || {
+            host.overleaf_notice(OverleafNoticePayload {
+                project_id: "p".into(),
+                notice: OverleafNotice::Fault {
+                    path: "main.tex".into(),
+                    reason: "refused".into(),
+                },
+            });
+            host.work().faults
+        };
+        let pending = |pending: bool| {
+            host.doc_pending(DocPendingPayload {
+                project_id: "p".into(),
+                path: "main.tex".into(),
+                pending,
+            });
+        };
+        let told = |times: u32| {
+            vec![Fault {
+                path: "main.tex".into(),
+                times,
+            }]
+        };
+        pending(true);
+        assert_eq!(fault(), told(1));
+        assert_eq!(fault(), told(2));
+        host.put_aside("main.tex");
+        pending(false);
+        assert_eq!(fault(), told(3));
+        pending(true);
+        pending(false);
+        assert_eq!(fault(), told(1));
+    }
+
+    #[test]
+    fn a_file_put_back_online_is_told_even_with_nothing_removed() {
+        let Rig {
+            host,
+            lines,
+            _printer,
+        } = rig(true, false);
+        let restored = |restored: Vec<String>| RemovedPayload {
+            project_id: "p".into(),
+            files: Vec::new(),
+            restored,
+        };
+        host.removed(restored(Vec::new()));
+        host.removed(restored(vec!["5f0".into()]));
+        let told = next(&lines);
+        assert_eq!(
+            (told["event"].clone(), told["restored"].clone()),
+            (json!("removed"), json!(["5f0"]))
+        );
+        assert!(lines.recv_timeout(Duration::from_millis(200)).is_err());
+    }
+
+    #[test]
+    fn a_coauthors_edit_counts_as_activity() {
+        let Rig { host, _printer, .. } = rig(true, false);
+        assert!(!host.work().edited);
+        for _ in 0..2 {
+            host.remote_edit(RemoteEditPayload {
+                project_id: "p".into(),
+                path: "main.tex".into(),
+                user_id: None,
+            });
+            assert!(host.work().edited);
+        }
     }
 
     #[test]

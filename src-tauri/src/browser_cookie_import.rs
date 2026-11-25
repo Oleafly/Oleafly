@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Duration;
 
 use oleafly_online::browser_cookies::{
     self as reader, CookieImportError, DetectedCookieSource, HostPlatform, ImportPolicy,
@@ -11,6 +12,8 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 pub use oleafly_online::browser_cookies::BrowserId as BrowserCookieSourceId;
 
 const MAIN_WEBVIEW_LABEL: &str = "main";
+const STORED_WITHIN: Duration = Duration::from_secs(3);
+const STORED_POLL: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -102,7 +105,9 @@ pub async fn import_browser_cookies<R: Runtime>(
             .set_cookie(cookie)
             .map_err(|_| CookieImportError::CookieApplyFailed.to_string())?;
     }
-    verify_runtime_cookies(&webview, &cookies).map_err(|error| error.to_string())?;
+    until_stored(STORED_WITHIN, || runtime_cookies_stored(&webview, &cookies))
+        .await
+        .map_err(|error| error.to_string())?;
 
     Ok(BrowserCookieImportSummary {
         imported: cookies.len(),
@@ -281,13 +286,10 @@ fn stored_cookie_fingerprint(
     })
 }
 
-fn verify_runtime_cookies<R: Runtime>(
+fn runtime_cookies_stored<R: Runtime>(
     webview: &Webview<R>,
     imported: &[ImportedCookie],
-) -> Result<(), CookieImportError> {
-    if imported.is_empty() {
-        return Ok(());
-    }
+) -> Result<bool, CookieImportError> {
     let stored = webview
         .cookies()
         .map_err(|_| CookieImportError::CookieApplyFailed)?;
@@ -295,11 +297,21 @@ fn verify_runtime_cookies<R: Runtime>(
         .into_iter()
         .filter_map(|actual| stored_cookie_fingerprint(&actual))
         .collect::<HashSet<_>>();
-    let all_present = imported
+    Ok(imported
         .iter()
-        .all(|expected| stored_identities.contains(&imported_cookie_fingerprint(expected)));
-    if !all_present {
-        return Err(CookieImportError::CookieApplyFailed);
+        .all(|expected| stored_identities.contains(&imported_cookie_fingerprint(expected))))
+}
+
+async fn until_stored(
+    within: Duration,
+    mut stored: impl FnMut() -> Result<bool, CookieImportError>,
+) -> Result<(), CookieImportError> {
+    let deadline = tokio::time::Instant::now() + within;
+    while !stored()? {
+        if tokio::time::Instant::now() >= deadline {
+            return Err(CookieImportError::CookieApplyFailed);
+        }
+        tokio::time::sleep(STORED_POLL).await;
     }
     Ok(())
 }
@@ -307,8 +319,9 @@ fn verify_runtime_cookies<R: Runtime>(
 #[cfg(test)]
 mod tests {
     use super::{
-        cookie_import_prompt, runtime_cookie, validate_import_request, BrowserCookieImportSummary,
-        BrowserCookieSourceId, CookieImportError, HostPlatform,
+        cookie_import_prompt, runtime_cookie, until_stored, validate_import_request,
+        BrowserCookieImportSummary, BrowserCookieSourceId, CookieImportError, HostPlatform,
+        STORED_POLL,
     };
 
     #[test]
@@ -534,6 +547,29 @@ mod tests {
                 "{domain:?}"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn a_copy_waits_for_the_webview_to_store_its_cookies() {
+        let within = STORED_POLL * 10;
+        let mut looks = 0;
+        let stored = until_stored(within, || {
+            looks += 1;
+            Ok(looks > 2)
+        })
+        .await;
+        assert_eq!(stored, Ok(()));
+        assert_eq!(looks, 3);
+        let started = std::time::Instant::now();
+        assert_eq!(
+            until_stored(STORED_POLL * 2, || Ok(false)).await,
+            Err(CookieImportError::CookieApplyFailed)
+        );
+        assert!(started.elapsed() >= STORED_POLL * 2);
+        assert_eq!(
+            until_stored(within, || Err(CookieImportError::CookieApplyFailed)).await,
+            Err(CookieImportError::CookieApplyFailed)
+        );
     }
 
     #[test]

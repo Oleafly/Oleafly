@@ -7,6 +7,7 @@ use oleafly_collab::live::DiskWork;
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_online::live::session::{LiveError, Overlap};
 use oleafly_online::live::tree_queue::{TreeChange, TreeRefusal};
 use oleafly_online::realtime::tree::{
     LinkedSource, NodeKind as OverleafKind, OverleafNode, PathChange,
@@ -14,8 +15,10 @@ use oleafly_online::realtime::tree::{
 use oleafly_online::realtime::{DocId, EntityId};
 
 use super::tree_events::LinkedFile;
-use super::{Edit, Mirror, OverleafLive, TreeNotice, TreeNoticeKind};
-use crate::disk::{exists_exact, inside, read_text, safe_target, sha256_hex, MAX_SCAN_DEPTH};
+use super::{live_error, Mirror, OverleafLive, TreeNotice, TreeNoticeKind};
+use crate::disk::{
+    exists_exact, inside, read_text, safe_target, sha256_hex, DiskState, MAX_SCAN_DEPTH,
+};
 use crate::live::import::{arrival_of, name_of, placed_now, LocalImport};
 use crate::live::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use crate::live::moves::{
@@ -298,10 +301,18 @@ fn put_back(root: &Path, copy: &str, path: &str) -> std::io::Result<()> {
     let (Some(source), Some(target)) = (safe_target(root, copy), safe_target(root, path)) else {
         return Err(std::io::ErrorKind::InvalidInput.into());
     };
+    let moved = tempfile::TempPath::try_from_path(&source)?.persist_noclobber(&target);
+    let Err(failed) = moved else {
+        return Ok(());
+    };
+    std::mem::forget(failed.path);
     if std::fs::symlink_metadata(&target).is_ok() {
         return Err(std::io::ErrorKind::AlreadyExists.into());
     }
-    std::fs::rename(source, target)
+    match failed.error.kind() {
+        std::io::ErrorKind::NotFound => Err(failed.error),
+        _ => std::fs::rename(source, target),
+    }
 }
 
 fn restore_refused(status: u16, code: &str, path: &str) -> CollabError {
@@ -554,18 +565,44 @@ impl OverleafLive {
             return;
         };
         let base = base.or_else(|| guard(&disk.bases).base_for(&path, &text).cloned());
-        match self.edit_toward(&doc, &path, base.as_deref(), &text) {
-            Ok(Edit::Live) => {}
-            Ok(Edit::NotLive | Edit::ReadOnly) => return,
+        let overlap = if guard(&self.mirror.found).contains_key(&path) {
+            Overlap::Hold
+        } else {
+            Overlap::Weave
+        };
+        match self.session.outside_edit(&doc, base, &text, overlap) {
+            Ok(()) => {}
+            Err(LiveError::Stopped | LiveError::NotWritable) => return,
             Err(error) => {
+                let error = live_error(error);
                 disk.log_once("outside change", || {
                     format!("could not send an outside change to {path}: {error}")
                 });
                 return;
             }
         }
+        guard(&self.mirror.found).remove(&path);
         guard(&disk.bases).found(&path, &text);
         guard(&disk.disk).hashes.insert(path, hash);
+        self.mirror.mark([doc.0], false);
+    }
+
+    fn still_to_read(&self, path: &str) -> bool {
+        let unread = self
+            .doc_at(path)
+            .filter(|doc| self.session.text(doc).is_none());
+        if let Some(doc) = &unread {
+            self.session.want_text(doc);
+        }
+        unread.is_some()
+    }
+
+    fn restamp(&self, restamped: Vec<(String, String, String)>) {
+        for (path, text, hash) in restamped {
+            guard(&self.mirror.found).remove(&path);
+            guard(&self.mirror.disk.bases).found(&path, &text);
+            guard(&self.mirror.disk.disk).hashes.insert(path, hash);
+        }
     }
 
     fn keep_adopted_under_blobs(&self, next: &Layout) -> Vec<KeptFile> {
@@ -717,8 +754,7 @@ impl OverleafLive {
         disk.tell_removed(previous, told);
     }
 
-    fn texts_while_settling(&self, work: DiskWork, previous: &Layout) -> Option<Outgoing> {
-        self.mirror.mark(std::iter::empty(), work.tree);
+    fn texts_in_place(&self, work: DiskWork, previous: &Layout) -> Option<Outgoing> {
         let now = self.nodes().map(|nodes| materialize::layout(&nodes));
         let mut texts = Vec::new();
         let mut left = Vec::new();
@@ -734,7 +770,10 @@ impl OverleafLive {
                 None => left.push(id),
             }
         }
-        self.mirror.mark(left, false);
+        self.mirror.put_aside(left, work.tree);
+        if self.mirror.joined() {
+            self.mirror.kick();
+        }
         (!texts.is_empty()).then(|| Outgoing {
             work: DiskWork::default(),
             next: previous.clone(),
@@ -800,8 +839,12 @@ impl LiveTree for OverleafLive {
         if work.is_empty() {
             return Ok(None);
         }
-        if self.session.tree_settling() {
-            return Ok(self.texts_while_settling(work, previous));
+        if !self.mirror.joined() {
+            self.announce_stored_as_files();
+            self.announce_linked();
+        }
+        if !self.mirror.joined() || self.session.tree_settling() {
+            return Ok(self.texts_in_place(work, previous));
         }
         let drawn = match LiveDisk::draw(self, &work, previous) {
             Ok(drawn) => drawn,
@@ -828,7 +871,16 @@ impl LiveTree for OverleafLive {
         )
     }
 
+    fn ready_to_import(&self) -> bool {
+        self.mirror.folder_here() && self.mirror.joined_or_owes_import()
+    }
+
+    fn save_index(&self, _disk: &LiveDisk, state: &DiskState) {
+        self.mirror.save_index(state);
+    }
+
     fn refused(&self, import: &LocalImport) {
+        self.restamp(import.restamped.clone());
         let mut kept = Vec::new();
         for path in &import.removed {
             guard(&self.mirror.deletes).mine.insert(path.clone());
@@ -840,6 +892,7 @@ impl LiveTree for OverleafLive {
             .texts
             .iter()
             .map(|(path, _, _)| path.clone())
+            .filter(|path| !self.still_to_read(path))
             .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
             .chain(import.dirs.iter().cloned())
             .collect();
@@ -859,7 +912,7 @@ impl LiveTree for OverleafLive {
     }
 
     fn mark_dirty(&self, ids: &[String]) {
-        self.mirror.mark(ids.iter().cloned(), false);
+        self.mirror.put_aside(ids.iter().cloned(), false);
     }
 
     fn noticed(&self, previous: &Layout, _changed: &BTreeSet<String>, removed: &[String]) {
@@ -911,10 +964,7 @@ impl LiveTree for OverleafLive {
             .filter(|path| placed.contains_key(path))
             .collect();
         self.ask_to_delete(gone);
-        let mut state = guard(&disk.disk);
-        for (path, hash) in restamped {
-            state.hashes.insert(path, hash);
-        }
+        self.restamp(restamped);
         Ok(TreeAnswer::Applied)
     }
 }

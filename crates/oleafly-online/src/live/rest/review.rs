@@ -81,17 +81,15 @@ impl ProjectRest {
             .ok_or_else(|| RestError::Unreadable("the threads are not a map".into()).into())
     }
 
-    async fn review_write(
+    pub(super) async fn review_write(
         &self,
         session: &SessionHandle,
         path: &str,
-        delete: bool,
         body: Option<&Value>,
     ) -> Result<Response, ReviewError> {
-        self.write(session, |cookie| match (delete, body) {
-            (true, _) => self.http.delete(path, cookie),
-            (false, Some(body)) => self.http.post(path, cookie).json(body),
-            (false, None) => self.http.post(path, cookie),
+        self.write(session, |cookie| match body {
+            Some(body) => self.http.post(path, cookie).json(body),
+            None => self.http.delete(path, cookie),
         })
         .await
         .map_err(reviewed)
@@ -105,9 +103,7 @@ impl ProjectRest {
     ) -> Result<Option<ThreadMessage>, ReviewError> {
         let path = self.route(&format!("/thread/{}/messages", segment(thread)?));
         let body = json!({ "content": comment_text(content)? });
-        let response = self
-            .review_write(session, &path, false, Some(&body))
-            .await?;
+        let response = self.review_write(session, &path, Some(&body)).await?;
         let reply = client::read_capped(response, SMALL_BODY_BYTES)
             .await
             .unwrap_or_default();
@@ -130,7 +126,7 @@ impl ProjectRest {
             segment(message)?
         ));
         let body = json!({ "content": comment_text(content)? });
-        self.review_write(session, &path, false, Some(&body))
+        self.review_write(session, &path, Some(&body))
             .await
             .map(drop)
     }
@@ -146,14 +142,14 @@ impl ProjectRest {
         let route = |kind: &str| self.route(&format!("/thread/{thread}/{kind}/{message}"));
         if by == DeleteAs::Author {
             match self
-                .review_write(session, &route("own-messages"), true, None)
+                .review_write(session, &route("own-messages"), None)
                 .await
             {
                 Err(ReviewError::Absent) => {}
                 other => return other.map(drop),
             }
         }
-        self.review_write(session, &route("messages"), true, None)
+        self.review_write(session, &route("messages"), None)
             .await
             .map(drop)
     }
@@ -173,7 +169,7 @@ impl ProjectRest {
         thread: &str,
     ) -> Result<(), ReviewError> {
         let path = self.thread_route(doc, thread, "/resolve")?;
-        self.review_write(session, &path, false, None)
+        self.review_write(session, &path, Some(&json!({})))
             .await
             .map(drop)
     }
@@ -185,7 +181,7 @@ impl ProjectRest {
         thread: &str,
     ) -> Result<(), ReviewError> {
         let path = self.thread_route(doc, thread, "/reopen")?;
-        self.review_write(session, &path, false, None)
+        self.review_write(session, &path, Some(&json!({})))
             .await
             .map(drop)
     }
@@ -197,9 +193,7 @@ impl ProjectRest {
         thread: &str,
     ) -> Result<(), ReviewError> {
         let path = self.thread_route(doc, thread, "")?;
-        self.review_write(session, &path, true, None)
-            .await
-            .map(drop)
+        self.review_write(session, &path, None).await.map(drop)
     }
 
     pub async fn accept_changes(
@@ -216,7 +210,7 @@ impl ProjectRest {
         }
         let path = self.route(&format!("/doc/{}/changes/accept", segment(&doc.0)?));
         let body = json!({ "change_ids": changes });
-        self.review_write(session, &path, false, Some(&body))
+        self.review_write(session, &path, Some(&body))
             .await
             .map(drop)
     }
@@ -236,7 +230,7 @@ impl ProjectRest {
             TrackChangesUpdate::Guests(on) => json!({ "on_for_guests": on }),
         };
         let path = self.route("/track_changes");
-        self.review_write(session, &path, false, Some(&body))
+        self.review_write(session, &path, Some(&body))
             .await
             .map(drop)
     }

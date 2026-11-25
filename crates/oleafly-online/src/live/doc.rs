@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use super::format::{
-    byte_at, Accepted, ChangeKind, CodecError, Decision, DocFormat, Echo, Extra, FormatState,
-    SentComment, ShareJsRanges, MAX_CHANGES, MAX_COMMENTS,
+    byte_at, pieces_of_flagged, Accepted, ChangeKind, CodecError, Decision, DocFormat, Echo, Extra,
+    FormatState, RangeChange, SentComment, ShareJsRanges, MAX_CHANGES, MAX_COMMENTS,
 };
 use super::history_ot::{Edit, RawDoc};
 use super::journal::{DocRecord, InflightRecord, SCHEMA};
@@ -152,6 +152,10 @@ impl Target {
             text: change.text.clone(),
             user: change.user.clone(),
         }
+    }
+
+    fn looks_like(&self, change: &ChangeSpan) -> bool {
+        change.kind == self.kind && change.user == self.user && change.text == self.text
     }
 }
 
@@ -461,7 +465,7 @@ impl OverleafDoc {
                 sent_at: now,
                 echo: Echo::restored(format, inflight)?,
                 doubt: false,
-                decided: None,
+                decided: inflight.decided.clone(),
                 landed: false,
             });
             doc.last_sent = Some(inflight.base_version);
@@ -493,6 +497,7 @@ impl OverleafDoc {
                         .last()
                         .copied()
                         .unwrap_or(self.version),
+                    decided: inflight.decided.clone(),
                     ..InflightRecord::default()
                 };
                 inflight.echo.record_into(&mut record)?;
@@ -966,6 +971,25 @@ impl OverleafDoc {
         }
     }
 
+    pub fn change_ids(&self) -> Vec<String> {
+        match &self.format {
+            FormatState::ShareJs(ranges) => ranges
+                .changes()
+                .iter()
+                .flat_map(|change| {
+                    let local = format!("{LOCAL_CHANGE}{}", change.key());
+                    change.id().map(str::to_string).into_iter().chain([local])
+                })
+                .collect(),
+            FormatState::HistoryOt(raw) => raw
+                .review()
+                .changes
+                .into_iter()
+                .map(|change| change.id)
+                .collect(),
+        }
+    }
+
     pub fn change_author(&self, id: &str) -> Option<Option<String>> {
         match &self.format {
             FormatState::ShareJs(ranges) => {
@@ -1043,6 +1067,7 @@ impl OverleafDoc {
             Resend::Nothing => {}
         }
         loop {
+            self.ready_decision(mode);
             let built = match self.build(mode) {
                 Ok(built) => built,
                 Err(_) if self.head_is_review() => Built::Dead,
@@ -1098,6 +1123,51 @@ impl OverleafDoc {
         if let Unit::Review(review) = self.outgoing.remove(0) {
             self.dropped.push(review);
         }
+    }
+
+    fn ready_decision(&mut self, mode: &SendMode) {
+        let Some(Unit::Review(ReviewOp::Decide { changes, decision })) = self.outgoing.first()
+        else {
+            return;
+        };
+        if *mode == SendMode::Hold {
+            return;
+        }
+        let decision = *decision;
+        let (found, missing) = self.resolve_targets(changes);
+        if found.is_empty() {
+            return;
+        }
+        let apart = decision == Decision::Reject && !self.rejects_together(&found);
+        let (first, second): (Vec<Target>, Vec<Target>) = found
+            .into_iter()
+            .map(|(target, _)| target)
+            .partition(|target| !apart || target.kind == ChangeKind::Delete);
+        let parts = [first, second]
+            .into_iter()
+            .filter(|changes| !changes.is_empty())
+            .map(|changes| Unit::Review(ReviewOp::Decide { changes, decision }));
+        self.outgoing.splice(0..1, parts);
+        if !missing.is_empty() {
+            self.dropped.push(ReviewOp::Decide {
+                changes: missing,
+                decision,
+            });
+        }
+    }
+
+    fn rejects_together(&self, found: &[(Target, ChangeSpan)]) -> bool {
+        let FormatState::ShareJs(ranges) = &self.format else {
+            return true;
+        };
+        let keys: Vec<u64> = found
+            .iter()
+            .filter_map(|(_, change)| self.change_key(&change.id))
+            .collect();
+        ranges
+            .reject_op(&keys, utf16_len(&self.confirmed))
+            .and_then(|op| pieces_of_flagged(&self.confirmed, &op, true).ok())
+            .is_none_or(|pieces| ranges.rejects_cleanly(&keys, &pieces))
     }
 
     fn build(&self, mode: &SendMode) -> Result<Built, DocError> {
@@ -1253,34 +1323,33 @@ impl OverleafDoc {
         })
     }
 
-    fn resolve_targets(&self, targets: &[Target]) -> Vec<ChangeSpan> {
+    fn resolve_targets(&self, targets: &[Target]) -> (Vec<(Target, ChangeSpan)>, Vec<Target>) {
         let changes: Vec<ChangeSpan> = self.review_in_confirmed();
+        let by_id = self.format.format() == DocFormat::ShareJs;
         let mut taken: Vec<bool> = vec![false; changes.len()];
-        let mut found = Vec::new();
+        let (mut found, mut missing) = (Vec::new(), Vec::new());
         for target in targets {
-            let same = |change: &ChangeSpan| {
-                change.kind == target.kind
-                    && change.user == target.user
-                    && change.text == target.text
-            };
-            let by_id = changes
+            let named = !target.id.starts_with(LOCAL_CHANGE);
+            let index = changes
                 .iter()
-                .position(|change| change.id == target.id)
-                .filter(|_| self.format.format() == DocFormat::ShareJs);
-            let nearest = by_id.or_else(|| {
-                changes
-                    .iter()
-                    .enumerate()
-                    .filter(|(index, change)| !taken[*index] && same(change))
-                    .min_by_key(|(_, change)| change.from.abs_diff(target.at))
-                    .map(|(index, _)| index)
-            });
-            if let Some(index) = nearest.filter(|index| !taken[*index]) {
-                taken[index] = true;
-                found.push(changes[index].clone());
+                .position(|change| {
+                    by_id && change.id == target.id && (named || target.looks_like(change))
+                })
+                .or_else(|| {
+                    changes.iter().enumerate().position(|(index, change)| {
+                        !taken[index] && change.from == target.at && target.looks_like(change)
+                    })
+                });
+            match index {
+                Some(index) if taken[index] => {}
+                Some(index) => {
+                    taken[index] = true;
+                    found.push((target.clone(), changes[index].clone()));
+                }
+                None => missing.push(target.clone()),
             }
         }
-        found
+        (found, missing)
     }
 
     fn review_in_confirmed(&self) -> Vec<ChangeSpan> {
@@ -1327,7 +1396,8 @@ impl OverleafDoc {
         mode: &SendMode,
     ) -> Result<Built, DocError> {
         let length = utf16_len(&self.confirmed);
-        let chosen = self.resolve_targets(targets);
+        let (found, _) = self.resolve_targets(targets);
+        let chosen: Vec<ChangeSpan> = found.into_iter().map(|(_, change)| change).collect();
         let ids: Vec<String> = chosen.iter().map(|change| change.id.clone()).collect();
         match &self.format {
             FormatState::ShareJs(ranges) if decision == Decision::Accept => {
@@ -1472,7 +1542,12 @@ impl OverleafDoc {
         if this_connection && now.saturating_duration_since(inflight.sent_at) < RESEND_AFTER {
             return Resend::Wait;
         }
-        if inflight.echo.clashed() || (inflight.echo.accepts_by_ops() && !this_connection) {
+        let repeatable = match (inflight.echo.clashed(), this_connection) {
+            (false, true) => true,
+            (true, false) => false,
+            (true, true) | (false, false) => !inflight.echo.accepts_by_ops(),
+        };
+        if !repeatable {
             return Resend::Resync;
         }
         if inflight.op.is_noop() && !inflight.echo.carries_edits() {
@@ -1616,25 +1691,31 @@ impl OverleafDoc {
         self.remote(update)
     }
 
+    fn fitted(&mut self, inflight: &Inflight) -> Option<(RangeChange, String)> {
+        if inflight.echo.clashed() {
+            return None;
+        }
+        let confirmed = inflight.op.apply(&self.confirmed).ok()?;
+        let change = self
+            .format
+            .acknowledge_ranges(&self.confirmed, &inflight.op, &inflight.echo)
+            .ok()?;
+        Some((change, confirmed))
+    }
+
     fn acknowledge(&mut self) -> Result<Applied, DocError> {
         let Some(mut inflight) = self.inflight.take() else {
             return Ok(Applied::Ignored);
         };
-        if inflight.echo.clashed() {
+        let Some((change, confirmed)) = self.fitted(&inflight) else {
             inflight.landed = true;
             self.inflight = Some(inflight);
             return Err(DocError::OutOfStep);
-        }
+        };
         self.repairs = 0;
-        let change =
-            self.format
-                .acknowledge_ranges(&self.confirmed, &inflight.op, &inflight.echo)?;
         self.reshaped |= change.reshaped();
         self.doubt |= inflight.doubt;
-        self.confirmed = inflight
-            .op
-            .apply(&self.confirmed)
-            .map_err(|_| DocError::OutOfStep)?;
+        self.confirmed = confirmed;
         self.version = self.version.saturating_add(1);
         self.known = self.known.max(self.version);
         Ok(Applied::Acknowledged)
@@ -1780,9 +1861,14 @@ impl OverleafDoc {
         else {
             return;
         };
-        let remaining: Vec<Target> = self
-            .resolve_targets(&changes)
+        let left = self.review_in_confirmed();
+        let remaining: Vec<Target> = changes
             .iter()
+            .filter_map(|target| {
+                left.iter()
+                    .find(|change| change.id == target.id)
+                    .or_else(|| left.iter().find(|change| target.looks_like(change)))
+            })
             .map(Target::of)
             .collect();
         if !remaining.is_empty() {
@@ -1890,30 +1976,29 @@ impl OverleafDoc {
             carry(self, &op, carried);
             return Rejoin::Clean(op);
         }
-        match rebase(&base, &mine, &self.local) {
-            Some(rebased) if !rebased.overlapped => match rebased.operation.apply(&self.local) {
-                Ok(merged) => {
-                    let op = diff(&mine, &merged);
-                    self.local = merged;
-                    if !rebased.operation.is_noop() {
-                        self.outgoing.push(Unit::Text {
-                            op: rebased.operation,
-                            undo: false,
-                        });
-                    }
-                    carry(self, &op, carried);
-                    Rejoin::Merged(op)
-                }
-                Err(_) => Rejoin::Conflict {
-                    mine,
-                    theirs: self.local.clone(),
-                },
-            },
-            _ => Rejoin::Conflict {
+        let rebased = rebase(&base, &mine, &self.local)
+            .filter(|rebased| !rebased.overlapped)
+            .and_then(|rebased| {
+                let merged = rebased.operation.apply(&self.local).ok()?;
+                Some((rebased.operation, merged))
+            });
+        let Some((operation, merged)) = rebased else {
+            carry(self, &diff(&mine, &self.local), carried);
+            return Rejoin::Conflict {
                 mine,
                 theirs: self.local.clone(),
-            },
+            };
+        };
+        let op = diff(&mine, &merged);
+        self.local = merged;
+        if !operation.is_noop() {
+            self.outgoing.push(Unit::Text {
+                op: operation,
+                undo: false,
+            });
         }
+        carry(self, &op, carried);
+        Rejoin::Merged(op)
     }
 }
 

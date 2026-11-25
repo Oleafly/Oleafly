@@ -667,7 +667,7 @@ impl FormatState {
                         undo: extra.undo,
                         comments,
                         accepts: extra.accepts.clone(),
-                        clashed: false,
+                        clashed: previous.is_some_and(Echo::clashed),
                     },
                 })
             }
@@ -1068,12 +1068,14 @@ pub fn pieces_of_flagged(
     let mut pieces = Vec::new();
     let mut rest = visible;
     let mut at = 0;
+    let mut replacing = 0;
     for component in op.components() {
         match component {
             Component::Retain(count) => {
                 let split = byte_at(rest, *count).ok_or(CodecError::Mismatch)?;
                 rest = &rest[split..];
                 at += count;
+                replacing = 0;
             }
             Component::Insert(text) => {
                 pieces.push(Piece::Insert {
@@ -1081,16 +1083,19 @@ pub fn pieces_of_flagged(
                     text: text.clone(),
                     undo,
                 });
-                at += utf16_len(text);
+                replacing = utf16_len(text);
+                at += replacing;
             }
             Component::Delete(count) => {
                 let split = byte_at(rest, *count).ok_or(CodecError::Mismatch)?;
-                pieces.push(Piece::Delete {
-                    p: at,
+                let deleted = Piece::Delete {
+                    p: at - replacing,
                     text: rest[..split].to_string(),
                     undo,
-                });
+                };
+                pieces.insert(pieces.len() - usize::from(replacing > 0), deleted);
                 rest = &rest[split..];
+                replacing = 0;
             }
         }
     }

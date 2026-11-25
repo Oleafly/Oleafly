@@ -6,11 +6,13 @@ pub mod people;
 pub mod port;
 #[cfg(test)]
 mod tests;
+pub mod texts;
 pub mod tree;
 pub mod tree_events;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant};
 
@@ -20,8 +22,10 @@ use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_core::app_log::AppLog;
 use oleafly_online::git::MirrorGit;
-use oleafly_online::live::journal::{self, Journal};
-use oleafly_online::live::session::{LiveError, OverleafSession, Seed, SessionConfig};
+use oleafly_online::live::journal::{self, DocRecord, Journal};
+use oleafly_online::live::session::{
+    LiveError, OutsideText, OverleafSession, Seed, Seeded, SessionConfig,
+};
 use oleafly_online::projects::OverleafLink;
 use oleafly_online::realtime::events::plain_id;
 use oleafly_online::realtime::DocId;
@@ -33,7 +37,7 @@ pub use hooks::MirrorHooks;
 pub use port::MirrorPort;
 pub use tree_events::{TreeNotice, TreeNoticeKind, TREE_EVENT};
 
-use crate::disk::{read_text, DiskState};
+use crate::disk::{read_text, sha256_hex, with_line_endings, DiskState};
 use crate::live::bases::{merged_onto, WrittenTexts};
 use crate::live::downloads::FigureHost;
 use crate::live::host::DiskHost;
@@ -68,6 +72,10 @@ pub struct Mirror {
     pub removing: Mutex<BTreeSet<String>>,
     pub told: Mutex<BTreeMap<String, crate::live::moves::RemovedFile>>,
     pub adopted: Mutex<BTreeSet<String>>,
+    pub first: bool,
+    pub found: Mutex<BTreeMap<String, Found>>,
+    pub texts: Mutex<texts::LastTexts>,
+    pub import_owed: AtomicBool,
     pub stored_as_files: Mutex<Vec<String>>,
     pub linked: Mutex<tree::LinkedMemory>,
     pub waiting: Mutex<Option<Vec<port::Waiting>>>,
@@ -79,6 +87,18 @@ pub struct Mirror {
     pub live: OnceLock<Weak<OverleafLive>>,
 }
 
+pub struct Found {
+    pub text: String,
+    pub hash: String,
+}
+
+#[derive(Default)]
+pub struct FolderAtStart {
+    pub first: bool,
+    pub adopted: BTreeSet<String>,
+    pub found: BTreeMap<String, Found>,
+}
+
 #[derive(Default)]
 pub struct Deletes {
     pub asked: BTreeSet<String>,
@@ -87,7 +107,7 @@ pub struct Deletes {
 }
 
 impl Mirror {
-    pub fn new(disk: LiveDisk, blobs: binaries::BlobMap, adopted: BTreeSet<String>) -> Mirror {
+    pub fn new(disk: LiveDisk, blobs: binaries::BlobMap, start: FolderAtStart) -> Mirror {
         let chores = port::Chores::new(disk.runtime.clone(), disk.log.clone());
         Mirror {
             disk,
@@ -106,7 +126,11 @@ impl Mirror {
             replaced: Mutex::new(BTreeSet::new()),
             removing: Mutex::new(BTreeSet::new()),
             told: Mutex::new(BTreeMap::new()),
-            adopted: Mutex::new(adopted),
+            adopted: Mutex::new(start.adopted),
+            first: start.first,
+            found: Mutex::new(start.found),
+            texts: Mutex::new(texts::LastTexts::default()),
+            import_owed: AtomicBool::new(false),
             stored_as_files: Mutex::new(Vec::new()),
             linked: Mutex::new(tree::LinkedMemory::default()),
             waiting: Mutex::new(Some(Vec::new())),
@@ -144,12 +168,14 @@ impl Mirror {
     }
 
     pub fn mark(&self, texts: impl IntoIterator<Item = String>, tree: bool) {
-        {
-            let mut work = guard(&self.work);
-            work.texts.extend(texts);
-            work.tree |= tree;
-        }
+        self.put_aside(texts, tree);
         self.kick();
+    }
+
+    pub fn put_aside(&self, texts: impl IntoIterator<Item = String>, tree: bool) {
+        let mut work = guard(&self.work);
+        work.texts.extend(texts);
+        work.tree |= tree;
     }
 
     pub fn take_work(&self) -> DiskWork {
@@ -165,6 +191,108 @@ impl Mirror {
 
     pub fn role(&self) -> Option<(ProjectRole, bool)> {
         *guard(&self.role)
+    }
+
+    pub fn folder_here(&self) -> bool {
+        self.disk.root.is_dir() && self.hooks().is_none_or(|hooks| hooks.folder_here())
+    }
+
+    pub fn joined(&self) -> bool {
+        self.role().is_some()
+    }
+
+    pub fn joined_or_owes_import(&self) -> bool {
+        let role = guard(&self.role);
+        if role.is_none() {
+            self.import_owed.store(true, Ordering::SeqCst);
+        }
+        role.is_some()
+    }
+
+    pub fn learn_role(&self, role: ProjectRole, tracking: bool) -> bool {
+        let mut known = guard(&self.role);
+        *known = Some((role, tracking));
+        self.owes_import()
+    }
+
+    pub fn owes_import(&self) -> bool {
+        self.import_owed.load(Ordering::SeqCst)
+    }
+
+    pub fn import_now(&self) {
+        let Some(live) = self.live.get().and_then(Weak::upgrade) else {
+            return;
+        };
+        self.disk.spawn(async move {
+            if let Err(error) = live.import_paths(None).await {
+                live.mirror.disk.log_once("import", || {
+                    format!("could not send local changes: {error}")
+                });
+            }
+            live.mirror.import_owed.store(false, Ordering::SeqCst);
+        });
+    }
+
+    pub fn seeded(&self, path: &str, outcome: Seeded) {
+        let adopt = match outcome {
+            Seeded::Taken => true,
+            Seeded::NoDoc => self.first,
+            Seeded::Left => return,
+        };
+        if adopt {
+            self.adopt_found(path);
+        } else {
+            guard(&self.found).remove(path);
+        }
+    }
+
+    fn adopt_found(&self, path: &str) {
+        let found = guard(&self.found).remove(path);
+        if let Some(Found { text, hash }) = found {
+            self.adopt(path, &text, hash);
+        }
+    }
+
+    pub fn save_index(&self, state: &DiskState) {
+        if self.first && !self.joined() {
+            return;
+        }
+        let Some((json, fingerprint)) = self.disk.index_change(state) else {
+            return;
+        };
+        let session = self.session.get().and_then(Weak::upgrade);
+        if session.is_some_and(|session| !session.persist()) {
+            return;
+        }
+        let dir = self.hold_dir();
+        let mut texts = guard(&self.texts);
+        texts.keep(
+            &dir,
+            &state.hashes,
+            |path, hash| self.bytes_written(path, hash),
+            &self.disk.log,
+        );
+        match self.disk.write_index(&json, fingerprint) {
+            Ok(()) => texts.prune(&dir, &state.hashes),
+            Err(error) => self.disk.log_once("index", || {
+                format!("could not save what is in the folder: {error}")
+            }),
+        }
+    }
+
+    fn bytes_written(&self, path: &str, hash: &str) -> Option<Vec<u8>> {
+        let kept: Vec<String> = guard(&self.disk.bases).kept(path).cloned().collect();
+        if kept.is_empty() {
+            return None;
+        }
+        kept.iter()
+            .flat_map(|text| [false, true].map(|crlf| with_line_endings(text, crlf)))
+            .find(|bytes| sha256_hex(bytes) == hash)
+            .or_else(|| {
+                let target = crate::disk::safe_target(&self.disk.root, path)?;
+                let bytes = std::fs::read(target).ok()?;
+                (sha256_hex(&bytes) == hash).then_some(bytes)
+            })
     }
 
     pub fn set_status(&self, status: LiveStatus, pending: u64) {
@@ -183,9 +311,23 @@ impl Mirror {
 
     pub fn adopt_file_text(&self, path: &str) -> Option<String> {
         let (text, hash) = self.read_exact(path)?;
-        guard(&self.disk.bases).found(path, &text);
-        guard(&self.disk.disk).hashes.insert(path.to_owned(), hash);
+        self.adopt(path, &text, hash);
         Some(text)
+    }
+
+    pub fn outside_text(&self, path: &str) -> Option<OutsideText> {
+        let (text, hash) = self.read_exact(path)?;
+        if guard(&self.disk.disk).hashes.get(path) == Some(&hash) {
+            return None;
+        }
+        let base = guard(&self.disk.bases).latest_settled(path).cloned();
+        self.adopt(path, &text, hash);
+        Some(OutsideText { base, text })
+    }
+
+    fn adopt(&self, path: &str, text: &str, hash: String) {
+        guard(&self.disk.bases).found(path, text);
+        guard(&self.disk.disk).hashes.insert(path.to_owned(), hash);
     }
 
     pub fn mirrored_text(&self, path: &str) -> Option<String> {
@@ -371,7 +513,7 @@ fn text_files(scan: crate::disk::Scan) -> Vec<String> {
 }
 
 pub fn record_import_bases(mirror_dir: &Path, root: &Path) -> std::io::Result<()> {
-    let scan = crate::disk::scan_folder(root).map_err(std::io::Error::other)?;
+    let scan = crate::disk::scan_folder_within(root, "").map_err(std::io::Error::other)?;
     let texts: BTreeMap<String, String> = text_files(scan)
         .into_iter()
         .filter_map(|path| Some((path.clone(), read_text(root, &path)?.0)))
@@ -421,65 +563,94 @@ pub fn mirror_dir(
         .join(project_id))
 }
 
+#[derive(Default)]
 struct GoLive {
     bases: WrittenTexts,
     seeds: Vec<Seed>,
-    adopted: BTreeSet<String>,
+    start: FolderAtStart,
+}
+
+struct Opening<'a> {
+    root: &'a Path,
+    mirror_dir: &'a Path,
+    git: Option<&'a GitBase>,
+    journaled: &'a BTreeMap<DocId, DocRecord>,
+    log: &'a AppLog,
 }
 
 fn open_mirror(
-    root: &Path,
-    mirror_dir: &Path,
+    opening: &Opening<'_>,
     disk_file: &Path,
-    git: Option<&GitBase>,
-    log: &AppLog,
 ) -> std::io::Result<(DiskState, GoLive, binaries::BlobMap)> {
-    std::fs::create_dir_all(mirror_dir)?;
+    std::fs::create_dir_all(opening.mirror_dir)?;
     let mut disk = DiskState::load(disk_file);
-    let first = disk.hashes.is_empty().then_some((mirror_dir, git));
-    let found = go_live_bases(root, &mut disk, first, log);
-    Ok((disk, found, binaries::BlobMap::load(mirror_dir)))
+    let found = go_live_bases(opening, &mut disk);
+    let blobs = binaries::BlobMap::load(opening.mirror_dir);
+    Ok((disk, found, blobs))
 }
 
-fn go_live_bases(
-    root: &Path,
-    disk: &mut DiskState,
-    first: Option<(&Path, Option<&GitBase>)>,
-    log: &AppLog,
-) -> GoLive {
-    let mut found = GoLive {
-        bases: WrittenTexts::default(),
-        seeds: Vec::new(),
-        adopted: BTreeSet::new(),
-    };
-    let Ok(scan) = crate::disk::scan_folder(root) else {
+fn go_live_bases(opening: &Opening<'_>, disk: &mut DiskState) -> GoLive {
+    let mut found = GoLive::default();
+    found.start.first = disk.hashes.is_empty();
+    let Ok(scan) = crate::disk::scan_folder_within(opening.root, "") else {
         return found;
     };
     let files = text_files(scan);
-    let first = first.map(|(mirror_dir, git)| FirstBases::load(mirror_dir, git, &files, log));
+    let first = found
+        .start
+        .first
+        .then(|| FirstBases::load(opening.mirror_dir, opening.git, &files, opening.log));
     for path in files {
-        let Some((text, hash)) = read_text(root, &path) else {
+        let Some((text, hash)) = read_text(opening.root, &path) else {
             continue;
         };
         let known = disk.hashes.get(&path).cloned();
-        if known.as_ref().is_some_and(|known| *known != hash) {
+        if known.as_ref() == Some(&hash) {
+            found.bases.record(&path, &text);
             continue;
         }
-        if let Some(first) = &first {
-            let base = first.base_of(&path);
-            if base.as_deref() != Some(text.as_str()) {
-                found.seeds.push(Seed {
-                    path: path.clone(),
-                    base,
-                    local: text.clone(),
-                });
-            }
-            found.adopted.insert(path.clone());
+        if found.start.first {
+            found.start.adopted.insert(path.clone());
         }
-        found.bases.record(&path, &text);
-        disk.hashes.insert(path, hash);
+        let base = match &known {
+            Some(known) => texts::last_written(opening.mirror_dir, known),
+            None => first.as_ref().and_then(|first| first.base_of(&path)),
+        };
+        if let Some(base) = &base {
+            found.bases.record(&path, base);
+        }
+        let doc = disk.text_at(&path).map(|id| DocId(id.to_owned()));
+        let journaled = journaled_at(opening.journaled, doc.as_ref(), &path);
+        if base.as_ref() == Some(&text) || journaled == Some(text.as_str()) {
+            found.bases.record(&path, &text);
+            disk.hashes.insert(path, hash);
+            continue;
+        }
+        if journaled.is_none() {
+            found.seeds.push(Seed {
+                path: path.clone(),
+                doc,
+                base,
+                local: text.clone(),
+            });
+        }
+        found.start.found.insert(path, Found { text, hash });
     }
     found
+}
+
+fn journaled_at<'a>(
+    journaled: &'a BTreeMap<DocId, DocRecord>,
+    doc: Option<&DocId>,
+    path: &str,
+) -> Option<&'a str> {
+    doc.and_then(|doc| journaled.get(doc))
+        .or_else(|| {
+            journaled
+                .values()
+                .find(|record| record.path.as_deref() == Some(path))
+        })
+        .map(|record| record.local_text.as_str())
 }
 
 pub fn live_error(error: LiveError) -> CollabError {
@@ -518,15 +689,25 @@ impl OverleafLive {
             GoLive {
                 bases,
                 seeds,
-                adopted,
+                start,
             },
             blobs,
         ) = {
             let (disk_file, root, log) = (disk_file.clone(), root.clone(), log.clone());
-            off_runtime(move || open_mirror(&root, &mirror_dir, &disk_file, git.as_ref(), &log))
-                .await
-                .map_err(io)?
-                .map_err(io)?
+            let journaled = journal.docs().clone();
+            off_runtime(move || {
+                let opening = Opening {
+                    root: &root,
+                    mirror_dir: &mirror_dir,
+                    git: git.as_ref(),
+                    journaled: &journaled,
+                    log: &log,
+                };
+                open_mirror(&opening, &disk_file)
+            })
+            .await
+            .map_err(io)?
+            .map_err(io)?
         };
         let (writer, signals) = mpsc::unbounded_channel();
         let mirror = Arc::new(Mirror::new(
@@ -543,7 +724,7 @@ impl OverleafLive {
                 log,
             },
             blobs,
-            adopted,
+            start,
         ));
         let hooks = attach(&mirror);
         let _ = mirror
@@ -638,7 +819,19 @@ impl OverleafLive {
         self.mirror.chores.close(CHORES_WAIT).await;
         self.mirror.detach_sinks();
         self.save_last_state(FLUSH_WAIT).await;
+        self.let_go(FLUSH_WAIT).await;
         self.mirror.disk.forget_memory();
+    }
+
+    async fn let_go(&self, within: Duration) {
+        let session = Arc::clone(&self.session);
+        let released =
+            tokio::time::timeout(within, off_runtime(move || session.release_journal())).await;
+        if !matches!(released, Ok(Ok(()))) {
+            self.mirror.disk.log_once("release", || {
+                "could not let go of its journal when it stopped".to_owned()
+            });
+        }
     }
 
     async fn save_last_state(&self, within: Duration) {
@@ -647,6 +840,8 @@ impl OverleafLive {
             within,
             off_runtime(move || {
                 mirror.save_blobs();
+                let state = guard(&mirror.disk.disk).clone();
+                mirror.save_index(&state);
                 mirror.disk.announce_written();
             }),
         )
@@ -682,6 +877,7 @@ impl OverleafLive {
         self.stop_session(left()).await;
         self.mirror.chores.close(left()).await;
         self.save_last_state(left()).await;
+        self.let_go(left()).await;
         self.mirror.disk.forget_memory();
     }
 
@@ -694,8 +890,18 @@ impl OverleafLive {
         self.mirror.disk.import(self, &self.hold_dir(), only).await
     }
 
+    pub async fn changed_here(&self) -> Result<Vec<String>, CollabError> {
+        if !self.mirror.folder_here() {
+            return Ok(Vec::new());
+        }
+        if self.mirror.first && !self.mirror.joined() {
+            return Ok(guard(&self.mirror.found).keys().cloned().collect());
+        }
+        self.mirror.disk.changed(self).await
+    }
+
     fn write_out(self: &Arc<Self>, urgent: bool) -> Result<Vec<String>, CollabError> {
-        if !self.mirror.disk.root.is_dir() {
+        if !self.mirror.folder_here() {
             return Ok(Vec::new());
         }
         self.mirror.save_blobs();

@@ -737,6 +737,24 @@ describe("switching between session files", () => {
     expect(a.text()).toBe("first line\nsecond line\nthird line\n");
   });
 
+  it("follows what another editor of the same session typed, shown or in a background tab", async () => {
+    const a = new LocalDocumentSession("a.tex", "one\n");
+    const b = new LocalDocumentSession("b.tex", "b");
+    const { store, setContent } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessionsOf(a, b));
+    await act(async () => typeAt(0, "% "));
+    await act(async () => a.applyLocal([{ from: 2, to: 2, insert: "zero\n" }], a.version()));
+    expect(view().state.doc.toString()).toBe("% zero\none\n");
+    await act(async () => typeAt(a.text().length, "two\n"));
+    expect(a.text()).toBe("% zero\none\ntwo\n");
+
+    await open(store, "b.tex");
+    await act(async () => a.applyLocal([{ from: 0, to: 2, insert: "" }], a.version()));
+    await open(store, "a.tex");
+    expect(view().state.doc.toString()).toBe("zero\none\ntwo\n");
+    expect(undoDepth(view().state)).toBeGreaterThan(0);
+    expect(setContent).not.toHaveBeenCalled();
+  });
+
   it("keeps the undo history of a large background file through many remote edits", async () => {
     const big = Array.from({ length: 300 }, (_, index) => `Line ${index} of a long chapter.`).join("\n");
     const a = new LocalDocumentSession("a.tex", big);

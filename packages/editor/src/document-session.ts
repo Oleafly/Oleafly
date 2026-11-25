@@ -18,9 +18,23 @@ export interface DocumentSession {
   text(): string;
   applyLocal(edits: Utf16Edit[], baseVersion: number, origin?: LocalOrigin): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
+  subscribeLocal?(listener: (change: RemoteChange) => void): () => void;
   holdLocal?(): void;
   releaseLocal?(): void;
   subscribeMove?(listener: (path: string) => void): () => void;
+}
+
+export function subscribeEdits(
+  session: Pick<DocumentSession, "subscribe" | "subscribeLocal">,
+  remote: (change: RemoteChange) => void,
+  local: (change: RemoteChange) => void,
+): () => void {
+  const stopRemote = session.subscribe(remote);
+  const stopLocal = session.subscribeLocal?.(local);
+  return () => {
+    stopRemote();
+    stopLocal?.();
+  };
 }
 
 function splitsSurrogatePair(text: string, position: number): boolean {
@@ -63,6 +77,7 @@ export class LocalDocumentSession implements DocumentSession {
   private content: string;
   private revision = 0;
   private readonly listeners = new Set<(change: RemoteChange) => void>();
+  private readonly localListeners = new Set<(change: RemoteChange) => void>();
 
   constructor(path: string, text: string, readOnly = false) {
     this.path = path;
@@ -85,13 +100,11 @@ export class LocalDocumentSession implements DocumentSession {
         `Edits to ${this.path} are based on version ${baseVersion}, but the document is at version ${this.revision}.`,
       );
     }
-    this.apply(edits);
+    this.tell(this.localListeners, edits);
   }
 
   pushRemote(edits: Utf16Edit[]): void {
-    if (!this.apply(edits)) return;
-    const change: RemoteChange = { edits: edits.map((edit) => ({ ...edit })), version: this.revision };
-    for (const listener of Array.from(this.listeners)) listener(change);
+    this.tell(this.listeners, edits);
   }
 
   subscribe(listener: (change: RemoteChange) => void): () => void {
@@ -99,6 +112,19 @@ export class LocalDocumentSession implements DocumentSession {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  subscribeLocal(listener: (change: RemoteChange) => void): () => void {
+    this.localListeners.add(listener);
+    return () => {
+      this.localListeners.delete(listener);
+    };
+  }
+
+  private tell(listeners: ReadonlySet<(change: RemoteChange) => void>, edits: readonly Utf16Edit[]): void {
+    if (!this.apply(edits)) return;
+    const change: RemoteChange = { edits: edits.map((edit) => ({ ...edit })), version: this.revision };
+    for (const listener of Array.from(listeners)) listener(change);
   }
 
   private apply(edits: readonly Utf16Edit[]): boolean {

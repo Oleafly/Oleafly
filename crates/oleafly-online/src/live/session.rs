@@ -63,6 +63,10 @@ pub trait LivePort: Send + Sync + 'static {
     fn adopt_file_text(&self, path: &str) -> Option<String> {
         self.disk_text(path)
     }
+    fn outside_text(&self, path: &str) -> Option<OutsideText> {
+        let text = self.adopt_file_text(path)?;
+        Some(OutsideText { base: None, text })
+    }
     fn account_changed(&self, _typed_as: Account) {}
     fn doc_pending(&self, _doc: &DocId, _pending: bool) {}
     fn maintenance(&self, _message: &str, _delay: Duration) {}
@@ -86,6 +90,7 @@ pub trait LivePort: Send + Sync + 'static {
     fn review_changed(&self, _change: ReviewChange) {}
     fn chat_changed(&self, _change: ChatChange) {}
     fn filling(&self, _done: usize, _total: usize) {}
+    fn seeded(&self, _path: &str, _outcome: Seeded) {}
     fn remote_edit(&self, _doc: &DocId, _user_id: Option<&str>) {}
 }
 
@@ -267,8 +272,28 @@ pub struct SessionConfig {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Seed {
     pub path: String,
+    pub doc: Option<DocId>,
     pub base: Option<String>,
     pub local: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutsideText {
+    pub base: Option<String>,
+    pub text: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Overlap {
+    Weave,
+    Hold,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Seeded {
+    Taken,
+    Left,
+    NoDoc,
 }
 
 struct Activity {
@@ -408,15 +433,20 @@ impl Shared {
         value
     }
 
-    fn persist(&self, forced: bool) {
+    fn persist(&self, forced: bool) -> bool {
         let now = Instant::now();
         let mut journal = self.journal();
+        if journal.released() {
+            return false;
+        }
         let Some(mut batch) = self.lock().take_journal_batch(now, forced) else {
-            return;
+            return true;
         };
         let result = write_batch(&mut journal, &mut batch);
         drop(journal);
+        let kept = result.is_ok();
         self.with(|state| state.journal_result(batch, result, now));
+        kept
     }
 
     fn journal_failed(&self, reason: String) {
@@ -555,11 +585,11 @@ impl OverleafSession {
             email: config.session.email().to_string(),
         };
         let mut state = state::State::new(project, account, &journal, Arc::clone(&port));
-        state.seed(std::mem::take(&mut config.seeds));
         state.page_limit = page.max_doc_length().map(|limit| limit as usize);
         if let Some(connection) = &connection {
             state.connected(connection.public_id().clone(), state::now_ms());
         }
+        state.seed(std::mem::take(&mut config.seeds));
         let server = config.http.url("");
         let shared = Arc::new(Shared::new(
             state,
@@ -675,6 +705,35 @@ impl OverleafSession {
         result
     }
 
+    pub fn outside_edit(
+        &self,
+        doc: &DocId,
+        base: Option<String>,
+        text: &str,
+        overlap: Overlap,
+    ) -> Result<(), LiveError> {
+        let result = self
+            .shared
+            .with(|state| state.outside_edit(doc, base, text, overlap));
+        self.shared.touched(true);
+        self.poke();
+        result
+    }
+
+    pub fn want_text(&self, doc: &DocId) {
+        self.shared.with(|state| state.want_text(doc));
+        self.poke();
+    }
+
+    pub fn persist(&self) -> bool {
+        let failing = self.shared.lock().journal_backing_off(Instant::now());
+        !failing && self.shared.persist(true)
+    }
+
+    pub fn release_journal(&self) {
+        self.shared.journal().release();
+    }
+
     pub fn resolve(&self, doc: &DocId, choice: Resolution) -> Result<(), LiveError> {
         let result = self.shared.with(|state| state.resolve(doc, choice));
         self.shared.touched(false);
@@ -683,13 +742,19 @@ impl OverleafSession {
     }
 
     pub fn retry(&self, doc: &DocId) -> Result<(), LiveError> {
-        let result = self.shared.with(|state| state.retry(doc));
+        let path = self.shared.lock().stopped_path(doc)?;
+        let outside = path.and_then(|path| self.shared.port.outside_text(&path));
+        let result = self.shared.with(|state| state.retry(doc, outside));
         self.poke();
         result
     }
 
     pub fn keep_and_reload(&self, doc: &DocId) -> Result<(), LiveError> {
-        let result = self.shared.with(|state| state.keep_and_reload(doc));
+        let path = self.shared.lock().stopped_path(doc)?;
+        let on_disk = path.and_then(|path| self.shared.port.adopt_file_text(&path));
+        let result = self
+            .shared
+            .with(|state| state.keep_and_reload(doc, on_disk));
         self.poke();
         result
     }

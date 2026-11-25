@@ -111,6 +111,25 @@ describe("open live, invitations and links", () => {
     expect(screen.queryByTestId("overleaf-open-live-a1")).not.toBeInTheDocument();
   });
 
+  it("names the project on every button that acts on one", async () => {
+    api.overleafListProjects.mockResolvedValue({
+      status: signedIn,
+      projects: [project("a1", "Thesis"), project("b2", "Paper"), project("c3", "Old notes", { importedAs: "local-c3" })],
+      invites: [INVITE, { ...INVITE, id: "inv2", projectId: "p8", projectName: "Survey" }],
+    });
+    api.overleafInviteAccept.mockResolvedValue({ server: SERVER, projectId: "p9" });
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    await screen.findByTestId("overleaf-import-view");
+    expect(screen.getByTestId("overleaf-open-live-a1")).toHaveAccessibleName("Open live Thesis");
+    expect(screen.getByTestId("overleaf-open-live-b2")).toHaveAccessibleName("Open live Paper");
+    expect(within(screen.getByTestId("overleaf-status-c3")).getByRole("button")).toHaveAccessibleName("Open Old notes");
+    expect(screen.getByTestId("overleaf-invite-join-inv1")).toHaveAccessibleName("Join Grant proposal");
+    expect(screen.getByTestId("overleaf-invite-join-inv2")).toHaveAccessibleName("Join Survey");
+    fireEvent.click(screen.getByTestId("overleaf-invite-join-inv1"));
+    const joined = await screen.findByTestId("overleaf-joined-p9");
+    expect(within(joined).getByRole("button")).toHaveAccessibleName("Open live Grant proposal");
+  });
+
   it("shows a failed open with a retry that opens live again", async () => {
     api.overleafOpenLive.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce({ projectId: "local-a1", reused: false });
     const onOpenProject = vi.fn();
@@ -118,7 +137,7 @@ describe("open live, invitations and links", () => {
     await screen.findByTestId("overleaf-import-view");
     fireEvent.click(screen.getByTestId("overleaf-open-live-a1"));
     const status = await screen.findByTestId("overleaf-status-a1");
-    fireEvent.click(await within(status).findByRole("button", { name: "Try again" }));
+    fireEvent.click(await within(status).findByRole("button", { name: "Try again Thesis" }));
     await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith("local-a1"));
     expect(api.overleafOpenLive).toHaveBeenCalledTimes(2);
     expect(api.overleafImportProjects).not.toHaveBeenCalled();
@@ -162,7 +181,8 @@ describe("open live, invitations and links", () => {
     expect(api.overleafLinkPreview).toHaveBeenCalledTimes(1);
     expect(api.overleafLinkPreview).toHaveBeenCalledWith(SERVER, READ_LINK, "u-ada");
     expect(api.overleafLinkJoin).not.toHaveBeenCalled();
-    expect(screen.getByText("Thesis")).toBeInTheDocument();
+    expect(within(screen.getByTestId("overleaf-project-a1")).getByRole("button", { name: "Select Thesis" })).toBeInTheDocument();
+    expect(within(card).getByTestId("overleaf-link-join")).toHaveAccessibleName("Join Shared draft");
 
     fireEvent.click(within(card).getByTestId("overleaf-link-join"));
     await waitFor(() => expect(api.overleafLinkJoin).toHaveBeenCalledWith(SERVER, READ_LINK, "u-ada"));

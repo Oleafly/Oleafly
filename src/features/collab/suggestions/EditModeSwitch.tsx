@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, MessageSquareDiff, PencilLine } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -49,19 +50,23 @@ function lockedHint(locked: CollabEditModeLock | null, mode: CollabEditMode, t: 
 
 function LockedMode({ mode, hint }: Readonly<{ mode: CollabEditMode; hint: string }>) {
   const { t } = useTranslation(["collab"]);
+  const id = useId();
   const Icon = mode === "editing" ? PencilLine : MessageSquareDiff;
   return (
     <Tooltip label={hint} side="bottom" wide>
       <output
-        aria-label={hint}
+        aria-labelledby={`${id}mode ${id}hint`}
         className={cn(
           "flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium text-foreground",
           mode === "suggesting" ? "bg-primary/10" : "bg-muted/40",
         )}
       >
         <Icon aria-hidden className="size-3.5" />
-        {modeLabel(mode, t)}
+        <span id={`${id}mode`}>{modeLabel(mode, t)}</span>
       </output>
+      <span id={`${id}hint`} hidden>
+        {hint}
+      </span>
     </Tooltip>
   );
 }

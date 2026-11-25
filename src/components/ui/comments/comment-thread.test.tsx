@@ -683,7 +683,7 @@ describe("resolve button", () => {
       </CommentKitProvider>,
     );
     expect(screen.getByRole("button", { name: LABELS.resolve })).toHaveClass("opacity-100");
-    expect(screen.getByRole("article")).toHaveClass("border-ring");
+    expect(screen.getByRole("article")).toHaveClass("bg-accent", "border-transparent");
   });
 
   it("goes to the first message's header when the thread shows no quote", () => {

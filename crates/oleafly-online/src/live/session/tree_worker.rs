@@ -164,6 +164,7 @@ impl TreeWorker {
             RestError::SignedOut
             | RestError::Lost(_)
             | RestError::Unreachable(_)
+            | RestError::ServerFailed { .. }
             | RestError::Unreadable(_)
             | RestError::Short => self.retry_later(),
         }

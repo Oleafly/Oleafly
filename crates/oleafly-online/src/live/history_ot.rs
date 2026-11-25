@@ -1054,7 +1054,9 @@ impl RawDoc {
             *at = target;
             Ok(())
         };
-        for component in op.components() {
+        let mut restored = 0;
+        let mut components = op.components().iter().peekable();
+        while let Some(component) = components.next() {
             match component {
                 Component::Retain(count) => visible += count,
                 Component::Insert(text) => {
@@ -1066,12 +1068,20 @@ impl RawDoc {
                         at = pos + units.len();
                         continue;
                     }
+                    if let Some(Component::Delete(count)) = components.peek() {
+                        let end = self.to_raw(visible + count);
+                        let own = unhide.filter(|user| !user.is_empty());
+                        if own.is_some_and(|user| self.hidden_at(end, &units, user)) {
+                            restored = units.len();
+                            continue;
+                        }
+                    }
                     until(&mut raw, &mut at, pos)?;
                     let marked = tracking.map(|tracking| with_type(tracking, "insert"));
                     raw.insert(units, marked, self.comment_ids_at(pos));
                 }
                 Component::Delete(count) => {
-                    let start = self.to_raw(visible);
+                    let start = self.to_raw(visible).max(at);
                     let end = self.to_raw(visible + count);
                     until(&mut raw, &mut at, start)?;
                     match tracking {
@@ -1080,7 +1090,10 @@ impl RawDoc {
                         }
                         None => raw.delete(end - start),
                     }
-                    at = end;
+                    if restored > 0 {
+                        self.restore(&mut raw, end, restored);
+                    }
+                    at = end + std::mem::take(&mut restored);
                     visible += count;
                 }
             }

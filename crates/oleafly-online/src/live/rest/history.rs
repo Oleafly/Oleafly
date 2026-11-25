@@ -113,7 +113,7 @@ pub struct Restored {
 }
 
 fn server_failed(error: &RestError) -> bool {
-    matches!(error, RestError::Unreachable(text) if text == "HTTP 500")
+    matches!(error, RestError::ServerFailed { status: 500, .. })
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
@@ -466,12 +466,17 @@ impl ProjectRest {
             .get_unhurried(&route, &session.cookie())
             .send()
             .await
-            .map_err(|error| sent_error(&error))?;
+            .map_err(sent_error)?;
         session.absorb_headers(response.headers());
         let response = match judged(response).await {
             Judged::Fine(response) => response,
-            Judged::StaleToken(_) => return Err(RestError::NotAllowed.into()),
-            Judged::Failed(error) => return Err(error.into()),
+            Judged::StaleToken(_) => {
+                return Err(self
+                    .signed_out_or(session, RestError::NotAllowed)
+                    .await
+                    .into());
+            }
+            Judged::Failed(error) => return Err(self.signed_out_or(session, error).await.into()),
         };
         self.http
             .save_archive(response, destination, progress)

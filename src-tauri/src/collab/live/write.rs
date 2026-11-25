@@ -47,7 +47,11 @@ fn closest_base(
     let read = reads.into_iter().flat_map(|reads| reads.kept(path));
     let known: Vec<&String> = bases.kept(path).chain(read).collect();
     if known.iter().any(|known| *known == text) {
-        return bases.latest(path).filter(|latest| *latest != text).cloned();
+        return Some(
+            bases
+                .latest(path)
+                .map_or_else(|| text.to_owned(), Clone::clone),
+        );
     }
     nearest(known.into_iter(), text).cloned()
 }
@@ -687,6 +691,26 @@ mod tests {
             .unwrap());
             assert_eq!(live.doc().text(&main).unwrap(), text);
         }
+    }
+
+    #[test]
+    fn a_write_without_a_base_of_the_last_written_text_keeps_newer_edits() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, main) = shared("one\n");
+        let mut bases = WrittenTexts::default();
+        bases.record("main.tex", "one\n");
+        live.local_text(&main, "one\ntyped since\n").unwrap();
+        assert!(write_into(
+            &mut live,
+            &mut bases,
+            None,
+            dir.path(),
+            "main.tex",
+            None,
+            "one\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "one\ntyped since\n");
     }
 
     #[test]

@@ -178,15 +178,18 @@ pub struct DiskPass {
     pub waiting: Vec<String>,
 }
 
-#[allow(clippy::too_many_arguments)]
+pub struct DiskTexts<'a> {
+    pub texts: &'a [(String, String)],
+    pub crlf: &'a BTreeSet<String>,
+}
+
 pub fn apply_to_disk(
     root: &Path,
     disk: &mut DiskState,
     bases: &mut impl Bases,
     mut plan: materialize::DiskPlan,
     next: Layout,
-    texts: &[(String, String)],
-    crlf: &BTreeSet<String>,
+    texts: &DiskTexts<'_>,
     left: &LeftAlone<'_>,
 ) -> Result<DiskPass, CollabError> {
     let mut conflicts: Vec<String> = Vec::new();
@@ -208,7 +211,7 @@ pub fn apply_to_disk(
             changed.insert(dir.clone());
         }
     }
-    for (path, text) in texts {
+    for (path, text) in texts.texts {
         if waiting.covers(path) {
             continue;
         }
@@ -220,14 +223,11 @@ pub fn apply_to_disk(
             conflicts.push(path.clone());
             continue;
         };
-        // A file another program holds on Windows waits for its next try at
-        // once: writing it would retry for seconds, holding up the pass and
-        // a quit waiting on it.
         if let Some(reason) = safe_target(root, path).and_then(|target| held_now(&target)) {
             failed.push((path.clone(), reason));
             continue;
         }
-        let bytes = with_line_endings(text, style.unwrap_or_else(|| crlf.contains(path)));
+        let bytes = with_line_endings(text, style.unwrap_or_else(|| texts.crlf.contains(path)));
         #[cfg(any(test, feature = "test-support"))]
         late(&WRITE_LATE, root);
         bases.writing(path, true);
@@ -439,8 +439,10 @@ mod tests {
             &mut WrittenTexts::default(),
             materialize::plan(&layout, &layout),
             layout.clone(),
-            &[],
-            &BTreeSet::new(),
+            &DiskTexts {
+                texts: &[],
+                crlf: &BTreeSet::new(),
+            },
             &LeftAlone {
                 blocked: &|path| path == "held.png",
                 pinned: &|_| false,
@@ -487,8 +489,10 @@ mod tests {
             &mut WrittenTexts::default(),
             materialize::plan(&before, &next),
             next.clone(),
-            &texts,
-            &BTreeSet::new(),
+            &DiskTexts {
+                texts: &texts,
+                crlf: &BTreeSet::new(),
+            },
             &LeftAlone {
                 blocked: &|path| path == "kept.tex" || path == "later",
                 pinned: &|path| path == "held.tex",
@@ -513,8 +517,10 @@ mod tests {
             &mut WrittenTexts::default(),
             materialize::plan(&disk.layout, &next),
             next.clone(),
-            &texts,
-            &BTreeSet::new(),
+            &DiskTexts {
+                texts: &texts,
+                crlf: &BTreeSet::new(),
+            },
             &NOTHING_LEFT,
         )
         .unwrap();

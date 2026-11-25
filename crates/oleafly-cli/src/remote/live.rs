@@ -1,3 +1,4 @@
+mod folder;
 mod host;
 
 use std::collections::{BTreeSet, HashSet};
@@ -29,7 +30,8 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use tokio::task::{JoinError, JoinHandle};
 
-use self::host::{CliHooks, CliHost, Out, COMMAND};
+use self::folder::Folder;
+use self::host::{CliHooks, CliHost, Fault, Out, COMMAND};
 use super::scope::{parse_remote_ref, project_url, resolve_scope, RemoteRef, RemoteScope};
 use super::LiveArgs;
 use crate::auth::online::online_error;
@@ -59,6 +61,7 @@ const QUIT_SLACK: Duration = Duration::from_millis(500);
 const IMPORT_GRACE: Duration = Duration::from_secs(1);
 const IMPORT_ON_CLOSE: Duration = Duration::from_millis(500);
 const PRINTER_WAIT: Duration = Duration::from_secs(1);
+const FOLDER_MISSES: u32 = 2;
 const IDLE_AFTER: Duration = Duration::from_secs(24 * 60 * 60);
 
 type Watched = notify::Result<Event>;
@@ -508,6 +511,7 @@ struct Started {
     live: Arc<OverleafLive>,
     hooks: Arc<CliHooks>,
     host: Arc<CliHost>,
+    folder: Folder,
     watcher: FolderWatcher,
     events: mpsc::UnboundedReceiver<Watched>,
     imports: Imports,
@@ -614,10 +618,12 @@ async fn start(
         log: log.clone(),
     };
     let hooks_out = out.clone();
+    let folder = Folder::at(&root);
+    let hooks_folder = folder.clone();
     let (live, hooks) = tokio::time::timeout(
         START_WAIT,
         OverleafLive::start_with(parts, move |mirror| {
-            Arc::new(CliHooks::new(hooks_out, mirror))
+            Arc::new(CliHooks::new(hooks_out, mirror, hooks_folder))
         }),
     )
     .await
@@ -669,6 +675,7 @@ async fn start(
         live,
         hooks,
         host,
+        folder,
         watcher,
         events,
         imports,
@@ -876,7 +883,7 @@ impl Imports {
         }
     }
 
-    async fn finish(&mut self, within: Duration) -> Vec<String> {
+    async fn finish(&mut self, within: Duration) -> Option<Vec<String>> {
         let deadline = tokio::time::Instant::now() + within;
         let mut done = match self.running.take() {
             Some(running) => self.ended(running, deadline).await,
@@ -886,7 +893,7 @@ impl Imports {
             done = self.ended(self.spawn(queued), deadline).await;
         }
         if done {
-            return Vec::new();
+            return None;
         }
         log_off(
             &self.log,
@@ -896,7 +903,7 @@ impl Imports {
                 within.as_millis()
             ),
         );
-        std::mem::take(&mut *guard(&self.reading))
+        Some(std::mem::take(&mut *guard(&self.reading)))
     }
 }
 
@@ -984,19 +991,54 @@ enum End {
     Ended(EndReason),
     ReaderGone,
     WatchStopped,
+    FolderGone,
 }
 
 fn status_of(live: &OverleafLive) -> LiveStatus {
     guard(&live.mirror.status).0.clone()
 }
 
-fn online_wins(live: &Arc<OverleafLive>, paths: Vec<String>, log: &AppLog) {
+fn mend(started: &Started, faults: Vec<Fault>, log: &AppLog) {
+    if faults.is_empty() {
+        return;
+    }
+    let (live, host, log) = (
+        Arc::clone(&started.live),
+        Arc::clone(&started.host),
+        log.clone(),
+    );
+    tokio::task::spawn_blocking(move || {
+        for Fault { path, times } in faults {
+            let mended = match times {
+                1 => live.retry(&path),
+                2 if live.has_unsent(&path) => {
+                    host.put_aside(&path);
+                    live.keep_copy(&path)
+                }
+                _ => continue,
+            };
+            if let Err(error) = mended {
+                let _ = log.write(&format!(
+                    "remote live couldn't carry on with {path} in project {}: {error}",
+                    live.project_id()
+                ));
+            }
+        }
+    });
+}
+
+fn online_wins(started: &Started, paths: Vec<String>, log: &AppLog) {
     if paths.is_empty() {
         return;
     }
-    let (live, log) = (Arc::clone(live), log.clone());
+    let (live, host, log) = (
+        Arc::clone(&started.live),
+        Arc::clone(&started.host),
+        log.clone(),
+    );
     tokio::task::spawn_blocking(move || {
         for path in paths {
+            host.put_aside(&path);
             let kept = live
                 .resolve(&path, Resolution::Theirs)
                 .or_else(|_| live.keep_copy(&path));
@@ -1020,7 +1062,11 @@ fn keep_online(live: &Arc<OverleafLive>, paths: Vec<String>) {
 
 fn owed(started: &Started, rereads: &mut Rereads, log: &AppLog) -> Option<EndReason> {
     let work = started.host.work();
-    online_wins(&started.live, work.reviews, log);
+    online_wins(started, work.reviews, log);
+    mend(started, work.faults, log);
+    if work.edited {
+        started.live.session.touch();
+    }
     keep_online(&started.live, work.deletes);
     if work.members {
         started.host.know(started.live.members());
@@ -1041,6 +1087,17 @@ async fn batch_due(due: Option<tokio::time::Instant>) {
     }
 }
 
+fn look_at(folder: &Folder) -> JoinHandle<bool> {
+    let folder = folder.clone();
+    tokio::task::spawn_blocking(move || folder.here())
+}
+
+async fn looked(look: &mut Option<JoinHandle<bool>>) -> Option<bool> {
+    let here = look.as_mut()?.await;
+    *look = None;
+    Some(here.unwrap_or(true))
+}
+
 async fn serve(
     started: &mut Started,
     terminations: &mut Terminations,
@@ -1053,6 +1110,8 @@ async fn serve(
     let mut tick = tokio::time::interval(TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let mut rereads = Rereads::default();
+    let mut look: Option<JoinHandle<bool>> = None;
+    let mut misses = 0;
     let host = Arc::clone(&started.host);
     let end = loop {
         tokio::select! {
@@ -1075,6 +1134,12 @@ async fn serve(
                 }
             }
             joined = started.imports.settled() => started.imports.advance(joined),
+            Some(here) = looked(&mut look), if look.is_some() => {
+                misses = if here { 0 } else { misses + 1 };
+                if misses >= FOLDER_MISSES {
+                    break End::FolderGone;
+                }
+            }
             Some(read) = rereads.finished(), if rereads.reading.is_some() => {
                 if let Some(found) = rereads.fresh(read, &started.handle, log) {
                     let fresh = SessionHandle::new(&started.link.server, found, Some(started.store.clone()));
@@ -1092,6 +1157,7 @@ async fn serve(
                 }
                 rereads.status(&status);
                 rereads.due(&started.link, &started.store, log);
+                look.get_or_insert_with(|| look_at(&started.folder));
             }
         }
     };
@@ -1126,6 +1192,7 @@ async fn stop(started: Started, end: &End, out: &Out) -> Result<Value, CliError>
         live,
         hooks,
         host,
+        folder,
         watcher,
         mut events,
         mut imports,
@@ -1141,7 +1208,18 @@ async fn stop(started: Started, end: &End, out: &Out) -> Result<Value, CliError>
     let (grace, within) = waits(end);
     let cut = imports.finish(grace).await;
     drop(imports);
-    let _ = tokio::time::timeout(within + QUIT_SLACK, live.quit(within)).await;
+    let unread = cut.is_some() || live.mirror.owes_import();
+    let changed = async {
+        if unread {
+            tokio::time::timeout(within, live.changed_here()).await.ok()
+        } else {
+            None
+        }
+    };
+    let (changed, _) = tokio::join!(
+        changed,
+        tokio::time::timeout(within + QUIT_SLACK, live.quit(within))
+    );
     let mut unsent: BTreeSet<String> = live
         .session
         .unsent(Duration::ZERO)
@@ -1149,7 +1227,8 @@ async fn stop(started: Started, end: &End, out: &Out) -> Result<Value, CliError>
         .into_iter()
         .map(|doc| doc.path)
         .collect();
-    unsent.extend(cut);
+    unsent.extend(cut.unwrap_or_default());
+    unsent.extend(changed.and_then(Result::ok).unwrap_or_default());
     let unsent: Vec<String> = unsent.into_iter().collect();
     out.emit("stopped", json!({"unsent": unsent}), || {
         stopped_line(&unsent)
@@ -1169,6 +1248,7 @@ async fn stop(started: Started, end: &End, out: &Out) -> Result<Value, CliError>
             "watch.stopped",
             "The file watcher stopped unexpectedly.",
         )),
+        End::FolderGone => Err(folder.gone()),
         End::Ended(reason) => Err(ended(*reason, &link.server)),
     }
 }

@@ -87,6 +87,8 @@ pub struct InflightRecord {
     pub fixed: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub accepts: Vec<Accepted>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decided: Option<ReviewOp>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -168,8 +170,7 @@ impl From<io::Error> for JournalError {
 #[derive(Debug)]
 pub struct Journal {
     dir: PathBuf,
-    _lock: File,
-    _folder_lock: Option<File>,
+    locks: Option<(File, Option<File>)>,
     owned: bool,
     manifest: ProjectManifest,
     docs: BTreeMap<DocId, DocRecord>,
@@ -378,8 +379,7 @@ impl Journal {
     ) -> Result<Journal, JournalError> {
         let mut journal = Journal {
             dir,
-            _lock: lock,
-            _folder_lock: folder_lock,
+            locks: Some((lock, folder_lock)),
             owned,
             manifest: ProjectManifest::default(),
             docs: BTreeMap::new(),
@@ -507,7 +507,21 @@ impl Journal {
         self.dirty_joined = true;
     }
 
+    pub fn release(&mut self) {
+        if std::mem::take(&mut self.owned) {
+            let _ = remove(&self.dir.join(OWNER));
+        }
+        self.locks = None;
+    }
+
+    pub fn released(&self) -> bool {
+        self.locks.is_none()
+    }
+
     pub fn flush(&mut self) -> Result<(), String> {
+        if self.released() {
+            return Err("live editing already let go of its journal".into());
+        }
         if self.dirty_joined {
             if let Some(response) = &self.joined {
                 let snapshot = JoinSnapshot {
@@ -551,9 +565,7 @@ impl Journal {
 
 impl Drop for Journal {
     fn drop(&mut self) {
-        if self.owned {
-            let _ = remove(&self.dir.join(OWNER));
-        }
+        self.release();
     }
 }
 

@@ -55,6 +55,11 @@ describe.each(LIVE_SEEDS)("the Editing and Suggesting switch on the $name backen
   }
 
   it("lets an owner switch to Suggesting and back", async () => {
+    let current = state();
+    mocks.collabEditModeGet.mockImplementation(async () => current);
+    mocks.collabEditModeSet.mockImplementation(async (_projectId: string, mode: CollabEditModeState["mode"]) => {
+      current = state({ mode });
+    });
     live("owner");
     stop = startEditMode();
     render(<EditModeSwitch projectId="paper" />);
@@ -85,7 +90,7 @@ describe.each(LIVE_SEEDS)("the Editing and Suggesting switch on the $name backen
     live("reviewer");
     stop = startEditMode();
     render(<EditModeSwitch projectId="paper" />);
-    expect(await screen.findByRole("status", { name: copy.reviewerHint })).toHaveTextContent(copy.suggesting);
+    expect(await screen.findByRole("status", { name: `${copy.suggesting} ${copy.reviewerHint}` })).toHaveTextContent(copy.suggesting);
     expect(screen.queryByRole("button", { name: copy.editing })).toBeNull();
     await waitFor(() => expect(useEditMode.getState().mode).toBe("suggesting"));
   });
@@ -108,7 +113,7 @@ describe.each(LIVE_SEEDS)("the Editing and Suggesting switch on the $name backen
     live("reviewer");
     stop = startEditMode();
     render(<EditModeSwitch projectId="paper" />);
-    await screen.findByRole("status", { name: copy.reviewerHint });
+    await screen.findByRole("status", { name: new RegExp(copy.reviewerHint) });
     act(() => useCollabLiveStore.setState({ role: "editor" }));
     expect(await screen.findByRole("button", { name: copy.editing })).toHaveAttribute("aria-pressed", "true");
     expect(mocks.collabEditModeGet).toHaveBeenCalledTimes(2);
@@ -140,7 +145,7 @@ describe("the switch on Overleaf", () => {
     live("editor");
     stop = startEditMode();
     render(<EditModeSwitch projectId="paper" />);
-    expect(await screen.findByRole("status", { name: hint })).toHaveTextContent(label);
+    expect(await screen.findByRole("status", { name: `${label} ${hint}` })).toHaveTextContent(label);
     expect(screen.queryByRole("button", { name: copy.editing })).toBeNull();
   });
 
@@ -151,7 +156,7 @@ describe("the switch on Overleaf", () => {
     await screen.findByRole("button", { name: copy.editing });
     mocks.collabEditModeGet.mockResolvedValue(state({ mode: "suggesting", switchable: false, locked: "everyone" }));
     act(() => useCollabLiveStore.setState({ tracking: true }));
-    expect(await screen.findByRole("status", { name: copy.locked.everyone })).toHaveTextContent(copy.suggesting);
+    expect(await screen.findByRole("status", { name: `${copy.suggesting} ${copy.locked.everyone}` })).toBeInTheDocument();
   });
 
   it("gives the owner a menu for everyone and for link guests", async () => {
@@ -179,7 +184,7 @@ describe("the switch on Overleaf", () => {
     stop = startEditMode();
     const user = userEvent.setup();
     render(<EditModeSwitch projectId="paper" />);
-    await screen.findByRole("status", { name: copy.locked.everyone });
+    await screen.findByRole("status", { name: `${copy.suggesting} ${copy.locked.everyone}` });
     await user.click(screen.getByRole("button", { name: copy.others }));
     expect(await screen.findByRole("menuitemcheckbox", { name: copy.forEveryone })).toHaveAttribute("aria-checked", "true");
     expect(screen.queryByRole("menuitemcheckbox", { name: copy.forGuests })).toBeNull();

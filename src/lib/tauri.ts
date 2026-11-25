@@ -201,6 +201,8 @@ export const reloadViews = () => invoke<void>("reload_views");
 export const detectBrowserCookieSources = () =>
   invoke<BrowserCookieSource[]>("detect_browser_cookie_sources");
 
+export const COOKIE_IMPORT_CANCELLED = "Cookie import was cancelled. No cookies were imported.";
+
 export const importBrowserCookies = (request: BrowserCookieImportRequest) =>
   invoke<BrowserCookieImportSummary>("import_browser_cookies", {
     request: { ...request, confirmed: true },

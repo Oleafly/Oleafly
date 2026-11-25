@@ -423,7 +423,7 @@ pub async fn collab_history_list(
     .map_err(CollabCommandError::from)
 }
 
-fn server_role(state: &CollabState, project_id: &str) -> Option<ProjectRole> {
+pub(super) fn server_role(state: &CollabState, project_id: &str) -> Option<ProjectRole> {
     super::live::read_live(project_id, LiveProject::role).or_else(|| {
         load_binding(state.paths().ok()?, project_id)
             .ok()

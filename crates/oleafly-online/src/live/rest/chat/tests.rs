@@ -63,7 +63,10 @@ async fn chat_posts_pages_edits_and_deletes_through_the_project_routes() {
     rest.delete_chat(&alice, &first).await.unwrap();
     assert!(matches!(
         rest.delete_chat(&alice, &first).await,
-        Err(ReviewError::Rest(RestError::Unreachable(_)))
+        Err(ReviewError::Rest(RestError::ServerFailed {
+            status: 500,
+            ..
+        }))
     ));
     let left = rest.chat_messages(&alice, None, 10).await.unwrap();
     assert!(left.iter().all(|message| message.id != first));

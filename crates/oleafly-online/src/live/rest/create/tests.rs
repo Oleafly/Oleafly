@@ -86,7 +86,22 @@ async fn refusals_are_told_apart_and_nothing_is_sent_twice() {
             "Rate limit reached, please try again later",
             RestError::RateLimited(None),
         ),
-        (500, "boom", RestError::Unreachable("HTTP 500".into())),
+        (
+            500,
+            "{\"success\":false,\"error\":\"upload_failed\"}",
+            RestError::ServerFailed {
+                status: 500,
+                message: "upload_failed".into(),
+            },
+        ),
+        (
+            502,
+            "<html><body>Bad gateway</body></html>",
+            RestError::ServerFailed {
+                status: 502,
+                message: String::new(),
+            },
+        ),
     ] {
         mock.plan_fault(
             Some("POST"),
@@ -99,7 +114,7 @@ async fn refusals_are_told_apart_and_nothing_is_sent_twice() {
     let signed_out =
         create_project(&client, "overleaf.sid=nobody", MOCK_CSRF, "x", archive()).await;
     assert_eq!(signed_out, Err(RestError::SignedOut));
-    assert_eq!(mock.requests(CREATE_ROUTE).len(), 5);
+    assert_eq!(mock.requests(CREATE_ROUTE).len(), 6);
     assert!(mock.created().is_empty());
 }
 

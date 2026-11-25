@@ -102,7 +102,7 @@ pub(crate) async fn preview(
             Some(name) => shown(Grants::Already, Some(name), Some(id.clone())),
             None => Err(link_unavailable()),
         },
-        ProjectLink::Invite { project, .. } => {
+        ProjectLink::Invite { project, .. } | ProjectLink::Share { project, .. } => {
             if let Some(name) = name_of(listing, project) {
                 return shown(Grants::Already, Some(name), Some(project.clone()));
             }
@@ -157,19 +157,11 @@ pub(crate) async fn join(
             Some(_) => joined(id.clone()),
             None => Err(link_unavailable()),
         },
-        ProjectLink::Invite { project, token } => {
+        ProjectLink::Invite { project, .. } | ProjectLink::Share { project, .. } => {
             if name_of(listing, project).is_some() {
                 return joined(project.clone());
             }
-            match accept_invite(
-                http.online(),
-                &account.cookie,
-                csrf_of(listing)?,
-                project,
-                token,
-            )
-            .await
-            {
+            match accept_invite(http.online(), &account.cookie, csrf_of(listing)?, link).await {
                 Ok(()) => joined(project.clone()),
                 Err(error) => Err(failed(base, &account.user_id, &error).await),
             }

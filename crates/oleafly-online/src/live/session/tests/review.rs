@@ -4,12 +4,13 @@ use std::time::{Duration, Instant};
 use oleafly_ot::testing::EditorDoc;
 use serde_json::{json, Value};
 
-use super::super::state::State;
+use super::super::state::{JoinKind, State};
 use super::super::{ModeLock, OverleafSession, ReviewWriteError, SessionTuning, TrackScope};
 use super::{eventually, tuning, watcher, Port, Rig, Tab, MAIN, WAIT};
 use crate::live::doc::Origin;
 use crate::live::format::{ChangeKind, Decision, DocFormat};
-use crate::live::DocId;
+use crate::live::join::parse_join;
+use crate::live::{AppliedUpdate, DocId};
 use crate::realtime::events::{ReviewEvent, Thread, ThreadMessage};
 use crate::realtime::project::Role;
 use crate::test_support::mock_overleaf::{
@@ -996,4 +997,77 @@ async fn a_tracked_delete_counts_as_a_change_with_its_text() {
     assert_eq!(change.user, Some(rig.user_id("bob")));
     assert_eq!(live.review_counts()[0].1.changes, 1);
     live.stop().await;
+}
+
+#[test]
+fn changes_are_found_in_the_doc_that_holds_them_whichever_id_names_them() {
+    let docs: Vec<(String, String)> = (0..3)
+        .map(|n| (format!("{n:024x}"), format!("{n}.tex")))
+        .collect();
+    let mut state = watcher(&docs);
+    let ids: Vec<DocId> = docs.iter().map(|(id, _)| DocId(id.clone())).collect();
+    let join = |doc: &DocId, lines: Value, ranges: Value, kind: &str| {
+        let reply = [Value::Null, lines, json!(1), json!([]), ranges, json!(kind)];
+        parse_join(doc, &reply)
+    };
+    for doc in &ids {
+        state.on_applied(
+            AppliedUpdate::from_value(
+                &json!({ "v": 0, "op": [], "meta": { "source": "P.x" } }),
+                Some(doc),
+            )
+            .unwrap(),
+        );
+    }
+    let tracked = json!({ "changes": [{ "id": "named", "op": { "p": 0, "i": "abcd" }, "metadata": { "user_id": "bob" } }] });
+    state.joined(
+        &ids[0],
+        JoinKind::Fresh,
+        join(&ids[0], json!(["abcd"]), tracked, "sharejs-text-ot"),
+    );
+    let raw = |at: usize| {
+        json!({
+            "content": "abcd",
+            "trackedChanges": [{
+                "range": { "pos": at, "length": 1 },
+                "tracking": { "type": "insert", "userId": "bob", "ts": format!("2026-11-15T09:00:0{at}.000Z") },
+            }],
+        })
+    };
+    for (doc, at) in [(&ids[1], 1), (&ids[2], 2)] {
+        let joined = join(doc, raw(at), json!({}), "history-ot");
+        state.joined(doc, JoinKind::Fresh, joined.clone());
+        state.joined(doc, JoinKind::From(1), joined);
+    }
+    let change_of =
+        |state: &State, doc: &DocId| state.doc_review(doc).unwrap().changes[0].id.clone();
+    let (second, third) = (change_of(&state, &ids[1]), change_of(&state, &ids[2]));
+    assert_ne!(second, third);
+    let split = json!({ "v": 1, "op": [{ "p": 2, "i": "-" }], "meta": { "source": "P.dave", "user_id": "dave" } });
+    state.on_applied(AppliedUpdate::from_value(&split, Some(&ids[0])).unwrap());
+    let unnamed = state
+        .doc_review(&ids[0])
+        .unwrap()
+        .changes
+        .into_iter()
+        .find(|change| change.text == "cd")
+        .unwrap()
+        .id;
+    let asked = [
+        "named".to_string(),
+        third.clone(),
+        unnamed.clone(),
+        "gone".to_string(),
+        second.clone(),
+    ];
+    let (found, missing) = state.docs_of_changes(&asked);
+    assert_eq!(missing, ["gone"]);
+    assert_eq!(
+        found.into_iter().collect::<Vec<_>>(),
+        [
+            (ids[0].clone(), vec!["named".to_string(), unnamed]),
+            (ids[1].clone(), vec![second]),
+            (ids[2].clone(), vec![third]),
+        ]
+    );
 }

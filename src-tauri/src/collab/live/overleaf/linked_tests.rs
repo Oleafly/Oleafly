@@ -109,9 +109,9 @@ fn refresh_failures_reach_the_page_with_codes_it_knows() {
         let route = refresh_route(&rig);
         let not_shared = "The project that contains this file is not shared with you";
         for (faults, expected_code, expected_message) in [
-            (vec![(400, "")], "linked_off_server", None),
+            (vec![(400, "Bad Request")], "linked_off_server", None),
             (
-                vec![(403, not_shared), (403, not_shared)],
+                vec![(403, not_shared)],
                 "linked_refresh_failed",
                 Some(not_shared),
             ),
@@ -126,7 +126,12 @@ fn refresh_failures_reach_the_page_with_codes_it_knows() {
                 None,
             ),
             (vec![(404, "<!DOCTYPE html>")], "not_found", None),
-            (vec![(500, "boom")], "unreachable", None),
+            (
+                vec![(502, "The remote service produced an error")],
+                "linked_refresh_failed",
+                Some("The remote service produced an error"),
+            ),
+            (vec![(502, "<html></html>")], "unreachable", None),
         ] {
             for (status, text) in faults {
                 rig.mock

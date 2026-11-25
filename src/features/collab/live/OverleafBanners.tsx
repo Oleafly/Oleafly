@@ -240,7 +240,8 @@ async function removeEmptyCopy(projectId: string): Promise<boolean> {
   const fresh = await overleafLiveProject(projectId);
   if (!fresh?.unfilled) return false;
   const files = useFilesStore.getState();
-  await files.closeProject();
+  if (files.projectId === projectId) await files.closeProject();
+  if (useFilesStore.getState().projectId === projectId) return true;
   await recycleProject(projectId);
   await files.refreshProjects();
   return true;

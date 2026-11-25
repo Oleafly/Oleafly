@@ -86,6 +86,10 @@ pub enum ProjectLink {
         project: String,
         token: String,
     },
+    Share {
+        project: String,
+        token: String,
+    },
 }
 
 fn read_token(token: &str) -> bool {
@@ -105,6 +109,10 @@ fn invite_token(token: &str) -> bool {
         && token.bytes().all(|byte| byte.is_ascii_alphanumeric())
 }
 
+fn joinable(project: &str, token: &str) -> bool {
+    valid_project_id(project) && invite_token(token)
+}
+
 impl ProjectLink {
     pub fn parse(path: &str, fragment: Option<String>) -> Option<ProjectLink> {
         let parts: Vec<&str> = path.split('/').filter(|part| !part.is_empty()).collect();
@@ -112,13 +120,19 @@ impl ProjectLink {
             ["project", id] if valid_project_id(id) => Some(ProjectLink::Project {
                 id: (*id).to_string(),
             }),
-            ["project", project, "invite", "token", token]
-                if valid_project_id(project) && invite_token(token) =>
-            {
+            ["project", project, "invite", "token", token] if joinable(project, token) => {
                 Some(ProjectLink::Invite {
                     project: (*project).to_string(),
                     token: (*token).to_string(),
                 })
+            }
+            ["project", project, "share"] => {
+                fragment
+                    .filter(|token| joinable(project, token))
+                    .map(|token| ProjectLink::Share {
+                        project: (*project).to_string(),
+                        token,
+                    })
             }
             ["read", token] if read_token(token) => Some(ProjectLink::Read {
                 token: (*token).to_string(),
@@ -138,7 +152,25 @@ impl ProjectLink {
                 Some((format!("/read/{token}/grant"), fragment))
             }
             ProjectLink::Edit { token, fragment } => Some((format!("/{token}/grant"), fragment)),
-            ProjectLink::Project { .. } | ProjectLink::Invite { .. } => None,
+            ProjectLink::Project { .. }
+            | ProjectLink::Invite { .. }
+            | ProjectLink::Share { .. } => None,
+        }
+    }
+
+    fn accept_route(&self) -> Option<(&str, String, Value)> {
+        match self {
+            ProjectLink::Invite { project, token } if joinable(project, token) => Some((
+                project,
+                format!("/project/{project}/invite/token/{token}/accept"),
+                json!({}),
+            )),
+            ProjectLink::Share { project, token } if joinable(project, token) => Some((
+                project,
+                format!("/project/{project}/share"),
+                json!({ "token": token }),
+            )),
+            _ => None,
         }
     }
 
@@ -191,7 +223,7 @@ fn token_reply(reply: &Value) -> TokenReply {
 
 async fn bounded(request: RequestBuilder) -> Result<Response, RestError> {
     match tokio::time::timeout(LINK_DEADLINE, request.send()).await {
-        Ok(sent) => sent.map_err(|error| sent_error(&error)),
+        Ok(sent) => sent.map_err(sent_error),
         Err(_) => Err(RestError::Lost(format!(
             "no reply within {} s",
             LINK_DEADLINE.as_secs()
@@ -252,22 +284,20 @@ pub async fn accept_invite(
     http: &Http,
     cookie: &str,
     csrf: &str,
-    project: &str,
-    token: &str,
+    link: &ProjectLink,
 ) -> Result<(), RestError> {
-    if !valid_project_id(project) || !invite_token(token) {
+    let Some((project, route, body)) = link.accept_route() else {
         return Err(RestError::Refused {
             status: 400,
             message: "not an invite".into(),
         });
-    }
-    let route = format!("/project/{project}/invite/token/{token}/accept");
+    };
     let response = bounded(
         http.post(&route, cookie)
             .header(CSRF_HEADER, csrf)
             .header("X-Requested-With", "XMLHttpRequest")
             .header(ACCEPT, "application/json")
-            .json(&json!({})),
+            .json(&body),
     )
     .await?;
     let location = response

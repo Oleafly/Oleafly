@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const calls: string[] = [];
@@ -27,8 +27,14 @@ vi.mock("@/lib/collab-live-bridge", async () => {
   };
 });
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ saveFile: mocks.saveFile }) } }));
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  onOverleafLiveNotice: async () => () => {},
+}));
 
-import { applyOverleafNotice, useOverleafNotices } from "./overleaf-notices";
+import { useOverleafFilling } from "@/lib/collab-live-bridge";
+import { useCollabLiveStore } from "./live-store";
+import { applyOverleafNotice, startOverleafNotices, useOverleafNotices } from "./overleaf-notices";
 
 beforeEach(() => {
   mocks.calls.length = 0;
@@ -165,5 +171,46 @@ describe("Overleaf notices", () => {
     expect(useOverleafNotices.getState().filling).toEqual({ done: 4, total: 4 });
     applyOverleafNotice({ projectId: "p1", kind: "filled" });
     expect(useOverleafNotices.getState().filling).toBeNull();
+  });
+});
+
+describe("Compile while a project opens from Overleaf", () => {
+  let stop: () => void = () => {};
+
+  beforeEach(() => {
+    useCollabLiveStore.setState({ projectId: "p1", status: { state: "online" } });
+    stop = startOverleafNotices();
+  });
+
+  afterEach(() => {
+    stop();
+    useCollabLiveStore.setState({ projectId: null, status: null });
+  });
+
+  it("waits for the documents, and no longer once they are all here", () => {
+    applyOverleafNotice({ projectId: "p1", kind: "filling", done: 3, total: 4 });
+    expect(useOverleafFilling.getState().projectId).toBe("p1");
+    applyOverleafNotice({ projectId: "p1", kind: "filling", done: 4, total: 4 });
+    expect(useOverleafFilling.getState().projectId).toBeNull();
+    expect(useOverleafNotices.getState().filling).toEqual({ done: 4, total: 4 });
+  });
+
+  it.each([
+    { state: "offline", retry_in_ms: 1_000 },
+    { state: "signed_out" },
+    { state: "ended", reason: "stopped" },
+  ] as const)("stops waiting once the live session is $state", (status) => {
+    applyOverleafNotice({ projectId: "p1", kind: "filling", done: 1, total: 4 });
+    useCollabLiveStore.setState({ status });
+    expect(useOverleafNotices.getState().filling).toBeNull();
+    expect(useOverleafFilling.getState().projectId).toBeNull();
+  });
+
+  it("waits again when a project that came back keeps downloading", () => {
+    applyOverleafNotice({ projectId: "p1", kind: "filling", done: 1, total: 4 });
+    useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 1_000 } });
+    applyOverleafNotice({ projectId: "p1", kind: "filling", done: 2, total: 4 });
+    useCollabLiveStore.setState({ status: { state: "online" } });
+    expect(useOverleafFilling.getState().projectId).toBe("p1");
   });
 });

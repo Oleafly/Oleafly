@@ -11,7 +11,7 @@ use super::{create, links, OverleafLink};
 use crate::collab::live::overleaf::commands::{live_now, live_project, start};
 use crate::collab::live::overleaf::notices::OverleafNotice;
 use crate::collab::live::overleaf::rig::{eventually, run, session_of, Quiet};
-use crate::collab::live::overleaf::{mirror_dir, opening, IMPORT_BASES};
+use crate::collab::live::overleaf::{mirror_dir, opening, TreeNoticeKind, IMPORT_BASES};
 use crate::collab::live::LiveHost;
 use crate::collab::testing::TempLibrary;
 
@@ -79,6 +79,24 @@ fn no_zip(mock: &MockOverleaf) -> bool {
     mock.requests("/project")
         .iter()
         .all(|request| !request.path.contains("/download/zip"))
+}
+
+#[test]
+fn opening_one_project_twice_at_once_makes_one_copy() {
+    let library = TempLibrary::new();
+    run(async {
+        let mock = MockOverleaf::start(on_overleaf()).await;
+        signed_in_as(&mock.base, &mock.user("alice"));
+        let id = mock.project_id();
+        let (first, second) = tokio::join!(
+            import::open_live(&mock.base, None, &id),
+            import::open_live(&mock.base, None, &id)
+        );
+        let (first, second) = (first.unwrap(), second.unwrap());
+        assert_eq!(first.project_id, second.project_id);
+        assert_ne!(first.reused, second.reused);
+    });
+    drop(library);
 }
 
 #[test]
@@ -181,10 +199,61 @@ fn a_leftover_opening_mark_is_cleared_at_the_next_start_and_a_missing_project_le
         eventually("the leftover mark goes", || !opening::marked(&mirror)).await;
         assert!(told(&host, |notice| matches!(
             notice,
-            OverleafNotice::Filling { done: 0, total: 0 }
+            OverleafNotice::Filling { done: 2, total: 2 }
         )));
         crate::collab::live::stop(&project_id).await;
         assert!(live_now(&project_id).is_none());
+    });
+    drop(library);
+}
+
+#[test]
+fn an_edit_made_while_live_was_off_merges_with_a_coauthors_at_the_next_start() {
+    let library = TempLibrary::new();
+    run(async {
+        let project = on_overleaf().member(MockUser::named("bob"), Privilege::ReadAndWrite);
+        let mock = MockOverleaf::start(project).await;
+        let alice = mock.user("alice");
+        signed_in_as(&mock.base, &alice);
+        let OpenedLive { project_id, .. } = import::open_live(&mock.base, None, &mock.project_id())
+            .await
+            .unwrap();
+        let host = Arc::new(Quiet::default());
+        go_live(&host, &project_id).await;
+        eventually("the open finishes", || {
+            told(&host, |notice| matches!(notice, OverleafNotice::Filled))
+        })
+        .await;
+        crate::collab::live::stop(&project_id).await;
+
+        let root = crate::paths::project_dir(&project_id).unwrap();
+        std::fs::write(root.join(INTRO), "Intro\nmine\n").unwrap();
+        std::fs::write(root.join("notes.tex"), "Notes\n").unwrap();
+        let intro = mock.doc_id(INTRO);
+        let mut bob = mock.peer("bob");
+        bob.join(&intro);
+        bob.type_at(&intro, 0, "Theirs\n");
+
+        let host = Arc::new(Quiet::default());
+        go_live(&host, &project_id).await;
+        let merged = "Theirs\nIntro\nmine\n";
+        eventually("both edits are online and in the folder", || {
+            mock.doc_text(&intro) == merged
+                && on_disk(&project_id, INTRO).as_deref() == Some(merged.as_bytes())
+        })
+        .await;
+        eventually("the new file is online", || {
+            mock.entity_id("notes.tex")
+                .is_some_and(|notes| mock.doc_text(&notes) == "Notes\n")
+        })
+        .await;
+        assert!(host
+            .tree
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|notice| !matches!(notice.kind, TreeNoticeKind::NotAllowed { .. })));
+        crate::collab::live::stop(&project_id).await;
     });
     drop(library);
 }
@@ -291,16 +360,27 @@ fn a_lost_reply_is_settled_from_the_project_list_and_never_uploaded_twice() {
         );
 
         let other = local_project(&[]);
-        mock.plan_fault(
-            Some("POST"),
-            "/project/new/upload",
-            Fault::Reply(502, "Bad gateway".into()),
-        );
-        let failed = create::create_from_local(&other, &mock.base, None, None)
-            .await
-            .unwrap_err();
-        assert!(failed.contains("overleaf.unreachable"), "{failed}");
-        assert!(meta_of(&other).get("importedFrom").is_none());
+        for (status, body, code) in [
+            (
+                500,
+                "{\"success\":false,\"error\":\"upload_failed\"}",
+                "overleaf.create_refused",
+            ),
+            (500, "<html></html>", "overleaf.unreachable"),
+            (502, "Bad gateway", "overleaf.create_unconfirmed"),
+        ] {
+            mock.plan_fault(
+                Some("POST"),
+                "/project/new/upload",
+                Fault::Reply(status, body.into()),
+            );
+            let failed = create::create_from_local(&other, &mock.base, None, None)
+                .await
+                .unwrap_err();
+            assert!(failed.contains(code), "{status} {body}: {failed}");
+            assert_eq!(failed.contains("upload_failed"), body.contains("upload"));
+            assert!(meta_of(&other).get("importedFrom").is_none());
+        }
 
         mock.plan_fault(Some("GET"), "/project", Fault::Delay(Duration::ZERO));
         mock.plan_fault(Some("GET"), "/project", Fault::Reply(503, "down".into()));

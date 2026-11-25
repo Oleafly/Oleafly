@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashMap};
+use std::io::ErrorKind;
 use std::path::Path;
 
 use oleafly_collab::doc::NodeKind;
@@ -7,10 +8,9 @@ use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
 use super::live_tree::TreeRead;
-use super::session::io;
 use crate::disk::{
-    as_text, crlf_only, excluded_name, exists_exact, inside, safe_target, scan_folder,
-    scan_folder_within, sha256_hex, DiskState, ShareRules,
+    as_text, crlf_only, excluded_name, exists_exact, inside, safe_target, scan_folder_within,
+    sha256_hex, DiskState, ShareRules,
 };
 
 pub fn parent_of(path: &str) -> Option<&str> {
@@ -39,9 +39,10 @@ pub struct LocalImport {
     pub blobs: Vec<(String, String, u64)>,
     pub removed: Vec<String>,
     pub dirs: Vec<String>,
-    pub restamped: Vec<(String, String)>,
+    pub restamped: Vec<(String, String, String)>,
     pub crlf: BTreeSet<String>,
     pub moved_dirs: Vec<(String, String)>,
+    pub unread: Vec<(String, String)>,
 }
 
 impl LocalImport {
@@ -66,7 +67,7 @@ impl Scanned {
         let mut import = self.import;
         for (path, id, text, hash) in self.known_texts {
             if read.text(&id).ok().flatten().as_deref() == Some(text.as_str()) {
-                import.restamped.push((path, hash));
+                import.restamped.push((path, text, hash));
             } else {
                 import.texts.push((path, text, hash));
             }
@@ -95,16 +96,16 @@ pub fn scan_local(
     placed: &Placed,
     only: Option<&[String]>,
 ) -> Result<Scanned, CollabError> {
-    let candidates = match only {
-        Some(paths) => named_candidates(root, placed, paths),
-        None => every_candidate(root, placed)?,
-    };
-    let rules = ShareRules::load(root);
-    let owed = disk.owed_paths();
     let mut scanned = Scanned {
         import: LocalImport::default(),
         known_texts: Vec::new(),
     };
+    let candidates = match only {
+        Some(paths) => named_candidates(root, placed, paths),
+        None => every_candidate(root, placed, &mut scanned.import.unread)?,
+    };
+    let rules = ShareRules::load(root);
+    let owed = disk.owed_paths();
     for path in candidates {
         if path.is_empty() || excluded_name(&path) || owed.iter().any(|held| inside(&path, held)) {
             continue;
@@ -116,25 +117,36 @@ pub fn scan_local(
         if known.is_none() && rules.leaves_out(&path, target.is_dir()) {
             continue;
         }
-        let present = if exists_exact(root, &path) {
-            std::fs::symlink_metadata(&target)
-        } else {
-            Err(std::io::Error::from(std::io::ErrorKind::NotFound))
-        };
+        let present = exists_exact(root, &path)
+            .then(|| std::fs::symlink_metadata(&target).ok())
+            .flatten();
         match present {
-            Ok(metadata) if metadata.is_file() => {
-                read_changed_file(&mut scanned, disk, &target, path, known)?;
-            }
-            Ok(metadata) if metadata.is_dir() => {
-                if known.is_none() {
-                    scanned.import.dirs.push(path);
+            Some(metadata) if metadata.is_file() => {
+                if let Err(error) = read_changed_file(&mut scanned, disk, &target, &path, known) {
+                    scanned.import.unread.push((path, error.to_string()));
                 }
             }
-            Ok(_) => {}
-            Err(_) => note_missing(&mut scanned.import, disk, path, known),
+            Some(metadata) if metadata.is_dir() && known.is_none() => {
+                scanned.import.dirs.push(path);
+            }
+            Some(_) => {}
+            None if in_unreadable_folder(root, &path) => {}
+            None => note_missing(&mut scanned.import, disk, path, known),
         }
     }
     Ok(scanned)
+}
+
+fn in_unreadable_folder(root: &Path, path: &str) -> bool {
+    let mut folder = Some(path);
+    while let Some(parent) = folder.and_then(parent_of) {
+        match std::fs::read_dir(root.join(parent)) {
+            Ok(_) => return false,
+            Err(error) if error.kind() == ErrorKind::PermissionDenied => return true,
+            Err(_) => folder = Some(parent),
+        }
+    }
+    false
 }
 
 fn named_candidates(
@@ -167,9 +179,11 @@ fn named_candidates(
 fn every_candidate(
     root: &Path,
     placed: &HashMap<String, (String, NodeKind, Option<String>)>,
+    unread: &mut Vec<(String, String)>,
 ) -> Result<BTreeSet<String>, CollabError> {
     let mut candidates: BTreeSet<String> = BTreeSet::new();
-    let scan = scan_folder(root).map_err(CollabError::Io)?;
+    let scan = scan_folder_within(root, "").map_err(CollabError::Io)?;
+    unread.extend(scan.unreadable);
     candidates.extend(scan.files.into_iter().map(|(path, _)| path));
     candidates.extend(scan.dirs);
     candidates.extend(placed.keys().cloned());
@@ -186,9 +200,9 @@ fn read_changed_file(
     scanned: &mut Scanned,
     disk: &DiskState,
     target: &Path,
-    path: String,
+    path: &str,
     known: Option<&(String, NodeKind, Option<String>)>,
-) -> Result<(), CollabError> {
+) -> std::io::Result<()> {
     #[cfg(any(test, feature = "test-support"))]
     {
         let hook = BEFORE_READ
@@ -196,14 +210,18 @@ fn read_changed_file(
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone();
         if let Some(hook) = hook {
-            hook(&path);
+            hook(path);
         }
     }
-    let bytes = std::fs::read(target).map_err(io)?;
+    let bytes = match std::fs::read(target) {
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
+        read => read?,
+    };
     let hash = sha256_hex(&bytes);
-    if disk.hashes.get(&path) == Some(&hash) && known.is_some() {
+    if disk.hashes.get(path) == Some(&hash) && known.is_some() {
         return Ok(());
     }
+    let path = path.to_owned();
     let import = &mut scanned.import;
     let text = as_text(&bytes);
     if text.is_some() && crlf_only(&bytes) == Some(true) {

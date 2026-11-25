@@ -122,7 +122,7 @@ pub(super) fn import_renaming(
         bases.record(&path, &text);
         disk.hashes.insert(path, hash);
     }
-    for (path, hash) in import.restamped {
+    for (path, _, hash) in import.restamped {
         if still_on_disk(root, &path, &hash) {
             disk.hashes.insert(path, hash);
         }

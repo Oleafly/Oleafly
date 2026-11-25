@@ -25,6 +25,7 @@ import {
 } from "@/lib/overleaf";
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import {
+  COOKIE_IMPORT_CANCELLED,
   detectBrowserCookieSources,
   importBrowserCookies,
   type BrowserCookieSource,
@@ -99,9 +100,10 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
       const summary = await importBrowserCookies({ browser, profile, domain });
       imported = summary.imported;
     } catch (error) {
+      setCopying(false);
+      if (describeError(error) === COOKIE_IMPORT_CANCELLED) return;
       void logError("copy browser cookies", error);
       setCopyError(describeError(error));
-      setCopying(false);
       return;
     }
     try {

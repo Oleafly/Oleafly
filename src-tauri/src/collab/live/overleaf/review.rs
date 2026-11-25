@@ -173,12 +173,19 @@ pub(super) fn rest_code(error: &RestError) -> &'static str {
         RestError::NotAllowed => "forbidden",
         RestError::RateLimited(_) => "rate_limited",
         RestError::SignedOut => "signed_out",
-        RestError::Lost(_) | RestError::Unreachable(_) => "unreachable",
+        RestError::Lost(_)
+        | RestError::Unreachable(_)
+        | RestError::ServerFailed {
+            status: 502..=504, ..
+        } => "unreachable",
         RestError::TooLarge | RestError::Refused { status: 413, .. } => "too_large",
         RestError::Refused {
             status: 400 | 422, ..
         } => "invalid",
-        RestError::Refused { .. } | RestError::Unreadable(_) | RestError::Short => "server",
+        RestError::Refused { .. }
+        | RestError::ServerFailed { .. }
+        | RestError::Unreadable(_)
+        | RestError::Short => "server",
     }
 }
 

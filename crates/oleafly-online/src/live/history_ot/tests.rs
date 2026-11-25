@@ -832,6 +832,56 @@ fn an_undo_shows_your_own_hidden_text_again_instead_of_inserting_it() {
 }
 
 #[test]
+fn an_undone_replacement_shows_your_own_hidden_text_behind_the_text_it_removes() {
+    let doc = doc("abQZXYcdef", &[(4, 2)]);
+    let mut undo = TextOperation::new();
+    undo.retain(2).delete(2).insert("XY").retain(4);
+    let bob = marked("delete", "bob", "2026-11-15T09:00:00.000Z");
+    let shown = doc.encode_with(&undo, Some(&bob), Some("bob")).unwrap();
+    assert_eq!(
+        shown.to_json().unwrap(),
+        json!([2, { "r": 2, "tracking": bob }, "XY", -2, 4])
+    );
+    assert_eq!(doc.project(&shown).unwrap(), undo);
+    assert_eq!(applied(&doc, &shown).visible().unwrap(), "abXYcdef");
+    let carol = reviewer();
+    let theirs = doc.encode_with(&undo, Some(&carol), Some("carol")).unwrap();
+    assert_eq!(
+        theirs.to_json().unwrap(),
+        json!([2, { "i": "XY", "tracking": carol }, { "r": 2, "tracking": marked("delete", "carol", "2026-11-15T09:00:00.000Z") }, 6])
+    );
+    let untracked = doc.encode_with(&undo, None, Some("")).unwrap();
+    assert_eq!(untracked.to_json().unwrap(), json!([2, "XY", -2, 6]));
+}
+
+#[test]
+fn an_undo_may_show_hidden_text_and_remove_what_follows_it() {
+    let doc = doc("abXYcdef", &[(2, 2)]);
+    let mut undo = TextOperation::new();
+    undo.retain(2).insert("XY").delete(1).retain(3);
+    let shown = doc.encode_with(&undo, None, Some("bob")).unwrap();
+    assert_eq!(shown.to_json().unwrap(), json!([2, "XY", -3, 3]));
+    assert_eq!(doc.project(&shown).unwrap(), undo);
+    assert_eq!(applied(&doc, &shown).visible().unwrap(), "abXYdef");
+}
+
+#[test]
+fn an_undo_never_changes_what_the_text_becomes() {
+    let mut rng = Rng::new(0x501);
+    let bob = marked("delete", "bob", "2026-11-15T09:00:00.000Z");
+    for round in 0..4_000 {
+        let doc = random_doc(&mut rng);
+        let visible = doc.visible().unwrap();
+        let op = random_visible_op(&mut rng, &visible);
+        for (tracking, user) in [(None, ""), (Some(&bob), "bob"), (Some(&bob), "carol")] {
+            let raw = doc.encode_with(&op, tracking, Some(user)).unwrap();
+            let after = applied(&doc, &raw).visible().unwrap();
+            assert_eq!(after, op.apply(&visible).unwrap(), "round {round}: {op:?}");
+        }
+    }
+}
+
+#[test]
 fn applying_an_op_reports_a_shift_apart_from_a_change_of_shape() {
     let doc = tracked_doc(
         "abc def ghi",

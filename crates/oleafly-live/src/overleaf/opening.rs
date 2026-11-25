@@ -93,13 +93,11 @@ async fn settle(mirror: Weak<Mirror>) {
     live.flush().await;
     live.wait_for_figures(FIGURES_WAIT).await;
     let dir = live.hold_dir();
-    match off_runtime(move || clear(&dir)).await {
-        Ok(Ok(())) => tell(&live.mirror, OverleafNotice::Filled),
-        Ok(Err(error)) => live.mirror.disk.log_once("opening", || {
+    let cleared = off_runtime(move || clear(&dir).map_err(|error| error.to_string())).await;
+    if let Err(error) = cleared.and_then(|done| done) {
+        live.mirror.disk.log_once("opening", || {
             format!("could not mark the project as opened from Overleaf: {error}")
-        }),
-        Err(error) => live.mirror.disk.log_once("opening", || {
-            format!("could not mark the project as opened from Overleaf: {error}")
-        }),
+        });
     }
+    tell(&live.mirror, OverleafNotice::Filled);
 }

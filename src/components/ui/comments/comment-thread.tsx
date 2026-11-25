@@ -34,8 +34,8 @@ export interface CommentThreadActions extends CommentMessageActions {
 
 export function commentCardClass(selected: boolean): string {
   return cn(
-    "rounded-lg border bg-background px-4 py-3.5 transition-colors",
-    selected ? "border-ring" : "border-sidebar-border hover:border-foreground/25",
+    "rounded-lg border px-4 py-3.5 transition-colors",
+    selected ? "border-transparent bg-accent" : "border-sidebar-border bg-background hover:border-foreground/25",
   );
 }
 

@@ -375,8 +375,8 @@ mod tests {
 
     use super::super::super::disk::{exists_exact, move_path, sha256_hex};
     use super::super::{
-        apply_local_import, apply_to_disk, initial_bases, read_local_changes, DiskPass, LiveDisk,
-        LiveHost,
+        apply_local_import, apply_to_disk, initial_bases, read_local_changes, DiskPass, DiskTexts,
+        LiveDisk, LiveHost,
     };
     use super::*;
     use crate::collab::state::CollabState;
@@ -528,8 +528,10 @@ mod tests {
                 &mut self.bases,
                 plan,
                 next,
-                &texts,
-                &crlf,
+                &DiskTexts {
+                    texts: &texts,
+                    crlf: &crlf,
+                },
                 &super::super::disk_pass::NOTHING_LEFT,
             )
             .unwrap()

@@ -105,9 +105,30 @@ async fn an_interrupted_open_carries_on_at_the_next_start() {
 
     let port = Port::new(&[]);
     let again = opening(&rig, &port, paced(4, Duration::from_millis(20))).await;
-    eventually("a finished open reports nothing left", || {
-        port.seen().filling.last() == Some(&(0, 0))
+    eventually("an open never marked as done fills in again", || {
+        filled(&port)
     })
     .await;
     again.stop().await;
+}
+
+#[tokio::test]
+async fn a_finished_open_reports_nothing_more_when_it_reconnects() {
+    let rig = Rig::start(opened()).await;
+    let port = Port::new(&[]);
+    let live = opening(&rig, &port, paced(4, Duration::from_millis(20))).await;
+    eventually("every doc is filled in", || filled(&port)).await;
+    let told = port.seen().filling.clone();
+    let connection = rig.connection_of("alice").expect("alice is connected");
+    rig.mock.drop_client(&connection);
+    eventually("the session is back", || {
+        port.went_offline()
+            && rig
+                .connection_of("alice")
+                .is_some_and(|now| now != connection)
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert_eq!(port.seen().filling, told);
+    live.stop().await;
 }

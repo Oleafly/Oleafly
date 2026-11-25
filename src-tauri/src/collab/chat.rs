@@ -230,7 +230,7 @@ pub async fn collab_chat_status(
         return Ok(live.chat_status());
     }
     let role =
-        super::live::read_live(&project_id, LiveProject::role).unwrap_or(ProjectRole::Viewer);
+        super::history::server_role(state.inner(), &project_id).unwrap_or(ProjectRole::Viewer);
     let switches = switches_of(state.inner(), &project_id).await?;
     Ok(server_status(switches, role))
 }

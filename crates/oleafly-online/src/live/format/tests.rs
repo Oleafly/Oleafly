@@ -99,7 +99,7 @@ fn sharejs_ops_round_trip_to_text_operation() {
     let wire = Value::Array(pieces.iter().map(piece_to_json).collect());
     assert_eq!(
         wire,
-        json!([{ "p": 2, "i": "XY" }, { "p": 4, "d": "😀" }, { "p": 5, "d": "d" }])
+        json!([{ "p": 2, "d": "😀" }, { "p": 2, "i": "XY" }, { "p": 5, "d": "d" }])
     );
     assert_eq!(
         operation_of(text, &pieces_from_json(&wire).unwrap()).unwrap(),
@@ -762,8 +762,89 @@ fn rejecting_changes_builds_one_operation_against_the_whole_text() {
     let wire = pieces_to_json(&pieces_of_flagged(text, &all, true).unwrap());
     assert_eq!(
         wire,
-        json!([{ "p": 3, "i": "Q", "u": true }, { "p": 4, "d": "XY", "u": true }, { "p": 5, "d": "é", "u": true }])
+        json!([{ "p": 3, "d": "XY", "u": true }, { "p": 3, "i": "Q", "u": true }, { "p": 5, "d": "é", "u": true }])
     );
+}
+
+fn published_tracker() -> Value {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/ranges-tracker/replacements.json"
+    );
+    serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+}
+
+fn tracked_like_the_fixture(state: &FormatState) -> Vec<Value> {
+    ranges(state)
+        .to_json(false)
+        .get("changes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|change| {
+            let mut entry = change["op"].clone();
+            entry["user"] = change["metadata"]["user_id"].clone();
+            entry["id"] = change["id"].clone();
+            entry
+        })
+        .collect()
+}
+
+#[test]
+fn replacements_follow_the_published_ranges_tracker() {
+    for scenario in published_tracker()["scenarios"].as_array().unwrap() {
+        let name = scenario["name"].as_str().unwrap();
+        let mut text = scenario["text"].as_str().unwrap().to_string();
+        let mut state = sharejs(&text);
+        for step in scenario["steps"].as_array().unwrap() {
+            let sent = seeded(
+                step["op"].clone(),
+                step["tc"].as_str(),
+                step["user"].as_str().unwrap(),
+                1,
+            );
+            decode_into(&mut state, &mut text, &sent);
+            assert_eq!(text, step["text"].as_str().unwrap(), "{name}");
+            assert_eq!(
+                tracked_like_the_fixture(&state),
+                *step["changes"].as_array().unwrap(),
+                "{name}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_reject_knows_when_the_tracker_would_fold_its_text_into_another_marker() {
+    let text = "hello X world";
+    let ranges = ShareJsRanges::from_join(&json!({
+        "changes": [
+            { "id": "before", "op": { "p": 6, "d": "abc " }, "metadata": { "user_id": "carol" } },
+            { "id": "new", "op": { "p": 6, "i": "X" }, "metadata": { "user_id": "carol" } },
+            { "id": "old", "op": { "p": 7, "d": "def" }, "metadata": { "user_id": "carol" } },
+        ],
+    }))
+    .unwrap();
+    let keys = |ids: &[&str]| -> Vec<u64> {
+        ids.iter()
+            .map(|id| ranges.change(id).unwrap().key())
+            .collect()
+    };
+    let cleanly = |ids: &[&str]| {
+        let keys = keys(ids);
+        let op = ranges.reject_op(&keys, utf16_len(text)).unwrap();
+        ranges.rejects_cleanly(&keys, &pieces_of_flagged(text, &op, true).unwrap())
+    };
+    assert!(!cleanly(&["new", "old"]));
+    for ids in [
+        &["new"][..],
+        &["old"],
+        &["before"],
+        &["before", "new"],
+        &["before", "new", "old"],
+    ] {
+        assert!(cleanly(ids), "{ids:?}");
+    }
 }
 
 #[test]

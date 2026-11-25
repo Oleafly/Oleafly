@@ -22,6 +22,7 @@ const PROGRESS_INTERVAL: Duration = Duration::from_millis(150);
 const API_PAGE_SIZE: u64 = 1_000;
 const GET_RETRIES: u32 = 2;
 const GET_PAUSE: Duration = Duration::from_millis(200);
+const SIGNED_IN_ROUTE: &str = "/user/personal_info";
 const INVITE_TEMPLATE: &str = "notification_project_invite";
 const INVITE_KEY: &str = "project-invite-";
 const MAX_INVITES: usize = 200;
@@ -245,6 +246,16 @@ fn unreachable(base: &str, detail: impl ToString) -> OnlineError {
         .detail(detail)
 }
 
+fn redirect_of(response: &Response) -> Option<&str> {
+    response.status().is_redirection().then(|| {
+        response
+            .headers()
+            .get(LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or_default()
+    })
+}
+
 pub(crate) fn set_cookie_lines(headers: &HeaderMap) -> Vec<String> {
     headers
         .get_all(SET_COOKIE)
@@ -339,14 +350,19 @@ impl Http {
         target.origin() == base.origin() && target.path().trim_end_matches('/').ends_with("/login")
     }
 
+    pub(crate) async fn signed_out(&self, cookie: &str) -> bool {
+        let request = self
+            .get(SIGNED_IN_ROUTE, cookie)
+            .header(ACCEPT, "application/json");
+        self.send(request).await.is_ok_and(|response| {
+            response.status() == StatusCode::UNAUTHORIZED
+                || redirect_of(&response).is_some_and(|location| self.is_login_redirect(location))
+        })
+    }
+
     pub(crate) fn classify(&self, response: &Response) -> Result<(), OnlineError> {
         let status = response.status();
-        if status.is_redirection() {
-            let location = response
-                .headers()
-                .get(LOCATION)
-                .and_then(|value| value.to_str().ok())
-                .unwrap_or_default();
+        if let Some(location) = redirect_of(response) {
             if self.is_login_redirect(location) {
                 return Err(expired());
             }

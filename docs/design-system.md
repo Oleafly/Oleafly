@@ -522,9 +522,9 @@ message's header when a thread shows no quote, where it joins the ⋯ pill and
 stays while that message is deleted or being edited. A suggestion's discussion is the same
 `CommentThread` with `embedded` on both clients (`EmbeddedThread` on the
 desktop). Thread cards (and the suggestion cards beside them) use
-`commentCardClass(selected)`: `bg-background` on the grey rail, with hover and
-selection shown as a border colour change (`foreground/25` on hover, so it shows
-in light mode too). Every name and time row is a `CommentByline`. The name gets its own 24px
+`commentCardClass(selected)`: `bg-background` on the grey rail with a hairline
+border. Hover is a border colour change (`foreground/25`, so it shows in light
+mode too), and the selected card is the `accent` tint with no visible border. Every name and time row is a `CommentByline`. The name gets its own 24px
 line. If the time, "· edited" or a "New" badge doesn't fit after it, it moves
 to the next line, so nothing is cut to a fragment and the name never moves. A
 time wider than the whole row wraps at its spaces. A name is cut with an

@@ -10,7 +10,7 @@ use oleafly_online::error::{OnlineError, OnlineErrorKind};
 use oleafly_online::live::doc::DocFault;
 use oleafly_online::live::session::{
     Account, ChatChange, DocStopReason, LiveEnd, LivePeer, LivePort, LiveState, MergeReview,
-    ReviewChange,
+    OutsideText, ReviewChange, Seeded,
 };
 use oleafly_online::live::tree_queue::{LocalFile, QueueState, Queued, TreeChange, TreeFailure};
 use oleafly_online::realtime::events::{ProjectEvent, PublicId};
@@ -481,10 +481,14 @@ impl LivePort for MirrorPort {
             guard(&self.mirror.deletes).refused.clear();
         }
         let role = project_role(role);
-        *guard(&self.mirror.role) = Some((role, tracking));
+        let import_owed = self.mirror.learn_role(role, tracking);
         announce_role(&self.mirror, role, tracking);
         if let Some(hooks) = self.mirror.hooks() {
             hooks.role_known();
+        }
+        self.mirror.kick();
+        if import_owed {
+            self.mirror.import_now();
         }
     }
 
@@ -689,6 +693,10 @@ impl LivePort for MirrorPort {
         self.mirror.adopt_file_text(&self.mirror.disk_path(path))
     }
 
+    fn outside_text(&self, path: &str) -> Option<OutsideText> {
+        self.mirror.outside_text(&self.mirror.disk_path(path))
+    }
+
     fn review_changed(&self, change: ReviewChange) {
         let Some(hooks) = self.mirror.hooks() else {
             return;
@@ -746,6 +754,10 @@ impl LivePort for MirrorPort {
 
     fn filling(&self, done: usize, total: usize) {
         super::opening::filling(&self.mirror, done, total);
+    }
+
+    fn seeded(&self, path: &str, outcome: Seeded) {
+        self.mirror.seeded(path, outcome);
     }
 }
 

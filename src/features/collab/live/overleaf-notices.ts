@@ -1,4 +1,5 @@
 import type {
+  CollabLiveSyncState,
   OverleafLiveNotice,
   OverleafSettingKey,
   OverleafSettingNotSent,
@@ -179,6 +180,12 @@ export function applyOverleafNotice(notice: OverleafLiveNotice, now = Date.now()
   }
 }
 
+const NOT_FILLING: ReadonlySet<CollabLiveSyncState["state"]> = new Set(["offline", "signed_out", "ended"]);
+
+function fillingProject({ filling, projectId }: OverleafNoticesState): string | null {
+  return filling && filling.done < filling.total ? projectId : null;
+}
+
 function follow(projectId: string | null) {
   if (useOverleafNotices.getState().projectId !== projectId) {
     useOverleafNotices.setState({ projectId, ...EMPTY });
@@ -188,15 +195,13 @@ function follow(projectId: string | null) {
 export function startOverleafNotices(): () => void {
   const stopFollowing = followProject(useCollabLiveStore, follow);
   const unsubscribe = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.status?.state === "online" && previous.status?.state !== "online") {
-      useOverleafNotices.setState({ maintenance: null, slowAck: false });
-    }
-    if (state.status?.state === "ended" && previous.status?.state !== "ended") {
-      useOverleafNotices.setState({ filling: null });
-    }
+    const now = state.status?.state;
+    if (!now || now === previous.status?.state) return;
+    if (now === "online") useOverleafNotices.setState({ maintenance: null, slowAck: false });
+    if (NOT_FILLING.has(now)) useOverleafNotices.setState({ filling: null });
   });
   const stopFilling = useOverleafNotices.subscribe((state) => {
-    const projectId = state.filling ? state.projectId : null;
+    const projectId = fillingProject(state);
     if (useOverleafFilling.getState().projectId !== projectId) useOverleafFilling.setState({ projectId });
   });
   const stopListening = onOverleafLiveNotice((notice) => applyOverleafNotice(notice)).catch((error) => {

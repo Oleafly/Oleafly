@@ -254,7 +254,7 @@ describe("a suggestion card", () => {
     const view = render(card({ selected: true, focus: 0 }));
     const found = article(fill(copy.card, { name: "Bob Smith" }));
     expect(found).toHaveAttribute("aria-current", "true");
-    expect(found).toHaveClass("border-ring");
+    expect(found).toHaveClass("bg-accent", "border-transparent");
     expect(scrollIntoView).not.toHaveBeenCalled();
     view.rerender(card({ selected: true, focus: 1 }));
     expect(scrollIntoView).toHaveBeenCalledTimes(1);

@@ -128,6 +128,9 @@ pub(crate) fn rest_failed(error: RestError) -> CollabError {
         RestError::SignedOut => refused(401, "signed_out", "the Overleaf sign-in expired"),
         RestError::RateLimited(_) => refused(429, "rate_limited", &error.to_string()),
         RestError::Refused { status, message } => refused(status, "server", &message),
+        RestError::ServerFailed { status, message } if !message.is_empty() => {
+            refused(status, "server", &message)
+        }
         other => refused(503, "unreachable", &other.to_string()),
     }
 }
@@ -248,16 +251,21 @@ impl OverleafLive {
         let engine = self.mirror.engine_path(path);
         let text = match self.mirror.history.kept(version, &engine) {
             Some(text) => Some(text),
-            None => match self.session.doc_at_version(version, &engine).await {
-                Ok(DocAtVersion::Text(text)) => Some(Some(text)),
-                Ok(DocAtVersion::Binary) => Some(None),
-                Err(HistoryError::Missing) => None,
-                Err(error) => return Err(failed(self.project_id(), "read a past version", error)),
-            },
+            None => {
+                let text = match self.session.doc_at_version(version, &engine).await {
+                    Ok(DocAtVersion::Text(text)) => Some(Some(text)),
+                    Ok(DocAtVersion::Binary) => Some(None),
+                    Err(HistoryError::Missing) => None,
+                    Err(error) => {
+                        return Err(failed(self.project_id(), "read a past version", error))
+                    }
+                };
+                if let Some(text) = &text {
+                    self.mirror.history.keep(version, &engine, text.clone());
+                }
+                text
+            }
         };
-        if let Some(text) = &text {
-            self.mirror.history.keep(version, &engine, text.clone());
-        }
         Ok(FileAtVersion {
             path: path.to_owned(),
             existed: text.is_some(),
@@ -361,14 +369,16 @@ impl OverleafLive {
         if !self.may_remove(&old) {
             return Err(forbidden());
         }
-        self.session
+        let renamed = self
+            .session
             .add_label(old.version, name)
             .await
             .map_err(|error| failed(&project, "rename a version", error))?;
-        self.session
-            .delete_label(&old.id)
-            .await
-            .map_err(|error| failed(&project, "remove the old version name", error))
+        if let Err(error) = self.session.delete_label(&old.id).await {
+            let _ = self.session.delete_label(&renamed.id).await;
+            return Err(failed(&project, "remove the old version name", error));
+        }
+        Ok(())
     }
 
     pub(crate) async fn history_unname(&self, label: &str) -> Result<(), CollabError> {

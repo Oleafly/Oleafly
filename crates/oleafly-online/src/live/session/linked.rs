@@ -37,18 +37,23 @@ pub(super) enum Raced<T> {
     Stopped,
 }
 
+const LINKED_OFF: &str = "Bad Request";
+
 fn linked_error(error: RestError) -> LinkedError {
     match error {
         RestError::Refused {
             status: 400,
             message,
-        } if message.is_empty() => LinkedError::Off,
+        } if message == LINKED_OFF => LinkedError::Off,
         RestError::Refused {
             status: 404,
             message,
-        } if message.is_empty() || message.trim_start().starts_with('<') => LinkedError::Gone,
+        } if message.is_empty() => LinkedError::Gone,
         RestError::Refused { status: 409, .. } => LinkedError::NotLinked,
         RestError::Refused { status, message } => LinkedError::Refused { status, message },
+        RestError::ServerFailed { status, message } if !message.is_empty() => {
+            LinkedError::Refused { status, message }
+        }
         RestError::NotAllowed => LinkedError::NotAllowed,
         other => LinkedError::Rest(other),
     }

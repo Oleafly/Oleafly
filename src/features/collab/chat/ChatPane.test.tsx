@@ -65,7 +65,7 @@ beforeAll(async () => {
   await loadNamespace("editor");
 });
 
-beforeEach(() => {
+function resetMocks() {
   for (const mock of [
     mocks.collabChatList,
     mocks.collabChatSend,
@@ -76,6 +76,10 @@ beforeEach(() => {
   ]) {
     mock.mockReset();
   }
+}
+
+beforeEach(() => {
+  resetMocks();
   mocks.listeners.clear();
   vi.spyOn(Date, "now").mockReturnValue(AT + 120_000);
   mocks.collabChatDelete.mockResolvedValue(undefined);
@@ -447,15 +451,10 @@ describe.each(LIVE_SEEDS)("project chat on the $name backend", (seed) => {
 describe("chat test isolation", () => {
   const chat = chatOn(SERVER_SEED);
 
-  beforeEach(() => {
-    chat.prepare();
-  });
-
-  it("leaves a queued chat page unused, as a test that fails early would", () => {
+  it("starts each test without a chat page the one before left unused", async () => {
     mocks.collabChatList.mockResolvedValueOnce([chat.message("x1", chat.BOB, "Left over")]);
-  });
-
-  it("starts the next test without the page the last one left", async () => {
+    resetMocks();
+    chat.prepare();
     await chat.open();
     expect(screen.queryByText("Left over")).toBeNull();
   });

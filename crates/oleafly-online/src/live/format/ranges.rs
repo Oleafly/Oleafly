@@ -373,6 +373,20 @@ impl ShareJsRanges {
         Some(op)
     }
 
+    fn hidden_len(&self, of: impl Fn(&TrackedChange) -> bool) -> usize {
+        self.changes
+            .iter()
+            .filter(|change| change.kind == ChangeKind::Delete && of(change))
+            .map(|change| change.text.len())
+            .sum()
+    }
+
+    pub fn rejects_cleanly(&self, keys: &[u64], pieces: &[Piece]) -> bool {
+        let mut after = self.clone();
+        after.apply_update(pieces, &Author::default()).is_ok()
+            && after.hidden_len(|_| true) == self.hidden_len(|change| !keys.contains(&change.key))
+    }
+
     fn key(&mut self) -> u64 {
         self.next_key += 1;
         self.next_key

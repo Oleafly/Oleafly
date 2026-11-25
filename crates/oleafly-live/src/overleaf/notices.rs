@@ -3,7 +3,7 @@ use oleafly_online::live::session::Resolution;
 use serde::Serialize;
 
 use super::{live_error, OverleafLive};
-use crate::live::session::not_live;
+use crate::live::session::{guard, not_live};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -98,6 +98,15 @@ impl OverleafLive {
     pub fn retry(&self, path: &str) -> Result<(), CollabError> {
         let doc = self.doc_at(path).ok_or_else(not_live)?;
         self.session.retry(&doc).map_err(live_error)
+    }
+
+    pub fn has_unsent(&self, path: &str) -> bool {
+        let waiting = self.session.details().pending_docs;
+        if waiting.contains(&self.mirror.engine_path(path)) {
+            return true;
+        }
+        let here = self.mirror.read_exact(path).map(|(_, hash)| hash);
+        here.is_some() && here != guard(&self.mirror.disk.disk).hashes.get(path).cloned()
     }
 
     pub fn keep_copy(&self, path: &str) -> Result<(), CollabError> {

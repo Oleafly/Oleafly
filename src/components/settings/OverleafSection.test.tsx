@@ -208,6 +208,33 @@ describe("OverleafSection", () => {
     expect(await screen.findByText("Oleafly could not save the Git token. Check that you pasted the whole token.")).toBeInTheDocument();
   });
 
+  it("keeps one account's typed and saved Git token out of another account's field", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const bea = { userId: "u-bea", email: "bea@lab.org" };
+    const both = { server: SERVER, signedIn: true, email: bea.email, userId: bea.userId, accounts: [bea, ada] };
+    let readAda: (saved: boolean) => void = () => {};
+    api.overleafStatus.mockResolvedValue(both);
+    api.overleafUseAccount.mockResolvedValue({ ...both, email: ada.email, userId: ada.userId, accounts: [ada, bea] });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    expect(await screen.findByText("Git token for bea@lab.org")).toBeInTheDocument();
+    await waitFor(() => expect(git.overleafGitTokenStatus).toHaveBeenLastCalledWith(SERVER, "u-bea"));
+    git.overleafGitTokenStatus.mockReturnValueOnce(new Promise((resolve) => (readAda = resolve)));
+    fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "olp_bea" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/A Git token is saved/)).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "olp_bea_next" } });
+    await user.click(within(screen.getByTestId("overleaf-account-picker")).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "ada@uni.edu" }));
+
+    expect(await screen.findByText("Git token for ada@uni.edu")).toBeInTheDocument();
+    expect(screen.getByTestId("overleaf-git-token-input")).toHaveValue("");
+    expect(screen.queryByText(/A Git token is saved/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("overleaf-git-token-clear")).not.toBeInTheDocument();
+    readAda(true);
+    expect(await screen.findByText(/A Git token is saved/)).toBeInTheDocument();
+  });
+
   it("links to the Overleaf page that makes Git tokens and names the plan it needs", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     render(<OverleafSection />);

@@ -55,6 +55,7 @@ export class RemoteDocumentSession implements DocumentSession {
   private current: RemoteSessionPhase = "opening";
   private detachReason: string | null = null;
   private readonly listeners = new Set<(change: RemoteChange) => void>();
+  private readonly localListeners = new Set<(change: RemoteChange) => void>();
   private readonly moveListeners = new Set<(path: string) => void>();
   private readonly phaseListeners = new Set<(phase: RemoteSessionPhase) => void>();
   private waiters: (() => void)[] = [];
@@ -135,6 +136,13 @@ export class RemoteDocumentSession implements DocumentSession {
     };
   }
 
+  subscribeLocal(listener: (change: RemoteChange) => void): () => void {
+    this.localListeners.add(listener);
+    return () => {
+      this.localListeners.delete(listener);
+    };
+  }
+
   applyLocal(edits: Utf16Edit[], baseVersion: number, origin?: LocalOrigin): void {
     if (this.readOnly) throw new Error(`${this.path} is read-only.`);
     if (baseVersion !== this.localVersion) {
@@ -156,6 +164,8 @@ export class RemoteDocumentSession implements DocumentSession {
     } else {
       this.hold({ operation, origin });
     }
+    const change: RemoteChange = { edits, version: this.localVersion };
+    for (const listener of Array.from(this.localListeners)) listener(change);
   }
 
   private hold(unit: Unit): void {

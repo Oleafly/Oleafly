@@ -1092,10 +1092,14 @@ async fn accept(ce: &Ce, web: &Web, project: &str) {
     })
     .await;
     let http = Http::new(&ce.site, AGENT).unwrap();
-    accept_invite(&http, &web.cookie(), &web.csrf, project, &token)
+    let link = ProjectLink::Invite {
+        project: project.to_owned(),
+        token,
+    };
+    accept_invite(&http, &web.cookie(), &web.csrf, &link)
         .await
         .unwrap();
-    accept_invite(&http, &web.cookie(), &web.csrf, project, &token)
+    accept_invite(&http, &web.cookie(), &web.csrf, &link)
         .await
         .expect("a used invite counts as accepted");
     assert!(invite_token(ce, web, project).await.is_none());

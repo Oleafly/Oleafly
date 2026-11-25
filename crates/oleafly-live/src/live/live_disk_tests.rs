@@ -170,7 +170,7 @@ impl LiveTree for FakeTree {
             state.hashes.insert(path.clone(), hash);
             room.received.push((path, text));
         }
-        for (path, hash) in change.import.restamped {
+        for (path, _, hash) in change.import.restamped {
             state.hashes.insert(path, hash);
         }
         Ok(TreeAnswer::Applied)

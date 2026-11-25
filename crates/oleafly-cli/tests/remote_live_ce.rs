@@ -1,10 +1,13 @@
 #![cfg(unix)]
 
-#[allow(dead_code)]
+#[path = "support/exits.rs"]
+mod exits;
+#[path = "support/hangup.rs"]
+mod hangup;
 #[path = "support/live_cli.rs"]
 mod live_cli;
-#[allow(dead_code)]
-mod support;
+#[path = "support/running.rs"]
+mod running;
 
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -20,8 +23,8 @@ use oleafly_online::test_support::ce::{
     until, Ce, Live, Web, AGENT, CONTAINER, DONE, MAIN, TURN, WAIT,
 };
 use oleafly_secrets::SecretStore;
+use running::Running;
 use serde_json::{json, Value};
-use support::Running;
 
 const REDIS: &str = "oleafly-overleaf-ce-redis-1";
 const UPDATER_PID: &str = "/etc/service/document-updater-overleaf/supervise/pid";

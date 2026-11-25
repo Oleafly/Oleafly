@@ -16,7 +16,7 @@ const ID: &str = "6af9a1b2c3d4e5f6a7b8c9d0";
 
 #[test]
 fn pasted_links_are_told_apart() {
-    let cases: [(&str, Option<(&str, ProjectLink)>); 9] = [
+    let cases: [(&str, Option<(&str, ProjectLink)>); 12] = [
         (
             "https://www.overleaf.com/project/6af9a1b2c3d4e5f6a7b8c9d0",
             Some((DEFAULT_SERVER, ProjectLink::Project { id: ID.into() })),
@@ -60,6 +60,24 @@ fn pasted_links_are_told_apart() {
                     fragment: None,
                 },
             )),
+        ),
+        (
+            "https://www.overleaf.com/project/6af9a1b2c3d4e5f6a7b8c9d0/share#00ff11ee",
+            Some((
+                DEFAULT_SERVER,
+                ProjectLink::Share {
+                    project: ID.into(),
+                    token: "00ff11ee".into(),
+                },
+            )),
+        ),
+        (
+            "https://www.overleaf.com/project/6af9a1b2c3d4e5f6a7b8c9d0/share",
+            None,
+        ),
+        (
+            "https://www.overleaf.com/project/6af9a1b2c3d4e5f6a7b8c9d0/share#../up",
+            None,
         ),
         ("https://evil.example/read/qwertyuiopas", None),
         ("https://latex.uni.edu/elsewhere/read/qwertyuiopas", None),
@@ -208,6 +226,50 @@ async fn a_link_that_no_longer_opens_anything_is_refused() {
     assert_eq!(signed_out, Err(RestError::SignedOut));
 }
 
+fn invited_by(project: &str, token: &str) -> ProjectLink {
+    ProjectLink::Invite {
+        project: project.into(),
+        token: token.into(),
+    }
+}
+
+#[tokio::test]
+async fn a_sharing_link_with_a_token_after_the_hash_joins_the_project() {
+    let mock = MockOverleaf::start(link_project().invited("any", Privilege::ReadAndWrite)).await;
+    let client = http(&mock);
+    let erin = mock.user("erin");
+    let token = mock.invite_token("any").unwrap();
+    let project = mock.project_id();
+    let link = link_of(
+        &mock,
+        &format!("{}/project/{project}/share#{token}", mock.base),
+    );
+    accept_invite(&client, &erin.cookie(), MOCK_CSRF, &link)
+        .await
+        .unwrap();
+    assert_eq!(mock.privilege_of("erin"), Some(Privilege::ReadAndWrite));
+    let sent = mock.requests(&format!("/project/{project}/share"));
+    assert_eq!(sent.len(), 1);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&sent[0].body).unwrap(),
+        json!({ "token": token })
+    );
+    assert_eq!(
+        sent[0].headers.get("x-requested-with").map(String::as_str),
+        Some("XMLHttpRequest")
+    );
+    let stale = link_of(
+        &mock,
+        &format!("{}/project/{project}/share#deadbeef", mock.base),
+    );
+    let dave = mock.user("dave");
+    let refused = accept_invite(&client, &dave.cookie(), MOCK_CSRF, &stale).await;
+    assert!(
+        matches!(refused, Err(RestError::Refused { status: 404, .. })),
+        "{refused:?}"
+    );
+}
+
 #[tokio::test]
 async fn accepting_an_invite_says_it_comes_from_the_page_and_a_used_one_is_done() {
     let mock =
@@ -225,22 +287,18 @@ async fn accepting_an_invite_says_it_comes_from_the_page_and_a_used_one_is_done(
         (invite.project_id.as_str(), "revokedorneverissued"),
         (ID, invite.token.as_str()),
     ] {
-        let unknown = accept_invite(&client, &erin.cookie(), MOCK_CSRF, project, token).await;
+        let link = invited_by(project, token);
+        let unknown = accept_invite(&client, &erin.cookie(), MOCK_CSRF, &link).await;
         assert!(
             matches!(unknown, Err(RestError::Refused { status: 404, .. })),
             "{project} {token}: {unknown:?}"
         );
     }
     assert_eq!(mock.privilege_of("erin"), None);
-    accept_invite(
-        &client,
-        &erin.cookie(),
-        MOCK_CSRF,
-        &invite.project_id,
-        &invite.token,
-    )
-    .await
-    .unwrap();
+    let link = invited_by(&invite.project_id, &invite.token);
+    accept_invite(&client, &erin.cookie(), MOCK_CSRF, &link)
+        .await
+        .unwrap();
     assert_eq!(mock.privilege_of("erin"), Some(Privilege::ReadAndWrite));
     let route = format!(
         "/project/{}/invite/token/{}/accept",
@@ -251,15 +309,9 @@ async fn accepting_an_invite_says_it_comes_from_the_page_and_a_used_one_is_done(
         sent[0].headers.get("x-requested-with").map(String::as_str),
         Some("XMLHttpRequest")
     );
-    accept_invite(
-        &client,
-        &erin.cookie(),
-        MOCK_CSRF,
-        &invite.project_id,
-        &invite.token,
-    )
-    .await
-    .unwrap();
+    accept_invite(&client, &erin.cookie(), MOCK_CSRF, &link)
+        .await
+        .unwrap();
     assert_eq!(mock.requests(&route).len(), 2);
     assert!(client
         .dashboard(&erin.cookie())

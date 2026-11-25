@@ -105,11 +105,17 @@ describe("OverleafImportView", () => {
     expect(screen.getByText("Signed in as ada@uni.edu")).toBeInTheDocument();
   });
 
-  it("copies the sign-in from a browser and then lists projects", async () => {
+  it("copies the sign-in from a browser and lists that account's projects, not the one that expired", async () => {
     const user = userEvent.setup();
     Element.prototype.hasPointerCapture = vi.fn(() => false);
     Element.prototype.scrollIntoView = vi.fn();
-    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    api.overleafStatus
+      .mockResolvedValueOnce({ ...signedIn, email: "bea@lab.org", userId: "u-bea" })
+      .mockResolvedValue({ ...signedIn, userId: "u-ada" });
+    api.overleafListProjects.mockImplementation(async (_server: string, account: string) => {
+      if (account === "u-bea") throw '@oleafly/error:{"code":"overleaf.session_expired","params":{}}';
+      return { status: { ...signedIn, userId: "u-ada" }, projects: PROJECTS };
+    });
     cookies.detectBrowserCookieSources.mockResolvedValue([
       { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
     ]);
@@ -125,7 +131,7 @@ describe("OverleafImportView", () => {
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
     expect(cookies.importBrowserCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.overleaf.com" });
     expect(api.overleafSignIn).not.toHaveBeenCalled();
-    expect(api.overleafListProjects).toHaveBeenCalled();
+    expect(api.overleafListProjects).toHaveBeenLastCalledWith(SERVER, "u-ada");
   });
 
   it("signs in with an installed browser, names it while waiting, then lists projects", async () => {
@@ -264,13 +270,13 @@ describe("OverleafImportView", () => {
       "Imported 1 project. 1 project could not be imported.",
     );
     const imported = screen.getByTestId("overleaf-status-a1");
-    fireEvent.click(within(imported).getByRole("button", { name: "Open" }));
+    fireEvent.click(within(imported).getByRole("button", { name: "Open Thesis" }));
     expect(onOpenProject).toHaveBeenCalledWith("local-a1");
 
     api.overleafImportProjects.mockResolvedValue([{ remoteId: "b2", projectId: "local-b2", error: null }]);
     const failed = screen.getByTestId("overleaf-status-b2");
     expect(failed).toHaveTextContent("You may no longer have access to it.");
-    fireEvent.click(within(failed).getByRole("button", { name: "Try again" }));
+    fireEvent.click(within(failed).getByRole("button", { name: "Try again Shared paper" }));
     await waitFor(() => expect(api.overleafImportProjects).toHaveBeenLastCalledWith(SERVER, ["b2"], expect.any(Function), undefined));
     await waitFor(() => expect(screen.getByTestId("overleaf-import-done")).toBeEnabled());
     fireEvent.click(screen.getByTestId("overleaf-import-done"));

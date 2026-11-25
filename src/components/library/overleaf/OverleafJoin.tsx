@@ -30,9 +30,13 @@ function expected(error: unknown): boolean {
 
 function JoinedActions({
   remoteId,
+  name,
   onOpenProject,
-}: Readonly<{ remoteId: string; onOpenProject: (projectId: string) => void }>) {
+}: Readonly<{ remoteId: string; name: string; onOpenProject: (projectId: string) => void }>) {
   const { t } = useTranslation(["library"]);
+  const openLabel = t(($) => $.library.import.overleaf.open);
+  const openLiveLabel = t(($) => $.library.import.overleaf.openLive);
+  const importLabel = t(($) => $.library.import.overleaf.link.importInstead);
   const live = useSettingsStore((state) => state.overleafLive);
   const importedAs = useOverleafImportStore(
     (state) => state.projects.find((project) => project.id === remoteId)?.importedAs ?? null,
@@ -40,8 +44,14 @@ function JoinedActions({
   const busy = useOverleafImportStore((state) => state.importing || state.progress[remoteId]?.phase === "opening");
   if (importedAs) {
     return (
-      <Button type="button" size="sm" variant="outline" onClick={() => onOpenProject(importedAs)}>
-        {t(($) => $.library.import.overleaf.open)}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        aria-label={`${openLabel} ${name}`}
+        onClick={() => onOpenProject(importedAs)}
+      >
+        {openLabel}
       </Button>
     );
   }
@@ -51,11 +61,12 @@ function JoinedActions({
         type="button"
         size="sm"
         data-testid={`overleaf-joined-open-live-${remoteId}`}
+        aria-label={`${openLiveLabel} ${name}`}
         disabled={busy}
         onClick={() => void openLiveAndRefresh(remoteId, onOpenProject)}
       >
         {busy ? <Spinner size="sm" /> : null}
-        {t(($) => $.library.import.overleaf.openLive)}
+        {openLiveLabel}
       </Button>
     );
   }
@@ -65,10 +76,11 @@ function JoinedActions({
       size="sm"
       variant="outline"
       data-testid={`overleaf-joined-import-${remoteId}`}
+      aria-label={`${importLabel} ${name}`}
       disabled={busy}
       onClick={() => void importAndRefresh([remoteId])}
     >
-      {t(($) => $.library.import.overleaf.link.importInstead)}
+      {importLabel}
     </Button>
   );
 }
@@ -82,6 +94,7 @@ export function OverleafInvitations({ onOpenProject }: Readonly<{ onOpenProject:
   const failed = useOverleafImportStore((state) => state.inviteFailed);
   const acceptInvite = useOverleafImportStore((state) => state.acceptInvite);
   const [joined, setJoined] = useState<Joined[]>([]);
+  const joinLabel = t(($) => $.library.import.overleaf.invitations.join);
   if (invites.length === 0 && joined.length === 0) return null;
   const join = async (inviteId: string, name: string) => {
     const remoteId = await acceptInvite(inviteId);
@@ -118,11 +131,12 @@ export function OverleafInvitations({ onOpenProject }: Readonly<{ onOpenProject:
               size="sm"
               variant="outline"
               data-testid={`overleaf-invite-join-${invite.id}`}
+              aria-label={`${joinLabel} ${invite.projectName}`}
               disabled={accepting !== null}
               onClick={() => void join(invite.id, invite.projectName)}
             >
               {accepting === invite.id ? <Spinner size="sm" /> : null}
-              {t(($) => $.library.import.overleaf.invitations.join)}
+              {joinLabel}
             </Button>
           </li>
         ))}
@@ -134,7 +148,7 @@ export function OverleafInvitations({ onOpenProject }: Readonly<{ onOpenProject:
                 {t(($) => $.library.import.overleaf.invitations.joined)}
               </span>
             </div>
-            <JoinedActions remoteId={entry.remoteId} onOpenProject={onOpenProject} />
+            <JoinedActions remoteId={entry.remoteId} name={entry.name} onOpenProject={onOpenProject} />
           </li>
         ))}
       </ul>
@@ -211,12 +225,14 @@ export function OverleafLinkCard({
     );
   } else {
     const { preview } = checked;
+    const name = preview.projectName ?? t(($) => $.library.import.overleaf.link.unnamed);
+    const joinLabel = t(($) => $.library.import.overleaf.link.join);
     const remoteId = joined ?? (preview.grants === "already" ? preview.projectId : null);
     body = (
       <>
         <div className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-foreground">
-            {preview.projectName ?? t(($) => $.library.import.overleaf.link.unnamed)}
+            {name}
           </span>
           <span data-testid="overleaf-link-grants" className="block text-xs text-muted-foreground">
             {joined ? t(($) => $.library.import.overleaf.invitations.joined) : grantsLabel(t, preview.grants)}
@@ -228,11 +244,18 @@ export function OverleafLinkCard({
           ) : null}
         </div>
         {remoteId ? (
-          <JoinedActions remoteId={remoteId} onOpenProject={onOpenProject} />
+          <JoinedActions remoteId={remoteId} name={name} onOpenProject={onOpenProject} />
         ) : (
-          <Button type="button" size="sm" data-testid="overleaf-link-join" disabled={joining} onClick={() => void join()}>
+          <Button
+            type="button"
+            size="sm"
+            data-testid="overleaf-link-join"
+            aria-label={`${joinLabel} ${name}`}
+            disabled={joining}
+            onClick={() => void join()}
+          >
             {joining ? <Spinner size="sm" /> : null}
-            {t(($) => $.library.import.overleaf.link.join)}
+            {joinLabel}
           </Button>
         )}
       </>

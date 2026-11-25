@@ -340,6 +340,7 @@ pub struct MockConfig {
     pub retry_after: Option<u64>,
     pub history_status: u16,
     pub review: bool,
+    pub public_site: bool,
     pub chat: bool,
     pub kept_ops: usize,
     pub max_op_age: u64,
@@ -380,6 +381,7 @@ impl Default for MockConfig {
             retry_after: None,
             history_status: 200,
             review: false,
+            public_site: false,
             chat: true,
             kept_ops: 100,
             max_op_age: 80,
@@ -1238,6 +1240,11 @@ impl State {
             self.login()
         } else if method == "GET" && path == "/project" {
             self.dashboard(headers)
+        } else if method == "GET" && path == "/user/personal_info" {
+            match self.user_for(headers) {
+                Some(id) => json_reply(&json!({ "id": id })),
+                None => text_reply(401, "Unauthorized"),
+            }
         } else if let Some(reply) = self.create_route(method, path, headers, body) {
             reply
         } else if let Some(reply) = self.links_route(method, path, headers, body) {
@@ -1934,10 +1941,14 @@ impl State {
         route: &str,
         headers: &HashMap<String, String>,
     ) -> Result<String, Reply> {
-        let Some(user) = self.user_for(headers) else {
-            return Err(text_reply(401, "Unauthorized"));
-        };
         let writes = method != "GET";
+        let Some(user) = self.user_for(headers) else {
+            return Err(match (self.config.public_site, writes) {
+                (false, _) => text_reply(401, "Unauthorized"),
+                (true, true) => text_reply(403, "Forbidden"),
+                (true, false) => restricted(),
+            });
+        };
         if writes && headers.get("x-csrf-token") != Some(&self.csrf) {
             return Err(text_reply(403, "Forbidden"));
         }
@@ -2701,6 +2712,12 @@ fn wants_upgrade(headers: &HashMap<String, String>) -> bool {
         .is_some_and(|value| value.eq_ignore_ascii_case("websocket"))
 }
 
+fn lacks_length(method: &str, headers: &HashMap<String, String>) -> bool {
+    matches!(method, "POST" | "PUT" | "PATCH")
+        && !headers.contains_key("content-length")
+        && !headers.contains_key("transfer-encoding")
+}
+
 fn split_ws_url(path: String) -> (String, bool) {
     match path.strip_prefix(WS_URL_PATH.trim_end_matches("/socket.io")) {
         Some(rest) if rest.starts_with("/socket.io/") => (rest.to_string(), true),
@@ -2862,6 +2879,8 @@ impl MockOverleaf {
         let fault = state.take_fault(method, target);
         let reply = if state.down {
             text_reply(503, "Service Unavailable")
+        } else if lacks_length(method, headers) {
+            text_reply(411, "<html><title>411 Length Required</title></html>")
         } else if let Some(Fault::Reply(status, text)) = &fault {
             let reply = text_reply(*status, text);
             match (status, state.config.retry_after) {

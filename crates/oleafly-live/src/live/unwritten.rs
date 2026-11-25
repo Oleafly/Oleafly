@@ -77,9 +77,6 @@ fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
     }
 }
 
-// Why the file can't be written now, when another program holds it for
-// writing or deleting or has it mapped, or it is read-only. One open asks
-// Windows this at once, where a write would retry for seconds.
 #[cfg(windows)]
 pub fn held_now(target: &Path) -> Option<UnwrittenReason> {
     use std::os::windows::fs::OpenOptionsExt as _;
@@ -208,11 +205,6 @@ impl LiveDisk {
         }
     }
 
-    // A file that could not be written waits for its next try instead of
-    // being tried on every pass, because on Windows one try can block for
-    // seconds on a file another program holds. A flush tries it once anyway,
-    // unless the file is still held, which one open finds out at once. The
-    // files still held come back as failures of this pass.
     pub fn hold_back_failing(
         &self,
         tree: &dyn LiveTree,

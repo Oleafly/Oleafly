@@ -444,27 +444,31 @@ A project that's shared on an Oleafly Server can't be edited live here
 refused with `remote.busy`. If the app paused live editing for the project,
 `live` starts anyway and clears the pause.
 
-When a file changed here and online before the two could be merged, the
-online text wins and your version is kept as a copy beside the file. Files you
-delete here stay in the online project (`delete_asked`). Delete them in the
-web editor or the app. Changes to the project's settings online, such as its
-main document or compiler, are only printed.
+Changes you made while `live` was off go out at the next start and are merged
+with what changed online. When both sides changed the same lines, the online
+text wins and your version is kept as a copy beside the file. If the server
+refuses a file, `live` tries it once more, and if that fails your version
+becomes a copy and the online text comes back. Files you delete here stay in
+the online project (`delete_asked`). Delete them in the web editor or the app.
+Changes to the project's settings online, such as its main document or
+compiler, are only printed.
 
 When your sign-in expires, `live` keeps your edits and waits. Sign in again
 with `oleafly auth login online` or in the app, and it carries on within a few
 seconds. It stops by itself when your access ends or you're removed from the
-project (exit code 6), when the project is deleted (3), when the project needs
-a newer Oleafly (4) or on an error (1). If it can't reach the server when it
-starts, it exits with code 7.
+project (exit code 6), when the project is deleted or the folder is moved or
+deleted (3), when the project needs a newer Oleafly (4) or on an error (1). If
+it can't reach the server, it keeps trying. Only the first start in an empty
+folder exits with code 7, because it has to find the project first.
 
 Ctrl+C, closing the terminal, `SIGTERM` and, on Windows, Ctrl+Break stop it
 with exit code 0. Before it exits, it reads the files you just saved and
 spends up to 5 seconds sending what it can. Closing the console window on
 Windows gives it only about 2 seconds in all. Press Ctrl+C a second time to
-quit at once with exit code 130. Edits that weren't sent stay in Oleafly's
-journal and go out at the next start. With `--quiet` it prints only errors.
-Failures go to the app log, so the logs you save with Export in
-Settings > Logs include them.
+quit at once with exit code 130. Edits that weren't sent stay in the folder
+and in Oleafly's journal, and go out at the next start. With `--quiet` it
+prints only errors. Failures go to the app log, so the logs you save with
+Export in Settings > Logs include them.
 
 ### `oleafly server`
 
@@ -862,7 +866,7 @@ it stops:
 | `peer` | `deviceId`, `userId`, `name`, `path` |
 | `peer_left` | `deviceId`, `userId`, `name` |
 | `kept`, `unwritten` | `files` |
-| `removed` | `files`, and `restored`, the files put back here |
+| `removed` | `files`, and `restored`, the server IDs of deleted files that are back |
 | `delete_asked` | `paths` |
 | `tree` | `kind`, and `paths` (`files` when `kind` is `linked`) |
 | `notice` | `kind`, such as `role`, `merged`, `needs_review`, `filling`, `filled`, `uploads` or `project` |

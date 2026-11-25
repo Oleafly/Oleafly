@@ -4131,7 +4131,7 @@ pub async fn set_project_writing_settings(
     project_id: String,
     settings: Option<serde_json::Value>,
 ) -> Result<ProjectMeta, String> {
-    crate::collab::settings::refuse_viewer(&project_id)?;
+    crate::collab::settings::refuse_server_viewer(&project_id)?;
     let settings = validate_writing_settings(settings)?;
     let owned = project_id.clone();
     let meta =
@@ -5877,31 +5877,37 @@ pub(crate) fn adopt_online_settings(
     main_doc: Option<&str>,
     flavor: Option<&str>,
 ) -> bool {
-    let before = (
-        meta.main_doc.clone(),
-        meta.engine.clone(),
-        meta.tex_flavor.clone(),
-    );
-    if let Some(main) = main_doc.map(str::trim).filter(|main| !main.is_empty()) {
-        if dir.join(main).is_file() && engine_for_untrusted_project(main).is_ok() {
-            meta.main_doc = main.to_string();
-        }
-    }
-    adopt_online_engine(meta, flavor);
-    (
-        meta.main_doc.clone(),
-        meta.engine.clone(),
-        meta.tex_flavor.clone(),
-    ) != before
+    let moved = adopt_online_main(dir, meta, main_doc);
+    adopt_online_engine(meta, flavor) || moved
 }
 
-fn adopt_online_engine(meta: &mut ProjectMeta, flavor: Option<&str>) {
+pub(crate) fn adopt_online_main(
+    dir: &Path,
+    meta: &mut ProjectMeta,
+    main_doc: Option<&str>,
+) -> bool {
+    let Some(main) = main_doc.map(str::trim).filter(|main| !main.is_empty()) else {
+        return false;
+    };
+    if meta.main_doc == main
+        || !dir.join(main).is_file()
+        || engine_for_untrusted_project(main).is_err()
+    {
+        return false;
+    }
+    meta.main_doc = main.to_string();
+    true
+}
+
+pub(crate) fn adopt_online_engine(meta: &mut ProjectMeta, flavor: Option<&str>) -> bool {
+    let before = (meta.engine.clone(), meta.tex_flavor.clone());
     if meta.main_doc.to_ascii_lowercase().ends_with(".tex")
         && crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, &meta.main_doc).is_ok()
     {
         meta.engine = crate::config::LATEXMK_ENGINE.to_string();
         meta.tex_flavor = validate_tex_flavor(&meta.engine, flavor).ok().flatten();
     }
+    (meta.engine.clone(), meta.tex_flavor.clone()) != before
 }
 
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {

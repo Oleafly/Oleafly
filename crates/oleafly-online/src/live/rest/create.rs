@@ -39,7 +39,7 @@ pub async fn create_project(
         .body(body)
         .send()
         .await
-        .map_err(|error| sent_error(&error))?;
+        .map_err(sent_error)?;
     let status = response.status();
     let reply = json_of(answered(http, response).await?).await?;
     let created = reply.get("success").and_then(Value::as_bool) == Some(true);

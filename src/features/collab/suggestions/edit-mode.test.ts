@@ -1,7 +1,13 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import type { CollabEditModeState, CollabLiveInfo, CollabProjectRole } from "@/lib/tauri";
+import type {
+  CollabEditMode,
+  CollabEditModeScope,
+  CollabEditModeState,
+  CollabLiveInfo,
+  CollabProjectRole,
+} from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { type LiveBackendDriver, startCollabLive, useCollabLiveStore } from "../live/live-store";
 import { deferred, LIVE_SEEDS, liveReset, OVERLEAF_ALICE_ID, OVERLEAF_SEED, overleafLive } from "../tests/fixtures";
@@ -49,6 +55,16 @@ let stop: (() => void) | null = null;
 
 function state(overrides: Partial<CollabEditModeState> = {}): CollabEditModeState {
   return { mode: "editing", switchable: true, locked: null, everyone: null, guests: null, manage: false, ...overrides };
+}
+
+function keepsSwitches(kept: CollabEditModeState) {
+  let current = kept;
+  mocks.collabEditModeGet.mockImplementation(async () => current);
+  mocks.collabEditModeSet.mockImplementation(async (_projectId: string, mode: CollabEditMode, scope: CollabEditModeScope) => {
+    const on = mode === "suggesting";
+    if (scope === "me") current = { ...current, mode };
+    else current = { ...current, [scope]: on };
+  });
 }
 
 const CLEARED = {
@@ -248,6 +264,7 @@ describe.each(LIVE_SEEDS)("the edit mode on the $name backend", (seed) => {
       await flush();
       const switching = deferred<void>();
       mocks.collabEditModeSet.mockReturnValueOnce(switching.promise);
+      mocks.collabEditModeGet.mockResolvedValue(state({ mode: "suggesting" }));
       const first = setEditMode("suggesting");
       expect(useEditMode.getState()).toMatchObject({ mode: "suggesting", busy: true });
       await setEditMode("editing");
@@ -375,7 +392,7 @@ describe("the edit mode while an Overleaf session starts", () => {
 
 describe("track changes for others on Overleaf", () => {
   function owner(overrides: Partial<CollabEditModeState> = {}) {
-    mocks.collabEditModeGet.mockResolvedValue(state({ everyone: false, guests: false, manage: true, ...overrides }));
+    keepsSwitches(state({ everyone: false, guests: false, manage: true, ...overrides }));
     useCollabLiveStore.setState({ ...OVERLEAF_SEED.live("paper", "owner"), status: { state: "online" } });
     stop = startEditMode();
   }
@@ -393,6 +410,32 @@ describe("track changes for others on Overleaf", () => {
     expect(useEditMode.getState()).toMatchObject({ everyone: false, guests: true });
     await setEditMode("editing", "everyone");
     expect(mocks.collabEditModeSet).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows the lock and mode that turning it on for everyone brought", async () => {
+    owner();
+    await flush();
+    mocks.collabEditModeGet.mockResolvedValue(
+      state({ mode: "suggesting", switchable: false, locked: "plan", everyone: true, guests: false, manage: false }),
+    );
+    await setEditMode("suggesting", "everyone");
+    expect(useEditMode.getState()).toMatchObject({
+      mode: "suggesting",
+      switchable: false,
+      locked: "plan",
+      everyone: true,
+      manage: false,
+      busy: false,
+    });
+  });
+
+  it("keeps the setting it sent when it can't be read back", async () => {
+    owner();
+    await flush();
+    mocks.collabEditModeGet.mockRejectedValue({ code: "unreachable", message: "offline" });
+    await setEditMode("suggesting", "everyone");
+    expect(useEditMode.getState()).toMatchObject({ everyone: true, guests: false, manage: true, busy: false });
+    expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("collab edit mode", expect.objectContaining({ code: "unreachable" }));
   });
 
   it("puts the setting back and says why when Overleaf refuses it", async () => {

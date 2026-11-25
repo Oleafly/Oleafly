@@ -457,6 +457,35 @@ fn going_live_on_overleaf_is_refused_for_a_project_shared_on_a_server() {
 }
 
 #[test]
+fn a_request_still_running_does_not_keep_pause_from_being_saved() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let project_id = rig.project_id.clone();
+        let running = Arc::clone(&rig.live);
+        let _rest = rig.let_go();
+        let paused = super::commands::pause(&project_id, false, Duration::from_millis(300))
+            .await
+            .unwrap();
+        assert!(paused.paused);
+        assert!(
+            super::commands::live_project(&project_id)
+                .unwrap()
+                .unwrap()
+                .paused
+        );
+        assert!(!running.session.persist());
+        drop(running);
+    });
+    drop(library);
+}
+
+#[test]
 fn a_stopped_doc_with_unsent_text_keeps_git_sync_refused_and_pause_asks_first() {
     let library = TempLibrary::new();
     run(async {
@@ -1476,6 +1505,24 @@ fn unlinking_keeps_a_journal_another_linked_project_still_uses() {
     assert!(journal.is_dir());
     tauri::async_runtime::block_on(super::commands::unlink(&second)).unwrap();
     assert!(!journal.exists());
+    drop(library);
+}
+
+#[test]
+fn unlinking_keeps_a_journal_a_folder_on_the_command_line_still_uses() {
+    let library = TempLibrary::new();
+    let project_id = imported_project();
+    let data = crate::paths::oleafly_root().unwrap();
+    drop(Journal::open(&data, SERVER, LINKED, None).unwrap());
+    let own = mirror_dir_of(SERVER, LINKED, &project_id);
+    let folder = mirror_dir_of(SERVER, LINKED, "folder-0123456789abcdef");
+    for mirror in [&own, &folder] {
+        std::fs::create_dir_all(mirror).unwrap();
+    }
+    tauri::async_runtime::block_on(super::commands::unlink(&project_id)).unwrap();
+    assert!(!own.exists());
+    assert!(folder.is_dir());
+    assert!(journal_dir_of(SERVER, LINKED).is_dir());
     drop(library);
 }
 

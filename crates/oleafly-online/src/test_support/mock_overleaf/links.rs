@@ -60,6 +60,11 @@ impl State {
             ("POST", [token, "grant"]) if *token != "project" => {
                 Some((false, (*token).to_string()))
             }
+            ("POST", ["project", project, "share"]) => {
+                let sent: Value = serde_json::from_slice(body).unwrap_or_default();
+                let token = sent["token"].as_str().unwrap_or_default().to_string();
+                return Some(self.accept_route(project, &token, headers));
+            }
             ("POST", ["project", project, "invite", "token", token, "accept"]) => {
                 let (project, token) = ((*project).to_string(), (*token).to_string());
                 return Some(self.accept_route(&project, &token, headers));

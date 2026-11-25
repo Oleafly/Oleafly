@@ -8,6 +8,9 @@ pub trait MirrorHooks: Send + Sync + 'static {
         true
     }
     fn record_owner(&self) {}
+    fn folder_here(&self) -> bool {
+        true
+    }
     fn ended(self: Arc<Self>) {}
     fn role_known(&self) {}
     fn project_event(&self, _event: ProjectEvent) {}

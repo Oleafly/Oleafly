@@ -47,6 +47,13 @@ impl DiskState {
             .map(|(id, _)| id.as_str())
     }
 
+    pub fn text_at(&self, path: &str) -> Option<&str> {
+        self.layout
+            .iter()
+            .find(|(_, placed)| placed.kind == NodeKind::Text && placed.path == path)
+            .map(|(id, _)| id.as_str())
+    }
+
     pub fn load(path: &Path) -> DiskState {
         std::fs::read(path)
             .ok()
@@ -267,6 +274,7 @@ pub struct Scan {
     pub files: Vec<(String, u64)>,
     pub dirs: Vec<String>,
     pub excluded: Vec<String>,
+    pub unreadable: Vec<(String, String)>,
 }
 
 fn app_folder(segment: &str) -> bool {
@@ -294,7 +302,11 @@ pub fn excluded_name(relative: &str) -> bool {
 }
 
 pub fn scan_folder(root: &Path) -> Result<Scan, String> {
-    scan_folder_within(root, "")
+    let scan = scan_folder_within(root, "")?;
+    match scan.unreadable.first() {
+        Some((_, error)) => Err(error.clone()),
+        None => Ok(scan),
+    }
 }
 
 pub fn scan_folder_within(root: &Path, folder: &str) -> Result<Scan, String> {
@@ -323,10 +335,16 @@ fn walk(
     } else {
         root.join(relative)
     };
-    let mut entries: Vec<_> = std::fs::read_dir(&directory)
-        .map_err(|error| format!("could not read {}: {error}", directory.display()))?
-        .filter_map(Result::ok)
-        .collect();
+    let listed = std::fs::read_dir(&directory)
+        .map_err(|error| format!("could not read {}: {error}", directory.display()));
+    let mut entries: Vec<_> = match listed {
+        Ok(listed) => listed.filter_map(Result::ok).collect(),
+        Err(error) if relative.is_empty() => return Err(error),
+        Err(error) => {
+            scan.unreadable.push((relative.to_owned(), error));
+            return Ok(());
+        }
+    };
     entries.sort_by_key(std::fs::DirEntry::file_name);
     for entry in entries {
         let name = entry.file_name().to_string_lossy().into_owned();

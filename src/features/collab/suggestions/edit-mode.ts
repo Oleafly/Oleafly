@@ -51,7 +51,7 @@ function shown(state: CollabEditModeState, role: CollabProjectRole): EditModeDat
 
 let readToken = 0;
 
-async function readMode(projectId: string, role: CollabProjectRole): Promise<void> {
+async function readMode(projectId: string, role: CollabProjectRole, known = false): Promise<void> {
   const token = ++readToken;
   let state: CollabEditModeState;
   try {
@@ -59,6 +59,7 @@ async function readMode(projectId: string, role: CollabProjectRole): Promise<voi
   } catch (error) {
     if (token !== readToken) return;
     void logError("collab edit mode", error);
+    if (known) return;
     state = assumed(role);
   }
   if (token !== readToken || useEditMode.getState().projectId !== projectId) return;
@@ -95,9 +96,11 @@ export async function setEditMode(mode: CollabEditMode, scope: CollabEditModeSco
       useEditMode.setState({ mode: lastMode, everyone, guests });
       toast.error(collabErrorText(error));
     }
-  } finally {
-    if (useEditMode.getState().projectId === projectId) useEditMode.setState({ busy: false });
   }
+  if (useEditMode.getState().projectId !== projectId) return;
+  useEditMode.setState({ busy: false });
+  const { role } = useCollabLiveStore.getState();
+  if (role !== null) await readMode(projectId, role, true);
 }
 
 interface Seen {

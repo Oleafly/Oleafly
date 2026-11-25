@@ -2,8 +2,11 @@
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import { COOKIE_IMPORT_CANCELLED } from "@/lib/tauri";
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "./BrowserSignInCopy";
 
@@ -58,6 +61,7 @@ beforeEach(() => {
   mocks.signInWithBrowser.mockReset();
   mocks.signInWindow.mockReset();
   mocks.listProjects.mockReset();
+  mocks.logError.mockClear();
   useOverleafImportStore.setState({ server: SERVER, status: null, phase: "idle", signingWith: null, error: null });
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.scrollIntoView = vi.fn();
@@ -144,10 +148,33 @@ describe("BrowserSignInCopy", () => {
     expect(screen.getByLabelText(/Google Chrome/)).toBeDisabled();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("dialog", { name: copy.dialogTitle })).toBeVisible();
-    refuse(new Error("Cookie import was cancelled. No cookies were imported."));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Cookie import was cancelled.");
-    expect(screen.getByRole("button", { name: copy.copyAction })).toBeEnabled();
+    refuse(new Error(COOKIE_IMPORT_CANCELLED));
+    await waitFor(() => expect(screen.getByRole("button", { name: copy.copyAction })).toBeEnabled());
     expect(mocks.importCookies).toHaveBeenCalledOnce();
+  });
+
+  it.each([COOKIE_IMPORT_CANCELLED, new Error(COOKIE_IMPORT_CANCELLED)])(
+    "goes back to the picker without an error when the system confirmation is cancelled (%s)",
+    async (cancelled) => {
+      const user = userEvent.setup();
+      mocks.detect.mockResolvedValue([available("chrome", "Default")]);
+      mocks.importCookies.mockRejectedValue(cancelled);
+      render(<BrowserSignInCopy server={SERVER} onSignedIn={vi.fn()} />);
+      await copyFromChrome(user);
+
+      await waitFor(() => expect(screen.getByRole("button", { name: copy.copyAction })).toBeEnabled());
+      expect(screen.getByRole("dialog", { name: copy.dialogTitle })).toBeVisible();
+      expect(screen.getByLabelText(/Google Chrome/)).toBeChecked();
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(mocks.logError).not.toHaveBeenCalled();
+      expect(mocks.signInWithCookies).not.toHaveBeenCalled();
+    },
+  );
+
+  it("knows the cancelled sentence the app's backend sends", () => {
+    expect(readFileSync(join(process.cwd(), "crates/oleafly-online/src/browser_cookies/mod.rs"), "utf8")).toContain(
+      `"${COOKIE_IMPORT_CANCELLED}"`,
+    );
   });
 
   it("keeps the picker open and explains a failed copy", async () => {

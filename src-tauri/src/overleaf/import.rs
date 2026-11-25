@@ -82,11 +82,14 @@ pub struct OpenedLive {
     pub reused: bool,
 }
 
+static OPENING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub(crate) async fn open_live(
     base: &str,
     account: Option<&str>,
     remote_id: &str,
 ) -> Result<OpenedLive, String> {
+    let _one_at_a_time = OPENING.lock().await;
     let Listing {
         session, projects, ..
     } = list(base, account).await?;

@@ -90,15 +90,17 @@ impl LiveDisk {
         self.write_index(&json, fingerprint)
     }
 
-    pub fn save_index_if_changed(&self, disk: &DiskState) {
-        let Ok(json) = serde_json::to_vec(disk) else {
-            return;
-        };
+    pub fn index_change(&self, disk: &DiskState) -> Option<(Vec<u8>, String)> {
+        let json = serde_json::to_vec(disk).ok()?;
         let fingerprint = sha256_hex(&json);
-        if self.paced(|pace| pace.index.as_deref() == Some(fingerprint.as_str())) {
-            return;
+        let same = self.paced(|pace| pace.index.as_deref() == Some(fingerprint.as_str()));
+        (!same).then_some((json, fingerprint))
+    }
+
+    pub fn save_index_if_changed(&self, disk: &DiskState) {
+        if let Some((json, fingerprint)) = self.index_change(disk) {
+            let _ = self.write_index(&json, fingerprint);
         }
-        let _ = self.write_index(&json, fingerprint);
     }
 
     pub fn come_back_in(&self, delay: Duration) {

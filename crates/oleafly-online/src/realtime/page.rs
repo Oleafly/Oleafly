@@ -216,6 +216,9 @@ impl ProjectPage {
             )
             .await?;
         session.absorb_headers(response.headers());
+        if response.status() == StatusCode::FORBIDDEN && http.signed_out(&session.cookie()).await {
+            return Err(client::expired());
+        }
         match response.status() {
             StatusCode::FORBIDDEN | StatusCode::NOT_FOUND => {
                 return Err(OnlineError::new(OnlineErrorKind::ProjectUnavailable));

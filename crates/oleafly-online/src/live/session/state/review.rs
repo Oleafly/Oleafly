@@ -6,7 +6,7 @@ use oleafly_ot::utf16_len;
 use serde_json::{json, Map, Value};
 
 use super::{now_ms, Notice, Phase, State};
-use crate::live::doc::ReviewOp;
+use crate::live::doc::{OverleafDoc, ReviewOp};
 use crate::live::format::{byte_at, Decision, DocFormat};
 use crate::live::rest::TrackChangesUpdate;
 use crate::live::session::review::{
@@ -779,7 +779,8 @@ impl State {
             .slots
             .get_mut(doc)
             .ok_or(ReviewWriteError::UnknownDoc)?;
-        if matches!(slot.phase, Phase::Held | Phase::Stopped) {
+        let reserved = matches!(review, ReviewOp::Anchor { .. });
+        if slot.phase == Phase::Stopped || (slot.phase == Phase::Held && !reserved) {
             return Err(ReviewWriteError::UnknownDoc);
         }
         let known = slot
@@ -801,15 +802,18 @@ impl State {
         &self,
         ids: &[String],
     ) -> (BTreeMap<DocId, Vec<String>>, Vec<String>) {
+        let mut owners: BTreeMap<String, &DocId> = BTreeMap::new();
+        for (doc, slot) in &self.slots {
+            let joined = slot.doc.as_ref().filter(|_| slot.phase == Phase::Joined);
+            for id in joined.map(OverleafDoc::change_ids).unwrap_or_default() {
+                owners.entry(id).or_insert(doc);
+            }
+        }
         let mut found: BTreeMap<DocId, Vec<String>> = BTreeMap::new();
         let mut missing = Vec::new();
         for id in ids {
-            let owner = self.slots.iter().find_map(|(doc, slot)| {
-                let known = slot.doc.as_ref().filter(|_| slot.phase == Phase::Joined)?;
-                known.change_author(id).map(|_| doc.clone())
-            });
-            match owner {
-                Some(doc) => found.entry(doc).or_default().push(id.clone()),
+            match owners.get(id) {
+                Some(doc) => found.entry((*doc).clone()).or_default().push(id.clone()),
                 None => missing.push(id.clone()),
             }
         }

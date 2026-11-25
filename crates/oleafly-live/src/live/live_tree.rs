@@ -11,6 +11,7 @@ use super::import::LocalImport;
 use super::payloads::KeptFile;
 use super::sync_hold::KeptEdit;
 use super::LiveDisk;
+use crate::disk::DiskState;
 
 pub struct Outgoing {
     pub work: DiskWork,
@@ -45,7 +46,13 @@ pub trait LiveTree: TreeRead + Send + Sync {
         hashes: &BTreeMap<String, String>,
     ) -> Result<Option<Outgoing>, CollabError>;
     fn can_edit(&self) -> bool;
+    fn ready_to_import(&self) -> bool {
+        true
+    }
     fn refused(&self, _import: &LocalImport) {}
+    fn save_index(&self, disk: &LiveDisk, state: &DiskState) {
+        disk.save_index_if_changed(state);
+    }
     fn open(&self, ids: &[String]) -> BTreeSet<String>;
     fn mark_dirty(&self, ids: &[String]);
     fn noticed(&self, previous: &Layout, changed: &BTreeSet<String>, removed: &[String]);

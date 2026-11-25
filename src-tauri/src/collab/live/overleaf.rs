@@ -226,14 +226,18 @@ pub(crate) fn forget_overleaf_project(
         return Err(refused);
     }
     let mut failed = Vec::new();
+    let mut mirrored_elsewhere = false;
     match mirror_dir(&data, link, project_id) {
         Ok(mirror) => match remove_tree(&mirror) {
-            Ok(()) => remove_empty_parents(&mirror, 2),
+            Ok(()) => {
+                remove_empty_parents(&mirror, 2);
+                mirrored_elsewhere = mirror.parent().is_some_and(Path::is_dir);
+            }
             Err(error) => failed.push(format!("{}: {error}", mirror.display())),
         },
         Err(error) => failed.push(error.to_string()),
     }
-    if !linked_elsewhere(link, project_id) {
+    if !mirrored_elsewhere && !linked_elsewhere(link, project_id) {
         match journal::journal_dir(&data, &link.server, &link.project_id) {
             Ok(journal) => match remove_tree(&journal) {
                 Ok(()) => remove_empty_parents(&journal, 1),

@@ -1,4 +1,5 @@
-use std::collections::BTreeSet;
+mod restart;
+
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -8,7 +9,7 @@ use oleafly_core::app_log::{AppLog, APP_LOG_FILE};
 use oleafly_core::front_matter::NOTE_FILE;
 use oleafly_online::client::Http;
 use oleafly_online::live::journal::{Journal, ProjectManifest};
-use oleafly_online::live::session::{LiveEnd, LivePort, LiveState, SessionConfig};
+use oleafly_online::live::session::{LiveEnd, LivePort, LiveState, SessionConfig, SessionTuning};
 use oleafly_online::projects::OverleafLink;
 use oleafly_online::realtime::Carrier;
 use oleafly_online::session::{Session, SessionHandle};
@@ -17,15 +18,15 @@ use tokio::runtime::Handle;
 
 use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::{
-    binaries, folder_key, mirror_dir, opening, write_import_bases, Mirror, MirrorHooks, MirrorPort,
-    OverleafLive, Parts,
+    binaries, folder_key, mirror_dir, opening, write_import_bases, FolderAtStart, Mirror,
+    MirrorHooks, MirrorPort, OverleafLive, Parts, TreeNotice,
 };
 use crate::disk::DiskState;
 use crate::live::disk_pass::{pause_at, writer_paused, RECORD_LATE};
 use crate::live::host::DiskHost;
 use crate::live::payloads::{RemoteEditPayload, RolePayload, WrittenPayload};
 use crate::live::session::{guard, LiveDisk};
-use crate::test_support::{eventually, tuning};
+use crate::test_support::{eventually, tuning, WAIT};
 
 const MAIN: &str = "main.tex";
 const INTRO: &str = "intro.tex";
@@ -36,6 +37,7 @@ struct Heard {
     notices: Mutex<Vec<OverleafNoticePayload>>,
     edits: Mutex<Vec<RemoteEditPayload>>,
     notes: Mutex<Vec<(String, String)>>,
+    tree: Mutex<Vec<TreeNotice>>,
     holding: AtomicBool,
     held: AtomicBool,
 }
@@ -51,6 +53,10 @@ impl DiskHost for Heard {
 
     fn remote_edit(&self, payload: RemoteEditPayload) {
         guard(&self.edits).push(payload);
+    }
+
+    fn overleaf_tree(&self, notice: TreeNotice) {
+        guard(&self.tree).push(notice);
     }
 
     fn note_written(&self, project_id: &str, text: &str) {
@@ -81,18 +87,33 @@ impl MirrorHooks for Counting {
     }
 }
 
-struct Rig {
+struct World {
     mock: MockOverleaf,
+    root: PathBuf,
+    data: PathBuf,
+    mirror_dir: PathBuf,
+    user: &'static str,
+    _dir: tempfile::TempDir,
+}
+
+struct Rig {
+    world: World,
     live: Arc<OverleafLive>,
     host: Arc<Heard>,
-    root: PathBuf,
-    mirror_dir: PathBuf,
-    _dir: tempfile::TempDir,
+}
+
+impl std::ops::Deref for Rig {
+    type Target = World;
+
+    fn deref(&self) -> &World {
+        &self.world
+    }
 }
 
 fn project() -> MockProject {
     MockProject::new("live")
         .member(MockUser::named("bob"), Privilege::ReadAndWrite)
+        .member(MockUser::named("vera"), Privilege::ReadOnly)
         .doc(MAIN, "Hello\n")
         .doc(INTRO, "Intro\n")
 }
@@ -118,81 +139,135 @@ async fn start_in<H: MirrorHooks>(
     fill: bool,
     attach: impl FnOnce(&Arc<Mirror>, &Arc<Heard>) -> Arc<H> + Send,
 ) -> (Rig, Arc<H>) {
-    let dir = tempfile::tempdir().unwrap();
-    let root = dir.path().join("project");
-    let data = dir.path().join("data");
-    let mirror_dir = dir.path().join("mirror");
-    write_files(&root, files);
-    let bases = files
-        .iter()
-        .map(|(path, text)| ((*path).to_owned(), (*text).to_owned()))
-        .collect();
-    write_import_bases(&mirror_dir, &bases).unwrap();
-    let mock = MockOverleaf::start(project).await;
+    let world = World::imported(project, files).await;
     if fill {
-        opening::mark(&mirror_dir).unwrap();
+        opening::mark(&world.mirror_dir).unwrap();
     }
-    let user = mock.user("alice");
-    let session = SessionHandle::new(
-        &mock.base,
-        Session {
-            cookie: user.cookie(),
-            user_id: user.id.clone(),
-            email: user.email.clone(),
-            saved_by: None,
-        },
-        None,
-    );
-    let mut journal = Journal::open(&data, &mock.base, &mock.project_id(), None).unwrap();
-    journal.set_manifest(ProjectManifest {
-        user_id: user.id.clone(),
-        history_version: (!fill).then_some(0),
-        ..ProjectManifest::default()
-    });
-    journal.flush().unwrap();
-    let host = Arc::new(Heard::default());
-    let parts = Parts {
-        project_id: "live-rig".to_owned(),
-        root: root.clone(),
-        mirror_dir: mirror_dir.clone(),
-        host: Arc::clone(&host) as Arc<dyn DiskHost>,
-        link: OverleafLink {
-            server: mock.base.clone(),
-            project_id: mock.project_id(),
-            user_id: None,
-        },
-        config: SessionConfig {
-            http: Http::new(&mock.base, "Oleafly/test").unwrap(),
-            session,
-            project_id: mock.project_id(),
-            carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
-            tuning: tuning(),
-            seeds: Vec::new(),
-            fill,
-        },
-        journal,
-        git: None,
-        runtime: Handle::current(),
-        log: AppLog::at(&data),
-    };
-    let heard = Arc::clone(&host);
-    let (live, hooks) = OverleafLive::start_with(parts, move |mirror| attach(mirror, &heard))
-        .await
-        .unwrap();
-    let rig = Rig {
-        mock,
-        live,
-        host,
-        root,
-        mirror_dir,
-        _dir: dir,
-    };
-    (rig, hooks)
+    world.set_history((!fill).then_some(0)).await;
+    world.start_hooked(tuning(), attach).await
 }
 
-impl Rig {
+impl World {
+    async fn imported(project: MockProject, files: &[(&str, &str)]) -> World {
+        let dir = tempfile::tempdir().unwrap();
+        let world = World {
+            mock: MockOverleaf::start(project).await,
+            root: dir.path().join("project"),
+            data: dir.path().join("data"),
+            mirror_dir: dir.path().join("mirror"),
+            user: "alice",
+            _dir: dir,
+        };
+        write_files(&world.root, files);
+        let bases = files
+            .iter()
+            .map(|(path, text)| ((*path).to_owned(), (*text).to_owned()))
+            .collect();
+        write_import_bases(&world.mirror_dir, &bases).unwrap();
+        world
+    }
+
+    async fn journal(&self) -> Journal {
+        let started = Instant::now();
+        loop {
+            match Journal::open(&self.data, &self.mock.base, &self.mock.project_id(), None) {
+                Ok(journal) => return journal,
+                Err(error) => assert!(started.elapsed() < WAIT, "{error}"),
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    async fn set_history(&self, version: Option<u64>) {
+        let mut journal = self.journal().await;
+        journal.set_manifest(ProjectManifest {
+            user_id: self.mock.user(self.user).id,
+            history_version: version,
+            ..journal.manifest().clone()
+        });
+        journal.flush().unwrap();
+    }
+
+    async fn start_hooked<H: MirrorHooks>(
+        self,
+        tuning: SessionTuning,
+        attach: impl FnOnce(&Arc<Mirror>, &Arc<Heard>) -> Arc<H> + Send,
+    ) -> (Rig, Arc<H>) {
+        let user = self.mock.user(self.user);
+        let session = SessionHandle::new(
+            &self.mock.base,
+            Session {
+                cookie: user.cookie(),
+                user_id: user.id.clone(),
+                email: user.email.clone(),
+                saved_by: None,
+            },
+            None,
+        );
+        let host = Arc::new(Heard::default());
+        let parts = Parts {
+            project_id: "live-rig".to_owned(),
+            root: self.root.clone(),
+            mirror_dir: self.mirror_dir.clone(),
+            host: Arc::clone(&host) as Arc<dyn DiskHost>,
+            link: OverleafLink {
+                server: self.mock.base.clone(),
+                project_id: self.mock.project_id(),
+                user_id: None,
+            },
+            config: SessionConfig {
+                http: Http::new(&self.mock.base, "Oleafly/test").unwrap(),
+                session,
+                project_id: self.mock.project_id(),
+                carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
+                tuning,
+                seeds: Vec::new(),
+                fill: opening::marked(&self.mirror_dir),
+            },
+            journal: self.journal().await,
+            git: None,
+            runtime: Handle::current(),
+            log: AppLog::at(&self.data),
+        };
+        let heard = Arc::clone(&host);
+        let (live, hooks) = OverleafLive::start_with(parts, move |mirror| attach(mirror, &heard))
+            .await
+            .unwrap();
+        let rig = Rig {
+            world: self,
+            live,
+            host,
+        };
+        (rig, hooks)
+    }
+
+    async fn start(self) -> Rig {
+        let (rig, _hooks) = self.start_hooked(tuning(), |_, _| Arc::new(())).await;
+        rig.live.import_paths(None).await.unwrap();
+        rig
+    }
+
     fn read(&self, path: &str) -> String {
         std::fs::read_to_string(self.root.join(path)).unwrap_or_default()
+    }
+
+    fn write(&self, path: &str, text: &str) {
+        std::fs::write(self.root.join(path), text).unwrap();
+    }
+
+    fn online(&self, path: &str) -> Option<String> {
+        let id = self.mock.entity_id(path)?;
+        Some(self.mock.doc_text(&id))
+    }
+
+    fn copies_of(&self, name: &str) -> Vec<String> {
+        let stem = format!("{} (", name.trim_end_matches(".tex"));
+        std::fs::read_dir(&self.root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|found| found.starts_with(&stem))
+            .map(|found| self.read(&found))
+            .collect()
     }
 
     fn bob_types(&self, path: &str, text: &str) {
@@ -200,6 +275,20 @@ impl Rig {
         let mut bob = self.mock.peer("bob");
         bob.join(&doc);
         bob.type_at(&doc, 0, text);
+    }
+}
+
+impl Rig {
+    async fn online_once(self) -> Rig {
+        eventually("the session joins", || self.live.mirror.role().is_some()).await;
+        self
+    }
+
+    async fn stop(self) -> World {
+        self.live.finish().await;
+        let Rig { world, live, .. } = self;
+        drop(live);
+        world
     }
 }
 
@@ -379,7 +468,7 @@ fn a_failed_session_is_logged_off_the_callback() {
         let mirror = Arc::new(Mirror::new(
             disk,
             binaries::BlobMap::default(),
-            BTreeSet::new(),
+            FolderAtStart::default(),
         ));
         let port = MirrorPort::new(Arc::clone(&mirror));
         let (release, released) = std::sync::mpsc::channel::<()>();

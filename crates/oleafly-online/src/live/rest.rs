@@ -48,7 +48,7 @@ pub use spelling::SPELLING_DEADLINE;
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum RestError {
-    #[error("the server refused it ({status}): {message}")]
+    #[error("the server refused it ({status}){}", said(message))]
     Refused { status: u16, message: String },
     #[error("you can't change files in this project")]
     NotAllowed,
@@ -60,6 +60,8 @@ pub enum RestError {
     Lost(String),
     #[error("the server could not be reached: {0}")]
     Unreachable(String),
+    #[error("the server failed ({status}){}", said(message))]
+    ServerFailed { status: u16, message: String },
     #[error("the reply could not be read: {0}")]
     Unreadable(String),
     #[error("the download ended before its length")]
@@ -74,6 +76,7 @@ impl RestError {
             self,
             RestError::Lost(_)
                 | RestError::Unreachable(_)
+                | RestError::ServerFailed { .. }
                 | RestError::RateLimited(_)
                 | RestError::Unreadable(_)
                 | RestError::Short
@@ -102,11 +105,21 @@ fn entity_type(kind: NodeKind) -> &'static str {
     }
 }
 
-fn sent_error(error: &reqwest::Error) -> RestError {
-    if error.is_connect() {
-        RestError::Unreachable(error.to_string())
+fn said(message: &str) -> String {
+    if message.is_empty() {
+        String::new()
     } else {
-        RestError::Lost(error.to_string())
+        format!(": {message}")
+    }
+}
+
+fn sent_error(error: reqwest::Error) -> RestError {
+    let connect = error.is_connect();
+    let words = error.without_url().to_string();
+    if connect {
+        RestError::Unreachable(words)
+    } else {
+        RestError::Lost(words)
     }
 }
 
@@ -135,6 +148,9 @@ fn short(text: &str) -> String {
 }
 
 fn refusal_message(text: &str) -> String {
+    if text.trim_start().starts_with('<') {
+        return String::new();
+    }
     serde_json::from_str::<Value>(text)
         .ok()
         .and_then(|value| {
@@ -163,7 +179,10 @@ fn forbidden(message: String) -> RestError {
 }
 
 fn transient(error: &RestError) -> bool {
-    matches!(error, RestError::Lost(_) | RestError::Unreachable(_))
+    matches!(
+        error,
+        RestError::Lost(_) | RestError::Unreachable(_) | RestError::ServerFailed { .. }
+    )
 }
 
 pub async fn within<T, E>(
@@ -190,11 +209,15 @@ async fn judged(response: Response) -> Judged {
         StatusCode::FORBIDDEN if refusal_message(&text) == "restricted" => {
             Judged::Failed(RestError::NotAllowed)
         }
-        StatusCode::FORBIDDEN => Judged::StaleToken(refusal_message(&text)),
+        StatusCode::FORBIDDEN => match refusal_message(&text) {
+            message if message.is_empty() || message == "Forbidden" => Judged::StaleToken(message),
+            message => Judged::Failed(forbidden(message)),
+        },
         StatusCode::TOO_MANY_REQUESTS => Judged::Failed(RestError::RateLimited(wait)),
-        status if status.is_server_error() => {
-            Judged::Failed(RestError::Unreachable(format!("HTTP {}", status.as_u16())))
-        }
+        status if status.is_server_error() => Judged::Failed(RestError::ServerFailed {
+            status: status.as_u16(),
+            message: refusal_message(&text),
+        }),
         status => Judged::Failed(RestError::Refused {
             status: status.as_u16(),
             message: refusal_message(&text),
@@ -280,7 +303,7 @@ impl ProjectRest {
             .header(ACCEPT, "application/json")
             .send()
             .await
-            .map_err(|error| sent_error(&error))?;
+            .map_err(sent_error)?;
         session.absorb_headers(response.headers());
         Ok(response)
     }
@@ -316,7 +339,7 @@ impl ProjectRest {
         path: &str,
         again: impl Fn(&RestError) -> bool,
     ) -> Result<Response, RestError> {
-        client::retried(again, || async {
+        let outcome = client::retried(again, || async {
             let request = self.http.get(path, &session.cookie());
             match judged(self.send(session, request).await?).await {
                 Judged::Fine(response) => Ok(response),
@@ -324,7 +347,19 @@ impl ProjectRest {
                 Judged::Failed(error) => Err(error),
             }
         })
-        .await
+        .await;
+        match outcome {
+            Ok(response) => Ok(response),
+            Err(error) => Err(self.signed_out_or(session, error).await),
+        }
+    }
+
+    async fn signed_out_or(&self, session: &SessionHandle, error: RestError) -> RestError {
+        if error == RestError::NotAllowed && self.http.signed_out(&session.cookie()).await {
+            RestError::SignedOut
+        } else {
+            error
+        }
     }
 
     pub async fn create_doc(

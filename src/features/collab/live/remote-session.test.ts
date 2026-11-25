@@ -68,6 +68,24 @@ describe("RemoteDocumentSession", () => {
     expect(onText).toHaveBeenLastCalledWith("hello world");
   });
 
+  it("tells the other editors of the document about a local edit, and the coauthor listeners nothing", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor } = await opened(channel);
+    const heard: RemoteChange[] = [];
+    const stop = session.subscribeLocal((change) => heard.push(change));
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([]);
+    expect(heard).toEqual([{ edits: [{ from: 3, to: 3, insert: "d" }], version: 1 }]);
+    expect(editor.changes).toEqual([]);
+    channel.remote(insertAt(0, ">", 3));
+    channel.drain();
+    expect(heard).toHaveLength(1);
+    expect(editor.changes).toHaveLength(1);
+    stop();
+    editor.type([{ from: 0, to: 0, insert: "x" }]);
+    expect(heard).toHaveLength(1);
+  });
+
   it("sends one change at a time and buffers the rest", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

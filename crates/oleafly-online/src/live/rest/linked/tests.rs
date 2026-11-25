@@ -79,7 +79,7 @@ async fn a_refresh_posts_an_empty_body_and_answers_the_new_file() {
             .await,
         Err(RestError::Refused {
             status: 404,
-            message: "<!DOCTYPE html><html><body>Not found</body></html>".into(),
+            message: String::new(),
         })
     );
 }
@@ -153,9 +153,7 @@ async fn each_refusal_keeps_its_status_and_the_servers_words() {
             "{status} {text}"
         );
     }
-    for _ in 0..2 {
-        mock.plan_fault(Some("POST"), &route, Fault::Reply(403, not_shared.into()));
-    }
+    mock.plan_fault(Some("POST"), &route, Fault::Reply(403, not_shared.into()));
     assert_eq!(
         rest.refresh_linked(&alice, &refs, false, REFRESH_DEADLINE)
             .await,

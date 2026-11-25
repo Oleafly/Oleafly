@@ -112,7 +112,7 @@ async fn refusals_are_told_apart_and_local_ones_send_nothing() {
     );
     assert!(rig.mock.requests(&route).is_empty());
     for (status, text, expected) in [
-        (400, "", LinkedError::Off),
+        (400, "Bad Request", LinkedError::Off),
         (404, "<!DOCTYPE html><p>Not found</p>", LinkedError::Gone),
         (409, "Conflict", LinkedError::NotLinked),
         (

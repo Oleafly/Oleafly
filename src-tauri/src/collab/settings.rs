@@ -606,6 +606,10 @@ pub fn refuse_viewer(project_id: &str) -> Result<(), String> {
             Ok(())
         };
     }
+    refuse_server_viewer(project_id)
+}
+
+pub fn refuse_server_viewer(project_id: &str) -> Result<(), String> {
     if !super::registry::is_shared(project_id) {
         return Ok(());
     }

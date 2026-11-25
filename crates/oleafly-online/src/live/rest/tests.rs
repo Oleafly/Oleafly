@@ -6,8 +6,11 @@ use tokio::net::{TcpListener, TcpStream};
 
 use serde_json::json;
 
-use super::{within, DeleteAs, ProjectRest, RestError, ReviewError, TrackChangesUpdate};
+use super::{
+    within, DeleteAs, HistoryError, ProjectRest, RestError, ReviewError, TrackChangesUpdate,
+};
 use crate::client::Http;
+use crate::error::OnlineErrorKind;
 use crate::live::tree_queue::MAX_UPLOAD_BYTES;
 use crate::realtime::events::{DocId, EntityId};
 use crate::realtime::ProjectPage;
@@ -266,6 +269,16 @@ async fn threads_messages_and_resolution_go_through_the_module() {
     assert_eq!(resolved.messages[0].content, "Look again");
     assert!(resolved.messages[0].edited_at.is_some());
     rest.reopen_thread(&alice, &main, T1).await.unwrap();
+    for action in ["resolve", "reopen"] {
+        let sent = mock.requests(&format!(
+            "/project/{}/doc/{}/thread/{T1}/{action}",
+            mock.project_id(),
+            main.0
+        ));
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].body, "{}");
+        assert_eq!(sent[0].headers["content-length"], "2");
+    }
     bob_rest
         .delete_message(&bob, T1, &reply.id, DeleteAs::Author)
         .await
@@ -285,6 +298,53 @@ async fn threads_messages_and_resolution_go_through_the_module() {
     .map(|name| watcher.events(name).len())
     .collect();
     assert_eq!(seen, vec![2, 1, 1, 1, 1, 1]);
+}
+
+#[tokio::test]
+async fn a_revoked_sign_in_asks_to_sign_in_again_and_a_missing_share_does_not() {
+    let mock = MockOverleaf::start(review_project().outsider(MockUser::named("frank"))).await;
+    mock.configure(|config| {
+        config.review = true;
+        config.public_site = true;
+    });
+    let (rest, alice) = rest_for(&mock, "alice").await;
+    let destination = tempfile::tempdir().unwrap();
+    let zip = destination.path().join("version.zip");
+    mock.expire_session("alice");
+    assert_eq!(
+        rest.threads(&alice).await,
+        Err(ReviewError::Rest(RestError::SignedOut))
+    );
+    assert_eq!(
+        rest.post_message(&alice, T1, "Hello").await,
+        Err(ReviewError::Rest(RestError::SignedOut))
+    );
+    assert_eq!(
+        rest.version_zip(&alice, 1, &zip, |_, _| {}).await,
+        Err(HistoryError::Rest(RestError::SignedOut))
+    );
+    let http = Http::new(&mock.base, "Oleafly/test").unwrap();
+    let page = ProjectPage::load(&http, &alice, &mock.project_id(), false).await;
+    assert_eq!(
+        page.err().map(|error| error.kind),
+        Some(OnlineErrorKind::SessionExpired)
+    );
+    let frank = mock.user("frank");
+    let outsider = SessionHandle::new(
+        &mock.base,
+        Session {
+            cookie: frank.cookie(),
+            user_id: frank.id.clone(),
+            email: frank.email.clone(),
+            saved_by: None,
+        },
+        None,
+    );
+    let refused = ProjectPage::load(&http, &outsider, &mock.project_id(), false).await;
+    assert_eq!(
+        refused.err().map(|error| error.kind),
+        Some(OnlineErrorKind::ProjectUnavailable)
+    );
 }
 
 fn denied<T>(result: Result<T, ReviewError>) -> bool {
@@ -434,6 +494,38 @@ async fn a_review_request_with_a_bad_id_or_message_never_leaves() {
     rest.post_message(&alice, T1, &"x".repeat(10 * 1024))
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn a_failed_send_never_repeats_the_address_it_went_to() {
+    let failed = reqwest::Client::new()
+        .post("http://127.0.0.1:9/1234abcdefgh/grant")
+        .send()
+        .await
+        .unwrap_err();
+    let shown = super::sent_error(failed).to_string();
+    assert!(!shown.contains("1234abcdefgh"), "{shown}");
+}
+
+#[test]
+fn a_refusal_shows_the_servers_words_but_never_a_web_page() {
+    let shown = |message: &str| {
+        RestError::Refused {
+            status: 411,
+            message: message.into(),
+        }
+        .to_string()
+    };
+    assert_eq!(shown("Too short"), "the server refused it (411): Too short");
+    assert_eq!(shown(""), "the server refused it (411)");
+    assert_eq!(
+        super::refusal_message("\n<html><title>411 Length Required</title></html>"),
+        ""
+    );
+    assert_eq!(
+        super::refusal_message(r#"{"message":"Too short"}"#),
+        "Too short"
+    );
 }
 
 #[tokio::test]

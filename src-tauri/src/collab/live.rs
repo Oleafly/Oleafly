@@ -60,7 +60,7 @@ pub use payloads::{
 #[cfg(test)]
 use crate::collab::disk::sha256_hex;
 #[cfg(test)]
-use disk_pass::{apply_to_disk, writable, DiskPass};
+use disk_pass::{apply_to_disk, writable, DiskPass, DiskTexts};
 #[cfg(test)]
 use import::apply_local_import;
 #[cfg(test)]

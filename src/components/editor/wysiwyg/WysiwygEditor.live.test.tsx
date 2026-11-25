@@ -3,19 +3,24 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getEditorView } from "@oleafly/editor";
+import { CodeMirrorEditor, type EditorHost } from "@oleafly/editor/CodeMirrorEditor";
 import { parseMarkdownBody } from "@oleafly/wysiwyg";
+import { LiveSessions } from "@/features/collab/live/live-sessions";
 import { TextOperation } from "@/features/collab/live/ot";
 import { RemoteDocumentSession } from "@/features/collab/live/remote-session";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
 import { installNoteLive } from "@/features/collab/notes/note-live-port";
 import type { NoteLiveClock } from "@/features/collab/notes/note-live";
 import {
+  collabDocumentSession,
   installCollabEditorPort,
   noteCommentSurface,
   noteLiveHolds,
   useCollabEditorGate,
   useCollabLiveProject,
 } from "@/lib/collab-live-bridge";
+import { mirrorFileText } from "@/lib/live-file-mirror";
 import { useFilesStore } from "@/store/files";
 import { markdownMathRanges } from "./markdown-source";
 import { flushWysiwygPendingEdits } from "./controller";
@@ -106,6 +111,64 @@ interface Rig {
 
 const cleanups: (() => void)[] = [];
 
+const SOURCE_SETTINGS: ReturnType<EditorHost["useSettings"]> = {
+  keymap: "default",
+  tabSize: 2,
+  lineWrap: true,
+  spellcheck: false,
+  harper: false,
+  editorTheme: "system",
+  autocomplete: false,
+  autoCloseBrackets: false,
+  cursorBlinking: "blink",
+  highlightCurrentLine: true,
+  cursorHeight: "text",
+  ghostCompletion: false,
+  stickyScroll: false,
+  mathPreview: false,
+};
+
+const SOURCE_HOST: EditorHost = {
+  t: (key) => key,
+  useActivePath: () => PATH,
+  getActivePath: () => PATH,
+  useDocVersion: () => useFilesStore((state) => state.docVersion),
+  useCompletionSyntax: () => "latex",
+  getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
+  setContent: (path, content) => useFilesStore.getState().setContent(path, content),
+  documentSession: collabDocumentSession,
+  useSettings: () => SOURCE_SETTINGS,
+  useVisualMode: () => false,
+  useEditorKeymap: () => ({}),
+  useLintRefreshDeps: () => [],
+};
+
+function openFile(text: string, role: "editor" | "viewer"): void {
+  useFilesStore.setState({
+    projectId: PROJECT,
+    activePath: PATH,
+    files: { [PATH]: { content: text, dirty: false } },
+  } as unknown as ReturnType<typeof useFilesStore.getState>);
+  const viewer = role === "viewer";
+  useCollabEditorGate.setState({ projectId: PROJECT, viewer, locked: viewer, connecting: false, suggesting: false });
+  useCollabLiveProject.setState({ session: { ...SESSION, role } });
+}
+
+function mountVisual(documentSession: (path: string) => RemoteDocumentSession | null) {
+  const clock = new Clock();
+  cleanups.push(
+    installCollabEditorPort({ documentSession, flush: async () => {} }),
+    installNoteLive({
+      clock,
+      presence: { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) },
+    }),
+  );
+  const mounted = render(<WysiwygEditor wysiwyg={true} />);
+  if (!lastEditor) throw new Error("the Visual editor did not mount");
+  const showVisual = (shown: boolean) => mounted.rerender(<WysiwygEditor wysiwyg={shown} />);
+  return { clock, editor: lastEditor, showVisual };
+}
+
 async function mountLive(text: string, options: { role?: "editor" | "viewer"; readOnly?: boolean } = {}): Promise<Rig> {
   const channel = new FakeChannel(text);
   const document = new RemoteDocumentSession(PATH, text, {
@@ -113,31 +176,35 @@ async function mountLive(text: string, options: { role?: "editor" | "viewer"; re
     readOnly: () => options.readOnly ?? false,
   });
   await document.open();
+  cleanups.push(() => document.close());
   const sessionFor: { current: RemoteDocumentSession | null } = { current: document };
-  const clock = new Clock();
-  cleanups.push(
-    installCollabEditorPort({
-      documentSession: (path) => (path === PATH ? sessionFor.current : null),
-      flush: async () => {},
-    }),
-    installNoteLive({
-      clock,
-      presence: { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) },
-    }),
-    () => document.close(),
-  );
-  useFilesStore.setState({
-    projectId: PROJECT,
-    activePath: PATH,
-    files: { [PATH]: { content: text, dirty: false } },
-  } as unknown as ReturnType<typeof useFilesStore.getState>);
-  const viewer = options.role === "viewer";
-  useCollabEditorGate.setState({ projectId: PROJECT, viewer, locked: viewer, connecting: false, suggesting: false });
-  useCollabLiveProject.setState({ session: { ...SESSION, role: options.role ?? "editor" } });
-  const mounted = render(<WysiwygEditor wysiwyg={true} />);
-  if (!lastEditor) throw new Error("the Visual editor did not mount");
-  const showVisual = (shown: boolean) => mounted.rerender(<WysiwygEditor wysiwyg={shown} />);
-  return { channel, document, clock, editor: lastEditor, sessionFor, showVisual };
+  openFile(text, options.role ?? "editor");
+  return {
+    channel,
+    document,
+    sessionFor,
+    ...mountVisual((path) => (path === PATH ? sessionFor.current : null)),
+  };
+}
+
+async function mountSessions(text: string) {
+  const channel = new FakeChannel(text);
+  openFile(text, "editor");
+  const sessions = new LiveSessions({
+    transport: channel.transport(),
+    readOnly: () => false,
+    initialText: (path) => useFilesStore.getState().files[path]?.content ?? null,
+    mirror: (path, next) => mirrorFileText(PROJECT, path, next),
+    detached: (path, next, edited, shared) => {
+      const files = useFilesStore.getState();
+      if (edited) files.setContent(path, next, { unsaved: true, base: shared });
+      files.bumpDocVersion();
+    },
+  });
+  cleanups.push(() => sessions.close());
+  const visual = mountVisual((path) => sessions.documentSession(path));
+  await act(async () => {});
+  return { channel, sessions, ...visual };
 }
 
 function endOf(editor: Editor, text: string): number {
@@ -331,6 +398,55 @@ describe("Markdown Visual on a live project", () => {
     expect(file.dirty).toBe(true);
     expect(rig.channel.sent).toHaveLength(0);
   });
+
+  it("keeps the hidden source editor on the same text as Visual, and Visual on the text of the source editor", async () => {
+    const rig = await mountLive(ROUND_TRIP);
+    render(<CodeMirrorEditor active={false} host={SOURCE_HOST} />);
+    await act(async () => {});
+    const source = () => getEditorView()?.state.doc.toString();
+    expect(source()).toBe(ROUND_TRIP);
+    typeAt(rig.editor, endOf(rig.editor, "Closing"), " soon");
+    act(() => rig.clock.flush());
+    expect(rig.document.text()).toContain("Closing soon words.");
+    expect(source()).toBe(rig.document.text());
+    act(() => {
+      const at = rig.document.text().indexOf("# Results") + "# Results".length;
+      getEditorView()?.dispatch({ changes: { from: at, insert: " too" } });
+    });
+    expect(rig.document.text()).toContain("# Results too\n");
+    expect(rig.document.text()).toContain("Closing soon words.");
+    act(() => rig.clock.flush());
+    expect(rig.editor.getText()).toContain("Results too");
+    settle(rig);
+    expect(rig.channel.text).toBe(rig.document.text());
+    expect(source()).toBe(rig.document.text());
+  });
+
+  it.each([
+    ["the service lets go of the document", (rig) => {
+      const [client] = rig.channel.clients.keys();
+      rig.channel.detach(client, "unknown_op");
+      rig.channel.deliverOne(client);
+    }],
+    ["live editing stops", (rig) => rig.sessions.close()],
+    ["the project is handed back", (rig) => rig.sessions.handBack(0)],
+  ] satisfies [string, (rig: Awaited<ReturnType<typeof mountSessions>>) => unknown][])(
+    "keeps typing it had not sent yet, next to typing nobody confirmed, when %s",
+    async (_when, leave) => {
+      const rig = await mountSessions(ROUND_TRIP);
+      typeAt(rig.editor, endOf(rig.editor, "Closing"), " first");
+      act(() => rig.clock.flush());
+      expect(rig.channel.sent).toHaveLength(1);
+      typeAt(rig.editor, endOf(rig.editor, "Closing first"), " late");
+      await act(async () => {
+        await leave(rig);
+      });
+      const file = useFilesStore.getState().files[PATH];
+      expect(file.content).toContain("Closing first late words.");
+      expect(file.dirty).toBe(true);
+      act(() => rig.clock.flush());
+    },
+  );
 
   it("holds a coauthor's edit while the user composes and shows it once the composition ends", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });

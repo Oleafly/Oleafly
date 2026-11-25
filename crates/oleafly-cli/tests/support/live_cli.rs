@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-use crate::support::Running;
+use crate::running::Running;
 
 pub const WAIT: Duration = Duration::from_secs(30);
 pub const STOP_WAIT: Duration = Duration::from_secs(12);
@@ -18,7 +18,7 @@ pub fn command(data: &Path, folder: &Path, args: &[&str]) -> Command {
         .env("OLEAFLY_DATA_DIR", data)
         .stdin(Stdio::null());
     #[cfg(unix)]
-    crate::support::set_hangup(&mut command, libc::SIG_DFL);
+    crate::hangup::set_hangup(&mut command, libc::SIG_DFL);
     command
 }
 
@@ -43,16 +43,6 @@ pub fn wait_for(live: &Running, what: &str, mut wanted: impl FnMut(&Value) -> bo
         }
         seen.push(value);
     }
-}
-
-pub fn event(live: &Running, name: &str) -> Value {
-    wait_for(live, name, |value| value["event"] == name)
-}
-
-pub fn state(live: &Running, name: &str) -> Value {
-    wait_for(live, name, |value| {
-        value["event"] == "state" && value["state"] == name
-    })
 }
 
 pub fn ready(live: &Running) -> Value {
@@ -83,5 +73,5 @@ pub fn send(live: &Running, signal: i32) {
 #[cfg(unix)]
 pub fn terminate(live: &mut Running, signal: i32) -> std::process::ExitStatus {
     send(live, signal);
-    crate::support::exit_within(&mut live.process, STOP_WAIT)
+    crate::exits::exit_within(&mut live.process, STOP_WAIT)
 }

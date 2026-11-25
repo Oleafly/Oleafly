@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::CollabError;
 use oleafly_online::live::rest::SettingsUpdate;
@@ -22,6 +22,7 @@ use crate::project::ProjectMeta;
 const BASE_FILE: &str = "settings-base.json";
 const DEBOUNCE: Duration = Duration::from_millis(300);
 const TREE_WAIT: Duration = Duration::from_secs(2);
+const ECHO_WITHIN: Duration = Duration::from_secs(30);
 const ROOT_EXTENSIONS: [&str; 4] = ["tex", "ltx", "rtex", "rnw"];
 const OVERLEAF_FLAVORS: [&str; 3] = ["pdflatex", "xelatex", "lualatex"];
 const LATEXMK: &str = "latexmk";
@@ -136,7 +137,7 @@ pub(crate) fn may_be_root(path: &str) -> bool {
 #[derive(Default)]
 struct SyncState {
     base: Option<Base>,
-    awaiting: BTreeMap<&'static str, VecDeque<String>>,
+    awaiting: BTreeMap<&'static str, VecDeque<(String, Instant)>>,
 }
 
 #[derive(Default)]
@@ -172,13 +173,13 @@ impl SettingsSync {
             .awaiting
             .entry(setting.wire())
             .or_default()
-            .push_back(value.to_owned());
+            .push_back((value.to_owned(), Instant::now()));
     }
 
     fn forget(&self, setting: Setting, value: &str) {
         let mut state = guard(&self.state);
         if let Some(queue) = state.awaiting.get_mut(setting.wire()) {
-            if let Some(at) = queue.iter().rposition(|kept| kept == value) {
+            if let Some(at) = queue.iter().rposition(|(kept, _)| kept == value) {
                 queue.remove(at);
             }
         }
@@ -187,8 +188,11 @@ impl SettingsSync {
     fn awaits(&self, setting: Setting) -> bool {
         guard(&self.state)
             .awaiting
-            .get(setting.wire())
-            .is_some_and(|queue| !queue.is_empty())
+            .get_mut(setting.wire())
+            .is_some_and(|queue| {
+                queue.retain(|(_, at)| at.elapsed() < ECHO_WITHIN);
+                !queue.is_empty()
+            })
     }
 
     pub(super) fn own_echo(&self, setting: Setting, value: &str) -> bool {
@@ -196,7 +200,7 @@ impl SettingsSync {
         let Some(queue) = state.awaiting.get_mut(setting.wire()) else {
             return false;
         };
-        if queue.front().is_some_and(|front| front == value) {
+        if queue.front().is_some_and(|(front, _)| front == value) {
             queue.pop_front();
             return true;
         }
@@ -279,11 +283,10 @@ impl Mirror {
     ) -> Result<Option<ProjectMeta>, String> {
         let root = self.disk.root.clone();
         crate::project::follow_shared_settings(&self.disk.project_id, |meta| {
-            let flavor = flavor
-                .map(str::to_owned)
-                .or_else(|| meta.tex_flavor.clone());
-            let mut changed =
-                crate::project::adopt_online_settings(&root, meta, main_doc, flavor.as_deref());
+            let mut changed = crate::project::adopt_online_main(&root, meta, main_doc);
+            if let Some(flavor) = flavor {
+                changed |= crate::project::adopt_online_engine(meta, Some(flavor));
+            }
             if let Some(pack) = dictionary {
                 if meta.dictionary_locale.as_deref() != Some(pack) {
                     meta.dictionary_locale = Some(pack.to_owned());
@@ -547,26 +550,35 @@ fn plan_settings(
     plan
 }
 
-async fn follow_settings(
+pub(super) async fn follow_settings(
     mirror: &Arc<Mirror>,
     followed: &[Setting],
     remote: &Sides,
+    before: &Base,
     base: &mut Base,
-) {
+) -> bool {
+    let mut settled = true;
     for setting in followed {
         let value = remote.get(*setting);
+        let missing = *setting == Setting::MainDoc
+            && value
+                .as_deref()
+                .is_some_and(|path| !mirror.disk.root.join(path).is_file());
         let (worker, setting) = (Arc::clone(mirror), *setting);
-        if let Err(error) =
-            off_runtime(move || worker.follow_remote(setting, value.as_deref())).await
-        {
-            log(
+        match off_runtime(move || worker.follow_remote(setting, value.as_deref())).await {
+            Ok(false) if missing => {
+                base.remote.set(setting, before.remote.get(setting));
+                settled = false;
+            }
+            Ok(_) => {}
+            Err(error) => log(
                 mirror,
                 format!("could not follow a setting from Overleaf: {error}"),
-            );
+            ),
         }
     }
     if followed.is_empty() {
-        return;
+        return settled;
     }
     if let Some(meta) = project_meta(mirror).await {
         let now = Sides::local(&meta);
@@ -574,6 +586,7 @@ async fn follow_settings(
             base.local.set(*setting, now.get(*setting));
         }
     }
+    settled
 }
 
 async fn push_settings(
@@ -654,12 +667,12 @@ async fn reconcile(mirror: &Arc<Mirror>) -> bool {
     }
     let before = base.clone();
     let plan = plan_settings(mirror, &mut base, &local, &remote, &settings.languages);
-    follow_settings(mirror, &plan.followed, &remote, &mut base).await;
+    let settled = follow_settings(mirror, &plan.followed, &remote, &before, &mut base).await;
     push_settings(mirror, &session, &plan, &local, &mut base).await;
     if base != before {
         mirror.save_base(base).await;
     }
-    true
+    settled
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

@@ -1,4 +1,4 @@
-import type { RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
+import { type RemoteChange, subscribeEdits, type Utf16Edit } from "@oleafly/editor/document-session";
 import type { NoteLiveEditor as NoteEditorSurface } from "@/lib/collab-live-bridge";
 import { logWarning } from "@/lib/log";
 import { diffOperation, editsFromOperation, operationFromEdits, TextOperation } from "../live/ot";
@@ -13,6 +13,7 @@ export interface NoteLiveSession {
   text(): string;
   applyLocal(edits: Utf16Edit[], baseVersion: number): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
+  subscribeLocal?(listener: (change: RemoteChange) => void): () => void;
 }
 
 export type NoteLiveEditor = Pick<NoteEditorSurface, "serialize" | "show" | "composing">;
@@ -56,6 +57,7 @@ export class NoteLiveBinding {
   private stopped = false;
   private synced = Number.NEGATIVE_INFINITY;
   private heldSince: number | null = null;
+  private sending = false;
   private readonly clock: NoteLiveClock;
   private readonly unsubscribe: () => void;
 
@@ -65,7 +67,10 @@ export class NoteLiveBinding {
     this.shared = text;
     this.known = text;
     this.clock = options.clock ?? browserClock;
-    this.unsubscribe = options.session.subscribe((change) => this.received(change));
+    const hear = (change: RemoteChange) => this.received(change);
+    this.unsubscribe = subscribeEdits(options.session, hear, (change) => {
+      if (!this.sending) hear(change);
+    });
   }
 
   get active(): boolean {
@@ -206,7 +211,12 @@ export class NoteLiveBinding {
       let send = mine;
       let remote: TextOperation | null = null;
       if (current !== this.shared) [send, remote] = TextOperation.transform(mine, this.pendingRemote(current));
-      session.applyLocal(editsFromOperation(send), session.version());
+      this.sending = true;
+      try {
+        session.applyLocal(editsFromOperation(send), session.version());
+      } finally {
+        this.sending = false;
+      }
       const after = session.text();
       if ((remote ? remote.apply(shared) : shared) !== after) throw new RangeError("The live note lost track of its text.");
       this.serialized = next;

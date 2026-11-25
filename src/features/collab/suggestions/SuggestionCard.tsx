@@ -117,7 +117,15 @@ export function AcceptButton({
 }>) {
   const { t } = useTranslation(["collab"]);
   const button = (
-    <Button type="button" variant={variant} size="xs" disabled={disabled || !canAccept} onClick={onClick}>
+    <Button
+      type="button"
+      variant={variant}
+      size="xs"
+      disabled={canAccept && disabled}
+      aria-disabled={!canAccept || undefined}
+      className={cn(!canAccept && "cursor-not-allowed opacity-50")}
+      onClick={canAccept ? onClick : undefined}
+    >
       {children}
     </Button>
   );

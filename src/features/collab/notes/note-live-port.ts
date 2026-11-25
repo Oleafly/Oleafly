@@ -234,6 +234,7 @@ function liveView(document: RemoteDocumentSession, writable: () => boolean): Not
     text: () => document.text(),
     applyLocal: (edits, baseVersion) => document.applyLocal(edits, baseVersion),
     subscribe: (listener) => document.subscribe(listener),
+    subscribeLocal: (listener) => document.subscribeLocal(listener),
   };
 }
 

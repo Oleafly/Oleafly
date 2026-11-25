@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use oleafly_ot::testing::{deletion, insertion};
+use oleafly_ot::testing::{deletion, insertion, Rng};
 use oleafly_ot::{utf16_len, TextOperation};
 use serde_json::{json, Value};
 
@@ -1017,7 +1017,7 @@ async fn rejecting_a_tracked_insert_and_delete_sends_undo_pieces_and_shows_the_r
         .unwrap();
     assert_eq!(
         update.op,
-        json!([{ "p": 0, "i": "Hello ", "u": true }, { "p": 6, "d": "brave ", "u": true }])
+        json!([{ "p": 0, "d": "brave ", "u": true }, { "p": 0, "i": "Hello ", "u": true }])
     );
     let shown = doc.take_shown();
     assert_eq!(shown.len(), 1);
@@ -1031,6 +1031,242 @@ async fn rejecting_a_tracked_insert_and_delete_sends_undo_pieces_and_shows_the_r
     assert_eq!(doc.text(), mock.doc_text(&id));
     assert_eq!(mock.ranges(&id), json!({}));
     assert!(doc.review().changes.is_empty());
+    wire.assert_healthy();
+}
+
+fn decide(doc: &mut OverleafDoc, ids: &[String], decision: Decision) {
+    let changes = doc.targets(ids).unwrap();
+    doc.queue_review(ReviewOp::Decide { changes, decision });
+}
+
+fn change_ids(doc: &OverleafDoc) -> Vec<String> {
+    doc.review()
+        .changes
+        .into_iter()
+        .map(|change| change.id)
+        .collect()
+}
+
+fn replace_world(
+    wire: &mut Wire,
+    doc: &mut OverleafDoc,
+    id: &str,
+    mode: &SendMode,
+    start: Instant,
+) -> Vec<Value> {
+    let mut op = TextOperation::new();
+    op.retain(6).delete(5).insert("there").retain(1);
+    doc.local(op).unwrap();
+    settle_on(wire, doc, id, mode, start)
+}
+
+#[tokio::test]
+async fn rejecting_both_halves_of_a_replacement_leaves_no_marker_in_either_format() {
+    for format in formats() {
+        for tracking in [false, true] {
+            let history_ot = format == crate::test_support::mock_overleaf::DocFormat::HistoryOt;
+            let mock = MockOverleaf::start(project().format(format)).await;
+            let id = mock.doc_id("main.tex");
+            let mut carol = Wire::connect(&mock, "erin");
+            let mut theirs = carol.open(&id);
+            let suggested = replace_world(
+                &mut carol,
+                &mut theirs,
+                &id,
+                &suggest(&mock.user("erin").id),
+                Instant::now(),
+            );
+            if !history_ot {
+                assert_eq!(
+                    suggested[0]["op"],
+                    json!([{ "p": 6, "d": "world" }, { "p": 6, "i": "there" }])
+                );
+            }
+            let mut wire = Wire::connect(&mock, "alice");
+            let mut doc = wire.open(&id);
+            assert_eq!(doc.text(), "Hello there\n");
+            let ids = change_ids(&doc);
+            assert_eq!(ids.len(), 2, "{format:?}");
+            decide(&mut doc, &ids, Decision::Reject);
+            let mode = if tracking {
+                suggest(&mock.user("alice").id)
+            } else {
+                SendMode::Edit
+            };
+            let sent = settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+            if history_ot {
+                assert_eq!(
+                    sent[0]["op"],
+                    json!([{ "textOperation": [6, "world", -10, 1] }])
+                );
+                assert_eq!(mock.raw_doc(&id)["trackedChanges"], json!([]));
+            } else {
+                assert_eq!(
+                    sent[0]["op"],
+                    json!([{ "p": 6, "d": "there", "u": true }, { "p": 6, "i": "world", "u": true }])
+                );
+                assert_eq!(mock.ranges(&id), json!({}), "tracking {tracking}");
+            }
+            assert_eq!(sent.len(), 1, "{format:?}");
+            assert_eq!(doc.text(), "Hello world\n");
+            assert_eq!(mock.doc_text(&id), "Hello world\n");
+            assert!(doc.review().changes.is_empty(), "{format:?}");
+            assert!(doc.take_dropped().is_empty());
+            wire.assert_healthy();
+        }
+    }
+}
+
+fn suggest_at_random(doc: &mut OverleafDoc, rng: &mut Rng, round: u64) {
+    let text = doc.text().to_string();
+    let from = rng.below(text.len() + 1);
+    let to = (from + rng.below(4)).min(text.len());
+    let mut op = Vec::new();
+    if from < to {
+        op.push(json!({ "p": from, "d": &text[from..to] }));
+    }
+    if rng.chance(70) {
+        op.push(json!({ "p": from, "i": *rng.pick(&["X", "YZ"]) }));
+    }
+    let update = AppliedUpdate {
+        user_id: Some((*rng.pick(&["carol", "erin"])).to_string()),
+        tc: Some(format!("{round:018x}")),
+        ..remote(doc.version(), Value::Array(op))
+    };
+    doc.applied(&update, &[me()]).unwrap();
+}
+
+fn reject_and_settle(doc: &mut OverleafDoc, ids: &[String], mode: &SendMode) {
+    if ids.is_empty() {
+        return;
+    }
+    decide(doc, ids, Decision::Reject);
+    while doc
+        .next_update(&me(), mode, Instant::now())
+        .unwrap()
+        .is_some()
+    {
+        doc.applied(&ack(doc.version()), &[me()]).unwrap();
+    }
+    assert!(doc.take_dropped().is_empty());
+}
+
+#[test]
+fn rejecting_any_choice_of_suggestions_leaves_the_rest_able_to_restore_the_text() {
+    let mut rng = Rng::new(0x501c);
+    let hidden = |changes: &[ChangeSpan]| -> usize {
+        changes
+            .iter()
+            .filter(|change| change.kind == ChangeKind::Delete)
+            .map(|change| change.text.len())
+            .sum()
+    };
+    for round in 0..3_000 {
+        let base: String = (0..4 + rng.below(8))
+            .map(|_| *rng.pick(&["a", "b", "c", "d"]))
+            .collect();
+        let mut doc = doc(&base);
+        for step in 0..1 + rng.below(5) {
+            suggest_at_random(&mut doc, &mut rng, step as u64);
+        }
+        let mode = if rng.chance(50) {
+            suggest("alice")
+        } else {
+            SendMode::Edit
+        };
+        let before = doc.review().changes;
+        let chosen: Vec<ChangeSpan> = before.iter().filter(|_| rng.chance(60)).cloned().collect();
+        let ids: Vec<String> = chosen.iter().map(|change| change.id.clone()).collect();
+        reject_and_settle(&mut doc, &ids, &mode);
+        let after = doc.review().changes;
+        assert_eq!(
+            hidden(&after),
+            hidden(&before) - hidden(&chosen),
+            "round {round}: {before:?} without {ids:?} became {after:?}"
+        );
+        let left = change_ids(&doc);
+        reject_and_settle(&mut doc, &left, &mode);
+        assert_eq!(doc.text(), base, "round {round}: {before:?} {ids:?}");
+        assert!(doc.review().changes.is_empty(), "round {round}");
+    }
+}
+
+#[tokio::test]
+async fn undoing_a_tracked_replacement_cancels_it_in_both_formats() {
+    for format in formats() {
+        let history_ot = format == crate::test_support::mock_overleaf::DocFormat::HistoryOt;
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let id = mock.doc_id("main.tex");
+        let mode = suggest(&mock.user("alice").id);
+        let mut wire = Wire::connect(&mock, "alice");
+        let mut doc = wire.open(&id);
+        replace_world(&mut wire, &mut doc, &id, &mode, Instant::now());
+        assert_eq!(doc.review().changes.len(), 2, "{format:?}");
+        let mut undo = TextOperation::new();
+        undo.retain(6).delete(5).insert("world").retain(1);
+        doc.local_from(undo, Some(Origin::Undo)).unwrap();
+        let sent = settle_on(&mut wire, &mut doc, &id, &mode, Instant::now());
+        if history_ot {
+            let tracked = mock.raw_doc(&id)["trackedChanges"].clone();
+            assert_eq!(tracked.as_array().map(Vec::len), Some(1), "{tracked}");
+            assert_eq!(tracked[0]["tracking"]["type"], "delete", "{tracked}");
+            assert_eq!(tracked[0]["range"], json!({ "pos": 6, "length": 5 }));
+        } else {
+            assert_eq!(
+                sent[0]["op"],
+                json!([{ "p": 6, "d": "there", "u": true }, { "p": 6, "i": "world", "u": true }])
+            );
+            assert_eq!(mock.ranges(&id), json!({}));
+            assert!(doc.review().changes.is_empty());
+        }
+        assert_eq!(doc.text(), "Hello world\n");
+        assert_eq!(mock.doc_text(&id), "Hello world\n", "{format:?}");
+        wire.assert_healthy();
+    }
+}
+
+#[tokio::test]
+async fn rejecting_a_replacement_beside_another_tracked_delete_leaves_that_one_alone() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let mode = suggest(&mock.user("erin").id);
+    let mut carol = Wire::connect(&mock, "erin");
+    let mut theirs = carol.open(&id);
+    replace_world(&mut carol, &mut theirs, &id, &mode, Instant::now());
+    theirs.local(deletion(12, 0, 6)).unwrap();
+    settle_on(&mut carol, &mut theirs, &id, &mode, Instant::now());
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    assert_eq!(doc.text(), "there\n");
+    let replacement: Vec<String> = doc
+        .review()
+        .changes
+        .into_iter()
+        .filter(|change| change.text != "Hello ")
+        .map(|change| change.id)
+        .collect();
+    assert_eq!(replacement.len(), 2);
+    decide(&mut doc, &replacement, Decision::Reject);
+    let sent = settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, Instant::now());
+    let ops: Vec<&Value> = sent.iter().map(|update| &update["op"]).collect();
+    assert_eq!(
+        ops,
+        [
+            &json!([{ "p": 5, "i": "world", "u": true }]),
+            &json!([{ "p": 0, "d": "there", "u": true }]),
+        ]
+    );
+    assert_eq!(mock.doc_text(&id), "world\n");
+    assert_eq!(doc.text(), "world\n");
+    let left = doc.review().changes;
+    assert_eq!(left.len(), 1, "{left:?}");
+    assert_eq!((left[0].from, left[0].text.as_str()), (0, "Hello "));
+    assert!(doc.take_dropped().is_empty());
+    let last = change_ids(&doc);
+    decide(&mut doc, &last, Decision::Reject);
+    settle_on(&mut wire, &mut doc, &id, &SendMode::Edit, Instant::now());
+    assert_eq!(mock.doc_text(&id), "Hello world\n");
+    assert_eq!(mock.ranges(&id), json!({}));
     wire.assert_healthy();
 }
 
@@ -1674,6 +1910,347 @@ fn an_accept_is_never_resent_once_the_server_may_have_changed_it() {
         .unwrap();
     assert_eq!(again.op, first.op);
     assert_eq!(again.dup_if_source, vec![me()]);
+}
+
+#[test]
+fn a_clashed_undo_keeps_its_sources_until_its_ack_and_only_then_rejoins() {
+    let marked = |text: &str, at: usize| {
+        let ranges = json!({
+            "changes": [{
+                "id": "6b04e1bac0ffee0006000001",
+                "op": { "p": at, "d": "world" },
+                "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+            }],
+        });
+        FormatState::from_join(DocFormat::ShareJs, &json!([text]), &ranges).unwrap()
+    };
+    let start = Instant::now();
+    let (text, format) = marked("Hello \n", 6);
+    let mut doc = OverleafDoc::joined(DocId("doc".into()), 0, text, format);
+    doc.local_from(insertion(7, 6, "world"), Some(Origin::Undo))
+        .unwrap();
+    let sent = send(&mut doc, start);
+    assert_eq!(sent.op, json!([{ "p": 6, "i": "world", "u": true }]));
+    doc.applied(&remote(0, json!([{ "p": 0, "i": ">> " }])), &[me()])
+        .unwrap();
+    assert!(doc.clashed());
+    let mut elsewhere = doc.clone();
+    assert_eq!(
+        elsewhere.next_update(&PublicId("P.again".into()), &SendMode::Edit, start),
+        Err(DocError::OutOfStep)
+    );
+    for round in 1..3 {
+        let again = doc
+            .next_update(&me(), &SendMode::Edit, start + round * 6 * SECOND)
+            .unwrap()
+            .expect("the same op again");
+        assert_eq!(again.op, json!([{ "p": 9, "i": "world", "u": true }]));
+        assert_eq!((again.v, again.dup_if_source), (1, vec![me()]));
+        assert!(doc.clashed(), "the first copy may still land without its u");
+    }
+    assert_eq!(doc.applied(&ack(1), &[me()]), Err(DocError::OutOfStep));
+    assert!(doc.needs_rejoin());
+    let (text, format) = marked(">> Hello world\n", 14);
+    let rejoin = doc.rejoin_fresh(2, text, format);
+    assert!(
+        matches!(&rejoin, Rejoin::Clean(op) if op.is_noop()),
+        "{rejoin:?}"
+    );
+    assert_eq!(doc.text(), ">> Hello world\n");
+    let repair = send(&mut doc, start + 60 * SECOND);
+    assert_eq!(
+        repair.op,
+        json!([{ "p": 14, "i": "world", "u": true }, { "p": 14, "d": "world" }])
+    );
+}
+
+fn two_alike() -> OverleafDoc {
+    let change = |id: &str, at: usize| json!({ "id": id, "op": { "p": at, "i": "foo" }, "metadata": { "user_id": "carol", "ts": "2026-11-15T09:00:00.000Z" } });
+    let (text, format) = FormatState::from_join(
+        DocFormat::ShareJs,
+        &json!(["foo bar foo\n"]),
+        &json!({ "changes": [change("first", 0), change("second", 8)] }),
+    )
+    .unwrap();
+    OverleafDoc::joined(DocId("doc".into()), 0, text, format)
+}
+
+fn two_alike_in_history_ot() -> OverleafDoc {
+    let tracked = |at: usize, ts: &str| json!({ "range": { "pos": at, "length": 3 }, "tracking": { "type": "insert", "userId": "carol", "ts": ts } });
+    let raw = json!({
+        "content": "foo bar foo\n",
+        "trackedChanges": [
+            tracked(0, "2026-11-15T09:00:00.000Z"),
+            tracked(8, "2026-11-15T09:30:00.000Z"),
+        ],
+    });
+    let (text, format) = FormatState::from_join(DocFormat::HistoryOt, &raw, &Value::Null).unwrap();
+    OverleafDoc::joined(DocId("doc".into()), 0, text, format)
+}
+
+fn dropped_targets(doc: &mut OverleafDoc) -> Vec<(usize, String)> {
+    doc.take_dropped()
+        .into_iter()
+        .flat_map(|review| match review {
+            ReviewOp::Decide { changes, .. } => changes,
+            _ => Vec::new(),
+        })
+        .map(|target| (target.at, target.text))
+        .collect()
+}
+
+#[test]
+fn a_decision_whose_change_is_gone_never_falls_on_one_that_looks_the_same() {
+    let start = Instant::now();
+    let mut gone = two_alike();
+    decide(&mut gone, &["first".into()], Decision::Reject);
+    assert_eq!(gone.accept_locally(&["first".into()]), 1);
+    assert_eq!(gone.next_update(&me(), &SendMode::Edit, start), Ok(None));
+    assert_eq!(gone.text(), "foo bar foo\n");
+    assert_eq!(dropped_targets(&mut gone), [(0, "foo".to_string())]);
+
+    let mut half = two_alike();
+    decide(
+        &mut half,
+        &["first".into(), "second".into()],
+        Decision::Reject,
+    );
+    assert_eq!(half.accept_locally(&["first".into()]), 1);
+    let sent = send(&mut half, start);
+    assert_eq!(sent.op, json!([{ "p": 8, "d": "foo", "u": true }]));
+    assert_eq!(dropped_targets(&mut half), [(0, "foo".to_string())]);
+
+    for decision in [Decision::Accept, Decision::Reject] {
+        let mut raw = two_alike_in_history_ot();
+        let first = change_ids(&raw)[0].clone();
+        decide(&mut raw, &[first], decision);
+        let accepted =
+            json!([{ "textOperation": [{ "r": 3, "tracking": { "type": "none" } }, 9] }]);
+        raw.applied(&remote(0, accepted), &[me()]).unwrap();
+        assert_eq!(raw.next_update(&me(), &SendMode::Edit, start), Ok(None));
+        assert_eq!(raw.text(), "foo bar foo\n");
+        assert_eq!(raw.review().changes.len(), 1, "{decision:?}");
+        assert_eq!(dropped_targets(&mut raw), [(0, "foo".to_string())]);
+    }
+}
+
+#[test]
+fn a_decision_follows_its_change_when_the_text_before_it_moves() {
+    let start = Instant::now();
+    let mut raw = two_alike_in_history_ot();
+    let second = change_ids(&raw)[1].clone();
+    type_at(&mut raw, 0, "> ");
+    decide(&mut raw, &[second], Decision::Reject);
+    send(&mut raw, start);
+    raw.applied(
+        &remote(0, json!([{ "textOperation": [4, "big ", 8] }])),
+        &[me()],
+    )
+    .unwrap();
+    raw.applied(&ack(0), &[me()]).unwrap();
+    assert_eq!(raw.text(), "> foo big bar foo\n");
+    let sent = send(&mut raw, start);
+    assert_eq!(sent.op, json!([{ "textOperation": [14, -3, 1] }]));
+    assert!(raw.take_dropped().is_empty());
+
+    let mut split = two_alike();
+    split
+        .applied(&remote(0, json!([{ "p": 1, "i": "-" }])), &[me()])
+        .unwrap();
+    let unnamed = split
+        .review()
+        .changes
+        .into_iter()
+        .find(|change| change.text == "oo")
+        .unwrap();
+    assert!(unnamed.id.starts_with(LOCAL_CHANGE), "{}", unnamed.id);
+    decide(
+        &mut split,
+        std::slice::from_ref(&unnamed.id),
+        Decision::Reject,
+    );
+    let FormatState::ShareJs(ranges) = split.format() else {
+        panic!("a ShareJS doc");
+    };
+    let mut named = ranges.to_json(true);
+    for change in named["changes"].as_array_mut().unwrap() {
+        if change.get("id").is_none() {
+            change["id"] = json!("third");
+        }
+    }
+    let fresh = FormatState::from_join(DocFormat::ShareJs, &json!(["f-oo bar foo\n"]), &named)
+        .unwrap()
+        .1;
+    assert!(split.adopt_ranges(1, &fresh));
+    let sent = send(&mut split, start);
+    assert_eq!(sent.op, json!([{ "p": 2, "d": "oo", "u": true }]));
+    assert!(split.take_dropped().is_empty());
+}
+
+#[test]
+fn a_rejoin_conflict_keeps_the_queued_review_units_and_the_reserved_selections() {
+    let start = Instant::now();
+    let ranges = json!({
+        "changes": [{
+            "id": "6b04e1bac0ffee0006000001",
+            "op": { "p": 16, "i": "tail" },
+            "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+        }],
+    });
+    let state =
+        |text: &str| FormatState::from_join(DocFormat::ShareJs, &json!([text]), &ranges).unwrap();
+    let (text, format) = state("Hello world and tail\n");
+    let mut doc = OverleafDoc::joined(DocId("doc".into()), 0, text, format);
+    let mut mine = TextOperation::new();
+    mine.retain(6).delete(5).insert("there").retain(10);
+    doc.local(mine).unwrap();
+    doc.queue_review(ReviewOp::Anchor {
+        thread: T1.into(),
+        ranges: vec![(12, 15)],
+        ride: false,
+    });
+    decide(
+        &mut doc,
+        &["6b04e1bac0ffee0006000001".into()],
+        Decision::Reject,
+    );
+    let reserved = doc.mark(vec![(0, 5)]);
+    let (text, format) = state("Hello earth and tail\n");
+    assert!(matches!(
+        doc.rejoin_fresh(4, text, format),
+        Rejoin::Conflict { .. }
+    ));
+    assert_eq!(doc.text(), "Hello earth and tail\n");
+    assert_eq!(doc.unmark(reserved), Some(vec![(0, 5)]));
+    let sent = send(&mut doc, start);
+    assert_eq!(sent.op, json!([{ "p": 12, "c": "and", "t": T1 }]));
+    doc.applied(&ack(4), &[me()]).unwrap();
+    let sent = send(&mut doc, start);
+    assert_eq!(sent.op, json!([{ "p": 16, "d": "tail", "u": true }]));
+    doc.applied(&ack(5), &[me()]).unwrap();
+    assert!(doc.is_settled());
+    assert!(doc.take_dropped().is_empty());
+}
+
+#[test]
+fn an_ack_whose_ranges_do_not_fit_rejoins_with_the_op_known_to_have_landed() {
+    let start = Instant::now();
+    let mut doc = doc("Hello world\n");
+    let mut mine = TextOperation::new();
+    mine.delete(5).insert("Howdy").retain(7);
+    doc.local(mine).unwrap();
+    send(&mut doc, start);
+    let wrong = json!({ "comments": [{ "id": T1, "op": { "c": "wrong", "p": 0, "t": T1 } }] });
+    let fresh = FormatState::from_join(DocFormat::ShareJs, &json!(["Hello world\n"]), &wrong)
+        .unwrap()
+        .1;
+    assert!(doc.adopt_ranges(0, &fresh));
+    assert_eq!(doc.applied(&ack(0), &[me()]), Err(DocError::OutOfStep));
+    assert!(doc.needs_rejoin());
+    let text = "Howdy, big world\n";
+    let rejoin = doc.rejoin_fresh(2, text.to_string(), sharejs(text));
+    assert!(matches!(rejoin, Rejoin::Clean(_)), "{rejoin:?}");
+    assert_eq!(doc.text(), text);
+    assert!(doc.is_settled());
+}
+
+#[test]
+fn a_rejected_deletion_cut_off_by_a_kill_is_reported_and_never_replayed_as_text() {
+    let start = Instant::now();
+    let ranges = json!({
+        "changes": [{
+            "id": "6b04e1bac0ffee0007000001",
+            "op": { "p": 6, "d": "big " },
+            "metadata": { "user_id": "bob", "ts": "2026-11-15T09:00:00.000Z" },
+        }],
+    });
+    let state =
+        |text: &str| FormatState::from_join(DocFormat::ShareJs, &json!([text]), &ranges).unwrap();
+    let (text, format) = state("Hello world\n");
+    let mut doc = OverleafDoc::joined(DocId("doc".into()), 0, text, format);
+    decide(
+        &mut doc,
+        &["6b04e1bac0ffee0007000001".into()],
+        Decision::Reject,
+    );
+    send(&mut doc, start);
+    assert_eq!(doc.text(), "Hello big world\n");
+    let saved = serde_json::to_value(doc.record().unwrap()).unwrap();
+    let record: DocRecord = serde_json::from_value(saved.clone()).unwrap();
+    let mut resumed = OverleafDoc::resume(DocId("doc".into()), &record, start).unwrap();
+    let (text, format) = state("Hello world!\n");
+    let rejoin = resumed.rejoin_fresh(90, text, format);
+    assert!(matches!(rejoin, Rejoin::Clean(_)), "{rejoin:?}");
+    assert_eq!(resumed.text(), "Hello world!\n");
+    assert!(resumed.is_settled(), "nothing is replayed");
+    assert_eq!(dropped_targets(&mut resumed), [(6, "big ".to_string())]);
+
+    let mut older = saved;
+    assert!(older["inflight"]
+        .as_object_mut()
+        .unwrap()
+        .remove("decided")
+        .is_some());
+    let older: DocRecord = serde_json::from_value(older).unwrap();
+    let resumed = OverleafDoc::resume(DocId("doc".into()), &older, start).unwrap();
+    assert_eq!(resumed.text(), "Hello big world\n");
+}
+
+fn rejoin(wire: &mut Wire, doc: &mut OverleafDoc, id: &str) {
+    let fresh = wire.join(id, None).unwrap();
+    let rejoin = doc.rejoin_fresh(fresh.version, fresh.text, fresh.format);
+    assert!(!matches!(rejoin, Rejoin::Conflict { .. }), "{rejoin:?}");
+}
+
+#[tokio::test]
+async fn a_clashed_undo_the_server_takes_late_is_in_the_text_once() {
+    let mock = MockOverleaf::start(project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_delete(&id, 6, 5);
+    bob.sync();
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    doc.local_from(insertion(7, 6, "world"), Some(Origin::Undo))
+        .unwrap();
+    bob.type_at(&id, 0, ">> ");
+    bob.sync();
+    mock.hold_updates();
+    let start = Instant::now();
+    let sent = doc
+        .next_update(&wire.public_id(), &SendMode::Edit, start)
+        .unwrap()
+        .unwrap();
+    assert_eq!(sent.op, json!([{ "p": 6, "i": "world", "u": true }]));
+    wire.send(&sent);
+    assert!(!applied_until_out_of_step(&mut wire, &mut doc, &id));
+    assert!(doc.clashed());
+    for round in 1..4 {
+        let on = wire.public_id();
+        match doc.next_update(&on, &SendMode::Edit, start + round * 6 * SECOND) {
+            Ok(Some(update)) => wire.send(&update),
+            Ok(None) => {}
+            Err(DocError::OutOfStep) => rejoin(&mut wire, &mut doc, &id),
+            Err(error) => panic!("{error}"),
+        }
+    }
+    mock.release_updates();
+    for round in 4..10 {
+        while applied_until_out_of_step(&mut wire, &mut doc, &id) {
+            rejoin(&mut wire, &mut doc, &id);
+        }
+        let on = wire.public_id();
+        if let Ok(Some(update)) = doc.next_update(&on, &SendMode::Edit, start + round * 6 * SECOND)
+        {
+            wire.send(&update);
+        }
+    }
+    assert_eq!(mock.doc_text(&id), ">> Hello world\n");
+    assert_eq!(doc.text(), mock.doc_text(&id));
+    assert!(doc.is_settled());
+    assert_eq!(mock.ranges(&id), json!({}));
+    wire.assert_healthy();
 }
 
 fn ce_fixture(name: &str, file: &str) -> Value {

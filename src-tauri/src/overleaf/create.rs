@@ -107,7 +107,13 @@ async fn reconcile(
     let fresh: Vec<String> = owned(&listing).difference(before).cloned().collect();
     match fresh.as_slice() {
         [only] => Ok(only.clone()),
-        [] if matches!(error, RestError::Unreachable(_)) => Err(rest_error(base, error, refused)),
+        [] if matches!(
+            error,
+            RestError::Unreachable(_) | RestError::ServerFailed { status: 500, .. }
+        ) =>
+        {
+            Err(rest_error(base, error, refused))
+        }
         _ => {
             let _ = crate::project::append_app_log(format!(
                 "Could not confirm the new Overleaf project: {} new projects were listed",
@@ -133,9 +139,11 @@ async fn upload(
     let account = &signed.session;
     match create_project(http.online(), &account.cookie, csrf, name, bytes).await {
         Ok(id) => Ok(id),
-        Err(error @ (RestError::Lost(_) | RestError::Unreachable(_))) => {
-            reconcile(&http.base, &account.user_id, &before, &error).await
-        }
+        Err(
+            error @ (RestError::Lost(_)
+            | RestError::Unreachable(_)
+            | RestError::ServerFailed { .. }),
+        ) => reconcile(&http.base, &account.user_id, &before, &error).await,
         Err(error) => {
             let failure = rest_error(&http.base, &error, refused);
             session::forget_if_expired(&http.base, &account.user_id, &failure).await;

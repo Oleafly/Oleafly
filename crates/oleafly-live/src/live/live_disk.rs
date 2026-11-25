@@ -9,8 +9,8 @@ use oleafly_collab::live::DiskWork;
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
-use super::disk_pass::{apply_to_disk, DiskPass, LeftAlone};
-use super::import::{name_of, parent_of, placed_now, scan_local};
+use super::disk_pass::{apply_to_disk, DiskPass, DiskTexts, LeftAlone};
+use super::import::{name_of, parent_of, placed_now, scan_local, LocalImport};
 use super::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use super::payloads::{FolderChange, KeptPayload};
 use super::session::{guard, io, WriterSignal};
@@ -295,8 +295,10 @@ impl LiveDisk {
                 &mut &self.bases,
                 plan,
                 next,
-                &texts,
-                &crlf,
+                &DiskTexts {
+                    texts: &texts,
+                    crlf: &crlf,
+                },
                 &left,
             );
             publish(&mut guard(&self.disk), &before, after);
@@ -322,7 +324,7 @@ impl LiveDisk {
             }
         }
         let saved = guard(&self.disk).clone();
-        self.save_index_if_changed(&saved);
+        tree.save_index(self, &saved);
         let layout = saved.layout;
         self.settle_unwritten(
             tree,
@@ -378,15 +380,11 @@ impl LiveDisk {
             .collect()
     }
 
-    pub async fn import(
+    async fn scan(
         &self,
         tree: &dyn LiveTree,
-        hold_dir: &Path,
         only: Option<Vec<String>>,
-    ) -> Result<(), CollabError> {
-        if !self.root.is_dir() {
-            return Ok(());
-        }
+    ) -> Result<(LocalImport, DiskState), CollabError> {
         let snapshot = guard(&self.disk).clone();
         let placed = placed_now(tree)?;
         let root = self.root.clone();
@@ -398,7 +396,39 @@ impl LiveDisk {
             })
             .await
             .map_err(io)?;
-        let mut import = scanned?.classify(tree);
+        let import = scanned?.classify(tree);
+        if let Some((path, error)) = import.unread.first() {
+            self.log_once("unread", || {
+                format!("could not read {path}, so its changes wait: {error}")
+            });
+        }
+        Ok((import, snapshot))
+    }
+
+    pub async fn changed(&self, tree: &dyn LiveTree) -> Result<Vec<String>, CollabError> {
+        let (import, snapshot) = self.scan(tree, None).await?;
+        let texts = import.texts.iter().map(|(path, _, hash)| (path, hash));
+        let blobs = import.blobs.iter().map(|(path, hash, _)| (path, hash));
+        Ok(texts
+            .chain(blobs)
+            .filter(|(path, hash)| snapshot.hashes.get(*path) != Some(hash))
+            .map(|(path, _)| path.clone())
+            .collect())
+    }
+
+    pub async fn import(
+        &self,
+        tree: &dyn LiveTree,
+        hold_dir: &Path,
+        only: Option<Vec<String>>,
+    ) -> Result<(), CollabError> {
+        if !self.root.is_dir() || !tree.ready_to_import() {
+            return Ok(());
+        }
+        let (mut import, snapshot) = self.scan(tree, only).await?;
+        if !tree.ready_to_import() {
+            return Ok(());
+        }
         let edits = sync_hold::screen(hold_dir, &self.root, &snapshot, &mut import)?;
         if import.is_empty() && edits.is_empty() {
             return Ok(());

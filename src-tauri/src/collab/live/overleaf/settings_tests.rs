@@ -7,7 +7,8 @@ use serde_json::{json, Value};
 use super::notices::{NotSent, OverleafNotice, Setting};
 use super::rig::{eventually, run, FirstStart, OverleafRig, Place};
 use super::settings::{
-    decide, local_pack, may_be_root, overleaf_compiler, overleaf_language, Base, Sides, Step,
+    decide, follow_settings, local_pack, may_be_root, overleaf_compiler, overleaf_language, Base,
+    Sides, Step,
 };
 use crate::collab::testing::TempLibrary;
 
@@ -262,7 +263,15 @@ fn a_local_main_doc_change_reaches_overleaf_and_a_stale_echo_is_ignored() {
             "the late echo of the first change did not win"
         );
         rig.mock.release_room_events();
-        tokio::time::sleep(Duration::from_millis(800)).await;
+        let later =
+            rig.mock
+                .peer("bob")
+                .rest("POST", "/settings", Some(json!({ "compiler": "lualatex" })));
+        assert_eq!(later.status, 204);
+        eventually("a change made after the echoes arrives", || {
+            meta().tex_flavor.as_deref() == Some("lualatex")
+        })
+        .await;
         assert_eq!(meta().main_doc, MAIN);
         assert_eq!(settings_posts(&rig).len(), 2, "echoes send nothing back");
         rig.finish().await;
@@ -331,6 +340,91 @@ fn a_change_made_while_paused_is_sent_on_the_next_start() {
 }
 
 #[test]
+fn following_spelling_or_the_main_document_keeps_the_engine() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(project(), DISK, Place::Library).await;
+        agreed(&rig).await;
+        let project_id = rig.project_id.clone();
+        change_meta(&project_id, |meta| {
+            meta.engine = "xetex".into();
+            meta.tex_flavor = None;
+        });
+        rig.live
+            .mirror
+            .follow_local(Some(INTRO), None, Some("en_GB"))
+            .unwrap();
+        let meta = crate::project::read_meta(&project_id).unwrap();
+        assert_eq!(meta.main_doc, INTRO);
+        assert_eq!(meta.engine, "xetex");
+        assert_eq!(meta.dictionary_locale.as_deref(), Some("en_GB"));
+        rig.live
+            .mirror
+            .follow_local(None, Some("lualatex"), None)
+            .unwrap();
+        let meta = crate::project::read_meta(&project_id).unwrap();
+        assert_eq!(meta.engine, "latexmk");
+        assert_eq!(meta.tex_flavor.as_deref(), Some("lualatex"));
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
+fn a_main_document_not_on_disk_yet_is_followed_once_it_arrives() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(project(), DISK, Place::Library).await;
+        agreed(&rig).await;
+        let later = "later.tex";
+        let remote = Sides {
+            main_doc: Some(later.into()),
+            ..Sides::default()
+        };
+        let before = Base::default();
+        let mut base = before.clone();
+        base.remote.main_doc = Some(later.into());
+        assert!(
+            !follow_settings(
+                &rig.live.mirror,
+                &[Setting::MainDoc],
+                &remote,
+                &before,
+                &mut base
+            )
+            .await
+        );
+        assert_eq!(
+            base.remote.main_doc, None,
+            "not agreed while the file is missing"
+        );
+        assert_eq!(
+            crate::project::read_meta(&rig.project_id).unwrap().main_doc,
+            MAIN
+        );
+        std::fs::write(rig.root.join(later), "\\documentclass{article}\n").unwrap();
+        base.remote.main_doc = Some(later.into());
+        assert!(
+            follow_settings(
+                &rig.live.mirror,
+                &[Setting::MainDoc],
+                &remote,
+                &before,
+                &mut base
+            )
+            .await
+        );
+        assert_eq!(base.remote.main_doc.as_deref(), Some(later));
+        assert_eq!(
+            crate::project::read_meta(&rig.project_id).unwrap().main_doc,
+            later
+        );
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
 fn reviewers_and_viewers_cannot_change_shared_settings() {
     let library = TempLibrary::new();
     run(async {
@@ -350,6 +444,10 @@ fn reviewers_and_viewers_cannot_change_shared_settings() {
         })
         .await;
         assert!(crate::collab::settings::refuse_viewer(&rig.project_id).is_err());
+        assert!(
+            crate::collab::settings::refuse_server_viewer(&rig.project_id).is_ok(),
+            "settings that stay on this computer are still theirs"
+        );
         let refused = rig
             .live
             .set_overleaf_setting("bibliography", REFS)
