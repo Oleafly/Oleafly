@@ -10,7 +10,6 @@ const tauri = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => tauri);
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: vi.fn() }));
-vi.mock("@/lib/research-tasks", () => ({}));
 vi.mock("@/components/editor/cm/hover-asset", () => ({ loadAssetThumbnail: vi.fn() }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ writeProjectFile: vi.fn() }) } }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));

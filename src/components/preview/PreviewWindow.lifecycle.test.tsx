@@ -40,9 +40,13 @@ vi.mock("@/lib/tauri", () => ({
   saveFileBase64: mocks.saveFileBase64,
   writeBytesFile: mocks.writeBytesFile,
   uint8ToBase64: () => "AQ==",
-  pdfSyncStatus: async () => ({ enabled: false, path: null, failed: null, localOnly: false }),
+  pdfSyncStatus: async () => ({ enabled: false, path: null, failed: null, localOnly: false ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   pdfSyncNoteSaved: async () => {},
   appendAppLog: vi.fn(async () => {}),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/download-blob", () => ({ downloadBytes: mocks.downloadBytes }));
@@ -472,19 +476,6 @@ describe("detached preview actions", () => {
       if (platform) Object.defineProperty(navigator, "platform", platform);
       else Reflect.deleteProperty(navigator, "platform");
     }
-  });
-
-  it("shows the compile log and asks the assistant about its errors", async () => {
-    mocks.native = true;
-    await showDocument();
-    await waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
-    act(() => mocks.listeners.get("preview:workspace")?.({ payload: workspace }));
-
-    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.showLogs }));
-    expect(screen.getByTestId("detached-compile-log")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.askAi }));
-
-    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "ask-ai" });
   });
 
   it("opens the save menu and names the PDF after the project title", async () => {

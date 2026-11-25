@@ -16,7 +16,7 @@ function entry(version: string): ReleaseEntry {
     version,
     publishedAt: "2026-09-01T00:00:00Z",
     body: `## What's new in ${version}`,
-    url: `https://github.com/Oleafly/Oleafly/releases/tag/v${version}`,
+    url: `https://github.com/peplxx/oleafly-no-ai/releases/tag/v${version}`,
   };
 }
 
@@ -34,6 +34,8 @@ function pagedFetcher(pages: ReleaseEntry[][]): ReleasePageFetcher & { calls: nu
 describe("release tags and versions", () => {
   it("accepts only stable desktop tags", () => {
     expect(stableVersionOf("v0.4.2")).toBe("0.4.2");
+    expect(stableVersionOf("v0.4.13-noai.1")).toBe("0.4.13");
+    expect(releaseEntriesFrom([{ tag_name: "v0.4.13-noai.1" }])[0].url).toBe("https://github.com/peplxx/oleafly-no-ai/releases/tag/v0.4.13-noai.1");
     expect(stableVersionOf("v0.4.3-rc.1")).toBeNull();
     expect(stableVersionOf("cli-v0.1.0")).toBeNull();
     expect(stableVersionOf("0.4.2")).toBeNull();
@@ -58,7 +60,7 @@ describe("release tags and versions", () => {
     ]);
     expect(entries.map((item) => item.version)).toEqual(["0.4.2", "0.4.1"]);
     expect(entries[1].body).toBe("");
-    expect(entries[1].url).toBe("https://github.com/Oleafly/Oleafly/releases/tag/v0.4.1");
+    expect(entries[1].url).toBe("https://github.com/peplxx/oleafly-no-ai/releases/tag/v0.4.1");
     expect(releaseEntriesFrom({ message: "rate limited" })).toEqual([]);
   });
 });

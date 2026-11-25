@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { SearchField } from "@/components/ui/search-field";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { openNotes } from "@/features/open-tool";
 import { useCollabProjectShared } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
@@ -383,7 +383,6 @@ function ProjectNotesList() {
     if (remove) rows.push({ id: "delete", label: t(($) => $.notes.library.menu.deleteConfirm), run: remove });
     return rows;
   };
-
 
   const renameMine = (note: ProjectNote, title: string): Promise<void> => {
     if (projectId) {

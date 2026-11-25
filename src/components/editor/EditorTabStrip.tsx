@@ -13,7 +13,7 @@ import {
 import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import { NotebookPen, Sparkles, X } from "lucide-react";
+import { NotebookPen, X } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -21,7 +21,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Tooltip } from "@/components/ui/tooltip";
 import { FilePathMenuItems } from "@/components/files/FilePathMenuItems";
 import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
 import { SIDEWAYS_FADE, type SidewaysScrollActive, useSidewaysScroll } from "@/hooks/use-sideways-scroll";
@@ -36,7 +35,6 @@ import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 import { FileTabStatus } from "./FileTabStatus";
 import {
-  closeAssistantTabs,
   closeEditorTab,
   closeEditorTabsAround,
   editorTabKey,
@@ -144,7 +142,6 @@ function EditorTabMenu({ tab }: Readonly<{ tab: EditorTab }>) {
 
 function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
   const { t } = useTranslation(["common", "editor"]);
-  const assistantCount = useFilesStore((s) => s.assistantTabs.length);
   const { position, total } = useEditorTabPlacement(tab);
   const noteMenu = useNoteTabMenu(tab);
   const items: ScopeItem[] = [
@@ -179,14 +176,6 @@ function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
           <FilePathMenuItems path={tab.id} />
         </>
       )}
-      <ContextMenuSeparator />
-      <ContextMenuItem
-        data-testid="editor-tab-menu-close-assistant"
-        disabled={assistantCount === 0}
-        onClick={closeAssistantTabs}
-      >
-        {t(($) => $.editor.shell.closeAssistantTabs)}
-      </ContextMenuItem>
     </>
   );
 }
@@ -258,29 +247,16 @@ function EditorTabItem({
   );
 }
 
-function AssistantTabMark() {
-  const { t } = useTranslation(["editor"]);
-  const label = t(($) => $.editor.shell.assistantTab);
-  return (
-    <span title={label} data-testid="editor-tab-assistant-mark" className="inline-flex text-primary">
-      <Sparkles aria-hidden="true" className="size-3" />
-      <span className="sr-only">{label}</span>
-    </span>
-  );
-}
-
 const FileTab = memo(function FileTab({
   path,
   order,
   active,
-  assistant,
   closeLabel,
   ...drag
 }: Readonly<TabDrag & {
   path: string;
   order: number;
   active: boolean;
-  assistant: boolean;
   closeLabel: string;
 }>) {
   const tab = useMemo<EditorTab>(() => ({ kind: "file", id: path, order }), [path, order]);
@@ -303,7 +279,7 @@ const FileTab = memo(function FileTab({
       ) : (
         basename(path)
       )}
-      {assistant ? <AssistantTabMark /> : null}
+
       <FileTabStatus path={path} />
     </EditorTabItem>
   );
@@ -381,7 +357,6 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
   const openTabs = useFilesStore((s) => s.openTabs);
   const tabOrder = useFilesStore((s) => s.tabOrder);
   const activePath = useFilesStore((s) => s.activePath);
-  const assistantTabs = useFilesStore((s) => s.assistantTabs);
   const projectId = useFilesStore((s) => s.projectId);
   const diffs = useDiffStore((s) => s.diffs);
   const activeKey = useDiffStore((s) => s.activeKey);
@@ -416,7 +391,6 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
           path={tab.id}
           order={tab.order}
           active={tab.id === activePath && fileFocused}
-          assistant={assistantTabs.includes(tab.id)}
           closeLabel={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
         />
       );
@@ -451,27 +425,5 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
       {tabs.map((tab) => renderTab(tab))}
       {reorder.indicator}
     </div>
-  );
-}
-
-export function CloseAssistantTabsButton() {
-  const { t } = useTranslation(["editor"]);
-  const count = useFilesStore((s) => s.assistantTabs.length);
-  if (count === 0) return null;
-  const label = t(($) => $.editor.shell.closeAssistantTabsCount, { count });
-  return (
-    <Tooltip label={label} side="bottom">
-      <button
-        type="button"
-        aria-label={label}
-        data-testid="editor-close-assistant-tabs"
-        onClick={closeAssistantTabs}
-        className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-      >
-        <Sparkles className="size-3.5" aria-hidden />
-        <span aria-hidden>{count}</span>
-        <X className="size-3" aria-hidden />
-      </button>
-    </Tooltip>
   );
 }

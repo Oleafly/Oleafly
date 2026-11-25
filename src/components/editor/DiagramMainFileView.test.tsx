@@ -16,7 +16,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.read, writeFileContent: mocks.write, writeProjectBytes: mocks.bytes,
   projectMutationGeneration: vi.fn(async () => 0), mcpSetActiveProject: vi.fn(async () => {}),
-  listFiles: vi.fn(async () => []), listFileTree: vi.fn(async () => ({ entries: [], truncated: false })), gitShow: vi.fn(async () => ""),
+  listFiles: vi.fn(async () => []), listFileTree: vi.fn(async () => ({ entries: [], truncated: false ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+})), gitShow: vi.fn(async () => ""),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/components/diagram/diagram-kit", () => ({ KIT: {} }));
 vi.mock("@/components/diagram/mermaid-render", () => ({ renderMermaidFigure: mocks.renderFigure }));

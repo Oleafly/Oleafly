@@ -3,7 +3,6 @@ crate::command_modules! {
     Workspace => crate::commands::workspace::Commands,
     Context => crate::commands::context::Commands,
     Doctor => crate::commands::doctor::Commands,
-    Mcp => crate::commands::mcp_cmd::Commands,
     Docs => crate::commands::docs::Commands,
     Cite => crate::commands::cite::Commands,
     Templates => crate::commands::templates::Commands,
@@ -15,7 +14,5 @@ crate::command_modules! {
     Server => crate::server::Commands,
     Check => crate::check::Commands,
     Lint => crate::lint::Commands,
-    Agent => crate::agent::Commands,
-    Daemon => crate::daemon::Commands,
     Meta => crate::commands::meta::Commands,
 }

@@ -20,9 +20,13 @@ vi.mock("@/lib/tauri", () => ({
   listFileTree: async (projectId: string) => ({
     entries: await mocks.list(projectId),
     truncated: false,
-  }),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   gitShow: vi.fn(async () => "Before"),
   mcpSetActiveProject: vi.fn(async () => {}),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/components/diagram/diagram-kit", () => ({ KIT: {} }));
 vi.mock("@oleafly/diagram", async () => {

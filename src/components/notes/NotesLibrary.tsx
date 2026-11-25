@@ -2,7 +2,7 @@ import { CalendarDays, FileInput, LayoutTemplate, Plus, Search } from "lucide-re
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { analyze, clearQualifiers, readFacet, writeFacet, type Facet, type FacetState } from "@oleafly/search-query";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Badge } from "@/components/ui/badge";

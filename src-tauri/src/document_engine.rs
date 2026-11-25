@@ -4511,14 +4511,14 @@ mod tests {
     }
 
     #[test]
-    fn image_cards_never_push_tex_errors_out_of_the_ask_ai_budget() {
+    fn image_cards_preserve_priority_of_existing_tex_errors() {
         let findings = [oleafly_core::ImageFinding::Broken(
             oleafly_core::BrokenImage {
                 path: "figures/empty.png".into(),
                 problem: oleafly_core::ImageProblem::Empty,
             },
         )];
-        let crowded: String = (0..oleafly_core::ASK_AI_ERROR_BUDGET)
+        let crowded: String = (0..oleafly_core::PRIORITY_ERROR_BUDGET)
             .map(|index| format!("! Error number {index}.\n"))
             .collect();
         let mut log = crowded.clone();
@@ -4526,15 +4526,9 @@ mod tests {
         apply_image_findings(&findings, &mut log, &mut errors);
         let messages: Vec<&str> = errors.iter().map(|error| error.message.as_str()).collect();
         assert_eq!(messages.last(), Some(&EMPTY_IMAGE));
-        assert!(messages[..oleafly_core::ASK_AI_ERROR_BUDGET]
+        assert!(messages[..oleafly_core::PRIORITY_ERROR_BUDGET]
             .iter()
             .all(|message| message.starts_with("Error number")));
-        let ask_ai = std::fs::read_to_string(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/features/ask-ai-compile-errors.ts"),
-        )
-        .unwrap();
-        assert!(ask_ai.contains(".filter((error) => error.kind === \"error\")"));
-        assert!(ask_ai.contains(&format!(".slice(0, {})", oleafly_core::ASK_AI_ERROR_BUDGET)));
     }
 
     #[test]

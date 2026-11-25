@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import type { LayoutPreset } from "@/store/settings";
 
@@ -89,11 +88,7 @@ export function PreviewOnlyLayoutIcon(props: IconProps) {
 }
 
 export const LAYOUT_PRESET_ICONS: Record<LayoutPreset, ComponentType<IconProps>> = {
-  "editor-preview-ai": EditorPreviewAiLayoutIcon,
   "editor-preview": EditorPreviewLayoutIcon,
-  "editor-ai": EditorAiLayoutIcon,
-  "preview-ai": PreviewAiLayoutIcon,
   "editor-only": EditorOnlyLayoutIcon,
   "preview-only": PreviewOnlyLayoutIcon,
-  "ai-only": Sparkles,
 };

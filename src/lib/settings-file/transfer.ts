@@ -18,7 +18,6 @@ import {
   preferencesDiffer,
   replaceGlobalWords,
   sameSetting,
-  writeStorage,
 } from "./apply";
 import {
   SETTINGS_FIELDS,
@@ -31,8 +30,6 @@ import {
 import { isRecord, type SettingIssue } from "./values";
 
 export const SETTINGS_FILE_NAME = "oleafly-settings.json";
-const PDF_CAPTURE_KEY = "oleafly:ai_pdf_capture";
-const AI_CONFIG_CHANGED_EVENT = "oleafly:ai-config-changed";
 const BYTE_ORDER_MARK = 0xfeff;
 const COMPILE_KEYS = ["autoCompile", "compileMode", "checkSyntaxBeforeCompile", "stopOnFirstError"] as const;
 
@@ -91,17 +88,8 @@ export const RETIRED_SETTING_PATHS: ReadonlySet<string> = new Set([
 
 function pickConfig(config: AppConfig): ConfigPreferences {
   return {
-    ai_system_prompt: config.ai_system_prompt ?? "",
-    ai_pdf_capture: config.ai_pdf_capture !== false,
-    ai_reasoning_summaries: config.ai_reasoning_summaries === true,
-    ai_personas: config.ai_personas ?? [],
-    ai_saved_instructions: config.ai_saved_instructions ?? [],
     checkpoints_enabled: config.checkpoints_enabled !== false,
     checkpoint_notifications: config.checkpoint_notifications !== false,
-    research_keep_awake: config.research_keep_awake !== false,
-    research_notifications: config.research_notifications !== false,
-    research_command_network: config.research_command_network === true,
-    research_time_budget_minutes: config.research_time_budget_minutes ?? 120,
   };
 }
 
@@ -223,7 +211,6 @@ function walk(
   }
 }
 
-
 function emptyPlan(): SettingsPlan {
   return { preferences: {}, shortcuts: {}, editorKeys: {}, compile: {}, config: {} };
 }
@@ -288,14 +275,8 @@ async function applyConfig(changes: Partial<ConfigPreferences>): Promise<void> {
     Object.assign(next, { [key]: changes[key] });
     changed = true;
   }
-  if (changes.ai_personas && !current.ai_starter_personas_seeded) {
-    next.ai_starter_personas_seeded = true;
-    changed = true;
-  }
-  if (changes.ai_pdf_capture !== undefined) writeStorage(PDF_CAPTURE_KEY, changes.ai_pdf_capture ? "1" : "0");
   if (!changed) return;
   await setConfig(next);
-  window.dispatchEvent(new CustomEvent(AI_CONFIG_CHANGED_EVENT, { detail: next }));
   for (const listener of configListeners) listener();
 }
 

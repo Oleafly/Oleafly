@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/features/ask-ai-preflight", () => ({
-  askAiAboutFinding: vi.fn(async () => {}),
-  askAiAboutFindings: vi.fn(async () => {}),
-}));
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { installScrollGeometry, type ScrollGeometry } from "@/lib/test-scroll-geometry";

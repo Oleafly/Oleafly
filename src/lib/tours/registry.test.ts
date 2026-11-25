@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  AVAILABLE_TOUR_IDS,
-  isTourAvailable,
   resolveTourText,
   stepNeedsReachableTarget,
   TOUR_IDS,
   TOUR_SCHEMA_VERSION,
-  type TourContext,
   type TourDefinition,
   tourRegistry,
-  toursForContext,
   type TourStepDefinition,
 } from "./registry";
 
@@ -75,53 +71,17 @@ describe("tour registry", () => {
       ["settings-appearance", "transition"],
       ["settings-dictionary", "transition"],
       ["settings-data", "transition"],
-      ["settings-ai", "transition"],
       ["settings-compiler", "transition"],
       ["settings-downloads", "transition"],
       ["settings-integrations", "transition"],
       ["settings-shortcuts", "transition"],
-      ["settings-mcp", "transition"],
       ["settings-help", "transition"],
     ]);
     expect(tourRegistry.settings.steps.map((step) => step.placement)).toEqual([
       "right",
-      ...Array.from({ length: 9 }, () => "left"),
-      "bottom",
+      ...Array.from({ length: 8 }, () => "left"),
       "left",
     ]);
-  });
-
-  it("covers conditional AI states without sending a request", () => {
-    expect(tourRegistry.ai.steps.map((step) => step.id)).toEqual([
-      "ai-assistant",
-      "ai-runtime",
-      "ai-connect-provider",
-      "ai-provider-model",
-      "ai-prompts",
-      "ai-persona",
-      "ai-input",
-      "ai-attachments",
-      "ai-history",
-      "ai-usage",
-      "ai-restore",
-    ]);
-    expect(tourRegistry.ai.steps.every((step) => step.kind === "informational")).toBe(true);
-    expect(tourRegistry.ai.steps.find((step) => step.id === "ai-restore")?.target).toBe(
-      '[data-tour="ai-turn-changes"]',
-    );
-    expect(tourRegistry.ai.steps[0].target).toBe('[data-tour="ai-assistant-header"]');
-    expect(tourRegistry.ai.steps[0].spotlightTarget).toBe('[data-tour="ai-assistant"]');
-    expect(tourRegistry.ai.steps[0].placement).toBe("bottom");
-  });
-
-  it("keeps the dormant AI settings walkthrough definition intact", () => {
-    expect(tourRegistry["ai-settings"].contexts).toEqual(["settings"]);
-    expect(tourRegistry["ai-settings"].priority).toBeGreaterThan(
-      tourRegistry.settings.priority,
-    );
-    expect(tourRegistry["ai-settings"].steps[0].target).toBe(
-      '[data-tour="ai-settings-tabs"]',
-    );
   });
 
   it("covers diagram authoring without compiling or saving", () => {
@@ -175,20 +135,6 @@ describe("tour registry copy", () => {
   it("resolves plain string text through the same helper", () => {
     expect(resolveTourText("plain")).toBe("plain");
     expect(resolveTourText(() => "thunk")).toBe("thunk");
-  });
-
-  it("only makes Getting started and Your workspace available", () => {
-    expect(AVAILABLE_TOUR_IDS).toEqual(["home", "workspace"]);
-    expect(AVAILABLE_TOUR_IDS.map((id) => resolveTourText(tourRegistry[id].label))).toEqual([
-      "Getting started",
-      "Your workspace",
-    ]);
-    expect(TOUR_IDS.filter(isTourAvailable)).toEqual(AVAILABLE_TOUR_IDS);
-    expect(toursForContext("home").map((tour) => tour.id)).toEqual(["home"]);
-    expect(toursForContext("project").map((tour) => tour.id)).toEqual(["workspace"]);
-    for (const context of ["settings", "ai", "diagram"] satisfies TourContext[]) {
-      expect(toursForContext(context)).toEqual([]);
-    }
   });
 
   it("reports the schema version the coordinator persists against", () => {

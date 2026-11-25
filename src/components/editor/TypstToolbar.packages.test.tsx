@@ -15,11 +15,6 @@ vi.mock("@oleafly/preview", () => ({
   setPdfLogger: vi.fn(),
 }));
 vi.mock("@/components/editor/project-info-data", () => ({ collectProjectInfo: vi.fn() }));
-vi.mock("@/features/image-to-latex", () => ({
-  imageToLatexAvailable: vi.fn(async () => false),
-  imageToTypst: vi.fn(async () => {}),
-  imageToLatex: vi.fn(async () => {}),
-}));
 
 import { TypstToolbar } from "./TypstToolbar";
 

@@ -128,10 +128,8 @@ describe("Typst routes match what the Tools page and exports ship", () => {
       ["csv-to-typst", "csv", "typst", "tool"],
       ["html-to-typst", "html", "typst", "import"],
       ["docx-to-typst", "docx", "typst", "import"],
-      ["equation-to-typst", "equation", "typst", "tool"],
       ["mermaid-to-typst", "mermaid", "typst", "tool"],
       ["arxiv-to-typst", "arxiv", "typst", "tool"],
-      ["image-to-typst", "image", "typst", "tool"],
       ["pdf-to-typst", "pdf", "typst", "tool"],
       ["typst-to-docx", "typst", "docx", "export"],
       ["typst-to-html", "typst", "html", "export"],
@@ -144,7 +142,6 @@ describe("Typst routes match what the Tools page and exports ship", () => {
   });
 
   it("describes the engines that actually run each Typst converter", () => {
-    expect(route("equation-to-typst").engine).toBe("internal");
     expect(route("mermaid-to-typst").engine).toBe("internal");
     expect(route("arxiv-to-typst").engine).toBe("pandoc");
     expect(route("csv-to-typst").engine).toBe("internal");

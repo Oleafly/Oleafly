@@ -628,10 +628,6 @@ async fn lookup_detected(input: &Detected) -> Result<(String, &'static str), Cli
     result.map_err(lookup_error)
 }
 
-pub(crate) async fn lookup_bibtex(id: &str) -> Result<(String, &'static str), CliError> {
-    lookup_detected(&detect_input(id)).await
-}
-
 async fn search_titles(query: &str) -> Result<Vec<CitationHit>, CliError> {
     let body = oleafly_research::citation::crossref_search(query)
         .await

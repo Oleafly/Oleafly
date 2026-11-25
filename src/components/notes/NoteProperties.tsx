@@ -1,7 +1,7 @@
 import { Calendar, CheckSquare, Hash, Link2, List, Plus, Text, Trash2, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";

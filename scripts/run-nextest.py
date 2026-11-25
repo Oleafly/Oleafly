@@ -25,7 +25,6 @@ RUNS = {
         "-p", "oleafly-secrets",
         "-p", "oleafly-online",
         "-p", "oleafly-research",
-        "-p", "oleafly-acp",
     ),
     "server-web": (
         "nextest", "run", "-p", "oleafly-server", "--all-targets", "--features", "web",

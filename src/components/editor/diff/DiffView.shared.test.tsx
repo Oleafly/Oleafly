@@ -21,6 +21,8 @@ vi.mock("@/lib/tauri", () => ({
   projectManifestHome: vi.fn(async () => "library"),
   mcpSetActiveProject: vi.fn(async () => {}),
   listProjects: vi.fn(async () => []),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/tauri-collab", () => ({
   collabWriteText: mocks.collabWriteText,

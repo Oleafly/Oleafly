@@ -1,8 +1,8 @@
 use std::sync::OnceLock;
 
-use oleafly_agent::tools::web::{link_preview, LinkPreview, WebClient};
+use oleafly_research::web::{link_preview, LinkPreview, WebClient};
 
-use crate::agent::web::WEB_USER_AGENT;
+const WEB_USER_AGENT: &str = "Oleafly (link previews)";
 
 static CLIENT: OnceLock<WebClient> = OnceLock::new();
 

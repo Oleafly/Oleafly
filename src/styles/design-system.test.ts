@@ -17,17 +17,11 @@ const CODE_BLOCK_IMPORT = /from "(?:@\/components\/ui|\.)\/(?:code|copyable)-blo
 const PLAIN_TEXT_BLOCKS: Record<string, string> = {
   "src/components/ErrorBoundary.tsx": "a crash report's stack trace",
   "src/components/research/LinkedFoldersSection.tsx": "a linked file's text preview",
-  "src/components/research/TaskOutputsSection.tsx": "a task output's text preview",
-  "src/components/research/tasks/TaskDetailDialog.tsx": "a task's log output",
-  "src/components/research/tasks/progress/TaskProgressTab.tsx": "a run's log output",
   "src/components/research/workspace/ResearchRootsPanel.tsx": "a research file's text preview",
   "src/components/ui/mermaid-diagram.tsx": "the failed diagram's source, already inside the chat's CopyableBlock",
   "src/components/settings/TexPackagesSection.tsx": "a package search error message",
-  "src/components/settings/ai/AgentProgramField.tsx": "a program check's diagnostic output",
   "src/components/layout/UpdateDialog.tsx": "an update error message",
   "src/components/typst-upgrade/TypstUpgradeDialog.tsx": "a failed build's log",
-  "src/components/ai/ToolConfirm.tsx": "a command or file waiting for approval inside the approval card",
-  "src/components/ai/activity/ResearchToolCard.tsx": "a tool result preview",
   "src/components/editor/compile-log-details.tsx": "compile log output",
   "src/components/editor/LogPane.tsx": "compile log output",
   "src/components/preflight/ReaderViewDialog.tsx": "a reader view of the document's text",
@@ -37,19 +31,8 @@ const NATIVE_TITLE_ALLOWED: Record<string, string> = {
   "src/components/editor/MarkdownPreview.tsx": "a previewed image keeps the title its author wrote in the Markdown source",
 };
 const NATIVE_TITLE_BACKLOG: Record<string, number> = {
-  "src/components/ai/AiToolManager.tsx": 1,
-  "src/components/ai/ChatCore.tsx": 4,
-  "src/components/ai/ChatHistoryModal.tsx": 1,
-  "src/components/ai/ChatMinimap.tsx": 1,
-  "src/components/ai/ComposerAttachMenu.tsx": 1,
-  "src/components/ai/ModelSelector.tsx": 1,
-  "src/components/ai/ToolConfirm.tsx": 2,
-  "src/components/ai/chat-parts.tsx": 1,
-  "src/components/ai/home/AssistantHome.tsx": 2,
-  "src/components/ai/home/RecentChats.tsx": 1,
   "src/components/editor/CheckpointsPanel.tsx": 1,
   "src/components/editor/DocumentInsightsDialog.tsx": 2,
-  "src/components/editor/EditorTabStrip.tsx": 1,
   "src/components/editor/FileTabStatus.tsx": 1,
   "src/components/editor/FontFamilyPicker.tsx": 1,
   "src/components/editor/diff/DiffView.tsx": 2,
@@ -57,7 +40,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/files/FileTree.tsx": 1,
   "src/components/files/gitStatus.tsx": 2,
   "src/components/layout/CompileControls.tsx": 1,
-  "src/components/layout/McpActivityPanel.tsx": 2,
   "src/components/layout/ReferencesPanel.tsx": 1,
   "src/components/layout/ReleaseTimeline.tsx": 2,
   "src/components/layout/SettingsModal.tsx": 2,
@@ -72,8 +54,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/preview/CompileLogControls.tsx": 1,
   "src/components/preview/PdfOutlinePanel.tsx": 2,
   "src/components/preview/PreviewPane.tsx": 1,
-  "src/components/research/tasks/TaskChips.tsx": 1,
-  "src/components/settings/McpServersManager.tsx": 1,
   "src/components/settings/ProofreadingDictionarySection.tsx": 2,
   "src/components/settings/SettingsSearch.tsx": 1,
   "src/components/settings/ThemeCustomization.tsx": 1,
@@ -88,8 +68,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
 const INTRINSIC_TAG = /<([a-z][a-z0-9]*)(?=[\s/>])/g;
 const NAMED_BY_TITLE = new Set(["iframe"]);
 const PILL_ALLOWLIST: Record<string, string> = {
-  "src/components/ai/chat-parts.tsx":
-    "the plan approval pill uses the violet plan tone the rest of the chat uses for plan mode",
 };
 
 function sourceFiles(): string[] {

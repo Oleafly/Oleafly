@@ -20,10 +20,6 @@ const core = vi.hoisted(() => ({
 
 vi.mock("@/lib/log", () => ({ logError: (...args: unknown[]) => logError(...args) }));
 
-vi.mock("@/features/template-generate", () => ({
-  generateTemplateAvailable: () => generateTemplateAvailable(),
-}));
-
 vi.mock("@tauri-apps/api/event", () => ({
   listen: (...args: unknown[]) => listen(...(args as [])),
 }));
@@ -39,6 +35,8 @@ vi.mock("@/lib/tauri", () => ({
     handlers.component({ label: "fonts", index: 1, total: 2 });
     return run();
   },
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@oleafly/templates", () => ({
@@ -86,27 +84,6 @@ vi.mock("@/components/library/ProjectImportDialog", () => ({
     open ? <div data-testid="import-dialog" /> : null,
 }));
 
-vi.mock("@/components/research/workspace/ResearchProjectSetup", () => ({
-  ResearchProjectSetup: ({
-    open,
-    onCreated,
-  }: {
-    open: boolean;
-    onCreated: (projectId: string) => Promise<void>;
-  }) =>
-    open ? (
-      <div data-testid="research-setup">
-        <button
-          type="button"
-          data-testid="research-created"
-          onClick={() => void onCreated("proj-1").catch(() => {})}
-        >
-          <span>{"created"}</span>
-        </button>
-      </div>
-    ) : null,
-}));
-
 const openTemplateInNewProject = vi.fn();
 vi.mock("@/store/template-request", () => ({
   openTemplateInNewProject: (id: string) => openTemplateInNewProject(id),
@@ -134,22 +111,7 @@ vi.mock("@/components/library/TemplateImportDialog", () => ({
     ) : null,
 }));
 
-vi.mock("@/components/library/TemplateGenerateModal", () => ({
-  TemplateGenerateModal: ({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) =>
-    open ? (
-      <div data-testid="generate-modal">
-        <button type="button" onClick={onSaved}>
-          {"saved"}
-        </button>
-        <button type="button" onClick={onClose}>
-          {"close generator"}
-        </button>
-      </div>
-    ) : null,
-}));
-
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
-import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 const onClose = vi.fn();
@@ -233,30 +195,6 @@ describe("NewProjectDialog flow", () => {
     expect(screen.getByTestId("import-dialog")).toBeInTheDocument();
   });
 
-  it("hands off to the research setup", async () => {
-    renderDialog();
-    fireEvent.click(await screen.findByTestId("project-kind-research"));
-    expect(screen.getByTestId("research-setup")).toBeInTheDocument();
-  });
-
-  it("opens the generate modal when a provider is available", async () => {
-    renderDialog();
-    fireEvent.click(await screen.findByTestId("project-kind-template"));
-    await waitFor(() =>
-      expect(screen.getByTestId("templates-core-generate")).not.toBeDisabled(),
-    );
-    fireEvent.click(screen.getByTestId("templates-core-generate"));
-    expect(await screen.findByTestId("generate-modal")).toBeInTheDocument();
-  });
-
-  it("withholds AI generation when no provider is available", async () => {
-    generateTemplateAvailable.mockResolvedValue(false);
-    renderDialog();
-    fireEvent.click(await screen.findByTestId("project-kind-template"));
-    await waitFor(() => expect(generateTemplateAvailable).toHaveBeenCalled());
-    expect(screen.getByTestId("templates-core-generate")).toBeDisabled();
-  });
-
   it("opens the template downloads section of settings", async () => {
     renderDialog();
     fireEvent.click(await screen.findByTestId("project-kind-template"));
@@ -289,33 +227,6 @@ describe("NewProjectDialog flow", () => {
     expect(
       await screen.findByTestId("project-kind-chooser"),
     ).toBeInTheDocument();
-  });
-
-  it("opens the project the research setup created, then reports the flow done", async () => {
-    const opened = { value: false };
-    const openProject = vi.fn(async () => {
-      opened.value = true;
-    });
-    const onProjectOpened = vi.fn(() => expect(opened.value).toBe(true));
-    useFilesStore.setState({ openProject });
-    renderDialog(true, { onProjectOpened });
-    fireEvent.click(await screen.findByTestId("project-kind-research"));
-    fireEvent.click(screen.getByTestId("research-created"));
-    await waitFor(() => expect(onProjectOpened).toHaveBeenCalledOnce());
-    expect(openProject).toHaveBeenCalledWith("proj-1");
-  });
-
-  it("does not report the flow done when the research project fails to open", async () => {
-    const openProject = vi.fn(async () => {
-      throw new Error("project busy");
-    });
-    const onProjectOpened = vi.fn();
-    useFilesStore.setState({ openProject });
-    renderDialog(true, { onProjectOpened });
-    fireEvent.click(await screen.findByTestId("project-kind-research"));
-    fireEvent.click(screen.getByTestId("research-created"));
-    await waitFor(() => expect(openProject).toHaveBeenCalledWith("proj-1"));
-    expect(onProjectOpened).not.toHaveBeenCalled();
   });
 
   it("returns focus to whatever opened the flow", async () => {
@@ -377,19 +288,6 @@ describe("NewProjectDialog host adapters", () => {
 
     expect(screen.getByTestId("template-filter")).toHaveAccessibleName(TEMPLATE_FILTER_LABEL);
     expect(screen.getByTestId("template-filter")).toHaveTextContent("All templates");
-  });
-
-  it("closes the AI template generator and reports a saved template", async () => {
-    renderDialog();
-    fireEvent.click(await screen.findByTestId("project-kind-template"));
-    await waitFor(() => expect(screen.getByTestId("templates-core-generate")).not.toBeDisabled());
-    fireEvent.click(screen.getByTestId("templates-core-generate"));
-
-    fireEvent.click(await screen.findByRole("button", { name: "saved" }));
-    expect(onTemplatesChanged).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole("button", { name: "close generator" }));
-    expect(screen.queryByTestId("generate-modal")).toBeNull();
   });
 
   it("leaves focus with a control that took it after the flow closed", async () => {

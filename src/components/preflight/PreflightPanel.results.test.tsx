@@ -3,15 +3,13 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { simulateAtsParse, type CheckId, type Finding, type PreflightReport } from "@oleafly/preflight";
+import { simulateAtsParse, type CheckId, type PreflightReport } from "@oleafly/preflight";
 import enPreflight from "@/i18n/locales/en/preflight.json" with { type: "json" };
 
 const ask = vi.hoisted(() => ({
   askAiAboutFinding: vi.fn(async () => {}),
   askAiAboutFindings: vi.fn(async () => {}),
 }));
-
-vi.mock("@/features/ask-ai-preflight", () => ask);
 
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
@@ -26,18 +24,6 @@ const flags = (value: boolean) =>
 
 const only = (id: CheckId) => ({ ...flags(false), [id]: true });
 
-function finding(id: string, lens: CheckId, severity: Finding["severity"], from: number): Finding {
-  return {
-    id,
-    lens,
-    severity,
-    title: { key: "rules.refs-undefined-cite.title", params: { key: `cite${from}` } },
-    detail: { key: "rules.refs-undefined-cite.detail" },
-    file: "main.tex",
-    from,
-    to: from + 4,
-  };
-}
 
 function report(overrides: Partial<PreflightReport> = {}): PreflightReport {
   return {
@@ -128,25 +114,6 @@ describe("Preflight check results", () => {
     expect(screen.getByTestId("ats-section-experience")).toHaveAttribute("data-present", "true");
   });
 
-  it("asks the assistant about one finding or every fixable finding", () => {
-    show(
-      "refs",
-      report({
-        findings: [
-          finding("refs-a", "refs", "error", 4),
-          finding("refs-b", "refs", "warning", 20),
-          finding("refs-c", "refs", "info", 40),
-        ],
-      }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Fix all 2 with AI" }));
-    expect(ask.askAiAboutFindings).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "refs-a" }),
-      expect.objectContaining({ id: "refs-b" }),
-    ]);
-  });
-
   it("explains that an engine without source checks relies on the PDF", () => {
     useFilesStore.setState({
       engine: {
@@ -205,18 +172,6 @@ describe("Preflight check results", () => {
     fireEvent.click(screen.getByRole("switch", { name: enPreflight.panel.anonymousReviewToggle }));
 
     expect(usePreflightStore.getState().anonymousReview).toBe(!before);
-  });
-});
-
-describe("finding rows", () => {
-  it("asks the assistant about a single finding", () => {
-    show("refs", report({ findings: [finding("refs-a", "refs", "error", 4)] }));
-    expect(screen.queryByRole("button", { name: /Fix all/ })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: /cite4/ }));
-    fireEvent.click(screen.getByRole("button", { name: enPreflight.finding.fixWithAi }));
-
-    expect(ask.askAiAboutFinding).toHaveBeenCalledWith(expect.objectContaining({ id: "refs-a" }));
   });
 });
 

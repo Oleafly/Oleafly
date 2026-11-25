@@ -13,11 +13,12 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn(asy
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   libraryRoot: vi.fn(async () => "/tmp/library"),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 vi.mock("@/i18n/desktop", () => ({ changeLocalePreference: vi.fn(async () => {}) }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
-vi.mock("@/components/settings/AISection", () => ({ AISection: () => <div data-testid="ai-section" /> }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ preference: "dark", theme: "dark", setPreference: vi.fn(), toggleTheme: vi.fn() }),
 }));
@@ -122,12 +123,12 @@ describe("Settings search", () => {
 
   it("opens the section whose title matches a short query", async () => {
     renderSettings();
-    typeQuery("ai");
+    typeQuery("engin");
     await waitFor(() =>
-      expect(screen.getByTestId("settings-section-ai")).toHaveAttribute("aria-current", "page"),
+      expect(screen.getByTestId("settings-section-engine")).toHaveAttribute("aria-current", "page"),
     );
     expect(visibleSections().length).toBeLessThan(11);
-    expect(screen.getByTestId("ai-section")).toBeInTheDocument();
+    expect(screen.getByTestId("engines-tab-latex")).toBeInTheDocument();
   });
 
   it("says so when nothing matches, through a live region that is there before the result", async () => {
@@ -296,7 +297,7 @@ describe("Settings search", () => {
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
     const everySection = SETTINGS_SEARCH_SECTIONS.filter(
-      (id) => id !== "developer" && id !== "collaboration" && id !== "research",
+      (id) => id !== "developer" && id !== "collaboration",
     ).map((id) => `settings-section-${id}`);
     await waitFor(() => expect(visibleSections()).toEqual(expect.arrayContaining(everySection)));
     expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();

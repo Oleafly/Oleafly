@@ -23,7 +23,7 @@ import {
   DecorationSet,
   type EditorView,
 } from "@tiptap/pm/view";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import {
   cancelProofreading,
   proofreadDocument,

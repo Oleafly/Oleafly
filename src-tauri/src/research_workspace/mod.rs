@@ -1,6 +1,5 @@
 mod model;
 pub(crate) mod roots;
-mod setup;
 
 pub use model::*;
 
@@ -91,21 +90,6 @@ pub fn research_root_capabilities(
     consumer: ResearchRootConsumer,
 ) -> Result<Vec<ResearchRootCapability>, String> {
     roots::capabilities(&project_id, consumer)
-}
-
-#[tauri::command]
-pub fn preview_research_project(
-    request: ResearchProjectRequest,
-) -> Result<ResearchProjectPreview, String> {
-    setup::build_preview(request)
-}
-
-#[tauri::command(async)]
-pub fn create_research_project(
-    app: tauri::AppHandle,
-    request: ResearchProjectRequest,
-) -> Result<String, String> {
-    setup::create(&app, request)
 }
 
 #[cfg(test)]

@@ -8,7 +8,6 @@ pub mod config;
 pub mod context;
 pub mod docs;
 pub mod doctor;
-pub mod mcp_cmd;
 pub mod meta;
 pub mod registry;
 pub mod templates;
@@ -119,48 +118,6 @@ mod tests {
                 "{line}"
             );
         }
-    }
-
-    #[test]
-    fn the_bundled_skill_names_only_real_commands() {
-        let commands = visible_commands();
-        let texts = [
-            include_str!("../../../../src-tauri/resources/skills/oleafly-cli/SKILL.md"),
-            include_str!(
-                "../../../../src-tauri/resources/skills/oleafly-cli/references/json-contract.md"
-            ),
-        ];
-        for text in texts {
-            for piece in text.split('`').skip(1).step_by(2) {
-                let Some(rest) = piece.strip_prefix("oleafly ") else {
-                    continue;
-                };
-                let word = rest
-                    .split_whitespace()
-                    .find(|word| !word.starts_with('-'))
-                    .unwrap_or("");
-                assert!(
-                    commands.iter().any(|name| name == word),
-                    "the skill names `oleafly {word}`, which isn't a command"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn the_bundled_skill_follows_the_agent_skills_name_rules() {
-        let text = include_str!("../../../../src-tauri/resources/skills/oleafly-cli/SKILL.md");
-        let fields = crate::skills_read::parse_frontmatter(text);
-        let name = &fields["name"];
-        assert_eq!(name, "oleafly-cli");
-        assert!(
-            name.len() <= 64
-                && name
-                    .chars()
-                    .all(|character| character.is_ascii_lowercase() || character == '-')
-        );
-        assert!(fields["description"].chars().count() <= 1024);
-        assert!(fields["compatibility"].chars().count() <= 500);
     }
 
     #[test]

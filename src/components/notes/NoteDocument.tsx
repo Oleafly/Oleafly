@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, SmilePlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { noteCommentSurface, requestNoteComments, useCollabLiveNote } from "@/lib/collab-live-bridge";
@@ -20,8 +20,6 @@ import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { matchesShortcut, shortcutLabel, useShortcutStore } from "@/store/shortcuts";
-import { NoteAssistant, type NoteAssistantHandle, type NoteEditorBridge } from "./NoteAssistant";
 import { NoteBacklinks } from "./NoteBacklinks";
 import { NoteBlockHandle } from "./NoteBlockHandle";
 import { NoteDeadLinksSection } from "./NoteDeadLinks";
@@ -360,9 +358,7 @@ function NoteEditor({
   }, [blockRefs, knowledge, note.id, note.shared, noteLinks.extensions, proofreading.extension]);
   const editor = useEditor({ extensions, content: parsed.doc, enableCoreExtensions: NOTE_CORE_EXTENSIONS });
   const citations = useNoteCitations(editor, note, (id) => onOpenNote?.(id, { newTab: false }));
-  const assistantRef = useRef<NoteAssistantHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const assistantDockRef = useRef<HTMLDivElement>(null);
   const frontMatterRef = useRef(parsed.frontmatter);
   const savedFrontMatterRef = useRef(parsed.frontmatter);
   const separatorRef = useRef(parsed.separator);
@@ -371,8 +367,8 @@ function NoteEditor({
   const savedTextRef = useRef(initial.text);
   const diskRef = useRef<SharedNote | null>(null);
   const proposalRef = useRef<SharedNote | null>(null);
-  const keptRef = useRef(opened.kept.file.length + opened.kept.proposed.length > 0);
   const restoreRef = useRef(opened.kept.proposed);
+  const keptRef = useRef(opened.kept.file.length + opened.kept.proposed.length > 0);
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<void> | null>(null);
   const undoWriteRef = useRef<Promise<void>>(Promise.resolve());
@@ -394,7 +390,6 @@ function NoteEditor({
   const [canUndo, setCanUndo] = useState(false);
   const [bubble, setBubble] = useState<BubbleAnchor | null>(null);
   const bubbleHeldRef = useRef(false);
-  const askKeys = useShortcutStore((state) => shortcutLabel(state.bindings.notesAskAgent));
   const width = useNoteWidth();
   const editingTitle = useRef(false);
   const savedDocRef = useRef<ProseMirrorNode | null>(editor.state.doc);
@@ -779,21 +774,6 @@ function NoteEditor({
     };
   }, [adoptFacts, editor, scheduleSave]);
 
-  useEffect(() => {
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!matchesShortcut(event, useShortcutStore.getState().bindings.notesAskAgent) || !editor.view.hasFocus()) return;
-      const text = selectedText(editor, wholeNote);
-      if (!text) return;
-      event.preventDefault();
-      event.stopPropagation();
-      assistantRef.current?.quote(text);
-    };
-    scroller.addEventListener("keydown", onKeyDown, true);
-    return () => scroller.removeEventListener("keydown", onKeyDown, true);
-  }, [editor, wholeNote]);
-
   const checkDisk = useCallback(() => {
     if (collabRef.current?.holds()) return;
     loadNote(note.id).then(
@@ -939,34 +919,22 @@ function NoteEditor({
     });
   };
 
-  const assistantBridge = useMemo<NoteEditorBridge>(
-    () => ({
-      readSource: () => sourceOf(docWithPending(editor, "agent")),
-      pending: () => reviewSummary(editor).count,
-      propose: (edits) => {
-        if (readOnlyRef.current) {
-          if (viewOnlyRef.current) return 0;
-          addPendingBatch(note.id, edits);
-          return edits.length;
-        }
-        const proposed = applyNoteEdits(sourceOf(docWithPending(editor, "agent")), edits);
-        proposalRef.current = parseSharedNote(editor.schema, proposed.text, proposalRef.current ?? diskRef.current);
-        const drafts = diffNoteDocs(editor.state.doc, proposalRef.current.doc);
-        showSuggestions(editor, drafts, "agent");
-        return drafts.length;
-      },
-    }),
-    [editor, note.id, sourceOf],
-  );
-
   const liveReadOnly = collab.state.readOnly;
   useEffect(() => {
     editableChanged(editor);
     if (liveReadOnly) return;
     const batches = [restoreRef.current, ...takePendingBatches(note.id)].filter((batch) => batch.length > 0);
     restoreRef.current = [];
-    for (const batch of batches) assistantBridge.propose(batch);
-  }, [assistantBridge, editor, liveReadOnly, note.id]);
+    for (const edits of batches) {
+      if (readOnlyRef.current) {
+        if (!viewOnlyRef.current) addPendingBatch(note.id, edits);
+        continue;
+      }
+      const proposed = applyNoteEdits(sourceOf(docWithPending(editor, "agent")), edits);
+      proposalRef.current = parseSharedNote(editor.schema, proposed.text, proposalRef.current ?? diskRef.current);
+      showSuggestions(editor, diffNoteDocs(editor.state.doc, proposalRef.current.doc), "agent");
+    }
+  }, [editor, liveReadOnly, note.id, sourceOf]);
 
   useEffect(
     () => () => {
@@ -1160,17 +1128,7 @@ function NoteEditor({
         {bubble && (
           <NoteSelectionMenu editor={editor} anchor={bubble} onHold={(held) => (bubbleHeldRef.current = held)}>
             <NoteCommentButton noteId={note.id} />
-            <Button
-              variant="ghost"
-              size="xs"
-              aria-keyshortcuts={askKeys}
-              onClick={() => assistantRef.current?.quote(selectedText(editor, wholeNote))}
-            >
-              {t(($) => $.notes.document.askAgent)}
-              <span aria-hidden className="text-muted-foreground">
-                {askKeys}
-              </span>
-            </Button>
+
             {onSendToPaper && (
               <Button variant="ghost" size="xs" onClick={() => onSendToPaper(selectedText(editor, wholeNote))}>
                 {t(($) => $.notes.document.sendToPaper)}
@@ -1184,20 +1142,10 @@ function NoteEditor({
             review={review}
             canUndo={canUndo}
             scrollRef={scrollRef}
-            bottomRef={assistantDockRef}
             beforeAcceptAll={() => saveVersionBeforeAccept(note.id, sourceOf(editor.state.doc))}
           />
         )}
-        <div ref={assistantDockRef} className="pointer-events-none sticky bottom-0 z-10 px-6 pb-4">
-          <NoteAssistant
-            key={note.id}
-            ref={assistantRef}
-            note={note}
-            bridge={assistantBridge}
-            shortcutScope={scrollRef}
-            viewOnly={collab.state.viewOnly}
-          />
-        </div>
+
       </div>
       <NoteOutlineRail editor={editor} title={title} />
     </div>

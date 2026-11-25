@@ -16,10 +16,6 @@ vi.mock("@oleafly/preview", () => ({
   setPdfLogger: vi.fn(),
 }));
 vi.mock("@/components/editor/project-info-data", () => ({ collectProjectInfo: vi.fn() }));
-vi.mock("@/features/image-to-latex", () => ({
-  imageToLatexAvailable: vi.fn(async () => false),
-  imageToLatex: vi.fn(async () => {}),
-}));
 
 import { EditorToolbar } from "./EditorToolbar";
 import { MarkdownToolbar } from "./MarkdownToolbar";

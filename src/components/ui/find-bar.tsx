@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-react";
 import { type ComponentProps, type KeyboardEvent, type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { Button } from "@/components/ui/button";
 import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";

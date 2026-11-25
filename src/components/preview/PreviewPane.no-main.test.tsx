@@ -12,7 +12,6 @@ vi.mock("@/features/synctex", () => ({
   canUseSyncTexForCheckpoint: vi.fn(() => false),
   inverseFromClick: vi.fn(),
 }));
-vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow: vi.fn() }));
 vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

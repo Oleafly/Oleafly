@@ -7,7 +7,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { installErrorLogging, logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
-import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
@@ -81,7 +80,7 @@ async function bootstrap(): Promise<void> {
   void loadDisplayHomes();
   if (view === "main") {
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
-    await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
+    await Promise.all([hydrateFromSnapshot(), initializeDesktopI18n()]);
     await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);
     useSettingsStore.setState({ uiLocalePreference: readCachedPreference() });
     prepareColdOpen(getSnapshotPendingOpen());

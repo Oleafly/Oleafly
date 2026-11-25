@@ -22,7 +22,7 @@ export const SAVED_LAYOUTS_KEY = "oleafly.workspace.savedLayouts";
 export const SAVED_LAYOUT_LIMIT = 12;
 const VERSION = 1;
 const VIEW_MODES: readonly ViewMode[] = ["editor", "split", "pdf"];
-const FLAG_NAMES = ["showTree", "assistantOpen", "workspaceHidden", "terminalOpen"] as const;
+const FLAG_NAMES = ["showTree", "workspaceHidden", "terminalOpen"] as const;
 
 export interface SavedLayout {
   readonly id: string;
@@ -39,7 +39,6 @@ function parseFlags(value: unknown): PaneFlags | null {
   return {
     viewMode: record.viewMode as ViewMode,
     showTree: record.showTree as boolean,
-    assistantOpen: record.assistantOpen as boolean,
     workspaceHidden: record.workspaceHidden as boolean,
     terminalOpen: record.terminalOpen as boolean,
   };
@@ -70,8 +69,8 @@ function parseSaved(value: unknown): SavedLayout[] {
 }
 
 function currentPaneFlags(): PaneFlags {
-  const { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen } = useSettingsStore.getState();
-  return { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen };
+  const { viewMode, showTree, workspaceHidden, terminalOpen } = useSettingsStore.getState();
+  return { viewMode, showTree, workspaceHidden, terminalOpen };
 }
 
 function sameName(a: string, b: string): boolean {

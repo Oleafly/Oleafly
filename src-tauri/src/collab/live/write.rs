@@ -1,6 +1,6 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 use oleafly_collab::doc::NodeKind;
@@ -258,6 +258,7 @@ impl Active {
     }
 }
 
+#[cfg(test)]
 fn remember_read(project_id: &str, path: &str, text: &str) {
     let Some(path) = normalized(path) else {
         return;
@@ -270,6 +271,7 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
         .record(&path, &lf_text(text));
 }
 
+#[cfg(test)]
 pub fn note_read(project_id: &str, path: &str, text: &str) {
     if live_for(project_id).is_some() {
         remember_read(project_id, path, text);
@@ -292,184 +294,8 @@ pub async fn write_text(
         Live::Server(active) => active.write_text(path, base, text).await?,
         Live::Overleaf(live) => live.write_text(path, base, text).await?,
     };
-    if outcome.handled {
-        crate::agent_turns::note_app_write(project_id, path);
-    }
+
     Ok(outcome)
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct SharedText<'a> {
-    pub(crate) path: &'a str,
-    pub(crate) before: Option<&'a str>,
-    pub(crate) text: &'a str,
-}
-
-pub(crate) struct SharedDocument(Arc<Active>);
-
-fn write_shared(
-    live: &mut LiveProject,
-    bases: &mut WrittenTexts,
-    root: &Path,
-    shared: &SharedText<'_>,
-) -> Result<(bool, Renamed), CollabError> {
-    let Some(path) = normalized(shared.path) else {
-        return Ok((false, Renamed::new()));
-    };
-    let placed = by_path(&materialize::layout(&live.doc().nodes()?));
-    let starts_as_reviewed = match (placed.get(&path), shared.before) {
-        (Some((_, NodeKind::Text, _)), Some(_)) => true,
-        (None, None) => safe_target(root, &path)
-            .is_some_and(|target| std::fs::symlink_metadata(target).is_err()),
-        _ => false,
-    };
-    if !starts_as_reviewed {
-        return Ok((false, Renamed::new()));
-    }
-    write_renaming(live, bases, None, root, &path, shared.before, shared.text)
-}
-
-fn undo_shared(
-    live: &mut LiveProject,
-    existing: &BTreeSet<String>,
-    written: &[SharedText<'_>],
-) -> Result<(), CollabError> {
-    for shared in written.iter().rev() {
-        let (Some(before), Some(path)) = (shared.before, normalized(shared.path)) else {
-            continue;
-        };
-        let placed = by_path(&materialize::layout(&live.doc().nodes()?));
-        let Some((id, NodeKind::Text, _)) = placed.get(&path).cloned() else {
-            continue;
-        };
-        let current = live.doc().text(&id)?;
-        let before = lf_text(before);
-        match merged_onto(&lf_text(shared.text), &before, &current) {
-            Some(operation) => live.local_operation(&id, &operation)?,
-            None => live.local_text(&id, &before)?,
-        };
-    }
-    let layout = materialize::layout(&live.doc().nodes()?);
-    let created: BTreeSet<&str> = layout
-        .iter()
-        .filter(|(id, _)| !existing.contains(*id))
-        .map(|(_, placed)| placed.path.as_str())
-        .collect();
-    for (id, placed) in &layout {
-        let topmost = parent_of(&placed.path).is_none_or(|parent| !created.contains(parent));
-        if !existing.contains(id) && topmost {
-            live.doc_mut().trash(id)?;
-        }
-    }
-    Ok(())
-}
-
-fn write_all_shared(
-    live: &mut LiveProject,
-    bases: &mut WrittenTexts,
-    root: &Path,
-    texts: &[SharedText<'_>],
-) -> Result<Result<Renamed, String>, CollabError> {
-    let existing: BTreeSet<String> = materialize::layout(&live.doc().nodes()?)
-        .into_keys()
-        .collect();
-    let mut written = Vec::new();
-    let mut renamed = Renamed::new();
-    for shared in texts {
-        match write_shared(live, bases, root, shared) {
-            Ok((true, laid)) => {
-                written.push(*shared);
-                renamed.extend(laid);
-            }
-            Ok((false, _)) => {
-                undo_shared(live, &existing, &written)?;
-                return Ok(Err(shared.path.to_owned()));
-            }
-            Err(error) => {
-                let _ = undo_shared(live, &existing, &written);
-                return Err(error);
-            }
-        }
-    }
-    Ok(Ok(renamed))
-}
-
-impl SharedDocument {
-    pub(crate) fn of(project_id: &str) -> Option<SharedDocument> {
-        live_for(project_id)
-            .and_then(|live| live.server().cloned())
-            .map(SharedDocument)
-            .filter(SharedDocument::can_edit)
-    }
-
-    pub(crate) fn can_edit(&self) -> bool {
-        lock(&self.0.live).can_edit()
-    }
-
-    pub(crate) fn holds(&self, path: &str, new_file: bool) -> bool {
-        let Some(path) = normalized(path) else {
-            return false;
-        };
-        if safe_target(&self.0.local.root, &path).is_none() {
-            return false;
-        }
-        let live = lock(&self.0.live);
-        let Ok(nodes) = live.doc().nodes() else {
-            return false;
-        };
-        let placed = by_path(&materialize::layout(&nodes));
-        if under_a_file(&placed, &path) {
-            return false;
-        }
-        match placed.get(&path) {
-            Some((_, NodeKind::Text, _)) => true,
-            Some(_) => false,
-            None => new_file,
-        }
-    }
-
-    pub(crate) fn write(&self, texts: &[SharedText<'_>]) -> Result<Option<String>, CollabError> {
-        let written = {
-            let mut live = lock(&self.0.live);
-            let mut bases = guard(&self.0.local.bases);
-            write_all_shared(&mut live, &mut bases, &self.0.local.root, texts)?
-        };
-        self.0.handle.flush();
-        self.0.refresh_pending();
-        let renamed = match written {
-            Ok(renamed) => renamed,
-            Err(refused) => return Ok(Some(refused)),
-        };
-        for shared in texts {
-            crate::agent_turns::note_app_write(&self.0.local.project_id, shared.path);
-        }
-        let (done, wait) = oneshot::channel();
-        let _ = self.0.local.writer.send(WriterSignal::Flush(done));
-        tauri::async_runtime::block_on(async move {
-            let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
-        });
-        self.0.announce_new_names(renamed);
-        Ok(None)
-    }
-
-    pub(crate) fn wrote_on_disk(&self, path: &str) {
-        let target = self.0.local.root.join(path);
-        if std::fs::symlink_metadata(&target).is_ok() {
-            crate::folder_watch::note_own_write(&target);
-        } else {
-            crate::folder_watch::note_own_removal(&target);
-        }
-    }
-
-    pub(crate) fn import_now(&self, paths: Vec<String>) {
-        if paths.is_empty() {
-            return;
-        }
-        let active = Arc::clone(&self.0);
-        tauri::async_runtime::spawn(async move {
-            let _ = active.import_paths(Some(paths)).await;
-        });
-    }
 }
 
 #[cfg(test)]

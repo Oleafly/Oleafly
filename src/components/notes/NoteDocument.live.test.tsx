@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
 import { act, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TextOperation } from "@/features/collab/live/ot";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
@@ -24,19 +23,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
       if (!harness.editors.includes(editor)) harness.editors.push(editor);
       return editor;
     },
-  };
-});
-
-vi.mock("./NoteAssistant", async () => {
-  const { forwardRef } = await import("react");
-  return {
-    NoteAssistant: forwardRef(function NoteAssistant(props: { review: ReactNode; viewOnly?: boolean }) {
-      return (
-        <section data-testid="note-assistant" data-view-only={props.viewOnly ? "true" : "false"}>
-          {props.review}
-        </section>
-      );
-    }),
   };
 });
 
@@ -216,7 +202,6 @@ describe("a shared note edited live", () => {
     expect(alice.isEditable).toBe(false);
     expect(screen.getAllByText(enNotes.live.viewOnly)).toHaveLength(2);
     expect(screen.getAllByLabelText<HTMLInputElement>(enNotes.document.titleLabel)[0].readOnly).toBe(true);
-    expect(screen.getAllByTestId("note-assistant").map((section) => section.dataset.viewOnly)).toEqual(["true", "true"]);
   });
 
   it("saves edits made while connecting once the note turns out not to go live", async () => {

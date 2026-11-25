@@ -37,7 +37,6 @@ const mocks = vi.hoisted(() => ({
   tauri: true,
 }));
 vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine }));
-vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAiAboutCompileErrors }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt, setSettingsOpen: mocks.setSettingsOpen }) } }));
 vi.mock("@/store/tours", () => ({ useTourStore: { getState: () => ({ activeTourId: mocks.activeTourId }) } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -434,14 +433,6 @@ describe("detached compile commands", () => {
       ["chapters/a.tex", 12, 4],
       [null, 3, undefined],
     ]);
-    cleanup();
-  });
-
-  it("asks the assistant about compile errors and focuses the main window", async () => {
-    const cleanup = await startPreviewWorkspaceBridge();
-    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ask-ai" } });
-    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
-    expect(mocks.askAiAboutCompileErrors).toHaveBeenCalledOnce();
     cleanup();
   });
 

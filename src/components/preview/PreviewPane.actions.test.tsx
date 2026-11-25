@@ -84,7 +84,6 @@ vi.mock("@/features/synctex", () => ({
   canUseSyncTexForCheckpoint: () => mocks.syncTex.available,
   inverseFromClick: mocks.inverseFromClick,
 }));
-vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAi }));
 vi.mock("@/features/presentation/launch", () => ({ present: mocks.present }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow: vi.fn(async () => {}) }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
@@ -102,6 +101,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   revealInDir: mocks.revealInDir,
   saveFileBase64: mocks.saveFileBase64,
   writeBytesFile: mocks.writeBytesFile,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.notifyError }));
@@ -473,21 +474,6 @@ describe("PreviewPane toolbar actions", () => {
     await user.click(screen.getByRole("button", { name: enPreview.presentation.present }));
     await user.click(await screen.findByRole("menuitem", { name: enPreview.presentation.presentFromStart }));
     expect(mocks.present).toHaveBeenCalledWith(expect.objectContaining({ projectId: PROJECT, mainDoc: "main.tex", typst: false }));
-  });
-
-  it("asks the assistant about compile errors from the log view", async () => {
-    await renderPane();
-    act(() => {
-      useCompileStore.setState({
-        status: "error",
-        errors: [{ kind: "error", message: "Undefined control sequence", file: "main.tex", line: 1 } as never],
-      });
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.showLogs }));
-    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.askAi }));
-
-    expect(mocks.askAi).toHaveBeenCalledTimes(1);
   });
 
   it("shows the PDF during the workspace tour and returns to the logs afterwards", async () => {

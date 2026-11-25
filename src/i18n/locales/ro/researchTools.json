@@ -1137,6 +1137,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "Alege o imagine mai mică de 20 MB.",
     "imageFormat": "Alege o imagine PNG, JPEG sau WebP.",
     "ollamaUnavailable": "Pornește Ollama sau alege alt model pentru Instrumente.",

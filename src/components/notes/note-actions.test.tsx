@@ -26,12 +26,13 @@ const exporting = vi.hoisted(() => ({
   notesExportFolder: vi.fn(),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: exporting.pickSavePath }));
-vi.mock("@/features/tools-ai/pandoc-text", () => ({ pandocConvert: exporting.pandocConvert }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   readProjectBytes: exporting.readProjectBytes,
   writeBytesFile: exporting.writeBytesFile,
   notesExportFolder: exporting.notesExportFolder,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 import type { ProjectInfo } from "@oleafly/backend-port";
@@ -531,3 +532,5 @@ describe("version history", () => {
     expect(screen.getByRole("button", { name: enNotes.versions.save })).toBeInTheDocument();
   });
 });
+
+vi.mock("@/features/pandoc-text", () => ({ pandocConvert: exporting.pandocConvert }));

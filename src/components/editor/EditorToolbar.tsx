@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -11,7 +11,6 @@ import {
   Code,
   Divide,
   Image as ImageIcon,
-  ImagePlus,
   Italic,
   Link as LinkIcon,
   List,
@@ -40,8 +39,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
 import { useEditorHistory } from "./history-signal";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
-import { imageToLatex } from "@/features/image-to-latex";
-import { useToolsImageReady } from "@/hooks/use-tools-image-ready";
 import { goToSyncTex } from "@/features/synctex";
 import { engineSyncsPath } from "@/lib/document-engine";
 import { openDiagramComposer } from "@/features/open-tool";
@@ -218,7 +215,6 @@ export function WysiwygModeSwitch({
   );
 }
 
-
 export function btnControl(
   id: string,
   Icon: LucideIcon,
@@ -360,7 +356,6 @@ export function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu
   );
 }
 
-
 export function EditorToolbar({
   wysiwyg,
   onToggleWysiwyg,
@@ -369,8 +364,6 @@ export function EditorToolbar({
   onToggleWysiwyg: () => void;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
-  const visionReady = useToolsImageReady();
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
   const activePath = useFilesStore((s) => s.activePath);
   const activeReadOnly = useActiveFileReadOnly();
@@ -418,29 +411,6 @@ export function EditorToolbar({
       btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("tikz")),
     ];
 
-    if (visionReady) {
-      list.push({
-        id: "image-to-latex",
-        width: ICON_BUTTON_WIDTH,
-        render: () => (
-          <IconBtn
-            onClick={() => imageInputRef.current?.click()}
-            title={t(($) => $.editor.toolbar.imageToLatexTooltip)}
-          >
-            <ImagePlus data-testid="image-to-latex" className="size-4" />
-          </IconBtn>
-        ),
-        renderMenu: () => (
-          <ToolbarMenuItem
-            key="image-to-latex"
-            icon={ImagePlus}
-            label={t(($) => $.editor.toolbar.imageToLatex)}
-            onSelect={() => imageInputRef.current?.click()}
-          />
-        ),
-      });
-    }
-
     list.push(
       dividerControl("divider-4"),
       {
@@ -481,7 +451,7 @@ export function EditorToolbar({
     );
 
     return list;
-  }, [t, visionReady]);
+  }, [t]);
 
   const history = useEditorHistory();
 
@@ -507,21 +477,6 @@ export function EditorToolbar({
       </IconBtn>
 
       <Divider />
-
-      {visionReady && (
-        <input
-          ref={imageInputRef}
-          data-testid="image-to-latex-input"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) void imageToLatex(f);
-          }}
-        />
-      )}
 
       <ToolbarOverflow controls={controls} label={t(($) => $.editor.toolbar.moreOptions)} />
 

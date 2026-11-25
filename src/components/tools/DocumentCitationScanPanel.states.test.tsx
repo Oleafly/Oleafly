@@ -26,10 +26,6 @@ vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
 }));
 
-vi.mock("@/lib/ai-providers", () => ({
-  hasConfiguredProvider: (config: unknown) => hasConfiguredProvider(config),
-}));
-
 vi.mock("@/features/citation", () => ({
   addCitation: (...args: unknown[]) => addCitation(...(args as [string])),
 }));

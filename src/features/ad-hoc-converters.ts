@@ -11,23 +11,7 @@ import { CONVERTED_MAIN_FILE, flattenLatexInputs, typstSupportFiles } from "@/fe
 import type { ConverterToolId } from "@/lib/converter-types";
 import { i18n } from "@/i18n";
 import { bytesToBase64 } from "@/lib/base64";
-import { readImageInput } from "@/features/tools-ai/image-input";
-import { latexMathToTypst, pandocConvert } from "@/features/tools-ai/pandoc-text";
-import {
-  LONG_SCAN_PAGES,
-  SCAN_PAGE_LIMIT,
-  ScanConfirmationNeeded,
-  selectedPages,
-} from "@/features/tools-ai/scan-estimate";
-import { resolveToolsModel } from "@/features/tools-ai/tools-model";
-import {
-  transcribeEquationText,
-  transcribeImage,
-  transcribePdfPages,
-} from "@/features/tools-ai/transcribe";
-
-export { LocalModelError, ToolsModelError } from "@/features/tools-ai/tools-model";
-export { ScanConfirmationNeeded, transcribePdfPages };
+import { pandocConvert } from "@/features/pandoc-text";
 
 export type ConverterInputKind = "text" | "file" | "image-or-text" | "arxiv";
 export type ProjectTarget = "latex" | "markdown" | "typst";
@@ -66,7 +50,6 @@ export interface AdHocConverterDefinition {
   outputFileName: string;
   outputMediaType: string;
   projectTarget?: ProjectTarget;
-  usesModel?: "always" | "scans";
 }
 
 export interface AdHocConverterCopy {
@@ -111,7 +94,6 @@ Baseline,0.82,14.2
 Oleafly,0.95,9.8`;
 
 const SPREADSHEET_ACCEPT = ".xlsx,.xls,.csv,.tsv,text/csv,text/tab-separated-values";
-const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp";
 const ARXIV_ACCEPT = ".gz,.tgz,.tar.gz,application/gzip";
 const WORD_ACCEPT = ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const WORD_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -124,15 +106,6 @@ Euler's identity is $e^(i pi) + 1 = 0$.
 - Local conversion`;
 
 export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition> = {
-  "image-to-latex": {
-    id: "image-to-latex",
-    usesModel: "always",
-    inputKind: "file",
-    accept: "image/png,image/jpeg,image/webp",
-    outputFileName: "transcription.tex",
-    outputMediaType: "application/x-tex",
-    projectTarget: "latex",
-  },
   "arxiv-to-latex": {
     id: "arxiv-to-latex",
     inputKind: "arxiv",
@@ -141,15 +114,6 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
     outputFileName: "arxiv-source.zip",
     outputMediaType: "application/zip",
     projectTarget: "latex",
-  },
-  "equation-to-latex": {
-    id: "equation-to-latex",
-    usesModel: "always",
-    inputKind: "image-or-text",
-    accept: "image/png,image/jpeg,image/webp",
-    example: "e^(iπ) + 1 = 0",
-    outputFileName: "equation.tex",
-    outputMediaType: "application/x-tex",
   },
   "excel-to-latex": {
     id: "excel-to-latex",
@@ -166,15 +130,6 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
     outputFileName: "converted.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
-  },
-  "image-to-typst": {
-    id: "image-to-typst",
-    usesModel: "always",
-    inputKind: "file",
-    accept: "image/png,image/jpeg,image/webp",
-    outputFileName: "transcription.typ",
-    outputMediaType: "text/x-typst",
-    projectTarget: "typst",
   },
   "latex-to-html": {
     id: "latex-to-html",
@@ -238,7 +193,6 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
   },
   "pdf-to-markdown": {
     id: "pdf-to-markdown",
-    usesModel: "scans",
     inputKind: "file",
     accept: ".pdf,application/pdf",
     outputFileName: "converted.md",
@@ -247,7 +201,6 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
   },
   "pdf-to-typst": {
     id: "pdf-to-typst",
-    usesModel: "scans",
     inputKind: "file",
     accept: ".pdf,application/pdf",
     outputFileName: "converted.typ",
@@ -286,16 +239,6 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
     sourceFileName: "table.csv",
     example: CSV_EXAMPLE,
     outputFileName: "table.typ",
-    outputMediaType: "text/x-typst",
-  },
-  "equation-to-typst": {
-    id: "equation-to-typst",
-    usesModel: "always",
-    inputKind: "image-or-text",
-    accept: IMAGE_ACCEPT,
-    sourceFileName: "equation.tex",
-    example: "e^(iπ) + 1 = 0",
-    outputFileName: "equation.typ",
     outputMediaType: "text/x-typst",
   },
   "excel-to-typst": {
@@ -358,26 +301,12 @@ export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition
 };
 
 const CONVERTER_COPY: Record<ConverterToolId, () => AdHocConverterCopy> = {
-  "image-to-latex": () => ({
-    title: i18n.t(($) => $.researchTools.converters.imageToLatex.title),
-    subtitle: i18n.t(($) => $.researchTools.converters.imageToLatex.subtitle),
-    inputLabel: i18n.t(($) => $.researchTools.converters.imageToLatex.inputLabel),
-    inputHint: i18n.t(($) => $.researchTools.converters.imageToLatex.inputHint),
-    outputLabel: i18n.t(($) => $.researchTools.converters.imageToLatex.outputLabel),
-  }),
   "arxiv-to-latex": () => ({
     title: i18n.t(($) => $.researchTools.converters.arxivToLatex.title),
     subtitle: i18n.t(($) => $.researchTools.converters.arxivToLatex.subtitle),
     inputLabel: i18n.t(($) => $.researchTools.converters.arxivToLatex.inputLabel),
     inputHint: i18n.t(($) => $.researchTools.converters.arxivToLatex.inputHint),
     outputLabel: i18n.t(($) => $.researchTools.converters.arxivToLatex.outputLabel),
-  }),
-  "equation-to-latex": () => ({
-    title: i18n.t(($) => $.researchTools.converters.equationToLatex.title),
-    subtitle: i18n.t(($) => $.researchTools.converters.equationToLatex.subtitle),
-    inputLabel: i18n.t(($) => $.researchTools.converters.equationToLatex.inputLabel),
-    inputHint: i18n.t(($) => $.researchTools.converters.equationToLatex.inputHint),
-    outputLabel: i18n.t(($) => $.researchTools.converters.equationToLatex.outputLabel),
   }),
   "excel-to-latex": () => ({
     title: i18n.t(($) => $.researchTools.converters.excelToLatex.title),
@@ -392,13 +321,6 @@ const CONVERTER_COPY: Record<ConverterToolId, () => AdHocConverterCopy> = {
     inputLabel: i18n.t(($) => $.researchTools.converters.htmlToLatex.inputLabel),
     inputHint: i18n.t(($) => $.researchTools.converters.htmlToLatex.inputHint),
     outputLabel: i18n.t(($) => $.researchTools.converters.htmlToLatex.outputLabel),
-  }),
-  "image-to-typst": () => ({
-    title: i18n.t(($) => $.researchTools.converters.imageToTypst.title),
-    subtitle: i18n.t(($) => $.researchTools.converters.imageToTypst.subtitle),
-    inputLabel: i18n.t(($) => $.researchTools.converters.imageToTypst.inputLabel),
-    inputHint: i18n.t(($) => $.researchTools.converters.imageToTypst.inputHint),
-    outputLabel: i18n.t(($) => $.researchTools.converters.imageToTypst.outputLabel),
   }),
   "latex-to-html": () => ({
     title: i18n.t(($) => $.researchTools.converters.latexToHtml.title),
@@ -491,13 +413,6 @@ const CONVERTER_COPY: Record<ConverterToolId, () => AdHocConverterCopy> = {
     inputHint: i18n.t(($) => $.researchTools.converters.csvToTypst.inputHint),
     outputLabel: i18n.t(($) => $.researchTools.converters.csvToTypst.outputLabel),
   }),
-  "equation-to-typst": () => ({
-    title: i18n.t(($) => $.researchTools.converters.equationToTypst.title),
-    subtitle: i18n.t(($) => $.researchTools.converters.equationToTypst.subtitle),
-    inputLabel: i18n.t(($) => $.researchTools.converters.equationToTypst.inputLabel),
-    inputHint: i18n.t(($) => $.researchTools.converters.equationToTypst.inputHint),
-    outputLabel: i18n.t(($) => $.researchTools.converters.equationToTypst.outputLabel),
-  }),
   "excel-to-typst": () => ({
     title: i18n.t(($) => $.researchTools.converters.excelToTypst.title),
     subtitle: i18n.t(($) => $.researchTools.converters.excelToTypst.subtitle),
@@ -557,7 +472,6 @@ export interface ConverterInput {
   text: string;
   file: File | null;
   typstVersion?: string | null;
-  scanConfirmed?: boolean;
   pageRange?: readonly [number, number];
 }
 
@@ -600,26 +514,6 @@ function dataUrlBase64(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
-function normalizeEquation(value: string): string | null {
-  const trimmed = value.trim().replace(/^\$+|\$+$/g, "").trim();
-  if (!trimmed) return null;
-  const naturalLanguage = /\b(?:integral|sum|square root|divided by|from|to the power|equals)\b/i;
-  if (naturalLanguage.test(trimmed)) return null;
-  return trimmed
-    .replace(/sqrt\(([^()]*)\)/gi, "\\sqrt{$1}")
-    .replace(/√\(([^()]*)\)/g, "\\sqrt{$1}")
-    .replace(/\^\(([^()]*)\)/g, "^{$1}")
-    .replace(/_\(([^()]*)\)/g, "_{$1}")
-    .replaceAll("π", "\\pi")
-    .replaceAll("∞", "\\infty")
-    .replaceAll("≤", "\\le")
-    .replaceAll("≥", "\\ge")
-    .replaceAll("≠", "\\ne")
-    .replaceAll("→", "\\to")
-    .replaceAll("×", "\\times")
-    .replaceAll("÷", "\\div");
-}
-
 async function runPandoc(request: AdHocConversionRequest): Promise<ConverterOutput> {
   return { ...(await pandocConvert(request)) };
 }
@@ -650,7 +544,7 @@ function requireFile(input: ConverterInput): File {
 }
 
 async function pdfToText(
-  definition: AdHocConverterDefinition,
+  _definition: AdHocConverterDefinition,
   input: ConverterInput,
   target: "markdown" | "typst",
   onProgress?: ConverterProgressReporter,
@@ -675,34 +569,7 @@ async function pdfToText(
   }
   const latex = convertPages(extracted.pages);
   if (latex.report.likelyScanned) {
-    const pages = selectedPages(extracted.pageCount, range);
-    if (pages.length > SCAN_PAGE_LIMIT) {
-      throw new Error(
-        i18n.t(($) => $.researchTools.converterErrors.pdfTooManyPages, {
-          pages: pages.length,
-          limit: SCAN_PAGE_LIMIT,
-        }),
-      );
-    }
-    if (pages.length >= LONG_SCAN_PAGES && !input.scanConfirmed) {
-      throw new ScanConfirmationNeeded(extracted.pages.map(({ width, height }) => ({ width, height })));
-    }
-    const transcribed = await transcribePdfPages(
-      bytes,
-      pages,
-      target === "typst" ? "Typst" : "Markdown",
-      onProgress,
-      signal,
-    );
-    return textOutput(
-      definition,
-      transcribed.text,
-      [],
-      i18n.t(($) => $.researchTools.converterNotes.scannedPages, {
-        count: pages.length,
-        model: transcribed.model.label,
-      }),
-    );
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.scannedPdfUnsupported));
   }
 
   onProgress?.({ step: "documentStructure" });
@@ -820,25 +687,6 @@ async function tableOutput(
       columns: Math.max(...rows.map((row) => row.length)).toLocaleString(),
     }),
   );
-}
-
-async function equationLatex(
-  input: ConverterInput,
-  text: string,
-  onProgress?: ConverterProgressReporter,
-  signal?: AbortSignal,
-): Promise<string> {
-  if (input.file) {
-    const image = await readImageInput(requireFile(input));
-    const model = await resolveToolsModel("image");
-    onProgress?.({ step: "readingEquation", model: model.label });
-    return transcribeImage(model, image, { target: "LaTeX", mode: "equation", fragment: true, signal });
-  }
-  const normalized = normalizeEquation(text);
-  if (normalized) return normalized;
-  const model = await resolveToolsModel("equation-text");
-  onProgress?.({ step: "convertingEquation", model: model.label });
-  return transcribeEquationText(model, text, signal);
 }
 
 interface ArxivSource {
@@ -978,29 +826,6 @@ export async function runAdHocConverter(
     }
     case "csv-to-typst":
       return tableOutput(definition, "table.csv", new TextEncoder().encode(text), "typst", onProgress);
-    case "image-to-latex":
-    case "image-to-typst": {
-      const image = await readImageInput(requireFile(input));
-      const model = await resolveToolsModel("image");
-      onProgress?.({ step: "visionModel", model: model.label });
-      const target = id === "image-to-typst" ? "Typst" : "LaTeX";
-      return textOutput(
-        definition,
-        await transcribeImage(model, image, {
-          target,
-          mode: "image",
-          fragment: true,
-          signal,
-          typstVersion: input.typstVersion,
-        }),
-      );
-    }
-    case "equation-to-latex":
-      return textOutput(definition, await equationLatex(input, text, onProgress, signal));
-    case "equation-to-typst": {
-      const latex = await equationLatex(input, text, onProgress, signal);
-      return textOutput(definition, await latexMathToTypst(latex, input.typstVersion));
-    }
     case "mermaid-to-latex":
       return mermaidOutput(definition, text, { kind: "latex" }, onProgress, signal);
     case "mermaid-to-typst":

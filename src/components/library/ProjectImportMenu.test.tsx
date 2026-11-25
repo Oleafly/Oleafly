@@ -54,14 +54,6 @@ vi.mock("@oleafly/templates", () => ({
     open ? <div role="dialog">{"New project"}</div> : null,
 }));
 
-vi.mock("@/features/template-generate", () => ({
-  generateTemplateAvailable: vi.fn(async () => false),
-}));
-
-vi.mock("@/components/library/TemplateGenerateModal", () => ({
-  TemplateGenerateModal: () => null,
-}));
-
 import { ProjectImportMenu } from "./ProjectImportMenu";
 
 describe("ProjectImportMenu", () => {

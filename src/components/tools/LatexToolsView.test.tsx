@@ -72,14 +72,13 @@ describe("LatexToolsView", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders the catalog as a full page with 32 converter cards", () => {
+  it("renders the catalog as a full page with 28 converter cards", () => {
     render(<LatexToolsView />);
     expect(screen.getByTestId("latex-tools-view")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: enResearchTools.tools.heroTitle })).toBeVisible();
     expect(screen.getByText(enResearchTools.tools.heroBody)).toBeVisible();
-    expect(screen.getByText("32", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByTestId("latex-tool-card-image-to-latex")).toBeVisible();
+    expect(screen.getByText("28", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByTestId("latex-tool-card-word-to-latex")).toBeVisible();
     for (const id of [
       "word-to-typst",
@@ -88,7 +87,6 @@ describe("LatexToolsView", () => {
       "typst-to-markdown",
       "mermaid-to-typst",
       "arxiv-to-typst",
-      "equation-to-typst",
       "csv-to-typst",
       "excel-to-typst",
       "html-to-typst",
@@ -112,7 +110,7 @@ describe("LatexToolsView", () => {
         screen.getByTestId(`latex-tool-card-${tool.id}`),
       ).toBeInTheDocument();
     }
-    for (const category of TOOL_CATEGORY_ORDER) {
+    for (const category of TOOL_CATEGORY_ORDER.filter((category) => TOOL_DEFINITIONS.some((tool) => tool.category === category))) {
       expect(screen.getByText(toolCategoryLabel(category))).toBeInTheDocument();
     }
     expect(searchBox()).toHaveAttribute(

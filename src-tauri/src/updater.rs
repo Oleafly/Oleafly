@@ -123,29 +123,6 @@ impl<R: Runtime> Drop for InstallGuard<R> {
 
 async fn recover_install<R: Runtime>(state: UpdateState, app: tauri::AppHandle<R>, token: String) {
     let _settlement = state.settlement.lock().await;
-    let started = state
-        .pending
-        .lock()
-        .ok()
-        .and_then(|pending| {
-            pending
-                .as_ref()
-                .filter(|pending| pending.token == token)
-                .map(|pending| pending.settlement_started)
-        })
-        .unwrap_or(false);
-    if started {
-        if let Some(runtime) = app.try_state::<Arc<crate::acp::AcpRuntime>>() {
-            if let Err(error) = runtime.resume_after_failed_update() {
-                eprintln!("Could not resume CLI agents after the update failed: {error}");
-            }
-        }
-        if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
-            if let Err(error) = tasks.resume_after_failed_update().await {
-                eprintln!("Could not resume research tasks after the update failed: {error}");
-            }
-        }
-    }
     finish_install_recovery(&state, &app, &token);
 }
 
@@ -159,9 +136,6 @@ fn finish_install_recovery<R: Runtime>(
             .as_ref()
             .is_some_and(|pending| pending.token == token)
         {
-            if let Some(agent) = app.try_state::<crate::agent::AgentState>() {
-                crate::agent::resume_after_failed_update(agent.inner());
-            }
             *pending = None;
         }
     }
@@ -370,12 +344,10 @@ pub async fn settle_update_work<R: Runtime>(
             .cancel
             .subscribe()
     };
-    let app = webview.app_handle().clone();
+    let _app = webview.app_handle().clone();
     let settling = state.inner().clone();
     let work = tauri::async_runtime::spawn(async move {
-        settling
-            .settle_work(&token, crate::research_lifecycle::prepare_update(&app))
-            .await
+        settling.settle_work(&token, std::future::ready(())).await
     });
     tokio::select! {
         _ = cancelled.changed() => Err("The update was cancelled.".into()),
@@ -538,8 +510,6 @@ mod tests {
             let app = tauri::test::mock_builder()
                 .plugin(tauri_plugin_updater::Builder::new().build())
                 .manage(UpdateState::default())
-                .manage(crate::agent::AgentState::default())
-                .manage(crate::agent_exec::AgentExecState::default())
                 .build(context)
                 .unwrap();
             let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
@@ -1066,35 +1036,6 @@ mod tests {
         assert!(result
             .unwrap_err()
             .contains("Saving did not finish in time"));
-    }
-
-    #[tokio::test]
-    async fn failed_install_reopens_assistant_admission_after_native_settlement() {
-        let fixture = UpdateFixture::new().await;
-        let state = fixture.app.state::<UpdateState>();
-        let (completion, _saved) = oneshot::channel();
-        *state.pending.lock().unwrap() = Some(PendingInstall {
-            token: "recover".into(),
-            completion: Some(completion),
-            cancel: watch::channel(false).0,
-            settlement_started: false,
-            quiesced: false,
-            ready_to_save: watch::channel(false).0,
-            restarting: false,
-        });
-        settle_update_work(fixture.webview.clone(), state.clone(), "recover".into())
-            .await
-            .unwrap();
-        let agent = fixture.app.state::<crate::agent::AgentState>();
-        assert!(crate::agent::paused_for_update(agent.inner()));
-        recover_install(
-            state.inner().clone(),
-            fixture.app.handle().clone(),
-            "recover".into(),
-        )
-        .await;
-        assert!(!crate::agent::paused_for_update(agent.inner()));
-        assert!(!state.installing());
     }
 
     #[test]

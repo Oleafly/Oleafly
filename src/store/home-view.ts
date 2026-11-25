@@ -17,7 +17,6 @@ export type HomePage =
   | "diagram-composer"
   | "notes"
   | "stats"
-  | "generators"
   | "symbols";
 
 export const useHomeViewStore = create<{

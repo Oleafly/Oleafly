@@ -1,5 +1,4 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { aiCompletionExtension } from "@/lib/ai-completion";
 import { functionKeyTextInput } from "@/lib/function-key-text";
 import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
@@ -47,8 +46,6 @@ import { historySignalExtension } from "./history-signal";
 import { recompileShortcutBinding } from "./cm/recompile-shortcut";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
-import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
-import { toggleInlineEdit } from "./cm/inline-ai/openSession";
 import {
   editorCompletionSourcesForPath,
   projectCompletionSourcesForPath,
@@ -316,7 +313,7 @@ const HOST: EditorHost = {
   ],
 };
 
-const SHELL_EXTENSIONS: Extension[] = [inlineDiffPlugin, cursorSignalExtension(), historySignalExtension(), functionKeyTextInput];
+const SHELL_EXTENSIONS: Extension[] = [cursorSignalExtension(), historySignalExtension(), functionKeyTextInput];
 
 const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
@@ -354,7 +351,6 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   },
   ...latexListKeymap,
   ...latexStructureKeymap,
-  { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
   { key: "Mod-Alt-m", run: requestComment },
 ];
 
@@ -385,7 +381,6 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         }
         const pathTools = [
           ...(isOutlineDocument(path) ? [outlineRailClearance] : []),
-          ...(/\.(?:tex|latex|ltx|typ|md|markdown|qmd|rmd)$/i.test(path) ? [aiCompletionExtension] : []),
         ];
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
           return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...pathTools];

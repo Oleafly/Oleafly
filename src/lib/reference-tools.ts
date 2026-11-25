@@ -1,11 +1,11 @@
+import mlaStyle from "@/assets/csl/modern-language-association.csl?raw";
+import ieeeStyle from "@/assets/csl/ieee.csl?raw";
+import chicagoStyle from "@/assets/csl/chicago-author-date.csl?raw";
+import amaStyle from "@/assets/csl/american-medical-association.csl?raw";
+import acsStyle from "@/assets/csl/american-chemical-society.csl?raw";
 import { Cite, plugins } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
 import "@citation-js/plugin-csl";
-import acsStyle from "@/assets/csl/american-chemical-society.csl?raw";
-import amaStyle from "@/assets/csl/american-medical-association.csl?raw";
-import chicagoStyle from "@/assets/csl/chicago-author-date.csl?raw";
-import ieeeStyle from "@/assets/csl/ieee.csl?raw";
-import mlaStyle from "@/assets/csl/modern-language-association.csl?raw";
 import { generateCiteKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import { detectInput, type DetectedInput } from "@/lib/citation/detect";
 import { parseBib, validateBib, type BibFinding } from "@/lib/latex-tools";

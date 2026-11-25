@@ -89,7 +89,7 @@ export function FloatingReview({
   canUndo?: boolean;
   beforeAcceptAll?: () => void;
   scrollRef: RefObject<HTMLElement | null>;
-  bottomRef: RefObject<HTMLElement | null>;
+  bottomRef?: RefObject<HTMLElement | null>;
 }>) {
   const barRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<ReviewPlacement | null>(null);
@@ -103,7 +103,7 @@ export function FloatingReview({
       const bar = barRef.current;
       if (!bar) return;
       const toolbar = scroller.querySelector<HTMLElement>(":scope > [role=toolbar]");
-      const next = reviewPlacement(activeChangeBox(editor.view.dom), visibleArea(scroller, toolbar, bottomRef.current), {
+      const next = reviewPlacement(activeChangeBox(editor.view.dom), visibleArea(scroller, toolbar, bottomRef?.current ?? null), {
         width: bar.offsetWidth,
         height: bar.offsetHeight,
       });
@@ -116,7 +116,7 @@ export function FloatingReview({
     };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-    for (const element of [editor.view.dom, scroller, bottomRef.current, barRef.current]) {
+    for (const element of [editor.view.dom, scroller, bottomRef?.current, barRef.current]) {
       if (element) observer?.observe(element);
     }
     scroller.addEventListener("scroll", schedule, { passive: true });

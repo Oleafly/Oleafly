@@ -1,5 +1,4 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
-import type { RecordedRun } from "./notes-agent-mock";
 import type { WriteFailure } from "./notes-fixtures";
 
 export const BASE_URL = process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420";
@@ -19,7 +18,7 @@ interface HarnessWindow {
     saves(id: string): number;
     settingsOpened(): number;
   };
-  __agent: { runs: RecordedRun[]; unhandled: string[] };
+  __notesIpc: { unhandled: string[] };
 }
 
 export class NotesPage {
@@ -110,14 +109,6 @@ export class NotesPage {
 
   get toolbar(): Locator {
     return this.page.getByRole("toolbar", { name: "Formatting", exact: true }).filter({ visible: true });
-  }
-
-  get composer(): Locator {
-    return this.page.getByRole("combobox", { name: "Assistant", exact: true });
-  }
-
-  get conversation(): Locator {
-    return this.page.getByRole("region", { name: "Conversation with the assistant" });
   }
 
   get diffs(): Locator {
@@ -224,17 +215,6 @@ export class NotesPage {
     await this.page.keyboard.press("Enter");
   }
 
-  async runAction(filter: string, label: string): Promise<void> {
-    await this.composer.fill(`/${filter}`);
-    await expect(this.page.getByRole("option", { name: label })).toBeVisible();
-    await this.composer.press("Enter");
-  }
-
-  async ask(text: string): Promise<void> {
-    await this.composer.fill(text);
-    await this.composer.press("Enter");
-  }
-
   async dockRight(title: string): Promise<void> {
     const tab = this.page.getByRole("tab", { name: title });
     const slot = this.page.locator("[data-group] > [data-slot]").first();
@@ -286,12 +266,8 @@ export class NotesPage {
     return this.page.evaluate((failure) => (window as unknown as HarnessWindow).__notes.failNextWrite(failure), kind);
   }
 
-  runs(): Promise<RecordedRun[]> {
-    return this.page.evaluate(() => (window as unknown as HarnessWindow).__agent.runs);
-  }
-
   unhandled(): Promise<string[]> {
-    return this.page.evaluate(() => (window as unknown as Partial<HarnessWindow>).__agent?.unhandled ?? []);
+    return this.page.evaluate(() => (window as unknown as Partial<HarnessWindow>).__notesIpc?.unhandled ?? []);
   }
 
   async checkClean(): Promise<void> {

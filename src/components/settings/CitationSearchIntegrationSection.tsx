@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
-import { Brave, Tavily, type IconType } from "@lobehub/icons";
 import { LibraryBig } from "lucide-react";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import {
@@ -32,25 +31,6 @@ const KEY_FREE_SOURCES: readonly {
   { name: "PubMed", Icon: PubMedBrandIcon, tone: "text-[#326599] dark:text-[#6FA0D2]" },
 ];
 
-type WebSearchConnector = "brave-search" | "tavily";
-
-const WEB_SEARCH_CONNECTORS: readonly WebSearchConnector[] = ["brave-search", "tavily"];
-
-const WEB_SEARCH_LOGOS: Readonly<Record<WebSearchConnector, IconType>> = {
-  "brave-search": Brave.Color,
-  tavily: Tavily.Color,
-};
-
-interface WebSearchKeyStrings {
-  hint: string;
-  docsLink: string;
-  keyLabel: string;
-  keySaved: string;
-  keySaveFailed: string;
-  keyRemoved: string;
-  keyRemoveFailed: string;
-}
-
 export function CitationSearchIntegrationSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [apiKey, setApiKey] = useState("");
@@ -72,18 +52,6 @@ export function CitationSearchIntegrationSection() {
   const [serperKey, setSerperKey] = useState("");
   const [serperConnected, setSerperConnected] = useState<boolean | null>(null);
   const [serperBusy, setSerperBusy] = useState(false);
-
-  const [webKeys, setWebKeys] = useState<Record<WebSearchConnector, string>>({
-    "brave-search": "",
-    tavily: "",
-  });
-  const [webConnected, setWebConnected] = useState<
-    Record<WebSearchConnector, boolean | null>
-  >({ "brave-search": null, tavily: null });
-  const [webBusy, setWebBusy] = useState<Record<WebSearchConnector, boolean>>({
-    "brave-search": false,
-    tavily: false,
-  });
 
   const [announcement, setAnnouncement] = useState("");
 
@@ -117,17 +85,6 @@ export function CitationSearchIntegrationSection() {
       .catch(() => {
         if (!cancelled) setSerperConnected(false);
       });
-    for (const connector of WEB_SEARCH_CONNECTORS) {
-      void connectorKeySaved(connector)
-        .then((saved) => {
-          if (!cancelled) {
-            setWebConnected((current) => ({ ...current, [connector]: saved }));
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setWebConnected((current) => ({ ...current, [connector]: false }));
-        });
-    }
     return () => {
       cancelled = true;
     };
@@ -259,100 +216,7 @@ export function CitationSearchIntegrationSection() {
       t(($) => $.settings.citations.serper.keyRemoveFailed),
     );
 
-  const webSearchStrings: Record<WebSearchConnector, WebSearchKeyStrings> = {
-    "brave-search": {
-      hint: t(($) => $.settings.citations.braveSearch.hint),
-      docsLink: t(($) => $.settings.citations.braveSearch.docsLink),
-      keyLabel: t(($) => $.settings.citations.braveSearch.keyLabel),
-      keySaved: t(($) => $.settings.citations.braveSearch.keySaved),
-      keySaveFailed: t(($) => $.settings.citations.braveSearch.keySaveFailed),
-      keyRemoved: t(($) => $.settings.citations.braveSearch.keyRemoved),
-      keyRemoveFailed: t(($) => $.settings.citations.braveSearch.keyRemoveFailed),
-    },
-    tavily: {
-      hint: t(($) => $.settings.citations.tavily.hint),
-      docsLink: t(($) => $.settings.citations.tavily.docsLink),
-      keyLabel: t(($) => $.settings.citations.tavily.keyLabel),
-      keySaved: t(($) => $.settings.citations.tavily.keySaved),
-      keySaveFailed: t(($) => $.settings.citations.tavily.keySaveFailed),
-      keyRemoved: t(($) => $.settings.citations.tavily.keyRemoved),
-      keyRemoveFailed: t(($) => $.settings.citations.tavily.keyRemoveFailed),
-    },
-  };
-
-  const setWebPending = (connector: WebSearchConnector) => (pending: boolean) =>
-    setWebBusy((current) => ({ ...current, [connector]: pending }));
-
-  const saveWebKey = async (connector: WebSearchConnector) => {
-    const key = webKeys[connector].trim();
-    if (!key) return;
-    const strings = webSearchStrings[connector];
-    await updateCredential(
-      connector,
-      key,
-      setWebPending(connector),
-      () => {
-        setWebKeys((current) => ({ ...current, [connector]: "" }));
-        setWebConnected((current) => ({ ...current, [connector]: true }));
-      },
-      strings.keySaved,
-      strings.keySaveFailed,
-    );
-  };
-
-  const removeWebKey = (connector: WebSearchConnector) => {
-    const strings = webSearchStrings[connector];
-    return updateCredential(
-      connector,
-      "",
-      setWebPending(connector),
-      () => setWebConnected((current) => ({ ...current, [connector]: false })),
-      strings.keyRemoved,
-      strings.keyRemoveFailed,
-    );
-  };
-
   const connectedLabel = t(($) => $.settings.citations.connected);
-
-  const webSearchCard = (connector: WebSearchConnector, title: string, docsHref: string) => {
-    const strings = webSearchStrings[connector];
-    const Logo = WEB_SEARCH_LOGOS[connector];
-    return (
-      <IntegrationCard
-        key={connector}
-        framed
-        icon={<Logo size={16} />}
-        title={title}
-        badge={webConnected[connector] ? <ConnectedBadge label={connectedLabel} /> : null}
-        description={strings.hint}
-        docs={{ href: docsHref, label: strings.docsLink }}
-        actions={
-          webConnected[connector] && (
-            <IntegrationBusyButton
-              variant="outline"
-              busy={webBusy[connector]}
-              onClick={() => void removeWebKey(connector)}
-            >
-              {t(($) => $.settings.citations.actions.removeKey)}
-            </IntegrationBusyButton>
-          )
-        }
-      >
-        {!webConnected[connector] && (
-          <IntegrationKeyField
-            inputTestId={`${connector}-api-key-input`}
-            submitTestId={`${connector}-api-key-save`}
-            value={webKeys[connector]}
-            onChange={(value) => setWebKeys((current) => ({ ...current, [connector]: value }))}
-            label={strings.keyLabel}
-            busy={webBusy[connector]}
-            submitLabel={t(($) => $.settings.citations.actions.saveKey)}
-            onSubmit={() => void saveWebKey(connector)}
-          />
-        )}
-      </IntegrationCard>
-    );
-  };
 
   return (
     <div
@@ -523,11 +387,6 @@ export function CitationSearchIntegrationSection() {
         )}
       </IntegrationCard>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {t(($) => $.settings.citations.webSearchOrder)}
-      </p>
-      {webSearchCard("brave-search", "Brave Search", "https://brave.com/search/api/")}
-      {webSearchCard("tavily", "Tavily", "https://docs.tavily.com/")}
     </div>
   );
 }

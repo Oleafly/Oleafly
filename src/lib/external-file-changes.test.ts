@@ -44,7 +44,9 @@ vi.mock("@/lib/tauri", () => ({
   listFileTree: async (projectId: string) => ({
     entries: await mocks.listFiles(projectId),
     truncated: false,
-  }),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -61,6 +63,8 @@ vi.mock("@/lib/tauri", () => ({
   gitDiscard: mocks.gitDiscard,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
@@ -225,7 +229,7 @@ describe("applyExternalFileChange", () => {
     await vi.waitFor(() => {
       expect(useFilesStore.getState().openTabs).toEqual(["references.bib"]);
     });
-    expect(useFilesStore.getState().assistantTabs).toEqual(["references.bib"]);
+    expect(useFilesStore.getState().assistantTabs).toEqual([]);
   });
 });
 

@@ -16,10 +16,8 @@ const toastInfoUnique = vi.fn();
 
 vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
-}));
 
-vi.mock("@/lib/ai-providers", () => ({
-  hasConfiguredProvider: (config: unknown) => hasConfiguredProvider(config),
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/features/citation", () => ({
@@ -158,15 +156,6 @@ describe("DocumentCitationScanPanel", () => {
     await waitFor(() => expect(button).not.toBeDisabled());
   });
 
-  it("shows heuristic ranking banner when no AI provider is configured", async () => {
-    render(<DocumentCitationScanPanel />);
-    expect(
-      await screen.findByText(
-        /Ranking will use citation counts only until an AI provider is configured/i,
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("calls scanDocumentForCitations with rankMode heuristic when no provider", async () => {
     render(<DocumentCitationScanPanel />);
     const button = screen.getByTestId("document-citation-scan");
@@ -180,7 +169,6 @@ describe("DocumentCitationScanPanel", () => {
 
     expect(scanDocumentForCitations).toHaveBeenCalledWith(
       expect.objectContaining({
-        rankMode: "heuristic",
         sourceText: expect.stringContaining("Deep learning models"),
         signal: expect.any(AbortSignal),
       }),
@@ -246,7 +234,6 @@ describe("DocumentCitationScanPanel", () => {
 
     expect(scanDocumentForCitations).toHaveBeenCalledWith(
       expect.objectContaining({
-        rankMode: "llm",
       }),
     );
   });

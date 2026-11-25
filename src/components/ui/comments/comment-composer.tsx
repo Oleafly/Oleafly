@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, AtSign, Bold, Code, Italic, List, type LucideIcon, Strikethrough } from "lucide-react";
-import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
+import { useAutoSizeTextarea } from "@/hooks/use-auto-size-textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";

@@ -32,7 +32,6 @@ import { ZenSession } from "./ZenSession";
 const PROJECT_LAYOUT = {
   showTree: true,
   railTab: "files" as const,
-  assistantOpen: true,
   workspaceHidden: false,
   viewMode: "editor" as const,
   terminalOpen: false,
@@ -72,15 +71,6 @@ describe("leaving Zen mode with Escape", () => {
   beforeEach(() => {
     enterZenMode();
     render(<ZenSession />);
-  });
-
-  it("leaves on a second Escape within half a second", () => {
-    press("Escape");
-    expect(zenIsOn()).toBe(true);
-    vi.advanceTimersByTime(499);
-    press("Escape");
-    expect(zenIsOn()).toBe(false);
-    expect(useSettingsStore.getState()).toMatchObject({ showTree: true, assistantOpen: true });
   });
 
   it("stays on after a single Escape", () => {

@@ -46,7 +46,6 @@ export function documentScanCacheKey(args: {
   sourceText: string;
   bibText: string;
   settings: DocumentCitationSettings;
-  rankMode: "llm" | "heuristic";
 }): string {
   return JSON.stringify({
     source: args.sourceText.trim().slice(0, 8000),
@@ -55,7 +54,7 @@ export function documentScanCacheKey(args: {
     perSource: args.settings.maxResultsPerSource,
     perParagraph: args.settings.maxResultsPerParagraph,
     maxParagraphs: args.settings.maxParagraphs,
-    rankMode: args.rankMode,
+    rankMode: "heuristic",
   });
 }
 

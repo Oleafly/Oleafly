@@ -51,8 +51,8 @@ export function zenFullscreenSettled(): Promise<void> {
 }
 
 function snapshotLayout(settings: SettingsSnapshot): ZenLayoutSnapshot {
-  const { showTree, railTab, assistantOpen, workspaceHidden, viewMode, terminalOpen } = settings;
-  return { showTree, railTab, assistantOpen, workspaceHidden, viewMode, terminalOpen };
+  const { showTree, railTab, workspaceHidden, viewMode, terminalOpen } = settings;
+  return { showTree, railTab, workspaceHidden, viewMode, terminalOpen };
 }
 
 function previewDetached(projectId: string | null): boolean {
@@ -78,7 +78,6 @@ export function enterZenMode(): boolean {
   });
   useSettingsStore.setState({
     showTree: false,
-    assistantOpen: false,
     terminalOpen: false,
     workspaceHidden: false,
     viewMode,

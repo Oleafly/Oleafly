@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   DiagramComposer as DiagramComposerCore,
   DiagramKitContext,
-  type DiagramFixPrompt,
   type DiagramHost,
   type DiagramKit,
   type DiagramLanguageId,
@@ -35,14 +34,10 @@ import {
   createDiagramProject,
   getOrCreateScratchProject,
   saveFigureToCache,
-  getConfig,
   renderTypstSnippet,
 } from "@/lib/tauri";
 import { renderMermaidFigure } from "@/components/diagram/mermaid-render";
-import { completeText } from "@/lib/agent-backend";
-import { aiFeaturesReady } from "@/lib/ai-route";
 import { decodeAppError, describeError } from "@/lib/app-error";
-import { i18n } from "@/i18n";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { diagramCodeExtensions, diagramLanguageExtensions } from "@/components/diagram/code-extensions";
 import { useFullscreen } from "@/lib/use-fullscreen";
@@ -92,31 +87,6 @@ function pickTikzFile(accept = ".tikz,.tex"): Promise<{ name: string; content: s
     });
     input.click();
   });
-}
-
-async function fixWithAi(code: string, logTail: string, prompt?: DiagramFixPrompt): Promise<string> {
-  const cfg = await getConfig();
-  if (!aiFeaturesReady(cfg)) {
-    throw new Error(i18n.t(($) => $.diagram.composer.aiProviderRequired));
-  }
-  let text: string;
-  try {
-    text = await completeText(
-      prompt ?? {
-        system:
-          String.raw`You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \begin{tikzpicture}...\end{tikzpicture} plus any \definecolor lines. No preamble, no \documentclass, no explanation, no markdown code fences. Never use em dashes.`,
-        user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
-      },
-    );
-  } catch (e) {
-    throw new Error(
-      i18n.t(($) => $.diagram.composer.fixFailed, { detail: describeError(e) }),
-    );
-  }
-  return text
-    .replace(/^```[a-zA-Z]*\n?/gm, "")
-    .replace(/```$/gm, "")
-    .trim();
 }
 
 function projectLanguage(engine: string | undefined, mainDoc: string): DiagramLanguageId {
@@ -204,7 +174,6 @@ const HOST: DiagramHost = {
     return true;
   },
   pickTikzFile,
-  fixWithAi,
   insertTarget: () => {
     const { projectId, activePath } = useFilesStore.getState();
     const language = languageForPath(activePath);

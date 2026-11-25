@@ -22,6 +22,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   pdfAnnotationsUpdate: mocks.update,
   pdfAnnotationsDelete: mocks.remove,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 function note(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
@@ -104,16 +106,6 @@ describe("PdfAnnotationsPanel", () => {
     expect(body.scrollTop).toBe(90);
     expect(scrollIntoView).not.toHaveBeenCalled();
     spy.mockRestore();
-  });
-
-  it("picks open notes to send by default and sends the ticked ones", async () => {
-    seed([note(), note({ id: "b", number: 2, status: "sent" })]);
-    const { onSend } = renderPanel();
-    await userEvent.click(screen.getByRole("button", { name: label(strings.panel.send, { n: 1 }) }));
-    expect(onSend).toHaveBeenCalledWith([note()]);
-    await userEvent.click(screen.getByRole("checkbox", { name: label(strings.panel.include, { number: 2 }) }));
-    await userEvent.click(screen.getByRole("button", { name: label(strings.panel.send, { n: 2 }) }));
-    expect(onSend).toHaveBeenLastCalledWith([note(), note({ id: "b", number: 2, status: "sent" })]);
   });
 
   it("marks a note resolved, edits its comment and deletes it", async () => {

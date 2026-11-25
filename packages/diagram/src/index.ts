@@ -13,7 +13,6 @@ export {
   diagramLanguage,
   isDiagramLanguageId,
   languageForPath,
-  type DiagramFixPrompt,
   type DiagramLanguage,
   type DiagramLanguageId,
   type DiagramNote,

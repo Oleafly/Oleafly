@@ -66,3 +66,9 @@ web/src/synctex/oleafly_synctex.wasm
 
 # Built by scripts/build-artifact-runtime.mjs for Notes artifact frames
 public/artifact-runtime/
+
+# Private updater signing key (never commit)
+.local-signing/
+
+# Local Python bytecode for fork maintenance tests.
+/scripts/no-ai/__pycache__/

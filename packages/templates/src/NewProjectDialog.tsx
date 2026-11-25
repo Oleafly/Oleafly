@@ -464,7 +464,6 @@ export function NewProjectDialog({
   busy = false,
   onClose,
   onCreate,
-  onGenerateWithAi,
   onImportTemplate,
   importControl,
   onImportProject,
@@ -483,7 +482,6 @@ export function NewProjectDialog({
   busy?: boolean;
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
-  onGenerateWithAi?: () => void;
   onImportTemplate?: () => void;
   importControl?: ReactNode;
   onImportProject?: () => void;
@@ -829,16 +827,7 @@ export function NewProjectDialog({
               <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
                 {t("dialog.emptyBody")}
               </p>
-              {onGenerateWithAi && (
-                <Button
-                  className="mt-1"
-                  data-testid="generate-template-empty-state"
-                  data-tour-hide
-                  onClick={onGenerateWithAi}
-                >
-                  <Sparkles className="size-4" /> {t("dialog.generateWithAi")}
-                </Button>
-              )}
+
             </div>
           ) : (
             <TemplateGrid
@@ -1039,17 +1028,7 @@ export function NewProjectDialog({
                 <FileUp className="size-3.5" /> {t("dialog.importTemplate")}
               </Button>
             )}
-            {step === 1 && onGenerateWithAi && (
-              <Button
-                variant="ghostPrimary"
-                size="sm"
-                data-testid="generate-template-with-ai"
-                data-tour-hide
-                onClick={onGenerateWithAi}
-              >
-                <Sparkles className="size-3.5" /> {t("dialog.generateWithAi")}
-              </Button>
-            )}
+
             {allowClose ? (
               <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label={t("dialog.close")}>
                 <X className="size-4" />

@@ -107,7 +107,6 @@ beforeEach(() => {
   useCompileStore.setState({ status: "idle", lastCompileCheckpoint: null });
   useSettingsStore.setState({
     viewMode: "split",
-    assistantOpen: false,
     workspaceHidden: false,
   });
   useFolderAccessStore.getState().reset("linked-a");
@@ -137,7 +136,7 @@ describe("TopToolbar for an opened folder", () => {
   }, 20_000);
 
   it("drops the compile caption when narrow and keeps it when wide", () => {
-    const { toolbar: narrow } = renderToolbarAt(480);
+    const { toolbar: narrow } = renderToolbarAt(350);
     expect(within(narrow).getByTestId("compile-button").querySelector('[data-toolbar-part="compile-label"]'))
       .toHaveAttribute("aria-hidden", "true");
     cleanup();

@@ -68,14 +68,6 @@ async function clickContextAction(page: TauriPage, ...path: string[]) {
   await clickEditorContextPath(page, path);
 }
 
-async function resetInlineAi(page: TauriPage) {
-  await page.evaluate(
-    `import("/src/store/inlineEdit.ts").then(
-      ({ useInlineEditStore }) => useInlineEditStore.getState().reset()
-    )`,
-  );
-}
-
 async function resetLatexCursor(page: TauriPage) {
   await replaceEditorSource(page, LATEX_SOURCE);
   await setEditorCaretAfter(page, "CONTEXTTARGET");
@@ -97,11 +89,6 @@ test("LaTeX context menu activates every formatting and insertion action", async
   await freshLatex(tauriPage, "LaTeX inventory");
 
   await resetLatexCursor(tauriPage);
-  await clickContextAction(tauriPage, "Ask AI…");
-  await expect(tauriPage.locator(".cm-inline-prompt")).toBeVisible({
-    timeout: 5_000,
-  });
-  await resetInlineAi(tauriPage);
 
   const directActions = [
     [["Format", "Bold"], String.raw`\textbf{text}`],
@@ -324,11 +311,6 @@ async function exerciseSimpleProfile(
 
   await replaceEditorSource(page, "CONTEXTTARGET");
   await setEditorCaretAfter(page, "CONTEXTTARGET");
-  await clickContextAction(page, "Ask AI…");
-  await expect(page.locator(".cm-inline-prompt")).toBeVisible({
-    timeout: 5_000,
-  });
-  await resetInlineAi(page);
 }
 
 test("Typst context menu activates every profile-appropriate action", async ({

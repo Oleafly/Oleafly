@@ -6,7 +6,7 @@ import { useEditorState } from "@tiptap/react";
 import { AtSign, Globe, Link2, Play } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { Button } from "@/components/ui/button";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { allowRemoteImage } from "@/lib/remote-image";

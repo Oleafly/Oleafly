@@ -1,67 +1,38 @@
-import { Suspense, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSettingsStore } from "@/store/settings";
 import { useTranslation } from "react-i18next";
-import { GitBranch, LibraryBig, MousePointer2 } from "lucide-react";
-import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
+import { GitBranch, LibraryBig } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHostingSection } from "@/components/settings/git-hosting/GitHostingSection";
-import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
 import { ZoteroSection } from "@/components/settings/ZoteroSection";
 import { CitationSearchIntegrationSection } from "@/components/settings/CitationSearchIntegrationSection";
-import { McpSection } from "@/components/settings/McpSection";
 import { OverleafSection } from "@/components/settings/OverleafSection";
 import {
-  AlphaXivBrandIcon,
   OverleafBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
-import { intended, lazy } from "@/lib/preloadable";
-import { useSettingsStore } from "@/store/settings";
 import { useSettingsTab } from "@/components/settings/use-settings-tab";
 
 const INTEGRATIONS_TABS = [
   "git-hosting",
   "overleaf",
-  "alphaxiv",
   "zotero",
   "citation-search",
-  "oleafly-mcp",
-  "desktop-apps",
 ] as const;
-
-const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), { warm: () => intended("settings") });
 
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [tab, setTab] = useSettingsTab("integrations", "git-hosting", INTEGRATIONS_TABS);
-  const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(tab === "oleafly-mcp");
-  const scrollTarget = useSettingsStore(
-    (state) => state.settingsScrollTarget,
-  );
-  const setScrollTarget = useSettingsStore(
-    (state) => state.setSettingsScrollTarget,
-  );
-  const settingsOpen = useSettingsStore((state) => state.settingsOpen);
 
+
+  const scrollTarget = useSettingsStore((state) => state.settingsScrollTarget);
+  const setScrollTarget = useSettingsStore((state) => state.setSettingsScrollTarget);
+  const settingsOpen = useSettingsStore((state) => state.settingsOpen);
   useEffect(() => {
     if (!settingsOpen) return;
-    if (scrollTarget === "git-hosting" || scrollTarget === "github") {
-      setTab("git-hosting");
-      setScrollTarget(null);
-    } else if (scrollTarget === "overleaf") {
-      setTab("overleaf");
-      setScrollTarget(null);
-    } else if (scrollTarget === "desktop-apps") {
-      setTab("desktop-apps");
-      setScrollTarget(null);
-    } else if (scrollTarget === "zotero") {
-      setTab("zotero");
-      setScrollTarget(null);
-    } else if (scrollTarget === "citation-search") {
-      setTab("citation-search");
-      setScrollTarget(null);
-    } else if (scrollTarget === "oleafly-mcp") {
-      setTab("oleafly-mcp");
-      setOleaflyMcpVisited(true);
+    const target = scrollTarget === "github" ? "git-hosting" : scrollTarget;
+    if (INTEGRATIONS_TABS.some((tab) => tab === target)) {
+      setTab(target as (typeof INTEGRATIONS_TABS)[number]);
       setScrollTarget(null);
     }
   }, [settingsOpen, scrollTarget, setScrollTarget, setTab]);
@@ -71,7 +42,6 @@ export function IntegrationsSection() {
       value={tab}
       onValueChange={(value) => {
         setTab(value);
-        if (value === "oleafly-mcp") setOleaflyMcpVisited(true);
       }}
       className="space-y-4"
     >
@@ -84,13 +54,7 @@ export function IntegrationsSection() {
           <OverleafBrandIcon className="mr-1.5 size-3.5 text-[#47A141]" />
           {"Overleaf"}
         </TabsTrigger>
-        <TabsTrigger
-          value="alphaxiv"
-          data-testid="integrations-tab-alphaxiv"
-        >
-          <AlphaXivBrandIcon className="mr-1.5 size-3.5 text-[oklch(45.36%_0.1566_16.66)] dark:text-[oklch(83.7%_0.0898_24.2)]" />
-          {"alphaXiv"}
-        </TabsTrigger>
+
         <TabsTrigger value="zotero" data-testid="integrations-tab-zotero">
           <ZoteroBrandIcon className="mr-1.5 size-3.5 text-[#CC2936]" />
           {"Zotero"}
@@ -102,17 +66,7 @@ export function IntegrationsSection() {
           <LibraryBig className="mr-1.5 size-3.5 text-blue-600 dark:text-blue-300" />
           {t(($) => $.settings.citations.title)}
         </TabsTrigger>
-        <TabsTrigger
-          value="oleafly-mcp"
-          data-testid="integrations-tab-oleafly-mcp"
-        >
-          <McpBrandIcon className="mr-1.5 size-3.5" />
-          {"Oleafly MCP"}
-        </TabsTrigger>
-        <TabsTrigger value="desktop-apps" data-testid="integrations-tab-desktop-apps">
-          <MousePointer2 className="mr-1.5 size-3.5" />
-          {t(($) => $.settings.integrations.desktopApps.tab)}
-        </TabsTrigger>
+
       </TabsList>
       <TabsContent value="git-hosting">
         <GitHostingSection />
@@ -120,31 +74,14 @@ export function IntegrationsSection() {
       <TabsContent value="overleaf">
         <OverleafSection />
       </TabsContent>
-      <TabsContent value="alphaxiv">
-        <AlphaXivSection />
-      </TabsContent>
+
       <TabsContent value="zotero">
         <ZoteroSection />
       </TabsContent>
       <TabsContent value="citation-search">
         <CitationSearchIntegrationSection />
       </TabsContent>
-      {oleaflyMcpVisited ? (
-        <TabsContent
-          value="oleafly-mcp"
-          forceMount
-          hidden={tab !== "oleafly-mcp"}
-        >
-          <McpSection />
-        </TabsContent>
-      ) : null}
-      <TabsContent value="desktop-apps">
-        {tab === "desktop-apps" ? (
-          <Suspense fallback={null}>
-            <DesktopAppsSection />
-          </Suspense>
-        ) : null}
-      </TabsContent>
+
     </Tabs>
   );
 }

@@ -24,11 +24,11 @@ vi.mock("@/lib/log", () => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({
-  getConfig: async () => ({}),
-}));
+  getConfig: async () => ({
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
 
-vi.mock("@/lib/ai-providers", () => ({
-  hasConfiguredProvider: () => false,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/literature-search", async () => {
@@ -460,20 +460,6 @@ describe("LiteratureSearchPanel search mode", () => {
     expect(
       screen.getAllByText(enResearchTools.literature.paused).length,
     ).toBe(LITERATURE_SOURCES.filter((source) => !source.available).length);
-  });
-});
-
-describe("LiteratureSearchPanel review mode", () => {
-  it("switches to the paper review surface", () => {
-    render(<LiteratureSearchPanel />);
-    fireEvent.click(screen.getByTestId("citation-search-mode-review"));
-    expect(screen.getByTestId("paper-review-panel")).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: enResearchTools.literature.modeSearch,
-      }),
-    );
-    expect(screen.queryByTestId("paper-review-panel")).not.toBeInTheDocument();
   });
 });
 

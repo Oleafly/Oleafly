@@ -66,7 +66,6 @@ import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { editorCjkFontStack, fontFamilyName, fontFamilyStack, quotedFontFamily } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
@@ -97,9 +96,6 @@ import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
 import { useSeparatorHitArea } from "@/lib/panel-layout";
-import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
-import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
-import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { expectEngineChoiceOnOpen, takeEngineChoiceOnOpen } from "@/store/engine-picker";
 import { revealPreviewForCompile, togglePreviewPane } from "@/lib/compile-preview";
@@ -197,9 +193,6 @@ const DiagramComposerChooserHost = mountOnFirstOpen(
   () => useDiagramComposerStore.getState().setChooserOpen(false),
   { loading: <OpeningIndicator /> },
 );
-const CopilotOverlay = lazy(() =>
-  import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
-);
 const WordCountModal = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })), { warm: true }),
@@ -241,8 +234,6 @@ const LanguageServiceRuntime = mountOnFirstOpen(
 const latexToolsOn = () => useSettingsStore.getState().latexTools;
 const StatsToolView = lazy(() =>
   import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })), { warm: latexToolsOn });
-const GeneratorsToolView = lazy(() =>
-  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })), { warm: latexToolsOn });
 const SymbolsToolView = lazy(() =>
   import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })), { warm: latexToolsOn });
 const EquationToolView = lazy(() =>
@@ -310,7 +301,6 @@ function TypstCjkFontSlot() {
 const WorkspaceSidebar = memo(Sidebar);
 const WorkspaceEditor = memo(Editor);
 const WorkspacePreview = memo(PreviewPane);
-const WorkspaceAssistant = memo(ChatPanel);
 
 function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -328,11 +318,6 @@ function SurfaceLoading({ label }: Readonly<{ label: string }>) {
       </div>
     </div>
   );
-}
-
-function closeAssistant() {
-  const settings = useSettingsStore.getState();
-  if (settings.assistantOpen) settings.setAssistantOpen(false);
 }
 
 function closeTerminal() {
@@ -433,20 +418,12 @@ function runMenuHistory(redo: boolean): void {
   runDocumentMenuHistory(active, redo);
 }
 
-function loadMcpBridge(): Promise<() => void> {
-  return import("@/lib/mcp-bridge").then((m) => m.startMcpBridge());
-}
-
 function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
 function loadQuickCaptureBridge(): Promise<() => void> {
   return import("@/components/notes/quick-capture-bridge").then((m) => m.startQuickCaptureBridge());
-}
-
-function loadResearchPdfBridge(): Promise<() => void> {
-  return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
 }
 
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
@@ -482,9 +459,7 @@ function AppContent() {
   const appThemeLight = useSettingsStore((s) => s.appThemeLight);
   const appThemeDark = useSettingsStore((s) => s.appThemeDark);
   const commentColor = useSettingsStore((s) => s.commentColor);
-  const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
-  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const zen = useZenStore((s) => s.active);
   const zenProjectId = useZenStore((s) => s.projectId);
@@ -500,17 +475,16 @@ function AppContent() {
   const keepPreview =
     !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
-  const projectToolOpen = homePage === "generators" || homePage === "symbols";
+  const projectToolOpen = homePage === "symbols";
   const sidebarHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const editorHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const terminalHost = useKeptAliveHost("h-full min-h-0 min-w-0");
-  const assistantHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const paneLayout = usePaneLayoutStore((s) => s.layout);
   const paneEpoch = usePaneLayoutStore((s) => s.epoch);
   const paneRootElement = useRef<HTMLDivElement>(null);
   const shownPanes = useMemo(
-    () => paneVisibility({ viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen }),
-    [assistantOpen, showTree, terminalOpen, viewMode, workspaceHidden],
+    () => paneVisibility({ viewMode, showTree, workspaceHidden, terminalOpen }),
+    [showTree, terminalOpen, viewMode, workspaceHidden],
   );
   const separatorHitArea = useSeparatorHitArea(0.375);
 
@@ -536,16 +510,13 @@ function AppContent() {
         editor: editorHost,
         pdf: previewHost,
         terminal: terminalHost,
-        assistant: assistantHost,
       },
       separatorHitArea,
       rootRef: paneRootElement,
-      onAssistantDismiss: closeAssistant,
       onTerminalDismiss: closeTerminal,
     }),
     [
       appFontSize,
-      assistantHost,
       editorHost,
       previewHost,
       projectId,
@@ -586,14 +557,6 @@ function AppContent() {
   useTauriEvent("menu://about", () => setAboutOpen(true), native);
   useTauriSubscription(startNativeDockShortcutBridge, "start the dock shortcut bridge");
   useTauriSubscription(startKeptUndoTidy, "tidy the kept note undo");
-
-  useEffect(() => {
-    if (!native) return;
-    void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
-    void import("@/lib/desktop-apps").then((m) => m.syncDesktopAppsTool());
-  }, [native]);
-  useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
-  useTauriSubscription(native ? loadResearchPdfBridge : null, "start the research PDF bridge");
   useTauriSubscription(native ? loadQuickCaptureBridge : null, "start quick capture");
   useTauriSubscription(
     native ? loadStuckWindowRestore : null,
@@ -910,14 +873,12 @@ function AppContent() {
             {homePage === "literature-search" && <LiteratureSearchToolView />}
             {homePage === "deadlines" && <DeadlinesView />}
             {homePage === "stats" && <StatsToolView />}
-            {homePage === "generators" && <GeneratorsToolView />}
+
             {homePage === "symbols" && <SymbolsToolView />}
             {homePage === "tools" && <LatexToolsView />}
           </Suspense>
         </ErrorBoundary>
-        <Contained resetKey={homePage}>
-          <ExternalToolApprovals />
-        </Contained>
+
         <LazyModals>
           <Contained resetKey={homePage}>
             <EnginePickerModal />
@@ -943,13 +904,7 @@ function AppContent() {
         <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
           <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         </Contained>
-        {chatFloating && (
-          <Suspense fallback={null}>
-            <Contained resetKey={homePage}>
-              <CopilotOverlay />
-            </Contained>
-          </Suspense>
-        )}
+
         <SettingsModal />
         <Contained resetKey={homePage}>
           <CiteOleaflyDialog />
@@ -1038,16 +993,7 @@ function AppContent() {
                 editorHost,
                 `editor:${projectId}`,
               )}
-            {shownPanes.assistant &&
-              createPortal(
-                <ErrorBoundary surface="AI assistant" resetKey={projectId}>
-                  <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
-                    <WorkspaceAssistant />
-                  </Suspense>
-                </ErrorBoundary>,
-                assistantHost,
-                `assistant:${projectId}`,
-              )}
+
             {createPortal(
               <ErrorBoundary surface="terminal dock" resetKey={projectId}>
                 <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
@@ -1085,12 +1031,7 @@ function AppContent() {
         <Contained resetKey={projectId}>
           <SaveAsTemplateHost />
         </Contained>
-        <Contained resetKey={projectId}>
-          <AssistantOutputsBridge />
-        </Contained>
-        <Contained resetKey={projectId}>
-          <ExternalToolApprovals />
-        </Contained>
+
         <LazyModals>
           <Contained resetKey={projectId}>
             <EnginePickerModal />
@@ -1119,13 +1060,7 @@ function AppContent() {
         <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
           <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         </Contained>
-        {chatFloating && !zen && (
-          <Suspense fallback={null}>
-            <Contained resetKey={projectId}>
-              <CopilotOverlay />
-            </Contained>
-          </Suspense>
-        )}
+
         {zen && (
           <Contained resetKey={projectId} close={exitZenMode}>
             <ZenSession />
@@ -1153,7 +1088,7 @@ function AppContent() {
           <Contained resetKey={homePage} close={() => useHomeViewStore.getState().goTo("library")}>
             <Suspense fallback={null}>
               <div className="fixed inset-0 z-[70]">
-                {homePage === "generators" ? <GeneratorsToolView /> : <SymbolsToolView />}
+                <SymbolsToolView />
               </div>
             </Suspense>
           </Contained>
@@ -1327,12 +1262,8 @@ export default function App() {
       if ((state.notes && !previous.notes) || (state.latexTools && !previous.latexTools)) warmDeferred();
       if (!state.notes && previous.notes) leaveNotes();
     });
-    const stopResearch = useResearchTasksFlagStore.subscribe((state, previous) => {
-      if (state.enabled && !previous.enabled) warmDeferred();
-    });
     return () => {
       stopSettings();
-      stopResearch();
     };
   }, []);
   return (

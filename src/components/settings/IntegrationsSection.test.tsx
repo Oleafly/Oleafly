@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { invoke } from "@tauri-apps/api/core";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -10,21 +10,11 @@ import { useSettingsStore } from "@/store/settings";
 import { IntegrationsSection } from "./IntegrationsSection";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-vi.mock("@/lib/mcp-bridge", () => ({
-  refreshMcpRegistry: vi.fn(),
-  revokeMcpBridgeCalls: vi.fn(),
-}));
 vi.mock("@/components/settings/git-hosting/GitHostingSection", () => ({
   GitHostingSection: () => <div data-testid="git-hosting-settings-stub" />,
 }));
-vi.mock("@/components/settings/AlphaXivSection", () => ({
-  AlphaXivSection: () => <div data-testid="alphaxiv-settings-stub" />,
-}));
 vi.mock("@/components/settings/ZoteroSection", () => ({
   ZoteroSection: () => <div data-testid="zotero-settings-stub" />,
-}));
-vi.mock("@/components/settings/desktop-apps/DesktopAppsSection", () => ({
-  default: () => <div data-testid="desktop-apps-settings-stub" />,
 }));
 vi.mock("@/components/settings/CitationSearchIntegrationSection", () => ({
   CitationSearchIntegrationSection: () => (
@@ -40,10 +30,6 @@ beforeEach(() => {
   mockInvoke.mockReset().mockImplementation(async (command) => {
     if (command === "get_config") {
       return {
-        mcp_enabled: false,
-        mcp_port: 5323,
-        mcp_read_only: false,
-        mcp_approval_policy: "ask",
       } as unknown as AppConfig;
     }
     if (command === "mcp_status") {
@@ -60,11 +46,6 @@ describe("IntegrationsSection", () => {
     expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
     expect(screen.getByTestId("integrations-tab-git-hosting")).toHaveAttribute("aria-selected", "true");
 
-    await user.click(screen.getByRole("tab", { name: enSettings.integrations.desktopApps.tab }));
-    expect(await screen.findByTestId("desktop-apps-settings-stub")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "alphaXiv" }));
-    expect(screen.getByTestId("alphaxiv-settings-stub")).toBeInTheDocument();
-    expect(screen.queryByTestId("desktop-apps-settings-stub")).toBeNull();
     await user.click(screen.getByRole("tab", { name: "Zotero" }));
     expect(screen.getByTestId("zotero-settings-stub")).toBeInTheDocument();
     await user.click(
@@ -73,19 +54,7 @@ describe("IntegrationsSection", () => {
     expect(
       screen.getByTestId("citation-search-settings-stub"),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
-    expect(
-      await screen.findByRole("heading", { name: enSettings.mcp.section.title }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("switch", { name: enSettings.mcp.section.enable.ariaLabel }),
-    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: enSettings.gitHosting.title }));
-    await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
-    expect(
-      mockInvoke.mock.calls.filter(([command]) => command === "get_config"),
-    ).toHaveLength(1);
   });
 
   it("scrolls the integration tabs inside their own strip", () => {
@@ -108,9 +77,9 @@ describe("IntegrationsSection", () => {
     expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
-    useSettingsStore.setState({ settingsScrollTarget: "desktop-apps" });
+    useSettingsStore.setState({ settingsScrollTarget: "zotero" });
     rerender(<IntegrationsSection />);
-    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("integrations-tab-zotero")).toHaveAttribute("aria-selected", "true");
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
     useSettingsStore.setState({ settingsScrollTarget: "zotero" });
@@ -120,30 +89,19 @@ describe("IntegrationsSection", () => {
     expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
-    useSettingsStore.setState({ settingsScrollTarget: "oleafly-mcp" });
-    rerender(<IntegrationsSection />);
-    expect(screen.getByRole("tab", { name: "Oleafly MCP" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
-    return waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: enSettings.mcp.section.title }),
-      ).toBeInTheDocument();
-    });
+
   });
 
   it("leaves a link set while Settings closes for the next time it opens", () => {
     const { rerender } = render(<IntegrationsSection />);
-    useSettingsStore.setState({ settingsOpen: false, settingsScrollTarget: "desktop-apps" });
+    useSettingsStore.setState({ settingsOpen: false, settingsScrollTarget: "zotero" });
     rerender(<IntegrationsSection />);
-    expect(useSettingsStore.getState().settingsScrollTarget).toBe("desktop-apps");
-    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "false");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBe("zotero");
+    expect(screen.getByTestId("integrations-tab-zotero")).toHaveAttribute("aria-selected", "false");
 
     useSettingsStore.setState({ settingsOpen: true });
     rerender(<IntegrationsSection />);
-    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("integrations-tab-zotero")).toHaveAttribute("aria-selected", "true");
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
   });
 });

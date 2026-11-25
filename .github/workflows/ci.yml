@@ -40,6 +40,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  no-ai:
+    name: No-AI fork policy and sync tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - run: node scripts/no-ai/check.mjs
+      - run: python3 -m unittest discover -s scripts/no-ai -p "*_test.py"
+
   markdown-platform-smoke:
     name: Markdown smoke (${{ matrix.target }})
     if: github.triggering_actor != 'dependabot[bot]'
@@ -184,12 +195,6 @@ jobs:
 
       - name: Test the release notes extraction
         run: bash scripts/changelog-extract.test.sh
-
-      - name: Test the MCP bundle launcher
-        run: node --test mcpb/server/index.test.cjs
-
-      - name: Test the MCP bundle build script
-        run: bash scripts/mcpb-release.test.sh
 
       - name: Test the update feed script
         run: bash scripts/update-feed.test.sh
@@ -523,7 +528,6 @@ jobs:
           -p oleafly-core -p oleafly-secrets -p oleafly-doctools
           -p oleafly-synctex -p oleafly-synctex-wasm
           -p oleafly-sandbox -p oleafly-forge
-          -p oleafly-agent
 
       # Preflight reads PDFs with lopdf 0.42, which uses let chains, so it
       # needs Rust 1.88 although lopdf declares 1.85. The ACP client needs 1.88
@@ -538,7 +542,7 @@ jobs:
 
       - name: Check the PDF crate, the ACP client, downloads and lint against their Rust 1.88 MSRV
         run: |
-          cargo +1.88.0 check -p oleafly-preflight -p oleafly-acp -p oleafly-downloads --all-targets
+          cargo +1.88.0 check -p oleafly-preflight -p oleafly-downloads --all-targets
           cargo +1.88.0 check -p oleafly-lint --no-default-features --all-targets
 
       # The CLI links the collaboration client, and online import decrypts
@@ -993,7 +997,7 @@ jobs:
         run: >-
           cargo clippy --all-targets
           -p oleafly-core -p oleafly-cli -p oleafly-sandbox -p oleafly-secrets
-          -p oleafly-online -p oleafly-research -p oleafly-acp
+          -p oleafly-online -p oleafly-research
           -- -D warnings
 
       - name: Build the packaged e2e app

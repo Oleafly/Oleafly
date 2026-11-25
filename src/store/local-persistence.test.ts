@@ -52,24 +52,6 @@ describe("stores that persist to localStorage", () => {
     expect(reloaded.useLiteratureLibraryStore.getState().saved).toEqual([]);
   });
 
-  it("loads and writes project agent memory", async () => {
-    localStorage.setItem(
-      "oleafly.agent-memory.p1",
-      JSON.stringify([{ id: "m1", content: "Use British spelling", createdAt: 1 }]),
-    );
-    localStorage.setItem("oleafly.agent-memory.p2", JSON.stringify({ not: "a list" }));
-    const { useAgentMemoryStore } = await import("./agent-memory");
-    useAgentMemoryStore.getState().load("p2");
-    expect(useAgentMemoryStore.getState().notes).toEqual([]);
-    useAgentMemoryStore.getState().load("p1");
-    expect(useAgentMemoryStore.getState().notes.map((note) => note.content)).toEqual([
-      "Use British spelling",
-    ]);
-
-    useAgentMemoryStore.getState().clear();
-    expect(localStorage.getItem("oleafly.agent-memory.p1")).toBe("[]");
-  });
-
   it("remembers the diff layout and the detached preview", async () => {
     localStorage.setItem("oleafly.diffMode", "unified");
     const { useDiffStore } = await import("./diff");

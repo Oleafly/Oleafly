@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteLinkRecord } from "@/lib/tauri";
@@ -32,15 +31,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
       editors.last = editor;
       return editor;
     },
-  };
-});
-
-vi.mock("./NoteAssistant", async () => {
-  const { forwardRef } = await import("react");
-  return {
-    NoteAssistant: forwardRef(function NoteAssistant(props: { review: ReactNode }, _ref) {
-      return <section data-testid="note-assistant">{props.review}</section>;
-    }),
   };
 });
 

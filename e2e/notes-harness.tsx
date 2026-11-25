@@ -9,7 +9,7 @@ import { createAppQueryClient } from "/src/lib/query";
 import { i18n, loadNamespace } from "/src/i18n";
 import { useSettingsStore } from "/src/store/settings";
 import { prepareHarnessI18n } from "./harness-i18n";
-import { installNotesAgentMock } from "./notes-agent-mock";
+import { installNotesIpcMock } from "./notes-ipc-mock";
 import { createNotesFixture } from "./notes-fixtures";
 import "/src/styles/globals.css";
 
@@ -17,11 +17,8 @@ const root = document.getElementById("root");
 if (!root) throw new Error("Notes fixture root is missing");
 
 const params = new URLSearchParams(window.location.search);
-const agent = installNotesAgentMock({
-  configured: params.get("ai") !== "none",
-  delayMs: Number(params.get("delay") ?? 0),
-});
-Object.assign(window, { __agent: agent });
+const ipc = installNotesIpcMock();
+Object.assign(window, { __notesIpc: ipc });
 if (params.get("theme") === "dark") document.documentElement.classList.add("dark");
 document.documentElement.style.setProperty("--primary", params.get("accent") ?? "#2563eb");
 document.documentElement.style.setProperty("--primary-foreground", "#ffffff");

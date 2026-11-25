@@ -1,8 +1,5 @@
 extern crate self as oleafly_cli;
 
-pub mod agent;
-pub mod daemon;
-
 pub mod app_config;
 pub mod app_paths;
 pub mod auth;
@@ -15,13 +12,12 @@ pub mod human;
 pub mod install;
 mod launcher;
 pub mod lint;
-pub mod mcp;
+pub mod login_item;
 mod native;
 mod process;
 pub mod record;
 pub mod remote;
 pub mod server;
-pub mod skills_read;
 mod typst;
 mod typst_settings;
 pub mod version;
@@ -62,10 +58,6 @@ pub struct Cli {
 }
 
 pub fn main() -> ExitCode {
-    oleafly_research::mcp::protocol::set_server_version(crate::version::APP_VERSION);
-    if let Some(code) = daemon::reentry() {
-        return ExitCode::from(u8::try_from(code).unwrap_or(1));
-    }
     let arguments = expand_open_shorthand(std::env::args_os());
     let matches = match Cli::command().try_get_matches_from(&arguments) {
         Ok(matches) => matches,
@@ -196,7 +188,61 @@ fn is_subcommand(argument: &OsStr) -> bool {
 /// a signal runs no destructors, so the compiler a build started would keep
 /// running and the outputs it was holding aside would not go back.
 pub(crate) fn stop_requested() -> impl std::future::Future<Output = ()> {
-    daemon::serve::termination()
+    // The handlers are registered here, when the future is made, not when it
+    // is first polled: a signal that arrives in between (a client that stops
+    // a command right after its first reply) would otherwise end the
+    // process with the default action, before the work is wound down.
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        let signals = (
+            signal(SignalKind::terminate()),
+            signal(SignalKind::interrupt()),
+            signal(SignalKind::hangup()),
+        );
+        async move {
+            match signals {
+                (Ok(mut terminate), Ok(mut interrupt), Ok(mut hangup)) => {
+                    tokio::select! {
+                        _ = terminate.recv() => {}
+                        _ = interrupt.recv() => {}
+                        _ = hangup.recv() => {}
+                    }
+                }
+                _ => std::future::pending::<()>().await,
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        use tokio::signal::windows::{ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
+        let signals = (ctrl_c(), ctrl_close(), ctrl_logoff(), ctrl_shutdown());
+        async move {
+            match signals {
+                (Ok(mut interrupt), Ok(mut close), Ok(mut logoff), Ok(mut shutdown)) => {
+                    tokio::select! {
+                        _ = interrupt.recv() => {}
+                        _ = close.recv() => {}
+                        _ = logoff.recv() => {}
+                        _ = shutdown.recv() => {}
+                    }
+                }
+                _ => {
+                    if tokio::signal::ctrl_c().await.is_err() {
+                        std::future::pending::<()>().await;
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        async {
+            if tokio::signal::ctrl_c().await.is_err() {
+                std::future::pending::<()>().await;
+            }
+        }
+    }
 }
 
 async fn interrupted(stop: impl std::future::Future<Output = ()>) -> CliError {

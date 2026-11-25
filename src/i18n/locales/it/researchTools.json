@@ -1137,6 +1137,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "Scegli un'immagine più piccola di 20 MB.",
     "imageFormat": "Scegli un'immagine PNG, JPEG o WebP.",
     "ollamaUnavailable": "Avvia Ollama, oppure scegli un altro modello per gli Strumenti.",

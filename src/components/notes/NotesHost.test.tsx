@@ -4,11 +4,8 @@ import type { ProjectInfo } from "@oleafly/backend-port";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import type { AcpAgentStatus } from "@/lib/acp";
 import { appQueryClient } from "@/lib/query";
-import { normalizeTask, type ResearchTask, type TaskArtifact } from "@/lib/research-tasks";
 import type { NoteFacts } from "@/lib/tauri";
-import { latestRunContext } from "./note-artifacts";
 import type { NotesData } from "./notes-data";
 import type { NotesWorkspace } from "./NotesWorkspace";
 import "./tests/setup";
@@ -24,11 +21,7 @@ const mocks = vi.hoisted(() => ({
   claimStarterNote: vi.fn(),
   readFileContent: vi.fn(),
   getConfig: vi.fn(),
-  acpCatalog: vi.fn(),
   logError: vi.fn(),
-  listResearchTasks: vi.fn(),
-  listenForResearchTaskChanges: vi.fn(),
-  onTask: null as null | ((task: ResearchTask) => void),
   canCreate: true,
 }));
 const paper = vi.hoisted(() => ({
@@ -41,7 +34,6 @@ const paper = vi.hoisted(() => ({
   insertUsepackages: vi.fn(),
   notesRenderTikz: vi.fn(),
 }));
-vi.mock("@/features/tools-ai/pandoc-text", () => ({ pandocConvert: paper.pandocConvert }));
 vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: paper.insertAtCursor }));
 vi.mock("@/components/diagram/mermaid-render", () => ({ renderMermaidFigure: paper.renderMermaidFigure }));
 vi.mock("@/features/equation-export", () => ({ svgDocumentToPngBytes: paper.svgDocumentToPngBytes }));
@@ -64,15 +56,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   readProjectBytes: paper.readProjectBytes,
   writeProjectBytes: paper.writeProjectBytes,
   notesRenderTikz: paper.notesRenderTikz,
-}));
-vi.mock("@/lib/acp", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/acp")>()),
-  acpCatalog: mocks.acpCatalog,
-}));
-vi.mock("@/lib/research-tasks", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
-  listResearchTasks: mocks.listResearchTasks,
-  listenForResearchTaskChanges: mocks.listenForResearchTaskChanges,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),
@@ -104,7 +89,6 @@ import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
-import { primeResearchTasksFlag, resetResearchTasksFlagForTests } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import { newNoteSource, noteColorFor, readNoteFacts } from "./note-file";
 import { splitNoteSource } from "./note-templates";
@@ -181,8 +165,6 @@ function openNotes() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  resetResearchTasksFlagForTests();
-  primeResearchTasksFlag({ research_tasks_enabled: true });
   mocks.canCreate = true;
   captured.props = null;
   captured.data = null;
@@ -200,18 +182,6 @@ beforeEach(() => {
   mocks.setNoteRelatedProject.mockResolvedValue(undefined);
   mocks.claimStarterNote.mockResolvedValue(false);
   mocks.getConfig.mockResolvedValue({
-    ai_provider: "anthropic",
-    ai_model: "claude-sonnet",
-    ai_keys: { anthropic: "key" },
-    ai_custom_providers: [],
-    ai_provider_models: {},
-  });
-  mocks.acpCatalog.mockResolvedValue([]);
-  mocks.onTask = null;
-  mocks.listResearchTasks.mockResolvedValue([]);
-  mocks.listenForResearchTaskChanges.mockImplementation((onTask: (task: ResearchTask) => void) => {
-    mocks.onTask = onTask;
-    return Promise.resolve(() => {});
   });
 });
 
@@ -221,118 +191,6 @@ afterEach(() => {
   useHomeViewStore.setState(saved.home, true);
   useNotesViewStore.setState(saved.notesView, true);
   useSettingsStore.setState(saved.settings, true);
-});
-
-const ISOLATION = {
-  kind: "staged_project" as const,
-  executionRoot: "/tmp/run",
-  sourceRevision: "rev",
-  baselineHash: "hash",
-  fileCount: 1,
-  createdAt: 1,
-};
-
-function researchTask(
-  id: string,
-  overrides: Partial<ResearchTask> & { artifacts?: TaskArtifact[]; summary?: string } = {},
-): ResearchTask {
-  const { artifacts = [], summary = "", ...rest } = overrides;
-  return normalizeTask({
-    id,
-    projectId: "paper-1",
-    status: "completed",
-    title: id,
-    prompt: `Run ${id}`,
-    isolation: ISOLATION,
-    result: { summary, changedFiles: [], artifacts, nativeSessionId: null, inputTokens: null, outputTokens: null },
-    ...rest,
-  });
-}
-
-function catalogAgent(id: string, name: string): AcpAgentStatus {
-  return { definition: { id, name }, installed: false } as unknown as AcpAgentStatus;
-}
-
-const TASKS = [
-  researchTask("by-claude", {
-    agentId: "claude",
-    modelId: "sonnet",
-    title: "Loss sweep",
-    finishedAt: 3_000,
-    summary: "Loss fell.",
-    artifacts: [{ path: "figs/loss.png", label: "Loss curve", mediaType: "image/png" }],
-  }),
-  researchTask("by-model", {
-    agentId: "unknown",
-    modelId: "gpt-5",
-    finishedAt: 2_000,
-    artifacts: [{ path: "results.csv", label: "Results", mediaType: "text/csv" }],
-  }),
-  researchTask("by-agent", {
-    agentId: "codex",
-    modelId: "",
-    finishedAt: 1_000,
-    artifacts: [{ path: "report.md", label: "Report", mediaType: null }],
-  }),
-  researchTask("by-nobody", {
-    agentId: "",
-    modelId: "",
-    finishedAt: 500,
-    artifacts: [{ path: "notes.txt", label: "Notes", mediaType: null }],
-  }),
-];
-
-describe("NotesHost agents", () => {
-  it("reads neither the AI settings nor the CLI agent list when there are no research runs", async () => {
-    openNotes();
-    render(<NotesHost />);
-    await screen.findByTestId("workspace");
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(mocks.getConfig).not.toHaveBeenCalled();
-    expect(mocks.acpCatalog).not.toHaveBeenCalled();
-    expect(data()).not.toHaveProperty("agents");
-    expect(data()).not.toHaveProperty("preferredAgent");
-    expect(data()).not.toHaveProperty("openAgentSettings");
-  });
-
-  it.each([
-    ["can't be read", () => Promise.reject(new Error("no catalog"))],
-    ["has not arrived yet", () => new Promise<AcpAgentStatus[]>(() => {})],
-  ])("names run agents by model or id while the CLI agent list %s", async (_name, catalog) => {
-    mocks.acpCatalog.mockImplementation(catalog);
-    mocks.listResearchTasks.mockResolvedValue(TASKS);
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts).toHaveLength(4));
-    expect(mocks.acpCatalog).toHaveBeenCalledOnce();
-    expect(data().artifacts.map((artifact) => artifact.agent)).toEqual(["sonnet", "gpt-5", "codex", undefined]);
-    expect(mocks.logError).not.toHaveBeenCalled();
-  });
-
-  it("ignores a CLI agent list that arrives after Notes has closed", async () => {
-    let resolve: (value: AcpAgentStatus[]) => void = () => {};
-    mocks.acpCatalog.mockReturnValue(new Promise((done) => (resolve = done)));
-    mocks.listResearchTasks.mockResolvedValue(TASKS);
-    openNotes();
-    const view = render(<NotesHost />);
-    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledOnce());
-    view.unmount();
-    await act(async () => resolve([catalogAgent("claude", "Claude Code")]));
-    expect(mocks.logError).not.toHaveBeenCalled();
-  });
-
-  it("opens Settings at the Notes tab of Appearance", async () => {
-    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "shortcuts" });
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(captured.data).not.toBeNull());
-    act(() => data().openSettings?.());
-    expect(useSettingsStore.getState().settingsOpen).toBe(true);
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("appearance");
-    expect(useSettingsStore.getState().settingsInitialAppearanceTab).toBe("notes");
-  });
 });
 
 describe("NotesHost", () => {
@@ -587,106 +445,6 @@ describe("NotesHost", () => {
   });
 });
 
-describe("NotesHost research tasks", () => {
-  it("builds artifacts, experiments, project choices and the latest run from the related project's tasks", async () => {
-    mocks.acpCatalog.mockResolvedValue([catalogAgent("claude", "Claude Code")]);
-    mocks.listResearchTasks.mockResolvedValue(TASKS);
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts[0]?.agent).toBe("Claude Code"));
-    expect(mocks.listResearchTasks.mock.calls).toEqual([["paper-1"]]);
-    expect(data().artifacts.map(({ taskId, path, title, kind, project, agent, updatedAt }) => ({ taskId, path, title, kind, project, agent, updatedAt }))).toEqual([
-      { taskId: "by-claude", path: "figs/loss.png", title: "Loss curve", kind: "figure", project: "Masking paper", agent: "Claude Code", updatedAt: 3_000 },
-      { taskId: "by-model", path: "results.csv", title: "Results", kind: "data", project: "Masking paper", agent: "gpt-5", updatedAt: 2_000 },
-      { taskId: "by-agent", path: "report.md", title: "Report", kind: "report", project: "Masking paper", agent: "codex", updatedAt: 1_000 },
-      { taskId: "by-nobody", path: "notes.txt", title: "Notes", kind: "report", project: "Masking paper", agent: undefined, updatedAt: 500 },
-    ]);
-    expect(data().experiments).toEqual([
-      { projectId: "paper-1", project: "Masking paper", tasks: 4, figures: 1, reports: 3, updatedAt: 3_000, noteId: "note-1" },
-    ]);
-    expect(data().projects).toEqual([{ id: "paper-1", name: "Masking paper" }]);
-    const latest = data().latestRun?.("note-1");
-    expect(latest).toBe(latestRunContext(TASKS));
-    expect(latest).toContain("Task: Loss sweep");
-    expect(latest).toContain("Agent: claude (sonnet)");
-    expect(data().latestRun?.("note-2")).toBeNull();
-    expect(data().latestRun?.("gone")).toBeNull();
-  });
-
-  it("merges the files of every related project, newest first", async () => {
-    useFilesStore.setState({
-      projects: [
-        ...projects,
-        project({ id: "paper-2", name: "Thesis", kind: "typst", main_doc: "main.typ", updated_at: 1_700_000_300 }),
-        project({ id: "note-3", name: "Thesis notes", kind: "note", related_project: "paper-2" }),
-      ],
-    });
-    mocks.listResearchTasks.mockImplementation((projectId: string) =>
-      Promise.resolve(
-        projectId === "paper-1"
-          ? TASKS.slice(0, 2)
-          : [researchTask("thesis-run", { projectId: "paper-2", finishedAt: 2_500, artifacts: [{ path: "fig.svg", label: "", mediaType: null }] })],
-      ),
-    );
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts).toHaveLength(3));
-    expect(mocks.listResearchTasks.mock.calls).toEqual([["paper-1"], ["paper-2"]]);
-    expect(data().artifacts.map((artifact) => [artifact.taskId, artifact.project, artifact.title])).toEqual([
-      ["by-claude", "Masking paper", "Loss curve"],
-      ["thesis-run", "Thesis", "fig.svg"],
-      ["by-model", "Masking paper", "Results"],
-    ]);
-    expect(data().experiments.map((experiment) => [experiment.projectId, experiment.noteId])).toEqual([
-      ["paper-1", "note-1"],
-      ["paper-2", "note-3"],
-    ]);
-    expect(data().projects).toEqual([
-      { id: "paper-2", name: "Thesis" },
-      { id: "paper-1", name: "Masking paper" },
-    ]);
-  });
-
-  it("has no latest run while the related project's tasks are still loading", async () => {
-    mocks.listResearchTasks.mockReturnValue(new Promise(() => {}));
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(mocks.listResearchTasks).toHaveBeenCalledWith("paper-1"));
-    expect(data().latestRun?.("note-1")).toBeNull();
-    expect(data().artifacts).toEqual([]);
-  });
-
-  it("labels files by project id while a removed project's tasks are replaced", async () => {
-    mocks.listResearchTasks.mockResolvedValue(TASKS.slice(0, 1));
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts).toHaveLength(1));
-    mocks.listResearchTasks.mockReturnValue(new Promise(() => {}));
-    act(() =>
-      useFilesStore.setState({
-        projects: [
-          project({ id: "paper-2", name: "Thesis", kind: "typst", main_doc: "main.typ" }),
-          project({ id: "note-1", name: "Masking ablation", kind: "note", related_project: "paper-2" }),
-        ],
-      }),
-    );
-    await waitFor(() => expect(mocks.listResearchTasks).toHaveBeenCalledWith("paper-2"));
-    expect(data().artifacts.map((artifact) => artifact.project)).toEqual(["paper-1"]);
-    expect(data().experiments).toEqual([]);
-  });
-
-  it("shows a task that changes while Notes is open", async () => {
-    mocks.listResearchTasks.mockResolvedValue(TASKS.slice(1, 2));
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts).toHaveLength(1));
-    await waitFor(() => expect(mocks.onTask).not.toBeNull());
-    act(() => mocks.onTask?.(TASKS[0]));
-    expect(data().artifacts.map((artifact) => artifact.taskId)).toEqual(["by-claude", "by-model"]);
-    expect(data().latestRun?.("note-1")).toContain("Task: Loss sweep");
-  });
-});
-
 describe("note facts after edits", () => {
   it("patches only the saved note and moves the revision when what links and tags see changed", async () => {
     const writeProjectFile = vi.fn(() => Promise.resolve());
@@ -732,22 +490,6 @@ describe("note facts after edits", () => {
     await screen.findByTestId("workspace");
     view.unmount();
     expect(mocks.releaseNoteCaches).toHaveBeenCalledOnce();
-  });
-});
-
-describe("NotesHost research tasks switch", () => {
-  it("shows no artifacts and reads no tasks while Research tasks is off", async () => {
-    resetResearchTasksFlagForTests();
-    primeResearchTasksFlag({ research_tasks_enabled: false });
-    mocks.listResearchTasks.mockResolvedValue(TASKS);
-    openNotes();
-    render(<NotesHost />);
-    await screen.findByTestId("workspace");
-    await act(async () => {});
-    expect(mocks.listResearchTasks).not.toHaveBeenCalled();
-    expect(data().researchTasks).toBe(false);
-    expect(data().artifacts).toEqual([]);
-    expect(data().experiments).toEqual([]);
   });
 });
 
@@ -944,3 +686,5 @@ describe("sending a note to the open paper", () => {
     expect(paperFormat("refs.bib")).toBeNull();
   });
 });
+
+vi.mock("@/features/pandoc-text", () => ({ pandocConvert: paper.pandocConvert }));

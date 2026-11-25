@@ -57,7 +57,6 @@ vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: vi.fn() })
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: vi.fn() }));
-vi.mock("@/lib/agent-backend", () => ({ completeText: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
   cancelIsolatedCompile: vi.fn(async () => true),
   compileIsolated: vi.fn(),
@@ -73,6 +72,8 @@ vi.mock("@/lib/tauri", () => ({
   saveFigureToCache: vi.fn(),
   getConfig: vi.fn(),
   renderTypstSnippet: tauri.renderTypstSnippet,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/tauri-collab", () => ({
   collabWriteText: vi.fn(async () => ({ handled: true })),
@@ -80,7 +81,6 @@ vi.mock("@/lib/tauri-collab", () => ({
 
 import * as tauriApi from "@/lib/tauri";
 import * as tauriCollab from "@/lib/tauri-collab";
-import { completeText } from "@/lib/agent-backend";
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
@@ -401,78 +401,6 @@ describe("the diagram host adapters", () => {
       filters: [{ name: "SVG", extensions: ["svg"] }],
     });
     expect(tauriApi.writeBytesFile).toHaveBeenCalledWith("/tmp/figure.svg", "PHN2Zz4=");
-  });
-
-  describe("Fix with AI", () => {
-    const configured = {
-      ai_provider: "openai",
-      ai_model: "gpt-4o",
-      ai_api_key: "key",
-      ai_keys: { openai: "key" },
-      ai_custom_providers: [],
-    };
-
-    async function openFixWithAi() {
-      const props = await openComposer();
-      const fixWithAi = props.host.fixWithAi?.bind(props.host);
-      if (!fixWithAi) throw new Error("the composer host has no Fix with AI");
-      return fixWithAi;
-    }
-
-    it("asks for a provider when none is connected", async () => {
-      vi.mocked(tauriApi.getConfig).mockResolvedValue({
-        ...configured,
-        ai_api_key: "",
-        ai_keys: {},
-      } as never);
-      const fixWithAi = await openFixWithAi();
-
-      await expect(fixWithAi("code", "log")).rejects.toThrow(
-        "Connect an AI provider in Settings, or pick a CLI agent as the model for Tools, to use Fix with AI.",
-      );
-      expect(completeText).not.toHaveBeenCalled();
-    });
-
-    it("lets a CLI agent picked for Tools fix the figure when no provider is connected", async () => {
-      vi.mocked(tauriApi.getConfig).mockResolvedValue({
-        ...configured,
-        ai_api_key: "",
-        ai_keys: {},
-        ai_tools_model: { provider: "acp:claude", model: "default", label: "Claude Code" },
-      } as never);
-      vi.mocked(completeText).mockResolvedValue("\\begin{tikzpicture}\\end{tikzpicture}");
-      const fixWithAi = await openFixWithAi();
-
-      await expect(fixWithAi("code", "log")).resolves.toContain("tikzpicture");
-      expect(completeText).toHaveBeenCalledOnce();
-    });
-
-    it("returns the model's figure without code fences", async () => {
-      vi.mocked(tauriApi.getConfig).mockResolvedValue(configured as never);
-      vi.mocked(completeText).mockResolvedValue(
-        "```latex\n\\begin{tikzpicture}\\end{tikzpicture}\n```",
-      );
-      const fixWithAi = await openFixWithAi();
-
-      await expect(fixWithAi("bad", "! Undefined control sequence")).resolves.toBe(
-        "\\begin{tikzpicture}\\end{tikzpicture}",
-      );
-      const request = vi.mocked(completeText).mock.calls.at(-1)?.[0] as { user: string };
-      expect(request.user).toContain("CODE:\nbad");
-      expect(request.user).toContain("! Undefined control sequence");
-    });
-
-    it("uses the caller's prompt when one is given and explains failures", async () => {
-      vi.mocked(tauriApi.getConfig).mockResolvedValue(configured as never);
-      vi.mocked(completeText).mockRejectedValueOnce(new Error("rate limited"));
-      const fixWithAi = await openFixWithAi();
-      const prompt = { system: "Fix Mermaid", user: "graph TD" };
-
-      await expect(fixWithAi("graph TD", "", prompt)).rejects.toThrow(
-        "Fix failed: rate limited",
-      );
-      expect(completeText).toHaveBeenLastCalledWith(prompt);
-    });
   });
 
   describe("TikZ file picker", () => {

@@ -111,12 +111,6 @@ const SHORTCUTS: ShortcutRow[] = [
     desc: () => i18n.t(($) => $.editor.hotkeys.actions.viaCommandPalette),
   },
   {
-    id: "inline-ai",
-    category: () => i18n.t(($) => $.editor.hotkeys.categories.editor),
-    keys: "⌘L",
-    desc: () => i18n.t(($) => $.editor.hotkeys.actions.askAiEditSelection),
-  },
-  {
     id: "bold",
     category: () => i18n.t(($) => $.editor.hotkeys.categories.editor),
     keys: "⌘B",

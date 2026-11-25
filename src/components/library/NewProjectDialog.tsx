@@ -6,11 +6,7 @@ import {
   type TemplatesHost,
   type TemplatesKit,
 } from "@oleafly/templates";
-import { generateTemplateAvailable } from "@/features/template-generate";
 import { openTemplateInNewProject } from "@/store/template-request";
-import { ResearchProjectSetup } from "@/components/research/workspace/ResearchProjectSetup";
-import { useFilesStore } from "@/store/files";
-import { ensureResearchStarterTask } from "@/lib/research-starter-task";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,11 +81,6 @@ const TemplateImportDialog = lazy(() =>
     default: module.TemplateImportDialog,
   })), { warm: true });
 
-const TemplateGenerateModal = lazy(() =>
-  import("@/components/library/TemplateGenerateModal").then((module) => ({
-    default: module.TemplateGenerateModal,
-  })), { warm: true });
-
 export function NewProjectDialog(props: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
@@ -115,10 +106,6 @@ export function NewProjectDialog(props: Readonly<{
     }),
     [t],
   );
-  const [canGenerate, setCanGenerate] = useState(false);
-  const [generateOpen, setGenerateOpen] = useState(false);
-  const [generateMounted, setGenerateMounted] = useState(false);
-  if (generateOpen && !generateMounted) setGenerateMounted(true);
   const [importTemplateOpen, setImportTemplateOpen] = useState(false);
   const [kind, setKind] = useState<ProjectKind | null>(null);
   const [armed, setArmed] = useState(!props.open);
@@ -131,7 +118,6 @@ export function NewProjectDialog(props: Readonly<{
   useEffect(() => {
     if (flowOpen) {
       openerRef.current = document.activeElement as HTMLElement | null;
-      void generateTemplateAvailable().then(setCanGenerate);
       return;
     }
     setKind(null);
@@ -178,7 +164,6 @@ export function NewProjectDialog(props: Readonly<{
         {...props}
         open={flowOpen && activeKind === "template"}
         onClose={props.onClose}
-        onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
         onImportTemplate={() => setImportTemplateOpen(true)}
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
@@ -191,27 +176,7 @@ export function NewProjectDialog(props: Readonly<{
         open={flowOpen && activeKind === "import"}
         onClose={props.onClose}
       />
-      <ResearchProjectSetup
-        open={flowOpen && activeKind === "research"}
-        ensureInitialTask={ensureResearchStarterTask}
-        onClose={props.onClose}
-        onFinished={props.onClose}
-        onCreated={async (projectId) => {
-          await useFilesStore.getState().openProject(projectId);
-          // Opening swaps Home for the workspace, which remounts this flow
-          // hidden; it has to close now or New project stays "open" and dead.
-          props.onProjectOpened?.();
-        }}
-      />
-      {generateMounted ? (
-        <Suspense fallback={null}>
-          <TemplateGenerateModal
-            open={generateOpen}
-            onClose={() => setGenerateOpen(false)}
-            onSaved={() => props.onTemplatesChanged?.()}
-          />
-        </Suspense>
-      ) : null}
+
       {importTemplateOpen ? (
         <Suspense fallback={null}>
           <TemplateImportDialog

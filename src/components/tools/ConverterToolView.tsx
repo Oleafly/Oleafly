@@ -11,8 +11,6 @@ import {
   FolderPlus,
   Image as ImageIcon,
   RotateCcw,
-  ScanText,
-  Settings,
   ShieldCheck,
   Upload,
   X,
@@ -21,12 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
-import {
-  openToolsSettings,
-  ScanEstimateText,
-  ToolsModelNotice,
-  ToolsModelPicker,
-} from "@/components/tools/ToolsModelBar";
 import {
   ToolPane,
   ToolSegmentedControl,
@@ -38,17 +30,11 @@ import {
   converterCopy,
   projectReadySource,
   runAdHocConverter,
-  ScanConfirmationNeeded,
-  ToolsModelError,
   parsePageRange,
   type ConverterInput,
   type ConverterOutput,
   type ConverterProgress,
 } from "@/features/ad-hoc-converters";
-import type { PageSize } from "@/features/tools-ai/scan-estimate";
-import { transcribingPageLabel } from "@/features/tools-ai/scan-progress";
-import type { ToolsSettingsTarget } from "@/features/tools-ai/tools-model";
-import { agentErrorKind } from "@/lib/agent-backend";
 import { createProjectFromAdHoc, writeBytesFile } from "@/lib/tauri";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { toolById } from "@/lib/tool-catalog";
@@ -74,8 +60,6 @@ type ConverterStatus =
 
 interface ConverterFailure {
   message: string;
-  settings: ToolsSettingsTarget | null;
-  scan: { sizes: PageSize[] } | null;
 }
 
 function stem(fileName: string): string {
@@ -209,14 +193,13 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
 function converterInput(
   text: string,
   file: File | null,
-  scanConfirmed = false,
   pageRange?: readonly [number, number],
 ): ConverterInput {
   const { engine } = useFilesStore.getState();
   const typstVersion = engine.id === "typst" ? engine.typst_resolved?.version : undefined;
   const base: ConverterInput = typstVersion ? { text, file, typstVersion } : { text, file };
   const input = pageRange ? { ...base, pageRange } : base;
-  return scanConfirmed ? { ...input, scanConfirmed: true } : input;
+  return input;
 }
 
 function PageRangeField({
@@ -294,62 +277,15 @@ function failureMessage(error: unknown, fallback: string): string {
   return decodeAppError(error) ? describeError(error) : fallback;
 }
 
-function failureSettings(caught: unknown, message: string): ConverterFailure["settings"] {
-  if (caught instanceof ToolsModelError) return caught.settings;
-  if (decodeAppError(caught)?.code.startsWith("mathpix.")) return "ai-tools";
-  const kind = agentErrorKind(caught);
-  if (kind === "not_configured" || kind === "auth") return "ai-providers";
-  if (/ollama/i.test(message)) return "ai";
-  return null;
-}
-
-function ScanConfirmation({
-  sizes,
-  onRun,
-  onCancel,
-}: Readonly<{ sizes: readonly PageSize[]; onRun: () => void; onCancel: () => void }>) {
-  const { t } = useTranslation(["researchTools"]);
-  return (
-    <div
-      data-testid="converter-scan-confirm"
-      className="flex min-h-72 flex-1 items-center justify-center p-8 text-center"
-    >
-      <div className="flex max-w-md flex-col items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <ScanText className="size-5" />
-        </div>
-        <h2 className="text-sm font-semibold">{t(($) => $.researchTools.converterModel.scannedTitle)}</h2>
-        <ScanEstimateText sizes={sizes} />
-        <ToolsModelPicker className="w-64 max-w-full" />
-        <div className="text-xs">
-          <ToolsModelNotice scope="scans" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" data-testid="converter-scan-confirm-run" onClick={onRun}>
-            <ScanText /> {t(($) => $.researchTools.converterModel.transcribePages, { count: sizes.length })}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            {t(($) => $.researchTools.converter.cancel)}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function toolStatusState(busy: boolean, error: ConverterFailure | null): "ready" | "busy" | "error" {
   if (busy) return "busy";
-  return error && !error.scan ? "error" : "ready";
+  return error ? "error" : "ready";
 }
 
 function InputDestination({
-  usesModel,
   downloadsFromArxiv,
-}: Readonly<{ usesModel: "always" | "scans" | undefined; downloadsFromArxiv: boolean }>) {
+}: Readonly<{ downloadsFromArxiv: boolean }>) {
   const { t } = useTranslation(["researchTools"]);
-  if (usesModel) {
-    return <ToolsModelNotice scope={usesModel === "scans" ? "scans" : "images"} editorFallback={false} />;
-  }
   if (downloadsFromArxiv) {
     return (
       <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
@@ -364,19 +300,6 @@ function InputDestination({
   );
 }
 
-function settingsLabel(t: ReturnType<typeof useTranslation<["researchTools"]>>["t"], target: ToolsSettingsTarget): string {
-  switch (target) {
-    case "ai-tools":
-      return t(($) => $.researchTools.converterModel.openToolsSettings);
-    case "ai-providers":
-      return t(($) => $.researchTools.converterModel.openProviderSettings);
-    case "ai-agents":
-      return t(($) => $.researchTools.converterModel.openAgentSettings);
-    case "ai":
-      return t(($) => $.researchTools.converter.openAiSettings);
-  }
-}
-
 function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
   const { t } = useTranslation(["researchTools"]);
   return (
@@ -387,19 +310,7 @@ function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
         </div>
         <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
         <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
-        {error.settings && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => {
-              if (error.settings) openToolsSettings(error.settings);
-            }}
-          >
-            <Settings />{" "}
-            {settingsLabel(t, error.settings)}
-          </Button>
-        )}
+
       </div>
     </div>
   );
@@ -440,18 +351,13 @@ function OutputBody({
   themeId,
   language,
   onOutputChange,
-  onRunScan,
-  onCancelScan,
 }: Readonly<{
   error: ConverterFailure | null;
   output: ConverterOutput | null;
   themeId: string;
   language: ComponentProps<typeof CodeField>["language"];
   onOutputChange: (output: ConverterOutput) => void;
-  onRunScan: () => void;
-  onCancelScan: () => void;
 }>) {
-  if (error?.scan) return <ScanConfirmation sizes={error.scan.sizes} onRun={onRunScan} onCancel={onCancelScan} />;
   if (error) return <FailureNotice error={error} />;
   if (output?.kind === "binary") return <BinaryResultNotice fileName={output.fileName} />;
   if (output && output.text !== null) {
@@ -483,12 +389,9 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [pageRange, setPageRange] = useState("");
   const conversion = useAsyncTask<ConverterOutput, ConverterFailure>((caught) => {
     if (caught instanceof DOMException && caught.name === "AbortError") return null;
-    if (caught instanceof ScanConfirmationNeeded) {
-      return { message: "", settings: null, scan: { sizes: [...caught.sizes] } };
-    }
     const message = describeError(caught).replace(/^\[[a-z_]+\]\s*/, "");
     void logError(`converter ${id}`, caught);
-    return { message, settings: failureSettings(caught, message), scan: null };
+    return { message, };
   });
   const { result: output, busy, error, setResult: setOutput } = conversion;
   const [projectBusy, setProjectBusy] = useState(false);
@@ -504,7 +407,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     () => () => languageForPath(outputSourceName) ?? [],
     [outputSourceName],
   );
-  const choosesPages = definition.usesModel === "scans" && useFile;
+  const choosesPages = (id === "pdf-to-markdown" || id === "pdf-to-typst") && useFile;
   const pdfPageCount = usePdfPageCount(file, choosesPages);
   const parsedRange = parsePageRange(pageRange);
   const canConvert = (useFile ? Boolean(file) : Boolean(text.trim())) && (!choosesPages || parsedRange.valid);
@@ -528,24 +431,12 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
         return t(($) => $.researchTools.converter.progressMermaid);
       case "firstSheet":
         return t(($) => $.researchTools.converter.progressFirstSheet);
-      case "visionModel":
-        return t(($) => $.researchTools.converter.progressVisionModel, { model: status.model ?? "" });
-      case "readingEquation":
-        return t(($) => $.researchTools.converter.progressReadingEquation, { model: status.model ?? "" });
-      case "convertingEquation":
-        return t(($) => $.researchTools.converter.progressConvertingEquation, { model: status.model ?? "" });
-      case "uploadingPdf":
-        return t(($) => $.researchTools.converterModel.progressUploading);
-      case "formattingTranscription":
-        return t(($) => $.researchTools.converterModel.progressFormatting);
       case "unpackingSource":
         return t(($) => $.researchTools.converter.progressUnpackingSource);
       case "downloadingSource":
         return t(($) => $.researchTools.converter.progressDownloadingSource);
       case "convertingSource":
         return t(($) => $.researchTools.converter.progressConvertingSource);
-      case "transcribingPage":
-        return transcribingPageLabel(status);
     }
   })();
 
@@ -561,10 +452,9 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     setPageRange("");
   };
 
-  const convert = async (scanConfirmed = false) => {
+  const convert = async () => {
     if (!canConvert || busy) return;
     setStatus({ step: "converting" });
-    let awaitsConfirmation = false;
     const outcome = await conversion.run(async (signal) => {
       try {
         return await runAdHocConverter(
@@ -572,20 +462,19 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           converterInput(
             useFile ? "" : text,
             useFile ? file : null,
-            scanConfirmed,
+
             choosesPages ? parsedRange.range : undefined,
           ),
           (progress) => setStatus(progress),
           signal,
         );
       } catch (error_) {
-        awaitsConfirmation = error_ instanceof ScanConfirmationNeeded;
         throw error_;
       }
     });
     if (outcome.status === "done") setStatus({ step: "converted" });
     else if (outcome.status === "failed") {
-      setStatus(awaitsConfirmation ? { step: "ready" } : { step: "needsAttention" });
+      setStatus({ step: "needsAttention" });
     }
   };
 
@@ -663,7 +552,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       }
       actions={
         <div className="flex items-center gap-2">
-          {definition.usesModel && <ToolsModelPicker compact />}
+
           {busy ? (
             <Button variant="outline" size="sm" onClick={cancel} data-testid="converter-cancel">
               <X /> {t(($) => $.researchTools.converter.cancel)}
@@ -707,7 +596,6 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>{labels.inputHint}</span>
               <InputDestination
-                usesModel={definition.usesModel}
                 downloadsFromArxiv={definition.inputKind === "arxiv" && !useFile}
               />
             </div>
@@ -839,8 +727,6 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             themeId={editorTheme}
             language={outputLanguage}
             onOutputChange={setOutput}
-            onRunScan={() => void convert(true)}
-            onCancelScan={resetConversion}
           />
         </ToolPane>
       </ToolSplitView>

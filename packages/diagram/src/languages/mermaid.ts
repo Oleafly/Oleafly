@@ -29,11 +29,6 @@ export const mermaidLanguage: DiagramLanguage = {
   fromStandalone: (source) => ({ code: mermaidBlocks(source)[0]?.code ?? source }),
   fromFile: (name, content) => (isMarkdown(name) ? (mermaidBlocks(content)[0]?.code ?? content) : content),
   insertText: (code) => `${mermaidCodeFence(code)}\n`,
-  fixPrompt: (code, log) => ({
-    system:
-      "You fix Mermaid flowchart code so it renders with Mermaid 11. Keep the flowchart header, node ids, labels, links, subgraphs and style lines unless they cause the error. Return ONLY the corrected Mermaid code. No code fences, no explanation. Never use em dashes.",
-    user: `This Mermaid flowchart failed to render. Fix it.\n\nCODE:\n${code}\n\nMERMAID ERROR:\n${log}`,
-  }),
   seeds: { math: "$$E = mc^2$$", code: "print(x)" },
   snippets: {
     rectangleNode: 'n["Label"]\n',

@@ -53,11 +53,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
   };
 });
 
-vi.mock("./NoteAssistant", async () => {
-  const { forwardRef } = await import("react");
-  return { NoteAssistant: forwardRef(function NoteAssistant() { return null; }) };
-});
-
 const NOTE: NoteItem = { id: "note-1", title: "Bench log", project: "Lab", updatedAt: Date.now(), author: "you", summary: "" };
 const TEXT = "---\ntitle: Bench log\nkind: note\nid: 3f0c\n---\n\nFirst entry.\n\nSecond entry.\n";
 

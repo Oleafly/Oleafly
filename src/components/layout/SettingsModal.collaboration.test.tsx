@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { i18n } from "@/i18n";
@@ -12,6 +12,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   appVersion: () => Promise.resolve("0.4.6"),
   libraryRoot: vi.fn(async () => "/tmp/library"),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
 vi.mock("@/lib/theme", () => ({
@@ -23,7 +25,6 @@ vi.mock("@/features/collab/CollaborationSection", () => ({
 
 import { SettingsModal } from "./SettingsModal";
 
-const experimentation = enShell.settings.experimentation;
 
 describe("Collaboration section", () => {
   beforeEach(() => {
@@ -50,22 +51,6 @@ describe("Collaboration section", () => {
     render(<SettingsModal />);
     expect(await screen.findByTestId("collab-section-stub")).toBeInTheDocument();
     expect(screen.getByTestId("settings-section-collaboration")).toHaveAttribute("aria-current", "page");
-  });
-
-  it("leaves only the LaTeX tools, PhiTeX, Notes, Overleaf live editing, PDF review, AI completions and research tasks switches in Experimentation", () => {
-    useSettingsStore.getState().setSettingsInitialSection("experimentation");
-    render(<SettingsModal />);
-    const body = within(screen.getByTestId("settings-body"));
-    expect(body.getAllByRole("switch")).toEqual([
-      body.getByRole("switch", { name: experimentation.latexTools.label }),
-      body.getByTestId("settings-phitex"),
-      body.getByTestId("settings-notes"),
-      body.getByTestId("settings-overleaf-live"),
-      body.getByTestId("settings-pdf-review"),
-      body.getByTestId("settings-ai-completion"),
-      body.getByTestId("settings-research-tasks"),
-    ]);
-    expect(body.queryByText(/collaboration/i)).toBeNull();
   });
 });
 

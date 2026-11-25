@@ -1,11 +1,10 @@
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, EyeOff, Info, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, EyeOff, Info, Wand2 } from "lucide-react";
 import { standardChips, type Finding, type Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import { Button } from "@/components/ui/button";
-import { askAiAboutFinding } from "@/features/ask-ai-preflight";
 import { fixWritingFindings, ignoreWritingFindingAndRerun } from "@/features/writing-actions";
 import { keptVisualEditor } from "@/lib/open-location";
 import { useFilesStore } from "@/store/files";
@@ -103,14 +102,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
                 <EyeOff aria-hidden /> {t(($) => $.preflight.finding.ignore)}
               </Button>
             )}
-            {finding.lens !== "writing" && (
-              <button type="button"
-                onClick={() => void askAiAboutFinding(finding)}
-                className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs text-primary hover:bg-accent"
-              >
-                <Sparkles className="size-3" /> {t(($) => $.preflight.finding.fixWithAi)}
-              </button>
-            )}
+
           </div>
         </div>
       )}

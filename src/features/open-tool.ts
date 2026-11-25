@@ -8,7 +8,7 @@ import { useNotesViewStore } from "@/store/notes-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
-const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols", "diagram-composer", "notes"]);
+const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set([ "symbols", "diagram-composer", "notes"]);
 
 export async function openHomePage(page: HomePage): Promise<void> {
   const files = useFilesStore.getState();

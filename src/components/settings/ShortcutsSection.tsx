@@ -59,7 +59,6 @@ function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
 type BuiltInCategory = "editor" | "codeIntelligence" | "pdf" | "notes";
 
 type BuiltInShortcutId =
-  | "askAiEditSelection"
   | "bold"
   | "italic"
   | "findAndReplace"
@@ -107,7 +106,6 @@ interface BuiltInShortcut {
 }
 
 const BUILT_IN_SHORTCUTS: readonly BuiltInShortcut[] = [
-  { id: "askAiEditSelection", category: "editor", keys: ["Mod", "L"] },
   { id: "bold", category: "editor", keys: ["Mod", "B"] },
   { id: "italic", category: "editor", keys: ["Mod", "I"] },
   { id: "findAndReplace", category: "editor", keys: ["Mod", "F"] },

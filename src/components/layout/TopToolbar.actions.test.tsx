@@ -36,6 +36,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   duplicateProject: mocks.duplicateProject,
   exportDocument: mocks.exportDocument,
   revealInDir: mocks.revealInDir,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/features/export", () => ({
@@ -59,7 +61,6 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useShortcutStore, shortcutLabel, shortcutParts } from "@/store/shortcuts";
 
 import { useZenStore } from "@/store/zen";
-import { exitZenMode } from "@/lib/zen-mode";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { ThemeProvider } from "@/lib/theme";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -117,7 +118,6 @@ beforeEach(() => {
   useCompileStore.setState({ status: "success", pdfBytes: new Uint8Array([1]) });
   useSettingsStore.setState({
     viewMode: "split",
-    assistantOpen: false,
     workspaceHidden: false,
   });
 });
@@ -253,29 +253,12 @@ describe("TopToolbar view and layout", () => {
     expect(useSettingsStore.getState().viewMode).toBe("editor");
   });
 
-  it("lists every layout preset and applies the one chosen", async () => {
-    renderToolbar();
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: toolbar.layout }));
-    const menu = (await screen.findAllByRole("menu")).at(-1);
-    if (!menu) throw new Error("layout submenu did not open");
-    for (const label of Object.values(toolbar.layouts)) {
-      expect(menu).toHaveTextContent(label);
-    }
-    const item = screen.getByRole("menuitem", { name: toolbar.layouts.aiOnly });
-    item.focus();
-    await user.keyboard("{Enter}");
-    await waitFor(() =>
-      expect(useSettingsStore.getState().assistantOpen).toBe(true),
-    );
-  });
-
   it("draws a different icon for every layout preset", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: toolbar.layout }));
     await screen.findAllByRole("menu");
-    const icons = Object.values(toolbar.layouts).map((label) => {
+    const icons = [toolbar.layouts.editorPreview, toolbar.layouts.editorOnly, toolbar.layouts.previewOnly, toolbar.layouts.zenMode].map((label) => {
       const icon = screen.getByRole("menuitem", { name: label }).querySelector("svg");
       if (!icon) throw new Error(`no icon for ${label}`);
       expect(icon).toHaveAttribute("aria-hidden", "true");
@@ -300,7 +283,7 @@ describe("TopToolbar layout menu and Zen mode", () => {
     const items = within(menu).getAllByRole("menuitem");
     const zen = items.at(-1) as HTMLElement;
     expect(zen).toHaveAccessibleName(toolbar.layouts.zenMode);
-    expect(items).toHaveLength(Object.keys(toolbar.layouts).length + 1);
+    expect(items).toHaveLength(5);
     const binding = useShortcutStore.getState().bindings.toggleZenMode;
     expect(keyChips(zen)).toEqual(shortcutParts(binding));
     expect(zen).toHaveAttribute("aria-keyshortcuts", shortcutLabel(binding));
@@ -330,21 +313,6 @@ describe("TopToolbar layout menu and Zen mode", () => {
     const { menu } = await openLayoutMenu();
     const zen = within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode });
     expect(zen.querySelector("svg.lucide-check")).toBeNull();
-  });
-
-  it("enters Zen mode from the menu and leaving brings the preset back", async () => {
-    useSettingsStore.setState({ viewMode: "split", assistantOpen: true, showTree: true });
-    const { user, menu } = await openLayoutMenu();
-    await user.click(within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode }));
-    await waitFor(() => expect(useZenStore.getState().active).toBe(true));
-    expect(useSettingsStore.getState()).toMatchObject({ assistantOpen: false, showTree: false });
-
-    exitZenMode();
-    expect(useSettingsStore.getState()).toMatchObject({
-      viewMode: "split",
-      assistantOpen: true,
-      showTree: true,
-    });
   });
 });
 
@@ -714,36 +682,5 @@ describe("TopToolbar export routes", () => {
     await user.click(screen.getByTestId("export-typst-native"));
 
     expect(mocks.openTypstExport).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("TopToolbar active layout", () => {
-  it.each([
-    [{ viewMode: "split", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.editorPreviewAi],
-    [{ viewMode: "editor", assistantOpen: false, workspaceHidden: false }, toolbar.layouts.editorOnly],
-    [{ viewMode: "editor", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.editorAi],
-    [{ viewMode: "pdf", assistantOpen: false, workspaceHidden: false }, toolbar.layouts.previewOnly],
-    [{ viewMode: "pdf", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.previewAi],
-    [{ viewMode: "editor", assistantOpen: true, workspaceHidden: true }, toolbar.layouts.aiOnly],
-  ] as const)("marks the current layout for %o", async (state, label) => {
-    useSettingsStore.setState(state);
-    renderToolbar();
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole("button", { name: toolbar.layout }));
-
-    const item = await screen.findByRole("menuitem", { name: label });
-    expect(item.querySelector("svg.lucide-check")).not.toBeNull();
-  });
-
-  it("marks no layout while the workspace is hidden without the assistant", async () => {
-    useSettingsStore.setState({ viewMode: "editor", assistantOpen: false, workspaceHidden: true });
-    renderToolbar();
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole("button", { name: toolbar.layout }));
-    await screen.findByRole("menuitem", { name: toolbar.layouts.aiOnly });
-
-    expect(document.querySelectorAll("[role='menuitem'] svg.lucide-check")).toHaveLength(0);
   });
 });

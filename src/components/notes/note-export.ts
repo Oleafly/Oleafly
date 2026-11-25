@@ -90,7 +90,7 @@ export async function prepareNote(source: NoteExportSource, format: NoteExportFo
 }
 
 export async function convertNote(text: string, format: NoteExportFormat): Promise<AdHocConversionResult> {
-  const { pandocConvert } = await import("@/features/tools-ai/pandoc-text");
+  const { pandocConvert } = await import("@/features/pandoc-text");
   return pandocConvert({ source: "markdown-note", target: format, text });
 }
 

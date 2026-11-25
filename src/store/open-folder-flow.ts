@@ -4,7 +4,6 @@ export interface OpenFolderStopPrompt {
   name: string;
   project: string;
   compile: boolean;
-  assistant: boolean;
 }
 
 export interface OpenFolderRefusal {

@@ -1129,6 +1129,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "20 MB'tan küçük bir görsel seçin.",
     "imageFormat": "PNG, JPEG veya WebP bir görsel seçin.",
     "ollamaUnavailable": "Ollama'yı başlatın veya Araçlar için başka bir model seçin.",

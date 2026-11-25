@@ -37,7 +37,6 @@ vi.mock("@/lib/external-file-changes", () => ({
 vi.mock("@/store/compile", () => ({ clearFolderPause: mocks.clearFolderPause }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 
-import { useApprovalModeStore } from "@/store/approval-mode";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { ProjectAvailabilityKeeper, recheckProjectAvailability } from "./ProjectAvailabilityKeeper";
 
@@ -93,26 +92,6 @@ describe("ProjectAvailabilityKeeper", () => {
     expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("linked-a");
     expect(mocks.clearFolderPause).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledWith("linked-a"));
-  });
-
-  it("drops the cached approval mode after a rebind that reset grants", () => {
-    useApprovalModeStore.setState({
-      modes: { "linked-a": "full-access" },
-      loaded: { "linked-a": true },
-      persisted: { "linked-a": "full-access" },
-    });
-    render(<ProjectAvailabilityKeeper />);
-    act(() => {
-      useProjectAvailabilityStore.getState().apply({
-        projectId: "linked-a",
-        availability: "ok",
-        locationGeneration: 1,
-        relocated: true,
-        grantsReset: true,
-      });
-    });
-    expect(useApprovalModeStore.getState().modes).toEqual({});
-    expect(mocks.files.resumeAutosave).toHaveBeenCalledWith("linked-a");
   });
 
   it("asks the backend again on focus only while the folder is unavailable", async () => {

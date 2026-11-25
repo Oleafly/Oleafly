@@ -7,7 +7,6 @@ import {
   PanelRight,
   PanelRightClose,
   Settings as SettingsIcon,
-  Sparkles,
   SquareTerminal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -16,8 +15,6 @@ import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { paneSide, usePaneLayoutStore } from "@/store/pane-layout";
 import { useTerminalsStore } from "@/store/terminals";
-import { useMcpActivityStore } from "@/store/mcp-activity";
-import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useChatRail } from "@/components/collab/chat-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
@@ -147,7 +144,6 @@ export function SidebarViews() {
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
-  const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
   const collabShown = useCollabRail((s) => s.visible);
   useCollabRail((s) => s.unread);
   const commentsShown = useCommentsRail((s) => s.visible || s.suggestions);
@@ -157,20 +153,12 @@ export function SidebarViews() {
   const { theme } = useTheme();
 
   useEffect(() => {
-    if (!mcpEnabled && railTab === "mcp") setRailTab("files");
-  }, [mcpEnabled, railTab, setRailTab]);
-
-  useEffect(() => {
     if (!collabShown && railTab === "collab") setRailTab("files");
   }, [collabShown, railTab, setRailTab]);
 
   useEffect(() => {
     if (!commentsShown && railTab === "comments") setRailTab("files");
   }, [commentsShown, railTab, setRailTab]);
-  const researchShown = useResearchTasksEnabled();
-  useEffect(() => {
-    if (!researchShown && railTab === "research") setRailTab("files");
-  }, [researchShown, railTab, setRailTab]);
 
   useEffect(() => {
     if (!chatShown && railTab === "chat") setRailTab("files");
@@ -186,7 +174,7 @@ export function SidebarViews() {
     if (!showTree) toggleTree();
   };
 
-  const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
+  const ctx: AppContext = { projectId, projectKind, theme, };
   const [order, setOrder] = useRailOrder(railTabIds());
   const tabs = applyRailOrder(railSections(ctx).flat(), order);
   const reorder = useStripReorder(order, setOrder);
@@ -278,17 +266,12 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const terminalActivity = useTerminalsStore((s) => s.tabs.some((tab) => tab.bell));
   const terminalActivityId = useId();
   const showTerminalActivity = terminalActivity && !terminalOpen;
-  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
-  const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const settingsShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.openSettings));
   const terminalLabel = terminalOpen
     ? t(($) => $.shell.dock.terminal.hide, { shortcut: terminalShortcut })
     : t(($) => $.shell.dock.terminal.show, { shortcut: terminalShortcut });
-  const assistantLabel = assistantOpen
-    ? t(($) => $.shell.dock.assistant.hide)
-    : t(($) => $.shell.dock.assistant.show);
   const settingsLabel = t(($) => $.shell.rail.withShortcut, {
     label: t(($) => $.shell.dock.settings),
     shortcut: settingsShortcut,
@@ -329,22 +312,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
       </Tooltip>
       </ToolbarAction>
       {layoutControl}
-      <ToolbarAction name="assistant">
-      <Tooltip label={assistantLabel} side="bottom">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          data-testid="rail-assistant-toggle"
-          aria-label={assistantLabel}
-          aria-pressed={assistantOpen}
-          onClick={() => setAssistantOpen(!assistantOpen)}
-          className={dockBtn(assistantOpen)}
-        >
-          <Sparkles className="size-4" aria-hidden />
-        </Button>
-      </Tooltip>
-      </ToolbarAction>
+
       <ToolbarAction name="theme" order={TOOLBAR_OVERFLOW.theme} hidden={hideTheme}>
         <ThemeMenu key={hideTheme ? "hidden" : "visible"} triggerClassName={dockBtn(false)} />
       </ToolbarAction>

@@ -1,27 +1,15 @@
-mod acp;
 mod ad_hoc_conversion;
-mod agent;
-mod agent_config;
-mod agent_exec;
-#[allow(dead_code)]
-mod agent_server;
-mod agent_turns;
-mod ai_model_metadata;
-mod ai_model_registry;
 mod app_error;
 mod app_icon;
-mod approvals;
 mod artifact_frame;
 mod arxiv_import;
 mod assets;
-mod attachments;
 mod bib_clean;
 mod biber_toolchain;
 mod browser_cookie_import;
 mod buffer_copy;
 mod build_hygiene;
 mod caller;
-mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
 mod checkpoint_capture;
@@ -38,9 +26,7 @@ mod compile_fingerprint;
 mod config;
 mod connectors;
 mod conversion;
-mod cua_driver;
 mod custom_templates;
-mod daemon_handoff;
 mod deadlines;
 mod deep_link;
 mod dictionaries;
@@ -62,15 +48,13 @@ mod known_folders;
 mod language_service;
 mod latex_engine;
 mod latex_package_index;
-mod library_db;
 mod linked_copy;
 mod linked_registry;
 mod linked_removal;
 mod literature;
+mod log_redact;
 #[allow(dead_code)]
 mod logsafe;
-mod mathpix;
-mod mcp;
 mod media_type;
 mod menu;
 mod native_drop;
@@ -88,7 +72,6 @@ mod notebook_toolchain;
 mod notes_render;
 mod notes_tikz;
 mod notes_typst;
-mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
@@ -114,25 +97,14 @@ mod project_sources;
 mod protocol;
 mod quick_capture;
 mod quit_gate;
-mod rag;
 mod release_notes;
-mod research_compute;
-mod research_lifecycle;
-mod research_mcp;
-mod research_tasks;
 mod research_workspace;
-#[allow(dead_code)]
-mod rollout;
 mod sandbox;
 mod search_modes;
 mod secrets;
 mod settings_file;
 mod shell_command;
 mod single_instance;
-mod skills;
-mod skills_catalog;
-mod skills_pack;
-mod skills_share;
 mod stall_trace;
 mod state;
 mod stats;
@@ -163,7 +135,6 @@ mod typst_toolchain;
 mod typst_upgrade;
 mod typst_watch;
 mod updater;
-mod usage_report;
 mod web_process;
 #[cfg(windows)]
 mod webview_focus;
@@ -336,47 +307,13 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }));
     }
     program_locator::start_background_probe();
-    acp::attach(app.handle()).map_err(std::io::Error::other)?;
-    if let Some(shim) = program_locator::planned_cli_shim() {
-        acp::set_cli_program(shim);
-    }
     tauri::async_runtime::spawn_blocking(|| {
-        match program_locator::refresh_cli_shim() {
-            Ok(path) => acp::set_cli_program(path),
-            Err(error) => {
-                let _ = project::append_app_log(format!("oleafly command unavailable: {error}"));
-            }
+        if let Err(error) = program_locator::refresh_cli_shim() {
+            let _ = project::append_app_log(format!("oleafly command unavailable: {error}"));
         }
         #[cfg(windows)]
         shell_command::refresh_installed_copy();
     });
-    if let Err(error) = cua_driver::attach(app.handle()) {
-        let _ = project::append_app_log(format!("desktop apps unavailable: {error}"));
-    }
-    agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
-    {
-        use tauri::Manager;
-        let handle = app.handle().clone();
-        research_tasks::attach(
-            handle.state::<research_tasks::ResearchTaskState>().inner(),
-            &handle,
-        );
-        agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
-        daemon_handoff::on_launch(
-            &handle,
-            std::sync::Arc::new(research_tasks::host::AppResearchHost::new(handle.clone())),
-        );
-        tauri::async_runtime::spawn(async move {
-            let tasks = handle.state::<research_tasks::ResearchTaskState>();
-            if let Err(error) =
-                research_tasks::recover(tasks.inner(), handle.state::<AppState>().inner()).await
-            {
-                let _ = crate::project::append_app_log(format!(
-                    "Research task recovery failed: {error}"
-                ));
-            }
-        });
-    }
     crate::stall_trace::mark_ui_thread();
     crate::stall_trace::start_watchdog();
     prepare_main_window(app);
@@ -425,21 +362,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
     tauri::async_runtime::spawn_blocking(crate::overleaf::sweep_browser_profiles);
 
-    let handle = app.handle().clone();
-    tauri::async_runtime::spawn(async move {
-        if let Ok(cfg) = crate::config::read_config() {
-            if cfg.mcp_enabled {
-                if let Err(e) = crate::mcp::start_configured(handle, cfg.mcp_port).await {
-                    eprintln!("mcp: autostart failed: {e}");
-                }
-            } else if let Err(e) = crate::mcp::server::remove_discovery_file() {
-                eprintln!("mcp: disabled-startup discovery cleanup failed: {e}");
-                let _ = crate::project::append_app_log(format!(
-                    "MCP disabled-startup discovery cleanup failed: {e}"
-                ));
-            }
-        }
-    });
     Ok(())
 }
 
@@ -466,22 +388,6 @@ fn e2e_boot_seed_script(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    oleafly_research::mcp::protocol::set_server_version(env!("CARGO_PKG_VERSION"));
-    if let Some(code) = oleafly_sandbox::entry(research_compute::sandbox_config) {
-        std::process::exit(code);
-    }
-    if let Some(config) = research_compute::sandbox_config() {
-        oleafly_sandbox::configure(config);
-    }
-    if let Some(code) = oleafly_research::runs::supervisor::run_if_requested() {
-        std::process::exit(code);
-    }
-    if research_mcp::stdio_bridge_requested() {
-        std::process::exit(research_mcp::serve_stdio_bridge());
-    }
-    if daemon_handoff::daemon_requested(std::env::args_os()) {
-        std::process::exit(daemon_handoff::serve_daemon());
-    }
     let open_intake = open_request::OpenIntake::default();
     open_intake.enqueue(
         open_request::launch_targets(),
@@ -518,9 +424,7 @@ pub fn run() {
         .plugin(navigation_guard::plugin())
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
-        .plugin(acp::lifecycle_plugin())
         .plugin(updater::lifecycle_plugin())
-        .plugin(research_lifecycle::lifecycle_plugin())
         .plugin(typst_sync::lifecycle_plugin())
         .plugin(typst_watch::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
@@ -608,12 +512,6 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(updater::UpdateState::default())
-        .manage(research_tasks::new_state())
-        .manage(agent::AgentState::default())
-        .manage(agent_exec::AgentExecState::default())
-        .manage(agent_server::AgentServerState::default())
-        .manage(mcp::server::McpState::default())
-        .manage(mcp::client::McpClientState::default())
         .manage(native_drop::NativeDropState::default())
         .manage(zotero::commands::ZoteroState::default())
         .manage(collab::state::CollabState::for_app())
@@ -626,6 +524,7 @@ pub fn run() {
         .on_window_event(on_window_event)
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
+            state::set_active_project,
             ad_hoc_conversion::convert_ad_hoc,
             typst_render::render_typst_snippet,
             notes_typst::notes_render_typst,
@@ -636,72 +535,6 @@ pub fn run() {
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
-            research_tasks::research_tasks_set_enabled,
-            research_tasks::research_task_list,
-            research_tasks::research_task_create,
-            research_tasks::research_task_edit,
-            research_tasks::research_task_start,
-            research_tasks::research_task_cancel,
-            research_tasks::research_task_retry,
-            research_tasks::research_task_events,
-            research_tasks::research_task_file_preview,
-            research_tasks::research_task_artifact_preview,
-            research_tasks::research_task_copy_artifact_to_note,
-            research_tasks::research_task_apply,
-            research_tasks::research_task_accept_result,
-            research_tasks::research_task_delete,
-            acp::commands::acp_catalog,
-            acp::commands::acp_registry_search,
-            acp::commands::acp_register,
-            acp::commands::acp_remove_agent,
-            acp::commands::acp_install,
-            acp::commands::acp_start,
-            acp::commands::acp_cancel_start,
-            acp::commands::acp_reconnect,
-            acp::commands::acp_prompt,
-            acp::commands::acp_cancel,
-            acp::commands::acp_disconnect,
-            acp::commands::acp_authenticate,
-            acp::commands::acp_set_model,
-            acp::commands::acp_permission,
-            acp::commands::acp_delegated_permission,
-            acp::commands::acp_sessions,
-            acp::commands::acp_snapshot,
-            acp::commands::acp_events,
-            acp::commands::acp_check_agent,
-            acp::commands::acp_pick_agent_program,
-            acp::commands::acp_set_agent_program,
-            acp::commands::acp_session_export,
-            acp::commands::acp_session_events_all,
-            agent_turns::agent_turn_begin,
-            agent_turns::agent_turn_finish,
-            agent_turns::agent_turn_status,
-            agent_turns::agent_turn_preview,
-            agent_turns::agent_turn_revert,
-            agent_turns::agent_turn_redo,
-            agent::agent_complete,
-            agent::agent_warm,
-            agent::agent_cancel,
-            agent::agent_cancel_all,
-            agent::agent_steer,
-            agent::agent_subagents_stop,
-            agent::agent_stream,
-            agent::agent_run,
-            agent::agent_tool_result,
-            agent::agent_list_models,
-            agent::agent_probe_model,
-            agent::agent_web_search_ready,
-            ai_model_metadata::agent_model_metadata_status,
-            ai_model_metadata::agent_refresh_model_metadata,
-            agent_server::agent_server_initialize,
-            agent_server::agent_server_resolve_request,
-            agent_server::agent_server_abandon_request,
-            agent_server::agent_thread_read,
-            agent_server::agent_thread_fork,
-            agent_server::agent_thread_archive,
-            agent_server::agent_thread_delete,
-            agent_server::agent_thread_claim_prewarmed,
-            agent_config::agent_multi_agent_config,
             commands::reload_views,
             commands::library_root,
             commands::display_homes,
@@ -752,12 +585,6 @@ pub fn run() {
             logsafe::reveal_app_log,
             logsafe::log_frontend_entry,
             logsafe::log_frontend_error,
-            approvals::approvals_list,
-            approvals::approvals_set,
-            approvals::approvals_read_raw,
-            approvals::approvals_write_raw,
-            approvals::approvals_mode_get,
-            approvals::approvals_mode_set,
             trust::project_trust_state,
             trust::trust_folder,
             trust::revoke_folder_trust,
@@ -769,25 +596,6 @@ pub fn run() {
             web_process::web_process_note_location,
             web_process::web_process_take_restore,
             folder_status::project_folder_status,
-            skills::skills_list,
-            skills::skills_add,
-            skills::skills_create,
-            skills::preview_skill_id,
-            skills::skills_update,
-            skills::skills_validate,
-            skills::skills_set_enabled,
-            skills::skills_set_project_enabled,
-            skills::skills_remove,
-            skills::skills_read_file,
-            skills::skills_update_builtin,
-            skills_catalog::skills_catalog,
-            skills_catalog::skills_install,
-            skills_catalog::skills_uninstall,
-            skills_share::skills_share_targets,
-            skills_share::skills_share_sync,
-            library_db::chats_search,
-            library_db::usage_summary,
-            usage_report::usage_report_query,
             research_workspace::get_research_workspace,
             research_workspace::add_research_root,
             research_workspace::update_research_root,
@@ -797,10 +605,6 @@ pub fn run() {
             research_workspace::write_research_root_file,
             research_workspace::research_root_capabilities,
             research_workspace::research_root_health,
-            research_workspace::preview_research_project,
-            research_workspace::create_research_project,
-            library_db::budget_get_cmd,
-            library_db::budget_set_cmd,
             terminal::term_open,
             terminal::term_write,
             terminal::term_resize,
@@ -811,10 +615,6 @@ pub fn run() {
             i18n::set_ui_locale,
             i18n::get_ui_locale,
             app_icon::app_icon_set,
-            agent_exec::agent_exec_cwd,
-            agent_exec::agent_exec_authorize,
-            agent_exec::agent_exec_register_external,
-            agent_exec::agent_exec,
             commands::project_engine,
             language_service::language_service_start,
             language_service::language_service_send,
@@ -1006,9 +806,6 @@ pub fn run() {
             collab::output::collab_output_info,
             community::discord_community_stats,
             release_notes::release_notes_page,
-            ollama::ollama_list_models,
-            ollama::ollama_installed,
-            ollama::ollama_start,
             synctex::synctex_forward,
             synctex::synctex_inverse,
             synctex::synctex_map_line,
@@ -1024,7 +821,6 @@ pub fn run() {
             project_sources::read_project_sources,
             project_file_sizes::project_file_sizes,
             document_stats::document_stats,
-            rag::rag_retrieve,
             project::project_mutation_generation,
             project::write_file,
             project::create_file,
@@ -1082,8 +878,6 @@ pub fn run() {
             stats::stats_confidence_interval,
             literature::literature_search,
             literature::literature_arxiv_lookup,
-            connectors::connector_key_saved,
-            connectors::set_connector_key,
             zotero::zotero_verify,
             zotero::zotero_library_bibtex,
             zotero::commands::zotero_library_status,
@@ -1242,37 +1036,11 @@ pub fn run() {
             commands::reveal_in_dir,
             commands::reveal_project,
             commands::project_file_path,
-            config::redacted_secret_marker,
+            connectors::connector_key_saved,
+            connectors::set_connector_key,
             config::get_config,
             config::set_config,
-            config::seed_starter_personas,
             config::claim_starter_note,
-            mcp::mcp_begin_renderer_session,
-            mcp::mcp_renderer_heartbeat,
-            mcp::mcp_end_renderer_session,
-            mcp::mcp_register_tools,
-            mcp::mcp_set_active_project,
-            mcp::mcp_tool_result,
-            mcp::mcp_status,
-            mcp::mcp_set_enabled,
-            mcp::mcp_restart_server,
-            mcp::mcp_connection_info,
-            mcp::mcp_regenerate_token,
-            mcp::client::mcp_servers_list,
-            mcp::client::mcp_server_add,
-            mcp::client::mcp_adopt_alphaxiv_key,
-            mcp::client::mcp_server_update,
-            mcp::client::mcp_server_update_validated,
-            mcp::client::mcp_server_remove,
-            mcp::client::mcp_server_set_enabled,
-            mcp::client::mcp_server_validate,
-            mcp::source_import::mcp_import_source,
-            mcp::registry::mcp_registry_search,
-            mcp::client::mcp_agent_tools_list,
-            mcp::client::mcp_agent_tool_authorize,
-            mcp::client::mcp_agent_tool_call,
-            chats::load_project_chats,
-            chats::save_project_chats,
             git::git_is_initialized,
             git::git_initialize,
             git::git_prepare_publish,
@@ -1311,59 +1079,8 @@ pub fn run() {
             git::git_continue_merge,
             git::git_abort_merge,
             git::git_show,
-            attachments::attachment_put,
-            attachments::attachment_put_text,
-            attachments::attachment_read,
-            attachments::attachment_meta,
-            attachments::attachment_gc,
-            agent::usage::agent_provider_credit,
-            agent::web::agent_web_support,
-            chats::chats_load,
-            chats::chat_read,
-            chats::chat_save,
-            chats::chat_delete,
-            agent_server::agent_thread_rollback,
             citation::verify_citation,
-            skills::skills_replace_with_builtin,
             literature::literature_search_all,
-            research_tasks::research_task_plan,
-            research_tasks::research_task_approve_plan,
-            research_tasks::research_task_run_cancel,
-            research_tasks::research_task_run_log,
-            research_tasks::research_task_attention,
-            research_tasks::research_notification_permission,
-            research_tasks::research_task_approvals,
-            research_tasks::research_task_approval_decide,
-            research_tasks::research_task_evidence_refresh,
-            research_tasks::research_task_progress,
-            research_tasks::research_task_watch,
-            research_tasks::pdf_text::research_pdf_text_fetch,
-            research_tasks::pdf_text::research_pdf_text_result,
-            acp::commands::acp_preferences,
-            acp::commands::acp_set_preferences,
-            acp::commands::acp_agent_preferences,
-            acp::commands::acp_set_agent_preferences,
-            acp::commands::acp_set_agent_preference,
-            acp::commands::acp_provider_choices,
-            acp::commands::acp_buffer_reply,
-            acp::commands::acp_set_config_option,
-            acp::commands::acp_set_mode,
-            acp::commands::acp_refresh_plan_usage,
-            acp::commands::acp_sign_in_command,
-            acp::commands::acp_logout,
-            acp::commands::acp_elicitation_respond,
-            acp::commands::acp_steer,
-            acp::commands::acp_session_rename,
-            acp::commands::acp_session_delete,
-            acp::commands::acp_agent_sessions,
-            acp::commands::acp_session_import,
-            acp::commands::acp_fork,
-            acp::commands::acp_commit_turn,
-            acp::commands::acp_hermes_settings,
-            acp::commands::acp_set_hermes_settings,
-            acp::commands::acp_hermes_status,
-            acp::commands::acp_hermes_set_option,
-            acp::commands::acp_test_remote_hermes,
             terminal::term_shells,
             terminal::external::external_terminals,
             terminal::external::open_external_terminal,
@@ -1383,43 +1100,9 @@ pub fn run() {
             forge::commands::forge_create_repo,
             forge::import::forge_import_repo,
             git::git_clone_project,
-            config::set_ai_tools_model,
-            ollama::ollama_list_model_details,
-            mathpix::mathpix_key_status,
-            mathpix::mathpix_save_keys,
-            mathpix::mathpix_clear_keys,
-            mathpix::mathpix_text,
-            mathpix::mathpix_text_cancel,
-            mathpix::mathpix_pdf_upload,
-            mathpix::mathpix_pdf_wait,
-            mathpix::mathpix_pdf_cancel,
             overleaf::overleaf_sign_in_with_app_cookies,
             overleaf::overleaf_sign_in_browsers,
             overleaf::overleaf_sign_in_with_browser,
-            cua_driver::commands::cua_driver_status,
-            cua_driver::commands::cua_driver_settings_set,
-            cua_driver::commands::cua_driver_installed_apps,
-            cua_driver::commands::cua_driver_app_icons,
-            cua_driver::commands::cua_driver_pick_app,
-            cua_driver::commands::cua_driver_test,
-            cua_driver::commands::cua_driver_tool_spec,
-            research_compute::research_compute_settings,
-            research_compute::research_compute_target_save,
-            research_compute::research_compute_target_remove,
-            research_compute::research_compute_ssh_hosts,
-            research_compute::research_compute_target_test,
-            research_compute::research_compute_trust_host_key,
-            research_compute::research_compute_forget_host_key,
-            research_compute::research_sandbox_status,
-            research_compute::research_sandbox_set_windows,
-            research_compute::research_sandbox_remove_access,
-            research_compute::research_sandbox_check,
-            daemon_handoff::background_helper_status,
-            daemon_handoff::background_helper_stop,
-            daemon_handoff::background_helper_set_login_item,
-            daemon_handoff::background_helper_reveal_log,
-            daemon_handoff::background_tasks_set_enabled,
-            daemon_handoff::research_task_set_keep_running,
             cloud::backup_commands::cloud_backup_state,
             cloud::backup_commands::cloud_backup_set_settings,
             cloud::backup_commands::cloud_backup_run,
@@ -1448,7 +1131,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 window_placement::flush();
                 collab::live::finish_for_quit(collab::live::QUIT_WAIT);
-                cua_driver::shutdown_for_quit(std::time::Duration::from_millis(1500));
+
                 quit_gate::on_app_exit();
             }
         });

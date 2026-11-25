@@ -1121,6 +1121,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "請選擇小於 20 MB 的圖片。",
     "imageFormat": "請選擇 PNG、JPEG 或 WebP 圖片。",
     "ollamaUnavailable": "請啟動 Ollama，或為工具選擇其他模型。",

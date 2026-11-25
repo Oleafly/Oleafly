@@ -5,20 +5,16 @@ import { gzipSync } from "node:zlib";
 import { test, expect } from "../fixtures";
 import { fillCommandPalette, PANEL_SIZE_SCRIPT, pressGlobal, waitLong, type Page } from "../helpers";
 import { scriptValue } from "../script-value";
-import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 const FIXTURES = fileURLToPath(new URL("../../fixtures/conversion-matrix", import.meta.url));
 const fixture = (name: string) => readFileSync(join(FIXTURES, name)).toString("base64");
 
 const CONVERTER_IDS = [
-  "image-to-latex",
   "pdf-to-latex",
   "visual-typst-editor",
   "arxiv-to-latex",
-  "equation-to-latex",
   "excel-to-latex",
   "html-to-latex",
-  "image-to-typst",
   "latex-to-html",
   "latex-to-image",
   "latex-to-markdown",
@@ -46,16 +42,6 @@ const REFERENCE_TOOL_IDS = [
   "pubmed-to-bibtex",
   "url-to-bibtex",
 ] as const;
-
-let server: MockAiServer;
-
-test.beforeAll(async () => {
-  server = await startMockAiServer();
-});
-
-test.afterAll(async () => {
-  await server?.close();
-});
 
 async function atTools(page: Page) {
   await page.evaluate(`(async () => {
@@ -100,14 +86,7 @@ async function attachFile(
   expect(attached, `file input ${selector} must be available`).toBe(true);
 }
 
-async function connectVision(page: Page) {
-  const connected = await page.evaluate<boolean>(
-    `window.__aiConnect?.("ollama", ${scriptValue(server.url)}, "llava") ?? false`,
-  );
-  expect(connected, "__aiConnect devtools hook must be present").toBe(true);
-}
-
-test("the Tools page exposes all 22 converters and the palette opens one directly", async ({
+test("the Tools page exposes the non-AI converters and the palette opens one directly", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("open-latex-tools")).toBeVisible({ timeout: 30_000 });
@@ -226,48 +205,10 @@ test("every text converter runs its built-in example through the real app", asyn
   });
 });
 
-test("file, archive, PDF, and local-vision converters complete without a project", async ({
+test("file, archive, and PDF converters complete without a project", async ({
   tauriPage,
 }) => {
   test.setTimeout(720_000);
-  await connectVision(tauriPage);
-
-  const image = fixture("decay.png");
-  server.setReply("\\begin{equation}VISIONLATEX=x^2\\end{equation}");
-  await openCard(tauriPage, "image-to-latex");
-  await expect(tauriPage.getByTestId("tools-model-picker")).toBeVisible({ timeout: 30_000 });
-  await expect(tauriPage.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device");
-  await tauriPage.locator('[data-testid="tools-model-picker"] [role="combobox"]').click();
-  await expect(tauriPage.locator('[data-testid="ai-model-option-ollama-llava"]')).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(tauriPage.locator('[data-testid="ai-model-option-ollama-llama3.2"]')).toHaveCount(0);
-  await tauriPage.locator('[data-testid="ai-model-option-ollama-llava"]').click();
-  await expect(tauriPage.getByTestId("tools-model-picker")).toContainText("llava", { timeout: 30_000 });
-  await expect(tauriPage.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device");
-  await attachFile(tauriPage, '[data-testid="converter-file-input"]', "notes.png", "image/png", image);
-  await tauriPage.getByTestId("converter-run").click();
-  await expect(tauriPage.getByTestId("converter-output")).toContainText("VISIONLATEX", {
-    timeout: 90_000,
-  });
-
-  server.setReply("= VISIONTYPST");
-  await openCard(tauriPage, "image-to-typst");
-  await attachFile(tauriPage, '[data-testid="converter-file-input"]', "notes.png", "image/png", image);
-  await tauriPage.getByTestId("converter-run").click();
-  await expect(tauriPage.getByTestId("converter-output")).toContainText("VISIONTYPST", {
-    timeout: 90_000,
-  });
-
-  server.setReply("x^2 + y^2 = r^2");
-  await openCard(tauriPage, "equation-to-latex");
-  await tauriPage.getByTestId("converter-mode-file").click();
-  await attachFile(tauriPage, '[data-testid="converter-file-input"]', "equation.png", "image/png", image);
-  await tauriPage.getByTestId("converter-run").click();
-  await expect(tauriPage.getByTestId("converter-output")).toContainText("x^2 + y^2", {
-    timeout: 90_000,
-  });
-
   await openCard(tauriPage, "excel-to-latex");
   await attachFile(
     tauriPage,
@@ -308,20 +249,6 @@ test("file, archive, PDF, and local-vision converters complete without a project
     { timeout: 120_000 },
   );
 
-  server.setReply("= SCANNEDVISION");
-  await openCard(tauriPage, "pdf-to-typst");
-  await attachFile(
-    tauriPage,
-    '[data-testid="converter-file-input"]',
-    "scan.pdf",
-    "application/pdf",
-    fixture("image-only.pdf"),
-  );
-  await tauriPage.getByTestId("converter-run").click();
-  await expect(tauriPage.getByTestId("converter-output")).toContainText("SCANNEDVISION", {
-    timeout: 180_000,
-  });
-
   const archivedSource = gzipSync(
     Buffer.from(
       "\\documentclass{article}\\begin{document}OFFLINEARCHIVE\\end{document}",
@@ -347,37 +274,6 @@ test("file, archive, PDF, and local-vision converters complete without a project
   await expect(
     tauriPage.getByTestId("converter-output").locator(".cm-line span").first(),
   ).toBeVisible();
-
-  await tauriPage.evaluate(`(async () => {
-    const { setAiToolsModel, getConfig } = await import("/src/lib/tauri.ts");
-    await setAiToolsModel(null);
-    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: await getConfig() }));
-    return true;
-  })()`);
-});
-
-test("Settings, AI, Tools offers the Tools model and the Mathpix keys", async ({ tauriPage }) => {
-  test.setTimeout(120_000);
-  await atTools(tauriPage);
-  await tauriPage.evaluate(`(async () => {
-    const { useSettingsStore } = await import("/src/store/settings.ts");
-    const settings = useSettingsStore.getState();
-    settings.setSettingsInitialSection("ai");
-    settings.setSettingsScrollTarget("ai-tools");
-    settings.setSettingsOpen(true);
-    return true;
-  })()`);
-  await expect(tauriPage.getByTestId("ai-settings-tab-tools")).toBeVisible({ timeout: 30_000 });
-  await waitLong(
-    tauriPage,
-    `document.querySelector('[data-testid="ai-settings-tab-tools"]')?.getAttribute("data-state") === "active"`,
-    30_000,
-  );
-  await expect(tauriPage.getByTestId("tools-model-picker")).toBeVisible({ timeout: 30_000 });
-  await expect(tauriPage.getByTestId("tools-model-notice")).toBeVisible();
-  await expect(tauriPage.getByTestId("mathpix-app-id")).toBeVisible();
-  await expect(tauriPage.getByTestId("mathpix-app-key")).toHaveAttribute("type", "password");
-  await tauriPage.keyboard.press("Escape");
 });
 
 test("the five specialized converter cards open and run their production workflows", async ({

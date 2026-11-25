@@ -17,7 +17,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 aho-corasick = "1"
-oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-cli = { path = "../crates/oleafly-cli", features = ["proofread"] }
 oleafly-collab = { path = "../crates/oleafly-collab" }
 oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
@@ -114,7 +113,6 @@ oleafly-online = { path = "../crates/oleafly-online" }
 oleafly-sandbox = { path = "../crates/oleafly-sandbox" }
 oleafly-research = { path = "../crates/oleafly-research" }
 # 0.4.8 D
-oleafly-acp = { path = "../crates/oleafly-acp" }
 # 0.4.8 G
 oleafly-forge = { path = "../crates/oleafly-forge" }
 # 0.4.8 F1

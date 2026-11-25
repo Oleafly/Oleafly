@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   getConfig: mocks.getConfig,
   setConfig: mocks.setConfig,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/i18n/desktop", () => ({
@@ -30,7 +32,6 @@ import { SETTINGS_FIELDS, formatShortcut, parseShortcut, type ConfigPreferences 
 import {
   applySettingsPlan,
   buildSettingsDocument,
-  captureSettingsSnapshot,
   readLocalSnapshot,
   readSettingsFile,
   serializeSettingsDocument,
@@ -53,41 +54,17 @@ function baseConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     github_token: "",
     github_user: "",
     github_connected: false,
-    ai_api_key: "secret-should-never-leave",
-    ai_provider: "openai",
-    ai_model: "gpt-4o-mini",
-    ai_keys: { openai: "sk-never" },
-    ai_system_prompt: "Be brief.",
-    ai_pdf_capture: true,
-    ai_provider_models: {},
-    ai_custom_providers: [],
-    ai_personas: [{ id: "editor", name: "Editor", color: "ocean", prompt: "Edit for clarity." }],
-    ai_starter_personas_seeded: true,
     checkpoints_enabled: true,
     checkpoint_notifications: true,
     git_auto_init: true,
-    mcp_enabled: false,
-    mcp_port: 5323,
-    mcp_read_only: false,
-    mcp_approval_policy: "ask",
-    mcp_servers: [],
     ...overrides,
   };
 }
 
 function configPreferences(config: AppConfig): ConfigPreferences {
   return {
-    ai_system_prompt: config.ai_system_prompt,
-    ai_pdf_capture: config.ai_pdf_capture,
-    ai_reasoning_summaries: config.ai_reasoning_summaries === true,
-    ai_personas: config.ai_personas,
-    ai_saved_instructions: config.ai_saved_instructions ?? [],
     checkpoints_enabled: config.checkpoints_enabled,
     checkpoint_notifications: config.checkpoint_notifications,
-    research_keep_awake: config.research_keep_awake !== false,
-    research_notifications: config.research_notifications !== false,
-    research_command_network: config.research_command_network === true,
-    research_time_budget_minutes: config.research_time_budget_minutes ?? 120,
   };
 }
 
@@ -136,8 +113,6 @@ describe("settings document", () => {
       "appearance",
       "dictionary",
       "data",
-      "ai",
-      "research",
       "engine",
       "shortcuts",
       "experimentation",
@@ -258,20 +233,6 @@ describe("settings document", () => {
     visit(JSON.parse(text) as Record<string, unknown>, "");
     expect([...exported].sort()).toEqual(SETTINGS_FIELDS.map((setting) => setting.path).sort());
   });
-
-  it("leaves AI and checkpoint settings out when the config can't be read", () => {
-    const document = buildSettingsDocument(readLocalSnapshot(null, "system"));
-    expect(document.ai).toBeUndefined();
-    expect(document.data).toBeUndefined();
-  });
-
-  it("captures the config through the bridge", async () => {
-    const captured = await captureSettingsSnapshot("dark");
-    expect(captured.theme).toBe("dark");
-    expect(captured.config?.ai_system_prompt).toBe("Be brief.");
-    mocks.getConfig.mockRejectedValueOnce(new Error("no bridge"));
-    expect((await captureSettingsSnapshot("system")).config).toBeNull();
-  });
 });
 
 describe("reading a settings file", () => {
@@ -316,29 +277,9 @@ describe("reading a settings file", () => {
       { path: "appearance.terminal.fontWeight", issue: { kind: "wholeRange", min: 100, max: 900, step: 100 } },
       { path: "appearance.files", issue: { kind: "object" } },
       { path: "dictionary.words[1]", issue: { kind: "duplicate" } },
-      { path: "ai.personas[0].color", issue: expect.objectContaining({ kind: "oneOf" }) },
       { path: "shortcuts.app.recompile", issue: { kind: "shortcut" } },
       { path: "shortcuts.editor.uppercase", issue: { kind: "editorKey" } },
     ]);
-  });
-
-  it("keeps the composer height, a panel size, out of the settings file", () => {
-    useSettingsStore.getState().setAiComposerHeight(300);
-    expect(JSON.stringify(buildSettingsDocument(snapshot()))).not.toMatch(/composerHeight|"assistant"/);
-    const read = readSettingsFile(fileWith({ appearance: { assistant: { composerHeight: 400 } } }), snapshot());
-    expect(read).toMatchObject({ ok: true, changed: [], ignored: ["appearance.assistant"] });
-    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
-  });
-
-  it("round-trips the reasoning summaries setting in a settings file", () => {
-    const read = readSettingsFile(fileWith({ ai: { reasoningSummaries: true } }), snapshot());
-    expect(read).toMatchObject({ ok: true, changed: ["ai.reasoningSummaries"] });
-  });
-
-  it("imports a settings file without the composer height", () => {
-    const read = readSettingsFile(fileWith({ appearance: { editor: { fontSize: 18 } } }), snapshot());
-    expect(read).toMatchObject({ ok: true, changed: ["appearance.editor.fontSize"] });
-    expect(useSettingsStore.getState().aiComposerHeight).toBe(56);
   });
 
   it("imports a 0.4.7 file without the new keys", () => {
@@ -463,60 +404,6 @@ describe("reading a settings file", () => {
       changed: ["appearance.editor.fontSize"],
       ignored: ["appearance.editor.fontSzie", "appearance.sidebar", "integrations"],
     });
-  });
-
-  it("checks persona fields one by one", () => {
-    const personas = (value: unknown) =>
-      readSettingsFile(fileWith({ ai: { personas: value } }), snapshot());
-    expect(personas([{ id: "a", name: " ", color: "ocean", prompt: "x" }])).toMatchObject({
-      problems: [{ path: "ai.personas[0].name" }],
-    });
-    expect(personas([{ id: "a", name: "A", color: "ocean", prompt: "x", extra: 1 }])).toMatchObject({
-      problems: [{ path: "ai.personas[0].extra", issue: { kind: "unknownKey" } }],
-    });
-    expect(
-      personas([
-        { id: "a", name: "A", color: "ocean", prompt: "x" },
-        { id: "a", name: "B", color: "grape", prompt: "y" },
-      ]),
-    ).toMatchObject({ problems: [{ path: "ai.personas[1].id", issue: { kind: "duplicate" } }] });
-    expect(personas([{ id: "p", name: "Pasted", color: "slate", prompt: "From Word\vwith a vertical tab" }])).toMatchObject({
-      ok: true,
-    });
-    expect(personas([{ id: "p", name: "Nul", color: "slate", prompt: "a\u0000b" }])).toMatchObject({
-      problems: [{ path: "ai.personas[0].prompt", issue: { kind: "text" } }],
-    });
-    const read = personas([{ name: "Tutor", color: "forest", prompt: "Line one\nLine two" }]);
-    if (!read.ok) throw new Error("expected a valid persona");
-    expect(read.plan.config.ai_personas?.[0]).toMatchObject({ name: "Tutor", prompt: "Line one\nLine two" });
-  });
-
-  it("checks saved instructions one by one and keeps their use counts off the file", () => {
-    const saved = (value: unknown) =>
-      readSettingsFile(fileWith({ ai: { savedInstructions: value } }), snapshot());
-    expect(saved([{ id: "a", name: "Keep", text: " " }])).toMatchObject({
-      problems: [{ path: "ai.savedInstructions[0].text" }],
-    });
-    expect(saved([{ id: "a", name: "Keep", text: "Keep it", uses: 4 }])).toMatchObject({
-      problems: [{ path: "ai.savedInstructions[0].uses", issue: { kind: "unknownKey" } }],
-    });
-    expect(
-      saved([
-        { id: "a", name: "A", text: "x" },
-        { id: "a", name: "B", text: "y" },
-      ]),
-    ).toMatchObject({ problems: [{ path: "ai.savedInstructions[1].id", issue: { kind: "duplicate" } }] });
-    expect(saved([{ id: "a", name: "x".repeat(61), text: "y" }])).toMatchObject({
-      problems: [{ path: "ai.savedInstructions[0].name", issue: { kind: "text" } }],
-    });
-    expect(saved(Array.from({ length: 51 }, (_, index) => ({ name: `n${index}`, text: "t" })))).toMatchObject({
-      problems: [{ path: "ai.savedInstructions", issue: { kind: "list", max: 50 } }],
-    });
-    const read = saved([{ name: " Quotes ", text: "Don't change quoted text.\nKeep the format.\n" }]);
-    if (!read.ok) throw new Error("expected a valid saved instruction");
-    expect(read.plan.config.ai_saved_instructions).toEqual([
-      { id: expect.stringMatching(/^instruction-/), name: "Quotes", text: "Don't change quoted text.\nKeep the format." },
-    ]);
   });
 
   it("refuses shortcuts the operating system keeps for itself", () => {
@@ -715,43 +602,6 @@ describe("applying a settings file", () => {
     expect(useCompileStore.getState()).toMatchObject({ autoCompile: true, compileMode: "fast" });
     expect(setPreference).toHaveBeenCalledExactlyOnceWith("dark");
     expect(readThemeCustomization()).toMatchObject({ light: { primary: "#112233" }, radius: "4px" });
-  });
-
-  it("merges AI and checkpoint settings into the latest config", async () => {
-    mocks.getConfig.mockResolvedValue(baseConfig({ ai_starter_personas_seeded: false }));
-    const read = readSettingsFile(
-      fileWith({
-        data: { checkpoints: { afterCompile: false } },
-        ai: {
-          customInstructions: "Cite sources.",
-          includePdfPreview: "off",
-          personas: [{ id: "tutor", name: "Tutor", color: "grape", prompt: "Explain." }],
-        },
-      }),
-      snapshot(),
-    );
-    if (!read.ok) throw new Error("expected a valid file");
-    const aiConfigChanged = vi.fn();
-    window.addEventListener("oleafly:ai-config-changed", aiConfigChanged);
-    await applySettingsPlan(read.plan, THEME);
-    window.removeEventListener("oleafly:ai-config-changed", aiConfigChanged);
-    expect(aiConfigChanged).toHaveBeenCalledTimes(1);
-    expect((aiConfigChanged.mock.calls[0][0] as CustomEvent<AppConfig>).detail).toMatchObject({
-      ai_system_prompt: "Cite sources.",
-      ai_personas: [{ id: "tutor" }],
-    });
-    expect(mocks.setConfig).toHaveBeenCalledTimes(1);
-    expect(mocks.setConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ai_api_key: "secret-should-never-leave",
-        ai_system_prompt: "Cite sources.",
-        ai_pdf_capture: false,
-        checkpoints_enabled: false,
-        ai_personas: [{ id: "tutor", name: "Tutor", color: "grape", prompt: "Explain." }],
-        ai_starter_personas_seeded: true,
-      }),
-    );
-    expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
   });
 });
 

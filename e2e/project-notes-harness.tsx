@@ -1,7 +1,7 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type { FileEntry, ProjectInfo } from "@oleafly/backend-port";
 import { diskHash } from "/src/lib/disk-hash";
-import { installNotesAgentMock } from "./notes-agent-mock";
+import { installNotesIpcMock } from "./notes-ipc-mock";
 import { prepareHarnessI18n } from "./harness-i18n";
 import "/src/styles/globals.css";
 
@@ -79,7 +79,7 @@ function tree(projectId: string): FileEntry[] {
 }
 
 mockWindows("main");
-installNotesAgentMock({ configured: false, delayMs: 0 });
+installNotesIpcMock();
 const internals = (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string, args: unknown, options?: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__;
 const fallback = internals.invoke.bind(internals);
 

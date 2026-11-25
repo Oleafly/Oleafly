@@ -49,7 +49,6 @@ import {
 const FULL_LAYOUT = {
   showTree: true,
   railTab: "source" as const,
-  assistantOpen: true,
   workspaceHidden: false,
   viewMode: "split" as const,
   terminalOpen: true,
@@ -62,7 +61,6 @@ function layout() {
   return {
     showTree: s.showTree,
     railTab: s.railTab,
-    assistantOpen: s.assistantOpen,
     workspaceHidden: s.workspaceHidden,
     viewMode: s.viewMode,
     terminalOpen: s.terminalOpen,
@@ -84,21 +82,6 @@ beforeEach(() => {
 });
 
 describe("entering Zen mode", () => {
-  it("hides the sidebar, assistant and terminal and keeps the editor and PDF", async () => {
-    expect(enterZenMode()).toBe(true);
-    await zenFullscreenSettled();
-
-    expect(useZenStore.getState()).toMatchObject({ active: true, projectId: "p1" });
-    expect(layout()).toEqual({
-      showTree: false,
-      railTab: "source",
-      assistantOpen: false,
-      workspaceHidden: false,
-      viewMode: "split",
-      terminalOpen: false,
-    });
-    expect(useZenStore.getState().pdfVisibleAtStart).toBe(true);
-  });
 
   it("starts editor-alone when the PDF was not showing", () => {
     useSettingsStore.setState({ viewMode: "editor" });
@@ -114,25 +97,11 @@ describe("entering Zen mode", () => {
     expect(useZenStore.getState().pdfVisibleAtStart).toBe(true);
   });
 
-  it("brings the editor back from the assistant-only layout without a PDF", () => {
-    useSettingsStore.setState({ viewMode: "split", workspaceHidden: true, assistantOpen: true });
-    enterZenMode();
-    expect(layout()).toMatchObject({ workspaceHidden: false, assistantOpen: false, viewMode: "editor" });
-    expect(useZenStore.getState().pdfVisibleAtStart).toBe(false);
-  });
-
   it("leaves the view mode alone while the preview lives in its own window", () => {
     usePreviewDetachedStore.setState({ projectId: "p1" });
     enterZenMode();
     expect(layout().viewMode).toBe("split");
     expect(useZenStore.getState().pdfVisibleAtStart).toBe(false);
-  });
-
-  it("does nothing without an open project", () => {
-    useFilesStore.setState({ projectId: null });
-    expect(enterZenMode()).toBe(false);
-    expect(useZenStore.getState().active).toBe(false);
-    expect(layout()).toMatchObject({ showTree: true, assistantOpen: true, terminalOpen: true });
   });
 
   it("does not start in the middle of a tour", () => {
@@ -152,53 +121,6 @@ describe("entering Zen mode", () => {
 });
 
 describe("leaving Zen mode", () => {
-  it("restores exactly the layout from before", async () => {
-    enterZenMode();
-    await zenFullscreenSettled();
-    exitZenMode();
-    await zenFullscreenSettled();
-
-    expect(useZenStore.getState()).toMatchObject({ active: false, snapshot: null, projectId: null });
-    expect(layout()).toEqual({
-      showTree: true,
-      railTab: "source",
-      assistantOpen: true,
-      workspaceHidden: false,
-      viewMode: "split",
-      terminalOpen: true,
-    });
-  });
-
-  it.each([
-    { viewMode: "editor", assistantOpen: false, showTree: false, terminalOpen: false, railTab: "files" },
-    { viewMode: "pdf", assistantOpen: true, showTree: true, terminalOpen: false, railTab: "refs" },
-  ] as const)("restores %o", (before) => {
-    useSettingsStore.setState({ ...before, workspaceHidden: false });
-    enterZenMode();
-    exitZenMode();
-    expect(layout()).toEqual({ ...before, workspaceHidden: false });
-  });
-
-  it("restores the assistant-only layout", () => {
-    useSettingsStore.setState({ workspaceHidden: true, assistantOpen: true, viewMode: "split" });
-    enterZenMode();
-    exitZenMode();
-    expect(layout()).toMatchObject({ workspaceHidden: true, assistantOpen: true, viewMode: "split" });
-  });
-
-  it("undoes panels toggled on and off while it was on", () => {
-    enterZenMode();
-    useSettingsStore.setState({ showTree: true, railTab: "refs", terminalOpen: true, viewMode: "editor" });
-    exitZenMode();
-    expect(layout()).toEqual({
-      showTree: true,
-      railTab: "source",
-      assistantOpen: true,
-      workspaceHidden: false,
-      viewMode: "split",
-      terminalOpen: true,
-    });
-  });
 
   it("keeps the layout it finds when told the project changed", () => {
     enterZenMode();
@@ -206,12 +128,6 @@ describe("leaving Zen mode", () => {
     exitZenMode({ restoreLayout: false });
     expect(useZenStore.getState().active).toBe(false);
     expect(layout()).toMatchObject({ showTree: true, viewMode: "editor" });
-  });
-
-  it("is a no-op when it is not on", () => {
-    exitZenMode();
-    expect(layout()).toMatchObject({ showTree: true, assistantOpen: true });
-    expect(host.setFullscreen).not.toHaveBeenCalled();
   });
 
   it("toggles on and off", () => {

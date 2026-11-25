@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -9,7 +9,6 @@ import {
   Divide,
   Hash,
   Image as ImageIcon,
-  ImagePlus,
   Images,
   Italic,
   Link as LinkIcon,
@@ -48,7 +47,6 @@ import {
   ICON_BUTTON_WIDTH,
   type ToolbarControl,
   ToolbarDropdown,
-  ToolbarMenuItem,
   ToolbarOverflow,
   toolbarPicker,
 } from "@/components/ui/toolbar-overflow";
@@ -78,8 +76,6 @@ import {
   insertTypstTable,
   insertTypstUnderline,
 } from "@/components/editor/typst-commands";
-import { imageToTypst } from "@/features/image-to-latex";
-import { useToolsImageReady } from "@/hooks/use-tools-image-ready";
 import { shortcut } from "@/lib/utils";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
@@ -121,8 +117,6 @@ export function TypstToolbar({
       s.engine.id === "typst" &&
       s.engine.capabilities.supports_synctex,
   );
-  const visionReady = useToolsImageReady();
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
@@ -168,29 +162,6 @@ export function TypstToolbar({
       btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("typst")),
     ];
 
-    if (visionReady) {
-      list.push({
-        id: "image-to-typst",
-        width: ICON_BUTTON_WIDTH,
-        render: () => (
-          <IconBtn
-            onClick={() => imageInputRef.current?.click()}
-            title={t(($) => $.editor.toolbar.imageToTypstTooltip)}
-          >
-            <ImagePlus data-testid="image-to-typst" className="size-4" />
-          </IconBtn>
-        ),
-        renderMenu: () => (
-          <ToolbarMenuItem
-            key="image-to-typst"
-            icon={ImagePlus}
-            label={t(($) => $.editor.toolbar.imageToTypst)}
-            onSelect={() => imageInputRef.current?.click()}
-          />
-        ),
-      });
-    }
-
     list.push(
       dividerControl("divider-4"),
       dropdownControl("list", (variant) => <TypstListDropdown variant={variant} />),
@@ -216,7 +187,7 @@ export function TypstToolbar({
       dropdownControl("code-intel", (variant) => <CodeIntelDropdown variant={variant} />),
     );
     return list;
-  }, [t, visionReady]);
+  }, [t]);
 
   const history = useEditorHistory();
 
@@ -241,21 +212,6 @@ export function TypstToolbar({
       </IconBtn>
 
       <Divider />
-
-      {visionReady && (
-        <input
-          ref={imageInputRef}
-          data-testid="image-to-typst-input"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) void imageToTypst(file);
-          }}
-        />
-      )}
 
       <ToolbarOverflow controls={controls} label={t(($) => $.editor.toolbar.moreOptions)} />
 

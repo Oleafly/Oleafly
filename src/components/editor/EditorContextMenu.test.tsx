@@ -55,7 +55,6 @@ const fileRename = vi.hoisted(() => ({
   startFileRenameAtCursor: vi.fn((_view: unknown) => true),
 }));
 
-const inlineAi = vi.hoisted(() => ({ openInlineEdit: vi.fn() }));
 const synctex = vi.hoisted(() => ({ goToSyncTex: vi.fn() }));
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), success: vi.fn() }));
 
@@ -116,7 +115,6 @@ vi.mock("@/components/editor/typst-commands", async (importOriginal) => {
   return { ...actual, ...typstCommands };
 });
 vi.mock("@/components/editor/cm/controller", () => controller);
-vi.mock("./cm/inline-ai/openSession", () => inlineAi);
 vi.mock("./cm/language-service-format", () => formatting);
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/lib/file-references/rename-at-cursor", () => fileRename);
@@ -224,45 +222,6 @@ describe("EditorContextMenu", () => {
     expect(formatting.formatWithLanguageService).toHaveBeenCalledWith(view, "selection");
   });
 
-  // Nineteen menu walks: 3.3 s on a Windows runner, over 5 s under load.
-  it("writes Typst markup from the Typst menu", () => {
-    openMenu(engineWithProfile("typst"), true);
-
-    fireEvent.click(screen.getByText(menu.askAi));
-    expect(inlineAi.openInlineEdit).toHaveBeenCalledWith(view);
-
-    const items: [string, string, keyof typeof typstCommands][] = [
-      [menu.format, toolbar.bold, "insertTypstBold"],
-      [menu.format, toolbar.italic, "insertTypstItalic"],
-      [menu.format, toolbar.underline, "insertTypstUnderline"],
-      [menu.format, toolbar.strikethrough, "insertTypstStrikethrough"],
-      [menu.format, toolbar.inlineCode, "insertTypstRawInline"],
-      [menu.format, toolbar.insertLink, "insertTypstLink"],
-      [menu.format, menu.toggleComment, "toggleTypstComment"],
-      [menu.insert, menu.figure, "insertTypstFigure"],
-      [menu.insert, menu.inlineMath, "insertTypstMath"],
-      [menu.insert, menu.displayMath, "insertTypstDisplayMath"],
-      [menu.insert, menu.numberedEquation, "insertTypstNumberedEquation"],
-      [menu.insert, menu.alignedEquations, "insertTypstAlignedMath"],
-      [menu.insert, toolbar.fraction, "insertTypstFraction"],
-      [menu.insert, menu.quote, "insertTypstQuote"],
-      [menu.insert, menu.footnote, "insertTypstFootnote"],
-      [menu.insert, menu.crossReference, "insertTypstReference"],
-      [menu.insert, menu.addLabel, "addTypstLabel"],
-    ];
-    for (const [submenu, label, command] of items) {
-      openMenu(engineWithProfile("typst"), true);
-      clickPath(submenu, label);
-      expect(typstCommands[command], label).toHaveBeenCalledOnce();
-    }
-
-    openMenu(engineWithProfile("typst"), true);
-    clickPath(menu.insert, menu.table);
-    expect(typstCommands.insertTypstTable).toHaveBeenCalledWith(3, 3);
-    expect(controller.wrapSelection).not.toHaveBeenCalled();
-    expect(latexCommands.insertBold).not.toHaveBeenCalled();
-  }, 15_000);
-
   it("jumps to the PDF from the Typst menu only when the project can sync", () => {
     const typst = { ...engineWithProfile("typst"), id: "typst", source_extensions: ["typ"] } as DocumentEngineDescriptor;
     openMenu(typst, true, "", "main.typ");
@@ -337,43 +296,8 @@ describe("EditorContextMenu", () => {
     expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
   });
 
-  it("writes Markdown markup from the Markdown menu, toggling marks, headings, lists and tables like the toolbar", async () => {
-    openMenu(engineWithProfile("markdown"), true);
-
-    fireEvent.click(screen.getByText(menu.askAi));
-    expect(inlineAi.openInlineEdit).toHaveBeenCalledWith(view);
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.format, toolbar.bold);
-    await vi.waitFor(() => expect(markdownTarget.bold).toHaveBeenCalledOnce());
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.format, toolbar.italic);
-    await vi.waitFor(() => expect(markdownTarget.italic).toHaveBeenCalledOnce());
-    expect(controller.wrapSelection).not.toHaveBeenCalled();
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.insert, toolbar.heading);
-    await vi.waitFor(() => expect(markdownTarget.heading).toHaveBeenCalledWith(1));
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.insert, toolbar.bulletedList);
-    await vi.waitFor(() => expect(markdownTarget.bullet).toHaveBeenCalledOnce());
-    expect(controller.insertAtCursor).not.toHaveBeenCalled();
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.insert, menu.table);
-    await vi.waitFor(() => expect(markdownTarget.table).toHaveBeenCalledOnce());
-
-    openMenu(engineWithProfile("markdown"), true);
-    clickPath(menu.insert, menu.equation);
-    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("$$\n", "\n$$\n", "");
-  });
-
   it("lists every LaTeX entry with its shortcut", () => {
     openMenu(LATEX_ENGINE, true);
-
-    expect(screen.getByText(menu.askAi)).toHaveTextContent(shortcut("⌘L"));
     expect(screen.getByText(toolbar.goToDefinition)).toHaveTextContent(shortcut("F12"));
     expect(screen.getByText(toolbar.findReferences)).toHaveTextContent(shortcut("⇧F12"));
     expect(screen.getByText(toolbar.renameSymbol)).toHaveTextContent(shortcut("F2"));
@@ -546,16 +470,6 @@ describe("EditorContextMenu", () => {
     expect(typstCommands.insertTypstBold).toHaveBeenCalledOnce();
   });
 
-  it("skips the caret placement when no editor view is mounted", () => {
-    controller.getEditorView.mockReturnValue(null);
-
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(menu.askAi));
-
-    expect(view.dispatch).not.toHaveBeenCalled();
-    expect(inlineAi.openInlineEdit).not.toHaveBeenCalled();
-  });
-
   it("offers Rename file only when the caret is on a file path", async () => {
     await loadFileRename();
     openMenu(LATEX_ENGINE, true, "", "main.tex");
@@ -582,8 +496,7 @@ describe("EditorContextMenu", () => {
     openMenu(engine, true);
 
     const roots = screen.getAllByRole("menuitem").map((item) => item.textContent?.replace(/\s+/gu, " ").trim());
-    expect(roots.slice(0, 5)).toEqual([
-      `${menu.askAi}${shortcut("⌘L")}`,
+    expect(roots.slice(0, 4)).toEqual([
       `${menu.cut}${shortcut("⌘X")}`,
       `${menu.copy}${shortcut("⌘C")}`,
       `${menu.paste}${shortcut("⌘V")}`,

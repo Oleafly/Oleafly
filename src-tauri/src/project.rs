@@ -1381,10 +1381,9 @@ pub async fn existing_project_files(
     .map_err(|e| e.to_string())?
 }
 
-const MCP_LIST_RESULT_LIMIT: usize = 2_000;
-const MCP_LIST_ENTRY_SCAN_LIMIT: usize = 10_000;
 pub(crate) const MCP_SCAN_DEADLINE: std::time::Duration = std::time::Duration::from_secs(2);
 
+#[cfg(test)]
 pub(crate) struct BoundedFileList {
     pub entries: Vec<FileEntry>,
     pub scanned_entries: usize,
@@ -1392,46 +1391,18 @@ pub(crate) struct BoundedFileList {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 struct FileListLimits {
     max_results: usize,
     max_entries: usize,
     deadline: std::time::Instant,
 }
 
-pub(crate) struct ScanCancellation {
-    cancelled: Arc<AtomicBool>,
-    armed: bool,
-}
-
-impl ScanCancellation {
-    pub(crate) fn new() -> (Self, Arc<AtomicBool>) {
-        let cancelled = Arc::new(AtomicBool::new(false));
-        (
-            Self {
-                cancelled: Arc::clone(&cancelled),
-                armed: true,
-            },
-            cancelled,
-        )
-    }
-
-    pub(crate) fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for ScanCancellation {
-    fn drop(&mut self) {
-        if self.armed {
-            self.cancelled.store(true, Ordering::Release);
-        }
-    }
-}
-
 pub(crate) fn scan_should_stop(cancelled: &AtomicBool, deadline: std::time::Instant) -> bool {
     cancelled.load(Ordering::Acquire) || std::time::Instant::now() >= deadline
 }
 
+#[cfg(test)]
 fn bounded_list_walk(
     root: &Path,
     dir: &Path,
@@ -1497,31 +1468,6 @@ fn bounded_list_walk(
     Ok(())
 }
 
-pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFileList, String> {
-    let (mut cancellation, cancelled) = ScanCancellation::new();
-    let limits = FileListLimits {
-        max_results: MCP_LIST_RESULT_LIMIT,
-        max_entries: MCP_LIST_ENTRY_SCAN_LIMIT,
-        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
-    };
-    let result =
-        tauri::async_runtime::spawn_blocking(move || -> Result<BoundedFileList, String> {
-            let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-            let root = paths::project_dir(&project_id)?;
-            let mut out = BoundedFileList {
-                entries: Vec::new(),
-                scanned_entries: 0,
-                truncated: false,
-            };
-            bounded_list_walk(&root, &root, &mut out, limits, &cancelled, 0)?;
-            Ok(out)
-        })
-        .await
-        .map_err(|e| e.to_string())?;
-    cancellation.disarm();
-    result
-}
-
 #[tauri::command]
 pub async fn read_file(
     project_id: String,
@@ -1561,17 +1507,7 @@ fn decode_editable_text(bytes: Vec<u8>) -> Result<String, String> {
     })
 }
 
-pub(crate) fn read_file_limited(
-    project_id: &str,
-    path: &str,
-    max_bytes: usize,
-) -> Result<String, String> {
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
-    let resolved = resolve(project_id, path)?;
-    read_utf8_limited(&resolved, max_bytes)
-        .map_err(|error| format!("failed to read {path}: {error}"))
-}
-
+#[cfg(test)]
 fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
     use std::io::Read;
 
@@ -2424,7 +2360,6 @@ pub(crate) fn write_project_bytes(
             crate::note_index::note_file_written(project_id, bytes);
         }
         crate::folder_watch::note_own_write(target);
-        crate::agent_turns::note_app_write(project_id, path);
         if crate::collab::live::wants_local_events(project_id) {
             crate::collab::live::app_wrote(project_id, path);
         }
@@ -2439,7 +2374,6 @@ pub(crate) fn write_project_bytes(
         crate::note_index::note_file_written(project_id, bytes);
     }
     crate::folder_watch::note_own_write(target);
-    crate::agent_turns::note_app_write(project_id, path);
     Ok(true)
 }
 
@@ -6613,13 +6547,6 @@ pub(crate) fn related_project_of(extra: &HashMap<String, serde_json::Value>) -> 
     Some(id.to_string())
 }
 
-pub(crate) fn note_related_project(note_id: &str) -> Option<String> {
-    let meta = read_meta(note_id).ok()?;
-    is_note(note_id, &meta)
-        .then(|| related_project_of(&meta.extra))
-        .flatten()
-}
-
 fn text_head(bytes: &[u8]) -> String {
     crate::note_index::utf8_prefix(&bytes[..bytes.len().min(NOTE_HEAD_BYTES)])
 }
@@ -6871,6 +6798,7 @@ pub(crate) fn file_sha256(path: &Path) -> Option<String> {
         .map(|(hash, _)| hash)
 }
 
+#[cfg(test)]
 pub(crate) fn copy_into_note(
     note_id: &str,
     bytes: &[u8],
@@ -8321,9 +8249,7 @@ pub struct SearchHit {
 }
 
 const SEARCH_LIMIT: usize = 200;
-const MCP_SEARCH_RESULT_LIMIT: usize = 20;
-pub(crate) const MCP_SEARCH_ENTRY_SCAN_LIMIT: usize = 5_000;
-pub(crate) const MCP_SEARCH_FILE_SCAN_LIMIT: usize = 2_000;
+
 const MCP_SEARCH_FILE_BYTE_LIMIT: usize = 2 * 1024 * 1024;
 const MCP_SEARCH_TOTAL_BYTE_LIMIT: usize = 32 * 1024 * 1024;
 const LINKED_SEARCH_ENTRY_LIMIT: usize = 20_000;
@@ -8778,64 +8704,6 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
     })
     .await
     .map_err(|e| e.to_string())?
-}
-
-pub(crate) async fn search_project_bounded(
-    project_id: String,
-    query: String,
-) -> Result<BoundedSearch, String> {
-    let (mut cancellation, cancelled) = ScanCancellation::new();
-    let limits = SearchLimits {
-        max_results: MCP_SEARCH_RESULT_LIMIT,
-        max_entries: MCP_SEARCH_ENTRY_SCAN_LIMIT,
-        max_files: MCP_SEARCH_FILE_SCAN_LIMIT,
-        max_file_bytes: MCP_SEARCH_FILE_BYTE_LIMIT,
-        max_total_bytes: MCP_SEARCH_TOTAL_BYTE_LIMIT,
-        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
-    };
-    let result = tauri::async_runtime::spawn_blocking(move || -> Result<BoundedSearch, String> {
-        let query = query.trim();
-        if query.is_empty() {
-            return Ok(BoundedSearch {
-                hits: Vec::new(),
-                scanned_entries: 0,
-                scanned_files: 0,
-                scanned_bytes: 0,
-                truncated: false,
-            });
-        }
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let root = paths::project_dir(&project_id)?;
-        let meta = read_meta(&project_id).unwrap_or_default();
-        let project_name = if meta.name.is_empty() {
-            project_id.clone()
-        } else {
-            meta.name
-        };
-        let mut out = BoundedSearch {
-            hits: Vec::new(),
-            scanned_entries: 0,
-            scanned_files: 0,
-            scanned_bytes: 0,
-            truncated: false,
-        };
-        bounded_search_walk(
-            &project_id,
-            &project_name,
-            &root,
-            &root,
-            &query.to_lowercase(),
-            &mut out,
-            limits,
-            &cancelled,
-            0,
-        );
-        Ok(out)
-    })
-    .await
-    .map_err(|e| e.to_string())?;
-    cancellation.disarm();
-    result
 }
 
 #[derive(Serialize, Debug, Default, PartialEq, Eq)]

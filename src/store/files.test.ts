@@ -82,6 +82,8 @@ vi.mock("@/lib/tauri", () => ({
   createProject: mocks.createProject,
   createTypstProject: mocks.createTypstProject,
   createMarkdownProject: mocks.createMarkdownProject,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
@@ -1642,7 +1644,6 @@ describe("external write over a queued save", () => {
   });
 });
 
-
 describe("a project folder that goes away", () => {
   const AUTOSAVE_MS = 1_500;
   const missing = `@oleafly/error:${JSON.stringify({
@@ -2417,33 +2418,6 @@ describe("editor tab bookkeeping", () => {
     expect(useFilesStore.getState()).toMatchObject({ openTabs: [], activePath: null });
   });
 
-  it("marks a tab the assistant opens, but not one the user already had open", async () => {
-    openThree({ openTabs: ["a.tex"], tabOrder: { "a.tex": 1 }, activePath: "a.tex" });
-
-    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
-    await useFilesStore.getState().openFile("a.tex", { opener: "assistant" });
-
-    const state = useFilesStore.getState();
-    expect(state.openTabs).toEqual(["a.tex", "b.tex"]);
-    expect(state.assistantTabs).toEqual(["b.tex"]);
-    expect(state.activePath).toBe("a.tex");
-  });
-
-  it("never marks a tab the user opens, and clears the mark when the user opens it", async () => {
-    openThree({ openTabs: [], tabOrder: {}, activePath: null });
-
-    await useFilesStore.getState().openFile("a.tex");
-    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
-    await useFilesStore.getState().openFile("c.tex", { opener: "assistant" });
-    expect(useFilesStore.getState().assistantTabs).toEqual(["b.tex", "c.tex"]);
-
-    await useFilesStore.getState().openFile("b.tex");
-    expect(useFilesStore.getState().assistantTabs).toEqual(["c.tex"]);
-
-    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
-    expect(useFilesStore.getState().assistantTabs).toEqual(["c.tex"]);
-  });
-
   it("drops the mark when its tab closes", () => {
     openThree({ assistantTabs: ["a.tex", "c.tex"] });
 
@@ -2491,25 +2465,6 @@ describe("editor tab bookkeeping", () => {
     expect(state.openTabs).toEqual(["main.tex", "figure.tex"]);
     expect(state.tabOrder).toEqual({ "main.tex": 5, "figure.tex": 1 });
     expect(state.assistantTabs).toEqual([]);
-  });
-
-  it("marks a tab only when an assistant write is the one that opens it", () => {
-    useFilesStore.setState({
-      files: { "main.tex": CLEAN },
-      openTabs: ["main.tex"],
-      tabOrder: { "main.tex": 5 },
-      assistantTabs: [],
-      activePath: "main.tex",
-    });
-
-    useFilesStore.getState().applyExternalWrite("project", "main.tex", "edited\n", { opener: "assistant" });
-    useFilesStore.getState().applyExternalWrite("project", "notes.tex", "made\n", { opener: "assistant" });
-
-    expect(useFilesStore.getState()).toMatchObject({
-      openTabs: ["main.tex", "notes.tex"],
-      assistantTabs: ["notes.tex"],
-      activePath: "main.tex",
-    });
   });
 });
 

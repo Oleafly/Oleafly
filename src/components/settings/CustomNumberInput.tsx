@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { Input } from "@/components/ui/input";
 
 export function CustomNumberInput({

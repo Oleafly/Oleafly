@@ -1,7 +1,7 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, Plugin, type PluginKey } from "@tiptap/pm/state";
 import { type Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { redecorateTextblocks } from "./touched-textblocks";
 
 export interface SuggestRange {

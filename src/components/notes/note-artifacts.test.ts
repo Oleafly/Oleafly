@@ -1,62 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
-import {
-  defaultBrief,
-  normalizeTask,
-  type ResearchTask,
-  type TaskArtifact,
-  type TaskPreviewContent,
-} from "@/lib/research-tasks";
+import { describe, expect, it } from "vitest";
 import {
   artifactId,
-  artifactItems,
   artifactKind,
   artifactPreview,
   artifactSnippet,
   artifactsForNote,
   csvRows,
-  experimentItems,
-  latestRunContext,
   noteForProject,
 } from "./note-artifacts";
 import type { ArtifactItem, NoteItem } from "./types";
-
-const ISOLATION = {
-  kind: "staged_project" as const,
-  executionRoot: "/tmp/run",
-  sourceRevision: "rev",
-  baselineHash: "hash",
-  fileCount: 3,
-  createdAt: 1,
-};
-
-function file(path: string, label = "", mediaType: string | null = null): TaskArtifact {
-  return { path, label, mediaType };
-}
-
-function task(overrides: Partial<ResearchTask> & { artifacts?: TaskArtifact[]; summary?: string } = {}): ResearchTask {
-  const { artifacts = [], summary = "", ...rest } = overrides;
-  return normalizeTask({
-    id: "task-1",
-    projectId: "paper",
-    status: "completed",
-    title: "Sweep masking ratios",
-    prompt: "Run the sweep",
-    agentId: "codex",
-    modelId: "gpt-5",
-    updatedAt: 1_000,
-    finishedAt: 2_000,
-    isolation: ISOLATION,
-    result: {
-      summary,
-      changedFiles: [],
-      artifacts,
-      nativeSessionId: null,
-      inputTokens: null,
-      outputTokens: null,
-    },
-    ...rest,
-  });
-}
 
 function note(overrides: Partial<NoteItem> = {}): NoteItem {
   return {
@@ -87,7 +39,7 @@ function artifact(overrides: Partial<ArtifactItem> = {}): ArtifactItem {
   };
 }
 
-function content(overrides: Partial<TaskPreviewContent> = {}): TaskPreviewContent {
+function content(overrides: Partial<Parameters<typeof artifactPreview>[1]> = {}): Parameters<typeof artifactPreview>[1] {
   return {
     exists: true,
     text: null,
@@ -95,8 +47,6 @@ function content(overrides: Partial<TaskPreviewContent> = {}): TaskPreviewConten
     mediaType: null,
     binary: false,
     truncated: false,
-    size: null,
-    sha256: null,
     ...overrides,
   };
 }
@@ -148,82 +98,6 @@ describe("artifactId", () => {
   });
 });
 
-describe("artifactItems", () => {
-  it("lists the files of finished tasks that ran in isolation, newest first", () => {
-    const agentName = vi.fn((item: ResearchTask) => (item.agentId === "codex" ? "Codex" : undefined));
-    const items = artifactItems(
-      [
-        task({ id: "pending", result: null }),
-        task({ id: "inline", isolation: null, artifacts: [file("skip.png", "Skip")] }),
-        task({
-          id: "old",
-          title: "   ",
-          prompt: "  Plot the loss  ",
-          agentId: "other",
-          finishedAt: null,
-          updatedAt: 500,
-          summary: "  Loss went down.  ",
-          artifacts: [file("figs/loss.png", "   ")],
-        }),
-        task({
-          id: "new",
-          title: " Sweep ",
-          finishedAt: 3_000,
-          artifacts: [file("results/table.csv", " Results table ", "text/csv"), file("README")],
-        }),
-      ],
-      "SSL paper",
-      agentName,
-    );
-    expect(items).toEqual([
-      {
-        id: "new\nresults/table.csv",
-        taskId: "new",
-        path: "results/table.csv",
-        title: "Results table",
-        kind: "data",
-        projectId: "paper",
-        project: "SSL paper",
-        updatedAt: 3_000,
-        agent: "Codex",
-        chat: "Sweep",
-        summary: "",
-      },
-      {
-        id: "new\nREADME",
-        taskId: "new",
-        path: "README",
-        title: "README",
-        kind: "file",
-        projectId: "paper",
-        project: "SSL paper",
-        updatedAt: 3_000,
-        agent: "Codex",
-        chat: "Sweep",
-        summary: "",
-      },
-      {
-        id: "old\nfigs/loss.png",
-        taskId: "old",
-        path: "figs/loss.png",
-        title: "loss.png",
-        kind: "figure",
-        projectId: "paper",
-        project: "SSL paper",
-        updatedAt: 500,
-        agent: undefined,
-        chat: "Plot the loss",
-        summary: "Loss went down.",
-      },
-    ]);
-    expect(agentName).toHaveBeenCalledTimes(3);
-  });
-
-  it("lists nothing without tasks", () => {
-    expect(artifactItems([], "SSL paper", () => undefined)).toEqual([]);
-  });
-});
-
 describe("artifactsForNote", () => {
   const items = [artifact({ id: "a", projectId: "paper" }), artifact({ id: "b", projectId: "other" })];
 
@@ -251,34 +125,6 @@ describe("noteForProject", () => {
 
   it("finds nothing when no note belongs to the project", () => {
     expect(noteForProject([note({ relatedProjectId: undefined })], "paper")).toBeUndefined();
-  });
-});
-
-describe("experimentItems", () => {
-  it("summarizes each project that has a note and finished tasks, newest first", () => {
-    const tasks = new Map<string, readonly ResearchTask[]>([
-      ["paper", [task({ id: "a", finishedAt: 2_000 }), task({ id: "b", finishedAt: null, updatedAt: 5_000 }), task({ id: "c", result: null })]],
-      ["thesis", [task({ id: "d", projectId: "thesis", finishedAt: 9_000 })]],
-      ["orphan", [task({ id: "e", projectId: "orphan" })]],
-      ["idle", [task({ id: "f", projectId: "idle", result: null })]],
-    ]);
-    const artifacts = [
-      artifact({ id: "1", kind: "figure" }),
-      artifact({ id: "2", kind: "figure" }),
-      artifact({ id: "3", kind: "report" }),
-      artifact({ id: "4", kind: "data" }),
-      artifact({ id: "5", kind: "html" }),
-      artifact({ id: "6", kind: "figure", projectId: "other" }),
-    ];
-    const notes = [
-      note({ id: "paper-note", project: "SSL paper" }),
-      note({ id: "thesis-note", project: "Thesis", relatedProjectId: "thesis" }),
-      note({ id: "idle-note", project: "Idle", relatedProjectId: "idle" }),
-    ];
-    expect(experimentItems(tasks, artifacts, notes)).toEqual([
-      { projectId: "thesis", project: "Thesis", tasks: 1, figures: 0, reports: 0, updatedAt: 9_000, noteId: "thesis-note" },
-      { projectId: "paper", project: "SSL paper", tasks: 2, figures: 2, reports: 2, updatedAt: 5_000, noteId: "paper-note" },
-    ]);
   });
 });
 
@@ -477,61 +323,4 @@ describe("artifactSnippet", () => {
   });
 });
 
-describe("latestRunContext", () => {
-  it("has nothing without a finished task", () => {
-    expect(latestRunContext([])).toBeNull();
-    expect(latestRunContext([task({ result: null, status: "running" })])).toBeNull();
-    expect(latestRunContext([task({ status: "failed" }), task({ status: "cancelled" })])).toBeNull();
-  });
-
-  it("describes the newest finished run with its metric, summary and files", () => {
-    const newest = task({
-      id: "newest",
-      title: " Sweep masking ratios ",
-      finishedAt: Date.UTC(2026, 10, 7, 12, 0, 0),
-      brief: { ...defaultBrief(), primaryMetric: { name: "accuracy", goal: "maximize" } },
-      summary: "  Ratio 0.75 reached 64.1%.  ",
-      artifacts: [file("figs/loss.png", "Loss curve"), file("results.csv", "Results")],
-    });
-    const tasks = [
-      task({ id: "early", finishedAt: Date.UTC(2026, 10, 1) }),
-      newest,
-      task({ id: "later-failed", status: "failed", finishedAt: Date.UTC(2026, 10, 9) }),
-      task({ id: "middle", finishedAt: Date.UTC(2026, 10, 5) }),
-    ];
-    expect(latestRunContext(tasks)).toBe(
-      [
-        "Task: Sweep masking ratios",
-        "Finished: 2026-11-07T12:00:00.000Z",
-        "Agent: codex (gpt-5)",
-        "Primary metric: accuracy (maximize)",
-        "",
-        "Summary:",
-        "Ratio 0.75 reached 64.1%.",
-        "",
-        "Files it made:",
-        "- figs/loss.png: Loss curve",
-        "- results.csv: Results",
-      ].join("\n"),
-    );
-  });
-
-  it("falls back to the prompt and the update time, and leaves out what is empty", () => {
-    expect(
-      latestRunContext([
-        task({ title: "  ", prompt: " Plot the loss ", modelId: "", agentId: "claude", finishedAt: null, updatedAt: Date.UTC(2026, 0, 2) }),
-      ]),
-    ).toBe(["Task: Plot the loss", "Finished: 2026-01-02T00:00:00.000Z", "Agent: claude"].join("\n"));
-  });
-
-  it("keeps the first of two runs that finished at the same time", () => {
-    const at = Date.UTC(2026, 10, 3);
-    const context = latestRunContext([task({ title: "First", finishedAt: at }), task({ title: "Second", finishedAt: at })]);
-    expect(context?.startsWith("Task: First\n")).toBe(true);
-  });
-
-  it("cuts a long summary", () => {
-    const context = latestRunContext([task({ summary: "s".repeat(7000) })]);
-    expect(context?.endsWith(`\n${"s".repeat(6000)}`)).toBe(true);
-  });
-});
+function file(path: string, label = "", mediaType: string | null = null) { return { path, label, mediaType }; }

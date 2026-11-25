@@ -19,7 +19,6 @@ import {
 } from "react-resizable-panels";
 import { KeptAliveSlot } from "@/components/layout/KeptAliveSlot";
 import {
-  assistantMinimumWidth,
   fileSidebarWidth,
   sidebarMinimumPercent,
   sidebarPanelGroupWidth,
@@ -50,7 +49,6 @@ import {
   type PaneNode,
   type PaneShown,
   type PaneSplit,
-  type SplitDirection,
   usePaneLayoutStore,
 } from "@/store/pane-layout";
 
@@ -62,7 +60,6 @@ export interface PaneTreeConfig {
   readonly hosts: Readonly<Record<PaneId, HTMLElement>>;
   readonly separatorHitArea: { coarse: number; fine: number };
   readonly rootRef: RefObject<HTMLDivElement | null>;
-  readonly onAssistantDismiss: () => void;
   readonly onTerminalDismiss: () => void;
 }
 
@@ -133,37 +130,16 @@ function share(px: number, groupPx: number, fallback: number, cap: number): numb
   return groupPx > 0 ? Math.min(cap, (px / groupPx) * 100) : fallback;
 }
 
-function assistantMaxSize(workspaceHidden: boolean, row: boolean): number {
-  if (workspaceHidden) return 100;
-  return row ? 55 : 85;
-}
-
 function limitsFor(node: PaneNode, row: boolean, groupPx: number, config: PaneTreeConfig): PanelLimits {
   if (!isLeaf(node)) return SPLIT_LIMITS[node.id] ?? { minSize: 10 };
   switch (node.pane) {
     case "sidebar":
       return row ? { minSize: sidebarMinimumPercent(groupPx, false, config.appFontSize), maxSize: 65 } : { minSize: 10 };
-    case "assistant":
-      return {
-        minSize: row ? share(assistantMinimumWidth(config.appFontSize), groupPx, 22, 55) : 15,
-        maxSize: assistantMaxSize(config.workspaceHidden, row),
-        collapsible: true,
-        collapsedSize: 0,
-      };
     case "terminal":
       return { minSize: TERMINAL_MIN_SIZE, collapsible: true, collapsedSize: 0 };
     default:
       return { minSize: 15 };
   }
-}
-
-function borderClass(direction: SplitDirection, index: number, count: number): string {
-  if (direction === "column") {
-    if (index === count - 1) return "border-t";
-    return index === 0 ? "border-b" : "border-y";
-  }
-  if (index === count - 1) return "border-l";
-  return index === 0 ? "border-r" : "border-x";
 }
 
 function holdsSidebarWidth(node: PaneNode): boolean {
@@ -224,20 +200,20 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
   };
   const dismissKey = JSON.stringify(
     rendered.flatMap((child) =>
-      isLeaf(child) && (child.pane === "assistant" || child.pane === "terminal")
+      isLeaf(child) && (child.pane === "terminal")
         ? [[child.pane, dismissSize(child.pane, shareOf(child))] as const]
         : [],
     ),
   );
-  const { onAssistantDismiss, onTerminalDismiss } = config;
+  const { onTerminalDismiss } = config;
   const dismissibles = useMemo<DismissiblePanel[]>(
     () =>
       (JSON.parse(dismissKey) as [PaneId, number][]).map(([id, defaultSize]) => ({
         id,
         defaultSize,
-        onDismiss: id === "terminal" ? onTerminalDismiss : onAssistantDismiss,
+        onDismiss: onTerminalDismiss,
       })),
-    [dismissKey, onAssistantDismiss, onTerminalDismiss],
+    [dismissKey, onTerminalDismiss],
   );
   const layout = useDismissiblePanelLayout(groupRef, groupId, order, visibleOrder, limits, dismissibles);
   const onKeyDown = useSeparatorKeyboard(groupRef, limits);
@@ -280,10 +256,10 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
     if (child === fill) return undefined;
     if (!isLeaf(child)) return shareOf(child);
     if (child.pane === "sidebar" && row) return sidebarDefault;
-    return child.pane === "assistant" || child.pane === "terminal" ? dismissSize(child.pane, shareOf(child)) : shareOf(child);
+    return child.pane === "terminal" ? dismissSize(child.pane, shareOf(child)) : shareOf(child);
   };
 
-  const panelFor = (child: PaneNode, index: number) => {
+  const panelFor = (child: PaneNode) => {
     const id = panelIdOf(child);
     const defaultSize = defaultSizeOf(child);
     const pane = isLeaf(child) ? child.pane : null;
@@ -299,7 +275,6 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
         style={PANEL_STYLE}
         className={cn(
           pane === "sidebar" ? "bg-sidebar" : "min-h-0 min-w-0",
-          pane === "assistant" && borderClass(node.direction, index, rendered.length),
         )}
       >
         {pane ? (
@@ -325,7 +300,7 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
       className={root ? "min-h-0 min-w-0 flex-1" : "h-full min-h-0 min-w-0"}
     >
       {rendered.flatMap((child, index) => {
-        const panel = panelFor(child, index);
+        const panel = panelFor(child);
         const previous = rendered[index - 1];
         if (!previous) return [panel];
         const id = separatorIdAfter(node, previous);

@@ -167,53 +167,53 @@ describe("layout arithmetic", () => {
 
 describe("dismissible panel reopening", () => {
   it("reopens a panel that reappears collapsed at its default size", async () => {
-    const { group, ref } = fakeGroup({ editor: 100, assistant: 0 });
+    const { group, ref } = fakeGroup({ editor: 100, sidebar: 0 });
     const onDismiss = vi.fn();
-    const limits = { assistant: { minSize: 20, collapsible: true, collapsedSize: 0 } };
+    const limits = { sidebar: { minSize: 20, collapsible: true, collapsedSize: 0 } };
     const { result } = renderHook(() =>
-      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, [
-        { id: "assistant", defaultSize: 30, onDismiss },
+      useDismissiblePanelLayout(ref, undefined, ["editor", "sidebar"], ["editor", "sidebar"], limits, [
+        { id: "sidebar", defaultSize: 30, onDismiss },
       ]),
     );
-    result.current.onLayoutChange({ editor: 100, assistant: 0 });
+    result.current.onLayoutChange({ editor: 100, sidebar: 0 });
     await Promise.resolve();
-    expect(group.setLayout).toHaveBeenCalledWith({ editor: 70, assistant: 30 });
+    expect(group.setLayout).toHaveBeenCalledWith({ editor: 70, sidebar: 30 });
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it("does not reopen once the group has moved on before the reopen runs", async () => {
-    const { group, ref } = fakeGroup({ editor: 60, assistant: 40 });
-    const limits = { assistant: { minSize: 20, collapsible: true, collapsedSize: 0 } };
+    const { group, ref } = fakeGroup({ editor: 60, sidebar: 40 });
+    const limits = { sidebar: { minSize: 20, collapsible: true, collapsedSize: 0 } };
     const { result } = renderHook(() =>
-      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, [
-        { id: "assistant", defaultSize: 30, onDismiss: vi.fn() },
+      useDismissiblePanelLayout(ref, undefined, ["editor", "sidebar"], ["editor", "sidebar"], limits, [
+        { id: "sidebar", defaultSize: 30, onDismiss: vi.fn() },
       ]),
     );
-    result.current.onLayoutChange({ editor: 100, assistant: 0 });
+    result.current.onLayoutChange({ editor: 100, sidebar: 0 });
     await Promise.resolve();
     expect(group.setLayout).not.toHaveBeenCalled();
   });
 
   it("reopens every dismissible panel that reappears collapsed and closes the one pushed shut later", async () => {
-    const { group, ref } = fakeGroup({ assistant: 0, editor: 100, terminal: 0 });
+    const { group, ref } = fakeGroup({ sidebar: 0, editor: 100, terminal: 0 });
     const closeTerminal = vi.fn();
     const limits = {
-      assistant: { minSize: 20, collapsible: true, collapsedSize: 0 },
+      sidebar: { minSize: 20, collapsible: true, collapsedSize: 0 },
       terminal: { minSize: 10, collapsible: true, collapsedSize: 0 },
     };
-    const panels = ["assistant", "editor", "terminal"];
+    const panels = ["sidebar", "editor", "terminal"];
     const { result } = renderHook(() =>
       useDismissiblePanelLayout(ref, undefined, panels, panels, limits, [
-        { id: "assistant", defaultSize: 30, onDismiss: vi.fn() },
+        { id: "sidebar", defaultSize: 30, onDismiss: vi.fn() },
         { id: "terminal", defaultSize: 25, onDismiss: closeTerminal },
       ]),
     );
-    result.current.onLayoutChange({ assistant: 0, editor: 100, terminal: 0 });
+    result.current.onLayoutChange({ sidebar: 0, editor: 100, terminal: 0 });
     await Promise.resolve();
-    expect(group.setLayout).toHaveBeenCalledWith({ assistant: 30, editor: 45, terminal: 25 });
+    expect(group.setLayout).toHaveBeenCalledWith({ sidebar: 30, editor: 45, terminal: 25 });
     expect(closeTerminal).not.toHaveBeenCalled();
-    result.current.onLayoutChange({ assistant: 30, editor: 45, terminal: 25 });
-    result.current.onLayoutChange({ assistant: 30, editor: 70, terminal: 0 });
+    result.current.onLayoutChange({ sidebar: 30, editor: 45, terminal: 25 });
+    result.current.onLayoutChange({ sidebar: 30, editor: 70, terminal: 0 });
     expect(closeTerminal).toHaveBeenCalledTimes(1);
   });
 });

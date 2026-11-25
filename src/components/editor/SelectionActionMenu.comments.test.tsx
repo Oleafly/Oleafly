@@ -13,8 +13,6 @@ import { useSettingsStore } from "@/store/settings";
 const controller = vi.hoisted(() => ({ getEditorView: vi.fn<() => unknown>(() => null) }));
 
 vi.mock("@/components/editor/cm/controller", () => controller);
-vi.mock("@/components/editor/cm/inline-ai/openSession", () => ({ openInlineEditWithInstruction: vi.fn(() => true) }));
-vi.mock("@/features/assistant-handoff", () => ({ handoffToAssistant: vi.fn() }));
 
 import { SelectionActionMenu } from "./SelectionActionMenu";
 
@@ -54,14 +52,6 @@ afterEach(() => {
 });
 
 describe("Comment in the selection menu", () => {
-  it("sits beside Ask AI and starts a comment on the selection", () => {
-    showMenu();
-    expect(screen.getByRole("button", { name: en.selectionActions.askAi })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enCollab.comments.add }));
-    expect(useCommentsRail.getState().request).toEqual({ path: "intro.tex", from: 2, to: 10, quote: "selected" });
-    expect(useSettingsStore.getState().railTab).toBe("comments");
-    expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
-  });
 
   it("offers only Comment in a read-only editor where the person can comment", () => {
     controller.getEditorView.mockReturnValue(editorView(true));
@@ -82,7 +72,7 @@ describe("Comment in the selection menu", () => {
   it("is left out while the person cannot comment", () => {
     useCommentsRail.setState({ canCompose: false });
     showMenu();
-    expect(screen.getByRole("button", { name: en.selectionActions.askAi })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en.selectionActions.askAi })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
   });
 });

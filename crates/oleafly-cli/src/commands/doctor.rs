@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use oleafly_core::process_probe::{probe_output, PROBE_TIMEOUT};
 use oleafly_core::{DoctorCheck, DoctorReport, DoctorStatus, Engine};
-use serde_json::{json, Value};
+use serde_json::json;
 
 use super::common::{
     appimage_engines_note, assignments, engine_install_hint, listed, on_off, tectonic_fallback,
@@ -18,8 +17,6 @@ use crate::native::{rejected_override_message, BuildTools, Discovery};
 use crate::typst::TypstInventory;
 use crate::typst_settings::SettingsSummary;
 use crate::version::{engine_reports, ToolReport, VERSION_LINE};
-
-const MCP_PING: Duration = Duration::from_secs(1);
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Commands {
@@ -420,49 +417,6 @@ fn git_check() -> DoctorCheck {
     }
 }
 
-async fn mcp_server_check(data_root: Option<&Path>) -> DoctorCheck {
-    let Some(target) = data_root.and_then(crate::mcp::bridge::discover) else {
-        return check("mcp_server", DoctorStatus::Pass, "off");
-    };
-    if crate::mcp::bridge::ping(&target, MCP_PING).await {
-        check(
-            "mcp_server",
-            DoctorStatus::Pass,
-            format!("running at {}", target.url),
-        )
-    } else {
-        check(
-            "mcp_server",
-            DoctorStatus::Warning,
-            format!(
-                "The Oleafly app's MCP server didn't answer at {}. Is the app open?",
-                target.url
-            ),
-        )
-    }
-}
-
-fn mcp_clients_check(root: &Path) -> DoctorCheck {
-    let env = crate::mcp::clients::ClientEnv::from_env();
-    let configured = crate::mcp::clients::configured_clients(&env, Some(root));
-    if configured.is_empty() {
-        return check(
-            "mcp_clients",
-            DoctorStatus::Pass,
-            "No AI client lists oleafly yet. Run `oleafly mcp config --client <name>` to add it.",
-        );
-    }
-    let names: Vec<String> = configured
-        .iter()
-        .map(|(client, scope, _)| format!("{} ({})", client.label(), scope.label()))
-        .collect();
-    check(
-        "mcp_clients",
-        DoctorStatus::Pass,
-        format!("oleafly is set up in {}", names.join(", ")),
-    )
-}
-
 fn tinytex_check(tinytex: Option<&Path>, latexmk_found: bool) -> DoctorCheck {
     match (tinytex, latexmk_found) {
         (Some(folder), _) => check(
@@ -489,7 +443,7 @@ async fn global_checks(
     tools: &BuildTools,
     reports: &std::collections::BTreeMap<&'static str, Option<ToolReport>>,
     engine: Option<Engine>,
-    root: &Path,
+    _root: &Path,
 ) -> Vec<DoctorCheck> {
     let data_root = ctx.data_root().or(discovery.data_root.as_deref());
     let mut checks = vec![cli_check(data_root)];
@@ -527,8 +481,7 @@ async fn global_checks(
             .await
             .unwrap_or_else(|_| check("git", DoctorStatus::Warning, "Git couldn't be checked.")),
     );
-    checks.push(mcp_server_check(data_root).await);
-    checks.push(mcp_clients_check(root));
+
     if cfg!(not(any(target_os = "macos", windows))) {
         if let Some(appimage) = crate::app_paths::recorded_appimage() {
             if tools.tectonic.is_none() || tools.typst.is_none() {
@@ -660,13 +613,6 @@ pub(crate) fn typst_settings_lines(pin: Option<&str>, settings: &SettingsSummary
     .into_iter()
     .map(|(label, value)| format!("  {label:<18} {value}"))
     .collect()
-}
-
-pub(crate) async fn doctor_value(ctx: &Context) -> Result<Value, CliError> {
-    match run_doctor(ctx).await {
-        Ok(outcome) => Ok(Value::Object(outcome.fields)),
-        Err(error) => Err(error),
-    }
 }
 
 #[cfg(test)]

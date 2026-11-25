@@ -4,7 +4,6 @@ export interface AppContext {
   projectId: string | null;
   projectKind: string | null;
   theme: "light" | "dark";
-  mcpEnabled?: boolean;
   documentEngineId?: string;
   documentEngineLoaded?: boolean;
   activeDocumentPath?: string | null;
@@ -39,19 +38,6 @@ export interface CommandContribution {
   run: (ctx: AppContext) => void;
 }
 
-export type AiToolsetSource =
-  | { kind: "project" }
-  | { kind: "figure" }
-  | { kind: "skills" }
-  | { kind: "mcp"; server: string };
-
-export interface AiToolsetContribution<O = any, T = any> {
-  id: string;
-  mode: string;
-  source?: AiToolsetSource;
-  create(opts: O): T;
-}
-
 export interface ContextProviderContribution {
   id: string;
   isActive: (ctx: AppContext) => boolean;
@@ -61,14 +47,12 @@ export interface ContextProviderContribution {
 export interface Registry {
   railTabs: RailTabContribution[];
   commands: CommandContribution[];
-  aiToolsets: AiToolsetContribution[];
   contextProviders: ContextProviderContribution[];
 }
 
 export const registry: Registry = {
   railTabs: [],
   commands: [],
-  aiToolsets: [],
   contextProviders: [],
 };
 
@@ -82,10 +66,6 @@ export function registerRailTab(tab: RailTabContribution): void {
 export function registerCommand(cmd: CommandContribution): void {
   registry.commands.push(cmd);
   registry.commands.sort(byOrder);
-}
-
-export function registerAiToolset(toolset: AiToolsetContribution): void {
-  registry.aiToolsets.push(toolset);
 }
 
 export function registerContextProvider(c: ContextProviderContribution): void {

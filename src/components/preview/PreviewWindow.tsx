@@ -38,7 +38,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  Sparkles,
   FileText,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -614,9 +613,9 @@ export function PreviewWindow({
       }
     };
   }, [
-    artifactRetry, 
-    compileState, 
-    disableNativeBridge, 
+    artifactRetry,
+    compileState,
+    disableNativeBridge,
     projectId, setRotation, userAdjustedZoomRef, setPdfPassword, setPage, setPasswordDraft, setOutlineState, setSearchState, setSearchInput, setNumPages, setPdfLoadState
   ]);
 
@@ -996,12 +995,7 @@ export function PreviewWindow({
       <div className={cn("flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0", isFs && fsToolbarHidden && "hidden")}>
         {!disableNativeBridge && <CompileLogControls active={logsOpen} onToggle={() => setLogsOpen(!logsOpen)}
           status={workspace?.status ?? "idle"} errors={workspace?.logCleared ? [] : (workspace?.errors ?? [])} compileTimeMs={workspace?.compileTimeMs ?? null} />}
-        {logsOpen && workspace?.errors.some((error) => error.kind === "error") &&
-          <div className="ml-auto flex items-center">
-            <Button variant="ghostPrimary" size="xs" onClick={() => void command({ action: "ask-ai" })}>
-              <Sparkles data-icon="inline-start" />{t(($) => $.preview.toolbar.askAi)}
-            </Button>
-          </div>}
+
         {!logsOpen && <PdfToolbarControls
           isImage={false} hasDocument={!!previewDocument && htmlBuiltAt === null} numPages={numPages}
           page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}

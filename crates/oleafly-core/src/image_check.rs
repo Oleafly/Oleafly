@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 pub const MAX_IMAGE_CARDS: usize = 2;
-pub const ASK_AI_ERROR_BUDGET: usize = 8;
+pub const PRIORITY_ERROR_BUDGET: usize = 8;
 
 const NOTE_OPENERS: [&str; 2] = ["[Oleafly] The image ", "[Oleafly] One of the "];
 const LIBPNG_ERROR: &[u8] = b"libpng error";
@@ -282,7 +282,7 @@ pub(crate) fn is_image_note(line: &str) -> bool {
 pub fn image_findings_lead(findings: &[ImageFinding], genuine_errors: usize) -> bool {
     !findings.is_empty()
         && findings.iter().all(ImageFinding::names_a_file)
-        && genuine_errors + findings.len() <= ASK_AI_ERROR_BUDGET
+        && genuine_errors + findings.len() <= PRIORITY_ERROR_BUDGET
 }
 
 pub fn place_image_findings<T>(
@@ -2216,15 +2216,15 @@ mod tests {
         let hint = ImageFinding::Unidentified(Some(PNG));
         assert!(image_findings_lead(
             std::slice::from_ref(&named),
-            ASK_AI_ERROR_BUDGET - 1
+            PRIORITY_ERROR_BUDGET - 1
         ));
         assert!(!image_findings_lead(
             std::slice::from_ref(&named),
-            ASK_AI_ERROR_BUDGET
+            PRIORITY_ERROR_BUDGET
         ));
         assert!(!image_findings_lead(
             &[named.clone(), named.clone()],
-            ASK_AI_ERROR_BUDGET - 1
+            PRIORITY_ERROR_BUDGET - 1
         ));
         assert!(!image_findings_lead(std::slice::from_ref(&hint), 0));
         assert!(!image_findings_lead(&[], 0));
@@ -2239,7 +2239,7 @@ mod tests {
         assert_eq!(errors[0], named.message());
         assert_eq!(errors[1..], ["tex 1", "warn", "tex 2"]);
 
-        let mut errors: Vec<String> = (0..ASK_AI_ERROR_BUDGET)
+        let mut errors: Vec<String> = (0..PRIORITY_ERROR_BUDGET)
             .map(|i| format!("tex {i}"))
             .collect();
         place_image_findings(
@@ -2249,7 +2249,7 @@ mod tests {
             |m| m,
         );
         assert_eq!(errors.last().unwrap(), &named.message());
-        assert!(errors[..ASK_AI_ERROR_BUDGET]
+        assert!(errors[..PRIORITY_ERROR_BUDGET]
             .iter()
             .all(|e| e.starts_with("tex")));
 

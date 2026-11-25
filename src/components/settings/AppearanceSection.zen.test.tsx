@@ -42,7 +42,6 @@ beforeEach(() => {
     settingsOpen: true,
     settingsInitialAppearanceTab: "files",
     showTree: true,
-    assistantOpen: true,
     viewMode: "split",
   });
 });

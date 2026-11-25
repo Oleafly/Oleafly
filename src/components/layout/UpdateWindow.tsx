@@ -13,10 +13,10 @@ import { appVersion } from "@/lib/tauri";
 import { celebrate } from "@/lib/confetti";
 import { i18n, onLocaleApplied } from "@/i18n";
 
-const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases/latest";
+const RELEASES_URL = "https://github.com/peplxx/oleafly-no-ai/releases/latest";
 
 function releasePageFor(version: string | undefined): string {
-  return version ? `https://github.com/Oleafly/Oleafly/releases/tag/v${version}` : RELEASES_URL;
+  return version ? `https://github.com/peplxx/oleafly-no-ai/releases/tag/v${version}-noai.1` : RELEASES_URL;
 }
 
 // Runs its own update check on mount, because a separate window is a separate

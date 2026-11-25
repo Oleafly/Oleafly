@@ -4,7 +4,6 @@ import type { RailTab, ViewMode } from "@/store/settings";
 export interface ZenLayoutSnapshot {
   showTree: boolean;
   railTab: RailTab;
-  assistantOpen: boolean;
   workspaceHidden: boolean;
   viewMode: ViewMode;
   terminalOpen: boolean;

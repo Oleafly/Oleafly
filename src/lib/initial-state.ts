@@ -3,8 +3,7 @@ import { primeConfigCache } from "@/lib/config-cache";
 import { appQueryClient } from "@/lib/query";
 import { projectsKey } from "@/lib/queries/projects";
 import { logError } from "@/lib/log";
-import { initialState, seedStarterPersonas, type PendingOpenRequest } from "@/lib/tauri";
-import { starterPersonasForInstall } from "@/lib/starter-personas";
+import { initialState, type PendingOpenRequest } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 
 let snapshotConfig: AppConfig | null = null;
@@ -27,13 +26,6 @@ export async function hydrateFromSnapshot(): Promise<void> {
     const projects = [...snapshot.projects];
     projects.sort((a, b) => b.updated_at - a.updated_at);
     useFilesStore.setState({ projects, projectsLoaded: true });
-    if (!snapshot.config?.ai_starter_personas_seeded) {
-      try {
-        snapshotConfig = await seedStarterPersonas(starterPersonasForInstall());
-      } catch (error) {
-        void logError("starter persona seed", error);
-      }
-    }
     if (snapshotConfig) primeConfigCache(snapshotConfig);
   } catch (error) {
     void logError("initial-state hydration", error);

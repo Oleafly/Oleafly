@@ -4,7 +4,6 @@ import {
   DEFAULT_TERMINAL_FONT_FAMILY,
   TERMINAL_COLOR_THEMES,
   fileTreePathIsHidden,
-  layoutPresetViewMode,
   readDictionaryLocale,
   resolveTerminalColorTheme,
   resolveTerminalTheme,
@@ -38,11 +37,9 @@ describe("on/off preferences", () => {
     ["setHarper", "harper", "oleafly.harper"],
     ["setShowRegionalism", "showRegionalism", "oleafly.harper.regionalism"],
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
-    ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
     ["setNotes", "notes", "oleafly.notes"],
     ["setPdfReview", "pdfReview", "oleafly.pdfReview"],
-    ["setAiCompletion", "aiCompletion", "oleafly.aiCompletion"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorGroupScripts", "editorGroupScripts", "oleafly.editor.groupScripts"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
@@ -78,27 +75,6 @@ describe("on/off preferences", () => {
   it("reads the saved PDF review switch after a restart", async () => {
     expect((await reload({})).pdfReview).toBe(false);
     expect((await reload({ "oleafly.pdfReview": "1" })).pdfReview).toBe(true);
-  });
-
-  it("keeps AI completions off and on the default model until chosen", async () => {
-    const fresh = await reload({});
-    expect(fresh.aiCompletion).toBe(false);
-    expect([fresh.aiCompletionProvider, fresh.aiCompletionModel]).toEqual(["", ""]);
-
-    useSettingsStore.getState().setAiCompletionModel("ollama", "qwen3:4b");
-    expect(localStorage.getItem("oleafly.aiCompletion.provider")).toBe("ollama");
-    expect(localStorage.getItem("oleafly.aiCompletion.model")).toBe("qwen3:4b");
-
-    const saved = await reload({
-      "oleafly.aiCompletion": "1",
-      "oleafly.aiCompletion.provider": "ollama",
-      "oleafly.aiCompletion.model": "qwen3:4b",
-    });
-    expect([saved.aiCompletion, saved.aiCompletionProvider, saved.aiCompletionModel]).toEqual([
-      true,
-      "ollama",
-      "qwen3:4b",
-    ]);
   });
 
   it("toggles spellcheck both ways", () => {
@@ -137,31 +113,6 @@ describe("value preferences", () => {
     settings.setTypstFormatterIndent(3);
     expect(useSettingsStore.getState()).toMatchObject({ typstFormatterLineWidth: 120, typstFormatterIndent: 2 });
     expect(localStorage.getItem("oleafly.typst.formatterIndent")).toBe("2");
-  });
-
-  it("saves fonts, sizes and the default layout", () => {
-    const settings = useSettingsStore.getState();
-
-    settings.setEditorFontSize(15);
-    settings.setAppFontSize(18);
-    settings.setAppFontFamily("Inter");
-    settings.setEditorFontFamily("Fira Code");
-    settings.setDefaultView("editor-preview-ai");
-    settings.setDefaultLatexEngine("latexmk");
-
-    expect(useSettingsStore.getState()).toMatchObject({
-      editorFontSize: 15,
-      appFontSize: 18,
-      appFontFamily: "Inter",
-      editorFontFamily: "Fira Code",
-      defaultView: "editor-preview-ai",
-      defaultLatexEngine: "latexmk",
-    });
-    expect(localStorage.getItem("oleafly.fontSize")).toBe("15");
-    expect(localStorage.getItem("oleafly.appFontSize")).toBe("18");
-    expect(localStorage.getItem("oleafly.appFont")).toBe("Inter");
-    expect(localStorage.getItem("oleafly.editorFont")).toBe("Fira Code");
-    expect(localStorage.getItem("oleafly.defaultView")).toBe("editor-preview-ai");
   });
 
   it("saves the dictionary language and appearance choices", () => {
@@ -240,12 +191,6 @@ describe("value preferences", () => {
 });
 
 describe("loading saved preferences", () => {
-  it("maps legacy view modes onto layout presets", async () => {
-    expect((await reload({ "oleafly.defaultView": "split" })).defaultView).toBe("editor-preview");
-    expect((await reload({ "oleafly.defaultView": "pdf" })).defaultView).toBe("preview-only");
-    expect((await reload({ "oleafly.defaultView": "mystery" })).defaultView).toBe("editor-only");
-    expect((await reload({ "oleafly.defaultView": "preview-ai" })).defaultView).toBe("preview-ai");
-  });
 
   it("falls back to defaults for unusable stored values", async () => {
     const state = await reload({
@@ -319,15 +264,6 @@ describe("loading saved preferences", () => {
 });
 
 describe("preference helpers", () => {
-  it("maps every layout preset to the view mode it shows", () => {
-    expect(layoutPresetViewMode("editor-preview-ai")).toBe("split");
-    expect(layoutPresetViewMode("editor-preview")).toBe("split");
-    expect(layoutPresetViewMode("editor-ai")).toBe("editor");
-    expect(layoutPresetViewMode("editor-only")).toBe("editor");
-    expect(layoutPresetViewMode("ai-only")).toBe("editor");
-    expect(layoutPresetViewMode("preview-ai")).toBe("pdf");
-    expect(layoutPresetViewMode("preview-only")).toBe("pdf");
-  });
 
   it("normalizes dictionary locale ids", () => {
     expect(readDictionaryLocale(" de-DE ")).toBe("de_DE");

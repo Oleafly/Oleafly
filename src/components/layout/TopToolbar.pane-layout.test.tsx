@@ -61,7 +61,7 @@ beforeEach(() => {
     activePath: "main.tex",
   } as unknown as ReturnType<typeof useFilesStore.getState>);
   useCompileStore.setState({ status: "success", pdfBytes: new Uint8Array([1]) });
-  useSettingsStore.setState({ viewMode: "split", assistantOpen: false, workspaceHidden: false, showTree: true, terminalOpen: false });
+  useSettingsStore.setState({ viewMode: "split", workspaceHidden: false, showTree: true, terminalOpen: false });
 });
 
 afterEach(() => {
@@ -117,22 +117,6 @@ describe("Saved layouts in the layout menu", () => {
     expect(item.querySelector("svg.lucide-check")).toBeNull();
     await user.click(item);
     expect(layoutKey(usePaneLayoutStore.getState().layout)).toBe(moved);
-  });
-
-  it("asks before saving over a layout with the same name and keeps the old one on no", async () => {
-    useSavedLayoutsStore.getState().save("Focus");
-    const [first] = useSavedLayoutsStore.getState().layouts;
-    movePaneToEdge("assistant", "left");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const { user, menu } = await openLayoutMenu();
-    await user.click(within(menu).getByRole("menuitem", { name: saved.save }));
-    await user.type(await screen.findByRole("textbox", { name: saved.name }), "focus{Enter}");
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    expect(useSavedLayoutsStore.getState().layouts).toEqual([first]);
-    confirm.mockReturnValue(true);
-    await user.click(screen.getByRole("button", { name: saved.saveButton }));
-    await waitFor(() => expect(useSavedLayoutsStore.getState().layouts[0]?.name).toBe("focus"));
-    expect(useSavedLayoutsStore.getState().layouts[0]?.id).toBe(first?.id);
   });
 
   it("renames, updates and deletes from Manage layouts", async () => {

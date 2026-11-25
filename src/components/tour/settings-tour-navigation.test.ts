@@ -2,11 +2,8 @@ import { describe, expect, it } from "vitest";
 import { settingsTourDestination } from "./settings-tour-navigation";
 
 describe("settings tour navigation", () => {
-  it("keeps the former MCP tour step on the assistant MCP destination", () => {
-    expect(settingsTourDestination("settings-mcp")).toEqual({
-      section: "ai",
-      scrollTarget: "ai-mcp",
-    });
+  it("ignores the removed MCP tour destination", () => {
+    expect(settingsTourDestination("settings-mcp")).toBeNull();
   });
 
   it("routes ordinary settings steps without a tab target", () => {

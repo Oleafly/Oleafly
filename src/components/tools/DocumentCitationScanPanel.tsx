@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Copy,
   ExternalLink,
-  Info,
   Plus,
   ScanSearch,
   Square,
@@ -45,8 +44,6 @@ import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useLiteratureLibraryStore } from "@/store/literature";
 import { useSettingsStore } from "@/store/settings";
-import { getConfig } from "@/lib/tauri";
-import { aiFeaturesReady } from "@/lib/ai-route";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
@@ -385,7 +382,6 @@ export function DocumentCitationScanPanel() {
   const [settings, setSettings] = useState<DocumentCitationSettings>(() =>
     loadDocumentCitationSettings(),
   );
-  const [providerReady, setProviderReady] = useState<boolean | null>(null);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<DocumentScanProgress | null>(null);
   const [paragraphs, setParagraphs] = useState<ParagraphCitationResult[]>([]);
@@ -393,6 +389,7 @@ export function DocumentCitationScanPanel() {
   const [selectionSource, setSelectionSource] = useState<string | null>(null);
   const [bibSource, setBibSource] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     const override =
@@ -401,30 +398,6 @@ export function DocumentCitationScanPanel() {
     const bib =
       useDocumentCitationUiStore.getState().consumeBibOverride();
     if (bib) setBibSource(bib);
-  }, []);
-
-  useEffect(() => {
-    const apply = (configured: boolean) => setProviderReady(configured);
-    const check = (event?: Event) => {
-      const detail = (event as CustomEvent | undefined)?.detail;
-      if (detail && typeof detail === "object") {
-        try {
-          apply(aiFeaturesReady(detail as never));
-          return;
-        } catch {
-          // fall through to getConfig
-        }
-      }
-      void getConfig()
-        .then((config) => apply(aiFeaturesReady(config)))
-        .catch(() => apply(false));
-    };
-    check();
-    window.addEventListener("oleafly:ai-config-changed", check);
-    return () => {
-      window.removeEventListener("oleafly:ai-config-changed", check);
-      abortRef.current?.abort();
-    };
   }, []);
 
   const { sourcePath, sourceText } = useMemo(() => {
@@ -470,7 +443,6 @@ export function DocumentCitationScanPanel() {
     !offline &&
     sourceText.trim().length > 0 &&
     !scanning &&
-    providerReady !== null &&
     (!!projectId || !!selectionSource);
 
   const updateSetting = useCallback(
@@ -539,13 +511,10 @@ export function DocumentCitationScanPanel() {
       setError(t(($) => $.researchTools.citationScan.noSourceText));
       return;
     }
-
-    const rankMode = providerReady === true ? "llm" : "heuristic";
     const cacheKey = documentScanCacheKey({
       sourceText,
       bibText,
       settings,
-      rankMode,
     });
 
     if (!opts?.ignoreCache && restoreCachedScan(cacheKey)) return;
@@ -568,7 +537,6 @@ export function DocumentCitationScanPanel() {
         bibText,
         format: scanFormat,
         settings,
-        rankMode,
         signal: controller.signal,
         onProgress: (next) => setProgress(next),
         onParagraph: (paragraph) => {
@@ -778,12 +746,7 @@ export function DocumentCitationScanPanel() {
               </span>
             </div>
           )}
-          {providerReady === false && !offline && (
-            <div className="flex items-start gap-2.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3.5 py-2.5 text-sm text-sky-900 dark:text-sky-300">
-              <Info className="mt-0.5 size-4 shrink-0" />
-              {t(($) => $.researchTools.citationScan.heuristicRanking)}
-            </div>
-          )}
+
           {error && (
             <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />

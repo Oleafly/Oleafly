@@ -12,7 +12,9 @@
 //!   form `canonicalize` produces, which Node.js cannot start a script from.
 
 use std::collections::{HashMap, HashSet};
-use std::ffi::{OsStr, OsString};
+#[cfg(test)]
+use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -47,6 +49,7 @@ const INTERPRETERS: &[&str] = &[
 const SHIM_LIMIT: u64 = 64 * 1024;
 const REJECTED_LIMIT: usize = 8;
 /// cmd.exe cannot start a script whose path is longer than this.
+#[cfg(test)]
 const CMD_PATH_LIMIT: usize = 260;
 const LOGIN_ENV_NAMES: &[&str] = &[
     "HTTP_PROXY",
@@ -82,9 +85,12 @@ const LOGIN_ENV_NAMES: &[&str] = &[
     "PI_CODING_AGENT_DIR",
     "HERMES_HOME",
 ];
+#[cfg(test)]
 const LOOPBACK_HOSTS: [&str; 3] = ["127.0.0.1", "localhost", "::1"];
+#[cfg(test)]
 const QUIET_DEFAULTS: [(&str, &str); 2] =
     [("NODE_NO_WARNINGS", "1"), ("PYTHONIOENCODING", "utf-8")];
+#[cfg(test)]
 const SECRET_SUFFIXES: [&str; 3] = ["_KEY", "_TOKEN", "_SECRET"];
 #[cfg(unix)]
 const LOGIN_PROBE_WAIT: Duration = Duration::from_secs(3);
@@ -112,19 +118,7 @@ pub(crate) enum RejectReason {
     NetworkPath,
 }
 
-impl RejectReason {
-    pub(crate) fn code(self) -> &'static str {
-        match self {
-            Self::NotFound => "not_found",
-            Self::Directory => "is_directory",
-            Self::NotExecutable => "not_executable",
-            Self::PowerShellScript => "unsupported_script",
-            Self::GuiProgram => "gui_program",
-            Self::Interpreter => "interpreter",
-            Self::NetworkPath => "network_path",
-        }
-    }
-}
+impl RejectReason {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Rejected {
@@ -133,21 +127,25 @@ pub(crate) struct Rejected {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg(test)]
 pub(crate) struct ShimTarget {
     pub script: PathBuf,
     pub node: Option<PathBuf>,
 }
 
+#[cfg(test)]
 pub(crate) struct ProbeDir {
     path: PathBuf,
 }
 
+#[cfg(test)]
 impl ProbeDir {
     pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 }
 
+#[cfg(test)]
 impl Drop for ProbeDir {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.path);
@@ -163,7 +161,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 struct SearchCache {
     at: Instant,
     dirs: Vec<PathBuf>,
-    user_dirs: HashSet<String>,
 }
 
 static SEARCH: Mutex<Option<SearchCache>> = Mutex::new(None);
@@ -182,11 +179,6 @@ static PROBED: std::sync::Condvar = std::sync::Condvar::new();
 
 pub(crate) fn search_dirs() -> Vec<PathBuf> {
     with_search(|cache| cache.dirs.clone())
-}
-
-pub(crate) fn reachable_by_name(dir: &Path) -> bool {
-    let key = dir_key(&dir.to_string_lossy(), cfg!(windows));
-    with_search(|cache| cache.user_dirs.contains(&key))
 }
 
 fn with_search<T>(read: impl FnOnce(&SearchCache) -> T) -> T {
@@ -218,17 +210,13 @@ fn compute_search() -> SearchCache {
     let env = |name: &str| blocks.lookup(&process, name);
     #[cfg(not(windows))]
     let env = |name: &str| std::env::var_os(name);
-    let user_dirs = normalize_dirs(user.clone(), windows, |_| true)
-        .iter()
-        .map(|dir| dir_key(&dir.to_string_lossy(), windows))
-        .collect();
+
     let mut entries = user;
     entries.extend(known_dirs(&env, windows));
     entries.extend(discovered_dirs(&env, windows));
     SearchCache {
         at: Instant::now(),
         dirs: normalize_dirs(entries, windows, Path::is_dir),
-        user_dirs,
     }
 }
 
@@ -945,6 +933,7 @@ fn locate_cached(name: &str, native_only: bool) -> LocateResult {
     result
 }
 
+#[cfg(test)]
 pub(crate) fn locate(name: &str) -> (Option<Located>, Vec<Rejected>) {
     locate_cached(name, false)
 }
@@ -953,6 +942,7 @@ pub(crate) fn locate_native(name: &str) -> Option<Located> {
     locate_cached(name, true).0
 }
 
+#[cfg(test)]
 pub(crate) fn locate_path(path: &Path) -> Result<Located, RejectReason> {
     let windows = cfg!(windows);
     let text = path.to_string_lossy();
@@ -991,6 +981,7 @@ fn windows_extension_reason(path: &Path) -> RejectReason {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn expand_tilde(path: &Path, home: Option<&Path>) -> PathBuf {
     let text = path.to_string_lossy();
     let Some(home) = home else {
@@ -1064,6 +1055,7 @@ impl Platform {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn inspect(path: &Path) -> Result<Located, RejectReason> {
     let home = crate::paths::home_dir().ok();
     inspect_on(&expand_tilde(path, home.as_deref()), Platform::current())
@@ -1162,6 +1154,7 @@ pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsSt
     std::env::join_paths(&dirs).unwrap_or_else(|_| std::env::var_os("PATH").unwrap_or_default())
 }
 
+#[cfg(test)]
 pub(crate) fn child_env(prepend: &[PathBuf], append: &[PathBuf]) -> Vec<(String, OsString)> {
     let mut env = vec![("PATH".to_string(), child_search_path(prepend, append))];
     if cfg!(windows) {
@@ -1189,14 +1182,6 @@ pub(crate) fn login_env_name(name: &str, windows: bool) -> bool {
         })
 }
 
-pub(crate) fn shell_supplied_env_name(name: &str) -> bool {
-    let windows = cfg!(windows);
-    login_env_name(name, windows)
-        || QUIET_DEFAULTS
-            .iter()
-            .any(|(quiet, _)| same_env_name(name, quiet, windows))
-}
-
 fn same_env_name(left: &str, right: &str, windows: bool) -> bool {
     if windows {
         left.eq_ignore_ascii_case(right)
@@ -1206,15 +1191,18 @@ fn same_env_name(left: &str, right: &str, windows: bool) -> bool {
 }
 
 #[cfg(unix)]
+#[cfg(test)]
 fn captured_env() -> Vec<(String, OsString)> {
     lock(&LOGIN_ENV).clone().unwrap_or_default()
 }
 
 #[cfg(windows)]
+#[cfg(test)]
 fn captured_env() -> Vec<(String, OsString)> {
     windows::read_environment().login_env(&|name| std::env::var_os(name))
 }
 
+#[cfg(test)]
 pub(crate) fn agent_env(
     process: Lookup<'_>,
     captured: &[(String, OsString)],
@@ -1260,10 +1248,12 @@ pub(crate) fn agent_env(
     env
 }
 
+#[cfg(test)]
 pub(crate) fn with_loopback_no_proxy(existing: Option<&OsStr>) -> OsString {
     merged_no_proxy(&[existing])
 }
 
+#[cfg(test)]
 pub(crate) fn merged_no_proxy(values: &[Option<&OsStr>]) -> OsString {
     let texts: Vec<String> = values
         .iter()
@@ -1284,23 +1274,7 @@ pub(crate) fn merged_no_proxy(values: &[Option<&OsStr>]) -> OsString {
     OsString::from(entries.join(","))
 }
 
-pub(crate) fn host_env() -> impl Fn(&str) -> Option<OsString> {
-    let captured = captured_env();
-    let windows = cfg!(windows);
-    move |name: &str| {
-        std::env::var_os(name).or_else(|| {
-            captured
-                .iter()
-                .find(|(known, _)| same_env_name(known, name, windows))
-                .map(|(_, value)| value.clone())
-        })
-    }
-}
-
-pub(crate) fn login_env_secrets() -> Vec<String> {
-    secret_values(&captured_env())
-}
-
+#[cfg(test)]
 pub(crate) fn secret_values(env: &[(String, OsString)]) -> Vec<String> {
     env.iter()
         .filter_map(|(name, value)| {
@@ -1321,6 +1295,7 @@ pub(crate) fn secret_values(env: &[(String, OsString)]) -> Vec<String> {
 }
 
 /// Whether a working folder is a network (UNC) path, where cmd.exe cannot run.
+#[cfg(test)]
 pub(crate) fn network_folder(path: &Path) -> bool {
     cfg!(windows) && windows_network_or_device(&child_path(path).to_string_lossy())
 }
@@ -1329,6 +1304,7 @@ pub(crate) fn network_folder(path: &Path) -> bool {
 /// silently switches to `C:\Windows`, it cannot start a script whose path is
 /// longer than 260 characters, and it expands `%` inside the script's own path
 /// (Rust escapes arguments, not the script name).
+#[cfg(test)]
 pub(crate) fn script_launch_check(program: &Path, cwd: &Path) -> Result<(), String> {
     if program.to_string_lossy().contains('%') {
         return Err(format!(
@@ -1351,6 +1327,7 @@ pub(crate) fn script_launch_check(program: &Path, cwd: &Path) -> Result<(), Stri
     Ok(())
 }
 
+#[cfg(test)]
 fn program_label(program: &Path) -> String {
     program
         .file_name()
@@ -1359,6 +1336,7 @@ fn program_label(program: &Path) -> String {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg(test)]
 pub(crate) struct ParsedShim {
     pub relative: String,
     /// An absolute Node.js named in the shim (pnpm's `nodeExecPath`).
@@ -1366,11 +1344,13 @@ pub(crate) struct ParsedShim {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg(test)]
 enum Token {
     Quoted(String),
     Bare(String),
 }
 
+#[cfg(test)]
 fn tokens(line: &str) -> Option<Vec<Token>> {
     let mut tokens = Vec::new();
     let mut chars = line.chars().peekable();
@@ -1405,6 +1385,7 @@ fn tokens(line: &str) -> Option<Vec<Token>> {
     Some(tokens)
 }
 
+#[cfg(test)]
 const SHIM_LINES: &[&str] = &[
     "echo off",
     "goto start",
@@ -1426,12 +1407,14 @@ const SHIM_LINES: &[&str] = &[
 ];
 
 /// Commands npm's cmd-shim chains before `"%_prog%"` on its last line.
+#[cfg(test)]
 const SHIM_PREFIX: &[&str] = &[
     "endlocal",
     "goto #_undefined_# 2>nul || title %comspec%",
     "set pathext=%pathext:;.js;=;%",
 ];
 
+#[cfg(test)]
 fn shim_target_token(token: &Token, npm_style: bool) -> Option<String> {
     let Token::Quoted(value) = token else {
         return None;
@@ -1449,6 +1432,7 @@ fn shim_target_token(token: &Token, npm_style: bool) -> Option<String> {
     (!rest.is_empty()).then(|| rest.to_string())
 }
 
+#[cfg(test)]
 fn shim_invocation(line: &str) -> Option<ParsedShim> {
     let lower = line.to_ascii_lowercase();
     if let Some(index) = lower.find("\"%_prog%\"") {
@@ -1496,6 +1480,7 @@ fn shim_invocation(line: &str) -> Option<ParsedShim> {
     })
 }
 
+#[cfg(test)]
 pub(crate) fn parse_shim(text: &str) -> Option<ParsedShim> {
     let mut parsed: Option<ParsedShim> = None;
     for line in text.lines() {
@@ -1522,6 +1507,7 @@ pub(crate) fn parse_shim(text: &str) -> Option<ParsedShim> {
     parsed
 }
 
+#[cfg(test)]
 fn shim_relative_path(relative: &str) -> Option<PathBuf> {
     if relative.starts_with(['\\', '/']) || relative.contains(':') {
         return None;
@@ -1537,6 +1523,7 @@ fn shim_relative_path(relative: &str) -> Option<PathBuf> {
     (!path.as_os_str().is_empty()).then_some(path)
 }
 
+#[cfg(test)]
 pub(crate) fn npm_shim_target(cmd: &Path) -> Option<ShimTarget> {
     let text = read_small(cmd)?;
     let parsed = parse_shim(&text)?;
@@ -1573,16 +1560,9 @@ pub(crate) fn npm_shim_target(cmd: &Path) -> Option<ShimTarget> {
     })
 }
 
-pub(crate) fn probe_dir() -> std::io::Result<ProbeDir> {
-    let parent = crate::paths::oleafly_root()
-        .map_err(std::io::Error::other)?
-        .join("acp")
-        .join("probe");
-    probe_dir_in(&parent)
-}
-
+#[cfg(test)]
 pub(crate) fn probe_dir_in(parent: &Path) -> std::io::Result<ProbeDir> {
-    let path = child_path(parent).join(crate::acp::new_id());
+    let path = child_path(parent).join(oleafly_secrets::generate_token());
     std::fs::create_dir_all(&path)?;
     Ok(ProbeDir { path })
 }

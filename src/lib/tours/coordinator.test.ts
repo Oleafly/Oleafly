@@ -32,16 +32,6 @@ describe("tour coordinator", () => {
     ).toBe("blocked");
   });
 
-  it("does not select tours from disabled contexts", () => {
-    const state = defaultPersistedTourState();
-    for (const context of ["settings", "ai", "diagram"] as const) {
-      expect(evaluateTour(state, context, ready)).toEqual({
-        tourId: null,
-        reason: "not-pending",
-      });
-    }
-  });
-
   it("ignores disabled state", () => {
     const state = defaultPersistedTourState();
     expect(evaluateTour({ ...state, enabled: false }, "home", ready).reason).toBe("disabled");

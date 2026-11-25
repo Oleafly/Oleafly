@@ -55,7 +55,7 @@ vi.mock("react-resizable-panels", () => ({
   Separator: ({ id }: { id: string }) => <div data-separator="" id={id} />,
 }));
 
-const ALL: PaneShown = { sidebar: true, editor: true, pdf: true, terminal: true, assistant: true };
+const ALL: PaneShown = { sidebar: true, editor: true, pdf: true, terminal: true, };
 
 function hosts(): Record<PaneId, HTMLElement> {
   return {
@@ -63,7 +63,6 @@ function hosts(): Record<PaneId, HTMLElement> {
     editor: document.createElement("div"),
     pdf: document.createElement("div"),
     terminal: document.createElement("div"),
-    assistant: document.createElement("div"),
   };
 }
 
@@ -76,7 +75,6 @@ function config(overrides: Partial<PaneTreeConfig> = {}): PaneTreeConfig {
     hosts: hosts(),
     separatorHitArea: { coarse: 36, fine: 16 },
     rootRef: createRef<HTMLDivElement>(),
-    onAssistantDismiss: () => undefined,
     onTerminalDismiss: () => undefined,
     ...overrides,
   };
@@ -111,19 +109,6 @@ describe("PaneTreeGroup", () => {
     expect(() => render(<PaneTreeGroup node={DEFAULT_PANE_LAYOUT} root />)).toThrow();
   });
 
-  it("gives the default panels their sizes and limits and lets the document take the rest", () => {
-    renderTree(DEFAULT_PANE_LAYOUT);
-    expect(panel("sidebar").dataset).toMatchObject({ min: "266px", max: "65%", size: "15%", behavior: "preserve-pixel-size" });
-    expect(panel("assistant").dataset).toMatchObject({ min: "22%", max: "55%", collapsible: "true", size: "28%" });
-    expect(panel("editorpdf").dataset).toMatchObject({ size: "", behavior: "" });
-    expect(panel("editor").dataset).toMatchObject({ min: "15%", size: "" });
-    expect(panel("pdf").dataset).toMatchObject({ min: "15%", size: "50%" });
-    expect(panel("content-band").dataset).toMatchObject({ min: "25%", size: "" });
-    expect(panel("terminal").dataset).toMatchObject({ min: "10%", collapsible: "true", size: "28%" });
-    expect(separators()).toEqual(["h-tree", "h-mid", "h-assistant", "v-terminal"]);
-    expect(panel("content-band").parentElement?.dataset.orientation).toBe("vertical");
-  });
-
   it("opens the terminal at the height the project remembers", () => {
     localStorage.setItem("oleafly.panel-expand-sizes.oleafly.workspace.p1.vertical", JSON.stringify({ terminal: 40 }));
     renderTree(DEFAULT_PANE_LAYOUT);
@@ -133,7 +118,7 @@ describe("PaneTreeGroup", () => {
   it("leaves the closed terminal and its separator out", () => {
     renderTree(DEFAULT_PANE_LAYOUT, { shown: { ...ALL, terminal: false } });
     expect(document.getElementById("terminal")).toBeNull();
-    expect(separators()).toEqual(["h-tree", "h-mid", "h-assistant"]);
+    expect(separators()).toEqual(["h-tree", "h-mid"]);
   });
 
   it("keeps the sidebar's pixel width in a row and when it is stacked with another pane", () => {
@@ -142,36 +127,5 @@ describe("PaneTreeGroup", () => {
     expect(panel("s1").dataset.behavior).toBe("preserve-pixel-size");
     expect(panel("sidebar").dataset).toMatchObject({ min: "10%", behavior: "" });
     expect(separators()).toContain("sep-sidebar-terminal");
-  });
-
-  it("lets the assistant collapse in a stack and starts it from the tree's share", () => {
-    const stacked = movePane(DEFAULT_PANE_LAYOUT, "assistant", { kind: "pane", pane: "pdf", side: "bottom" });
-    renderTree(stacked);
-    expect(panel("assistant").dataset).toMatchObject({ min: "15%", max: "85%", collapsible: "true", size: "50%" });
-    expect(panel("pdf").parentElement?.dataset.orientation).toBe("vertical");
-  });
-
-  it("keeps the assistant's pixel minimum in a nested row", () => {
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        constructor(private readonly callback: ResizeObserverCallback) {}
-        observe(target: Element) {
-          this.callback([{ target, contentRect: { width: 1200, height: 800 } } as unknown as ResizeObserverEntry], this as never);
-        }
-        disconnect() {}
-      },
-    );
-    const nested = movePane(DEFAULT_PANE_LAYOUT, "assistant", { kind: "pane", pane: "pdf", side: "right" });
-    renderTree(nested);
-    expect(Number.parseFloat(panel("assistant").dataset.min ?? "")).toBeCloseTo((480 / 1188) * 100, 3);
-    expect(Number.parseFloat(panel("sidebar").dataset.size ?? "")).toBeCloseTo((266 / 1188) * 100, 3);
-  });
-
-  it("lets a pane that is alone in its group take the whole group", () => {
-    const paired = movePane(DEFAULT_PANE_LAYOUT, "assistant", { kind: "pane", pane: "terminal", side: "right" });
-    renderTree(paired, { shown: { ...ALL, terminal: false } });
-    expect(panel("assistant").dataset).toMatchObject({ max: "100%", size: "" });
-    expect(document.getElementById("terminal")).toBeNull();
   });
 });

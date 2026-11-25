@@ -4,7 +4,6 @@ import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
 import { probeProjectAvailability } from "@/lib/tauri";
-import { useApprovalModeStore } from "@/store/approval-mode";
 import { clearFolderPause } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
@@ -64,9 +63,6 @@ export function ProjectAvailabilityKeeper() {
     () =>
       useProjectAvailabilityStore.subscribe((state, previous) => {
         if (!state.projectId || state.projectId !== previous.projectId) return;
-        if (state.grantResets !== previous.grantResets) {
-          useApprovalModeStore.getState().forget(state.projectId);
-        }
         const returned =
           folderReachable(state.availability) && !folderReachable(previous.availability);
         if (returned || state.relocations !== previous.relocations) resume(state.projectId);

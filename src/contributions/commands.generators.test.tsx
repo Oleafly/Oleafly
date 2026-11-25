@@ -26,7 +26,9 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 vi.mock("@/features/export", () => ({ exportCurrentPdf: vi.fn() }));
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
-vi.mock("@/lib/tauri", () => ({ clearBuildCache: vi.fn() }));
+vi.mock("@/lib/tauri", () => ({ clearBuildCache: vi.fn() ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({}) } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({}) } }));
 vi.mock("@/store/citation", () => ({ useCitationStore: { getState: () => ({}) } }));
@@ -57,7 +59,7 @@ describe("project tool commands", () => {
     }
   });
 
-  it.each(["generators", "symbols"])("opens %s over the active project", (page) => {
+  it.each(["symbols"])("opens %s over the active project", (page) => {
     registry.commands.find((command) => command.id === `tool.${page}`)?.run(ctx);
 
     expect(state.home.goTo).toHaveBeenCalledWith(page);

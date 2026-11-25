@@ -18,12 +18,6 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...mocks,
 }));
 
-vi.mock("@/components/ai/turns/DiffPreview", () => ({
-  DiffPreview: ({ path, oldText, newText }: { path: string; oldText: string; newText: string }) => (
-    <div data-testid={`diff-${path}`}>{`${oldText} -> ${newText}`}</div>
-  ),
-}));
-
 import { HistoryCompareDialog } from "./HistoryCompareDialog";
 
 const copy = enCollab.history;
@@ -188,3 +182,9 @@ describe("comparing two versions", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+vi.mock("@/components/ui/DiffPreview", () => ({
+  DiffPreview: ({ path, oldText, newText }: { path: string; oldText: string; newText: string }) => (
+    <div data-testid={`diff-${path}`}>{`${oldText} -> ${newText}`}</div>
+  ),
+}));

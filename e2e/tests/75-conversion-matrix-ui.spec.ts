@@ -314,30 +314,3 @@ test("symbols preview the selected command and insert it into the open project",
   await waitLong(tauriPage, `!document.querySelector('[data-testid="symbols-tool-view"]')`, 10_000);
   expect(await editorText(tauriPage)).toContain("\\alpha");
 });
-
-test("writing generator uses the active project for its assistant prompt", async ({ tauriPage }) => {
-  test.setTimeout(120_000);
-  await atLibrary(tauriPage);
-  await createProject(tauriPage, "latex", "generator-ui");
-  await replaceEditorSource(
-    tauriPage,
-    "\\documentclass{article}\\begin{document}\\section{Results}The study found a clear effect.\\end{document}",
-  );
-  await pressGlobal(tauriPage, "k", { meta: true });
-  await fillCommandPalette(tauriPage, "/generators");
-  await tauriPage.press("[cmdk-input]", "Enter");
-  await waitLong(tauriPage, `!!document.querySelector('[data-testid="generator-abstract"]')`, 15_000);
-  await shot(tauriPage, "12-generators-gallery.png");
-  await tauriPage.locator('[data-testid="generator-abstract"]').click();
-  await expect(tauriPage.getByTestId("generator-prompt-preview")).toContainText("Work from @main.tex");
-  await fillTextarea(tauriPage, '[data-testid="generator-instructions"]', "Keep the abstract under 200 words.");
-  await expect(tauriPage.getByTestId("generator-prompt-preview")).toContainText("Keep the abstract under 200 words.");
-  await shot(tauriPage, "12-generators-gallery.png");
-  await tauriPage.getByTestId("generator-launch").click();
-  await waitLong(
-    tauriPage,
-    `(!!document.querySelector('[data-testid="research-assistant"]') && !document.querySelector('[data-testid="generators-tool-view"]')) || !!document.querySelector('[role="dialog"][aria-label="Settings"] [data-testid="settings-section-ai"][aria-current="page"]')`,
-    15_000,
-  );
-  await shot(tauriPage, "13-generator-abstract-handoff.png");
-});

@@ -19,7 +19,6 @@ import {
   Play,
   RefreshCw,
   Save,
-  Sparkles,
   Square,
   TextCursorInput,
   TriangleAlert,
@@ -836,31 +835,6 @@ export function DiagramComposer({
     }
   }, [importing, host, toast, t, applyLoadedContent, resetPreview]);
 
-  const [fixing, setFixing] = useState(false);
-  const fixWithAi = useCallback(async () => {
-    if (fixing || !host.fixWithAi) return;
-    setFixing(true);
-    try {
-      const cur = sourceToCompile(syncRef.current, mode, model, code, (m) => writeCode(m));
-      const tail = log.slice(-3000);
-      const fixed = await host.fixWithAi(cur, tail, lang.fixPrompt(cur, tail));
-      if (!fixed) {
-        toast.error(t("toast.noAiFix"));
-        return;
-      }
-      syncRef.current = readSync(fixed, null);
-      setCode(fixed);
-      setMode("code");
-      await compile(fixed);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("toast.fixFailed", { detail: errorDetail(e) }));
-    } finally {
-      setFixing(false);
-    }
-  }, [fixing, mode, model, code, log, lang, compile, writeCode, host, toast, t]);
-
-  const compileFailed = failure?.kind === "failed";
-
   useEffect(() => {
     if (!editingName) return;
     const onDown = (e: MouseEvent) => {
@@ -1094,14 +1068,7 @@ export function DiagramComposer({
 
   const renderComposerActions = () => (
     <div className="ml-auto flex items-center gap-2">
-      {compileFailed && host.fixWithAi && (
-        <Tooltip label={t("composer.fixWithAiTooltip")}>
-          <Button variant="secondary" size="sm" onClick={() => void fixWithAi()} disabled={fixing}>
-            {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            {t("composer.fixWithAi")}
-          </Button>
-        </Tooltip>
-      )}
+
       <Button data-tour="diagram-compile" data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
         <CompileIcon busy={busy} hasCompiled={hasCompiled} />
         <span className={busy ? "ai-shimmer" : undefined}>

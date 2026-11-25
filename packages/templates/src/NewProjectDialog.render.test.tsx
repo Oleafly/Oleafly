@@ -269,7 +269,7 @@ describe("NewProjectDialog", () => {
     expect(list.scrollTop).toBe(0);
   });
 
-  it("offers to generate a template when the filters match nothing", () => {
+  it("shows an empty state when the filters match nothing", () => {
     const onGenerateWithAi = vi.fn();
     open({ onGenerateWithAi });
 
@@ -279,24 +279,7 @@ describe("NewProjectDialog", () => {
 
     expect(screen.getByText("dialog.emptyTitle")).toBeInTheDocument();
     expect(screen.getByText("dialog.emptyBody")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("generate-template-empty-state"));
-    expect(onGenerateWithAi).toHaveBeenCalledOnce();
-  });
-
-  it("offers import, AI generation and the download catalog in the header", () => {
-    const onImportProject = vi.fn();
-    const onGenerateWithAi = vi.fn();
-    const onOpenTemplateDownloads = vi.fn();
-    open({ onImportProject, onGenerateWithAi, onOpenTemplateDownloads });
-
-    fireEvent.click(screen.getByTestId("import-from-overleaf"));
-    fireEvent.click(screen.getByTestId("generate-template-with-ai"));
-    fireEvent.click(screen.getByTestId("open-template-downloads"));
-
-    expect(onImportProject).toHaveBeenCalledOnce();
-    expect(onGenerateWithAi).toHaveBeenCalledOnce();
-    expect(onOpenTemplateDownloads).toHaveBeenCalledOnce();
-    expect(screen.getByText("dialog.getMoreTemplates")).toBeInTheDocument();
+    expect(screen.queryByTestId("generate-template-empty-state")).toBeNull();
   });
 
   it("offers to import a template of the person's own in the header", () => {

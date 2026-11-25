@@ -70,7 +70,6 @@ import { basename } from "@/lib/path-utils";
 import { ALL_MAIN_EXTENSIONS, mainDocumentMissing } from "@/lib/main-document";
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
-import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError, takeDroppedPaths } from "@/lib/tauri";
 import { copyReference, FilePathMenuItems } from "@/components/files/FilePathMenuItems";
 import { decodeAppError, describeError } from "@/lib/app-error";
@@ -1119,7 +1118,6 @@ export function FileTree({
 
         <LinkedFoldersSection />
 
-        <TaskOutputsSection />
       </SidebarSection>
 
       {conflict && (

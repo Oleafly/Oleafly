@@ -69,24 +69,24 @@ describe("legacy layout migration", () => {
     localStorage.setItem(
       "react-resizable-panels:legacy-order",
       JSON.stringify({
-        "assistant,editorpdf,sidebar": {
-          expandToSizes: { assistant: 33 },
+        "terminal,editorpdf,sidebar": {
+          expandToSizes: { terminal: 33 },
           layout: [20, 45, 35],
         },
         "editorpdf,sidebar": { expandToSizes: {}, layout: [25, 75] },
       }),
     );
 
-    migrateLegacyPanelLayout("legacy-order", ["sidebar", "editorpdf", "assistant"]);
+    migrateLegacyPanelLayout("legacy-order", ["sidebar", "editorpdf", "terminal"]);
 
     expect(localStorage.getItem("react-resizable-panels:legacy-order")).toBeNull();
     expect(
       JSON.parse(
         localStorage.getItem(
-          panelLayoutKey("legacy-order", ["sidebar", "editorpdf", "assistant"]),
+          panelLayoutKey("legacy-order", ["sidebar", "editorpdf", "terminal"]),
         ) ?? "null",
       ),
-    ).toEqual({ sidebar: 20, editorpdf: 45, assistant: 35 });
+    ).toEqual({ sidebar: 20, editorpdf: 45, terminal: 35 });
     expect(
       JSON.parse(
         localStorage.getItem(panelLayoutKey("legacy-order", ["sidebar", "editorpdf"])) ?? "null",
@@ -94,7 +94,7 @@ describe("legacy layout migration", () => {
     ).toEqual({ sidebar: 25, editorpdf: 75 });
     expect(
       JSON.parse(localStorage.getItem(panelExpandSizesKey("legacy-order")) ?? "null"),
-    ).toEqual({ assistant: 33 });
+    ).toEqual({ terminal: 33 });
   });
 
   it("keeps a layout the new format already saved", () => {
@@ -410,13 +410,13 @@ describe("separator keyboard steps", () => {
 });
 
 describe("squeezed panels", () => {
-  function Squeeze({ assistant }: Readonly<{ assistant: boolean }>) {
+  function Squeeze({ terminal }: Readonly<{ terminal: boolean }>) {
     return (
       <Group>
         <Panel id="side" defaultSize={percent(40)} {...panelLimitProps({ minSize: 20, maxSize: 65 })} />
         <Separator id="side-handle" />
         <Panel id="main" defaultSize={percent(60)} />
-        {assistant && (
+        {terminal && (
           <>
             <Separator id="assist-handle" />
             <Panel
@@ -431,8 +431,8 @@ describe("squeezed panels", () => {
   }
 
   it("holds a panel that cannot collapse at its minimum when a large sibling opens", () => {
-    const view = render(<Squeeze assistant={false} />);
-    view.rerender(<Squeeze assistant />);
+    const view = render(<Squeeze terminal={false} />);
+    view.rerender(<Squeeze terminal />);
     expect(panelSize("side")).toBe(20);
     expect(panelSize("assist")).toBe(60);
   });
@@ -461,14 +461,14 @@ describe("layout reevaluation", () => {
     const limits = {
       sidebar: { minSize: 15, maxSize: 65 },
       editorpdf: {},
-      assistant: { minSize: 20, maxSize: 55, collapsible: true },
+      terminal: { minSize: 20, maxSize: 55, collapsible: true },
     } satisfies Record<string, PanelLimits>;
     expect(
-      reevaluateLayout({ sidebar: 20, editorpdf: 60, assistant: 20 }, limits, {
+      reevaluateLayout({ sidebar: 20, editorpdf: 60, terminal: 20 }, limits, {
         ...limits,
-        assistant: { ...limits.assistant, minSize: 46 },
+        terminal: { ...limits.terminal, minSize: 46 },
       }),
-    ).toEqual({ sidebar: 20, editorpdf: 34, assistant: 46 });
+    ).toEqual({ sidebar: 20, editorpdf: 34, terminal: 46 });
   });
 
   it("keeps a collapsed panel collapsed at its new collapsed size", () => {
@@ -488,45 +488,45 @@ describe("layout reevaluation", () => {
 });
 
 const WORKSPACE_GROUP = "workspace";
-const WORKSPACE_PANELS = ["sidebar", "editorpdf", "assistant"];
+const WORKSPACE_PANELS = ["sidebar", "editorpdf", "terminal"];
 const WORKSPACE_KEY = panelLayoutKey(WORKSPACE_GROUP, WORKSPACE_PANELS);
 
 let workspace: Readonly<{
-  setAssistantOpen: (open: boolean) => void;
-  setAssistantMin: (size: number) => void;
+  setTerminalOpen: (open: boolean) => void;
+  setTerminalMin: (size: number) => void;
   setShowSidebar: (show: boolean) => void;
 }>;
 
 function WorkspaceHarness({ initiallyOpen = true }: Readonly<{ initiallyOpen?: boolean }>) {
-  const [assistantOpen, setAssistantOpen] = useState(initiallyOpen);
-  const [assistantMin, setAssistantMin] = useState(22);
+  const [terminalOpen, setTerminalOpen] = useState(initiallyOpen);
+  const [terminalMin, setTerminalMin] = useState(22);
   const [showSidebar, setShowSidebar] = useState(true);
-  workspace = { setAssistantOpen, setAssistantMin, setShowSidebar };
+  workspace = { setTerminalOpen, setTerminalMin, setShowSidebar };
   const groupRef = useRef<GroupImperativeHandle>(null);
   const limits = useMemo(
     () =>
       ({
         sidebar: { minSize: 15, maxSize: 65 },
         editorpdf: {},
-        assistant: { minSize: assistantMin, maxSize: 55, collapsible: true, collapsedSize: 0 },
+        terminal: { minSize: terminalMin, maxSize: 55, collapsible: true, collapsedSize: 0 },
       }) satisfies Record<string, PanelLimits>,
-    [assistantMin],
+    [terminalMin],
   );
-  const assistantDefaultSize = Math.max(28, assistantMin);
+  const terminalDefaultSize = Math.max(28, terminalMin);
   const onKeyDown = useSeparatorKeyboard(groupRef, limits);
   const layout = useDismissiblePanelLayout(
     groupRef,
     WORKSPACE_GROUP,
     WORKSPACE_PANELS,
     WORKSPACE_PANELS.filter(
-      (id) => (id !== "sidebar" || showSidebar) && (id !== "assistant" || assistantOpen),
+      (id) => (id !== "sidebar" || showSidebar) && (id !== "terminal" || terminalOpen),
     ),
     limits,
-    [{ id: "assistant", defaultSize: assistantDefaultSize, onDismiss: () => setAssistantOpen(false) }],
+    [{ id: "terminal", defaultSize: terminalDefaultSize, onDismiss: () => setTerminalOpen(false) }],
   );
   return (
     <>
-      <output data-testid="assistant-open">{String(assistantOpen)}</output>
+      <output data-testid="terminal-open">{String(terminalOpen)}</output>
       <Group
         groupRef={groupRef}
         defaultLayout={layout.defaultLayout}
@@ -540,13 +540,13 @@ function WorkspaceHarness({ initiallyOpen = true }: Readonly<{ initiallyOpen?: b
           </>
         )}
         <Panel id="editorpdf" defaultSize={percent(52)} {...panelLimitProps(limits.editorpdf)} />
-        {assistantOpen && (
+        {terminalOpen && (
           <>
-            <Separator id="h-assistant" onKeyDownCapture={onKeyDown} />
+            <Separator id="h-terminal" onKeyDownCapture={onKeyDown} />
             <Panel
-              id="assistant"
-              defaultSize={percent(assistantDefaultSize)}
-              {...panelLimitProps(limits.assistant)}
+              id="terminal"
+              defaultSize={percent(terminalDefaultSize)}
+              {...panelLimitProps(limits.terminal)}
             />
           </>
         )}
@@ -555,17 +555,17 @@ function WorkspaceHarness({ initiallyOpen = true }: Readonly<{ initiallyOpen?: b
   );
 }
 
-function assistantOpen(): boolean {
-  return screen.getByTestId("assistant-open").textContent === "true";
+function terminalOpen(): boolean {
+  return screen.getByTestId("terminal-open").textContent === "true";
 }
 
 function workspaceSizes(): number[] {
   return WORKSPACE_PANELS.map(panelSize);
 }
 
-function pressOnAssistantHandle(key: string) {
-  const handle = document.getElementById("h-assistant");
-  if (!handle) throw new Error("the assistant handle is not rendered");
+function pressOnTerminalHandle(key: string) {
+  const handle = document.getElementById("h-terminal");
+  if (!handle) throw new Error("the terminal handle is not rendered");
   act(() => handle.focus());
   fireEvent.keyDown(handle, { key });
 }
@@ -580,142 +580,142 @@ async function settle(update: () => void = () => undefined) {
   });
 }
 
-function storedAssistantSizes(): number[] {
+function storedTerminalSizes(): number[] {
   const sizes: number[] = [];
   for (let index = 0; index < localStorage.length; index += 1) {
     const key = localStorage.key(index);
     if (!key?.startsWith(`react-resizable-panels:${WORKSPACE_GROUP}:`)) continue;
-    const size = (JSON.parse(localStorage.getItem(key) ?? "{}") as Layout).assistant;
+    const size = (JSON.parse(localStorage.getItem(key) ?? "{}") as Layout).terminal;
     if (size !== undefined) sizes.push(size);
   }
   return sizes;
 }
 
-describe("dismissible assistant panel", () => {
+describe("dismissible terminal panel", () => {
   it("closes when the keyboard collapses it and reopens at its last size", async () => {
     render(<WorkspaceHarness />);
     expect(workspaceSizes()).toEqual([20, 52, 28]);
 
-    pressOnAssistantHandle("ArrowRight");
+    pressOnTerminalHandle("ArrowRight");
     expect(workspaceSizes()).toEqual([20, 58, 22]);
-    pressOnAssistantHandle("ArrowRight");
-    expect(assistantOpen()).toBe(false);
+    pressOnTerminalHandle("ArrowRight");
+    expect(terminalOpen()).toBe(false);
     expect(JSON.parse(localStorage.getItem(WORKSPACE_KEY) ?? "null")).toEqual({
       sidebar: 20,
       editorpdf: 58,
-      assistant: 22,
+      terminal: 22,
     });
 
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 58, 22]);
-    expect(storedAssistantSizes()).not.toContain(0);
+    expect(storedTerminalSizes()).not.toContain(0);
 
-    pressOnAssistantHandle("ArrowRight");
-    expect(assistantOpen()).toBe(false);
+    pressOnTerminalHandle("ArrowRight");
+    expect(terminalOpen()).toBe(false);
   });
 
   it("reopens after End closes it", async () => {
     render(<WorkspaceHarness />);
-    pressOnAssistantHandle("End");
-    expect(assistantOpen()).toBe(false);
+    pressOnTerminalHandle("End");
+    expect(terminalOpen()).toBe(false);
 
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 52, 28]);
-    expect(storedAssistantSizes()).not.toContain(0);
+    expect(storedTerminalSizes()).not.toContain(0);
   });
 
   it("reopens after a drag closes it", async () => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
       this: HTMLElement,
     ) {
-      return this.id === "h-assistant" ? new DOMRect(500, 0, 6, 100) : new DOMRect(-999, -999, 0, 0);
+      return this.id === "h-terminal" ? new DOMRect(500, 0, 6, 100) : new DOMRect(-999, -999, 0, 0);
     });
     render(<WorkspaceHarness />);
-    const handle = document.getElementById("h-assistant");
-    if (!handle) throw new Error("the assistant handle is not rendered");
+    const handle = document.getElementById("h-terminal");
+    if (!handle) throw new Error("the terminal handle is not rendered");
     const pointer = { clientY: 50, pointerType: "mouse", button: 0, buttons: 1 };
 
     fireEvent.pointerDown(handle, { ...pointer, clientX: 503 });
     fireEvent.pointerMove(handle, { ...pointer, clientX: 521 });
     expect(workspaceSizes()).toEqual([20, 58, 22]);
     fireEvent.pointerMove(handle, { ...pointer, clientX: 563 });
-    expect(assistantOpen()).toBe(false);
+    expect(terminalOpen()).toBe(false);
     fireEvent.pointerUp(document, { ...pointer, clientX: 563, buttons: 0 });
 
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 52, 28]);
-    expect(storedAssistantSizes()).not.toContain(0);
+    expect(storedTerminalSizes()).not.toContain(0);
   });
 
   it("opens in a new session after the keyboard closed it", async () => {
     const first = render(<WorkspaceHarness />);
-    pressOnAssistantHandle("ArrowRight");
-    pressOnAssistantHandle("ArrowRight");
-    expect(assistantOpen()).toBe(false);
+    pressOnTerminalHandle("ArrowRight");
+    pressOnTerminalHandle("ArrowRight");
+    expect(terminalOpen()).toBe(false);
     first.unmount();
 
     render(<WorkspaceHarness initiallyOpen={false} />);
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 58, 22]);
   });
 
   it("stays open at a larger minimum that is more than twice its size", async () => {
     render(<WorkspaceHarness />);
-    pressOnAssistantHandle("ArrowRight");
+    pressOnTerminalHandle("ArrowRight");
     expect(workspaceSizes()).toEqual([20, 58, 22]);
 
-    await settle(() => workspace.setAssistantMin(46));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalMin(46));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 34, 46]);
   });
 
   it("takes the room for a larger minimum from the panel beside it", async () => {
     render(<WorkspaceHarness />);
-    pressOnAssistantHandle("ArrowRight");
+    pressOnTerminalHandle("ArrowRight");
 
-    await settle(() => workspace.setAssistantMin(30));
+    await settle(() => workspace.setTerminalMin(30));
     expect(workspaceSizes()).toEqual([20, 50, 30]);
   });
 
   it("opens at a minimum that grew while it was closed", async () => {
     render(<WorkspaceHarness />);
-    pressOnAssistantHandle("ArrowRight");
-    await settle(() => workspace.setAssistantOpen(false));
-    await settle(() => workspace.setAssistantMin(46));
+    pressOnTerminalHandle("ArrowRight");
+    await settle(() => workspace.setTerminalOpen(false));
+    await settle(() => workspace.setTerminalMin(46));
 
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     expect(workspaceSizes()).toEqual([20, 34, 46]);
   });
 
   it("stays open when the panels beside it change after it closed in that arrangement", async () => {
     render(<WorkspaceHarness />);
     await settle(() => workspace.setShowSidebar(false));
-    expect(assistantOpen()).toBe(true);
-    pressOnAssistantHandle("End");
-    expect(assistantOpen()).toBe(false);
+    expect(terminalOpen()).toBe(true);
+    pressOnTerminalHandle("End");
+    expect(terminalOpen()).toBe(false);
 
     await settle(() => workspace.setShowSidebar(true));
-    await settle(() => workspace.setAssistantOpen(true));
-    expect(assistantOpen()).toBe(true);
+    await settle(() => workspace.setTerminalOpen(true));
+    expect(terminalOpen()).toBe(true);
     await settle(() => workspace.setShowSidebar(false));
 
-    expect(assistantOpen()).toBe(true);
-    expect(panelSize("assistant")).toBeGreaterThan(0);
-    expect(storedAssistantSizes()).not.toContain(0);
+    expect(terminalOpen()).toBe(true);
+    expect(panelSize("terminal")).toBeGreaterThan(0);
+    expect(storedTerminalSizes()).not.toContain(0);
   });
 
   it("reopens at the size it had when it was closed without collapsing", async () => {
     render(<WorkspaceHarness />);
-    pressOnAssistantHandle("ArrowLeft");
+    pressOnTerminalHandle("ArrowLeft");
     expect(workspaceSizes()).toEqual([20, 42, 38]);
 
-    await settle(() => workspace.setAssistantOpen(false));
-    await settle(() => workspace.setAssistantOpen(true));
+    await settle(() => workspace.setTerminalOpen(false));
+    await settle(() => workspace.setTerminalOpen(true));
     expect(workspaceSizes()).toEqual([20, 42, 38]);
   });
 });

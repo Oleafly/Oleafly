@@ -13,14 +13,11 @@ import {
   FileSpreadsheet,
   FileText,
   FileType2,
-  Image as ImageIcon,
   Hash,
-  ListChecks,
   Link2,
   Network,
   School,
   ShieldCheck,
-  Sigma,
   Sparkles,
   Table2,
   TextCursorInput,
@@ -46,7 +43,6 @@ export type ToolId =
   | "literature-search"
   | "deadlines"
   | "stats"
-  | "generators"
   | "symbols";
 
 export type ToolCategory =
@@ -108,13 +104,6 @@ function reference(
 }
 
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
-  converter({
-    id: "image-to-latex",
-    converter: "image-to-latex",
-    icon: ImageIcon,
-    slash: ["image-to-latex"],
-    tone: "blue",
-  }),
   {
     id: "pdf-to-latex",
     icon: FileInput,
@@ -153,20 +142,6 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "emerald",
   }),
   converter({
-    id: "equation-to-latex",
-    converter: "equation-to-latex",
-    icon: Sigma,
-    slash: ["equation-to-latex", "math-to-latex"],
-    tone: "violet",
-  }),
-  converter({
-    id: "equation-to-typst",
-    converter: "equation-to-typst",
-    icon: Sigma,
-    slash: ["equation-to-typst", "math-to-typst"],
-    tone: "sky",
-  }),
-  converter({
     id: "excel-to-latex",
     converter: "excel-to-latex",
     icon: FileSpreadsheet,
@@ -192,13 +167,6 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     converter: "html-to-typst",
     icon: FileCode2,
     slash: ["html-to-typst"],
-    tone: "sky",
-  }),
-  converter({
-    id: "image-to-typst",
-    converter: "image-to-typst",
-    icon: ImageIcon,
-    slash: ["image-to-typst"],
     tone: "sky",
   }),
   converter({
@@ -434,14 +402,6 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "blue",
   },
   {
-    id: "generators",
-    icon: ListChecks,
-    category: "write",
-    destination: { kind: "page", page: "generators" },
-    slash: ["generators", "abstract", "paraphrase"],
-    tone: "violet",
-  },
-  {
     id: "symbols",
     icon: BookOpenText,
     category: "references",
@@ -458,15 +418,6 @@ interface ToolCopy {
 }
 
 const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
-  "image-to-latex": () => ({
-    name: i18n.t(($) => $.researchTools.tools.imageToLatex.name),
-    description: i18n.t(($) => $.researchTools.tools.imageToLatex.description),
-    tags: [
-      i18n.t(($) => $.researchTools.tools.imageToLatex.tag1),
-      i18n.t(($) => $.researchTools.tools.imageToLatex.tag2),
-      i18n.t(($) => $.researchTools.tools.imageToLatex.tag3),
-    ],
-  }),
   "pdf-to-latex": () => ({
     name: i18n.t(($) => $.researchTools.tools.pdfToLatex.name),
     description: i18n.t(($) => $.researchTools.tools.pdfToLatex.description),
@@ -494,15 +445,6 @@ const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
       i18n.t(($) => $.researchTools.tools.arxivToLatex.tag3),
     ],
   }),
-  "equation-to-latex": () => ({
-    name: i18n.t(($) => $.researchTools.tools.equationToLatex.name),
-    description: i18n.t(($) => $.researchTools.tools.equationToLatex.description),
-    tags: [
-      i18n.t(($) => $.researchTools.tools.equationToLatex.tag1),
-      i18n.t(($) => $.researchTools.tools.equationToLatex.tag2),
-      i18n.t(($) => $.researchTools.tools.equationToLatex.tag3),
-    ],
-  }),
   "excel-to-latex": () => ({
     name: i18n.t(($) => $.researchTools.tools.excelToLatex.name),
     description: i18n.t(($) => $.researchTools.tools.excelToLatex.description),
@@ -519,15 +461,6 @@ const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
       i18n.t(($) => $.researchTools.tools.htmlToLatex.tag1),
       i18n.t(($) => $.researchTools.tools.htmlToLatex.tag2),
       i18n.t(($) => $.researchTools.tools.htmlToLatex.tag3),
-    ],
-  }),
-  "image-to-typst": () => ({
-    name: i18n.t(($) => $.researchTools.tools.imageToTypst.name),
-    description: i18n.t(($) => $.researchTools.tools.imageToTypst.description),
-    tags: [
-      i18n.t(($) => $.researchTools.tools.imageToTypst.tag1),
-      i18n.t(($) => $.researchTools.tools.imageToTypst.tag2),
-      i18n.t(($) => $.researchTools.tools.imageToTypst.tag3),
     ],
   }),
   "latex-to-html": () => ({
@@ -672,15 +605,6 @@ const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
       i18n.t(($) => $.researchTools.tools.csvToTypst.tag1),
       i18n.t(($) => $.researchTools.tools.csvToTypst.tag2),
       i18n.t(($) => $.researchTools.tools.csvToTypst.tag3),
-    ],
-  }),
-  "equation-to-typst": () => ({
-    name: i18n.t(($) => $.researchTools.tools.equationToTypst.name),
-    description: i18n.t(($) => $.researchTools.tools.equationToTypst.description),
-    tags: [
-      i18n.t(($) => $.researchTools.tools.equationToTypst.tag1),
-      i18n.t(($) => $.researchTools.tools.equationToTypst.tag2),
-      i18n.t(($) => $.researchTools.tools.equationToTypst.tag3),
     ],
   }),
   "excel-to-typst": () => ({
@@ -862,16 +786,6 @@ const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
       i18n.t(($) => $.researchTools.tools.stats.tag1),
       i18n.t(($) => $.researchTools.tools.stats.tag2),
       i18n.t(($) => $.researchTools.tools.stats.tag3),
-    ],
-  }),
-  "generators": () => ({
-    name: i18n.t(($) => $.researchTools.tools.generators.name),
-    description: i18n.t(($) => $.researchTools.tools.generators.description),
-    tags: [
-      i18n.t(($) => $.researchTools.tools.generators.tag1),
-      i18n.t(($) => $.researchTools.tools.generators.tag2),
-      i18n.t(($) => $.researchTools.tools.generators.tag3),
-      i18n.t(($) => $.researchTools.tools.generators.tag4),
     ],
   }),
   "symbols": () => ({

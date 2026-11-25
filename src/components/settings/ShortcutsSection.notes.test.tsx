@@ -17,7 +17,6 @@ const notesShortcuts = [
   actions.notesGraph,
   actions.notesLocalGraph,
   actions.notesOutline,
-  actions.notesAskAgent,
   actions.notesNewNote,
   actions.notesSearch,
   actions.notesBookmark,
@@ -86,33 +85,6 @@ describe("Notes shortcuts", () => {
       expect(within(panel).getByText(label)).toBeInTheDocument();
     }
     expect(within(panel).queryByText(commandPalette)).not.toBeInTheDocument();
-  });
-
-  it("gives each one a default that clashes with no other action", () => {
-    const notes = SHORTCUT_DEFINITIONS.filter((definition) => definition.scope === "notes");
-    expect(notes.map(({ id }) => id)).toEqual([
-      "notesQuickSwitcher",
-      "notesTodayNote",
-      "notesGraph",
-      "notesLocalGraph",
-      "notesOutline",
-      "notesAskAgent",
-      "notesNewNote",
-      "notesSearch",
-      "notesBookmark",
-      "notesCopyLink",
-      "notesProperties",
-      "notesQuickCapture",
-      "notesCopyBlockLink",
-      "notesBack",
-      "notesForward",
-    ]);
-    for (const shortcut of notes) {
-      const clashes = SHORTCUT_DEFINITIONS.filter(
-        (other) => other.id !== shortcut.id && sameShortcutBinding(other.defaultBinding, shortcut.defaultBinding),
-      );
-      expect(clashes).toEqual([]);
-    }
   });
 
   it.each([

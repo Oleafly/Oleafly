@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PANE_LAYOUT, layoutKey, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
-import { PANE_BAR_CLASS, PaneReorderProvider, emptyBarTarget, paneOfElement, usePaneBar } from "./pane-reorder";
+import { PANE_BAR_CLASS, PaneReorderProvider, emptyBarTarget, usePaneBar } from "./pane-reorder";
 
 const clicked = vi.fn();
 
@@ -50,7 +50,7 @@ function Bar({ name, testId }: Readonly<{ name: string; testId?: string }>) {
   );
 }
 
-const ALL: readonly PaneId[] = ["sidebar", "editor", "pdf", "terminal", "assistant"];
+const ALL: readonly PaneId[] = ["sidebar", "editor", "pdf", "terminal"];
 
 function Workspace({
   visible = ALL,
@@ -84,13 +84,7 @@ function Workspace({
                 )}
               </div>
             </div>
-            {shows("assistant") && (
-              <div id="assistant" data-panel="">
-                <div id="chat-split" data-panel="" data-testid="chat-surface">
-                  <Bar name="assistant" testId="ai-assistant-header" />
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
         <div id="terminal" data-panel="">
@@ -150,16 +144,6 @@ afterEach(async () => {
 });
 
 describe("finding the pane of a bar", () => {
-  it("walks up to the pane panel even when the bar and inner panels use their own ids", () => {
-    render(<Workspace />);
-    expect(paneOfElement(screen.getByTestId("ai-assistant-header"))).toBe("assistant");
-    expect(paneOfElement(screen.getByTestId("project-sidebar-bar"))).toBe("sidebar");
-    expect(paneOfElement(screen.getByTestId("editor"))).toBe("editor");
-    expect(paneOfElement(screen.getByTestId("pdf"))).toBe("pdf");
-    expect(paneOfElement(screen.getByTestId("terminal-tabs"))).toBe("terminal");
-    expect(paneOfElement(screen.getByRole("button", { name: "after" }))).toBeNull();
-    expect(paneOfElement(null)).toBeNull();
-  });
 
   it("only counts the bar itself and plain spacers as empty", () => {
     render(<Workspace />);
@@ -172,7 +156,7 @@ describe("finding the pane of a bar", () => {
       screen.getByRole("textbox", { name: "sidebar input" }),
       screen.getByTestId("sidebar trigger"),
       screen.getByTestId("sidebar trigger label"),
-      screen.getByTestId("assistant spacer"),
+      screen.getByTestId("pdf spacer"),
     ]) {
       expect(emptyBarTarget(target, bar)).toBe(false);
     }
@@ -258,19 +242,19 @@ describe("dropping a pane", () => {
     fireEvent.pointerUp(window);
     expect(overlay()).toBeNull();
     expect(bar).not.toHaveAttribute("data-pane-dragging");
-    expect(layout()).toBe("column(row(row(editor,pdf,sidebar),assistant),terminal)");
+    expect(layout()).toBe("column(row(editor,pdf,sidebar),terminal)");
   });
 
   it("offers a strip along each window edge for a new outer split", () => {
     render(<Workspace />);
-    drag(screen.getByTestId("ai-assistant-header"), [900, 60], [10, 300]);
+    drag(screen.getByTestId("pdf"), [900, 60], [10, 300]);
     expect(drop()).toHaveAttribute("data-pane-drop", "edge-left");
     expect(drop()?.style).toMatchObject({ left: "4px", top: "44px", width: "242px", height: "592px" });
     moveTo(500, 630);
     expect(drop()).toHaveAttribute("data-pane-drop", "edge-bottom");
     expect(drop()?.style).toMatchObject({ left: "4px", top: "494px", width: "992px", height: "142px" });
     fireEvent.pointerUp(window);
-    expect(layout()).toBe("column(row(sidebar,row(editor,pdf)),terminal,assistant)");
+    expect(layout()).toBe("column(row(sidebar,editor),terminal,pdf)");
   });
 
   it("stacks a pane under another from its bottom zone", () => {
@@ -278,7 +262,7 @@ describe("dropping a pane", () => {
     drag(screen.getByTestId("terminal-tabs"), [500, 500], [625, 470]);
     expect(drop()).toHaveAttribute("data-pane-drop", "pdf-bottom");
     fireEvent.pointerUp(window);
-    expect(layout()).toBe("row(sidebar,row(editor,column(pdf,terminal)),assistant)");
+    expect(layout()).toBe("row(sidebar,row(editor,column(pdf,terminal)))");
   });
 
   it("has no target in the middle of a pane, over the dragged pane, or outside the window", () => {
@@ -312,7 +296,7 @@ describe("dropping a pane", () => {
     moveTo(720, 260);
     expect(drop()).toHaveAttribute("data-pane-drop", "pdf-right");
     fireEvent.pointerUp(window);
-    expect(layout()).toBe("column(row(sidebar,row(pdf,editor),assistant),terminal)");
+    expect(layout()).toBe("column(row(sidebar,row(pdf,editor)),terminal)");
   });
 
   it("skips a pane that takes no space", () => {
@@ -353,7 +337,7 @@ describe("dropping a pane", () => {
 
   it("ignores buttons other than the primary one", () => {
     render(<Workspace />);
-    press(screen.getByTestId("ai-assistant-header"), 900, 60, { button: 2 });
+    press(screen.getByTestId("pdf"), 900, 60, { button: 2 });
     moveTo(100, 300);
     expect(overlay()).toBeNull();
   });
@@ -366,7 +350,7 @@ describe("dropping a pane", () => {
 
   it("starts only after the pointer travels past the threshold in any direction", () => {
     render(<Workspace />);
-    drag(screen.getByTestId("ai-assistant-header"), [900, 60], [903, 63], [896, 57]);
+    drag(screen.getByTestId("pdf"), [900, 60], [903, 63], [896, 57]);
     expect(overlay()).toBeNull();
     moveTo(900, 70);
     expect(overlay()).not.toBeNull();
@@ -375,7 +359,7 @@ describe("dropping a pane", () => {
 
   it("lets the click through after a press that never became a drag", () => {
     render(<Workspace />);
-    drag(screen.getByTestId("ai-assistant-header"), [900, 60], [902, 61]);
+    drag(screen.getByTestId("pdf"), [900, 60], [902, 61]);
     fireEvent.pointerUp(window);
     fireEvent.click(screen.getByRole("button", { name: "after" }));
     expect(clicked).toHaveBeenCalledTimes(1);
@@ -383,7 +367,7 @@ describe("dropping a pane", () => {
 
   it("swallows the click that ends a drag and lets the next one through", async () => {
     render(<Workspace />);
-    drag(screen.getByTestId("ai-assistant-header"), [900, 60], [10, 300]);
+    drag(screen.getByTestId("pdf"), [900, 60], [10, 300]);
     fireEvent.pointerUp(window);
     fireEvent.click(screen.getByRole("button", { name: "after" }));
     expect(clicked).not.toHaveBeenCalled();
@@ -394,7 +378,7 @@ describe("dropping a pane", () => {
 
   it("cancels on Escape and leaves the layout alone", () => {
     render(<Workspace />);
-    const bar = screen.getByTestId("ai-assistant-header");
+    const bar = screen.getByTestId("pdf");
     drag(bar, [900, 60], [10, 300]);
     const escapeKey = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
     act(() => {
@@ -409,7 +393,7 @@ describe("dropping a pane", () => {
 
   it("lets Escape and other keys through before the drag has started", () => {
     render(<Workspace />);
-    press(screen.getByTestId("ai-assistant-header"), 900);
+    press(screen.getByTestId("pdf"), 900);
     const escapeKey = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
     const other = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
     act(() => {
@@ -423,7 +407,7 @@ describe("dropping a pane", () => {
 
   it("cancels when the window loses focus or the pointer is cancelled", async () => {
     render(<Workspace />);
-    drag(screen.getByTestId("ai-assistant-header"), [900, 60], [10, 300]);
+    drag(screen.getByTestId("pdf"), [900, 60], [10, 300]);
     fireEvent.blur(window);
     expect(overlay()).toBeNull();
     fireEvent.pointerUp(window);
@@ -443,7 +427,7 @@ describe("dropping a pane", () => {
 
   it("restarts cleanly when a second drag begins and stops listening after unmount", () => {
     const view = render(<Workspace />);
-    const assistant = screen.getByTestId("ai-assistant-header");
+    const assistant = screen.getByTestId("pdf");
     const sidebar = screen.getByTestId("project-sidebar-bar");
     drag(assistant, [900, 60], [10, 300]);
     drag(sidebar, [100, 60], [720, 260]);

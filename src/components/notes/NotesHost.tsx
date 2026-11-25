@@ -1,20 +1,17 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { acpCatalog } from "@/lib/acp";
 import { sourceLanguageForPath } from "@/lib/document-engine";
 import { linkBase } from "@/lib/file-links";
 import { logError } from "@/lib/log";
 import { foldPath, NOTE_FILE_KIND } from "@/lib/project-notes";
-import type { ResearchTask } from "@/lib/research-tasks";
 import { noteLinks, readFileContent, readProjectBytes, releaseNoteCaches, setNoteRelatedProject } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
-import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
-import { artifactItems, experimentItems, latestRunContext } from "./note-artifacts";
+
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { createNoteItems, createNotesService, refreshNoteFacts, relatedProjectChoices, useVaultFacts } from "./notes-service";
 import type { PaperFormat, PaperPlace } from "./note-to-paper";
@@ -23,10 +20,7 @@ import { shareNote } from "./NoteShareButton";
 import { createStarterNote } from "./starter-note";
 import type { ArtifactItem, ExperimentItem, PaperTarget } from "./types";
 import { NoteLinkIndexProvider } from "./use-note-links";
-import { useResearchTasks } from "./use-research-tasks";
 
-const NO_NAMES: ReadonlyMap<string, string> = new Map();
-const NO_IDS: readonly string[] = [];
 const NO_ARTIFACTS: readonly ArtifactItem[] = [];
 const NO_EXPERIMENTS: readonly ExperimentItem[] = [];
 const NO_PAPERS: readonly PaperTarget[] = [];
@@ -47,7 +41,7 @@ export function paperFormat(path: string | null): PaperFormat | null {
 
 async function convertForPaper(text: string, format: PaperFormat): Promise<string> {
   if (format === "markdown") return text;
-  const { pandocConvert } = await import("@/features/tools-ai/pandoc-text");
+  const { pandocConvert } = await import("@/features/pandoc-text");
   return ((await pandocConvert({ source: "markdown-fragment", target: format, text })).text ?? "").trim();
 }
 
@@ -152,7 +146,6 @@ function NotesSurface() {
   const projects = useFilesStore((state) => state.projects);
   const projectsLoaded = useFilesStore((state) => state.projectsLoaded);
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
-  const research = useResearchTasksEnabled();
   const [initial] = useState(() => {
     const fragment = useNotesViewStore.getState().requestedFragment;
     return { noteId: useNotesViewStore.getState().take(), fragment };
@@ -163,7 +156,6 @@ function NotesSurface() {
   const takeRequest = useCallback(() => {
     useNotesViewStore.getState().take();
   }, []);
-  const [agentNames, setAgentNames] = useState<ReadonlyMap<string, string>>(NO_NAMES);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
 
@@ -177,48 +169,8 @@ function NotesSurface() {
   const notes = useMemo(() => noteItems(projects, vault?.facts, ungrouped), [noteItems, projects, ungrouped, vault?.facts]);
   const notesRef = useRef(notes);
   notesRef.current = notes;
-  const relatedIds = useMemo(
-    () => (research ? notes.flatMap((note) => (note.relatedProjectId ? [note.relatedProjectId] : [])) : NO_IDS),
-    [notes, research],
-  );
-  const tasks = useResearchTasks(relatedIds);
-  const namesAgents = useMemo(() => [...tasks.values()].some((list) => list.some((task) => task.agentId)), [tasks]);
-
-  useEffect(() => {
-    if (!namesAgents) return;
-    let alive = true;
-    acpCatalog().then(
-      (catalog) => {
-        if (alive) setAgentNames(new Map(catalog.map((agent) => [agent.definition.id, agent.definition.name])));
-      },
-      () => {},
-    );
-    return () => {
-      alive = false;
-    };
-  }, [namesAgents]);
-
-  const artifacts = useMemo(() => {
-    if (!research) return NO_ARTIFACTS;
-    const names = new Map(projects.map((project) => [project.id, project.name]));
-    const agentName = (task: ResearchTask) => agentNames.get(task.agentId) ?? (task.modelId || task.agentId || undefined);
-    return [...tasks]
-      .flatMap(([projectId, list]) => artifactItems(list, names.get(projectId) ?? projectId, agentName))
-      .sort((left, right) => right.updatedAt - left.updatedAt);
-  }, [agentNames, projects, research, tasks]);
-  const experiments = useMemo(
-    () => (research ? experimentItems(tasks, artifacts, notes) : NO_EXPERIMENTS),
-    [artifacts, notes, research, tasks],
-  );
   const choices = useMemo(() => relatedProjectChoices(projects), [projects]);
   const papers = useOpenPapers(projects);
-  const latestRun = useCallback(
-    (noteId: string) => {
-      const related = notesRef.current.find((note) => note.id === noteId)?.relatedProjectId;
-      return related ? latestRunContext(tasks.get(related) ?? []) : null;
-    },
-    [tasks],
-  );
 
   const service = useMemo(
     () =>
@@ -241,23 +193,21 @@ function NotesSurface() {
   const data = useMemo<NotesData>(
     () => ({
       ...service,
+      artifacts: NO_ARTIFACTS,
+      experiments: NO_EXPERIMENTS,
       notes,
       revision: vault?.revision,
       taskRevision: vault?.taskRevision,
       changedNotes: vault?.changed,
       noteTextChanged,
-      artifacts,
-      experiments,
-      researchTasks: research,
       projects: choices,
-      latestRun,
       openSettings: openNotesSettings,
       shareNote,
       openProject: openLinkedProject,
       papers,
       noteLinks,
     }),
-    [artifacts, choices, experiments, latestRun, notes, papers, research, service, vault?.changed, vault?.revision, vault?.taskRevision],
+    [choices, notes, papers, service, vault?.changed, vault?.revision, vault?.taskRevision],
   );
 
   const createNote = service.createNote;

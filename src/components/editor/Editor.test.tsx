@@ -252,22 +252,6 @@ describe("Editor shell", () => {
     expect(useDiffStore.getState().diffs).toEqual([]);
   });
 
-  it("marks the assistant's tabs and closes them from the tab bar", () => {
-    openFile("main.tex", {
-      openTabs: ["main.tex", "draft.tex"],
-      tabOrder: { "main.tex": 1, "draft.tex": 2 },
-      assistantTabs: ["draft.tex"],
-    });
-    render(<Editor />);
-
-    expect(screen.getByText(shell.assistantTab)).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(shell.closeAssistantTabsCount_one));
-
-    expect(screen.queryByText("draft.tex")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(shell.closeAssistantTabsCount_one)).not.toBeInTheDocument();
-    expect(useFilesStore.getState().openTabs).toEqual(["main.tex"]);
-  });
-
   it("closes a tab on middle click", () => {
     openFile("main.tex", {
       openTabs: ["main.tex", "draft.tex"],
@@ -836,7 +820,6 @@ describe("Editor shell", () => {
     expect(wrapSelection).toHaveBeenCalledTimes(1);
   });
 
-
   it.each([
     ["main.tex", "\\textit{", "}"],
     ["notes.typ", "_", "_"],
@@ -916,7 +899,6 @@ describe("Editor in Zen mode", () => {
         snapshot: {
           showTree: true,
           railTab: "files",
-          assistantOpen: false,
           workspaceHidden: false,
           viewMode: "editor",
           terminalOpen: false,

@@ -91,13 +91,6 @@ vi.mock("@codemirror/commands", async (importOriginal) => ({
   undo: codeMirrorMocks.undo,
 }));
 
-vi.mock("@/lib/ai-tools", () => ({
-  initAiPdfCaptureFlag: vi.fn(),
-}));
-vi.mock("@/lib/mcp-bridge", () => ({
-  startMcpBridge: vi.fn(async () => () => {}),
-}));
-
 const assistantLayoutMocks = vi.hoisted(() => ({
   fileSidebarWidth: vi.fn(() => 266),
   sidebarMinimumPercent: vi.fn(() => 48),
@@ -249,9 +242,6 @@ vi.mock("@/components/editor/LanguageServiceRuntimeBoundary", () => ({
   LanguageServiceRuntimeUnavailable: () => null,
 }));
 vi.mock("@/components/library/Library", () => ({ Library: () => null }));
-vi.mock("@/components/ai/ExternalToolApprovals", () => ({
-  ExternalToolApprovals: () => null,
-}));
 vi.mock("@/components/layout/AboutModal", () => ({ AboutModal: () => null }));
 vi.mock("@/components/layout/EnginePickerModal", () => ({ EnginePickerModal: () => null }));
 vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
@@ -269,7 +259,6 @@ vi.mock("@/components/layout/OpenFolderGuards", () => ({
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
 vi.mock("@/components/notes/NotesHost", () => ({ NotesHost: () => null }));
-vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
 vi.mock("@/components/editor/VersioningModal", () => ({
   VersioningModal: () => <div data-testid="versioning-modal" />,
@@ -277,9 +266,6 @@ vi.mock("@/components/editor/VersioningModal", () => ({
 vi.mock("@/components/editor/HotkeysModal", () => ({ HotkeysModal: () => null }));
 vi.mock("@/components/tour/TourGuide", () => ({ TourGuide: () => null }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => null }));
-vi.mock("@/components/tools/GeneratorsToolView", () => ({
-  GeneratorsToolView: () => <div data-testid="generators-tool-view" />,
-}));
 vi.mock("@/components/tools/SymbolsToolView", () => ({
   SymbolsToolView: () => <div data-testid="symbols-tool-view" />,
 }));
@@ -398,7 +384,6 @@ describe("project dock layout", () => {
     useSettingsStore.setState({
       terminalOpen: false,
       showTree: false,
-      chatFloating: false,
       railTab: "files",
       appFontSize: 16,
       viewMode: "split",
@@ -462,7 +447,7 @@ describe("project dock layout", () => {
     expect(document.querySelector('[data-testid="versioning-modal"]')).not.toBeNull();
   });
 
-  it.each(["generators", "symbols"])("keeps the project open under the %s tool", async (page) => {
+  it.each(["symbols"])("keeps the project open under the %s tool", async (page) => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");

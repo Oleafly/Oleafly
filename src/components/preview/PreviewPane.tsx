@@ -25,7 +25,6 @@ import {
   FileText,
   Minus,
   Play,
-  Sparkles,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,6 @@ import {
   canUseSyncTexForCheckpoint,
   inverseFromClick,
 } from "@/features/synctex";
-import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
   pdfSyncNoteSaved,
   revealInDir,
@@ -101,7 +99,6 @@ const PdfAnnotationsHost = lazy(
   () => import("./use-pdf-annotations").then((module) => ({ default: module.PdfAnnotationsHost })),
   { warm: () => useSettingsStore.getState().pdfReview },
 );
-
 
 export type StartupStageStatus =
   | "pending"
@@ -1193,12 +1190,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       {tab === "logs" && (hasError || offer !== null) && (
         <div className="ml-auto flex items-center gap-1">
           <CompileOfferButton placement="log" />
-          {hasError && (
-            <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
-              <Sparkles data-icon="inline-start" />
-              {t(($) => $.preview.toolbar.askAi)}
-            </Button>
-          )}
+
         </div>
       )}
 

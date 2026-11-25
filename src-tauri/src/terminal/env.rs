@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
-use std::ffi::{OsStr, OsString};
+#[cfg(test)]
+use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use portable_pty::CommandBuilder;
@@ -19,7 +21,7 @@ pub(crate) struct CliEnv {
 
 impl CliEnv {
     pub(crate) fn current() -> Self {
-        Self::from_program(crate::acp::cli_program())
+        Self::from_program(crate::program_locator::planned_cli_shim())
     }
 
     pub(crate) fn from_program(program: Option<PathBuf>) -> Self {
@@ -38,6 +40,7 @@ impl CliEnv {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn prepend_path(current: Option<&OsStr>, dir: &Path) -> OsString {
     let mut entries = vec![dir.to_path_buf()];
     if let Some(current) = current {

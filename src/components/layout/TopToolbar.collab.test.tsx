@@ -69,7 +69,7 @@ beforeEach(() => {
     tree: [{ path: "main.tex", is_dir: false }],
   } as unknown as ReturnType<typeof useFilesStore.getState>);
   useCompileStore.setState({ status: "idle", lastCompileCheckpoint: null });
-  useSettingsStore.setState({ viewMode: "split", assistantOpen: false, workspaceHidden: false });
+  useSettingsStore.setState({ viewMode: "split", workspaceHidden: false });
   useShareDialog.setState({ projectId: null, fromCopy: false });
   useCollabLiveStore.setState({
     projectId: "grant",

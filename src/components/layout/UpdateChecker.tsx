@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
-const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases";
+const RELEASES_URL = "https://github.com/peplxx/oleafly-no-ai/releases";
 
 type State =
   | { kind: "idle" }

@@ -4,8 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOUR_STORAGE_KEY, useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
-import { getKindModes } from "@/lib/wysiwyg-mode";
-import { fileMode, useVisualModeStore } from "@/store/visual-mode";
+import { useVisualModeStore } from "@/store/visual-mode";
 
 const mocks = vi.hoisted(() => ({
   libraryRoot: vi.fn(),
@@ -147,74 +146,6 @@ describe("Settings section resets", () => {
     await waitFor(() =>
       expect(
         screen.queryByRole("alertdialog", { name: /Reset General settings/u }),
-      ).not.toBeInTheDocument(),
-    );
-  });
-
-  it("resets only Experimentation preferences after confirmation", async () => {
-    const settings = useSettingsStore.getState();
-    settings.setLatexTools(true);
-    settings.setAiCompletion(true);
-    settings.setAiCompletionModel("openai", "gpt-fast");
-    useVisualModeStore.getState().loadProject("visual-project");
-    useVisualModeStore.getState().setMode("main.tex", "visual");
-
-    settings.setGrammarDialect("british");
-    settings.setAccentColor("#db2777");
-    settings.setEditorTheme("dark", "dracula");
-    settings.setDefaultLatexEngine("latexmk");
-    settings.setSettingsInitialSection("experimentation");
-
-    render(<SettingsModal />);
-    await screen.findByRole("heading", { name: "Experimentation" });
-    expect(screen.queryByRole("switch", { name: "Visual editor" })).not.toBeInTheDocument();
-
-    const reset = screen.getByRole("button", { name: "Reset to defaults" });
-    expect(reset).toHaveAccessibleDescription(
-      "Some settings here differ from their defaults.",
-    );
-    fireEvent.click(reset);
-
-    const confirmation = screen.getByRole("alertdialog", {
-      name: /Reset Experimentation settings/u,
-    });
-    expect(confirmation).toHaveTextContent(
-      "Restore Experimentation preferences to their defaults.",
-    );
-    expect(useSettingsStore.getState()).toMatchObject({
-      latexTools: true,
-    });
-
-    fireEvent.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
-    );
-
-    expect(reset).not.toHaveAccessibleDescription();
-    expect(useSettingsStore.getState()).toMatchObject({
-      latexTools: false,
-      aiCompletion: false,
-      aiCompletionProvider: "",
-      aiCompletionModel: "",
-      grammarDialect: "british",
-      accentColor: "#db2777",
-      editorThemeDark: "dracula",
-      defaultLatexEngine: "latexmk",
-    });
-    expect(localStorage.getItem("oleafly.latexTools")).toBe("0");
-    expect(localStorage.getItem("oleafly.aiCompletion")).toBe("0");
-    expect(localStorage.getItem("oleafly.aiCompletion.model")).toBe("");
-    expect(fileMode(useVisualModeStore.getState(), "main.tex")).toBe("visual");
-    expect(getKindModes("visual-project")).toEqual({ source: "visual" });
-    expect(localStorage.getItem("oleafly.harper.dialect")).toBe("british");
-    expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
-    expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
-    expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("latexmk");
-    expect(mocks.setPreference).not.toHaveBeenCalled();
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("alertdialog", {
-          name: /Reset Experimentation settings/u,
-        }),
       ).not.toBeInTheDocument(),
     );
   });

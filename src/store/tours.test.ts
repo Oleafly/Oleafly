@@ -133,17 +133,6 @@ describe("tour state", () => {
     expect(store.getState().enabled).toBe(false);
   });
 
-  it("completes and dismisses tours independently", () => {
-    const store = createTourState(storage);
-    store.getState().start("home");
-    store.getState().complete();
-    store.getState().start("workspace");
-    store.getState().dismiss();
-    expect(store.getState().tours.home.status).toBe("completed");
-    expect(store.getState().tours.workspace.status).toBe("dismissed");
-    expect(store.getState().tours.ai.status).toBe("dismissed");
-  });
-
   it("enables and disables individual tours without resetting the others", () => {
     const store = createTourState(storage);
     store.getState().complete("home");
@@ -155,26 +144,6 @@ describe("tour state", () => {
     expect(store.getState().enabled).toBe(true);
     expect(store.getState().tours.workspace.status).toBe("pending");
     expect(store.getState().tours.home.status).toBe("completed");
-  });
-
-  it("rejects automatic and manual starts for unavailable tours", () => {
-    const store = createTourState(storage);
-    expect(store.getState().start("settings")).toBe(false);
-    expect(store.getState().restart("ai-settings")).toBe(false);
-    store.getState().setTourEnabled("diagram", true);
-    expect(store.getState().activeTourId).toBeNull();
-    expect(store.getState().tours.settings.status).toBe("dismissed");
-    expect(store.getState().tours["ai-settings"].status).toBe("dismissed");
-    expect(store.getState().tours.diagram.status).toBe("dismissed");
-  });
-
-  it("dismisses unavailable tours when older persisted state is migrated", () => {
-    const current = defaultPersistedTourState();
-    current.tours.settings.status = "pending";
-    current.tours.ai.status = "completed";
-    const migrated = migrateTourState(current);
-    expect(migrated.tours.settings.status).toBe("dismissed");
-    expect(migrated.tours.ai.status).toBe("dismissed");
   });
 
   it("automatically disables after the final pending tour becomes terminal", () => {

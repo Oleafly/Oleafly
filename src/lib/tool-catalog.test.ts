@@ -34,22 +34,18 @@ describe("tool catalog identity", () => {
     ).toContain("pdf-to-latex");
   });
 
-  it("keeps the agreed 32 tools in the converter section", () => {
+  it("keeps the 28 non-AI tools in the converter section", () => {
     const converters = TOOL_DEFINITIONS.filter((tool) => tool.category === "converters");
     expect(converters.map((tool) => tool.id)).toEqual([
-      "image-to-latex",
       "pdf-to-latex",
       "visual-typst-editor",
       "arxiv-to-latex",
       "arxiv-to-typst",
       "csv-to-typst",
-      "equation-to-latex",
-      "equation-to-typst",
       "excel-to-latex",
       "excel-to-typst",
       "html-to-latex",
       "html-to-typst",
-      "image-to-typst",
       "latex-to-html",
       "latex-to-image",
       "latex-to-markdown",

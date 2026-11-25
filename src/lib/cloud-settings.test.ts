@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import type { ConfigPreferences } from "@/lib/settings-file/schema";
 import { readLocalSnapshot } from "@/lib/settings-file/transfer";
 import { useSettingsStore } from "@/store/settings";
 import { readCloudSettings, withoutLocalOnlySettings } from "./cloud-settings";
@@ -65,27 +64,6 @@ describe("settings that stay on each computer", () => {
     expect(withoutLocalOnlySettings({ general: { language: "fr" }, research: { commandNetwork: true } })).toEqual({
       general: { language: "fr" },
     });
-  });
-
-  it("never applies a network choice synced from another computer", () => {
-    const local = {
-      ai_system_prompt: "",
-      ai_pdf_capture: true,
-      ai_personas: [],
-      ai_reasoning_summaries: false,
-      checkpoints_enabled: true,
-      checkpoint_notifications: true,
-      research_keep_awake: true,
-      research_notifications: true,
-      research_command_network: false,
-      research_time_budget_minutes: 120,
-    } as unknown as ConfigPreferences;
-    const read = readCloudSettings(
-      { research: { commandNetwork: true, timeBudgetMinutes: 240 } },
-      readLocalSnapshot(local, "system"),
-    );
-    if (!read.ok) throw new Error("expected readable settings");
-    expect(read.changed).toEqual(["research.timeBudgetMinutes"]);
   });
 
   it("never applies a shell synced from another computer", () => {

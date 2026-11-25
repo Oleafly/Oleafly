@@ -49,7 +49,7 @@ export interface PreviewWorkspaceSnapshot extends
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
-  | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" | "clear-log" }
+  | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "trust-folder" | "clear-log" }
   | { action: "preview-page"; page: number }
   | { action: "auto-compile" | "syntax-check" | "stop-on-error" | "code-execution"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
@@ -175,13 +175,6 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           const { openFileAndGotoLine } = await import("@/features/synctex");
           const column = Number.isInteger(payload.column) && (payload.column ?? 0) >= 1 ? payload.column : undefined;
           await openFileAndGotoLine(payload.file, payload.line, column);
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
-          await getCurrentWindow().setFocus();
-          break;
-        }
-        case "ask-ai": {
-          const { askAiAboutCompileErrors } = await import("@/features/ask-ai-compile-errors");
-          await askAiAboutCompileErrors();
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;

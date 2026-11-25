@@ -27,10 +27,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
     },
   };
 });
-vi.mock("./NoteAssistant", async () => {
-  const { forwardRef } = await import("react");
-  return { NoteAssistant: forwardRef(() => null) };
-});
 vi.mock("./NotesWorkspace", async () => {
   const { useNotesData } = await import("./notes-data");
   const { NoteDocument } = await import("./NoteDocument");

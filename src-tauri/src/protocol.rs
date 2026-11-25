@@ -1,16 +1,12 @@
 use serde::Serialize;
 
 pub const PROTOCOL_VERSION: u32 = 7;
-pub const CAPABILITIES: [&str; 12] = [
-    "agent-server",
-    "agent-stream",
-    "chats",
+pub const CAPABILITIES: [&str; 8] = [
     "checkpoints",
     "collab",
     "compile",
     "git",
     "initial-state",
-    "mcp",
     "search",
     "synctex",
     "templates",

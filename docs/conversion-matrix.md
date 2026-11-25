@@ -15,9 +15,9 @@ Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 | Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown (.md)](#typst-to-markdown) | ✅ [LaTeX (.tex)](#typst-to-latex) | — | — | ✅ [Page PNG / SVG](#typst-to-image) |
 | Word (.docx) | ✅ [PDF](#docx-to-pdf) | — | ✅ [HTML (MathML)](#docx-to-html) | ✅ [Markdown project](#docx-to-markdown) | ✅ [LaTeX project](#docx-to-latex) | ✅ [Typst project](#docx-to-typst) | — | — |
 | HTML | ✅ [PDF](#html-to-pdf) | ✅ [Word (.docx)](#html-to-docx) | — | ✅ [Markdown project](#html-to-markdown) | ✅ [LaTeX project](#html-to-latex) | ✅ [Typst project](#html-to-typst) | — | — |
-| PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | ✅ [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>✅ [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | ✅ [Typst](#pdf-to-typst) | — | ✅ [Page PNG](#pdf-to-image) |
-| Image (equation or photo) | — | — | — | — | ✅ [LaTeX equation](#image-to-latex) | ✅ [Typst source](#image-to-typst) | — | — |
-| Typed or photographed equation | — | — | — | — | ✅ [LaTeX equation](#equation-to-latex) | ✅ [Typst equation](#equation-to-typst) | — | — |
+| PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | ✅ [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex) | ✅ [Typst](#pdf-to-typst) | — | ✅ [Page PNG](#pdf-to-image) |
+| Image (equation or photo) | — | — | — | — | — | — | — | — |
+| Typed or photographed equation | — | — | — | — | — | — | — | — |
 | CSV / XLSX | — | — | — | — | ✅ [LaTeX booktabs table](#csv-to-latex) | ✅ [Typst table](#csv-to-typst) | — | — |
 | Mermaid diagram | — | — | — | — | ✅ [TikZ or LaTeX figure](#mermaid-to-latex) | ✅ [Fletcher diagram](#mermaid-to-typst) | — | — |
 | arXiv id | — | — | — | — | ✅ [LaTeX project](#arxiv-to-latex) | ✅ [Typst project](#arxiv-to-typst) | ✅ [BibTeX](#arxiv-to-bibtex) | — |
@@ -379,57 +379,6 @@ The local PDF pipeline preserves reading order and figures, then writes Typst.
 - **Status:** available
 - **Surface:** Tools page
 - **Gap:** G13
-
-### pdf-scanned-to-latex
-
-The Tools model (local Ollama unless you pick another) transcribes scanned pages into editable LaTeX.
-
-- **Direction:** tool
-- **Engine:** local-model
-- **Status:** available
-- **Surface:** PDF to LaTeX tool
-- **Gap:** G2
-
-## Image (equation or photo)
-
-### image-to-latex
-
-The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
-
-- **Direction:** tool
-- **Engine:** local-model
-- **Status:** available
-- **Surface:** Tools page, Editor toolbar
-
-### image-to-typst
-
-The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
-
-- **Direction:** tool
-- **Engine:** local-model
-- **Status:** available
-- **Surface:** Tools page, Editor toolbar
-
-## Typed or photographed equation
-
-### equation-to-latex
-
-Normalize typed math directly, or read natural-language and photographed equations with the Tools model (local Ollama unless you pick another).
-
-- **Direction:** tool
-- **Engine:** local-model
-- **Status:** available
-- **Surface:** Tools page
-
-### equation-to-typst
-
-Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through the Tools model (local Ollama unless you pick another) first.
-
-- **Direction:** tool
-- **Engine:** internal
-- **Status:** available
-- **Surface:** Tools page, Equation tool (Typst mode), Paste as Typst math in a Typst file
-- **Pandoc route:** `--from=latex --to=typst`
 
 ## CSV / XLSX
 

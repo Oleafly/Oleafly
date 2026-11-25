@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicU64;
 use tauri::async_runtime::Mutex;
 
 pub struct AppState {
+    pub active_project: Mutex<Option<String>>,
     pub compile_lock: Mutex<()>,
     pub figure_compile_lock: Mutex<()>,
     pub pandoc_install_lock: Mutex<()>,
@@ -128,6 +129,7 @@ impl oleafly_history::PublicationGate for CompileCancel {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            active_project: Mutex::new(None),
             compile_lock: Mutex::new(()),
             figure_compile_lock: Mutex::new(()),
             pandoc_install_lock: Mutex::new(()),
@@ -166,4 +168,22 @@ mod tests {
             "a failed visibility operation must not suppress a later stop"
         );
     }
+}
+
+#[tauri::command]
+pub async fn set_active_project(
+    webview: tauri::Webview,
+    state: tauri::State<'_, AppState>,
+    project_id: Option<String>,
+) -> Result<(), String> {
+    if webview.label() != "main" || webview.window().label() != "main" {
+        return Err("Only the main window can switch projects.".into());
+    }
+    if let Some(id) = project_id.as_deref() {
+        crate::paths::validate_project_id(id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(id)?;
+        crate::project::read_meta(id)?;
+    }
+    *state.active_project.lock().await = project_id;
+    Ok(())
 }

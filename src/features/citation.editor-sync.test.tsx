@@ -15,14 +15,20 @@ vi.mock("@/lib/tauri", () => ({
   projectManifestHome: async () => "library",
   projectMutationGeneration: async () => 1,
   listFiles: async () => mocks.tree,
-  listFileTree: async () => ({ entries: mocks.tree, truncated: false }),
+  listFileTree: async () => ({ entries: mocks.tree, truncated: false ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   readFileContent: async (_id: string, path: string) => mocks.disk[path] ?? "",
   writeFileContent: async (_id: string, path: string, content: string) => {
     mocks.disk[path] = content;
-    return { path, generation: 1 };
+    return { path, generation: 1 ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+};
   },
   mcpSetActiveProject: async () => {},
   appVersion: async () => "0.4.6",
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/cross-window", () => ({ notifyProjectFilesChanged: vi.fn() }));
 vi.mock("@/store/project-index", () => ({

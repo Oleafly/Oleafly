@@ -7,7 +7,7 @@ import { type TextAlign, textAlignOf } from "@oleafly/wysiwyg/text-align-values"
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Eraser, type LucideIcon, Smile } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";

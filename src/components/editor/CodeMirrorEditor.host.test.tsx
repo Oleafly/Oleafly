@@ -102,7 +102,6 @@ import { installCollabEditorPort } from "@/lib/collab-live-bridge";
 import { setCollabEditorExtension } from "./cm/collab-slot";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useFilesStore } from "@/store/files";
-import { useInlineEditStore } from "@/store/inlineEdit";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
@@ -137,7 +136,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  useInlineEditStore.getState().reset();
 });
 
 describe("features only the desktop host supplies", () => {
@@ -374,18 +372,6 @@ describe("extra key bindings", () => {
     useSettingsStore.setState({ editorAutoCloseBrackets: false, editorAutoCloseEnvironments: true });
     expect(enter(view)).toBe(false);
     expect(mocks.closeEnvironmentOnEnter).toHaveBeenCalledOnce();
-    view.destroy();
-  });
-
-  it("toggles an inline AI edit with Mod-L", () => {
-    const toggle = binding(mountProps().extraKeymap, "Mod-l");
-    const view = new EditorView({
-      state: EditorState.create({ doc: "hello world", selection: { anchor: 0, head: 5 } }),
-    });
-    expect(toggle(view)).toBe(true);
-    expect(useInlineEditStore.getState().session).toMatchObject({ original: "hello" });
-    toggle(view);
-    expect(useInlineEditStore.getState().session).toBeNull();
     view.destroy();
   });
 });

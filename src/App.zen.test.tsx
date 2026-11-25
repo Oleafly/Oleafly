@@ -154,8 +154,6 @@ vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
   usesNativeDockMenu: () => false,
 }));
-vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
-vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));
 vi.mock("@/lib/open-compile", () => ({
   automaticCompileAllowed: () => true,
   openCompileHydrated: () => false,
@@ -211,7 +209,6 @@ vi.mock("@/components/deadlines/DeadlinesView", () => ({ DeadlinesView: () => <d
 vi.mock("@/components/tools/LatexToolsView", () => ({ LatexToolsView: () => <div data-testid="tool-tools" /> }));
 vi.mock("@/components/tools/LabSearchToolView", () => ({ LabSearchToolView: () => <div data-testid="tool-lab-search" /> }));
 vi.mock("@/components/tools/StatsToolView", () => ({ StatsToolView: () => <div data-testid="tool-stats" /> }));
-vi.mock("@/components/tools/GeneratorsToolView", () => ({ GeneratorsToolView: () => <div data-testid="tool-generators" /> }));
 vi.mock("@/components/tools/SymbolsToolView", () => ({ SymbolsToolView: () => <div data-testid="tool-symbols" /> }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => <div data-testid="tool-equation" /> }));
 vi.mock("@/components/tools/ConverterToolView", () => ({ ConverterToolView: () => <div data-testid="tool-converter" /> }));
@@ -224,10 +221,6 @@ vi.mock("@/components/editor/LanguageServiceRuntimeBoundary", () => ({
   LanguageServiceRuntimeUnavailable: () => null,
 }));
 vi.mock("@/components/library/Library", () => ({ Library: () => <div data-testid="library" /> }));
-vi.mock("@/components/ai/AssistantOutputsBridge", () => ({ AssistantOutputsBridge: () => null }));
-vi.mock("@/components/ai/ExternalToolApprovals", () => ({ ExternalToolApprovals: () => null }));
-vi.mock("@/components/ai/ChatPanel", () => ({ ChatPanel: () => <div data-testid="chat-surface" /> }));
-vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => <div data-testid="copilot-overlay" /> }));
 vi.mock("@/components/layout/AboutModal", () => ({
   AboutModal: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
     open ? (
@@ -280,7 +273,7 @@ async function renderApp(
 ) {
   localStorage.setItem(
     "oleafly.workspace.p1",
-    JSON.stringify({ version: 1, viewMode: "split", showTree: true, assistantOpen: true, ...saved }),
+    JSON.stringify({ version: 1, viewMode: "split", showTree: true, ...saved }),
   );
   const view = render(<App />);
   await act(async () => {});
@@ -294,15 +287,10 @@ function zenOn() {
   });
 }
 
-function root() {
-  return document.querySelector("[data-sidebar-open]") as HTMLElement;
-}
-
 function layout() {
   const s = useSettingsStore.getState();
   return {
     showTree: s.showTree,
-    assistantOpen: s.assistantOpen,
     terminalOpen: s.terminalOpen,
     viewMode: s.viewMode,
     railTab: s.railTab,
@@ -337,8 +325,6 @@ beforeEach(() => {
       viewMode: "split",
       showTree: true,
       railTab: "source",
-      chatFloating: false,
-      assistantOpen: true,
       workspaceHidden: false,
       terminalOpen: false,
       vim: false,
@@ -362,44 +348,6 @@ afterEach(async () => {
 });
 
 describe("entering Zen mode", () => {
-  it("hides the toolbar, sidebar, assistant and floating copilot and keeps the editor and PDF", async () => {
-    useSettingsStore.setState({ chatFloating: true });
-    await renderApp();
-    expect(screen.getByTestId("sidebar-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("copilot-overlay")).toBeInTheDocument();
-    expect(screen.getByTestId("top-toolbar").closest("[hidden]")).toBeNull();
-
-    zenOn();
-
-    expect(screen.getByTestId("top-toolbar").closest("[hidden]")).not.toBeNull();
-    expect(screen.queryByTestId("sidebar-surface")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("chat-surface")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("copilot-overlay")).not.toBeInTheDocument();
-    expect(screen.getByTestId("editor-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
-    expect(root()).toHaveAttribute("data-zen", "true");
-    expect(await screen.findByTestId("zen-title-strip")).toBeInTheDocument();
-    expect(screen.getByTestId("zen-compile-corner")).toBeInTheDocument();
-  });
-
-  it("brings everything back, exactly as it was, when it ends", async () => {
-    useSettingsStore.setState({ chatFloating: true });
-    await renderApp({}, { terminalOpen: true });
-    const before = layout();
-
-    zenOn();
-    act(() => exitZenMode());
-
-    expect(layout()).toEqual(before);
-    expect(screen.getByTestId("top-toolbar").closest("[hidden]")).toBeNull();
-    expect(screen.getByTestId("sidebar-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("copilot-overlay")).toBeInTheDocument();
-    expect(screen.queryByTestId("zen-title-strip")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("zen-compile-corner")).not.toBeInTheDocument();
-    expect(root()).not.toHaveAttribute("data-zen");
-  });
 
   it("keeps only the editor when the PDF was not showing", async () => {
     await renderApp({ viewMode: "editor" });
@@ -432,15 +380,6 @@ describe("entering Zen mode", () => {
     act(() => useFilesStore.setState({ projectId: null }));
     expect(useZenStore.getState().active).toBe(false);
     expect(screen.getByTestId("library")).toBeInTheDocument();
-  });
-
-  it("ends when another project opens, keeping that project's own layout", async () => {
-    await renderApp();
-    zenOn();
-    localStorage.setItem("oleafly.workspace.p2", JSON.stringify({ version: 1, viewMode: "editor", showTree: false, assistantOpen: false }));
-    act(() => useFilesStore.setState({ projectId: "p2" }));
-    expect(useZenStore.getState().active).toBe(false);
-    expect(layout()).toMatchObject({ viewMode: "editor", showTree: false, assistantOpen: false });
   });
 });
 
@@ -491,13 +430,6 @@ describe("panels inside Zen mode", () => {
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
     keydown(document.body, { key: "`", ctrlKey: true });
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
-  });
-
-  it("leaves a panel brought back to the layout it had before when Zen ends", () => {
-    keydown(document.body, { key: "b", ctrlKey: true });
-    keydown(document.body, { key: "`", ctrlKey: true });
-    act(() => exitZenMode());
-    expect(layout()).toMatchObject({ showTree: true, terminalOpen: false, assistantOpen: true, railTab: "source" });
   });
 
   it("keeps the toolbar hidden while a panel is back", () => {

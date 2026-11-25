@@ -6,8 +6,6 @@ import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { COMMENT_COLORS } from "@/lib/comment-color";
 import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
-import { PERSONA_COLORS } from "@/lib/persona-colors";
-import { SAVED_INSTRUCTION_LIMITS } from "@/lib/saved-instructions";
 import {
   NOTE_WIDTHS,
   NOTES_CALLOUT_STYLES,
@@ -54,7 +52,7 @@ import { isLintRuleName } from "@/lib/proofreading/lint-profile";
 import type { ThemePreference } from "@/lib/theme";
 import { parseThemeCustomizationImport, type ThemeCustomization } from "@/lib/theme-customization";
 import { themePresetIds } from "@/lib/theme-presets";
-import type { AppConfig, Persona, SavedInstruction } from "@/lib/tauri";
+import type { AppConfig, } from "@/lib/tauri";
 import type { CompileMode } from "@/store/compile";
 import {
   EDITOR_KEY_DEFINITIONS,
@@ -129,17 +127,7 @@ export interface CompilePreferences {
   followOpenFile: boolean;
 }
 
-export type ConfigPreferences = Pick<
-  AppConfig,
-  "ai_system_prompt" | "ai_pdf_capture" | "ai_personas" | "checkpoints_enabled" | "checkpoint_notifications"
-> & {
-  ai_saved_instructions: SavedInstruction[];
-  ai_reasoning_summaries: boolean;
-  research_keep_awake: boolean;
-  research_notifications: boolean;
-  research_command_network: boolean;
-  research_time_budget_minutes: number;
-};
+export type ConfigPreferences = Pick<AppConfig, "checkpoints_enabled" | "checkpoint_notifications">;
 
 export interface SettingsSnapshot {
   preferences: PreferenceValues;
@@ -352,76 +340,6 @@ const words: ValueType<string[]> = {
     return ok(stored);
   },
 };
-
-const recordId = text(200, { required: true });
-
-type FieldReader = <T>(key: string, type: ValueType<T>) => Parsed<T>;
-
-type NamedItemSpec<T> = {
-  known: ReadonlySet<string>;
-  idPrefix: string;
-  build: (id: string, read: FieldReader) => Parsed<T>;
-};
-
-function parseNamedItem<T>(item: unknown, at: string, ids: Set<string>, spec: NamedItemSpec<T>): Parsed<T> {
-  if (!isRecord(item)) return fail({ kind: "object" }, at);
-  for (const key of Object.keys(item)) {
-    if (!spec.known.has(key)) return fail({ kind: "unknownKey" }, `${at}.${key}`);
-  }
-  const id = item.id === undefined ? ok(`${spec.idPrefix}-${crypto.randomUUID()}`) : recordId.parse(item.id);
-  if (!id.ok) return fail(id.issue, `${at}.id`);
-  if (ids.has(id.value)) return fail({ kind: "duplicate" }, `${at}.id`);
-  ids.add(id.value);
-  return spec.build(id.value, (key, type) => {
-    const value = type.parse(item[key]);
-    return value.ok ? value : fail(value.issue, `${at}.${key}`);
-  });
-}
-
-function namedList<T extends { id: string }>(
-  keys: readonly string[],
-  max: number,
-  idPrefix: string,
-  build: (id: string, read: FieldReader) => Parsed<T>,
-): ValueType<T[]> {
-  const spec: NamedItemSpec<T> = { known: new Set(["id", ...keys]), idPrefix, build };
-  return {
-    parse(raw) {
-      if (!Array.isArray(raw) || raw.length > max) return fail({ kind: "list", max });
-      const ids = new Set<string>();
-      const output: T[] = [];
-      for (const [index, item] of raw.entries()) {
-        const entry = parseNamedItem(item, `[${index}]`, ids, spec);
-        if (!entry.ok) return entry;
-        output.push(entry.value);
-      }
-      return ok(output);
-    },
-  };
-}
-
-const personas = namedList<Persona>(["name", "color", "prompt"], 50, "persona", (id, read) => {
-  const name = read("name", text(200, { required: true }));
-  if (!name.ok) return name;
-  const color = read("color", oneOf(PERSONA_COLORS.map((entry) => entry.key)));
-  if (!color.ok) return color;
-  const prompt = read("prompt", text(200_000, { multiline: true, required: true }));
-  if (!prompt.ok) return prompt;
-  return ok({ id, name: name.value.trim(), color: color.value, prompt: prompt.value });
-});
-
-const savedInstructions = namedList<SavedInstruction>(
-  ["name", "text"],
-  SAVED_INSTRUCTION_LIMITS.count,
-  "instruction",
-  (id, read) => {
-    const name = read("name", text(SAVED_INSTRUCTION_LIMITS.name, { required: true }));
-    if (!name.ok) return name;
-    const body = read("text", text(SAVED_INSTRUCTION_LIMITS.text, { multiline: true, required: true }));
-    if (!body.ok) return body;
-    return ok({ id, name: name.value.trim(), text: body.value.trim() });
-  },
-);
 
 const hiddenFiles = textList(200, 256, (pattern) => pattern === pattern.trim());
 const lintRuleList = textList(2_000, 128, isLintRuleName);
@@ -722,17 +640,6 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   config("data.checkpoints.afterCompile", "checkpoints_enabled", bool),
   config("data.checkpoints.notifyOnFailure", "checkpoint_notifications", bool),
 
-  config("ai.customInstructions", "ai_system_prompt", text(200_000, { multiline: true })),
-  config("ai.includePdfPreview", "ai_pdf_capture", bool),
-  config("ai.reasoningSummaries", "ai_reasoning_summaries", bool),
-  config("ai.personas", "ai_personas", personas),
-  config("ai.savedInstructions", "ai_saved_instructions", savedInstructions),
-
-  config("research.keepAwake", "research_keep_awake", bool),
-  config("research.notifications", "research_notifications", bool),
-  config("research.commandNetwork", "research_command_network", bool),
-  config("research.timeBudgetMinutes", "research_time_budget_minutes", numberOf([30, 60, 120, 240, 480, 720, 1440])),
-
   pref("engine.defaultLatexEngine", "defaultLatexEngine", oneOf(["tectonic", "latexmk"] as const)),
   compile("engine.compile.autoCompile", "autoCompile", bool),
   compile("engine.compile.mode", "compileMode", oneOf(["normal", "fast"] as const)),
@@ -747,7 +654,4 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("experimentation.notes", "notes", bool),
   pref("experimentation.overleafLive", "overleafLive", bool),
   pref("experimentation.pdfReview", "pdfReview", bool),
-  pref("experimentation.aiCompletion.enabled", "aiCompletion", bool),
-  pref("experimentation.aiCompletion.provider", "aiCompletionProvider", text(200)),
-  pref("experimentation.aiCompletion.model", "aiCompletionModel", text(300)),
 ];

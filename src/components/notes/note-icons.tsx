@@ -1,3 +1,4 @@
+import type { Resources } from "@/i18n/resources-types";
 import {
   Activity,
   Atom,
@@ -132,7 +133,6 @@ import { useTranslation } from "react-i18next";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { Badge } from "@/components/ui/badge";
 import { TONES, type Tone } from "@/components/ui/tones";
-import type { Resources } from "@/i18n/resources-types";
 import { cn } from "@/lib/utils";
 import type { ArtifactKind, Author, NoteColor } from "./types";
 

@@ -1,18 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { panelLayoutKey } from "@/lib/panel-layout";
 import { useFilesStore } from "@/store/files";
 import { DEFAULT_PANE_LAYOUT, layoutKey, movePane, reportSplitSizes, usePaneLayoutStore } from "@/store/pane-layout";
 import { useSettingsStore } from "@/store/settings";
 import {
   SAVED_LAYOUTS_KEY,
   SAVED_LAYOUT_LIMIT,
-  savedLayoutInEffect,
   useSavedLayoutsStore,
-  type SavedLayout,
 } from "./saved-layouts";
 
-const FLAGS = { viewMode: "split", showTree: true, assistantOpen: true, workspaceHidden: false, terminalOpen: false } as const;
+const FLAGS = { viewMode: "split", showTree: true, workspaceHidden: false, terminalOpen: false } as const;
 
 function names(): string[] {
   return useSavedLayoutsStore.getState().layouts.map((layout) => layout.name);
@@ -36,35 +33,6 @@ afterEach(() => {
 });
 
 describe("saved layouts", () => {
-  it("saves the arrangement, the sizes on screen and the open panes, and applies them in another project", () => {
-    usePaneLayoutStore.getState().move("assistant", { kind: "pane", pane: "pdf", side: "bottom" });
-    reportSplitSizes("horizontal", { sidebar: 35, editorpdf: 65 });
-    useSettingsStore.setState({ terminalOpen: true });
-    expect(useSavedLayoutsStore.getState().save("  Writing  ")).toBe(true);
-    const [saved] = useSavedLayoutsStore.getState().layouts;
-    expect(saved?.name).toBe("Writing");
-    expect(saved?.flags).toEqual({ ...FLAGS, terminalOpen: true });
-    expect(stored()).toEqual({ version: 1, layouts: [saved] });
-
-    usePaneLayoutStore.getState().reset();
-    useSettingsStore.setState({ ...FLAGS, viewMode: "editor", showTree: false });
-    useFilesStore.setState({ projectId: "p2" });
-    localStorage.setItem(panelLayoutKey("oleafly.workspace.p2.horizontal", ["editorpdf"]), JSON.stringify({ editorpdf: 100 }));
-    const epoch = usePaneLayoutStore.getState().epoch;
-    useSavedLayoutsStore.getState().apply(saved?.id ?? "");
-
-    expect(layoutKey(usePaneLayoutStore.getState().layout)).toBe(layoutKey(saved?.tree ?? DEFAULT_PANE_LAYOUT));
-    expect(useSettingsStore.getState()).toMatchObject({ ...FLAGS, terminalOpen: true });
-    expect(usePaneLayoutStore.getState().epoch).toBe(epoch + 1);
-    expect(JSON.parse(localStorage.getItem(panelLayoutKey("oleafly.workspace.p2.horizontal", ["sidebar", "editorpdf"])) ?? "null")).toEqual({
-      sidebar: 35,
-      editorpdf: 65,
-    });
-    expect(localStorage.getItem(panelLayoutKey("oleafly.workspace.p2.horizontal", ["editorpdf"]))).toBeNull();
-    expect(savedLayoutInEffect(saved as SavedLayout, usePaneLayoutStore.getState().layout, useSettingsStore.getState())).toBe(true);
-    useSettingsStore.setState({ showTree: false });
-    expect(savedLayoutInEffect(saved as SavedLayout, usePaneLayoutStore.getState().layout, useSettingsStore.getState())).toBe(false);
-  });
 
   it("renames, replaces under the same name, updates and deletes", () => {
     const store = useSavedLayoutsStore.getState();

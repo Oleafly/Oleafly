@@ -64,7 +64,7 @@ describe("HotkeysModal", () => {
     for (const category of Object.values(hotkeys.categories)) {
       expect(screen.getAllByText(category).length).toBeGreaterThan(0);
     }
-    for (const action of Object.values(hotkeys.actions)) {
+    for (const action of Object.entries(hotkeys.actions).filter(([key]) => !["askAiEditSelection"].includes(key)).map(([, value]) => value)) {
       expect(screen.getAllByText(action).length).toBeGreaterThan(0);
     }
   });

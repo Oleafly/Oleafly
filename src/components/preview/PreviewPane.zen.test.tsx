@@ -70,9 +70,6 @@ vi.mock("@/features/synctex", () => ({
   canUseSyncTexForCheckpoint: vi.fn(() => false),
   inverseFromClick: vi.fn(),
 }));
-vi.mock("@/features/ask-ai-compile-errors", () => ({
-  askAiAboutCompileErrors: vi.fn(),
-}));
 const openPreviewWindow = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
 const logError = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
 vi.mock("@/lib/log", () => ({ logError, logWarning: vi.fn() }));
@@ -90,7 +87,6 @@ import { PreviewPane } from "./PreviewPane";
 import { sessionZoomByProject } from "./preview-zoom";
 
 const PROJECT = "toolbar-fixture";
-
 
 function openProject(revision = 2) {
   useProjectAnalysisStore.getState().activateProject({
@@ -131,7 +127,6 @@ function openProject(revision = 2) {
   } as unknown as ReturnType<typeof useCompileStore.getState>);
 }
 
-
 function beginZen() {
   act(() => {
     useZenStore.getState().begin({
@@ -139,7 +134,6 @@ function beginZen() {
       snapshot: {
         showTree: true,
         railTab: "files",
-        assistantOpen: false,
         workspaceHidden: false,
         viewMode: "split",
         terminalOpen: false,

@@ -1281,9 +1281,10 @@ mod transfer_tests {
             crate::trust::TrustState::Restricted
         );
         for capability in [
-            crate::trust::Capability::RunCommand,
-            crate::trust::Capability::FullAccess,
-            crate::trust::Capability::ExternalAgents,
+            crate::trust::Capability::Git,
+            crate::trust::Capability::SystemTex,
+            crate::trust::Capability::ShellEscape,
+            crate::trust::Capability::Notebook,
             crate::trust::Capability::TerminalAutostart,
         ] {
             assert!(crate::trust::require_trusted("trusted-once", capability).is_err());

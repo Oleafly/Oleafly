@@ -259,7 +259,7 @@ const MIN_PRIVATE_VALUE: usize = 4;
 struct Scrub {
     homes: Vec<String>,
     private: Option<aho_corasick::AhoCorasick>,
-    redactor: oleafly_acp::redact::Redactor,
+    redactor: crate::log_redact::Redactor,
 }
 
 fn private_values(value: &Value, found: &mut Vec<String>) {
@@ -382,7 +382,7 @@ impl Scrub {
                         .ok()
                 })
                 .flatten(),
-            redactor: oleafly_acp::redact::Redactor::new(&[]),
+            redactor: crate::log_redact::Redactor::new(&[]),
         }
     }
 
@@ -530,7 +530,7 @@ fn from_page(mut message: String) -> String {
 
 #[tauri::command]
 pub async fn append_app_log(message: String) -> Result<(), String> {
-    crate::skills::off_ui_thread("write the app log", move || {
+    off_ui_thread("write the app log", move || {
         crate::project::append_app_log(from_page(message))
     })
     .await
@@ -538,7 +538,7 @@ pub async fn append_app_log(message: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn log_frontend_error(message: String) {
-    let _ = crate::skills::off_ui_thread("log an error", move || {
+    let _ = off_ui_thread("log an error", move || {
         error(&from_page(message), Value::Null, Value::Null);
         Ok(())
     })
@@ -547,13 +547,22 @@ pub async fn log_frontend_error(message: String) {
 
 #[tauri::command]
 pub async fn log_frontend_entry(level: Level, message: String) {
-    let _ = crate::skills::off_ui_thread("log an entry", move || {
+    let _ = off_ui_thread("log an entry", move || {
         log(level, &from_page(message), Value::Null, Value::Null);
         Ok(())
     })
     .await;
 }
 
+pub(crate) async fn off_ui_thread<T, F>(label: &'static str, work: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| format!("failed to {label}: {error}"))?
+}
 #[cfg(test)]
 mod tests {
     use super::*;

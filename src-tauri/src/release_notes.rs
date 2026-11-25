@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-const RELEASES_URL: &str = "https://api.github.com/repos/Oleafly/Oleafly/releases";
+const RELEASES_URL: &str = "https://api.github.com/repos/peplxx/oleafly-no-ai/releases";
 const PAGE_SIZE: u32 = 5;
 const MAX_PAGE: u32 = 50;
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
@@ -105,7 +105,7 @@ mod tests {
                 "prerelease": false,
                 "body": "## What's new in 0.4.2\n\n### Fixed\n\n- A fix.",
                 "published_at": "2026-09-21T07:47:46Z",
-                "html_url": "https://github.com/Oleafly/Oleafly/releases/tag/v0.4.2",
+                "html_url": "https://github.com/peplxx/oleafly-no-ai/releases/tag/v0.4.2",
                 "assets": [{ "name": "Oleafly.dmg" }],
                 "author": { "login": "someone" }
             },

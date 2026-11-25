@@ -1,7 +1,11 @@
 name: Release
+run-name: Release ${{ inputs.tag || github.ref_name }}
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 #
-#     git tag v0.1.0 && git push origin v0.1.0
+#     git tag v0.4.13-noai.1 && git push origin v0.4.13-noai.1
 #
 # or run manually from the Actions tab (provide the tag to attach to).
 #
@@ -14,11 +18,11 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*.*.*-noai.*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to build & attach the release to (e.g. v0.1.0)"
+        description: "Tag to build & attach the release to (e.g. v0.4.13-noai.1)"
         required: true
         type: string
       publish:
@@ -39,7 +43,23 @@ env:
     x86_64-pc-windows-msvc
 
 jobs:
+  no-ai:
+    name: Verify no-AI release source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: node scripts/no-ai/check.mjs
+      - name: Require updater signing key
+        env:
+          SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: test -n "$SIGNING_KEY"
   build:
+    needs: no-ai
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions:
@@ -351,7 +371,10 @@ jobs:
             echo 'body<<CHANGELOG_EOF'
             echo "## What's new in ${VERSION#v}"
             echo ""
-            bash scripts/changelog-extract.sh "$VERSION"
+            echo "This fork removes AI features and receives updates from peplxx/oleafly-no-ai."
+            echo ""
+            echo "### Upstream changelog (AI-related entries do not apply to this fork)"
+            bash scripts/changelog-extract.sh "${VERSION%-noai.*}"
             echo ""
             echo "---"
             echo ""
@@ -396,7 +419,7 @@ jobs:
           OLEAFLY_GOOGLE_CLIENT_SECRET: ${{ secrets.OLEAFLY_GOOGLE_CLIENT_SECRET }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: "Oleafly ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseName: "Oleafly No AI ${{ github.event.inputs.tag || github.ref_name }}"
           releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
@@ -810,21 +833,6 @@ jobs:
           done < <(jq -r '[.platforms[] | select(has("original_url")) | .url] | unique | .[]' latest.json)
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
           echo "published $TAG with all platform artifacts"
-
-  # Lists the new version in the MCP Registry and attaches oleafly.mcpb. The
-  # release is live by now, so a failure here leaves it as it is; run
-  # mcp-registry.yml by hand for the same tag to retry.
-  mcp-registry:
-    name: MCP registry
-    needs: publish
-    if: ${{ inputs.publish == true }}
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    uses: ./.github/workflows/mcp-registry.yml
-    with:
-      tag: ${{ github.event.inputs.tag || github.ref_name }}
 
   # A draft handed over for review still has to be complete, so it gets the same
   # artifact and updater-feed checks as a publish - it just never flips live.

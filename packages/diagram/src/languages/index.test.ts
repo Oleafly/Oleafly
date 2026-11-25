@@ -110,13 +110,6 @@ describe("TikZ language", () => {
     expect(tikzLanguage.fromFile("fig.tikz", "raw content")).toBe("raw content");
     expect(tikzLanguage.insertText("  \\node {A};  \n\n")).toBe("\\node {A};\n");
   });
-
-  it("asks the fixer for the figure body with the code and log tail", () => {
-    const prompt = tikzLanguage.fixPrompt("\\node {A}", "! Missing ;");
-    expect(prompt.system).toContain("Tectonic");
-    expect(prompt.user).toContain("CODE:\n\\node {A}");
-    expect(prompt.user).toContain("COMPILE LOG (tail):\n! Missing ;");
-  });
 });
 
 describe("Mermaid language", () => {
@@ -148,12 +141,6 @@ describe("Mermaid language", () => {
     const read = mermaidLanguage.read("flowchart TD\n  a[Start] --> b[End]\n");
     expect(read.model?.nodes.map((node) => node.label)).toEqual(["Start", "End"]);
     expect(read.model?.edges).toHaveLength(1);
-  });
-
-  it("asks the fixer for Mermaid code with the render error", () => {
-    const prompt = mermaidLanguage.fixPrompt("flowchart TD\n a -->", "Parse error on line 2");
-    expect(prompt.system).toContain("Mermaid 11");
-    expect(prompt.user).toContain("MERMAID ERROR:\nParse error on line 2");
   });
 });
 
@@ -200,14 +187,6 @@ describe("Typst language", () => {
       code: "#diagram()",
     });
     expect(typstLanguage.fromStandalone("#diagram()\n")).toEqual({ code: "#diagram()\n" });
-  });
-
-  it("writes code for the requested Typst version and trims inserted code", () => {
-    expect(typstLanguage.write(MODEL, { typstVersion: "0.13.1" })).toContain("@preview/fletcher:");
-    expect(typstLanguage.fromFile("fig.typ", "#diagram()")).toBe("#diagram()");
-    expect(typstLanguage.insertText("\n#diagram()\n\n")).toBe("#diagram()\n");
-    const prompt = typstLanguage.fixPrompt("#diagram(", "error: unclosed delimiter");
-    expect(prompt.user).toContain("TYPST ERRORS:\nerror: unclosed delimiter");
   });
 });
 

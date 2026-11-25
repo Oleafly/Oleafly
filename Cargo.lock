@@ -41,47 +41,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "agent-client-protocol"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72adac0ce6b0d0390df9b7a498392b24ebcf9c65c3451e5d618d936f50256289"
-dependencies = [
- "agent-client-protocol-derive",
- "agent-client-protocol-schema",
- "futures",
- "futures-concurrency",
- "rustc-hash 2.1.3",
- "serde",
- "serde_json",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "agent-client-protocol-derive"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "532fa6f1870bb7cb0bfe91fbcb5166393f7046e186bc590d1aa037d306d48716"
-dependencies = [
- "quote",
- "syn 3.0.3",
-]
-
-[[package]]
-name = "agent-client-protocol-schema"
-version = "1.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "430e900fdb40a811c1a3e0d85b1134e485d96699f8b90889a15c1da6a0b26c3f"
-dependencies = [
- "anyhow",
- "derive_more 2.1.1",
- "serde",
- "serde_json",
- "serde_with",
- "strum 0.28.0",
-]
-
-[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2953,12 +2912,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b5343afd4a8365a643ac588dab4cf234a190c7f6c88c9f6dd6ffe00837661b7"
 
 [[package]]
-name = "escape8259"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f1f0d310082fd5de539d4f41601182241147498444a7695c520288a0cdbead6"
-
-[[package]]
 name = "euclid"
 version = "0.20.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3261,21 +3214,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab85b9b05e3978cc9a9cf8fea7f01b494e1a09ed3037e16ba39edc7a29eb61a"
 
 [[package]]
-name = "futures"
-version = "0.3.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
-dependencies = [
- "futures-channel",
- "futures-core",
- "futures-executor",
- "futures-io",
- "futures-sink",
- "futures-task",
- "futures-util",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3283,19 +3221,6 @@ checksum = "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
 dependencies = [
  "futures-core",
  "futures-sink",
-]
-
-[[package]]
-name = "futures-concurrency"
-version = "7.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "175cd8cca9e1d45b87f18ffa75088f2099e3c4fe5e2f83e42de112560bea8ea6"
-dependencies = [
- "fixedbitset 0.5.7",
- "futures-core",
- "futures-lite",
- "pin-project",
- "smallvec",
 ]
 
 [[package]]
@@ -3363,7 +3288,6 @@ version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
- "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
@@ -5162,18 +5086,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libtest-mimic"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14e6ba06f0ade6e504aff834d7c34298e5155c6baca353cc6a4aaff2f9fd7f33"
-dependencies = [
- "anstream",
- "anstyle",
- "clap",
- "escape8259",
-]
-
-[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6309,8 +6221,6 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
- "oleafly-acp",
- "oleafly-agent",
  "oleafly-cli",
  "oleafly-collab",
  "oleafly-collab-protocol",
@@ -6380,44 +6290,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oleafly-acp"
-version = "0.1.0"
-dependencies = [
- "agent-client-protocol",
- "agent-client-protocol-schema",
- "base64 0.23.1",
- "encoding_rs",
- "futures",
- "libc",
- "libtest-mimic",
- "oleafly-core",
- "oleafly-sandbox",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "url",
- "windows-sys 0.61.2",
- "zeroize",
-]
-
-[[package]]
-name = "oleafly-agent"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "dom_query 0.27.0",
- "encoding_rs",
- "futures-util",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "uuid",
-]
-
-[[package]]
 name = "oleafly-cli"
 version = "0.1.0"
 dependencies = [
@@ -6436,8 +6308,6 @@ dependencies = [
  "libc",
  "notify",
  "notify-rust",
- "oleafly-acp",
- "oleafly-agent",
  "oleafly-collab",
  "oleafly-collab-protocol",
  "oleafly-core",
@@ -6702,15 +6572,14 @@ dependencies = [
  "biblatex",
  "cap-fs-ext",
  "cap-std",
+ "dom_query 0.27.0",
  "dunce",
+ "encoding_rs",
  "flate2",
  "fs4",
  "futures-util",
  "libc",
- "oleafly-agent",
  "oleafly-core",
- "oleafly-doctools",
- "oleafly-sandbox",
  "pdf-extract",
  "rand 0.8.7",
  "reqwest 0.12.28",
@@ -6724,6 +6593,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "unicode-normalization",
+ "url",
  "windows-sys 0.61.2",
  "zeroize",
 ]
@@ -7188,26 +7058,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
 dependencies = [
  "siphasher",
-]
-
-[[package]]
-name = "pin-project"
-version = "1.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2466b2336ed02bcdca6b294417127b90ec92038d1d5c4fbeac971a922e0e0924"
-dependencies = [
- "pin-project-internal",
-]
-
-[[package]]
-name = "pin-project-internal"
-version = "1.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96395f0a926bc13b1c17622aaddda1ecb55d49c8f1bf9777e4d877800a43f8b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]
@@ -8615,7 +8465,6 @@ version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
 dependencies = [
- "indexmap 2.14.0",
  "itoa",
  "memchr",
  "serde",
@@ -9210,9 +9059,6 @@ name = "strum"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
-dependencies = [
- "strum_macros 0.28.0",
-]
 
 [[package]]
 name = "strum_macros"

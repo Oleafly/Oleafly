@@ -1,11 +1,8 @@
 import { lazy } from "@/lib/preloadable";
-import { FlaskConical, Folder, GitBranch, NotebookPen, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
+import { FlaskConical, Folder, GitBranch, NotebookPen, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
 import { i18n, loadNamespace } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
-import { useMcpActivityStore } from "@/store/mcp-activity";
-import { useResearchAttentionBadge } from "@/store/research-attention";
-import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import {
   ChatPanel,
@@ -23,7 +20,6 @@ import { useCollabRail } from "@/components/collab/collab-rail";
 import { commentsRailShown } from "@/components/collab/comments-rail";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
-import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 
 const ReferencesPanel = lazy(() =>
@@ -32,7 +28,7 @@ const ReferencesPanel = lazy(() =>
   })), { warm: true });
 
 const ResearchWorkspacePanel = lazy(() =>
-  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })), { warm: researchTasksEnabled });
+  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })), { warm: true });
 
 const ProjectNotesPanel = lazy(() =>
   import("@/components/notes/ProjectNotesPanel").then(async (module) => {
@@ -47,9 +43,7 @@ export function registerRailTabs() {
     icon: FlaskConical,
     section: "assist",
     order: 60,
-    when: () => researchTasksEnabled(),
     panel: ResearchWorkspacePanel,
-    useBadge: () => useResearchAttentionBadge(),
   });
   registerRailTab({
     id: "collab",
@@ -128,15 +122,5 @@ export function registerRailTabs() {
     section: "review",
     order: 50,
     panel: ReferencesPanel,
-  });
-  registerRailTab({
-    id: "mcp",
-    label: () => i18n.t(($) => $.shell.rail.mcp),
-    icon: Plug,
-    section: "assist",
-    order: 65,
-    when: (ctx) => !!ctx.mcpEnabled,
-    useBadge: () => useMcpActivityStore((s) => s.unread),
-    panel: McpActivityPanel,
   });
 }

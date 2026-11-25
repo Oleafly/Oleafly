@@ -7,50 +7,11 @@ import { errorStartsWith } from "@/lib/error-prefix";
 import type { FolderDetection, OpenedFolder } from "@/lib/folder-detection";
 import type { SearchMode } from "@/lib/search-modes";
 
-export interface McpRegistrySearchRequest {
-  query: string;
-  cursor: string | null;
-}
-
-export interface McpRegistryReview {
-  label: string;
-  transport: string;
-  commandOrUrl: string;
-  arguments: string[];
-  environmentVariableNames: string[];
-  config: McpServerConfig | null;
-  unsupportedReason: string | null;
-}
-
-export interface McpRegistryServer {
-  name: string;
-  description: string | null;
-  version: string;
-  status: string | null;
-  reviews: McpRegistryReview[];
-}
-
-export interface McpRegistrySearchResult {
-  servers: McpRegistryServer[];
-  nextCursor: string | null;
-  warnings: string[];
-}
-
-export const mcpRegistrySearch = (request: McpRegistrySearchRequest) =>
-  invoke<McpRegistrySearchResult>("mcp_registry_search", { request });
-import type { ApprovalMode } from "@oleafly/ai-tools";
-import type { SkillEntry } from "@/lib/skills";
-
 import type {
   AheadBehind,
-  AgentClientCapabilities,
-  AgentClientInfo,
-  AgentRequestDecision,
-  AgentServerInfo,
   AppConfig,
   AssetProgress,
   BackendProtocolInfo,
-  ChatSearchHit,
   CheckpointFileSummary,
   PdfSyncStatus,
   CheckpointIntegrity,
@@ -96,17 +57,8 @@ import type {
   PendingOpenRequest,
   LibraryStorageSummary,
   ManifestHome,
-  McpConnectionInfo,
-  McpAgentServer,
-  McpManagedServer,
-  McpServerConfig,
-  McpServerValidation,
-  McpStatus,
-  ModelMetadataStatus,
-  ModelProbe,
   PackIndexInfo,
   PackInfo,
-  Persona,
   Prerequisite,
   ProjectAvailability,
   ProjectAvailabilityReport,
@@ -115,9 +67,6 @@ import type {
   ProjectSourcesRequest,
   ProjectSourcesResult,
   ProjectStateChanged,
-  ProviderModel,
-  RagChunk,
-  RagRetrieveRequest,
   RecycledProjectInfo,
   RenameFileResult,
   SearchHit,
@@ -130,10 +79,7 @@ import type {
   TexSpec,
   TexStatus,
   TinytexInstallState,
-  ToolDecision,
-  ToolsModelChoice,
   TypstSource,
-  UsageTotals,
   ValidatedCompileFingerprint,
   ZoteroAccount,
   ZoteroConnectionReport,
@@ -162,17 +108,6 @@ export type BrowserCookieSourceStatus =
   | "no_cookie_store"
   | "not_installed"
   | "coming_soon";
-
-export type McpImportSourceTool =
-  | "claude-desktop"
-  | "claude-code"
-  | "codex"
-  | "cursor"
-  | "windsurf";
-
-export type McpImportedServer = McpServerConfig & {
-  sourceTool: McpImportSourceTool;
-};
 
 export interface BrowserCookieSource {
   browser: BrowserCookieSourceId;
@@ -473,29 +408,6 @@ export const writeBytesFile = (dest: string, dataBase64: string) =>
 export const exportProjectImage = (projectId: string, dest: string, dataBase64: string) =>
   invoke<void>("export_project_image", { projectId, dest, dataBase64 });
 
-export const loadProjectChats = (projectId: string) =>
-  invoke<string>("load_project_chats", { projectId });
-
-export const saveProjectChats = (projectId: string, json: string) =>
-  invoke<void>("save_project_chats", { projectId, json });
-
-export interface ChatsLoadResult {
-  json: string;
-  skipped: number;
-}
-
-export const chatsLoad = (projectId: string) =>
-  invoke<ChatsLoadResult>("chats_load", { projectId });
-
-export const chatRead = (projectId: string, chatId: string) =>
-  invoke<string>("chat_read", { projectId, chatId });
-
-export const chatSave = (projectId: string, chatId: string, json: string, index?: boolean) =>
-  invoke<void>("chat_save", { projectId, chatId, json, index: index ?? true });
-
-export const chatDelete = (projectId: string, chatId: string) =>
-  invoke<void>("chat_delete", { projectId, chatId });
-
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 
@@ -523,11 +435,6 @@ export const documentStats = (
   projectId: string,
   request: DocumentStatsRequest,
 ) => invoke<DocumentStatsResult>("document_stats", { projectId, request });
-
-export const ragRetrieve = (
-  projectId: string,
-  request: RagRetrieveRequest,
-) => invoke<RagChunk[]>("rag_retrieve", { projectId, request });
 
 export const writeFileContent = (
   projectId: string,
@@ -1353,82 +1260,15 @@ export interface TemplateLink {
 
 export const templateLinkReady = () => invoke<TemplateLink | null>("template_link_ready");
 
-export interface SkillCatalogOrigin {
-  repo: string;
-  commit: string;
-}
-
-export interface SkillCatalogEntry {
-  id: string;
-  name: string;
-  description: string;
-  phase?: string;
-  domain?: string;
-  license: string;
-  version: string;
-  bytes: number;
-  files: number;
-  sha256?: string;
-  url?: string;
-  pack?: string;
-  origin?: SkillCatalogOrigin;
-  bundled: boolean;
-  installed: boolean;
-  installedVersion?: string;
-  updateAvailable: boolean;
-}
-
-export type SkillCatalogSource = "bundled" | "cached" | "fetched";
-
-export interface SkillCatalog {
-  source: SkillCatalogSource;
-  generatedAt: string;
-  fetchedAt?: string;
-  error?: string;
-  skills: SkillCatalogEntry[];
-}
-
-export type SkillSharePeerAgent = "claude" | "codex" | "agents" | "cursor" | "gemini";
-
-export interface SkillShareTarget {
-  agent: SkillSharePeerAgent;
-  label: string;
-  root: string;
-  detected: boolean;
-  linked: number;
-  total: number;
-  supported: boolean;
-  enabled: boolean;
-}
-
-export type SkillAssetProgressPhase = "download" | "extract" | "done" | "error";
-
-export interface SkillAssetProgress {
-  kind: "skill";
-  id: string;
-  phase: SkillAssetProgressPhase;
-  received: number;
-  total: number;
-  message?: string;
-}
-
 export const ASSET_PROGRESS_EVENT = "asset-progress";
 
 export interface AssetProgressHandlers {
   readonly component?: (progress: AssetProgress) => void;
-  readonly skill?: (progress: SkillAssetProgress) => void;
-}
-
-export function isSkillAssetProgress(
-  payload: AssetProgress | SkillAssetProgress,
-): payload is SkillAssetProgress {
-  return typeof payload === "object" && payload !== null && "kind" in payload && payload.kind === "skill";
 }
 
 export function onAssetProgress(handlers: AssetProgressHandlers): Promise<UnlistenFn> {
-  return listen<AssetProgress | SkillAssetProgress>(ASSET_PROGRESS_EVENT, ({ payload }) => {
-    if (isSkillAssetProgress(payload)) handlers.skill?.(payload);
-    else handlers.component?.(payload);
+  return listen<AssetProgress>(ASSET_PROGRESS_EVENT, ({ payload }) => {
+    handlers.component?.(payload);
   });
 }
 
@@ -1458,22 +1298,6 @@ export function withAssetProgress<R>(
 ): Promise<R> {
   return withSubscription(() => onAssetProgress(handlers), run);
 }
-
-export const skillsCatalog = (refresh: boolean) =>
-  invoke<SkillCatalog>("skills_catalog", { refresh });
-
-export const skillsInstall = (id: string) =>
-  invoke<SkillEntry>("skills_install", { id });
-
-export const skillsUninstall = (id: string) => invoke<void>("skills_uninstall", { id });
-
-export const skillsShareTargets = () =>
-  invoke<SkillShareTarget[]>("skills_share_targets");
-
-export const skillsShareSync = (enabled: boolean) =>
-  invoke<SkillShareTarget[]>("skills_share_sync", { enabled });
-
-export const previewSkillId = (name: string) => invoke<string>("preview_skill_id", { name });
 
 export const readDeadlines = () => invoke<string>("read_deadlines");
 
@@ -1817,10 +1641,6 @@ export const literatureSearch = (
     yearTo: options.yearTo ?? null,
     openAccessOnly: options.openAccessOnly ?? false,
   });
-export const connectorKeySaved = (connectorId: string) =>
-  invoke<boolean>("connector_key_saved", { connectorId });
-export const setConnectorKey = (connectorId: string, value: string) =>
-  invoke<void>("set_connector_key", { connectorId, value });
 export const zoteroVerify = (userId: string, apiKey: string) =>
   invoke<ZoteroAccount>("zotero_verify", { userId, apiKey });
 export const zoteroLibraryBibtex = () =>
@@ -1871,165 +1691,8 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
-export const setAiToolsModel = (choice: ToolsModelChoice | null) =>
-  invoke<void>("set_ai_tools_model", { choice });
-export const seedStarterPersonas = (starters: Persona[]) =>
-  invoke<AppConfig>("seed_starter_personas", { starters });
 export const claimStarterNote = () => invoke<boolean>("claim_starter_note");
-
-export const mcpStatus = () => invoke<McpStatus>("mcp_status");
-export const mcpSetEnabled = (enabled: boolean) =>
-  invoke<McpStatus>("mcp_set_enabled", { enabled });
-export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
-export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
-export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
-export const mcpImportSource = (sourceTool: McpImportSourceTool) =>
-  invoke<McpImportedServer[]>("mcp_import_source", { sourceTool });
-export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
-export const mcpServerAdd = (server: McpServerConfig) =>
-  invoke<McpManagedServer>("mcp_server_add", { server });
-export const mcpAdoptAlphaXivKey = () =>
-  invoke<McpManagedServer | null>("mcp_adopt_alphaxiv_key");
-export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
-  invoke<McpManagedServer>("mcp_server_update", { originalName, server });
-export const mcpServerUpdateValidated = (originalName: string, server: McpServerConfig) =>
-  invoke<McpManagedServer>("mcp_server_update_validated", { originalName, server });
-export const mcpServerRemove = (name: string) =>
-  invoke<void>("mcp_server_remove", { name });
-export const mcpServerSetEnabled = (name: string, enabled: boolean) =>
-  invoke<McpManagedServer>("mcp_server_set_enabled", { name, enabled });
-export const mcpServerValidate = (name: string) =>
-  invoke<McpServerValidation>("mcp_server_validate", { name });
-export const mcpAgentToolsList = () =>
-  invoke<McpAgentServer[]>("mcp_agent_tools_list");
-export const mcpAgentToolAuthorize = (
-  projectId: string,
-  server: string,
-  toolHandle: string,
-  argumentsValue: Record<string, unknown>,
-  runId: string,
-) =>
-  invoke<string>("mcp_agent_tool_authorize", {
-    projectId,
-    server,
-    toolHandle,
-    arguments: argumentsValue,
-    runId,
-  });
-export const mcpAgentToolCall = (
-  projectId: string,
-  server: string,
-  toolHandle: string,
-  argumentsValue: Record<string, unknown>,
-  runId: string,
-  approvalToken: string,
-) =>
-  invoke<unknown>("mcp_agent_tool_call", {
-    projectId,
-    server,
-    toolHandle,
-    arguments: argumentsValue,
-    runId,
-    approvalToken,
-  });
-let activeMcpRendererSession: number | null = null;
-let mcpRendererBeginSequence = 0;
-export const mcpBeginRendererSession = async () => {
-  const beginSequence = ++mcpRendererBeginSequence;
-  const rendererSession = await invoke<number>("mcp_begin_renderer_session");
-  if (!Number.isSafeInteger(rendererSession) || rendererSession <= 0) {
-    throw new Error("The MCP backend returned an invalid renderer session");
-  }
-  if (beginSequence === mcpRendererBeginSequence) {
-    activeMcpRendererSession = rendererSession;
-  }
-  return rendererSession;
-};
-export const mcpRendererHeartbeat = (rendererSession: number) =>
-  invoke<void>("mcp_renderer_heartbeat", { rendererSession });
-export const mcpEndRendererSession = async (rendererSession: number) => {
-  await invoke<void>("mcp_end_renderer_session", { rendererSession });
-  if (activeMcpRendererSession === rendererSession) {
-    activeMcpRendererSession = null;
-  }
-};
-export const mcpRegisterTools = (
-  tools: { name: string; description: string; inputSchema: unknown }[],
-  rendererSession: number,
-) => invoke<void>("mcp_register_tools", { tools, rendererSession });
 export const REDACTED_MARKER = "__stored__";
-export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
-
-export const agentListModels = (args: {
-  providerId: string;
-  key?: string;
-  baseURL?: string;
-}) =>
-  invoke<ProviderModel[]>("agent_list_models", {
-    providerId: args.providerId,
-    key: args.key ?? null,
-    baseUrl: args.baseURL ?? null,
-  });
-
-export const agentModelMetadataStatus = () =>
-  invoke<ModelMetadataStatus>("agent_model_metadata_status");
-
-export const agentRefreshModelMetadata = (force = false) =>
-  invoke<ModelMetadataStatus>("agent_refresh_model_metadata", { force });
-
-export const agentProbeModel = (args: {
-  providerId: string;
-  modelId: string;
-  key?: string;
-  baseURL?: string;
-}) =>
-  invoke<ModelProbe>("agent_probe_model", {
-    providerId: args.providerId,
-    modelId: args.modelId,
-    key: args.key ?? null,
-    baseUrl: args.baseURL ?? null,
-  });
-
-export const agentWebSearchReady = (providerId: string, modelId: string, projectId: string | null) =>
-  invoke<boolean>("agent_web_search_ready", { providerId, modelId, projectId });
-
-export const agentServerInitialize = (
-  clientInfo: AgentClientInfo,
-  capabilities: AgentClientCapabilities,
-) =>
-  invoke<AgentServerInfo>("agent_server_initialize", {
-    clientInfo,
-    capabilities,
-  });
-
-export const agentServerResolveRequest = (
-  requestId: string,
-  decision: AgentRequestDecision,
-  payload?: unknown,
-) =>
-  invoke<void>("agent_server_resolve_request", {
-    requestId,
-    decision,
-    payload: payload ?? null,
-  });
-
-export const agentServerAbandonRequest = (requestId: string) =>
-  invoke<void>("agent_server_abandon_request", { requestId });
-
-export const mcpSetActiveProject = (projectId: string | null) => {
-  if (activeMcpRendererSession === null) {
-    return Promise.reject(new Error("The MCP renderer session is not ready"));
-  }
-  return invoke<void>("mcp_set_active_project", {
-    projectId,
-    rendererSession: activeMcpRendererSession,
-  });
-};
-export const mcpToolResult = (
-  callId: number,
-  result: unknown,
-  rendererSession: number,
-) => invoke<void>("mcp_tool_result", { callId, result, rendererSession });
 
 export const ghPublicRepoStats = (fullName: string) =>
   invoke<GitHubRepoStats>("gh_public_repo_stats", { fullName });
@@ -2206,52 +1869,9 @@ export const recycleProject = (projectId: string) =>
 export const libraryRoot = () => invoke<string>("library_root");
 export const displayHomes = () => invoke<string[]>("display_homes");
 export const appVersion = () => invoke<string>("app_version");
-export const agentExecCwd = (projectId: string) =>
-  invoke<string>("agent_exec_cwd", { projectId });
-export const agentExecRegisterExternal = (runId: string) =>
-  invoke<void>("agent_exec_register_external", { runId });
-export const agentExecAuthorize = (projectId: string, command: string, runId: string) =>
-  invoke<string>("agent_exec_authorize", { projectId, command, runId });
-export const agentExec = (
-  projectId: string,
-  command: string,
-  runId: string,
-  approvalToken: string,
-) =>
-  invoke<{
-    command: string;
-    output: string;
-    exit_code: number | null;
-    status: string;
-    truncated: boolean;
-    timed_out: boolean;
-  }>("agent_exec", { projectId, command, runId, approvalToken });
 export const backendProtocolInfo = () =>
   invoke<BackendProtocolInfo>("backend_protocol_info");
 export const initialState = () => invoke<InitialState>("initial_state");
-
-export const chatsSearch = (query: string) =>
-  invoke<ChatSearchHit[]>("chats_search", { query });
-export const usageSummary = (projectId: string) =>
-  invoke<UsageTotals>("usage_summary", { projectId });
-export const budgetGet = (projectId: string) =>
-  invoke<number | null>("budget_get_cmd", { projectId });
-export const budgetSet = (projectId: string, budgetUsd: number | null) =>
-  invoke<void>("budget_set_cmd", { projectId, budgetUsd });
-
-export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
-export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
-export const approvalsList = (projectId: string) =>
-  invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
-export const approvalsSet = (
-  projectId: string,
-  tool: string,
-  decision: ToolDecision | null,
-) => invoke<void>("approvals_set", { projectId, tool, decision });
-export const approvalsModeGet = (projectId: string) =>
-  invoke<ApprovalMode>("approvals_mode_get", { projectId });
-export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
-  invoke<void>("approvals_mode_set", { projectId, mode });
 
 export type ProjectTrust = {
   trusted: boolean;
@@ -2343,3 +1963,7 @@ export type {
   CollabMemberChangeKind,
   CollabSessionEnd,
 } from "@oleafly/backend-port";
+
+export const setActiveProject = (projectId: string | null) => invoke<void>("set_active_project", { projectId });
+export const connectorKeySaved = (connectorId: string) => invoke<boolean>("connector_key_saved", { connectorId });
+export const setConnectorKey = (connectorId: string, value: string) => invoke<void>("set_connector_key", { connectorId, value });

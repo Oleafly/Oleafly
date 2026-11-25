@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useOpenFolderFlowStore } from "./open-folder-flow";
 
-const prompt = { name: "thesis", project: "Thesis", compile: true, assistant: false };
+const prompt = { name: "thesis", project: "Thesis", compile: true, };
 
 beforeEach(() => {
   useOpenFolderFlowStore.getState().answer(false);

@@ -26,7 +26,6 @@ export type ShortcutId =
   | "notesGraph"
   | "notesLocalGraph"
   | "notesOutline"
-  | "notesAskAgent"
   | "notesNewNote"
   | "notesSearch"
   | "notesBookmark"
@@ -162,11 +161,6 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
   platformDefault("notesLocalGraph", { key: "g", mod: true, alt: true }, { key: "m", mod: true, shift: true }, "notes"),
   platformDefault("notesOutline", { key: "o", mod: true, alt: true }, { key: "k", mod: true, shift: true }, "notes"),
-  {
-    id: "notesAskAgent",
-    defaultBinding: { key: "j", mod: true },
-    scope: "notes",
-  },
   platformDefault("notesNewNote", { key: "n", mod: true, alt: true }, { key: "n", mod: true, shift: true }, "notes"),
   platformDefault("notesSearch", { key: "f", mod: true, alt: true }, { key: "a", mod: true, shift: true }, "notes"),
   platformDefault("notesBookmark", { key: "b", mod: true, alt: true }, { key: "y", mod: true, shift: true }, "notes"),

@@ -8,7 +8,7 @@ const MAX_REDIRECTS: usize = 3;
 /// registrant's own address, which can be anything: only a public https host
 /// is followed, never a loopback, private or link-local address.
 fn redirect_allowed(next: &reqwest::Url, previous: usize) -> bool {
-    previous <= MAX_REDIRECTS && oleafly_agent::tools::web::check_public_https_url(next).is_ok()
+    previous <= MAX_REDIRECTS && crate::web::check_public_https_url(next).is_ok()
 }
 
 fn client() -> Result<reqwest::Client, String> {

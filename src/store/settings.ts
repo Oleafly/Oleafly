@@ -45,8 +45,6 @@ const SETTINGS_SECTIONS = new Set([
   "appearance",
   "dictionary",
   "data",
-  "ai",
-  "research",
   "engine",
   "downloads",
   "integrations",
@@ -57,32 +55,12 @@ const SETTINGS_SECTIONS = new Set([
 ]);
 
 export type ViewMode = "split" | "editor" | "pdf";
-export type LayoutPreset =
-  | "editor-preview-ai"
-  | "editor-preview"
-  | "editor-ai"
-  | "preview-ai"
-  | "editor-only"
-  | "preview-only"
-  | "ai-only";
+export type LayoutPreset = "editor-preview" | "editor-only" | "preview-only";
 
 export function layoutPresetViewMode(preset: LayoutPreset): ViewMode {
-  if (preset === "editor-preview-ai" || preset === "editor-preview") return "split";
-  if (preset === "editor-ai" || preset === "editor-only" || preset === "ai-only") return "editor";
+  if (preset === "editor-preview") return "split";
+  if (preset === "editor-only") return "editor";
   return "pdf";
-}
-
-export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
-  return (
-    preset === "editor-preview-ai" ||
-    preset === "editor-ai" ||
-    preset === "preview-ai" ||
-    preset === "ai-only"
-  );
-}
-
-export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
-  return preset === "ai-only";
 }
 
 export type RailTab =
@@ -96,8 +74,7 @@ export type RailTab =
   | "research"
   | "collab"
   | "comments"
-  | "chat"
-  | "mcp";
+  | "chat";
 
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
@@ -489,13 +466,9 @@ function ls(k: string, fb: string): string {
 }
 
 export const LAYOUT_PRESETS: readonly LayoutPreset[] = [
-  "editor-preview-ai",
   "editor-preview",
-  "editor-ai",
-  "preview-ai",
   "editor-only",
   "preview-only",
-  "ai-only",
 ];
 const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
   split: "editor-preview",
@@ -1043,14 +1016,8 @@ interface SettingsState {
   setOpenInTree: (v: boolean) => void;
   hoverPreview: boolean;
   setHoverPreview: (v: boolean) => void;
-  chatFloating: boolean;
-  setChatFloating: (v: boolean) => void;
-  aiComposerHeight: number;
-  setAiComposerHeight: (v: number) => void;
   terminalOpen: boolean;
   setTerminalOpen: (v: boolean) => void;
-  assistantOpen: boolean;
-  setAssistantOpen: (v: boolean) => void;
   closeDocks: () => void;
   terminalFontSize: number;
   setTerminalFontSize: (v: number) => void;
@@ -1152,11 +1119,6 @@ interface SettingsState {
   setOverleafDeletes: (v: OverleafDeletes) => void;
   pdfReview: boolean;
   setPdfReview: (v: boolean) => void;
-  aiCompletion: boolean;
-  setAiCompletion: (v: boolean) => void;
-  aiCompletionProvider: string;
-  aiCompletionModel: string;
-  setAiCompletionModel: (providerId: string, modelId: string) => void;
   notesTypeface: NotesAppearance["notesTypeface"];
   notesFontFamily: string;
   notesFontSize: number;
@@ -1384,9 +1346,6 @@ const PREF_DEFAULTS = {
   overleafLive: false,
   overleafDeletes: "ask" as OverleafDeletes,
   pdfReview: false,
-  aiCompletion: false,
-  aiCompletionProvider: "",
-  aiCompletionModel: "",
   ...NOTES_APPEARANCE_DEFAULTS,
   ...VISUAL_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
@@ -1497,9 +1456,6 @@ export const SECTION_SETTINGS = {
     overleafLive: "oleafly.overleafLive",
     overleafDeletes: "oleafly.overleafDeletes",
     pdfReview: "oleafly.pdfReview",
-    aiCompletion: "oleafly.aiCompletion",
-    aiCompletionProvider: "oleafly.aiCompletion.provider",
-    aiCompletionModel: "oleafly.aiCompletion.model",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1918,24 +1874,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.hoverPreview", v ? "1" : "0");
     set({ hoverPreview: v });
   },
-  chatFloating: ls("oleafly.ai.floating", "0") === "1",
-  setChatFloating: (v) => {
-    saveLs("oleafly.ai.floating", v ? "1" : "0");
-    set({ chatFloating: v });
-  },
-  aiComposerHeight: readNumberInRange(ls("oleafly.ai.composerHeight", "56"), 56, 56, 2000),
-  setAiComposerHeight: (v) => {
-    const value = Number.isFinite(v) ? Math.round(Math.min(2000, Math.max(56, v))) : 56;
-    saveLs("oleafly.ai.composerHeight", String(value));
-    set({ aiComposerHeight: value });
-  },
   terminalOpen: false,
   setTerminalOpen: (v) => {
     set({ terminalOpen: v });
-  },
-  assistantOpen: false,
-  setAssistantOpen: (v) => {
-    set(v ? { assistantOpen: true } : { assistantOpen: false, workspaceHidden: false });
   },
   closeDocks: () => {
     set({ terminalOpen: false });
@@ -2275,18 +2216,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.pdfReview", v ? "1" : "0");
     set({ pdfReview: v });
   },
-  aiCompletion: ls("oleafly.aiCompletion", "0") === "1",
-  setAiCompletion: (v) => {
-    saveLs("oleafly.aiCompletion", v ? "1" : "0");
-    set({ aiCompletion: v });
-  },
-  aiCompletionProvider: ls("oleafly.aiCompletion.provider", ""),
-  aiCompletionModel: ls("oleafly.aiCompletion.model", ""),
-  setAiCompletionModel: (providerId, modelId) => {
-    saveLs("oleafly.aiCompletion.provider", providerId);
-    saveLs("oleafly.aiCompletion.model", modelId);
-    set({ aiCompletionProvider: providerId, aiCompletionModel: modelId });
-  },
   ...readNotesAppearance((key) => ls(key, "")),
   setNotesAppearance: (key, v) => {
     const value = normalizeNotesSetting(key, v);
@@ -2335,26 +2264,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setRailTab: (v) => set({ railTab: v }),
   setLayoutPreset: (preset) => {
     switch (preset) {
-      case "editor-preview-ai":
-        set({ viewMode: "split", assistantOpen: true, workspaceHidden: false });
-        break;
       case "editor-preview":
-        set({ viewMode: "split", assistantOpen: false, workspaceHidden: false });
-        break;
-      case "editor-ai":
-        set({ viewMode: "editor", assistantOpen: true, workspaceHidden: false });
-        break;
-      case "preview-ai":
-        set({ viewMode: "pdf", assistantOpen: true, workspaceHidden: false });
+        set({ viewMode: "split", workspaceHidden: false });
         break;
       case "editor-only":
-        set({ viewMode: "editor", assistantOpen: false, workspaceHidden: false });
+        set({ viewMode: "editor", workspaceHidden: false });
         break;
       case "preview-only":
-        set({ viewMode: "pdf", assistantOpen: false, workspaceHidden: false });
-        break;
-      case "ai-only":
-        set({ assistantOpen: true, workspaceHidden: true });
+        set({ viewMode: "pdf", workspaceHidden: false });
         break;
     }
   },

@@ -68,11 +68,6 @@ export const typstLanguage: DiagramLanguage = {
   fromStandalone,
   fromFile: (_name, content) => content,
   insertText: (code) => `${code.trim()}\n`,
-  fixPrompt: (code, log) => ({
-    system:
-      'You fix Typst figure code that draws a diagram with the fletcher package so it compiles. Keep the #import "@preview/fletcher:..." line and the #diagram(...) call with its node(...) and edge(...) items. Keep node names, positions and styling unless they cause the error. Return ONLY the corrected Typst code: the import line and the diagram. No #set page rule, no explanation, no markdown code fences. Never use em dashes.',
-    user: `This fletcher diagram failed to compile. Fix it.\n\nCODE:\n${code}\n\nTYPST ERRORS:\n${log}`,
-  }),
   seeds: { math: "$E = m c^2$", code: "`print(x)`" },
   snippets: {
     rectangleNode: "node((0cm, 0cm), [Label], name: <n>, width: 2cm, height: 1cm, shape: rect, stroke: 1pt),\n",

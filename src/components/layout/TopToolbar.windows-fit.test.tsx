@@ -46,7 +46,6 @@ beforeEach(() => {
   useCompileStore.setState({ status: "success" });
   useSettingsStore.setState({
     viewMode: "split",
-    assistantOpen: false,
     workspaceHidden: false,
   });
 });

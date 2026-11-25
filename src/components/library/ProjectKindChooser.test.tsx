@@ -5,13 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { ProjectKindChooser } from "./ProjectKindChooser";
 
 describe("ProjectKindChooser", () => {
-  it("offers the three starting points with a thumbnail each and reports the choice", () => {
+  it("offers the two starting points with a thumbnail each and reports the choice", () => {
     const onChoose = vi.fn();
     render(<ProjectKindChooser open onClose={vi.fn()} onChoose={onChoose} />);
 
     const chooser = screen.getByTestId("project-kind-chooser");
     expect(chooser).toHaveTextContent("Start a new piece of work");
-    for (const id of ["research", "import", "template"]) {
+    for (const id of ["import", "template"]) {
       const card = screen.getByTestId(`project-kind-${id}`);
       expect(card.querySelector("img")).toHaveAttribute(
         "src",
@@ -22,8 +22,6 @@ describe("ProjectKindChooser", () => {
       expect(card.outerHTML).not.toMatch(/(^|[\s"])(focus-visible:)?(ring|outline)-/);
     }
 
-    fireEvent.click(screen.getByTestId("project-kind-research"));
-    expect(onChoose).toHaveBeenCalledExactlyOnceWith("research");
     fireEvent.click(screen.getByTestId("project-kind-import"));
     expect(onChoose).toHaveBeenLastCalledWith("import");
     fireEvent.click(screen.getByTestId("project-kind-template"));

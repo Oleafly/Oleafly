@@ -28,20 +28,10 @@ vi.mock("@/lib/tauri", () => ({
   extractArxivSource: mocks.extractArxivSource,
   getConfig: mocks.getConfig,
   setConfig: mocks.setConfig,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
-vi.mock("@/lib/agent-backend", () => ({ completeViaBackend: mocks.completeViaBackend }));
-vi.mock("@/lib/ollama", async (importOriginal) => ({
-  ollamaUnreachable: (await importOriginal<typeof import("@/lib/ollama")>()).ollamaUnreachable,
-  DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
-  listOllamaModelDetails: mocks.listOllamaModelDetails,
-}));
-vi.mock("@/lib/mathpix", () => ({
-  mathpixKeyStatus: mocks.mathpixKeyStatus,
-  mathpixText: vi.fn(),
-  mathpixPdf: vi.fn(),
-}));
-vi.mock("./tools-ai/image-downscale", () => ({ downscaleImage: mocks.downscaleImage }));
 vi.mock("@/features/table-import", () => ({
   emitTable: mocks.emitTable,
   readTableRowsFromBytes: mocks.readTableRowsFromBytes,
@@ -67,8 +57,6 @@ import {
   parsePageRange,
   projectReadySource,
   runAdHocConverter,
-  ScanConfirmationNeeded,
-  transcribePdfPages,
 } from "./ad-hoc-converters";
 import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { MERMAID_EXPORT_DIRECTIVE } from "./mermaid-export";
@@ -110,9 +98,6 @@ beforeEach(() => {
   mocks.ensurePandoc.mockResolvedValue(true);
   mocks.convertAdHoc.mockResolvedValue(converted);
   mocks.getConfig.mockResolvedValue({
-    ai_keys: { ollama: "http://127.0.0.1:11434" },
-    ai_provider: "ollama",
-    ai_model: "qwen2.5vl:7b",
   });
   mocks.listOllamaModelDetails.mockResolvedValue([
     { name: "qwen2.5vl:7b", capabilities: ["completion", "vision"] },
@@ -182,15 +167,6 @@ describe("ad-hoc converter registry", () => {
     expect(mocks.convertAdHoc).toHaveBeenCalledWith({ source, target, text: "source" });
   });
 
-  it("normalizes common Unicode equation symbols without requiring a model", async () => {
-    const result = await runAdHocConverter("equation-to-latex", {
-      text: "e^(iπ) + 1 = 0",
-      file: null,
-    });
-    expect(result.text).toBe("e^{i\\pi} + 1 = 0");
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-  });
-
   it("converts a spreadsheet with the bounded shared table parser", async () => {
     mocks.readTableRowsFromBytes.mockResolvedValue([
       ["Method", "Score"],
@@ -205,37 +181,6 @@ describe("ad-hoc converter registry", () => {
       header: true,
       boldHeader: true,
     });
-  });
-
-  it("accepts verified image bytes and always selects a local vision model", async () => {
-    const png = new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-      "equation.png",
-      { type: "image/png" },
-    );
-    const result = await runAdHocConverter("image-to-latex", { text: "", file: png });
-    expect(result.text).toBe("x^2");
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [
-          expect.objectContaining({
-            content: expect.arrayContaining([
-              expect.objectContaining({ type: "image", image: expect.stringMatching(/^data:image\/png;base64,/) }),
-            ]),
-          }),
-        ],
-      }),
-      undefined,
-      { provider_id: "ollama", model_id: "qwen2.5vl:7b" },
-    );
-  });
-
-  it("rejects a renamed non-image before it reaches a model", async () => {
-    const fake = new File(["not an image"], "notes.png", { type: "image/png" });
-    await expect(
-      runAdHocConverter("image-to-latex", { text: "", file: fake }),
-    ).rejects.toThrow("PNG, JPEG, or WebP");
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
   });
 
   it("renders advanced Mermaid diagrams locally instead of dropping unsupported syntax", async () => {
@@ -343,186 +288,6 @@ describe("ad-hoc converter registry", () => {
   });
 
   it.each([
-    ["image-to-latex", "LaTeX"],
-    ["image-to-typst", "Typst"],
-  ] as const)("transcribes %s with only a local vision model", async (id, target) => {
-    const progress = vi.fn();
-    const jpeg = new File([new Uint8Array([0xff, 0xd8, 0xff, 0])], "notes.jpg");
-    mocks.completeViaBackend.mockResolvedValue({ text: "```text\ntranscribed\n```" });
-    const result = await runAdHocConverter(id, { text: "", file: jpeg }, progress);
-    expect(result.text).toBe("transcribed");
-    expect(progress).toHaveBeenCalledWith({ step: "visionModel", model: "qwen2.5vl:7b" });
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        system: expect.stringContaining(`Return only ${target} source`),
-      }),
-      undefined,
-      { provider_id: "ollama", model_id: "qwen2.5vl:7b" },
-    );
-  });
-
-  it("recognizes WebP bytes and enforces the image-specific size limit", async () => {
-    const webp = new File(
-      [new TextEncoder().encode("RIFF1234WEBP")],
-      "notes.webp",
-    );
-    await runAdHocConverter("image-to-latex", { text: "", file: webp });
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [expect.objectContaining({
-          content: expect.arrayContaining([
-            expect.objectContaining({ image: expect.stringMatching(/^data:image\/webp;base64,/) }),
-          ]),
-        })],
-      }),
-      undefined,
-      expect.any(Object),
-    );
-
-    const oversizedImage = {
-      name: "large.png",
-      size: 20 * 1024 * 1024 + 1,
-      arrayBuffer: vi.fn(),
-    } as unknown as File;
-    await expect(
-      runAdHocConverter("image-to-latex", { text: "", file: oversizedImage }),
-    ).rejects.toThrow("smaller than 20 MB");
-  });
-
-  it("gives actionable local-model errors and never falls back to a cloud provider", async () => {
-    const image = new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-      "notes.png",
-    );
-    mocks.getConfig.mockResolvedValue({
-      ai_keys: { ollama: "http://127.0.0.1:11434", anthropic: "__stored__" },
-      ai_provider: "anthropic",
-      ai_model: "claude-opus-5-5",
-    });
-    mocks.listOllamaModelDetails.mockRejectedValueOnce(new Error("offline"));
-    await expect(
-      runAdHocConverter("image-to-latex", { text: "", file: image }),
-    ).rejects.toThrow("Start Ollama");
-
-    mocks.listOllamaModelDetails.mockResolvedValueOnce([]);
-    await expect(
-      runAdHocConverter("equation-to-latex", {
-        text: "the square root of x",
-        file: null,
-      }),
-    ).rejects.toThrow("Pull a model in Ollama");
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-  });
-
-  it("tells the user to pull glm-ocr or pick another model when Ollama has no vision model", async () => {
-    const image = new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-      "notes.png",
-    );
-    mocks.listOllamaModelDetails.mockResolvedValueOnce([
-      { name: "llama3.2:3b", capabilities: ["completion", "tools"] },
-    ]);
-    const missing = runAdHocConverter("image-to-latex", { text: "", file: image });
-    await expect(missing).rejects.toThrow("glm-ocr");
-    await expect(missing).rejects.toThrow(researchTools.converterErrors.visionModelMissing);
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-  });
-
-  it("uses the first eligible local model when the configured model is unavailable", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ai_keys: { ollama: "" },
-      ai_provider: "openai",
-      ai_model: "cloud-model",
-    });
-    mocks.listOllamaModelDetails.mockResolvedValue([
-      { name: "qwen2.5vl:7b", capabilities: ["completion", "vision"] },
-      { name: "llava:7b", capabilities: null },
-    ]);
-    const image = new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-      "notes.png",
-    );
-    await runAdHocConverter("image-to-latex", { text: "", file: image });
-    expect(mocks.listOllamaModelDetails).toHaveBeenCalledWith("http://127.0.0.1:11434");
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.any(Object),
-      undefined,
-      { provider_id: "ollama", model_id: "qwen2.5vl:7b" },
-    );
-  });
-
-  it("rejects an empty local transcription", async () => {
-    mocks.completeViaBackend.mockResolvedValue({ text: "```latex\n\n```" });
-    await expect(
-      runAdHocConverter("equation-to-latex", {
-        text: "the integral from zero to one",
-        file: null,
-      }),
-    ).rejects.toThrow("empty transcription");
-  });
-
-  it("handles equation images and natural-language equations", async () => {
-    const image = new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-      "equation.png",
-    );
-    const progress = vi.fn();
-    await runAdHocConverter("equation-to-latex", { text: "", file: image }, progress);
-    expect(progress).toHaveBeenCalledWith({ step: "readingEquation", model: "qwen2.5vl:7b" });
-    expect(mocks.completeViaBackend).toHaveBeenLastCalledWith(
-      expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
-      undefined,
-      expect.any(Object),
-    );
-
-    await runAdHocConverter(
-      "equation-to-latex",
-      { text: "the square root of x", file: null },
-      progress,
-    );
-    expect(progress).toHaveBeenCalledWith({ step: "convertingEquation", model: "qwen2.5vl:7b" });
-  });
-
-  it("transcribes bounded scanned PDFs and inserts target-specific page breaks", async () => {
-    await expect(transcribePdfPages(new Uint8Array(), [], "LaTeX")).rejects.toThrow(
-      "does not contain any pages",
-    );
-    const tooMany = Array.from({ length: 51 }, (_, index) => index + 1);
-    await expect(transcribePdfPages(new Uint8Array(), tooMany, "LaTeX")).rejects.toThrow(
-      "limited to 50 pages",
-    );
-
-    const progress = vi.fn();
-    const bytes = new Uint8Array([1, 2, 3]);
-    const markdown = await transcribePdfPages(bytes, [1, 2], "Markdown", progress);
-    expect(markdown).toEqual({ text: "x^2\n\n---\n\nx^2", model: { label: "qwen2.5vl:7b", sentTo: null } });
-    expect(progress).toHaveBeenLastCalledWith({
-      step: "transcribingPage",
-      page: 2,
-      total: 2,
-      pdfPage: 2,
-      model: "qwen2.5vl:7b",
-    });
-    expect(mocks.renderPages).toHaveBeenCalledWith(bytes, [1, 2], 1.6, "#ffffff");
-    expect(mocks.rendered).toEqual([1, 2]);
-
-    const typst = await transcribePdfPages(bytes, [1, 2], "Typst");
-    expect(typst.text).toContain("#pagebreak()");
-    const latex = await transcribePdfPages(bytes, [1, 2], "LaTeX");
-    expect(latex.text).toContain("\\documentclass{article}");
-    expect(latex.text).toContain("\\newpage");
-  });
-
-  it("stops scanned-PDF transcription promptly when cancelled", async () => {
-    const controller = new AbortController();
-    controller.abort();
-    await expect(
-      transcribePdfPages(new Uint8Array([1]), [1], "Markdown", undefined, controller.signal),
-    ).rejects.toMatchObject({ name: "AbortError" });
-    expect(mocks.renderPages).not.toHaveBeenCalled();
-  });
-
-  it.each([
     ["pdf-to-markdown", "markdown"],
     ["pdf-to-typst", "typst"],
   ] as const)("extracts a text-layer PDF through %s", async (id, target) => {
@@ -547,92 +312,6 @@ describe("ad-hoc converter registry", () => {
     );
   });
 
-  it("asks before transcribing a scanned PDF of five pages or more", async () => {
-    mocks.convertPages.mockReturnValue({
-      tex: "",
-      report: { pages: 5, figures: 0, likelyScanned: true },
-    });
-    mocks.extractPagesForConvert.mockResolvedValue({
-      pages: Array.from({ length: 5 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
-      figures: [],
-      pageCount: 5,
-    });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const asked = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
-    await expect(asked).rejects.toBeInstanceOf(ScanConfirmationNeeded);
-    await expect(asked).rejects.toMatchObject({
-      sizes: Array.from({ length: 5 }, () => ({ width: 612, height: 792 })),
-    });
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-    expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
-
-    const result = await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf, scanConfirmed: true });
-    expect(result.note).toBe(
-      "Transcribed 5 scanned pages with qwen2.5vl:7b. Review equations and tables before using the result.",
-    );
-    expect(mocks.completeViaBackend).toHaveBeenCalledTimes(5);
-  });
-
-  it("refuses a scan over the page limit before it asks for confirmation", async () => {
-    mocks.convertPages.mockReturnValue({
-      tex: "",
-      report: { pages: 120, figures: 0, likelyScanned: true },
-    });
-    mocks.extractPagesForConvert.mockResolvedValue({
-      pages: Array.from({ length: 120 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
-      figures: [],
-      pageCount: 120,
-    });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const failed = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
-    await expect(failed).rejects.not.toBeInstanceOf(ScanConfirmationNeeded);
-    await expect(failed).rejects.toThrow("This scan has 120 pages");
-    await expect(failed).rejects.toThrow("up to 50 at a time");
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-  });
-
-  it("reads only the chosen pages of a long scan", async () => {
-    const pages = Array.from({ length: 10 }, () => ({ width: 612, height: 792, items: [], figureNames: [] }));
-    mocks.convertPages.mockReturnValue({
-      tex: "",
-      report: { pages: 10, figures: 0, likelyScanned: true },
-    });
-    mocks.extractPagesForConvert.mockResolvedValue({ pages, figures: [], pageCount: 120 });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const range = [61, 70] as const;
-    const asked = runAdHocConverter("pdf-to-typst", { text: "", file: pdf, pageRange: range });
-    await expect(asked).rejects.toBeInstanceOf(ScanConfirmationNeeded);
-    await expect(asked).rejects.toMatchObject({
-      sizes: Array.from({ length: 10 }, () => ({ width: 612, height: 792 })),
-    });
-    expect(mocks.extractPagesForConvert).toHaveBeenCalledWith(new Uint8Array([37, 80, 68, 70]), {
-      pageRange: [61, 70],
-      figures: "if-text",
-      signal: undefined,
-    });
-    expect(mocks.convertPages).toHaveBeenCalledWith(pages);
-
-    const result = await runAdHocConverter("pdf-to-typst", {
-      text: "",
-      file: pdf,
-      pageRange: range,
-      scanConfirmed: true,
-    });
-    expect(mocks.rendered).toEqual([61, 62, 63, 64, 65, 66, 67, 68, 69, 70]);
-    expect(result.note).toContain("Transcribed 10 scanned pages");
-  });
-
-  it("reads a scan without decoding its page images, and checks the signal while reading", async () => {
-    mocks.convertPages.mockReturnValue({ tex: "", report: { pages: 2, figures: 0, likelyScanned: true } });
-    const controller = new AbortController();
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf }, undefined, controller.signal);
-    expect(mocks.extractPagesForConvert).toHaveBeenCalledWith(expect.any(Uint8Array), {
-      figures: "if-text",
-      signal: controller.signal,
-    });
-  });
-
   it("says how many pages the PDF has when the range starts past its end", async () => {
     mocks.extractPagesForConvert.mockResolvedValue({ pages: [], figures: [], pageCount: 12 });
     const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
@@ -649,20 +328,6 @@ describe("ad-hoc converter registry", () => {
     ).rejects.toThrow(researchTools.converterErrors.pageRangePastEnd_one.replace("{{count}}", "1"));
   });
 
-  it("says one scanned page, not one scanned pages", async () => {
-    mocks.convertPages.mockReturnValue({ tex: "", report: { pages: 1, figures: 0, likelyScanned: true } });
-    mocks.extractPagesForConvert.mockResolvedValue({
-      pages: [{ width: 612, height: 792, items: [], figureNames: [] }],
-      figures: [],
-      pageCount: 1,
-    });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const result = await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
-    expect(result.note).toBe(
-      "Transcribed 1 scanned page with qwen2.5vl:7b. Review equations and tables before using the result.",
-    );
-  });
-
   it("reads page ranges the way a person types them", () => {
     expect(parsePageRange("")).toEqual({ valid: true });
     expect(parsePageRange("   ")).toEqual({ valid: true });
@@ -672,54 +337,6 @@ describe("ad-hoc converter registry", () => {
     for (const bad of ["0", "0-3", "5-2", "a", "1-", "-4", "1,3", "1-2-3", "1.5"]) {
       expect(parsePageRange(bad), bad).toEqual({ valid: false });
     }
-  });
-
-  it("transcribes short scans straight away", async () => {
-    mocks.convertPages.mockReturnValue({
-      tex: "",
-      report: { pages: 2, figures: 0, likelyScanned: true },
-    });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const result = await runAdHocConverter("pdf-to-typst", { text: "", file: pdf });
-    expect(result.text).toBe("x^2\n\n#pagebreak()\n\nx^2");
-    expect(mocks.completeViaBackend).toHaveBeenCalledTimes(2);
-  });
-
-  it("uses a hosted Tools model for images when one is chosen", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ai_keys: { anthropic: "__stored__" },
-      ai_provider: "ollama",
-      ai_model: "qwen2.5vl:7b",
-      ai_tools_model: { provider: "anthropic", model: "claude-opus-5-5" },
-    });
-    const progress = vi.fn();
-    const image = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "notes.png");
-    await runAdHocConverter("image-to-latex", { text: "", file: image }, progress);
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.objectContaining({ max_tokens: 8192 }),
-      undefined,
-      { provider_id: "anthropic", model_id: "claude-opus-5-5" },
-    );
-    expect(progress).toHaveBeenCalledWith({ step: "visionModel", model: "claude-opus-5-5" });
-    expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
-    expect(mocks.downscaleImage).toHaveBeenCalledOnce();
-  });
-
-  it("uses local OCR for a scanned PDF and preserves cancellation identity", async () => {
-    mocks.convertPages.mockReturnValue({
-      tex: "",
-      report: { pages: 2, figures: 0, likelyScanned: true },
-    });
-    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
-    const result = await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
-    expect(result.text).toContain("---");
-    expect(result.note).toContain("Transcribed 2 scanned pages");
-
-    const controller = new AbortController();
-    controller.abort();
-    await expect(
-      runAdHocConverter("pdf-to-typst", { text: "", file: pdf }, undefined, controller.signal),
-    ).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("fails clearly when Pandoc cannot be prepared", async () => {
@@ -798,22 +415,6 @@ describe("Typst converters", () => {
     expect(mocks.convertAdHoc).toHaveBeenCalledWith({ source, target, text: "source" });
   });
 
-  it("gives every Typst converter a Typst-facing output and project target", () => {
-    expect(AD_HOC_CONVERTERS["word-to-typst"]).toMatchObject({
-      inputKind: "file",
-      outputFileName: "converted.typ",
-      projectTarget: "typst",
-    });
-    expect(AD_HOC_CONVERTERS["html-to-typst"].projectTarget).toBe("typst");
-    expect(AD_HOC_CONVERTERS["arxiv-to-typst"]).toMatchObject({ inputKind: "arxiv", projectTarget: "typst" });
-    expect(AD_HOC_CONVERTERS["typst-to-word"].outputFileName).toBe("converted.docx");
-    expect(AD_HOC_CONVERTERS["typst-to-markdown"].projectTarget).toBe("markdown");
-    expect(AD_HOC_CONVERTERS["equation-to-typst"].inputKind).toBe("image-or-text");
-    expect(AD_HOC_CONVERTERS["csv-to-typst"]).toMatchObject({ inputKind: "text", outputFileName: "table.typ" });
-    expect(AD_HOC_CONVERTERS["excel-to-typst"]).toMatchObject({ inputKind: "file", outputFileName: "table.typ" });
-    expect(AD_HOC_CONVERTERS["mermaid-to-typst"].outputFileName).toBe("diagram.typ");
-  });
-
   it("converts Word bytes into Typst", async () => {
     const docx = new File([new Uint8Array([0x50, 0x4b, 3, 4])], "paper.docx");
     await runAdHocConverter("word-to-typst", { text: "", file: docx });
@@ -847,64 +448,6 @@ describe("Typst converters", () => {
     expect(new TextDecoder().decode(bytes)).toBe("Method,Score\nOleafly,0.95");
     mocks.readTableRowsFromBytes.mockResolvedValueOnce([]);
     await expect(runAdHocConverter("csv-to-typst", { text: "", file: null })).rejects.toThrow("empty");
-  });
-
-  it("normalizes typed math, then converts it with the built-in translator", async () => {
-    const result = await runAdHocConverter("equation-to-typst", { text: "e^(iπ) + 1 = 0", file: null });
-    expect(result.text).toBe("e^(i pi) + 1 = 0");
-    expect(result.fileName).toBe("equation.typ");
-    expect(mocks.convertAdHoc).not.toHaveBeenCalled();
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-  });
-
-  it("reads an equation image as LaTeX first, then converts that to Typst", async () => {
-    mocks.completeViaBackend.mockResolvedValue({ text: "\\frac{a}{b}" });
-    const image = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "eq.png");
-    const progress = vi.fn();
-    const result = await runAdHocConverter("equation-to-typst", { text: "", file: image }, progress);
-    expect(progress).toHaveBeenCalledWith({ step: "readingEquation", model: "qwen2.5vl:7b" });
-    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
-      expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
-      undefined,
-      expect.any(Object),
-    );
-    expect(mocks.convertAdHoc).not.toHaveBeenCalled();
-    expect(result.text).toBe("frac(a, b)");
-  });
-
-  it("falls back to the Pandoc equation route when the translator meets an unknown command", async () => {
-    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "$ x star.filled y $\n" });
-    const result = await runAdHocConverter("equation-to-typst", { text: "x \\bigstar y", file: null });
-    expect(mocks.convertAdHoc).toHaveBeenCalledWith({
-      source: "equation",
-      target: "typst",
-      text: "\\[ x \\bigstar y \\]",
-    });
-    expect(result.text).toBe("x star.filled y");
-  });
-
-  it.each([
-    ["$\n  x star.filled y\n$\n", "x star.filled y"],
-    ["  $\tx $ y\t$  ", "x $ y"],
-    ["$x$", "x"],
-  ])("unwraps the Pandoc display math %j", async (output, expected) => {
-    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: output });
-    const result = await runAdHocConverter("equation-to-typst", { text: String.raw`x \bigstar y`, file: null });
-    expect(result.text).toBe(expected);
-  });
-
-  it.each(["$   $", "$", "x $y$", "$y$ x", ""])("rejects the Pandoc output %j that holds no display math", async (output) => {
-    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: output });
-    await expect(
-      runAdHocConverter("equation-to-typst", { text: String.raw`x \bigstar y`, file: null }),
-    ).rejects.toThrow("couldn't convert this equation to Typst");
-  });
-
-  it("fails clearly when Pandoc cannot read the equation either", async () => {
-    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "\\$\\$\\\\frac\\$\\$" });
-    await expect(
-      runAdHocConverter("equation-to-typst", { text: "\\foo{a", file: null }),
-    ).rejects.toThrow("couldn't convert this equation to Typst");
   });
 
   it("writes Mermaid flowcharts as fletcher code pinned for the project's Typst version", async () => {
@@ -1006,7 +549,6 @@ describe("Typst converters", () => {
     expect(result.details).toEqual([]);
   });
 });
-
 
 describe("converter copy", () => {
   it("gives every converter its own title, hints and labels from the catalog", () => {

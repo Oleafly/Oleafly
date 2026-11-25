@@ -22,10 +22,6 @@ const tauri = vi.hoisted(() => ({
   watchProjectFolder: vi.fn(),
 }));
 const files = vi.hoisted(() => ({ writeProjectFile: vi.fn() }));
-const research = vi.hoisted(() => ({
-  previewResearchTaskArtifact: vi.fn(),
-  copyResearchTaskArtifactToNote: vi.fn(),
-}));
 const assets = vi.hoisted(() => ({ loadAssetThumbnail: vi.fn() }));
 const events = vi.hoisted(() => ({
   handler: null as null | ((event: { payload: unknown }) => void),
@@ -35,7 +31,6 @@ const events = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => tauri);
 const dialog = vi.hoisted(() => ({ pickOpenPath: vi.fn() }));
 vi.mock("@/lib/native-file-dialog", () => dialog);
-vi.mock("@/lib/research-tasks", () => research);
 vi.mock("@/components/editor/cm/hover-asset", () => assets);
 vi.mock("@/store/files", () => ({
   isDiskConflict: (error: unknown) => String(error).includes("file changed on disk"),
@@ -447,18 +442,6 @@ describe("saving without reading the note back", () => {
 });
 
 describe("note artifacts and related projects", () => {
-  const artifact = {
-    id: "task-1\nresults/table.csv",
-    taskId: "task-1",
-    path: "results/table.csv",
-    title: "Results",
-    kind: "data" as const,
-    projectId: "paper",
-    project: "SSL paper",
-    updatedAt: 1,
-    chat: "Sweep",
-    summary: "",
-  };
 
   it("links a note to a project, or unlinks it, and reloads the library", async () => {
     tauri.setNoteRelatedProject.mockResolvedValue(undefined);
@@ -475,39 +458,6 @@ describe("note artifacts and related projects", () => {
     const { deps, notes } = service();
     await expect(notes.setRelatedProject?.("note-1", "gone")).rejects.toThrow("no such project");
     expect(deps.refreshProjects).not.toHaveBeenCalled();
-  });
-
-  it("previews a task file the way the artifact panel shows it", async () => {
-    research.previewResearchTaskArtifact.mockResolvedValue({
-      artifact: { path: artifact.path, label: "Results", mediaType: "text/csv" },
-      content: {
-        exists: true,
-        text: "a,b\n1,2\n",
-        base64: null,
-        mediaType: "text/csv",
-        binary: false,
-        truncated: false,
-        size: 8,
-        sha256: null,
-      },
-    });
-    const { notes } = service();
-    await expect(notes.previewArtifact?.(artifact)).resolves.toEqual({
-      type: "table",
-      rows: [
-        ["a", "b"],
-        ["1", "2"],
-      ],
-      truncated: false,
-    });
-    expect(research.previewResearchTaskArtifact).toHaveBeenCalledWith("task-1", "results/table.csv");
-  });
-
-  it("copies a task file into the note and hands back its path", async () => {
-    research.copyResearchTaskArtifactToNote.mockResolvedValue({ path: "assets/table.csv", reused: false });
-    const { notes } = service();
-    await expect(notes.copyArtifact?.("note-1", artifact)).resolves.toBe("assets/table.csv");
-    expect(research.copyResearchTaskArtifactToNote).toHaveBeenCalledWith("task-1", "results/table.csv", "note-1");
   });
 
   it("resolves note images through the editor's asset thumbnails", async () => {

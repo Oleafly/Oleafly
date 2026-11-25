@@ -194,12 +194,7 @@ fn purge_project_data(project_id: &str) -> Result<(), String> {
     let data_root = crate::paths::oleafly_root()?;
     crate::project_grants::reset_project_grants(&data_root, project_id)?;
     crate::checkpoints::remove_project_checkpoint_data(project_id)?;
-    crate::agent_turns::remove_project(project_id);
-    crate::chats::remove_project_chats(project_id)?;
-    crate::attachments::remove_project(project_id)?;
-    if data_root.join("library.db").is_file() {
-        crate::library_db::index_project_chats(&data_root, project_id, "[]")?;
-    }
+
     crate::project_ids::forget(project_id)?;
     Ok(())
 }
@@ -283,10 +278,9 @@ pub(crate) fn purge_expired_removals_at_startup() {
 
 #[tauri::command]
 pub async fn remove_linked_project(
-    app: tauri::AppHandle,
+    _app: tauri::AppHandle,
     project_id: String,
 ) -> Result<(), String> {
-    use tauri::Manager as _;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX))
@@ -295,9 +289,7 @@ pub async fn remove_linked_project(
     tauri::async_runtime::spawn_blocking(move || remove_folder_project(&id, now))
         .await
         .map_err(|error| format!("failed to remove the folder from Oleafly: {error}"))??;
-    if let Some(acp) = app.try_state::<std::sync::Arc<crate::acp::AcpRuntime>>() {
-        acp.close_project_sessions(&project_id).await;
-    }
+
     crate::terminal::kill_project_sessions(&project_id);
     Ok(())
 }
@@ -305,7 +297,7 @@ pub async fn remove_linked_project(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::approvals::ApprovalMode;
+
     use crate::linked_registry::folder_snapshot_for_test;
     use crate::open_folder::FolderOutcome;
     use crate::trust::testing::LinkedFixture;
@@ -390,9 +382,9 @@ mod tests {
     fn removing_a_folder_keeps_its_files_drops_builds_and_trust_and_reopening_restores_chats() {
         let fixture = LinkedFixture::new();
         let seeded = seeded(&fixture, "thesis");
-        let root = crate::paths::oleafly_root().unwrap();
+
         fixture.trust(&seeded.project_id, TrustScope::Folder);
-        crate::approvals::set_mode(&root, &seeded.project_id, ApprovalMode::FullAccess).unwrap();
+
         assert!(crate::trust::is_trusted(&seeded.project_id));
         let before = folder_snapshot_for_test(&seeded.folder);
         let chats = std::fs::read(&seeded.chats).unwrap();
@@ -405,12 +397,7 @@ mod tests {
         }
         assert_eq!(only_entries(&seeded.state), ["link.json", "project.json"]);
         assert!(!crate::trust::is_trusted(&seeded.project_id));
-        assert_ne!(
-            crate::approvals::policy_for(&root, &seeded.project_id, "write_file")
-                .unwrap()
-                .0,
-            ApprovalMode::FullAccess
-        );
+
         assert!(!listed(&seeded.project_id));
         assert_eq!(std::fs::read(&seeded.chats).unwrap(), chats);
         assert!(seeded.checkpoints.exists());
@@ -458,12 +445,7 @@ mod tests {
         let fixture = LinkedFixture::new();
         let seeded = seeded(&fixture, "thesis");
         let kept = seeded_kept(&fixture);
-        let turns = crate::paths::oleafly_root()
-            .unwrap()
-            .join("agent-turns")
-            .join(&seeded.project_id);
-        let turn = crate::agent_turns::begin(&seeded.project_id, "Test agent");
-        assert!(turn.snapshot_id.is_some(), "{turn:?}");
+
         let before = folder_snapshot_for_test(&seeded.folder);
         remove_folder_project(&seeded.project_id, 1_000).unwrap();
 
@@ -474,16 +456,13 @@ mod tests {
             .unwrap()
             .is_some());
         assert!(seeded.chats.exists() && seeded.checkpoints.exists());
-        assert!(turns.is_dir());
         assert!(linked_entry(&seeded.project_id).exists());
 
         let due = purge_expired_removals(1_000 + REMOVED_RETENTION_MS).unwrap();
 
         assert_eq!(due.purged, vec![seeded.project_id.clone()]);
         assert!(due.failures.is_empty(), "{:?}", due.failures);
-        assert!(!seeded.chats.exists());
         assert!(!seeded.checkpoints.exists());
-        assert!(!turns.exists());
         assert!(!linked_entry(&seeded.project_id).exists());
         assert!(crate::project_ids::binding(&seeded.project_id)
             .unwrap()
@@ -537,7 +516,6 @@ mod tests {
         let resumed = purge_expired_removals(1_001).unwrap();
 
         assert_eq!(resumed.purged, vec![seeded.project_id.clone()]);
-        assert!(!seeded.chats.exists());
         assert!(!seeded.checkpoints.exists());
         assert!(queue_is_empty());
         assert_eq!(

@@ -1,5 +1,4 @@
-import { type DragEvent as ReactDragEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { lazy } from "@/lib/preloadable";
+import { type DragEvent as ReactDragEvent, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -13,19 +12,13 @@ import {
   Heading,
   Image as ImageIcon,
   Radical,
-  ScanText,
   ScissorsLineDashed,
   Settings2,
   Sigma,
-  Sparkles,
-  X,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
-import { useProviderConfig } from "@/hooks/use-provider-config";
-import { describeToolsChoice, destinationName } from "@/features/tools-ai/tools-choice";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
@@ -36,7 +29,6 @@ import {
   handleDownloadZipClick,
   handlePickedFile,
 } from "@/features/import";
-import { refineAvailable, refineWithAi } from "@/features/import-refine";
 import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
 import { cn, isMac } from "@/lib/utils";
 import { formatNumber } from "@/lib/intl";
@@ -46,16 +38,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
 import { i18n } from "@/i18n";
-import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
-import type { PageSize } from "@/features/tools-ai/scan-estimate";
-import { scanProgressLabel } from "@/features/tools-ai/scan-progress";
-
-const ScanTranscribeBanner = lazy(() =>
-  import("@/components/tools/ScanTranscribeBanner").then((module) => ({
-    default: module.ScanTranscribeBanner,
-  })),
-);
 
 const HANDLES = [
   { id: "structure", icon: Heading },
@@ -272,30 +255,8 @@ function PagePreviews() {
 }
 
 function ScanNotice() {
-  const { t } = useTranslation(["library"]);
-  const storePages = useImportStore((s) => s.pages);
-  const range = useImportStore((s) => s.options.pageRange);
-  const sizes = useMemo<PageSize[]>(
-    () => storePages.map(({ width, height }) => ({ width, height })),
-    [storePages],
-  );
-  return (
-    <Suspense
-      fallback={
-        <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-          {t(($) => $.library.pdfImport.scannedLocal)}
-        </div>
-      }
-    >
-      <ScanTranscribeBanner pages={sizes} range={range} />
-    </Suspense>
-  );
-}
-
-function usePendingScanDestination(pending: boolean): string | null {
-  const { config } = useProviderConfig();
-  if (!pending || !config) return null;
-  return destinationName(describeToolsChoice(config).destination);
+  const { t } = useTranslation(["researchTools"]);
+  return <p role="status" className="border-b px-4 py-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converterErrors.scannedPdfUnsupported)}</p>;
 }
 
 function SourcePane() {
@@ -391,7 +352,7 @@ function FiguresStrip() {
 }
 
 function useScanPending(): boolean {
-  return useImportStore((s) => Boolean(s.result?.report.likelyScanned) && !s.scanTranscribed);
+  return useImportStore((s) => Boolean(s.result?.report.likelyScanned));
 }
 
 function useSingleCreate(): {
@@ -412,33 +373,10 @@ function useSingleCreate(): {
   return { creating, runCreate };
 }
 
-function TranscribeScanButton() {
-  const { t } = useTranslation(["library"]);
-  const likelyScanned = useImportStore((s) => Boolean(s.result?.report.likelyScanned));
-  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
-  const busy = useImportStore((s) => s.busy);
-  const transcribeScan = useImportStore((s) => s.transcribeScan);
-  if (!likelyScanned || scanTranscribed) return null;
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={busy}
-      data-testid="import-transcribe-scan"
-      onClick={() => void transcribeScan()}
-    >
-      {busy ? <Spinner /> : <ScanText />}
-      {t(($) => $.library.pdfImport.transcribeLocal)}
-    </Button>
-  );
-}
-
 function ImportActions({
-  refineable,
   creating,
   runCreate,
 }: Readonly<{
-  refineable: boolean;
   creating: boolean;
   runCreate: (work: () => Promise<unknown>) => void;
 }>) {
@@ -472,18 +410,7 @@ function ImportActions({
       >
         <FileArchive className="size-4" /> {".zip"}
       </Button>
-      {refineable && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!result || creating}
-          data-testid="import-refine"
-          onClick={() => runCreate(refineWithAi)}
-        >
-          <Sparkles className="size-4" /> {t(($) => $.library.pdfImport.refine)}
-        </Button>
-      )}
-      <TranscribeScanButton />
+
       <Button
         size="sm"
         disabled={!result || creating}
@@ -499,43 +426,19 @@ function ImportActions({
   );
 }
 
-function ImportDestinationBadge({
-  pdfLoaded,
-  pendingScanTo,
-}: Readonly<{ pdfLoaded: boolean; pendingScanTo: string | null }>) {
-  const { t } = useTranslation(["library", "researchTools", "shell"]);
-  const scanModel = useImportStore((s) => s.scanModel);
-  let label = t(($) => $.library.pdfImport.local);
-  if (scanModel?.sentTo) {
-    label = t(($) => $.researchTools.converterModel.sentBadge, { provider: scanModel.sentTo });
-  } else if (pendingScanTo) {
-    label = t(($) => $.shell.importDestination.scansGoTo, { provider: pendingScanTo });
-  }
-  const remote = Boolean(scanModel?.sentTo || pendingScanTo);
-  return (
-    <Badge
-      data-testid="import-destination"
-      data-destination={remote ? "remote" : "device"}
-      variant={remote ? "warning" : "success"}
-      className={cn("px-3 py-1", !pdfLoaded && "ml-auto")}
-    >
-      {label}
-    </Badge>
-  );
+function ImportDestinationBadge() {
+  const { t } = useTranslation(["researchTools"]);
+  return <span className="text-xs text-muted-foreground">{t(($) => $.researchTools.converter.runsOnDevice)}</span>;
 }
 
 function ImportHeader({
   pdfLoaded,
   fullscreen,
-  pendingScanTo,
-  refineable,
   creating,
   runCreate,
 }: Readonly<{
   pdfLoaded: boolean;
   fullscreen: boolean;
-  pendingScanTo: string | null;
-  refineable: boolean;
   creating: boolean;
   runCreate: (work: () => Promise<unknown>) => void;
 }>) {
@@ -570,8 +473,8 @@ function ImportHeader({
           <StatsBar />
         </>
       )}
-      {pdfLoaded && <ImportActions refineable={refineable} creating={creating} runCreate={runCreate} />}
-      <ImportDestinationBadge pdfLoaded={pdfLoaded} pendingScanTo={pendingScanTo} />
+      {pdfLoaded && <ImportActions creating={creating} runCreate={runCreate} />}
+      <ImportDestinationBadge />
       <WindowControls />
     </div>
   );
@@ -607,20 +510,14 @@ function ImportRunStatus() {
   const { t } = useTranslation(["library", "researchTools"]);
   const busy = useImportStore((s) => s.busy);
   const error = useImportStore((s) => s.error);
-  const scanProgress = useImportStore((s) => s.scanProgress);
-  const cancelScan = useImportStore((s) => s.cancelScan);
   return (
     <>
       {busy && (
         <span data-testid="import-progress" className="ml-3 text-xs text-muted-foreground">
-          {(scanProgress && scanProgressLabel(scanProgress)) ?? t(($) => $.library.pdfImport.converting)}
+          {t(($) => $.library.pdfImport.converting)}
         </span>
       )}
-      {scanProgress && (
-        <Button variant="ghost" size="xs" className="ml-1" onClick={cancelScan} data-testid="import-cancel-scan">
-          <X /> {t(($) => $.researchTools.converter.cancel)}
-        </Button>
-      )}
+
       {error && <span className="ml-3 select-text text-xs text-destructive">{error}</span>}
     </>
   );
@@ -628,18 +525,12 @@ function ImportRunStatus() {
 
 function ImportReviewBar() {
   const { t } = useTranslation(["library", "researchTools"]);
-  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
-  const scanModel = useImportStore((s) => s.scanModel);
   return (
     <div className="flex items-center gap-1 border-b px-4 py-1.5">
       <ImportViewSwitcher />
       <ImportRunStatus />
       <span className="ml-auto text-xs text-muted-foreground">
-        {scanTranscribed
-          ? t(($) => $.researchTools.converterModel.transcribedWith, {
-              model: scanModel?.label ?? t(($) => $.researchTools.converterModel.automatic),
-            })
-          : t(($) => $.library.pdfImport.disclaimer)}
+        {t(($) => $.library.pdfImport.disclaimer)}
       </span>
     </div>
   );
@@ -670,22 +561,15 @@ export function PdfImportView() {
   const page = useHomeViewStore((s) => s.page);
   const pdfLoaded = useImportStore((s) => Boolean(s.pdfBytes));
   const scanPending = useScanPending();
-  const [refineable, setRefineable] = useState(false);
   const { creating, runCreate } = useSingleCreate();
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
-  const pendingScanTo = usePendingScanDestination(active && scanPending);
-  useEffect(() => {
-    if (active) void refineAvailable().then(setRefineable);
-  }, [active]);
   if (!active) return null;
   return (
     <div data-testid="pdf-import-view" className="flex h-full flex-col bg-background">
       <ImportHeader
         pdfLoaded={pdfLoaded}
         fullscreen={fullscreen}
-        pendingScanTo={pendingScanTo}
-        refineable={refineable}
         creating={creating}
         runCreate={runCreate}
       />

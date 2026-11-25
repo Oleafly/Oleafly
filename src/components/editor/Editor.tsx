@@ -25,7 +25,7 @@ import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { inWidgetControl } from "@/lib/field-history";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
 import { NoteMarkdownBanner } from "./NoteMarkdownBanner";
-import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
+import { EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { activeNoteTab, editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
@@ -556,7 +556,6 @@ export function Editor() {
           </div>
           <EditorTabStrip diffFocused={diffFocused} />
           <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1 pr-2">
-            <CloseAssistantTabsButton />
             <Tooltip label={t(($) => $.editor.shell.editorSettings)} side="bottom">
               <button
                 type="button"

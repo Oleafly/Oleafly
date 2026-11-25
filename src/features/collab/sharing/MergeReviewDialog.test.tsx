@@ -17,14 +17,6 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   collabMergeReview: mocks.collabMergeReview,
 }));
 
-vi.mock("@/components/ai/turns/DiffPreview", () => ({
-  DiffPreview: ({ path, oldText, newText, label }: { path: string; oldText: string; newText: string; label: string }) => (
-    <pre data-testid="diff" data-path={path} data-label={label}>
-      {`${oldText}|${newText}`}
-    </pre>
-  ),
-}));
-
 import { MAX_OPEN_DIFFS, MergeReviewDialog } from "./MergeReviewDialog";
 
 const copy = enCollab.mergeReview;
@@ -177,3 +169,11 @@ describe("MergeReviewDialog", () => {
     expect(screen.getByTestId("diff")).toHaveAttribute("data-path", "next.tex");
   });
 });
+
+vi.mock("@/components/ui/DiffPreview", () => ({
+  DiffPreview: ({ path, oldText, newText, label }: { path: string; oldText: string; newText: string; label: string }) => (
+    <pre data-testid="diff" data-path={path} data-label={label}>
+      {`${oldText}|${newText}`}
+    </pre>
+  ),
+}));

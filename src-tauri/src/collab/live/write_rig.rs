@@ -16,7 +16,7 @@ use tokio::sync::{mpsc, oneshot};
 use super::super::{
     guard, initial_bases, lock, writer_loop, Active, Live, LiveDisk, LiveHost, WriterSignal, ACTIVE,
 };
-use super::SharedDocument;
+
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::collab::state::CollabState;
 
@@ -123,10 +123,6 @@ impl LiveRig {
             seq: AtomicU64::new(0),
             _dir: dir,
         }
-    }
-
-    pub(crate) fn document(&self) -> SharedDocument {
-        SharedDocument(Arc::clone(&self.active))
     }
 
     pub(in crate::collab::live) fn active(&self) -> Arc<Active> {

@@ -48,7 +48,6 @@ import {
   Settings,
   Sigma,
   SlidersHorizontal,
-  Sparkles,
   Square,
   SquareTerminal,
   Strikethrough,
@@ -94,15 +93,12 @@ import {
   titleCaseSelection,
   uppercaseSelection,
 } from "@oleafly/editor";
-import { handoffToAssistant } from "@/features/assistant-handoff";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
 import {
   closeAllEditorTabs,
-  closeAssistantTabs,
   currentEditorTabs,
-  openAssistantTabs,
 } from "@/components/editor/editor-tabs";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { openNewTerminal } from "@/lib/terminal-open";
@@ -115,7 +111,6 @@ import {
   formattingProfileForPath,
   pathUsesEngineSource,
   sourceLanguageForPath,
-  supportsFigureTools,
   type EngineFormattingAction,
 } from "@/lib/document-engine";
 import { findReferences, goToDefinition, startRename } from "@/lib/index/nav";
@@ -287,11 +282,10 @@ const ENGLISH_KEYWORDS = {
   latexPackages: "latex ctan packages usepackage preamble install tlmgr browse",
   addChapterFromProject: "thesis chapter paper import merge copy project",
   closeAllEditorTabs: "close all editor tabs files",
-  closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
   visualSettings: "visual mode font typeface text size line height paragraph spacing indent justify heading color zen writing",
   togglePreview: "pdf preview show hide split editor only layout view",
-  resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
+  resetPaneLayout: "reset pane layout order move panels sidebar editor preview terminal default",
   movePaneToEdge: "move pane edge dock side split stack layout",
   swapEditorPreview: "swap editor preview pdf sides pane order layout",
   saveLayout: "save layout custom arrangement panes sizes name",
@@ -565,20 +559,6 @@ export function registerOmnibarCommands() {
     icon: themeIcon,
     order: 40,
     run: toggleTheme,
-  });
-  registerCommand({
-    id: "omnibar.figure",
-    surfaces: ["omnibar"],
-    label: () => i18n.t(($) => $.shell.commands.generateFigure.label),
-    keywords: () =>
-      `${i18n.t(($) => $.shell.commands.generateFigure.keywords)} ${ENGLISH_KEYWORDS.generateFigure}`,
-    icon: () => <Sparkles className="size-4" />,
-    order: 30,
-    when: (ctx) => !!ctx.projectId && supportsFigureTools(engine(), engineLoaded()),
-    run: () => {
-      useSettingsStore.getState().setAssistantOpen(true);
-      handoffToAssistant("Draw a figure of ");
-    },
   });
   registerCommand({
     id: "omnibar.diagram-composer",
@@ -1177,17 +1157,6 @@ export function registerPaletteCommands() {
     order: 496,
     when: () => currentEditorTabs().length > 0,
     run: () => closeAllEditorTabs(),
-  });
-  palette({
-    id: "palette.close-assistant-tabs",
-    group: () => i18n.t(($) => $.shell.commandGroups.editor),
-    label: () => i18n.t(($) => $.shell.commands.closeAssistantTabs.label),
-    keywords: () =>
-      `${i18n.t(($) => $.shell.commands.closeAssistantTabs.keywords)} ${ENGLISH_KEYWORDS.closeAssistantTabs}`,
-    icon: () => <Sparkles className="size-4" />,
-    order: 497,
-    when: () => openAssistantTabs().length > 0,
-    run: () => closeAssistantTabs(),
   });
 
   palette({

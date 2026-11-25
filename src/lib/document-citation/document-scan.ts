@@ -9,16 +9,15 @@ import {
   filterNewLiteratureRecords,
   parseBibliographyIdentities,
 } from "./bibliography-filter";
-import { heuristicScore, rankLiteraturePapers } from "./debate-ranker";
+import { heuristicScore } from "./debate-ranker";
 import { enrichAuthorlessRecords, type ArxivLookupFn } from "./enrich";
 import { extractKeywords, splitIntoParagraphs } from "./latex-paragraphs";
 import { extractTypstKeywords, splitTypstParagraphs, type ScanFormat } from "./typst-paragraphs";
-import { completeChatWithActiveModel } from "./llm-complete";
 import {
   DEFAULT_DOCUMENT_CITATION_SETTINGS,
   type DocumentCitationSettings,
 } from "./settings";
-import type { CompleteChatFn, RankedLiteraturePaper } from "./types";
+import type { RankedLiteraturePaper } from "./types";
 
 export interface DocumentScanProgress {
   phase: "splitting" | "paragraph" | "complete" | "error";
@@ -39,8 +38,6 @@ export interface DocumentScanResult {
   paragraphs: ParagraphCitationResult[];
   totalParagraphs: number;
 }
-
-export type DocumentScanRankMode = "llm" | "heuristic";
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
@@ -84,9 +81,7 @@ export async function scanDocumentForCitations(args: {
   sources?: LiteratureSource[];
   settings?: DocumentCitationSettings;
   search?: typeof searchLiterature;
-  completeChat?: CompleteChatFn;
   arxivLookup?: ArxivLookupFn;
-  rankMode?: DocumentScanRankMode;
   signal?: AbortSignal;
   onProgress?: (p: DocumentScanProgress) => void;
   onParagraph?: (result: ParagraphCitationResult) => void;
@@ -97,8 +92,6 @@ export async function scanDocumentForCitations(args: {
   };
   const sources = args.sources ?? DEFAULT_LITERATURE_SOURCES;
   const search = args.search ?? searchLiterature;
-  const completeChat = args.completeChat ?? completeChatWithActiveModel;
-  const rankMode: DocumentScanRankMode = args.rankMode ?? "llm";
   const { signal, onProgress, onParagraph } = args;
 
   onProgress?.({
@@ -115,7 +108,6 @@ export async function scanDocumentForCitations(args: {
   });
   const totalParagraphs = paragraphs.length;
   const bibIds = parseBibliographyIdentities(args.bibText);
-  const fullDocContext = keywords(args.sourceText.slice(0, 4000), 60);
 
   const results: ParagraphCitationResult[] = [];
 
@@ -164,16 +156,7 @@ export async function scanDocumentForCitations(args: {
       throwIfAborted(signal);
       const sourceErrors = sourceErrorMessages(response.runs);
 
-      const ranked =
-        rankMode === "heuristic"
-          ? rankHeuristic(papers)
-          : await rankLiteraturePapers({
-              paragraphText: paragraph.text,
-              papers,
-              fullDocContext: fullDocContext || undefined,
-              completeChat,
-              signal,
-            });
+      const ranked = rankHeuristic(papers);
 
       const suggestions = ranked
         .filter((r) => r.score >= settings.scoreThreshold)

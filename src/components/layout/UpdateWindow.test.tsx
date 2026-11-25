@@ -73,7 +73,7 @@ it("shows check errors with a route to the release download", async () => {
   render(<UpdateWindow />);
   expect(await screen.findByText("Error: service unavailable")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: enShell.updateChecker.downloadFromGithub }));
-  expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly/releases/latest");
+  expect(mocks.open).toHaveBeenCalledWith("https://github.com/peplxx/oleafly-no-ai/releases/latest");
   expect(mocks.installUpdate).not.toHaveBeenCalled();
 });
 
@@ -83,7 +83,7 @@ it("offers a download for package installations that cannot update in place", as
   const download = await screen.findByRole("button", { name: enShell.updateChecker.downloadFromGithub });
   expect(screen.queryByRole("button", { name: enShell.updateChecker.updateNow })).not.toBeInTheDocument();
   fireEvent.click(download);
-  expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly/releases/tag/v0.4.1");
+  expect(mocks.open).toHaveBeenCalledWith("https://github.com/peplxx/oleafly-no-ai/releases/tag/v0.4.1-noai.1");
 });
 
 it("tries the install again after it fails", async () => {

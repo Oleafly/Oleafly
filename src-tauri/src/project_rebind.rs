@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use serde::Serialize;
 
@@ -191,7 +190,6 @@ async fn rebind_with_consent<R: tauri::Runtime>(
     record: LinkRecord,
     candidate: FolderCandidate,
 ) -> Result<LocateFolderOutcome, String> {
-    use tauri::Manager as _;
     let kind = rebind_kind(&record, &candidate);
     if kind == RebindKind::DifferentFolder
         && !confirm_different_folder(app, &folder_name(&candidate.canonical)).await?
@@ -199,13 +197,8 @@ async fn rebind_with_consent<R: tauri::Runtime>(
         return Ok(LocateFolderOutcome::Declined);
     }
     let grants_reset = kind == RebindKind::DifferentFolder;
-    let acp = app
-        .try_state::<Arc<crate::acp::AcpRuntime>>()
-        .map(|state| Arc::clone(state.inner()));
+
     if grants_reset {
-        if let Some(acp) = &acp {
-            acp.close_project_sessions(&project_id).await;
-        }
         crate::terminal::kill_project_sessions(&project_id);
     }
     let data_root = crate::paths::oleafly_root()?;
@@ -214,16 +207,7 @@ async fn rebind_with_consent<R: tauri::Runtime>(
     tauri::async_runtime::spawn_blocking(move || apply_rebind(&data_root, &id, &target, kind))
         .await
         .map_err(|error| error.to_string())??;
-    if let Some(acp) = &acp {
-        acp.close_project_sessions(&project_id).await;
-        if let Err(error) =
-            acp.rebind_project_paths(&project_id, &candidate.canonical, grants_reset)
-        {
-            let _ = crate::project::append_app_log(format!(
-                "Saved agent sessions for {project_id} still point at the old folder: {error}"
-            ));
-        }
-    }
+
     crate::project_availability::relocated(&project_id, grants_reset);
     if grants_reset {
         use tauri::Emitter as _;
@@ -278,16 +262,9 @@ async fn adopt_with<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::approvals::ApprovalMode;
+
     use crate::trust::testing::LinkedFixture;
     use crate::trust::TrustScope;
-
-    fn mode(project_id: &str) -> ApprovalMode {
-        let root = crate::paths::oleafly_root().unwrap();
-        crate::approvals::policy_for(&root, project_id, "write_file")
-            .unwrap()
-            .0
-    }
 
     fn registered_path(project_id: &str) -> String {
         linked_record(project_id).unwrap().canonical_path
@@ -299,7 +276,7 @@ mod tests {
         let root = crate::paths::oleafly_root().unwrap();
         let (project_id, folder) = fixture.link("before/thesis");
         fixture.trust(&project_id, TrustScope::Folder);
-        crate::approvals::set_mode(&root, &project_id, ApprovalMode::FullAccess).unwrap();
+
         let record = linked_record(&project_id).unwrap();
 
         let moved = fixture.folders.path().canonicalize().unwrap().join("moved");
@@ -307,7 +284,7 @@ mod tests {
         let same = validate_rebind_candidate(&project_id, &moved).unwrap();
         assert_eq!(rebind_kind(&record, &same), RebindKind::SameFolder);
         apply_rebind(&root, &project_id, &same, RebindKind::SameFolder).unwrap();
-        assert_eq!(mode(&project_id), ApprovalMode::FullAccess);
+
         assert!(crate::trust::is_trusted(&project_id));
         assert_eq!(registered_path(&project_id), moved.to_str().unwrap());
         assert_eq!(
@@ -324,7 +301,7 @@ mod tests {
             RebindKind::DifferentFolder
         );
         apply_rebind(&root, &project_id, &different, RebindKind::DifferentFolder).unwrap();
-        assert_eq!(mode(&project_id), ApprovalMode::ApproveForMe);
+
         assert!(!crate::trust::is_trusted(&project_id));
         assert_eq!(registered_path(&project_id), other.to_str().unwrap());
         assert!(moved.is_dir());
@@ -334,10 +311,10 @@ mod tests {
     #[test]
     fn using_the_folder_behind_a_link_left_at_the_old_path_rebinds_and_keeps_grants() {
         let fixture = LinkedFixture::new();
-        let root = crate::paths::oleafly_root().unwrap();
+
         let (project_id, folder) = fixture.link("before/thesis");
         fixture.trust(&project_id, TrustScope::Folder);
-        crate::approvals::set_mode(&root, &project_id, ApprovalMode::FullAccess).unwrap();
+
         let moved = fixture.folders.path().canonicalize().unwrap().join("moved");
         std::fs::rename(&folder, &moved).unwrap();
         std::os::unix::fs::symlink(&moved, &folder).unwrap();
@@ -356,7 +333,7 @@ mod tests {
             crate::project_location::locate(&project_id).unwrap().root,
             moved
         );
-        assert_eq!(mode(&project_id), ApprovalMode::FullAccess);
+
         assert!(crate::trust::is_trusted(&project_id));
     }
 
@@ -393,7 +370,7 @@ mod tests {
         let fixture = LinkedFixture::new();
         let root = crate::paths::oleafly_root().unwrap();
         let (project_id, folder) = fixture.link("thesis");
-        crate::approvals::set_mode(&root, &project_id, ApprovalMode::FullAccess).unwrap();
+
         let marker = crate::project_location::locate(&project_id)
             .unwrap()
             .restore_marker();
@@ -404,12 +381,11 @@ mod tests {
 
         let different = validate_rebind_candidate(&project_id, &other).unwrap();
         assert!(apply_rebind(&root, &project_id, &different, RebindKind::DifferentFolder).is_err());
-        assert_eq!(mode(&project_id), ApprovalMode::FullAccess);
+
         assert_eq!(registered_path(&project_id), folder.to_str().unwrap());
 
         let same = validate_rebind_candidate(&project_id, &folder).unwrap();
         apply_rebind(&root, &project_id, &same, RebindKind::SameFolder).unwrap();
-        assert_eq!(mode(&project_id), ApprovalMode::FullAccess);
     }
 
     #[test]

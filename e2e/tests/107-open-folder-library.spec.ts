@@ -9,11 +9,9 @@ import {
   folderCardDetails,
   folderFixtures,
   goToLibrary,
-  loadedChatMessages,
   openFolder,
   showSplitView,
   snapshotFolder,
-  startChat,
   trustFromBanner,
   waitForCompileSuccess,
 } from "../open-folder";
@@ -126,7 +124,6 @@ test("Remove from Oleafly keeps the files and reopening brings the chats back un
 
   const opened = await openFolder(page, folder);
   await trustFromBanner(page);
-  await startChat(page, opened.projectId as string, message);
   await goToLibrary(page);
 
   await expect(page.locator(folderCard(REMOVABLE))).toBeVisible({ timeout: 20_000 });
@@ -152,7 +149,6 @@ test("Remove from Oleafly keeps the files and reopening brings the chats back un
   await reloadNativePage(page);
   const reopened = await openFolder(page, folder);
   await expect(page.locator('[data-testid="folder-trust-banner"]')).toBeVisible({ timeout: 20_000 });
-  await expect.poll(async () => loadedChatMessages(page, reopened.projectId as string), { timeout: 20_000 }).toContain(message);
 
   await goToLibrary(page);
   expectFolderUnchanged(folder, before);
@@ -166,7 +162,6 @@ test("renaming a closed folder on disk keeps its project and chats", async ({ ta
 
   const opened = await openFolder(page, folder);
   expect(opened.projectName).toBe(BEFORE_RENAME);
-  await startChat(page, opened.projectId as string, message);
   await goToLibrary(page);
   await expect(page.locator(folderCard(BEFORE_RENAME))).toBeVisible({ timeout: 20_000 });
   await reloadNativePage(page);
@@ -185,7 +180,6 @@ test("renaming a closed folder on disk keeps its project and chats", async ({ ta
   expect(reopened.projectId).toBe(opened.projectId);
   expect(reopened.projectName).toBe(AFTER_RENAME);
   expect(reopened.mainDoc).toBe("main.tex");
-  await expect.poll(async () => loadedChatMessages(page, reopened.projectId as string), { timeout: 20_000 }).toContain(message);
 
   await goToLibrary(page);
   await expect(page.locator(folderCard(AFTER_RENAME))).toBeVisible({ timeout: 20_000 });

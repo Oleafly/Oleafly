@@ -4,8 +4,6 @@ import type { PdfAnnotationLayer, PdfMark, PdfRegionSelectionInfo, PdfTextSelect
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { gotoRect, pdfPageText } from "@/components/pdf/pdfController";
 import type { PopoverAnchor } from "@/components/ui/popover";
-import { ensureAiProviderOrOpenSettings, handoffToAssistant } from "@/features/assistant-handoff";
-import { annotationContextItems } from "@/features/pdf-annotations/context";
 import type { PlaceDeps } from "@/features/pdf-annotations/place";
 import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { logError } from "@/lib/log";
@@ -314,12 +312,6 @@ export function usePdfAnnotations({
     else pdfRef.current?.gotoPage(annotation.page);
   };
 
-  const send = async (annotations: PdfAnnotation[]) => {
-    if (annotations.length === 0) return;
-    if (!(await ensureAiProviderOrOpenSettings())) return;
-    handoffToAssistant("", { autoSend: false, context: annotationContextItems(annotations) });
-  };
-
   const viewerProps = useMemo(
     () => ({
       annotationLayer: layer ?? undefined,
@@ -419,7 +411,6 @@ export function usePdfAnnotations({
             }}
             onShow={show}
             onPlaceAgain={(annotation) => setPlacingId(annotation?.id ?? null)}
-            onSend={(annotations) => void send(annotations)}
           />
         </Suspense>
       </>

@@ -1,7 +1,7 @@
 import { Search, X } from "lucide-react";
 import { type RefObject, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";

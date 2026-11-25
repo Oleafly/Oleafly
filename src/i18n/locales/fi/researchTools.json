@@ -1129,6 +1129,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "Valitse kuva, joka on pienempi kuin 20 MB.",
     "imageFormat": "Valitse PNG-, JPEG- tai WebP-kuva.",
     "ollamaUnavailable": "Käynnistä Ollama tai valitse Työkaluille toinen malli.",

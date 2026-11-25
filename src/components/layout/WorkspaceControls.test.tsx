@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   SidebarCollapseToggle,
@@ -29,7 +29,6 @@ describe("WorkspaceControls", () => {
   beforeEach(() => {
     useSettingsStore.setState({
       terminalOpen: false,
-      assistantOpen: false,
       showTree: true,
       railTab: "files",
     });
@@ -87,36 +86,6 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByLabelText(enShell.rail.files));
     expect(useSettingsStore.getState().railTab).toBe("files");
     expect(useSettingsStore.getState().showTree).toBe(true);
-  });
-
-  it("keeps terminal and assistant buttons visible and groups secondary actions", () => {
-    const fork = vi.fn();
-    render(<ThemeProvider><WorkspaceDockControls onFork={fork} /></ThemeProvider>);
-    fireEvent.click(screen.getByTestId("rail-terminal-toggle"));
-    expect(useSettingsStore.getState().terminalOpen).toBe(true);
-    fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
-    expect(useSettingsStore.getState().assistantOpen).toBe(true);
-    expect(screen.queryByTestId("open-settings")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
-    openThemeMenu(screen.getByTestId("workspace-menu"));
-    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
-    fireEvent.click(screen.getByRole("menuitem", { name: enShell.toolbar.forkProject }));
-    expect(fork).toHaveBeenCalledOnce();
-    openThemeMenu(screen.getByTestId("workspace-menu"));
-    fireEvent.click(screen.getByTestId("open-settings"));
-    expect(useSettingsStore.getState().settingsOpen).toBe(true);
-  });
-
-  it("keeps terminal and AI visible at maximum overflow", () => {
-    useSettingsStore.setState({ settingsOpen: false });
-    render(<ThemeProvider><WorkspaceDockControls overflow={TOOLBAR_OVERFLOW.export} /></ThemeProvider>);
-    expect(screen.getByTestId("rail-assistant-toggle")).toBeVisible();
-    expect(screen.getByRole("button", { name: /Show terminal/ })).toBeVisible();
-    expect(screen.getByTestId("rail-terminal-toggle").closest("[inert]")).toBeNull();
-    fireEvent.click(screen.getByTestId("rail-terminal-toggle"));
-    expect(useSettingsStore.getState().terminalOpen).toBe(true);
-    openThemeMenu(screen.getByTestId("workspace-menu"));
-    expect(screen.queryByRole("menuitem", { name: /terminal/ })).not.toBeInTheDocument();
   });
 
   it("opens More actions from a click without pointer events", () => {
@@ -178,21 +147,6 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByTestId("open-settings"));
 
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
-  });
-
-  it("leaves the MCP view once the server stops and reopens a hidden sidebar on a switch", () => {
-    useSettingsStore.setState({ railTab: "mcp", showTree: false });
-    render(
-      <ThemeProvider>
-        <SidebarViews />
-      </ThemeProvider>,
-    );
-    expect(useSettingsStore.getState().railTab).toBe("files");
-
-    fireEvent.click(screen.getByLabelText(enShell.rail.search));
-
-    expect(useSettingsStore.getState().railTab).toBe("search");
-    expect(useSettingsStore.getState().showTree).toBe(true);
   });
 
   it("counts pending source control changes on its view switcher", () => {

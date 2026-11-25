@@ -39,7 +39,6 @@ const mocks = vi.hoisted(() => ({
     spellcheck: false,
     offline: false,
     setNewProjectOpen: vi.fn(),
-    setAssistantOpen: vi.fn(),
     setSettingsOpen: vi.fn(),
     setRailTab: vi.fn(),
     setShowTree: vi.fn(),
@@ -141,15 +140,14 @@ vi.mock("@/lib/toast", () => ({
     error: mocks.toastError,
   },
 }));
-vi.mock("@/features/assistant-handoff", () => ({
-  handoffToAssistant: mocks.handoffToAssistant,
-}));
 vi.mock("@/features/export", () => ({ exportCurrentPdf: mocks.exportCurrentPdf }));
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: mocks.forwardFromCursor }));
 vi.mock("@/features/cite-oleafly", () => ({
   runCiteOleaflyAction: mocks.runCiteOleaflyAction,
 }));
-vi.mock("@/lib/tauri", () => ({ clearBuildCache: mocks.clearBuildCache }));
+vi.mock("@/lib/tauri", () => ({ clearBuildCache: mocks.clearBuildCache ,
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/components/editor/cm/controller", () => ({
   getEditorView: mocks.getEditorView,
   insertAtCursor: mocks.insertAtCursor,
@@ -371,28 +369,6 @@ describe("command contributions behaviour", () => {
     expect(seen).toHaveLength(1);
   });
 
-  it("hands a figure prompt to the assistant", () => {
-    run("omnibar.figure");
-    expect(mocks.settings.setAssistantOpen).toHaveBeenCalledWith(true);
-    expect(mocks.handoffToAssistant).toHaveBeenCalledTimes(1);
-  });
-
-  it("offers the figure prompt in LaTeX and Typst projects but not in Markdown", () => {
-    const figure = registry.commands.find((entry) => entry.id === "omnibar.figure");
-    const withProfile = (formatting_profile: "typst" | "markdown", supports_isolated_compile: boolean) => ({
-      ...LATEX_ENGINE,
-      capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile, supports_isolated_compile },
-    });
-    expect(figure?.when?.(baseContext)).toBe(true);
-    mocks.files.engine = withProfile("typst", false);
-    expect(figure?.when?.(baseContext)).toBe(true);
-    mocks.files.engine = withProfile("markdown", false);
-    expect(figure?.when?.(baseContext)).toBe(false);
-    mocks.files.engine = LATEX_ENGINE;
-    mocks.files.engineLoaded = false;
-    expect(figure?.when?.(baseContext)).toBe(false);
-  });
-
   it("asks which diagram composer to open, over an open project", () => {
     useDiagramComposerStore.setState({ chooserOpen: false, requestId: 0 });
     run("omnibar.diagram-composer");
@@ -490,18 +466,13 @@ describe("command contributions behaviour", () => {
   it("offers the editor tab close commands only while there is something to close", () => {
     const ids = () => commandsFor("palette", baseContext).map((command) => command.id);
     expect(ids()).not.toContain("palette.close-all-editor-tabs");
-    expect(ids()).not.toContain("palette.close-assistant-tabs");
 
     mocks.files.openTabs = ["main.tex", "draft.tex"];
     mocks.files.tabOrder = { "main.tex": 1, "draft.tex": 2 };
     expect(ids()).toContain("palette.close-all-editor-tabs");
-    expect(ids()).not.toContain("palette.close-assistant-tabs");
 
     mocks.files.assistantTabs = ["draft.tex"];
-    expect(ids()).toContain("palette.close-assistant-tabs");
 
-    run("palette.close-assistant-tabs");
-    expect(mocks.files.closeTabs).toHaveBeenLastCalledWith(["draft.tex"]);
     run("palette.close-all-editor-tabs");
     expect(mocks.files.closeTabs).toHaveBeenLastCalledWith(["main.tex", "draft.tex"]);
   });

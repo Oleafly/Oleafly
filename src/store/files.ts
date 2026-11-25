@@ -43,7 +43,7 @@ import {
   type ProjectStateChanged,
   type DocumentEngineDescriptor,
   type TexFlavor,
-  mcpSetActiveProject,
+  setActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { i18n } from "@/i18n";
@@ -62,7 +62,6 @@ import { useSettingsStore } from "@/store/settings";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
 import { opensInNotes } from "@/lib/library-projects";
-import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
@@ -1297,10 +1296,9 @@ async function prepareProjectSwitch(
     set({ loading: false });
     return null;
   }
-  useMcpApprovalStore.getState().cancelAll();
-  await mcpSetActiveProject(null).catch(() => {});
+  await setActiveProject(null).catch(() => {});
   if (shouldContinue()) return { previousProjectId };
-  await mcpSetActiveProject(previousProjectId).catch(() => {});
+  await setActiveProject(previousProjectId).catch(() => {});
   set({ loading: false });
   return null;
 }
@@ -1347,7 +1345,7 @@ async function loadOpenedProject(
   ]);
   if (superseded()) return;
   rememberMutationGeneration(id, generation);
-  const activation = mcpSetActiveProject(id).catch(() => {});
+  const activation = setActiveProject(id).catch(() => {});
   const [listing, engine] = await Promise.all([
     listFileTree(id),
     loadOpenedProjectEngine(id, () => seq === openSeq),
@@ -1428,12 +1426,6 @@ async function preloadBibliographies(
   }
 }
 
-function releaseIdleAgents(projectId: string): void {
-  void import("@/store/acp-sessions")
-    .then(({ useAcpSessionsStore }) => useAcpSessionsStore.getState().releaseProject(projectId))
-    .catch((error: unknown) => logError("disconnect idle agents", error));
-}
-
 async function openProjectTransition(
   id: string,
   shouldContinue: () => boolean,
@@ -1443,14 +1435,13 @@ async function openProjectTransition(
   const prepared = await prepareProjectSwitch(id, shouldContinue, set, get);
   if (!prepared) return;
   if (prepared.previousProjectId && prepared.previousProjectId !== id) {
-    releaseIdleAgents(prepared.previousProjectId);
   }
   const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
   try {
     await loadOpenedProject(id, seq, superseded, set, get);
   } catch (error) {
     if (seq === openSeq) {
-      await mcpSetActiveProject(null).catch(() => {});
+      await setActiveProject(null).catch(() => {});
       resetMutationGeneration();
       set(EMPTY_PROJECT_STATE);
       notifyError("open project", error, i18n.t(($) => $.core.project.openFailed));
@@ -1821,9 +1812,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelProofreading("source");
     cancelProofreading("visual");
     releaseIdleProofreadingWorker();
-    useMcpApprovalStore.getState().cancelAll();
-    if (projectId) releaseIdleAgents(projectId);
-    await mcpSetActiveProject(null).catch(() => {});
+    await setActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();
     useProjectAvailabilityStore.getState().reset(null);

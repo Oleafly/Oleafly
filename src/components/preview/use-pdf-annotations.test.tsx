@@ -30,6 +30,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   pdfAnnotationsAdd: mocks.add,
   pdfAnnotationsUpdate: mocks.update,
   pdfAnnotationsDelete: mocks.remove,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/features/pdf-annotations/locate", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/pdf-annotations/locate")>()),
@@ -41,10 +43,6 @@ vi.mock("@/features/synctex", () => ({
   sourceTexts: mocks.sourceTexts,
   compiledSourceText: () => null,
   typesetLinesOf: async () => null,
-}));
-vi.mock("@/features/assistant-handoff", () => ({
-  handoffToAssistant: mocks.handoffToAssistant,
-  ensureAiProviderOrOpenSettings: mocks.ensureAiProviderOrOpenSettings,
 }));
 vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: mocks.pdfPageText }));
 
@@ -279,16 +277,6 @@ describe("usePdfAnnotations", () => {
     await userEvent.click(screen.getByRole("button", { name: strings.composer.save }));
     await waitFor(() => expect(screen.getAllByText(/disk full/).length).toBeGreaterThan(0));
     expect(screen.getByRole("textbox")).toHaveValue("Cite it");
-  });
-
-  it("sends the picked notes to the assistant as context chips", async () => {
-    await mount([note(), note({ id: "n2", number: 2, status: "resolved" })]);
-    act(() => latest?.toolbar?.togglePanel());
-    await userEvent.click(await screen.findByRole("button", { name: strings.panel.send.replace("{{n}}", "1") }));
-    expect(mocks.handoffToAssistant).toHaveBeenCalledWith("", {
-      autoSend: false,
-      context: [{ id: "pdfAnnotation:n1", kind: "pdfAnnotation", refId: "n1", label: "1 · main.tex:4" }],
-    });
   });
 });
 

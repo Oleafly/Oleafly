@@ -31,7 +31,6 @@ import {
   Scissors,
   SearchCode,
   Sigma,
-  Sparkles,
   SpellCheck,
   SquareSigma,
   Strikethrough,
@@ -55,7 +54,6 @@ import {
 import { getEditorView, wrapSelectionOrPlaceholder } from "./cm/controller";
 import { commentTarget, requestComment, useCommentsRail } from "@/components/collab/comments-rail";
 import { useCollabReady } from "@/components/collab/CollabSlots";
-import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { formatWithLanguageService, type FormatScope } from "./cm/language-service-format";
 import { copySelection, cutSelection, hasSelectedText, pasteClipboard, selectAllText } from "./clipboard-commands";
 import {
@@ -225,13 +223,10 @@ function ClipboardMenuItems() {
 }
 
 function EditMenuItems() {
-  const { t } = useTranslation(["common", "editor"]);
+  useTranslation(["common","editor"]);
   return (
     <>
-      <ContextMenuItem onClick={() => withView(openInlineEdit)}>
-        <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
-        <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
-      </ContextMenuItem>
+
       <CommentMenuItem />
       <ContextMenuSeparator />
       <ClipboardMenuItems />

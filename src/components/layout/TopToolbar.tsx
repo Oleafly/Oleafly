@@ -134,32 +134,11 @@ const offersEpub = (kind: ExportKind) => kind === "book" || kind === "classless"
 
 export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   {
-    preset: "editor-preview-ai",
-    get label() {
-      return i18n.t(($) => $.shell.toolbar.layouts.editorPreviewAi);
-    },
-    icon: LAYOUT_PRESET_ICONS["editor-preview-ai"],
-  },
-  {
     preset: "editor-preview",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.editorPreview);
     },
     icon: LAYOUT_PRESET_ICONS["editor-preview"],
-  },
-  {
-    preset: "editor-ai",
-    get label() {
-      return i18n.t(($) => $.shell.toolbar.layouts.editorAi);
-    },
-    icon: LAYOUT_PRESET_ICONS["editor-ai"],
-  },
-  {
-    preset: "preview-ai",
-    get label() {
-      return i18n.t(($) => $.shell.toolbar.layouts.previewAi);
-    },
-    icon: LAYOUT_PRESET_ICONS["preview-ai"],
   },
   {
     preset: "editor-only",
@@ -174,13 +153,6 @@ export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: Compon
       return i18n.t(($) => $.shell.toolbar.layouts.previewOnly);
     },
     icon: LAYOUT_PRESET_ICONS["preview-only"],
-  },
-  {
-    preset: "ai-only",
-    get label() {
-      return i18n.t(($) => $.shell.toolbar.layouts.aiOnly);
-    },
-    icon: LAYOUT_PRESET_ICONS["ai-only"],
   },
 ];
 
@@ -208,16 +180,10 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
   },
 ];
 
-function activeLayoutPreset(
-  viewMode: ViewMode,
-  assistantOpen: boolean,
-  workspaceHidden: boolean,
-): LayoutPreset | null {
-  if (workspaceHidden) return assistantOpen ? "ai-only" : null;
-  if (viewMode === "split") return assistantOpen ? "editor-preview-ai" : "editor-preview";
-  if (viewMode === "editor") return assistantOpen ? "editor-ai" : "editor-only";
-  if (viewMode === "pdf") return assistantOpen ? "preview-ai" : "preview-only";
-  return null;
+function activeLayoutPreset(viewMode: ViewMode, workspaceHidden: boolean): LayoutPreset | null {
+  if (workspaceHidden) return null;
+  if (viewMode === "split") return "editor-preview";
+  return viewMode === "editor" ? "editor-only" : "preview-only";
 }
 
 function ZenModeMenuItem() {
@@ -370,10 +336,9 @@ function SavedLayoutMenuItems() {
   const tree = usePaneLayoutStore((s) => s.layout);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const showTree = useSettingsStore((s) => s.showTree);
-  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
-  const flags = { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen };
+  const flags = { viewMode, showTree, workspaceHidden, terminalOpen };
   const store = useSavedLayoutsStore.getState();
   return (
     <>
@@ -498,7 +463,6 @@ export function TopToolbar() {
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
-  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const paneLayoutMoved = usePaneLayoutStore((s) => !isDefaultPaneLayout(s.layout));
@@ -618,7 +582,7 @@ export function TopToolbar() {
         <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
           <Icon className="size-4 text-muted-foreground" />
           <span className="flex-1">{label}</span>
-          {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
+          {activeLayoutPreset(viewMode, workspaceHidden) === preset &&
             <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
         </DropdownMenuItem>
       ))}

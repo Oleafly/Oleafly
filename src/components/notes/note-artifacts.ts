@@ -1,7 +1,6 @@
 import { parseDelimited } from "@oleafly/conversion-registry/table";
-import type { ResearchTask, TaskArtifact, TaskPreviewContent } from "@/lib/research-tasks";
 import { isNotebookPath, notebookFence } from "./notebook-block";
-import type { ArtifactItem, ArtifactKind, ArtifactPreview, ExperimentItem, NoteItem } from "./types";
+import type { ArtifactItem, ArtifactKind, ArtifactPreview, NoteItem } from "./types";
 
 const FIGURE = /\.(png|jpe?g|gif|webp|svg|pdf)$/iu;
 const DATA = /\.(csv|tsv|json|jsonl|parquet|npy|npz|h5|hdf5|xlsx?)$/iu;
@@ -10,9 +9,8 @@ const HTML = /\.html?$/iu;
 const TABLE_ROWS = 12;
 const TABLE_COLUMNS = 8;
 const TEXT_CHARS = 4000;
-const RUN_SUMMARY_CHARS = 6000;
 
-export function artifactKind(artifact: Pick<TaskArtifact, "path" | "mediaType">): ArtifactKind {
+export function artifactKind(artifact: { path: string; mediaType?: string | null }): ArtifactKind {
   const { path, mediaType } = artifact;
   if (isNotebookPath(path) || mediaType === "application/x-ipynb+json") return "notebook";
   if (HTML.test(path) || mediaType === "text/html") return "html";
@@ -22,43 +20,8 @@ export function artifactKind(artifact: Pick<TaskArtifact, "path" | "mediaType">)
   return "file";
 }
 
-function fileName(path: string): string {
-  return path.split("/").pop() ?? path;
-}
-
 export function artifactId(taskId: string, path: string): string {
   return `${taskId}\n${path}`;
-}
-
-function finishedAt(task: ResearchTask): number {
-  return task.finishedAt ?? task.updatedAt;
-}
-
-export function artifactItems(
-  tasks: readonly ResearchTask[],
-  project: string,
-  agentName: (task: ResearchTask) => string | undefined,
-): ArtifactItem[] {
-  const items: ArtifactItem[] = [];
-  for (const task of tasks) {
-    if (!task.result || !task.isolation) continue;
-    for (const artifact of task.result.artifacts) {
-      items.push({
-        id: artifactId(task.id, artifact.path),
-        taskId: task.id,
-        path: artifact.path,
-        title: artifact.label.trim() || fileName(artifact.path),
-        kind: artifactKind(artifact),
-        projectId: task.projectId,
-        project,
-        updatedAt: finishedAt(task),
-        agent: agentName(task),
-        chat: task.title.trim() || task.prompt.trim(),
-        summary: task.result.summary.trim(),
-      });
-    }
-  }
-  return items.sort((left, right) => right.updatedAt - left.updatedAt);
 }
 
 export function artifactsForNote(artifacts: readonly ArtifactItem[], note: NoteItem | null | undefined): ArtifactItem[] {
@@ -76,30 +39,6 @@ export function noteForProject(notes: readonly NoteItem[], projectId: string): N
   return best;
 }
 
-export function experimentItems(
-  tasksByProject: ReadonlyMap<string, readonly ResearchTask[]>,
-  artifacts: readonly ArtifactItem[],
-  notes: readonly NoteItem[],
-): ExperimentItem[] {
-  const items: ExperimentItem[] = [];
-  for (const [projectId, tasks] of tasksByProject) {
-    const note = noteForProject(notes, projectId);
-    const finished = tasks.filter((task) => task.result);
-    if (!note || finished.length === 0) continue;
-    const own = artifacts.filter((artifact) => artifact.projectId === projectId);
-    items.push({
-      projectId,
-      project: note.project,
-      tasks: finished.length,
-      figures: own.filter((artifact) => artifact.kind === "figure").length,
-      reports: own.filter((artifact) => artifact.kind === "report" || artifact.kind === "data").length,
-      updatedAt: Math.max(...finished.map(finishedAt)),
-      noteId: note.id,
-    });
-  }
-  return items.sort((left, right) => right.updatedAt - left.updatedAt);
-}
-
 export function csvRows(text: string, separator: string): { rows: string[][]; truncated: boolean } {
   const parsed = parseDelimited(text, { delimiter: separator, limit: TABLE_ROWS + 1, trim: false });
   const rows = parsed.filter((row) => row.some((value) => value !== ""));
@@ -114,7 +53,7 @@ function tableSeparator(path: string): string | null {
   return /\.csv$/iu.test(path) ? "," : null;
 }
 
-export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, content: TaskPreviewContent): ArtifactPreview {
+export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, content: { exists: boolean; binary?: boolean; text: string | null; base64: string | null; mediaType: string | null; truncated: boolean }): ArtifactPreview {
   if (!content.exists) return { type: "none", reason: "missing" };
   if (artifact.kind === "html") return { type: "none", reason: "html" };
   if (artifact.kind === "notebook") {
@@ -152,26 +91,4 @@ export function artifactSnippet(artifact: Pick<ArtifactItem, "kind" | "title">, 
   if (artifact.kind === "notebook") return notebookFence(path);
   const link = `[${markdownLabel(artifact.title)}](${markdownDestination(path)})`;
   return artifact.kind === "figure" && !/\.pdf$/iu.test(path) ? `!${link}` : link;
-}
-
-export function latestRunContext(tasks: readonly ResearchTask[]): string | null {
-  const finished = tasks.filter((task) => task.result && task.status !== "failed" && task.status !== "cancelled");
-  if (finished.length === 0) return null;
-  const task = finished.reduce((latest, candidate) => (finishedAt(candidate) > finishedAt(latest) ? candidate : latest), finished[0]);
-  const result = task.result;
-  if (!result) return null;
-  const model = task.modelId ? ` (${task.modelId})` : "";
-  const lines = [
-    `Task: ${task.title.trim() || task.prompt.trim()}`,
-    `Finished: ${new Date(finishedAt(task)).toISOString()}`,
-    `Agent: ${task.agentId}${model}`,
-  ];
-  if (task.brief.primaryMetric) {
-    lines.push(`Primary metric: ${task.brief.primaryMetric.name} (${task.brief.primaryMetric.goal})`);
-  }
-  if (result.summary.trim()) lines.push("", "Summary:", result.summary.trim().slice(0, RUN_SUMMARY_CHARS));
-  if (result.artifacts.length > 0) {
-    lines.push("", "Files it made:", ...result.artifacts.map((artifact) => `- ${artifact.path}: ${artifact.label}`));
-  }
-  return lines.join("\n");
 }

@@ -26,12 +26,6 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...mocks,
 }));
 
-vi.mock("@/components/ai/turns/DiffPreview", () => ({
-  DiffPreview: ({ path, oldText, newText }: { path: string; oldText: string; newText: string }) => (
-    <div data-testid={`diff-${path}`}>{`${oldText} -> ${newText}`}</div>
-  ),
-}));
-
 import { SharedHistory } from "./SharedHistory";
 
 const copy = enCollab.history;
@@ -186,3 +180,9 @@ describe("shared history", () => {
     expect(screen.getByText(enCollab.errors.history_unavailable)).toBeInTheDocument();
   });
 });
+
+vi.mock("@/components/ui/DiffPreview", () => ({
+  DiffPreview: ({ path, oldText, newText }: { path: string; oldText: string; newText: string }) => (
+    <div data-testid={`diff-${path}`}>{`${oldText} -> ${newText}`}</div>
+  ),
+}));

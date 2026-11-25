@@ -69,9 +69,6 @@ vi.mock("@/features/synctex", () => ({
   canUseSyncTexForCheckpoint: vi.fn(() => false),
   inverseFromClick: vi.fn(),
 }));
-vi.mock("@/features/ask-ai-compile-errors", () => ({
-  askAiAboutCompileErrors: vi.fn(),
-}));
 const openPreviewWindow = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
 const logError = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
 vi.mock("@/lib/log", () => ({ logError, logWarning: vi.fn() }));

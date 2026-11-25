@@ -69,7 +69,6 @@ import {
   CopyBibtexButton,
   DocumentCitationScanPanel,
 } from "@/components/tools/DocumentCitationScanPanel";
-import { PaperReviewPanel } from "@/components/tools/PaperReviewPanel";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { EmptyIntro } from "@/components/ui/empty";
@@ -630,7 +629,7 @@ export function LiteratureSearchPanel() {
   const saveCitation = useLiteratureLibraryStore((state) => state.save);
   const removeCitation = useLiteratureLibraryStore((state) => state.remove);
   const modeRequest = useDocumentCitationUiStore((state) => state.modeRequest);
-  const [mode, setMode] = useState<"search" | "document" | "review">(() =>
+  const [mode, setMode] = useState<"search" | "document">(() =>
     useDocumentCitationUiStore.getState().modeRequest === "document"
       ? "document"
       : "search",
@@ -1129,18 +1128,7 @@ export function LiteratureSearchPanel() {
             >
               {t(($) => $.researchTools.literature.modeDocument)}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "review" ? "secondary" : "ghost"}
-              data-testid="citation-search-mode-review"
-              onClick={() => {
-                setMode("review");
-                setTab("search");
-              }}
-            >
-              {t(($) => $.researchTools.literature.modeReview)}
-            </Button>
+
           </div>
 
           {mode === "search" && searchControls()}
@@ -1148,8 +1136,8 @@ export function LiteratureSearchPanel() {
       </section>
 
       {mode === "document" ? documentTabs() : null}
-      {mode !== "document" && mode === "review" ? <PaperReviewPanel /> : null}
-      {mode !== "document" && mode !== "review" && searchResultTabs()}
+
+      {mode !== "document" && searchResultTabs()}
     </div>
   );
 }

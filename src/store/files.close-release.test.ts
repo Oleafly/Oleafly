@@ -23,11 +23,15 @@ vi.mock("@/lib/tauri", () => ({
   listFileTree: async (projectId: string) => ({
     entries: await mocks.listFiles(projectId),
     truncated: false,
-  }),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   readFileContent: mocks.readFileContent,
   readProjectSourcesBatch: mocks.readProjectSourcesBatch,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({

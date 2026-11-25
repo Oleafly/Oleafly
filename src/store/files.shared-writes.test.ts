@@ -34,12 +34,16 @@ vi.mock("@/lib/tauri", () => ({
   listFileTree: async (projectId: string) => ({
     entries: await mocks.listFiles(projectId),
     truncated: false,
-  }),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   projectTexStatus: mocks.projectTexStatus,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/tauri-collab", () => ({
   collabWriteText: mocks.collabWriteText,

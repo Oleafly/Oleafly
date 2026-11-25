@@ -1,6 +1,5 @@
 pub mod artifacts;
 pub mod human;
-pub mod mcp;
 pub mod report;
 pub mod sarif;
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AssetProgress, SkillAssetProgress } from "./tauri";
+import type { AssetProgress, } from "./tauri";
 
 const mocks = vi.hoisted(() => ({
   handlers: new Map<string, (event: { payload: unknown }) => void>(),
@@ -13,8 +13,6 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
 import {
   ASSET_PROGRESS_EVENT,
-  isSkillAssetProgress,
-  onAssetProgress,
   withAssetProgress,
   withEventListener,
 } from "./tauri";
@@ -33,14 +31,6 @@ const component: AssetProgress = {
   total: 2,
   received: 10,
   file_total: 20,
-};
-
-const skill: SkillAssetProgress = {
-  kind: "skill",
-  id: "writing",
-  phase: "download",
-  received: 1,
-  total: 4,
 };
 
 function emit(event: string, payload: unknown): void {
@@ -91,37 +81,10 @@ describe("withEventListener", () => {
 });
 
 describe("asset progress", () => {
-  it("tells skill progress apart from component progress", () => {
-    expect(isSkillAssetProgress(skill)).toBe(true);
-    expect(isSkillAssetProgress(component)).toBe(false);
-    expect(isSkillAssetProgress({ kind: "font" } as unknown as SkillAssetProgress)).toBe(false);
-    expect(isSkillAssetProgress(null as unknown as AssetProgress)).toBe(false);
-  });
-
-  it("routes each payload to its own handler", async () => {
-    const onComponent = vi.fn();
-    const onSkill = vi.fn();
-    await onAssetProgress({ component: onComponent, skill: onSkill });
-    expect(mocks.listen).toHaveBeenCalledWith(ASSET_PROGRESS_EVENT, expect.any(Function));
-
-    emit(ASSET_PROGRESS_EVENT, component);
-    emit(ASSET_PROGRESS_EVENT, skill);
-
-    expect(onComponent).toHaveBeenCalledExactlyOnceWith(component);
-    expect(onSkill).toHaveBeenCalledExactlyOnceWith(skill);
-  });
-
-  it("drops payloads that have no handler", async () => {
-    const onSkill = vi.fn();
-    await onAssetProgress({ skill: onSkill });
-    emit(ASSET_PROGRESS_EVENT, component);
-    expect(onSkill).not.toHaveBeenCalled();
-  });
 
   it("scopes component progress to one piece of work", async () => {
     const onComponent = vi.fn();
     await withAssetProgress({ component: onComponent }, async () => {
-      emit(ASSET_PROGRESS_EVENT, skill);
       emit(ASSET_PROGRESS_EVENT, component);
     });
     expect(onComponent).toHaveBeenCalledExactlyOnceWith(component);

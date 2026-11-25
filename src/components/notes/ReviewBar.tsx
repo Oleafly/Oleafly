@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { AiChrome } from "@/components/ai/AiChrome";
-import { DiffAction } from "@/components/editor/cm/inline-ai/DiffActionBar";
+import { DiffAction } from "@/components/ui/DiffAction";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -35,11 +34,7 @@ export function ReviewBar({
   const previous = t(($) => $.editor.diff.previousChange);
   const next = t(($) => $.editor.diff.nextChange);
   return (
-    <AiChrome
-      borderVariant="animated"
-      className="pointer-events-auto mx-auto w-fit"
-      contentClassName="ai-surface-elevated flex items-center gap-1 p-1 text-popover-foreground"
-    >
+    <div className="pointer-events-auto mx-auto flex w-fit items-center gap-1 rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg">
       {onUndo && (
         <Button variant="ghost" size="xs" aria-keyshortcuts="Meta+Z Control+Z" onClick={onUndo}>
           <Undo2 aria-hidden className="size-3.5" />
@@ -84,6 +79,6 @@ export function ReviewBar({
           <DiffAction icon={X} label={t(($) => $.editor.inlineAi.reject)} onClick={onReject} />
         </div>
       )}
-    </AiChrome>
+    </div>
   );
 }

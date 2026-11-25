@@ -24,9 +24,6 @@ vi.mock("@/features/collab/CollaborationSection", () => {
 vi.mock("@/components/settings/SettingsFileCard", () => ({ default: () => null }));
 vi.mock("@/components/settings/cloud/CloudTab", () => ({ CloudTab: () => null }));
 vi.mock("@/components/layout/ChangelogDialog", () => ({ ChangelogDialog: () => null }));
-vi.mock("@/components/settings/ai/AcpAgentsTab", () => ({ AcpAgentsTab: () => null }));
-vi.mock("@/components/settings/ai/ToolsTab", () => ({ ToolsTab: () => null }));
-vi.mock("@/components/settings/desktop-apps/DesktopAppsSection", () => ({ default: () => null }));
 vi.mock("@/components/library/TemplateImportDialog", () => ({ TemplateImportDialog: () => null }));
 
 import {

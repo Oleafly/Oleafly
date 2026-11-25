@@ -5,6 +5,8 @@ vi.mock("@/lib/tauri", () => ({
   convertAdHoc: vi.fn(),
   extractArxivSource: vi.fn(),
   getConfig: vi.fn(),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { AD_HOC_CONVERTERS, converterCopy } from "@/features/ad-hoc-converters";

@@ -1030,7 +1030,7 @@ pub async fn open_folder_request(
     let caller = caller(&webview, session);
     let folder = claimed_folder(&intake, intake.claim(&token, &caller, CLAIM_TIMEOUT).await)?;
     let shown = app
-        .state::<crate::mcp::server::McpState>()
+        .state::<crate::state::AppState>()
         .active_project
         .lock()
         .await

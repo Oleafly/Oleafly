@@ -37,10 +37,9 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { measureTourPlacement, TourGuide } from "./TourGuide";
-import { START_TOUR_EVENT, startTour, takeUnheardTourStart } from "@/lib/tour";
+import { startTour } from "@/lib/tour";
 import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
-import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
@@ -383,41 +382,6 @@ describe("TourGuide overlay reachability", () => {
     expect(tooltip).not.toBeNull();
     expect(tooltip?.style.pointerEvents).toBe("auto");
     document.body.style.pointerEvents = "";
-  });
-
-  it("ignores a named tour that is unavailable", () => {
-    joyrideMocks.render = true;
-    useSettingsStore.setState({ settingsOpen: true });
-    useTourStore.setState({ activeTourId: null });
-    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
-
-    render(<TourGuide />);
-    act(() => {
-      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(tourStep().activeTourId).toBeNull();
-    expect(document.querySelector("[data-tour-tooltip]")).toBeNull();
-  });
-
-  it("does not let an unavailable named tour interrupt an available tour", () => {
-    joyrideMocks.render = true;
-    useSettingsStore.setState({ settingsOpen: true });
-    useHomeViewStore.setState({ page: "diagram-composer" });
-    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
-
-    render(<TourGuide />);
-    act(() => {
-      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(tourStep().activeTourId).toBe("home");
   });
 
   it("keeps dimming the whole grid on the step that only describes it", () => {

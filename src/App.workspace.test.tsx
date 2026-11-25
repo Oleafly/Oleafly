@@ -152,10 +152,7 @@ vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
   usesNativeDockMenu: () => mocks.nativeDockMenu,
 }));
-vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: mocks.mountResearchPdfBridge }));
 vi.mock("@/components/layout/CollabLiveKeeper", () => ({ CollabLiveKeeper: () => null }));
-vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));
 vi.mock("@/lib/open-compile", () => ({
   automaticCompileAllowed: () => true,
   openCompileHydrated: () => false,
@@ -221,7 +218,6 @@ vi.mock("@/components/deadlines/DeadlinesView", () => ({ DeadlinesView: () => <d
 vi.mock("@/components/tools/LatexToolsView", () => ({ LatexToolsView: () => <div data-testid="tool-tools" /> }));
 vi.mock("@/components/tools/LabSearchToolView", () => ({ LabSearchToolView: () => <div data-testid="tool-lab-search" /> }));
 vi.mock("@/components/tools/StatsToolView", () => ({ StatsToolView: () => <div data-testid="tool-stats" /> }));
-vi.mock("@/components/tools/GeneratorsToolView", () => ({ GeneratorsToolView: () => <div data-testid="tool-generators" /> }));
 vi.mock("@/components/tools/SymbolsToolView", () => ({ SymbolsToolView: () => <div data-testid="tool-symbols" /> }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => <div data-testid="tool-equation" /> }));
 vi.mock("@/components/tools/ConverterToolView", () => ({ ConverterToolView: () => <div data-testid="tool-converter" /> }));
@@ -234,10 +230,6 @@ vi.mock("@/components/editor/LanguageServiceRuntimeBoundary", () => ({
   LanguageServiceRuntimeUnavailable: () => null,
 }));
 vi.mock("@/components/library/Library", () => ({ Library: () => <div data-testid="library" /> }));
-vi.mock("@/components/ai/AssistantOutputsBridge", () => ({ AssistantOutputsBridge: () => null }));
-vi.mock("@/components/ai/ExternalToolApprovals", () => ({ ExternalToolApprovals: () => null }));
-vi.mock("@/components/ai/ChatPanel", () => ({ ChatPanel: () => <div data-testid="chat-surface" /> }));
-vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => <div data-testid="copilot-overlay" /> }));
 vi.mock("@/components/layout/AboutModal", () => ({
   AboutModal: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
     open ? (
@@ -370,8 +362,6 @@ beforeEach(() => {
       ...initialSettings,
       viewMode: "split",
       showTree: false,
-      chatFloating: false,
-      assistantOpen: false,
       workspaceHidden: false,
       terminalOpen: false,
       vim: false,
@@ -410,27 +400,6 @@ describe("library view", () => {
     expect(await screen.findByTestId("tool-deadlines")).toBeInTheDocument();
   });
 
-  it.each([
-    "pdf-import",
-    "equation",
-    "converter",
-    "reference",
-    "bibtex",
-    "table",
-    "lab-search",
-    "literature-search",
-    "deadlines",
-    "stats",
-    "generators",
-    "symbols",
-    "tools",
-  ] as const)("shows the %s home tool", async (page) => {
-    useHomeViewStore.getState().queuePageAfterProjectClose(page);
-    await renderApp();
-    expect(await screen.findByTestId(`tool-${page}`)).toBeInTheDocument();
-    expect(screen.getByTestId("library")).toBeInTheDocument();
-  });
-
   it("leaves the Notes page and closes personal note tabs when Notes is turned off", async () => {
     useSettingsStore.setState({ notes: true });
     useHomeViewStore.setState({ page: "notes" });
@@ -446,12 +415,6 @@ describe("library view", () => {
     await renderApp();
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(intended("settings")).toBe(true);
-  });
-
-  it("shows the floating copilot over the library", async () => {
-    useSettingsStore.setState({ chatFloating: true });
-    await renderApp();
-    expect(await screen.findByTestId("copilot-overlay")).toBeInTheDocument();
   });
 });
 
@@ -513,17 +476,6 @@ describe("project workspace", () => {
     expect(mocks.previewUnmounts).toBe(0);
   });
 
-  it("keeps the preview alive while the assistant takes over the window", async () => {
-    await renderApp();
-    act(() => useSettingsStore.setState({ assistantOpen: true, workspaceHidden: true }));
-    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
-    expect(mocks.previewActive).toBe(false);
-
-    act(() => useSettingsStore.setState({ workspaceHidden: false }));
-    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
-    expect(mocks.previewUnmounts).toBe(0);
-  });
-
   it("keeps no preview for a project that opens with the editor filling the window", async () => {
     savedLayout({ viewMode: "editor" });
     await renderApp();
@@ -556,26 +508,6 @@ describe("project workspace", () => {
     await renderApp();
     expect(screen.queryByTestId("editor-surface")).not.toBeInTheDocument();
     expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
-  });
-
-  it("shows the assistant next to the document, or alone when the workspace is hidden", async () => {
-    savedLayout({ assistantOpen: true, showTree: true });
-    const view = await renderApp();
-    expect(await screen.findByTestId("chat-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("sidebar-surface")).toBeInTheDocument();
-    expect(screen.getByTestId("editor-surface")).toBeInTheDocument();
-    view.unmount();
-
-    savedLayout({ assistantOpen: true, workspaceHidden: true });
-    await renderApp();
-    expect(await screen.findByTestId("chat-surface")).toBeInTheDocument();
-    expect(screen.queryByTestId("editor-surface")).not.toBeInTheDocument();
-  });
-
-  it("shows the floating copilot inside a project", async () => {
-    useSettingsStore.setState({ chatFloating: true });
-    await renderApp();
-    expect(await screen.findByTestId("copilot-overlay")).toBeInTheDocument();
   });
 
   it("keeps the toolbar usable when a workspace panel crashes", async () => {
@@ -738,17 +670,6 @@ describe("project workspace", () => {
 describe("native events", () => {
   beforeEach(() => {
     mocks.tauri = true;
-  });
-
-  it("starts the MCP bridge and the PDF capture flag in the desktop shell", async () => {
-    await renderApp();
-    await waitFor(() => expect(mocks.startMcpBridge).toHaveBeenCalled());
-    await waitFor(() => expect(mocks.initAiPdfCaptureFlag).toHaveBeenCalled());
-  });
-
-  it("answers research PDF requests from the app shell, whichever panel is open", async () => {
-    await renderApp();
-    await waitFor(() => expect(mocks.mountResearchPdfBridge).toHaveBeenCalledOnce());
   });
 
   it("opens the about dialog and the update window from the app menu", async () => {
@@ -1160,7 +1081,6 @@ describe("automatic compile", () => {
     expect(useCompileStore.getState().recompile).not.toHaveBeenCalled();
   });
 });
-
 
 describe("Visual-mode forms", () => {
   function formField(draft: boolean) {

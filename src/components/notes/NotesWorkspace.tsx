@@ -47,7 +47,6 @@ import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -77,7 +76,7 @@ import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocum
 import { NoteLiveHeader } from "./NotePresence";
 import { NoteSaveStatus } from "./NoteSaveStatus";
 import { useLiveNoteClaim, useNoteLiveMode, useNoteReadOnly } from "./use-note-live";
-import { artifactSnippet, artifactsForNote, noteForProject } from "./note-artifacts";
+import { artifactSnippet, noteForProject } from "./note-artifacts";
 import { frontMatterBody } from "@/lib/front-matter";
 import { NoteChip } from "./note-icons";
 import { useNotesByLook } from "./note-signature";
@@ -727,7 +726,6 @@ export function NotesWorkspace({
 }: Readonly<NotesWorkspaceProps>) {
   const { t } = useTranslation(["notes", "common"]);
   const data = useNotesData();
-  const research = data.researchTasks !== false;
   const [initial] = useState(() => {
     const saved = readNotesLayout();
     if (!initialNoteId) return { layout: saved, focused: stageGroup(saved, null).active };
@@ -777,8 +775,8 @@ export function NotesWorkspace({
   }, []);
 
   useEffect(() => {
-    if (!research) setLayout(withoutView(ARTIFACTS_VIEW));
-  }, [research]);
+    setLayout(withoutView(ARTIFACTS_VIEW));
+  }, []);
   useEffect(() => {
     if (!infoInPanel) setLayout(withoutView(INFO_VIEW));
   }, [infoInPanel]);
@@ -799,7 +797,6 @@ export function NotesWorkspace({
   }, [openedNoteId]);
   const focusedNote = data.notes.find((note) => note.id === focusedNoteId) ?? null;
   useLiveNoteClaim(layout, noteShownIn(layout, noteIdOf(focused)), data.notes);
-  const artifactCount = artifactsForNote(data.artifacts, focusedNote).length;
   const artifactsOpen = ARTIFACTS_VIEW in layout.views;
 
   const openNoteAt = useCallback((id: string, groupId: string | null) => {
@@ -869,19 +866,6 @@ export function NotesWorkspace({
     const noteId = noteIdOf(next.place.view);
     if (noteId) setScrollRequest((previous) => ({ noteId, top: next.place.scroll ?? 0, id: (previous?.id ?? 0) + 1 }));
   }, []);
-
-  const showArtifacts = useCallback(() => {
-    setLayout((current) => {
-      if (ARTIFACTS_VIEW in current.views) return activate(current, ARTIFACTS_VIEW);
-      const stage = stageGroup(current, focusedNoteId ? noteViewId(focusedNoteId) : null);
-      return openView(current, ARTIFACTS_VIEW, { type: "artifacts" }, { groupId: stage.id, zone: "right" }, ARTIFACTS_SHARE);
-    });
-  }, [focusedNoteId]);
-
-  const toggleArtifacts = () => {
-    if (artifactsOpen) setLayout((current) => closeView(current, ARTIFACTS_VIEW));
-    else showArtifacts();
-  };
 
   const openArtifact = useCallback(
     (artifact: ArtifactItem) => {
@@ -1221,17 +1205,7 @@ export function NotesWorkspace({
                       }
                       trailing={
                         <>
-                          {research && (
-                            <TooltipIconButton
-                              label={t(($) => $.notes.workspace.artifacts, { total: artifactCount })}
-                              aria-pressed={artifactsOpen}
-                              className={cn("relative", artifactsOpen && "bg-accent")}
-                              onClick={toggleArtifacts}
-                            >
-                              <PanelRight aria-hidden className="size-4" />
-                              {artifactCount > 0 && <Badge size="count">{artifactCount}</Badge>}
-                            </TooltipIconButton>
-                          )}
+
                           <WindowControls compact />
                         </>
                       }

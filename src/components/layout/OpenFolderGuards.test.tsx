@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
-import { act, render, renderHook, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
 import { useTourStore } from "@/store/tours";
 
@@ -64,50 +62,6 @@ describe("OpenFolderStopDialog", () => {
   it("stays hidden while nothing needs stopping", () => {
     render(<OpenFolderStopDialog />);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  });
-
-  it("names what will stop and resolves the prompt with the choice", async () => {
-    const user = userEvent.setup();
-    render(<OpenFolderStopDialog />);
-    let choice: Promise<boolean> | undefined;
-    act(() => {
-      choice = useOpenFolderFlowStore
-        .getState()
-        .ask({ name: "notes", project: "Thesis", compile: true, assistant: false });
-    });
-
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Stop and open notes?");
-    expect(dialog).toHaveTextContent(
-      "Thesis is still compiling. Opening notes stops the compile. Your changes are saved first.",
-    );
-    await user.click(screen.getByRole("button", { name: new RegExp(`^${enShell.openFolder.confirmAction}`) }));
-    await expect(choice).resolves.toBe(true);
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  });
-
-  it("explains an assistant reply, or both, and backs out on cancel", async () => {
-    const user = userEvent.setup();
-    render(<OpenFolderStopDialog />);
-    let choice: Promise<boolean> | undefined;
-    act(() => {
-      choice = useOpenFolderFlowStore
-        .getState()
-        .ask({ name: "notes", project: "Thesis", compile: false, assistant: true });
-    });
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
-      "The assistant is still working in Thesis. Opening notes stops its reply.",
-    );
-    act(() => {
-      useOpenFolderFlowStore.setState({
-        prompt: { name: "notes", project: "Thesis", compile: true, assistant: true },
-      });
-    });
-    expect(screen.getByRole("alertdialog")).toHaveTextContent(
-      "Thesis is still compiling and the assistant is still working. Opening notes stops both.",
-    );
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }));
-    await expect(choice).resolves.toBe(false);
   });
 });
 

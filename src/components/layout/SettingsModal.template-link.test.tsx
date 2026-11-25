@@ -15,7 +15,6 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 vi.mock("@/i18n/desktop", () => ({ changeLocalePreference: vi.fn(async () => {}) }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
-vi.mock("@/components/settings/AISection", () => ({ AISection: () => <div data-testid="ai-section" /> }));
 vi.mock("@/components/settings/DownloadsSection", () => ({
   DownloadsSection: () => <div data-testid="downloads-section" />,
 }));

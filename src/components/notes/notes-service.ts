@@ -10,7 +10,6 @@ import { pickOpenPath } from "@/lib/native-file-dialog";
 import { noteEditorOpen } from "@/lib/open-note-editors";
 import { NOTE_FILE_KIND } from "@/lib/project-notes";
 import { appQueryClient } from "@/lib/query";
-import { copyResearchTaskArtifactToNote, previewResearchTaskArtifact } from "@/lib/research-tasks";
 import { sharedDocumentLive } from "@/lib/shared-document-writes";
 import {
   createNoteProject,
@@ -33,7 +32,6 @@ import {
 } from "@/lib/tauri";
 import { isDiskConflict, useFilesStore } from "@/store/files";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { artifactPreview } from "./note-artifacts";
 import { projectCitations } from "./note-citations";
 import { newNoteSource, noteColorOf, noteSummary, withNoteColor, withNoteIcon, withNoteTitle } from "./note-file";
 import { forgetNoteLeftovers } from "./note-pending-suggestions";
@@ -64,8 +62,6 @@ export type NotesService = Pick<
   | "createNote"
   | "watchNote"
   | "setRelatedProject"
-  | "previewArtifact"
-  | "copyArtifact"
   | "resolveAsset"
   | "revealAsset"
   | "attachFile"
@@ -488,10 +484,6 @@ export function createNotesService(deps: NotesServiceDeps): NotesService {
       await setNoteRelatedProject(id, projectId);
       await deps.refreshProjects();
     },
-    previewArtifact: async (artifact) =>
-      artifactPreview(artifact, (await previewResearchTaskArtifact(artifact.taskId, artifact.path)).content),
-    copyArtifact: async (noteId, artifact) =>
-      (await copyResearchTaskArtifactToNote(artifact.taskId, artifact.path, noteId)).path,
     resolveAsset: noteAssetUrl,
     revealAsset: (noteId, path) => revealProject(noteId, assetFragment(path).file),
     attachFile,

@@ -371,26 +371,6 @@ export function isTourTargetReady(target: string, element: HTMLElement | null) {
   return true;
 }
 
-export function isAiStepApplicable(stepId: string, root: HTMLElement) {
-  const configured = root.dataset.tourConfigured === "true";
-  if (stepId === "ai-connect-provider") return !configured;
-  if (stepId === "ai-history") return configured;
-  if (stepId === "ai-usage") {
-    return configured && root.dataset.tourHasUsage === "true";
-  }
-  if (stepId === "ai-restore") {
-    return configured && root.dataset.tourHasRestore === "true";
-  }
-  if (
-    stepId === "ai-provider-model" ||
-    stepId === "ai-input" ||
-    stepId === "ai-attachments"
-  ) {
-    return configured;
-  }
-  return true;
-}
-
 function arrowPoints(side: string, base: number, size: number) {
   if (side === "top") return `0,0 ${base / 2},${size} ${base},0`;
   if (side === "bottom") return `${base},${size} ${base / 2},0 0,${size}`;
@@ -869,12 +849,9 @@ function currentContext(
   projectId: string | null,
   settingsOpen: boolean,
   diagramOpen: boolean,
-  assistantOpen: boolean,
-  chatFloating: boolean,
 ): TourContext {
   if (diagramOpen) return "diagram";
   if (settingsOpen) return "settings";
-  if (projectId && (chatFloating || assistantOpen)) return "ai";
   return projectId ? "project" : "home";
 }
 
@@ -884,8 +861,6 @@ export function TourGuide() {
   const newProjectOpen = useSettingsStore((state) => state.newProjectOpen);
   const settingsOpen = useSettingsStore((state) => state.settingsOpen);
   const diagramOpen = useHomeViewStore((state) => state.page === "diagram-composer");
-  const assistantOpen = useSettingsStore((state) => state.assistantOpen);
-  const chatFloating = useSettingsStore((state) => state.chatFloating);
   const zenActive = useZenStore((state) => state.active);
   const enabled = useTourStore((state) => state.enabled);
   const tours = useTourStore((state) => state.tours);
@@ -900,7 +875,6 @@ export function TourGuide() {
     width: window.innerWidth,
     height: window.innerHeight,
   }));
-  const [aiReadinessRevision, setAiReadinessRevision] = useState(0);
   const reducedMotion = useMemo(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     [],
@@ -1011,10 +985,9 @@ export function TourGuide() {
   }, [enabled, homeTourPending, projectId]);
 
   useEffect(() => {
-    void aiReadinessRevision;
     if (showWelcome || activeTourId) return;
     if (!projectId && tours.home.status === "pending" && !libraryReady) return;
-    const context = currentContext(projectId, settingsOpen, diagramOpen, assistantOpen, chatFloating);
+    const context = currentContext(projectId, settingsOpen, diagramOpen);
     const evaluateCurrentContext = () => {
       const state = useTourStore.getState();
       return evaluateTour(
@@ -1074,9 +1047,6 @@ export function TourGuide() {
     return stopWaiting;
   }, [
     activeTourId,
-    aiReadinessRevision,
-    assistantOpen,
-    chatFloating,
     diagramOpen,
     libraryReady,
     newProjectOpen,
@@ -1274,7 +1244,6 @@ export function TourGuide() {
       const contextualId = () => {
         if (diagramOpen) return "diagram";
         if (settingsOpen) return "settings";
-        if (projectId && (chatFloating || assistantOpen)) return "ai";
         if (projectId) return "workspace";
         return "home";
       };
@@ -1299,7 +1268,7 @@ export function TourGuide() {
       cancelAnimationFrame(replay);
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
     };
-  }, [assistantOpen, chatFloating, diagramOpen, projectId, settingsOpen]);
+  }, [diagramOpen, projectId, settingsOpen]);
 
   useEffect(() => {
     if (!activeTourId) return;
@@ -1402,48 +1371,6 @@ export function TourGuide() {
     }
     return settle;
   }, [activeStep, activeStepIndex, activeTourId, definition]);
-
-  const aiTourLive =
-    enabled && (tours.ai.status === "pending" || activeTourId === "ai");
-  useEffect(() => {
-    if (!aiTourLive) return;
-    let lastReadiness =
-      document
-        .querySelector<HTMLElement>('[data-tour="ai-assistant"]')
-        ?.dataset.tourReady ?? null;
-    const observer = new MutationObserver(() => {
-      const readiness =
-        document
-          .querySelector<HTMLElement>('[data-tour="ai-assistant"]')
-          ?.dataset.tourReady ?? null;
-      if (readiness === lastReadiness) return;
-      lastReadiness = readiness;
-      setAiReadinessRevision((value) => value + 1);
-    });
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-tour-ready"],
-      childList: true,
-      subtree: true,
-    });
-    return () => observer.disconnect();
-  }, [aiTourLive]);
-
-  useEffect(() => {
-    void aiReadinessRevision;
-    if (!activeStep || activeTourId !== "ai") return;
-    const root = document.querySelector<HTMLElement>('[data-tour="ai-assistant"]');
-    if (root?.dataset.tourReady !== "true") return;
-    if (isAiStepApplicable(activeStep.id, root)) return;
-    const timeout = window.setTimeout(() => {
-      const action = autoSkipAction(
-        navigationDirection.current,
-        activeStepIndex >= (definition?.steps.length ?? 1) - 1,
-      );
-      useTourStore.getState()[action]();
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [activeStep, activeStepIndex, activeTourId, aiReadinessRevision, definition]);
 
   useEffect(() => {
     const modes = document.querySelector<HTMLElement>('[data-tour="diagram-modes"]');

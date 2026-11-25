@@ -237,37 +237,6 @@ export async function openFolder(page: Page, path: string): Promise<OpenedState>
   return openedState(page);
 }
 
-export async function startChat(page: Page, projectId: string, message: string): Promise<void> {
-  const chatId = await page.evaluate<string>(
-    `import("/src/store/chats.ts").then(({ useChatsStore }) => {
-      const chat = useChatsStore.getState().create(${scriptValue(projectId)}, null);
-      useChatsStore.getState().saveMessages(chat.id, [{ id: "open-folder-message", role: "user", content: ${scriptValue(message)}, createdAt: Date.now() }]);
-      return chat.id;
-    })`,
-  );
-  await expect
-    .poll(() => {
-      const dataDir = process.env.OLEAFLY_DATA_DIR;
-      if (!dataDir) throw new Error("OLEAFLY_DATA_DIR is not set; run specs through scripts/e2e.sh");
-      try {
-        return readFileSync(join(dataDir, "chats", projectId, `${chatId}.json`), "utf8").includes(message);
-      } catch {
-        return false;
-      }
-    }, { timeout: 20_000 })
-    .toBe(true);
-}
-
-export async function loadedChatMessages(page: Page, projectId: string): Promise<string[]> {
-  return page.evaluate<string[]>(
-    `import("/src/store/chats.ts").then(({ useChatsStore }) =>
-      useChatsStore.getState().load(${scriptValue(projectId)}).then(() =>
-        useChatsStore.getState().chats.flatMap((chat) => chat.messages.map((message) => message.content)),
-      ),
-    )`,
-  );
-}
-
 export function folderCard(name: string): string {
   return `[data-testid="project-grid"] button[aria-label=${JSON.stringify(`Open ${name}`)}]`;
 }

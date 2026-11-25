@@ -13,7 +13,6 @@ use crate::model::now_ms;
 
 pub mod cache;
 pub mod merge;
-pub mod paper;
 #[cfg(test)]
 mod search_tests;
 pub mod sources;
@@ -637,10 +636,6 @@ impl LiteratureClient {
         })
     }
 
-    pub(crate) fn http(&self) -> &reqwest::Client {
-        &self.http
-    }
-
     /// Waits so requests to one index stay apart: Semantic Scholar wants
     /// 1.1 s without a key, everyone else 200 ms.
     async fn pace(&self, source: LiteratureSourceId, secrets: &dyn ConnectorSecrets) {
@@ -654,7 +649,10 @@ impl LiteratureClient {
             Duration::from_millis(200)
         };
         let wait = {
-            let mut last = crate::scheduler::lock(&self.last_request);
+            let mut last = self
+                .last_request
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let now = Instant::now();
             let next = last
                 .get(&source)

@@ -17,7 +17,7 @@ export type ReleasePageFetcher = (page: number) => Promise<ReleasePage>;
 
 export type ReleaseHistoryStatus = "idle" | "loading" | "error" | "done";
 
-const STABLE_TAG = /^v(\d+)\.(\d+)\.(\d+)$/;
+const STABLE_TAG = /^v(\d+)\.(\d+)\.(\d+)(?:-noai\.\d+)?$/;
 
 export function stableVersionOf(tag: string): string | null {
   const match = STABLE_TAG.exec(tag.trim());
@@ -55,7 +55,7 @@ export function releaseEntriesFrom(payload: unknown): ReleaseEntry[] {
       version,
       publishedAt: typeof item.published_at === "string" ? item.published_at : null,
       body: typeof item.body === "string" ? item.body : "",
-      url: typeof item.html_url === "string" ? item.html_url : `https://github.com/Oleafly/Oleafly/releases/tag/v${version}`,
+      url: typeof item.html_url === "string" ? item.html_url : `https://github.com/peplxx/oleafly-no-ai/releases/tag/${item.tag_name}`,
     });
   }
   return entries;

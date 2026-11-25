@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
-use oleafly_cli::daemon::login_item::{self, LoginEnv, LoginItemState};
+use oleafly_cli::login_item::{self, LoginEnv, LoginItemState};
 use serde::Serialize;
 use tauri::{
     AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder,

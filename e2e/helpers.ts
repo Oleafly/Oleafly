@@ -823,22 +823,6 @@ export async function grantPickedPaths(page: Page, paths: string[]): Promise<voi
   );
 }
 
-export async function openAssistant(page: Page) {
-  const openExpr = `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute('aria-pressed') === 'true'`;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    if (await page.evaluate<boolean>(openExpr)) return;
-    await page.evaluate(
-      `(() => { const b = document.querySelector('[data-testid="rail-assistant-toggle"]'); if (b) b.click(); return true; })()`,
-    );
-    try {
-      await page.waitForFunction(openExpr, 2_000);
-      return;
-    } catch {
-    }
-  }
-  throw new Error("openAssistant: the assistant panel never opened");
-}
-
 export async function closeAssistant(page: Page) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const open = await page.evaluate<boolean>(
@@ -858,7 +842,6 @@ export async function closeAssistant(page: Page) {
 }
 
 export async function openRailTab(page: Page, ariaLabel: string) {
-  if (ariaLabel === "Research Assistant") return openAssistant(page);
   const sel = scriptValue(`[aria-label=${JSON.stringify(ariaLabel)}]`);
   const activeExpr = `(() => {
     const b = document.querySelector(${sel});

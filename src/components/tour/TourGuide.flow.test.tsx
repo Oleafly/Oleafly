@@ -111,8 +111,6 @@ beforeEach(() => {
   useSettingsStore.setState({
     newProjectOpen: false,
     settingsOpen: false,
-    assistantOpen: false,
-    chatFloating: false,
     viewMode: "editor",
     showTree: true,
     settingsScrollTarget: null,
@@ -257,23 +255,6 @@ describe("auto-start", () => {
     expect(current().activeTourId).toBeNull();
   });
 
-  it("does not start the workspace tour while the assistant or a project dialog is open", () => {
-    mount("div", { "data-tour": "project-toolbar" });
-    useTourStore.setState({ activeTourId: null });
-    useFilesStore.setState({ projectId: "p1" });
-    useSettingsStore.setState({ assistantOpen: true });
-
-    const { unmount } = render(<TourGuide />);
-    frame();
-    expect(current().activeTourId).toBeNull();
-    unmount();
-
-    useSettingsStore.setState({ assistantOpen: false, newProjectOpen: true });
-    render(<TourGuide />);
-    frame();
-    expect(current().activeTourId).toBeNull();
-  });
-
   it("does not auto-start behind an open diagram or settings page", () => {
     mount("div", { "data-tour": "project-toolbar" });
     useTourStore.setState({ activeTourId: null });
@@ -390,29 +371,6 @@ describe("manual start", () => {
     frame();
 
     expect(current().activeTourId).toBe("workspace");
-  });
-
-  it("ignores a contextual request where the matching tour is unavailable", () => {
-    completeTours("home", "workspace");
-    useTourStore.setState({ activeTourId: null });
-    useFilesStore.setState({ projectId: "p1" });
-    useSettingsStore.setState({ assistantOpen: true });
-    const { unmount } = render(<TourGuide />);
-    requestTour();
-    expect(current().activeTourId).toBeNull();
-    unmount();
-
-    useSettingsStore.setState({ assistantOpen: false, settingsOpen: true });
-    const second = render(<TourGuide />);
-    requestTour();
-    expect(current().activeTourId).toBeNull();
-    second.unmount();
-
-    useSettingsStore.setState({ settingsOpen: true });
-    useHomeViewStore.setState({ page: "diagram-composer" });
-    render(<TourGuide />);
-    requestTour();
-    expect(current().activeTourId).toBeNull();
   });
 
   it("starts the named tour even with a diagram open behind settings", () => {
@@ -756,17 +714,6 @@ describe("settings tour navigation", () => {
     expect(advanced).toHaveAttribute("aria-checked", "true");
   });
 
-  it("scrolls to the MCP block on its step", () => {
-    const { sections } = settingsChrome();
-    activate("settings", "settings-mcp");
-
-    render(<TourGuide />);
-    frame();
-
-    expect(useSettingsStore.getState().settingsScrollTarget).toBe("ai-mcp");
-    expect(sections.get("ai")).toHaveAttribute("aria-current", "page");
-  });
-
   it("puts back the section and advanced toggle the user had before the tour", () => {
     const { advanced, sections } = settingsChrome("appearance");
     activate("settings", "settings-navigation");
@@ -840,96 +787,6 @@ describe("settings tour navigation", () => {
 
     expect(advanced).toHaveAttribute("aria-checked", "false");
     expect(sections.get("appearance")).toHaveAttribute("aria-current", "page");
-  });
-});
-
-describe("assistant tour", () => {
-  function assistantRoot(attributes: Record<string, string>) {
-    for (const step of tourRegistry.ai.steps) mount("div", { "data-tour": step.target.slice(12, -2) });
-    const root = document.querySelector<HTMLElement>('[data-tour="ai-assistant"]') ??
-      mount("div", { "data-tour": "ai-assistant" });
-    for (const [name, value] of Object.entries(attributes)) root.setAttribute(name, value);
-    return root;
-  }
-
-  it("skips steps that need a configured provider when none is set up", () => {
-    assistantRoot({ "data-tour-ready": "true", "data-tour-configured": "false" });
-    activate("ai", "ai-provider-model");
-    const start = current().activeStepIndex;
-
-    render(<TourGuide />);
-    act(() => {
-      vi.advanceTimersByTime(260);
-    });
-
-    expect(current().activeStepIndex).toBe(start + 1);
-  });
-
-  it("keeps a step that applies to the current setup", () => {
-    assistantRoot({ "data-tour-ready": "true", "data-tour-configured": "true" });
-    activate("ai", "ai-provider-model");
-    const start = current().activeStepIndex;
-
-    render(<TourGuide />);
-    act(() => {
-      vi.advanceTimersByTime(1_000);
-    });
-
-    expect(current().activeStepIndex).toBe(start);
-  });
-
-  it("finishes the tour when the final step does not apply", () => {
-    assistantRoot({ "data-tour-ready": "true", "data-tour-configured": "true" });
-    activate("ai", "ai-restore");
-
-    render(<TourGuide />);
-    act(() => {
-      vi.advanceTimersByTime(260);
-    });
-
-    expect(current().activeTourId).toBeNull();
-    expect(useTourStore.getState().tours.ai.status).toBe("completed");
-  });
-
-  it("keeps skipping backwards after the user stepped back", () => {
-    assistantRoot({ "data-tour-ready": "true", "data-tour-configured": "true" });
-    activate("ai", "ai-prompts");
-    render(<TourGuide />);
-    const prompts = current().activeStepIndex;
-
-    emit({ type: EVENTS.STEP_AFTER, action: ACTIONS.PREV, status: STATUS.RUNNING });
-    expect(current().activeStepIndex).toBe(prompts - 1);
-    act(() => {
-      vi.advanceTimersByTime(1_000);
-    });
-    expect(current().activeStepIndex).toBe(prompts - 1);
-
-    act(() => activate("ai", "ai-connect-provider"));
-    act(() => {
-      vi.advanceTimersByTime(260);
-    });
-
-    expect(current().activeStepIndex).toBe(stepIndex("ai", "ai-connect-provider") - 1);
-  });
-
-  it("waits until the assistant reports ready before skipping", async () => {
-    const root = assistantRoot({ "data-tour-ready": "false", "data-tour-configured": "false" });
-    activate("ai", "ai-input");
-    const start = current().activeStepIndex;
-    render(<TourGuide />);
-    act(() => {
-      vi.advanceTimersByTime(1_000);
-    });
-    expect(current().activeStepIndex).toBe(start);
-
-    await act(async () => {
-      root.setAttribute("data-tour-ready", "true");
-    });
-    act(() => {
-      vi.advanceTimersByTime(260);
-    });
-
-    expect(current().activeStepIndex).toBe(start + 1);
   });
 });
 
@@ -1090,17 +947,6 @@ describe("Joyride events", () => {
     emit({ type: EVENTS.TARGET_NOT_FOUND, action: ACTIONS.UPDATE, status: STATUS.RUNNING });
 
     expect(joyrideMocks.mounts).toBe(mounts + 1);
-  });
-
-  it("does not re-mount Joyride while the assistant target is still loading", () => {
-    mount("div", { "data-tour": "ai-assistant-header", "data-tour-ready": "false" });
-    activate("ai", "ai-assistant");
-    render(<TourGuide />);
-    const mounts = joyrideMocks.mounts;
-
-    emit({ type: EVENTS.TARGET_NOT_FOUND, action: ACTIONS.UPDATE, status: STATUS.RUNNING });
-
-    expect(joyrideMocks.mounts).toBe(mounts);
   });
 
   it("advances on next and completes on the final step", () => {

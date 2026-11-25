@@ -1145,6 +1145,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "Виберіть зображення менше за 20 МБ.",
     "imageFormat": "Виберіть зображення PNG, JPEG або WebP.",
     "ollamaUnavailable": "Запустіть Ollama або виберіть для інструментів іншу модель.",

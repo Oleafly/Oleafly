@@ -35,7 +35,6 @@ import {
   Scale,
   ScrollText,
   Settings,
-  Sparkles,
   Star,
   Trash2,
   TriangleAlert,
@@ -60,7 +59,6 @@ import { LoadingState } from "@/components/ui/empty";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
-import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { OverleafLiveSetting } from "@/components/layout/overleaf-sync/OverleafLiveSetting";
 import { PhitexSetting } from "@/components/settings/PhitexSetting";
@@ -85,7 +83,6 @@ import {
   type GrammarDialect,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { setResearchTasksEnabled, useResearchTasksEnabled, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useCloudStore } from "@/store/cloud";
 import { useTemplateLinkStore } from "@/store/template-link";
@@ -176,15 +173,6 @@ const ChangelogDialog = lazy(
   { warm: () => intended("settings") },
 );
 
-const ResearchSettingsSection = lazy(
-  () =>
-    Promise.all([
-      import("@/components/settings/research/ResearchSettingsSection"),
-      loadNamespace("researchTools"),
-    ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
-  { warm: () => intended("settings") && useResearchTasksFlagStore.getState().enabled },
-);
-
 const CollaborationSection = lazy(
   () =>
     Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(([module]) => ({
@@ -235,20 +223,6 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
       return i18n.t(($) => $.shell.settings.nav.data);
     },
     icon: Database,
-  },
-  {
-    id: "ai",
-    get label() {
-      return i18n.t(($) => $.shell.settings.nav.ai);
-    },
-    icon: Sparkles,
-  },
-  {
-    id: "research",
-    get label() {
-      return i18n.t(($) => $.shell.settings.nav.research);
-    },
-    icon: FlaskConical,
   },
   {
     id: "engine",
@@ -308,15 +282,15 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   },
 ];
 
-function availableNav(researchTasks: boolean) {
-  return NAV.filter((item) => item.id !== "research" || researchTasks);
+function availableNav() {
+  return NAV;
 }
 
 const DATA_TABS = ["local", "cloud"] as const;
 
 function openingSection(requested: string | null): Section {
   const wanted = requested ?? useSettingsStore.getState().settingsLastSection;
-  const available = availableNav(useResearchTasksFlagStore.getState().enabled);
+  const available = availableNav();
   return available.find((item) => item.id === wanted)?.id ?? "general";
 }
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
@@ -324,7 +298,6 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   appearance: "settings-appearance",
   dictionary: "settings-dictionary",
   data: "settings-data",
-  ai: "settings-ai",
   engine: "settings-compiler",
   downloads: "settings-downloads",
   integrations: "settings-integrations",
@@ -369,21 +342,8 @@ export function SettingsModal() {
   const setNotesEnabled = useSettingsStore((s) => s.setNotes);
   const pdfReview = useSettingsStore((s) => s.pdfReview);
   const setPdfReview = useSettingsStore((s) => s.setPdfReview);
-  const aiCompletion = useSettingsStore((s) => s.aiCompletion);
-  const setAiCompletion = useSettingsStore((s) => s.setAiCompletion);
-  const researchTasks = useResearchTasksEnabled();
   const phitexEnabled = useEngineStore((s) => s.info?.phitex_enabled === true);
   const setPhitex = useEngineStore((s) => s.setPhitex);
-  const [researchTasksBusy, setResearchTasksBusy] = useState(false);
-  const [researchTasksFailed, setResearchTasksFailed] = useState(false);
-  const toggleResearchTasks = (value: boolean) => {
-    if (researchTasksBusy) return;
-    setResearchTasksBusy(true);
-    setResearchTasksFailed(false);
-    void setResearchTasksEnabled(value)
-      .catch(() => setResearchTasksFailed(true))
-      .finally(() => setResearchTasksBusy(false));
-  };
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
@@ -443,7 +403,7 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
-  const sectionNav = availableNav(researchTasks);
+  const sectionNav = availableNav();
   const navigation = developerSettings
     ? [
         ...sectionNav.slice(0, -1),
@@ -513,10 +473,6 @@ export function SettingsModal() {
   useEffect(() => {
     if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
   }, [cloudLibraryRevision]);
-
-  useEffect(() => {
-    if (!researchTasks && section === "research") setSection("general");
-  }, [researchTasks, section]);
 
   useEffect(() => {
     if (open && section === "data") void useForgeAccountsStore.getState().ensureLoaded();
@@ -851,36 +807,16 @@ export function SettingsModal() {
           checked={pdfReview}
           onChange={setPdfReview}
         />
-        <SettingsToggleRow
-          testId="settings-ai-completion"
-          label={t(($) => $.shell.settings.experimentation.aiCompletion.label)}
-          description={t(($) => $.shell.settings.experimentation.aiCompletion.description)}
-          checked={aiCompletion}
-          onChange={setAiCompletion}
-        />
-        <SettingsToggleRow
-          testId="settings-research-tasks"
-          label={t(($) => $.shell.settings.experimentation.researchTasks.label)}
-          description={t(($) => $.shell.settings.experimentation.researchTasks.description)}
-          checked={researchTasks}
-          disabled={researchTasksBusy}
-          onChange={toggleResearchTasks}
-        />
-        {researchTasksFailed ? (
-          <p role="alert" className="px-1 text-xs text-destructive">
-            {t(($) => $.shell.settings.experimentation.researchTasks.saveFailed)}
-          </p>
-        ) : null}
+
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={() => {
             resetExperimentationPreferences();
-            if (researchTasks) toggleResearchTasks(false);
             if (phitexEnabled) {
               void setPhitex(false).catch((error: unknown) => logError("reset the PhiTeX switch", error));
             }
           }}
-          changed={experimentationChanged || researchTasks || phitexEnabled}
+          changed={experimentationChanged || phitexEnabled}
         />
       </div>
     )
@@ -905,13 +841,6 @@ export function SettingsModal() {
       {section === "dictionary" && <DictionarySection />}
 
       {renderDataSection()}
-
-      {section === "ai" && <AISection />}
-      {section === "research" && (
-        <Suspense fallback={null}>
-          <ResearchSettingsSection />
-        </Suspense>
-      )}
 
       {section === "engine" && <EngineSection />}
       {section === "downloads" && <DownloadsSection />}
@@ -1519,8 +1448,6 @@ export function SettingsModal() {
 function DictionarySection() {
   return <ProofreadingDictionarySection />;
 }
-
-
 
 const REPO_URL = "https://github.com/Oleafly/Oleafly";
 const DOCS_URL = "https://oleafly.com/docs/";

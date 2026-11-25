@@ -1,12 +1,12 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use oleafly_agent::tools::web::{public_https_client, read_limited};
 use oleafly_online::html::decode_entities;
+use oleafly_research::web::{public_https_client, read_limited};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
-use crate::agent::web::WEB_USER_AGENT;
+const WEB_USER_AGENT: &str = "Oleafly (link previews)";
 
 const OEMBED: &str = "https://publish.x.com/oembed";
 const TIMEOUT: Duration = Duration::from_secs(15);

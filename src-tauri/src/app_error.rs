@@ -64,6 +64,7 @@ pub(crate) fn code(text: &str) -> Option<String> {
     envelope(text).map(|envelope| envelope.code)
 }
 
+#[cfg(test)]
 pub(crate) fn map_values(text: &str, map: impl Fn(&str) -> String) -> String {
     let Some(mut envelope) = envelope(text) else {
         return map(text);
@@ -117,6 +118,7 @@ pub(crate) fn english_error(message: &str) -> String {
     english(message).unwrap_or_else(|| message.to_string())
 }
 
+#[cfg(test)]
 fn english_error_field(value: &mut Value) -> bool {
     let Some(Value::String(text)) = value.get_mut("error") else {
         return false;
@@ -130,6 +132,7 @@ fn english_error_field(value: &mut Value) -> bool {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn english_tool_output(text: &str) -> Option<String> {
     if !text.contains(PREFIX) {
         return None;
@@ -141,6 +144,7 @@ pub(crate) fn english_tool_output(text: &str) -> Option<String> {
     english_error_field(&mut value).then(|| value.to_string())
 }
 
+#[cfg(test)]
 pub(crate) fn english_tool_result(result: &mut Value) -> bool {
     if let Value::String(text) = result {
         return match english(text) {

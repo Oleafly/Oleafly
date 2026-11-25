@@ -33,7 +33,7 @@ import {
   type Segment,
   type SuggestContext,
 } from "@oleafly/search-query";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
 import { SEARCH_INPUT } from "@/components/ui/input";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";

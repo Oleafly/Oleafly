@@ -111,7 +111,7 @@ test("right-click context menu offers editor actions and inserts an equation", a
       }));
     })()`,
   );
-  await expect(tauriPage.getByText("Ask AI…")).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.getByText("Ask AI…")).toHaveCount(0);
   await expect(tauriPage.getByText("Go to definition")).toBeVisible();
   await clickEditorContextPath(tauriPage, ["Insert", "Equation"]);
   await expect(tauriPage.locator(".cm-content")).toContainText("\\begin{equation}");

@@ -17,7 +17,6 @@ vi.mock("@/lib/log", () => log);
 vi.mock("@/lib/shared-document-writes", () => ({ sharedDocumentLive: () => gate.live }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => undefined) }));
 vi.mock("@/lib/native-file-dialog", () => ({}));
-vi.mock("@/lib/research-tasks", () => ({}));
 vi.mock("@/components/editor/cm/hover-asset", () => ({}));
 
 const { createNoteItems, createNotesService } = await import("./notes-service");

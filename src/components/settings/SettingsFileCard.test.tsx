@@ -57,10 +57,6 @@ const initialSettings = useSettingsStore.getState();
 const initialCloud = useCloudStore.getState();
 
 const config = {
-  ai_system_prompt: "",
-  ai_pdf_capture: true,
-  ai_personas: [],
-  ai_starter_personas_seeded: true,
   checkpoints_enabled: true,
   checkpoint_notifications: true,
 } as unknown as AppConfig;

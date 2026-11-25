@@ -24,7 +24,6 @@ function startZen() {
     snapshot: {
       showTree: true,
       railTab: "files",
-      assistantOpen: false,
       workspaceHidden: false,
       viewMode: "editor",
       terminalOpen: false,

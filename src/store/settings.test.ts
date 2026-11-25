@@ -43,14 +43,6 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(useSettingsStore.getState().dockPlacement).toBe("left");
   });
 
-  it("rejects the removed top-level MCP settings section", () => {
-    useSettingsStore.setState({ settingsInitialSection: "general" });
-
-    useSettingsStore.getState().setSettingsInitialSection("mcp");
-
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
-  });
-
   it("accepts the Collaboration section", () => {
     useSettingsStore.getState().setSettingsInitialSection("collaboration");
     expect(useSettingsStore.getState().settingsInitialSection).toBe("collaboration");
@@ -197,70 +189,6 @@ describe("useSettingsStore dock appearance settings", () => {
   });
 });
 
-describe("useSettingsStore layout presets", () => {
-  it("ai-only hides the whole workspace and shows only the assistant", () => {
-    useSettingsStore.getState().setLayoutPreset("ai-only");
-    const s = useSettingsStore.getState();
-    expect(s.assistantOpen).toBe(true);
-    expect(s.workspaceHidden).toBe(true);
-  });
-
-  it("every non-ai-only preset keeps the workspace visible", () => {
-    for (const preset of [
-      "editor-preview-ai",
-      "editor-preview",
-      "editor-ai",
-      "preview-ai",
-      "editor-only",
-      "preview-only",
-    ] as const) {
-      useSettingsStore.getState().setLayoutPreset(preset);
-      expect(useSettingsStore.getState().workspaceHidden).toBe(false);
-    }
-  });
-
-  it("maps each preset to the right editor/preview/AI panes", () => {
-    const expected: Record<string, { viewMode: string; ai: boolean }> = {
-      "editor-preview-ai": { viewMode: "split", ai: true },
-      "editor-preview": { viewMode: "split", ai: false },
-      "editor-ai": { viewMode: "editor", ai: true },
-      "preview-ai": { viewMode: "pdf", ai: true },
-      "editor-only": { viewMode: "editor", ai: false },
-      "preview-only": { viewMode: "pdf", ai: false },
-    };
-    for (const [preset, want] of Object.entries(expected)) {
-      useSettingsStore.getState().setLayoutPreset(preset as never);
-      const s = useSettingsStore.getState();
-      expect(s.viewMode).toBe(want.viewMode);
-      expect(s.assistantOpen).toBe(want.ai);
-    }
-  });
-
-  it("does not touch the file tree: the tree is an independent surface", () => {
-    useSettingsStore.setState({ showTree: true });
-    useSettingsStore.getState().setLayoutPreset("editor-only");
-    expect(useSettingsStore.getState().showTree).toBe(true);
-    useSettingsStore.setState({ showTree: false });
-    useSettingsStore.getState().setLayoutPreset("editor-preview-ai");
-    expect(useSettingsStore.getState().showTree).toBe(false);
-  });
-
-  it("choosing a view mode reveals a hidden workspace", () => {
-    useSettingsStore.getState().setLayoutPreset("ai-only");
-    expect(useSettingsStore.getState().workspaceHidden).toBe(true);
-    useSettingsStore.getState().setViewMode("split");
-    expect(useSettingsStore.getState().workspaceHidden).toBe(false);
-  });
-
-  it("closing the assistant from ai-only restores the workspace", () => {
-    useSettingsStore.getState().setLayoutPreset("ai-only");
-    useSettingsStore.getState().setAssistantOpen(false);
-    const s = useSettingsStore.getState();
-    expect(s.assistantOpen).toBe(false);
-    expect(s.workspaceHidden).toBe(false);
-  });
-});
-
 describe("useSettingsStore reset", () => {
   it("restores and persists every editor-behavior default", () => {
     const settings = useSettingsStore.getState();
@@ -368,16 +296,6 @@ describe("useSettingsStore reset", () => {
     settings.resetToDefaults();
     expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
-  });
-
-  it("keeps the dragged message box height out of Appearance's changed mark and reset", () => {
-    const settings = useSettingsStore.getState();
-    settings.setAiComposerHeight(300);
-    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
-    expect(localStorage.getItem("oleafly.ai.composerHeight")).toBe("300");
-    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
-    settings.resetAppearancePreferences();
-    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
   });
 
   it("offers VS Code's cursor blinking styles and falls back to Blink", () => {
@@ -683,14 +601,6 @@ describe("file tree visibility settings", () => {
 });
 
 describe("revealEditor", () => {
-  it("reveals the workspace from the AI-only layout, keeping the view mode", () => {
-    useSettingsStore.setState({ workspaceHidden: true, viewMode: "editor" });
-    useSettingsStore.getState().revealEditor();
-    expect(useSettingsStore.getState()).toMatchObject({
-      workspaceHidden: false,
-      viewMode: "editor",
-    });
-  });
 
   it("switches a preview-only view to a split so the editor is on screen", () => {
     useSettingsStore.setState({ workspaceHidden: false, viewMode: "pdf" });

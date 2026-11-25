@@ -12,7 +12,7 @@ import { create } from "zustand";
 import { readString, removeKey, writeJson } from "@/lib/local-storage";
 import type { ViewMode } from "@/store/settings";
 
-export type PaneId = "sidebar" | "editor" | "pdf" | "terminal" | "assistant";
+export type PaneId = "sidebar" | "editor" | "pdf" | "terminal";
 export type SplitDirection = Direction;
 export type Side = Edge;
 
@@ -38,26 +38,24 @@ export type PaneShown = Readonly<Record<PaneId, boolean>>;
 export interface PaneFlags {
   readonly viewMode: ViewMode;
   readonly showTree: boolean;
-  readonly assistantOpen: boolean;
   readonly workspaceHidden: boolean;
   readonly terminalOpen: boolean;
 }
 
 export const PANE_LAYOUT_KEY = "oleafly.workspace.paneLayout";
 const LAYOUT_VERSION = 2;
-export const PANES: readonly PaneId[] = ["sidebar", "editor", "pdf", "terminal", "assistant"];
+export const PANES: readonly PaneId[] = ["sidebar", "editor", "pdf", "terminal"];
 
 const SPLIT_PANEL_IDS: Readonly<Record<string, string>> = { horizontal: "content-band", document: "editorpdf" };
-const STORAGE_RANK = ["content-band", "sidebar", "editorpdf", "editor", "pdf", "assistant", "terminal"];
+const STORAGE_RANK = ["content-band", "sidebar", "editorpdf", "editor", "pdf", "terminal"];
 const SEPARATOR_IDS: Readonly<Record<string, string>> = {
   "content-band|terminal": "v-terminal",
   "editorpdf|sidebar": "h-tree",
-  "assistant|editorpdf": "h-assistant",
   "editor|pdf": "h-mid",
 };
 const LEGACY_SPLITS: readonly (readonly [string, readonly string[]])[] = [
   ["document", ["editor", "pdf"]],
-  ["horizontal", ["sidebar", "editorpdf", "assistant"]],
+  ["horizontal", ["sidebar", "editorpdf"]],
   ["vertical", ["content-band", "terminal"]],
 ];
 const SPLIT_ID = /^[a-z][a-z0-9-]{0,31}$/;
@@ -71,7 +69,7 @@ function split(id: string, direction: SplitDirection, children: readonly PaneNod
 }
 
 const DOCUMENT_SPLIT = split("document", "row", [leaf("editor"), leaf("pdf")], [50, 50]);
-const BAND_SPLIT = split("horizontal", "row", [leaf("sidebar"), DOCUMENT_SPLIT, leaf("assistant")], [20, 52, 28]);
+const BAND_SPLIT = split("horizontal", "row", [leaf("sidebar"), DOCUMENT_SPLIT], [25, 75]);
 export const DEFAULT_PANE_LAYOUT: PaneSplit = split("vertical", "column", [BAND_SPLIT, leaf("terminal")], [72, 28]);
 
 export function isLeaf(node: PaneNode): node is PaneLeaf {
@@ -144,7 +142,6 @@ export function paneVisibility(flags: PaneFlags): PaneShown {
     editor: !flags.workspaceHidden && flags.viewMode !== "pdf",
     pdf: !flags.workspaceHidden && flags.viewMode !== "editor",
     terminal: flags.terminalOpen,
-    assistant: flags.assistantOpen,
   };
 }
 
@@ -344,10 +341,9 @@ function documentPath(layout: PaneNode, side: Side): Path | null {
 }
 
 const MISSING_SPOTS: Readonly<Record<PaneId, readonly (readonly [PaneId | "document", Side])[]>> = {
-  editor: [["pdf", "left"], ["sidebar", "right"], ["assistant", "left"]],
-  pdf: [["editor", "right"], ["assistant", "left"], ["sidebar", "right"]],
-  sidebar: [["document", "left"], ["assistant", "left"]],
-  assistant: [["document", "right"], ["sidebar", "right"]],
+  editor: [["pdf", "left"], ["sidebar", "right"]],
+  pdf: [["editor", "right"], ["sidebar", "right"]],
+  sidebar: [["document", "left"]],
   terminal: [],
 };
 
@@ -362,7 +358,7 @@ function placeMissing(layout: PaneNode, pane: PaneId): PaneNode {
 
 function withAllPanes(layout: PaneNode): PaneSplit {
   let next = layout;
-  for (const pane of ["editor", "pdf", "sidebar", "assistant", "terminal"] as const) {
+  for (const pane of ["editor", "pdf", "sidebar", "terminal"] as const) {
     if (!pathOf(next, pane)) next = placeMissing(next, pane);
   }
   return asSplit(next);
@@ -494,7 +490,7 @@ export function swapEditorAndPreview(): void {
   usePaneLayoutStore.getState().swap("editor", "pdf");
 }
 
-export function paneSide(layout: PaneNode, pane: "sidebar" | "assistant"): "left" | "right" {
+export function paneSide(layout: PaneNode, pane: "sidebar"): "left" | "right" {
   const fallback = pane === "sidebar" ? "left" : "right";
   const own = pathOf(layout, pane);
   const reference = pathOf(layout, "editor") ?? pathOf(layout, "pdf");

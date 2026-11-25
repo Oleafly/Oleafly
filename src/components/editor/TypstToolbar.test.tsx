@@ -72,7 +72,6 @@ vi.mock("@/components/editor/project-info-data", () => ({
 }));
 
 vi.mock("@/components/editor/cm/controller", () => controller);
-vi.mock("@/features/image-to-latex", () => vision);
 vi.mock("@/features/synctex", () => synctex);
 vi.mock("@/lib/index/nav", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -217,21 +216,6 @@ describe("TypstToolbar", () => {
     fireEvent.click(screen.getByText(toolbar.goToDefinition));
     expect(nav.goToDefinition).toHaveBeenCalledOnce();
     controller.getEditorView.mockReturnValue(null);
-  });
-
-  it("transcribes an image into Typst when a vision model is ready", async () => {
-    vision.imageToLatexAvailable.mockResolvedValue(true);
-    widenToolbar(4000);
-    render(<TypstToolbar />);
-    await waitFor(() => expect(screen.getByTestId("image-to-typst")).toBeInTheDocument());
-    const input = screen.getByTestId("image-to-typst-input") as HTMLInputElement;
-    expect(input).toHaveAttribute("accept", "image/*");
-    const file = new File([new Uint8Array([1])], "eq.png", { type: "image/png" });
-    await act(async () => {
-      fireEvent.change(input, { target: { files: [file] } });
-    });
-    expect(vision.imageToTypst).toHaveBeenCalledWith(file);
-    expect(vision.imageToLatex).not.toHaveBeenCalled();
   });
 
   it("offers every heading level and both list kinds from the bar dropdowns", () => {

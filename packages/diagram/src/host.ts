@@ -1,4 +1,4 @@
-import type { DiagramFixPrompt, DiagramLanguageId } from "./languages/types";
+import type { DiagramLanguageId } from "./languages/types";
 
 export interface DiagramRenderDiagnostic {
   severity: "error" | "warning";
@@ -63,7 +63,6 @@ export interface DiagramHost {
   saveFigureToCache(name: string, pngBase64: string, tikz: string): Promise<{ hash: string; alreadyCached: boolean }>;
   saveBytesToDisk(defaultName: string, extension: string, dataBase64: string): Promise<boolean>;
   pickTikzFile(accept?: string): Promise<{ name: string; content: string } | null>;
-  fixWithAi?(code: string, logTail: string, prompt?: DiagramFixPrompt): Promise<string>;
   insertTarget?(): DiagramInsertTarget | null;
   typstContext?(): { projectId: string | null; typstVersion: string | null };
   renderTypst?(request: DiagramTypstRequest): Promise<DiagramTypstRender>;

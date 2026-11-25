@@ -187,22 +187,6 @@ test("the file tree keeps its width while the window is resized", async ({ tauri
   await expect.poll(async () => Math.abs((await sidebarWidth()) - start)).toBeLessThanOrEqual(1);
 });
 
-test("grouped layouts open the assistant and its sidebar button hides it", async ({ tauriPage: page }) => {
-  await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
-  await page.evaluate(`import("/src/store/settings.ts").then(s => {
-    s.useSettingsStore.getState().setAppFontSize(22);
-    document.documentElement.style.zoom = '1';
-  })`);
-  await createBlankProject(page, 'Grouped actions');
-  await page.click('[data-testid="workspace-menu"]');
-  await page.getByText('Layout', { exact: true }).click();
-  await page.getByText('AI Only', { exact: true }).click();
-  await expect.poll(async () => page.evaluate(`import("/src/store/settings.ts").then(m=>({open:m.useSettingsStore.getState().assistantOpen,hidden:m.useSettingsStore.getState().workspaceHidden}))`)).toEqual({open:true,hidden:true});
-  await expect(page.locator('[data-testid="assistant-hide"]')).toBeVisible({ timeout: 20_000 });
-  await page.click('[data-testid="assistant-hide"]');
-  await expect.poll(async () => page.evaluate(`import("/src/store/settings.ts").then(m=>({open:m.useSettingsStore.getState().assistantOpen,hidden:m.useSettingsStore.getState().workspaceHidden}))`)).toEqual({open:false,hidden:false});
-});
-
 test("the shared detached PDF controls save a copy into the current project", async ({ tauriPage: page }) => {
   await createBlankProject(page, "Detached save controls");
   await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');

@@ -1145,6 +1145,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "Vyberte obrázek menší než 20 MB.",
     "imageFormat": "Vyberte obrázek PNG, JPEG nebo WebP.",
     "ollamaUnavailable": "Spusťte Ollama, nebo pro Nástroje vyberte jiný model.",

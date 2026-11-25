@@ -19,12 +19,7 @@ export function OpenFolderStopDialog() {
   const prompt = useOpenFolderFlowStore((state) => state.prompt);
   const answer = useOpenFolderFlowStore((state) => state.answer);
   const values = { name: prompt?.name ?? "", project: prompt?.project ?? "" };
-  let description = t(($) => $.shell.openFolder.confirmAssistant, values);
-  if (prompt?.compile && prompt.assistant) {
-    description = t(($) => $.shell.openFolder.confirmBoth, values);
-  } else if (prompt?.compile) {
-    description = t(($) => $.shell.openFolder.confirmCompile, values);
-  }
+  const description = t(($) => $.shell.openFolder.confirmCompile, values);
   return (
     <ConfirmationDialog
       open={prompt !== null}

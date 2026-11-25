@@ -27,11 +27,6 @@ export interface DiagramWriteOptions<Extras = unknown> {
 
 export type DiagramSnippetId = "rectangleNode" | "circleNode" | "arrowEdge" | "lineEdge" | "scope";
 
-export interface DiagramFixPrompt {
-  system: string;
-  user: string;
-}
-
 export interface DiagramStandalone {
   code: string;
   background?: string;
@@ -53,7 +48,6 @@ export interface DiagramLanguage {
   fromStandalone(source: string): DiagramStandalone;
   fromFile(name: string, content: string): string;
   insertText(code: string): string;
-  fixPrompt(code: string, log: string): DiagramFixPrompt;
   seeds: { math: string; code: string };
   snippets: Record<DiagramSnippetId, string>;
 }

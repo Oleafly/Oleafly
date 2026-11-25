@@ -4,19 +4,15 @@ export const TOOL_ART_WIDTH = 720;
 export const TOOL_ART_HEIGHT = 406;
 
 const TOOL_ART_IDS: ReadonlySet<ToolId> = new Set<ToolId>([
-  "image-to-latex",
   "pdf-to-latex",
   "visual-typst-editor",
   "arxiv-to-latex",
   "arxiv-to-typst",
   "csv-to-typst",
-  "equation-to-latex",
-  "equation-to-typst",
   "excel-to-latex",
   "excel-to-typst",
   "html-to-latex",
   "html-to-typst",
-  "image-to-typst",
   "latex-to-html",
   "latex-to-image",
   "latex-to-markdown",
@@ -49,7 +45,6 @@ const TOOL_ART_IDS: ReadonlySet<ToolId> = new Set<ToolId>([
   "pubmed-to-bibtex",
   "url-to-bibtex",
   "stats",
-  "generators",
   "symbols",
 ]);
 

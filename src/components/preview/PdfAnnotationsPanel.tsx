@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCheck, Crosshair, MessageSquareText, RotateCcw, Send, Trash2 } from "lucide-react";
+import { CheckCheck, Crosshair, MessageSquareText, RotateCcw, Trash2 } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,7 +39,6 @@ export function PdfAnnotationsPanel({
   onClose,
   onShow,
   onPlaceAgain,
-  onSend,
 }: Readonly<{
   id: string;
   open: boolean;
@@ -47,7 +46,6 @@ export function PdfAnnotationsPanel({
   onClose: () => void;
   onShow: (annotation: PdfAnnotation) => void;
   onPlaceAgain: (annotation: PdfAnnotation | null) => void;
-  onSend: (annotations: PdfAnnotation[]) => void;
 }>) {
   const { t } = useTranslation(["annotations"]);
   const quoteLabels = useAnnotationQuoteLabels();
@@ -61,7 +59,6 @@ export function PdfAnnotationsPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const activeRef = useRef<HTMLLIElement>(null);
   const isPicked = (item: PdfAnnotation) => picked[item.id] ?? item.status === "draft";
-  const included = items.filter(isPicked);
   const store = () => usePdfAnnotationsStore.getState();
 
   useEffect(() => {
@@ -100,10 +97,7 @@ export function PdfAnnotationsPanel({
             <Button variant="ghost" size="xs" onClick={() => void clearAll()}>
               {t(($) => $.annotations.panel.clear)}
             </Button>
-            <Button size="xs" className="gap-1.5" disabled={included.length === 0} onClick={() => onSend(included)}>
-              <Send className="size-3.5" />
-              {t(($) => $.annotations.panel.send, { n: included.length })}
-            </Button>
+
           </>
         ) : null
       }

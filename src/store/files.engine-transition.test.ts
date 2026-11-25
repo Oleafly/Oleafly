@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   createFile: vi.fn(),
   importPathsIntoProject: vi.fn(),
   resetCompile: vi.fn(),
-  mcpSetActiveProject: vi.fn(async () => {}),
+  setActiveProject: vi.fn(async () => {}),
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
 }));
@@ -50,7 +50,9 @@ vi.mock("@/lib/tauri", () => ({
   listFileTree: async (projectId: string) => ({
     entries: await mocks.listFiles(projectId),
     truncated: false,
-  }),
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
+}),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   setMainDocCmd: mocks.setMainDocCmd,
@@ -59,7 +61,9 @@ vi.mock("@/lib/tauri", () => ({
   createFile: mocks.createFile,
   importPathsIntoProject: mocks.importPathsIntoProject,
   listProjects: vi.fn(async () => []),
-  mcpSetActiveProject: mocks.mcpSetActiveProject,
+  setActiveProject: mocks.setActiveProject,
+
+
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
@@ -86,7 +90,6 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 
 import { projectCompatibilityFindings, SaveFlushError, useFilesStore } from "./files";
 import { acquireEditorMutationLease, isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
 import { registerNoteEditor } from "@/lib/open-note-editors";
 import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
@@ -155,11 +158,10 @@ beforeEach(async () => {
     generation: 1,
   });
   mocks.resetCompile.mockReset();
-  mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
+  mocks.setActiveProject.mockReset().mockResolvedValue(undefined);
   mocks.flushWysiwygPendingEdits.mockReset();
   mocks.invalidateWysiwygProjectSession.mockReset();
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
-  useMcpApprovalStore.getState().cancelAll();
 });
 
 function seedProjectMetadata() {
@@ -647,24 +649,6 @@ describe("transactional project transitions", () => {
     expect(useFilesStore.getState().files).toEqual({});
   });
 
-  it("rejects pending external approvals when their project closes", async () => {
-    useFilesStore.setState({
-      projectId: "old-project",
-      files: {},
-      openTabs: [],
-      activePath: null,
-    });
-    const pending = useMcpApprovalStore.getState().request({
-      tool: "run_command",
-      summary: "$ touch should-not-run",
-    });
-
-    await useFilesStore.getState().closeProject();
-
-    expect(useMcpApprovalStore.getState().queue).toEqual([]);
-    await expect(pending).resolves.toBe(false);
-  });
-
   it("flushes pending Visual edits before collecting dirty buffers for close", async () => {
     useFilesStore.setState({
       projectId: "project",
@@ -771,33 +755,6 @@ describe("transactional project transitions", () => {
     expect(useFilesStore.getState().projectId).toBe("replacement");
     expect(mocks.gitPull).not.toHaveBeenCalled();
     expect(mocks.gitDiscard).not.toHaveBeenCalled();
-  });
-
-  it("rejects pending external approvals when opening a different project", async () => {
-    mocks.getProject.mockResolvedValue({
-      name: "Replacement",
-      kind: "",
-      main_doc: "main.tex",
-    });
-    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
-    mocks.readFileContent.mockResolvedValue("replacement content");
-    useFilesStore.setState({
-      projectId: "old-project",
-      files: {},
-      openTabs: [],
-      activePath: null,
-    });
-    const pending = useMcpApprovalStore.getState().request({
-      tool: "run_command",
-      summary: "$ touch should-not-run",
-      projectId: "old-project",
-    });
-
-    await useFilesStore.getState().openProject("replacement");
-
-    expect(useFilesStore.getState().projectId).toBe("replacement");
-    expect(useMcpApprovalStore.getState().queue).toEqual([]);
-    await expect(pending).resolves.toBe(false);
   });
 
   it("keeps the current project open when a transition save fails", async () => {
@@ -1319,13 +1276,13 @@ describe("external filesystem reconciliation", () => {
   });
 });
 
-describe("MCP active-project synchronization", () => {
+describe("Active-project synchronization", () => {
   it("clears the backend target when the project closes", async () => {
     useFilesStore.setState({ projectId: "project", files: {} });
 
     await useFilesStore.getState().closeProject();
 
-    expect(mocks.mcpSetActiveProject).toHaveBeenLastCalledWith(null);
+    expect(mocks.setActiveProject).toHaveBeenLastCalledWith(null);
     expect(useFilesStore.getState().projectId).toBeNull();
   });
 
@@ -1334,7 +1291,7 @@ describe("MCP active-project synchronization", () => {
 
     await useFilesStore.getState().openProject("missing");
 
-    expect(mocks.mcpSetActiveProject.mock.calls).toEqual([[null], [null]]);
+    expect(mocks.setActiveProject.mock.calls).toEqual([[null], [null]]);
     expect(useFilesStore.getState().projectId).toBeNull();
   });
 
@@ -1343,7 +1300,7 @@ describe("MCP active-project synchronization", () => {
 
     await useFilesStore.getState().openProject("project");
 
-    expect(mocks.mcpSetActiveProject.mock.calls.slice(0, 2)).toEqual([
+    expect(mocks.setActiveProject.mock.calls.slice(0, 2)).toEqual([
       [null],
       ["project"],
     ]);
@@ -1733,7 +1690,6 @@ describe("project engine transition", () => {
   });
 });
 
-
 describe("external project mutation lease", () => {
   it("locks synchronously, flushes visual and source edits, and reconciles before unlocking", async () => {
     seedProjectMetadata();
@@ -1871,7 +1827,6 @@ describe("external project mutation lease", () => {
     }
   });
 });
-
 
 it("releases every owner even if one cleanup callback fails", () => {
   const first = registerEditorMutationOwner({ projectId: () => "project", setLocked: (locked) => { if (!locked) throw new Error("stale view"); } });

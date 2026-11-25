@@ -264,7 +264,6 @@ describe("DiagramComposer", () => {
   it("shows a compile that produced no document in the preview pane, not a toast", async () => {
     const host = makeHost({
       compileIsolated: vi.fn(async () => ({ log: "! Undefined control sequence", has_pdf: false })),
-      fixWithAi: vi.fn(async () => "fixed"),
     });
     open(host);
 
@@ -274,7 +273,7 @@ describe("DiagramComposer", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("toast.compileFailed");
     expect(screen.getByText("! Undefined control sequence")).toBeInTheDocument();
-    expect(screen.getByText("composer.fixWithAi")).toBeInTheDocument();
+    expect(screen.queryByText("composer.fixWithAi")).not.toBeInTheDocument();
     expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
@@ -326,24 +325,6 @@ describe("DiagramComposer", () => {
     fireEvent.click(screen.getByTestId("diagram-compile"));
     await screen.findAllByText("composer.compiling");
     expect(screen.queryByTestId("diagram-stop")).not.toBeInTheDocument();
-  });
-
-  it("shows a compile that threw in the preview pane without offering an AI fix", async () => {
-    const host = makeHost({
-      compileIsolated: vi.fn(async () => {
-        throw new Error("boom");
-      }),
-      fixWithAi: vi.fn(async () => "fixed"),
-    });
-    open(host);
-    fireEvent.click(screen.getByTestId("diagram-compile"));
-
-    await waitFor(() =>
-      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileError boom"),
-    );
-    expect(screen.queryByText("preview.empty")).not.toBeInTheDocument();
-    expect(screen.queryByText("composer.fixWithAi")).not.toBeInTheDocument();
-    expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
   it("keeps the last preview and names the failure when a recompile throws", async () => {
@@ -743,45 +724,6 @@ describe("DiagramComposer", () => {
     expect(screen.queryByLabelText("composer.nameLabel")).not.toBeInTheDocument();
   });
 
-  it("offers an AI fix after a failed compile", async () => {
-    const host = makeHost({
-      compileIsolated: vi.fn(async () => ({ log: "! error", has_pdf: false })),
-      fixWithAi: vi.fn(async () => "\\draw (0,0) -- (1,1);\n"),
-    });
-    open(host);
-
-    fireEvent.click(screen.getByTestId("diagram-compile"));
-    const fix = await screen.findByText("composer.fixWithAi");
-
-    fireEvent.click(fix);
-    await waitFor(() => expect(host.compileIsolated).toHaveBeenCalledTimes(2));
-    expect(host.fixWithAi).toHaveBeenCalledOnce();
-    expect(screen.getByTestId("code-editor")).toHaveValue("\\draw (0,0) -- (1,1);\n");
-    expect(kit.toast.success).not.toHaveBeenCalled();
-    expect(kit.toast.error).not.toHaveBeenCalled();
-  });
-
-  it("reports an AI fix that returned nothing and one that threw", async () => {
-    const host = makeHost({
-      compileIsolated: vi.fn(async () => ({ log: "! error", has_pdf: false })),
-      fixWithAi: vi.fn(async () => ""),
-    });
-    open(host);
-    fireEvent.click(screen.getByTestId("diagram-compile"));
-    fireEvent.click(await screen.findByText("composer.fixWithAi"));
-    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("toast.noAiFix"));
-
-    (host.fixWithAi as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("no key"));
-    fireEvent.click(screen.getByText("composer.fixWithAi"));
-    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("no key"));
-
-    (host.fixWithAi as ReturnType<typeof vi.fn>).mockRejectedValue("config unreadable");
-    fireEvent.click(screen.getByText("composer.fixWithAi"));
-    await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.fixFailed config unreadable"),
-    );
-  });
-
   it("asks before overwriting files that already exist", async () => {
     const host = makeHost({
       listFiles: vi.fn(async () => [{ path: "figures/diagram.png" }]),
@@ -1106,27 +1048,6 @@ describe("DiagramComposer in Typst mode", () => {
     expect(next).not.toContain("node((4cm, 0cm), [Out]");
   });
 
-  it("asks the AI for fletcher code with the Typst errors", async () => {
-    const fixWithAi = vi.fn(async () => '#import "@preview/fletcher:0.5.8": diagram, node, edge\n#diagram()');
-    const host = typstHost({
-      fixWithAi,
-      renderTypst: vi.fn(async () => ({
-        status: "failed" as const,
-        diagnostics: [{ severity: "error" as const, message: "expected comma", line: 5, column: 1 }],
-      })),
-    });
-    open(host, { language: "typst" });
-    fireEvent.click(screen.getByTestId("diagram-compile"));
-    fireEvent.click(await screen.findByText("composer.fixWithAi"));
-
-    await waitFor(() => expect(fixWithAi).toHaveBeenCalledOnce());
-    const [codeSent, log, prompt] = fixWithAi.mock.calls[0] as unknown as [string, string, { system: string; user: string }];
-    expect(codeSent.startsWith('#import "@preview/fletcher')).toBe(true);
-    expect(log).toBe("line 4, column 1: expected comma");
-    expect(prompt.system).toContain("fletcher");
-    expect(prompt.user).toContain("TYPST ERRORS:\nline 4, column 1: expected comma");
-  });
-
   it("saves a new Typst diagram project as a standalone .typ", async () => {
     const host = typstHost();
     open(host, { language: "typst" });
@@ -1403,32 +1324,6 @@ describe("DiagramComposer details", () => {
     await waitFor(() => expect(host.renderTypst).toHaveBeenCalledOnce());
     expect(await screen.findByText("preview.empty")).toBeInTheDocument();
     expect(screen.queryByAltText("preview.alt")).not.toBeInTheDocument();
-  });
-
-  it("maps Typst diagnostics on the page rule to no code line and jumps from the code view", async () => {
-    const fixWithAi = vi.fn(async () => "");
-    const host = typstHost({
-      fixWithAi,
-      renderTypst: vi.fn(async () => ({
-        status: "failed" as const,
-        diagnostics: [
-          { severity: "warning" as const, message: "unused import", line: 3, column: null },
-          { severity: "error" as const, message: "page rule broke", line: 1, column: 5 },
-        ],
-      })),
-    });
-    open(host, { language: "typst" });
-    fireEvent.click(screen.getByTestId("diagram-compile"));
-
-    const warning = await screen.findByRole("button", { name: "preview.diagnosticAt 2 unused import" });
-    expect(screen.getByText("page rule broke").tagName).toBe("SPAN");
-    fireEvent.click(screen.getByTestId("diagram-tab-code"));
-    fireEvent.click(warning);
-    expect(code.revealed).toEqual([[2, null]]);
-
-    fireEvent.click(screen.getByText("composer.fixWithAi"));
-    await waitFor(() => expect(fixWithAi).toHaveBeenCalledOnce());
-    expect((fixWithAi.mock.calls[0] as unknown[])[1]).toBe("line 2, column 1: unused import\npage rule broke");
   });
 
   it("shows a Mermaid error without a line as plain text", async () => {

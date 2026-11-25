@@ -1121,6 +1121,7 @@
     }
   },
   "converterErrors": {
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text.",
     "chooseSmallerImage": "20 MB 未満の画像を選んでください。",
     "imageFormat": "PNG、JPEG、WebP のいずれかの画像を選んでください。",
     "ollamaUnavailable": "Ollama を起動するか、ツール用に別のモデルを選んでください。",

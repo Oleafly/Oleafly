@@ -1,6 +1,6 @@
 import { type HomePage, useHomeViewStore } from "@/store/home-view";
 
-const COVERING_PAGES: ReadonlySet<HomePage> = new Set<HomePage>(["notes", "diagram-composer", "generators", "symbols"]);
+const COVERING_PAGES: ReadonlySet<HomePage> = new Set<HomePage>(["notes", "diagram-composer", "symbols"]);
 
 export function coversProject(page: HomePage): boolean {
   return COVERING_PAGES.has(page);

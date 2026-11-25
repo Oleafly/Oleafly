@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { type RefObject, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import { FindBar } from "@/components/ui/find-bar";
 import { formatNumber } from "@/lib/intl";
 import { isMac } from "@/lib/utils";

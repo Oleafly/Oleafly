@@ -463,7 +463,8 @@ fn removing_a_downloaded_version_deletes_its_folder_and_returns_the_status() {
         .iter()
         .find(|entry| entry.version == "0.14.2")
         .unwrap();
-    assert!(row.sources.is_empty());
+    // A system installation of this version can remain after the managed copy is removed.
+    assert!(!row.sources.contains(&TypstSource::Downloaded));
     assert_app_error(
         remove_version_blocking("0.14.2").unwrap_err(),
         "typst_toolchain.remove_not_downloaded",

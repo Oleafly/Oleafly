@@ -1,16 +1,14 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import type { NoteEditorBridge } from "./NoteAssistant";
 import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
 import { NOTE_COLOR_HEX } from "./note-icons";
 import { flushOpenNotes, noteEditorBusy, noteHistoryAt } from "@/lib/open-note-editors";
-import { useShortcutStore } from "@/store/shortcuts";
-import { addPendingBatch, pendingBatches, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
+import { resetPendingSuggestionsForTest } from "./note-pending-suggestions";
 import {
   dismissNoteLiveNotice,
   registerNoteCommentSurface,
@@ -30,12 +28,7 @@ import { deferred, fakeNotesData } from "./tests/notes-data-fixture";
 import "./tests/setup";
 
 const editors = vi.hoisted(() => ({ last: null as Editor | null }));
-const prompts = vi.hoisted(() => ({ scope: null as { current: HTMLElement | null } | null }));
 const composerFocus = vi.hoisted(() => vi.fn());
-const assistant = vi.hoisted(() => ({
-  bridge: null as NoteEditorBridge | null,
-  quote: vi.fn<(text: string) => void>(),
-}));
 
 const logs = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/lib/log", () => logs);
@@ -58,30 +51,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
       editors.last = editor;
       return editor;
     },
-  };
-});
-
-vi.mock("./NoteAssistant", async () => {
-  const { forwardRef, useImperativeHandle } = await import("react");
-  return {
-    NoteAssistant: forwardRef(function NoteAssistant(
-      props: {
-        note: NoteItem;
-        bridge: NoteEditorBridge;
-        review: ReactNode;
-        shortcutScope?: RefObject<HTMLElement | null>;
-      },
-      ref,
-    ) {
-      useImperativeHandle(ref, () => ({ focus: composerFocus, quote: assistant.quote }), []);
-      assistant.bridge = props.bridge;
-      prompts.scope = props.shortcutScope ?? null;
-      return (
-        <section data-testid="note-assistant" data-note={props.note.id}>
-          {props.review}
-        </section>
-      );
-    }),
   };
 });
 
@@ -249,8 +218,6 @@ afterEach(async () => {
   composerFocus.mockClear();
   scrollIntoView.mockClear();
   Reflect.deleteProperty(document, "visibilityState");
-  assistant.bridge = null;
-  assistant.quote.mockClear();
   cleanup();
   await flushOpenNotes(10);
   localStorage.clear();
@@ -1076,15 +1043,12 @@ describe("changes on disk", () => {
     await fake.diskChanged();
     expect(fake.loadNote).toHaveBeenLastCalledWith("note-1");
     expect(title.value).toBe("Mask ratio study");
-    const floating = screen.getByRole("button", { name: ACCEPT }).closest("[data-note-review]");
-    expect(screen.getByTestId("note-assistant")).not.toContainElement(floating as HTMLElement);
     expect(scrollIntoView).not.toHaveBeenCalledWith({ block: "center" });
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
     });
     expect(bodyText(editor)).toContain("per patch");
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-    expect(screen.getByTestId("note-assistant")).toBeInTheDocument();
   });
 
   it("drops a disk suggestion that is rejected", async () => {
@@ -1749,11 +1713,6 @@ describe("the note's look", () => {
     expect(width()).toHaveAttribute("data-note-width", "full");
     act(() => saveNoteWidth("standard"));
   });
-
-  it("listens for the prompt shortcut across the whole note", async () => {
-    await openNote(fakeData());
-    expect(prompts.scope?.current).toBe(screen.getByRole("article").parentElement);
-  });
 });
 
 describe("renames made elsewhere", () => {
@@ -1824,165 +1783,6 @@ describe("renames made elsewhere", () => {
   });
 });
 
-describe("the assistant", () => {
-  function bridge(): NoteEditorBridge {
-    if (!assistant.bridge) throw new Error("assistant not shown");
-    return assistant.bridge;
-  }
-
-  function propose(...edits: { find: string; replace: string }[]): number {
-    let count = 0;
-    act(() => {
-      count = bridge().propose(edits);
-    });
-    return count;
-  }
-
-  it("shows suggestions the assistant made while the note was closed", async () => {
-    addPendingBatch("note-1", [{ find: "per pixel", replace: "per patch" }]);
-    const { editor } = await openNote(fakeData());
-    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
-    expect(pendingBatches("note-1")).toEqual([]);
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
-    });
-    expect(bodyText(editor)).toContain("per patch");
-  });
-
-  it("keeps the suggestions on screen when the note closes and shows them again when it reopens", async () => {
-    const fake = fakeData();
-    const { unmount } = await openNote(fake);
-    expect(propose({ find: "per pixel", replace: "per patch" })).toBe(1);
-    await act(async () => {
-      unmount();
-    });
-    expect(pendingBatches("note-1")).toHaveLength(1);
-    expect(fake.saveNote).not.toHaveBeenCalled();
-    const { editor } = await openNote(fake);
-    expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
-    expect(bodyText(editor)).toContain("per pixel");
-  });
-
-  it("waits until a live note can be edited before it shows stored suggestions", async () => {
-    addPendingBatch("note-1", [{ find: "per pixel", replace: "per patch" }]);
-    useCollabEditorGate.setState({ projectId: "note-1", connecting: true });
-    try {
-      await openNote(fakeData());
-      expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-      expect(pendingBatches("note-1")).toHaveLength(1);
-      act(() => useCollabEditorGate.setState({ connecting: false }));
-      expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
-    } finally {
-      useCollabEditorGate.setState({ projectId: null, connecting: false });
-    }
-  });
-
-  it("keeps the assistant's edits while a shared note connects and shows them once it can be edited", async () => {
-    useCollabEditorGate.setState({ projectId: "note-1", connecting: true });
-    try {
-      await openNote(fakeData());
-      expect(propose({ find: "per pixel", replace: "per patch" })).toBe(1);
-      expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-      expect(pendingBatches("note-1")).toHaveLength(1);
-      act(() => useCollabEditorGate.setState({ connecting: false }));
-      expect(screen.getByRole("button", { name: ACCEPT })).toBeInTheDocument();
-    } finally {
-      useCollabEditorGate.setState({ projectId: null, connecting: false });
-    }
-  });
-
-  it("shows the assistant for the open note and remounts it for another note", async () => {
-    const { showNote } = await openNote(fakeData());
-    expect(screen.getByTestId("note-assistant")).toHaveAttribute("data-note", "note-1");
-    showNote({ ...NOTE, id: "note-2" });
-    expect(screen.getByTestId("note-assistant")).toHaveAttribute("data-note", "note-2");
-  });
-
-  it("reads the note's current Markdown, front matter included", async () => {
-    const { editor } = await openNote(fakeData());
-    expect(bridge().readSource()).toBe(TEXT);
-    typeBefore(editor, "Masks", "Random ");
-    expect(bridge().readSource()).toContain("Random Masks are sampled");
-  });
-
-  it("reads a note without front matter as its body before any save", async () => {
-    await openNote(fakeData({ text: BODY }));
-    expect(bridge().readSource()).toBe(BODY);
-  });
-
-  it("turns proposed edits into suggestions the person reviews", async () => {
-    const { editor } = await openNote(fakeData());
-    expect(propose({ find: "0.75", replace: "0.60" })).toBe(1);
-    expect(bridge().pending()).toBe(1);
-    expect(bodyText(editor)).toContain("0.75");
-    expect(bridge().readSource()).toContain("ratio of 0.60.");
-    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
-    expect(bodyText(editor)).toContain("ratio of 0.60.");
-    expect(bridge().pending()).toBe(0);
-  });
-
-  it("keeps earlier suggestions when the assistant proposes more in the same turn", async () => {
-    const { editor } = await openNote(fakeData());
-    propose({ find: "0.75", replace: "0.60" });
-    expect(propose({ find: "per pixel", replace: "per patch" })).toBe(2);
-    const position = (current: number) =>
-      enNotes.review.position.replace("{{current}}", String(current)).replace("{{total}}", "2");
-    expect(screen.getByText(position(1))).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enEditor.diff.nextChange }));
-    expect(screen.getByText(position(2))).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enEditor.diff.previousChange }));
-    expect(screen.getByText(position(1))).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enNotes.review.rejectAll }));
-    expect(bodyText(editor)).toContain("0.75");
-    expect(bodyText(editor)).toContain("per pixel");
-    propose({ find: "0.75", replace: "0.60" }, { find: "per pixel", replace: "per patch" });
-    fireEvent.click(screen.getByRole("button", { name: enNotes.review.acceptAll }));
-    expect(bodyText(editor)).toContain("0.60");
-    expect(bodyText(editor)).toContain("per patch");
-  });
-
-  it("steps to the daily notes on either side of a daily note", async () => {
-    const day = (id: string, title: string): NoteItem => ({ ...NOTE, id, title, tags: ["daily"] });
-    const fake = fakeData({ text: `---\ntitle: 2026-11-07\ntags: [daily]\n---\n\n${BODY}` });
-    const onOpenNote = vi.fn();
-    const notes = [day("d5", "2026-11-05"), day("d7", "2026-11-07"), day("d9", "2026-11-09")];
-    await openNote({ ...fake, data: { ...fake.data, notes } }, { note: notes[1], onOpenNote });
-    fireEvent.click(screen.getByRole("button", { name: enNotes.vault.daily.previous.replace("{{date}}", "2026-11-05") }));
-    fireEvent.click(screen.getByRole("button", { name: enNotes.vault.daily.next.replace("{{date}}", "2026-11-09") }));
-    expect(onOpenNote.mock.calls).toEqual([["d5", { newTab: false }], ["d9", { newTab: false }]]);
-  });
-
-  it("saves a version of the note as it was right before Accept all", async () => {
-    const { editor } = await openNote(fakeData());
-    const seen: string[] = [];
-    versions.saveVersionBeforeAccept.mockClear();
-    versions.saveVersionBeforeAccept.mockImplementation(() => seen.push(bodyText(editor)));
-    propose({ find: "0.75", replace: "0.60" }, { find: "per pixel", replace: "per patch" });
-    fireEvent.click(screen.getByRole("button", { name: enNotes.review.acceptAll }));
-    expect(versions.saveVersionBeforeAccept).toHaveBeenCalledExactlyOnceWith(NOTE.id, TEXT);
-    expect(seen[0]).toContain("ratio of 0.75.");
-    expect(bodyText(editor)).toContain("ratio of 0.60.");
-  });
-
-  it("places edits on the note as shown when its Markdown reads back differently", async () => {
-    const { editor } = await openNote(fakeData());
-    act(() => {
-      editor.view.dispatch(editor.state.tr.insert(editor.state.doc.content.size, editor.schema.nodes.paragraph.create()));
-    });
-    propose({ find: "0.75", replace: "0.60" });
-    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
-    expect(bodyText(editor)).toContain("ratio of 0.60.");
-    expect(bodyText(editor)).toContain("per pixel.");
-  });
-
-  it("reports no suggestions for an edit that changes nothing visible", async () => {
-    await openNote(fakeData());
-    expect(propose({ find: "title: Mask ratios", replace: "title: Masks" })).toBe(0);
-    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
-  });
-
-});
-
 describe("a note that can't be edited right now", () => {
   it("leaves out every control that would change it until it can be edited again", async () => {
     useCollabEditorGate.setState({ projectId: "note-1", connecting: true });
@@ -2048,80 +1848,7 @@ describe("selection bubble", () => {
 
   it("opens below a selection at the top of the window", async () => {
     await openWithSelection(fakeData(), 20);
-    expect(bubbleButton(enNotes.document.askAgent)?.parentElement).toHaveStyle({ top: "44px", left: "48px" });
-  });
-
-  it("quotes the selection with the Ask agent shortcut", async () => {
-    const { editor } = await openWithSelection(fakeData());
-    act(() => editor.view.focus());
-    const key = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
-    act(() => {
-      editor.view.dom.dispatchEvent(key);
-    });
-    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
-    expect(key.defaultPrevented).toBe(true);
-    act(() => {
-      editor.commands.setTextSelection(3);
-    });
-    const empty = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
-    act(() => {
-      editor.view.dom.dispatchEvent(empty);
-    });
-    expect(assistant.quote).toHaveBeenCalledTimes(1);
-    expect(empty.defaultPrevented).toBe(false);
-  });
-
-  it("sends a selection across blocks as Markdown", async () => {
-    const fake = fakeData({ text: `${TEXT}\n- first step\n- second step\n` });
-    const opened = await openNote(fake);
-    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
-    act(() => {
-      const from = positionOf(opened.editor, "Masks");
-      const to = positionOf(opened.editor, "second step") + "second step".length;
-      opened.editor.commands.setTextSelection({ from, to });
-    });
-    await frame();
-    fireEvent.click(bubbleButton(enNotes.document.sendToPaper) as HTMLElement);
-    expect(opened.onSendToPaper.mock.lastCall?.[0]).toMatch(/^Masks are sampled per pixel\.\n\n[-*] first step\n[-*] second step$/u);
-    fireEvent.click(bubbleButton(enNotes.document.askAgent) as HTMLElement);
-    expect(assistant.quote.mock.lastCall?.[0]).toBe(opened.onSendToPaper.mock.lastCall?.[0]);
-  });
-
-  it("follows the Ask agent shortcut set in Settings and shows it on the button", async () => {
-    useShortcutStore.getState().setBinding("notesAskAgent", { key: "k", mod: true, shift: true });
-    try {
-      const { editor } = await openWithSelection(fakeData());
-      expect(bubbleButton(enNotes.document.askAgent)).toHaveTextContent("Ctrl+Shift+K");
-      act(() => editor.view.focus());
-      const old = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
-      act(() => {
-        editor.view.dom.dispatchEvent(old);
-      });
-      expect(assistant.quote).not.toHaveBeenCalled();
-      const rebound = new KeyboardEvent("keydown", { key: "K", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true });
-      act(() => {
-        editor.view.dom.dispatchEvent(rebound);
-      });
-      expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
-    } finally {
-      useShortcutStore.getState().resetAll();
-    }
-  });
-
-  it("takes Command and not Control for the Ask agent shortcut on a Mac", async () => {
-    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
-    const { editor } = await openWithSelection(fakeData());
-    act(() => editor.view.focus());
-    const control = new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true, cancelable: true });
-    act(() => {
-      editor.view.dom.dispatchEvent(control);
-    });
-    expect(assistant.quote).not.toHaveBeenCalled();
-    const command = new KeyboardEvent("keydown", { key: "j", metaKey: true, bubbles: true, cancelable: true });
-    act(() => {
-      editor.view.dom.dispatchEvent(command);
-    });
-    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
+    expect(screen.getByRole("toolbar", { name: enNotes.document.selectionMenu })).toHaveStyle({ top: "44px", left: "48px" });
   });
 
   it("offers Add comment only on the shared note that is live, to a person who may comment, and starts a draft there", async () => {
@@ -2172,16 +1899,8 @@ describe("selection bubble", () => {
     vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
     select(opened.editor, "mask ratio");
     await frame();
-    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).not.toBeNull();
     expect(bubbleButton(enNotes.document.sendToPaper)).toBeNull();
-  });
-
-  it("hands the selection to the assistant as a quote", async () => {
-    await openWithSelection(fakeData());
-    const ask = bubbleButton(enNotes.document.askAgent) as HTMLElement;
-    expect(fireEvent.mouseDown(ask)).toBe(false);
-    fireEvent.click(ask);
-    expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
   });
 
   it("hides when the selection collapses", async () => {
@@ -2189,7 +1908,7 @@ describe("selection bubble", () => {
     act(() => {
       editor.commands.setTextSelection(3);
     });
-    expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
   });
 
   it("hides for a selection of blank space", async () => {
@@ -2199,7 +1918,7 @@ describe("selection bubble", () => {
       editor.commands.setTextSelection({ from, to: from + 1 });
     });
     await frame();
-    expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
   });
 
   it("hides when the editor loses focus", async () => {
@@ -2207,10 +1926,10 @@ describe("selection bubble", () => {
     act(() => {
       fireEvent.blur(editor.view.dom);
     });
-    expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
   });
 
-  it("formats the selection from labelled buttons that keep the selection, before the agent actions", async () => {
+  it("formats the selection from labelled buttons that keep the selection, before Send to paper", async () => {
     const { editor } = await openWithSelection(fakeData());
     const bubble = screen.getByRole("toolbar", { name: enNotes.document.selectionMenu });
     const names = within(bubble)
@@ -2225,7 +1944,7 @@ describe("selection bubble", () => {
       enEditor.toolbar.textColor,
       enNotes.toolbar.link,
     ]);
-    expect(names[7]).toContain(enNotes.document.askAgent);
+    expect(names[7]).toContain(enNotes.document.sendToPaper);
     const bold = within(bubble).getByRole("button", { name: enEditor.toolbar.bold });
     expect(bold).toHaveAttribute("aria-pressed", "false");
     expect(fireEvent.mouseDown(bold)).toBe(false);
@@ -2234,12 +1953,12 @@ describe("selection bubble", () => {
     expect(within(bubble).getByRole("button", { name: enEditor.toolbar.bold })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("keeps only the agent actions for a selection inside a code block", async () => {
+  it("offers Send to paper without formatting actions inside a code block", async () => {
     const opened = await openNote(fakeData({ text: `${TEXT}\n\`\`\`\nmask code\n\`\`\`\n` }));
     vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
     select(opened.editor, "mask code");
     await frame();
-    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enNotes.document.sendToPaper)).not.toBeNull();
     expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
   });
 
@@ -2251,7 +1970,7 @@ describe("selection bubble", () => {
     });
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: enEditor.toolbar.textColors.green }));
     expect(editor.getAttributes("textColor").color).toBe("green!60!black");
-    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).not.toBeNull();
   });
 
   it("hides when the note scrolls", async () => {
@@ -2259,7 +1978,7 @@ describe("selection bubble", () => {
     act(() => {
       fireEvent.scroll(container.querySelector("[data-note-width]") as HTMLElement);
     });
-    expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
   });
 });
 

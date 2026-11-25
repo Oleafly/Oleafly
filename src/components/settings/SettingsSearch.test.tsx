@@ -27,7 +27,6 @@ function lookup(path: CatalogPath): unknown {
 const SECTION_TABS: readonly (readonly [SettingsSearchSection, readonly string[]])[] = [
   ["appearance", ["app", "editor", "visual", "terminal", "pdf", "files"]],
   ["data", ["local", "cloud"]],
-  ["ai", ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"]],
   ["engine", ["latex", "typst", "markdown", "quarto", "calepin"]],
   ["downloads", ["fonts", "templates", "dictionaries", "sources"]],
   ["integrations", ["git-hosting", "overleaf", "alphaxiv", "zotero", "citation-search", "desktop-apps", "oleafly-mcp"]],
@@ -87,14 +86,6 @@ describe("openSettingsTabFor", () => {
     document.body.replaceChildren();
   });
 
-  it("opens the AI MCP tab for the assistant's MCP servers", () => {
-    const ai = tabStrip(
-      ["ai-settings-tab-providers", "ai-settings-tab-agents", "ai-settings-tab-mcp"],
-      "ai-settings-tab-providers",
-    );
-    expect(pressed(ai, ["mcp", "servers"])).toBe("ai-settings-tab-mcp");
-  });
-
   it("opens the PDF tab for PDF preview rows, whose keys say preview", () => {
     const appearance = tabStrip(
       ["appearance-tab-app", "appearance-tab-editor", "appearance-tab-pdf", "appearance-tab-files"],
@@ -127,11 +118,7 @@ describe("openSettingsTabFor", () => {
     expect(pressed(engine, ["engine", "defaultEngine"])).toBe("engines-tab-latex");
     const data = tabStrip(["data-tab-local", "data-tab-cloud"], "data-tab-cloud");
     expect(pressed(data, ["settings", "data", "storage"])).toBe("data-tab-local");
-    const ai = tabStrip(
-      ["ai-settings-tab-providers", "ai-settings-tab-skills"],
-      "ai-settings-tab-skills",
-    );
-    expect(pressed(ai, ["ai", "approvals", "file"])).toBe("ai-settings-tab-providers");
+
   });
 
   it("opens one tab for every row of a tabbed section, whichever tab is open", () => {
@@ -189,10 +176,10 @@ describe("openSettingsTabFor", () => {
 
   it("does not guess from the keys when the row's tab is known but not on the page", () => {
     const integrations = tabStrip(
-      ["integrations-tab-git-hosting", "integrations-tab-oleafly-mcp"],
-      "integrations-tab-git-hosting",
+      ["appearance-tab-editor", "appearance-tab-app"],
+      "appearance-tab-editor",
     );
-    expect(pressed(integrations, ["mcp", "servers"])).toBeNull();
+    expect(pressed(integrations, ["appearance", "preview", "darkMode"])).toBeNull();
   });
 });
 

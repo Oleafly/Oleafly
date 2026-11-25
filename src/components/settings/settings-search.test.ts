@@ -83,29 +83,6 @@ describe("settings search index", () => {
     expect(searchSettings(index, SECTIONS, "   ")).toEqual(SECTIONS.map(({ id }) => ({ id, rows: [] })));
   });
 
-  it("finds the background task settings in Research", () => {
-    const research = searchSettings(index, SECTIONS, "sign in").find((hit) => hit.id === "research");
-    expect(research?.rows.map((row) => row.path.join("."))).toContain("research.background.atLogin");
-    expect(matchSettingsSections(index, SECTIONS, "background helper")).toContain("research");
-  });
-
-  it("finds the research section from settings search", () => {
-    const tasks = enResearchTools.tasks.settings;
-    expect(rowLabels(index, "research")).toContain(tasks.title);
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "research"))).toBe("research");
-    for (const query of ["keep awake", "notifications", "keep the computer awake"]) {
-      expect(matchSettingsSections(index, SECTIONS, query), query).toEqual(["research"]);
-    }
-    const [research] = searchSettings(index, SECTIONS, "keep the computer awake");
-    expect(research).toEqual({
-      id: "research",
-      rows: [{ label: tasks.title, path: ["tasks", "settings"] }],
-      match: "text",
-    });
-    expect(matchSettingsSections(index, SECTIONS, "default time budget")).toContain("research");
-    expect(matchSettingsSections(index, SECTIONS, "mcp servers tasks")).toContain("research");
-  });
-
   it("finds the Notes appearance rows only while Notes is on", () => {
     const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
     expect(matchSettingsSections(index, SECTIONS, "callout style")).toEqual([]);
@@ -163,8 +140,8 @@ describe("settings search index", () => {
   });
 
   it("matches words from their start, so a short query does not match every section", () => {
-    const hits = searchSettings(index, SECTIONS, "ai");
-    expect(bestSettingsHit(hits)).toBe("ai");
+    const hits = searchSettings(index, SECTIONS, "engi");
+    expect(bestSettingsHit(hits)).toBe("engine");
     expect(hits.length).toBeLessThan(SECTIONS.length);
     const rows = hits.flatMap((hit) => hit.rows.map((row) => row.label));
     expect(rows).not.toContain("Theme customization");
@@ -227,40 +204,12 @@ describe("settings search index", () => {
       expect(labels, transient).not.toContain(transient);
     }
     expect(labels).toContain(enSettings.appearance.editor.fontSize.label);
-    expect(labels).toContain(enSettings.ai.agents.custom.label);
-  });
-
-  it("still finds the section from the words of a flow that is not a row", () => {
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "official mcp registry"))).toBe("ai");
-  });
-
-  it("files the assistant's MCP servers under AI and the Oleafly MCP server under Integrations", () => {
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "assistant mcp servers"))).toBe("ai");
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "mcp servers"))).toBe("ai");
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "oleafly mcp server"))).toBe("integrations");
-    expect(rowLabels(index, "ai")).toContain(enSettings.mcp.servers.title);
-    expect(rowLabels(index, "integrations")).not.toContain(enSettings.mcp.servers.title);
-    expect(rowLabels(index, "integrations")).toContain(enSettings.mcp.section.title);
   });
 
   it("files the browser sign-in copy under Integrations, with the online LaTeX account", () => {
     expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.cookies.label);
     expect(rowLabels(index, "appearance")).not.toContain(enSettings.integrations.cookies.label);
     expect(settingsTabFor(["integrations", "cookies"])).toBe("overleaf");
-  });
-
-  it("files Desktop apps under Integrations on its own tab", () => {
-    expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.desktopApps.title);
-    expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.desktopApps.enable.label);
-    expect(rowLabels(index, "integrations")).not.toContain(enSettings.integrations.desktopApps.apps.dialog.title);
-    expect(bestSettingsHit(searchSettings(index, SECTIONS, "desktop apps"))).toBe("integrations");
-    expect(settingsTabFor(["integrations", "desktopApps", "sites"])).toBe("desktop-apps");
-    const permissions = enSettings.integrations.desktopApps.permissions.heading;
-    expect(rowLabels(buildSettingsIndex(lookup, "en", "macos"), "integrations")).toContain(permissions);
-    expect(rowLabels(buildSettingsIndex(lookup, "en", "windows"), "integrations")).not.toContain(permissions);
-    expect(rowLabels(buildSettingsIndex(lookup, "en", "windows"), "integrations")).not.toContain(
-      enSettings.integrations.desktopApps.gnome.heading,
-    );
   });
 
   it("indexes only the file manager rows this platform shows", () => {
@@ -360,8 +309,6 @@ describe("settings search tabs", () => {
     expect(settingsTabFor(["integrations", "cookies"])).toBe("overleaf");
     expect(settingsTabFor(["shortcuts", "editorKeys"])).toBe("editor");
     expect(settingsTabFor(["downloads", "fontPacks", "lato"])).toBe("fonts");
-    expect(settingsTabFor(["mcp", "servers"])).toBe("mcp");
-    expect(settingsTabFor(["mcp", "section", "port"])).toBe("oleafly-mcp");
     expect(settingsTabFor(["appearance", "editor", "fontSize"])).toBeNull();
   });
 
@@ -378,9 +325,6 @@ describe("settings search tabs", () => {
     expect(settingsTabFor(["engine", "packages"])).toBe("latex");
     expect(settingsTabFor(["engine", "tagging"])).toBe("latex");
     expect(settingsTabFor(["engine", "notebook", "languages"])).toBe("quarto");
-    expect(settingsTabFor(["ai", "approvals", "file"])).toBe("providers");
-    expect(settingsTabFor(["ai", "budget"])).toBe("providers");
-    expect(settingsTabFor(["ai", "models"])).toBe("providers");
     expect(settingsTabFor(["settings", "data", "storage"])).toBe("local");
     expect(settingsTabFor(["settings", "data", "recycleBin"])).toBe("local");
     expect(settingsTabFor(["settings", "data", "danger"])).toBe("local");

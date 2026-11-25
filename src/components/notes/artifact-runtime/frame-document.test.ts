@@ -135,24 +135,6 @@ describe("framePrelude", () => {
     await vi.waitFor(() => expect(sent.some((post) => (post as { type: string }).type === "size")).toBe(true));
   });
 
-  it("follows theme messages that arrive on its port only", () => {
-    const window = frameWindow();
-    const { port1 } = connectFrame(window as unknown as Window);
-    window.eval(framePrelude("chan", PARENT_ORIGIN));
-    const send = (data: unknown) => port1.onmessage?.({ data });
-    send({ channel: "chan", type: "theme", theme: "dark" });
-    expect(window.document.documentElement.classList.contains("dark")).toBe(true);
-    expect(window.document.documentElement.dataset.theme).toBe("dark");
-    send({ channel: "other", type: "theme", theme: "light" });
-    send({ channel: "chan", type: "size", theme: "light" });
-    send(null);
-    window.dispatchEvent(new window.MessageEvent("message", { data: { channel: "chan", type: "theme", theme: "light" }, source: window }));
-    expect(window.document.documentElement.classList.contains("dark")).toBe(true);
-    send({ channel: "chan", type: "theme", theme: "light" });
-    expect(window.document.documentElement.classList.contains("dark")).toBe(false);
-    expect(window.document.documentElement.style.colorScheme).toBe("light");
-  });
-
   it("still seals the frame when it cannot open a port", () => {
     const window = frameWindow();
     const offers: unknown[] = [];

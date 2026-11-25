@@ -2,7 +2,7 @@ import { Bookmark, BookmarkX, Copy, FileDiff, FileOutput, History, LayoutTemplat
 import type { TFunction } from "i18next";
 import { Suspense, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
+import { isImeEnter } from "@/lib/ime";
 import type { ConflictCopy } from "@/components/cloud/ConflictCopyDialog";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { ColorDot } from "@/components/ui/color-swatch";

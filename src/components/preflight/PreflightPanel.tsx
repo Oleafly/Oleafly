@@ -13,11 +13,9 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   SpellCheck,
   Wand2,
 } from "lucide-react";
-import { askAiAboutFindings } from "@/features/ask-ai-preflight";
 import { fixWritingFindings } from "@/features/writing-actions";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { usePreflightStore } from "@/store/preflight";
@@ -378,7 +376,7 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
   const { t } = useTranslation(["common", "preflight"]);
   const tp = t as unknown as PreflightTranslate;
   const coverage = report.coverage[id];
-  const { findings, fixable, oneClick, src, out } = useMemo(() => {
+  const { findings, oneClick, src, out } = useMemo(() => {
     const shown = Object.fromEntries(CHECK_IDS.map((check) => [check, check === id])) as Flags;
     const f = report.findings.filter((x) => includes(x, shown));
     return {
@@ -445,16 +443,6 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
           className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-2 py-1.5 text-xs text-primary hover:bg-accent"
         >
           <Wand2 className="size-3.5" /> {t(($) => $.preflight.panel.writing.fixAll, { count: oneClick.length })}
-        </button>
-      )}
-
-      {fixable.length > 1 && (
-        <button
-          type="button"
-          onClick={() => void askAiAboutFindings(fixable)}
-          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-2 py-1.5 text-xs text-primary hover:bg-accent"
-        >
-          <Sparkles className="size-3.5" /> {t(($) => $.preflight.panel.fixAll, { count: fixable.length })}
         </button>
       )}
 

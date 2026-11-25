@@ -76,6 +76,8 @@ vi.mock("@/lib/tauri", () => ({
   forgeListRepos: mocks.forgeListRepos,
   forgeAccountsList: mocks.forgeAccountsList,
   onForgeAccountsChanged: mocks.onForgeAccountsChanged,
+
+setActiveProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 function useAccounts(accounts: ForgeAccount[]) {
@@ -747,10 +749,10 @@ describe("PublishDialog", () => {
       });
 
       expect(screen.getByText("prajwal/slides")).toBeInTheDocument();
-      await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "SLIDE");
+      fireEvent.change(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), { target: { value: "SLIDE" } });
       expect(screen.queryByText("prajwal/research-notes")).toBeNull();
       expect(screen.getByText("prajwal/slides")).toBeInTheDocument();
-      await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "zzz");
+      fireEvent.change(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), { target: { value: "zzz" } });
       expect(screen.getByText(enLibrary.github.noRepositories)).toBeInTheDocument();
     });
   });
@@ -818,7 +820,7 @@ describe("PublishDialog accounts and addresses", () => {
     const view = renderDialog();
 
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
-    await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "thesis");
+    fireEvent.change(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), { target: { value: "thesis" } });
     await waitFor(() => expect(mocks.forgeListRepos).toHaveBeenLastCalledWith("https://gitlab.com", 1, "thesis"), {
       timeout: 3_000,
     });
@@ -830,7 +832,7 @@ describe("PublishDialog accounts and addresses", () => {
     renderDialog();
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
     await screen.findByText("prajwal/research-notes");
-    await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "zzz");
+    fireEvent.change(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), { target: { value: "zzz" } });
     expect(screen.getByText(enLibrary.github.noRepositories)).toBeInTheDocument();
     expect(mocks.forgeListRepos).toHaveBeenCalledTimes(1);
   });

@@ -9,10 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export type ProjectKind = "research" | "import" | "template";
+export type ProjectKind = "import" | "template";
 
 const KINDS: { id: ProjectKind; thumbnail: string }[] = [
-  { id: "research", thumbnail: CHOICE_ART.research },
   { id: "import", thumbnail: CHOICE_ART.import },
   { id: "template", thumbnail: CHOICE_ART.template },
 ];
@@ -30,10 +29,6 @@ export function ProjectKindChooser({
 }>) {
   const { t } = useTranslation(["library"]);
   const copy: Record<ProjectKind, { title: string; description: string }> = {
-    research: {
-      title: t(($) => $.library.kinds.research.title),
-      description: t(($) => $.library.kinds.research.description),
-    },
     import: {
       title: t(($) => $.library.kinds.import.title),
       description: t(($) => $.library.kinds.import.description),

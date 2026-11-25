@@ -1147,7 +1147,8 @@
     "outputLimit": "The model ran out of room before it finished, so the transcription would be incomplete. Pick a model with a larger output limit in Settings, AI Assistant, Tools, or transcribe a smaller part.",
     "refused": "The model declined to transcribe this, so nothing was added. Pick another model in Settings, AI Assistant, Tools.",
     "pageRangePastEnd_one": "This PDF has {{count}} page. Enter 1, or leave Pages empty.",
-    "pageRangePastEnd_other": "This PDF has {{count}} pages. Enter a range from 1 to {{count}}."
+    "pageRangePastEnd_other": "This PDF has {{count}} pages. Enter a range from 1 to {{count}}.",
+    "scannedPdfUnsupported": "This PDF contains scanned images. Text extraction requires a PDF with selectable text."
   },
   "converterNotes": {
     "scannedPages_one": "Transcribed {{count}} scanned page with {{model}}. Review equations and tables before using the result.",

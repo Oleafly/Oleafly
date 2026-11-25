@@ -1,8 +1,8 @@
-import { useSettingsStore, layoutPresetViewMode, layoutPresetWantsAi, layoutPresetHidesWorkspace, type ViewMode } from "@/store/settings";
+import { useSettingsStore, layoutPresetViewMode, type ViewMode } from "@/store/settings";
 import { useZenStore } from "@/store/zen";
 
 type WorkspaceLayout = Pick<ReturnType<typeof useSettingsStore.getState>,
-  "viewMode" | "showTree" | "assistantOpen" | "workspaceHidden">;
+  "viewMode" | "showTree" | "workspaceHidden">;
 
 const modes: readonly ViewMode[] = ["editor", "split", "pdf"];
 const key = (projectId: string) => `oleafly.workspace.${projectId}`;
@@ -13,10 +13,11 @@ export function readWorkspaceLayout(projectId: string): Partial<WorkspaceLayout>
     if (!value || typeof value !== "object" || value.version !== 1) return {};
     const layout: Partial<WorkspaceLayout> = {};
     if (modes.includes(value.viewMode)) layout.viewMode = value.viewMode;
-    for (const field of ["showTree", "assistantOpen", "workspaceHidden"] as const) {
+    for (const field of ["showTree", "workspaceHidden"] as const) {
       if (typeof value[field] === "boolean") layout[field] = value[field];
     }
-    if (layout.workspaceHidden && !layout.assistantOpen) layout.workspaceHidden = false;
+    // Older versions could persist an AI-only workspace. Always restore the editor.
+    layout.workspaceHidden = false;
     return layout;
   } catch {
     return {};
@@ -24,8 +25,8 @@ export function readWorkspaceLayout(projectId: string): Partial<WorkspaceLayout>
 }
 
 function selectedLayout(state: ReturnType<typeof useSettingsStore.getState>): WorkspaceLayout {
-  const { viewMode, showTree, assistantOpen, workspaceHidden } = state;
-  return { viewMode, showTree, assistantOpen, workspaceHidden };
+  const { viewMode, showTree, workspaceHidden } = state;
+  return { viewMode, showTree, workspaceHidden };
 }
 
 export function restoreWorkspaceLayout(projectId: string): () => void {
@@ -33,8 +34,7 @@ export function restoreWorkspaceLayout(projectId: string): () => void {
   const saved = readWorkspaceLayout(projectId);
   useSettingsStore.setState({
     viewMode: layoutPresetViewMode(settings.defaultView),
-    assistantOpen: layoutPresetWantsAi(settings.defaultView),
-    workspaceHidden: layoutPresetHidesWorkspace(settings.defaultView),
+    workspaceHidden: false,
     showTree: settings.openInTree,
     terminalOpen: false,
     ...saved,

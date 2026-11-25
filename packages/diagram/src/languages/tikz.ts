@@ -50,10 +50,6 @@ export const tikzLanguage: DiagramLanguage = {
   fromStandalone: documentBody,
   fromFile: (_name, content) => content,
   insertText: (code) => `${code.trim()}\n`,
-  fixPrompt: (code, log) => ({
-    system: String.raw`You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \begin{tikzpicture}...\end{tikzpicture} plus any \definecolor lines. No preamble, no \documentclass, no explanation, no markdown code fences. Never use em dashes.`,
-    user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${log}`,
-  }),
   seeds: { math: "$E = mc^2$", code: String.raw`\texttt{print(x)}` },
   snippets: {
     rectangleNode: "\\node (n) [draw, rounded corners] {Label};\n",

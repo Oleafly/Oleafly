@@ -74,7 +74,7 @@ pub use error::{Error, ErrorKind, Result};
 pub use image_check::{
     diagnose_image_failures, image_failure_evidence, image_failure_notes, image_findings_lead,
     place_image_findings, BrokenImage, ImageContent, ImageEvidence, ImageFinding, ImageFormat,
-    ImageProblem, ASK_AI_ERROR_BUDGET,
+    ImageProblem, PRIORITY_ERROR_BUDGET,
 };
 pub use latexmk_env::{
     bibtex_search_entry, bibtex_search_environment, breaks_tex_search_path, has_unmatched_brace,

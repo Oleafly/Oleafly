@@ -1,10 +1,6 @@
 import "@/features/import";
 import "@/features/citation";
 import "@/lib/native-file-dialog";
-import "@/store/chats";
-import "@/store/agent-memory";
-import "@/store/agent-handoff";
-import "@/store/agent-todos";
 import { useFilesStore } from "@/store/files";
 import {
   getEditorView,
@@ -300,42 +296,9 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
   }
 }
 
-function installAiConnectHook() {
-  (
-    window as unknown as {
-      __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;
-    }
-  ).__aiConnect = async (provider, host, model) => {
-    const { getConfigCached } = await import("@/lib/config-cache");
-    const { setConfig } = await import("@/lib/tauri");
-    const cfg = await getConfigCached();
-    const next = {
-      ...cfg,
-      ai_provider: provider,
-      ai_keys: { ...cfg.ai_keys, [provider]: host },
-      ai_model: model,
-    };
-    await setConfig(next);
-    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
-    return true;
-  };
-}
-
-function installResearchTasksHook() {
-  (window as unknown as { __researchTasksSet?: (enabled: boolean) => Promise<boolean> }).__researchTasksSet = async (
-    enabled,
-  ) => {
-    const { setResearchTasksEnabled } = await import("@/store/research-tasks-flag");
-    await setResearchTasksEnabled(enabled);
-    return true;
-  };
-}
-
 export function installE2ePdfProbe() {
   if (!E2E_HOOKS) return;
   const target = window as unknown as E2eProbeWindow;
-  installAiConnectHook();
-  installResearchTasksHook();
   target.__e2ePdfProbe = readCompiledPdfProbe;
   target.__e2ePdfText = async () => (await readCompiledPdfProbe()).text;
   target.__e2eHasProofreadingDiagnostic = (text) =>

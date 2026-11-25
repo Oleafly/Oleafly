@@ -3196,6 +3196,7 @@ const HEAD_STATE_DEADLINE: Duration = Duration::from_secs(10);
 /// first two cases. Repository filters, hooks and the fsmonitor never run, so
 /// this is safe on a folder that is not trusted. When the status cannot be
 /// read in time the tree is reported as changed.
+#[cfg(test)]
 pub(crate) fn head_state(root: &Path) -> Option<(String, bool)> {
     if !is_repository_marker(&root.join(".git")) || !git_available() {
         return None;
@@ -3259,39 +3260,6 @@ fn has_staged_changes(root: &PathBuf) -> bool {
             .map(|o| !String::from_utf8_lossy(&o.stdout).trim().is_empty())
             .unwrap_or(false)
     }
-}
-
-pub(crate) fn commit_paths_sync(
-    project_id: &str,
-    paths: &[String],
-    message: &str,
-) -> Result<String, String> {
-    let _lock = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
-    let root = existing_repo(project_id)?;
-    validate_repo_relative_paths(paths)?;
-    stage_paths(&root, paths)?;
-    let mut args = vec![
-        "--literal-pathspecs",
-        "commit",
-        "--quiet",
-        "-m",
-        message,
-        "--",
-    ];
-    args.extend(paths.iter().map(String::as_str));
-    let out = run_git(&root, &args)?;
-    if !out.status.success() {
-        let text = out_to_string(&out);
-        let lower = text.to_ascii_lowercase();
-        if lower.contains("nothing to commit") || lower.contains("no changes added") {
-            return Err("Nothing to commit for this turn.".into());
-        }
-        return Err(text);
-    }
-    let head = run_git_read_only(&root, &["rev-parse", "HEAD"])?;
-    let oid = String::from_utf8_lossy(&head.stdout).trim().to_string();
-    ok_or_err(head)?;
-    Ok(oid)
 }
 
 fn ok_or_err(out: std::process::Output) -> Result<(), String> {

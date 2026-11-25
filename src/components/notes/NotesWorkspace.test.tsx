@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createLayout, group, groupOfView, groupsOf, split, type LayoutNode, type WorkspaceLayout } from "@oleafly/workspace";
+import { createLayout, group, groupOfView, groupsOf, split, type WorkspaceLayout } from "@oleafly/workspace";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,7 +12,6 @@ import type { NoteDocument as NoteDocumentComponent } from "./NoteDocument";
 import type { NotesHome as NotesHomeComponent } from "./NotesHome";
 import type { NotesLibrary as NotesLibraryComponent } from "./NotesLibrary";
 import type { ArtifactItem, NoteItem } from "./types";
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { fakeNotesData } from "./tests/notes-data-fixture";
 import "./tests/setup";
 
@@ -343,10 +342,6 @@ function savedGroups(): string[][] {
   return groupViews(savedLayout());
 }
 
-function savedWeights(): number[] {
-  const root: LayoutNode = savedLayout().root;
-  return root.kind === "split" ? root.weights : [1];
-}
 
 function tab(name: string): HTMLElement {
   return screen.getByRole("tab", { name });
@@ -368,10 +363,6 @@ function groupIdOf(element: HTMLElement): string | null {
 
 function libraryState(): string | null {
   return screen.getByTestId("library-active").textContent;
-}
-
-function artifactsToggle(total: number): HTMLElement {
-  return screen.getByRole("button", { name: copy.artifacts.replace("{{total}}", String(total)) });
 }
 
 function homePanel(): HTMLElement {
@@ -430,7 +421,7 @@ describe("NotesWorkspace layout", () => {
     expect(within(homePanel()).getByRole("button", { name: "Home note n2" })).toHaveAttribute("data-icon", "🧠");
   });
 
-  it("puts the sidebar toggle and the Artifacts button in a tab bar that drags the window", () => {
+  it("puts the sidebar toggle in a tab bar that drags the window", () => {
     renderWorkspace();
     const strip = screen.getByRole("tablist");
     const area = strip.closest("[data-strip]") as HTMLElement;
@@ -443,11 +434,7 @@ describe("NotesWorkspace layout", () => {
     expect(root).toHaveAttribute("data-tauri-drag-region");
     const sidebar = within(bar).getByRole("button", { name: copy.hideSidebar });
     expect(sidebar).toHaveAttribute("aria-expanded", "true");
-    const toggle = within(bar).getByRole("button", { name: copy.artifacts.replace("{{total}}", "0") });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(toggle).toHaveTextContent("");
     expect(sidebar.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(strip.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: copy.maximize })).not.toBeInTheDocument();
   });
 
@@ -463,7 +450,6 @@ describe("NotesWorkspace layout", () => {
     expect(within(note).getByTestId("document-n1")).toBeInTheDocument();
     expect(shownViews()).toEqual(["note:n1"]);
     expect(libraryState()).toBe("n1 none");
-    expect(artifactsToggle(2)).toHaveTextContent("2");
     expect(savedGroups()).toEqual([["home", "note:n1"]]);
   });
 
@@ -479,11 +465,6 @@ describe("NotesWorkspace layout", () => {
     expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
     expect(tabNames()).toEqual([copy.home, "Reading list", "Masking ablation"]);
     expect(handled).toHaveBeenCalledOnce();
-  });
-
-  it("counts no artifacts for a note without a project", () => {
-    renderWorkspace({ initialNoteId: "n2" });
-    expect(artifactsToggle(0)).toHaveTextContent("");
   });
 
   it("opens notes as tabs next to Home and reuses a tab that is already open", async () => {
@@ -553,7 +534,6 @@ describe("NotesWorkspace layout", () => {
     expect(within(panel(untitled)).getByText(copy.missing)).toBeInTheDocument();
     expect(screen.queryByTestId("document-gone")).not.toBeInTheDocument();
     expect(libraryState()).toBe("gone none");
-    expect(artifactsToggle(0)).toBeInTheDocument();
   });
 
   it("closes the tab of a note that is no longer in the library", async () => {
@@ -970,7 +950,7 @@ describe("NotesWorkspace empty panels", () => {
     await user.click(screen.getByRole("button", { name: copy.closePanel }));
     expect(savedLayout().stage).toBe("g3");
     await user.click(screen.getByRole("button", { name: "Library note n2" }));
-    expect(savedGroups()).toEqual([["artifacts"], ["note:n1", "note:n2"]]);
+    expect(savedGroups()).toEqual([["note:n1", "note:n2"]]);
   });
 
   it("offers no close button when the empty panel is the only one", async () => {
@@ -982,190 +962,7 @@ describe("NotesWorkspace empty panels", () => {
   });
 });
 
-describe("NotesWorkspace artifacts", () => {
-  it("opens Artifacts at the right of the note and closes it again", async () => {
-    const user = userEvent.setup();
-    renderWorkspace({ initialNoteId: "n1" });
-    await user.click(artifactsToggle(2));
-    expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "true");
-    expect(groupIdOf(tab(enNotes.artifacts.title))).not.toBe(groupIdOf(tab("Masking ablation")));
-    expect(groupIdOf(artifactsToggle(2))).toBe(groupIdOf(tab(enNotes.artifacts.title)));
-    expect(groupIdOf(screen.getByRole("button", { name: copy.hideSidebar }))).toBe(groupIdOf(tab("Masking ablation")));
-    expect(within(panel(enNotes.artifacts.title)).getByTestId("panel-state")).toHaveTextContent("n1 none");
-    expect(savedGroups()).toEqual([["home", "note:n1"], ["artifacts"]]);
-    const [stage, side] = savedWeights();
-    expect(stage).toBeCloseTo(0.68);
-    expect(side).toBeCloseTo(0.32);
-    expect(screen.getAllByRole("button", { name: copy.maximize })).toHaveLength(2);
-    expect(screen.getByRole("slider", { name: copy.resize })).toBeInTheDocument();
-    expect(shownViews()).toEqual(["artifacts", "note:n1"]);
-    await user.click(artifactsToggle(2));
-    expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "false");
-    expect(screen.queryByRole("tab", { name: enNotes.artifacts.title })).not.toBeInTheDocument();
-    expect(savedGroups()).toEqual([["home", "note:n1"]]);
-  });
-
-  it("opens Artifacts beside the group of the focused note", async () => {
-    const user = userEvent.setup();
-    seedLayout(
-      createLayout(split("s1", "row", [group("g1", ["home", "note:n2"], "note:n2"), group("g2", ["note:n1"])]), {
-        home: VIEWS.home,
-        "note:n1": VIEWS["note:n1"],
-        "note:n2": VIEWS["note:n2"],
-      }),
-    );
-    renderWorkspace();
-    expect(libraryState()).toBe("n2 none");
-    await user.click(tab("Masking ablation"));
-    expect(libraryState()).toBe("n1 none");
-    await user.click(artifactsToggle(2));
-    expect(savedGroups()).toEqual([["home", "note:n2"], ["note:n1"], ["artifacts"]]);
-    const weights = savedWeights();
-    expect(weights[0]).toBeCloseTo(0.5);
-    expect(weights[1]).toBeCloseTo(0.34);
-    expect(weights[2]).toBeCloseTo(0.16);
-    await user.click(artifactsToggle(2));
-    await user.click(tab("Reading list"));
-    await user.click(artifactsToggle(0));
-    expect(savedGroups()).toEqual([["home", "note:n2"], ["artifacts"], ["note:n1"]]);
-  });
-
-  it("keeps the note area when its last tab closes beside Artifacts", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(artifactsToggle(0));
-    await user.click(screen.getByRole("button", { name: copy.closeTab.replace("{{title}}", copy.home) }));
-    expect(savedGroups()).toEqual([[], ["artifacts"]]);
-    expect(screen.getByRole("button", { name: copy.home })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Library note n1" }));
-    expect(savedGroups()).toEqual([["note:n1"], ["artifacts"]]);
-    expect(groupIdOf(tab("Masking ablation"))).not.toBe(groupIdOf(tab(enNotes.artifacts.title)));
-  });
-
-  it("asks for a note when Artifacts opens with none open", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(artifactsToggle(0));
-    expect(within(panel(enNotes.artifacts.title)).getByText(enNotes.artifacts.noNote)).toBeInTheDocument();
-    expect(screen.queryByTestId("artifact-panel")).not.toBeInTheDocument();
-    expect(savedGroups()).toEqual([["home"], ["artifacts"]]);
-  });
-
-  it("opens Artifacts once when the toggle is pressed twice before it redraws", () => {
-    renderWorkspace({ initialNoteId: "n1" });
-    const toggle = artifactsToggle(2);
-    act(() => {
-      toggle.click();
-      toggle.click();
-    });
-    expect(screen.getAllByRole("tab", { name: enNotes.artifacts.title })).toHaveLength(1);
-    expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "true");
-    expect(savedGroups()).toEqual([["home", "note:n1"], ["artifacts"]]);
-  });
-
-  it("opens an artifact from the library inside the newest note about its project", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(screen.getByRole("button", { name: "Library artifact a2" }));
-    expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
-    expect(within(panel(enNotes.artifacts.title)).getByTestId("panel-state")).toHaveTextContent("n1 a2");
-    expect(libraryState()).toBe("n1 a2");
-    expect(savedGroups()).toEqual([["home", "note:n1"], ["artifacts"]]);
-    expect(savedWeights()[1]).toBeCloseTo(0.32);
-    await user.click(screen.getByRole("button", { name: "Library artifact a1" }));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n1 a1");
-    expect(savedGroups()).toEqual([["home", "note:n1"], ["artifacts"]]);
-    await user.click(artifactsToggle(2));
-    expect(libraryState()).toBe("n1 none");
-  });
-
-  it("opens an artifact beside its note when another note's group comes first", async () => {
-    const user = userEvent.setup();
-    seedLayout(
-      createLayout(split("s1", "row", [group("g1", ["home", "note:n2"]), group("g2", ["note:n1"])]), {
-        home: VIEWS.home,
-        "note:n1": VIEWS["note:n1"],
-        "note:n2": VIEWS["note:n2"],
-      }),
-    );
-    renderWorkspace();
-    await user.click(screen.getByRole("button", { name: "Library artifact a1" }));
-    expect(savedGroups()).toEqual([["home", "note:n2"], ["note:n1"], ["artifacts"]]);
-    expect(libraryState()).toBe("n1 a1");
-  });
-
-  it("ignores an artifact that no note is about", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-    await user.click(screen.getByRole("button", { name: "Library artifact a3" }));
-    expect(tabNames()).toEqual([copy.home]);
-    expect(libraryState()).toBe("none none");
-    expect(savedLayout()).toEqual(defaultNotesLayout());
-  });
-
-  it("selects another artifact in the panel", async () => {
-    const user = userEvent.setup();
-    renderWorkspace({ initialNoteId: "n1" });
-    await user.click(artifactsToggle(2));
-    await user.click(screen.getByRole("button", { name: "Select a2" }));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n1 a2");
-    expect(libraryState()).toBe("n1 a2");
-  });
-
-  it("inserts an artifact into its own note only", async () => {
-    const user = userEvent.setup();
-    const { data } = renderWorkspace();
-    await user.click(screen.getByRole("button", { name: "Library note n2" }));
-    await user.click(screen.getByRole("button", { name: "Library note n1" }));
-    await user.click(artifactsToggle(2));
-    await user.click(screen.getByRole("button", { name: "Insert a1" }));
-    await waitFor(() => expect(screen.getByTestId("insert-n1")).toHaveTextContent("![Loss curve](files/a1.png) #1"));
-    expect(data.copyArtifact).toHaveBeenCalledWith("n1", artifacts[0]);
-    expect(screen.getByTestId("insert-n2")).toHaveTextContent("none");
-    await user.click(screen.getByRole("button", { name: "Insert a2" }));
-    await waitFor(() => expect(screen.getByTestId("insert-n1")).toHaveTextContent("[Run table](files/a2.png) #2"));
-    await user.click(tab("Reading list"));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n2 none");
-    expect(screen.getByTestId("insert-n2")).toHaveTextContent("none");
-    expect(screen.getByTestId("insert-n1")).toHaveTextContent("#2");
-  });
-
-  it("offers no insert while the note can't be edited", async () => {
-    const user = userEvent.setup();
-    useCollabEditorGate.setState({ projectId: "n1", locked: true });
-    try {
-      renderWorkspace({ initialNoteId: "n1" });
-      await user.click(artifactsToggle(2));
-      expect(screen.getByRole("button", { name: "Select a1" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Insert a1" })).not.toBeInTheDocument();
-    } finally {
-      useCollabEditorGate.setState({ projectId: null, locked: false });
-    }
-  });
-
-  it("offers no insert when artifacts cannot be copied into notes", async () => {
-    const user = userEvent.setup();
-    renderWorkspace({ initialNoteId: "n1" }, fakeData({ copyArtifact: undefined }));
-    await user.click(artifactsToggle(2));
-    expect(screen.getByRole("button", { name: "Select a1" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Insert a1" })).not.toBeInTheDocument();
-  });
-});
-
 describe("NotesWorkspace focus", () => {
-  it("keeps the focused note while Artifacts is used", async () => {
-    const user = userEvent.setup();
-    renderWorkspace({ initialNoteId: "n1" });
-    await user.click(screen.getByRole("button", { name: "Library note n3" }));
-    await user.click(artifactsToggle(2));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n3 none");
-    fireEvent.pointerDown(screen.getByTestId("artifact-panel"));
-    await user.click(tab(enNotes.artifacts.title));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n3 none");
-    expect(libraryState()).toBe("n3 none");
-    await user.click(tab("Masking ablation"));
-    expect(screen.getByTestId("panel-state")).toHaveTextContent("n1 none");
-  });
 
   it("follows pointer and keyboard focus into notes in other groups", () => {
     seedLayout(
@@ -1227,7 +1024,6 @@ describe("NotesWorkspace focus", () => {
     renderWorkspace({ initialNoteId: "n1" });
     await user.click(screen.getByRole("button", { name: copy.closeTab.replace("{{title}}", "Masking ablation") }));
     expect(libraryState()).toBe("none none");
-    expect(artifactsToggle(0)).toBeInTheDocument();
   });
 });
 
@@ -1277,18 +1073,16 @@ describe("NotesWorkspace persistence", () => {
     const first = renderWorkspace();
     await user.click(screen.getByRole("button", { name: "Library note n1" }));
     await user.click(screen.getByRole("button", { name: "Library note n2" }));
-    await user.click(artifactsToggle(0));
     await user.click(tab("Masking ablation"));
     localStorage.clear();
     first.unmount();
-    expect(groupViews(storedLayout())).toEqual([["home", "note:n1", "note:n2"], ["artifacts"]]);
+    expect(groupViews(storedLayout())).toEqual([["home", "note:n1", "note:n2"]]);
     expect(groupOfView(storedLayout() as WorkspaceLayout, "note:n1")?.active).toBe("note:n1");
     probe.mounts.clear();
     renderWorkspace();
-    expect(tabNames()).toEqual([copy.home, "Masking ablation", "Reading list", enNotes.artifacts.title]);
+    expect(tabNames()).toEqual([copy.home, "Masking ablation", "Reading list"]);
     expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
-    expect(shownViews()).toEqual(["artifacts", "note:n1"]);
-    expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "true");
+    expect(shownViews()).toEqual(["note:n1"]);
     expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1 });
     await user.click(tab("Reading list"));
     expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1, n2: 1 });
@@ -1312,7 +1106,7 @@ describe("NotesWorkspace persistence", () => {
       "note:n2": VIEWS["note:n2"],
     }));
     renderWorkspace({ initialNoteId: "n1" });
-    expect(savedGroups()).toEqual([["artifacts"], ["home", "note:n2", "note:n1"]]);
+    expect(savedGroups()).toEqual([["home", "note:n2", "note:n1"]]);
     expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
     expect(libraryState()).toBe("n1 none");
   });
@@ -1393,11 +1187,9 @@ describe("NotesWorkspace notes", () => {
 });
 
 describe("NotesWorkspace new project", () => {
-  it("offers no New project without a handler", async () => {
-    const user = userEvent.setup();
+  it("offers no New project without a handler", () => {
     renderWorkspace({ initialNoteId: "n1" });
     expect(screen.queryByRole("button", { name: copy.newProject })).not.toBeInTheDocument();
-    await user.click(artifactsToggle(2));
     expect(screen.queryByRole("button", { name: "Project from a1" })).not.toBeInTheDocument();
   });
 
@@ -1408,15 +1200,6 @@ describe("NotesWorkspace new project", () => {
     await user.click(within(panel("Masking ablation")).getByRole("button", { name: copy.newProject }));
     expect(onCreateProject).toHaveBeenCalledWith({ noteId: "n1", artifactId: null });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("starts it from an artifact in the panel", async () => {
-    const user = userEvent.setup();
-    const onCreateProject = vi.fn();
-    renderWorkspace({ initialNoteId: "n1", onCreateProject });
-    await user.click(artifactsToggle(2));
-    await user.click(screen.getByRole("button", { name: "Project from a2" }));
-    expect(onCreateProject).toHaveBeenCalledWith({ noteId: "n1", artifactId: "a2" });
   });
 });
 
@@ -1548,8 +1331,6 @@ describe("NotesWorkspace window chrome", () => {
     const bar = screen.getByRole("tablist").closest("[data-strip]")?.parentElement as HTMLElement;
     expect(bar).toContainElement(controls);
     expect(controls.closest("[data-tauri-drag-region]")).not.toBeNull();
-    const toggle = within(bar).getByRole("button", { name: copy.artifacts.replace("{{total}}", "0") });
-    expect(toggle.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(controls.closest("[data-group-actions]")).toBeNull();
   });
 

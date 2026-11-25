@@ -9,7 +9,6 @@ use serde_json::{json, Map, Value};
 use super::CommandModule;
 use crate::app_paths::ProjectIdentity;
 use crate::contract::{CliError, Context, ErrorKind, Outcome};
-use crate::skills_read::{read_skills, valid_skill_id, SkillEntry};
 
 const LOCK_BUDGET: Duration = Duration::from_secs(10);
 const MAX_PROJECTS: usize = 10_000;
@@ -22,9 +21,6 @@ pub enum Commands {
     /// List the projects the Oleafly app knows
     #[command(subcommand)]
     Projects(ProjectsCommand),
-    /// List the skills the app's assistant and agents can load
-    #[command(subcommand)]
-    Skills(SkillsCommand),
 }
 
 #[derive(Debug, Subcommand)]
@@ -69,20 +65,6 @@ pub enum ProjectsCommand {
     List,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum SkillsCommand {
-    /// List installed skills
-    List,
-    /// Print the skills folder, or one skill's folder
-    Path(SkillPathArgs),
-}
-
-#[derive(Debug, Args)]
-pub struct SkillPathArgs {
-    #[arg(value_name = "ID")]
-    pub id: Option<String>,
-}
-
 impl CommandModule for Commands {
     fn name(&self) -> &'static str {
         match self {
@@ -91,8 +73,6 @@ impl CommandModule for Commands {
             Self::Config(ConfigCommand::Set(_)) => "config set",
             Self::Config(ConfigCommand::Unset(_)) => "config unset",
             Self::Projects(ProjectsCommand::List) => "projects list",
-            Self::Skills(SkillsCommand::List) => "skills list",
-            Self::Skills(SkillsCommand::Path(_)) => "skills path",
         }
     }
 
@@ -107,8 +87,6 @@ impl CommandModule for Commands {
                 config_set(ctx, &args.key, None, args.global)
             }
             Self::Projects(ProjectsCommand::List) => projects_list(ctx),
-            Self::Skills(SkillsCommand::List) => skills_list(ctx),
-            Self::Skills(SkillsCommand::Path(args)) => skills_path(ctx, args.id.as_deref()),
         })
     }
 }
@@ -123,11 +101,10 @@ pub enum KeyKind {
 }
 
 const CLI_REVISION_KEY: &str = "cli_settings_revision";
-const APP_SAVED_KEYS: [&str; 5] = [
+const APP_SAVED_KEYS: [&str; 4] = [
     "checkpoints_enabled",
     "checkpoint_notifications",
     "git_auto_init",
-    "skills_share_with_agents",
     "ui_locale",
 ];
 
@@ -149,20 +126,7 @@ pub const GLOBAL_KEYS: &[(&str, &str, KeyKind)] = &[
         KeyKind::Bool,
     ),
     ("git.auto_init", "git_auto_init", KeyKind::Bool),
-    (
-        "skills.share_with_agents",
-        "skills_share_with_agents",
-        KeyKind::Bool,
-    ),
     ("ui.locale", "ui_locale", KeyKind::Locale),
-    ("mcp.enabled", "mcp_enabled", KeyKind::ReadOnly),
-    ("mcp.port", "mcp_port", KeyKind::ReadOnly),
-    ("mcp.read_only", "mcp_read_only", KeyKind::ReadOnly),
-    (
-        "mcp.approval_policy",
-        "mcp_approval_policy",
-        KeyKind::ReadOnly,
-    ),
 ];
 
 fn looks_secret(key: &str) -> bool {
@@ -821,84 +785,6 @@ fn projects_list(ctx: &Context) -> Result<Outcome, CliError> {
     Ok(Outcome::success(json!({"projects": projects})))
 }
 
-fn skills_root(ctx: &Context) -> Option<PathBuf> {
-    let data = ctx
-        .data_root()
-        .map(|root| root.join("skills"))
-        .filter(|dir| dir.is_dir());
-    data.or_else(|| {
-        crate::app_paths::installed_app()
-            .and_then(|app| app.resources_dir)
-            .map(|dir| dir.join("skills"))
-            .filter(|dir| dir.is_dir())
-    })
-}
-
-fn skill_json(skill: &SkillEntry) -> Value {
-    json!({"id": skill.id, "name": skill.name, "description": skill.description, "path": skill.path, "source": skill.source})
-}
-
-fn skills_list(ctx: &Context) -> Result<Outcome, CliError> {
-    let skills = skills_root(ctx)
-        .map(|root| read_skills(&root))
-        .unwrap_or_default();
-    if !ctx.json() {
-        if skills.is_empty() {
-            ctx.note(
-                "No skills are installed. The Oleafly app installs its skills on first launch.",
-            );
-        }
-        for skill in &skills {
-            if ctx.quiet() {
-                ctx.say(&skill.id);
-            } else {
-                let description: String = skill.description.chars().take(80).collect();
-                ctx.say(format!("{:<32} {description}", skill.id));
-            }
-        }
-    }
-    Ok(Outcome::success(
-        json!({"skills": skills.iter().map(skill_json).collect::<Vec<_>>()}),
-    ))
-}
-
-fn skills_path(ctx: &Context, id: Option<&str>) -> Result<Outcome, CliError> {
-    let root = skills_root(ctx).ok_or_else(|| {
-        CliError::new(
-            ErrorKind::InvalidInput,
-            "skills.none",
-            "No skills are installed.",
-        )
-        .hint("Open the Oleafly app once to install its skills.")
-    })?;
-    let path = match id {
-        None => root,
-        Some(id) => {
-            if !valid_skill_id(id) {
-                return Err(CliError::new(
-                    ErrorKind::UnsafePath,
-                    "project.unsafe_path",
-                    format!("{id} isn't a skill id."),
-                ));
-            }
-            let folder = root.join(id);
-            if !folder.join("SKILL.md").is_file() {
-                return Err(CliError::new(
-                    ErrorKind::InvalidInput,
-                    "skills.unknown",
-                    format!("There is no skill {id}."),
-                )
-                .hint("See them with `oleafly skills list`."));
-            }
-            folder
-        }
-    };
-    if !ctx.json() {
-        ctx.say(path.display().to_string());
-    }
-    Ok(Outcome::success(json!({"path": path})))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1049,20 +935,5 @@ mod tests {
             "project.unsafe_path"
         );
         config_set(&ctx, "engine", Some("typst"), false).unwrap_err();
-    }
-
-    #[test]
-    fn skill_paths_take_single_names_only() {
-        let data = tempfile::tempdir().unwrap();
-        let skill = data.path().join("skills").join("a");
-        std::fs::create_dir_all(&skill).unwrap();
-        std::fs::write(skill.join("SKILL.md"), "---\nname: A\n---\n").unwrap();
-        let ctx = context(data.path(), data.path());
-        let outcome = skills_path(&ctx, Some("a")).unwrap();
-        assert_eq!(outcome.fields["path"], json!(skill));
-        assert_eq!(
-            skills_path(&ctx, Some("../x")).unwrap_err().code,
-            "project.unsafe_path"
-        );
     }
 }

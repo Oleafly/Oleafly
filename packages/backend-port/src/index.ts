@@ -1,14 +1,10 @@
 export const PROTOCOL_VERSION = 7;
 export const BACKEND_CAPABILITIES = [
-    "agent-server",
-    "agent-stream",
-    "chats",
     "checkpoints",
     "collab",
     "compile",
     "git",
     "initial-state",
-    "mcp",
     "search",
     "synctex",
     "templates",
@@ -18,24 +14,6 @@ export interface BackendProtocolInfo {
     protocol_version: number;
     capabilities: string[];
 }
-export interface AgentServerInfo {
-    app_server_protocol_version: number;
-    native_host_protocol_version: number;
-    schema_version: number;
-    server_version: string;
-}
-export interface AgentClientInfo {
-    name: string;
-    version: string;
-}
-export interface AgentClientCapabilities {
-    optOutNotificationMethods: string[];
-}
-export type AgentRequestDecision =
-    | "accept"
-    | "acceptForSession"
-    | "acceptWithExecpolicyAmendment"
-    | "decline";
 export interface InitialState {
     config: AppConfig | null;
     projects: ProjectInfo[];
@@ -48,17 +26,6 @@ export interface PendingOpenRequest {
     source: OpenRequestSource;
 }
 export type ToolDecision = "allow" | "deny";
-export interface ChatSearchHit {
-    project_id: string;
-    chat_id: string;
-    title: string;
-    snippet: string;
-}
-export interface UsageTotals {
-    input_tokens: number;
-    output_tokens: number;
-    cost_usd: number;
-}
 export interface CompileError {
     line: number | null;
     file: string | null;
@@ -784,177 +751,14 @@ export interface ZoteroProjectLink {
     hash: string;
     bib: string;
 }
-export type ModelTrust = "verified" | "untested" | "blocked";
-export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
-export interface ModelCost {
-    input?: number;
-    output?: number;
-    cacheRead?: number;
-}
-export interface ReasoningOption {
-    type: "effort" | "budget_tokens" | "toggle";
-    values?: string[];
-    min?: number;
-    max?: number;
-}
-export interface ChatsLoadResult {
-    json: string;
-    skipped: number;
-}
-export interface ModelMetadata {
-    name: string;
-    contextWindow?: number;
-    outputLimit?: number;
-    inputModalities: string[];
-    outputModalities: string[];
-    toolCall?: boolean;
-    reasoning: boolean;
-    reasoningOptions?: ReasoningOption[];
-    attachment: boolean;
-    structuredOutput: boolean;
-    status: ModelStatus;
-    releaseDate?: string;
-    lastUpdated?: string;
-    cost?: ModelCost;
-}
-export interface StoredModel {
-    id: string;
-    name: string;
-    enabled: boolean;
-    source: "builtin" | "fetched" | "custom";
-    trust?: ModelTrust;
-    blockedReason?: string;
-    metadata?: ModelMetadata;
-}
-export interface ModelProbe {
-    verdict: "verified" | "blocked";
-    reason: string;
-    probedAt: number;
-}
-export interface ModelMetadataStatus {
-    source: "cdn" | "bundled" | "cache";
-    generatedAt: string;
-    refreshedAt: number | null;
-}
-export interface CustomProvider {
-    id: string;
-    name: string;
-    baseURL: string;
-    keyOptional?: boolean;
-    reasoningEffort?: boolean;
-}
-export interface Persona {
-    id: string;
-    name: string;
-    color: string;
-    prompt: string;
-}
-export interface SavedInstruction {
-    id: string;
-    name: string;
-    text: string;
-}
 export interface AppConfig {
     github_token: string;
     github_user: string;
     github_connected: boolean;
-    ai_api_key: string;
-    ai_provider: string;
-    ai_model: string;
-    ai_keys: Record<string, string>;
-    ai_system_prompt: string;
-    ai_pdf_capture: boolean;
-    ai_reasoning_summaries?: boolean;
-    ai_provider_models: Record<string, StoredModel[]>;
-    ai_custom_providers: CustomProvider[];
-    ai_personas: Persona[];
-    ai_starter_personas_seeded: boolean;
-    ai_saved_instructions?: SavedInstruction[];
-    ai_saved_instruction_uses?: Record<string, number>;
-    ai_model_probes?: Record<string, ModelProbe>;
-    ai_model_lists_refreshed_at?: Record<string, number>;
     checkpoints_enabled: boolean;
     checkpoint_notifications: boolean;
     git_auto_init: boolean;
-    mcp_enabled: boolean;
-    mcp_port: number;
-    mcp_read_only: boolean;
-    mcp_approval_policy: string;
-    mcp_servers: McpServerConfig[];
-    skills_share_with_agents?: boolean;
     ui_locale?: string;
-    research_keep_awake?: boolean;
-    research_notifications?: boolean;
-    research_command_network?: boolean;
-    research_time_budget_minutes?: number;
-    research_task_mcp_servers?: string[];
-    research_tasks_enabled?: boolean;
-    research_background_enabled?: boolean;
-    research_background_at_login?: boolean;
-    ai_tools_model?: ToolsModelChoice | null;
-    cua_driver?: { enabled: boolean; apps: unknown[]; sites: unknown[] };
-}
-export interface ToolsModelChoice {
-    provider: string;
-    model: string;
-    label?: string | null;
-}
-export type McpServerConfig = {
-    name: string;
-    enabled: boolean;
-    transport: "stdio";
-    command: string;
-    args: string[];
-    env: Record<string, string>;
-} | {
-    name: string;
-    enabled: boolean;
-    transport: "remote";
-    url: string;
-    headers: Record<string, string>;
-};
-export interface McpServerTool {
-    name: string;
-    description?: string | null;
-}
-export type McpServerValidationStatus = "connected" | "error" | "disabled" | "checking";
-export interface McpServerValidation {
-    name: string;
-    status: McpServerValidationStatus;
-    tool_count: number;
-    tools: McpServerTool[];
-    error: string | null;
-}
-export interface McpManagedServer {
-    config: McpServerConfig;
-    validation: McpServerValidation;
-}
-export interface McpAgentTool {
-    name: string;
-    tool_handle: string;
-    description: string | null;
-    input_schema: unknown;
-}
-export interface McpAgentServer {
-    name: string;
-    tools: McpAgentTool[];
-}
-export interface McpStatus {
-    running: boolean;
-    port: number | null;
-    url: string | null;
-    enabled: boolean;
-}
-export interface McpConnectionInfo {
-    url: string;
-    token: string;
-}
-export interface ProviderModel {
-    id: string;
-    name: string;
-    trust: ModelTrust;
-    blockedReason?: string;
-    metadata?: ModelMetadata;
 }
 /** The REST API a Git server speaks. `gitea` covers Forgejo and Codeberg. */
 export type ForgeKind = "github" | "gitlab" | "gitea";
@@ -1457,12 +1261,6 @@ export interface FileConflictInfo {
 export interface BackendPort {
   backendProtocolInfo: () => Promise<BackendProtocolInfo>;
   initialState: () => Promise<InitialState>;
-  approvalsList: (projectId: string) => Promise<Record<string, ToolDecision>>;
-  approvalsSet: (projectId: string, tool: string, decision: ToolDecision | null) => Promise<void>;
-  chatsSearch: (query: string) => Promise<ChatSearchHit[]>;
-  usageSummary: (projectId: string) => Promise<UsageTotals>;
-  budgetGet: (projectId: string) => Promise<number | null>;
-  budgetSet: (projectId: string, budgetUsd: number | null) => Promise<void>;
   reloadViews: () => Promise<void>;
   focusCurrentWindow: () => Promise<void>;
   getProjectEngine: (projectId: string) => Promise<DocumentEngineDescriptor>;
@@ -1501,12 +1299,6 @@ export interface BackendPort {
   projectMutationGeneration: (projectId: string) => Promise<number>;
   writeProjectBytes: (projectId: string, relPath: string, dataBase64: string, expectedGeneration?: number) => Promise<FileMutationResult>;
   writeBytesFile: (dest: string, dataBase64: string) => Promise<void>;
-  loadProjectChats: (projectId: string) => Promise<string>;
-  saveProjectChats: (projectId: string, json: string) => Promise<void>;
-  chatsLoad: (projectId: string) => Promise<ChatsLoadResult>;
-  chatRead: (projectId: string, chatId: string) => Promise<string>;
-  chatSave: (projectId: string, chatId: string, json: string, index?: boolean) => Promise<void>;
-  chatDelete: (projectId: string, chatId: string) => Promise<void>;
   listFiles: (projectId: string) => Promise<FileEntry[]>;
   listFileTree: (projectId: string) => Promise<FileTreeListing>;
   existingProjectFiles: (projectId: string, paths: string[]) => Promise<string[]>;
@@ -1515,7 +1307,6 @@ export interface BackendPort {
   readFileContent: (projectId: string, path: string) => Promise<string>;
   readProjectSourcesBatch: (projectId: string, request: ProjectSourcesRequest) => Promise<ProjectSourcesResult>;
   documentStats: (projectId: string, request: DocumentStatsRequest) => Promise<DocumentStatsResult>;
-  ragRetrieve: (projectId: string, request: RagRetrieveRequest) => Promise<RagChunk[]>;
   writeFileContent: (projectId: string, path: string, content: string, expectedGeneration?: number) => Promise<FileMutationResult>;
   createFile(projectId: string, path: string, isDir: boolean, conflictStrategy?: FileConflictStrategy, expectedGeneration?: number): Promise<{
     path: string;
@@ -1635,8 +1426,6 @@ export interface BackendPort {
     yearTo?: number | null;
     openAccessOnly?: boolean;
 }) => Promise<string>;
-  connectorKeySaved: (connectorId: string) => Promise<boolean>;
-  setConnectorKey: (connectorId: string, value: string) => Promise<void>;
   zoteroVerify: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
   zoteroLibraryBibtex: () => Promise<ZoteroLibraryExport>;
   zoteroLibraryStatus: () => Promise<ZoteroLibraryStatus>;
@@ -1664,61 +1453,7 @@ export interface BackendPort {
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
-  seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
-  mcpStatus: () => Promise<McpStatus>;
-  mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;
-  mcpRestartServer: () => Promise<McpStatus>;
-  mcpConnectionInfo: () => Promise<McpConnectionInfo>;
-  mcpRegenerateToken: () => Promise<void>;
-  mcpServersList: () => Promise<McpManagedServer[]>;
-  mcpServerAdd: (server: McpServerConfig) => Promise<McpManagedServer>;
-  mcpServerUpdate: (originalName: string, server: McpServerConfig) => Promise<McpManagedServer>;
-  mcpServerRemove: (name: string) => Promise<void>;
-  mcpServerSetEnabled: (name: string, enabled: boolean) => Promise<McpManagedServer>;
-  mcpServerValidate: (name: string) => Promise<McpServerValidation>;
-  mcpAgentToolsList: () => Promise<McpAgentServer[]>;
-  mcpAgentToolAuthorize: (
-    projectId: string,
-    server: string,
-    toolHandle: string,
-    argumentsValue: Record<string, unknown>,
-    runId: string,
-  ) => Promise<string>;
-  mcpAgentToolCall: (
-    projectId: string,
-    server: string,
-    toolHandle: string,
-    argumentsValue: Record<string, unknown>,
-    runId: string,
-    approvalToken: string,
-  ) => Promise<unknown>;
-  mcpBeginRendererSession: () => Promise<number>;
-  mcpRendererHeartbeat: (rendererSession: number) => Promise<void>;
-  mcpEndRendererSession: (rendererSession: number) => Promise<void>;
-  mcpRegisterTools: (tools: {
-    name: string;
-    description: string;
-    inputSchema: unknown;
-}[], rendererSession: number) => Promise<void>;
   readonly REDACTED_MARKER: "__stored__";
-  redactedSecretMarker: () => Promise<string>;
-  agentListModels: (args: {
-    providerId: string;
-    key?: string;
-    baseURL?: string;
-  }) => Promise<ProviderModel[]>;
-  agentServerInitialize: (
-    clientInfo: AgentClientInfo,
-    capabilities: AgentClientCapabilities,
-  ) => Promise<AgentServerInfo>;
-  agentServerResolveRequest: (
-    requestId: string,
-    decision: AgentRequestDecision,
-    payload?: unknown,
-  ) => Promise<void>;
-  agentServerAbandonRequest: (requestId: string) => Promise<void>;
-  mcpSetActiveProject: (projectId: string | null) => Promise<void>;
-  mcpToolResult: (callId: number, result: unknown, rendererSession: number) => Promise<void>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
   forgeAccountsList: () => Promise<ForgeAccount[]>;
   forgeDetect: (base: string, caFile?: string | null) => Promise<ForgeServerInfo>;

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, X } from "lucide-react";
-import { DiffPreview } from "@/components/ai/turns/DiffPreview";
+import { DiffPreview } from "@/components/ui/DiffPreview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
