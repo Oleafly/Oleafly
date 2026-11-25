@@ -1875,29 +1875,20 @@
       "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
-      "confirmTitle": "Vahvista cookieiden tuonti",
-      "detecting": "Etsitään asennettuja selainprofiileja...",
       "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
       "dialogTitle": "Tuo selaimen cookiet",
-      "empty": "Tuettuja selainprofiileja ei löytynyt.",
-      "errors": {
-        "chooseProfile": "Valitse käytettävissä oleva selainprofiili."
-      },
       "profileGroupLabel": "Selainprofiilit",
       "profileLegend": "Selainprofiili",
-      "review": "Tarkista tuonti",
       "status": {
         "available": "Käytettävissä",
         "comingSoon": "Tulossa pian",
         "noCookieStore": "Ei cookie-varastoa",
         "notInstalled": "Ei asennettu"
       },
-      "tryAgain": "Yritä uudelleen",
       "label": "Kopioi selaimen kirjautuminen",
       "useBrowserSignIn": "Kopioi kirjautuminen selaimestasi",
       "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
       "site": "Sivusto: {{domain}}",
-      "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
       "copyAction": "Kopioi kirjautuminen",
       "copying": "Kopioidaan…",
       "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",

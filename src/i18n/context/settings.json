@@ -524,14 +524,12 @@
       "connected": "Shown once alphaXiv's MCP server accepted the key. Each alphaXiv tool call still asks the user first."
     },
     "cookies": {
-      "review": "Button that moves from choosing a profile to the confirmation step.",
       "status": {
         "available": "This browser profile can be read right now.",
         "comingSoon": "Support for this browser is not implemented yet.",
         "noCookieStore": "The browser is installed but has no readable cookie database.",
         "notInstalled": "The browser is not installed on this machine."
       },
-      "tryAgain": "Button that repeats the failed browser detection.",
       "useBrowserSignIn": "Button. Copies the sign-in cookies for the online LaTeX service from the person's web browser.",
       "label": "Row heading for copying the online LaTeX service sign-in from a web browser."
     },

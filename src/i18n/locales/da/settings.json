@@ -1875,29 +1875,20 @@
       "disconnectFailed": "Kunne ikke afbryde forbindelsen til alphaXiv. Prøv igen."
     },
     "cookies": {
-      "confirmTitle": "Bekræft import af cookies",
-      "detecting": "Leder efter installerede browserprofiler...",
       "dialogDescription": "Vælg én installeret browserprofil. Oleafly læser den først, når du har gennemgået og bekræftet importen. Cookies fra Chromium låses op lokalt via macOS Keychain. Oleafly sender ikke cookieværdier til en Oleafly-tjeneste.",
       "dialogTitle": "Importer cookies fra browseren",
-      "empty": "Der blev ikke fundet nogen understøttede browserprofiler.",
-      "errors": {
-        "chooseProfile": "Vælg en tilgængelig browserprofil."
-      },
       "profileGroupLabel": "Browserprofiler",
       "profileLegend": "Browserprofil",
-      "review": "Gennemgå importen",
       "status": {
         "available": "Tilgængelig",
         "comingSoon": "På vej",
         "noCookieStore": "Intet cookielager",
         "notInstalled": "Ikke installeret"
       },
-      "tryAgain": "Prøv igen",
       "label": "Kopiér login fra en browser",
       "useBrowserSignIn": "Kopiér login fra din browser",
       "signInDescription": "Kopiér dit login til {{server}} fra en browser på denne computer, så du ikke behøver at logge ind igen.",
       "site": "Hjemmeside: {{domain}}",
-      "confirmCopy": "Oleafly læser cookies til {{domain}} fra profilen {{profile}} i {{browser}}. De bliver i Oleafly og sendes kun til {{domain}}. Du bekræfter en gang til i en systemdialog.",
       "copyAction": "Kopiér login",
       "copying": "Kopierer…",
       "notSignedIn_one": "Kopierede {{count}} cookie fra {{browser}}, men den loggede dig ikke ind. Log ind i stedet.",

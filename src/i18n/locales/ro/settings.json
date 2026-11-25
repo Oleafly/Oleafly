@@ -1887,29 +1887,20 @@
       "disconnectFailed": "alphaXiv nu a putut fi deconectat. Încearcă din nou."
     },
     "cookies": {
-      "confirmTitle": "Confirmă importul de cookie-uri",
-      "detecting": "Se caută profilurile de browser instalate...",
       "dialogDescription": "Alege un singur profil de browser instalat. Oleafly îl citește doar după ce verifici și confirmi importul. Cookie-urile Chromium se deblochează local, prin macOS Keychain. Oleafly nu trimite valorile cookie-urilor către niciun serviciu Oleafly.",
       "dialogTitle": "Importă cookie-uri din browser",
-      "empty": "Nu s-a găsit niciun profil de browser acceptat.",
-      "errors": {
-        "chooseProfile": "Alege un profil de browser disponibil."
-      },
       "profileGroupLabel": "Profiluri de browser",
       "profileLegend": "Profil de browser",
-      "review": "Verifică importul",
       "status": {
         "available": "Disponibil",
         "comingSoon": "În curând",
         "noCookieStore": "Fără depozit de cookie-uri",
         "notInstalled": "Neinstalat"
       },
-      "tryAgain": "Încearcă din nou",
       "label": "Copiază autentificarea unui browser",
       "useBrowserSignIn": "Copiază autentificarea din browserul tău",
       "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
       "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
       "copyAction": "Copiază autentificarea",
       "copying": "Se copiază…",
       "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",

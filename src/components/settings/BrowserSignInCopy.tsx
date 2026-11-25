@@ -28,17 +28,7 @@ import {
   detectBrowserCookieSources,
   importBrowserCookies,
   type BrowserCookieSource,
-  type BrowserCookieSourceId,
 } from "@/lib/tauri";
-
-type CopyStage = "closed" | "select" | "confirm";
-
-interface ReviewedCopy {
-  browser: BrowserCookieSourceId;
-  browserName: string;
-  profile: string;
-  profileName: string;
-}
 
 export interface BrowserSignInCopyProps {
   server: string;
@@ -59,10 +49,8 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
   const domain = serverHostname(server);
   const detection = useRef(0);
   const [sources, setSources] = useState<BrowserCookieSource[] | null>(null);
-  const [stage, setStage] = useState<CopyStage>("closed");
+  const [choosing, setChoosing] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState("");
-  const [reviewError, setReviewError] = useState(false);
-  const [reviewed, setReviewed] = useState<ReviewedCopy | null>(null);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
@@ -95,41 +83,20 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
   };
 
   const open = () => {
-    setStage("select");
+    setChoosing(true);
     setSelectedIndex("");
-    setReviewError(false);
-    setReviewed(null);
     setCopyError(null);
     setOutcome(null);
   };
 
-  const review = () => {
-    if (selectedSource?.status !== "available" || selectedSource.profile === null) {
-      setReviewError(true);
-      return;
-    }
-    setReviewError(false);
-    setCopyError(null);
-    setReviewed({
-      browser: selectedSource.browser,
-      browserName: selectedSource.browserName,
-      profile: selectedSource.profile,
-      profileName: selectedSource.profileName ?? selectedSource.profile,
-    });
-    setStage("confirm");
-  };
-
   const copy = async () => {
-    if (!reviewed || copying) return;
+    if (!selectedSource?.profile || copying) return;
+    const { browser, browserName, profile } = selectedSource;
     setCopying(true);
     setCopyError(null);
     let imported: number;
     try {
-      const summary = await importBrowserCookies({
-        browser: reviewed.browser,
-        profile: reviewed.profile,
-        domain,
-      });
+      const summary = await importBrowserCookies({ browser, profile, domain });
       imported = summary.imported;
     } catch (error) {
       void logError("copy browser cookies", error);
@@ -139,16 +106,16 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
     }
     try {
       const status = await overleafSignInWithAppCookies(server);
-      setStage("closed");
+      setChoosing(false);
       onSignedIn(status);
     } catch (error) {
       void logError("sign in with copied browser cookies", error);
-      setStage("closed");
+      setChoosing(false);
       setOutcome(
         isOverleafError(error, "browser_sign_in_failed")
           ? t(($) => $.settings.integrations.cookies.notSignedIn, {
               count: imported,
-              browser: reviewed.browserName,
+              browser: browserName,
             })
           : describeError(error),
       );
@@ -190,8 +157,11 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
         </div>
       )}
 
-      <Dialog open={stage === "select"} onOpenChange={(next) => !next && setStage("closed")}>
+      <Dialog open={choosing} onOpenChange={(next) => !next && !copying && setChoosing(false)}>
         <DialogContent
+          closeDisabled={copying}
+          onEscapeKeyDown={(event) => copying && event.preventDefault()}
+          onPointerDownOutside={(event) => copying && event.preventDefault()}
           className="z-[120] max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl"
           overlayClassName="z-[120]"
         >
@@ -209,9 +179,10 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
             <RadioGroup
               aria-label={t(($) => $.settings.integrations.cookies.profileGroupLabel)}
               value={selectedIndex}
+              disabled={copying}
               onValueChange={(value) => {
                 setSelectedIndex(value);
-                setReviewError(false);
+                setCopyError(null);
               }}
             >
               {(sources ?? []).map((source, index) => {
@@ -247,43 +218,6 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
             </RadioGroup>
           </fieldset>
 
-          {reviewError ? (
-            <p role="alert" className="select-text text-sm text-destructive">
-              {t(($) => $.settings.integrations.cookies.errors.chooseProfile)}
-            </p>
-          ) : null}
-
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setStage("closed")}>
-              {t(($) => $.common.actions.cancel)}
-            </Button>
-            <Button type="button" onClick={review} disabled={!selectedSource}>
-              {t(($) => $.settings.integrations.cookies.review)}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={stage === "confirm"} onOpenChange={(next) => !next && !copying && setStage("select")}>
-        <DialogContent
-          role="alertdialog"
-          closeDisabled={copying}
-          onEscapeKeyDown={(event) => copying && event.preventDefault()}
-          onPointerDownOutside={(event) => copying && event.preventDefault()}
-          className="z-[120] sm:max-w-md"
-          overlayClassName="z-[120]"
-        >
-          <DialogHeader>
-            <DialogTitle>{t(($) => $.settings.integrations.cookies.confirmTitle)}</DialogTitle>
-            <DialogDescription>
-              {t(($) => $.settings.integrations.cookies.confirmCopy, {
-                domain,
-                profile: reviewed?.profileName,
-                browser: reviewed?.browserName,
-              })}
-            </DialogDescription>
-          </DialogHeader>
-
           {copyError ? (
             <p role="alert" className="select-text text-sm text-destructive">
               {copyError}
@@ -291,19 +225,10 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
           ) : null}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              autoFocus
-              disabled={copying}
-              onClick={() => {
-                setCopyError(null);
-                setStage("select");
-              }}
-            >
-              {t(($) => $.common.actions.back)}
+            <Button type="button" variant="ghost" disabled={copying} onClick={() => setChoosing(false)}>
+              {t(($) => $.common.actions.cancel)}
             </Button>
-            <Button type="button" disabled={copying} onClick={() => void copy()}>
+            <Button type="button" disabled={!selectedSource || copying} onClick={() => void copy()}>
               {copying ? <Spinner size="sm" /> : null}
               {copying
                 ? t(($) => $.settings.integrations.cookies.copying)

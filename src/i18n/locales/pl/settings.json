@@ -1899,29 +1899,20 @@
       "disconnectFailed": "Nie udało się rozłączyć alphaXiv. Spróbuj ponownie."
     },
     "cookies": {
-      "confirmTitle": "Potwierdź import plików cookie",
-      "detecting": "Szukanie zainstalowanych profili przeglądarek...",
       "dialogDescription": "Wybierz jeden zainstalowany profil przeglądarki. Oleafly odczyta go dopiero po Twoim przejrzeniu i potwierdzeniu importu. Pliki cookie Chromium są odblokowywane lokalnie przez Pęk kluczy macOS. Oleafly nie wysyła wartości plików cookie do żadnej usługi Oleafly.",
       "dialogTitle": "Importuj pliki cookie z przeglądarki",
-      "empty": "Nie znaleziono obsługiwanych profili przeglądarek.",
-      "errors": {
-        "chooseProfile": "Wybierz dostępny profil przeglądarki."
-      },
       "profileGroupLabel": "Profile przeglądarek",
       "profileLegend": "Profil przeglądarki",
-      "review": "Przejrzyj import",
       "status": {
         "available": "Dostępny",
         "comingSoon": "Wkrótce",
         "noCookieStore": "Brak magazynu plików cookie",
         "notInstalled": "Niezainstalowana"
       },
-      "tryAgain": "Spróbuj ponownie",
       "label": "Skopiuj logowanie z przeglądarki",
       "useBrowserSignIn": "Skopiuj logowanie z Twojej przeglądarki",
       "signInDescription": "Skopiuj swoje logowanie do {{server}} z przeglądarki na tym komputerze, aby nie logować się ponownie.",
       "site": "Strona: {{domain}}",
-      "confirmCopy": "Oleafly odczyta pliki cookie dla {{domain}} z profilu {{profile}} w {{browser}}. Zostaną w Oleafly i będą wysyłane tylko do {{domain}}. Potwierdzisz to jeszcze raz w oknie systemowym.",
       "copyAction": "Skopiuj logowanie",
       "copying": "Kopiowanie...",
       "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",

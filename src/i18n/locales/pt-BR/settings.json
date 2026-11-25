@@ -1887,29 +1887,20 @@
       "disconnectFailed": "Não foi possível desconectar o alphaXiv. Tente de novo."
     },
     "cookies": {
-      "confirmTitle": "Confirmar a importação de cookies",
-      "detecting": "Procurando os perfis de navegador instalados...",
       "dialogDescription": "Escolha um perfil de navegador instalado. O Oleafly só o lê depois que você revisa e confirma a importação. Os cookies do Chromium são desbloqueados localmente pelo Keychain do macOS. O Oleafly não envia valores de cookie para nenhum serviço do Oleafly.",
       "dialogTitle": "Importar cookies do navegador",
-      "empty": "Nenhum perfil de navegador compatível foi encontrado.",
-      "errors": {
-        "chooseProfile": "Escolha um perfil de navegador disponível."
-      },
       "profileGroupLabel": "Perfis de navegador",
       "profileLegend": "Perfil de navegador",
-      "review": "Revisar a importação",
       "status": {
         "available": "Disponível",
         "comingSoon": "Em breve",
         "noCookieStore": "Sem repositório de cookies",
         "notInstalled": "Não instalado"
       },
-      "tryAgain": "Tentar de novo",
       "label": "Copiar o login de um navegador",
       "useBrowserSignIn": "Copiar o login do seu navegador",
       "signInDescription": "Copie seu login de {{server}} de um navegador deste computador, para não precisar fazer login de novo.",
       "site": "Site: {{domain}}",
-      "confirmCopy": "O Oleafly vai ler os cookies de {{domain}} do perfil {{profile}} do {{browser}}. Eles ficam no Oleafly e só vão para {{domain}}. Você vai confirmar mais uma vez em uma caixa de diálogo do sistema.",
       "copyAction": "Copiar o login",
       "copying": "Copiando…",
       "notSignedIn_one": "{{count}} cookie copiado do {{browser}}, mas ele não fez o seu login. Faça login diretamente.",

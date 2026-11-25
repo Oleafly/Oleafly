@@ -1875,29 +1875,20 @@
       "disconnectFailed": "De verbinding met alphaXiv kon niet worden verbroken. Probeer het opnieuw."
     },
     "cookies": {
-      "confirmTitle": "Cookie-import bevestigen",
-      "detecting": "Zoeken naar geïnstalleerde browserprofielen...",
       "dialogDescription": "Kies één geïnstalleerd browserprofiel. Oleafly leest het pas nadat je de import hebt bekeken en bevestigd. Chromium-cookies worden lokaal ontgrendeld via de macOS-sleutelhanger. Oleafly stuurt geen cookiewaarden naar een Oleafly-dienst.",
       "dialogTitle": "Browsercookies importeren",
-      "empty": "Er zijn geen ondersteunde browserprofielen gevonden.",
-      "errors": {
-        "chooseProfile": "Kies een beschikbaar browserprofiel."
-      },
       "profileGroupLabel": "Browserprofielen",
       "profileLegend": "Browserprofiel",
-      "review": "Import bekijken",
       "status": {
         "available": "Beschikbaar",
         "comingSoon": "Binnenkort",
         "noCookieStore": "Geen cookieopslag",
         "notInstalled": "Niet geïnstalleerd"
       },
-      "tryAgain": "Opnieuw proberen",
       "label": "Aanmelding uit een browser kopiëren",
       "useBrowserSignIn": "De aanmelding uit je browser kopiëren",
       "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
       "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
       "copyAction": "Aanmelding kopiëren",
       "copying": "Kopiëren…",
       "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",

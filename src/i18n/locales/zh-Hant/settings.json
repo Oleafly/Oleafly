@@ -1863,29 +1863,20 @@
       "disconnectFailed": "無法中斷與 alphaXiv 的連線。請再試一次。"
     },
     "cookies": {
-      "confirmTitle": "確認匯入 Cookie",
-      "detecting": "正在尋找已安裝的瀏覽器設定檔…",
       "dialogDescription": "選擇一個已安裝的瀏覽器設定檔。Oleafly 只會在你審視並確認匯入之後才讀取。Chromium 的 Cookie 會透過 macOS Keychain 在本機解鎖。Oleafly 不會把 Cookie 值傳送到 Oleafly 的服務。",
       "dialogTitle": "匯入瀏覽器 Cookie",
-      "empty": "找不到支援的瀏覽器設定檔。",
-      "errors": {
-        "chooseProfile": "請選擇一個可用的瀏覽器設定檔。"
-      },
       "profileGroupLabel": "瀏覽器設定檔",
       "profileLegend": "瀏覽器設定檔",
-      "review": "審視匯入內容",
       "status": {
         "available": "可用",
         "comingSoon": "即將推出",
         "noCookieStore": "沒有 Cookie 資料庫",
         "notInstalled": "未安裝"
       },
-      "tryAgain": "再試一次",
       "label": "複製瀏覽器的登入資訊",
       "useBrowserSignIn": "複製瀏覽器中的登入資訊",
       "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
       "site": "網站：{{domain}}",
-      "confirmCopy": "Oleafly 會從 {{browser}} 的 {{profile}} 設定檔讀取 {{domain}} 的 Cookie。它們會留在 Oleafly 中，而且只會傳送到 {{domain}}。你還需要在系統對話框中再確認一次。",
       "copyAction": "複製登入資訊",
       "copying": "正在複製…",
       "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。"

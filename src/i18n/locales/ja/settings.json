@@ -1863,29 +1863,20 @@
       "disconnectFailed": "alphaXiv の接続を解除できませんでした。もう一度お試しください。"
     },
     "cookies": {
-      "confirmTitle": "Cookie の読み込みの確認",
-      "detecting": "インストール済みのブラウザのプロファイルを探しています...",
       "dialogDescription": "インストール済みのブラウザのプロファイルを 1 つ選んでください。Oleafly は、あなたが内容を確認して読み込みを承認したあとにだけ読み取ります。Chromium 系の cookie は macOS のキーチェーンを使ってローカルで復号します。Oleafly が cookie の値を Oleafly のサービスに送ることはありません。",
       "dialogTitle": "ブラウザの cookie を読み込む",
-      "empty": "対応しているブラウザのプロファイルは見つかりませんでした。",
-      "errors": {
-        "chooseProfile": "利用できるブラウザのプロファイルを選んでください。"
-      },
       "profileGroupLabel": "ブラウザのプロファイル",
       "profileLegend": "ブラウザのプロファイル",
-      "review": "読み込む内容を確認",
       "status": {
         "available": "利用できます",
         "comingSoon": "近日対応",
         "noCookieStore": "cookie の保存領域がありません",
         "notInstalled": "未インストール"
       },
-      "tryAgain": "再試行",
       "label": "ブラウザのサインイン情報をコピー",
       "useBrowserSignIn": "ブラウザのサインイン情報をコピーする",
       "signInDescription": "このコンピュータのブラウザから {{server}} のサインイン情報をコピーすれば、もう一度サインインする必要はありません。",
       "site": "サイト: {{domain}}",
-      "confirmCopy": "Oleafly は {{browser}} の {{profile}} プロファイルから {{domain}} の Cookie を読み取ります。Cookie は Oleafly 内に保存され、{{domain}} にだけ送られます。このあとシステムのダイアログでもう一度確認します。",
       "copyAction": "サインイン情報をコピー",
       "copying": "コピーしています...",
       "notSignedIn_other": "{{browser}} から {{count}} 個の Cookie をコピーしましたが、サインインできませんでした。直接サインインしてください。"

@@ -1875,29 +1875,20 @@
       "disconnectFailed": "Could not disconnect alphaXiv. Try again."
     },
     "cookies": {
-      "confirmTitle": "Confirm cookie import",
-      "detecting": "Looking for installed browser profiles...",
       "dialogDescription": "Choose one installed browser profile. Oleafly reads it only after you review and confirm the import. Chromium cookies are unlocked locally through macOS Keychain. Oleafly does not send cookie values to an Oleafly service.",
       "dialogTitle": "Import browser cookies",
-      "empty": "No supported browser profiles were found.",
-      "errors": {
-        "chooseProfile": "Choose an available browser profile."
-      },
       "profileGroupLabel": "Browser profiles",
       "profileLegend": "Browser profile",
-      "review": "Review import",
       "status": {
         "available": "Available",
         "comingSoon": "Coming soon",
         "noCookieStore": "No cookie store",
         "notInstalled": "Not installed"
       },
-      "tryAgain": "Try again",
       "label": "Copy a browser's sign-in",
       "useBrowserSignIn": "Copy the sign-in from your browser",
       "signInDescription": "Copy your sign-in for {{server}} from a browser on this computer, so you don't have to sign in again.",
       "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly will read the cookies for {{domain}} from the {{profile}} profile in {{browser}}. They stay in Oleafly and go only to {{domain}}. You'll confirm once more in a system dialog.",
       "copyAction": "Copy sign-in",
       "copying": "Copying…",
       "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",

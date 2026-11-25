@@ -120,7 +120,6 @@ describe("OverleafImportView", () => {
     await screen.findByTestId("overleaf-sign-in-panel");
     await user.click(await screen.findByRole("button", { name: "Copy the sign-in from your browser" }));
     await user.click(await screen.findByLabelText(/Google Chrome/));
-    await user.click(screen.getByRole("button", { name: "Review import" }));
     await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
 
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();

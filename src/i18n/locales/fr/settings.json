@@ -1887,29 +1887,20 @@
       "disconnectFailed": "Impossible de déconnecter alphaXiv. Réessayez."
     },
     "cookies": {
-      "confirmTitle": "Confirmer l'importation des cookies",
-      "detecting": "Recherche des profils de navigateur installés...",
       "dialogDescription": "Choisissez un profil de navigateur installé. Oleafly ne le lit qu'après votre vérification et votre confirmation. Les cookies Chromium sont déverrouillés localement via le trousseau macOS. Oleafly n'envoie aucune valeur de cookie à un service Oleafly.",
       "dialogTitle": "Importer les cookies du navigateur",
-      "empty": "Aucun profil de navigateur pris en charge n'a été trouvé.",
-      "errors": {
-        "chooseProfile": "Choisissez un profil de navigateur disponible."
-      },
       "profileGroupLabel": "Profils de navigateur",
       "profileLegend": "Profil de navigateur",
-      "review": "Vérifier l'importation",
       "status": {
         "available": "Disponible",
         "comingSoon": "Bientôt disponible",
         "noCookieStore": "Aucun stockage de cookies",
         "notInstalled": "Non installé"
       },
-      "tryAgain": "Réessayer",
       "label": "Copier la connexion d'un navigateur",
       "useBrowserSignIn": "Copier la connexion depuis votre navigateur",
       "signInDescription": "Copiez votre connexion à {{server}} depuis un navigateur de cet ordinateur, pour ne pas avoir à vous reconnecter.",
       "site": "Site : {{domain}}",
-      "confirmCopy": "Oleafly va lire les cookies de {{domain}} dans le profil {{profile}} de {{browser}}. Ils restent dans Oleafly et ne sont envoyés qu'à {{domain}}. Vous confirmerez encore une fois dans une boîte de dialogue du système.",
       "copyAction": "Copier la connexion",
       "copying": "Copie en cours…",
       "notSignedIn_one": "{{count}} cookie copié depuis {{browser}}, mais il ne vous a pas connecté. Connectez-vous directement.",

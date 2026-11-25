@@ -1863,29 +1863,20 @@
       "disconnectFailed": "Không thể ngắt kết nối alphaXiv. Hãy thử lại."
     },
     "cookies": {
-      "confirmTitle": "Xác nhận nhập cookie",
-      "detecting": "Đang tìm hồ sơ trình duyệt đã cài...",
       "dialogDescription": "Hãy chọn một hồ sơ trình duyệt đã cài. Oleafly chỉ đọc hồ sơ đó sau khi bạn xem xét và xác nhận nhập. Cookie của Chromium được mở khoá cục bộ qua macOS Keychain. Oleafly không gửi giá trị cookie đến dịch vụ Oleafly.",
       "dialogTitle": "Nhập cookie trình duyệt",
-      "empty": "Không tìm thấy hồ sơ trình duyệt được hỗ trợ nào.",
-      "errors": {
-        "chooseProfile": "Hãy chọn một hồ sơ trình duyệt khả dụng."
-      },
       "profileGroupLabel": "Hồ sơ trình duyệt",
       "profileLegend": "Hồ sơ trình duyệt",
-      "review": "Xem lại bản nhập",
       "status": {
         "available": "Khả dụng",
         "comingSoon": "Sắp ra mắt",
         "noCookieStore": "Không có kho cookie",
         "notInstalled": "Chưa cài"
       },
-      "tryAgain": "Thử lại",
       "label": "Sao chép đăng nhập từ trình duyệt",
       "useBrowserSignIn": "Sao chép đăng nhập từ trình duyệt của bạn",
       "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
       "site": "Trang: {{domain}}",
-      "confirmCopy": "Oleafly sẽ đọc cookie cho {{domain}} từ hồ sơ {{profile}} trong {{browser}}. Cookie ở lại trong Oleafly và chỉ được gửi đến {{domain}}. Bạn sẽ xác nhận thêm một lần trong hộp thoại hệ thống.",
       "copyAction": "Sao chép đăng nhập",
       "copying": "Đang sao chép…",
       "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp."

@@ -232,7 +232,6 @@ describe("OverleafSection", () => {
     expect(await screen.findByTestId("browser-sign-in-copy-row")).toBeInTheDocument();
     await user.click(screen.getByTestId("browser-sign-in-copy"));
     await user.click(await screen.findByLabelText(/Google Chrome/));
-    await user.click(screen.getByRole("button", { name: "Review import" }));
     await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
     await waitFor(() =>
       expect(cookies.importBrowserCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.overleaf.com" }),

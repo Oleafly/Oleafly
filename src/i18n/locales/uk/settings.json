@@ -1899,29 +1899,20 @@
       "disconnectFailed": "Не вдалося відключити alphaXiv. Спробуйте ще раз."
     },
     "cookies": {
-      "confirmTitle": "Підтвердьте імпорт cookie",
-      "detecting": "Шукаємо встановлені профілі браузерів...",
       "dialogDescription": "Виберіть один встановлений профіль браузера. Oleafly читає його лише після того, як ви переглянете і підтвердите імпорт. Cookie Chromium розблоковуються локально через Keychain у macOS. Oleafly не надсилає значення cookie до жодної служби Oleafly.",
       "dialogTitle": "Імпортувати cookie браузера",
-      "empty": "Підтримуваних профілів браузерів не знайдено.",
-      "errors": {
-        "chooseProfile": "Виберіть доступний профіль браузера."
-      },
       "profileGroupLabel": "Профілі браузерів",
       "profileLegend": "Профіль браузера",
-      "review": "Переглянути імпорт",
       "status": {
         "available": "Доступно",
         "comingSoon": "Незабаром",
         "noCookieStore": "Немає сховища cookie",
         "notInstalled": "Не встановлено"
       },
-      "tryAgain": "Спробувати ще раз",
       "label": "Скопіювати вхід із браузера",
       "useBrowserSignIn": "Скопіювати вхід із вашого браузера",
       "signInDescription": "Скопіюйте дані входу в {{server}} із браузера на цьому комп’ютері, щоб не входити знову.",
       "site": "Сайт: {{domain}}",
-      "confirmCopy": "Oleafly прочитає файли cookie для {{domain}} з профілю {{profile}} у {{browser}}. Вони зберігаються в Oleafly й надсилаються лише на {{domain}}. Ви ще раз підтвердите це в системному вікні.",
       "copyAction": "Скопіювати вхід",
       "copying": "Копіюємо…",
       "notSignedIn_one": "Скопійовано {{count}} файл cookie з {{browser}}, але вхід не виконано. Увійдіть безпосередньо.",

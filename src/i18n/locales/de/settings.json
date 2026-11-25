@@ -1875,29 +1875,20 @@
       "disconnectFailed": "Die Verbindung zu alphaXiv konnte nicht getrennt werden. Versuchen Sie es erneut."
     },
     "cookies": {
-      "confirmTitle": "Cookie-Import bestätigen",
-      "detecting": "Es wird nach installierten Browserprofilen gesucht...",
       "dialogDescription": "Wählen Sie ein installiertes Browserprofil. Oleafly liest es erst, nachdem Sie den Import geprüft und bestätigt haben. Cookies von Chromium werden lokal über den macOS-Schlüsselbund entsperrt. Oleafly sendet keine Cookie-Werte an einen Oleafly-Dienst.",
       "dialogTitle": "Browser-Cookies importieren",
-      "empty": "Es wurden keine unterstützten Browserprofile gefunden.",
-      "errors": {
-        "chooseProfile": "Wählen Sie ein verfügbares Browserprofil."
-      },
       "profileGroupLabel": "Browserprofile",
       "profileLegend": "Browserprofil",
-      "review": "Import prüfen",
       "status": {
         "available": "Verfügbar",
         "comingSoon": "In Kürze",
         "noCookieStore": "Kein Cookie-Speicher",
         "notInstalled": "Nicht installiert"
       },
-      "tryAgain": "Erneut versuchen",
       "label": "Anmeldung aus einem Browser kopieren",
       "useBrowserSignIn": "Die Anmeldung aus Ihrem Browser kopieren",
       "signInDescription": "Übernehmen Sie Ihre Anmeldung für {{server}} aus einem Browser auf diesem Computer, damit Sie sich nicht erneut anmelden müssen.",
       "site": "Website: {{domain}}",
-      "confirmCopy": "Oleafly liest die Cookies für {{domain}} aus dem Profil {{profile}} in {{browser}}. Sie bleiben in Oleafly und gehen nur an {{domain}}. Sie bestätigen noch einmal in einem Systemdialog.",
       "copyAction": "Anmeldung kopieren",
       "copying": "Wird kopiert...",
       "notSignedIn_one": "{{count}} Cookie aus {{browser}} kopiert, aber es hat Sie nicht angemeldet. Melden Sie sich stattdessen an.",

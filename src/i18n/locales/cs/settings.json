@@ -1899,29 +1899,20 @@
       "disconnectFailed": "alphaXiv se nepodařilo odpojit. Zkuste to znovu."
     },
     "cookies": {
-      "confirmTitle": "Potvrzení importu cookies",
-      "detecting": "Hledají se nainstalované profily prohlížečů...",
       "dialogDescription": "Vyberte jeden nainstalovaný profil prohlížeče. Oleafly jej přečte, až když import zkontrolujete a potvrdíte. Cookies prohlížečů Chromium se odemykají místně přes Klíčenku macOS. Oleafly hodnoty cookies žádné službě Oleafly neposílá.",
       "dialogTitle": "Import cookies z prohlížeče",
-      "empty": "Nebyly nalezeny žádné podporované profily prohlížečů.",
-      "errors": {
-        "chooseProfile": "Vyberte dostupný profil prohlížeče."
-      },
       "profileGroupLabel": "Profily prohlížečů",
       "profileLegend": "Profil prohlížeče",
-      "review": "Zkontrolovat import",
       "status": {
         "available": "K dispozici",
         "comingSoon": "Již brzy",
         "noCookieStore": "Žádné úložiště cookies",
         "notInstalled": "Nenainstalováno"
       },
-      "tryAgain": "Zkusit znovu",
       "label": "Zkopírovat přihlášení z prohlížeče",
       "useBrowserSignIn": "Zkopírovat přihlášení z vašeho prohlížeče",
       "signInDescription": "Zkopírujte své přihlášení k {{server}} z prohlížeče v tomto počítači, abyste se nemuseli přihlašovat znovu.",
       "site": "Web: {{domain}}",
-      "confirmCopy": "Oleafly přečte soubory cookie pro {{domain}} z profilu {{profile}} v prohlížeči {{browser}}. Zůstanou v Oleafly a odesílají se jen na {{domain}}. Ještě jednou to potvrdíte v systémovém dialogu.",
       "copyAction": "Zkopírovat přihlášení",
       "copying": "Kopíruje se…",
       "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",

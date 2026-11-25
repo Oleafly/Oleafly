@@ -1875,29 +1875,20 @@
       "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
-      "confirmTitle": "Cookie içe aktarmayı onaylayın",
-      "detecting": "Kurulu tarayıcı profilleri aranıyor...",
       "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
       "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
-      "empty": "Desteklenen tarayıcı profili bulunamadı.",
-      "errors": {
-        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin."
-      },
       "profileGroupLabel": "Tarayıcı profilleri",
       "profileLegend": "Tarayıcı profili",
-      "review": "İçe aktarmayı incele",
       "status": {
         "available": "Kullanılabilir",
         "comingSoon": "Yakında",
         "noCookieStore": "Cookie deposu yok",
         "notInstalled": "Kurulu değil"
       },
-      "tryAgain": "Yeniden deneyin",
       "label": "Bir tarayıcının oturumunu kopyala",
       "useBrowserSignIn": "Tarayıcınızdaki oturumu kopyala",
       "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
       "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly, {{domain}} çerezlerini {{browser}} tarayıcısındaki {{profile}} profilinden okuyacak. Çerezler Oleafly içinde kalır ve yalnızca {{domain}} adresine gönderilir. Bir sistem iletişim kutusunda bir kez daha onaylayacaksınız.",
       "copyAction": "Oturumu kopyala",
       "copying": "Kopyalanıyor…",
       "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",

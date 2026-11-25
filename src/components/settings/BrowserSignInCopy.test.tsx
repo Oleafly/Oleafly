@@ -66,7 +66,6 @@ beforeEach(() => {
 async function copyFromChrome(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: copy.useBrowserSignIn }));
   await user.click(screen.getByLabelText(/Google Chrome/));
-  await user.click(screen.getByRole("button", { name: copy.review }));
   await user.click(screen.getByRole("button", { name: copy.copyAction }));
 }
 
@@ -87,7 +86,7 @@ describe("BrowserSignInCopy", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("copies only the service host and then signs in", async () => {
+  it("copies only the service host and then signs in, with no second confirmation in the app", async () => {
     const user = userEvent.setup();
     mocks.detect.mockResolvedValue([available("chrome", "Default")]);
     mocks.importCookies.mockResolvedValue({ imported: 3, browserName: "Google Chrome", profileName: "Default", domain: "www.latex.example" });
@@ -99,12 +98,10 @@ describe("BrowserSignInCopy", () => {
     await user.click(screen.getByLabelText(/Google Chrome/));
     expect(screen.getByText("Site: www.latex.example")).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
-    await user.click(screen.getByRole("button", { name: copy.review }));
-    const confirmation = screen.getByRole("alertdialog", { name: copy.confirmTitle });
-    expect(confirmation).toHaveTextContent("www.latex.example");
-    await user.click(within(confirmation).getByRole("button", { name: copy.copyAction }));
+    await user.click(screen.getByRole("button", { name: copy.copyAction }));
 
-    expect(mocks.importCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.latex.example" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.importCookies).toHaveBeenCalledExactlyOnceWith({ browser: "chrome", profile: "Default", domain: "www.latex.example" });
     await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(expect.objectContaining({ signedIn: true })));
     expect(mocks.signInWithCookies).toHaveBeenCalledWith(SERVER);
   });
@@ -126,15 +123,42 @@ describe("BrowserSignInCopy", () => {
     expect(onSignedIn).not.toHaveBeenCalled();
   });
 
-  it("keeps the confirmation open and explains a failed copy", async () => {
+  it("copies nothing until a profile is picked", async () => {
+    const user = userEvent.setup();
+    mocks.detect.mockResolvedValue([available("chrome", "Default")]);
+    render(<BrowserSignInCopy server={SERVER} onSignedIn={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: copy.useBrowserSignIn }));
+    expect(screen.getByRole("button", { name: copy.copyAction })).toBeDisabled();
+    expect(mocks.importCookies).not.toHaveBeenCalled();
+  });
+
+  it("stays open and takes no second copy while the system confirmation is up", async () => {
+    const user = userEvent.setup();
+    mocks.detect.mockResolvedValue([available("chrome", "Default")]);
+    let refuse: (error: Error) => void = () => {};
+    mocks.importCookies.mockReturnValue(new Promise((_resolve, reject) => (refuse = reject)));
+    render(<BrowserSignInCopy server={SERVER} onSignedIn={vi.fn()} />);
+    await copyFromChrome(user);
+
+    expect(screen.getByRole("button", { name: copy.copying })).toBeDisabled();
+    expect(screen.getByLabelText(/Google Chrome/)).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: copy.dialogTitle })).toBeVisible();
+    refuse(new Error("Cookie import was cancelled. No cookies were imported."));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cookie import was cancelled.");
+    expect(screen.getByRole("button", { name: copy.copyAction })).toBeEnabled();
+    expect(mocks.importCookies).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the picker open and explains a failed copy", async () => {
     const user = userEvent.setup();
     mocks.detect.mockResolvedValue([available("chrome", "Default")]);
     mocks.importCookies.mockRejectedValue(new Error("Keychain access was denied."));
     render(<BrowserSignInCopy server={SERVER} onSignedIn={vi.fn()} />);
     await copyFromChrome(user);
 
-    const confirmation = screen.getByRole("alertdialog", { name: copy.confirmTitle });
-    expect(await within(confirmation).findByRole("alert")).toHaveTextContent("Keychain access was denied.");
+    const picker = screen.getByRole("dialog", { name: copy.dialogTitle });
+    expect(await within(picker).findByRole("alert")).toHaveTextContent("Keychain access was denied.");
     expect(mocks.signInWithCookies).not.toHaveBeenCalled();
     expect(mocks.logError).toHaveBeenCalledWith("copy browser cookies", expect.any(Error));
   });

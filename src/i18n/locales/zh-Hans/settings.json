@@ -1863,29 +1863,20 @@
       "disconnectFailed": "无法断开 alphaXiv。请重试。"
     },
     "cookies": {
-      "confirmTitle": "确认导入 Cookie",
-      "detecting": "正在查找已安装的浏览器配置文件…",
       "dialogDescription": "选择一个已安装的浏览器配置文件。Oleafly 只会在你查看并确认导入后才读取该文件。Chromium 的 Cookie 在本地通过 macOS 钥匙串解锁。Oleafly 不会将 Cookie 值发送到任何 Oleafly 服务。",
       "dialogTitle": "导入浏览器 Cookie",
-      "empty": "未找到支持的浏览器配置文件。",
-      "errors": {
-        "chooseProfile": "请选择一个可用的浏览器配置文件。"
-      },
       "profileGroupLabel": "浏览器配置文件",
       "profileLegend": "浏览器配置文件",
-      "review": "查看导入内容",
       "status": {
         "available": "可用",
         "comingSoon": "即将推出",
         "noCookieStore": "无 Cookie 存储",
         "notInstalled": "未安装"
       },
-      "tryAgain": "重试",
       "label": "复制浏览器的登录信息",
       "useBrowserSignIn": "复制浏览器中的登录信息",
       "signInDescription": "从这台计算机上的浏览器复制你在 {{server}} 的登录信息，这样就不必重新登录。",
       "site": "网站：{{domain}}",
-      "confirmCopy": "Oleafly 会从 {{browser}} 的 {{profile}} 配置文件中读取 {{domain}} 的 Cookie。它们会留在 Oleafly 中，并且只会发送到 {{domain}}。你还需要在系统对话框中再确认一次。",
       "copyAction": "复制登录信息",
       "copying": "正在复制…",
       "notSignedIn_other": "已从 {{browser}} 复制 {{count}} 个 Cookie，但它们没有让你登录。请直接登录。"
