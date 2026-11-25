@@ -349,8 +349,8 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     }
   },
 
-  async switchAccount(server, userId) {
-    if (get().importing) return false;
+  switchAccount(server, userId) {
+    if (get().importing) return Promise.resolve(false);
     if (get().server !== server) get().setServer(server);
     return get().chooseAccount(userId);
   },
