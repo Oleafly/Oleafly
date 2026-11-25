@@ -877,9 +877,9 @@ jobs:
     name: E2E app build (macOS)
     needs: [frontend, unit-coverage, rust]
     runs-on: macos-15
-    # About 30 minutes with a warm cache, before the shared crates' macOS tests
-    # and clippy were added below.
-    timeout-minutes: 55
+    # About 30 minutes with a warm cache and 45 to 57 with a cold one. A job cut
+    # off here never saves its Rust cache, so the next one starts cold again.
+    timeout-minutes: 70
     env:
       # The vite build graph exceeds Node's default ~4GB heap on the 7GB
       # macOS arm64 runners (same setting as release.yml).
