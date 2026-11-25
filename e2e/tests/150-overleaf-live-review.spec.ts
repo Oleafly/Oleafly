@@ -148,8 +148,10 @@ async function showAllComments(page: Page) {
   await waitLong(page, `!!document.querySelector(${scriptValue(`${PANE} button[aria-label="Comments shown: All"]`)})`, 20_000);
 }
 
-const REVIEWER_LOCK = 'output[aria-label^="You\'re a reviewer"]';
-const EVERYONE_LOCK = 'output[aria-label^="Track changes is on for everyone"]';
+const lockedBecause = (reason: string) =>
+  `[...document.querySelectorAll("output + span[hidden]")].some((hint) => hint.textContent?.startsWith(${scriptValue(reason)}))`;
+const REVIEWER_LOCK = lockedBecause("You're a reviewer");
+const EVERYONE_LOCK = lockedBecause("Track changes is on for everyone");
 
 for (const format of FORMATS) {
   test.describe(`Overleaf review on a ${format.name} project`, () => {
@@ -327,13 +329,13 @@ for (const format of FORMATS) {
       const { users } = await stack.ready;
       await stack.request({ cmd: "track_changes", value: true });
       await editModeIs(page, "suggesting", "everyone");
-      await waitLong(page, `!!document.querySelector(${scriptValue(EVERYONE_LOCK)})`, 30_000);
+      await waitLong(page, EVERYONE_LOCK, 30_000);
       await typeInEditorAfter(page, "Hello", ` ${TRACKED}`);
       await until("the app's typing as a tracked insert", () => rangesOf(stack), (ranges) => changedBy(ranges, "insert", users.alice, TRACKED), 30_000);
 
       await stack.request({ cmd: "track_changes", value: false });
       await editModeIs(page, "editing", null);
-      await waitLong(page, `!document.querySelector(${scriptValue(EVERYONE_LOCK)})`, 30_000);
+      await waitLong(page, `!${EVERYONE_LOCK}`, 30_000);
       await showRailTab(page, "comments");
       await clickButton(page, CARD, "Accept", 20_000, { containing: TRACKED });
       await until("no tracked change left", () => rangesOf(stack), (ranges) => pendingChanges(ranges) === 0, 30_000);
@@ -346,7 +348,7 @@ for (const format of FORMATS) {
       const { users } = await stack.ready;
       await stack.request({ cmd: "privilege", name: "alice", role: "review" });
       await editModeIs(page, "suggesting", "reviewer");
-      await waitLong(page, `!!document.querySelector(${scriptValue(REVIEWER_LOCK)})`, 30_000);
+      await waitLong(page, REVIEWER_LOCK, 30_000);
       await typeInEditorAfter(page, "Hello", " SUGGESTED-BY-REVIEWER");
       await stack.textShows(MAIN, "SUGGESTED-BY-REVIEWER", 30_000);
       await until(
