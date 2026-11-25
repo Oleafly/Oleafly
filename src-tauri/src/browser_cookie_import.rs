@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::time::Duration;
 
 use oleafly_online::browser_cookies::{
@@ -110,16 +110,31 @@ pub async fn import_browser_cookies<R: Runtime>(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for cookie in runtime_cookies {
-        webview
-            .set_cookie(cookie)
-            .map_err(|_| CookieImportError::CookieApplyFailed.to_string())?;
+        let name = cookie.name().to_string();
+        if webview.set_cookie(cookie).is_err() {
+            let _ = crate::project::append_app_log(format!(
+                "Copying cookies: the webview refused the cookie {name}."
+            ));
+        }
     }
-    until_stored(STORED_WITHIN, || runtime_cookies_stored(&webview, &cookies))
-        .await
-        .map_err(|error| error.to_string())?;
+    let check = until_stored(STORED_WITHIN, || {
+        Ok(check_stored(&cookies, &stored_cookies(&webview)?))
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let site = domain.as_deref().unwrap_or("every site");
+    if let Some(report) = check.report(cookies.len()) {
+        let _ = crate::project::append_app_log(format!(
+            "Copying cookies for {site} from {} {profile_name}: {report}",
+            browser.name()
+        ));
+    }
+    if check.stored == 0 {
+        return Err(CookieImportError::CookieApplyFailed.to_string());
+    }
 
     Ok(BrowserCookieImportSummary {
-        imported: cookies.len(),
+        imported: check.stored,
         browser_name: browser.name().to_string(),
         profile_name,
         domain,
@@ -295,38 +310,142 @@ fn stored_cookie_fingerprint(
     })
 }
 
-fn runtime_cookies_stored<R: Runtime>(
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct CookieKey {
+    name: String,
+    domain: String,
+    path: String,
+}
+
+fn key_of(cookie: &RuntimeCookieFingerprint) -> CookieKey {
+    CookieKey {
+        name: cookie.name.clone(),
+        domain: cookie.domain.clone(),
+        path: cookie.path.clone(),
+    }
+}
+
+fn stored_cookies<R: Runtime>(
     webview: &Webview<R>,
-    imported: &[ImportedCookie],
-) -> Result<bool, CookieImportError> {
+) -> Result<HashMap<CookieKey, RuntimeCookieFingerprint>, CookieImportError> {
     let stored = webview
         .cookies()
         .map_err(|_| CookieImportError::CookieApplyFailed)?;
-    let stored_identities = stored
-        .into_iter()
-        .filter_map(|actual| stored_cookie_fingerprint(&actual))
-        .collect::<HashSet<_>>();
-    Ok(imported
+    Ok(stored
         .iter()
-        .all(|expected| stored_identities.contains(&imported_cookie_fingerprint(expected))))
+        .filter_map(stored_cookie_fingerprint)
+        .map(|cookie| (key_of(&cookie), cookie))
+        .collect())
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct StoreCheck {
+    stored: usize,
+    missing: Vec<String>,
+    changed: Vec<String>,
+}
+
+impl StoreCheck {
+    fn report(&self, copied: usize) -> Option<String> {
+        if self.missing.is_empty() && self.changed.is_empty() {
+            return None;
+        }
+        let mut report = format!("{} of {copied} stored.", self.stored);
+        if !self.missing.is_empty() {
+            report.push_str(&format!(" Not stored: {}.", self.missing.join(", ")));
+        }
+        if !self.changed.is_empty() {
+            report.push_str(&format!(
+                " Stored with other attributes: {}.",
+                self.changed.join(", ")
+            ));
+        }
+        Some(report)
+    }
+}
+
+fn cookie_label(cookie: &RuntimeCookieFingerprint) -> String {
+    format!("{} ({}{})", cookie.name, cookie.domain, cookie.path)
+}
+
+fn differences(
+    expected: &RuntimeCookieFingerprint,
+    actual: &RuntimeCookieFingerprint,
+) -> Vec<String> {
+    let mut changed = Vec::new();
+    if expected.expires_unix != actual.expires_unix {
+        changed.push(format!(
+            "expiry {:?} became {:?}",
+            expected.expires_unix, actual.expires_unix
+        ));
+    }
+    if expected.secure != actual.secure {
+        changed.push(format!(
+            "secure {} became {}",
+            expected.secure, actual.secure
+        ));
+    }
+    if expected.http_only != actual.http_only {
+        changed.push(format!(
+            "httpOnly {} became {}",
+            expected.http_only, actual.http_only
+        ));
+    }
+    if expected.same_site != actual.same_site {
+        changed.push(format!(
+            "sameSite {:?} became {:?}",
+            expected.same_site, actual.same_site
+        ));
+    }
+    changed
+}
+
+fn check_stored(
+    imported: &[ImportedCookie],
+    stored: &HashMap<CookieKey, RuntimeCookieFingerprint>,
+) -> StoreCheck {
+    let mut check = StoreCheck::default();
+    for cookie in imported {
+        let expected = imported_cookie_fingerprint(cookie);
+        match stored.get(&key_of(&expected)) {
+            Some(actual) if actual.value == expected.value => {
+                check.stored += 1;
+                let changed = differences(&expected, actual);
+                if !changed.is_empty() {
+                    check.changed.push(format!(
+                        "{} {}",
+                        cookie_label(&expected),
+                        changed.join(", ")
+                    ));
+                }
+            }
+            Some(_) => check
+                .missing
+                .push(format!("{} with another value", cookie_label(&expected))),
+            None => check.missing.push(cookie_label(&expected)),
+        }
+    }
+    check
 }
 
 async fn until_stored(
     within: Duration,
-    mut stored: impl FnMut() -> Result<bool, CookieImportError>,
-) -> Result<(), CookieImportError> {
+    mut check: impl FnMut() -> Result<StoreCheck, CookieImportError>,
+) -> Result<StoreCheck, CookieImportError> {
     let deadline = tokio::time::Instant::now() + within;
-    while !stored()? {
-        if tokio::time::Instant::now() >= deadline {
-            return Err(CookieImportError::CookieApplyFailed);
+    loop {
+        let latest = check()?;
+        if latest.missing.is_empty() || tokio::time::Instant::now() >= deadline {
+            return Ok(latest);
         }
         tokio::time::sleep(STORED_POLL).await;
     }
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{
         cookie_import_prompt, runtime_cookie, until_stored, validate_import_request,
         BrowserCookieImportSummary, BrowserCookieSourceId, CookieImportError, HostPlatform,
@@ -558,21 +677,99 @@ mod tests {
         }
     }
 
+    fn imported(name: &str, value: &str, expires_unix: Option<i64>) -> super::ImportedCookie {
+        super::ImportedCookie {
+            name: name.to_string(),
+            value: value.to_string(),
+            domain: ".latex.example".to_string(),
+            path: "/".to_string(),
+            expires_unix,
+            secure: true,
+            http_only: true,
+            same_site: Some(super::ImportedSameSite::Lax),
+        }
+    }
+
+    fn stored(
+        cookies: &[super::ImportedCookie],
+    ) -> HashMap<super::CookieKey, super::RuntimeCookieFingerprint> {
+        cookies
+            .iter()
+            .map(|cookie| {
+                let print =
+                    super::stored_cookie_fingerprint(&runtime_cookie(cookie).unwrap()).unwrap();
+                (super::key_of(&print), print)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_cookie_counts_as_copied_when_its_value_is_stored_and_other_fields_are_only_reported() {
+        let session = imported("site_session", "SECRETVALUE", Some(4_102_444_800));
+        let later = imported("site_session", "SECRETVALUE", Some(1_900_000_000));
+        let other = imported("site_session", "OTHERVALUE", None);
+        let gone = imported("tracker", "SECRETVALUE", None);
+
+        let check = super::check_stored(std::slice::from_ref(&session), &stored(&[later]));
+        assert_eq!(check.stored, 1);
+        assert!(check.missing.is_empty());
+        assert_eq!(
+            check.changed,
+            vec!["site_session (latex.example/) expiry Some(4102444800) became Some(1900000000)"]
+        );
+
+        let check = super::check_stored(&[session.clone(), gone], &stored(&[other]));
+        assert_eq!(check.stored, 0);
+        assert_eq!(
+            check.missing,
+            vec![
+                "site_session (latex.example/) with another value",
+                "tracker (latex.example/)"
+            ]
+        );
+        let report = check.report(2).unwrap();
+        assert_eq!(
+            report,
+            "0 of 2 stored. Not stored: site_session (latex.example/) with another value, tracker (latex.example/)."
+        );
+        assert!(!report.contains("SECRETVALUE") && !report.contains("OTHERVALUE"));
+        assert_eq!(
+            super::check_stored(
+                std::slice::from_ref(&session),
+                &stored(std::slice::from_ref(&session))
+            )
+            .report(1),
+            None
+        );
+    }
+
     #[tokio::test]
-    async fn a_copy_waits_for_the_webview_to_store_its_cookies() {
+    async fn a_copy_waits_for_the_webview_to_store_its_cookies_then_settles_for_what_it_has() {
         let within = STORED_POLL * 10;
+        let pending = || super::StoreCheck {
+            stored: 1,
+            missing: vec!["late (latex.example/)".to_string()],
+            changed: Vec::new(),
+        };
         let mut looks = 0;
-        let stored = until_stored(within, || {
+        let settled = until_stored(within, || {
             looks += 1;
-            Ok(looks > 2)
+            Ok(if looks > 2 {
+                super::StoreCheck {
+                    stored: 2,
+                    ..Default::default()
+                }
+            } else {
+                pending()
+            })
         })
         .await;
-        assert_eq!(stored, Ok(()));
+        assert_eq!(settled.map(|check| check.stored), Ok(2));
         assert_eq!(looks, 3);
         let started = std::time::Instant::now();
         assert_eq!(
-            until_stored(STORED_POLL * 2, || Ok(false)).await,
-            Err(CookieImportError::CookieApplyFailed)
+            until_stored(STORED_POLL * 2, || Ok(pending())).await,
+            Ok(pending())
         );
         assert!(started.elapsed() >= STORED_POLL * 2);
         assert_eq!(
