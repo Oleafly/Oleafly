@@ -90,7 +90,7 @@ for path in \
   crates/oleafly-online/examples/fake_browser.rs \
   crates/oleafly-online/tests/browser_signin.rs \
   src-tauri/src/overleaf/signin.rs \
-  src/components/settings/BrowserSignInCopy.tsx \
+  src/components/settings/browser-sign-in/SignInOptions.tsx \
   e2e/tests/146-online-browser-sign-in.spec.ts \
   scripts/e2e-collab-browser.sh \
   scripts/ci/collab-changes.sh \

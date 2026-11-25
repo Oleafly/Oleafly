@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly kopierar bara cookies för {{server}}, loggar in med dem och tar sedan bort kopiorna. Dina lösenord stannar i webbläsaren.",
       "dialogTitle": "Importera cookies från din webbläsare",
-      "label": "Kopiera inloggning från en webbläsare",
-      "useBrowserSignIn": "Importera cookies från din webbläsare",
-      "signInDescription": "Kopiera din inloggning för {{server}} från en webbläsare på den här datorn, så att du inte behöver logga in igen.",
+      "label": "Importera cookies från din webbläsare",
+      "useBrowserSignIn": "Välj en profil",
+      "signInDescription": "Använder kontot på {{server}} som en webbläsarprofil på den här datorn redan är inloggad på.",
       "copyAction": "Importera",
       "copying": "Importerar…",
       "notSignedIn_one": "Kopierade {{count}} cookie från {{browser}}, men den loggade inte in dig. Logga in i stället.",
       "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället.",
       "from": "Från",
       "noCookies": "Inga cookies än",
-      "sameAccount": "{{profile}} är inloggad som {{account}}, som Oleafly redan använder. Välj en annan profil eller logga först in på ditt andra konto i den webbläsaren."
+      "sameAccount": "{{profile}} är inloggad som {{account}}, som Oleafly redan använder. Välj en annan profil eller logga först in på ditt andra konto i den webbläsaren.",
+      "orExisting": "eller använd en inloggning du redan har"
     },
     "zotero": {
       "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",
@@ -1947,7 +1948,7 @@
       "signOut": "Logga ut",
       "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
       "addAccount": "Lägg till ett konto till",
-      "addAccountHint": "Inloggningen startar utan konto, så du kan använda vilket konto som helst. Import av cookies använder kontot som webbläsarprofilen är inloggad med.",
+      "addAccountHint": "Välj var du vill logga in. Alla startar utan inloggning, så vilket konto som helst fungerar.",
       "accountPick": "Konto för import",
       "accountPickDescription": "Nya importer och mallar använder det här kontot. Projekt som du redan har behåller kontot de kom från.",
       "gitTitle": "Git-token för synkning",
@@ -1960,14 +1961,9 @@
       "gitSave": "Spara",
       "gitRemove": "Ta bort",
       "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token.",
-      "browserLabel": "Logga in med din webbläsare",
-      "browserDescription": "För inloggning med Google, din institution eller en nyckel. Oleafly öppnar {{server}} i ett nytt webbläsarfönster och stänger det när du är inloggad.",
-      "browserAction": "Logga in",
-      "browserPick": "Webbläsare att logga in med",
       "browserWaiting": "Slutför inloggningen på {{server}} i {{browser}}. Om du stänger fönstret avbryts inloggningen.",
-      "browserHint": "Öppnar ett nytt {{browser}}-fönster utan inloggning. Använd det för inloggning med Google, institution eller nyckel.",
-      "windowLabel": "Logga in på {{server}}",
-      "windowDescription": "Oleafly öppnar ett inloggningsfönster och stänger det när du är inloggad. Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och loggar sedan in med den här.",
+      "windowLabel": "Logga in inne i Oleafly",
+      "windowDescription": "Fönstret stängs av sig självt när du är inloggad. Om din nyckel inte fungerar där använder du ditt lösenord eller en uppmaning i telefonen.",
       "windowAction": "Logga in",
       "windowWaiting": "Slutför inloggningen på {{server}} i fönstret som öppnades.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "Du är redan inloggad som {{account}}. Logga in med ett annat konto för att lägga till det.",
-      "browserButton": "Logga in med {{browser}}"
+      "windowTitle": "Logga in på {{server}}",
+      "addAccountKept": "Ditt nuvarande konto förblir inloggat.",
+      "noBrowser": "Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och väljer den sedan här.",
+      "tileHere": "I den här appen",
+      "tileWindow": "Nytt fönster",
+      "tileWaiting": "Väntar på dig",
+      "signInNote": "Använd en webbläsare för att logga in med Google, din institution eller en nyckel. Om din nyckel inte fungerar i Oleafly använder du ditt lösenord eller en uppmaning i telefonen där. Fönstret stängs av sig självt när du är inloggad."
     },
     "desktopApps": {
       "tab": "Computer Use",

@@ -1865,15 +1865,16 @@
     "cookies": {
       "dialogDescription": "Oleafly 只會複製 {{server}} 的 Cookie，用它們登入，然後刪除副本。你的密碼仍留在瀏覽器中。",
       "dialogTitle": "從瀏覽器匯入 Cookie",
-      "label": "複製瀏覽器的登入資訊",
-      "useBrowserSignIn": "從瀏覽器匯入 Cookie",
-      "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
+      "label": "從瀏覽器匯入 Cookie",
+      "useBrowserSignIn": "選擇設定檔",
+      "signInDescription": "使用這台電腦上某個瀏覽器設定檔中已登入的 {{server}} 帳號。",
       "copyAction": "匯入",
       "copying": "正在匯入…",
       "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。",
       "from": "來源",
       "noCookies": "還沒有 Cookie",
-      "sameAccount": "{{profile}} 登入的是 {{account}}，而 Oleafly 已在使用這個帳號。請選擇其他設定檔，或先在該瀏覽器中登入另一個帳號。"
+      "sameAccount": "{{profile}} 登入的是 {{account}}，而 Oleafly 已在使用這個帳號。請選擇其他設定檔，或先在該瀏覽器中登入另一個帳號。",
+      "orExisting": "或使用已有的登入"
     },
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
@@ -1931,7 +1932,7 @@
       "signOut": "登出",
       "signOutFailed": "Oleafly 無法登出 Overleaf。",
       "addAccount": "新增其他帳號",
-      "addAccountHint": "登入時會從未登入的狀態開始，因此你可以使用任何帳號。匯入 Cookie 會使用該瀏覽器設定檔中登入的帳號。",
+      "addAccountHint": "選擇在哪裡登入。每一種都從未登入的狀態開始，因此任何帳號都可以。",
       "accountPick": "用於匯入的帳號",
       "accountPickDescription": "新的匯入和範本會使用這個帳號。你已有的專案會保留其來源帳號。",
       "gitTitle": "用於同步的 Git 權杖",
@@ -1944,14 +1945,9 @@
       "gitSave": "儲存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。",
-      "browserLabel": "使用瀏覽器登入",
-      "browserDescription": "適用於 Google、機構或密碼金鑰登入。Oleafly 會在新的瀏覽器視窗中開啟 {{server}}，登入完成後自動關閉。",
-      "browserAction": "登入",
-      "browserPick": "用於登入的瀏覽器",
       "browserWaiting": "請在 {{browser}} 中完成 {{server}} 的登入。關閉視窗會取消登入。",
-      "browserHint": "開啟一個未登入的 {{browser}} 新視窗。可用於透過 Google、所屬機構或通行金鑰登入。",
-      "windowLabel": "登入 {{server}}",
-      "windowDescription": "Oleafly 會開啟登入視窗，登入完成後自動關閉。若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡透過它登入。",
+      "windowLabel": "在 Oleafly 內登入",
+      "windowDescription": "登入完成後視窗會自動關閉。如果密碼金鑰在那裡無法使用，請使用密碼或手機上的確認提示。",
       "windowAction": "登入",
       "windowWaiting": "請在開啟的視窗中完成 {{server}} 的登入。",
       "unsent": {
@@ -1971,7 +1967,13 @@
         }
       },
       "sameAccount": "你已經以 {{account}} 的身分登入。若要新增其他帳號，請用該帳號登入。",
-      "browserButton": "使用 {{browser}} 登入"
+      "windowTitle": "登入 {{server}}",
+      "addAccountKept": "你目前的帳號會保持登入。",
+      "noBrowser": "若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡選擇它。",
+      "tileHere": "在此應用程式中",
+      "tileWindow": "新視窗",
+      "tileWaiting": "等待你操作",
+      "signInNote": "使用 Google、機構或密碼金鑰登入時，請選擇瀏覽器。如果密碼金鑰在 Oleafly 中無法使用，請在那裡使用密碼或手機上的確認提示。登入完成後視窗會自動關閉。"
     },
     "desktopApps": {
       "tab": "Computer Use",

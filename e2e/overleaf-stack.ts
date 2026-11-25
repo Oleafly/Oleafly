@@ -112,7 +112,7 @@ export async function importOverleafProjectLive(page: Page, { server, project }:
   await page.fill('[data-testid="overleaf-server-input"]', server);
   await page.click('[data-testid="overleaf-save-server"]');
   await expect(page.locator('[data-testid="overleaf-sign-in-panel"]')).toBeVisible({ timeout: 20_000 });
-  await page.click('[data-testid="overleaf-sign-in"]');
+  await page.click('[data-testid="window-sign-in"]');
   await expect(page.locator(`[data-testid="overleaf-project-${project}"]`)).toBeVisible({ timeout: 60_000 });
   await page.click('[data-testid="overleaf-select-all"]');
   await page.click('[data-testid="overleaf-import-selected"]');

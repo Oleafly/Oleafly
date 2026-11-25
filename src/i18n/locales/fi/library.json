@@ -328,11 +328,7 @@
       "loading": "Ladataan Overleaf-projektejasi",
       "loadFailed": "Oleafly ei voinut ladata Overleaf-projektejasi.",
       "signInPrompt": "Kirjaudu Overleafiin nähdäksesi projektisi. Kirjautumisikkuna avautuu ja sulkeutuu itsestään, kun olet kirjautunut.",
-      "signingIn": "Viimeistele Overleaf-kirjautuminen avautuneessa ikkunassa.",
-      "signingInBrowser": "Viimeistele Overleaf-kirjautuminen selaimessa {{browser}}. Ikkuna sulkeutuu itsestään, kun olet kirjautunut. Ikkunan sulkeminen peruu kirjautumisen.",
-      "passkeyHint": "Jos pääsyavaimesi ei toimi kirjautumisikkunassa, valitse siellä toinen tapa, kuten salasana tai vahvistus puhelimessa.",
       "expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen nähdäksesi projektisi.",
-      "signIn": "Kirjaudu Oleafly-sovelluksessa",
       "signInWindowTitle": "Kirjaudu Overleafiin",
       "server": "Palvelin: {{server}}",
       "serverLabel": "Overleaf-palvelimen osoite",
@@ -411,7 +407,8 @@
         "openSettings": "Avaa asetukset",
         "cancel": "Peruuta"
       },
-      "switchAccount": "Vaihda tiliä"
+      "switchAccount": "Vaihda tiliä",
+      "signInChoose": "Valitse, missä kirjaudut. Projektisi näkyvät täällä, kun olet kirjautunut."
     }
   },
   "pdfImport": {

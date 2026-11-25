@@ -45,11 +45,20 @@ let invites = [INVITE];
 
 const badge = (color: string) =>
   `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${color}"/></svg>`)}`;
-const BROWSER_ICONS = { brave: badge("#f1562b"), chrome: badge("#4285f4") };
+const BROWSER_ICONS = { brave: badge("#f1562b"), chrome: badge("#4285f4"), firefox: badge("#8a3ffc") };
+const signInBrowser = (key: string, product: string, packaging: string | null = null) => ({
+  key,
+  name: packaging ? `${product} (${packaging})` : product,
+  product,
+  packaging,
+});
 const SIGN_IN_BROWSERS = [
-  { key: "brave", name: "Brave" },
-  { key: "chrome", name: "Google Chrome" },
-  { key: "firefox", name: "Firefox" },
+  signInBrowser("brave", "Brave"),
+  signInBrowser("chrome", "Google Chrome"),
+  signInBrowser("firefox", "Firefox"),
+  signInBrowser("edge", "Microsoft Edge"),
+  signInBrowser("chromium-snap", "Chromium", "Snap"),
+  signInBrowser("firefox-flatpak", "Firefox", "Flatpak"),
 ];
 const profile = (browser: string, browserName: string, folder: string, profileName: string, status = "available") => ({
   browser,
@@ -130,7 +139,11 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     ...elsewhere.map((account) => ({ server: LAB, ...account, current: true, signedInAt: null })),
   ],
   overleaf_browser_icons: () => BROWSER_ICONS,
-  overleaf_sign_in_browsers: () => (params.get("browsers") === "1" ? SIGN_IN_BROWSERS : []),
+  overleaf_sign_in_browsers: () => SIGN_IN_BROWSERS.slice(0, Number(params.get("tiles") ?? 0)),
+  overleaf_sign_in_with_browser: (args) => {
+    if (args.browser === "firefox") throw appError("overleaf.browser_unavailable");
+    return new Promise(() => undefined);
+  },
   overleaf_git_token_status: () => false,
   detect_browser_cookie_sources: () => (params.get("browsers") === "1" ? BROWSER_PROFILES : []),
   import_browser_cookies: () => ({ imported: 3, browserName: "Brave", profileName: "General", domain: "www.overleaf.com" }),

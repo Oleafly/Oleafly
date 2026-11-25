@@ -1889,9 +1889,9 @@
     "cookies": {
       "dialogDescription": "O Oleafly copia apenas os cookies de {{server}}, faz login com eles e depois apaga as cópias. Suas senhas ficam no navegador.",
       "dialogTitle": "Importar cookies do seu navegador",
-      "label": "Copiar o login de um navegador",
-      "useBrowserSignIn": "Importar cookies do seu navegador",
-      "signInDescription": "Copie seu login de {{server}} de um navegador deste computador, para não precisar fazer login de novo.",
+      "label": "Importar cookies do seu navegador",
+      "useBrowserSignIn": "Escolher um perfil",
+      "signInDescription": "Usa a conta de {{server}} que já está conectada em um perfil de navegador deste computador.",
       "copyAction": "Importar",
       "copying": "Importando…",
       "notSignedIn_one": "{{count}} cookie copiado do {{browser}}, mas ele não fez o seu login. Faça login diretamente.",
@@ -1899,7 +1899,8 @@
       "notSignedIn_other": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente.",
       "from": "De",
       "noCookies": "Ainda sem cookies",
-      "sameAccount": "{{profile}} está conectado como {{account}}, que o Oleafly já usa. Escolha outro perfil ou faça login primeiro com sua outra conta nesse navegador."
+      "sameAccount": "{{profile}} está conectado como {{account}}, que o Oleafly já usa. Escolha outro perfil ou faça login primeiro com sua outra conta nesse navegador.",
+      "orExisting": "ou use um login que você já tem"
     },
     "zotero": {
       "apiKeyHint": "Para obter uma chave: entre em <siteLink>zotero.org</siteLink>, abra a sua <keyLink>página de chaves de API</keyLink> para criar uma chave e copie o seu ID numérico de usuário da mesma página.",
@@ -1963,7 +1964,7 @@
       "signOut": "Sair",
       "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
       "addAccount": "Adicionar outra conta",
-      "addAccountHint": "O login começa sem nenhuma conta conectada, então você pode usar qualquer uma. Importar cookies usa a conta conectada nesse perfil do navegador.",
+      "addAccountHint": "Escolha onde fazer login. Todos começam sem conta conectada, então qualquer conta serve.",
       "accountPick": "Conta para importar",
       "accountPickDescription": "Novas importações e modelos usam esta conta. Os projetos que você já tem mantêm a conta de onde vieram.",
       "gitTitle": "Token Git para sincronização",
@@ -1976,14 +1977,9 @@
       "gitSave": "Salvar",
       "gitRemove": "Remover",
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro.",
-      "browserLabel": "Fazer login com o seu navegador",
-      "browserDescription": "Para login com Google, instituição ou chave de acesso. O Oleafly abre {{server}} em uma nova janela do navegador e a fecha assim que você entrar.",
-      "browserAction": "Fazer login",
-      "browserPick": "Navegador para fazer login",
       "browserWaiting": "Termine o login em {{server}} em {{browser}}. Fechar a janela cancela o login.",
-      "browserHint": "Abre uma nova janela do {{browser}} sem nenhuma conta conectada. Use para entrar com Google, sua instituição ou uma chave de acesso.",
-      "windowLabel": "Fazer login em {{server}}",
-      "windowDescription": "O Oleafly abre uma janela de login e a fecha assim que você entrar. Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e faça login aqui com ele.",
+      "windowLabel": "Entrar dentro do Oleafly",
+      "windowDescription": "A janela se fecha sozinha assim que você entrar. Se a sua chave de acesso não funcionar ali, use a sua senha ou uma confirmação no celular.",
       "windowAction": "Fazer login",
       "windowWaiting": "Termine o login em {{server}} na janela que abriu.",
       "unsent": {
@@ -2003,7 +1999,13 @@
         }
       },
       "sameAccount": "Você já está conectado como {{account}}. Faça login com outra conta para adicioná-la.",
-      "browserButton": "Entrar com {{browser}}"
+      "windowTitle": "Fazer login em {{server}}",
+      "addAccountKept": "Sua conta atual continua conectada.",
+      "noBrowser": "Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e depois escolha aqui.",
+      "tileHere": "Neste app",
+      "tileWindow": "Nova janela",
+      "tileWaiting": "Esperando por você",
+      "signInNote": "Use um navegador para entrar com Google, sua instituição ou uma chave de acesso. Se a sua chave de acesso não funcionar no Oleafly, use ali a sua senha ou uma confirmação no celular. A janela se fecha sozinha assim que você entrar."
     },
     "desktopApps": {
       "tab": "Computer Use",

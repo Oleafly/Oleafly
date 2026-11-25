@@ -5,8 +5,8 @@ import { RotateCw, Search } from "lucide-react";
 import { Book, BOOK_SWATCHES } from "@/components/library/Book";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
-import { BrowserSignIn, BrowserSignInCopy, RepeatedAccount } from "@/components/settings/BrowserSignInCopy";
 import { ManageSignInsDialog } from "@/components/settings/browser-sign-in/ManageSignInsDialog";
+import { SignInOptions } from "@/components/settings/browser-sign-in/SignInOptions";
 import { LINK_BUTTON, OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 import { OverleafInvitations, OverleafLinkCard } from "@/components/library/overleaf/OverleafJoin";
@@ -81,13 +81,6 @@ function ownerLabel(t: LibraryTranslate, project: OverleafProject): string | nul
   if (project.owned) return t(($) => $.library.import.overleaf.ownedByYou);
   if (project.ownerName) return t(($) => $.library.import.overleaf.owner, { name: project.ownerName });
   return null;
-}
-
-function promptText(t: LibraryTranslate, signing: boolean, signingWith: string | null, expired: boolean): string {
-  if (signing && signingWith) return t(($) => $.library.import.overleaf.signingInBrowser, { browser: signingWith });
-  if (signing) return t(($) => $.library.import.overleaf.signingIn);
-  if (expired) return t(($) => $.library.import.overleaf.expired);
-  return t(($) => $.library.import.overleaf.signInPrompt);
 }
 
 function matches(project: OverleafProject, filter: Filter, needle: string): boolean {
@@ -479,50 +472,42 @@ function PickerFooter() {
 function SignInPanel({ onCancel }: Readonly<{ onCancel?: () => void }>) {
   const { t } = useTranslation(["library"]);
   const { t: shared } = useTranslation(["common", "settings"]);
-  const store = useOverleafImportStore();
-  const signing = store.phase === "signing-in";
-  const inWindow = signing && store.signingWith === null;
-  const expired = isOverleafError(store.error, "session_expired");
+  const server = useOverleafImportStore((state) => state.server);
+  const open = useOverleafImportStore((state) => state.open);
+  const signing = useOverleafImportStore((state) => state.phase === "signing-in");
+  const expired = useOverleafImportStore((state) => isOverleafError(state.error, "session_expired"));
+  const signedOutHint = expired
+    ? t(($) => $.library.import.overleaf.expired)
+    : t(($) => $.library.import.overleaf.signInChoose);
 
   return (
-    <div data-testid="overleaf-sign-in-panel" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border bg-card px-6 py-8 text-center">
-      <OverleafBrandIcon className="size-8 text-[#47A141]" />
-      <p className="max-w-md text-sm text-muted-foreground">
-        {onCancel && !signing
-          ? shared(($) => $.settings.integrations.overleaf.addAccountHint)
-          : promptText(t, signing, store.signingWith, expired)}
-      </p>
-      <div className="flex flex-col items-center gap-1">
-        <Button
-          type="button"
-          data-testid="overleaf-sign-in"
-          disabled={signing}
-          onClick={() => void store.signIn(t(($) => $.library.import.overleaf.signInWindowTitle))}
-        >
-          {inWindow ? <Spinner size="sm" /> : null}
-          {t(($) => $.library.import.overleaf.signIn)}
-        </Button>
-        <p data-testid="overleaf-passkey-hint" className="max-w-md text-xs text-muted-foreground">
-          {t(($) => $.library.import.overleaf.passkeyHint)}
-        </p>
+    <div data-testid="overleaf-sign-in-panel" className="flex min-h-0 flex-1 overflow-y-auto">
+      <div className="m-auto w-full max-w-2xl space-y-4 p-1">
+        <div className="flex items-center gap-3">
+          <OverleafBrandIcon className="size-8 shrink-0 text-[#47A141]" />
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold">
+              {onCancel
+                ? shared(($) => $.settings.integrations.overleaf.addAccount)
+                : t(($) => $.library.import.overleaf.signInWindowTitle)}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {onCancel ? shared(($) => $.settings.integrations.overleaf.addAccountHint) : signedOutHint}
+            </p>
+          </div>
+        </div>
+        <SignInOptions server={server} onSignedIn={() => void open()} />
+        {onCancel ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>{shared(($) => $.settings.integrations.overleaf.addAccountKept)}</span>
+            <Button type="button" variant="ghost" size="sm" disabled={signing} onClick={onCancel}>
+              {shared(($) => $.common.actions.cancel)}
+            </Button>
+          </div>
+        ) : (
+          <OverleafServerField disabled={signing} onChanged={() => void open()} />
+        )}
       </div>
-      {inWindow ? null : <BrowserSignIn variant="button" />}
-      {signing ? null : (
-        <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.open()} />
-      )}
-      {store.error && !expired && !signing ? (
-        <p role="alert" className="max-w-md select-text text-xs text-destructive">
-          {describeError(store.error)}
-        </p>
-      ) : null}
-      <RepeatedAccount />
-      {onCancel ? (
-        <Button type="button" variant="ghost" size="sm" disabled={signing} onClick={onCancel}>
-          {shared(($) => $.common.actions.cancel)}
-        </Button>
-      ) : (
-        <OverleafServerField disabled={signing} onChanged={() => void store.open()} />
-      )}
     </div>
   );
 }

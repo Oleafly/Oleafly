@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly kopierer kun cookies for {{server}}, logger ind med dem og sletter derefter kopierne. Dine adgangskoder bliver i browseren.",
       "dialogTitle": "Importer cookies fra din browser",
-      "label": "Kopiér login fra en browser",
-      "useBrowserSignIn": "Importer cookies fra din browser",
-      "signInDescription": "Kopiér dit login til {{server}} fra en browser på denne computer, så du ikke behøver at logge ind igen.",
+      "label": "Importer cookies fra din browser",
+      "useBrowserSignIn": "Vælg en profil",
+      "signInDescription": "Bruger den konto på {{server}}, som en browserprofil på denne computer allerede er logget ind på.",
       "copyAction": "Importer",
       "copying": "Importerer…",
       "notSignedIn_one": "Kopierede {{count}} cookie fra {{browser}}, men den loggede dig ikke ind. Log ind i stedet.",
       "notSignedIn_other": "Kopierede {{count}} cookies fra {{browser}}, men de loggede dig ikke ind. Log ind i stedet.",
       "from": "Fra",
       "noCookies": "Ingen cookies endnu",
-      "sameAccount": "{{profile}} er logget ind som {{account}}, som Oleafly allerede bruger. Vælg en anden profil, eller log først ind på din anden konto i den browser."
+      "sameAccount": "{{profile}} er logget ind som {{account}}, som Oleafly allerede bruger. Vælg en anden profil, eller log først ind på din anden konto i den browser.",
+      "orExisting": "eller brug et login, du allerede har"
     },
     "zotero": {
       "apiKeyHint": "Sådan får du en nøgle: log ind på <siteLink>zotero.org</siteLink>, åbn din <keyLink>side med API-nøgler</keyLink> for at oprette en nøgle, og kopier dit numeriske bruger-id fra samme side.",
@@ -1947,7 +1948,7 @@
       "signOut": "Log ud",
       "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
       "addAccount": "Tilføj endnu en konto",
-      "addAccountHint": "Når du logger ind, starter du uden login, så du kan bruge en hvilken som helst konto. Import af cookies bruger den konto, som browserprofilen er logget ind med.",
+      "addAccountHint": "Vælg, hvor du vil logge ind. Alle starter uden login, så du kan bruge en hvilken som helst konto.",
       "accountPick": "Konto til import",
       "accountPickDescription": "Nye importer og skabeloner bruger denne konto. Projekter, du allerede har, beholder den konto, de kom fra.",
       "gitTitle": "Git-token til synkronisering",
@@ -1960,14 +1961,9 @@
       "gitSave": "Gem",
       "gitRemove": "Fjern",
       "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet.",
-      "browserLabel": "Log ind med din browser",
-      "browserDescription": "Til login med Google, din institution eller en adgangsnøgle. Oleafly åbner {{server}} i et nyt browservindue og lukker det, når du er logget ind.",
-      "browserAction": "Log ind",
-      "browserPick": "Browser at logge ind med",
       "browserWaiting": "Gør dit login på {{server}} færdigt i {{browser}}. Hvis du lukker vinduet, bliver loginet annulleret.",
-      "browserHint": "Åbner et nyt {{browser}}-vindue uden login. Brug det til login med Google, institution eller adgangsnøgle.",
-      "windowLabel": "Log ind på {{server}}",
-      "windowDescription": "Oleafly åbner et loginvindue og lukker det, når du er logget ind. Hvis du vil logge ind med Google, din institution eller en adgangsnøgle, skal du installere Chrome, Edge, Brave, Chromium eller Firefox og så logge ind med den her.",
+      "windowLabel": "Log ind inde i Oleafly",
+      "windowDescription": "Vinduet lukker af sig selv, når du er logget ind. Hvis din adgangsnøgle ikke virker der, så brug din adgangskode eller en anmodning på din telefon.",
       "windowAction": "Log ind",
       "windowWaiting": "Gør dit login på {{server}} færdigt i det vindue, der blev åbnet.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "Du er allerede logget ind som {{account}}. Log ind med en anden konto for at tilføje den.",
-      "browserButton": "Log ind med {{browser}}"
+      "windowTitle": "Log ind på {{server}}",
+      "addAccountKept": "Din nuværende konto forbliver logget ind.",
+      "noBrowser": "Hvis du vil logge ind med Google, din institution eller en adgangsnøgle, skal du installere Chrome, Edge, Brave, Chromium eller Firefox og så vælge den her.",
+      "tileHere": "I denne app",
+      "tileWindow": "Nyt vindue",
+      "tileWaiting": "Venter på dig",
+      "signInNote": "Brug en browser til login med Google, institution eller adgangsnøgle. Hvis din adgangsnøgle ikke virker i Oleafly, så brug din adgangskode eller en anmodning på din telefon der. Vinduet lukker af sig selv, når du er logget ind."
     },
     "desktopApps": {
       "tab": "Computer Use",

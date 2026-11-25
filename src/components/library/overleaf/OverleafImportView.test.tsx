@@ -99,13 +99,13 @@ describe("OverleafImportView", () => {
 
     const panel = await screen.findByTestId("overleaf-sign-in-panel");
     expect(panel).toHaveTextContent("Server: www.overleaf.com");
-    expect(screen.getByTestId("overleaf-passkey-hint")).toHaveTextContent(
-      "If your passkey doesn't work in the sign-in window, pick another option there",
-    );
-    fireEvent.click(screen.getByTestId("overleaf-sign-in"));
+    expect(within(panel).getByRole("heading", { name: "Sign in to Overleaf" })).toBeInTheDocument();
+    expect(panel).toHaveTextContent("Your projects show up here once you're in.");
+    expect(await within(panel).findByText(/If your passkey doesn't work there/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("window-sign-in"));
 
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
-    expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, "Sign in to Overleaf");
+    expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, "Sign in to www.overleaf.com");
     expect(screen.getByText("Signed in as ada@uni.edu")).toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe("OverleafImportView", () => {
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
 
     await screen.findByTestId("overleaf-sign-in-panel");
-    await user.click(await screen.findByRole("button", { name: "Import cookies from your browser" }));
+    await user.click(await screen.findByRole("button", { name: "Choose a profile" }));
     await user.click(screen.getByRole("button", { name: "Import" }));
 
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
@@ -140,8 +140,8 @@ describe("OverleafImportView", () => {
   it("signs in with an installed browser, names it while waiting, then lists projects", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     api.overleafSignInBrowsers.mockResolvedValue([
-      { key: "firefox", name: "Firefox" },
-      { key: "chrome", name: "Google Chrome" },
+      { key: "firefox", name: "Firefox", product: "Firefox", packaging: null },
+      { key: "chrome", name: "Google Chrome", product: "Google Chrome", packaging: null },
     ]);
     let finish: (status: typeof signedIn) => void = () => {};
     api.overleafSignInWithBrowser.mockReturnValue(new Promise((resolve) => (finish = resolve)));
@@ -149,13 +149,12 @@ describe("OverleafImportView", () => {
     const user = userEvent.setup();
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     const panel = await screen.findByTestId("overleaf-sign-in-panel");
-    expect(within(panel).getByRole("combobox", { name: "Browser to sign in with" })).toHaveTextContent("Firefox");
-    await user.click(await within(panel).findByRole("button", { name: "Sign in with Firefox" }));
+    await user.click(await within(panel).findByRole("button", { name: /^Firefox/ }));
     expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "firefox");
     expect(
-      await within(panel).findByText("Finish signing in to Overleaf in Firefox. The window closes by itself once you're in. Closing it cancels."),
+      await within(panel).findByText("Finish signing in to www.overleaf.com in Firefox. Closing the window cancels."),
     ).toBeVisible();
-    expect(screen.getByTestId("overleaf-sign-in")).toBeDisabled();
+    expect(screen.getByTestId("window-sign-in")).toBeDisabled();
     expect(screen.getByTestId("overleaf-change-server")).toBeDisabled();
     await act(async () => finish(signedIn));
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
@@ -167,7 +166,7 @@ describe("OverleafImportView", () => {
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-sign-in-panel");
     await waitFor(() => expect(cookies.detectBrowserCookieSources).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: "Import cookies from your browser" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Choose a profile" })).toBeNull();
   });
 
   it("switches to another server and back to overleaf.com", async () => {
@@ -197,7 +196,7 @@ describe("OverleafImportView", () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     api.overleafSignIn.mockRejectedValue('@oleafly/error:{"code":"overleaf.sign_in_failed","params":{}}');
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
-    fireEvent.click(await screen.findByTestId("overleaf-sign-in"));
+    fireEvent.click(await screen.findByTestId("window-sign-in"));
     expect(await screen.findByRole("alert")).toHaveTextContent("could not confirm your Overleaf sign-in");
   });
 
@@ -364,7 +363,8 @@ describe("OverleafImportView", () => {
       return screen.findByTestId("overleaf-sign-in-panel");
     };
     const panel = await startAdding();
-    expect(panel).toHaveTextContent("Signing in starts signed out, so you can use any account.");
+    expect(panel).toHaveTextContent("Add another account");
+    expect(panel).toHaveTextContent("Your current account stays signed in.");
     expect(screen.queryByTestId("overleaf-change-server")).toBeNull();
     await user.click(within(panel).getByRole("button", { name: "Cancel" }));
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
@@ -372,12 +372,12 @@ describe("OverleafImportView", () => {
 
     await startAdding();
     api.overleafSignIn.mockResolvedValue(one);
-    await user.click(screen.getByTestId("overleaf-sign-in"));
+    await user.click(await screen.findByTestId("window-sign-in"));
     expect(await screen.findByText(/You're already signed in as ada@uni.edu/)).toBeVisible();
 
     api.overleafSignIn.mockResolvedValue(two);
     api.overleafListProjects.mockResolvedValue({ status: two, projects: [project("z9", "Bea's paper")] });
-    await user.click(screen.getByTestId("overleaf-sign-in"));
+    await user.click(await screen.findByTestId("window-sign-in"));
     expect(await screen.findByText("Bea's paper")).toBeInTheDocument();
     expect(screen.getByTestId("overleaf-account-picker")).toHaveTextContent("bea@lab.org");
   });

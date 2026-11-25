@@ -166,6 +166,10 @@ Another program's own icon, such as a browser in a picker, is an `AppIcon`
 from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
 window until it has one. `size="sm"` fits a menu row.
 
+A tile that starts something, with an icon, a name and a short hint, is a
+`TileButton` from `ui/tile-button.tsx`, such as a new note's starters or the
+browsers in the sign-in panel. `className` changes how it is arranged.
+
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in
 `ui/dropdown-menu.tsx`.

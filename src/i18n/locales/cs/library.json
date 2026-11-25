@@ -338,11 +338,7 @@
       "loading": "Načítají se vaše projekty z Overleafu",
       "loadFailed": "Oleafly nemohl načíst vaše projekty z Overleafu.",
       "signInPrompt": "Přihlaste se k Overleafu, abyste viděli své projekty. Otevře se přihlašovací okno, které se po přihlášení samo zavře.",
-      "signingIn": "Dokončete přihlášení k Overleafu v okně, které se otevřelo.",
-      "signingInBrowser": "Dokončete přihlášení k Overleafu v prohlížeči {{browser}}. Okno se samo zavře, jakmile se přihlásíte. Zavřením se přihlášení zruší.",
-      "passkeyHint": "Pokud v přihlašovacím okně nefunguje váš přístupový klíč, zvolte tam jinou možnost, například heslo nebo výzvu v telefonu.",
       "expired": "Vaše přihlášení k Overleafu vypršelo. Přihlaste se znovu, abyste viděli své projekty.",
-      "signIn": "Přihlásit se přímo v Oleafly",
       "signInWindowTitle": "Přihlásit se k Overleafu",
       "server": "Server: {{server}}",
       "serverLabel": "Adresa serveru Overleaf",
@@ -431,7 +427,8 @@
         "openSettings": "Otevřít Nastavení",
         "cancel": "Zrušit"
       },
-      "switchAccount": "Přepnout účet"
+      "switchAccount": "Přepnout účet",
+      "signInChoose": "Vyberte, kde se přihlásíte. Jakmile budete přihlášeni, objeví se tu vaše projekty."
     }
   },
   "pdfImport": {

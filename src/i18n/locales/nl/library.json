@@ -328,11 +328,7 @@
       "loading": "Je Overleaf-projecten laden",
       "loadFailed": "Oleafly kon je Overleaf-projecten niet laden.",
       "signInPrompt": "Meld je aan bij Overleaf om je projecten te zien. Er opent een aanmeldvenster dat vanzelf sluit zodra je bent aangemeld.",
-      "signingIn": "Rond het aanmelden bij Overleaf af in het venster dat is geopend.",
-      "signingInBrowser": "Rond het aanmelden bij Overleaf af in {{browser}}. Het venster sluit vanzelf zodra je bent aangemeld. Als je het sluit, wordt het aanmelden geannuleerd.",
-      "passkeyHint": "Werkt je passkey niet in het aanmeldvenster, kies daar dan een andere optie, zoals je wachtwoord of een melding op je telefoon.",
       "expired": "Je Overleaf-aanmelding is verlopen. Meld je opnieuw aan om je projecten te zien.",
-      "signIn": "Aanmelden in Oleafly",
       "signInWindowTitle": "Aanmelden bij Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adres van de Overleaf-server",
@@ -411,7 +407,8 @@
         "openSettings": "Instellingen openen",
         "cancel": "Annuleren"
       },
-      "switchAccount": "Van account wisselen"
+      "switchAccount": "Van account wisselen",
+      "signInChoose": "Kies waar je je aanmeldt. Je projecten verschijnen hier zodra je bent aangemeld."
     }
   },
   "pdfImport": {

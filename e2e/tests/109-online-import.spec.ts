@@ -37,7 +37,7 @@ test("signs in to an Overleaf server, lists its projects and imports them with t
     { timeout: 20_000 },
   );
 
-  await tauriPage.click('[data-testid="overleaf-sign-in"]');
+  await tauriPage.click('[data-testid="window-sign-in"]');
   await expect(tauriPage.locator('[data-testid="overleaf-import-view"]')).toBeVisible({ timeout: 60_000 });
   await expect(tauriPage.locator('[data-testid="overleaf-project-e2e-thesis"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="overleaf-project-e2e-paper"]')).toBeVisible();

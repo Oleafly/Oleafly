@@ -21,7 +21,7 @@ import {
 import type { OverleafAccount, OverleafStatus } from "@/lib/overleaf";
 import { accountsOf, useOverleafImportStore } from "@/store/overleaf-import";
 import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
-import { BrowserSignIn, BrowserSignInCopy, RepeatedAccount, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
+import { SignInOptions } from "@/components/settings/browser-sign-in/SignInOptions";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
@@ -73,26 +73,19 @@ export function OverleafSection() {
       ))}
       {accounts.length > 1 ? <AccountPicker accounts={accounts} current={status?.userId ?? null} /> : null}
       {signedIn && adding ? (
-        <div data-testid="overleaf-add-account-options" className="mt-3 space-y-1">
+        <div data-testid="overleaf-add-account-options" className="mt-3 space-y-4">
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.addAccountHint)}</p>
-          <BrowserSignIn fallback={<WindowSignIn />} />
-          <BrowserSignInCopy server={current} onSignedIn={() => void refreshStatus()} />
-          <RepeatedAccount />
-          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAdding(false)}>
+          <SignInOptions server={current} onSignedIn={() => void refreshStatus()} />
+          <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
             {t(($) => $.common.actions.cancel)}
           </Button>
         </div>
       ) : null}
       {signedIn ? null : (
-        <>
-          <OverleafServerField
-            className="mt-1"
-            disabled={signing}
-            onChanged={() => void refreshStatus()}
-          />
-          <BrowserSignIn fallback={<WindowSignIn />} />
-          <BrowserSignInCopy server={current} onSignedIn={() => void refreshStatus()} />
-        </>
+        <div className="mt-1 space-y-4">
+          <OverleafServerField disabled={signing} onChanged={() => void refreshStatus()} />
+          <SignInOptions server={current} onSignedIn={() => void refreshStatus()} />
+        </div>
       )}
       <GitTokenField
         key={`${current} ${tokenAccount}`}

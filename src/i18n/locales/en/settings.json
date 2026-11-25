@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly copies the cookies for {{server}} only, signs in with them, then deletes the copies. Your passwords stay in the browser.",
       "dialogTitle": "Import cookies from your browser",
-      "label": "Copy a browser's sign-in",
-      "useBrowserSignIn": "Import cookies from your browser",
-      "signInDescription": "Copy your sign-in for {{server}} from a browser on this computer, so you don't have to sign in again.",
+      "label": "Import cookies from your browser",
+      "useBrowserSignIn": "Choose a profile",
+      "signInDescription": "Uses the {{server}} account that a browser profile on this computer is already signed in to.",
       "copyAction": "Import",
       "copying": "Importing…",
       "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",
       "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead.",
       "from": "From",
       "noCookies": "No cookies yet",
-      "sameAccount": "{{profile}} is signed in as {{account}}, which Oleafly already uses. Choose another profile, or sign in to your other account in that browser first."
+      "sameAccount": "{{profile}} is signed in as {{account}}, which Oleafly already uses. Choose another profile, or sign in to your other account in that browser first.",
+      "orExisting": "or use a sign-in you already have"
     },
     "zotero": {
       "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",
@@ -1947,7 +1948,7 @@
       "signOut": "Sign out",
       "signOutFailed": "Oleafly could not sign out of Overleaf.",
       "addAccount": "Add another account",
-      "addAccountHint": "Signing in starts signed out, so you can use any account. Importing cookies uses the account that browser profile is signed in to.",
+      "addAccountHint": "Choose where to sign in. Each one starts signed out, so any account works.",
       "accountPick": "Account for importing",
       "accountPickDescription": "New imports and templates use this account. Projects you already have keep the account they came from.",
       "gitTitle": "Git token for sync",
@@ -1960,14 +1961,9 @@
       "gitSave": "Save",
       "gitRemove": "Remove",
       "gitFailed": "Oleafly could not save the Git token. Check that you pasted the whole token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
       "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
-      "browserHint": "Opens a new {{browser}} window that starts signed out. Use it for Google, institution or passkey sign-in.",
-      "windowLabel": "Sign in to {{server}}",
-      "windowDescription": "Oleafly opens a sign-in window and closes it once you're in. To sign in with Google, your institution or a passkey, install Chrome, Edge, Brave, Chromium or Firefox, then sign in with it here.",
+      "windowLabel": "Sign in inside Oleafly",
+      "windowDescription": "The window closes by itself once you're in. If your passkey doesn't work there, use your password or a prompt on your phone.",
       "windowAction": "Sign in",
       "windowWaiting": "Finish signing in to {{server}} in the window that opened.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "You're already signed in as {{account}}. Sign in with a different account to add it.",
-      "browserButton": "Sign in with {{browser}}"
+      "windowTitle": "Sign in to {{server}}",
+      "addAccountKept": "Your current account stays signed in.",
+      "noBrowser": "To sign in with Google, your institution or a passkey, install Chrome, Edge, Brave, Chromium or Firefox, then choose it here.",
+      "tileHere": "In this app",
+      "tileWindow": "New window",
+      "tileWaiting": "Waiting for you",
+      "signInNote": "Use a browser for Google, institution or passkey sign-in. If your passkey doesn't work in Oleafly, use your password or a prompt on your phone there. The window closes by itself once you're in."
     },
     "desktopApps": {
       "tab": "Computer Use",

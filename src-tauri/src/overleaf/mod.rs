@@ -172,6 +172,8 @@ pub async fn overleaf_sign_in<R: Runtime>(
 pub struct SignInBrowser {
     pub key: String,
     pub name: String,
+    pub product: String,
+    pub packaging: Option<String>,
 }
 
 fn main_window_only<R: Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
@@ -193,6 +195,8 @@ pub async fn overleaf_sign_in_browsers<R: Runtime>(
             .map(|browser| SignInBrowser {
                 key: browser.key(),
                 name: browser.name(),
+                product: browser.id.name().to_string(),
+                packaging: browser.packaging.label().map(str::to_string),
             })
             .collect())
     })

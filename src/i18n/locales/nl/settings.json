@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly kopieert alleen de cookies voor {{server}}, meldt zich daarmee aan en verwijdert daarna de kopieën. Je wachtwoorden blijven in de browser.",
       "dialogTitle": "Cookies uit je browser importeren",
-      "label": "Aanmelding uit een browser kopiëren",
-      "useBrowserSignIn": "Cookies uit je browser importeren",
-      "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
+      "label": "Cookies uit je browser importeren",
+      "useBrowserSignIn": "Profiel kiezen",
+      "signInDescription": "Gebruikt het account op {{server}} waarmee een browserprofiel op deze computer al is aangemeld.",
       "copyAction": "Importeren",
       "copying": "Importeren…",
       "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",
       "notSignedIn_other": "{{count}} cookies gekopieerd uit {{browser}}, maar die hebben je niet aangemeld. Meld je rechtstreeks aan.",
       "from": "Uit",
       "noCookies": "Nog geen cookies",
-      "sameAccount": "{{profile}} is aangemeld als {{account}}, en dat account gebruikt Oleafly al. Kies een ander profiel of meld je in die browser eerst aan met je andere account."
+      "sameAccount": "{{profile}} is aangemeld als {{account}}, en dat account gebruikt Oleafly al. Kies een ander profiel of meld je in die browser eerst aan met je andere account.",
+      "orExisting": "of gebruik een aanmelding die je al hebt"
     },
     "zotero": {
       "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
@@ -1947,7 +1948,7 @@
       "signOut": "Afmelden",
       "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
       "addAccount": "Nog een account toevoegen",
-      "addAccountHint": "Aanmelden begint zonder aangemeld account, dus je kunt elk account gebruiken. Cookies importeren gebruikt het account waarmee dat browserprofiel is aangemeld.",
+      "addAccountHint": "Kies waar je je aanmeldt. Alles begint zonder aanmelding, dus elk account werkt.",
       "accountPick": "Account voor importeren",
       "accountPickDescription": "Nieuwe imports en sjablonen gebruiken dit account. Projecten die je al hebt, houden het account waar ze vandaan komen.",
       "gitTitle": "Git-token voor synchronisatie",
@@ -1960,14 +1961,9 @@
       "gitSave": "Opslaan",
       "gitRemove": "Weghalen",
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt.",
-      "browserLabel": "Aanmelden met je browser",
-      "browserDescription": "Voor aanmelden met Google, je instelling of een passkey. Oleafly opent {{server}} in een nieuw browservenster en sluit het zodra je bent aangemeld.",
-      "browserAction": "Aanmelden",
-      "browserPick": "Browser om mee aan te melden",
       "browserWaiting": "Rond het aanmelden bij {{server}} af in {{browser}}. Als je het venster sluit, wordt het aanmelden geannuleerd.",
-      "browserHint": "Opent een nieuw {{browser}}-venster zonder aanmelding. Gebruik dit om je aan te melden met Google, je instelling of een passkey.",
-      "windowLabel": "Aanmelden bij {{server}}",
-      "windowDescription": "Oleafly opent een aanmeldvenster en sluit het zodra je bent aangemeld. Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en meld je hier daarmee aan.",
+      "windowLabel": "Aanmelden in Oleafly",
+      "windowDescription": "Het venster sluit vanzelf zodra je bent aangemeld. Werkt je passkey daar niet, gebruik dan je wachtwoord of een melding op je telefoon.",
       "windowAction": "Aanmelden",
       "windowWaiting": "Rond het aanmelden bij {{server}} af in het venster dat is geopend.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "Je bent al aangemeld als {{account}}. Meld je aan met een ander account om het toe te voegen.",
-      "browserButton": "Aanmelden met {{browser}}"
+      "windowTitle": "Aanmelden bij {{server}}",
+      "addAccountKept": "Je huidige account blijft aangemeld.",
+      "noBrowser": "Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en kies die hier.",
+      "tileHere": "In deze app",
+      "tileWindow": "Nieuw venster",
+      "tileWaiting": "Wacht op je",
+      "signInNote": "Gebruik een browser om je aan te melden met Google, je instelling of een passkey. Werkt je passkey niet in Oleafly, gebruik daar dan je wachtwoord of een melding op je telefoon. Het venster sluit vanzelf zodra je bent aangemeld."
     },
     "desktopApps": {
       "tab": "Computer Use",

@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly kopiert nur die Cookies für {{server}}, meldet sich damit an und löscht die Kopien danach. Ihre Passwörter bleiben im Browser.",
       "dialogTitle": "Cookies aus Ihrem Browser importieren",
-      "label": "Anmeldung aus einem Browser kopieren",
-      "useBrowserSignIn": "Cookies aus Ihrem Browser importieren",
-      "signInDescription": "Übernehmen Sie Ihre Anmeldung für {{server}} aus einem Browser auf diesem Computer, damit Sie sich nicht erneut anmelden müssen.",
+      "label": "Cookies aus Ihrem Browser importieren",
+      "useBrowserSignIn": "Profil auswählen",
+      "signInDescription": "Verwendet das Konto auf {{server}}, mit dem ein Browserprofil auf diesem Computer bereits angemeldet ist.",
       "copyAction": "Importieren",
       "copying": "Wird importiert...",
       "notSignedIn_one": "{{count}} Cookie aus {{browser}} kopiert, aber es hat Sie nicht angemeldet. Melden Sie sich stattdessen an.",
       "notSignedIn_other": "{{count}} Cookies aus {{browser}} kopiert, aber sie haben Sie nicht angemeldet. Melden Sie sich stattdessen an.",
       "from": "Von",
       "noCookies": "Noch keine Cookies",
-      "sameAccount": "{{profile}} ist als {{account}} angemeldet, und dieses Konto verwendet Oleafly bereits. Wählen Sie ein anderes Profil, oder melden Sie sich in diesem Browser zuerst mit Ihrem anderen Konto an."
+      "sameAccount": "{{profile}} ist als {{account}} angemeldet, und dieses Konto verwendet Oleafly bereits. Wählen Sie ein anderes Profil, oder melden Sie sich in diesem Browser zuerst mit Ihrem anderen Konto an.",
+      "orExisting": "oder eine vorhandene Anmeldung verwenden"
     },
     "zotero": {
       "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>zotero.org</siteLink> an, öffnen Sie Ihre <keyLink>Seite für API-Schlüssel</keyLink>, um einen Schlüssel zu erstellen, und kopieren Sie Ihre numerische Benutzer-ID von derselben Seite.",
@@ -1947,7 +1948,7 @@
       "signOut": "Abmelden",
       "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden.",
       "addAccount": "Weiteres Konto hinzufügen",
-      "addAccountHint": "Die Anmeldung beginnt ohne angemeldetes Konto, daher können Sie jedes Konto verwenden. Beim Importieren von Cookies wird das Konto verwendet, mit dem dieses Browserprofil angemeldet ist.",
+      "addAccountHint": "Wählen Sie, wo Sie sich anmelden. Alle beginnen ohne bestehende Anmeldung, daher funktioniert jedes Konto.",
       "accountPick": "Konto für Importe",
       "accountPickDescription": "Neue Importe und Vorlagen verwenden dieses Konto. Projekte, die Sie bereits haben, behalten das Konto, aus dem sie stammen.",
       "gitTitle": "Git-Token für die Synchronisierung",
@@ -1960,14 +1961,9 @@
       "gitSave": "Speichern",
       "gitRemove": "Entfernen",
       "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben.",
-      "browserLabel": "Mit Ihrem Browser anmelden",
-      "browserDescription": "Für die Anmeldung mit Google, über Ihre Hochschule oder per Passkey. Oleafly öffnet {{server}} in einem neuen Browserfenster und schließt es, sobald Sie angemeldet sind.",
-      "browserAction": "Anmelden",
-      "browserPick": "Browser für die Anmeldung",
       "browserWaiting": "Schließen Sie die Anmeldung bei {{server}} in {{browser}} ab. Schließen Sie das Fenster vorher, wird abgebrochen.",
-      "browserHint": "Öffnet ein neues {{browser}}-Fenster ohne bestehende Anmeldung. Verwenden Sie es für die Anmeldung mit Google, Ihrer Einrichtung oder einem Passkey.",
-      "windowLabel": "Bei {{server}} anmelden",
-      "windowDescription": "Oleafly öffnet ein Anmeldefenster und schließt es, sobald Sie angemeldet sind. Um sich mit Google, über Ihre Hochschule oder per Passkey anzumelden, installieren Sie Chrome, Edge, Brave, Chromium oder Firefox und melden Sie sich dann hier damit an.",
+      "windowLabel": "Direkt in Oleafly anmelden",
+      "windowDescription": "Das Fenster schließt sich von selbst, sobald Sie angemeldet sind. Wenn Ihr Passkey dort nicht funktioniert, verwenden Sie Ihr Passwort oder eine Bestätigung auf Ihrem Telefon.",
       "windowAction": "Anmelden",
       "windowWaiting": "Schließen Sie die Anmeldung bei {{server}} im geöffneten Fenster ab.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "Sie sind bereits als {{account}} angemeldet. Melden Sie sich mit einem anderen Konto an, um es hinzuzufügen.",
-      "browserButton": "Mit {{browser}} anmelden"
+      "windowTitle": "Bei {{server}} anmelden",
+      "addAccountKept": "Ihr aktuelles Konto bleibt angemeldet.",
+      "noBrowser": "Um sich mit Google, über Ihre Hochschule oder per Passkey anzumelden, installieren Sie Chrome, Edge, Brave, Chromium oder Firefox und wählen Sie ihn dann hier aus.",
+      "tileHere": "In dieser App",
+      "tileWindow": "Neues Fenster",
+      "tileWaiting": "Wartet auf Sie",
+      "signInNote": "Verwenden Sie einen Browser für die Anmeldung mit Google, Ihrer Hochschule oder einem Passkey. Wenn Ihr Passkey in Oleafly nicht funktioniert, verwenden Sie dort Ihr Passwort oder eine Bestätigung auf Ihrem Telefon. Das Fenster schließt sich von selbst, sobald Sie angemeldet sind."
     },
     "desktopApps": {
       "tab": "Computer Use",

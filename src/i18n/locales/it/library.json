@@ -333,11 +333,7 @@
       "loading": "Caricamento dei tuoi progetti Overleaf",
       "loadFailed": "Oleafly non è riuscito a caricare i tuoi progetti Overleaf.",
       "signInPrompt": "Accedi a Overleaf per vedere i tuoi progetti. Si apre una finestra di accesso che si chiude da sola quando hai effettuato l'accesso.",
-      "signingIn": "Completa l'accesso a Overleaf nella finestra che si è aperta.",
-      "signingInBrowser": "Completa l'accesso a Overleaf in {{browser}}. La finestra si chiude da sola quando hai effettuato l'accesso. Se la chiudi, l'accesso viene annullato.",
-      "passkeyHint": "Se la passkey non funziona nella finestra di accesso, scegli lì un'altra opzione, come la password o una richiesta sul telefono.",
       "expired": "Il tuo accesso a Overleaf è scaduto. Accedi di nuovo per vedere i tuoi progetti.",
-      "signIn": "Accedi dentro Oleafly",
       "signInWindowTitle": "Accedi a Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Indirizzo del server Overleaf",
@@ -421,7 +417,8 @@
         "openSettings": "Apri le Impostazioni",
         "cancel": "Annulla"
       },
-      "switchAccount": "Cambia account"
+      "switchAccount": "Cambia account",
+      "signInChoose": "Scegli dove accedere. I tuoi progetti compaiono qui una volta effettuato l'accesso."
     }
   },
   "pdfImport": {

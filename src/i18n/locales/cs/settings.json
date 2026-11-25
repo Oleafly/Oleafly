@@ -1901,9 +1901,9 @@
     "cookies": {
       "dialogDescription": "Oleafly zkopíruje jen cookies pro {{server}}, přihlásí se s nimi a kopie pak smaže. Vaše hesla zůstanou v prohlížeči.",
       "dialogTitle": "Import cookies z vašeho prohlížeče",
-      "label": "Zkopírovat přihlášení z prohlížeče",
-      "useBrowserSignIn": "Importovat cookies z vašeho prohlížeče",
-      "signInDescription": "Zkopírujte své přihlášení k {{server}} z prohlížeče v tomto počítači, abyste se nemuseli přihlašovat znovu.",
+      "label": "Importovat cookies z vašeho prohlížeče",
+      "useBrowserSignIn": "Vybrat profil",
+      "signInDescription": "Použije účet na {{server}}, ke kterému je už přihlášený některý profil prohlížeče v tomto počítači.",
       "copyAction": "Importovat",
       "copying": "Importuje se…",
       "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",
@@ -1912,7 +1912,8 @@
       "notSignedIn_other": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souborů cookie, ale nepřihlásily vás. Přihlaste se přímo.",
       "from": "Odkud",
       "noCookies": "Zatím žádné cookies",
-      "sameAccount": "V profilu {{profile}} je přihlášený účet {{account}}, který Oleafly už používá. Vyberte jiný profil, nebo se v tom prohlížeči nejdřív přihlaste ke svému druhému účtu."
+      "sameAccount": "V profilu {{profile}} je přihlášený účet {{account}}, který Oleafly už používá. Vyberte jiný profil, nebo se v tom prohlížeči nejdřív přihlaste ke svému druhému účtu.",
+      "orExisting": "nebo použijte přihlášení, které už máte"
     },
     "zotero": {
       "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",
@@ -1979,7 +1980,7 @@
       "signOut": "Odhlásit se",
       "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
       "addAccount": "Přidat další účet",
-      "addAccountHint": "Přihlašování začíná bez přihlášeného účtu, takže můžete použít libovolný účet. Import cookies použije účet, ke kterému je daný profil prohlížeče přihlášený.",
+      "addAccountHint": "Vyberte, kde se přihlásíte. Všude začínáte bez přihlášení, takže můžete použít libovolný účet.",
       "accountPick": "Účet pro import",
       "accountPickDescription": "Nové importy a šablony používají tento účet. Projekty, které už máte, si ponechají účet, ze kterého pocházejí.",
       "gitTitle": "Token Git pro synchronizaci",
@@ -1992,14 +1993,9 @@
       "gitSave": "Uložit",
       "gitRemove": "Odebrat",
       "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token.",
-      "browserLabel": "Přihlásit se přes prohlížeč",
-      "browserDescription": "Pro přihlášení přes Google, instituci nebo přístupový klíč. Oleafly otevře {{server}} v novém okně prohlížeče a po přihlášení ho zavře.",
-      "browserAction": "Přihlásit se",
-      "browserPick": "Prohlížeč pro přihlášení",
       "browserWaiting": "Dokončete přihlášení k {{server}} v prohlížeči {{browser}}. Zavřením okna se přihlášení zruší.",
-      "browserHint": "Otevře nové okno {{browser}} bez přihlášení. Použijte ho pro přihlášení přes Google, instituci nebo přístupový klíč.",
-      "windowLabel": "Přihlášení k {{server}}",
-      "windowDescription": "Oleafly otevře přihlašovací okno a po přihlášení ho zavře. Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a přihlaste se v něm tady.",
+      "windowLabel": "Přihlásit se přímo v Oleafly",
+      "windowDescription": "Okno se po přihlášení samo zavře. Pokud v něm nefunguje váš přístupový klíč, použijte heslo nebo výzvu v telefonu.",
       "windowAction": "Přihlásit se",
       "windowWaiting": "Dokončete přihlášení k {{server}} v okně, které se otevřelo.",
       "unsent": {
@@ -2019,7 +2015,13 @@
         }
       },
       "sameAccount": "Už jste přihlášeni jako {{account}}. Pokud chcete přidat jiný účet, přihlaste se jím.",
-      "browserButton": "Přihlásit se přes {{browser}}"
+      "windowTitle": "Přihlášení k {{server}}",
+      "addAccountKept": "Váš současný účet zůstane přihlášený.",
+      "noBrowser": "Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a pak ho tady vyberte.",
+      "tileHere": "V této aplikaci",
+      "tileWindow": "Nové okno",
+      "tileWaiting": "Čeká se na vás",
+      "signInNote": "Pro přihlášení přes Google, instituci nebo přístupový klíč použijte prohlížeč. Pokud váš přístupový klíč v Oleafly nefunguje, použijte tam heslo nebo výzvu v telefonu. Okno se po přihlášení samo zavře."
     },
     "desktopApps": {
       "tab": "Computer Use",

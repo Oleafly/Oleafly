@@ -338,11 +338,7 @@
       "loading": "Wczytywanie projektów z Overleaf",
       "loadFailed": "Oleafly nie mógł wczytać projektów z Overleaf.",
       "signInPrompt": "Zaloguj się do Overleaf, aby zobaczyć swoje projekty. Otworzy się okno logowania, które zamknie się samo po zalogowaniu.",
-      "signingIn": "Dokończ logowanie do Overleaf w otwartym oknie.",
-      "signingInBrowser": "Dokończ logowanie do Overleaf w przeglądarce {{browser}}. Okno zamknie się samo po zalogowaniu. Zamknięcie go anuluje logowanie.",
-      "passkeyHint": "Jeśli klucz dostępu nie działa w oknie logowania, wybierz tam inną opcję, na przykład hasło lub potwierdzenie na telefonie.",
       "expired": "Sesja Overleaf wygasła. Zaloguj się ponownie, aby zobaczyć swoje projekty.",
-      "signIn": "Zaloguj się w Oleafly",
       "signInWindowTitle": "Zaloguj się do Overleaf",
       "server": "Serwer: {{server}}",
       "serverLabel": "Adres serwera Overleaf",
@@ -431,7 +427,8 @@
         "openSettings": "Otwórz Ustawienia",
         "cancel": "Anuluj"
       },
-      "switchAccount": "Przełącz konto"
+      "switchAccount": "Przełącz konto",
+      "signInChoose": "Wybierz, gdzie się zalogować. Twoje projekty pojawią się tutaj po zalogowaniu."
     }
   },
   "pdfImport": {

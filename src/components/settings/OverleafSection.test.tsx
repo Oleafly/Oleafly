@@ -120,7 +120,7 @@ describe("OverleafSection", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("adds another account through a fresh sign-in window and says what importing cookies uses", async () => {
+  it("adds another account through a fresh sign-in window and says any account works", async () => {
     const ada = { userId: "u-ada", email: "ada@uni.edu" };
     const bea = { userId: "u-bea", email: "bea@lab.org" };
     const one = { server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] };
@@ -131,11 +131,11 @@ describe("OverleafSection", () => {
     const user = userEvent.setup();
     render(<OverleafSection />);
     await screen.findByTestId("overleaf-connected");
-    expect(screen.queryByTestId("window-sign-in-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sign-in-options")).not.toBeInTheDocument();
     await user.click(screen.getByTestId("overleaf-add-account"));
     const options = screen.getByTestId("overleaf-add-account-options");
-    expect(options).toHaveTextContent("Importing cookies uses the account that browser profile is signed in to.");
-    await user.click(within(options).getByTestId("window-sign-in"));
+    expect(options).toHaveTextContent("Each one starts signed out, so any account works.");
+    await user.click(await within(options).findByTestId("window-sign-in"));
     expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, expect.any(String));
     await waitFor(() => expect(screen.getAllByTestId("overleaf-connected")).toHaveLength(2));
     expect(screen.queryByTestId("overleaf-add-account-options")).not.toBeInTheDocument();
@@ -152,7 +152,7 @@ describe("OverleafSection", () => {
     render(<OverleafSection />);
     await user.click(await screen.findByTestId("overleaf-add-account"));
     const options = screen.getByTestId("overleaf-add-account-options");
-    await user.click(within(options).getByTestId("window-sign-in"));
+    await user.click(await within(options).findByTestId("window-sign-in"));
     expect(
       await within(options).findByText("You're already signed in as ada@uni.edu. Sign in with a different account to add it."),
     ).toBeVisible();
@@ -301,23 +301,22 @@ describe("OverleafSection", () => {
   it("signs in with an installed browser while signed out and shows the account", async () => {
     const signedIn = { server: SERVER, signedIn: true, email: "ada@uni.edu" };
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
-    api.overleafSignInBrowsers.mockResolvedValue([{ key: "edge", name: "Microsoft Edge" }]);
+    api.overleafSignInBrowsers.mockResolvedValue([{ key: "edge", name: "Microsoft Edge", product: "Microsoft Edge", packaging: null }]);
     api.overleafSignInWithBrowser.mockResolvedValue(signedIn);
     api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [] });
     const user = userEvent.setup();
     render(<OverleafSection />);
-    const row = await screen.findByTestId("browser-sign-in-row");
-    await user.click(within(row).getByRole("button", { name: "Sign in" }));
+    await user.click(await screen.findByTestId("browser-sign-in"));
     expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "edge");
     expect(await screen.findByTestId("overleaf-connected")).toHaveTextContent("Signed in as ada@uni.edu on www.overleaf.com");
-    expect(screen.queryByTestId("browser-sign-in-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sign-in-options")).not.toBeInTheDocument();
     expect(screen.queryByTestId("overleaf-change-server")).not.toBeInTheDocument();
   });
 
   it("changes the server from Settings and checks the sign-in there", async () => {
     const custom = "https://latex.uni.edu";
     api.overleafStatus.mockImplementation(async (server: string) => ({ server, signedIn: false, email: null }));
-    api.overleafSignInBrowsers.mockResolvedValue([{ key: "chrome", name: "Google Chrome" }]);
+    api.overleafSignInBrowsers.mockResolvedValue([{ key: "chrome", name: "Google Chrome", product: "Google Chrome", packaging: null }]);
     render(<OverleafSection />);
     expect(await screen.findByText("Server: www.overleaf.com")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("overleaf-change-server"));
@@ -325,7 +324,7 @@ describe("OverleafSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use this server" }));
     await waitFor(() => expect(api.overleafStatus).toHaveBeenLastCalledWith(custom));
     expect(await screen.findByText("Server: latex.uni.edu")).toBeInTheDocument();
-    expect(await screen.findByTestId("browser-sign-in-row")).toHaveTextContent("Oleafly opens latex.uni.edu");
+    expect(await screen.findByTestId("browser-sign-in")).toHaveTextContent("Google Chrome");
     expect(localStorage.getItem("oleafly.overleaf.server")).toBe(custom);
     fireEvent.click(screen.getByRole("button", { name: "Use overleaf.com" }));
     expect(await screen.findByText("Server: www.overleaf.com")).toBeInTheDocument();

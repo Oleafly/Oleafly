@@ -126,7 +126,7 @@ describe("overleaf import store", () => {
   });
 
   it("signs in with an installed browser, names it while waiting, then loads the list", async () => {
-    const chrome = { key: "chrome", name: "Google Chrome" };
+    const chrome = { key: "chrome", name: "Google Chrome", product: "Google Chrome", packaging: null };
     let finish: (status: typeof signedIn) => void = () => {};
     api.overleafSignInWithBrowser.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [project("a")] });
@@ -151,7 +151,7 @@ describe("overleaf import store", () => {
     useOverleafImportStore.setState({ phase: "signing-in" });
     expect(await useOverleafImportStore.getState().signIn("t")).toBe(false);
     expect(api.overleafSignIn).not.toHaveBeenCalled();
-    expect(await useOverleafImportStore.getState().signInWithBrowser({ key: "edge", name: "Microsoft Edge" })).toBe(false);
+    expect(await useOverleafImportStore.getState().signInWithBrowser({ key: "edge", name: "Microsoft Edge", product: "Microsoft Edge", packaging: null })).toBe(false);
     expect(api.overleafSignInWithBrowser).not.toHaveBeenCalled();
   });
 

@@ -1889,9 +1889,9 @@
     "cookies": {
       "dialogDescription": "Oleafly copie uniquement les cookies du site {{server}}, se connecte avec, puis supprime les copies. Vos mots de passe restent dans le navigateur.",
       "dialogTitle": "Importer les cookies de votre navigateur",
-      "label": "Copier la connexion d'un navigateur",
-      "useBrowserSignIn": "Importer les cookies de votre navigateur",
-      "signInDescription": "Copiez votre connexion à {{server}} depuis un navigateur de cet ordinateur, pour ne pas avoir à vous reconnecter.",
+      "label": "Importer les cookies de votre navigateur",
+      "useBrowserSignIn": "Choisir un profil",
+      "signInDescription": "Utilise le compte {{server}} auquel un profil de navigateur de cet ordinateur est déjà connecté.",
       "copyAction": "Importer",
       "copying": "Importation en cours…",
       "notSignedIn_one": "{{count}} cookie copié depuis {{browser}}, mais il ne vous a pas connecté. Connectez-vous directement.",
@@ -1899,7 +1899,8 @@
       "notSignedIn_other": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement.",
       "from": "Depuis",
       "noCookies": "Pas encore de cookies",
-      "sameAccount": "{{profile}} est connecté en tant que {{account}}, un compte qu'Oleafly utilise déjà. Choisissez un autre profil, ou connectez-vous d'abord à votre autre compte dans ce navigateur."
+      "sameAccount": "{{profile}} est connecté en tant que {{account}}, un compte qu'Oleafly utilise déjà. Choisissez un autre profil, ou connectez-vous d'abord à votre autre compte dans ce navigateur.",
+      "orExisting": "ou utilisez une connexion existante"
     },
     "zotero": {
       "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>zotero.org</siteLink>, ouvrez votre <keyLink>page de clés API</keyLink> pour créer une clé, et copiez votre identifiant utilisateur numérique sur la même page.",
@@ -1963,7 +1964,7 @@
       "signOut": "Se déconnecter",
       "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf.",
       "addAccount": "Ajouter un autre compte",
-      "addAccountHint": "La connexion démarre sans compte connecté, vous pouvez donc utiliser n'importe quel compte. L'importation des cookies utilise le compte auquel ce profil de navigateur est connecté.",
+      "addAccountHint": "Choisissez où vous connecter. Chacun démarre sans session existante, donc n'importe quel compte convient.",
       "accountPick": "Compte pour l'import",
       "accountPickDescription": "Les nouveaux imports et les modèles utilisent ce compte. Les projets que vous avez déjà gardent le compte d'où ils viennent.",
       "gitTitle": "Jeton Git pour la synchronisation",
@@ -1976,14 +1977,9 @@
       "gitSave": "Enregistrer",
       "gitRemove": "Retirer",
       "gitFailed": "Oleafly n'a pas pu enregistrer le jeton Git. Vérifiez que vous avez collé le jeton en entier.",
-      "browserLabel": "Se connecter avec votre navigateur",
-      "browserDescription": "Pour la connexion avec Google, un établissement ou une clé d'accès. Oleafly ouvre {{server}} dans une nouvelle fenêtre de navigateur et la ferme une fois la connexion établie.",
-      "browserAction": "Se connecter",
-      "browserPick": "Navigateur pour la connexion",
       "browserWaiting": "Terminez la connexion à {{server}} dans {{browser}}. Fermer la fenêtre annule la connexion.",
-      "browserHint": "Ouvre une nouvelle fenêtre {{browser}} sans session existante. Utilisez-la pour vous connecter avec Google, votre établissement ou une clé d'accès.",
-      "windowLabel": "Se connecter à {{server}}",
-      "windowDescription": "Oleafly ouvre une fenêtre de connexion et la ferme une fois la connexion établie. Pour vous connecter avec Google, votre établissement ou une clé d'accès, installez Chrome, Edge, Brave, Chromium ou Firefox, puis connectez-vous ici avec ce navigateur.",
+      "windowLabel": "Se connecter dans Oleafly",
+      "windowDescription": "La fenêtre se ferme d'elle-même une fois la connexion établie. Si votre clé d'accès n'y fonctionne pas, utilisez votre mot de passe ou une invite sur votre téléphone.",
       "windowAction": "Se connecter",
       "windowWaiting": "Terminez la connexion à {{server}} dans la fenêtre qui s'est ouverte.",
       "unsent": {
@@ -2003,7 +1999,13 @@
         }
       },
       "sameAccount": "Vous êtes déjà connecté en tant que {{account}}. Connectez-vous avec un autre compte pour l'ajouter.",
-      "browserButton": "Se connecter avec {{browser}}"
+      "windowTitle": "Se connecter à {{server}}",
+      "addAccountKept": "Votre compte actuel reste connecté.",
+      "noBrowser": "Pour vous connecter avec Google, votre établissement ou une clé d'accès, installez Chrome, Edge, Brave, Chromium ou Firefox, puis choisissez-le ici.",
+      "tileHere": "Dans cette application",
+      "tileWindow": "Nouvelle fenêtre",
+      "tileWaiting": "En attente de vous",
+      "signInNote": "Utilisez un navigateur pour vous connecter avec Google, votre établissement ou une clé d'accès. Si votre clé d'accès ne fonctionne pas dans Oleafly, utilisez-y votre mot de passe ou une invite sur votre téléphone. La fenêtre se ferme d'elle-même une fois la connexion établie."
     },
     "desktopApps": {
       "tab": "Computer Use",

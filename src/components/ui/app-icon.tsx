@@ -1,9 +1,14 @@
+import type { ReactNode } from "react";
 import { AppWindow } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function AppIcon({ url, size = "default" }: Readonly<{ url: string | undefined; size?: "default" | "sm" }>) {
+export function AppIcon({
+  url,
+  size = "default",
+  children,
+}: Readonly<{ url?: string; size?: "default" | "sm"; children?: ReactNode }>) {
   const small = size === "sm";
-  if (url) {
+  if (url && !children) {
     return (
       <img src={url} alt="" draggable={false} className={cn("shrink-0 object-contain", small ? "size-5" : "size-8")} />
     );
@@ -16,7 +21,7 @@ export function AppIcon({ url, size = "default" }: Readonly<{ url: string | unde
         small ? "size-5" : "size-8 rounded-md bg-muted",
       )}
     >
-      <AppWindow className="size-4" />
+      {children ?? <AppWindow className="size-4" />}
     </span>
   );
 }

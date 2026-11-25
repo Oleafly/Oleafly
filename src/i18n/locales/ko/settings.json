@@ -1865,15 +1865,16 @@
     "cookies": {
       "dialogDescription": "Oleafly는 {{server}}의 Cookie만 복사해 로그인한 다음 복사본을 삭제합니다. 비밀번호는 브라우저에 그대로 남습니다.",
       "dialogTitle": "브라우저에서 Cookie 가져오기",
-      "label": "브라우저 로그인 정보 복사",
-      "useBrowserSignIn": "브라우저에서 Cookie 가져오기",
-      "signInDescription": "이 컴퓨터의 브라우저에서 {{server}} 로그인 정보를 복사하면 다시 로그인하지 않아도 됩니다.",
+      "label": "브라우저에서 Cookie 가져오기",
+      "useBrowserSignIn": "프로필 선택",
+      "signInDescription": "이 컴퓨터의 브라우저 프로필에 이미 로그인되어 있는 {{server}} 계정을 사용합니다.",
       "copyAction": "가져오기",
       "copying": "가져오는 중...",
       "notSignedIn_other": "{{browser}}에서 Cookie {{count}}개를 복사했지만 로그인되지 않았습니다. 직접 로그인하세요.",
       "from": "가져올 곳",
       "noCookies": "아직 Cookie 없음",
-      "sameAccount": "{{profile}}에는 {{account}} 계정이 로그인되어 있으며, Oleafly가 이미 이 계정을 사용하고 있습니다. 다른 프로필을 선택하거나 그 브라우저에서 먼저 다른 계정으로 로그인하세요."
+      "sameAccount": "{{profile}}에는 {{account}} 계정이 로그인되어 있으며, Oleafly가 이미 이 계정을 사용하고 있습니다. 다른 프로필을 선택하거나 그 브라우저에서 먼저 다른 계정으로 로그인하세요.",
+      "orExisting": "또는 이미 있는 로그인 사용"
     },
     "zotero": {
       "apiKeyHint": "키를 받으려면 <siteLink>zotero.org</siteLink>에서 로그인하고 <keyLink>API 키 페이지</keyLink>를 열어 키를 만든 다음, 같은 페이지에서 숫자로 된 사용자 ID를 복사하세요.",
@@ -1931,7 +1932,7 @@
       "signOut": "로그아웃",
       "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
       "addAccount": "다른 계정 추가",
-      "addAccountHint": "로그인은 로그인되지 않은 상태에서 시작하므로 어떤 계정이든 사용할 수 있습니다. Cookie를 가져오면 그 브라우저 프로필에 로그인된 계정이 사용됩니다.",
+      "addAccountHint": "로그인할 곳을 선택하세요. 모두 로그인되지 않은 상태로 시작하므로 어떤 계정이든 사용할 수 있습니다.",
       "accountPick": "가져오기에 사용할 계정",
       "accountPickDescription": "새로 가져오는 프로젝트와 템플릿은 이 계정을 사용합니다. 이미 있는 프로젝트는 원래 가져온 계정을 그대로 유지합니다.",
       "gitTitle": "동기화용 Git 토큰",
@@ -1944,14 +1945,9 @@
       "gitSave": "저장",
       "gitRemove": "제거",
       "gitFailed": "Oleafly가 Git 토큰을 저장하지 못했습니다. 토큰 전체를 붙여 넣었는지 확인하세요.",
-      "browserLabel": "브라우저로 로그인",
-      "browserDescription": "Google, 소속 기관 또는 패스키 로그인용입니다. Oleafly가 새 브라우저 창에서 {{server}}을(를) 열고, 로그인이 끝나면 창을 닫습니다.",
-      "browserAction": "로그인",
-      "browserPick": "로그인에 사용할 브라우저",
       "browserWaiting": "{{browser}}에서 {{server}} 로그인을 마치세요. 창을 닫으면 취소됩니다.",
-      "browserHint": "로그인되지 않은 새 {{browser}} 창을 엽니다. Google, 소속 기관, 패스키로 로그인할 때 사용하세요.",
-      "windowLabel": "{{server}}에 로그인",
-      "windowDescription": "Oleafly가 로그인 창을 열고, 로그인이 끝나면 닫습니다. Google, 소속 기관 또는 패스키로 로그인하려면 Chrome, Edge, Brave, Chromium 또는 Firefox를 설치한 뒤 여기서 해당 브라우저로 로그인하세요.",
+      "windowLabel": "Oleafly 안에서 로그인",
+      "windowDescription": "로그인이 끝나면 창이 저절로 닫힙니다. 거기서 패스키가 작동하지 않으면 비밀번호나 휴대폰 확인을 사용하세요.",
       "windowAction": "로그인",
       "windowWaiting": "열린 창에서 {{server}} 로그인을 마치세요.",
       "unsent": {
@@ -1971,7 +1967,13 @@
         }
       },
       "sameAccount": "이미 {{account}} 계정으로 로그인되어 있습니다. 다른 계정을 추가하려면 그 계정으로 로그인하세요.",
-      "browserButton": "{{browser}}(으)로 로그인"
+      "windowTitle": "{{server}}에 로그인",
+      "addAccountKept": "현재 계정은 로그인된 상태로 유지됩니다.",
+      "noBrowser": "Google, 소속 기관 또는 패스키로 로그인하려면 Chrome, Edge, Brave, Chromium 또는 Firefox를 설치한 뒤 여기서 선택하세요.",
+      "tileHere": "이 앱 안에서",
+      "tileWindow": "새 창",
+      "tileWaiting": "로그인 대기 중",
+      "signInNote": "Google, 소속 기관 또는 패스키로 로그인하려면 브라우저를 사용하세요. Oleafly에서 패스키가 작동하지 않으면 거기서 비밀번호나 휴대폰 확인을 사용하세요. 로그인이 끝나면 창이 저절로 닫힙니다."
     },
     "desktopApps": {
       "tab": "Computer Use",

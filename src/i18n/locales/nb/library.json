@@ -328,11 +328,7 @@
       "loading": "Laster Overleaf-prosjektene dine",
       "loadFailed": "Oleafly kunne ikke laste Overleaf-prosjektene dine.",
       "signInPrompt": "Logg inn på Overleaf for å se prosjektene dine. Et innloggingsvindu åpnes og lukkes av seg selv når du er logget inn.",
-      "signingIn": "Fullfør innloggingen på Overleaf i vinduet som ble åpnet.",
-      "signingInBrowser": "Fullfør innloggingen på Overleaf i {{browser}}. Vinduet lukkes av seg selv når du er logget inn. Hvis du lukker det, avbrytes innloggingen.",
-      "passkeyHint": "Hvis passnøkkelen din ikke fungerer i innloggingsvinduet, velger du et annet alternativ der, for eksempel passordet ditt eller en forespørsel på telefonen.",
       "expired": "Overleaf-innloggingen din er utløpt. Logg inn på nytt for å se prosjektene dine.",
-      "signIn": "Logg inn inne i Oleafly",
       "signInWindowTitle": "Logg inn på Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adressen til Overleaf-serveren",
@@ -411,7 +407,8 @@
         "openSettings": "Åpne Innstillinger",
         "cancel": "Avbryt"
       },
-      "switchAccount": "Bytt konto"
+      "switchAccount": "Bytt konto",
+      "signInChoose": "Velg hvor du vil logge inn. Prosjektene dine vises her når du er logget inn."
     }
   },
   "pdfImport": {

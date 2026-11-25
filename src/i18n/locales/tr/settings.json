@@ -1877,16 +1877,17 @@
     "cookies": {
       "dialogDescription": "Oleafly yalnızca {{server}} cookie'lerini kopyalar, bunlarla oturum açar ve ardından kopyaları siler. Parolalarınız tarayıcıda kalır.",
       "dialogTitle": "Tarayıcınızdaki cookie'leri içe aktarın",
-      "label": "Bir tarayıcının oturumunu kopyala",
-      "useBrowserSignIn": "Tarayıcınızdan cookie içe aktarın",
-      "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
+      "label": "Tarayıcınızdan cookie içe aktarın",
+      "useBrowserSignIn": "Profil seç",
+      "signInDescription": "Bu bilgisayardaki bir tarayıcı profilinde zaten oturumu açık olan {{server}} hesabını kullanır.",
       "copyAction": "İçe aktar",
       "copying": "İçe aktarılıyor…",
       "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
       "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
       "from": "Kaynak",
       "noCookies": "Henüz cookie yok",
-      "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın."
+      "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın.",
+      "orExisting": "ya da var olan bir oturumu kullanın"
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
@@ -1947,7 +1948,7 @@
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
       "addAccount": "Başka bir hesap ekle",
-      "addAccountHint": "Oturum açma, hiçbir hesap açık değilken başlar, böylece istediğiniz hesabı kullanabilirsiniz. Cookie içe aktarmak, o tarayıcı profilinde açık olan hesabı kullanır.",
+      "addAccountHint": "Nerede oturum açacağınızı seçin. Hepsi oturum açılmamış olarak başlar, bu yüzden her hesap olur.",
       "accountPick": "İçe aktarma hesabı",
       "accountPickDescription": "Yeni içe aktarmalar ve şablonlar bu hesabı kullanır. Mevcut projeleriniz geldikleri hesabı korur.",
       "gitTitle": "Eşitleme için Git belirteci",
@@ -1960,14 +1961,9 @@
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun.",
-      "browserLabel": "Tarayıcınızla oturum açın",
-      "browserDescription": "Google, kurum veya geçiş anahtarıyla oturum açmak için. Oleafly, {{server}} sunucusunu yeni bir tarayıcı penceresinde açar ve giriş yaptığınızda kapatır.",
-      "browserAction": "Oturum aç",
-      "browserPick": "Oturum açılacak tarayıcı",
       "browserWaiting": "{{browser}} tarayıcısında {{server}} sunucusunda oturum açmayı tamamlayın. Pencereyi kapatmak işlemi iptal eder.",
-      "browserHint": "Oturum açılmamış yeni bir {{browser}} penceresi açar. Google, kurum veya geçiş anahtarıyla oturum açmak için kullanın.",
-      "windowLabel": "{{server}} sunucusunda oturum aç",
-      "windowDescription": "Oleafly bir oturum açma penceresi açar ve giriş yaptığınızda kapatır. Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra burada onunla oturum açın.",
+      "windowLabel": "Oleafly içinde oturum aç",
+      "windowDescription": "Oturum açtığınızda pencere kendiliğinden kapanır. Geçiş anahtarınız orada çalışmazsa şifrenizi veya telefonunuzdaki bir onayı kullanın.",
       "windowAction": "Oturum aç",
       "windowWaiting": "{{server}} sunucusunda oturum açmayı açılan pencerede tamamlayın.",
       "unsent": {
@@ -1987,7 +1983,13 @@
         }
       },
       "sameAccount": "Zaten {{account}} olarak oturum açtınız. Başka bir hesap eklemek için o hesapla oturum açın.",
-      "browserButton": "{{browser}} ile oturum aç"
+      "windowTitle": "{{server}} sunucusunda oturum aç",
+      "addAccountKept": "Geçerli hesabınızın oturumu açık kalır.",
+      "noBrowser": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra onu burada seçin.",
+      "tileHere": "Bu uygulamada",
+      "tileWindow": "Yeni pencere",
+      "tileWaiting": "Sizi bekliyor",
+      "signInNote": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için bir tarayıcı kullanın. Geçiş anahtarınız Oleafly içinde çalışmazsa orada şifrenizi veya telefonunuzdaki bir onayı kullanın. Oturum açtığınızda pencere kendiliğinden kapanır."
     },
     "desktopApps": {
       "tab": "Computer Use",

@@ -1889,9 +1889,9 @@
     "cookies": {
       "dialogDescription": "Oleafly copiază doar cookie-urile pentru {{server}}, se autentifică folosindu-le, apoi șterge copiile. Parolele tale rămân în browser.",
       "dialogTitle": "Importă cookie-uri din browserul tău",
-      "label": "Copiază autentificarea unui browser",
-      "useBrowserSignIn": "Importă cookie-uri din browserul tău",
-      "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
+      "label": "Importă cookie-uri din browserul tău",
+      "useBrowserSignIn": "Alege un profil",
+      "signInDescription": "Folosește contul {{server}} cu care un profil de browser de pe acest computer este deja autentificat.",
       "copyAction": "Importă",
       "copying": "Se importă…",
       "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",
@@ -1899,7 +1899,8 @@
       "notSignedIn_other": "S-au copiat {{count}} de cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct.",
       "from": "Din",
       "noCookies": "Niciun cookie încă",
-      "sameAccount": "{{profile}} este autentificat ca {{account}}, cont pe care Oleafly îl folosește deja. Alege alt profil sau autentifică-te mai întâi cu celălalt cont în acel browser."
+      "sameAccount": "{{profile}} este autentificat ca {{account}}, cont pe care Oleafly îl folosește deja. Alege alt profil sau autentifică-te mai întâi cu celălalt cont în acel browser.",
+      "orExisting": "sau folosește o autentificare pe care o ai deja"
     },
     "zotero": {
       "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
@@ -1963,7 +1964,7 @@
       "signOut": "Deconectează-te",
       "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
       "addAccount": "Adaugă alt cont",
-      "addAccountHint": "Autentificarea pornește fără niciun cont, așa că poți folosi orice cont. Importul de cookie-uri folosește contul cu care este autentificat acel profil de browser.",
+      "addAccountHint": "Alege unde te autentifici. Fiecare pornește fără cont autentificat, așa că merge orice cont.",
       "accountPick": "Cont pentru import",
       "accountPickDescription": "Importurile noi și șabloanele folosesc acest cont. Proiectele pe care le ai deja păstrează contul din care provin.",
       "gitTitle": "Token Git pentru sincronizare",
@@ -1976,14 +1977,9 @@
       "gitSave": "Salvează",
       "gitRemove": "Elimină",
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul.",
-      "browserLabel": "Autentifică-te cu browserul",
-      "browserDescription": "Pentru autentificare cu Google, instituție sau cheie de acces. Oleafly deschide {{server}} într-o fereastră nouă de browser și o închide după ce te-ai conectat.",
-      "browserAction": "Autentifică-te",
-      "browserPick": "Browser pentru autentificare",
       "browserWaiting": "Termină autentificarea pe {{server}} în {{browser}}. Dacă închizi fereastra, autentificarea se anulează.",
-      "browserHint": "Deschide o fereastră {{browser}} nouă, fără cont autentificat. Folosește-o pentru autentificarea cu Google, cu instituția sau cu o cheie de acces.",
-      "windowLabel": "Autentifică-te pe {{server}}",
-      "windowDescription": "Oleafly deschide o fereastră de autentificare și o închide după ce te-ai conectat. Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi autentifică-te cu el aici.",
+      "windowLabel": "Autentifică-te în Oleafly",
+      "windowDescription": "Fereastra se închide singură după ce te-ai conectat. Dacă cheia de acces nu funcționează acolo, folosește parola sau o confirmare pe telefon.",
       "windowAction": "Autentifică-te",
       "windowWaiting": "Termină autentificarea pe {{server}} în fereastra care s-a deschis.",
       "unsent": {
@@ -2003,7 +1999,13 @@
         }
       },
       "sameAccount": "Ești deja autentificat ca {{account}}. Autentifică-te cu alt cont ca să îl adaugi.",
-      "browserButton": "Autentifică-te cu {{browser}}"
+      "windowTitle": "Autentifică-te pe {{server}}",
+      "addAccountKept": "Contul tău actual rămâne autentificat.",
+      "noBrowser": "Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi alege-l aici.",
+      "tileHere": "În această aplicație",
+      "tileWindow": "Fereastră nouă",
+      "tileWaiting": "Te așteaptă",
+      "signInNote": "Folosește un browser ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces. Dacă cheia de acces nu funcționează în Oleafly, folosește acolo parola sau o confirmare pe telefon. Fereastra se închide singură după ce te-ai conectat."
     },
     "desktopApps": {
       "tab": "Computer Use",

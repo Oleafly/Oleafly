@@ -524,8 +524,8 @@
       "connected": "Shown once alphaXiv's MCP server accepted the key. Each alphaXiv tool call still asks the user first."
     },
     "cookies": {
-      "useBrowserSignIn": "Button. Copies the sign-in cookies for the online LaTeX service from the person's web browser.",
-      "label": "Row heading for copying the online LaTeX service sign-in from a web browser.",
+      "useBrowserSignIn": "Button. Opens the list of browsers and their profiles to import cookies from.",
+      "label": "Row heading for importing the online LaTeX service cookies from a web browser.",
       "noCookies": "Shown next to a browser profile that has saved no cookies yet, so nothing can be imported from it.",
       "from": "Label before a menu of browsers and their profiles, as in 'import from Brave'."
     },

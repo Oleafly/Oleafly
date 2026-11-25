@@ -111,6 +111,8 @@ export function overleafSignInWithAppCookies(server: string | null | undefined):
 export interface OverleafSignInBrowser {
   key: string;
   name: string;
+  product: string;
+  packaging: string | null;
 }
 
 export function overleafUseAccount(server: string | null | undefined, account: string): Promise<OverleafStatus> {

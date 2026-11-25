@@ -110,11 +110,71 @@ test("Put on Overleaf shows Overleaf's refusal and keeps the dialog open", async
   await expect(dialog.getByTestId("put-on-overleaf-submit")).toBeEnabled();
 });
 
+for (const [count, columns, big] of [
+  [1, 2, true],
+  [2, 3, true],
+  [3, 4, true],
+  [4, 3, false],
+  [6, 3, false],
+] as const) {
+  test(`sign-in tiles for ${count} browsers fill their rows without clipping`, async ({ page }) => {
+    await openHarness(page, `signedIn=0&browsers=1&tiles=${count}`);
+    const tiles = page.locator('[data-testid="window-sign-in"], [data-testid="browser-sign-in"]');
+    await expect(tiles).toHaveCount(count + 1);
+    await expect(tiles.first()).toContainText("Oleafly");
+    const layout = await tiles.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const { left, top, width, height } = node.getBoundingClientRect();
+        const clipped = [...node.querySelectorAll("span")].some((span) => span.scrollWidth > span.clientWidth + 1);
+        return { left: Math.round(left), top: Math.round(top), width: Math.round(width), height, clipped };
+      }),
+    );
+    expect(new Set(layout.map(({ left }) => left)).size).toBe(Math.min(columns, count + 1));
+    expect(new Set(layout.map(({ width }) => width)).size).toBe(1);
+    expect(layout.every(({ height }) => (big ? height > 80 : height < 72))).toBe(true);
+    expect(layout.some(({ clipped }) => clipped)).toBe(false);
+  });
+}
+
+test("tiles fold to two compact columns where there is little room", async ({ page }) => {
+  await openHarnessPage(page, "overleaf-library-harness", "signedIn=0&browsers=1&tiles=3", { width: 480, height: 760 });
+  const tiles = page.locator('[data-testid="window-sign-in"], [data-testid="browser-sign-in"]');
+  await expect(tiles).toHaveCount(4);
+  const lefts = await tiles.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().left)));
+  expect(new Set(lefts).size).toBe(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("clicking a tile signs in there, says what it waits for and dims the rest", async ({ page }) => {
+  await openHarness(page, "signedIn=0&browsers=1&tiles=3");
+  const brave = page.getByTestId("browser-sign-in").filter({ hasText: "Brave" });
+  await brave.click();
+  await expect(brave).toContainText("Waiting for you");
+  await expect(page.getByText("Finish signing in to www.overleaf.com in Brave. Closing the window cancels.")).toBeVisible();
+  await expect(page.getByTestId("window-sign-in")).toBeDisabled();
+  await expect(page.getByTestId("browser-sign-in-copy")).toBeDisabled();
+  expect(await harnessCalls(page, "overleaf_sign_in_with_browser")).toEqual([
+    { server: "https://www.overleaf.com", browser: "brave" },
+  ]);
+});
+
+test("a browser that can't open says so and leaves the other tiles ready", async ({ page }) => {
+  await openHarness(page, "signedIn=0&tiles=3");
+  await page.getByTestId("browser-sign-in").filter({ hasText: "Firefox" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByTestId("window-sign-in")).toBeEnabled();
+  await expect(page.getByTestId("browser-sign-in-copy")).toHaveCount(0);
+});
+
+test("with no browser, Oleafly's own window is the one way in", async ({ page }) => {
+  await openHarness(page, "signedIn=0&tiles=0");
+  await expect(page.getByTestId("window-sign-in-row")).toContainText("Sign in inside Oleafly");
+  await expect(page.getByText(/install Chrome, Edge, Brave, Chromium or Firefox/)).toBeVisible();
+  await expect(page.getByTestId("browser-sign-in")).toHaveCount(0);
+});
+
 test("a browser's cookies are imported from a profile picked by its logo and name", async ({ page }) => {
   await openHarness(page, "signedIn=0&browsers=1&copied=bob");
-  const browser = page.getByTestId("browser-sign-in-picker");
-  await expect(browser).toHaveText("Brave");
-  await expect(browser.locator("img")).toBeVisible();
   await page.getByTestId("browser-sign-in-copy").click();
   const dialog = page.getByTestId("import-cookies");
   await expect(dialog.getByRole("heading")).toHaveText("Import cookies from your browser");

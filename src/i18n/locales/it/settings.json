@@ -1889,9 +1889,9 @@
     "cookies": {
       "dialogDescription": "Oleafly copia solo i cookie di {{server}}, li usa per accedere e poi elimina le copie. Le tue password restano nel browser.",
       "dialogTitle": "Importa i cookie dal tuo browser",
-      "label": "Copia l'accesso di un browser",
-      "useBrowserSignIn": "Importa i cookie dal tuo browser",
-      "signInDescription": "Copia il tuo accesso a {{server}} da un browser di questo computer, così non devi accedere di nuovo.",
+      "label": "Importa i cookie dal tuo browser",
+      "useBrowserSignIn": "Scegli un profilo",
+      "signInDescription": "Usa l'account {{server}} con cui un profilo del browser di questo computer ha già effettuato l'accesso.",
       "copyAction": "Importa",
       "copying": "Importazione in corso...",
       "notSignedIn_one": "Copiato {{count}} cookie da {{browser}}, ma non ti ha fatto accedere. Accedi direttamente.",
@@ -1899,7 +1899,8 @@
       "notSignedIn_other": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
       "from": "Da",
       "noCookies": "Ancora nessun cookie",
-      "sameAccount": "{{profile}} ha effettuato l'accesso come {{account}}, che Oleafly usa già. Scegli un altro profilo oppure accedi prima con l'altro account in quel browser."
+      "sameAccount": "{{profile}} ha effettuato l'accesso come {{account}}, che Oleafly usa già. Scegli un altro profilo oppure accedi prima con l'altro account in quel browser.",
+      "orExisting": "oppure usa un accesso che hai già"
     },
     "zotero": {
       "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>zotero.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink> per crearne una e copia il tuo ID utente numerico dalla stessa pagina.",
@@ -1963,7 +1964,7 @@
       "signOut": "Esci",
       "signOutFailed": "Oleafly non è riuscito a uscire da Overleaf.",
       "addAccount": "Aggiungi un altro account",
-      "addAccountHint": "L'accesso parte senza nessun account, quindi puoi usare quello che vuoi. L'importazione dei cookie usa l'account con cui quel profilo del browser ha effettuato l'accesso.",
+      "addAccountHint": "Scegli dove accedere. Ognuno parte senza accessi attivi, quindi va bene qualsiasi account.",
       "accountPick": "Account per l'importazione",
       "accountPickDescription": "Le nuove importazioni e i modelli usano questo account. I progetti che hai già mantengono l'account da cui provengono.",
       "gitTitle": "Token Git per la sincronizzazione",
@@ -1976,14 +1977,9 @@
       "gitSave": "Salva",
       "gitRemove": "Rimuovi",
       "gitFailed": "Oleafly non è riuscito a salvare il token Git. Controlla di aver incollato tutto il token.",
-      "browserLabel": "Accedi con il tuo browser",
-      "browserDescription": "Per l'accesso con Google, con l'istituzione o con una passkey. Oleafly apre {{server}} in una nuova finestra del browser e la chiude quando hai effettuato l'accesso.",
-      "browserAction": "Accedi",
-      "browserPick": "Browser con cui accedere",
       "browserWaiting": "Completa l'accesso a {{server}} in {{browser}}. Chiudere la finestra annulla l'accesso.",
-      "browserHint": "Apre una nuova finestra di {{browser}} senza accessi attivi. Usala per accedere con Google, il tuo ente o una passkey.",
-      "windowLabel": "Accedi a {{server}}",
-      "windowDescription": "Oleafly apre una finestra di accesso e la chiude quando hai effettuato l'accesso. Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi accedi qui con quel browser.",
+      "windowLabel": "Accedi dentro Oleafly",
+      "windowDescription": "La finestra si chiude da sola quando hai effettuato l'accesso. Se la passkey non funziona lì, usa la password o una richiesta sul telefono.",
       "windowAction": "Accedi",
       "windowWaiting": "Completa l'accesso a {{server}} nella finestra che si è aperta.",
       "unsent": {
@@ -2003,7 +1999,13 @@
         }
       },
       "sameAccount": "Hai già effettuato l'accesso come {{account}}. Accedi con un altro account per aggiungerlo.",
-      "browserButton": "Accedi con {{browser}}"
+      "windowTitle": "Accedi a {{server}}",
+      "addAccountKept": "L'account attuale resta connesso.",
+      "noBrowser": "Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi scegli quel browser qui.",
+      "tileHere": "In questa app",
+      "tileWindow": "Nuova finestra",
+      "tileWaiting": "In attesa di te",
+      "signInNote": "Usa un browser per accedere con Google, con la tua istituzione o con una passkey. Se la passkey non funziona in Oleafly, usa lì la password o una richiesta sul telefono. La finestra si chiude da sola quando hai effettuato l'accesso."
     },
     "desktopApps": {
       "tab": "Computer Use",

@@ -1865,15 +1865,16 @@
     "cookies": {
       "dialogDescription": "Oleafly chỉ sao chép cookie của {{server}}, dùng chúng để đăng nhập rồi xóa các bản sao. Mật khẩu của bạn vẫn ở trong trình duyệt.",
       "dialogTitle": "Nhập cookie từ trình duyệt của bạn",
-      "label": "Sao chép đăng nhập từ trình duyệt",
-      "useBrowserSignIn": "Nhập cookie từ trình duyệt của bạn",
-      "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
+      "label": "Nhập cookie từ trình duyệt của bạn",
+      "useBrowserSignIn": "Chọn hồ sơ",
+      "signInDescription": "Dùng tài khoản {{server}} mà một hồ sơ trình duyệt trên máy tính này đã đăng nhập.",
       "copyAction": "Nhập",
       "copying": "Đang nhập…",
       "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp.",
       "from": "Từ",
       "noCookies": "Chưa có cookie",
-      "sameAccount": "{{profile}} đang đăng nhập bằng {{account}}, tài khoản mà Oleafly đã dùng. Hãy chọn hồ sơ khác hoặc đăng nhập tài khoản kia trong trình duyệt đó trước."
+      "sameAccount": "{{profile}} đang đăng nhập bằng {{account}}, tài khoản mà Oleafly đã dùng. Hãy chọn hồ sơ khác hoặc đăng nhập tài khoản kia trong trình duyệt đó trước.",
+      "orExisting": "hoặc dùng phiên đăng nhập bạn đã có"
     },
     "zotero": {
       "apiKeyHint": "Để lấy khoá: đăng nhập tại <siteLink>zotero.org</siteLink>, mở <keyLink>trang khoá API</keyLink> của bạn để tạo khoá và sao chép ID người dùng dạng số từ cùng trang đó.",
@@ -1931,7 +1932,7 @@
       "signOut": "Đăng xuất",
       "signOutFailed": "Oleafly không thể đăng xuất khỏi Overleaf.",
       "addAccount": "Thêm tài khoản khác",
-      "addAccountHint": "Quá trình đăng nhập bắt đầu khi chưa có tài khoản nào nên bạn có thể dùng bất kỳ tài khoản nào. Nhập cookie sẽ dùng tài khoản đang đăng nhập trong hồ sơ trình duyệt đó.",
+      "addAccountHint": "Chọn nơi đăng nhập. Nơi nào cũng bắt đầu khi chưa đăng nhập nên dùng tài khoản nào cũng được.",
       "accountPick": "Tài khoản dùng để nhập",
       "accountPickDescription": "Các lần nhập và mẫu mới dùng tài khoản này. Các dự án bạn đã có vẫn dùng tài khoản ban đầu của chúng.",
       "gitTitle": "Token Git để đồng bộ",
@@ -1944,14 +1945,9 @@
       "gitSave": "Lưu",
       "gitRemove": "Gỡ",
       "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token.",
-      "browserLabel": "Đăng nhập bằng trình duyệt của bạn",
-      "browserDescription": "Dành cho đăng nhập bằng Google, tổ chức hoặc passkey. Oleafly mở {{server}} trong một cửa sổ trình duyệt mới và đóng nó khi bạn đăng nhập xong.",
-      "browserAction": "Đăng nhập",
-      "browserPick": "Trình duyệt dùng để đăng nhập",
       "browserWaiting": "Hãy hoàn tất đăng nhập {{server}} trong {{browser}}. Đóng cửa sổ sẽ huỷ đăng nhập.",
-      "browserHint": "Mở một cửa sổ {{browser}} mới chưa đăng nhập. Dùng cho đăng nhập bằng Google, tổ chức hoặc khóa truy cập.",
-      "windowLabel": "Đăng nhập {{server}}",
-      "windowDescription": "Oleafly mở một cửa sổ đăng nhập và đóng nó khi bạn đăng nhập xong. Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi đăng nhập bằng trình duyệt đó tại đây.",
+      "windowLabel": "Đăng nhập ngay trong Oleafly",
+      "windowDescription": "Cửa sổ tự đóng khi bạn đăng nhập xong. Nếu passkey không dùng được ở đó, hãy dùng mật khẩu hoặc lời nhắc trên điện thoại.",
       "windowAction": "Đăng nhập",
       "windowWaiting": "Hãy hoàn tất đăng nhập {{server}} trong cửa sổ vừa mở.",
       "unsent": {
@@ -1971,7 +1967,13 @@
         }
       },
       "sameAccount": "Bạn đã đăng nhập bằng {{account}}. Hãy đăng nhập bằng tài khoản khác để thêm tài khoản đó.",
-      "browserButton": "Đăng nhập bằng {{browser}}"
+      "windowTitle": "Đăng nhập {{server}}",
+      "addAccountKept": "Tài khoản hiện tại của bạn vẫn được đăng nhập.",
+      "noBrowser": "Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi chọn trình duyệt đó tại đây.",
+      "tileHere": "Trong ứng dụng này",
+      "tileWindow": "Cửa sổ mới",
+      "tileWaiting": "Đang chờ bạn",
+      "signInNote": "Hãy dùng trình duyệt để đăng nhập bằng Google, tổ chức hoặc passkey. Nếu passkey không dùng được trong Oleafly, hãy dùng mật khẩu hoặc lời nhắc trên điện thoại ở đó. Cửa sổ tự đóng khi bạn đăng nhập xong."
     },
     "desktopApps": {
       "tab": "Computer Use",
