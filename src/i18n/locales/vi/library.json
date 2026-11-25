@@ -327,7 +327,7 @@
       "signingInBrowser": "Hãy hoàn tất đăng nhập Overleaf trong {{browser}}. Cửa sổ tự đóng khi bạn đăng nhập xong. Đóng cửa sổ sẽ huỷ đăng nhập.",
       "passkeyHint": "Nếu passkey không dùng được trong cửa sổ đăng nhập, hãy chọn cách khác ở đó, như mật khẩu hoặc lời nhắc trên điện thoại.",
       "expired": "Đăng nhập Overleaf của bạn đã hết hạn. Hãy đăng nhập lại để xem dự án.",
-      "signIn": "Đăng nhập Overleaf",
+      "signIn": "Đăng nhập ngay trong Oleafly",
       "signInWindowTitle": "Đăng nhập Overleaf",
       "server": "Máy chủ: {{server}}",
       "serverLabel": "Địa chỉ máy chủ Overleaf",
@@ -400,7 +400,8 @@
         "signedOut": "Hãy đăng nhập Overleaf trong Cài đặt trước.",
         "openSettings": "Mở Cài đặt",
         "cancel": "Huỷ"
-      }
+      },
+      "switchAccount": "Chuyển tài khoản"
     }
   },
   "pdfImport": {

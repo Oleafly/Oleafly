@@ -25,8 +25,10 @@ import {
   overleafListProjects,
   overleafSaveProjectAsTemplate,
   overleafSignIn,
+  overleafBrowserIcons,
   overleafSignInBrowsers,
   overleafSignInWithBrowser,
+  overleafSignIns,
   overleafSignOut,
   overleafStatus,
   overleafTemplateDetails,
@@ -65,10 +67,14 @@ describe("overleaf bridge", () => {
   it("lists the sign-in browsers and signs in with the one picked by its key", async () => {
     mocks.invoke.mockResolvedValue([]);
     await overleafSignInBrowsers();
+    await overleafBrowserIcons();
+    await overleafSignIns();
     await overleafSignInWithBrowser(" https://latex.uni.edu ", "firefox-snap");
     await overleafSignInWithBrowser(undefined, "edge");
     expect(mocks.invoke.mock.calls).toEqual([
       ["overleaf_sign_in_browsers"],
+      ["overleaf_browser_icons"],
+      ["overleaf_sign_ins"],
       ["overleaf_sign_in_with_browser", { server: "https://latex.uni.edu", browser: "firefox-snap" }],
       ["overleaf_sign_in_with_browser", { server: null, browser: "edge" }],
     ]);

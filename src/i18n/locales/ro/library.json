@@ -337,7 +337,7 @@
       "signingInBrowser": "Termină autentificarea în Overleaf în {{browser}}. Fereastra se închide singură după ce te-ai conectat. Dacă o închizi, autentificarea se anulează.",
       "passkeyHint": "Dacă cheia de acces nu funcționează în fereastra de autentificare, alege acolo altă opțiune, cum ar fi parola sau o confirmare pe telefon.",
       "expired": "Autentificarea în Overleaf a expirat. Autentifică-te din nou ca să îți vezi proiectele.",
-      "signIn": "Autentifică-te în Overleaf",
+      "signIn": "Autentifică-te în Oleafly",
       "signInWindowTitle": "Autentifică-te în Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adresa serverului Overleaf",
@@ -420,7 +420,8 @@
         "signedOut": "Autentifică-te mai întâi în Overleaf din Setări.",
         "openSettings": "Deschide Setările",
         "cancel": "Anulează"
-      }
+      },
+      "switchAccount": "Schimbă contul"
     }
   },
   "pdfImport": {

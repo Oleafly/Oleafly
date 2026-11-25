@@ -246,6 +246,12 @@ struct Accounts {
     current: Session,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     accounts: Vec<Session>,
+    #[serde(
+        default,
+        rename = "signedInAt",
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    signed_in_at: BTreeMap<String, i64>,
 }
 
 impl Accounts {
@@ -253,6 +259,7 @@ impl Accounts {
         Accounts {
             current: session,
             accounts: Vec::new(),
+            signed_in_at: BTreeMap::new(),
         }
     }
 
@@ -355,11 +362,49 @@ pub fn accounts(store: &SecretStore, base: &str) -> Result<Vec<Session>, OnlineE
         .unwrap_or_default())
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignIn {
+    pub server: String,
+    pub user_id: String,
+    pub email: String,
+    pub current: bool,
+    pub signed_in_at: Option<i64>,
+}
+
+pub fn sign_ins(store: &SecretStore) -> Result<Vec<SignIn>, OnlineError> {
+    let mut listed: Vec<SignIn> = read_sessions(store)?
+        .into_iter()
+        .flat_map(|(server, accounts)| {
+            let current = accounts.current.user_id.clone();
+            let signed_in_at = accounts.signed_in_at.clone();
+            accounts
+                .all()
+                .map(|session| SignIn {
+                    server: server.clone(),
+                    user_id: session.user_id.clone(),
+                    email: session.email.clone(),
+                    current: session.user_id == current,
+                    signed_in_at: signed_in_at.get(&session.user_id).copied(),
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    listed.sort_by_key(|sign_in| std::cmp::Reverse(sign_in.signed_in_at));
+    Ok(listed)
+}
+
 pub fn save(store: &SecretStore, base: &str, session: &Session) -> Result<(), OnlineError> {
-    with_sessions(store, |sessions| match sessions.get_mut(base) {
-        Some(accounts) => accounts.make_current(session.clone()),
-        None => {
-            sessions.insert(base.to_string(), Accounts::of(session.clone()));
+    with_sessions(store, |sessions| {
+        match sessions.get_mut(base) {
+            Some(accounts) => accounts.make_current(session.clone()),
+            None => {
+                sessions.insert(base.to_string(), Accounts::of(session.clone()));
+            }
+        }
+        if let Some(accounts) = sessions.get_mut(base) {
+            accounts
+                .signed_in_at
+                .insert(session.user_id.clone(), crate::unix_now());
         }
     })
 }
@@ -390,6 +435,7 @@ pub fn forget_account(store: &SecretStore, base: &str, user_id: &str) -> Result<
         let Some(accounts) = sessions.get_mut(base) else {
             return false;
         };
+        accounts.signed_in_at.remove(user_id);
         if accounts.current.user_id == user_id {
             if accounts.accounts.is_empty() {
                 sessions.remove(base);

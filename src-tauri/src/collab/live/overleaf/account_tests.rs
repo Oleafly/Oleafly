@@ -281,6 +281,13 @@ fn choosing_an_account_makes_it_the_current_one() {
                 ],
             })
         );
+        let sign_ins = crate::overleaf::overleaf_sign_ins().await.unwrap();
+        assert!(sign_ins.iter().all(|sign_in| {
+            sign_in.server == SERVER
+                && sign_in.signed_in_at.is_some()
+                && sign_in.current == (sign_in.user_id == alice.id)
+        }));
+        assert_eq!(sign_ins.len(), 2);
         let unknown =
             crate::overleaf::overleaf_use_account(Some(SERVER.to_owned()), "nobody".to_owned())
                 .await

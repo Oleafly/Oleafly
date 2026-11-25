@@ -332,7 +332,7 @@
       "signingInBrowser": "{{browser}} tarayıcısında Overleaf oturum açma işlemini tamamlayın. Giriş yaptığınızda pencere kendiliğinden kapanır. Pencereyi kapatırsanız işlem iptal olur.",
       "passkeyHint": "Geçiş anahtarınız oturum açma penceresinde çalışmazsa orada şifreniz veya telefonunuzdaki bir onay gibi başka bir seçenek belirleyin.",
       "expired": "Overleaf oturumunuzun süresi doldu. Projelerinizi görmek için yeniden oturum açın.",
-      "signIn": "Overleaf'te oturum aç",
+      "signIn": "Oleafly içinde oturum aç",
       "signInWindowTitle": "Overleaf'te oturum aç",
       "server": "Sunucu: {{server}}",
       "serverLabel": "Overleaf sunucu adresi",
@@ -410,7 +410,8 @@
         "signedOut": "Önce Ayarlar bölümünde Overleaf hesabınızla oturum açın.",
         "openSettings": "Ayarlar'ı aç",
         "cancel": "İptal"
-      }
+      },
+      "switchAccount": "Hesap değiştir"
     }
   },
   "pdfImport": {

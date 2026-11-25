@@ -7,6 +7,8 @@ const params = new URLSearchParams(window.location.search);
 const SERVER = "https://www.overleaf.com";
 const ALICE = { userId: "64f1c2a3b4c5d6e7f8091a2b", email: "alice@uni.edu" };
 const BOB = { userId: "64f1c2a3b4c5d6e7f8091a2c", email: "bob@lab.org" };
+const CAROL = { userId: "64f1c2a3b4c5d6e7f8091a2d", email: "carol@lab.org" };
+const LAB = "https://latex.lab.org";
 const calls: { command: string; args: unknown }[] = [];
 const opened: string[] = [];
 
@@ -34,9 +36,36 @@ const INVITE = {
 };
 
 let accounts = params.get("accounts") === "2" ? [ALICE, BOB] : [ALICE];
-let current: { userId: string; email: string } | null = accounts[0];
+let current: { userId: string; email: string } | null = params.get("signedIn") === "0" ? null : accounts[0];
+let elsewhere = params.get("elsewhere") === "1" ? [CAROL] : [];
+let asked = false;
+if (current === null) accounts = [];
 let projects = [THESIS];
 let invites = [INVITE];
+
+const badge = (color: string) =>
+  `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${color}"/></svg>`)}`;
+const BROWSER_ICONS = { brave: badge("#f1562b"), chrome: badge("#4285f4") };
+const SIGN_IN_BROWSERS = [
+  { key: "brave", name: "Brave" },
+  { key: "chrome", name: "Google Chrome" },
+  { key: "firefox", name: "Firefox" },
+];
+const profile = (browser: string, browserName: string, folder: string, profileName: string, status = "available") => ({
+  browser,
+  browserName,
+  profile: folder,
+  profileName,
+  status,
+});
+const BROWSER_PROFILES = [
+  profile("chrome", "Google Chrome", "Default", "Person 1"),
+  profile("brave", "Brave", "Default", "General"),
+  profile("brave", "Brave", "Profile 1", "The Hustle"),
+  profile("brave", "Brave", "Profile 2", "The Final Grind", "no_cookie_store"),
+  profile("brave", "Brave", "Profile 3", "RNerd"),
+  profile("firefox", "Firefox", "wlg1oyhc.default-release", "default-release"),
+];
 
 const appError = (code: string) => `@oleafly/error:${JSON.stringify({ code, params: {}, detail: null })}`;
 const status = () => ({
@@ -78,13 +107,38 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return status();
   },
   overleaf_sign_out: (args) => {
+    if (args.server === LAB) {
+      if (params.get("unsent") === "1" && !asked) {
+        asked = true;
+        const left = { server: LAB, signedIn: true, email: CAROL.email, userId: CAROL.userId, accounts: elsewhere };
+        return { ...left, unsent: [{ project_id: "p1", name: "Lab report", paths: ["main.tex"] }] };
+      }
+      elsewhere = elsewhere.filter((account) => account.userId !== args.account);
+      return { server: LAB, signedIn: false, email: null, userId: null, accounts: elsewhere };
+    }
     accounts = accounts.filter((account) => account.userId !== args.account);
     if (current && current.userId === args.account) current = accounts[0] ?? null;
     return status();
   },
-  overleaf_sign_in_browsers: () => [],
+  overleaf_sign_ins: () => [
+    ...accounts.map((account, index) => ({
+      server: SERVER,
+      ...account,
+      current: account.userId === current?.userId,
+      signedInAt: Math.floor(Date.now() / 1000) - index * 7_200,
+    })),
+    ...elsewhere.map((account) => ({ server: LAB, ...account, current: true, signedInAt: null })),
+  ],
+  overleaf_browser_icons: () => BROWSER_ICONS,
+  overleaf_sign_in_browsers: () => (params.get("browsers") === "1" ? SIGN_IN_BROWSERS : []),
   overleaf_git_token_status: () => false,
-  detect_browser_cookie_sources: () => [],
+  detect_browser_cookie_sources: () => (params.get("browsers") === "1" ? BROWSER_PROFILES : []),
+  import_browser_cookies: () => ({ imported: 3, browserName: "Brave", profileName: "General", domain: "www.overleaf.com" }),
+  overleaf_sign_in_with_app_cookies: () => {
+    current = params.get("copied") === "bob" ? BOB : ALICE;
+    accounts = [current, ...accounts.filter((account) => account.userId !== current?.userId)];
+    return status();
+  },
   list_projects: () => [],
 };
 

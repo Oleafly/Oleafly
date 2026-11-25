@@ -1863,23 +1863,17 @@
       "disconnectFailed": "無法中斷與 alphaXiv 的連線。請再試一次。"
     },
     "cookies": {
-      "dialogDescription": "選擇一個已安裝的瀏覽器設定檔。Oleafly 只會在你審視並確認匯入之後才讀取。Chromium 的 Cookie 會透過 macOS Keychain 在本機解鎖。Oleafly 不會把 Cookie 值傳送到 Oleafly 的服務。",
-      "dialogTitle": "匯入瀏覽器 Cookie",
-      "profileGroupLabel": "瀏覽器設定檔",
-      "profileLegend": "瀏覽器設定檔",
-      "status": {
-        "available": "可用",
-        "comingSoon": "即將推出",
-        "noCookieStore": "沒有 Cookie 資料庫",
-        "notInstalled": "未安裝"
-      },
+      "dialogDescription": "Oleafly 只會複製 {{server}} 的 Cookie，用它們登入，然後刪除副本。你的密碼仍留在瀏覽器中。",
+      "dialogTitle": "從瀏覽器匯入 Cookie",
       "label": "複製瀏覽器的登入資訊",
-      "useBrowserSignIn": "複製瀏覽器中的登入資訊",
+      "useBrowserSignIn": "從瀏覽器匯入 Cookie",
       "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
-      "site": "網站：{{domain}}",
-      "copyAction": "複製登入資訊",
-      "copying": "正在複製…",
-      "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。"
+      "copyAction": "匯入",
+      "copying": "正在匯入…",
+      "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。",
+      "from": "來源",
+      "noCookies": "還沒有 Cookie",
+      "sameAccount": "{{profile}} 登入的是 {{account}}，而 Oleafly 已在使用這個帳號。請選擇其他設定檔，或先在該瀏覽器中登入另一個帳號。"
     },
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
@@ -1937,7 +1931,7 @@
       "signOut": "登出",
       "signOutFailed": "Oleafly 無法登出 Overleaf。",
       "addAccount": "新增其他帳號",
-      "addAccountHint": "登入視窗每次都是全新的，因此你可以用任何帳號登入。使用瀏覽器登入或複製瀏覽器的登入資訊時，會使用該瀏覽器目前登入的帳號。",
+      "addAccountHint": "登入時會從未登入的狀態開始，因此你可以使用任何帳號。匯入 Cookie 會使用該瀏覽器設定檔中登入的帳號。",
       "accountPick": "用於匯入的帳號",
       "accountPickDescription": "新的匯入和範本會使用這個帳號。你已有的專案會保留其來源帳號。",
       "gitTitle": "用於同步的 Git 權杖",
@@ -1955,7 +1949,7 @@
       "browserAction": "登入",
       "browserPick": "用於登入的瀏覽器",
       "browserWaiting": "請在 {{browser}} 中完成 {{server}} 的登入。關閉視窗會取消登入。",
-      "browserHint": "使用 Google、機構或密碼金鑰登入時，請選擇這個方式。",
+      "browserHint": "開啟一個未登入的 {{browser}} 新視窗。可用於透過 Google、所屬機構或通行金鑰登入。",
       "windowLabel": "登入 {{server}}",
       "windowDescription": "Oleafly 會開啟登入視窗，登入完成後自動關閉。若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡透過它登入。",
       "windowAction": "登入",
@@ -1975,7 +1969,9 @@
           "always": "也在 Overleaf 上刪除",
           "never": "保留在 Overleaf 上"
         }
-      }
+      },
+      "sameAccount": "你已經以 {{account}} 的身分登入。若要新增其他帳號，請用該帳號登入。",
+      "browserButton": "使用 {{browser}} 登入"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2107,6 +2103,20 @@
           "confirm": "這會從 cua.ai 下載 Cua 安裝程式並在你的終端機中執行。要繼續嗎？"
         }
       }
+    },
+    "signIns": {
+      "title": "管理登入",
+      "description": "Oleafly 在這台電腦上登入的帳號。在這裡移除帳號不會讓你在瀏覽器中登出。",
+      "loading": "正在載入登入資訊…",
+      "empty": "你沒有登入任何帳號。",
+      "inUse": "使用中",
+      "switch": "切換",
+      "switchTo": "切換到 {{account}}",
+      "removeAccount": "移除 {{account}}",
+      "removeAll": "全部移除",
+      "importMore": "匯入更多",
+      "loadFailed": "Oleafly 無法載入登入資訊。",
+      "changeFailed": "Oleafly 無法變更此登入。請再試一次。"
     }
   },
   "language": {

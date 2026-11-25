@@ -327,7 +327,7 @@
       "signingInBrowser": "请在 {{browser}} 中完成 Overleaf 登录。登录完成后窗口会自动关闭。关闭窗口会取消登录。",
       "passkeyHint": "如果通行密钥在登录窗口中无法使用，请在该页面选择其他方式，例如密码或手机上的确认提示。",
       "expired": "你的 Overleaf 登录已过期。请重新登录以查看你的项目。",
-      "signIn": "登录 Overleaf",
+      "signIn": "在 Oleafly 内登录",
       "signInWindowTitle": "登录 Overleaf",
       "server": "服务器：{{server}}",
       "serverLabel": "Overleaf 服务器地址",
@@ -400,7 +400,8 @@
         "signedOut": "请先在设置中登录 Overleaf。",
         "openSettings": "打开设置",
         "cancel": "取消"
-      }
+      },
+      "switchAccount": "切换账户"
     }
   },
   "pdfImport": {

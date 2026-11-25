@@ -1,6 +1,6 @@
 pub(crate) use oleafly_online::service::DEFAULT_SERVER;
 pub(crate) use oleafly_online::session::{
-    cookie_applies, cookie_header, is_dashboard, merge_set_cookies, Session,
+    cookie_applies, cookie_header, is_dashboard, merge_set_cookies, Session, SignIn,
 };
 
 use super::client::{self, Http};
@@ -23,6 +23,10 @@ pub(crate) fn load(base: &str, account: Option<&str>) -> Result<Option<Session>,
 
 pub(crate) fn accounts(base: &str) -> Result<Vec<Session>, String> {
     oleafly_online::session::accounts(&store()?, base).map_err(app_error)
+}
+
+pub(crate) fn sign_ins() -> Result<Vec<SignIn>, String> {
+    oleafly_online::session::sign_ins(&store()?).map_err(app_error)
 }
 
 pub(crate) fn use_account(base: &str, user_id: &str) -> Result<bool, String> {

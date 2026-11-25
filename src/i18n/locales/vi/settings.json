@@ -1863,23 +1863,17 @@
       "disconnectFailed": "Không thể ngắt kết nối alphaXiv. Hãy thử lại."
     },
     "cookies": {
-      "dialogDescription": "Hãy chọn một hồ sơ trình duyệt đã cài. Oleafly chỉ đọc hồ sơ đó sau khi bạn xem xét và xác nhận nhập. Cookie của Chromium được mở khoá cục bộ qua macOS Keychain. Oleafly không gửi giá trị cookie đến dịch vụ Oleafly.",
-      "dialogTitle": "Nhập cookie trình duyệt",
-      "profileGroupLabel": "Hồ sơ trình duyệt",
-      "profileLegend": "Hồ sơ trình duyệt",
-      "status": {
-        "available": "Khả dụng",
-        "comingSoon": "Sắp ra mắt",
-        "noCookieStore": "Không có kho cookie",
-        "notInstalled": "Chưa cài"
-      },
+      "dialogDescription": "Oleafly chỉ sao chép cookie của {{server}}, dùng chúng để đăng nhập rồi xóa các bản sao. Mật khẩu của bạn vẫn ở trong trình duyệt.",
+      "dialogTitle": "Nhập cookie từ trình duyệt của bạn",
       "label": "Sao chép đăng nhập từ trình duyệt",
-      "useBrowserSignIn": "Sao chép đăng nhập từ trình duyệt của bạn",
+      "useBrowserSignIn": "Nhập cookie từ trình duyệt của bạn",
       "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
-      "site": "Trang: {{domain}}",
-      "copyAction": "Sao chép đăng nhập",
-      "copying": "Đang sao chép…",
-      "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp."
+      "copyAction": "Nhập",
+      "copying": "Đang nhập…",
+      "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp.",
+      "from": "Từ",
+      "noCookies": "Chưa có cookie",
+      "sameAccount": "{{profile}} đang đăng nhập bằng {{account}}, tài khoản mà Oleafly đã dùng. Hãy chọn hồ sơ khác hoặc đăng nhập tài khoản kia trong trình duyệt đó trước."
     },
     "zotero": {
       "apiKeyHint": "Để lấy khoá: đăng nhập tại <siteLink>zotero.org</siteLink>, mở <keyLink>trang khoá API</keyLink> của bạn để tạo khoá và sao chép ID người dùng dạng số từ cùng trang đó.",
@@ -1937,7 +1931,7 @@
       "signOut": "Đăng xuất",
       "signOutFailed": "Oleafly không thể đăng xuất khỏi Overleaf.",
       "addAccount": "Thêm tài khoản khác",
-      "addAccountHint": "Cửa sổ đăng nhập mở ra mà không có phiên đăng nhập cũ nào nên bạn có thể đăng nhập bằng bất kỳ tài khoản nào. Đăng nhập bằng trình duyệt hoặc sao chép đăng nhập từ trình duyệt sẽ dùng tài khoản đang đăng nhập trên trình duyệt đó.",
+      "addAccountHint": "Quá trình đăng nhập bắt đầu khi chưa có tài khoản nào nên bạn có thể dùng bất kỳ tài khoản nào. Nhập cookie sẽ dùng tài khoản đang đăng nhập trong hồ sơ trình duyệt đó.",
       "accountPick": "Tài khoản dùng để nhập",
       "accountPickDescription": "Các lần nhập và mẫu mới dùng tài khoản này. Các dự án bạn đã có vẫn dùng tài khoản ban đầu của chúng.",
       "gitTitle": "Token Git để đồng bộ",
@@ -1955,7 +1949,7 @@
       "browserAction": "Đăng nhập",
       "browserPick": "Trình duyệt dùng để đăng nhập",
       "browserWaiting": "Hãy hoàn tất đăng nhập {{server}} trong {{browser}}. Đóng cửa sổ sẽ huỷ đăng nhập.",
-      "browserHint": "Dùng cách này để đăng nhập bằng Google, tổ chức hoặc passkey.",
+      "browserHint": "Mở một cửa sổ {{browser}} mới chưa đăng nhập. Dùng cho đăng nhập bằng Google, tổ chức hoặc khóa truy cập.",
       "windowLabel": "Đăng nhập {{server}}",
       "windowDescription": "Oleafly mở một cửa sổ đăng nhập và đóng nó khi bạn đăng nhập xong. Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi đăng nhập bằng trình duyệt đó tại đây.",
       "windowAction": "Đăng nhập",
@@ -1975,7 +1969,9 @@
           "always": "Xoá cả trên Overleaf",
           "never": "Giữ trên Overleaf"
         }
-      }
+      },
+      "sameAccount": "Bạn đã đăng nhập bằng {{account}}. Hãy đăng nhập bằng tài khoản khác để thêm tài khoản đó.",
+      "browserButton": "Đăng nhập bằng {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2107,6 +2103,20 @@
           "confirm": "Thao tác này tải trình cài đặt Cua từ cua.ai và chạy trong terminal của bạn. Tiếp tục?"
         }
       }
+    },
+    "signIns": {
+      "title": "Quản lý đăng nhập",
+      "description": "Các tài khoản mà Oleafly đang đăng nhập trên máy tính này. Gỡ một tài khoản ở đây không làm bạn đăng xuất trong trình duyệt.",
+      "loading": "Đang tải thông tin đăng nhập của bạn…",
+      "empty": "Bạn chưa đăng nhập tài khoản nào.",
+      "inUse": "Đang dùng",
+      "switch": "Chuyển",
+      "switchTo": "Chuyển sang {{account}}",
+      "removeAccount": "Gỡ {{account}}",
+      "removeAll": "Gỡ tất cả",
+      "importMore": "Nhập thêm",
+      "loadFailed": "Oleafly không thể tải thông tin đăng nhập của bạn.",
+      "changeFailed": "Oleafly không thể thay đổi đăng nhập này. Hãy thử lại."
     }
   },
   "language": {

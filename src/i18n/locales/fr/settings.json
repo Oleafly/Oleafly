@@ -1887,25 +1887,19 @@
       "disconnectFailed": "Impossible de déconnecter alphaXiv. Réessayez."
     },
     "cookies": {
-      "dialogDescription": "Choisissez un profil de navigateur installé. Oleafly ne le lit qu'après votre vérification et votre confirmation. Les cookies Chromium sont déverrouillés localement via le trousseau macOS. Oleafly n'envoie aucune valeur de cookie à un service Oleafly.",
-      "dialogTitle": "Importer les cookies du navigateur",
-      "profileGroupLabel": "Profils de navigateur",
-      "profileLegend": "Profil de navigateur",
-      "status": {
-        "available": "Disponible",
-        "comingSoon": "Bientôt disponible",
-        "noCookieStore": "Aucun stockage de cookies",
-        "notInstalled": "Non installé"
-      },
+      "dialogDescription": "Oleafly copie uniquement les cookies du site {{server}}, se connecte avec, puis supprime les copies. Vos mots de passe restent dans le navigateur.",
+      "dialogTitle": "Importer les cookies de votre navigateur",
       "label": "Copier la connexion d'un navigateur",
-      "useBrowserSignIn": "Copier la connexion depuis votre navigateur",
+      "useBrowserSignIn": "Importer les cookies de votre navigateur",
       "signInDescription": "Copiez votre connexion à {{server}} depuis un navigateur de cet ordinateur, pour ne pas avoir à vous reconnecter.",
-      "site": "Site : {{domain}}",
-      "copyAction": "Copier la connexion",
-      "copying": "Copie en cours…",
+      "copyAction": "Importer",
+      "copying": "Importation en cours…",
       "notSignedIn_one": "{{count}} cookie copié depuis {{browser}}, mais il ne vous a pas connecté. Connectez-vous directement.",
       "notSignedIn_many": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement.",
-      "notSignedIn_other": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement."
+      "notSignedIn_other": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement.",
+      "from": "Depuis",
+      "noCookies": "Pas encore de cookies",
+      "sameAccount": "{{profile}} est connecté en tant que {{account}}, un compte qu'Oleafly utilise déjà. Choisissez un autre profil, ou connectez-vous d'abord à votre autre compte dans ce navigateur."
     },
     "zotero": {
       "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>zotero.org</siteLink>, ouvrez votre <keyLink>page de clés API</keyLink> pour créer une clé, et copiez votre identifiant utilisateur numérique sur la même page.",
@@ -1969,7 +1963,7 @@
       "signOut": "Se déconnecter",
       "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf.",
       "addAccount": "Ajouter un autre compte",
-      "addAccountHint": "La fenêtre de connexion s'ouvre sans session existante, vous pouvez donc vous connecter avec n'importe quel compte. Se connecter avec un navigateur, ou copier la connexion d'un navigateur, utilise le compte auquel ce navigateur est connecté.",
+      "addAccountHint": "La connexion démarre sans compte connecté, vous pouvez donc utiliser n'importe quel compte. L'importation des cookies utilise le compte auquel ce profil de navigateur est connecté.",
       "accountPick": "Compte pour l'import",
       "accountPickDescription": "Les nouveaux imports et les modèles utilisent ce compte. Les projets que vous avez déjà gardent le compte d'où ils viennent.",
       "gitTitle": "Jeton Git pour la synchronisation",
@@ -1987,7 +1981,7 @@
       "browserAction": "Se connecter",
       "browserPick": "Navigateur pour la connexion",
       "browserWaiting": "Terminez la connexion à {{server}} dans {{browser}}. Fermer la fenêtre annule la connexion.",
-      "browserHint": "À utiliser pour la connexion avec Google, un établissement ou une clé d'accès.",
+      "browserHint": "Ouvre une nouvelle fenêtre {{browser}} sans session existante. Utilisez-la pour vous connecter avec Google, votre établissement ou une clé d'accès.",
       "windowLabel": "Se connecter à {{server}}",
       "windowDescription": "Oleafly ouvre une fenêtre de connexion et la ferme une fois la connexion établie. Pour vous connecter avec Google, votre établissement ou une clé d'accès, installez Chrome, Edge, Brave, Chromium ou Firefox, puis connectez-vous ici avec ce navigateur.",
       "windowAction": "Se connecter",
@@ -2007,7 +2001,9 @@
           "always": "Le supprimer aussi sur Overleaf",
           "never": "Le garder sur Overleaf"
         }
-      }
+      },
+      "sameAccount": "Vous êtes déjà connecté en tant que {{account}}. Connectez-vous avec un autre compte pour l'ajouter.",
+      "browserButton": "Se connecter avec {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2139,6 +2135,20 @@
           "confirm": "Cette commande télécharge le programme d'installation de Cua depuis cua.ai et l'exécute dans votre terminal. Continuer ?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gérer les connexions",
+      "description": "Les comptes auxquels Oleafly est connecté sur cet ordinateur. Si vous en retirez un ici, vous restez connecté dans votre navigateur.",
+      "loading": "Chargement de vos connexions…",
+      "empty": "Vous n'êtes connecté à aucun compte.",
+      "inUse": "Utilisé",
+      "switch": "Changer",
+      "switchTo": "Passer au compte {{account}}",
+      "removeAccount": "Retirer {{account}}",
+      "removeAll": "Tout retirer",
+      "importMore": "Importer d'autres cookies",
+      "loadFailed": "Oleafly n'a pas pu charger vos connexions.",
+      "changeFailed": "Oleafly n'a pas pu modifier cette connexion. Réessayez."
     }
   },
   "language": {

@@ -5,7 +5,8 @@ import { RotateCw, Search } from "lucide-react";
 import { Book, BOOK_SWATCHES } from "@/components/library/Book";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
-import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
+import { BrowserSignIn, BrowserSignInCopy, RepeatedAccount } from "@/components/settings/BrowserSignInCopy";
+import { ManageSignInsDialog } from "@/components/settings/browser-sign-in/ManageSignInsDialog";
 import { LINK_BUTTON, OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 import { OverleafInvitations, OverleafLinkCard } from "@/components/library/overleaf/OverleafJoin";
@@ -21,7 +22,12 @@ import { isOverleafError, looksLikeOverleafLink, type OverleafProject } from "@/
 import { importAndRefresh, openLiveAndRefresh } from "@/lib/overleaf-open";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { cn, isLinux } from "@/lib/utils";
-import { useOverleafImportStore, type OverleafRowProgress } from "@/store/overleaf-import";
+import {
+  accountsOf,
+  useOverleafImportStore,
+  type OverleafPhase,
+  type OverleafRowProgress,
+} from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
 
 type Filter = "all" | "owned" | "shared";
@@ -99,22 +105,82 @@ export function OverleafImportView({
   onOpenProject,
   onDone,
 }: Readonly<{ onOpenProject: (projectId: string) => void; onDone: () => void }>) {
+  const { t } = useTranslation(["settings"]);
   const phase = useOverleafImportStore((state) => state.phase);
   const open = useOverleafImportStore((state) => state.open);
   const running = useOverleafImportStore((state) => state.run !== null);
+  const accounts = useOverleafImportStore((state) => accountsOf(state.status));
+  const [managing, setManaging] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     void open();
     return () => useOverleafImportStore.getState().finishRun();
   }, [open]);
 
+  useEffect(() => {
+    if (accounts) setAdding(false);
+  }, [accounts]);
+
+  const stopAdding = () => {
+    setAdding(false);
+    void open();
+  };
+
+  return (
+    <>
+      <ImportPhase
+        phase={phase}
+        running={running}
+        adding={adding}
+        onStopAdding={stopAdding}
+        onManageSignIns={() => setManaging(true)}
+        onOpenProject={onOpenProject}
+        onDone={onDone}
+      />
+      <ManageSignInsDialog
+        open={managing}
+        onOpenChange={setManaging}
+        addLabel={t(($) => $.settings.integrations.overleaf.addAccount)}
+        onAdd={() => {
+          setManaging(false);
+          setAdding(true);
+        }}
+        onSwitched={() => {
+          if (useOverleafImportStore.getState().phase === "idle") void open();
+        }}
+      />
+      <OverleafSignOutQuestion />
+    </>
+  );
+}
+
+function ImportPhase({
+  phase,
+  running,
+  adding,
+  onStopAdding,
+  onManageSignIns,
+  onOpenProject,
+  onDone,
+}: Readonly<{
+  phase: OverleafPhase;
+  running: boolean;
+  adding: boolean;
+  onStopAdding: () => void;
+  onManageSignIns: () => void;
+  onOpenProject: (projectId: string) => void;
+  onDone: () => void;
+}>) {
+  if (adding || phase === "signed-out" || phase === "signing-in") {
+    return <SignInPanel onCancel={adding ? onStopAdding : undefined} />;
+  }
   if (phase === "idle" || phase === "checking" || phase === "loading") {
     return <LoadingState loading={phase === "loading"} />;
   }
-  if (phase === "signed-out" || phase === "signing-in") return <SignInPanel />;
   if (phase === "error") return <ErrorState />;
   if (running) return <ImportRun onOpenProject={onOpenProject} onDone={onDone} />;
-  return <ProjectPicker onOpenProject={onOpenProject} />;
+  return <ProjectPicker onOpenProject={onOpenProject} onManageSignIns={onManageSignIns} />;
 }
 
 function LoadingState({ loading }: Readonly<{ loading: boolean }>) {
@@ -149,7 +215,10 @@ function ErrorState() {
   );
 }
 
-function ProjectPicker({ onOpenProject }: Readonly<{ onOpenProject: (projectId: string) => void }>) {
+function ProjectPicker({
+  onOpenProject,
+  onManageSignIns,
+}: Readonly<{ onOpenProject: (projectId: string) => void; onManageSignIns: () => void }>) {
   const projects = useOverleafImportStore((state) => state.projects);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -162,7 +231,10 @@ function ProjectPicker({ onOpenProject }: Readonly<{ onOpenProject: (projectId: 
   return (
     <div data-testid="overleaf-import-view" className="flex min-h-0 flex-1 flex-col gap-3">
       <PickerToolbar query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} total={projects.length} />
-      <SelectionBar visibleIds={visible.filter((project) => !project.importedAs).map((project) => project.id)} />
+      <SelectionBar
+        visibleIds={visible.filter((project) => !project.importedAs).map((project) => project.id)}
+        onManageSignIns={onManageSignIns}
+      />
       <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1">
         {link ? <OverleafLinkCard key={link} link={link} onOpenProject={onOpenProject} /> : null}
         <OverleafInvitations onOpenProject={onOpenProject} />
@@ -225,8 +297,12 @@ function PickerToolbar({
   );
 }
 
-function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
+function SelectionBar({
+  visibleIds,
+  onManageSignIns,
+}: Readonly<{ visibleIds: string[]; onManageSignIns: () => void }>) {
   const { t } = useTranslation(["library"]);
+  const { t: shared } = useTranslation(["settings"]);
   const selected = useOverleafImportStore((state) => state.selected);
   const importing = useOverleafImportStore((state) => state.importing);
   const email = useOverleafImportStore((state) => state.status?.email ?? null);
@@ -282,6 +358,17 @@ function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
         )}
         <button
           type="button"
+          data-testid="overleaf-switch-account"
+          disabled={importing}
+          onClick={onManageSignIns}
+          className={LINK_BUTTON}
+        >
+          {accounts.length > 1
+            ? shared(($) => $.settings.integrations.signIns.title)
+            : t(($) => $.library.import.overleaf.switchAccount)}
+        </button>
+        <button
+          type="button"
           data-testid="overleaf-sign-out"
           disabled={importing}
           onClick={() => void signOut()}
@@ -290,7 +377,6 @@ function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
           {t(($) => $.library.import.overleaf.signOut)}
         </button>
       </span>
-      <OverleafSignOutQuestion />
     </div>
   );
 }
@@ -390,8 +476,9 @@ function PickerFooter() {
   );
 }
 
-function SignInPanel() {
+function SignInPanel({ onCancel }: Readonly<{ onCancel?: () => void }>) {
   const { t } = useTranslation(["library"]);
+  const { t: shared } = useTranslation(["common", "settings"]);
   const store = useOverleafImportStore();
   const signing = store.phase === "signing-in";
   const inWindow = signing && store.signingWith === null;
@@ -400,7 +487,11 @@ function SignInPanel() {
   return (
     <div data-testid="overleaf-sign-in-panel" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border bg-card px-6 py-8 text-center">
       <OverleafBrandIcon className="size-8 text-[#47A141]" />
-      <p className="max-w-md text-sm text-muted-foreground">{promptText(t, signing, store.signingWith, expired)}</p>
+      <p className="max-w-md text-sm text-muted-foreground">
+        {onCancel && !signing
+          ? shared(($) => $.settings.integrations.overleaf.addAccountHint)
+          : promptText(t, signing, store.signingWith, expired)}
+      </p>
       <div className="flex flex-col items-center gap-1">
         <Button
           type="button"
@@ -424,7 +515,14 @@ function SignInPanel() {
           {describeError(store.error)}
         </p>
       ) : null}
-      <OverleafServerField disabled={signing} onChanged={() => void store.open()} />
+      <RepeatedAccount />
+      {onCancel ? (
+        <Button type="button" variant="ghost" size="sm" disabled={signing} onClick={onCancel}>
+          {shared(($) => $.common.actions.cancel)}
+        </Button>
+      ) : (
+        <OverleafServerField disabled={signing} onChanged={() => void store.open()} />
+      )}
     </div>
   );
 }

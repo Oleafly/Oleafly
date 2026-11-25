@@ -327,7 +327,7 @@
       "signingInBrowser": "{{browser}} で Overleaf へのサインインを完了してください。サインインが済むとウィンドウは自動で閉じます。閉じるとキャンセルされます。",
       "passkeyHint": "サインイン用のウィンドウでパスキーが使えない場合は、パスワードやスマートフォンでの確認など、別の方法を選んでください。",
       "expired": "Overleaf のサインインの有効期限が切れました。プロジェクトを表示するには、もう一度サインインしてください。",
-      "signIn": "Overleaf にサインイン",
+      "signIn": "Oleafly の中でサインイン",
       "signInWindowTitle": "Overleaf にサインイン",
       "server": "サーバー: {{server}}",
       "serverLabel": "Overleaf サーバーのアドレス",
@@ -400,7 +400,8 @@
         "signedOut": "先に設定で Overleaf にサインインしてください。",
         "openSettings": "設定を開く",
         "cancel": "キャンセル"
-      }
+      },
+      "switchAccount": "アカウントを切り替える"
     }
   },
   "pdfImport": {

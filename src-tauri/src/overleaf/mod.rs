@@ -55,6 +55,16 @@ pub struct OverleafAccount {
     pub email: Option<String>,
 }
 
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafSignIn {
+    pub server: String,
+    pub user_id: String,
+    pub email: Option<String>,
+    pub current: bool,
+    pub signed_in_at: Option<i64>,
+}
+
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OverleafProjects {
@@ -64,7 +74,11 @@ pub struct OverleafProjects {
 }
 
 fn email_of(session: &session::Session) -> Option<String> {
-    Some(session.email.clone()).filter(|email| !email.is_empty())
+    known_email(&session.email)
+}
+
+fn known_email(email: &str) -> Option<String> {
+    Some(email.to_owned()).filter(|email| !email.is_empty())
 }
 
 fn status_for(base: &str, accounts: &[session::Session]) -> OverleafStatus {
@@ -108,6 +122,23 @@ async fn keep_session(base: String, signed_in: session::Session) -> Result<Overl
 pub async fn overleaf_status(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
     stored_status(&base).await
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_ins() -> Result<Vec<OverleafSignIn>, String> {
+    blocking(|| {
+        Ok(session::sign_ins()?
+            .into_iter()
+            .map(|sign_in| OverleafSignIn {
+                email: known_email(&sign_in.email),
+                server: sign_in.server,
+                user_id: sign_in.user_id,
+                current: sign_in.current,
+                signed_in_at: sign_in.signed_in_at,
+            })
+            .collect())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -166,6 +197,14 @@ pub async fn overleaf_sign_in_browsers<R: Runtime>(
             .collect())
     })
     .await
+}
+
+#[tauri::command]
+pub async fn overleaf_browser_icons<R: Runtime>(
+    webview: tauri::Webview<R>,
+) -> Result<BTreeMap<String, String>, String> {
+    main_window_only(&webview)?;
+    blocking(|| Ok(signin::browser_icons())).await
 }
 
 #[tauri::command]

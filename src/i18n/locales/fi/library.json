@@ -332,7 +332,7 @@
       "signingInBrowser": "Viimeistele Overleaf-kirjautuminen selaimessa {{browser}}. Ikkuna sulkeutuu itsestään, kun olet kirjautunut. Ikkunan sulkeminen peruu kirjautumisen.",
       "passkeyHint": "Jos pääsyavaimesi ei toimi kirjautumisikkunassa, valitse siellä toinen tapa, kuten salasana tai vahvistus puhelimessa.",
       "expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen nähdäksesi projektisi.",
-      "signIn": "Kirjaudu Overleafiin",
+      "signIn": "Kirjaudu Oleafly-sovelluksessa",
       "signInWindowTitle": "Kirjaudu Overleafiin",
       "server": "Palvelin: {{server}}",
       "serverLabel": "Overleaf-palvelimen osoite",
@@ -410,7 +410,8 @@
         "signedOut": "Kirjaudu ensin Overleaf-palveluun asetuksissa.",
         "openSettings": "Avaa asetukset",
         "cancel": "Peruuta"
-      }
+      },
+      "switchAccount": "Vaihda tiliä"
     }
   },
   "pdfImport": {

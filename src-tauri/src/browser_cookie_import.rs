@@ -14,6 +14,7 @@ pub use oleafly_online::browser_cookies::BrowserId as BrowserCookieSourceId;
 const MAIN_WEBVIEW_LABEL: &str = "main";
 const STORED_WITHIN: Duration = Duration::from_secs(3);
 const STORED_POLL: Duration = Duration::from_millis(100);
+const NO_PROFILES: &str = "Oleafly could not locate your browser profiles.";
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -35,17 +36,20 @@ pub struct BrowserCookieImportSummary {
 }
 
 #[tauri::command]
-pub fn detect_browser_cookie_sources<R: Runtime>(
+pub async fn detect_browser_cookie_sources<R: Runtime>(
     webview: Webview<R>,
 ) -> Result<Vec<DetectedCookieSource>, String> {
     validate_command_caller(webview.label()).map_err(|error| error.to_string())?;
-    let home = crate::paths::home_dir()
-        .map_err(|_| "Oleafly could not locate your browser profiles.".to_string())?;
-    Ok(reader::detect_sources_at(
-        &home,
-        HostPlatform::current(),
-        ImportPolicy::App,
-    ))
+    let home = browser_home()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        reader::detect_sources_at(&home, HostPlatform::current(), ImportPolicy::App)
+    })
+    .await
+    .map_err(|_| NO_PROFILES.to_string())
+}
+
+fn browser_home() -> Result<std::path::PathBuf, String> {
+    crate::paths::home_dir().map_err(|_| NO_PROFILES.to_string())
 }
 
 #[tauri::command]
@@ -67,17 +71,22 @@ pub async fn import_browser_cookies<R: Runtime>(
         .map_err(|error| error.to_string())?;
     let browser = request.browser;
     let profile = request.profile;
+    let home = browser_home()?;
+    let (names, named) = (home.clone(), profile.clone());
+    let profile_name = tauri::async_runtime::spawn_blocking(move || {
+        reader::profile_name_at(&names, platform, browser, &named)
+    })
+    .await
+    .map_err(|_| NO_PROFILES.to_string())?;
     confirm_native_cookie_import(
         webview.app_handle().clone(),
         browser,
-        &profile,
+        &profile_name,
         domain.as_deref(),
     )
     .await
     .map_err(|error| error.to_string())?;
-    let home = crate::paths::home_dir()
-        .map_err(|_| "Oleafly could not locate your browser profiles.".to_string())?;
-    let read_profile = profile.clone();
+    let read_profile = profile;
     let read_domain = domain.clone();
     let cookies = tauri::async_runtime::spawn_blocking(move || {
         reader::read_cookies(
@@ -112,7 +121,7 @@ pub async fn import_browser_cookies<R: Runtime>(
     Ok(BrowserCookieImportSummary {
         imported: cookies.len(),
         browser_name: browser.name().to_string(),
-        profile_name: profile,
+        profile_name,
         domain,
     })
 }

@@ -1875,24 +1875,18 @@
       "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
-      "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
-      "dialogTitle": "Tuo selaimen cookiet",
-      "profileGroupLabel": "Selainprofiilit",
-      "profileLegend": "Selainprofiili",
-      "status": {
-        "available": "Käytettävissä",
-        "comingSoon": "Tulossa pian",
-        "noCookieStore": "Ei cookie-varastoa",
-        "notInstalled": "Ei asennettu"
-      },
+      "dialogDescription": "Oleafly kopioi vain palvelun {{server}} cookiet, kirjautuu niillä ja poistaa sitten kopiot. Salasanasi pysyvät selaimessa.",
+      "dialogTitle": "Tuo cookiet selaimestasi",
       "label": "Kopioi selaimen kirjautuminen",
-      "useBrowserSignIn": "Kopioi kirjautuminen selaimestasi",
+      "useBrowserSignIn": "Tuo cookiet selaimestasi",
       "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
-      "site": "Sivusto: {{domain}}",
-      "copyAction": "Kopioi kirjautuminen",
-      "copying": "Kopioidaan…",
+      "copyAction": "Tuo",
+      "copying": "Tuodaan…",
       "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
-      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään."
+      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
+      "from": "Mistä",
+      "noCookies": "Ei vielä cookieita",
+      "sameAccount": "Profiilissa {{profile}} on kirjautuneena {{account}}, jota Oleafly jo käyttää. Valitse toinen profiili tai kirjaudu ensin siinä selaimessa toiselle tilillesi."
     },
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
@@ -1953,7 +1947,7 @@
       "signOut": "Kirjaudu ulos",
       "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
       "addAccount": "Lisää toinen tili",
-      "addAccountHint": "Kirjautumisikkuna avautuu ilman aiempaa kirjautumista, joten voit kirjautua millä tahansa tilillä. Kun kirjaudut selaimella tai kopioit selaimen kirjautumisen, käytetään tiliä, jolla selain on kirjautunut.",
+      "addAccountHint": "Kirjautuminen alkaa ilman kirjautunutta tiliä, joten voit käyttää mitä tahansa tiliä. Cookieiden tuonti käyttää tiliä, jolla selainprofiili on kirjautunut.",
       "accountPick": "Tuonnissa käytettävä tili",
       "accountPickDescription": "Uudet tuonnit ja mallipohjat käyttävät tätä tiliä. Jo olemassa olevat projektisi säilyttävät tilin, josta ne tuotiin.",
       "gitTitle": "Git-tokeni synkronointia varten",
@@ -1971,7 +1965,7 @@
       "browserAction": "Kirjaudu",
       "browserPick": "Selain kirjautumiseen",
       "browserWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} selaimessa {{browser}}. Ikkunan sulkeminen peruu kirjautumisen.",
-      "browserHint": "Käytä tätä Googlen, oppilaitoksen tai pääsyavaimen kirjautumiseen.",
+      "browserHint": "Avaa uuden ikkunan selaimessa {{browser}} ilman kirjautumista. Käytä sitä, kun kirjaudut Googlella, oppilaitoksen tunnuksella tai pääsyavaimella.",
       "windowLabel": "Kirjaudu palvelimelle {{server}}",
       "windowDescription": "Oleafly avaa kirjautumisikkunan ja sulkee sen, kun olet kirjautunut. Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja kirjaudu sillä täällä.",
       "windowAction": "Kirjaudu",
@@ -1991,7 +1985,9 @@
           "always": "Poista myös Overleafista",
           "never": "Säilytä Overleafissa"
         }
-      }
+      },
+      "sameAccount": "Olet jo kirjautunut tilillä {{account}}. Lisää toinen tili kirjautumalla sillä.",
+      "browserButton": "Kirjaudu selaimella {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2123,6 +2119,20 @@
           "confirm": "Tämä lataa Cua-asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?"
         }
       }
+    },
+    "signIns": {
+      "title": "Hallitse kirjautumisia",
+      "description": "Tilit, joilla Oleafly on kirjautunut tällä koneella. Jos poistat tilin täältä, pysyt kirjautuneena selaimessa.",
+      "loading": "Ladataan kirjautumisiasi…",
+      "empty": "Et ole kirjautunut millään tilillä.",
+      "inUse": "Käytössä",
+      "switch": "Vaihda",
+      "switchTo": "Vaihda tiliin {{account}}",
+      "removeAccount": "Poista {{account}}",
+      "removeAll": "Poista kaikki",
+      "importMore": "Tuo lisää",
+      "loadFailed": "Oleafly ei voinut ladata kirjautumisiasi.",
+      "changeFailed": "Oleafly ei voinut muuttaa tätä kirjautumista. Yritä uudelleen."
     }
   },
   "language": {

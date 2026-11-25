@@ -45,6 +45,8 @@ interface OverleafImportState {
   status: OverleafStatus | null;
   unsent: CollabUnsentProject[] | null;
   unsentAccount: string | null;
+  unsentServer: string | null;
+  repeated: string | null;
   projects: OverleafProject[];
   invites: OverleafInvite[];
   accepting: string | null;
@@ -66,7 +68,8 @@ interface OverleafImportState {
   signIn(title: string): Promise<boolean>;
   signInWithBrowser(browser: OverleafSignInBrowser): Promise<boolean>;
   chooseAccount(userId: string): Promise<boolean>;
-  signOut(keepLocalCopy?: boolean, account?: string | null): Promise<boolean>;
+  switchAccount(server: string, userId: string): Promise<boolean>;
+  signOut(keepLocalCopy?: boolean, account?: string | null, server?: string | null): Promise<boolean>;
   staySignedIn(): void;
   toggle(id: string): void;
   setSelected(ids: readonly string[]): void;
@@ -119,11 +122,17 @@ function progressFor(event: OverleafImportEvent): OverleafRowProgress {
 type SetState = (partial: Partial<OverleafImportState>) => void;
 type Asked = Pick<OverleafImportState, "server" | "status">;
 
+const NOTHING_UNSENT = { unsent: null, unsentAccount: null, unsentServer: null } satisfies Partial<OverleafImportState>;
 const NO_LIST = { projects: [], invites: [], selected: [], progress: {}, run: null } satisfies Partial<OverleafImportState>;
 const LISTED: ReadonlySet<OverleafPhase> = new Set(["loading", "ready", "error"]);
 
 function signedOutBy(error: unknown): boolean {
   return isOverleafError(error, "session_expired") || isOverleafError(error, "signed_out");
+}
+
+export function repeatsAccount(before: OverleafStatus | null, status: OverleafStatus): string | null {
+  const same = before?.signedIn === true && !!before.userId && before.userId === status.userId;
+  return same ? (status.email ?? status.userId ?? null) : null;
 }
 
 function movedOn(asked: Asked, now: Asked): boolean {
@@ -180,6 +189,23 @@ async function showList(
   set({ status, projects, invites, selected: selectable(projects, get().selected), ...shown });
 }
 
+async function afterSignOut(
+  set: SetState,
+  get: () => OverleafImportState,
+  { before, leaving, status }: { before: OverleafImportState; leaving: string | null; status: OverleafStatus },
+): Promise<void> {
+  if (!status.signedIn) {
+    set({ status, ...NOTHING_UNSENT, ...NO_LIST, phase: "signed-out", error: null });
+    return;
+  }
+  const listed = before.status?.userId === leaving && before.status?.userId !== status.userId;
+  set({ status, ...NOTHING_UNSENT, error: null });
+  if (listed && before.phase !== "idle" && before.phase !== "signed-out") {
+    set(NO_LIST);
+    await get().load();
+  }
+}
+
 async function signInVia(
   set: SetState,
   get: () => OverleafImportState,
@@ -187,10 +213,11 @@ async function signInVia(
   start: (server: string) => Promise<OverleafStatus>,
 ): Promise<boolean> {
   if (get().phase === "signing-in") return false;
-  set({ phase: "signing-in", signingWith, error: null });
+  const before = get().status;
+  set({ phase: "signing-in", signingWith, error: null, repeated: null });
   try {
     const status = await start(get().server);
-    set({ status, server: status.server, signingWith: null });
+    set({ status, server: status.server, signingWith: null, repeated: repeatsAccount(before, status) });
     await get().load();
     return true;
   } catch (error) {
@@ -209,6 +236,8 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   status: null,
   unsent: null,
   unsentAccount: null,
+  unsentServer: null,
+  repeated: null,
   projects: [],
   invites: [],
   accepting: null,
@@ -230,7 +259,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   setServer(server) {
     const next = server.trim() || DEFAULT_OVERLEAF_SERVER;
     writeServer(next);
-    set({ server: next, status: null, ...NO_LIST, phase: "idle", error: null });
+    set({ server: next, status: null, ...NO_LIST, phase: "idle", error: null, repeated: null });
   },
 
   async refreshStatus() {
@@ -246,7 +275,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
 
   async open() {
     if (get().importing || get().phase === "signing-in") return;
-    set({ phase: "checking", error: null });
+    set({ phase: "checking", error: null, repeated: null });
     const asked = get();
     const left = (answered?: string) => {
       const { phase, server } = get();
@@ -320,42 +349,36 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     }
   },
 
-  async signOut(keepLocalCopy = false, account = null) {
+  async switchAccount(server, userId) {
+    if (get().importing) return false;
+    if (get().server !== server) get().setServer(server);
+    return get().chooseAccount(userId);
+  },
+
+  async signOut(keepLocalCopy = false, account = null, server = null) {
     const before = get();
+    const from = server ?? before.unsentServer ?? before.server;
+    const here = from === before.server;
     const leaving = account ?? before.unsentAccount ?? before.status?.userId ?? null;
     try {
-      const { unsent = [], ...status } = await overleafSignOut(before.server, keepLocalCopy, leaving);
+      const { unsent = [], ...status } = await overleafSignOut(from, keepLocalCopy, leaving);
       if (!keepLocalCopy && unsent.length > 0) {
-        set({ status, unsent, unsentAccount: leaving, error: null });
-        return true;
-      }
-      if (!status.signedIn) {
-        set({
-          status,
-          unsent: null,
-          unsentAccount: null,
-          ...NO_LIST,
-          phase: "signed-out",
-          error: null,
-        });
-        return true;
-      }
-      const listed = before.status?.userId === leaving && before.status?.userId !== status.userId;
-      set({ status, unsent: null, unsentAccount: null, error: null });
-      if (listed && before.phase !== "idle" && before.phase !== "signed-out") {
-        set(NO_LIST);
-        await get().load();
+        set({ ...(here ? { status } : {}), unsent, unsentAccount: leaving, unsentServer: from, error: null });
+      } else if (here) {
+        await afterSignOut(set, get, { before, leaving, status });
+      } else {
+        set({ ...NOTHING_UNSENT, error: null });
       }
       return true;
     } catch (error) {
       void logError("overleaf sign out", error);
-      set({ unsent: null, unsentAccount: null, error });
+      set({ ...NOTHING_UNSENT, error });
       return false;
     }
   },
 
   staySignedIn() {
-    set({ unsent: null, unsentAccount: null });
+    set(NOTHING_UNSENT);
   },
 
   toggle(id) {

@@ -1875,24 +1875,18 @@
       "disconnectFailed": "Could not disconnect alphaXiv. Try again."
     },
     "cookies": {
-      "dialogDescription": "Choose one installed browser profile. Oleafly reads it only after you review and confirm the import. Chromium cookies are unlocked locally through macOS Keychain. Oleafly does not send cookie values to an Oleafly service.",
-      "dialogTitle": "Import browser cookies",
-      "profileGroupLabel": "Browser profiles",
-      "profileLegend": "Browser profile",
-      "status": {
-        "available": "Available",
-        "comingSoon": "Coming soon",
-        "noCookieStore": "No cookie store",
-        "notInstalled": "Not installed"
-      },
+      "dialogDescription": "Oleafly copies the cookies for {{server}} only, signs in with them, then deletes the copies. Your passwords stay in the browser.",
+      "dialogTitle": "Import cookies from your browser",
       "label": "Copy a browser's sign-in",
-      "useBrowserSignIn": "Copy the sign-in from your browser",
+      "useBrowserSignIn": "Import cookies from your browser",
       "signInDescription": "Copy your sign-in for {{server}} from a browser on this computer, so you don't have to sign in again.",
-      "site": "Site: {{domain}}",
-      "copyAction": "Copy sign-in",
-      "copying": "Copying…",
+      "copyAction": "Import",
+      "copying": "Importing…",
       "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",
-      "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead."
+      "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead.",
+      "from": "From",
+      "noCookies": "No cookies yet",
+      "sameAccount": "{{profile}} is signed in as {{account}}, which Oleafly already uses. Choose another profile, or sign in to your other account in that browser first."
     },
     "zotero": {
       "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",
@@ -1953,7 +1947,7 @@
       "signOut": "Sign out",
       "signOutFailed": "Oleafly could not sign out of Overleaf.",
       "addAccount": "Add another account",
-      "addAccountHint": "The sign-in window starts fresh, so you can sign in with any account. Signing in with a browser, or copying a browser's sign-in, uses the account that browser is signed in to.",
+      "addAccountHint": "Signing in starts signed out, so you can use any account. Importing cookies uses the account that browser profile is signed in to.",
       "accountPick": "Account for importing",
       "accountPickDescription": "New imports and templates use this account. Projects you already have keep the account they came from.",
       "gitTitle": "Git token for sync",
@@ -1971,7 +1965,7 @@
       "browserAction": "Sign in",
       "browserPick": "Browser to sign in with",
       "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
-      "browserHint": "Use this for Google, institution or passkey sign-in.",
+      "browserHint": "Opens a new {{browser}} window that starts signed out. Use it for Google, institution or passkey sign-in.",
       "windowLabel": "Sign in to {{server}}",
       "windowDescription": "Oleafly opens a sign-in window and closes it once you're in. To sign in with Google, your institution or a passkey, install Chrome, Edge, Brave, Chromium or Firefox, then sign in with it here.",
       "windowAction": "Sign in",
@@ -1991,7 +1985,9 @@
           "always": "Delete it on Overleaf too",
           "never": "Keep it on Overleaf"
         }
-      }
+      },
+      "sameAccount": "You're already signed in as {{account}}. Sign in with a different account to add it.",
+      "browserButton": "Sign in with {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2123,6 +2119,20 @@
           "confirm": "This downloads the Cua installer from cua.ai and runs it in your terminal. Continue?"
         }
       }
+    },
+    "signIns": {
+      "title": "Manage sign-ins",
+      "description": "The accounts Oleafly is signed in to on this computer. Removing one here doesn't sign you out in your browser.",
+      "loading": "Loading your sign-ins…",
+      "empty": "You aren't signed in to any account.",
+      "inUse": "In use",
+      "switch": "Switch",
+      "switchTo": "Switch to {{account}}",
+      "removeAccount": "Remove {{account}}",
+      "removeAll": "Remove all",
+      "importMore": "Import more",
+      "loadFailed": "Oleafly couldn't load your sign-ins.",
+      "changeFailed": "Oleafly couldn't change this sign-in. Try again."
     }
   },
   "language": {

@@ -1899,26 +1899,20 @@
       "disconnectFailed": "Nie udało się rozłączyć alphaXiv. Spróbuj ponownie."
     },
     "cookies": {
-      "dialogDescription": "Wybierz jeden zainstalowany profil przeglądarki. Oleafly odczyta go dopiero po Twoim przejrzeniu i potwierdzeniu importu. Pliki cookie Chromium są odblokowywane lokalnie przez Pęk kluczy macOS. Oleafly nie wysyła wartości plików cookie do żadnej usługi Oleafly.",
+      "dialogDescription": "Oleafly kopiuje tylko pliki cookie dla {{server}}, loguje się za ich pomocą, a potem usuwa kopie. Twoje hasła zostają w przeglądarce.",
       "dialogTitle": "Importuj pliki cookie z przeglądarki",
-      "profileGroupLabel": "Profile przeglądarek",
-      "profileLegend": "Profil przeglądarki",
-      "status": {
-        "available": "Dostępny",
-        "comingSoon": "Wkrótce",
-        "noCookieStore": "Brak magazynu plików cookie",
-        "notInstalled": "Niezainstalowana"
-      },
       "label": "Skopiuj logowanie z przeglądarki",
-      "useBrowserSignIn": "Skopiuj logowanie z Twojej przeglądarki",
+      "useBrowserSignIn": "Importuj pliki cookie z przeglądarki",
       "signInDescription": "Skopiuj swoje logowanie do {{server}} z przeglądarki na tym komputerze, aby nie logować się ponownie.",
-      "site": "Strona: {{domain}}",
-      "copyAction": "Skopiuj logowanie",
-      "copying": "Kopiowanie...",
+      "copyAction": "Importuj",
+      "copying": "Importowanie...",
       "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",
       "notSignedIn_few": "Skopiowano {{count}} pliki cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
       "notSignedIn_many": "Skopiowano {{count}} plików cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio."
+      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
+      "from": "Skąd",
+      "noCookies": "Brak plików cookie",
+      "sameAccount": "W profilu {{profile}} zalogowano się jako {{account}}, a Oleafly już używa tego konta. Wybierz inny profil albo najpierw zaloguj się w tej przeglądarce na drugie konto."
     },
     "zotero": {
       "apiKeyHint": "Aby zdobyć klucz: zaloguj się w <siteLink>zotero.org</siteLink>, otwórz swoją <keyLink>stronę klucza API</keyLink>, aby utworzyć klucz, i skopiuj z tej samej strony swój liczbowy identyfikator użytkownika.",
@@ -1985,7 +1979,7 @@
       "signOut": "Wyloguj się",
       "signOutFailed": "Oleafly nie mógł wylogować się z Overleaf.",
       "addAccount": "Dodaj kolejne konto",
-      "addAccountHint": "Okno logowania startuje od zera, więc możesz zalogować się na dowolne konto. Logowanie przez przeglądarkę lub skopiowanie logowania z przeglądarki używa konta, na które zalogowano się w tej przeglądarce.",
+      "addAccountHint": "Logowanie zaczyna się bez zalogowanego konta, więc możesz użyć dowolnego. Import plików cookie używa konta, na które zalogowano się w tym profilu przeglądarki.",
       "accountPick": "Konto do importu",
       "accountPickDescription": "Nowe importy i szablony używają tego konta. Projekty, które już masz, zachowują konto, z którego pochodzą.",
       "gitTitle": "Token Git do synchronizacji",
@@ -2003,7 +1997,7 @@
       "browserAction": "Zaloguj się",
       "browserPick": "Przeglądarka do logowania",
       "browserWaiting": "Dokończ logowanie do {{server}} w przeglądarce {{browser}}. Zamknięcie okna anuluje logowanie.",
-      "browserHint": "Użyj tego do logowania przez Google, uczelnię lub klucz dostępu.",
+      "browserHint": "Otwiera nowe okno {{browser}} bez zalogowanego konta. Użyj go do logowania przez Google, instytucję lub klucz dostępu.",
       "windowLabel": "Logowanie do {{server}}",
       "windowDescription": "Oleafly otwiera okno logowania i zamyka je po zalogowaniu. Aby zalogować się przez Google, uczelnię lub klucz dostępu, zainstaluj Chrome, Edge, Brave, Chromium lub Firefox i zaloguj się w nim tutaj.",
       "windowAction": "Zaloguj się",
@@ -2023,7 +2017,9 @@
           "always": "Usuwaj też w Overleaf",
           "never": "Zachowuj w Overleaf"
         }
-      }
+      },
+      "sameAccount": "Już zalogowano jako {{account}}. Aby dodać inne konto, zaloguj się na nie.",
+      "browserButton": "Zaloguj się przez {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2155,6 +2151,20 @@
           "confirm": "To polecenie pobierze instalator Cua z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?"
         }
       }
+    },
+    "signIns": {
+      "title": "Zarządzaj logowaniami",
+      "description": "Konta, na które Oleafly jest zalogowany na tym komputerze. Usunięcie konta tutaj nie wyloguje Cię w przeglądarce.",
+      "loading": "Wczytywanie Twoich logowań...",
+      "empty": "Nie zalogowano na żadne konto.",
+      "inUse": "W użyciu",
+      "switch": "Przełącz",
+      "switchTo": "Przełącz na {{account}}",
+      "removeAccount": "Usuń {{account}}",
+      "removeAll": "Usuń wszystkie",
+      "importMore": "Importuj więcej",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich logowań.",
+      "changeFailed": "Oleafly nie mógł zmienić tego logowania. Spróbuj ponownie."
     }
   },
   "language": {

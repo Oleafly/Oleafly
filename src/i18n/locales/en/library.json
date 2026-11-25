@@ -332,7 +332,7 @@
       "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in. Closing it cancels.",
       "passkeyHint": "If your passkey doesn't work in the sign-in window, pick another option there, like your password or a prompt on your phone.",
       "expired": "Your Overleaf sign-in expired. Sign in again to see your projects.",
-      "signIn": "Sign in to Overleaf",
+      "signIn": "Sign in inside Oleafly",
       "signInWindowTitle": "Sign in to Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Overleaf server address",
@@ -410,7 +410,8 @@
         "signedOut": "Sign in to Overleaf in Settings first.",
         "openSettings": "Open Settings",
         "cancel": "Cancel"
-      }
+      },
+      "switchAccount": "Switch account"
     }
   },
   "pdfImport": {

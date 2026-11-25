@@ -180,7 +180,6 @@ export interface BrowserCookieSource {
   profile: string | null;
   profileName: string | null;
   status: BrowserCookieSourceStatus;
-  detail: string;
 }
 
 export interface BrowserCookieImportRequest {

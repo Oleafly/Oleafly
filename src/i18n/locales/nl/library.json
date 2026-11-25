@@ -332,7 +332,7 @@
       "signingInBrowser": "Rond het aanmelden bij Overleaf af in {{browser}}. Het venster sluit vanzelf zodra je bent aangemeld. Als je het sluit, wordt het aanmelden geannuleerd.",
       "passkeyHint": "Werkt je passkey niet in het aanmeldvenster, kies daar dan een andere optie, zoals je wachtwoord of een melding op je telefoon.",
       "expired": "Je Overleaf-aanmelding is verlopen. Meld je opnieuw aan om je projecten te zien.",
-      "signIn": "Aanmelden bij Overleaf",
+      "signIn": "Aanmelden in Oleafly",
       "signInWindowTitle": "Aanmelden bij Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adres van de Overleaf-server",
@@ -410,7 +410,8 @@
         "signedOut": "Meld je eerst aan bij Overleaf via Instellingen.",
         "openSettings": "Instellingen openen",
         "cancel": "Annuleren"
-      }
+      },
+      "switchAccount": "Van account wisselen"
     }
   },
   "pdfImport": {

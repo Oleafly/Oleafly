@@ -1887,25 +1887,19 @@
       "disconnectFailed": "Impossibile disconnettere alphaXiv. Riprova."
     },
     "cookies": {
-      "dialogDescription": "Scegli un profilo di un browser installato. Oleafly lo legge solo dopo che hai controllato e confermato l'importazione. I cookie Chromium vengono sbloccati in locale tramite il portachiavi di macOS. Oleafly non invia i valori dei cookie a nessun servizio Oleafly.",
-      "dialogTitle": "Importa i cookie del browser",
-      "profileGroupLabel": "Profili browser",
-      "profileLegend": "Profilo browser",
-      "status": {
-        "available": "Disponibile",
-        "comingSoon": "In arrivo",
-        "noCookieStore": "Nessun archivio di cookie",
-        "notInstalled": "Non installato"
-      },
+      "dialogDescription": "Oleafly copia solo i cookie di {{server}}, li usa per accedere e poi elimina le copie. Le tue password restano nel browser.",
+      "dialogTitle": "Importa i cookie dal tuo browser",
       "label": "Copia l'accesso di un browser",
-      "useBrowserSignIn": "Copia l'accesso dal tuo browser",
+      "useBrowserSignIn": "Importa i cookie dal tuo browser",
       "signInDescription": "Copia il tuo accesso a {{server}} da un browser di questo computer, così non devi accedere di nuovo.",
-      "site": "Sito: {{domain}}",
-      "copyAction": "Copia l'accesso",
-      "copying": "Copia in corso...",
+      "copyAction": "Importa",
+      "copying": "Importazione in corso...",
       "notSignedIn_one": "Copiato {{count}} cookie da {{browser}}, ma non ti ha fatto accedere. Accedi direttamente.",
       "notSignedIn_many": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
-      "notSignedIn_other": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente."
+      "notSignedIn_other": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
+      "from": "Da",
+      "noCookies": "Ancora nessun cookie",
+      "sameAccount": "{{profile}} ha effettuato l'accesso come {{account}}, che Oleafly usa già. Scegli un altro profilo oppure accedi prima con l'altro account in quel browser."
     },
     "zotero": {
       "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>zotero.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink> per crearne una e copia il tuo ID utente numerico dalla stessa pagina.",
@@ -1969,7 +1963,7 @@
       "signOut": "Esci",
       "signOutFailed": "Oleafly non è riuscito a uscire da Overleaf.",
       "addAccount": "Aggiungi un altro account",
-      "addAccountHint": "La finestra di accesso parte da zero, quindi puoi accedere con qualsiasi account. Accedere con un browser, o copiare l'accesso di un browser, usa l'account con cui quel browser ha effettuato l'accesso.",
+      "addAccountHint": "L'accesso parte senza nessun account, quindi puoi usare quello che vuoi. L'importazione dei cookie usa l'account con cui quel profilo del browser ha effettuato l'accesso.",
       "accountPick": "Account per l'importazione",
       "accountPickDescription": "Le nuove importazioni e i modelli usano questo account. I progetti che hai già mantengono l'account da cui provengono.",
       "gitTitle": "Token Git per la sincronizzazione",
@@ -1987,7 +1981,7 @@
       "browserAction": "Accedi",
       "browserPick": "Browser con cui accedere",
       "browserWaiting": "Completa l'accesso a {{server}} in {{browser}}. Chiudere la finestra annulla l'accesso.",
-      "browserHint": "Usalo per l'accesso con Google, con l'istituzione o con una passkey.",
+      "browserHint": "Apre una nuova finestra di {{browser}} senza accessi attivi. Usala per accedere con Google, il tuo ente o una passkey.",
       "windowLabel": "Accedi a {{server}}",
       "windowDescription": "Oleafly apre una finestra di accesso e la chiude quando hai effettuato l'accesso. Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi accedi qui con quel browser.",
       "windowAction": "Accedi",
@@ -2007,7 +2001,9 @@
           "always": "Eliminalo anche su Overleaf",
           "never": "Mantienilo su Overleaf"
         }
-      }
+      },
+      "sameAccount": "Hai già effettuato l'accesso come {{account}}. Accedi con un altro account per aggiungerlo.",
+      "browserButton": "Accedi con {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2139,6 +2135,20 @@
           "confirm": "Questo scarica il programma di installazione di Cua da cua.ai e lo esegue nel tuo terminale. Continuare?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gestisci gli accessi",
+      "description": "Gli account con cui Oleafly ha effettuato l'accesso su questo computer. Se ne rimuovi uno qui, resti connesso nel browser.",
+      "loading": "Caricamento dei tuoi accessi...",
+      "empty": "Non hai effettuato l'accesso con nessun account.",
+      "inUse": "In uso",
+      "switch": "Passa",
+      "switchTo": "Passa a {{account}}",
+      "removeAccount": "Rimuovi {{account}}",
+      "removeAll": "Rimuovi tutti",
+      "importMore": "Importa altri",
+      "loadFailed": "Oleafly non è riuscito a caricare i tuoi accessi.",
+      "changeFailed": "Oleafly non è riuscito a modificare questo accesso. Riprova."
     }
   },
   "language": {

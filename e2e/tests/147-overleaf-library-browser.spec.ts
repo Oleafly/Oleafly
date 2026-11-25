@@ -110,6 +110,81 @@ test("Put on Overleaf shows Overleaf's refusal and keeps the dialog open", async
   await expect(dialog.getByTestId("put-on-overleaf-submit")).toBeEnabled();
 });
 
+test("a browser's cookies are imported from a profile picked by its logo and name", async ({ page }) => {
+  await openHarness(page, "signedIn=0&browsers=1&copied=bob");
+  const browser = page.getByTestId("browser-sign-in-picker");
+  await expect(browser).toHaveText("Brave");
+  await expect(browser.locator("img")).toBeVisible();
+  await page.getByTestId("browser-sign-in-copy").click();
+  const dialog = page.getByTestId("import-cookies");
+  await expect(dialog.getByRole("heading")).toHaveText("Import cookies from your browser");
+  const from = dialog.getByRole("combobox", { name: "From" });
+  await expect(from).toHaveText("Google ChromePerson 1");
+  await from.click();
+  const options = page.getByRole("option");
+  await expect(options).toHaveText([
+    "Google ChromePerson 1",
+    "BraveGeneral",
+    "BraveThe Hustle",
+    "BraveThe Final GrindNo cookies yet",
+    "BraveRNerd",
+    "Firefoxdefault-release",
+  ]);
+  await expect(options.nth(3)).toBeDisabled();
+  await expect(options.nth(1).locator("img")).toBeVisible();
+  await options.nth(4).click();
+  await expect(from).toHaveText("BraveRNerd");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(page.getByText("Signed in as bob@lab.org")).toBeVisible();
+  expect(await harnessCalls(page, "import_browser_cookies")).toEqual([
+    { request: { browser: "brave", profile: "Profile 3", domain: "www.overleaf.com", confirmed: true } },
+  ]);
+});
+
+test("the sign-in of the account in use is named instead of doing nothing", async ({ page }) => {
+  await openHarness(page, "browsers=1");
+  await page.getByTestId("overleaf-switch-account").click();
+  await page.getByTestId("manage-sign-ins").getByRole("button", { name: "Add another account" }).click();
+  await page.getByTestId("browser-sign-in-copy").click();
+  const dialog = page.getByTestId("import-cookies");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("is signed in as alice@uni.edu, which Oleafly already uses.");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await page.getByTestId("overleaf-sign-in-panel").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByTestId("overleaf-import-view")).toBeVisible();
+});
+
+test("saved sign-ins are listed, switched and removed, with a question before unsent changes are left", async ({ page }) => {
+  await openHarness(page, "accounts=2&elsewhere=1&unsent=1&browsers=1");
+  await page.getByTestId("overleaf-switch-account").click();
+  const manage = page.getByTestId("manage-sign-ins");
+  const rows = manage.getByTestId("saved-sign-in");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("alice@uni.edu");
+  await expect(rows.nth(0)).toContainText("In use");
+  await expect(rows.nth(1)).toContainText("2 hours ago");
+  await expect(rows.nth(2)).toContainText("latex.lab.org");
+
+  await manage.getByRole("button", { name: "Remove carol@lab.org" }).click();
+  const question = page.getByRole("alertdialog");
+  await expect(question).toContainText("Lab report");
+  await question.getByRole("button", { name: "Stay signed in" }).click();
+  await expect(question).toHaveCount(0);
+  await expect(rows).toHaveCount(3);
+  await manage.getByRole("button", { name: "Remove carol@lab.org" }).click();
+  await expect(rows).toHaveCount(2);
+
+  await manage.getByRole("button", { name: "Switch to bob@lab.org" }).click();
+  await expect(manage).toHaveCount(0);
+  await expect(page.getByTestId("overleaf-account-picker")).toHaveText("bob@lab.org");
+
+  await page.getByTestId("overleaf-switch-account").click();
+  await manage.getByRole("button", { name: "Remove all" }).click();
+  await expect(manage).toContainText("You aren't signed in to any account.");
+  await manage.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTestId("overleaf-sign-in-panel")).toBeVisible();
+});
+
 test("two Overleaf accounts on one server each get a row, a picker and their own sign out", async ({ page }) => {
   await openHarness(page, "view=accounts&accounts=2");
   const rows = page.getByTestId("overleaf-account");

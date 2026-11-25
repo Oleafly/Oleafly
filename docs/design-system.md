@@ -162,6 +162,10 @@ list. `leading` and `trailing` sit beside the field, `placement` and
 `className` move and size the panel, and `footer` goes under the list. Its
 rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
 
+Another program's own icon, such as a browser in a picker, is an `AppIcon`
+from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
+window until it has one. `size="sm"` fits a menu row.
+
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in
 `ui/dropdown-menu.tsx`.

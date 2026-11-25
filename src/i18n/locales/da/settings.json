@@ -1875,24 +1875,18 @@
       "disconnectFailed": "Kunne ikke afbryde forbindelsen til alphaXiv. Prøv igen."
     },
     "cookies": {
-      "dialogDescription": "Vælg én installeret browserprofil. Oleafly læser den først, når du har gennemgået og bekræftet importen. Cookies fra Chromium låses op lokalt via macOS Keychain. Oleafly sender ikke cookieværdier til en Oleafly-tjeneste.",
-      "dialogTitle": "Importer cookies fra browseren",
-      "profileGroupLabel": "Browserprofiler",
-      "profileLegend": "Browserprofil",
-      "status": {
-        "available": "Tilgængelig",
-        "comingSoon": "På vej",
-        "noCookieStore": "Intet cookielager",
-        "notInstalled": "Ikke installeret"
-      },
+      "dialogDescription": "Oleafly kopierer kun cookies for {{server}}, logger ind med dem og sletter derefter kopierne. Dine adgangskoder bliver i browseren.",
+      "dialogTitle": "Importer cookies fra din browser",
       "label": "Kopiér login fra en browser",
-      "useBrowserSignIn": "Kopiér login fra din browser",
+      "useBrowserSignIn": "Importer cookies fra din browser",
       "signInDescription": "Kopiér dit login til {{server}} fra en browser på denne computer, så du ikke behøver at logge ind igen.",
-      "site": "Hjemmeside: {{domain}}",
-      "copyAction": "Kopiér login",
-      "copying": "Kopierer…",
+      "copyAction": "Importer",
+      "copying": "Importerer…",
       "notSignedIn_one": "Kopierede {{count}} cookie fra {{browser}}, men den loggede dig ikke ind. Log ind i stedet.",
-      "notSignedIn_other": "Kopierede {{count}} cookies fra {{browser}}, men de loggede dig ikke ind. Log ind i stedet."
+      "notSignedIn_other": "Kopierede {{count}} cookies fra {{browser}}, men de loggede dig ikke ind. Log ind i stedet.",
+      "from": "Fra",
+      "noCookies": "Ingen cookies endnu",
+      "sameAccount": "{{profile}} er logget ind som {{account}}, som Oleafly allerede bruger. Vælg en anden profil, eller log først ind på din anden konto i den browser."
     },
     "zotero": {
       "apiKeyHint": "Sådan får du en nøgle: log ind på <siteLink>zotero.org</siteLink>, åbn din <keyLink>side med API-nøgler</keyLink> for at oprette en nøgle, og kopier dit numeriske bruger-id fra samme side.",
@@ -1953,7 +1947,7 @@
       "signOut": "Log ud",
       "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
       "addAccount": "Tilføj endnu en konto",
-      "addAccountHint": "Loginvinduet starter uden tidligere login, så du kan logge ind med en hvilken som helst konto. Hvis du logger ind med en browser eller kopierer login fra en browser, bruges den konto, som browseren er logget ind med.",
+      "addAccountHint": "Når du logger ind, starter du uden login, så du kan bruge en hvilken som helst konto. Import af cookies bruger den konto, som browserprofilen er logget ind med.",
       "accountPick": "Konto til import",
       "accountPickDescription": "Nye importer og skabeloner bruger denne konto. Projekter, du allerede har, beholder den konto, de kom fra.",
       "gitTitle": "Git-token til synkronisering",
@@ -1971,7 +1965,7 @@
       "browserAction": "Log ind",
       "browserPick": "Browser at logge ind med",
       "browserWaiting": "Gør dit login på {{server}} færdigt i {{browser}}. Hvis du lukker vinduet, bliver loginet annulleret.",
-      "browserHint": "Brug dette til login med Google, din institution eller en adgangsnøgle.",
+      "browserHint": "Åbner et nyt {{browser}}-vindue uden login. Brug det til login med Google, institution eller adgangsnøgle.",
       "windowLabel": "Log ind på {{server}}",
       "windowDescription": "Oleafly åbner et loginvindue og lukker det, når du er logget ind. Hvis du vil logge ind med Google, din institution eller en adgangsnøgle, skal du installere Chrome, Edge, Brave, Chromium eller Firefox og så logge ind med den her.",
       "windowAction": "Log ind",
@@ -1991,7 +1985,9 @@
           "always": "Slet også på Overleaf",
           "never": "Behold på Overleaf"
         }
-      }
+      },
+      "sameAccount": "Du er allerede logget ind som {{account}}. Log ind med en anden konto for at tilføje den.",
+      "browserButton": "Log ind med {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2123,6 +2119,20 @@
           "confirm": "Dette henter installationsprogrammet til Cua fra cua.ai og kører det i din terminal. Vil du fortsætte?"
         }
       }
+    },
+    "signIns": {
+      "title": "Administrer login",
+      "description": "De konti, som Oleafly er logget ind på på denne computer. Hvis du fjerner en her, forbliver du logget ind i browseren.",
+      "loading": "Indlæser dine login…",
+      "empty": "Du er ikke logget ind på nogen konto.",
+      "inUse": "I brug",
+      "switch": "Skift",
+      "switchTo": "Skift til {{account}}",
+      "removeAccount": "Fjern {{account}}",
+      "removeAll": "Fjern alle",
+      "importMore": "Importer flere",
+      "loadFailed": "Oleafly kunne ikke indlæse dine login.",
+      "changeFailed": "Oleafly kunne ikke ændre dette login. Prøv igen."
     }
   },
   "language": {

@@ -1875,24 +1875,18 @@
       "disconnectFailed": "Det gick inte att koppla från alphaXiv. Försök igen."
     },
     "cookies": {
-      "dialogDescription": "Välj en installerad webbläsarprofil. Oleafly läser den först när du har granskat och bekräftat importen. Chromium-cookies låses upp lokalt via macOS nyckelring. Oleafly skickar inga cookievärden till någon Oleafly-tjänst.",
-      "dialogTitle": "Importera webbläsarcookies",
-      "profileGroupLabel": "Webbläsarprofiler",
-      "profileLegend": "Webbläsarprofil",
-      "status": {
-        "available": "Tillgänglig",
-        "comingSoon": "Kommer snart",
-        "noCookieStore": "Inget cookielager",
-        "notInstalled": "Inte installerad"
-      },
+      "dialogDescription": "Oleafly kopierar bara cookies för {{server}}, loggar in med dem och tar sedan bort kopiorna. Dina lösenord stannar i webbläsaren.",
+      "dialogTitle": "Importera cookies från din webbläsare",
       "label": "Kopiera inloggning från en webbläsare",
-      "useBrowserSignIn": "Kopiera inloggningen från din webbläsare",
+      "useBrowserSignIn": "Importera cookies från din webbläsare",
       "signInDescription": "Kopiera din inloggning för {{server}} från en webbläsare på den här datorn, så att du inte behöver logga in igen.",
-      "site": "Webbplats: {{domain}}",
-      "copyAction": "Kopiera inloggningen",
-      "copying": "Kopierar…",
+      "copyAction": "Importera",
+      "copying": "Importerar…",
       "notSignedIn_one": "Kopierade {{count}} cookie från {{browser}}, men den loggade inte in dig. Logga in i stället.",
-      "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället."
+      "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället.",
+      "from": "Från",
+      "noCookies": "Inga cookies än",
+      "sameAccount": "{{profile}} är inloggad som {{account}}, som Oleafly redan använder. Välj en annan profil eller logga först in på ditt andra konto i den webbläsaren."
     },
     "zotero": {
       "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",
@@ -1953,7 +1947,7 @@
       "signOut": "Logga ut",
       "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
       "addAccount": "Lägg till ett konto till",
-      "addAccountHint": "Inloggningsfönstret startar utan tidigare inloggning, så du kan logga in med vilket konto som helst. Om du loggar in med en webbläsare eller kopierar inloggningen från en webbläsare används det konto som webbläsaren är inloggad med.",
+      "addAccountHint": "Inloggningen startar utan konto, så du kan använda vilket konto som helst. Import av cookies använder kontot som webbläsarprofilen är inloggad med.",
       "accountPick": "Konto för import",
       "accountPickDescription": "Nya importer och mallar använder det här kontot. Projekt som du redan har behåller kontot de kom från.",
       "gitTitle": "Git-token för synkning",
@@ -1971,7 +1965,7 @@
       "browserAction": "Logga in",
       "browserPick": "Webbläsare att logga in med",
       "browserWaiting": "Slutför inloggningen på {{server}} i {{browser}}. Om du stänger fönstret avbryts inloggningen.",
-      "browserHint": "Använd det här för inloggning med Google, din institution eller en nyckel.",
+      "browserHint": "Öppnar ett nytt {{browser}}-fönster utan inloggning. Använd det för inloggning med Google, institution eller nyckel.",
       "windowLabel": "Logga in på {{server}}",
       "windowDescription": "Oleafly öppnar ett inloggningsfönster och stänger det när du är inloggad. Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och loggar sedan in med den här.",
       "windowAction": "Logga in",
@@ -1991,7 +1985,9 @@
           "always": "Radera även på Overleaf",
           "never": "Behåll på Overleaf"
         }
-      }
+      },
+      "sameAccount": "Du är redan inloggad som {{account}}. Logga in med ett annat konto för att lägga till det.",
+      "browserButton": "Logga in med {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2123,6 +2119,20 @@
           "confirm": "Det här laddar ner installationsprogrammet för Cua från cua.ai och kör det i din terminal. Vill du fortsätta?"
         }
       }
+    },
+    "signIns": {
+      "title": "Hantera inloggningar",
+      "description": "Kontona som Oleafly är inloggat på på den här datorn. Om du tar bort ett här förblir du inloggad i webbläsaren.",
+      "loading": "Läser in dina inloggningar…",
+      "empty": "Du är inte inloggad på något konto.",
+      "inUse": "Används",
+      "switch": "Byt",
+      "switchTo": "Byt till {{account}}",
+      "removeAccount": "Ta bort {{account}}",
+      "removeAll": "Ta bort alla",
+      "importMore": "Importera fler",
+      "loadFailed": "Oleafly kunde inte läsa in dina inloggningar.",
+      "changeFailed": "Oleafly kunde inte ändra den här inloggningen. Försök igen."
     }
   },
   "language": {

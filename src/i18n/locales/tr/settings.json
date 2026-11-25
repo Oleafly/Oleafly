@@ -1875,24 +1875,18 @@
       "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
-      "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
-      "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
-      "profileGroupLabel": "Tarayıcı profilleri",
-      "profileLegend": "Tarayıcı profili",
-      "status": {
-        "available": "Kullanılabilir",
-        "comingSoon": "Yakında",
-        "noCookieStore": "Cookie deposu yok",
-        "notInstalled": "Kurulu değil"
-      },
+      "dialogDescription": "Oleafly yalnızca {{server}} cookie'lerini kopyalar, bunlarla oturum açar ve ardından kopyaları siler. Parolalarınız tarayıcıda kalır.",
+      "dialogTitle": "Tarayıcınızdaki cookie'leri içe aktarın",
       "label": "Bir tarayıcının oturumunu kopyala",
-      "useBrowserSignIn": "Tarayıcınızdaki oturumu kopyala",
+      "useBrowserSignIn": "Tarayıcınızdan cookie içe aktarın",
       "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
-      "site": "Site: {{domain}}",
-      "copyAction": "Oturumu kopyala",
-      "copying": "Kopyalanıyor…",
+      "copyAction": "İçe aktar",
+      "copying": "İçe aktarılıyor…",
       "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
-      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın."
+      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
+      "from": "Kaynak",
+      "noCookies": "Henüz cookie yok",
+      "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın."
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
@@ -1953,7 +1947,7 @@
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
       "addAccount": "Başka bir hesap ekle",
-      "addAccountHint": "Oturum açma penceresi önceki oturumlar olmadan açılır, böylece herhangi bir hesapla oturum açabilirsiniz. Tarayıcıyla oturum açmak ya da bir tarayıcının oturumunu kopyalamak, o tarayıcıda açık olan hesabı kullanır.",
+      "addAccountHint": "Oturum açma, hiçbir hesap açık değilken başlar, böylece istediğiniz hesabı kullanabilirsiniz. Cookie içe aktarmak, o tarayıcı profilinde açık olan hesabı kullanır.",
       "accountPick": "İçe aktarma hesabı",
       "accountPickDescription": "Yeni içe aktarmalar ve şablonlar bu hesabı kullanır. Mevcut projeleriniz geldikleri hesabı korur.",
       "gitTitle": "Eşitleme için Git belirteci",
@@ -1971,7 +1965,7 @@
       "browserAction": "Oturum aç",
       "browserPick": "Oturum açılacak tarayıcı",
       "browserWaiting": "{{browser}} tarayıcısında {{server}} sunucusunda oturum açmayı tamamlayın. Pencereyi kapatmak işlemi iptal eder.",
-      "browserHint": "Google, kurum veya geçiş anahtarıyla oturum açmak için bunu kullanın.",
+      "browserHint": "Oturum açılmamış yeni bir {{browser}} penceresi açar. Google, kurum veya geçiş anahtarıyla oturum açmak için kullanın.",
       "windowLabel": "{{server}} sunucusunda oturum aç",
       "windowDescription": "Oleafly bir oturum açma penceresi açar ve giriş yaptığınızda kapatır. Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra burada onunla oturum açın.",
       "windowAction": "Oturum aç",
@@ -1991,7 +1985,9 @@
           "always": "Overleaf'ten de sil",
           "never": "Overleaf'te tut"
         }
-      }
+      },
+      "sameAccount": "Zaten {{account}} olarak oturum açtınız. Başka bir hesap eklemek için o hesapla oturum açın.",
+      "browserButton": "{{browser}} ile oturum aç"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2123,6 +2119,20 @@
           "confirm": "Bu işlem Cua yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?"
         }
       }
+    },
+    "signIns": {
+      "title": "Oturumları yönet",
+      "description": "Oleafly uygulamasının bu bilgisayarda oturum açtığı hesaplar. Burada bir hesabı kaldırmak tarayıcıdaki oturumunuzu kapatmaz.",
+      "loading": "Oturumlarınız yükleniyor…",
+      "empty": "Hiçbir hesapla oturum açmadınız.",
+      "inUse": "Kullanımda",
+      "switch": "Geç",
+      "switchTo": "{{account}} hesabına geç",
+      "removeAccount": "{{account}} hesabını kaldır",
+      "removeAll": "Tümünü kaldır",
+      "importMore": "Daha fazla içe aktar",
+      "loadFailed": "Oleafly oturumlarınızı yükleyemedi.",
+      "changeFailed": "Oleafly bu oturumu değiştiremedi. Yeniden deneyin."
     }
   },
   "language": {

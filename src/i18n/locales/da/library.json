@@ -332,7 +332,7 @@
       "signingInBrowser": "Gør dit login på Overleaf færdigt i {{browser}}. Vinduet lukker af sig selv, når du er logget ind. Hvis du lukker det, bliver loginet annulleret.",
       "passkeyHint": "Hvis din adgangsnøgle ikke virker i login-vinduet, så vælg en anden mulighed dér, fx din adgangskode eller en anmodning på din telefon.",
       "expired": "Dit Overleaf-login er udløbet. Log ind igen for at se dine projekter.",
-      "signIn": "Log ind på Overleaf",
+      "signIn": "Log ind inde i Oleafly",
       "signInWindowTitle": "Log ind på Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adresse på Overleaf-serveren",
@@ -410,7 +410,8 @@
         "signedOut": "Log først ind på Overleaf under Indstillinger.",
         "openSettings": "Åbn Indstillinger",
         "cancel": "Annuller"
-      }
+      },
+      "switchAccount": "Skift konto"
     }
   },
   "pdfImport": {

@@ -817,6 +817,55 @@ fn two_accounts_on_one_server_are_kept_apart() {
 }
 
 #[test]
+fn sign_ins_list_every_server_newest_first() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    assert!(session::sign_ins(&store).unwrap().is_empty());
+    store
+        .set(&[(
+            SESSIONS_ACCOUNT,
+            r#"{"https://old.example.edu":{"cookie":"o=1","userId":"u-old","email":""},
+                "https://latex.example.edu":{"cookie":"a=1","userId":"u-ada","email":"ada@uni.edu",
+                  "accounts":[{"cookie":"b=1","userId":"u-bea","email":"bea@lab.org"}],
+                  "signedInAt":{"u-ada":100,"u-bea":200}}}"#,
+        )])
+        .unwrap();
+    let listed = |store: &SecretStore| {
+        session::sign_ins(store)
+            .unwrap()
+            .into_iter()
+            .map(|sign_in| (sign_in.user_id, sign_in.current, sign_in.signed_in_at))
+            .collect::<Vec<_>>()
+    };
+    let row = |user: &str, current: bool, at: Option<i64>| (user.to_owned(), current, at);
+    assert_eq!(
+        listed(&store),
+        vec![
+            row("u-bea", false, Some(200)),
+            row("u-ada", true, Some(100)),
+            row("u-old", true, None),
+        ]
+    );
+
+    let before = crate::unix_now();
+    let base = "https://latex.example.edu";
+    session::save(&store, base, &account("c=1", "u-cy", "cy@lab.org")).unwrap();
+    let (user, current, at) = listed(&store).remove(0);
+    assert_eq!((user.as_str(), current), ("u-cy", true));
+    assert!(at.is_some_and(|at| at >= before));
+
+    assert!(session::use_account(&store, base, "u-ada").unwrap());
+    assert!(session::forget_account(&store, base, "u-cy").unwrap());
+    assert!(session::forget_account(&store, base, "u-bea").unwrap());
+    assert_eq!(
+        listed(&store),
+        vec![row("u-ada", true, Some(100)), row("u-old", true, None)]
+    );
+    let raw = store.get(SESSIONS_ACCOUNT).unwrap().unwrap();
+    assert!(!raw.contains("u-cy") && !raw.contains("u-bea"), "{raw}");
+}
+
+#[test]
 fn load_for_picks_the_linked_account() {
     let data = tempfile::tempdir().unwrap();
     let store = SecretStore::at(data.path());

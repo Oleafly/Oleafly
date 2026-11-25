@@ -332,7 +332,7 @@
       "signingInBrowser": "Schließen Sie die Anmeldung bei Overleaf in {{browser}} ab. Das Fenster schließt sich von selbst, sobald Sie angemeldet sind. Schließen Sie es vorher, wird abgebrochen.",
       "passkeyHint": "Wenn Ihr Passkey im Anmeldefenster nicht funktioniert, wählen Sie dort eine andere Option, etwa Ihr Passwort oder eine Bestätigung auf Ihrem Telefon.",
       "expired": "Ihre Overleaf-Anmeldung ist abgelaufen. Melden Sie sich erneut an, um Ihre Projekte zu sehen.",
-      "signIn": "Bei Overleaf anmelden",
+      "signIn": "Direkt in Oleafly anmelden",
       "signInWindowTitle": "Bei Overleaf anmelden",
       "server": "Server: {{server}}",
       "serverLabel": "Adresse des Overleaf-Servers",
@@ -410,7 +410,8 @@
         "signedOut": "Melden Sie sich zuerst in den Einstellungen bei Overleaf an.",
         "openSettings": "Einstellungen öffnen",
         "cancel": "Abbrechen"
-      }
+      },
+      "switchAccount": "Konto wechseln"
     }
   },
   "pdfImport": {

@@ -1863,23 +1863,17 @@
       "disconnectFailed": "alphaXiv の接続を解除できませんでした。もう一度お試しください。"
     },
     "cookies": {
-      "dialogDescription": "インストール済みのブラウザのプロファイルを 1 つ選んでください。Oleafly は、あなたが内容を確認して読み込みを承認したあとにだけ読み取ります。Chromium 系の cookie は macOS のキーチェーンを使ってローカルで復号します。Oleafly が cookie の値を Oleafly のサービスに送ることはありません。",
-      "dialogTitle": "ブラウザの cookie を読み込む",
-      "profileGroupLabel": "ブラウザのプロファイル",
-      "profileLegend": "ブラウザのプロファイル",
-      "status": {
-        "available": "利用できます",
-        "comingSoon": "近日対応",
-        "noCookieStore": "cookie の保存領域がありません",
-        "notInstalled": "未インストール"
-      },
+      "dialogDescription": "Oleafly は {{server}} の cookie だけをコピーし、それを使ってサインインしたあと、コピーを削除します。パスワードはブラウザに残ります。",
+      "dialogTitle": "ブラウザから cookie を読み込む",
       "label": "ブラウザのサインイン情報をコピー",
-      "useBrowserSignIn": "ブラウザのサインイン情報をコピーする",
+      "useBrowserSignIn": "ブラウザから cookie を読み込む",
       "signInDescription": "このコンピュータのブラウザから {{server}} のサインイン情報をコピーすれば、もう一度サインインする必要はありません。",
-      "site": "サイト: {{domain}}",
-      "copyAction": "サインイン情報をコピー",
-      "copying": "コピーしています...",
-      "notSignedIn_other": "{{browser}} から {{count}} 個の Cookie をコピーしましたが、サインインできませんでした。直接サインインしてください。"
+      "copyAction": "読み込む",
+      "copying": "読み込んでいます...",
+      "notSignedIn_other": "{{browser}} から {{count}} 個の Cookie をコピーしましたが、サインインできませんでした。直接サインインしてください。",
+      "from": "読み込み元",
+      "noCookies": "cookie はまだありません",
+      "sameAccount": "{{profile}} は {{account}} でサインインしていますが、このアカウントは Oleafly ですでに使われています。別のプロファイルを選ぶか、先にそのブラウザで別のアカウントにサインインしてください。"
     },
     "zotero": {
       "apiKeyHint": "キーの取得方法: <siteLink>zotero.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを作成し、同じページから数字のユーザー ID をコピーします。",
@@ -1937,7 +1931,7 @@
       "signOut": "サインアウト",
       "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。",
       "addAccount": "別のアカウントを追加",
-      "addAccountHint": "サインイン用のウィンドウは毎回まっさらな状態で開くため、どのアカウントでもサインインできます。ブラウザでサインインする場合や、ブラウザのサインイン情報をコピーする場合は、そのブラウザでサインインしているアカウントが使われます。",
+      "addAccountHint": "サインインは誰もサインインしていない状態から始まるため、どのアカウントでも使えます。cookie を読み込む場合は、そのブラウザのプロファイルでサインインしているアカウントが使われます。",
       "accountPick": "読み込みに使うアカウント",
       "accountPickDescription": "新しい読み込みとテンプレートにはこのアカウントが使われます。すでにあるプロジェクトは、取り込んだときのアカウントのままです。",
       "gitTitle": "同期用の Git トークン",
@@ -1955,7 +1949,7 @@
       "browserAction": "サインイン",
       "browserPick": "サインインに使うブラウザ",
       "browserWaiting": "{{browser}} で {{server}} へのサインインを完了してください。ウィンドウを閉じるとキャンセルされます。",
-      "browserHint": "Google、所属機関、パスキーでのサインインにはこちらを使います。",
+      "browserHint": "サインインしていない状態で {{browser}} の新しいウィンドウを開きます。Google、所属機関、パスキーでのサインインに使ってください。",
       "windowLabel": "{{server}} にサインイン",
       "windowDescription": "Oleafly がサインイン用のウィンドウを開き、サインインが済むと閉じます。Google、所属機関、パスキーでサインインするには、Chrome、Edge、Brave、Chromium、Firefox のいずれかをインストールし、ここでそのブラウザからサインインしてください。",
       "windowAction": "サインイン",
@@ -1975,7 +1969,9 @@
           "always": "Overleaf でも削除する",
           "never": "Overleaf には残す"
         }
-      }
+      },
+      "sameAccount": "すでに {{account}} でサインインしています。追加するには別のアカウントでサインインしてください。",
+      "browserButton": "{{browser}} でサインイン"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2107,6 +2103,20 @@
           "confirm": "cua.ai から Cua のインストーラをダウンロードし、ターミナルで実行します。続けますか？"
         }
       }
+    },
+    "signIns": {
+      "title": "サインインの管理",
+      "description": "このコンピュータで Oleafly がサインインしているアカウントです。ここで取り除いても、ブラウザではサインインしたままです。",
+      "loading": "サインイン情報を読み込んでいます...",
+      "empty": "どのアカウントにもサインインしていません。",
+      "inUse": "使用中",
+      "switch": "切り替える",
+      "switchTo": "{{account}} に切り替える",
+      "removeAccount": "{{account}} を取り除く",
+      "removeAll": "すべて取り除く",
+      "importMore": "さらに読み込む",
+      "loadFailed": "Oleafly はサインイン情報を読み込めませんでした。",
+      "changeFailed": "Oleafly はこのサインインを変更できませんでした。もう一度お試しください。"
     }
   },
   "language": {

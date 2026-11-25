@@ -337,7 +337,7 @@
       "signingInBrowser": "Completa l'accesso a Overleaf in {{browser}}. La finestra si chiude da sola quando hai effettuato l'accesso. Se la chiudi, l'accesso viene annullato.",
       "passkeyHint": "Se la passkey non funziona nella finestra di accesso, scegli lì un'altra opzione, come la password o una richiesta sul telefono.",
       "expired": "Il tuo accesso a Overleaf è scaduto. Accedi di nuovo per vedere i tuoi progetti.",
-      "signIn": "Accedi a Overleaf",
+      "signIn": "Accedi dentro Oleafly",
       "signInWindowTitle": "Accedi a Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Indirizzo del server Overleaf",
@@ -420,7 +420,8 @@
         "signedOut": "Prima accedi a Overleaf nelle Impostazioni.",
         "openSettings": "Apri le Impostazioni",
         "cancel": "Annulla"
-      }
+      },
+      "switchAccount": "Cambia account"
     }
   },
   "pdfImport": {

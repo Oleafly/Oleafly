@@ -117,6 +117,9 @@ fn browser_sign_in_answers_only_the_main_window() {
         tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(pane.clone())).unwrap_err(),
     );
     refused(
+        tauri::async_runtime::block_on(super::overleaf_browser_icons(pane.clone())).unwrap_err(),
+    );
+    refused(
         tauri::async_runtime::block_on(super::overleaf_sign_in_with_browser(
             pane.clone(),
             None,
@@ -141,10 +144,15 @@ fn browser_sign_in_answers_only_the_main_window() {
     ))
     .unwrap_err();
     assert!(invalid.contains("\"overleaf.invalid_server\""), "{invalid}");
-    assert!(
+    let browsers =
         tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(main.as_ref().clone()))
-            .is_ok()
-    );
+            .unwrap();
+    let icons =
+        tauri::async_runtime::block_on(super::overleaf_browser_icons(main.as_ref().clone()))
+            .unwrap();
+    assert!(icons.iter().all(|(key, icon)| {
+        browsers.iter().any(|browser| browser.key == *key) && icon.starts_with("data:image/")
+    }));
 }
 
 #[test]

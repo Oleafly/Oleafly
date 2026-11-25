@@ -8,6 +8,14 @@ export interface OverleafAccount {
   email: string | null;
 }
 
+export interface OverleafSavedSignIn {
+  server: string;
+  userId: string;
+  email: string | null;
+  current: boolean;
+  signedInAt: number | null;
+}
+
 export interface OverleafStatus {
   server: string;
   signedIn: boolean;
@@ -107,6 +115,14 @@ export interface OverleafSignInBrowser {
 
 export function overleafUseAccount(server: string | null | undefined, account: string): Promise<OverleafStatus> {
   return invoke<OverleafStatus>("overleaf_use_account", { server: serverArg(server), account });
+}
+
+export function overleafSignIns(): Promise<OverleafSavedSignIn[]> {
+  return invoke<OverleafSavedSignIn[]>("overleaf_sign_ins");
+}
+
+export function overleafBrowserIcons(): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("overleaf_browser_icons");
 }
 
 export function overleafSignInBrowsers(): Promise<OverleafSignInBrowser[]> {

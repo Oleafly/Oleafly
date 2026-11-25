@@ -1899,26 +1899,20 @@
       "disconnectFailed": "alphaXiv se nepodařilo odpojit. Zkuste to znovu."
     },
     "cookies": {
-      "dialogDescription": "Vyberte jeden nainstalovaný profil prohlížeče. Oleafly jej přečte, až když import zkontrolujete a potvrdíte. Cookies prohlížečů Chromium se odemykají místně přes Klíčenku macOS. Oleafly hodnoty cookies žádné službě Oleafly neposílá.",
-      "dialogTitle": "Import cookies z prohlížeče",
-      "profileGroupLabel": "Profily prohlížečů",
-      "profileLegend": "Profil prohlížeče",
-      "status": {
-        "available": "K dispozici",
-        "comingSoon": "Již brzy",
-        "noCookieStore": "Žádné úložiště cookies",
-        "notInstalled": "Nenainstalováno"
-      },
+      "dialogDescription": "Oleafly zkopíruje jen cookies pro {{server}}, přihlásí se s nimi a kopie pak smaže. Vaše hesla zůstanou v prohlížeči.",
+      "dialogTitle": "Import cookies z vašeho prohlížeče",
       "label": "Zkopírovat přihlášení z prohlížeče",
-      "useBrowserSignIn": "Zkopírovat přihlášení z vašeho prohlížeče",
+      "useBrowserSignIn": "Importovat cookies z vašeho prohlížeče",
       "signInDescription": "Zkopírujte své přihlášení k {{server}} z prohlížeče v tomto počítači, abyste se nemuseli přihlašovat znovu.",
-      "site": "Web: {{domain}}",
-      "copyAction": "Zkopírovat přihlášení",
-      "copying": "Kopíruje se…",
+      "copyAction": "Importovat",
+      "copying": "Importuje se…",
       "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",
       "notSignedIn_few": "Z prohlížeče {{browser}} byly zkopírovány {{count}} soubory cookie, ale nepřihlásily vás. Přihlaste se přímo.",
       "notSignedIn_many": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souboru cookie, ale nepřihlásily vás. Přihlaste se přímo.",
-      "notSignedIn_other": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souborů cookie, ale nepřihlásily vás. Přihlaste se přímo."
+      "notSignedIn_other": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souborů cookie, ale nepřihlásily vás. Přihlaste se přímo.",
+      "from": "Odkud",
+      "noCookies": "Zatím žádné cookies",
+      "sameAccount": "V profilu {{profile}} je přihlášený účet {{account}}, který Oleafly už používá. Vyberte jiný profil, nebo se v tom prohlížeči nejdřív přihlaste ke svému druhému účtu."
     },
     "zotero": {
       "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",
@@ -1985,7 +1979,7 @@
       "signOut": "Odhlásit se",
       "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
       "addAccount": "Přidat další účet",
-      "addAccountHint": "Přihlašovací okno začíná načisto, takže se můžete přihlásit libovolným účtem. Přihlášení přes prohlížeč nebo zkopírování přihlášení z prohlížeče použije účet, ke kterému je tento prohlížeč přihlášený.",
+      "addAccountHint": "Přihlašování začíná bez přihlášeného účtu, takže můžete použít libovolný účet. Import cookies použije účet, ke kterému je daný profil prohlížeče přihlášený.",
       "accountPick": "Účet pro import",
       "accountPickDescription": "Nové importy a šablony používají tento účet. Projekty, které už máte, si ponechají účet, ze kterého pocházejí.",
       "gitTitle": "Token Git pro synchronizaci",
@@ -2003,7 +1997,7 @@
       "browserAction": "Přihlásit se",
       "browserPick": "Prohlížeč pro přihlášení",
       "browserWaiting": "Dokončete přihlášení k {{server}} v prohlížeči {{browser}}. Zavřením okna se přihlášení zruší.",
-      "browserHint": "Použijte pro přihlášení přes Google, instituci nebo přístupový klíč.",
+      "browserHint": "Otevře nové okno {{browser}} bez přihlášení. Použijte ho pro přihlášení přes Google, instituci nebo přístupový klíč.",
       "windowLabel": "Přihlášení k {{server}}",
       "windowDescription": "Oleafly otevře přihlašovací okno a po přihlášení ho zavře. Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a přihlaste se v něm tady.",
       "windowAction": "Přihlásit se",
@@ -2023,7 +2017,9 @@
           "always": "Smazat i v Overleafu",
           "never": "Ponechat v Overleafu"
         }
-      }
+      },
+      "sameAccount": "Už jste přihlášeni jako {{account}}. Pokud chcete přidat jiný účet, přihlaste se jím.",
+      "browserButton": "Přihlásit se přes {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2155,6 +2151,20 @@
           "confirm": "Tento příkaz stáhne instalační program Cua z cua.ai a spustí ho ve vašem terminálu. Pokračovat?"
         }
       }
+    },
+    "signIns": {
+      "title": "Správa přihlášení",
+      "description": "Účty, ke kterým je Oleafly na tomto počítači přihlášený. Když tady některý odeberete, v prohlížeči zůstanete přihlášeni.",
+      "loading": "Načítají se vaše přihlášení…",
+      "empty": "Nejste přihlášeni k žádnému účtu.",
+      "inUse": "Používá se",
+      "switch": "Přepnout",
+      "switchTo": "Přepnout na {{account}}",
+      "removeAccount": "Odebrat {{account}}",
+      "removeAll": "Odebrat vše",
+      "importMore": "Importovat další",
+      "loadFailed": "Oleafly nemohl načíst vaše přihlášení.",
+      "changeFailed": "Oleafly nemohl toto přihlášení změnit. Zkuste to znovu."
     }
   },
   "language": {

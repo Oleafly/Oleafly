@@ -1887,25 +1887,19 @@
       "disconnectFailed": "No se pudo desconectar alphaXiv. Vuelve a intentarlo."
     },
     "cookies": {
-      "dialogDescription": "Elige un perfil de navegador instalado. Oleafly lo lee solo después de que revises y confirmes la importación. Las cookies de Chromium se desbloquean en local con el Llavero de macOS. Oleafly no envía los valores de las cookies a ningún servicio suyo.",
-      "dialogTitle": "Importar cookies del navegador",
-      "profileGroupLabel": "Perfiles de navegador",
-      "profileLegend": "Perfil de navegador",
-      "status": {
-        "available": "Disponible",
-        "comingSoon": "Muy pronto",
-        "noCookieStore": "Sin almacén de cookies",
-        "notInstalled": "No instalado"
-      },
+      "dialogDescription": "Oleafly copia solo las cookies de {{server}}, inicia sesión con ellas y después borra las copias. Tus contraseñas se quedan en el navegador.",
+      "dialogTitle": "Importar cookies de tu navegador",
       "label": "Copiar el inicio de sesión de un navegador",
-      "useBrowserSignIn": "Copiar el inicio de sesión de tu navegador",
+      "useBrowserSignIn": "Importar cookies de tu navegador",
       "signInDescription": "Copia tu inicio de sesión de {{server}} desde un navegador de este equipo para no tener que volver a iniciar sesión.",
-      "site": "Sitio: {{domain}}",
-      "copyAction": "Copiar el inicio de sesión",
-      "copying": "Copiando…",
+      "copyAction": "Importar",
+      "copying": "Importando…",
       "notSignedIn_one": "Se copió {{count}} cookie de {{browser}}, pero no inició tu sesión. Inicia sesión directamente.",
       "notSignedIn_many": "Se copiaron {{count}} cookies de {{browser}}, pero no iniciaron tu sesión. Inicia sesión directamente.",
-      "notSignedIn_other": "Se copiaron {{count}} cookies de {{browser}}, pero no iniciaron tu sesión. Inicia sesión directamente."
+      "notSignedIn_other": "Se copiaron {{count}} cookies de {{browser}}, pero no iniciaron tu sesión. Inicia sesión directamente.",
+      "from": "Desde",
+      "noCookies": "Aún sin cookies",
+      "sameAccount": "{{profile}} tiene la sesión iniciada como {{account}}, que Oleafly ya usa. Elige otro perfil o inicia sesión primero con tu otra cuenta en ese navegador."
     },
     "zotero": {
       "apiKeyHint": "Para conseguir una clave: inicia sesión en <siteLink>zotero.org</siteLink>, abre tu <keyLink>página de claves de API</keyLink> para crear una y copia tu ID numérico de usuario de esa misma página.",
@@ -1969,7 +1963,7 @@
       "signOut": "Cerrar sesión",
       "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf.",
       "addAccount": "Añadir otra cuenta",
-      "addAccountHint": "La ventana de inicio de sesión se abre sin ninguna sesión, así que puedes iniciar sesión con cualquier cuenta. Iniciar sesión con un navegador, o copiar el inicio de sesión de un navegador, usa la cuenta con la que ese navegador tiene la sesión iniciada.",
+      "addAccountHint": "Al iniciar sesión se empieza sin ninguna cuenta, así que puedes usar la que quieras. Importar cookies usa la cuenta con la que ese perfil del navegador tiene la sesión iniciada.",
       "accountPick": "Cuenta para importar",
       "accountPickDescription": "Las nuevas importaciones y las plantillas usan esta cuenta. Los proyectos que ya tienes conservan la cuenta de la que vinieron.",
       "gitTitle": "Token de Git para sincronizar",
@@ -1987,7 +1981,7 @@
       "browserAction": "Iniciar sesión",
       "browserPick": "Navegador para iniciar sesión",
       "browserWaiting": "Termina de iniciar sesión en {{server}} en {{browser}}. Si cierras la ventana, se cancela.",
-      "browserHint": "Úsalo para iniciar sesión con Google, tu institución o una llave de acceso.",
+      "browserHint": "Abre una ventana nueva de {{browser}} sin ninguna sesión. Úsala para iniciar sesión con Google, tu institución o una clave de acceso.",
       "windowLabel": "Iniciar sesión en {{server}}",
       "windowDescription": "Oleafly abre una ventana de inicio de sesión y la cierra cuando entras. Para iniciar sesión con Google, tu institución o una llave de acceso, instala Chrome, Edge, Brave, Chromium o Firefox y luego inicia sesión aquí con él.",
       "windowAction": "Iniciar sesión",
@@ -2007,7 +2001,9 @@
           "always": "Eliminarlo también en Overleaf",
           "never": "Mantenerlo en Overleaf"
         }
-      }
+      },
+      "sameAccount": "Ya has iniciado sesión como {{account}}. Inicia sesión con otra cuenta para añadirla.",
+      "browserButton": "Iniciar sesión con {{browser}}"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2139,6 +2135,20 @@
           "confirm": "Esto descarga el instalador de Cua desde cua.ai y lo ejecuta en tu terminal. ¿Continuar?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gestionar inicios de sesión",
+      "description": "Las cuentas con las que Oleafly tiene la sesión iniciada en este equipo. Si quitas una aquí, tu sesión sigue abierta en el navegador.",
+      "loading": "Cargando tus inicios de sesión…",
+      "empty": "No has iniciado sesión con ninguna cuenta.",
+      "inUse": "En uso",
+      "switch": "Cambiar",
+      "switchTo": "Cambiar a {{account}}",
+      "removeAccount": "Quitar {{account}}",
+      "removeAll": "Quitar todas",
+      "importMore": "Importar más",
+      "loadFailed": "Oleafly no pudo cargar tus inicios de sesión.",
+      "changeFailed": "Oleafly no pudo cambiar este inicio de sesión. Inténtalo de nuevo."
     }
   },
   "language": {

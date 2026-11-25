@@ -21,7 +21,7 @@ import {
 import type { OverleafAccount, OverleafStatus } from "@/lib/overleaf";
 import { accountsOf, useOverleafImportStore } from "@/store/overleaf-import";
 import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
-import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
+import { BrowserSignIn, BrowserSignInCopy, RepeatedAccount, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
@@ -77,6 +77,7 @@ export function OverleafSection() {
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.addAccountHint)}</p>
           <BrowserSignIn fallback={<WindowSignIn />} />
           <BrowserSignInCopy server={current} onSignedIn={() => void refreshStatus()} />
+          <RepeatedAccount />
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAdding(false)}>
             {t(($) => $.common.actions.cancel)}
           </Button>

@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   overleafUseAccount: vi.fn(),
   overleafSignInWithAppCookies: vi.fn(),
   overleafSignInBrowsers: vi.fn(async () => [] as unknown[]),
+  overleafBrowserIcons: vi.fn(async () => ({})),
   overleafSignInWithBrowser: vi.fn(),
   overleafListProjects: vi.fn(),
 }));
@@ -65,6 +66,8 @@ beforeEach(() => {
     status: null,
     unsent: null,
     unsentAccount: null,
+    unsentServer: null,
+    repeated: null,
     phase: "idle",
     signingWith: null,
     error: null,
@@ -117,7 +120,7 @@ describe("OverleafSection", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("adds another account through a fresh sign-in window and says what a browser sign-in uses", async () => {
+  it("adds another account through a fresh sign-in window and says what importing cookies uses", async () => {
     const ada = { userId: "u-ada", email: "ada@uni.edu" };
     const bea = { userId: "u-bea", email: "bea@lab.org" };
     const one = { server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] };
@@ -131,12 +134,31 @@ describe("OverleafSection", () => {
     expect(screen.queryByTestId("window-sign-in-row")).not.toBeInTheDocument();
     await user.click(screen.getByTestId("overleaf-add-account"));
     const options = screen.getByTestId("overleaf-add-account-options");
-    expect(options).toHaveTextContent("uses the account that browser is signed in to");
+    expect(options).toHaveTextContent("Importing cookies uses the account that browser profile is signed in to.");
     await user.click(within(options).getByTestId("window-sign-in"));
     expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, expect.any(String));
     await waitFor(() => expect(screen.getAllByTestId("overleaf-connected")).toHaveLength(2));
     expect(screen.queryByTestId("overleaf-add-account-options")).not.toBeInTheDocument();
     expect(screen.getByTestId("overleaf-add-account")).toBeInTheDocument();
+  });
+
+  it("says so when the account being added is the one already signed in", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const one = { server: SERVER, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] };
+    api.overleafStatus.mockResolvedValue(one);
+    api.overleafSignIn.mockResolvedValue(one);
+    api.overleafListProjects.mockResolvedValue({ status: one, projects: [] });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    await user.click(await screen.findByTestId("overleaf-add-account"));
+    const options = screen.getByTestId("overleaf-add-account-options");
+    await user.click(within(options).getByTestId("window-sign-in"));
+    expect(
+      await within(options).findByText("You're already signed in as ada@uni.edu. Sign in with a different account to add it."),
+    ).toBeVisible();
+    await user.click(within(options).getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByTestId("overleaf-add-account"));
+    expect(screen.queryByText(/already signed in as/)).toBeNull();
   });
 
   it("names the server when the account has no email and reports a failed sign-out", async () => {
@@ -250,7 +272,7 @@ describe("OverleafSection", () => {
       .mockResolvedValueOnce({ server: SERVER, signedIn: false, email: null })
       .mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
     cookies.detectBrowserCookieSources.mockResolvedValue([
-      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
+      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available" },
     ]);
     cookies.importBrowserCookies.mockResolvedValue({ imported: 2, browserName: "Google Chrome", profileName: "Default", domain: "www.overleaf.com" });
     api.overleafSignInWithAppCookies.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
@@ -258,8 +280,7 @@ describe("OverleafSection", () => {
     render(<OverleafSection />);
     expect(await screen.findByTestId("browser-sign-in-copy-row")).toBeInTheDocument();
     await user.click(screen.getByTestId("browser-sign-in-copy"));
-    await user.click(await screen.findByLabelText(/Google Chrome/));
-    await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
+    await user.click(screen.getByRole("button", { name: "Import" }));
     await waitFor(() =>
       expect(cookies.importBrowserCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.overleaf.com" }),
     );
@@ -270,7 +291,7 @@ describe("OverleafSection", () => {
   it("hides the browser sign-in copy while signed in", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
     cookies.detectBrowserCookieSources.mockResolvedValue([
-      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
+      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available" },
     ]);
     render(<OverleafSection />);
     expect(await screen.findByTestId("overleaf-connected")).toBeInTheDocument();

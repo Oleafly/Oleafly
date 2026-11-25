@@ -1863,23 +1863,17 @@
       "disconnectFailed": "alphaXiv 연결을 해제하지 못했습니다. 다시 시도하세요."
     },
     "cookies": {
-      "dialogDescription": "설치된 브라우저 프로필 하나를 고르세요. Oleafly는 사용자가 확인한 뒤에만 프로필을 읽습니다. Chromium Cookie는 macOS 키체인을 통해 이 컴퓨터에서 잠금 해제됩니다. Oleafly는 Cookie 값을 Oleafly 서비스로 보내지 않습니다.",
-      "dialogTitle": "브라우저 Cookie 가져오기",
-      "profileGroupLabel": "브라우저 프로필",
-      "profileLegend": "브라우저 프로필",
-      "status": {
-        "available": "사용 가능",
-        "comingSoon": "준비 중",
-        "noCookieStore": "Cookie 저장소 없음",
-        "notInstalled": "설치되어 있지 않음"
-      },
+      "dialogDescription": "Oleafly는 {{server}}의 Cookie만 복사해 로그인한 다음 복사본을 삭제합니다. 비밀번호는 브라우저에 그대로 남습니다.",
+      "dialogTitle": "브라우저에서 Cookie 가져오기",
       "label": "브라우저 로그인 정보 복사",
-      "useBrowserSignIn": "브라우저의 로그인 정보 복사",
+      "useBrowserSignIn": "브라우저에서 Cookie 가져오기",
       "signInDescription": "이 컴퓨터의 브라우저에서 {{server}} 로그인 정보를 복사하면 다시 로그인하지 않아도 됩니다.",
-      "site": "사이트: {{domain}}",
-      "copyAction": "로그인 정보 복사",
-      "copying": "복사하는 중...",
-      "notSignedIn_other": "{{browser}}에서 Cookie {{count}}개를 복사했지만 로그인되지 않았습니다. 직접 로그인하세요."
+      "copyAction": "가져오기",
+      "copying": "가져오는 중...",
+      "notSignedIn_other": "{{browser}}에서 Cookie {{count}}개를 복사했지만 로그인되지 않았습니다. 직접 로그인하세요.",
+      "from": "가져올 곳",
+      "noCookies": "아직 Cookie 없음",
+      "sameAccount": "{{profile}}에는 {{account}} 계정이 로그인되어 있으며, Oleafly가 이미 이 계정을 사용하고 있습니다. 다른 프로필을 선택하거나 그 브라우저에서 먼저 다른 계정으로 로그인하세요."
     },
     "zotero": {
       "apiKeyHint": "키를 받으려면 <siteLink>zotero.org</siteLink>에서 로그인하고 <keyLink>API 키 페이지</keyLink>를 열어 키를 만든 다음, 같은 페이지에서 숫자로 된 사용자 ID를 복사하세요.",
@@ -1937,7 +1931,7 @@
       "signOut": "로그아웃",
       "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
       "addAccount": "다른 계정 추가",
-      "addAccountHint": "로그인 창은 매번 새 상태로 열리므로 어떤 계정으로든 로그인할 수 있습니다. 브라우저로 로그인하거나 브라우저의 로그인 정보를 복사하면 그 브라우저에 로그인된 계정이 사용됩니다.",
+      "addAccountHint": "로그인은 로그인되지 않은 상태에서 시작하므로 어떤 계정이든 사용할 수 있습니다. Cookie를 가져오면 그 브라우저 프로필에 로그인된 계정이 사용됩니다.",
       "accountPick": "가져오기에 사용할 계정",
       "accountPickDescription": "새로 가져오는 프로젝트와 템플릿은 이 계정을 사용합니다. 이미 있는 프로젝트는 원래 가져온 계정을 그대로 유지합니다.",
       "gitTitle": "동기화용 Git 토큰",
@@ -1955,7 +1949,7 @@
       "browserAction": "로그인",
       "browserPick": "로그인에 사용할 브라우저",
       "browserWaiting": "{{browser}}에서 {{server}} 로그인을 마치세요. 창을 닫으면 취소됩니다.",
-      "browserHint": "Google, 소속 기관 또는 패스키로 로그인할 때 사용하세요.",
+      "browserHint": "로그인되지 않은 새 {{browser}} 창을 엽니다. Google, 소속 기관, 패스키로 로그인할 때 사용하세요.",
       "windowLabel": "{{server}}에 로그인",
       "windowDescription": "Oleafly가 로그인 창을 열고, 로그인이 끝나면 닫습니다. Google, 소속 기관 또는 패스키로 로그인하려면 Chrome, Edge, Brave, Chromium 또는 Firefox를 설치한 뒤 여기서 해당 브라우저로 로그인하세요.",
       "windowAction": "로그인",
@@ -1975,7 +1969,9 @@
           "always": "Overleaf에서도 삭제",
           "never": "Overleaf에는 유지"
         }
-      }
+      },
+      "sameAccount": "이미 {{account}} 계정으로 로그인되어 있습니다. 다른 계정을 추가하려면 그 계정으로 로그인하세요.",
+      "browserButton": "{{browser}}(으)로 로그인"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2107,6 +2103,20 @@
           "confirm": "cua.ai에서 Cua 설치 프로그램을 내려받아 터미널에서 실행합니다. 계속할까요?"
         }
       }
+    },
+    "signIns": {
+      "title": "로그인 관리",
+      "description": "이 컴퓨터에서 Oleafly가 로그인한 계정입니다. 여기에서 제거해도 브라우저에서는 로그인 상태가 유지됩니다.",
+      "loading": "로그인 정보를 불러오는 중...",
+      "empty": "로그인한 계정이 없습니다.",
+      "inUse": "사용 중",
+      "switch": "전환",
+      "switchTo": "{{account}} 계정으로 전환",
+      "removeAccount": "{{account}} 제거",
+      "removeAll": "모두 제거",
+      "importMore": "더 가져오기",
+      "loadFailed": "Oleafly가 로그인 정보를 불러오지 못했습니다.",
+      "changeFailed": "Oleafly가 이 로그인을 변경하지 못했습니다. 다시 시도하세요."
     }
   },
   "language": {

@@ -337,7 +337,7 @@
       "signingInBrowser": "Termina de iniciar sesión en Overleaf en {{browser}}. La ventana se cierra sola cuando entras. Si la cierras, se cancela.",
       "passkeyHint": "Si tu llave de acceso no funciona en la ventana de inicio de sesión, elige allí otra opción, como tu contraseña o un aviso en tu teléfono.",
       "expired": "Tu sesión de Overleaf caducó. Vuelve a iniciar sesión para ver tus proyectos.",
-      "signIn": "Iniciar sesión en Overleaf",
+      "signIn": "Iniciar sesión dentro de Oleafly",
       "signInWindowTitle": "Iniciar sesión en Overleaf",
       "server": "Servidor: {{server}}",
       "serverLabel": "Dirección del servidor de Overleaf",
@@ -420,7 +420,8 @@
         "signedOut": "Primero inicia sesión en Overleaf en Ajustes.",
         "openSettings": "Abrir Ajustes",
         "cancel": "Cancelar"
-      }
+      },
+      "switchAccount": "Cambiar de cuenta"
     }
   },
   "pdfImport": {
