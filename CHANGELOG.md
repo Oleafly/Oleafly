@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)) for #470, "Support explicitly configured, externally managed TexLab and Tinymist".
 - Richard (Dien Giau) Bui ([@diengiau](https://github.com/diengiau)) for #515, "Not Allow to Change Project Type (Engine)".
 - Faisal Albasu ([@albas99](https://github.com/albas99)) for #518, "Remember previous window state on launch".
-- [@ssbodda-powern](https://github.com/ssbodda-powern) for #529, "Editor text renders noticeably thinner and lighter than VS Code on macOS (Font Smoothing & Variable Font Weight)".
+- [@ssbodda-powern](https://github.com/ssbodda-powern) for #529, "Editor text renders noticeably thinner and lighter than VS Code on macOS (Font Smoothing & Variable Font Weight)", and #534, "Remember cursor/window position when switching views".
 
 ### Added
 
@@ -61,6 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Moving panes no longer breaks the workspace with "The panel layout hit a snag". Moving a pane next to another one in the same row or column, such as the AI assistant to the left of the files, could leave the panel library out of step with the panes on screen, and it threw an error. If the layout ever fails now, Oleafly builds the panes again, then goes back to the default arrangement, and shows the reload message only if both fail. Open files, chats and terminals stay as they were.
+- While you drag a pane by its title bar, the whole pane is tinted, not only the bar. The place it will land has a stronger tint.
+- Switching from PDF view back to Split or Source view keeps the cursor, the selection and the scroll position in the editor. If you scrolled the PDF to another part of the document while the editor was hidden, the editor opens at that part instead (#534).
+- The same layout can't be saved twice under two names. When the layout on screen is already saved, Save current layout says under which name, and the layout menu checks one saved layout, not several. Each saved layout shows a small drawing of its panes instead of a bookmark. Manage layouts lists the saved layouts by name, and each name opens Rename, Replace with current layout and Delete. Replace with current layout is only offered once the panes changed.
+- Saving a layout right after the panes were set up again, for example after applying a saved layout, saves the sizes on screen. It used to save older sizes.
+- A pane drag ends when the mouse button is no longer held, even if the button was released over the PDF.
+- New research project: the project preview changes as you type, without loading placeholders, and shows the files for a sample name before you type one.
 - On macOS, text in light themes looked thinner and paler than in other apps, because Oleafly drew all of it with the lighter smoothing meant for light text on dark backgrounds. Light themes now draw text the way macOS and VS Code do, so the editor, Notes and the rest of the window show a font at its real weight. Dark themes look as before. A light editor theme or Notes code theme in a dark app, or a dark one in a light app, follows its own background, and so does a background color you set for the app or the editor (#529).
 - PDF dark mode turned every photo on a page into a negative once the page had more than 32 pictures, as in a grid of photos made in PowerPoint. Each one now keeps its colors (#506).
 - A photo that covers most of a page, such as a full-bleed image, keeps its colors in PDF dark mode. Scanned pages still go dark, whatever color the paper is. So do slide backgrounds and pages pulled in from another PDF at any size, while the photos and figures on them keep their colors.

@@ -1390,6 +1390,7 @@
       "close": "Sluiten",
       "delete": "Verwijderen",
       "deleteConfirm": "De indeling “{{name}}” verwijderen?",
+      "duplicate": "Deze indeling is al opgeslagen als “{{name}}”.",
       "limit": "Je kunt maximaal {{count}} indelingen bewaren. Verwijder er een om een andere op te slaan.",
       "manage": "Indelingen beheren",
       "name": "Naam van de indeling",
@@ -1397,10 +1398,11 @@
       "renameTitle": "Indeling hernoemen",
       "replace": "Vervangen",
       "replaceConfirm": "Er bestaat al een indeling met de naam “{{name}}”. Vervangen?",
+      "replaceWithCurrent": "Vervangen door huidige indeling",
       "save": "Huidige indeling opslaan",
       "saveButton": "Opslaan",
       "saveTitle": "Indeling opslaan",
-      "update": "Bijwerken naar huidige"
+      "savedAs": "Opgeslagen als “{{name}}”"
     },
     "renameFailed": "Kon het project niet hernoemen."
   },

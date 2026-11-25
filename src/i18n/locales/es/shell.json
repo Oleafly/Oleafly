@@ -1410,6 +1410,7 @@
       "close": "Cerrar",
       "delete": "Eliminar",
       "deleteConfirm": "¿Eliminar la disposición {{name}}?",
+      "duplicate": "Esta disposición ya está guardada como {{name}}.",
       "limit": "Puedes conservar hasta {{count}} disposiciones. Elimina una para guardar otra.",
       "manage": "Gestionar disposiciones",
       "name": "Nombre de la disposición",
@@ -1417,10 +1418,11 @@
       "renameTitle": "Renombrar disposición",
       "replace": "Reemplazar",
       "replaceConfirm": "Ya existe una disposición llamada {{name}}. ¿Reemplazarla?",
+      "replaceWithCurrent": "Reemplazar con la disposición actual",
       "save": "Guardar la disposición actual",
       "saveButton": "Guardar",
       "saveTitle": "Guardar disposición",
-      "update": "Actualizar con la actual"
+      "savedAs": "Guardada como {{name}}"
     },
     "renameFailed": "No se pudo cambiar el nombre del proyecto."
   },

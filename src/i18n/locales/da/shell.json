@@ -1390,6 +1390,7 @@
       "close": "Luk",
       "delete": "Slet",
       "deleteConfirm": "Vil du slette layoutet »{{name}}«?",
+      "duplicate": "Dette layout er allerede gemt som »{{name}}«.",
       "limit": "Du kan beholde op til {{count}} layouts. Slet et for at gemme et nyt.",
       "manage": "Administrer layouts",
       "name": "Navn på layoutet",
@@ -1397,10 +1398,11 @@
       "renameTitle": "Omdøb layout",
       "replace": "Erstat",
       "replaceConfirm": "Der findes allerede et layout med navnet »{{name}}«. Vil du erstatte det?",
+      "replaceWithCurrent": "Erstat med nuværende layout",
       "save": "Gem nuværende layout",
       "saveButton": "Gem",
       "saveTitle": "Gem layout",
-      "update": "Opdater til nuværende"
+      "savedAs": "Gemt som »{{name}}«"
     },
     "renameFailed": "Kunne ikke omdøbe projektet."
   },

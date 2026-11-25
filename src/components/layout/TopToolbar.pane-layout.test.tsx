@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,7 +47,7 @@ beforeEach(() => {
   useZenStore.getState().end();
   usePreviewDetachedStore.setState({ projectId: null });
   usePaneLayoutStore.setState({ layout: DEFAULT_PANE_LAYOUT });
-  useSavedLayoutsStore.setState({ layouts: [], naming: null });
+  useSavedLayoutsStore.setState({ layouts: [], activeId: null, naming: null });
   localStorage.clear();
   useFilesStore.setState({
     projectId: "p1",
@@ -135,29 +135,86 @@ describe("Saved layouts in the layout menu", () => {
     expect(useSavedLayoutsStore.getState().layouts[0]?.id).toBe(first?.id);
   });
 
-  it("renames, updates and deletes from Manage layouts", async () => {
+  it("renames, replaces and deletes each layout from its own menu under Manage layouts", async () => {
     useSavedLayoutsStore.getState().save("Focus");
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    const openActions = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole("button", { name: toolbar.layout }));
+      await user.click(await screen.findByRole("menuitem", { name: saved.manage }));
+      const item = await screen.findByTestId("layout-manage-item");
+      expect(item).toHaveAccessibleName("Focus");
+      expect(item.querySelector("svg[data-saved-layout-icon]")).not.toBeNull();
+      fireEvent.keyDown(item, { key: "ArrowRight" });
+    };
     const { user, menu } = await openLayoutMenu();
-    await user.click(within(menu).getByRole("menuitem", { name: saved.manage }));
+    await user.keyboard("{Escape}");
+    expect(menu).not.toBeInTheDocument();
+
+    await openActions(user);
     fireEvent.click(await screen.findByRole("menuitem", { name: saved.rename }));
     const field = await screen.findByRole("textbox", { name: saved.name });
     expect(field).toHaveValue("Focus");
     await user.clear(field);
     await user.type(field, "Reading{Enter}");
     await waitFor(() => expect(useSavedLayoutsStore.getState().layouts[0]?.name).toBe("Reading"));
+    useSavedLayoutsStore.getState().rename(useSavedLayoutsStore.getState().layouts[0]?.id ?? "", "Focus");
+
+    await openActions(user);
+    expect(await screen.findByRole("menuitem", { name: saved.replaceWithCurrent })).toHaveAttribute("aria-disabled", "true");
+    await user.keyboard("{Escape}");
 
     movePaneToEdge("terminal", "top");
-    await user.click(screen.getByRole("button", { name: toolbar.layout }));
-    await user.click(await screen.findByRole("menuitem", { name: saved.manage }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: saved.update }));
+    await openActions(user);
+    const replace = await screen.findByRole("menuitem", { name: saved.replaceWithCurrent });
+    expect(replace).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(replace);
     expect(layoutKey(useSavedLayoutsStore.getState().layouts[0]?.tree ?? DEFAULT_PANE_LAYOUT)).toBe(
       layoutKey(usePaneLayoutStore.getState().layout),
     );
 
-    await user.click(screen.getByRole("button", { name: toolbar.layout }));
-    await user.click(await screen.findByRole("menuitem", { name: saved.manage }));
+    await openActions(user);
     fireEvent.click(await screen.findByRole("menuitem", { name: saved.delete }));
     await waitFor(() => expect(useSavedLayoutsStore.getState().layouts).toEqual([]));
+  });
+
+  it("turns Save off and names the saved layout while the layout on screen is already saved", async () => {
+    useSavedLayoutsStore.getState().save("Bringa");
+    const { menu } = await openLayoutMenu();
+    const save = within(menu).getByTestId("layout-save");
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    expect(save).toHaveTextContent(saved.savedAs.replace("{{name}}", "Bringa"));
+    const [item] = within(menu).getAllByTestId("saved-layout");
+    expect(item?.querySelector("svg[data-saved-layout-icon]")).not.toBeNull();
+    expect(item?.querySelector("svg.lucide-bookmark")).toBeNull();
+  });
+
+  it("explains in the name dialog that the layout on screen is already saved", async () => {
+    useSavedLayoutsStore.getState().save("Bringa");
+    render(
+      <ThemeProvider>
+        <TopToolbar />
+      </ThemeProvider>,
+    );
+    act(() => useSavedLayoutsStore.getState().startNaming(null));
+    expect(await screen.findByRole("alert")).toHaveTextContent(saved.duplicate.replace("{{name}}", "Bringa"));
+    const user = userEvent.setup();
+    await user.type(screen.getByRole("textbox", { name: saved.name }), "Poke{Enter}");
+    expect(useSavedLayoutsStore.getState().layouts.map((layout) => layout.name)).toEqual(["Bringa"]);
+  });
+
+  it("checks only one saved layout when two have the same arrangement", async () => {
+    const flags = { viewMode: "split", showTree: true, assistantOpen: false, workspaceHidden: false, terminalOpen: false } as const;
+    useSavedLayoutsStore.setState({
+      layouts: [
+        { id: "a", name: "Bringa", tree: DEFAULT_PANE_LAYOUT, flags },
+        { id: "b", name: "Poke", tree: DEFAULT_PANE_LAYOUT, flags },
+      ],
+      activeId: "b",
+    });
+    const { menu } = await openLayoutMenu();
+    const checked = within(menu)
+      .getAllByTestId("saved-layout")
+      .filter((item) => item.querySelector("svg.lucide-check"));
+    expect(checked.map((item) => item.textContent)).toEqual(["Poke"]);
   });
 });

@@ -7,7 +7,6 @@ import {
   ArrowUpToLine,
   Asterisk,
   Bold,
-  Bookmark,
   BookPlus,
   CaseLower,
   CaseSensitive,
@@ -173,7 +172,7 @@ import {
 } from "@/store/pane-layout";
 import { SAVED_LAYOUT_LIMIT, useSavedLayoutsStore } from "@/store/saved-layouts";
 import { zoomApp } from "@/lib/app-zoom";
-import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { LAYOUT_PRESET_ICONS, SavedLayoutIcon } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
 import {
   formatWithLanguageService,
@@ -1324,7 +1323,15 @@ export function registerPaletteCommands() {
       label: () => i18n.t(($) => $.shell.commands.applySavedLayout.label, { name: saved()?.name ?? "" }),
       keywords: () =>
         `${i18n.t(($) => $.shell.commands.applySavedLayout.keywords)} ${ENGLISH_KEYWORDS.applySavedLayout}`,
-      icon: () => <Bookmark className="size-4" />,
+      icon: () => {
+        const layout = saved();
+        const Fallback = LAYOUT_PRESET_ICONS["editor-preview"];
+        return layout ? (
+          <SavedLayoutIcon tree={layout.tree} flags={layout.flags} className="size-4" />
+        ) : (
+          <Fallback className="size-4" />
+        );
+      },
       order: 516,
       when: (ctx) => !!ctx.projectId && saved() !== undefined,
       run: () => {

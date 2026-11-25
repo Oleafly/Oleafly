@@ -1410,6 +1410,7 @@
       "close": "Închide",
       "delete": "Șterge",
       "deleteConfirm": "Ștergi aranjarea {{name}}?",
+      "duplicate": "Această aranjare este deja salvată ca {{name}}.",
       "limit": "Poți păstra cel mult {{count}} aranjări. Șterge una ca să salvezi alta.",
       "manage": "Gestionează aranjările",
       "name": "Numele aranjării",
@@ -1417,10 +1418,11 @@
       "renameTitle": "Redenumește aranjarea",
       "replace": "Înlocuiește",
       "replaceConfirm": "Există deja o aranjare numită {{name}}. O înlocuiești?",
+      "replaceWithCurrent": "Înlocuiește cu aranjarea curentă",
       "save": "Salvează aranjarea curentă",
       "saveButton": "Salvează",
       "saveTitle": "Salvează aranjarea",
-      "update": "Actualizează cu cea curentă"
+      "savedAs": "Salvată ca {{name}}"
     },
     "renameFailed": "Proiectul nu a putut fi redenumit."
   },

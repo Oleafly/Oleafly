@@ -57,6 +57,19 @@ describe("trackPointerDrag", () => {
     expect(drag.end).toHaveBeenCalledWith(true);
   });
 
+  it("cancels when a mouse moves with no button held because the release was never seen", () => {
+    const drag = handlers();
+    trackPointerDrag({ clientX: 100, clientY: 100 }, drag);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, buttons: 1, pointerType: "mouse" });
+    expect(drag.start).toHaveBeenCalledOnce();
+    fireEvent.pointerMove(window, { clientX: 180, clientY: 100, buttons: 0, pointerType: "mouse" });
+    expect(drag.end).toHaveBeenCalledExactlyOnceWith(false);
+    fireEvent.pointerMove(window, { clientX: 220, clientY: 100, buttons: 1, pointerType: "mouse" });
+    fireEvent.pointerUp(window);
+    expect(drag.move).toHaveBeenCalledOnce();
+    expect(drag.end).toHaveBeenCalledOnce();
+  });
+
   it("measures the threshold along one axis when asked", () => {
     const drag = handlers({ axis: "y" });
     trackPointerDrag({ clientX: 0, clientY: 0 }, drag);

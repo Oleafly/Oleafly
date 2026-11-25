@@ -4,6 +4,7 @@ import { replaceStoredPanelLayout } from "@/lib/panel-layout";
 import { workspacePanelId } from "@/lib/workspace-layout";
 import { useFilesStore } from "@/store/files";
 import {
+  isLeaf,
   layoutKey,
   paneTreeFrom,
   paneVisibility,
@@ -14,6 +15,7 @@ import {
   usePaneLayoutStore,
   withLiveSizes,
   type PaneFlags,
+  type PaneNode,
   type PaneSplit,
 } from "@/store/pane-layout";
 import { useSettingsStore, type ViewMode } from "@/store/settings";
@@ -23,6 +25,7 @@ export const SAVED_LAYOUT_LIMIT = 12;
 const VERSION = 1;
 const VIEW_MODES: readonly ViewMode[] = ["editor", "split", "pdf"];
 const FLAG_NAMES = ["showTree", "assistantOpen", "workspaceHidden", "terminalOpen"] as const;
+const SIZE_TOLERANCE = 1;
 
 export interface SavedLayout {
   readonly id: string;
@@ -109,10 +112,54 @@ export function savedLayoutInEffect(layout: SavedLayout, tree: PaneSplit, flags:
   );
 }
 
+function sameSizes(a: PaneNode, b: PaneNode): boolean {
+  if (isLeaf(a) || isLeaf(b)) return isLeaf(a) && isLeaf(b);
+  return (
+    a.sizes.every((size, index) => Math.abs(size - (b.sizes[index] ?? 0)) <= SIZE_TOLERANCE) &&
+    a.children.every((child, index) => {
+      const other = b.children[index];
+      return other !== undefined && sameSizes(child, other);
+    })
+  );
+}
+
+function currentArrangement(): { tree: PaneSplit; flags: PaneFlags } {
+  return { tree: withLiveSizes(usePaneLayoutStore.getState().layout), flags: currentPaneFlags() };
+}
+
+export function savedLayoutSameAs(
+  layouts: readonly SavedLayout[],
+  tree: PaneSplit,
+  flags: PaneFlags,
+): SavedLayout | undefined {
+  return layouts.find((layout) => savedLayoutInEffect(layout, tree, flags) && sameSizes(layout.tree, tree));
+}
+
+export function savedLayoutShown(
+  layouts: readonly SavedLayout[],
+  activeId: string | null,
+  tree: PaneSplit,
+  flags: PaneFlags,
+): SavedLayout | undefined {
+  const inEffect = layouts.filter((layout) => savedLayoutInEffect(layout, tree, flags));
+  return inEffect.find((layout) => layout.id === activeId) ?? savedLayoutSameAs(inEffect, tree, flags) ?? inEffect[0];
+}
+
+export function savedLayoutLikeCurrent(): SavedLayout | undefined {
+  const { tree, flags } = currentArrangement();
+  return savedLayoutSameAs(useSavedLayoutsStore.getState().layouts, tree, flags);
+}
+
+export type SaveOutcome =
+  | { saved: true }
+  | { saved: false; reason: "unnamed" | "limit" }
+  | { saved: false; reason: "duplicate"; name: string };
+
 interface SavedLayoutsState {
   layouts: SavedLayout[];
+  activeId: string | null;
   naming: { id: string | null } | null;
-  save: (name: string) => boolean;
+  save: (name: string) => SaveOutcome;
   rename: (id: string, name: string) => void;
   update: (id: string) => void;
   remove: (id: string) => void;
@@ -128,22 +175,23 @@ function write(layouts: SavedLayout[]): SavedLayout[] {
 
 export const useSavedLayoutsStore = create<SavedLayoutsState>((set, get) => ({
   layouts: readJson(SAVED_LAYOUTS_KEY, [], parseSaved),
+  activeId: null,
   naming: null,
   save: (name) => {
     const trimmed = name.trim();
     const { layouts } = get();
+    if (!trimmed) return { saved: false, reason: "unnamed" };
     const existing = savedLayoutNamed(trimmed);
-    if (!trimmed || (!existing && layouts.length >= SAVED_LAYOUT_LIMIT)) return false;
-    const captured: SavedLayout = {
-      id: existing?.id ?? newId(),
-      name: trimmed,
-      tree: withLiveSizes(usePaneLayoutStore.getState().layout),
-      flags: currentPaneFlags(),
-    };
+    const { tree, flags } = currentArrangement();
+    const same = savedLayoutSameAs(layouts, tree, flags);
+    if (same && same !== existing) return { saved: false, reason: "duplicate", name: same.name };
+    if (!existing && layouts.length >= SAVED_LAYOUT_LIMIT) return { saved: false, reason: "limit" };
+    const captured: SavedLayout = { id: existing?.id ?? newId(), name: trimmed, tree, flags };
     set({
+      activeId: captured.id,
       layouts: write(existing ? layouts.map((layout) => (layout === existing ? captured : layout)) : [...layouts, captured]),
     });
-    return true;
+    return { saved: true };
   },
   rename: (id, name) => {
     const trimmed = name.trim();
@@ -157,14 +205,21 @@ export const useSavedLayoutsStore = create<SavedLayoutsState>((set, get) => ({
     });
   },
   update: (id) => {
-    const tree = withLiveSizes(usePaneLayoutStore.getState().layout);
-    const flags = currentPaneFlags();
-    set({ layouts: write(get().layouts.map((layout) => (layout.id === id ? { ...layout, tree, flags } : layout))) });
+    const { tree, flags } = currentArrangement();
+    set({
+      activeId: id,
+      layouts: write(get().layouts.map((layout) => (layout.id === id ? { ...layout, tree, flags } : layout))),
+    });
   },
-  remove: (id) => set({ layouts: write(get().layouts.filter((layout) => layout.id !== id)) }),
+  remove: (id) =>
+    set((state) => ({
+      activeId: state.activeId === id ? null : state.activeId,
+      layouts: write(state.layouts.filter((layout) => layout.id !== id)),
+    })),
   apply: (id) => {
     const layout = get().layouts.find((saved) => saved.id === id);
     if (!layout) return;
+    set({ activeId: id });
     const panes = usePaneLayoutStore.getState();
     panes.setLayout(layout.tree);
     useSettingsStore.setState({ ...layout.flags });

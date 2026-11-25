@@ -1390,6 +1390,7 @@
       "close": "Sulje",
       "delete": "Poista",
       "deleteConfirm": "Poistetaanko asettelu {{name}}?",
+      "duplicate": "Tämä asettelu on jo tallennettu nimellä {{name}}.",
       "limit": "Voit säilyttää enintään {{count}} asettelua. Poista yksi, jotta voit tallentaa uuden.",
       "manage": "Hallitse asetteluja",
       "name": "Asettelun nimi",
@@ -1397,10 +1398,11 @@
       "renameTitle": "Nimeä asettelu uudelleen",
       "replace": "Korvaa",
       "replaceConfirm": "Asettelu nimeltä {{name}} on jo olemassa. Korvataanko se?",
+      "replaceWithCurrent": "Korvaa nykyisellä asettelulla",
       "save": "Tallenna nykyinen asettelu",
       "saveButton": "Tallenna",
       "saveTitle": "Tallenna asettelu",
-      "update": "Päivitä nykyiseksi"
+      "savedAs": "Tallennettu nimellä {{name}}"
     },
     "renameFailed": "Projektia ei voitu nimetä uudelleen."
   },

@@ -1,12 +1,11 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { type ComponentType, Fragment, type ReactNode, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
+import { type ComponentType, type ReactNode, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
 import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   BookOpen,
-  Bookmark,
   Check,
   Columns2,
   ChevronRight,
@@ -34,7 +33,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -43,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { LAYOUT_PRESET_ICONS, SavedLayoutIcon } from "@/components/icons/LayoutPresetIcons";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useDismiss } from "@/components/ui/use-dismiss";
@@ -64,11 +62,13 @@ import { useProjectColorsStore } from "@/store/project-colors";
 import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
-import { isDefaultPaneLayout, resetPaneLayout, usePaneLayoutStore } from "@/store/pane-layout";
+import { isDefaultPaneLayout, resetPaneLayout, usePaneLayoutStore, withLiveSizes } from "@/store/pane-layout";
 import {
   SAVED_LAYOUT_LIMIT,
-  savedLayoutInEffect,
+  savedLayoutLikeCurrent,
   savedLayoutNamed,
+  savedLayoutSameAs,
+  savedLayoutShown,
   useSavedLayoutsStore,
   type SavedLayout,
 } from "@/store/saved-layouts";
@@ -304,6 +304,10 @@ function NameDialog({
   );
 }
 
+function duplicateMessage(name: string): string {
+  return i18n.t(($) => $.shell.toolbar.savedLayouts.duplicate, { name });
+}
+
 function SavedLayoutNameDialog() {
   const { t } = useTranslation(["shell"]);
   const naming = useSavedLayoutsStore((s) => s.naming);
@@ -312,12 +316,18 @@ function SavedLayoutNameDialog() {
   useEffect(() => {
     if (!naming) return;
     setName(naming.id ? (useSavedLayoutsStore.getState().layouts.find((l) => l.id === naming.id)?.name ?? "") : "");
-    setError(null);
+    const same = naming.id ? undefined : savedLayoutLikeCurrent();
+    setError(same ? duplicateMessage(same.name) : null);
   }, [naming]);
   const close = () => useSavedLayoutsStore.getState().stopNaming();
   const submit = async () => {
     const trimmed = name.trim();
     if (!naming || !trimmed) return;
+    const same = naming.id ? undefined : savedLayoutLikeCurrent();
+    if (same) {
+      setError(duplicateMessage(same.name));
+      return;
+    }
     const clash = savedLayoutNamed(trimmed, naming.id);
     if (
       clash &&
@@ -330,12 +340,15 @@ function SavedLayoutNameDialog() {
       return;
     }
     const store = useSavedLayoutsStore.getState();
-    if (naming.id) store.rename(naming.id, trimmed);
-    else if (!store.save(trimmed)) {
-      setError(t(($) => $.shell.toolbar.savedLayouts.limit, { count: SAVED_LAYOUT_LIMIT }));
+    if (naming.id) {
+      store.rename(naming.id, trimmed);
+      close();
       return;
     }
-    close();
+    const outcome = store.save(trimmed);
+    if (outcome.saved) close();
+    else if (outcome.reason === "duplicate") setError(duplicateMessage(outcome.name));
+    else setError(t(($) => $.shell.toolbar.savedLayouts.limit, { count: SAVED_LAYOUT_LIMIT }));
   };
   return (
     <NameDialog
@@ -364,56 +377,82 @@ async function deleteSavedLayout(layout: SavedLayout) {
   if (confirmed) useSavedLayoutsStore.getState().remove(layout.id);
 }
 
+function SavedLayoutActions({ layout, unchanged }: Readonly<{ layout: SavedLayout; unchanged: boolean }>) {
+  const { t } = useTranslation(["shell"]);
+  const store = useSavedLayoutsStore.getState();
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger data-testid="layout-manage-item">
+        <SavedLayoutIcon tree={layout.tree} flags={layout.flags} className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate">{layout.name}</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent className="w-60">
+          <DropdownMenuItem onSelect={() => store.startNaming(layout.id)}>
+            <PencilLine className="size-4 text-muted-foreground" />
+            {t(($) => $.shell.toolbar.savedLayouts.rename)}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={unchanged} onSelect={() => store.update(layout.id)}>
+            <RefreshCw className="size-4 text-muted-foreground" />
+            {t(($) => $.shell.toolbar.savedLayouts.replaceWithCurrent)}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => void deleteSavedLayout(layout)}>
+            <Trash2 className="size-4 text-muted-foreground" />
+            {t(($) => $.shell.toolbar.savedLayouts.delete)}
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
+    </DropdownMenuSub>
+  );
+}
+
 function SavedLayoutMenuItems() {
   const { t } = useTranslation(["shell"]);
   const layouts = useSavedLayoutsStore((s) => s.layouts);
-  const tree = usePaneLayoutStore((s) => s.layout);
+  const activeId = useSavedLayoutsStore((s) => s.activeId);
+  const layout = usePaneLayoutStore((s) => s.layout);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const showTree = useSettingsStore((s) => s.showTree);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const flags = { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen };
+  const tree = withLiveSizes(layout);
+  const shown = savedLayoutShown(layouts, activeId, tree, flags);
+  const same = savedLayoutSameAs(layouts, tree, flags);
   const store = useSavedLayoutsStore.getState();
   return (
     <>
       <DropdownMenuSeparator />
       {layouts.map((layout) => (
         <DropdownMenuItem key={layout.id} data-testid="saved-layout" onSelect={() => store.apply(layout.id)}>
-          <Bookmark className="size-4 text-muted-foreground" />
-          <span className="flex-1 truncate">{layout.name}</span>
-          {savedLayoutInEffect(layout, tree, flags) && <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+          <SavedLayoutIcon tree={layout.tree} flags={layout.flags} className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">{layout.name}</span>
+          {layout === shown && <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />}
         </DropdownMenuItem>
       ))}
-      <DropdownMenuItem data-testid="layout-save" onSelect={() => store.startNaming(null)}>
-        <Save className="size-4 text-muted-foreground" />
-        <span className="flex-1">{t(($) => $.shell.toolbar.savedLayouts.save)}</span>
+      <DropdownMenuItem data-testid="layout-save" disabled={same !== undefined} onSelect={() => store.startNaming(null)}>
+        <Save className="size-4 shrink-0 text-muted-foreground" />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span>{t(($) => $.shell.toolbar.savedLayouts.save)}</span>
+          {same && (
+            <span className="truncate text-xs text-muted-foreground">
+              {t(($) => $.shell.toolbar.savedLayouts.savedAs, { name: same.name })}
+            </span>
+          )}
+        </span>
       </DropdownMenuItem>
       {layouts.length > 0 && (
         <DropdownMenuSub>
           <DropdownMenuSubTrigger data-testid="layout-manage">
-            <Settings2 className="mr-2 size-4" />
+            <Settings2 className="size-4 text-muted-foreground" />
             {t(($) => $.shell.toolbar.savedLayouts.manage)}
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
             <DropdownMenuSubContent className="w-56">
-              {layouts.map((layout, index) => (
-                <Fragment key={layout.id}>
-                  {index > 0 && <DropdownMenuSeparator />}
-                  <DropdownMenuLabel className="truncate">{layout.name}</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => store.startNaming(layout.id)}>
-                    <PencilLine className="size-4 text-muted-foreground" />
-                    {t(($) => $.shell.toolbar.savedLayouts.rename)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => store.update(layout.id)}>
-                    <RefreshCw className="size-4 text-muted-foreground" />
-                    {t(($) => $.shell.toolbar.savedLayouts.update)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void deleteSavedLayout(layout)}>
-                    <Trash2 className="size-4 text-muted-foreground" />
-                    {t(($) => $.shell.toolbar.savedLayouts.delete)}
-                  </DropdownMenuItem>
-                </Fragment>
+              {layouts.map((layout) => (
+                <SavedLayoutActions key={layout.id} layout={layout} unchanged={layout === same} />
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuPortal>

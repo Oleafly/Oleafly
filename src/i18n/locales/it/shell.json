@@ -1410,6 +1410,7 @@
       "close": "Chiudi",
       "delete": "Elimina",
       "deleteConfirm": "Vuoi eliminare il layout {{name}}?",
+      "duplicate": "Questo layout è già salvato come {{name}}.",
       "limit": "Puoi conservare fino a {{count}} layout. Eliminane uno per salvarne un altro.",
       "manage": "Gestisci i layout",
       "name": "Nome del layout",
@@ -1417,10 +1418,11 @@
       "renameTitle": "Rinomina layout",
       "replace": "Sostituisci",
       "replaceConfirm": "Esiste già un layout chiamato {{name}}. Vuoi sostituirlo?",
+      "replaceWithCurrent": "Sostituisci con il layout corrente",
       "save": "Salva il layout corrente",
       "saveButton": "Salva",
       "saveTitle": "Salva layout",
-      "update": "Aggiorna con quello corrente"
+      "savedAs": "Salvato come {{name}}"
     },
     "renameFailed": "Impossibile rinominare il progetto."
   },

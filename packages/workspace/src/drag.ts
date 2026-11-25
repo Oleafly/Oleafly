@@ -49,6 +49,10 @@ export function trackPointerDrag(press: DragPoint, drag: PointerDrag): () => voi
   };
 
   const move = (event: PointerEvent) => {
+    if (event.pointerType === "mouse" && event.buttons === 0) {
+      cancel();
+      return;
+    }
     if (!started) {
       if (travel(origin, event, drag.axis) < DRAG_THRESHOLD_PX) return;
       started = true;

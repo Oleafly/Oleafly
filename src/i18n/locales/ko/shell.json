@@ -1370,6 +1370,7 @@
       "close": "닫기",
       "delete": "삭제",
       "deleteConfirm": "레이아웃 {{name}}을(를) 삭제할까요?",
+      "duplicate": "이 레이아웃은 이미 {{name}}(으)로 저장되어 있습니다.",
       "limit": "레이아웃은 최대 {{count}}개까지 보관할 수 있습니다. 다른 레이아웃을 저장하려면 하나를 삭제하세요.",
       "manage": "레이아웃 관리",
       "name": "레이아웃 이름",
@@ -1377,10 +1378,11 @@
       "renameTitle": "레이아웃 이름 바꾸기",
       "replace": "덮어쓰기",
       "replaceConfirm": "이름이 {{name}}인 레이아웃이 이미 있습니다. 덮어쓸까요?",
+      "replaceWithCurrent": "현재 레이아웃으로 덮어쓰기",
       "save": "현재 레이아웃 저장",
       "saveButton": "저장",
       "saveTitle": "레이아웃 저장",
-      "update": "현재 상태로 업데이트"
+      "savedAs": "{{name}}(으)로 저장됨"
     },
     "renameFailed": "프로젝트 이름을 바꾸지 못했습니다."
   },
