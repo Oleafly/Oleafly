@@ -200,3 +200,9 @@ export function formatDate(now: Date, format: string): string {
     }
   });
 }
+
+export function mirrorText(source: string, mirror: { helper?: Helper; regex?: RegexTransform }): string {
+  if (mirror.helper) return applyHelper(mirror.helper, source);
+  if (mirror.regex) return applyRegexTransform(source, mirror.regex);
+  return source;
+}

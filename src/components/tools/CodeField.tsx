@@ -8,7 +8,7 @@ import { functionKeyTextInput } from "@/lib/function-key-text";
 
 interface CodeFieldProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   language: () => Extension;
   themeId: string;
   placeholder?: string;
@@ -59,7 +59,7 @@ export function CodeField({
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),
           ...(ariaLabel ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })] : []),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) onChangeRef.current(update.state.doc.toString());
+            if (update.docChanged) onChangeRef.current?.(update.state.doc.toString());
           }),
         ],
       }),

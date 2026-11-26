@@ -93,7 +93,7 @@ export function SnippetPaletteGroups({
   return list.groups.map((group) => (
     <Command.Group key={group.collection} heading={group.name} className={COMMAND_GROUP}>
       {group.records.map((record) => (
-        <Command.Item key={snippetValue(record)} value={snippetValue(record)} onSelect={() => onInsert(() => void insertSnippetAtCursor(record.id))} className={COMMAND_ITEM}>
+        <Command.Item key={snippetValue(record)} value={snippetValue(record)} onSelect={() => onInsert(() => insertSnippetAtCursor(record.id))} className={COMMAND_ITEM}>
           <Braces aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate">{snippetName(record)}</span>
           {record.trigger !== null && record.regex === null ? (
@@ -129,7 +129,7 @@ export function SnippetPalettePreview({
     [list, value],
   );
   if (!record) return null;
-  const bodyLanguage = snippetFits(record, language) ? language : record.languages === "any" ? language : record.languages[0];
+  const bodyLanguage = snippetFits(record, language) || record.languages === "any" ? language : record.languages[0];
   const learnable = record.trigger !== null && record.regex === null;
   return (
     <aside

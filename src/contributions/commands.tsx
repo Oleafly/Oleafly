@@ -1259,7 +1259,9 @@ export function registerPaletteCommands() {
     icon: () => <ClipboardPlus className="size-4" />,
     order: 496,
     when: canSaveSelection,
-    run: () => void openSaveSnippet(),
+    run: () => {
+      openSaveSnippet();
+    },
   });
   palette({
     id: "palette.zen-mode",

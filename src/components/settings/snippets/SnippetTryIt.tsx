@@ -46,8 +46,6 @@ function tryPort(record: SnippetRecord, language: SnippetLanguage): SnippetPort 
   };
 }
 
-function ignoreChange(): void {}
-
 function firesIn(record: SnippetRecord, language: SnippetLanguage, place: TryPlace): "language" | "place" | null {
   if (record.languages !== "any" && !record.languages.includes(language)) return "language";
   return placeAllows(record, place === "text" ? "text" : mathPlaceOf(record)) ? null : "place";
@@ -126,7 +124,6 @@ export function SnippetTryIt({
       <CodeField
         key={resetKey}
         value={doc.slice(0, caret) + doc.slice(caret + 1)}
-        onChange={ignoreChange}
         language={extensions}
         themeId={themeId}
         ariaLabel={t(($) => $.settings.snippets.editor.tryIt.title)}

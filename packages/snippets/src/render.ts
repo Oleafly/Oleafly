@@ -1,5 +1,5 @@
 import { KNOWN_VARIABLES } from "./body";
-import { applyHelper, applyRegexTransform, formatDate } from "./helpers";
+import { applyRegexTransform, formatDate, mirrorText } from "./helpers";
 import type { BodyNode, Helper, ProjectFieldKind, RegexTransform } from "./types";
 
 export interface RenderEnv {
@@ -151,11 +151,7 @@ class Emitter {
           break;
         case "mirror": {
           const source = this.fieldTexts.get(node.index) ?? this.earlier.get(node.index) ?? "";
-          const value = node.helper
-            ? applyHelper(node.helper, source)
-            : node.regex
-              ? applyRegexTransform(source, node.regex)
-              : source;
+          const value = mirrorText(source, node);
           this.push(value);
           this.mirrors.push({
             source: node.index,

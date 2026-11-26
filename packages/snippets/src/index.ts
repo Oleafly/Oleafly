@@ -2,7 +2,7 @@ export * from "./types";
 export { bodyUses, escapeBodyText, parseBody, serializeBody } from "./body";
 export { parseCodeMirrorTemplate } from "./codemirror-template";
 export { parseSnippetFile, serializeSnippetFile } from "./file";
-export { applyHelper, applyRegexTransform, formatDate } from "./helpers";
+export { applyHelper, applyRegexTransform, formatDate, mirrorText } from "./helpers";
 export { parseJsonc } from "./jsonc";
 export {
   buildLibrary,

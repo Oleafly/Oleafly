@@ -178,13 +178,11 @@ function runPlan(view: EditorView, plan: InsertPlan, from: number, to: number): 
 function withClipboard(view: EditorView, port: SnippetPort, plan: InsertPlan, from: number, to: number): void {
   const doc = view.state.doc;
   const selection = view.state.selection;
-  port
-    .readClipboard()
-    .catch(() => "")
-    .then((clipboard) => {
-      if (view.state.doc !== doc || !view.state.selection.eq(selection)) return;
-      runPlan(view, { ...plan, clipboard }, from, to);
-    });
+  const insert = (clipboard: string) => {
+    if (view.state.doc !== doc || !view.state.selection.eq(selection)) return;
+    runPlan(view, { ...plan, clipboard }, from, to);
+  };
+  port.readClipboard().then(insert, () => insert(""));
 }
 
 export function insertSnippet(

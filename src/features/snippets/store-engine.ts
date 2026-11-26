@@ -79,16 +79,23 @@ function libraryOf(files: readonly ParsedSnippetFile[], state: SnippetState, sta
   });
 }
 
+function withoutTrailingDots(value: string): string {
+  let end = value.length;
+  while (end > 0 && (value[end - 1] === "." || value[end - 1] === " ")) end -= 1;
+  return value.slice(0, end);
+}
+
 function fileStem(fileName: string): string {
   const base = fileName.split(/[\\/]/u).pop() ?? "";
-  const stem = base
-    .replace(/\.(?:code-snippets|json)$/iu, "")
-    .normalize("NFKD")
-    .replace(/\p{M}+/gu, "")
-    .replace(NAME_CHARACTERS, "-")
-    .replace(/^[^A-Za-z0-9]+/u, "")
-    .slice(0, STEM_LIMIT)
-    .replace(/[. ]+$/u, "");
+  const stem = withoutTrailingDots(
+    base
+      .replace(/\.(?:code-snippets|json)$/iu, "")
+      .normalize("NFKD")
+      .replace(/\p{M}+/gu, "")
+      .replace(NAME_CHARACTERS, "-")
+      .replace(/^[^A-Za-z0-9]+/u, "")
+      .slice(0, STEM_LIMIT),
+  );
   if (!stem) return "imported";
   return isWindowsReservedComponent(stem) ? `${stem}-snippets` : stem;
 }
@@ -207,11 +214,15 @@ function overrideJson(override: SnippetOverride): Record<string, unknown> {
   return json;
 }
 
+function sortedNames(names: readonly string[]): string[] {
+  return [...names].sort((left, right) => left.localeCompare(right, "en"));
+}
+
 function serializeSnippetState(state: SnippetState): string {
   const json = {
-    disabledCollections: [...state.disabledCollections].sort(),
-    knownCollections: [...state.knownCollections].sort(),
-    disabledRegex: [...state.disabledRegex].sort(),
+    disabledCollections: sortedNames(state.disabledCollections),
+    knownCollections: sortedNames(state.knownCollections),
+    disabledRegex: sortedNames(state.disabledRegex),
     overrides: state.overrides.map(overrideJson),
   };
   return `${JSON.stringify(json, null, 2)}\n`;
@@ -319,8 +330,9 @@ async function refresh(force: boolean): Promise<void> {
   const current = useSnippetStore.getState();
   const defaults: SnippetState = { ...EMPTY_STATE, disabledCollections: [...(packs?.defaultOff ?? [])] };
   const stateEntry = entries.find((entry) => entry.name === STATE_FILE);
+  const fallback = current.status === "ready" ? current.state : defaults;
   const { state: stored, problems: stateProblems } = stateEntry
-    ? readStateFile(stateEntry, current.status === "ready" ? current.state : defaults)
+    ? readStateFile(stateEntry, fallback)
     : { state: defaults, problems: [] };
   const disk = readDisk(entries, current.disk, stateProblems);
   if (current.status === "ready" && disk === current.disk && packs === current.packs && !force) return;

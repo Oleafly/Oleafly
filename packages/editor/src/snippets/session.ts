@@ -22,8 +22,7 @@ import {
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, keymap, showTooltip, type Tooltip, WidgetType } from "@codemirror/view";
 import {
-  applyHelper,
-  applyRegexTransform,
+  mirrorText,
   type FieldSpec,
   type MirrorSpec,
   type ProjectFieldKind,
@@ -234,12 +233,6 @@ export function activeSnippetField(state: EditorState): ActiveField | null {
   return top ? (top.fields[top.active] ?? null) : null;
 }
 
-function mirrorValue(mirror: SessionMirror, source: string): string {
-  if (mirror.helper) return applyHelper(mirror.helper, source);
-  if (mirror.regex) return applyRegexTransform(source, mirror.regex);
-  return source;
-}
-
 interface MirrorSync {
   changes: ChangeSet;
   sessions: ReadonlyMap<SnippetSession, SnippetSession>;
@@ -253,7 +246,7 @@ function mirrorSync(stack: Stack, changes: ChangeDesc, doc: Text): MirrorSync | 
     for (const mirror of session.mirrors) {
       const range = session.fields.find((field) => field.index === mirror.source)?.ranges[0];
       if (!range) continue;
-      const value = mirrorValue(mirror, doc.sliceString(range.from, range.to));
+      const value = mirrorText(doc.sliceString(range.from, range.to), mirror);
       if (doc.sliceString(mirror.from, mirror.to) === value) continue;
       values.set(mirror, value);
       specs.push({ from: mirror.from, to: mirror.to, insert: value });
@@ -439,11 +432,8 @@ function sessionDecorations(state: EditorState): DecorationSet {
       const active = depth === stack.length - 1 && order === session.active;
       for (const range of field.ranges) {
         if (field.index === 0 && range.from === range.to) continue;
-        ranges.push(
-          range.from === range.to
-            ? (active ? activeEmpty : fieldEmpty).range(range.from)
-            : (active ? activeMark : fieldMark).range(range.from, range.to),
-        );
+        if (range.from === range.to) ranges.push((active ? activeEmpty : fieldEmpty).range(range.from));
+        else ranges.push((active ? activeMark : fieldMark).range(range.from, range.to));
       }
     });
     for (const mirror of session.mirrors) if (mirror.to > mirror.from) ranges.push(mirrorMark.range(mirror.from, mirror.to));
@@ -468,14 +458,19 @@ function cardKey(key: string, label: string, extra = ""): HTMLElement {
   return wrapper;
 }
 
+function stepClass(step: number, current: number): string {
+  if (step < current) return `${CARD_STEP_CLASS} ${CARD_STEP_DONE_CLASS}`;
+  if (step === current) return `${CARD_STEP_CLASS} ${CARD_STEP_NOW_CLASS}`;
+  return CARD_STEP_CLASS;
+}
+
 function fieldCardDom(current: number, total: number): HTMLElement {
   const card = element("div", CARD_CLASS);
   card.setAttribute("aria-hidden", "true");
   if (total <= MAX_STEPS) {
     const steps = element("span", CARD_STEPS_CLASS);
     for (let step = 1; step <= total; step += 1) {
-      const state = step < current ? CARD_STEP_DONE_CLASS : step === current ? CARD_STEP_NOW_CLASS : "";
-      steps.append(element("span", state ? `${CARD_STEP_CLASS} ${state}` : CARD_STEP_CLASS));
+      steps.append(element("span", stepClass(step, current)));
     }
     card.append(steps);
   }
