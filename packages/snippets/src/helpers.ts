@@ -161,7 +161,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const DATE_TOKEN = /\[([^\]]*)\]|YYYY|YY|MMMM|MMM|MM|M|DD|D|dddd|ddd|HH|mm|ss/gu;
+const DATE_TOKEN = /\[([^[\]]*)\]|YYYY|YY|MMMM|MMM|MM|M|DD|D|dddd|ddd|HH|mm|ss/gu;
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");

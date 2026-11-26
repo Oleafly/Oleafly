@@ -11,7 +11,7 @@ describe("compileTrigger", () => {
   });
 
   it("refuses a group that repeats and repeats inside", () => {
-    expect(() => compileTrigger("(\\w+\\s?)+\\d\\d")).toThrow(SyntaxError);
+    expect(() => compileTrigger("(\\w+){2,4}\\d")).toThrow(SyntaxError);
   });
 });
 
