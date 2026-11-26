@@ -28,7 +28,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const toolbar = enShell.toolbar;
 const saved = toolbar.savedLayouts;
-const resetName = new RegExp(`^${toolbar.resetPaneLayout}\\s*${toolbar.resetPaneLayoutScope}$`);
+const resetName = toolbar.resetPaneLayout;
 
 async function openLayoutMenu() {
   render(
@@ -83,6 +83,8 @@ describe("Reset pane layout in the layout menu", () => {
     const reset = within(menu).getByRole("menuitem", { name: resetName });
     expect(items.at(-1)).toBe(reset);
     expect(reset.querySelector("svg.lucide-rotate-ccw")).not.toBeNull();
+    await user.hover(reset);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(toolbar.resetPaneLayoutHint);
     await user.click(reset);
     await waitFor(() => expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT));
   });
@@ -144,7 +146,8 @@ describe("Saved layouts in the layout menu", () => {
       const item = await screen.findByTestId("layout-manage-item");
       expect(item).toHaveAccessibleName("Focus");
       expect(item.querySelector("svg[data-saved-layout-icon]")).not.toBeNull();
-      fireEvent.keyDown(item, { key: "ArrowRight" });
+      expect(item.firstElementChild).toHaveClass("lucide-chevron-left");
+      fireEvent.keyDown(item, { key: "ArrowLeft" });
     };
     const { user, menu } = await openLayoutMenu();
     await user.keyboard("{Escape}");

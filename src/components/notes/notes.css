@@ -1,6 +1,6 @@
 .note-diff-delete {
   border-radius: 2px;
-  background: color-mix(in oklch, var(--destructive) 18%, transparent);
+  background: var(--diff-delete);
   text-decoration: line-through;
   text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
 }
@@ -9,14 +9,14 @@
 }
 .note-diff-insert {
   border-radius: 2px;
-  background: color-mix(in oklch, oklch(0.72 0.19 149) 20%, transparent);
+  background: var(--diff-insert);
 }
 .note-diff-insert.note-diff-active {
   background: var(--diff-insert-strong);
 }
 .note-diff-delete-block {
   border-radius: var(--radius-md);
-  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  background: color-mix(in oklch, var(--diff-delete) 60%, transparent);
   text-decoration: line-through;
   text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
 }
@@ -27,7 +27,7 @@
   margin-block: 0.5rem;
   border-radius: var(--radius-md);
   padding: 0.125rem 0.5rem;
-  background: color-mix(in oklch, oklch(0.72 0.19 149) 14%, transparent);
+  background: color-mix(in oklch, var(--diff-insert) 60%, transparent);
 }
 .note-diff-block.note-diff-active {
   background: var(--diff-insert);

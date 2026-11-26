@@ -1405,7 +1405,7 @@
     },
     "moreActions": "Mais ações",
     "resetPaneLayout": "Redefinir a disposição dos painéis",
-    "resetPaneLayoutScope": "Todos os projetos",
+    "resetPaneLayoutHint": "Volta a barra lateral, o editor, a pré-visualização, o terminal e o assistente para os lugares padrão, em todos os projetos.",
     "savedLayouts": {
       "close": "Fechar",
       "delete": "Excluir",

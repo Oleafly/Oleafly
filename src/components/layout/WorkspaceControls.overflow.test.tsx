@@ -84,6 +84,7 @@ describe("sidebar views that don't fit", () => {
     const shown = viewButtons();
     expect(shown).toHaveLength(3);
     expect(shown[0]).toBe(enShell.rail.files);
+    expect(screen.getByRole("button", { name: enShell.rail.more }).parentElement).toHaveClass("ml-auto");
     const more = openMore();
     const listed = screen.getAllByRole("menuitem").map((item) => item.textContent ?? "");
     const ctx = { projectId: "proj-1", projectKind: null, theme: "light", mcpEnabled: false } as never;

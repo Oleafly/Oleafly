@@ -39,8 +39,6 @@
     "region": "영역"
   },
   "status": {
-    "draft": "초안",
-    "sent": "보냄",
     "addressed": "반영됨",
     "resolved": "해결됨",
     "needsPlacing": "배치 필요"
@@ -52,8 +50,13 @@
     "failed": "주석을 저장하지 못했습니다. {{error}}",
     "readOnly": "최신 Oleafly에서 저장되었습니다. 편집하려면 업데이트하세요.",
     "setAside": "주석 파일을 읽을 수 없어 새 파일을 만들었습니다.",
-    "noSource": "소스 위치 없음",
     "page": "{{page}}쪽",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "“{{quote}}” 뒤",
+    "groups": {
+      "drafts": "초안",
+      "assistant": "어시스턴트 처리 중"
+    },
     "notFound": "새 PDF에서 이 부분을 찾지 못했습니다.",
     "placing": "PDF에서 해당 부분을 선택한 뒤 여기에 배치를 누르세요.",
     "placeAgain": "다시 배치",

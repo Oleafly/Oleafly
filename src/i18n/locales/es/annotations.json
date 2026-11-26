@@ -39,8 +39,6 @@
     "region": "Zona"
   },
   "status": {
-    "draft": "Borrador",
-    "sent": "Enviada",
     "addressed": "Atendida",
     "resolved": "Resuelta",
     "needsPlacing": "Sin colocar"
@@ -52,8 +50,13 @@
     "failed": "No se pudieron guardar las anotaciones. {{error}}",
     "readOnly": "Guardado con un Oleafly más reciente. Actualízalo para editar.",
     "setAside": "No se pudo leer el archivo de anotaciones, así que se empezó uno nuevo.",
-    "noSource": "Sin ubicación en la fuente",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "después de “{{quote}}”",
+    "groups": {
+      "drafts": "Borradores",
+      "assistant": "Con el asistente"
+    },
     "notFound": "Este fragmento no se encontró en el nuevo PDF.",
     "placing": "Selecciona el fragmento en el PDF y luego elige Colocar aquí.",
     "placeAgain": "Volver a colocar",

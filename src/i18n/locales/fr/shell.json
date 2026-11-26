@@ -1405,7 +1405,7 @@
     },
     "moreActions": "Autres actions",
     "resetPaneLayout": "Réinitialiser l'agencement des panneaux",
-    "resetPaneLayoutScope": "Tous les projets",
+    "resetPaneLayoutHint": "Remet la barre latérale, l'éditeur, l'aperçu, le terminal et l'assistant à leur place par défaut, dans tous les projets.",
     "savedLayouts": {
       "close": "Fermer",
       "delete": "Supprimer",

@@ -39,8 +39,6 @@
     "region": "Alue"
   },
   "status": {
-    "draft": "Luonnos",
-    "sent": "Lähetetty",
     "addressed": "Käsitelty",
     "resolved": "Ratkaistu",
     "needsPlacing": "Odottaa sijoitusta"
@@ -52,8 +50,13 @@
     "failed": "Merkintöjä ei voitu tallentaa. {{error}}",
     "readOnly": "Tallennettu uudemmalla Oleaflylla. Päivitä muokataksesi.",
     "setAside": "Merkintätiedostoa ei voitu lukea, joten aloitettiin uusi.",
-    "noSource": "Ei sijaintia lähteessä",
     "page": "s. {{page}}",
+    "quoted": "”{{quote}}”",
+    "insertAfter": "kohdan ”{{quote}}” jälkeen",
+    "groups": {
+      "drafts": "Luonnokset",
+      "assistant": "Avustajalla"
+    },
     "notFound": "Tätä kohtaa ei löytynyt uudesta PDF:stä.",
     "placing": "Valitse kohta PDF:stä ja valitse sitten Sijoita tähän.",
     "placeAgain": "Sijoita uudelleen",

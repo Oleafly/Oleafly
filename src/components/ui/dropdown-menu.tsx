@@ -1,10 +1,31 @@
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { ChevronRight, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+type SubmenuSide = "left" | "right";
+
+const SubmenuSideContext = React.createContext<SubmenuSide>("right");
+
+const LEFT_TO_RIGHT = { dir: "ltr" };
+
+function useTextDirection() {
+  return React.useContext(SubmenuSideContext) === "left" ? LEFT_TO_RIGHT : undefined;
+}
+
+// Radix opens submenus on the left only in a right-to-left menu, so the menu is rtl and its panels are drawn ltr.
+function DropdownMenu({
+  submenuSide = "right",
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root> & { submenuSide?: SubmenuSide }) {
+  return (
+    <SubmenuSideContext.Provider value={submenuSide}>
+      <DropdownMenuPrimitive.Root {...props} dir={submenuSide === "left" ? "rtl" : props.dir} />
+    </SubmenuSideContext.Provider>
+  );
+}
+
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
@@ -15,9 +36,11 @@ const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => {
+  const textDirection = useTextDirection();
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        {...textDirection}
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
@@ -78,28 +101,34 @@ DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & { inset?: boolean }
->(({ className, inset, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={cn(
-      "flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm focus:bg-accent data-[state=open]:bg-accent",
-      inset && "pl-8",
-      className,
-    )}
-    {...props}
-  >
-    {children}
-    <ChevronRight className="ml-auto size-4" />
-  </DropdownMenuPrimitive.SubTrigger>
-));
+>(({ className, inset, children, ...props }, ref) => {
+  const opensLeft = React.useContext(SubmenuSideContext) === "left";
+  return (
+    <DropdownMenuPrimitive.SubTrigger
+      ref={ref}
+      className={cn(
+        "flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm focus:bg-accent data-[state=open]:bg-accent",
+        inset && "pl-8",
+        className,
+      )}
+      {...props}
+    >
+      {opensLeft && <ChevronLeft className="size-4 shrink-0" />}
+      {children}
+      {!opensLeft && <ChevronRight className="ml-auto size-4" />}
+    </DropdownMenuPrimitive.SubTrigger>
+  );
+});
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
 
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => {
+  const textDirection = useTextDirection();
   return (
     <DropdownMenuPrimitive.SubContent
+      {...textDirection}
       ref={ref}
       className={cn(
         "z-50 min-w-40 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-xl data-[state=closed]:hidden",
@@ -156,11 +185,21 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
+function DropdownMenuItemText({ label, detail }: Readonly<{ label: React.ReactNode; detail?: React.ReactNode }>) {
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      <span className="truncate">{label}</span>
+      {detail && <span className="truncate text-xs text-muted-foreground">{detail}</span>}
+    </span>
+  );
+}
+
 export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemText,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuGroup,

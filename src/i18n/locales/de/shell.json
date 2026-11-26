@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Weitere Aktionen",
     "resetPaneLayout": "Anordnung der Bereiche zurücksetzen",
-    "resetPaneLayoutScope": "Alle Projekte",
+    "resetPaneLayoutHint": "Setzt Seitenleiste, Editor, Vorschau, Terminal und Assistenten in allen Projekten wieder an ihre Standardplätze.",
     "savedLayouts": {
       "close": "Schließen",
       "delete": "Löschen",

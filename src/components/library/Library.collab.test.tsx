@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({ sharedWithYou: vi.fn(), dialog: vi.fn() }));
 
 vi.mock("@/components/library/HomeDock", () => ({
   HomeDock: () => null,
-  HOME_DOCK_GLASS_SURFACE: "",
 }));
 vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
 vi.mock("@/components/layout/LeafLogo", () => ({ LeafLogo: () => null }));

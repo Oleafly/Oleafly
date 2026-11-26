@@ -220,6 +220,7 @@ export function SidebarViews() {
         label={t(($) => $.shell.rail.more)}
         className="h-full"
         showAllUntilMeasured
+        pushMenu={() => true}
         moreBadge={(hidden) =>
           hidden.map((control) => {
             const tab = tabs.find((candidate) => candidate.id === control.id);
@@ -357,7 +358,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
         </Tooltip>
       </ToolbarAction>
       <ToolbarAction name="menu" hidden={overflow === 0}>
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} submenuSide="left">
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.moreActions)} data-testid="workspace-menu" className={dockBtn(false)}
             onPointerDown={() => { pointerToggled.current = true; }}

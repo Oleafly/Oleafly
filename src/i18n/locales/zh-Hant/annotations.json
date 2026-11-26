@@ -39,8 +39,6 @@
     "region": "區域"
   },
   "status": {
-    "draft": "草稿",
-    "sent": "已傳送",
     "addressed": "已處理",
     "resolved": "已解決",
     "needsPlacing": "待放置"
@@ -52,8 +50,13 @@
     "failed": "無法儲存註解。{{error}}",
     "readOnly": "由較新版本的 Oleafly 儲存，更新後才能編輯。",
     "setAside": "無法讀取註解檔案，已新建一個。",
-    "noSource": "沒有原始碼位置",
     "page": "第 {{page}} 頁",
+    "quoted": "「{{quote}}」",
+    "insertAfter": "在「{{quote}}」之後",
+    "groups": {
+      "drafts": "草稿",
+      "assistant": "助理處理中"
+    },
     "notFound": "在新的 PDF 中找不到這段內容。",
     "placing": "在 PDF 上選取這段內容，然後選擇「放在這裡」。",
     "placeAgain": "重新放置",

@@ -39,8 +39,6 @@
     "region": "Zonă"
   },
   "status": {
-    "draft": "Ciornă",
-    "sent": "Trimisă",
     "addressed": "Tratată",
     "resolved": "Rezolvată",
     "needsPlacing": "De plasat"
@@ -52,8 +50,13 @@
     "failed": "Adnotările nu au putut fi salvate. {{error}}",
     "readOnly": "Salvate de o versiune mai nouă de Oleafly. Actualizează ca să editezi.",
     "setAside": "Fișierul cu adnotări nu a putut fi citit, așa că s-a început unul nou.",
-    "noSource": "Nicio poziție în sursă",
     "page": "p. {{page}}",
+    "quoted": "„{{quote}}”",
+    "insertAfter": "după „{{quote}}”",
+    "groups": {
+      "drafts": "Ciorne",
+      "assistant": "La asistent"
+    },
     "notFound": "Acest pasaj nu a fost găsit în noul PDF.",
     "placing": "Selectați pasajul în PDF, apoi alegeți Plasează aici.",
     "placeAgain": "Plasează din nou",

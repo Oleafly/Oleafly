@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Diğer işlemler",
     "resetPaneLayout": "Panel yerleşimini sıfırla",
-    "resetPaneLayoutScope": "Tüm projeler",
+    "resetPaneLayoutHint": "Kenar çubuğunu, düzenleyiciyi, önizlemeyi, terminali ve asistanı tüm projelerde varsayılan yerlerine geri koyar.",
     "savedLayouts": {
       "close": "Kapat",
       "delete": "Sil",

@@ -226,7 +226,7 @@ export function Sidebar() {
       <div
         {...paneBar}
         className={cn(
-          "flex h-9 shrink-0 items-center gap-0.5 border-b border-sidebar-border bg-background px-1.5",
+          "flex h-9 shrink-0 items-center gap-0.5 border-b border-sidebar-border bg-background pl-1.5 pr-1",
           PANE_BAR_CLASS,
         )}
       >

@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Flere handlinger",
     "resetPaneLayout": "Nulstil panelernes placering",
-    "resetPaneLayoutScope": "Alle projekter",
+    "resetPaneLayoutHint": "Sætter sidepanelet, editoren, eksempelvisningen, terminalen og assistenten tilbage på deres standardpladser i alle projekter.",
     "savedLayouts": {
       "close": "Luk",
       "delete": "Slet",

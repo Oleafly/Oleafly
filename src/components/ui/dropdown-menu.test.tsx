@@ -9,6 +9,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemText,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -88,6 +89,45 @@ describe("DropdownMenu", () => {
     trigger.focus();
     await user.keyboard("{ArrowRight}");
     await user.click(await screen.findByRole("menuitem", { name: "PDF" }));
+
+    expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens submenus on the left with the chevron in front and keeps the text left to right", async () => {
+    const user = userEvent.setup();
+    const onExport = vi.fn();
+    render(
+      <DropdownMenu submenuSide="left">
+        <DropdownMenuTrigger>{"View"}</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>
+            <DropdownMenuItemText label={"Reset"} detail={"All projects"} />
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>{"Export"}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onSelect={onExport}>{"PDF"}</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    openMenu();
+
+    const menu = screen.getByRole("menu");
+    expect(menu).toHaveAttribute("dir", "ltr");
+    expect(menu.parentElement).toHaveAttribute("dir", "ltr");
+    expect(screen.getByText("All projects").previousElementSibling).toHaveTextContent("Reset");
+    const trigger = screen.getByRole("menuitem", { name: "Export" });
+    expect(trigger.firstElementChild).toHaveClass("lucide-chevron-left");
+    trigger.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.queryByRole("menuitem", { name: "PDF" })).toBeNull();
+    await user.keyboard("{ArrowLeft}");
+    const pdf = await screen.findByRole("menuitem", { name: "PDF" });
+    expect(pdf.closest("[role=menu]")).toHaveAttribute("dir", "ltr");
+    expect(pdf.closest("[role=menu]")).toHaveAttribute("data-side", "left");
+    await user.click(pdf);
 
     expect(onExport).toHaveBeenCalledTimes(1);
   });

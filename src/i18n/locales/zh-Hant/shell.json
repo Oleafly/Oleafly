@@ -1365,7 +1365,7 @@
     },
     "moreActions": "更多操作",
     "resetPaneLayout": "重設面板排列",
-    "resetPaneLayoutScope": "所有專案",
+    "resetPaneLayoutHint": "在所有專案中，將側邊欄、編輯器、預覽、終端機和助理放回預設位置。",
     "savedLayouts": {
       "close": "關閉",
       "delete": "刪除",

@@ -2,6 +2,20 @@ import * as React from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function chevron(open: boolean, size: string) {
+  return (
+    <ChevronRight
+      aria-hidden
+      data-slot="collapsible-chevron"
+      className={cn(
+        "pointer-events-none shrink-0 text-muted-foreground motion-safe:transition-transform",
+        size,
+        open && "rotate-90",
+      )}
+    />
+  );
+}
+
 export function CollapsibleSection({
   id,
   title,
@@ -14,6 +28,7 @@ export function CollapsibleSection({
   onOpenChange,
   className,
   headingLevel: Heading = "h3",
+  variant = "card",
   children,
 }: Readonly<{
   id: string;
@@ -27,8 +42,10 @@ export function CollapsibleSection({
   onOpenChange?: (open: boolean) => void;
   className?: string;
   headingLevel?: "h2" | "h3" | "h4";
+  variant?: "card" | "group";
   children: React.ReactNode;
 }>) {
+  const group = variant === "group";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
   const contentId = `${id}-content`;
@@ -43,20 +60,27 @@ export function CollapsibleSection({
       aria-labelledby={titleId}
       data-testid={id}
       data-state={open ? "open" : "closed"}
-      className={cn("overflow-hidden rounded-lg border bg-card", className)}
+      className={cn(!group && "overflow-hidden rounded-lg border bg-card", className)}
     >
-      <div className="relative flex items-center gap-2 p-3">
+      <div className={cn("relative flex items-center", group ? "gap-1.5 px-3 pb-1 pt-2.5" : "gap-2 p-3")}>
         <button
           type="button"
           data-testid={`${id}-toggle`}
           aria-expanded={open}
           aria-controls={contentId}
           onClick={toggle}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
+          className={cn(
+            "flex min-w-0 flex-1 items-center rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60",
+            group ? "gap-1.5" : "gap-2",
+          )}
         >
+          {group ? chevron(open, "size-3.5") : null}
           {leading ?? (Icon ? <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null)}
           <span className="min-w-0 flex-1">
-            <Heading id={titleId} className="text-sm font-medium leading-snug">
+            <Heading
+              id={titleId}
+              className={group ? "text-xs font-normal text-muted-foreground" : "text-sm font-medium leading-snug"}
+            >
               {title}
             </Heading>
             {description ? (
@@ -65,16 +89,9 @@ export function CollapsibleSection({
           </span>
         </button>
         {trailing ? <div className="relative flex shrink-0 items-center gap-2">{trailing}</div> : null}
-        <ChevronRight
-          aria-hidden
-          data-slot="collapsible-chevron"
-          className={cn(
-            "pointer-events-none size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
-            open && "rotate-90",
-          )}
-        />
+        {group ? null : chevron(open, "size-4")}
       </div>
-      <div id={contentId} hidden={!open} className="space-y-3 px-3 pb-3">
+      <div id={contentId} hidden={!open} className={group ? undefined : "space-y-3 px-3 pb-3"}>
         {open ? children : null}
       </div>
     </section>

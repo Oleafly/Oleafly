@@ -1405,7 +1405,7 @@
     },
     "moreActions": "Mai multe acțiuni",
     "resetPaneLayout": "Resetează așezarea panourilor",
-    "resetPaneLayoutScope": "Toate proiectele",
+    "resetPaneLayoutHint": "Readuce bara laterală, editorul, previzualizarea, terminalul și asistentul în locurile implicite, în toate proiectele.",
     "savedLayouts": {
       "close": "Închide",
       "delete": "Șterge",

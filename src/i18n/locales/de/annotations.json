@@ -39,8 +39,6 @@
     "region": "Bereich"
   },
   "status": {
-    "draft": "Entwurf",
-    "sent": "Gesendet",
     "addressed": "Bearbeitet",
     "resolved": "Erledigt",
     "needsPlacing": "Muss platziert werden"
@@ -52,8 +50,13 @@
     "failed": "Anmerkungen konnten nicht gespeichert werden. {{error}}",
     "readOnly": "Mit einer neueren Oleafly-Version gespeichert. Zum Bearbeiten aktualisieren.",
     "setAside": "Die Anmerkungsdatei war nicht lesbar, daher wurde eine neue angelegt.",
-    "noSource": "Keine Stelle in der Quelle",
     "page": "S. {{page}}",
+    "quoted": "„{{quote}}“",
+    "insertAfter": "nach „{{quote}}“",
+    "groups": {
+      "drafts": "Entwürfe",
+      "assistant": "Beim Assistenten"
+    },
     "notFound": "Diese Stelle wurde im neuen PDF nicht gefunden.",
     "placing": "Markieren Sie die Stelle im PDF und wählen Sie dann „Hier platzieren“.",
     "placeAgain": "Erneut platzieren",

@@ -1425,7 +1425,7 @@
     },
     "moreActions": "Další akce",
     "resetPaneLayout": "Obnovit uspořádání panelů",
-    "resetPaneLayoutScope": "Všechny projekty",
+    "resetPaneLayoutHint": "Vrátí postranní panel, editor, náhled, terminál a asistenta na výchozí místa ve všech projektech.",
     "savedLayouts": {
       "close": "Zavřít",
       "delete": "Smazat",

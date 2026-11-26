@@ -39,8 +39,6 @@
     "region": "範囲"
   },
   "status": {
-    "draft": "下書き",
-    "sent": "送信済み",
     "addressed": "対応済み",
     "resolved": "解決済み",
     "needsPlacing": "未配置"
@@ -52,8 +50,13 @@
     "failed": "注釈を保存できませんでした。{{error}}",
     "readOnly": "新しい Oleafly で保存されています。編集するには更新してください。",
     "setAside": "注釈ファイルを読み込めなかったため、新しいファイルを作成しました。",
-    "noSource": "ソース上の位置なし",
     "page": "{{page}} ページ",
+    "quoted": "「{{quote}}」",
+    "insertAfter": "「{{quote}}」の後",
+    "groups": {
+      "drafts": "下書き",
+      "assistant": "アシスタント対応中"
+    },
     "notFound": "新しい PDF でこの箇所が見つかりませんでした。",
     "placing": "PDF で該当箇所を選択してから「ここに配置」を選んでください。",
     "placeAgain": "配置し直す",

@@ -39,8 +39,6 @@
     "region": "Vùng"
   },
   "status": {
-    "draft": "Nháp",
-    "sent": "Đã gửi",
     "addressed": "Đã xử lý",
     "resolved": "Đã giải quyết",
     "needsPlacing": "Cần đặt vị trí"
@@ -52,8 +50,13 @@
     "failed": "Không lưu được chú thích. {{error}}",
     "readOnly": "Được lưu bằng Oleafly mới hơn. Hãy cập nhật để chỉnh sửa.",
     "setAside": "Không đọc được tệp chú thích nên đã tạo tệp mới.",
-    "noSource": "Không có vị trí trong mã nguồn",
     "page": "tr. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "sau “{{quote}}”",
+    "groups": {
+      "drafts": "Bản nháp",
+      "assistant": "Đang ở Trợ lý"
+    },
     "notFound": "Không tìm thấy đoạn này trong bản PDF mới.",
     "placing": "Chọn đoạn văn trong PDF, sau đó chọn Đặt vào đây.",
     "placeAgain": "Đặt lại vị trí",

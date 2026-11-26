@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Flere handlinger",
     "resetPaneLayout": "Tilbakestill plasseringen av rutene",
-    "resetPaneLayoutScope": "Alle prosjekter",
+    "resetPaneLayoutHint": "Setter sidepanelet, editoren, forhåndsvisningen, terminalen og assistenten tilbake på standardplassene sine i alle prosjekter.",
     "savedLayouts": {
       "close": "Lukk",
       "delete": "Slett",

@@ -39,8 +39,6 @@
     "region": "Område"
   },
   "status": {
-    "draft": "Utkast",
-    "sent": "Skickad",
     "addressed": "Åtgärdad",
     "resolved": "Löst",
     "needsPlacing": "Behöver placeras"
@@ -52,8 +50,13 @@
     "failed": "Kommentarerna kunde inte sparas. {{error}}",
     "readOnly": "Sparat av en nyare Oleafly. Uppdatera för att ändra kommentarerna.",
     "setAside": "Kommentarfilen kunde inte läsas, så en ny påbörjades.",
-    "noSource": "Ingen plats i källan",
     "page": "s. {{page}}",
+    "quoted": "”{{quote}}”",
+    "insertAfter": "efter ”{{quote}}”",
+    "groups": {
+      "drafts": "Utkast",
+      "assistant": "Hos assistenten"
+    },
     "notFound": "Stycket hittades inte i den nya PDF:en.",
     "placing": "Markera stycket i PDF:en och välj sedan Placera här.",
     "placeAgain": "Placera igen",

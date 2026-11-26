@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
+  DropdownMenuItemText,
   DropdownMenuPortal,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
@@ -434,14 +435,10 @@ function SavedLayoutMenuItems() {
       ))}
       <DropdownMenuItem data-testid="layout-save" disabled={same !== undefined} onSelect={() => store.startNaming(null)}>
         <Save className="size-4 shrink-0 text-muted-foreground" />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span>{t(($) => $.shell.toolbar.savedLayouts.save)}</span>
-          {same && (
-            <span className="truncate text-xs text-muted-foreground">
-              {t(($) => $.shell.toolbar.savedLayouts.savedAs, { name: same.name })}
-            </span>
-          )}
-        </span>
+        <DropdownMenuItemText
+          label={t(($) => $.shell.toolbar.savedLayouts.save)}
+          detail={same && t(($) => $.shell.toolbar.savedLayouts.savedAs, { name: same.name })}
+        />
       </DropdownMenuItem>
       {layouts.length > 0 && (
         <DropdownMenuSub>
@@ -665,25 +662,26 @@ export function TopToolbar() {
       <DropdownMenuSeparator />
       <ZenModeMenuItem />
       {paneLayoutMoved && (
-        <DropdownMenuItem data-testid="layout-reset-pane-layout" onSelect={() => resetPaneLayout()}>
-          <RotateCcw className="size-4 text-muted-foreground" />
-          <span className="flex-1">{t(($) => $.shell.toolbar.resetPaneLayout)}</span>
-          <span className="pl-3 text-xs text-muted-foreground">{t(($) => $.shell.toolbar.resetPaneLayoutScope)}</span>
-        </DropdownMenuItem>
+        <Tooltip label={t(($) => $.shell.toolbar.resetPaneLayoutHint)} side="left" wide className="flex">
+          <DropdownMenuItem data-testid="layout-reset-pane-layout" className="flex-1" onSelect={() => resetPaneLayout()}>
+            <RotateCcw className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{t(($) => $.shell.toolbar.resetPaneLayout)}</span>
+          </DropdownMenuItem>
+        </Tooltip>
       )}
     </>
   );
 
   const layoutControl = (
     <ToolbarAction name="layout" order={TOOLBAR_OVERFLOW.layout} hidden={hideLayout}>
-      <DropdownMenu key={hideLayout ? "overflow" : "direct"}>
+      <DropdownMenu key={hideLayout ? "overflow" : "direct"} submenuSide="left">
         <Tooltip label={t(($) => $.shell.toolbar.layout)}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.layout)}
               className="size-7 text-muted-foreground hover:text-foreground"><LayoutGrid className="size-4" /></Button>
           </DropdownMenuTrigger>
         </Tooltip>
-        <DropdownMenuContent align="end" className="w-56">{layoutMenuItems}</DropdownMenuContent>
+        <DropdownMenuContent align="end" className="min-w-56 max-w-sm">{layoutMenuItems}</DropdownMenuContent>
       </DropdownMenu>
     </ToolbarAction>
   );
@@ -953,7 +951,7 @@ export function TopToolbar() {
           </DropdownMenuItem>}
           {hideLayout && <DropdownMenuSub>
             <DropdownMenuSubTrigger><LayoutGrid className="mr-2 size-4" />{t(($) => $.shell.toolbar.layout)}</DropdownMenuSubTrigger>
-            <DropdownMenuPortal><DropdownMenuSubContent className="w-56">{layoutMenuItems}</DropdownMenuSubContent></DropdownMenuPortal>
+            <DropdownMenuPortal><DropdownMenuSubContent className="min-w-56 max-w-sm">{layoutMenuItems}</DropdownMenuSubContent></DropdownMenuPortal>
           </DropdownMenuSub>}
         </WorkspaceDockControls>
       </div>

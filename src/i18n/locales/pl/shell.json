@@ -1425,7 +1425,7 @@
     },
     "moreActions": "Więcej działań",
     "resetPaneLayout": "Resetuj rozmieszczenie paneli",
-    "resetPaneLayoutScope": "Wszystkie projekty",
+    "resetPaneLayoutHint": "Przywraca panel boczny, edytor, podgląd, terminal i asystenta na domyślne miejsca we wszystkich projektach.",
     "savedLayouts": {
       "close": "Zamknij",
       "delete": "Usuń",

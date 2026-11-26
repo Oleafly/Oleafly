@@ -39,8 +39,6 @@
     "region": "Gebied"
   },
   "status": {
-    "draft": "Concept",
-    "sent": "Verstuurd",
     "addressed": "Verwerkt",
     "resolved": "Opgelost",
     "needsPlacing": "Nog plaatsen"
@@ -52,8 +50,13 @@
     "failed": "Annotaties konden niet worden opgeslagen. {{error}}",
     "readOnly": "Opgeslagen met een nieuwere Oleafly. Werk bij om te bewerken.",
     "setAside": "Het annotatiebestand was onleesbaar, dus er is een nieuw begonnen.",
-    "noSource": "Geen plek in de bron",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "na “{{quote}}”",
+    "groups": {
+      "drafts": "Concepten",
+      "assistant": "Bij de assistent"
+    },
     "notFound": "Deze passage is niet gevonden in de nieuwe PDF.",
     "placing": "Selecteer de passage in de PDF en kies dan Hier plaatsen.",
     "placeAgain": "Opnieuw plaatsen",

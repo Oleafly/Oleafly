@@ -1365,7 +1365,7 @@
     },
     "moreActions": "Thao tác khác",
     "resetPaneLayout": "Đặt lại cách sắp xếp khung",
-    "resetPaneLayoutScope": "Tất cả dự án",
+    "resetPaneLayoutHint": "Đưa thanh bên, trình soạn thảo, bản xem trước, terminal và trợ lý về vị trí mặc định trong mọi dự án.",
     "savedLayouts": {
       "close": "Đóng",
       "delete": "Xoá",

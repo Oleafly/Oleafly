@@ -1365,7 +1365,7 @@
     },
     "moreActions": "その他の操作",
     "resetPaneLayout": "ペインの配置をリセット",
-    "resetPaneLayoutScope": "すべてのプロジェクト",
+    "resetPaneLayoutHint": "サイドバー、エディタ、プレビュー、ターミナル、アシスタントを、すべてのプロジェクトで既定の位置に戻します。",
     "savedLayouts": {
       "close": "閉じる",
       "delete": "削除",

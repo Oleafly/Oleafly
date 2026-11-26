@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Meer acties",
     "resetPaneLayout": "Paneelopstelling herstellen",
-    "resetPaneLayoutScope": "Alle projecten",
+    "resetPaneLayoutHint": "Zet de zijbalk, de editor, het voorbeeld, de terminal en de assistent in alle projecten terug op hun standaardplek.",
     "savedLayouts": {
       "close": "Sluiten",
       "delete": "Verwijderen",

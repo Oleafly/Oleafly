@@ -39,8 +39,6 @@
     "region": "Område"
   },
   "status": {
-    "draft": "Kladde",
-    "sent": "Sendt",
     "addressed": "Behandlet",
     "resolved": "Løst",
     "needsPlacing": "Skal placeres"
@@ -52,8 +50,13 @@
     "failed": "Kommentarerne kunne ikke gemmes. {{error}}",
     "readOnly": "Gemt af en nyere Oleafly. Opdater for at ændre kommentarerne.",
     "setAside": "Kommentarfilen kunne ikke læses, så der blev startet en ny.",
-    "noSource": "Ingen placering i kilden",
     "page": "s. {{page}}",
+    "quoted": "»{{quote}}«",
+    "insertAfter": "efter »{{quote}}«",
+    "groups": {
+      "drafts": "Kladder",
+      "assistant": "Hos assistenten"
+    },
     "notFound": "Passagen blev ikke fundet i den nye PDF.",
     "placing": "Markér passagen i PDF'en, og vælg derefter Placér her.",
     "placeAgain": "Placér igen",

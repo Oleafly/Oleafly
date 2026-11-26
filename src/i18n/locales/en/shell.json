@@ -1385,7 +1385,7 @@
     },
     "moreActions": "More actions",
     "resetPaneLayout": "Reset pane arrangement",
-    "resetPaneLayoutScope": "All projects",
+    "resetPaneLayoutHint": "Puts the sidebar, editor, preview, terminal and assistant back in their default places, in every project.",
     "savedLayouts": {
       "close": "Close",
       "delete": "Delete",

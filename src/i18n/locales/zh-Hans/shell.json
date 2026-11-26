@@ -1365,7 +1365,7 @@
     },
     "moreActions": "更多操作",
     "resetPaneLayout": "重置面板排列",
-    "resetPaneLayoutScope": "所有项目",
+    "resetPaneLayoutHint": "在所有项目中，把侧边栏、编辑器、预览、终端和助手放回默认位置。",
     "savedLayouts": {
       "close": "关闭",
       "delete": "删除",

@@ -12,11 +12,11 @@ import {
   Globe,
   ListTree,
   Maximize,
-  MessageSquareText,
   Minimize,
   MoreHorizontal,
   PanelTopClose,
   PanelTopOpen,
+  PencilLine,
   Presentation,
   RectangleVertical,
   RefreshCw,
@@ -292,6 +292,8 @@ export function PdfToolbarControls({
   const buildPreviewToolbarGroups = () => {
     const layoutGroup: ToolbarControl[] = [];
     const pageGroup: ToolbarControl[] = [];
+    const findGroup: ToolbarControl[] = [];
+    const annotationGroup: ToolbarControl[] = [];
     const viewGroup: ToolbarControl[] = [];
     const zoomGroup: ToolbarControl[] = [];
     const inkGroup: ToolbarControl[] = [];
@@ -440,7 +442,7 @@ export function PdfToolbarControls({
       );
     }
     if (hasDocument && !isImage) {
-      viewGroup.push(
+      findGroup.push(
         iconControl(
           "outline",
           ListTree,
@@ -463,7 +465,7 @@ export function PdfToolbarControls({
         }, { active: searchOpen }),
       );
       if (annotations) {
-        viewGroup.push(
+        annotationGroup.push(
           iconControl(
             "annotate-region",
             SquareDashedMousePointer,
@@ -473,7 +475,7 @@ export function PdfToolbarControls({
           ),
           iconControl(
             "annotations",
-            MessageSquareText,
+            PencilLine,
             t(($) => $.annotations.toolbar.list, { n: annotations.count }),
             annotations.togglePanel,
             { active: annotations.panelOpen },
@@ -738,11 +740,14 @@ export function PdfToolbarControls({
         ),
       });
     }
-    return { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup };
+    return { layoutGroup, pageGroup, findGroup, annotationGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup };
   };
-  const { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup } = buildPreviewToolbarGroups();
+  const { layoutGroup, pageGroup, findGroup, annotationGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup } =
+    buildPreviewToolbarGroups();
 
   const pdfControls: ToolbarControl[] = [
+    findGroup,
+    annotationGroup,
     viewGroup,
     zoomGroup,
     pageGroup,

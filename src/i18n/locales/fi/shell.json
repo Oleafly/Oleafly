@@ -1385,7 +1385,7 @@
     },
     "moreActions": "Lisää toimintoja",
     "resetPaneLayout": "Palauta paneelien järjestys",
-    "resetPaneLayoutScope": "Kaikki projektit",
+    "resetPaneLayoutHint": "Palauttaa sivupalkin, editorin, esikatselun, päätteen ja avustajan oletuspaikoilleen kaikissa projekteissa.",
     "savedLayouts": {
       "close": "Sulje",
       "delete": "Poista",

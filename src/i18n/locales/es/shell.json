@@ -1405,7 +1405,7 @@
     },
     "moreActions": "Más acciones",
     "resetPaneLayout": "Restablecer la distribución de los paneles",
-    "resetPaneLayoutScope": "Todos los proyectos",
+    "resetPaneLayoutHint": "Devuelve la barra lateral, el editor, la vista previa, el terminal y el asistente a su sitio predeterminado en todos los proyectos.",
     "savedLayouts": {
       "close": "Cerrar",
       "delete": "Eliminar",

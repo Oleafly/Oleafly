@@ -39,8 +39,6 @@
     "region": "Area"
   },
   "status": {
-    "draft": "Bozza",
-    "sent": "Inviata",
     "addressed": "Gestita",
     "resolved": "Risolta",
     "needsPlacing": "Da posizionare"
@@ -52,8 +50,13 @@
     "failed": "Impossibile salvare le annotazioni. {{error}}",
     "readOnly": "Salvate da un Oleafly più recente. Aggiornalo per modificarle.",
     "setAside": "Il file delle annotazioni non era leggibile, quindi ne è stato creato uno nuovo.",
-    "noSource": "Nessuna posizione nella sorgente",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "dopo “{{quote}}”",
+    "groups": {
+      "drafts": "Bozze",
+      "assistant": "All'assistente"
+    },
     "notFound": "Questo passaggio non è stato trovato nel nuovo PDF.",
     "placing": "Seleziona il passaggio nel PDF, poi scegli Posiziona qui.",
     "placeAgain": "Posiziona di nuovo",

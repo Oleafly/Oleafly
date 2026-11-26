@@ -39,8 +39,6 @@
     "region": "Obszar"
   },
   "status": {
-    "draft": "Szkic",
-    "sent": "Wysłana",
     "addressed": "Uwzględniona",
     "resolved": "Rozwiązana",
     "needsPlacing": "Do umieszczenia"
@@ -52,8 +50,13 @@
     "failed": "Nie udało się zapisać adnotacji. {{error}}",
     "readOnly": "Zapisane w nowszej wersji Oleafly. Zaktualizuj, aby edytować.",
     "setAside": "Nie udało się odczytać pliku adnotacji, więc założono nowy.",
-    "noSource": "Brak miejsca w źródle",
     "page": "s. {{page}}",
+    "quoted": "„{{quote}}”",
+    "insertAfter": "po „{{quote}}”",
+    "groups": {
+      "drafts": "Wersje robocze",
+      "assistant": "U asystenta"
+    },
     "notFound": "Nie znaleziono tego fragmentu w nowym PDF.",
     "placing": "Zaznacz fragment w PDF, a potem wybierz Umieść tutaj.",
     "placeAgain": "Umieść ponownie",
