@@ -22,7 +22,7 @@ import { type AccessNotice, type CollabLiveStoreState, useCollabLiveStore } from
 
 type Translate = ReturnType<typeof useTranslation<["collab", "common"]>>["t"];
 
-type OnlineNotice = "removedOnline" | "projectDeleted" | "viewOnly" | "reviewing" | "trackingChanges" | "deletedExternally";
+type OnlineNotice = "removedOnline" | "projectDeleted" | "viewOnly" | "deletedExternally";
 
 type Shown = AccessNotice | OnlineNotice;
 
@@ -34,8 +34,6 @@ const ICONS: Readonly<Record<AccessNotice["kind"] | OnlineNotice, LucideIcon>> =
   removedOnline: UserX,
   projectDeleted: Ban,
   viewOnly: Eye,
-  reviewing: PencilLine,
-  trackingChanges: PencilLine,
   deletedExternally: Unlink,
 };
 
@@ -48,8 +46,6 @@ function shownNotice(state: CollabLiveStoreState): Shown | null {
   }
   if (link === null || state.ended !== null || state.accessNotice !== null) return null;
   if (state.role === "viewer") return "viewOnly";
-  if (state.role === "reviewer") return "reviewing";
-  if (state.tracking) return "trackingChanges";
   if (state.deletedExternally) return "deletedExternally";
   return null;
 }
@@ -63,10 +59,6 @@ function noticeText(notice: Shown, t: Translate): string {
         return t(($) => $.collab.access.projectDeleted);
       case "viewOnly":
         return t(($) => $.collab.access.viewOnly);
-      case "reviewing":
-        return t(($) => $.collab.access.reviewing);
-      case "trackingChanges":
-        return t(($) => $.collab.access.trackingChanges);
       case "deletedExternally":
         return t(($) => $.collab.access.deletedExternally);
     }

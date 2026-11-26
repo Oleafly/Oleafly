@@ -6,9 +6,14 @@ import { formatNumber } from "@/lib/intl";
 import { basename } from "@/lib/path-utils";
 import { commentFailure } from "../comments/refusals";
 import { InlineAlert } from "../feedback";
+import { AcceptButton } from "./SuggestionCard";
 import { acceptFile, rejectFile } from "./suggestions-store";
 
-export function FileSuggestionActions({ path, pending }: Readonly<{ path: string; pending: number }>) {
+export function FileSuggestionActions({
+  path,
+  pending,
+  canAccept = true,
+}: Readonly<{ path: string; pending: number; canAccept?: boolean }>) {
   const { t } = useTranslation(["collab"]);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -29,9 +34,9 @@ export function FileSuggestionActions({ path, pending }: Readonly<{ path: string
         aria-label={t(($) => $.collab.suggestions.fileActions, { file })}
         className="m-0 flex flex-wrap items-center gap-1.5 border-0 p-0"
       >
-        <Button type="button" variant="outline" size="xs" disabled={busy} onClick={() => run(() => acceptFile(path))}>
+        <AcceptButton canAccept={canAccept} variant="outline" disabled={busy} onClick={() => run(() => acceptFile(path))}>
           {t(($) => $.collab.suggestions.acceptAll)}
-        </Button>
+        </AcceptButton>
         <Button type="button" variant="outline" size="xs" disabled={busy} onClick={() => setConfirming(true)}>
           {t(($) => $.collab.suggestions.rejectAll)}
         </Button>

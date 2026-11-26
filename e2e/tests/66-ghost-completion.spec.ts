@@ -275,16 +275,18 @@ test.describe("AI completions", () => {
         `document.querySelector('${GHOST}')?.textContent === "show a clear trend."`,
         20_000,
       );
-      const sent = server.requestBodies().join("\n");
-      expect(sent).toContain("The results <cursor/>");
+      const askedAfter = (text: string) =>
+        server.requestBodies().filter((body) => body.includes(`${text}<cursor/>`)).length;
+      expect(askedAfter("The results ")).toBe(1);
 
-      await expect.poll(() => server.requestCount(), { timeout: 10_000 }).toBe(2);
+      await expect.poll(() => askedAfter("The results show a clear trend."), { timeout: 10_000 }).toBe(1);
+      const sent = server.requestCount();
       await pressTab(tauriPage);
       await expect
         .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
         .toContain("The results show a clear trend.");
       await expect.poll(() => ghostText(tauriPage), { timeout: 2_000 }).toBe("show a clear trend.");
-      expect(server.requestCount()).toBe(2);
+      expect(server.requestCount()).toBe(sent);
     });
   });
 

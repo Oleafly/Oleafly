@@ -8,7 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { GuestBadge } from "../GuestBadge";
 import { goToPerson } from "../live/go-to-person";
-import { peerPlaces, useCollabLiveStore } from "../live/live-store";
+import { liveReviewProjectId, liveSelfId, peerPlaces, useCollabLiveStore } from "../live/live-store";
 import { canEditProjectRole, suggestsOnlyProjectRole } from "../roles";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { presentPeople, type PresentPerson } from "./presence";
@@ -114,9 +114,9 @@ export function PresentAvatars({
   const peers = useCollabLiveStore((state) => peerPlaces(state.peers));
   const live = useCollabLiveStore(
     useShallow((state) => ({
-      shared: state.projectId === projectId && (state.share !== null || state.backend === "overleaf"),
+      shared: liveReviewProjectId(state) === projectId,
       members: state.members,
-      selfId: state.share?.account_id ?? state.selfId,
+      selfId: liveSelfId(state),
       overleaf: state.backend === "overleaf",
       hidden: state.backend === "overleaf" && state.restricted,
     })),

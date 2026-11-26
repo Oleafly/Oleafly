@@ -1,7 +1,11 @@
-import type { SynctexRect } from "@oleafly/preview";
+import { Text } from "@codemirror/state";
+import { getEditorDocumentPath, getEditorView, quoteRange } from "@oleafly/editor";
+import type { PdfTextSelectionInfo, SynctexRect } from "@oleafly/preview";
+import type { CommentRequest } from "@/components/collab/comments-rail";
 import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
+import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import type { PdfAnnotationQuote, PdfAnnotationSource } from "@/lib/tauri";
-import { sourceExcerpt } from "./model";
+import { followSource, sourceExcerpt } from "./model";
 
 interface PagePoint {
   page: number;
@@ -162,4 +166,44 @@ export function chooseSource(
   if (!quote.text.trim()) return synced;
   if (synced && (!region || sourceOfQuote(quote, { [synced.path]: synced.excerpt }))) return synced;
   return sourceOfQuote(quote, texts()) ?? synced;
+}
+
+export interface CommentSourceDeps {
+  lineAt: LineAt;
+  textOf: TextOf;
+  texts: () => Readonly<Record<string, string>>;
+  editorDoc: (path: string) => Text | null;
+}
+
+function openEditorDoc(path: string): Text | null {
+  const view = getEditorView();
+  return view && getEditorDocumentPath() === path ? view.state.doc : null;
+}
+
+async function commentSourceDeps(): Promise<CommentSourceDeps> {
+  const { sourceLineAt, sourceText, sourceTexts } = await import("@/features/synctex");
+  return { lineAt: sourceLineAt, textOf: sourceText, texts: sourceTexts, editorDoc: openEditorDoc };
+}
+
+export async function commentRequestOf(
+  selection: Pick<PdfTextSelectionInfo, "text" | "before" | "after" | "start" | "end">,
+  checkpoint: CompileSuccessCheckpoint | null,
+  syncAvailable: boolean,
+  deps?: CommentSourceDeps,
+): Promise<CommentRequest | null> {
+  const quote: PdfAnnotationQuote = { text: selection.text, before: selection.before, after: selection.after };
+  if (!quote.text.trim()) return null;
+  const use = deps ?? (await commentSourceDeps());
+  const synced = syncAvailable ? await locateSource(selection.start, selection.end, checkpoint, use.lineAt, use.textOf) : null;
+  const source = chooseSource(quote, synced, false, use.texts);
+  if (!source || !isProjectIntelligencePath(source.path)) return null;
+  const open = use.editorDoc(source.path);
+  const saved = open ? null : use.textOf(source.path);
+  const doc = open ?? (saved === null ? null : Text.of(saved.split(/\r\n?|\n/u)));
+  if (!doc) return null;
+  const current = open ? followSource(source, doc.toString()) : source;
+  if (!current) return null;
+  const range = quoteRange(doc, current.startLine, current.endLine, quote);
+  const text = doc.sliceString(range.from, range.to);
+  return text.trim() ? { path: source.path, from: range.from, to: range.to, quote: text } : null;
 }

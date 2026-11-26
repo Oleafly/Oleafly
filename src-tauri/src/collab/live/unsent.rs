@@ -260,13 +260,16 @@ mod tests {
 
     struct Quiet;
 
-    impl LiveHost for Quiet {
+    impl oleafly_live::DiskHost for Quiet {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for Quiet {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
     }
 
@@ -284,26 +287,33 @@ mod tests {
         }
     }
 
-    impl LiveHost for Heard {
+    impl oleafly_live::DiskHost for Heard {
         fn status(&self, payload: StatusPayload) {
             self.statuses.lock().unwrap().push(payload.status);
         }
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {
-            self.other();
-        }
+
         fn presence(&self, _: PresencePayload) {
             self.other();
         }
+
         fn presence_left(&self, _: PresenceLeftPayload) {
             self.other();
         }
         fn folder_changed(&self, _: FolderChange) {}
-        fn new_device(&self, _: NewDevicePayload) {
-            self.other();
-        }
+
         fn unwritten(&self, payload: crate::collab::live::unwritten::UnwrittenPayload) {
             self.unwritten.lock().unwrap().push(payload);
+        }
+    }
+
+    impl LiveHost for Heard {
+        fn merged(&self, _: MergedPayload) {
+            self.other();
+        }
+
+        fn new_device(&self, _: NewDevicePayload) {
+            self.other();
         }
     }
 

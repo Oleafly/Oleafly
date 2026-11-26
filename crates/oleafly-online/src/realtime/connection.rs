@@ -334,13 +334,21 @@ enum Tx {
     Polling(Poller),
 }
 
+fn stalled(limit: Duration) -> String {
+    format!(
+        "a send waited more than {} s for the network",
+        limit.as_secs()
+    )
+}
+
 impl Tx {
-    async fn send(&mut self, frames: Vec<String>) -> Result<(), String> {
+    async fn send(&mut self, frames: Vec<String>, limit: Duration) -> Result<(), String> {
         match self {
             Tx::WebSocket(sink) => {
                 for frame in frames {
-                    sink.send(Message::text(frame))
+                    tokio::time::timeout(limit, sink.send(Message::text(frame)))
                         .await
+                        .map_err(|_| stalled(limit))?
                         .map_err(|error| error.to_string())?;
                 }
                 Ok(())
@@ -349,10 +357,12 @@ impl Tx {
         }
     }
 
-    async fn close(&mut self) {
-        let _ = self.send(vec![codec::encode(&Frame::Disconnect)]).await;
+    async fn close(&mut self, limit: Duration) {
+        let _ = self
+            .send(vec![codec::encode(&Frame::Disconnect)], limit)
+            .await;
         if let Tx::WebSocket(sink) = self {
-            let _ = sink.close().await;
+            let _ = tokio::time::timeout(limit, sink.close()).await;
         }
     }
 }
@@ -569,6 +579,10 @@ fn silence_for(tuning: &Tuning, handshake: &Handshake) -> Duration {
         .unwrap_or(DEFAULT_SILENCE)
 }
 
+fn left(deadline: Instant) -> Duration {
+    deadline.saturating_duration_since(Instant::now())
+}
+
 async fn await_join(
     context: &Context<'_>,
     rx: &mut Rx,
@@ -605,7 +619,9 @@ async fn await_join(
             match frame {
                 Frame::Connect => connected = true,
                 Frame::Heartbeat => {
-                    let _ = tx.send(vec![codec::encode(&Frame::Heartbeat)]).await;
+                    let _ = tx
+                        .send(vec![codec::encode(&Frame::Heartbeat)], left(deadline))
+                        .await;
                 }
                 Frame::Disconnect if connected => {
                     return Err(Attempt::Failed(RealtimeError::Closed(
@@ -648,7 +664,9 @@ async fn await_join(
                         return Err(Attempt::Failed(RealtimeError::Rejected(rejection)));
                     }
                     "serverPing" => {
-                        let _ = tx.send(vec![pong(&args, carrier, &handshake.sid)]).await;
+                        let _ = tx
+                            .send(vec![pong(&args, carrier, &handshake.sid)], left(deadline))
+                            .await;
                     }
                     _ => early.push(raw),
                 },
@@ -848,10 +866,7 @@ impl Driver {
             Err(FrameError::Malformed(shown)) => return Err(Dropped::Malformed(shown)),
         };
         match frame {
-            Frame::Heartbeat => tx
-                .send(vec![codec::encode(&Frame::Heartbeat)])
-                .await
-                .map_err(Dropped::Transport),
+            Frame::Heartbeat => self.send(tx, vec![codec::encode(&Frame::Heartbeat)]).await,
             Frame::Disconnect => Err(Dropped::ServerClosed),
             Frame::Error(reason) => Err(Dropped::ServerError(reason)),
             Frame::Ack { id, args } => {
@@ -863,10 +878,8 @@ impl Driver {
             Frame::Event { name, args, .. } => {
                 let event = match name.as_str() {
                     "serverPing" => {
-                        return tx
-                            .send(vec![pong(&args, self.carrier, &self.sid)])
-                            .await
-                            .map_err(Dropped::Transport);
+                        let pong = pong(&args, self.carrier, &self.sid);
+                        return self.send(tx, vec![pong]).await;
                     }
                     "connectionRejected" => {
                         let payload = args.first().cloned().unwrap_or(Value::Null);
@@ -879,6 +892,12 @@ impl Driver {
             }
             Frame::Connect | Frame::Message(_) | Frame::Json(_) | Frame::Noop => Ok(()),
         }
+    }
+
+    async fn send(&self, tx: &mut Tx, frames: Vec<String>) -> Result<(), Dropped> {
+        tx.send(frames, self.watch.silence)
+            .await
+            .map_err(Dropped::Transport)
     }
 
     async fn handle_all(&mut self, tx: &mut Tx, frames: Vec<String>) -> Result<(), Dropped> {
@@ -900,10 +919,10 @@ impl Driver {
             next = self.outbound.try_recv().ok();
         }
         if !frames.is_empty() {
-            tx.send(frames).await.map_err(Dropped::Transport)?;
+            self.send(tx, frames).await?;
         }
         if closing {
-            tx.close().await;
+            tx.close(self.watch.silence).await;
             return Err(Dropped::Closed);
         }
         Ok(())
@@ -930,7 +949,7 @@ impl Driver {
     ) -> Dropped {
         loop {
             if self.closing() {
-                tx.close().await;
+                tx.close(self.watch.silence).await;
                 return Dropped::Closed;
             }
             let step = tokio::select! {
@@ -950,7 +969,7 @@ impl Driver {
         let mut poll: Poll = Box::pin(poller.clone().get());
         loop {
             if self.closing() {
-                tx.close().await;
+                tx.close(self.watch.silence).await;
                 return Dropped::Closed;
             }
             let step = tokio::select! {
@@ -1107,12 +1126,16 @@ impl Connection {
     pub async fn close(mut self) {
         self.shared.closing.store(true, Ordering::SeqCst);
         let _ = self.outbound.send(Outbound::Close);
-        if let Some(mut task) = self.driver.take() {
-            if tokio::time::timeout(CLOSE_WAIT, &mut task).await.is_err() {
-                task.abort();
-                let _ = task.await;
-            }
+        if let Some(task) = self.driver.take() {
+            wait_or_abort(task).await;
         }
+    }
+}
+
+async fn wait_or_abort(mut task: JoinHandle<()>) {
+    if tokio::time::timeout(CLOSE_WAIT, &mut task).await.is_err() {
+        task.abort();
+        let _ = task.await;
     }
 }
 
@@ -1131,6 +1154,13 @@ impl Drop for Connection {
     fn drop(&mut self) {
         self.shared.closing.store(true, Ordering::SeqCst);
         let _ = self.outbound.send(Outbound::Close);
+        let Some(task) = self.driver.take() else {
+            return;
+        };
+        match tokio::runtime::Handle::try_current() {
+            Ok(runtime) => drop(runtime.spawn(wait_or_abort(task))),
+            Err(_) => task.abort(),
+        }
     }
 }
 
@@ -1256,6 +1286,70 @@ mod tests {
         let (connection, _outbound) = idle_connection(driver);
         connection.close().await;
         assert_eq!(Arc::strong_count(&alive), 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn dropping_a_stuck_connection_stops_its_driver() {
+        let alive = Arc::new(());
+        let held = Arc::clone(&alive);
+        let driver = tokio::spawn(async move {
+            let _held = held;
+            std::future::pending::<()>().await;
+        });
+        let (connection, _outbound) = idle_connection(driver);
+        drop(connection);
+        tokio::time::sleep(CLOSE_WAIT + Duration::from_secs(1)).await;
+        assert_eq!(Arc::strong_count(&alive), 1);
+    }
+
+    #[tokio::test]
+    async fn a_send_the_network_never_takes_ends_the_connection_after_the_silence_window() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            tokio_tungstenite::accept_async(stream).await.unwrap()
+        });
+        let target = Url::parse(&format!("ws://{address}/socket.io/1/websocket/sid")).unwrap();
+        let socket = oleafly_net::open_websocket(&target, HeaderMap::new())
+            .await
+            .unwrap();
+        let _never_reads = peer.await.unwrap();
+        let (sink, stream) = socket.split();
+        let (http, session) = signed_in(&format!("http://{address}"));
+        let silence = Duration::from_secs(45);
+        let (queue, outbound) = mpsc::unbounded_channel();
+        let (events, _events) = mpsc::unbounded_channel();
+        let mut driver = Driver {
+            http,
+            session,
+            carrier: Carrier::WebSocket,
+            sid: "sid".into(),
+            shared: Arc::default(),
+            events,
+            outbound,
+            watch: Watch::new(&Tuning::default(), silence, Arrivals::default()),
+            tick: WATCH_TICK,
+        };
+        for _ in 0..48 {
+            queue.send(Outbound::Frame("x".repeat(1 << 20))).unwrap();
+        }
+        let mut tx = Tx::WebSocket(sink);
+        tokio::time::pause();
+        let started = Instant::now();
+        let dropped = tokio::time::timeout(
+            silence * 3,
+            driver.drive(Rx::WebSocket(stream), &mut tx, Vec::new()),
+        )
+        .await;
+        let waited = started.elapsed();
+        tokio::time::resume();
+        let dropped = dropped.expect("the stalled send ends the connection");
+        assert!(
+            matches!(&dropped, Dropped::Transport(detail) if detail.contains("waited")),
+            "{dropped:?}"
+        );
+        assert!(waited >= silence && waited < silence * 2, "{waited:?}");
     }
 
     #[tokio::test]

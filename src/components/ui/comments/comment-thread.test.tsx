@@ -220,6 +220,15 @@ describe("comment thread", () => {
     expect(given.reopen).toHaveBeenCalledTimes(1);
   });
 
+  it("previews a resolved thread's opening message as written when the host turns Markdown off", () => {
+    const thread = model([entry("m1", "bob", "Bob Smith", "a **b** c")], { resolution: "Resolved by Bob Smith" });
+    const { unmount } = renderWith(<CommentThread thread={thread} actions={actions()} canWrite />, { ...kit(), markdown: false });
+    expect(screen.getByRole("article", { name: "Comment from Bob Smith" })).toHaveTextContent("saturating doses · a **b** c");
+    unmount();
+    renderWith(<CommentThread thread={thread} actions={actions()} canWrite />);
+    expect(screen.getByRole("article", { name: "Comment from Bob Smith" })).toHaveTextContent("saturating doses · a b c");
+  });
+
   it("shows nothing writable to someone who can only read", () => {
     const thread = model([entry("m1", "alice", "Alice Chen", "Mine")]);
     renderWith(<CommentThread thread={thread} actions={actions()} canWrite={false} />);
@@ -336,6 +345,22 @@ describe("comment composer", () => {
     const send = screen.getByRole("button", { name: "Send" });
     expect(send.closest("[data-composer-state]")).not.toBeNull();
     expect(send.className).toMatch(/rounded-full/u);
+  });
+
+  it("puts the mention button alone at the start of the row when Markdown is off, with no divider before it", () => {
+    const withMention = (markdown: boolean) =>
+      renderWith(<CommentComposer label={MESSAGE} submitLabel={LABELS.send} onSubmit={vi.fn(async () => undefined)} mentionButton />, {
+        ...kit(),
+        markdown,
+      });
+    const plain = withMention(false);
+    expect(screen.getByRole("button", { name: "Mention someone" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bold" })).toBeNull();
+    expect(plain.container.querySelectorAll("span[aria-hidden].w-px")).toHaveLength(0);
+    plain.unmount();
+    const formatted = withMention(true);
+    expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
+    expect(formatted.container.querySelectorAll("span[aria-hidden].w-px")).toHaveLength(1);
   });
 
   it("says a comment was not sent and retries when retrying can help", async () => {
@@ -658,7 +683,7 @@ describe("resolve button", () => {
       </CommentKitProvider>,
     );
     expect(screen.getByRole("button", { name: LABELS.resolve })).toHaveClass("opacity-100");
-    expect(screen.getByRole("article")).toHaveClass("border-ring");
+    expect(screen.getByRole("article")).toHaveClass("bg-accent", "border-transparent");
   });
 
   it("goes to the first message's header when the thread shows no quote", () => {

@@ -22,6 +22,7 @@ beforeEach(() => {
     kept: [],
     notAllowed: [],
     keptAway: [],
+    linkedKept: [],
     downloads: {},
     offer: null,
     broughtIn: null,
@@ -42,6 +43,20 @@ describe("FileNoticesBanner on Overleaf", () => {
     for (const button of screen.getAllByRole("button", { name: "Dismiss" })) await userEvent.click(button);
     expect(screen.queryByTestId("collab-tree-not-allowed")).not.toBeInTheDocument();
     expect(screen.queryByTestId("collab-tree-kept-away")).not.toBeInTheDocument();
+  });
+
+  it("says an edit to a linked file stays here, without repeating a path, and dismisses it", async () => {
+    render(<FileNoticesBanner />);
+    act(() => {
+      receiveOverleafTree({ projectId: PROJECT, kind: "linked_kept", paths: ["refs.bib"] });
+      receiveOverleafTree({ projectId: PROJECT, kind: "linked_kept", paths: ["refs.bib"] });
+    });
+    expect(screen.getByTestId("collab-tree-linked-kept")).toHaveTextContent(
+      "Overleaf links refs.bib to a source, so your changes stay on this computer. Choose Refresh from source to get the Overleaf copy back.",
+    );
+    expect(useFileNotices.getState().linkedKept).toEqual(["refs.bib"]);
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByTestId("collab-tree-linked-kept")).not.toBeInTheDocument();
   });
 
   it("shows how far each big download got, and nothing once it is done", () => {

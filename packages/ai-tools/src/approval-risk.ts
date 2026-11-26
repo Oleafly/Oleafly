@@ -59,6 +59,7 @@ const WRITE_TOOLS = new Set([
   "set_main_doc",
   "insert_figure",
   "import_overleaf_projects",
+  "open_overleaf_live",
   "desktop_apps",
   "research_task_create",
   "create_note",

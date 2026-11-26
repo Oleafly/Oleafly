@@ -333,11 +333,7 @@
       "loading": "Caricamento dei tuoi progetti Overleaf",
       "loadFailed": "Oleafly non è riuscito a caricare i tuoi progetti Overleaf.",
       "signInPrompt": "Accedi a Overleaf per vedere i tuoi progetti. Si apre una finestra di accesso che si chiude da sola quando hai effettuato l'accesso.",
-      "signingIn": "Completa l'accesso a Overleaf nella finestra che si è aperta.",
-      "signingInBrowser": "Completa l'accesso a Overleaf in {{browser}}. La finestra si chiude da sola quando hai effettuato l'accesso. Se la chiudi, l'accesso viene annullato.",
-      "passkeyHint": "Se la passkey non funziona nella finestra di accesso, scegli lì un'altra opzione, come la password o una richiesta sul telefono.",
       "expired": "Il tuo accesso a Overleaf è scaduto. Accedi di nuovo per vedere i tuoi progetti.",
-      "signIn": "Accedi a Overleaf",
       "signInWindowTitle": "Accedi a Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Indirizzo del server Overleaf",
@@ -346,6 +342,7 @@
       "saveServer": "Usa questo server",
       "signedInAs": "Accesso effettuato come {{email}}",
       "signedIn": "Accesso a Overleaf effettuato",
+      "accountPick": "Account Overleaf",
       "signOut": "Esci",
       "searchLabel": "Cerca nei progetti Overleaf",
       "searchPlaceholder_one": "Cerca tra {{count}} progetto",
@@ -370,6 +367,8 @@
       "import_other": "Importa {{count}} progetti",
       "imported": "Importato",
       "open": "Apri",
+      "openLive": "Apri dal vivo",
+      "opening": "Apertura",
       "ownedByYou": "Tuo",
       "owner": "Di proprietà di {{name}}",
       "archived": "Archiviato",
@@ -387,7 +386,39 @@
         "downloading": "Download {{percent}}%",
         "downloadingUnknown": "Download",
         "importing": "Preparazione"
-      }
+      },
+      "invitations": {
+        "title": "Inviti",
+        "from": "Mittente: {{name}}",
+        "join": "Unisciti",
+        "joined": "Ti sei unito a questo progetto"
+      },
+      "link": {
+        "checking": "Verifica del link",
+        "unnamed": "Un progetto su Overleaf",
+        "join": "Unisciti",
+        "importInstead": "Importa",
+        "grants": {
+          "edit": "Unendoti, potrai modificarlo come collaboratore.",
+          "view": "Unendoti, potrai solo visualizzarlo. Chi lo visualizza tramite link non ha commenti né chat.",
+          "already": "Hai già questo progetto.",
+          "invite": "Unendoti, accetti l'invito."
+        }
+      },
+      "put": {
+        "menu": "Carica su Overleaf",
+        "title": "Carica su Overleaf",
+        "description": "Oleafly carica questo progetto come nuovo progetto Overleaf, poi mantiene entrambi sincronizzati mentre modifichi dal vivo.",
+        "name": "Nome su Overleaf",
+        "account": "Account Overleaf",
+        "submit": "Carica su Overleaf",
+        "working": "Caricamento in corso",
+        "signedOut": "Prima accedi a Overleaf nelle Impostazioni.",
+        "openSettings": "Apri le Impostazioni",
+        "cancel": "Annulla"
+      },
+      "switchAccount": "Cambia account",
+      "signInChoose": "Scegli dove accedere. I tuoi progetti compaiono qui una volta effettuato l'accesso."
     }
   },
   "pdfImport": {

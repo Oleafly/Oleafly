@@ -14,7 +14,9 @@ use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, Proj
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
-use super::commands::{now_ms, CollabCommandError};
+use super::commands::{now_ms, parse_id, ByBackend, CollabCommandError};
+use super::live::overleaf::commands::live_now;
+use super::live::overleaf::review::{OnlineMember, OnlineSuggestion};
 use super::live::LiveHost;
 use super::state::CollabState;
 
@@ -42,9 +44,10 @@ pub struct SuggestionRefusedPayload {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SuggestionList {
+pub struct SuggestionList<Item = Suggestion> {
     pub rev: Option<u64>,
-    pub suggestions: Vec<Suggestion>,
+    pub suggestions: Vec<Item>,
+    pub can_accept: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -52,6 +55,35 @@ pub struct SuggestionList {
 pub struct SuggestionCount {
     pub path: String,
     pub pending: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EditModeLock {
+    Reviewer,
+    Everyone,
+    Plan,
+    Server,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EditModeScope {
+    #[default]
+    Me,
+    Everyone,
+    Guests,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditModeState {
+    pub mode: EditMode,
+    pub switchable: bool,
+    pub locked: Option<EditModeLock>,
+    pub everyone: Option<bool>,
+    pub guests: Option<bool>,
+    pub manage: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -121,6 +153,19 @@ pub(crate) fn may_choose(role: ProjectRole, mode: EditMode) -> Result<(), Collab
     }
 }
 
+pub(crate) fn mode_state(role: ProjectRole, chosen: EditMode) -> EditModeState {
+    EditModeState {
+        mode: mode_for(role, chosen),
+        switchable: [EditMode::Editing, EditMode::Suggesting]
+            .into_iter()
+            .all(|mode| may_choose(role, mode).is_ok()),
+        locked: (role == ProjectRole::Reviewer).then_some(EditModeLock::Reviewer),
+        everyone: None,
+        guests: None,
+        manage: false,
+    }
+}
+
 fn layout_of(doc: &ProjectDoc) -> Layout {
     doc.nodes()
         .map(|nodes| materialize::layout(&nodes))
@@ -174,6 +219,7 @@ pub(crate) fn list_in(live: &LiveProject, path: &str) -> Result<SuggestionList, 
     Ok(SuggestionList {
         rev: live.editor_rev(&file),
         suggestions: live.doc().suggestions(&file)?,
+        can_accept: true,
     })
 }
 
@@ -224,6 +270,7 @@ pub async fn list_suggestions(
         Ok(SuggestionList {
             rev: None,
             suggestions: saved.doc().suggestions(&file)?,
+            can_accept: true,
         })
     })
     .await
@@ -239,22 +286,30 @@ pub async fn count_suggestions(
     saved(state, project_id, |saved| Ok(counts_in(saved.doc()))).await
 }
 
-pub fn edit_mode(state: &CollabState, project_id: &str) -> Result<EditMode, CollabError> {
+pub fn edit_mode(state: &CollabState, project_id: &str) -> Result<EditModeState, CollabError> {
     if let Some(mode) = super::live::read_live(project_id, |live| {
-        mode_for(live.role(), live.chosen_edit_mode())
+        mode_state(live.role(), live.chosen_edit_mode())
     }) {
         return Ok(mode);
     }
     let paths = state.paths()?;
     let binding = load_binding(paths, project_id)?.ok_or_else(not_shared)?;
-    Ok(mode_for(binding.role, load_mode(paths, project_id)))
+    Ok(mode_state(binding.role, load_mode(paths, project_id)))
 }
 
 pub fn set_edit_mode(
     state: &CollabState,
     project_id: &str,
     mode: EditMode,
+    scope: EditModeScope,
 ) -> Result<(), CollabError> {
+    if scope != EditModeScope::Me {
+        return Err(refused(
+            403,
+            "review_off_server",
+            "this server keeps one edit mode per person",
+        ));
+    }
     let paths = state.paths()?;
     let binding = load_binding(paths, project_id)?.ok_or_else(not_shared)?;
     let role = super::live::read_live(project_id, LiveProject::role).unwrap_or(binding.role);
@@ -407,15 +462,24 @@ pub(crate) fn tree_change_refused(project_id: &str, paths: &[&str]) -> Result<()
     Err(crate::app_error::AppError::new(TREE_REFUSED).to_string())
 }
 
+fn suggestion_ids(ids: &[String]) -> Result<Vec<SuggestionId>, CollabCommandError> {
+    ids.iter().map(|id| parse_id(id, "suggestion")).collect()
+}
+
 #[tauri::command]
 pub async fn collab_suggestion_reply(
     app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     project_id: String,
-    id: SuggestionId,
+    id: String,
     body: String,
-    members: Vec<CommentMember>,
+    members: Vec<OnlineMember>,
 ) -> Result<CommentThread, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Err(live.suggestion_reply_refused());
+    }
+    let id = parse_id(&id, "suggestion")?;
+    let members = crate::collab::comments::server_members(members)?;
     let thread = crate::collab::comments::write_comment(state.inner(), &project_id, |live, who| {
         reply_in(live, who, id, &body, &members, now_ms())
     })
@@ -429,7 +493,10 @@ pub async fn collab_suggestion_reply(
 pub async fn collab_edit_mode_get(
     state: tauri::State<'_, CollabState>,
     project_id: String,
-) -> Result<EditMode, CollabCommandError> {
+) -> Result<EditModeState, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.edit_mode_state());
+    }
     edit_mode(state.inner(), &project_id).map_err(CollabCommandError::from)
 }
 
@@ -438,8 +505,13 @@ pub async fn collab_edit_mode_set(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     mode: EditMode,
+    scope: Option<EditModeScope>,
 ) -> Result<(), CollabCommandError> {
-    set_edit_mode(state.inner(), &project_id, mode).map_err(CollabCommandError::from)
+    let scope = scope.unwrap_or_default();
+    if let Some(live) = live_now(&project_id) {
+        return live.set_edit_mode(mode, scope).await;
+    }
+    set_edit_mode(state.inner(), &project_id, mode, scope).map_err(CollabCommandError::from)
 }
 
 #[tauri::command]
@@ -447,9 +519,13 @@ pub async fn collab_suggestion_list(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     path: String,
-) -> Result<SuggestionList, CollabCommandError> {
+) -> Result<ByBackend<SuggestionList, SuggestionList<OnlineSuggestion>>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.suggestion_list(&path).map(ByBackend::Online);
+    }
     list_suggestions(state.inner(), &project_id, &path)
         .await
+        .map(ByBackend::Server)
         .map_err(CollabCommandError::from)
 }
 
@@ -458,36 +534,63 @@ pub async fn collab_suggestion_counts(
     state: tauri::State<'_, CollabState>,
     project_id: String,
 ) -> Result<Vec<SuggestionCount>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.suggestion_counts());
+    }
     count_suggestions(state.inner(), &project_id)
         .await
         .map_err(CollabCommandError::from)
+}
+
+async fn decide_ids(
+    app: &tauri::AppHandle,
+    project_id: &str,
+    decision: Decision,
+    ids: &[String],
+) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(project_id) {
+        return live.decide(ids, decision).await;
+    }
+    decided(app, project_id, decision, &suggestion_ids(ids)?)
+}
+
+async fn decide_path(
+    app: &tauri::AppHandle,
+    project_id: &str,
+    decision: Decision,
+    path: &str,
+) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(project_id) {
+        return live.decide_file(path, decision).await;
+    }
+    decided_file(app, project_id, decision, path)
 }
 
 #[tauri::command]
 pub async fn collab_suggestion_accept(
     app: tauri::AppHandle,
     project_id: String,
-    ids: Vec<SuggestionId>,
+    ids: Vec<String>,
 ) -> Result<(), CollabCommandError> {
-    decided(&app, &project_id, Decision::Accept, &ids)
+    decide_ids(&app, &project_id, Decision::Accept, &ids).await
 }
 
 #[tauri::command]
 pub async fn collab_suggestion_reject(
     app: tauri::AppHandle,
     project_id: String,
-    ids: Vec<SuggestionId>,
+    ids: Vec<String>,
 ) -> Result<(), CollabCommandError> {
-    decided(&app, &project_id, Decision::Reject, &ids)
+    decide_ids(&app, &project_id, Decision::Reject, &ids).await
 }
 
 #[tauri::command]
 pub async fn collab_suggestion_withdraw(
     app: tauri::AppHandle,
     project_id: String,
-    ids: Vec<SuggestionId>,
+    ids: Vec<String>,
 ) -> Result<(), CollabCommandError> {
-    decided(&app, &project_id, Decision::Withdraw, &ids)
+    decide_ids(&app, &project_id, Decision::Withdraw, &ids).await
 }
 
 #[tauri::command]
@@ -496,7 +599,7 @@ pub async fn collab_suggestion_accept_file(
     project_id: String,
     path: String,
 ) -> Result<(), CollabCommandError> {
-    decided_file(&app, &project_id, Decision::Accept, &path)
+    decide_path(&app, &project_id, Decision::Accept, &path).await
 }
 
 #[tauri::command]
@@ -505,7 +608,7 @@ pub async fn collab_suggestion_reject_file(
     project_id: String,
     path: String,
 ) -> Result<(), CollabCommandError> {
-    decided_file(&app, &project_id, Decision::Reject, &path)
+    decide_path(&app, &project_id, Decision::Reject, &path).await
 }
 
 #[cfg(test)]
@@ -527,14 +630,18 @@ mod tests {
     #[derive(Default)]
     struct Heard(Mutex<Vec<SuggestionsChangedPayload>>);
 
-    impl LiveHost for Heard {
+    impl oleafly_live::DiskHost for Heard {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for Heard {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
+
         fn suggestions_changed(&self, payload: SuggestionsChangedPayload) {
             self.0.lock().unwrap().push(payload);
         }
@@ -741,6 +848,49 @@ mod tests {
                 "{role:?}"
             );
         }
+    }
+
+    #[test]
+    fn a_server_project_reports_its_edit_mode_as_a_state_and_switches_only_for_me() {
+        assert_eq!(
+            serde_json::to_value(mode_state(ProjectRole::Owner, EditMode::Editing)).unwrap(),
+            serde_json::json!({
+                "mode": "editing",
+                "switchable": true,
+                "locked": null,
+                "everyone": null,
+                "guests": null,
+                "manage": false,
+            })
+        );
+        let reviewer = mode_state(ProjectRole::Reviewer, EditMode::Editing);
+        assert_eq!(reviewer.mode, EditMode::Suggesting);
+        assert!(!reviewer.switchable);
+        assert_eq!(
+            serde_json::to_value(reviewer.locked).unwrap(),
+            serde_json::json!("reviewer")
+        );
+        for role in [ProjectRole::Commenter, ProjectRole::Viewer] {
+            let state = mode_state(role, EditMode::Suggesting);
+            assert_eq!(state.mode, EditMode::Editing);
+            assert!(!state.switchable && state.locked.is_none());
+        }
+        assert!(mode_state(ProjectRole::Editor, EditMode::Suggesting).switchable);
+        let dir = tempfile::tempdir().unwrap();
+        let state = CollabState::new(
+            CollabPaths::new(dir.path().join("collab")),
+            Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+        );
+        for scope in [EditModeScope::Everyone, EditModeScope::Guests] {
+            let refused = set_edit_mode(&state, "paper", EditMode::Suggesting, scope).unwrap_err();
+            assert_eq!(CollabCommandError::from(refused).code, "review_off_server");
+        }
+        let scope: EditModeScope = serde_json::from_value(serde_json::json!("guests")).unwrap();
+        assert_eq!(scope, EditModeScope::Guests);
+        assert_eq!(
+            suggestion_ids(&["nope".to_owned()]).unwrap_err().code,
+            "not_found"
+        );
     }
 
     #[test]

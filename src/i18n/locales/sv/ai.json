@@ -380,7 +380,8 @@
       "runCommand": "Kör ett shell-kommando i projektmappen, med en gräns på två minuter.",
       "toggleTheme": "Växlar mellan ljust och mörkt läge.",
       "listOverleafProjects": "Listar dina Overleaf-projekt och loggar in först vid behov.",
-      "importOverleafProjects": "Importerar Overleaf-projekt till ditt bibliotek, med kompilator och huvudfil."
+      "importOverleafProjects": "Importerar Overleaf-projekt till ditt bibliotek, med kompilator och huvudfil.",
+      "openOverleafLive": "Öppnar ett Overleaf-projekt för liveredigering och importerar det först om det inte redan finns i ditt bibliotek."
     },
     "disableAll": "Stäng av alla",
     "emptyContext": "Inga verktyg är tillgängliga i det här sammanhanget.",
@@ -406,7 +407,8 @@
       "latexOnly": "Bara LaTeX-projekt",
       "latexAndTypstOnly": "Bara LaTeX- och Typst-projekt",
       "pdfCaptureSetting": "Kräver inställningen för att fånga PDF-sidor",
-      "chatApproval": "Godkänns i chatten, ett kommando i taget"
+      "chatApproval": "Godkänns i chatten, ett kommando i taget",
+      "overleafLiveSetting": "Kräver Liveredigering med Overleaf i Experiment"
     },
     "sourceGroups": {
       "figure": "Figur",

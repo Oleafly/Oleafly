@@ -1,5 +1,6 @@
 pub(crate) mod latexdiff;
 pub(crate) mod list;
+pub(crate) mod live;
 pub(crate) mod scope;
 pub(crate) mod sync;
 
@@ -37,6 +38,8 @@ pub enum RemoteCommand {
     Unlink(UnlinkArgs),
     /// Open the online project in your browser
     Open(OpenArgs),
+    #[command(about = "Edit this folder live with the online project until you stop it")]
+    Live(LiveArgs),
 }
 
 #[derive(Debug, Default, Args)]
@@ -128,6 +131,17 @@ pub struct UnlinkArgs {
 }
 
 #[derive(Debug, Default, Args)]
+pub struct LiveArgs {
+    #[arg(
+        value_name = "PROJECT",
+        help = "Project ID or address to open in an empty folder (default: this folder's link)"
+    )]
+    pub target: Option<String>,
+    #[arg(long, value_name = "URL", help = "Server address")]
+    pub server: Option<String>,
+}
+
+#[derive(Debug, Default, Args)]
 pub struct OpenArgs {
     #[arg(long, help = "Print the address instead of opening it")]
     pub print: bool,
@@ -151,7 +165,16 @@ impl CommandModule for Commands {
             RemoteCommand::Sync(_) => "remote sync",
             RemoteCommand::Unlink(_) => "remote unlink",
             RemoteCommand::Open(_) => "remote open",
+            RemoteCommand::Live(_) => "remote live",
         }
+    }
+
+    fn handles_interrupt(&self) -> bool {
+        self.bounded_exit()
+    }
+
+    fn bounded_exit(&self) -> bool {
+        matches!(self, Self::Remote(RemoteCommand::Live(_)))
     }
 
     async fn run(self, ctx: &Context) -> Result<Outcome, CliError> {
@@ -159,6 +182,7 @@ impl CommandModule for Commands {
         let env = Env::from_context(ctx)?;
         let folder = ctx.project().to_path_buf();
         let result = match command {
+            RemoteCommand::Live(args) => return live::run(ctx, &env, &folder, args).await,
             RemoteCommand::List(args) => list::list(&env, args.server.as_deref()).await,
             RemoteCommand::Import(args) => {
                 let progress = list::progress_reporter(ctx);
@@ -199,4 +223,59 @@ impl CommandModule for Commands {
 pub(crate) struct RemoteDeps {
     pub git: Arc<dyn oleafly_online::git::MirrorGit>,
     pub url_for: fn(&str, &str) -> Result<String, oleafly_online::OnlineError>,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::{Commands, RemoteCommand};
+    use crate::{Cli, Command};
+
+    fn parsed(arguments: &[&str]) -> Command {
+        Cli::try_parse_from(arguments).unwrap().command
+    }
+
+    #[test]
+    fn remote_live_takes_an_optional_project_and_server() {
+        let Command::Remote(Commands::Remote(RemoteCommand::Live(bare))) =
+            parsed(&["oleaflyc", "remote", "live"])
+        else {
+            panic!("remote live parsed as another command");
+        };
+        assert_eq!((bare.target, bare.server), (None, None));
+        let Command::Remote(Commands::Remote(RemoteCommand::Live(named))) = parsed(&[
+            "oleaflyc",
+            "remote",
+            "live",
+            "64a1f0",
+            "--server",
+            "https://latex.example.edu",
+        ]) else {
+            panic!("remote live parsed as another command");
+        };
+        assert_eq!(
+            (named.target.as_deref(), named.server.as_deref()),
+            (Some("64a1f0"), Some("https://latex.example.edu"))
+        );
+        assert!(Cli::try_parse_from(["oleaflyc", "remote", "live", "a", "b"]).is_err());
+    }
+
+    #[test]
+    fn bounded_exit_is_only_for_remote_live() {
+        let live = parsed(&["oleaflyc", "remote", "live"]);
+        assert_eq!(live.name(), "remote live");
+        assert!(live.bounded_exit() && live.handles_interrupt());
+        for arguments in [
+            &["oleaflyc", "remote", "sync"][..],
+            &["oleaflyc", "remote", "list"],
+            &["oleaflyc", "watch"],
+            &["oleaflyc", "build"],
+            &["oleaflyc", "daemon", "run"],
+            &["oleaflyc", "agent", "run", "x"],
+        ] {
+            let command = parsed(arguments);
+            assert!(!command.bounded_exit(), "{arguments:?}");
+        }
+    }
 }

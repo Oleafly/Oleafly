@@ -448,3 +448,463 @@ fn raw_transform_converges_with_tracking_marks() {
         );
     }
 }
+
+fn marked(kind: &str, user: &str, ts: &str) -> Value {
+    json!({ "type": kind, "userId": user, "ts": ts })
+}
+
+fn tracked_doc(content: &str, changes: &[(usize, usize, Value)], comments: Value) -> RawDoc {
+    let changes: Vec<Value> = changes
+        .iter()
+        .map(|(pos, length, tracking)| json!({ "range": { "pos": pos, "length": length }, "tracking": tracking }))
+        .collect();
+    RawDoc::from_raw(
+        &json!({ "content": content, "trackedChanges": changes, "comments": comments }),
+    )
+    .unwrap()
+}
+
+fn raw_op(wire: Value) -> RawOp {
+    RawOp::from_json(&wire).unwrap()
+}
+
+#[test]
+fn raw_positions_after_hidden_text_map_to_the_start_of_what_follows() {
+    let doc = doc("abXYcd", &[(2, 2)]);
+    assert_eq!((doc.to_raw(2), doc.to_raw_after(2)), (2, 4));
+    assert_eq!((doc.to_raw(0), doc.to_raw_after(0)), (0, 0));
+    assert_eq!(doc.to_raw_after(4), 6);
+    assert_eq!(
+        (doc.to_visible(3), doc.to_visible(4), doc.to_visible(5)),
+        (2, 2, 3)
+    );
+    let trailing = self::doc("abXY", &[(2, 2)]);
+    assert_eq!((trailing.to_raw(2), trailing.to_raw_after(2)), (2, 4));
+}
+
+#[test]
+fn the_review_shows_changes_and_comments_where_the_editor_sees_them() {
+    let doc = tracked_doc(
+        "One old new two",
+        &[
+            (4, 4, marked("delete", "bob", "2025-11-15T09:46:40.123Z")),
+            (8, 4, marked("insert", "carol", "2025-11-15T09:46:41.000Z")),
+        ],
+        json!([
+            { "id": "c1", "ranges": [{ "pos": 0, "length": 13 }] },
+            { "id": "c2", "ranges": [{ "pos": 4, "length": 4 }], "resolved": true },
+            { "id": "c3", "ranges": [{ "pos": 12, "length": 3 }, { "pos": 0, "length": 3 }] },
+        ]),
+    );
+    assert_eq!(doc.visible().unwrap(), "One new two");
+    let review = doc.review();
+    type Shown<'a> = (
+        ChangeKind,
+        usize,
+        usize,
+        &'a str,
+        Option<&'a str>,
+        Option<i64>,
+    );
+    let changes: Vec<Shown> = review
+        .changes
+        .iter()
+        .map(|change| {
+            (
+                change.kind,
+                change.from,
+                change.to,
+                change.text.as_str(),
+                change.user.as_deref(),
+                change.ts,
+            )
+        })
+        .collect();
+    assert_eq!(
+        changes,
+        vec![
+            (
+                ChangeKind::Delete,
+                4,
+                4,
+                "old ",
+                Some("bob"),
+                Some(1_763_200_000_123)
+            ),
+            (
+                ChangeKind::Insert,
+                4,
+                8,
+                "new ",
+                Some("carol"),
+                Some(1_763_200_001_000)
+            ),
+        ]
+    );
+    assert_ne!(review.changes[0].id, review.changes[1].id);
+    type Anchored<'a> = (&'a str, Vec<(usize, usize)>, bool);
+    let comments: Vec<Anchored> = review
+        .comments
+        .iter()
+        .map(|comment| {
+            (
+                comment.id.as_str(),
+                comment.ranges.clone(),
+                comment.resolved,
+            )
+        })
+        .collect();
+    assert_eq!(
+        comments,
+        vec![
+            ("c1", vec![(0, 9)], false),
+            ("c2", vec![], true),
+            ("c3", vec![(0, 3), (8, 11)], false),
+        ]
+    );
+    assert_eq!(doc.counts(), (3, 2));
+}
+
+#[test]
+fn change_ids_stay_put_across_unrelated_edits_and_a_rejoin() {
+    let doc = tracked_doc(
+        "aaaa bbbb cccc",
+        &[
+            (0, 4, marked("insert", "carol", "2025-11-15T09:46:41.000Z")),
+            (10, 4, marked("delete", "bob", "2025-11-15T09:46:42.000Z")),
+        ],
+        json!([]),
+    );
+    let ids = |doc: &RawDoc| -> Vec<String> {
+        doc.review()
+            .changes
+            .into_iter()
+            .map(|change| change.id)
+            .collect()
+    };
+    let before = ids(&doc);
+    let moved = applied(&doc, &raw_op(json!([5, "zz", 9])));
+    assert_eq!(ids(&moved), before);
+    let rejoined = RawDoc::from_raw(&moved.to_json().unwrap()).unwrap();
+    assert_eq!(ids(&rejoined), before);
+    let split = applied(&doc, &raw_op(json!([2, "q", 12])));
+    let after = ids(&split);
+    assert_eq!(after.len(), 3);
+    assert_eq!((&after[0], &after[2]), (&before[0], &before[1]));
+    assert!(!before.contains(&after[1]));
+    assert!(after.iter().all(|id| crate::realtime::events::plain_id(id)));
+}
+
+#[test]
+fn neighbouring_changes_by_one_author_merge_and_keep_the_earliest_time() {
+    let doc = tracked_doc("abcdef", &[], json!([]));
+    let first = raw_op(
+        json!([2, { "r": 1, "tracking": marked("delete", "bob", "2025-11-15T09:46:42.000Z") }, 3]),
+    );
+    let second = raw_op(
+        json!([3, { "r": 1, "tracking": marked("delete", "bob", "2025-11-15T09:46:41.000Z") }, 2]),
+    );
+    let other = raw_op(
+        json!([4, { "r": 1, "tracking": marked("delete", "carol", "2025-11-15T09:46:40.000Z") }, 1]),
+    );
+    let after = applied(&applied(&applied(&doc, &first), &second), &other);
+    let tracked = after.tracked();
+    assert_eq!(tracked.len(), 2);
+    assert_eq!((tracked[0].pos, tracked[0].length), (2, 2));
+    assert_eq!(tracked[0].tracking["ts"], json!("2025-11-15T09:46:41.000Z"));
+    assert_eq!(tracked[1].tracking["userId"], json!("carol"));
+}
+
+#[test]
+fn accepting_or_rejecting_builds_one_raw_operation_over_the_snapshot() {
+    let doc = tracked_doc(
+        "keep old new end",
+        &[
+            (5, 4, marked("delete", "bob", "2025-11-15T09:46:40.000Z")),
+            (9, 4, marked("insert", "carol", "2025-11-15T09:46:41.000Z")),
+        ],
+        json!([]),
+    );
+    assert_eq!(doc.visible().unwrap(), "keep new end");
+    let ids: Vec<String> = doc
+        .review()
+        .changes
+        .iter()
+        .map(|change| change.id.clone())
+        .collect();
+    let cases = [
+        (
+            Decision::Accept,
+            json!([5, -4, { "r": 4, "tracking": { "type": "none" } }, 3]),
+            "keep new end",
+            TextOperation::new(),
+        ),
+        (
+            Decision::Reject,
+            json!([5, "old ", -8, 3]),
+            "keep old end",
+            {
+                let mut op = TextOperation::new();
+                op.retain(5).insert("old ").delete(4).retain(3);
+                op
+            },
+        ),
+    ];
+    for (decision, wire, visible, projected) in cases {
+        let op = doc.decision_op(&ids, decision).unwrap();
+        assert_eq!(op.to_json().unwrap(), wire, "{decision:?}");
+        let after = applied(&doc, &op);
+        assert_eq!(after.visible().unwrap(), visible, "{decision:?}");
+        assert!(after.tracked().is_empty(), "{decision:?}");
+        let shown = doc.project(&op).unwrap();
+        if projected.base_len() == 0 {
+            assert!(shown.is_noop(), "{decision:?}");
+        } else {
+            assert_eq!(shown, projected, "{decision:?}");
+        }
+    }
+    let only_insert = doc.decision_op(&ids[1..], Decision::Reject).unwrap();
+    assert_eq!(only_insert.to_json().unwrap(), json!([9, -4, 3]));
+    assert_eq!(doc.decision_op(&["missing".into()], Decision::Accept), None);
+}
+
+#[test]
+fn comments_split_grow_and_rejoin_like_the_editor_core() {
+    let doc = tracked_doc(
+        "abcdefgh",
+        &[],
+        json!([{ "id": "c1", "ranges": [{ "pos": 2, "length": 4 }] }]),
+    );
+    let ranges = |doc: &RawDoc| doc.comment("c1").unwrap().ranges.clone();
+    let split = applied(&doc, &raw_op(json!([4, "XY", 4])));
+    assert_eq!(ranges(&split), vec![(2, 2), (6, 2)]);
+    let rejoined = applied(&split, &raw_op(json!([4, -2, 4])));
+    assert_eq!(ranges(&rejoined), vec![(2, 4)]);
+    let grown = applied(
+        &doc,
+        &raw_op(json!([4, { "i": "XY", "commentIds": ["c1"] }, 4])),
+    );
+    assert_eq!(ranges(&grown), vec![(2, 6)]);
+    let at_end = applied(
+        &doc,
+        &raw_op(json!([6, { "i": "Z", "commentIds": ["c1"] }, 2])),
+    );
+    assert_eq!(ranges(&at_end), vec![(2, 5)]);
+    let elsewhere = applied(
+        &doc,
+        &raw_op(json!([7, { "i": "Z", "commentIds": ["c1"] }, 1])),
+    );
+    assert_eq!(ranges(&elsewhere), vec![(2, 4), (7, 1)]);
+    let at_start = applied(&doc, &raw_op(json!([2, "W", 6])));
+    assert_eq!(ranges(&at_start), vec![(3, 4)]);
+    let gone = applied(&doc, &raw_op(json!([1, -6, 1])));
+    assert_eq!(ranges(&gone), vec![]);
+    assert_eq!(gone.comments().len(), 1);
+    let comment = doc.comment("c1").unwrap();
+    assert_eq!(
+        comment.moved(&raw_op(json!([4, "XY", 4]))).ranges,
+        vec![(2, 2), (6, 2)]
+    );
+}
+
+#[test]
+fn comment_edits_round_trip_and_anchor_past_hidden_text() {
+    let doc = doc("abXYcdef", &[(2, 2)]);
+    assert_eq!(doc.visible().unwrap(), "abcdef");
+    let added = doc.add_comment("c1", 2, 4, false).unwrap();
+    assert_eq!(
+        added.to_json().unwrap(),
+        json!({ "commentId": "c1", "ranges": [{ "pos": 4, "length": 2 }] })
+    );
+    let spanning = doc.add_comment("c1", 1, 3, true).unwrap();
+    assert_eq!(
+        spanning.to_json().unwrap(),
+        json!({ "commentId": "c1", "ranges": [{ "pos": 1, "length": 4 }], "resolved": true })
+    );
+    assert_eq!(doc.add_comment("c1", 3, 3, false), None);
+    assert_eq!(doc.add_comment("c1", 3, 9, false), None);
+    let edits = vec![
+        added.clone(),
+        Edit::SetCommentState {
+            id: "c1".into(),
+            resolved: true,
+        },
+        Edit::DeleteComment("c1".into()),
+        Edit::NoOp,
+        Edit::Text(raw_op(json!([1, "x", 7]))),
+    ];
+    let wire = edits_to_json(&edits).unwrap();
+    assert_eq!(
+        wire,
+        json!([
+            { "commentId": "c1", "ranges": [{ "pos": 4, "length": 2 }] },
+            { "commentId": "c1", "resolved": true },
+            { "deleteComment": "c1" },
+            { "noOp": true },
+            { "textOperation": [1, "x", 7] },
+        ])
+    );
+    assert_eq!(edits_from_json(&wire).unwrap(), edits);
+    assert!(edits[..3].iter().all(Edit::is_comment) && !edits[3].is_comment());
+    let mut commented = doc.clone();
+    assert_eq!(commented.edit_comments(&added), RangeChange::Reshaped);
+    assert_eq!(commented.edit_comments(&edits[1]), RangeChange::Reshaped);
+    let restored = commented
+        .comment_edit("c1", &[(3, 4), (3, 3), (2, 3)], true)
+        .unwrap();
+    assert_eq!(
+        restored.to_json().unwrap(),
+        json!({ "commentId": "c1", "ranges": [{ "pos": 4, "length": 2 }], "resolved": true })
+    );
+    assert_eq!(commented.edit_comments(&edits[2]), RangeChange::Reshaped);
+    assert!(commented.comments().is_empty());
+}
+
+#[test]
+fn rejecting_a_hidden_deletion_inserts_a_plain_copy_and_keeps_comments_over_it() {
+    let doc = tracked_doc(
+        "one two three four",
+        &[(4, 4, marked("delete", "carol", "2025-11-15T09:46:40.000Z"))],
+        json!([
+            { "id": "c1", "ranges": [{ "pos": 4, "length": 4 }] },
+            { "id": "c2", "ranges": [{ "pos": 0, "length": 6 }] },
+            { "id": "c3", "ranges": [{ "pos": 6, "length": 7 }] },
+            { "id": "c4", "ranges": [{ "pos": 0, "length": 3 }] },
+        ]),
+    );
+    assert_eq!(doc.visible().unwrap(), "one three four");
+    let ids: Vec<String> = doc
+        .review()
+        .changes
+        .iter()
+        .map(|change| change.id.clone())
+        .collect();
+    let op = doc.decision_op(&ids, Decision::Reject).unwrap();
+    assert_eq!(
+        op.to_json().unwrap(),
+        json!([
+            4,
+            { "i": "tw", "commentIds": ["c1", "c2"] },
+            { "i": "o ", "commentIds": ["c1", "c3"] },
+            -4,
+            10
+        ])
+    );
+    let mut shown = TextOperation::new();
+    shown.retain(4).insert("two ").retain(10);
+    assert_eq!(doc.project(&op).unwrap(), shown);
+    let after = applied(&doc, &op);
+    assert_eq!(after.visible().unwrap(), "one two three four");
+    assert!(after.tracked().is_empty());
+    let ranges = |id: &str| after.comment(id).unwrap().ranges.clone();
+    assert_eq!(ranges("c1"), vec![(4, 4)]);
+    assert_eq!(ranges("c2"), vec![(0, 6)]);
+    assert_eq!(ranges("c3"), vec![(6, 7)]);
+    assert_eq!(ranges("c4"), vec![(0, 3)]);
+}
+
+#[test]
+fn an_undo_shows_your_own_hidden_text_again_instead_of_inserting_it() {
+    let doc = doc("abXYcdef", &[(2, 2)]);
+    let undo = insertion(6, 2, "XY");
+    let plain = doc.encode_with(&undo, None, None).unwrap();
+    assert_eq!(plain.to_json().unwrap(), json!([2, "XY", 6]));
+    let shown = doc.encode_with(&undo, None, Some("bob")).unwrap();
+    assert_eq!(shown.to_json().unwrap(), json!([2, "XY", -2, 4]));
+    assert_eq!(doc.project(&shown).unwrap(), undo);
+    assert_eq!(applied(&doc, &shown).visible().unwrap(), "abXYcdef");
+    assert_eq!(
+        doc.encode_with(&undo, None, Some("carol"))
+            .unwrap()
+            .to_json()
+            .unwrap(),
+        json!([2, "XY", 6])
+    );
+    let prefix = doc
+        .encode_with(&insertion(6, 2, "X"), None, Some(""))
+        .unwrap();
+    assert_eq!(prefix.to_json().unwrap(), json!([2, "X", -1, 5]));
+    assert_eq!(applied(&doc, &prefix).visible().unwrap(), "abXcdef");
+    let other = doc
+        .encode_with(&insertion(6, 2, "Q"), None, Some(""))
+        .unwrap();
+    assert_eq!(other.to_json().unwrap(), json!([2, "Q", 6]));
+}
+
+#[test]
+fn an_undone_replacement_shows_your_own_hidden_text_behind_the_text_it_removes() {
+    let doc = doc("abQZXYcdef", &[(4, 2)]);
+    let mut undo = TextOperation::new();
+    undo.retain(2).delete(2).insert("XY").retain(4);
+    let bob = marked("delete", "bob", "2026-11-15T09:00:00.000Z");
+    let shown = doc.encode_with(&undo, Some(&bob), Some("bob")).unwrap();
+    assert_eq!(
+        shown.to_json().unwrap(),
+        json!([2, { "r": 2, "tracking": bob }, "XY", -2, 4])
+    );
+    assert_eq!(doc.project(&shown).unwrap(), undo);
+    assert_eq!(applied(&doc, &shown).visible().unwrap(), "abXYcdef");
+    let carol = reviewer();
+    let theirs = doc.encode_with(&undo, Some(&carol), Some("carol")).unwrap();
+    assert_eq!(
+        theirs.to_json().unwrap(),
+        json!([2, { "i": "XY", "tracking": carol }, { "r": 2, "tracking": marked("delete", "carol", "2026-11-15T09:00:00.000Z") }, 6])
+    );
+    let untracked = doc.encode_with(&undo, None, Some("")).unwrap();
+    assert_eq!(untracked.to_json().unwrap(), json!([2, "XY", -2, 6]));
+}
+
+#[test]
+fn an_undo_may_show_hidden_text_and_remove_what_follows_it() {
+    let doc = doc("abXYcdef", &[(2, 2)]);
+    let mut undo = TextOperation::new();
+    undo.retain(2).insert("XY").delete(1).retain(3);
+    let shown = doc.encode_with(&undo, None, Some("bob")).unwrap();
+    assert_eq!(shown.to_json().unwrap(), json!([2, "XY", -3, 3]));
+    assert_eq!(doc.project(&shown).unwrap(), undo);
+    assert_eq!(applied(&doc, &shown).visible().unwrap(), "abXYdef");
+}
+
+#[test]
+fn an_undo_never_changes_what_the_text_becomes() {
+    let mut rng = Rng::new(0x501);
+    let bob = marked("delete", "bob", "2026-11-15T09:00:00.000Z");
+    for round in 0..4_000 {
+        let doc = random_doc(&mut rng);
+        let visible = doc.visible().unwrap();
+        let op = random_visible_op(&mut rng, &visible);
+        for (tracking, user) in [(None, ""), (Some(&bob), "bob"), (Some(&bob), "carol")] {
+            let raw = doc.encode_with(&op, tracking, Some(user)).unwrap();
+            let after = applied(&doc, &raw).visible().unwrap();
+            assert_eq!(after, op.apply(&visible).unwrap(), "round {round}: {op:?}");
+        }
+    }
+}
+
+#[test]
+fn applying_an_op_reports_a_shift_apart_from_a_change_of_shape() {
+    let doc = tracked_doc(
+        "abc def ghi",
+        &[(4, 3, marked("insert", "carol", "2025-11-15T09:46:41.000Z"))],
+        json!([{ "id": "c1", "ranges": [{ "pos": 8, "length": 3 }] }]),
+    );
+    let mut copy = doc.clone();
+    assert_eq!(
+        copy.apply(&raw_op(json!([11, "!"]))).unwrap(),
+        RangeChange::Same
+    );
+    assert_eq!(
+        copy.apply(&raw_op(json!(["> ", 12]))).unwrap(),
+        RangeChange::Moved
+    );
+    assert_eq!(
+        copy.apply(&raw_op(json!([7, "x", 7]))).unwrap(),
+        RangeChange::Reshaped
+    );
+    assert_eq!(
+        copy.apply(&raw_op(json!([2, { "r": 1, "tracking": marked("delete", "bob", "2025-11-15T09:46:42.000Z") }, 12]))).unwrap(),
+        RangeChange::Reshaped
+    );
+    assert!(raw_op(json!([4])).is_noop());
+    assert!(!raw_op(json!([{ "r": 4, "tracking": { "type": "none" } }])).is_noop());
+}

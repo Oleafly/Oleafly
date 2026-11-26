@@ -1,15 +1,15 @@
 pub mod commands;
 pub mod write;
 
-mod bases;
-mod disk_pass;
+pub use oleafly_live::live::unwritten;
+use oleafly_live::live::{bases, disk_pass, live_disk};
+
 mod downloads;
 mod editor;
 mod host;
 mod import;
 mod kept;
 mod lifecycle;
-mod live_disk;
 mod live_tree;
 pub mod local_copy;
 mod local_events;
@@ -23,7 +23,6 @@ mod session;
 mod settings;
 mod sync_hold;
 mod unsent;
-pub mod unwritten;
 pub mod uploads;
 
 pub use editor::document_snapshot;
@@ -42,7 +41,7 @@ pub(crate) use unsent::{
 };
 
 use bases::{initial_bases, merged_onto, nearest, WrittenTexts};
-use disk_pass::{checked, writable};
+use disk_pass::checked;
 use import::{by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport};
 use session::{guard, lock, not_live, WriterSignal, ACTIVE};
 
@@ -61,7 +60,7 @@ pub use payloads::{
 #[cfg(test)]
 use crate::collab::disk::sha256_hex;
 #[cfg(test)]
-use disk_pass::{apply_to_disk, DiskPass};
+use disk_pass::{apply_to_disk, writable, DiskPass, DiskTexts};
 #[cfg(test)]
 use import::apply_local_import;
 #[cfg(test)]
@@ -71,8 +70,6 @@ use pump::pump;
 
 #[cfg(test)]
 mod import_tests;
-#[cfg(test)]
-mod live_disk_tests;
 #[cfg(test)]
 mod outside_tests;
 #[cfg(test)]

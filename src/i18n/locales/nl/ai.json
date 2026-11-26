@@ -380,7 +380,8 @@
       "runCommand": "Voert een shell-opdracht uit in de projectmap, met een limiet van twee minuten.",
       "toggleTheme": "Wisselt tussen de lichte en de donkere modus.",
       "listOverleafProjects": "Toont je Overleaf-projecten en meldt zich eerst aan als dat nodig is.",
-      "importOverleafProjects": "Importeert Overleaf-projecten in je bibliotheek, met hun compiler en hoofdbestand."
+      "importOverleafProjects": "Importeert Overleaf-projecten in je bibliotheek, met hun compiler en hoofdbestand.",
+      "openOverleafLive": "Opent een Overleaf-project om live te bewerken en importeert het eerst als het nog niet in je bibliotheek staat."
     },
     "disableAll": "Alles uitschakelen",
     "emptyContext": "In deze context zijn geen tools beschikbaar.",
@@ -406,7 +407,8 @@
       "latexOnly": "Alleen LaTeX-projecten",
       "latexAndTypstOnly": "Alleen LaTeX- en Typst-projecten",
       "pdfCaptureSetting": "Vereist de instelling voor PDF-paginaopname",
-      "chatApproval": "Goedgekeurd in de chat, één opdracht tegelijk"
+      "chatApproval": "Goedgekeurd in de chat, één opdracht tegelijk",
+      "overleafLiveSetting": "Vereist Live bewerken met Overleaf bij Experimenten"
     },
     "sourceGroups": {
       "figure": "Figuur",

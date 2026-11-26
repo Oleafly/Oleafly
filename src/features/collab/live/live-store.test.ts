@@ -748,7 +748,7 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 2,
-      hue: peerHue(BOB, ALICE),
+      hue: peerHue(BOB, ALICE, "server"),
     });
     emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "device-bob" });
     expect(useCollabLiveStore.getState().peers).toEqual({});
@@ -781,7 +781,7 @@ describe("collab live store", () => {
     expect(Math.abs(avatarHue(BOB) - avatarHue(ALICE))).toBeLessThan(OWN_HUE_BAND);
     emit("presence", { projectId: PROJECT, deviceId: "device-bob", accountId: BOB, path: "main.tex", cursor: 1, anchor: 1 });
     const hue = useCollabLiveStore.getState().peers["device-bob"]?.hue;
-    expect(hue).toBe(peerHue(BOB, ALICE));
+    expect(hue).toBe(peerHue(BOB, ALICE, "server"));
     expect(hue).not.toBe(avatarHue(BOB));
     emit("presence", { projectId: PROJECT, deviceId: "device-bob", accountId: BOB, path: "main.tex", cursor: 9, anchor: 9 });
     expect(useCollabLiveStore.getState().peers["device-bob"]?.hue).toBe(hue);
@@ -838,7 +838,7 @@ describe("collab live store", () => {
     };
     emit("presence", bob);
     const places = peerPlaces(useCollabLiveStore.getState().peers);
-    expect(places["device-bob"]).toMatchObject({ accountId: BOB, path: "main.tex", hue: peerHue(BOB, ALICE) });
+    expect(places["device-bob"]).toMatchObject({ accountId: BOB, path: "main.tex", hue: peerHue(BOB, ALICE, "server") });
     emit("presence", { ...bob, cursor: 90, anchor: 80 });
     emit("presence", { ...bob, cursor: 91, anchor: 91 });
     expect(peerPlaces(useCollabLiveStore.getState().peers)).toBe(places);
@@ -1166,7 +1166,7 @@ describe("collab live store edges", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: "main.tex", cursor: 1, anchor: 1 });
-    expect(useCollabLiveStore.getState().peers.d.hue).toBe(peerHue(BOB, null));
+    expect(useCollabLiveStore.getState().peers.d.hue).toBe(peerHue(BOB, null, "server"));
     answer(share());
     await settle();
   });

@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
-import { scanMathExpressions } from "./math-source";
+import { scanMathEnvironments, scanMathExpressions } from "./math-source";
 
 describe("scanMathExpressions", () => {
   it("keeps fenced and escaped Markdown out of math results", () => {
@@ -201,5 +201,17 @@ describe("scanMathExpressions for Typst edge cases", () => {
 
   it("skips excluded ranges", () => {
     expect(sources("$a$ $b$", "typst", { excluded: [{ from: 0, to: 3 }] })).toEqual(["$b$"]);
+  });
+});
+
+describe("scanMathEnvironments", () => {
+  it("finds closed display math environments and skips the rest", () => {
+    const text = String.raw`\begin{equation}a\end{equation} \begin{itemize}b\end{itemize} \\begin{gather}c\end{gather} \begin{align*}d\end{align*} \begin{multline}open`;
+    expect(scanMathEnvironments(text).map(({ source }) => source)).toEqual([
+      String.raw`\begin{equation}a\end{equation}`,
+      String.raw`\begin{align*}d\end{align*}`,
+    ]);
+    const [first] = scanMathEnvironments(text);
+    expect(text.slice(first.from, first.to)).toBe(first.source);
   });
 });

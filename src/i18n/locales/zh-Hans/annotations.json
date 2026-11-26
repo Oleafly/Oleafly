@@ -26,6 +26,10 @@
       "region": "对这个区域的意见…"
     },
     "placeHere": "放在这里",
+    "coauthors": "为合作者添加评论",
+    "noSource": "在源码文件中找不到这段内容。",
+    "commentFailed": "无法打开此评论对应的文件。",
+    "commentsClosed": "此项目目前无法使用评论。",
     "cancel": "取消",
     "save": "添加",
     "saving": "正在保存",

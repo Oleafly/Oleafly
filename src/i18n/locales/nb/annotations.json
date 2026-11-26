@@ -26,6 +26,10 @@
       "region": "Kommenter dette området …"
     },
     "placeHere": "Plasser her",
+    "coauthors": "Kommentar til medforfattere",
+    "noSource": "Dette avsnittet ble ikke funnet i kildefilene.",
+    "commentFailed": "Filen for denne kommentaren kunne ikke åpnes.",
+    "commentsClosed": "Kommentarer er ikke tilgjengelige for dette prosjektet akkurat nå.",
     "cancel": "Avbryt",
     "save": "Legg til",
     "saving": "Lagrer",

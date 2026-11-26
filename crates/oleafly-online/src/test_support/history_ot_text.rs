@@ -320,8 +320,17 @@ impl TextOperation {
                             Part::Retain { marks: marks1, .. },
                             Part::Retain { marks: marks2, .. },
                         ) => {
-                            prime1.retain_marked(minl, marks1.clone());
-                            prime2.retain_marked(minl, marks2.clone());
+                            let kept = |tracking: &Option<Value>| Marks {
+                                tracking: tracking.clone(),
+                                comment_ids: None,
+                            };
+                            let (one, two) = if marks1.tracking.is_some() {
+                                (kept(&marks1.tracking), kept(&None))
+                            } else {
+                                (kept(&None), kept(&marks2.tracking))
+                            };
+                            prime1.retain_marked(minl, one);
+                            prime2.retain_marked(minl, two);
                         }
                         (Part::Delete { .. }, Part::Delete { .. }) => {}
                         (Part::Delete { .. }, Part::Retain { .. }) => {

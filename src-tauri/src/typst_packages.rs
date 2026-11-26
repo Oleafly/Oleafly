@@ -890,7 +890,7 @@ pub async fn set_typst_vendor_packages(
     project_id: String,
     enabled: bool,
 ) -> Result<ProjectMeta, String> {
-    crate::collab::settings::refuse_viewer(&project_id)?;
+    crate::collab::settings::refuse_server_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let owned = project_id.clone();
     let meta = blocking(move || {
@@ -909,7 +909,7 @@ pub async fn vendor_typst_packages(
     project_id: String,
     offline: Option<bool>,
 ) -> Result<TypstVendorResult, String> {
-    crate::collab::settings::refuse_viewer(&project_id)?;
+    crate::collab::settings::refuse_server_viewer(&project_id)?;
     let owned = project_id.clone();
     let offline = offline.unwrap_or(false);
     let report = blocking(move || vendor_blocking(&owned, offline)).await?;

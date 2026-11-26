@@ -515,7 +515,8 @@
       "open": "Theo tệp đang mở",
       "main": "Luôn là tài liệu chính",
       "change": "Đổi tài liệu chính…"
-    }
+    },
+    "filling": "Dự án vẫn đang được tải xuống từ Overleaf. Bạn có thể biên dịch khi mọi tệp đã về đây."
   },
   "datePicker": {
     "placeholder": "Chọn ngày"
@@ -1667,8 +1668,9 @@
     "resume": "Tiếp tục chỉnh sửa trực tiếp",
     "reconnectNow": "Kết nối lại ngay",
     "open": "Mở trong Overleaf",
-    "share": "Chia sẻ trên Overleaf…",
+    "share": "Chia sẻ trên Overleaf",
     "signIn": "Đăng nhập…",
+    "signInAs": "Đăng nhập với tên {{email}}",
     "reconnectingIn": "Thử lại sau {{seconds}} giây.",
     "notConfirmed": "Overleaf chưa xác nhận.",
     "copyDetails": "Sao chép chi tiết kết nối",

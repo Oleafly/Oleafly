@@ -370,7 +370,8 @@
       "runCommand": "在專案資料夾中執行 shell 指令，限時兩分鐘。",
       "toggleTheme": "在淺色與深色模式之間切換。",
       "listOverleafProjects": "列出你的 Overleaf 專案，必要時先登入。",
-      "importOverleafProjects": "將 Overleaf 專案連同編譯器和主要檔案設定匯入你的專案庫。"
+      "importOverleafProjects": "將 Overleaf 專案連同編譯器和主要檔案設定匯入你的專案庫。",
+      "openOverleafLive": "開啟 Overleaf 專案進行即時編輯。如果它還不在你的專案庫中，會先將它匯入。"
     },
     "disableAll": "全部停用",
     "emptyContext": "這個情境中沒有可用的工具。",
@@ -396,7 +397,8 @@
       "latexOnly": "僅限 LaTeX 專案",
       "latexAndTypstOnly": "僅限 LaTeX 與 Typst 專案",
       "pdfCaptureSetting": "需要啟用 PDF 頁面擷取設定",
-      "chatApproval": "在聊天中逐一核准指令"
+      "chatApproval": "在聊天中逐一核准指令",
+      "overleafLiveSetting": "需要啟用實驗功能中的「與 Overleaf 即時編輯」"
     },
     "sourceGroups": {
       "figure": "圖片",

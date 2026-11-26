@@ -26,6 +26,10 @@
       "region": "Opmerking bij dit gebied…"
     },
     "placeHere": "Hier plaatsen",
+    "coauthors": "Opmerking voor medeauteurs",
+    "noSource": "Deze passage is niet gevonden in de bronbestanden.",
+    "commentFailed": "Het bestand bij deze opmerking kon niet worden geopend.",
+    "commentsClosed": "Opmerkingen zijn op dit moment niet beschikbaar voor dit project.",
     "cancel": "Annuleren",
     "save": "Toevoegen",
     "saving": "Opslaan",

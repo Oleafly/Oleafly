@@ -396,6 +396,7 @@ export function ProofreadingDictionarySection() {
   const clear = useDictionary((state) => state.clear);
   const clearGlobal = useDictionary((state) => state.clearGlobal);
   const clearAll = useDictionary((state) => state.clearAll);
+  const overleafSynced = useDictionary((state) => Object.keys(state.synced).length > 0);
   const suppressed = useDictionary((state) => state.suppressed);
   const clearSuppressed = useDictionary((state) => state.clearSuppressed);
   const setHarperDisabledRules = useSettingsStore(
@@ -465,7 +466,10 @@ export function ProofreadingDictionarySection() {
       });
     }
     if (clearTarget?.type === "global") {
-      return t(($) => $.settings.proofreading.clear.descriptionGlobal);
+      const description = t(($) => $.settings.proofreading.clear.descriptionGlobal);
+      return overleafSynced
+        ? `${description} ${t(($) => $.settings.proofreading.clear.descriptionOverleaf)}`
+        : description;
     }
     return t(($) => $.settings.proofreading.clear.descriptionFallback);
   };
@@ -555,6 +559,11 @@ export function ProofreadingDictionarySection() {
               {t(($) => $.common.actions.clear)}
             </Button>
           </div>
+          {overleafSynced ? (
+            <p className="text-xs text-muted-foreground" data-testid="dictionary-overleaf-synced">
+              {t(($) => $.settings.proofreading.global.overleafSynced)}
+            </p>
+          ) : null}
           <WordChips
             words={global}
             query={query}
@@ -646,9 +655,11 @@ export function ProofreadingDictionarySection() {
           setHarperDisabledRules([]);
           setHarperEnabledRules([]);
         }}
-        confirmationDescription={t(
-          ($) => $.settings.proofreading.reset.confirmationDescription,
-        )}
+        confirmationDescription={
+          overleafSynced
+            ? `${t(($) => $.settings.proofreading.reset.confirmationDescription)} ${t(($) => $.settings.proofreading.clear.descriptionOverleaf)}`
+            : t(($) => $.settings.proofreading.reset.confirmationDescription)
+        }
         changed={changed}
       />
       <ConfirmationDialog

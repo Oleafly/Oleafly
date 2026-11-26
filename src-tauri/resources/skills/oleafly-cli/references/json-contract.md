@@ -57,6 +57,25 @@ With `--events`, progress lines come before the result:
 `ok`: the build's result on `build_finished`, `false` on the two errors, and
 `true` on the rest.
 
+`oleafly remote live --json` writes events while it runs and one result when
+it stops:
+
+| Event | Fields |
+|---|---|
+| `live_started` | `server`, `remoteId`, `url`, `folder`, `scope`, `email`, `role`, `filling`, `wasPaused`, `warnings` |
+| `state` | `state` (`connecting`, `online`, `offline`, `signed_out`, `idle` or `ended`), `pending`, and `retryInMs` or `reason` |
+| `remote_edit` | `path`, `by`, `userId`, at most once a second for each file and person |
+| `sent` | `path`, when an edit that had to wait for the server is confirmed online |
+| `peer` | `deviceId`, `userId`, `name`, `path` |
+| `peer_left` | `deviceId`, `userId`, `name` |
+| `kept`, `unwritten` | `files` |
+| `removed` | `files`, and `restored`, the files put back here |
+| `delete_asked` | `paths` |
+| `tree` | `kind`, and `paths` (`files` when `kind` is `linked`) |
+| `notice` | `kind`, such as `role`, `merged`, `needs_review`, `filling`, `filled`, `uploads` or `project` |
+| `skipped` | `count`, the lines left out because the reader was slow |
+| `stopped` | `unsent`, the files that weren't sent yet |
+
 ## `build`
 
 | Field | Meaning |

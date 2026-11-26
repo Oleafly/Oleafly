@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oleafly_online::client::Http;
-use oleafly_online::live::doc::{DocError, OverleafDoc, Rejoin};
-use oleafly_online::live::format::FormatState;
+use oleafly_online::live::doc::{DocError, Origin, OverleafDoc, Rejoin, ReviewOp};
+use oleafly_online::live::format::{new_thread_id, Decision, FormatState};
 use oleafly_online::live::join::{parse_join, JoinedDoc};
+use oleafly_online::live::rest::{ProjectRest, ReviewError};
 use oleafly_online::live::{SendMode, Tracking};
 use oleafly_online::realtime::connection::{connect, Carrier, Connection};
 use oleafly_online::realtime::events::{AppliedUpdate, DocId, PublicId, ServerEvent};
@@ -47,7 +49,8 @@ impl Health {
 struct Gate {
     http: Http,
     session: SessionHandle,
-    page: ProjectPage,
+    page: Arc<ProjectPage>,
+    rest: ProjectRest,
     carriers: Vec<Carrier>,
     connection: Option<Connection>,
     own: Vec<PublicId>,
@@ -97,6 +100,37 @@ fn state_json(id: &str, doc: &OverleafDoc) -> Value {
         "settled": doc.is_settled(),
         "ranges": tracked_json(doc),
     })
+}
+
+fn review_json(doc: &OverleafDoc) -> Value {
+    let review = doc.review();
+    json!({
+        "comments": review.comments.iter().map(|comment| json!({
+            "thread": comment.thread,
+            "ranges": comment.ranges,
+            "quote": comment.quote,
+            "resolved": comment.resolved,
+        })).collect::<Vec<_>>(),
+        "changes": review.changes.iter().map(|change| json!({
+            "id": change.id,
+            "kind": format!("{:?}", change.kind),
+            "from": change.from,
+            "to": change.to,
+            "text": change.text,
+            "user": change.user,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn origin_of(command: &Value) -> Result<Option<Origin>, String> {
+    match command["origin"].as_str() {
+        None => Ok(None),
+        Some("undo") => Ok(Some(Origin::Undo)),
+        Some("redo") => Ok(Some(Origin::Redo)),
+        Some("cut") => Ok(Some(Origin::Cut)),
+        Some("paste") => Ok(Some(Origin::Paste)),
+        Some(other) => Err(format!("unknown origin {other}")),
+    }
 }
 
 async fn next_event(connection: &mut Option<Connection>) -> Option<ServerEvent> {
@@ -248,7 +282,14 @@ impl Gate {
             let Some(doc) = self.docs.get_mut(&id) else {
                 continue;
             };
-            let update = match doc.next_update(&on, &self.mode, Instant::now()) {
+            let next = doc.next_update(&on, &self.mode, Instant::now());
+            drop(doc.take_shown());
+            for dropped in doc.take_dropped() {
+                self.health
+                    .unexpected
+                    .push(format!("{id}: dropped {dropped:?}"));
+            }
+            let update = match next {
                 Ok(Some(update)) => update,
                 Ok(None) => continue,
                 Err(error) => {
@@ -284,8 +325,108 @@ impl Gate {
         } else {
             deletion(total, at, number(command, "length")?.min(total - at))
         };
-        let correction = doc.local(op).map_err(|error| error.to_string())?;
+        let correction = doc
+            .local_from(op, origin_of(command)?)
+            .map_err(|error| error.to_string())?;
         Ok(json!({ "corrected": correction.is_some(), "text": doc.text() }))
+    }
+
+    fn open_doc(&mut self, command: &Value) -> Result<(String, &mut OverleafDoc), String> {
+        let id = field(command, "doc")?.to_string();
+        let doc = self.docs.get_mut(&id).ok_or("not open")?;
+        Ok((id, doc))
+    }
+
+    async fn comment(&mut self, command: &Value) -> Result<Value, String> {
+        let thread = match command["thread"].as_str() {
+            Some(thread) => thread.to_string(),
+            None => new_thread_id().map_err(|error| error.to_string())?,
+        };
+        let (from, to) = (number(command, "from")?, number(command, "to")?);
+        let (_, doc) = self.open_doc(command)?;
+        doc.queue_review(ReviewOp::Anchor {
+            thread: thread.clone(),
+            ranges: vec![(from, to)],
+            ride: false,
+        });
+        self.pump().await;
+        Ok(json!({ "thread": thread }))
+    }
+
+    async fn resolve(&mut self, command: &Value) -> Result<Value, String> {
+        let thread = field(command, "thread")?.to_string();
+        let resolved = command["resolved"].as_bool().unwrap_or(true);
+        let (id, doc) = self.open_doc(command)?;
+        if let FormatState::HistoryOt(_) = doc.format() {
+            doc.queue_review(ReviewOp::Resolve { thread, resolved });
+            self.pump().await;
+            return Ok(json!({ "by": "op" }));
+        }
+        let doc = DocId(id);
+        let call = if resolved {
+            self.rest.resolve_thread(&self.session, &doc, &thread).await
+        } else {
+            self.rest.reopen_thread(&self.session, &doc, &thread).await
+        };
+        call.map_err(|error| error.to_string())?;
+        Ok(json!({ "by": "rest" }))
+    }
+
+    async fn decide(&mut self, command: &Value) -> Result<Value, String> {
+        let ids: Vec<String> = command["ids"]
+            .as_array()
+            .ok_or("the command needs \"ids\"")?
+            .iter()
+            .filter_map(|id| id.as_str().map(str::to_string))
+            .collect();
+        let decision = match field(command, "decision")? {
+            "accept" => Decision::Accept,
+            "reject" => Decision::Reject,
+            other => return Err(format!("unknown decision {other}")),
+        };
+        let (id, doc) = self.open_doc(command)?;
+        if matches!(doc.format(), FormatState::ShareJs(_)) && decision == Decision::Accept {
+            let known: Option<Vec<String>> =
+                ids.iter().map(|id| doc.server_change_id(id)).collect();
+            let known = known.ok_or("a change id is not known yet: rejoin first")?;
+            match self
+                .rest
+                .accept_changes(&self.session, &DocId(id.clone()), &known)
+                .await
+            {
+                Ok(()) => {
+                    let doc = self.docs.get_mut(&id).ok_or("not open")?;
+                    doc.accept_locally(&known);
+                    return Ok(json!({ "by": "rest" }));
+                }
+                Err(ReviewError::Absent) => {}
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+        let (_, doc) = self.open_doc(command)?;
+        let changes = doc.targets(&ids).ok_or("a change is not in this doc")?;
+        doc.queue_review(ReviewOp::Decide { changes, decision });
+        self.pump().await;
+        Ok(json!({ "by": "op" }))
+    }
+
+    async fn threads(&self) -> Result<Value, String> {
+        let threads = self
+            .rest
+            .threads(&self.session)
+            .await
+            .map_err(|error| error.to_string())?;
+        Ok(json!({
+            "threads": threads.iter().map(|thread| json!({
+                "id": thread.id,
+                "messages": thread.messages.iter().map(|message| json!({
+                    "id": message.id,
+                    "content": message.content,
+                    "user": message.user_id,
+                })).collect::<Vec<_>>(),
+                "resolved": thread.resolved.is_some(),
+            })).collect::<Vec<_>>(),
+        }))
     }
 
     async fn hear(&mut self) {
@@ -359,9 +500,24 @@ impl Gate {
                 });
                 Ok(json!({}))
             }
+            "review" => {
+                self.mode = SendMode::Review(Tracking {
+                    user_id: self.session.user_id().to_string(),
+                    ts: field(&command, "ts")?.to_string(),
+                });
+                Ok(json!({}))
+            }
             "edit" => {
                 self.mode = SendMode::Edit;
                 Ok(json!({}))
+            }
+            "comment" => self.comment(&command).await,
+            "resolve" => self.resolve(&command).await,
+            "decide" => self.decide(&command).await,
+            "threads" => self.threads().await,
+            "ranges" => {
+                let (_, doc) = self.open_doc(&command)?;
+                Ok(review_json(doc))
             }
             "hold" => {
                 self.held = true;
@@ -426,13 +582,17 @@ async fn start() -> Result<Gate, String> {
         .await
         .map_err(|error| format!("the dashboard refused the session: {:?}", error.kind))?;
     let session = SessionHandle::new(&server, signed_in, None);
-    let page = ProjectPage::load(&http, &session, &project, false)
-        .await
-        .map_err(|error| format!("the editor page failed: {:?}", error.kind))?;
+    let page = Arc::new(
+        ProjectPage::load(&http, &session, &project, false)
+            .await
+            .map_err(|error| format!("the editor page failed: {:?}", error.kind))?,
+    );
+    let rest = ProjectRest::new(http.clone(), Arc::clone(&page), &project);
     Ok(Gate {
         http,
         session,
         page,
+        rest,
         carriers,
         connection: None,
         own: Vec::new(),

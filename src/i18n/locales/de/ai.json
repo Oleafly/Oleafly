@@ -380,7 +380,8 @@
       "runCommand": "Führt einen shell-Befehl im Projektordner aus, mit einem Limit von zwei Minuten.",
       "toggleTheme": "Wechselt zwischen hellem und dunklem Modus.",
       "listOverleafProjects": "Listet Ihre Overleaf-Projekte auf und meldet sich bei Bedarf zuerst an.",
-      "importOverleafProjects": "Importiert Overleaf-Projekte mit Compiler und Hauptdatei in Ihre Bibliothek."
+      "importOverleafProjects": "Importiert Overleaf-Projekte mit Compiler und Hauptdatei in Ihre Bibliothek.",
+      "openOverleafLive": "Öffnet ein Overleaf-Projekt zur Live-Bearbeitung und importiert es vorher, falls es noch nicht in Ihrer Bibliothek ist."
     },
     "disableAll": "Alle deaktivieren",
     "emptyContext": "In diesem Zusammenhang sind keine Werkzeuge verfügbar.",
@@ -406,7 +407,8 @@
       "latexOnly": "Nur für LaTeX-Projekte",
       "latexAndTypstOnly": "Nur für LaTeX- und Typst-Projekte",
       "pdfCaptureSetting": "Braucht die Einstellung zum Erfassen von PDF-Seiten",
-      "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen"
+      "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen",
+      "overleafLiveSetting": "Braucht Live-Bearbeitung mit Overleaf unter Experimente"
     },
     "sourceGroups": {
       "figure": "Abbildung",

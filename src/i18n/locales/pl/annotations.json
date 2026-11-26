@@ -26,6 +26,10 @@
       "region": "Skomentuj ten obszar…"
     },
     "placeHere": "Umieść tutaj",
+    "coauthors": "Komentarz dla współautorów",
+    "noSource": "Nie znaleziono tego fragmentu w plikach źródłowych.",
+    "commentFailed": "Nie udało się otworzyć pliku dla tego komentarza.",
+    "commentsClosed": "Komentarze w tym projekcie są teraz niedostępne.",
     "cancel": "Anuluj",
     "save": "Dodaj",
     "saving": "Zapisywanie",

@@ -10,8 +10,21 @@ import { useFilesStore } from "@/store/files";
 import { useComments } from "../comments/comments-store";
 import { DesktopCommentKit } from "../comments/desktop-comment-kit";
 import { commentMessage, commentThread } from "../tests/comment-fixtures";
-import { ALICE_ID, BOB, BOB_ID, CAROL_ID, deferred, fill, person } from "../tests/fixtures";
+import {
+  ALICE_ID,
+  BOB,
+  BOB_ID,
+  CAROL,
+  CAROL_ID,
+  deferred,
+  fill,
+  OVERLEAF_ALICE_ID,
+  OVERLEAF_BOB_ID,
+  person,
+} from "../tests/fixtures";
 import { SUGGESTED_AT, suggestion } from "../tests/suggestion-fixtures";
+import { avatarHue } from "@/components/ui/avatar";
+import { overleafHue, peerHue } from "../live/peer-hue";
 
 const mocks = vi.hoisted(() => ({
   collabSuggestionAccept: vi.fn(),
@@ -50,9 +63,11 @@ function context(overrides: Partial<SuggestionContext> = {}): SuggestionContext 
       [BOB_ID, BOB],
     ]),
     members: [],
+    backend: "server",
     canResolve: true,
     canSuggest: true,
     commentsOn: false,
+    suggestionThreads: true,
     ...overrides,
   };
 }
@@ -128,10 +143,44 @@ describe("a suggestion card", () => {
     expect(time.parentElement).not.toHaveClass("shrink-0");
   });
 
+  it("colours the author like the rest of the app on each backend", () => {
+    const view = render(card());
+    const avatar = () => article(fill(copy.card, { name: "Bob Smith" })).querySelector('[data-slot="avatar"]');
+    expect(avatar()).toHaveStyle({ backgroundColor: `hsl(${peerHue(BOB_ID, ALICE_ID, "server")} 55% 45%)` });
+    view.unmount();
+    const overleaf = context({
+      self: OVERLEAF_ALICE_ID,
+      backend: "overleaf",
+      people: new Map([[OVERLEAF_BOB_ID, { ...BOB, account_id: OVERLEAF_BOB_ID }]]),
+    });
+    render(card({ suggestion: suggestion("s1", { author: OVERLEAF_BOB_ID }), context: overleaf }));
+    const hue = overleafHue(OVERLEAF_BOB_ID, OVERLEAF_ALICE_ID);
+    expect(hue).not.toBe(avatarHue(OVERLEAF_BOB_ID));
+    expect(avatar()).toHaveStyle({ backgroundColor: `hsl(${hue} 55% 45%)` });
+  });
+
   it("names a verified author who has left the project as someone", () => {
     render(card({ suggestion: suggestion("s1", { author: CAROL_ID }) }));
     const found = article(fill(copy.card, { name: enCollab.toolbar.unknownPerson }));
     expect(within(found).getByText(enCollab.toolbar.unknownPerson)).not.toHaveClass("italic");
+  });
+
+  it("names an author Overleaf lists as having left the project, and says so after the name", () => {
+    const people = new Map(context().people);
+    people.set(CAROL_ID, { ...CAROL, standing: "former" });
+    render(card({ suggestion: suggestion("s1", { author: CAROL_ID }), context: context({ people }) }));
+    const found = article(fill(copy.card, { name: "Carol Diaz" }));
+    expect(within(found).getByText(enCollab.people.former)).toBeInTheDocument();
+    expect(found).not.toHaveTextContent(enCollab.toolbar.unknownPerson);
+  });
+
+  it("names an author off the roster of a link-shared project without a label", () => {
+    const people = new Map(context().people);
+    people.set(CAROL_ID, { ...CAROL, standing: "unlisted" });
+    render(card({ suggestion: suggestion("s1", { author: CAROL_ID }), context: context({ people }) }));
+    const found = article(fill(copy.card, { name: "Carol Diaz" }));
+    expect(found).not.toHaveTextContent(enCollab.people.former);
+    expect(found).not.toHaveTextContent(enCollab.people.invited);
   });
 
   it("marks a suggestion whose author couldn't be verified and never offers to withdraw it", () => {
@@ -205,7 +254,7 @@ describe("a suggestion card", () => {
     const view = render(card({ selected: true, focus: 0 }));
     const found = article(fill(copy.card, { name: "Bob Smith" }));
     expect(found).toHaveAttribute("aria-current", "true");
-    expect(found).toHaveClass("border-ring");
+    expect(found).toHaveClass("bg-accent", "border-transparent");
     expect(scrollIntoView).not.toHaveBeenCalled();
     view.rerender(card({ selected: true, focus: 1 }));
     expect(scrollIntoView).toHaveBeenCalledTimes(1);

@@ -42,16 +42,16 @@ pub enum EditMode {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Suggestion {
-    pub id: SuggestionId,
+pub struct Suggestion<Id = SuggestionId, Who = AccountId, Thread = CommentId> {
+    pub id: Id,
     pub file_id: String,
     pub kind: SuggestionKind,
-    pub author: AccountId,
+    pub author: Who,
     pub created_at: i64,
     pub from: usize,
     pub to: usize,
     pub text: String,
-    pub thread_id: Option<CommentId>,
+    pub thread_id: Option<Thread>,
     pub verified: bool,
 }
 

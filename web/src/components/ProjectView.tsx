@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, FolderTree, MessageSquare, WifiOff, X } from "lucide-react";
+import { ArrowLeft, FileText, FolderTree, MessageSquareQuote, WifiOff, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
@@ -340,7 +340,7 @@ export function ProjectView({
               {t(($) => $.web.views.pdf)}
             </TabsTrigger>
             <TabsTrigger value="comments">
-              <MessageSquare aria-hidden className="hidden min-[400px]:block" />
+              <MessageSquareQuote aria-hidden className="hidden min-[400px]:block" />
               <CommentsTabLabel />
             </TabsTrigger>
           </TabsList>

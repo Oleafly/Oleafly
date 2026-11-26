@@ -1887,34 +1887,18 @@
       "disconnectFailed": "alphaXiv nu a putut fi deconectat. Încearcă din nou."
     },
     "cookies": {
-      "confirmTitle": "Confirmă importul de cookie-uri",
-      "detecting": "Se caută profilurile de browser instalate...",
-      "dialogDescription": "Alege un singur profil de browser instalat. Oleafly îl citește doar după ce verifici și confirmi importul. Cookie-urile Chromium se deblochează local, prin macOS Keychain. Oleafly nu trimite valorile cookie-urilor către niciun serviciu Oleafly.",
-      "dialogTitle": "Importă cookie-uri din browser",
-      "empty": "Nu s-a găsit niciun profil de browser acceptat.",
-      "errors": {
-        "chooseProfile": "Alege un profil de browser disponibil."
-      },
-      "profileGroupLabel": "Profiluri de browser",
-      "profileLegend": "Profil de browser",
-      "review": "Verifică importul",
-      "status": {
-        "available": "Disponibil",
-        "comingSoon": "În curând",
-        "noCookieStore": "Fără depozit de cookie-uri",
-        "notInstalled": "Neinstalat"
-      },
-      "tryAgain": "Încearcă din nou",
-      "label": "Copiază autentificarea unui browser",
-      "useBrowserSignIn": "Copiază autentificarea din browserul tău",
-      "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
-      "copyAction": "Copiază autentificarea",
-      "copying": "Se copiază…",
-      "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",
-      "notSignedIn_few": "S-au copiat {{count}} cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct.",
-      "notSignedIn_other": "S-au copiat {{count}} de cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct."
+      "dialogDescription": "Oleafly copiază doar cookie-urile pentru {{server}}, se autentifică folosindu-le, apoi șterge copiile. Parolele tale rămân în browser.",
+      "dialogTitle": "Importă cookie-uri din browserul tău",
+      "label": "Importă cookie-uri din browserul tău",
+      "useBrowserSignIn": "Alege un profil",
+      "signInDescription": "Folosește contul {{server}} cu care un profil de browser de pe acest computer este deja autentificat.",
+      "copyAction": "Importă",
+      "copying": "Se importă…",
+      "from": "Din",
+      "noCookies": "Niciun cookie încă",
+      "sameAccount": "{{profile}} este autentificat ca {{account}}, cont pe care Oleafly îl folosește deja. Alege alt profil sau autentifică-te mai întâi cu celălalt cont în acel browser.",
+      "orExisting": "sau folosește o autentificare pe care o ai deja",
+      "noSavedSignIn": "{{profile}} nu are o autentificare salvată pentru {{server}}, așa că cookie-urile copiate nu te-au autentificat. Dacă ești autentificat acolo, browserul poate păstra autentificarea doar până la închidere. Folosește în schimb dala {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
@@ -1977,7 +1961,12 @@
       "signedIn": "Autentificat pe {{server}}",
       "signOut": "Deconectează-te",
       "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
+      "addAccount": "Adaugă alt cont",
+      "addAccountHint": "Alege unde te autentifici. Fiecare pornește fără cont autentificat, așa că merge orice cont.",
+      "accountPick": "Cont pentru import",
+      "accountPickDescription": "Importurile noi și șabloanele folosesc acest cont. Proiectele pe care le ai deja păstrează contul din care provin.",
       "gitTitle": "Token Git pentru sincronizare",
+      "gitTitleFor": "Token Git pentru {{email}}",
       "gitSaved": "Un token Git este salvat. Proiectele pe care le asociezi rămân sincronizate cu Overleaf.",
       "gitMissing": "Niciun token Git încă. Creează unul la Integrare Git în setările contului tău Overleaf ca să sincronizezi proiecte.",
       "gitOpenSettings": "Deschide setările contului Overleaf",
@@ -1986,14 +1975,9 @@
       "gitSave": "Salvează",
       "gitRemove": "Elimină",
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul.",
-      "browserLabel": "Autentifică-te cu browserul",
-      "browserDescription": "Pentru autentificare cu Google, instituție sau cheie de acces. Oleafly deschide {{server}} într-o fereastră nouă de browser și o închide după ce te-ai conectat.",
-      "browserAction": "Autentifică-te",
-      "browserPick": "Browser pentru autentificare",
       "browserWaiting": "Termină autentificarea pe {{server}} în {{browser}}. Dacă închizi fereastra, autentificarea se anulează.",
-      "browserHint": "Folosește asta pentru autentificare cu Google, instituție sau cheie de acces.",
-      "windowLabel": "Autentifică-te pe {{server}}",
-      "windowDescription": "Oleafly deschide o fereastră de autentificare și o închide după ce te-ai conectat. Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi autentifică-te cu el aici.",
+      "windowLabel": "Autentifică-te în Oleafly",
+      "windowDescription": "Fereastra se închide singură după ce te-ai conectat. Dacă cheia de acces nu funcționează acolo, folosește parola sau o confirmare pe telefon.",
       "windowAction": "Autentifică-te",
       "windowWaiting": "Termină autentificarea pe {{server}} în fereastra care s-a deschis.",
       "unsent": {
@@ -2011,7 +1995,15 @@
           "always": "Șterge și din Overleaf",
           "never": "Păstrează în Overleaf"
         }
-      }
+      },
+      "sameAccount": "Ești deja autentificat ca {{account}}. Autentifică-te cu alt cont ca să îl adaugi.",
+      "windowTitle": "Autentifică-te pe {{server}}",
+      "addAccountKept": "Contul tău actual rămâne autentificat.",
+      "noBrowser": "Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi alege-l aici.",
+      "tileHere": "În această aplicație",
+      "tileWindow": "Fereastră nouă",
+      "tileWaiting": "Te așteaptă",
+      "signInNote": "Folosește un browser ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces. Dacă cheia de acces nu funcționează în Oleafly, folosește acolo parola sau o confirmare pe telefon. Fereastra se închide singură după ce te-ai conectat."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2143,6 +2135,20 @@
           "confirm": "Comanda descarcă programul de instalare Cua de pe cua.ai și îl rulează în terminalul tău. Continui?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gestionează autentificările",
+      "description": "Conturile cu care Oleafly este autentificat pe acest computer. Dacă elimini unul aici, rămâi autentificat în browser.",
+      "loading": "Se încarcă autentificările tale…",
+      "empty": "Nu ești autentificat cu niciun cont.",
+      "inUse": "În uz",
+      "switch": "Comută",
+      "switchTo": "Comută la {{account}}",
+      "removeAccount": "Elimină {{account}}",
+      "removeAll": "Elimină tot",
+      "importMore": "Importă mai multe",
+      "loadFailed": "Oleafly nu a putut încărca autentificările tale.",
+      "changeFailed": "Oleafly nu a putut modifica această autentificare. Încearcă din nou."
     }
   },
   "language": {
@@ -2353,6 +2359,7 @@
       "confirm": "Șterge cuvintele",
       "descriptionFallback": "Aceasta elimină toți termenii din acest dicționar. Ei vor fi verificați din nou imediat.",
       "descriptionGlobal": "Aceasta elimină toți termenii din dicționarul global. Ei vor fi verificați din nou imediat.",
+      "descriptionOverleaf": "Sunt eliminați și din contul tău Overleaf.",
       "descriptionProject": "Aceasta elimină toți termenii din {{project}}. Ei vor fi verificați din nou imediat.",
       "descriptionSuppressed": "Aceasta elimină toți termenii din rezultatele ignorate în {{project}}. Ei vor fi verificați din nou imediat.",
       "suppressedConfirm": "Arată-le din nou",
@@ -2371,6 +2378,7 @@
     },
     "global": {
       "emptyDescription": "Cuvintele pe care le adaugi aici sunt sărite de corector în toate proiectele.",
+      "overleafSynced": "Sincronizat cu cuvintele învățate din contul tău Overleaf cât timp un proiect este live în Overleaf.",
       "scope": "Se aplică fiecărui proiect"
     },
     "intro": "Adaugă cuvinte în dicționarul tău personal de verificare ortografică. Aceste cuvinte se păstrează în setările locale și sunt ignorate în toate proiectele. Potrivirea se face normalizat Unicode și fără să țină cont de majuscule.",

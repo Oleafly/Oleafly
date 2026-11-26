@@ -63,6 +63,25 @@ describe("comment Markdown subset", () => {
     ]);
   });
 
+  it("keeps text between two list lines where it was written", () => {
+    expect(commentPlainText("- a\ntext\n- b")).toBe("- a\ntext\n- b");
+    expect(commentPlainText("1. a\ntext\n2. b")).toBe("1. a\ntext\n2. b");
+    expect(commentPlainText("- a\n1. b\n- c")).toBe("- a\n1. b\n- c");
+  });
+
+  it.each(["- a\n\n- b\n- c", "- a\n\n\n- b\n- c", "- a\n  \n- b\n\n- c", "\n\n- a\n- b\n- c\n\n\n"])(
+    "lets blank lines join a list: %j",
+    (body) => {
+      expect(parseComment(body)).toEqual([
+        { kind: "bullet", items: ["a", "b", "c"].map((text) => [{ kind: "text", text }]) },
+      ]);
+    },
+  );
+
+  it("numbers a list on over blank lines", () => {
+    expect(commentPlainText("1. a\n\n\n1. b")).toBe("1. a\n2. b");
+  });
+
   it("turns a body into plain text for previews", () => {
     expect(commentPlainText("Use **median** not `mean`\n- _both_")).toBe("Use median not mean\n- both");
   });
@@ -84,5 +103,90 @@ describe("format buttons", () => {
   it("inserts a mention marker with a space before it when needed", () => {
     expect(insertAtCaret("Ask", 3, 3, "@")).toEqual({ text: "Ask @", start: 5, end: 5 });
     expect(insertAtCaret("", 0, 0, "@")).toEqual({ text: "@", start: 1, end: 1 });
+  });
+});
+
+describe("messages read without Markdown", () => {
+  it("keeps marks, code and list lines as written and still reads links and math", () => {
+    const plain = { markdown: false, math: true } as const;
+    expect(parseInline("**bold** _it_ `code` ~~gone~~ see https://x.org/p. and $x_1$", plain)).toEqual([
+      { kind: "text", text: "**bold** _it_ `code` ~~gone~~ see " },
+      { kind: "link", href: "https://x.org/p", text: "https://x.org/p" },
+      { kind: "text", text: ". and " },
+      { kind: "math", source: "$x_1$", body: "x_1", display: false },
+    ]);
+    expect(parseComment("Plan:\n- one\n2. two", plain)).toEqual([
+      { kind: "paragraph", children: [{ kind: "text", text: "Plan:\n- one\n2. two" }] },
+    ]);
+    expect(parseComment("- one", { markdown: false })).toEqual([
+      { kind: "paragraph", children: [{ kind: "text", text: "- one" }] },
+    ]);
+  });
+});
+
+describe("math in messages", () => {
+  const math = (source: string, body: string, display = false) => ({ kind: "math", source, body, display });
+  const text = (value: string) => ({ kind: "text", text: value });
+
+  it("reads all four delimiters only when math is on", () => {
+    const written = String.raw`$x^2$, \(y\), $$\sum_i a_i$$ and \[z\]`;
+    expect(parseInline(written, { math: true })).toEqual([
+      math("$x^2$", "x^2"),
+      text(", "),
+      math(String.raw`\(y\)`, "y"),
+      text(", "),
+      math(String.raw`$$\sum_i a_i$$`, String.raw`\sum_i a_i`, true),
+      text(" and "),
+      math(String.raw`\[z\]`, "z", true),
+    ]);
+    expect(parseInline(written).some((node) => node.kind === "math")).toBe(false);
+  });
+
+  it("keeps underscores and stars inside math out of italic and bold", () => {
+    expect(parseInline("$a_1$ to $b_2$ and $c*d*e$", { math: true })).toEqual([
+      math("$a_1$", "a_1"),
+      text(" to "),
+      math("$b_2$", "b_2"),
+      text(" and "),
+      math("$c*d*e$", "c*d*e"),
+    ]);
+    expect(parseInline("**sum $x_i$**", { math: true })).toEqual([
+      { kind: "bold", children: [text("sum "), math("$x_i$", "x_i")] },
+    ]);
+  });
+
+  it("leaves prices, escaped dollars, code, links and unclosed math as text", () => {
+    expect(parseInline(String.raw`It costs $5 and $6, \$7 off, \\ stays`, { math: true })).toEqual([
+      text(String.raw`It costs $5 and $6, $7 off, \\ stays`),
+    ]);
+    expect(parseInline("`$x$` and https://x.org/$y$ and $open", { math: true })).toEqual([
+      { kind: "code", text: "$x$" },
+      text(" and "),
+      { kind: "link", href: "https://x.org/$y$", text: "https://x.org/$y$" },
+      text(" and $open"),
+    ]);
+    expect(parseInline("$ x$ and $$ $$", { math: true })).toEqual([text("$ x$ and $$ $$")]);
+  });
+
+  it("reads display math environments as written, and leaves other environments and escaped ones as text", () => {
+    const equation = String.raw`\begin{equation}a = $b$\end{equation}`;
+    expect(parseInline(`See ${equation} and $c$`, { math: true })).toEqual([
+      text("See "),
+      math(equation, equation, true),
+      text(" and "),
+      math("$c$", "c"),
+    ]);
+    expect(parseInline(String.raw`\begin{itemize}x\end{itemize} \begin{align*}open`, { math: true })).toEqual([
+      text(String.raw`\begin{itemize}x\end{itemize} \begin{align*}open`),
+    ]);
+    expect(parseInline(equation).some((node) => node.kind === "math")).toBe(false);
+  });
+
+  it("reads display math over several lines of a paragraph, and gives its source back as plain text", () => {
+    const body = "Here:\n$$\na + b\n$$\ndone";
+    expect(parseComment(body, { math: true })).toEqual([
+      { kind: "paragraph", children: [text("Here:\n"), math("$$\na + b\n$$", "\na + b\n", true), text("\ndone")] },
+    ]);
+    expect(commentPlainText("- $x$ item")).toBe("- $x$ item");
   });
 });

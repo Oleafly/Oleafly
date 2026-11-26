@@ -3,6 +3,8 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::tree::LinkedSource;
+
 const FORCE_DISCONNECT_DELAY: Duration = Duration::from_secs(10);
 pub(crate) const LONGEST_SERVER_WAIT: Duration = Duration::from_secs(300);
 const LONGEST_ID: usize = 128;
@@ -63,8 +65,113 @@ pub struct AppliedUpdate {
     pub source: Option<PublicId>,
     pub user_id: Option<String>,
     pub tc: Option<String>,
+    pub ts: Option<i64>,
     pub dup: bool,
     pub external: bool,
+}
+
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = year.div_euclid(400);
+    let year_of_era = year - era * 400;
+    let month_index = if month > 2 { month - 3 } else { month + 9 };
+    let day_of_year = (153 * month_index + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
+}
+
+fn digits(text: &str, range: std::ops::Range<usize>) -> Option<i64> {
+    let part = text.get(range)?;
+    part.bytes()
+        .all(|byte| byte.is_ascii_digit())
+        .then(|| part.parse().ok())
+        .flatten()
+}
+
+pub fn iso_ms(text: &str) -> Option<i64> {
+    let text = text.trim();
+    let bytes = text.as_bytes();
+    if bytes.len() < 20
+        || bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || !matches!(bytes[10], b'T' | b't' | b' ')
+        || bytes[13] != b':'
+        || bytes[16] != b':'
+        || !matches!(bytes.last(), Some(b'Z' | b'z'))
+    {
+        return None;
+    }
+    let (year, month, day) = (
+        digits(text, 0..4)?,
+        digits(text, 5..7)?,
+        digits(text, 8..10)?,
+    );
+    let (hour, minute, second) = (
+        digits(text, 11..13)?,
+        digits(text, 14..16)?,
+        digits(text, 17..19)?,
+    );
+    let fraction = &text[19..text.len() - 1];
+    let millis = match fraction.strip_prefix('.') {
+        None if fraction.is_empty() => 0,
+        Some(decimals) if !decimals.is_empty() && decimals.bytes().all(|b| b.is_ascii_digit()) => {
+            format!("{decimals:0<3}")[..3].parse::<i64>().ok()?
+        }
+        _ => return None,
+    };
+    if !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
+        || hour > 23
+        || minute > 59
+        || second > 60
+    {
+        return None;
+    }
+    let seconds = days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
+    seconds.checked_mul(1_000)?.checked_add(millis)
+}
+
+fn civil_from_days(days: i64) -> (i64, i64, i64) {
+    let shifted = days + 719_468;
+    let era = shifted.div_euclid(146_097);
+    let day_of_era = shifted.rem_euclid(146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_index = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+    let month = if month_index < 10 {
+        month_index + 3
+    } else {
+        month_index - 9
+    };
+    (year_of_era + era * 400 + i64::from(month <= 2), month, day)
+}
+
+pub fn iso_time(ms: i64) -> String {
+    let seconds = ms.div_euclid(1_000);
+    let (year, month, day) = civil_from_days(seconds.div_euclid(86_400));
+    let in_day = seconds.rem_euclid(86_400);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        in_day / 3_600,
+        in_day / 60 % 60,
+        in_day % 60,
+        ms.rem_euclid(1_000)
+    )
+}
+
+pub fn stamp_ms(value: &Value) -> Option<i64> {
+    match value {
+        Value::Number(number) => number.as_i64().or_else(|| {
+            number
+                .as_f64()
+                .filter(|ms| ms.is_finite())
+                .map(|ms| ms as i64)
+        }),
+        Value::String(text) => iso_ms(text),
+        _ => None,
+    }
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
@@ -98,6 +205,7 @@ impl AppliedUpdate {
             source: text(meta, "source").map(PublicId),
             user_id: text(meta, "user_id"),
             tc: text(meta, "tc"),
+            ts: meta.get("ts").and_then(stamp_ms),
             dup: update.get("dup").and_then(Value::as_bool).unwrap_or(false),
             external: meta.get("type").and_then(Value::as_str) == Some("external"),
         })
@@ -172,6 +280,7 @@ pub enum TreeEvent {
         name: String,
         hash: Option<String>,
         converted: bool,
+        linked: Option<Box<LinkedSource>>,
     },
     NewFolder {
         folder: EntityId,
@@ -188,12 +297,12 @@ pub enum TreeEvent {
     },
     Removed {
         id: EntityId,
-        converting: bool,
+        restoring: bool,
     },
 }
 
 const CONVERT_DOC_TO_FILE: &str = "convertDocToFile";
-const CONVERT_FILE_TO_DOC: &str = "convertFileToDoc";
+const RESTORE_KINDS: [&str; 2] = ["file-restore", "project-restore"];
 
 impl TreeEvent {
     fn from_wire(name: &str, args: &[Value]) -> Option<TreeEvent> {
@@ -212,6 +321,13 @@ impl TreeEvent {
                 name: named(1)?,
                 hash: text(arg(1), "hash"),
                 converted: arg(2).as_str() == Some(CONVERT_DOC_TO_FILE),
+                linked: LinkedSource::from_value(arg(3))
+                    .or_else(|| {
+                        arg(1)
+                            .get("linkedFileData")
+                            .and_then(LinkedSource::from_value)
+                    })
+                    .map(Box::new),
             },
             "reciveNewFolder" => TreeEvent::NewFolder {
                 folder: entity(0)?,
@@ -228,10 +344,10 @@ impl TreeEvent {
             },
             "removeEntity" => TreeEvent::Removed {
                 id: entity(0)?,
-                converting: matches!(
-                    arg(1).as_str(),
-                    Some(CONVERT_DOC_TO_FILE | CONVERT_FILE_TO_DOC)
-                ),
+                restoring: arg(1)
+                    .get("kind")
+                    .and_then(Value::as_str)
+                    .is_some_and(|kind| RESTORE_KINDS.contains(&kind)),
             },
             _ => return None,
         })
@@ -255,7 +371,11 @@ impl ProjectEvent {
         let doc = || first().and_then(plain).map(DocId);
         Some(match name {
             "rootDocUpdated" => ProjectEvent::RootDoc(doc()?),
-            "compilerUpdated" => ProjectEvent::Compiler(first()?),
+            "compilerUpdated" => ProjectEvent::Compiler(
+                first()
+                    .map(|compiler| compiler.trim().to_ascii_lowercase())
+                    .filter(|compiler| !compiler.is_empty())?,
+            ),
             "imageNameUpdated" => ProjectEvent::Image(first()?),
             "spellCheckLanguageUpdated" => ProjectEvent::SpellLanguage(first()?),
             "mainBibliographyDocUpdated" => ProjectEvent::MainBibliography(doc()?),
@@ -268,7 +388,7 @@ impl ProjectEvent {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AccessEvent {
-    MembersChanged,
+    MembersChanged { members: bool, invites: bool },
     AccessLevelChanged { user_id: Option<String> },
     PublicAccessChanged(Option<String>),
     Revoked,
@@ -280,7 +400,16 @@ impl AccessEvent {
     fn from_wire(name: &str, args: &[Value]) -> Option<AccessEvent> {
         let first = args.first().unwrap_or(&Value::Null);
         Some(match name {
-            "project:membership:changed" => AccessEvent::MembersChanged,
+            "project:membership:changed" => {
+                let flag = |key: &str| first.get(key).and_then(Value::as_bool) == Some(true);
+                let known = ["members", "invites", "accessRequests"]
+                    .iter()
+                    .any(|key| first.get(*key).is_some());
+                AccessEvent::MembersChanged {
+                    members: flag("members") || !known,
+                    invites: flag("invites"),
+                }
+            }
             "project:collaboratorAccessLevel:changed" => AccessEvent::AccessLevelChanged {
                 user_id: text(first, "userId"),
             },
@@ -292,6 +421,226 @@ impl AccessEvent {
                 AccessEvent::UserRemoved(first.as_str().map(str::to_string))
             }
             "toggle-track-changes" => AccessEvent::TrackChanges(first.clone()),
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReviewUser {
+    pub id: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: Option<String>,
+}
+
+impl ReviewUser {
+    pub fn from_value(value: &Value) -> Option<ReviewUser> {
+        let named = |key: &str| text(value, key).filter(|name| !name.trim().is_empty());
+        Some(ReviewUser {
+            id: id_text(value)?,
+            first_name: named("first_name"),
+            last_name: named("last_name"),
+            email: named("email"),
+        })
+    }
+
+    fn bare(id: String) -> ReviewUser {
+        ReviewUser {
+            id,
+            first_name: None,
+            last_name: None,
+            email: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ThreadMessage {
+    pub id: String,
+    pub user_id: Option<String>,
+    pub content: String,
+    pub timestamp: Option<i64>,
+    pub edited_at: Option<i64>,
+    pub user: Option<ReviewUser>,
+}
+
+impl ThreadMessage {
+    pub fn from_value(value: &Value) -> Option<ThreadMessage> {
+        let user = value.get("user").and_then(ReviewUser::from_value);
+        Some(ThreadMessage {
+            id: id_text(value)?,
+            user_id: match value.get("user_id") {
+                None | Some(Value::Null) => user.as_ref().map(|user| user.id.clone()),
+                Some(id) => Some(plain(id.as_str()?.to_string())?),
+            },
+            content: text(value, "content")?,
+            timestamp: value.get("timestamp").and_then(stamp_ms),
+            edited_at: value.get("edited_at").and_then(stamp_ms),
+            user,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Resolution {
+    pub by: Option<ReviewUser>,
+    pub at: Option<i64>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Thread {
+    pub id: String,
+    pub messages: Vec<ThreadMessage>,
+    pub resolved: Option<Resolution>,
+}
+
+impl Thread {
+    fn from_entry(id: &str, value: &Value) -> Option<Thread> {
+        let resolved = (value.get("resolved").and_then(Value::as_bool) == Some(true)).then(|| {
+            let by = value
+                .get("resolved_by_user")
+                .and_then(ReviewUser::from_value)
+                .or_else(|| {
+                    text(value, "resolved_by_user_id")
+                        .and_then(plain)
+                        .map(ReviewUser::bare)
+                });
+            Resolution {
+                by,
+                at: value.get("resolved_at").and_then(stamp_ms),
+            }
+        });
+        let mut messages: Vec<ThreadMessage> = value
+            .get("messages")?
+            .as_array()?
+            .iter()
+            .filter_map(ThreadMessage::from_value)
+            .collect();
+        messages.sort_by_key(|message| message.timestamp);
+        Some(Thread {
+            id: plain(id.to_string())?,
+            messages,
+            resolved,
+        })
+    }
+
+    pub fn list_from_value(value: &Value) -> Option<Vec<Thread>> {
+        Some(
+            value
+                .as_object()?
+                .iter()
+                .filter_map(|(id, entry)| Thread::from_entry(id, entry))
+                .collect(),
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReviewEvent {
+    NewComment {
+        thread: String,
+        message: Box<ThreadMessage>,
+    },
+    Threads(Vec<Thread>),
+    MessageEdited {
+        thread: String,
+        message: String,
+        content: String,
+    },
+    MessageDeleted {
+        thread: String,
+        message: String,
+    },
+    Resolved {
+        thread: String,
+        by: Option<Box<ReviewUser>>,
+    },
+    Reopened {
+        thread: String,
+    },
+    ThreadDeleted {
+        thread: String,
+    },
+    Accepted {
+        doc: DocId,
+        changes: Vec<String>,
+    },
+}
+
+impl ReviewEvent {
+    fn from_wire(name: &str, args: &[Value]) -> Option<ReviewEvent> {
+        let arg = |at: usize| args.get(at).unwrap_or(&Value::Null);
+        let id = |at: usize| arg(at).as_str().map(str::to_string).and_then(plain);
+        Some(match name {
+            "new-comment" => ReviewEvent::NewComment {
+                thread: id(0)?,
+                message: Box::new(ThreadMessage::from_value(arg(1))?),
+            },
+            "new-comment-threads" => ReviewEvent::Threads(Thread::list_from_value(arg(0))?),
+            "edit-message" => ReviewEvent::MessageEdited {
+                thread: id(0)?,
+                message: id(1)?,
+                content: arg(2).as_str()?.to_string(),
+            },
+            "delete-message" => ReviewEvent::MessageDeleted {
+                thread: id(0)?,
+                message: id(1)?,
+            },
+            "resolve-thread" => ReviewEvent::Resolved {
+                thread: id(0)?,
+                by: ReviewUser::from_value(arg(1)).map(Box::new),
+            },
+            "reopen-thread" => ReviewEvent::Reopened { thread: id(0)? },
+            "delete-thread" => ReviewEvent::ThreadDeleted { thread: id(0)? },
+            "accept-changes" => ReviewEvent::Accepted {
+                doc: DocId(id(0)?),
+                changes: arg(1)
+                    .as_array()?
+                    .iter()
+                    .map(|change| change.as_str().map(str::to_string).and_then(plain))
+                    .collect::<Option<Vec<String>>>()?,
+            },
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ChatEvent {
+    New {
+        message: Box<ThreadMessage>,
+        client_id: Option<String>,
+    },
+    Edited {
+        message: String,
+        user_id: Option<String>,
+        content: String,
+    },
+    Deleted {
+        message: String,
+        user_id: Option<String>,
+    },
+}
+
+impl ChatEvent {
+    fn from_wire(name: &str, args: &[Value]) -> Option<ChatEvent> {
+        let first = args.first().filter(|first| first.is_object())?;
+        let id = |key: &str| text(first, key).and_then(plain);
+        Some(match name {
+            "new-chat-message" => ChatEvent::New {
+                message: Box::new(ThreadMessage::from_value(first)?),
+                client_id: text(first, "clientId").filter(|id| !id.is_empty()),
+            },
+            "edit-global-message" => ChatEvent::Edited {
+                message: id("messageId")?,
+                user_id: id("userId"),
+                content: text(first, "content")?,
+            },
+            "delete-global-message" => ChatEvent::Deleted {
+                message: id("messageId")?,
+                user_id: id("userId"),
+            },
             _ => return None,
         })
     }
@@ -317,6 +666,8 @@ pub enum ServerEvent {
     Tree(TreeEvent),
     Project(ProjectEvent),
     Access(AccessEvent),
+    Review(ReviewEvent),
+    Chat(ChatEvent),
     ReconnectGracefully,
     ForceDisconnect { message: String, delay: Duration },
     Rejected(Rejection),
@@ -368,6 +719,8 @@ impl ServerEvent {
                 .map(ServerEvent::Tree)
                 .or_else(|| ProjectEvent::from_wire(name, args).map(ServerEvent::Project))
                 .or_else(|| AccessEvent::from_wire(name, args).map(ServerEvent::Access))
+                .or_else(|| ReviewEvent::from_wire(name, args).map(ServerEvent::Review))
+                .or_else(|| ChatEvent::from_wire(name, args).map(ServerEvent::Chat))
                 .unwrap_or_else(unknown),
         }
     }
@@ -396,6 +749,7 @@ mod tests {
                 source: Some(PublicId("P.1".into())),
                 user_id: Some("u".into()),
                 tc: Some("abc".into()),
+                ts: Some(1),
                 dup: false,
                 external: false,
             })
@@ -409,6 +763,7 @@ mod tests {
                 source: None,
                 user_id: None,
                 tc: None,
+                ts: None,
                 dup: false,
                 external: false,
             })
@@ -546,6 +901,27 @@ mod tests {
                 ("mainBibliographyDocUpdated", json!([hostile])),
                 ("otUpdateApplied", json!([{ "doc": hostile, "v": 1 }])),
                 ("otUpdateError", json!(["x", { "doc_id": hostile }])),
+                (
+                    "new-comment",
+                    json!([hostile, { "id": "m1", "content": "hi", "user_id": "u1" }]),
+                ),
+                (
+                    "new-comment",
+                    json!(["t1", { "id": hostile, "content": "hi", "user_id": "u1" }]),
+                ),
+                (
+                    "new-comment",
+                    json!(["t1", { "id": "m1", "content": "hi", "user_id": hostile }]),
+                ),
+                ("edit-message", json!([hostile, "m1", "new"])),
+                ("edit-message", json!(["t1", hostile, "new"])),
+                ("delete-message", json!([hostile, "m1"])),
+                ("delete-message", json!(["t1", hostile])),
+                ("resolve-thread", json!([hostile, { "id": "u1" }])),
+                ("reopen-thread", json!([hostile])),
+                ("delete-thread", json!([hostile])),
+                ("accept-changes", json!([hostile, ["c1"]])),
+                ("accept-changes", json!(["d1", ["c1", hostile]])),
             ] {
                 assert_eq!(event(name, args), unknown(name), "{name} {hostile}");
             }
@@ -557,9 +933,332 @@ mod tests {
                 matches!(&moved, ServerEvent::PeerMoved(peer) if peer.doc.is_none()),
                 "{moved:?}"
             );
+            let threads = event(
+                "new-comment-threads",
+                json!([{
+                    hostile: { "messages": [{ "id": "m1", "content": "a" }] },
+                    "t1": { "messages": [{ "id": hostile, "content": "b" }, { "id": "m2", "content": "c" }] },
+                }]),
+            );
+            let ServerEvent::Review(ReviewEvent::Threads(threads)) = threads else {
+                panic!("{threads:?}");
+            };
+            assert_eq!(threads.len(), 1, "{hostile}");
+            assert_eq!(threads[0].id, "t1");
+            let kept: Vec<&str> = threads[0].messages.iter().map(|m| m.id.as_str()).collect();
+            assert_eq!(kept, vec!["m2"]);
+            let resolved = event("resolve-thread", json!(["t1", { "id": hostile }]));
+            assert_eq!(
+                resolved,
+                ServerEvent::Review(ReviewEvent::Resolved {
+                    thread: "t1".into(),
+                    by: None
+                })
+            );
         }
         assert!(plain_id(&"a".repeat(128)));
         assert!(plain_id("6af9683d2fdfc01466e1ed43"));
+    }
+
+    #[test]
+    fn review_events_are_typed() {
+        let alice = ReviewUser {
+            id: "u1".into(),
+            first_name: Some("Alice".into()),
+            last_name: None,
+            email: Some("a@x".into()),
+        };
+        let message = ThreadMessage {
+            id: "m1".into(),
+            user_id: Some("u1".into()),
+            content: "Look @[u2]".into(),
+            timestamp: Some(1_763_200_000_123),
+            edited_at: None,
+            user: Some(alice.clone()),
+        };
+        let cases = [
+            (
+                event(
+                    "new-comment",
+                    json!(["t1", { "id": "m1", "content": "Look @[u2]", "timestamp": 1_763_200_000_123_i64, "user_id": "u1", "user": { "id": "u1", "first_name": "Alice", "last_name": "", "email": "a@x" } }]),
+                ),
+                ServerEvent::Review(ReviewEvent::NewComment {
+                    thread: "t1".into(),
+                    message: Box::new(message.clone()),
+                }),
+            ),
+            (
+                event(
+                    "new-comment-threads",
+                    json!([{
+                        "t1": {
+                            "messages": [
+                                { "id": "m2", "content": "later", "timestamp": 1_763_200_000_200_i64, "user_id": "u2", "edited_at": 1_763_200_000_300_i64 },
+                                { "id": "m1", "content": "Look @[u2]", "timestamp": "2025-11-15T09:46:40.123Z", "user_id": "u1", "user": { "_id": "u1", "first_name": "Alice", "email": "a@x" } },
+                            ],
+                            "resolved": true,
+                            "resolved_at": "2025-11-15T09:46:41.000Z",
+                            "resolved_by_user_id": "u2",
+                        },
+                        "t2": { "messages": [], "resolved": true, "resolved_by_user": { "id": "u1", "first_name": "Alice", "email": "a@x" } },
+                    }]),
+                ),
+                ServerEvent::Review(ReviewEvent::Threads(vec![
+                    Thread {
+                        id: "t1".into(),
+                        messages: vec![
+                            message.clone(),
+                            ThreadMessage {
+                                id: "m2".into(),
+                                user_id: Some("u2".into()),
+                                content: "later".into(),
+                                timestamp: Some(1_763_200_000_200),
+                                edited_at: Some(1_763_200_000_300),
+                                user: None,
+                            },
+                        ],
+                        resolved: Some(Resolution {
+                            by: Some(ReviewUser::bare("u2".into())),
+                            at: Some(1_763_200_001_000),
+                        }),
+                    },
+                    Thread {
+                        id: "t2".into(),
+                        messages: Vec::new(),
+                        resolved: Some(Resolution {
+                            by: Some(alice.clone()),
+                            at: None,
+                        }),
+                    },
+                ])),
+            ),
+            (
+                event("edit-message", json!(["t1", "m1", "Edited"])),
+                ServerEvent::Review(ReviewEvent::MessageEdited {
+                    thread: "t1".into(),
+                    message: "m1".into(),
+                    content: "Edited".into(),
+                }),
+            ),
+            (
+                event("delete-message", json!(["t1", "m1"])),
+                ServerEvent::Review(ReviewEvent::MessageDeleted {
+                    thread: "t1".into(),
+                    message: "m1".into(),
+                }),
+            ),
+            (
+                event(
+                    "resolve-thread",
+                    json!(["t1", { "id": "u1", "first_name": "Alice", "email": "a@x" }]),
+                ),
+                ServerEvent::Review(ReviewEvent::Resolved {
+                    thread: "t1".into(),
+                    by: Some(Box::new(alice)),
+                }),
+            ),
+            (
+                event("reopen-thread", json!(["t1"])),
+                ServerEvent::Review(ReviewEvent::Reopened {
+                    thread: "t1".into(),
+                }),
+            ),
+            (
+                event("delete-thread", json!(["t1"])),
+                ServerEvent::Review(ReviewEvent::ThreadDeleted {
+                    thread: "t1".into(),
+                }),
+            ),
+            (
+                event("accept-changes", json!(["d1", ["c1", "c2"]])),
+                ServerEvent::Review(ReviewEvent::Accepted {
+                    doc: DocId("d1".into()),
+                    changes: vec!["c1".into(), "c2".into()],
+                }),
+            ),
+        ];
+        for (got, want) in cases {
+            assert_eq!(got, want);
+        }
+        for (name, args) in [
+            ("new-comment", json!(["t1"])),
+            ("new-comment", json!(["t1", { "id": "m1" }])),
+            ("new-comment-threads", json!([[]])),
+            ("edit-message", json!(["t1", "m1"])),
+            ("accept-changes", json!(["d1", "c1"])),
+            ("reject-changes", json!(["d1", ["c1"]])),
+        ] {
+            assert_eq!(
+                event(name, args),
+                ServerEvent::Unknown { name: name.into() },
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn chat_events_are_typed_from_their_one_object_argument() {
+        let posted = json!([{
+            "id": "6b04fdd5296ea5fec7324e27",
+            "content": "Hello $x^2$",
+            "timestamp": 1_795_489_237_807_i64,
+            "user_id": "6afab5bb1222cc50aa4c16ec",
+            "room_id": "6afab5be1222cc50aa4c170b",
+            "user": { "id": "6afab5bb1222cc50aa4c16ec", "first_name": "Alice", "last_name": "Owner", "email": "alice@example.test" },
+            "clientId": "3f1c6f0e-1d8e-4d2a-9b71-0f1b7f0c2a11",
+        }]);
+        let ServerEvent::Chat(ChatEvent::New { message, client_id }) =
+            event("new-chat-message", posted)
+        else {
+            panic!("a chat message");
+        };
+        assert_eq!(message.id, "6b04fdd5296ea5fec7324e27");
+        assert_eq!(message.content, "Hello $x^2$");
+        assert_eq!(message.timestamp, Some(1_795_489_237_807));
+        assert_eq!(
+            message.user.and_then(|user| user.first_name).as_deref(),
+            Some("Alice")
+        );
+        assert_eq!(
+            client_id.as_deref(),
+            Some("3f1c6f0e-1d8e-4d2a-9b71-0f1b7f0c2a11")
+        );
+        assert_eq!(
+            event(
+                "new-chat-message",
+                json!([{ "id": "m1", "content": "no client", "timestamp": 1, "user_id": "u1", "clientId": "" }])
+            ),
+            ServerEvent::Chat(ChatEvent::New {
+                message: Box::new(ThreadMessage {
+                    id: "m1".into(),
+                    user_id: Some("u1".into()),
+                    content: "no client".into(),
+                    timestamp: Some(1),
+                    edited_at: None,
+                    user: None,
+                }),
+                client_id: None,
+            })
+        );
+        assert_eq!(
+            event(
+                "edit-global-message",
+                json!([{ "messageId": "m1", "userId": "u1", "content": "Edited" }])
+            ),
+            ServerEvent::Chat(ChatEvent::Edited {
+                message: "m1".into(),
+                user_id: Some("u1".into()),
+                content: "Edited".into(),
+            })
+        );
+        assert_eq!(
+            event(
+                "delete-global-message",
+                json!([{ "messageId": "m1", "userId": "u1" }])
+            ),
+            ServerEvent::Chat(ChatEvent::Deleted {
+                message: "m1".into(),
+                user_id: Some("u1".into()),
+            })
+        );
+        for (name, args) in [
+            ("edit-global-message", json!(["m1", "Edited"])),
+            ("delete-global-message", json!(["m1"])),
+            ("delete-global-message", json!([{ "messageId": "../m1" }])),
+            ("edit-global-message", json!([{ "messageId": "m1" }])),
+            ("new-chat-message", json!([{ "id": "m1", "user_id": "u1" }])),
+        ] {
+            assert_eq!(
+                event(name, args),
+                ServerEvent::Unknown { name: name.into() },
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn stamps_read_milliseconds_and_iso_times() {
+        for (value, expected) in [
+            (json!(1_763_200_000_123_i64), Some(1_763_200_000_123)),
+            (json!(1.5e12), Some(1_500_000_000_000)),
+            (json!("1970-01-01T00:00:00.000Z"), Some(0)),
+            (json!("2000-02-29T00:00:00Z"), Some(951_782_400_000)),
+            (json!("2025-11-15T09:46:40.1234Z"), Some(1_763_200_000_123)),
+            (json!("2099-12-31T23:59:59.999Z"), Some(4_102_444_799_999)),
+            (json!("2025-11-15T09:46:40.123+01:00"), None),
+            (json!("2025-13-15T09:46:40.123Z"), None),
+            (json!("2025-11-15T09:46:40.Z"), None),
+            (json!("yesterday"), None),
+            (json!(true), None),
+        ] {
+            assert_eq!(stamp_ms(&value), expected, "{value}");
+        }
+        for ms in [0, 951_782_400_000, 1_763_200_000_123, 4_102_444_799_999] {
+            assert_eq!(iso_ms(&iso_time(ms)), Some(ms), "{ms}");
+        }
+        assert_eq!(iso_time(1_763_200_000_123), "2025-11-15T09:46:40.123Z");
+    }
+
+    #[test]
+    fn a_new_file_keeps_its_link_only_from_an_object_with_a_plain_provider() {
+        let linked = |args: Value| match event("reciveNewFile", args) {
+            ServerEvent::Tree(TreeEvent::NewFile { linked, .. }) => linked.map(|link| *link),
+            other => panic!("{other:?}"),
+        };
+        let file = json!({ "_id": "x", "name": "refs.bib", "hash": "h" });
+        let data = json!({
+            "provider": "project_file",
+            "source_project_id": "64b7f0c2a1e3d4b5c6a7e8f9",
+            "source_entity_path": "/sample.bib",
+            "importedAt": "2026-11-23T00:00:00.000Z",
+        });
+        let expected = Some(LinkedSource {
+            provider: "project_file".into(),
+            url: None,
+            source_project: Some("64b7f0c2a1e3d4b5c6a7e8f9".into()),
+            source_path: Some("/sample.bib".into()),
+        });
+        assert_eq!(linked(json!(["f", file, "upload", data, "u"])), expected);
+        let mut carried = file.clone();
+        carried["linkedFileData"] = data.clone();
+        assert_eq!(linked(json!(["f", carried, "upload", null, "u"])), expected);
+        let output = json!({ "provider": "project_output_file", "source_project_id": "p", "source_output_file_path": "output.pdf", "build_id": "b" });
+        assert_eq!(
+            linked(json!(["f", file, "upload", output, "u"])).and_then(|link| link.source_path),
+            Some("output.pdf".into())
+        );
+        let url = json!({ "provider": "url", "url": "https://example.test/data.csv" });
+        assert_eq!(
+            linked(json!(["f", file, "upload", url, "u"])).and_then(|link| link.url),
+            Some("https://example.test/data.csv".into())
+        );
+        for hostile in [
+            Value::Null,
+            json!({}),
+            json!("project_file"),
+            json!(["project_file"]),
+            json!({ "provider": 7 }),
+            json!({ "provider": "" }),
+            json!({ "provider": "project file" }),
+            json!({ "provider": "x".repeat(65) }),
+            json!({ "provider": "proj\u{0}ect" }),
+        ] {
+            assert_eq!(
+                linked(json!(["f", file, "upload", hostile, "u"])),
+                None,
+                "{hostile}"
+            );
+        }
+        let odd = json!({ "provider": "url", "url": "a\nb", "source_entity_path": "x".repeat(3000), "source_project_id": ["p"] });
+        assert_eq!(
+            linked(json!(["f", file, "upload", odd, "u"])),
+            Some(LinkedSource {
+                provider: "url".into(),
+                url: None,
+                source_project: None,
+                source_path: None,
+            })
+        );
     }
 
     #[test]
@@ -588,6 +1287,7 @@ mod tests {
                     name: "a.png".into(),
                     hash: Some("h".into()),
                     converted: false,
+                    linked: None,
                 }),
             ),
             (
@@ -601,6 +1301,7 @@ mod tests {
                     name: "a.tex".into(),
                     hash: None,
                     converted: true,
+                    linked: None,
                 }),
             ),
             (
@@ -632,21 +1333,41 @@ mod tests {
                 event("removeEntity", json!(["d", "editor"])),
                 ServerEvent::Tree(TreeEvent::Removed {
                     id: entity("d"),
-                    converting: false,
+                    restoring: false,
                 }),
             ),
             (
                 event("removeEntity", json!(["d", "convertDocToFile"])),
                 ServerEvent::Tree(TreeEvent::Removed {
                     id: entity("d"),
-                    converting: true,
+                    restoring: false,
                 }),
             ),
             (
-                event("removeEntity", json!(["x", "convertFileToDoc"])),
+                event(
+                    "removeEntity",
+                    json!(["x", { "kind": "file-restore", "path": "main.tex", "version": 4 }]),
+                ),
                 ServerEvent::Tree(TreeEvent::Removed {
                     id: entity("x"),
-                    converting: true,
+                    restoring: true,
+                }),
+            ),
+            (
+                event(
+                    "removeEntity",
+                    json!(["x", { "kind": "project-restore", "version": 4 }]),
+                ),
+                ServerEvent::Tree(TreeEvent::Removed {
+                    id: entity("x"),
+                    restoring: true,
+                }),
+            ),
+            (
+                event("removeEntity", json!(["x", { "kind": "upload" }])),
+                ServerEvent::Tree(TreeEvent::Removed {
+                    id: entity("x"),
+                    restoring: false,
                 }),
             ),
             (
@@ -679,7 +1400,34 @@ mod tests {
             ),
             (
                 event("project:membership:changed", json!([{ "members": true }])),
-                ServerEvent::Access(AccessEvent::MembersChanged),
+                ServerEvent::Access(AccessEvent::MembersChanged {
+                    members: true,
+                    invites: false,
+                }),
+            ),
+            (
+                event("project:membership:changed", json!([{ "invites": true }])),
+                ServerEvent::Access(AccessEvent::MembersChanged {
+                    members: false,
+                    invites: true,
+                }),
+            ),
+            (
+                event(
+                    "project:membership:changed",
+                    json!([{ "accessRequests": true }]),
+                ),
+                ServerEvent::Access(AccessEvent::MembersChanged {
+                    members: false,
+                    invites: false,
+                }),
+            ),
+            (
+                event("project:membership:changed", json!([])),
+                ServerEvent::Access(AccessEvent::MembersChanged {
+                    members: true,
+                    invites: false,
+                }),
             ),
             (
                 event(
@@ -715,6 +1463,8 @@ mod tests {
         }
         for name in [
             "new-chat-message",
+            "edit-global-message",
+            "delete-global-message",
             "referenceFormatUpdated",
             "broadcastDocMeta",
             "a-brand-new-event",

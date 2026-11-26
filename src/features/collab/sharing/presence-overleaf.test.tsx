@@ -9,7 +9,7 @@ vi.mock("../live/go-to-person", () => ({ goToPerson: vi.fn(async () => true) }))
 
 import type { CollabPerson, CollabProjectMember } from "@/lib/tauri";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
-import { fill } from "../tests/fixtures";
+import { fill, liveReset, overleafLive } from "../tests/fixtures";
 import { PresentAvatars } from "./PresentAvatars";
 import { peerMarks } from "./presence";
 
@@ -30,9 +30,7 @@ const MEMBERS: CollabProjectMember[] = [{ person: someone(BOB, "Bob Tester"), ro
 function overleaf(peers: LivePeer[], members: CollabProjectMember[] = MEMBERS) {
   useCollabLiveStore.setState({
     projectId: "paper",
-    backend: "overleaf",
-    share: null,
-    selfId: ME,
+    ...overleafLive({ selfId: ME }),
     members,
     peers: Object.fromEntries(peers.map((entry) => [entry.deviceId, entry])),
   });
@@ -52,15 +50,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  useCollabLiveStore.setState({
-    projectId: null,
-    backend: null,
-    selfId: null,
-    restricted: false,
-    share: null,
-    peers: {},
-    members: [],
-  });
+  useCollabLiveStore.setState({ ...liveReset(), peers: {} });
 });
 
 describe("presence on Overleaf", () => {

@@ -7,7 +7,7 @@ import {
   collabHandBack,
   collabProjectReadOnly,
   collabSettingsLocked,
-  collabVisualReadOnly,
+  collabRichTextLock,
   holdNoteLivePath,
 } from "@/lib/collab-live-bridge";
 
@@ -76,7 +76,8 @@ vi.mock("./remote-cursors", () => ({
   },
 }));
 
-vi.mock("@/components/editor/cm/collab-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setCollabEditorExtension: mocks.setCollabEditorExtension,
 }));
 
@@ -257,7 +258,7 @@ describe("live editing", () => {
     const session = collabDocumentSession("main.tex");
     await settle();
     session?.applyLocal([{ from: 6, to: 6, insert: "!" }], session.version());
-    expect(mocks.collabDocChange).toHaveBeenCalledWith(PROJECT, "id-main.tex", 4, [6, "!"]);
+    expect(mocks.collabDocChange).toHaveBeenCalledWith(PROJECT, "id-main.tex", 4, [6, "!"], undefined);
     expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "shared!", dirty: false });
     channels.get("id-main.tex")?.({ kind: "ack", rev: 5, length: 7 });
     channels.get("id-main.tex")?.({ kind: "remote", rev: 6, op: ["> ", 7], length: 9 });
@@ -295,10 +296,10 @@ describe("live editing", () => {
   it("makes viewers read-only and follows role changes", () => {
     start("viewer");
     expect(collabProjectReadOnly(PROJECT)).toBe(true);
-    expect(collabVisualReadOnly(PROJECT)).toBe(true);
+    expect(collabRichTextLock(PROJECT)).toBe("view");
     useCollabLiveStore.setState({ role: "editor" });
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
-    expect(collabVisualReadOnly(PROJECT)).toBe(true);
+    expect(collabRichTextLock(PROJECT)).toBeNull();
   });
 
   it("lets a reviewer type, since every edit becomes a suggestion, but locks files and settings", () => {
@@ -396,7 +397,7 @@ describe("live editing", () => {
     expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex", 1);
     expect(collabDocumentSession("main.tex")).toBeNull();
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
-    expect(collabVisualReadOnly(PROJECT)).toBe(false);
+    expect(collabRichTextLock(PROJECT)).toBeNull();
     expect(mocks.releaseExtension).toHaveBeenCalledOnce();
     expect(useFilesStore.getState().docVersion).toBe(version + 1);
   });

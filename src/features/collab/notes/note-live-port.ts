@@ -21,7 +21,7 @@ import { createPresencePublisher, inOrder, type PresencePublisher, peerCursors }
 import { RemoteDocumentSession, type RemoteSessionTransport } from "../live/remote-session";
 import { collabSessionTransport } from "../live/transport";
 import { canEditProjectRole } from "../roles";
-import { NoteLiveBinding, type NoteLiveClock } from "./note-live";
+import { NoteLiveBinding, type NoteLiveClock, type NoteLiveSession } from "./note-live";
 
 export interface NotePresenceSender {
   set(projectId: string, path: string, cursor: number, anchor: number): Promise<void>;
@@ -225,9 +225,30 @@ function boundElsewhere(entry: BoundNote): boolean {
   return [...bound].some((other) => other !== entry && other.noteId === entry.noteId);
 }
 
+function liveView(document: RemoteDocumentSession, writable: () => boolean): NoteLiveSession {
+  return {
+    get readOnly() {
+      return document.readOnly || !writable();
+    },
+    version: () => document.version(),
+    text: () => document.text(),
+    applyLocal: (edits, baseVersion) => document.applyLocal(edits, baseVersion),
+    subscribe: (listener) => document.subscribe(listener),
+    subscribeLocal: (listener) => document.subscribeLocal(listener),
+  };
+}
+
+function sharedDocument(request: NoteLiveBindRequest): RemoteDocumentSession | null {
+  if (request.document === undefined) return null;
+  if (request.document instanceof RemoteDocumentSession) return request.document;
+  throw new TypeError(`The live editor session for ${request.path} can't be shared.`);
+}
+
 export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = {}): NoteLiveHandle {
   const { noteId, path, editor } = request;
+  const shared = sharedDocument(request);
   const roles = roleTracker(noteId, request.session.role);
+  const writable = () => canEditProjectRole(roles.role());
   const releaseHold = holdNoteLivePath(request.session.projectId, path);
   let ended = false;
   const entry: BoundNote = { noteId, handle: null };
@@ -242,16 +263,12 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
       });
     },
   };
-  const end = (reason: NoteLiveEndReason = "released") => {
-    if (ended) return;
-    ended = true;
-    bound.delete(entry);
-    releaseHold();
-    refreshMarks = () => {};
-    releaseComments();
-    editor.setComments?.({ spans: [], selected: null, draft: null });
-    presence.dispose(!boundElsewhere(entry) && useCollabLiveNote.getState().session?.projectId === noteId);
-    const { unsent } = binding.detach();
+  const handBack = (reason: NoteLiveEndReason, unsent: boolean) => {
+    if (shared) {
+      const text = shared.text();
+      request.onEnd({ text, base: text, edited: unsent, reason });
+      return;
+    }
     let base: string;
     try {
       base = session.confirmed();
@@ -261,20 +278,36 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     const edited = unsent || session.unconfirmed;
     const text = session.text();
     session.close();
-    roles.stop();
     request.onEnd({ text, base, edited, reason });
   };
-  const session: RemoteDocumentSession = new RemoteDocumentSession(path, request.baseline.text, {
-    transport: (deps.transport ?? collabSessionTransport)(request.session.projectId),
-    readOnly: () => !canEditProjectRole(roles.role()),
-    onPhase: (phase) => {
-      if (phase === "detached") end("dropped");
-      else if (phase === "open") request.onOpen?.();
-    },
-    onDiscarded: (reason) => showNoteLiveNotice(request.noticeId ?? noteId, reason),
+  const end = (reason: NoteLiveEndReason = "released") => {
+    if (ended) return;
+    ended = true;
+    bound.delete(entry);
+    stopPhase();
+    releaseHold();
+    refreshMarks = () => {};
+    releaseComments();
+    editor.setComments?.({ spans: [], selected: null, draft: null });
+    presence.dispose(!boundElsewhere(entry) && useCollabLiveNote.getState().session?.projectId === noteId);
+    const { unsent } = binding.detach();
+    roles.stop();
+    handBack(reason, unsent);
+  };
+  const gone = () => shared !== null && (shared.phase === "detached" || shared.phase === "closed");
+  const session: RemoteDocumentSession =
+    shared ??
+    new RemoteDocumentSession(path, request.baseline.text, {
+      transport: (deps.transport ?? collabSessionTransport)(request.session.projectId),
+      readOnly: () => !writable(),
+      onDiscarded: (reason) => showNoteLiveNotice(request.noticeId ?? noteId, reason),
+    });
+  const stopPhase = session.subscribePhase((phase) => {
+    if (phase === "detached" || (shared && phase === "closed")) end("dropped");
+    else if (phase === "open") request.onOpen?.();
   });
   const binding = new NoteLiveBinding({
-    session,
+    session: shared ? liveView(shared, writable) : session,
     editor: surface,
     baseline: request.baseline.serialized,
     clock: deps.clock,
@@ -284,6 +317,7 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     },
   });
   binding.start();
+  if (shared && shared.text() !== request.baseline.text) binding.resync();
   const releaseComments = registerNoteCommentSurface({
     projectId: request.session.projectId,
     path,
@@ -300,12 +334,16 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
   });
   const presence = presenceFor(noteId, path, editor, deps.presence ?? tauriPresence);
   refreshMarks = presence.refresh;
-  void session.open();
+  if (shared) {
+    if (shared.phase === "open") request.onOpen?.();
+  } else {
+    void session.open();
+  }
   const flush = async (waitMs: number) => {
     if (ended) return;
     binding.flush();
     await settledWithin([session], waitMs);
-    if (session.unconfirmed) end("dropped");
+    if (!shared && session.unconfirmed) end("dropped");
   };
   const handle: NoteLiveHandle = {
     localChanged: () => binding.localChanged(),
@@ -316,6 +354,7 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
   };
   entry.handle = handle;
   bound.add(entry);
+  if (gone()) end("dropped");
   return handle;
 }
 

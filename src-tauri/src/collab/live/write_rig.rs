@@ -38,6 +38,8 @@ impl Drop for LiveNow {
 
 struct Quiet;
 
+impl oleafly_live::DiskHost for Quiet {}
+
 impl LiveHost for Quiet {}
 
 pub(crate) struct LiveRig {
@@ -105,11 +107,12 @@ impl LiveRig {
                 collab.join("materializer-index.json"),
                 disk,
                 bases,
-                host,
+                host.clone(),
                 writer,
             );
             let active = Arc::new(Active::assembled(
                 local,
+                host,
                 collab.join("document"),
                 shared,
                 handle,

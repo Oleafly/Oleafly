@@ -10,7 +10,7 @@ export interface OverleafSyncStatus {
   auto: boolean;
   lastSyncAt: number | null;
   tokenSaved: boolean;
-  importedFrom: { server: string; projectId: string } | null;
+  importedFrom: { server: string; projectId: string; userId?: string | null; email?: string | null } | null;
   backupsFolder?: string;
 }
 
@@ -65,16 +65,16 @@ export function overleafSyncSetAuto(projectId: string, auto: boolean): Promise<O
   return invoke<OverleafSyncStatus>("overleaf_sync_set_auto", { projectId, auto });
 }
 
-export function overleafGitTokenStatus(server: string | null): Promise<boolean> {
-  return invoke<boolean>("overleaf_git_token_status", { server: serverArg(server) });
+export function overleafGitTokenStatus(server: string | null, account: string | null = null): Promise<boolean> {
+  return invoke<boolean>("overleaf_git_token_status", { server: serverArg(server), account });
 }
 
-export function overleafGitTokenSet(server: string | null, token: string): Promise<void> {
-  return invoke<void>("overleaf_git_token_set", { server: serverArg(server), token });
+export function overleafGitTokenSet(server: string | null, token: string, account: string | null = null): Promise<void> {
+  return invoke<void>("overleaf_git_token_set", { server: serverArg(server), account, token });
 }
 
-export function overleafGitTokenClear(server: string | null): Promise<void> {
-  return invoke<void>("overleaf_git_token_clear", { server: serverArg(server) });
+export function overleafGitTokenClear(server: string | null, account: string | null = null): Promise<void> {
+  return invoke<void>("overleaf_git_token_clear", { server: serverArg(server), account });
 }
 
 export function overleafTokenPage(server: string): string {

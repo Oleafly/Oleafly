@@ -1,0 +1,70 @@
+{
+  "probe": "chat-rate-limit",
+  "description": "Alice sends chat messages to a throwaway project with nobody listening until the chat rate limit (100 per minute per user) answers 429. Run it last: Alice cannot chat anywhere for a minute afterwards.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "message 101 answered 429 \"Rate limit reached, please try again later\" headers {\"transfer-encoding\":\"chunked\"}"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "chat-rate-limit-20261124-025744",
+          "template": "none"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04fd28cb4fe3a455d4db29",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 427,
+      "answeredAt": 537
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fd28cb4fe3a455d4db29/messages",
+        "user": "alice",
+        "body": {
+          "content": "Burst 101"
+        }
+      },
+      "status": 429,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "Rate limit reached, please try again later",
+      "sentAt": 3035,
+      "answeredAt": 3048,
+      "attempt": 101
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04fd28cb4fe3a455d4db29"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 3048,
+      "answeredAt": 3176
+    }
+  ]
+}

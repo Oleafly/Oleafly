@@ -22,5 +22,12 @@ pub(crate) fn locked<T>(mutex: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
+pub(crate) fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
+
 #[cfg(test)]
 mod tests;

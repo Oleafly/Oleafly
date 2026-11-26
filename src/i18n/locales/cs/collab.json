@@ -232,8 +232,16 @@
     "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny.",
     "suggestion_changed": "Text kolem tohoto návrhu se změnil, proto jej musí přijmout nebo odmítnout vlastník či editor.",
     "suggestion_too_long": "Navržené smazání může mít nejvýše 20 000 znaků. Mažte po menších částech.",
+    "suggestion_gone": "Tato změna už neexistuje. Někdo ji možná přijal, odmítl nebo upravil.",
+    "review_off_server": "Tento server tohle se sledovanými změnami neumí.",
     "chat_role": "Vaše role v tomto projektu to v chatu nedovoluje.",
+    "chat_edit_off": "Tento server neumí upravovat zprávy v chatu.",
+    "chat_off_server": "Tento server Overleaf nemá chat.",
     "history_unavailable": "Historie tohoto projektu ještě není v tomto počítači. Zkuste to znovu, až se projekt synchronizuje.",
+    "history_plan_limit": "Tarif Overleaf tohoto projektu neuchovává starší verze.",
+    "restore_off_server": "Tento server Overleaf neumí obnovovat starší verze. Místo toho zkopírujte text z této verze.",
+    "linked_off_server": "Tento server Overleaf neaktualizuje propojené soubory.",
+    "linked_refresh_failed": "Overleaf nemohl tento soubor aktualizovat z jeho zdroje.",
     "account_storage_full": "Účet vlastníka projektu nemá na tomto serveru volné úložiště. Odeberte některé soubory, abyste uvolnili místo, nebo požádejte administrátora serveru o více místa.",
     "too_many_projects": "Už máte tolik sdílených projektů, kolik tento server dovoluje. Než začnete sdílet další, ukončete sdílení jednoho z nich.",
     "too_many_uploads": "Za poslední hodinu jste nahráli příliš mnoho souborů. Zkuste to později.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Máte tolik veřejných stránek, kolik tento server dovoluje. Zrušte publikování jedné z nich a zkuste to znovu.",
     "page_too_large": "Tato poznámka je na publikování příliš velká. Odeberte některé obrázky a zkuste to znovu.",
     "page_taken_down": "Administrátor tuto stránku zablokoval, takže poznámku nelze znovu publikovat, dokud ji neodblokuje."
+  },
+  "liveElsewhere": {
+    "cli": "Tento projekt je živě otevřený v příkazovém řádku v procesu {{pid}}. Zastavte tam živé úpravy a zkuste to znovu."
   },
   "roles": {
     "admin": "Administrátor",
@@ -1051,6 +1062,8 @@
     "add": "Přidat komentář",
     "allResolved": "Všechny komentáře jsou vyřešené.",
     "noResolved": "Žádné vyřešené komentáře",
+    "noChanges": "Žádné sledované změny",
+    "overleafOff": "Tento server Overleaf nemá komentáře, takže se tu zobrazují jen sledované změny.",
     "emptyTitle": "Zatím žádné komentáře",
     "emptyHint": "Vyberte text a zvolte Přidat komentář, nebo stiskněte {keys}",
     "readOnlyNote": "Komentáře v tomto projektu můžete číst. Pokud chcete odpovídat nebo reagovat, požádejte vlastníka o oprávnění komentovat.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Návrh od někoho, koho Oleafly nemohl ověřit",
     "added": "Přidáno",
     "deleted": "Smazáno",
+    "replaced": "Změněno",
+    "replacedWith": "na",
     "accept": "Přijmout",
     "reject": "Odmítnout",
     "withdraw": "Vzít zpět",
@@ -1157,6 +1172,7 @@
     "fileActions": "Návrhy v souboru {{file}}",
     "pendingCount": "Čekající návrhy: {{number}}",
     "loadFailed": "Návrhy k tomuto souboru se nepodařilo načíst.",
+    "acceptOffServer": "Tento server Overleaf neumí přijímat sledované změny v tomto souboru. Odmítnout je ale pořád můžete.",
     "rejectAllConfirm": {
       "title": "Odmítnout všechny návrhy v souboru {{file}}?",
       "description": "Do souboru se pro všechny v tomto projektu vrátí původní text. Čekající návrhy: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Navrhování",
       "editingHint": "Úpravy: vaše změny se v textu projeví hned",
       "suggestingHint": "Navrhování: z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor",
-      "reviewerHint": "Jste recenzent, takže z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor"
+      "reviewerHint": "Jste recenzent, takže z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor",
+      "locked": {
+        "everyone": "Sledování změn je v tomto projektu zapnuté pro všechny, takže se z vašich změn stanou návrhy",
+        "plan": "Tarif Overleaf tohoto projektu nezahrnuje sledování změn",
+        "server": "Tento server Overleaf neumí zapínat ani vypínat sledování změn"
+      },
+      "others": "Sledování změn pro ostatní",
+      "forEveryone": "Pro všechny",
+      "forGuests": "Pro ty, kdo se připojili přes odkaz"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Čtenáři mohou chat číst, ale nemohou do něj psát.",
     "offline": "Tento projekt teď není připojený, takže nemůžete psát.",
     "messageActions": "Další akce pro tuto zprávu",
+    "editLabel": "Upravit zprávu",
     "deleteConfirm": {
       "title": "Smazat tuto zprávu?",
       "description": "Smaže se pro všechny v tomto projektu."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly nemohl načíst chat.",
     "loadOlder": "Zobrazit starší zprávy"
+  },
+  "people": {
+    "invited": "Pozván",
+    "former": "(už není v projektu)"
   },
   "history": {
     "title": "Historie",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Text každého souboru se vrátí do stavu z {{time}} pro všechny v tomto projektu a smazané soubory se obnoví. Přejmenované soubory si ponechají nové názvy a obrázky i soubory přidané později zůstanou beze změny. Aktuální text zůstane v historii, takže se k němu můžete vrátit.",
       "confirm": "Obnovit projekt"
     },
+    "limited": "Starší změny vyžadují tarif Overleaf s úplnou historií.",
+    "unavailable": "Váš přístup k tomuto projektu nezahrnuje jeho historii.",
+    "download": "Stáhnout jako ZIP",
+    "downloading": "Stahuje se…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Každý soubor se pro všechny ve službě Overleaf vrátí do stavu z {{time}} a soubory přidané od té doby se smažou. Overleaf si aktuální verzi ponechá v historii, takže se k ní můžete vrátit.",
     "compareTitle": "Změny mezi dvěma verzemi",
     "compareDescription": "Od {{from}} do {{to}}",
     "changedFiles": "Změněné soubory: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Teď jste komentátor. Projekt můžete číst a komentovat, ale ne upravovat.",
     "reviewerBy": "Uživatel {{name}} vám nastavil roli recenzenta. Z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor.",
     "reviewer": "Teď jste recenzent. Z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor.",
-    "reviewing": "V tomto projektu jste recenzent, takže se vaše úpravy vkládají jako návrhy.",
-    "trackingChanges": "V tomto projektu je zapnuté sledování změn, takže se vaše úpravy vkládají jako návrhy.",
     "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
     "askOnOverleaf": "Požádat o přístup v Overleafu",
     "connecting": "Tento sdílený projekt se ještě připojuje, takže ho zatím nelze měnit. Zkuste to za chvíli znovu.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Jste odhlášeni ze serveru {{server}}, takže se tento projekt nesynchronizuje. Můžete dál psát. Změny zůstanou v tomto počítači a do Overleafu se odešlou, až se znovu přihlásíte.",
+    "signedOutAs": "Tento projekt patří účtu {{email}} na serveru {{server}}. K tomuto účtu nejste přihlášeni, takže se projekt nesynchronizuje. Můžete dál psát. Změny zůstanou v tomto počítači a do služby Overleaf se odešlou, až se přihlásíte jako {{email}}.",
+    "signInAs": "Přihlásit se jako {{email}}",
     "accountChangedOne": "Jste teď přihlášeni jiným účtem, takže se změny provedené jako {{email}} neodeslaly. Jsou uloženy jako {{copy}}.",
     "accountChangedMany": "Jste teď přihlášeni jiným účtem, takže se změny provedené jako {{email}} neodeslaly. Jsou uloženy jako kopie vedle svých souborů:",
     "keptAs": "Soubor {{file}} je uložen jako {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Některé znaky v souboru {{file}}, například emoji, byly nahrazeny, protože je Overleaf neumí uložit.",
     "tryLiveAgain": "Zkusit znovu živě",
     "keepMineAsCopy": "Ponechat mou jako kopii",
-    "stoppedActionFailed": "U souboru {{file}} se to nepovedlo. Chvíli počkejte a klikněte znovu."
+    "settingNotSent": {
+      "no_equivalent": "Ve službě Overleaf nic neodpovídá nastavení „{{setting}}“ tohoto projektu, takže nastavení „{{setting}}“ ve službě Overleaf zůstane beze změny.",
+      "refused": "Overleaf odmítl změnu nastavení „{{setting}}“.",
+      "failed": "Oleafly nemohl odeslat změnu nastavení „{{setting}}“ do služby Overleaf. Zkusí to znovu při další změně.",
+      "conflict": "Nastavení „{{setting}}“ se změnilo současně tady i ve službě Overleaf. Ponechává se volba ze služby Overleaf."
+    },
+    "settingNames": {
+      "main_doc": "hlavní dokument",
+      "compiler": "překladač",
+      "spelling": "jazyk kontroly pravopisu",
+      "image": "verze TeX Live",
+      "bibliography": "hlavní bibliografie"
+    },
+    "stoppedActionFailed": "U souboru {{file}} se to nepovedlo. Chvíli počkejte a klikněte znovu.",
+    "filling": "Otevírá se projekt ze služby Overleaf, soubory: {{done}} z {{total}}",
+    "fillingFiles": "Otevírá se projekt ze služby Overleaf: stahují se poslední soubory",
+    "emptyCopy": "Tento projekt už ve službě Overleaf není a žádný z jeho souborů se do tohoto počítače nedostal.",
+    "removeEmptyCopy": "Odebrat prázdnou kopii",
+    "removeFailed": "Oleafly nemohl odebrat prázdnou kopii."
   },
   "overleafTree": {
     "deleteTitle": "Smazat i v Overleafu?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Smazat i v Overleafu",
     "keep": "Ponechat v Overleafu",
     "notAllowed": "V Overleafu nemůžete v tomto projektu měnit soubory, takže vaše změny zůstanou v tomto počítači: {{files}}.",
-    "keptAway": "Smazáno tady, ale stále v Overleafu: {{files}}"
+    "keptAway": "Smazáno tady, ale stále v Overleafu: {{files}}",
+    "linkedKept": "Overleaf tyto soubory propojuje se zdrojem, takže vaše změny zůstanou v tomto počítači: {{files}}. Kopii ze služby Overleaf získáte zpět volbou Aktualizovat ze zdroje."
+  },
+  "overleafLinked": {
+    "banner": "Ve službě Overleaf je soubor {{file}} propojený se zdrojem {{source}}.",
+    "bannerNoSource": "Ve službě Overleaf je soubor {{file}} propojený se zdrojem.",
+    "readOnly": "Ve službě Overleaf je soubor {{file}} propojený se zdrojem. Pokud ho chcete aktualizovat, zvolte Aktualizovat ze zdroje.",
+    "treeHint": "Propojeno se zdrojem ve službě Overleaf",
+    "refresh": "Aktualizovat ze zdroje",
+    "refreshing": "Aktualizuje se",
+    "refusedWith": "Overleaf ho nemohl aktualizovat: {{message}}"
   }
 }

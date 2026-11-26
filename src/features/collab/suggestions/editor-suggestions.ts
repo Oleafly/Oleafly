@@ -2,6 +2,7 @@ import { type ChangeDesc, type EditorState, type Extension, type Range, StateEff
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, WidgetType } from "@codemirror/view";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
 import type { CollabSuggestionKind } from "@/lib/tauri";
+import { clampPosition, placedSpans, plainClick, pushSoon, type Reported, reportedOf } from "../comments/editor-comments";
 
 export interface SuggestionSpan {
   id: string;
@@ -57,11 +58,6 @@ export const SUGGESTION_STYLES = {
 const setSpans = StateEffect.define<readonly SuggestionSpan[]>();
 const setActive = StateEffect.define<string | null>();
 
-interface Reported {
-  from: number;
-  to: number;
-}
-
 interface SuggestionField {
   spans: readonly SuggestionSpan[];
   reported: ReadonlyMap<string, Reported>;
@@ -69,13 +65,9 @@ interface SuggestionField {
   decorations: DecorationSet;
 }
 
-function clamp(doc: Text, position: number): number {
-  return Math.max(0, Math.min(doc.length, Number.isFinite(position) ? Math.trunc(position) : 0));
-}
-
 function clampSpan(doc: Text, span: SuggestionSpan): SuggestionSpan {
-  const from = clamp(doc, span.from);
-  const to = span.kind === "delete" ? from : Math.max(from, clamp(doc, span.to));
+  const from = clampPosition(doc, span.from);
+  const to = span.kind === "delete" ? from : Math.max(from, clampPosition(doc, span.to));
   return { ...span, from, to };
 }
 
@@ -156,23 +148,6 @@ function decorationsOf(spans: readonly SuggestionSpan[], active: string | null):
   return Decoration.set(ranges, true);
 }
 
-function placed(
-  doc: Text,
-  incoming: readonly SuggestionSpan[],
-  current: readonly SuggestionSpan[],
-  reported: ReadonlyMap<string, Reported>,
-): readonly SuggestionSpan[] {
-  const kept = new Map(current.map((span) => [span.id, span]));
-  return incoming.map((span) => {
-    const before = reported.get(span.id);
-    const mine = kept.get(span.id);
-    if (mine?.kind === span.kind && before?.from === span.from && before.to === span.to) {
-      return { ...span, from: mine.from, to: mine.to };
-    }
-    return clampSpan(doc, span);
-  });
-}
-
 const suggestionField = StateField.define<SuggestionField>({
   create: () => ({ spans: NO_SPANS, reported: new Map(), active: null, decorations: Decoration.none }),
   update(value, transaction) {
@@ -182,8 +157,15 @@ const suggestionField = StateField.define<SuggestionField>({
     if (mapped) spans = spans.map((span) => mapSpan(span, transaction.changes));
     for (const effect of transaction.effects) {
       if (effect.is(setSpans)) {
-        spans = placed(transaction.state.doc, effect.value, spans, reported);
-        reported = new Map(effect.value.map((span) => [span.id, { from: span.from, to: span.to }]));
+        const doc = transaction.state.doc;
+        spans = placedSpans(
+          effect.value,
+          spans,
+          reported,
+          (span) => clampSpan(doc, span),
+          (mine, span) => mine.kind === span.kind,
+        );
+        reported = reportedOf(effect.value);
         changed = true;
       } else if (effect.is(setActive)) {
         active = effect.value;
@@ -211,8 +193,6 @@ function suggestionSync(source: EditorSuggestionsSource): Extension {
   return ViewPlugin.define(
     (view) => {
       let last: Pushed | null = null;
-      let scheduled = false;
-      let destroyed = false;
       const push = () => {
         const snapshot = source.snapshot();
         const own = snapshot.path !== null && snapshot.path === source.documentPath();
@@ -223,22 +203,9 @@ function suggestionSync(source: EditorSuggestionsSource): Extension {
         last = next;
         if (effects.length > 0) view.dispatch({ effects });
       };
-      const refresh = () => {
-        if (scheduled) return;
-        scheduled = true;
-        queueMicrotask(() => {
-          scheduled = false;
-          if (!destroyed) push();
-        });
-      };
-      const unsubscribe = source.subscribe(refresh);
-      refresh();
       return {
         hovered: null as string | null,
-        destroy: () => {
-          destroyed = true;
-          unsubscribe();
-        },
+        destroy: pushSoon((listener) => source.subscribe(listener), push),
       };
     },
     {
@@ -255,8 +222,7 @@ function suggestionSync(source: EditorSuggestionsSource): Extension {
           source.hover(null);
         },
         click(event, view) {
-          if (event.button !== 0 || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
-          if (!view.state.selection.main.empty) return;
+          if (!plainClick(event, view)) return;
           const id = idAt(event.target);
           if (id) source.open(id);
         },

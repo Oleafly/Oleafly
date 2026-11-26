@@ -1,6 +1,7 @@
 use super::*;
 use crate::test_support::overleaf_rt::{
-    probe, probe_event, probe_frames, probe_http, recordings, DocEvent,
+    probe, probe_event, probe_frames, probe_http, probe_requests, probe_socket, probe_step,
+    probe_steps, recordings, DocEvent,
 };
 use rand::{Rng, SeedableRng};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -1276,6 +1277,75 @@ async fn mock_peers_converge_on_concurrent_edits_in_both_formats() {
 }
 
 #[tokio::test]
+async fn mock_applies_a_held_update_after_its_sender_has_gone() {
+    for format in [DocFormat::ShareJs, DocFormat::HistoryOt] {
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let doc = mock.doc_id("main.tex");
+        let before = mock.doc_text(&doc);
+        let mut alice = mock.peer("alice");
+        let mut bob = mock.peer("bob");
+        alice.join(&doc);
+        bob.join(&doc);
+        mock.hold_updates();
+        alice.type_at(&doc, 0, "sent ");
+        alice.drop_connection();
+        mock.release_updates();
+        let after = format!("sent {before}");
+        assert_eq!(mock.doc_text(&doc), after, "{format:?}");
+        bob.release();
+        assert_eq!(bob.text(&doc), after, "{format:?}");
+    }
+}
+
+#[tokio::test]
+async fn a_mock_peer_keeps_typing_at_its_caret_while_others_edit_around_it() {
+    let before = "% ☕ before\n";
+    for format in [DocFormat::ShareJs, DocFormat::HistoryOt] {
+        let mock = MockOverleaf::start(project().format(format)).await;
+        let doc = mock.doc_id("main.tex");
+        let mut alice = mock.peer("alice");
+        let mut bob = mock.peer("bob");
+        alice.join(&doc);
+        bob.join(&doc);
+        assert!(bob.place_caret_after(&doc, "Hello"));
+        assert!(!bob.place_caret_after(&doc, "Goodbye"));
+        bob.type_at_caret(&doc, "B");
+        alice.type_at(&doc, 0, before);
+        bob.type_at_caret(&doc, "O");
+        let bobs_o = alice.text(&doc).encode_utf16().count() - 1;
+        alice.type_at(&doc, bobs_o, "O");
+        bob.type_at_caret(&doc, "B");
+
+        bob.hold();
+        bob.type_at_caret(&doc, "!");
+        alice.delete(&doc, 0, before.encode_utf16().count());
+        bob.type_at_caret(&doc, "?");
+        bob.release();
+
+        mock.hold_updates();
+        alice.type_at(&doc, 0, "%\n");
+        bob.type_at_caret(&doc, "#");
+        mock.release_updates();
+        bob.type_at_caret(&doc, "~");
+
+        let end = alice.text(&doc).encode_utf16().count();
+        alice.type_at(&doc, end, " after");
+        bob.type_at_caret(&doc, ".");
+        for _ in 0..2 {
+            alice.release();
+            bob.release();
+        }
+        let text = mock.doc_text(&doc);
+        assert_eq!(
+            text, "%\n\\documentclass{article}\nHelloBOOB!?#~. after",
+            "{format:?}"
+        );
+        assert_eq!(alice.text(&doc), text, "{format:?}");
+        assert_eq!(bob.text(&doc), text, "{format:?}");
+    }
+}
+
+#[tokio::test]
 async fn mock_counts_a_join_as_settled_once_the_users_list_went_out() {
     let mock = MockOverleaf::start(project()).await;
     let doc = mock.doc_id("main.tex");
@@ -1428,18 +1498,7 @@ async fn mock_project_page_carries_meta_tags_and_drops_ws_url_on_fallback() {
 }
 
 fn ce_reply(probe: &str, route: &str, index: usize) -> Value {
-    let wanted: Vec<Value> = crate::test_support::overleaf_rt::probe(probe)["steps"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|step| {
-            step.pointer("/request/route")
-                .and_then(Value::as_str)
-                .is_some_and(|found| found.contains(route))
-        })
-        .cloned()
-        .collect();
-    wanted[index].clone()
+    probe_requests(probe, |found| found.contains(route)).swap_remove(index)
 }
 
 #[tokio::test]
@@ -1949,10 +2008,22 @@ fn upload_body(name: &str, bytes: &[u8]) -> Vec<u8> {
 
 #[tokio::test]
 async fn mock_project_settings_announce_each_change_like_ce() {
-    let mock = MockOverleaf::start(project()).await;
+    let mock = MockOverleaf::start(project().doc("refs.bib", "@book{knuth,}\n")).await;
     let mut watcher = mock.peer("bob");
     let intro = mock.doc_id("sections/other.tex");
     let main = mock.doc_id("main.tex");
+    let refs = mock.doc_id("refs.bib");
+    let not_a_bibliography = http()
+        .post(url(&mock, "/settings"))
+        .header("Cookie", mock.user("alice").cookie())
+        .header("X-Csrf-Token", MOCK_CSRF)
+        .json(&json!({ "mainBibliographyDocId": main }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(not_a_bibliography.status(), 500);
+    watcher.sync();
+    assert!(watcher.events("mainBibliographyDocUpdated").is_empty());
     let changed = http()
         .post(url(&mock, "/settings"))
         .header("Cookie", mock.user("alice").cookie())
@@ -1962,7 +2033,7 @@ async fn mock_project_settings_announce_each_change_like_ce() {
             "name": "demo (settings probe)",
             "spellCheckLanguage": "de",
             "rootDocId": intro,
-            "mainBibliographyDocId": main,
+            "mainBibliographyDocId": refs,
         }))
         .send()
         .await
@@ -2141,6 +2212,28 @@ async fn mock_access_changes_announce_like_ce() {
 }
 
 #[tokio::test]
+async fn mock_invite_accepts_announce_once_like_ce() {
+    let mock =
+        MockOverleaf::start(project().invited("zed@example.test", Privilege::ReadOnly)).await;
+    let mut watcher = mock.peer("bob");
+    let accepted = (
+        "project:membership:changed".to_string(),
+        vec![json!({ "invites": true, "members": true })],
+    );
+    assert!(ce_room_events("people-invites").contains(&accepted));
+    mock.accept_invite("zed@example.test", "zed");
+    assert_eq!(
+        watcher.events("project:membership:changed"),
+        vec![accepted.1]
+    );
+    assert!(watcher
+        .events("project:collaboratorAccessLevel:changed")
+        .is_empty());
+    assert_eq!(mock.privilege_of("zed"), Some(Privilege::ReadOnly));
+    assert_eq!(mock.invite_token("zed@example.test"), None);
+}
+
+#[tokio::test]
 async fn mock_link_viewers_get_the_restricted_join_like_ce() {
     let mock = MockOverleaf::start(project().token_viewer(MockUser::named("tess"))).await;
     let mut tess = mock.peer("tess");
@@ -2244,4 +2337,757 @@ async fn a_configured_login_signs_in_lists_the_project_and_downloads_it() {
     let mut main = String::new();
     std::io::Read::read_to_string(&mut archive.by_name("main.tex").unwrap(), &mut main).unwrap();
     assert_eq!(main, "\\documentclass{article}\nHello");
+}
+
+type Heard = Vec<(String, Vec<Value>)>;
+
+fn heard(peer: &mut MockPeer) -> Heard {
+    peer.sync();
+    std::mem::take(&mut peer.events)
+        .into_iter()
+        .filter(|(name, _)| name != "serverPing" && !name.starts_with("clientTracking"))
+        .collect()
+}
+
+fn ce_heard(step: &Value, who: &str) -> Heard {
+    step["events"][who]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|event| {
+            (
+                event["name"].as_str().unwrap().to_string(),
+                event["args"].as_array().unwrap().clone(),
+            )
+        })
+        .collect()
+}
+
+fn names(events: &Heard) -> Vec<&str> {
+    events.iter().map(|(name, _)| name.as_str()).collect()
+}
+
+fn swapped(value: &Value, ids: &BTreeMap<String, String>) -> Value {
+    match value {
+        Value::String(text) => {
+            Value::String(ids.get(text).cloned().unwrap_or_else(|| text.clone()))
+        }
+        Value::Array(items) => Value::Array(items.iter().map(|item| swapped(item, ids)).collect()),
+        Value::Object(object) => Value::Object(
+            object
+                .iter()
+                .map(|(key, item)| (key.clone(), swapped(item, ids)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+fn ce_entity_paths(name: &str) -> BTreeMap<String, String> {
+    fn walk(folder: &Value, prefix: &str, paths: &mut BTreeMap<String, String>) {
+        for entry in ["docs", "fileRefs"]
+            .into_iter()
+            .flat_map(|kind| folder[kind].as_array().into_iter().flatten())
+        {
+            paths.insert(
+                entry["_id"].as_str().unwrap().to_string(),
+                format!("{prefix}{}", entry["name"].as_str().unwrap()),
+            );
+        }
+        for child in folder["folders"].as_array().into_iter().flatten() {
+            let inner = format!("{prefix}{}/", child["name"].as_str().unwrap());
+            walk(child, &inner, paths);
+        }
+    }
+    let join = probe_event(name, "websocket", "joinProjectResponse").unwrap();
+    let mut paths = BTreeMap::new();
+    walk(&join[0]["project"]["rootFolder"][0], "", &mut paths);
+    paths
+}
+
+async fn as_user(
+    mock: &MockOverleaf,
+    user: &str,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> (u64, Value) {
+    let mut request = http()
+        .request(method.parse().unwrap(), url(mock, path))
+        .header("Cookie", mock.user(user).cookie())
+        .header("X-Csrf-Token", MOCK_CSRF);
+    if let Some(body) = body {
+        request = request.json(body);
+    }
+    let reply = request.send().await.unwrap();
+    let status = u64::from(reply.status().as_u16());
+    let text = reply.text().await.unwrap();
+    (
+        status,
+        serde_json::from_str(&text).unwrap_or(Value::String(text)),
+    )
+}
+
+#[tokio::test]
+async fn mock_history_reads_labels_and_restores_answer_like_ce() {
+    const CE: &str = "history-routes";
+    let mock = MockOverleaf::start(project()).await;
+    let mut bob = mock.peer("bob");
+    let parent = json!({ "name": "extra.tex", "parent_folder_id": mock.root_folder_id() });
+    let (_, created) = as_user(&mock, "alice", "POST", "/doc", Some(&parent)).await;
+    let extra = created["_id"].as_str().unwrap().to_string();
+    mock.external_edit(&extra, 0, "Extra file text.\n");
+    mock.record_version("alice", "extra.tex");
+    as_user(&mock, "alice", "DELETE", &format!("/doc/{extra}"), None).await;
+    mock.record_version("alice", "extra.tex");
+    heard(&mut bob);
+
+    for (label, path) in [
+        (
+            "diff of extra.tex at the version where it existed",
+            "/diff?from=1&to=1&pathname=extra.tex",
+        ),
+        (
+            "diff of extra.tex after it was deleted",
+            "/diff?from=2&to=2&pathname=extra.tex",
+        ),
+        (
+            "diff with an unknown pathname",
+            "/diff?from=0&to=2&pathname=nope.tex",
+        ),
+        ("diff with no pathname", "/diff?from=0&to=2"),
+        (
+            "diff of a binary (frog.jpg)",
+            "/diff?from=2&to=2&pathname=figure.png",
+        ),
+    ] {
+        let ce = probe_step(CE, label);
+        let (status, body) = as_user(&mock, "alice", "GET", path, None).await;
+        assert_eq!(status, ce["status"], "{label}");
+        if status == 200 {
+            assert_eq!(body, ce["body"], "{label}");
+        }
+    }
+    let ce_tree = probe_step(CE, "filetree diff over the whole range")["body"]["diff"].clone();
+    let entry = |diff: &Value, operation: &str| {
+        diff.as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["operation"] == operation)
+            .cloned()
+            .unwrap_or_else(|| panic!("no {operation} entry in {diff}"))
+    };
+    let (_, added) = as_user(&mock, "alice", "GET", "/filetree/diff?from=0&to=1", None).await;
+    let (_, removed) = as_user(&mock, "alice", "GET", "/filetree/diff?from=1&to=2", None).await;
+    assert_eq!(
+        keys(&entry(&added["diff"], "added")),
+        keys(&entry(&ce_tree, "added"))
+    );
+    let gone = entry(&removed["diff"], "removed");
+    assert_eq!(keys(&gone), keys(&entry(&ce_tree, "removed")));
+    assert_eq!(gone["deletedAtV"], 1);
+
+    let mut labels = BTreeMap::new();
+    for user in ["alice", "bob", "carol", "dave"] {
+        let ce = probe_step(CE, &format!("{user} adds a label"));
+        let mut body = ce["request"]["body"].clone();
+        body["version"] = json!(2);
+        let (status, reply) = as_user(&mock, user, "POST", "/labels", Some(&body)).await;
+        assert_eq!(status, ce["status"], "{user}");
+        if status == 200 {
+            assert_eq!(keys(&reply), keys(&ce["body"]), "{user}");
+            labels.insert(user, reply["id"].as_str().unwrap().to_string());
+        } else {
+            assert_eq!(reply, ce["body"], "{user}");
+        }
+    }
+    for (label, user, owner) in [
+        ("bob deletes alice's label", "bob", "alice"),
+        ("carol deletes her own label", "carol", "carol"),
+        ("alice deletes bob's label", "alice", "bob"),
+    ] {
+        let route = format!("/labels/{}", labels[owner]);
+        let (status, _) = as_user(&mock, user, "DELETE", &route, None).await;
+        assert_eq!(status, probe_step(CE, label)["status"], "{label}");
+    }
+    let (status, _) = as_user(
+        &mock,
+        "alice",
+        "DELETE",
+        "/labels/6b04ffcbc0ffee0001000001",
+        None,
+    )
+    .await;
+    assert_eq!(
+        status,
+        probe_step(CE, "alice deletes an unknown label")["status"]
+    );
+    let comments = |listed: &Value| -> Vec<Value> {
+        listed
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|label| label["comment"].clone())
+            .collect()
+    };
+    let (_, left) = as_user(&mock, "alice", "GET", "/labels", None).await;
+    assert_eq!(
+        comments(&left),
+        comments(&probe_step(CE, "labels after deleting")["body"])
+    );
+    assert_eq!(
+        keys(&left[0]),
+        keys(&probe_step(CE, "labels after deleting")["body"][0])
+    );
+    let (_, updates) = as_user(&mock, "alice", "GET", "/updates?min_count=1", None).await;
+    let ce_updates = probe_step(CE, "updates carry labels")["body"].clone();
+    assert_eq!(
+        keys(&updates["updates"][0]["labels"][0]),
+        keys(&ce_updates["updates"][0]["labels"][0])
+    );
+
+    for (label, user, route, body) in [
+        (
+            "revert_file main.tex (stock CE project)",
+            "alice",
+            "/revert_file",
+            json!({ "version": 0, "pathname": "main.tex" }),
+        ),
+        (
+            "revert-project (stock CE project)",
+            "alice",
+            "/revert-project",
+            json!({ "version": 0 }),
+        ),
+        (
+            "carol (reviewer) revert_file",
+            "carol",
+            "/revert_file",
+            json!({ "version": 0, "pathname": "main.tex" }),
+        ),
+        (
+            "dave (viewer) restore_file",
+            "dave",
+            "/restore_file",
+            json!({ "version": 1, "pathname": "extra.tex" }),
+        ),
+        (
+            "restore_file of a path not in that version",
+            "alice",
+            "/restore_file",
+            json!({ "version": 1, "pathname": "nope.tex" }),
+        ),
+    ] {
+        let ce = probe_step(CE, label);
+        let (status, reply) = as_user(&mock, user, "POST", route, Some(&body)).await;
+        assert_eq!(status, ce["status"], "{label}");
+        if status == 403 {
+            assert_eq!(reply, ce["body"], "{label}");
+        }
+        assert_eq!(heard(&mut bob), ce_heard(&ce, "bob"), "{label}");
+    }
+
+    let ce = probe_step(CE, "restore_file of the deleted extra.tex");
+    let body = json!({ "version": 1, "pathname": "extra.tex" });
+    let (status, reply) = as_user(&mock, "alice", "POST", "/restore_file", Some(&body)).await;
+    assert_eq!(status, ce["status"]);
+    assert_eq!(keys(&reply), keys(&ce["body"]));
+    let (events, ce_events) = (heard(&mut bob), ce_heard(&ce, "bob"));
+    assert_eq!(names(&events), names(&ce_events));
+    assert_eq!(events[0].1.len(), ce_events[0].1.len());
+    assert_eq!(keys(&events[0].1[1]), keys(&ce_events[0].1[1]));
+    assert_eq!(events[0].1[2], ce_events[0].1[2]);
+
+    let ce = probe_step(CE, "restore_file of main.tex over the existing main.tex");
+    let body = json!({ "version": 0, "pathname": "main.tex" });
+    let (status, _) = as_user(&mock, "alice", "POST", "/restore_file", Some(&body)).await;
+    assert_eq!(status, ce["status"]);
+    let (events, ce_events) = (heard(&mut bob), ce_heard(&ce, "bob"));
+    assert_eq!(names(&events), names(&ce_events));
+    for (_, args) in [&events[0], &ce_events[0]] {
+        let name = args[1]["name"].as_str().unwrap();
+        assert!(
+            name.starts_with("main (Restored on ") && name.ends_with(").tex"),
+            "{name}"
+        );
+    }
+
+    mock.configure(|config| config.ranges_support = true);
+    let ce = probe_step(CE, "revert_file main.tex (ranges support on)");
+    let body = json!({ "version": 0, "pathname": "main.tex" });
+    let (status, reply) = as_user(&mock, "alice", "POST", "/revert_file", Some(&body)).await;
+    assert_eq!(status, ce["status"]);
+    assert_eq!(keys(&reply), keys(&ce["body"]));
+    let (events, ce_events) = (heard(&mut bob), ce_heard(&ce, "bob"));
+    assert_eq!(names(&events), names(&ce_events));
+    assert_eq!(keys(&events[0].1[1]), keys(&ce_events[0].1[1]));
+    assert_eq!(events[2].1.len(), ce_events[2].1.len());
+    let ce = probe_step(
+        CE,
+        "revert_file of a path not in that version (ranges support on)",
+    );
+    let body = json!({ "version": 0, "pathname": "nope.tex" });
+    let (status, _) = as_user(&mock, "alice", "POST", "/revert_file", Some(&body)).await;
+    assert_eq!(status, ce["status"]);
+    assert!(heard(&mut bob).is_empty());
+
+    let ce = probe_step(
+        CE,
+        "revert-project to the version where extra.tex existed (ranges support on)",
+    );
+    let (status, reply) = as_user(
+        &mock,
+        "alice",
+        "POST",
+        "/revert-project",
+        Some(&json!({ "version": 1 })),
+    )
+    .await;
+    assert_eq!(status, ce["status"]);
+    for item in reply.as_array().unwrap() {
+        assert_eq!(keys(item), keys(&ce["body"][0]));
+    }
+    let (events, ce_events) = (heard(&mut bob), ce_heard(&ce, "bob"));
+    let follows = |events: &Heard, name: &str| -> Vec<String> {
+        events
+            .windows(2)
+            .filter(|pair| pair[1].0 == name)
+            .map(|pair| pair[0].0.clone())
+            .collect()
+    };
+    for name in ["reciveNewDoc", "reciveNewFile", "new-comment-threads"] {
+        let ce_before: BTreeSet<String> = follows(&ce_events, name).into_iter().collect();
+        let before: BTreeSet<String> = follows(&events, name).into_iter().collect();
+        assert_eq!(before, ce_before, "{name}");
+    }
+    let file = |events: &Heard| {
+        events
+            .iter()
+            .find(|(name, _)| name == "reciveNewFile")
+            .map(|(_, args)| args.clone())
+            .unwrap()
+    };
+    let (file, ce_file) = (file(&events), file(&ce_events));
+    assert_eq!(file.len(), ce_file.len());
+    assert_eq!(keys(&file[1]), keys(&ce_file[1]));
+    assert_eq!(file[1]["linkedFileData"], ce_file[1]["linkedFileData"]);
+    assert_eq!(file[3], ce_file[3]);
+    assert_eq!(names(&events).last(), names(&ce_events).last());
+
+    let zip = |version: &str, user: &str| {
+        http()
+            .get(url(&mock, &format!("/version/{version}/zip")))
+            .header("Cookie", mock.user(user).cookie())
+            .send()
+    };
+    let ce_missing = ce_reply(CE, "/version/1023/zip", 0);
+    let missing = zip("1023", "alice").await.unwrap();
+    assert_eq!(missing.status().as_u16(), ce_missing["status"]);
+    let ce_viewer = ce_reply(CE, "/version/23/zip", 1);
+    assert_eq!(ce_viewer["request"]["user"], "dave");
+    let viewer = zip("2", "dave").await.unwrap();
+    assert_eq!(viewer.status().as_u16(), ce_viewer["status"]);
+    assert_eq!(
+        viewer.headers()["content-type"].to_str().unwrap(),
+        ce_viewer["headers"]["content-type"]
+    );
+}
+
+#[tokio::test]
+async fn mock_history_pages_follow_the_next_before_version_like_ce() {
+    const CE: &str = "history-paging";
+    let updates = |step: &str| probe_step(CE, step)["body"].clone();
+    let bounds = |page: &Value| -> Vec<(u64, u64)> {
+        page["updates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|update| {
+                (
+                    update["fromV"].as_u64().unwrap(),
+                    update["toV"].as_u64().unwrap(),
+                )
+            })
+            .collect()
+    };
+    let next = |page: &Value| page.get("nextBeforeTimestamp").and_then(Value::as_u64);
+    let check = |first: &Value, older: &Value, everything: &Value, latest: &Value| {
+        let next_before = next(first).expect("a first page that says where the next starts");
+        assert_eq!(bounds(first).len(), 1);
+        assert_eq!(bounds(first).last().unwrap().0, next_before);
+        assert_eq!(bounds(older)[0].1, next_before);
+        assert_eq!(next(everything), None);
+        assert_eq!(bounds(everything)[0].1, bounds(first)[0].1);
+        assert_eq!(bounds(latest), bounds(first));
+    };
+    check(
+        &updates("min_count=1"),
+        &updates("min_count=1, before=nextBeforeTimestamp"),
+        &updates("min_count=500"),
+        &updates("min_count=1, before=the latest version"),
+    );
+    assert_eq!(next(&updates("no min_count (25 by default)")), None);
+
+    let mock = MockOverleaf::start(project()).await;
+    for _ in 0..3 {
+        mock.external_edit(&mock.doc_id("main.tex"), 0, "x");
+        mock.record_version("alice", "main.tex");
+    }
+    let page = |query: String| {
+        let mock = &mock;
+        async move {
+            as_user(mock, "alice", "GET", &format!("/updates?{query}"), None)
+                .await
+                .1
+        }
+    };
+    let first = page("min_count=1".into()).await;
+    let older = page(format!("min_count=1&before={}", next(&first).unwrap())).await;
+    let everything = page("min_count=500".into()).await;
+    let latest = page("min_count=1&before=3".into()).await;
+    check(&first, &older, &everything, &latest);
+    assert_eq!(next(&page(String::new()).await), None);
+}
+
+#[tokio::test]
+async fn mock_project_settings_answer_each_key_like_ce() {
+    const CE: &str = "settings-each-key";
+    let mock = MockOverleaf::start(
+        MockProject::new("sharejs-project")
+            .member(MockUser::named("bob"), Privilege::ReadAndWrite)
+            .member(MockUser::named("carol"), Privilege::Review)
+            .member(MockUser::named("dave"), Privilege::ReadOnly)
+            .doc("main.tex", "\\documentclass{article}\nHello")
+            .doc("refs.bib", "@book{knuth,}\n")
+            .doc("sections/intro.tex", "Intro"),
+    )
+    .await;
+    let to_mock: BTreeMap<String, String> = ce_entity_paths(CE)
+        .into_iter()
+        .filter_map(|(id, path)| Some((id, mock.entity_id(&path)?)))
+        .collect();
+    assert_eq!(to_mock.len(), 3);
+    let to_ce: BTreeMap<String, String> = to_mock
+        .iter()
+        .map(|(ce, ours)| (ours.clone(), ce.clone()))
+        .collect();
+    let mut bob = mock.peer("bob");
+    heard(&mut bob);
+    let steps = probe_requests(CE, |route| route.ends_with("/settings"));
+    assert_eq!(steps.len(), 28);
+    for step in &steps {
+        let label = step["label"].as_str().unwrap();
+        let user = step["request"]["user"].as_str().unwrap();
+        let body = swapped(&step["request"]["body"], &to_mock);
+        let (status, _) = as_user(&mock, user, "POST", "/settings", Some(&body)).await;
+        assert_eq!(status, step["status"], "{label}");
+        let events: Heard = heard(&mut bob)
+            .into_iter()
+            .map(|(name, args)| (name, args.iter().map(|arg| swapped(arg, &to_ce)).collect()))
+            .collect();
+        assert_eq!(events, ce_heard(step, "bob"), "{label}");
+    }
+}
+
+#[tokio::test]
+async fn mock_linked_file_refreshes_answer_like_ce() {
+    const CE: &str = "linked-files";
+    let mock = MockOverleaf::start(project().file("linked.bib", b"@book{old,}")).await;
+    let source = json!({ "provider": "project_file", "source_project_id": "6b04ff2fcb4fe3a455d4ddca", "source_entity_path": "/sample.bib" });
+    mock.link_file("linked.bib", source, b"@book{new,}");
+    let mut bob = mock.peer("bob");
+    heard(&mut bob);
+    let refresh = |file: String, user: &'static str, body: Value| {
+        let mock = &mock;
+        async move {
+            as_user(
+                mock,
+                user,
+                "POST",
+                &format!("/linked_file/{file}/refresh"),
+                Some(&body),
+            )
+            .await
+        }
+    };
+    let linked = mock.entity_id("linked.bib").unwrap();
+    for label in [
+        "alice refreshes linked.bib after the source changed",
+        "alice refreshes it again with {shouldReindexReferences: true}",
+    ] {
+        let ce = probe_step(CE, label);
+        let current = mock.entity_id("linked.bib").unwrap();
+        let (status, reply) = refresh(current, "alice", ce["request"]["body"].clone()).await;
+        assert_eq!(status, ce["status"], "{label}");
+        assert_eq!(keys(&reply), keys(&ce["body"]), "{label}");
+        let (events, ce_events) = (heard(&mut bob), ce_heard(&ce, "bob"));
+        assert_eq!(names(&events), names(&ce_events), "{label}");
+        assert_eq!(events[0].1[1], ce_events[0].1[1], "{label}");
+        let (file, ce_file) = (&events[1].1, &ce_events[1].1);
+        assert_eq!(file.len(), ce_file.len(), "{label}");
+        assert_eq!(keys(&file[1]), keys(&ce_file[1]), "{label}");
+        assert_eq!(file[2], ce_file[2], "{label}");
+        assert_eq!(
+            keys(&file[1]["linkedFileData"]),
+            keys(&ce_file[1]["linkedFileData"])
+        );
+    }
+    for (label, file, user) in [
+        (
+            "alice refreshes the old (replaced) file id",
+            linked.clone(),
+            "alice",
+        ),
+        (
+            "alice refreshes an unknown id",
+            "6b04ff6ac0ffee0001000001".to_string(),
+            "alice",
+        ),
+        (
+            "alice refreshes an ordinary file (frog.jpg)",
+            mock.entity_id("figure.png").unwrap(),
+            "alice",
+        ),
+        (
+            "carol (reviewer) refreshes",
+            mock.entity_id("linked.bib").unwrap(),
+            "carol",
+        ),
+        (
+            "dave (viewer) refreshes",
+            mock.entity_id("linked.bib").unwrap(),
+            "dave",
+        ),
+        (
+            "alice refreshes with an unknown body key",
+            mock.entity_id("linked.bib").unwrap(),
+            "alice",
+        ),
+    ] {
+        let ce = probe_step(CE, label);
+        let (status, reply) = refresh(file, user, ce["request"]["body"].clone()).await;
+        assert_eq!(status, ce["status"], "{label}");
+        if ce["body"].is_object() && status == 403 {
+            assert_eq!(reply, ce["body"], "{label}");
+        }
+        assert!(heard(&mut bob).is_empty(), "{label}");
+    }
+}
+
+#[tokio::test]
+async fn mock_link_grants_answer_like_ce() {
+    const CE: &str = "link-sharing-grants";
+    let ce_name = probe_step(CE, "erin grants read-only with no confirmedByUser")["body"]
+        ["requireAccept"]["projectName"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let mock = MockOverleaf::start(
+        MockProject::new(&ce_name)
+            .outsider(MockUser::named("dave"))
+            .outsider(MockUser::named("erin"))
+            .doc("main.tex", "Hello"),
+    )
+    .await;
+    let ce_project = probe(CE)["steps"][0]["body"]["project_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let to_ce = BTreeMap::from([(
+        format!("/project/{}", mock.project_id()),
+        format!("/project/{ce_project}"),
+    )]);
+    let (read, edit) = mock.share_by_link();
+    let read_token = read.rsplit('/').next().unwrap().to_string();
+    let edit_token = edit
+        .rsplit('/')
+        .next()
+        .unwrap()
+        .split('#')
+        .next()
+        .unwrap()
+        .to_string();
+    let mut alice = mock.peer("alice");
+    heard(&mut alice);
+    let grant = |route: &str, user: &str, body: &Value| {
+        let path = route
+            .replace("/read/[redacted]/", &format!("/read/{read_token}/"))
+            .replace("/[redacted]/", &format!("/{edit_token}/"));
+        http()
+            .post(format!("{}{path}", mock.base))
+            .header("Cookie", mock.user(user).cookie())
+            .header("X-Csrf-Token", MOCK_CSRF)
+            .json(body)
+            .send()
+    };
+    let steps = probe_requests(CE, |route| route.ends_with("/grant"));
+    assert_eq!(steps.len(), 10);
+    for step in &steps {
+        let label = step["label"].as_str().unwrap_or("unknown token");
+        let user = step["request"]["user"].as_str().unwrap();
+        let route = step["request"]["route"].as_str().unwrap();
+        let reply = grant(route, user, &step["request"]["body"]).await.unwrap();
+        assert_eq!(reply.status().as_u16(), step["status"], "{label}");
+        if step["body"].is_object() {
+            let body: Value = reply.json().await.unwrap();
+            assert_eq!(swapped(&body, &to_ce), step["body"], "{label}");
+        }
+        let events = heard(&mut alice);
+        assert_eq!(names(&events), names(&ce_heard(step, "alice")), "{label}");
+        if step["label"] == "erin grants read-only confirmedByUser true" {
+            for read in [
+                "/updates?min_count=1",
+                "/labels",
+                "/version/1/zip",
+                "/messages",
+                "/members",
+                "/entities",
+            ] {
+                let ce = ce_reply(CE, read, 0);
+                assert_eq!(ce["request"]["user"], "erin (restricted)");
+                let (status, body) = as_user(&mock, "erin", "GET", read, None).await;
+                assert_eq!(status, ce["status"], "{read}");
+                if status == 403 {
+                    assert_eq!(body, ce["body"], "{read}");
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn mock_learned_words_answer_like_ce() {
+    const CE: &str = "spelling-learned-words";
+    let mock = MockOverleaf::start(project()).await;
+    let meta =
+        |label: &str| probe_step(CE, label)["page"]["meta"]["ol-learnedWords"]["value"].clone();
+    assert_eq!(
+        json!(mock.learned_words("bob")),
+        meta("the editor page before")
+    );
+    let steps = probe_steps(CE, |step| step.get("request").is_some());
+    for step in &steps {
+        let label = step["label"].as_str().unwrap();
+        let method: reqwest::Method = step["request"]["method"].as_str().unwrap().parse().unwrap();
+        let mut request = http().request(
+            method,
+            format!(
+                "{}{}",
+                mock.base,
+                step["request"]["route"].as_str().unwrap()
+            ),
+        );
+        if let Some(user) = step["request"]["user"].as_str() {
+            request = request.header("Cookie", mock.user(user).cookie());
+        }
+        if !label.contains("without the anti-forgery header") {
+            request = request.header("X-Csrf-Token", MOCK_CSRF);
+        }
+        if let Some(body) = step["request"].get("body") {
+            request = request.json(body);
+        }
+        let reply = request.send().await.unwrap();
+        assert_eq!(reply.status().as_u16(), step["status"], "{label}");
+        if step["body"].is_object() {
+            assert_eq!(
+                reply.json::<Value>().await.unwrap(),
+                step["body"],
+                "{label}"
+            );
+        }
+        let page_after = match label {
+            "learn two words with a space" => Some("the editor page after learning"),
+            "unlearn a word never learned" => Some("the editor page after unlearning one"),
+            "put back: unlearn two words" => Some("the editor page after putting back"),
+            _ => None,
+        };
+        if let Some(page) = page_after {
+            assert_eq!(json!(mock.learned_words("bob")), meta(page), "{page}");
+        }
+    }
+}
+
+fn ce_socket(name: &str, user: &str, format: &str) -> Heard {
+    probe_socket(name, |socket| {
+        socket["user"] == user && socket["format"] == format
+    })
+    .iter()
+    .filter(|frame| !frame.outgoing)
+    .filter_map(|frame| match codec::decode(&frame.raw).ok()? {
+        Frame::Ack { args, .. } => Some(("ack".to_string(), args)),
+        packet => packet.into_event(),
+    })
+    .collect()
+}
+
+#[tokio::test]
+async fn mock_restricted_joins_hide_comments_like_ce() {
+    const CE: &str = "restricted-join-comments";
+    for (format, wire) in [
+        (DocFormat::ShareJs, "sharejs-text-ot"),
+        (DocFormat::HistoryOt, "history-ot"),
+    ] {
+        let ce_join = ce_socket(CE, "erin", wire)
+            .into_iter()
+            .find(|(name, args)| name == "ack" && args.len() >= 5)
+            .unwrap()
+            .1;
+        let ce_kept = probe_steps(CE, |step| step["server"]["format"] == wire)[0]["server"]
+            ["ranges"]["comments"]
+            .as_array()
+            .map_or(0, Vec::len);
+        let comments = |reply: &[Value]| -> usize {
+            match format {
+                DocFormat::ShareJs => reply[4]["comments"].as_array().map_or(0, Vec::len),
+                DocFormat::HistoryOt => reply[1]["comments"].as_array().map_or(0, Vec::len),
+            }
+        };
+        let mock = MockOverleaf::start(
+            project()
+                .token_viewer(MockUser::named("tess"))
+                .format(format),
+        )
+        .await;
+        let doc = mock.doc_id("main.tex");
+        let mut alice = mock.peer("alice");
+        alice.join(&doc);
+        alice.comment(&doc, 0, 5, "6b04e0adc0ffee0001000001");
+        let mut tess = mock.peer("tess");
+        let options = json!({ "encodeRanges": true, "supportsHistoryOT": true });
+        let joined = tess
+            .emit("joinDoc", vec![json!(doc), options.clone()])
+            .unwrap();
+        let owner = mock
+            .peer("bob")
+            .emit("joinDoc", vec![json!(doc), options])
+            .unwrap();
+        assert_eq!(
+            comments(&joined).min(1),
+            comments(&ce_join).min(1),
+            "{wire}"
+        );
+        assert!(ce_kept > 0 && comments(&owner) > 0, "{wire}");
+        heard(&mut tess);
+        alice.comment(&doc, 6, 4, "6b04e0adc0ffee0002000001");
+        let applied: Vec<Value> = heard(&mut tess)
+            .into_iter()
+            .filter(|(name, _)| name == "otUpdateApplied")
+            .map(|(_, args)| args[0]["op"].clone())
+            .collect();
+        let ce_applied: Vec<Value> = ce_socket(CE, "erin", wire)
+            .into_iter()
+            .filter(|(name, args)| name == "otUpdateApplied" && args[0].get("op").is_some())
+            .map(|(_, args)| args[0]["op"].clone())
+            .collect();
+        assert_eq!(applied.len(), 1, "{wire}");
+        assert_eq!(keys(&applied[0][0]), keys(&ce_applied[0][0]), "{wire}");
+        let mut tess = mock.peer("tess");
+        tess.join(&doc);
+        tess.comment(&doc, 0, 3, "6b04e0b4c0ffee0006000001");
+        let kept = match format {
+            DocFormat::ShareJs => mock.ranges(&doc)["comments"].clone(),
+            DocFormat::HistoryOt => mock.raw_doc(&doc)["comments"].clone(),
+        };
+        assert_eq!(kept.as_array().unwrap().len(), 3, "{wire}");
+    }
 }

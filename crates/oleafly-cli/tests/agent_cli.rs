@@ -1,4 +1,7 @@
-mod support;
+#[path = "support/compiler.rs"]
+mod compiler;
+#[path = "support/rust_fixture.rs"]
+mod rust_fixture;
 
 #[path = "support/mock_provider.rs"]
 mod mock_provider;
@@ -571,7 +574,7 @@ fn a_saved_review_applies_and_a_conflict_exits_8() {
 fn compile_builds_the_staged_copy_and_leaves_the_project_alone() {
     let mock = MockProvider::script(vec![tool_call("compile", "{}"), text("Built")]);
     let fixture = Fixture::new(&mock);
-    let compiler = support::compiler_fixture(fixture.data.path(), false);
+    let compiler = compiler::compiler_fixture(fixture.data.path(), false);
     let output = fixture
         .command(&with_mock(&[
             "--json", "agent", "run", "build", "--allow", "write",
@@ -615,7 +618,7 @@ fn a_review_copy_of_a_linked_folder_builds_with_the_apps_settings() {
         r#"{"name":"Draft","main_doc":"notes/draft.tex","engine":"xetex"}"#,
     )
     .unwrap();
-    let compiler = support::compiler_fixture(fixture.data.path(), false);
+    let compiler = compiler::compiler_fixture(fixture.data.path(), false);
     let output = fixture
         .command(&with_mock(&[
             "--json", "agent", "run", "build", "--allow", "write",

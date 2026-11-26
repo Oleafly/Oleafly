@@ -516,7 +516,8 @@
       "open": "Følg den åbne fil",
       "main": "Altid hoveddokumentet",
       "change": "Skift hoveddokument…"
-    }
+    },
+    "filling": "Projektet bliver stadig downloadet fra Overleaf. Du kan kompilere, når alle filer er her."
   },
   "datePicker": {
     "placeholder": "Vælg en dato"
@@ -1702,8 +1703,9 @@
     "resume": "Genoptag live-redigering",
     "reconnectNow": "Opret forbindelse igen nu",
     "open": "Åbn i Overleaf",
-    "share": "Del på Overleaf…",
+    "share": "Del på Overleaf",
     "signIn": "Log ind…",
+    "signInAs": "Log ind som {{email}}",
     "reconnectingIn": "Prøver igen om {{seconds}} s.",
     "notConfirmed": "Ikke bekræftet af Overleaf endnu.",
     "copyDetails": "Kopiér forbindelsesoplysninger",

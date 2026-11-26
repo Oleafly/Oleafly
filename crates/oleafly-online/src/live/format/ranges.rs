@@ -1,18 +1,72 @@
-use serde_json::Value;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
-use super::{bounded, unpack, CodecError, Piece};
+use oleafly_ot::TextOperation;
+use serde_json::{json, Map, Value};
+
+use super::{bounded, pack, unpack, CodecError, Piece};
+use crate::realtime::events::{iso_time, plain, stamp_ms};
 
 pub const MAX_COMMENTS: usize = 500;
 pub const MAX_CHANGES: usize = 2_000;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RangeChange {
+    #[default]
+    Same,
+    Moved,
+    Reshaped,
+}
+
+impl RangeChange {
+    pub fn and(self, other: RangeChange) -> RangeChange {
+        self.max(other)
+    }
+
+    pub fn reshaped(self) -> bool {
+        self == RangeChange::Reshaped
+    }
+
+    pub(crate) fn between(before: (u64, u64), after: (u64, u64)) -> RangeChange {
+        if before.0 != after.0 {
+            RangeChange::Reshaped
+        } else if before.1 != after.1 {
+            RangeChange::Moved
+        } else {
+            RangeChange::Same
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Author<'a> {
+    pub user: Option<&'a str>,
+    pub ts: Option<i64>,
+    pub tracked: bool,
+    pub seed: Option<&'a str>,
+}
+
+impl<'a> Author<'a> {
+    pub fn of(user: Option<&'a str>, ts: Option<i64>, tc: Option<&'a str>) -> Author<'a> {
+        Author {
+            user,
+            ts,
+            tracked: tc.is_some(),
+            seed: tc,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommentAnchor {
     pub thread: String,
     pub at: usize,
     pub text: Vec<u16>,
+    pub user: Option<String>,
+    pub ts: Option<i64>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ChangeKind {
     Insert,
     Delete,
@@ -21,10 +75,28 @@ pub enum ChangeKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrackedChange {
     key: u64,
+    id: Option<String>,
     pub kind: ChangeKind,
     pub at: usize,
     pub text: Vec<u16>,
     pub user: Option<String>,
+    pub ts: Option<i64>,
+}
+
+impl TrackedChange {
+    pub fn key(&self) -> u64 {
+        self.key
+    }
+
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct Seed {
+    prefix: Option<String>,
+    issued: u64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -32,6 +104,7 @@ pub struct ShareJsRanges {
     comments: Vec<CommentAnchor>,
     changes: Vec<TrackedChange>,
     next_key: u64,
+    seed: Seed,
 }
 
 enum Edit {
@@ -58,6 +131,43 @@ fn position(value: &Value) -> Result<usize, CodecError> {
         .ok_or_else(|| CodecError::Malformed("a range has no position".into()))
 }
 
+fn metadata(entry: &Value) -> (Option<String>, Option<i64>) {
+    let meta = entry.get("metadata").unwrap_or(&Value::Null);
+    (
+        meta.get("user_id")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        meta.get("ts").and_then(stamp_ms),
+    )
+}
+
+fn earlier(a: Option<i64>, b: Option<i64>) -> Option<i64> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
+fn wire_text(text: &[u16], packed: bool) -> String {
+    let text = String::from_utf16_lossy(text);
+    if packed {
+        pack(&text)
+    } else {
+        text
+    }
+}
+
+fn metadata_json(user: Option<&str>, ts: Option<i64>) -> Value {
+    let mut meta = Map::new();
+    if let Some(user) = user {
+        meta.insert("user_id".into(), json!(user));
+    }
+    if let Some(ts) = ts {
+        meta.insert("ts".into(), json!(iso_time(ts)));
+    }
+    Value::Object(meta)
+}
+
 impl ShareJsRanges {
     pub fn from_join(ranges: &Value) -> Result<ShareJsRanges, CodecError> {
         let mut parsed = ShareJsRanges::default();
@@ -69,18 +179,18 @@ impl ShareJsRanges {
                 .or_else(|| comment["id"].as_str())
                 .unwrap_or_default()
                 .to_string();
+            let (user, ts) = metadata(&comment);
             parsed.comments.push(CommentAnchor {
                 thread,
                 at: position(&op["p"])?,
                 text: packed_units(&op["c"])?.unwrap_or_default(),
+                user,
+                ts,
             });
         }
         for change in list("changes").unwrap_or_default() {
             let op = &change["op"];
-            let user = change
-                .pointer("/metadata/user_id")
-                .and_then(Value::as_str)
-                .map(str::to_string);
+            let (user, ts) = metadata(&change);
             let at = position(&op["p"])?;
             let (kind, text) = match (packed_units(&op["i"])?, packed_units(&op["d"])?) {
                 (Some(text), None) => (ChangeKind::Insert, text),
@@ -94,13 +204,55 @@ impl ShareJsRanges {
             let key = parsed.key();
             parsed.changes.push(TrackedChange {
                 key,
+                id: change["id"].as_str().map(str::to_string).and_then(plain),
                 kind,
                 at,
                 text,
                 user,
+                ts,
             });
         }
         Ok(parsed)
+    }
+
+    pub fn to_json(&self, packed: bool) -> Value {
+        let mut ranges = Map::new();
+        if !self.changes.is_empty() {
+            let changes: Vec<Value> = self
+                .changes
+                .iter()
+                .map(|change| {
+                    let field = match change.kind {
+                        ChangeKind::Insert => "i",
+                        ChangeKind::Delete => "d",
+                    };
+                    let mut entry = json!({
+                        "op": { field: wire_text(&change.text, packed), "p": change.at },
+                        "metadata": metadata_json(change.user.as_deref(), change.ts),
+                    });
+                    if let Some(id) = &change.id {
+                        entry["id"] = json!(id);
+                    }
+                    entry
+                })
+                .collect();
+            ranges.insert("changes".into(), Value::Array(changes));
+        }
+        if !self.comments.is_empty() {
+            let comments: Vec<Value> = self
+                .comments
+                .iter()
+                .map(|comment| {
+                    json!({
+                        "id": comment.thread,
+                        "op": { "c": wire_text(&comment.text, packed), "p": comment.at, "t": comment.thread },
+                        "metadata": metadata_json(comment.user.as_deref(), comment.ts),
+                    })
+                })
+                .collect();
+            ranges.insert("comments".into(), Value::Array(comments));
+        }
+        Value::Object(ranges)
     }
 
     pub fn comments(&self) -> &[CommentAnchor] {
@@ -115,27 +267,188 @@ impl ShareJsRanges {
         (self.comments.len(), self.changes.len())
     }
 
+    pub fn comment(&self, thread: &str) -> Option<&CommentAnchor> {
+        self.comments
+            .iter()
+            .find(|comment| comment.thread == thread)
+    }
+
+    pub fn change(&self, id: &str) -> Option<&TrackedChange> {
+        self.changes
+            .iter()
+            .find(|change| change.id.as_deref() == Some(id))
+    }
+
+    pub fn change_by_key(&self, key: u64) -> Option<&TrackedChange> {
+        self.changes.iter().find(|change| change.key == key)
+    }
+
+    pub fn all_ids_known(&self) -> bool {
+        self.changes.iter().all(|change| change.id.is_some())
+    }
+
+    pub fn remove_changes(&mut self, ids: &[String]) -> usize {
+        let before = self.changes.len();
+        self.changes.retain(|change| {
+            change
+                .id
+                .as_ref()
+                .is_none_or(|id| !ids.iter().any(|gone| gone == id))
+        });
+        before - self.changes.len()
+    }
+
+    pub fn remove_comment(&mut self, thread: &str) -> bool {
+        let before = self.comments.len();
+        self.comments.retain(|comment| comment.thread != thread);
+        before != self.comments.len()
+    }
+
+    pub fn adopt_all(&mut self, fresh: &ShareJsRanges) -> RangeChange {
+        let before = self.signature();
+        let mut old: Vec<TrackedChange> = std::mem::take(&mut self.changes);
+        let mut changes = Vec::with_capacity(fresh.changes.len());
+        for change in &fresh.changes {
+            let same = |known: &TrackedChange| match (&known.id, &change.id) {
+                (Some(known), Some(fresh)) => known == fresh,
+                _ => (known.kind, known.at, &known.text) == (change.kind, change.at, &change.text),
+            };
+            let key = match old.iter().position(same) {
+                Some(found) => old.remove(found).key,
+                None => self.key(),
+            };
+            changes.push(TrackedChange {
+                key,
+                ..change.clone()
+            });
+        }
+        self.changes = changes;
+        self.comments.clone_from(&fresh.comments);
+        let after = self.signature();
+        match RangeChange::between(before, after) {
+            RangeChange::Same if old.is_empty() => RangeChange::Same,
+            RangeChange::Same => RangeChange::Reshaped,
+            change => change,
+        }
+    }
+
+    pub fn reject_op(&self, keys: &[u64], visible_len: usize) -> Option<TextOperation> {
+        let mut chosen: Vec<&TrackedChange> = self
+            .changes
+            .iter()
+            .filter(|change| keys.contains(&change.key))
+            .collect();
+        if chosen.is_empty() {
+            return None;
+        }
+        chosen.sort_by(|a, b| {
+            a.at.cmp(&b.at).then_with(|| match (a.kind, b.kind) {
+                (ChangeKind::Delete, ChangeKind::Insert) => std::cmp::Ordering::Less,
+                (ChangeKind::Insert, ChangeKind::Delete) => std::cmp::Ordering::Greater,
+                _ => std::cmp::Ordering::Equal,
+            })
+        });
+        let mut op = TextOperation::new();
+        let mut at = 0;
+        for change in chosen {
+            let end = match change.kind {
+                ChangeKind::Insert => change.at + change.text.len(),
+                ChangeKind::Delete => change.at,
+            };
+            if change.at < at || end > visible_len {
+                return None;
+            }
+            op.retain(change.at - at);
+            match change.kind {
+                ChangeKind::Insert => {
+                    op.delete(change.text.len());
+                }
+                ChangeKind::Delete => {
+                    op.insert(&String::from_utf16(&change.text).ok()?);
+                }
+            }
+            at = end;
+        }
+        op.retain(visible_len - at);
+        Some(op)
+    }
+
+    fn hidden_len(&self, of: impl Fn(&TrackedChange) -> bool) -> usize {
+        self.changes
+            .iter()
+            .filter(|change| change.kind == ChangeKind::Delete && of(change))
+            .map(|change| change.text.len())
+            .sum()
+    }
+
+    pub fn rejects_cleanly(&self, keys: &[u64], pieces: &[Piece]) -> bool {
+        let mut after = self.clone();
+        after.apply_update(pieces, &Author::default()).is_ok()
+            && after.hidden_len(|_| true) == self.hidden_len(|change| !keys.contains(&change.key))
+    }
+
     fn key(&mut self) -> u64 {
         self.next_key += 1;
         self.next_key
     }
 
-    pub(crate) fn apply(
+    fn next_id(&mut self) -> Option<String> {
+        let prefix = self.seed.prefix.as_ref()?;
+        self.seed.issued += 1;
+        Some(format!("{prefix}{:06x}", self.seed.issued))
+    }
+
+    fn signature(&self) -> (u64, u64) {
+        let mut shape = DefaultHasher::new();
+        let mut places = DefaultHasher::new();
+        for change in &self.changes {
+            (change.key, change.kind, change.text.len()).hash(&mut shape);
+            change.at.hash(&mut places);
+        }
+        for comment in &self.comments {
+            (&comment.thread, comment.text.len()).hash(&mut shape);
+            comment.at.hash(&mut places);
+        }
+        (shape.finish(), places.finish())
+    }
+
+    pub fn apply_update(
         &mut self,
-        piece: &Piece,
-        tracked: bool,
-        user: Option<&str>,
-    ) -> Result<(), CodecError> {
+        pieces: &[Piece],
+        author: &Author,
+    ) -> Result<RangeChange, CodecError> {
+        self.seed = Seed {
+            prefix: author.seed.map(str::to_string),
+            issued: 0,
+        };
+        let before = self.signature();
+        for piece in pieces {
+            self.apply(piece, author)?;
+        }
+        Ok(RangeChange::between(before, self.signature()))
+    }
+
+    pub fn counts_after(
+        &self,
+        pieces: &[Piece],
+        author: &Author,
+    ) -> Result<(usize, usize), CodecError> {
+        let mut after = self.clone();
+        after.apply_update(pieces, author)?;
+        Ok(after.counts())
+    }
+
+    fn apply(&mut self, piece: &Piece, author: &Author) -> Result<(), CodecError> {
         match piece {
             Piece::Insert { p, text, undo } => {
                 let text = units(text);
-                self.insert_into_changes(*p, &text, tracked, *undo, user);
+                self.insert_into_changes(*p, &text, *undo, author);
                 self.insert_into_comments(*p, &text);
                 Ok(())
             }
             Piece::Delete { p, text, .. } => {
                 let text = units(text);
-                self.delete_from_changes(*p, &text, tracked, user)?;
+                self.delete_from_changes(*p, &text, author)?;
                 self.delete_from_comments(*p, &text)
             }
             Piece::Comment { p, text, thread } => {
@@ -149,26 +462,30 @@ impl ShareJsRanges {
                         comment.at = *p;
                         comment.text = text;
                     }
-                    None => self.comments.push(CommentAnchor {
-                        thread: thread.clone(),
-                        at: *p,
-                        text,
-                    }),
+                    None => {
+                        let thread = if thread.is_empty() {
+                            self.next_id().unwrap_or_default()
+                        } else {
+                            thread.clone()
+                        };
+                        self.comments.push(CommentAnchor {
+                            thread,
+                            at: *p,
+                            text,
+                            user: author.user.map(str::to_string),
+                            ts: author.ts,
+                        });
+                    }
                 }
                 Ok(())
             }
         }
     }
 
-    fn add(&mut self, kind: ChangeKind, at: usize, text: Vec<u16>, user: Option<String>) {
-        let key = self.key();
-        self.changes.push(TrackedChange {
-            key,
-            kind,
-            at,
-            text,
-            user,
-        });
+    fn add(&mut self, mut change: TrackedChange) {
+        change.key = self.key();
+        change.id = self.next_id();
+        self.changes.push(change);
         self.changes.sort_by(|a, b| {
             a.at.cmp(&b.at).then_with(|| match (a.kind, b.kind) {
                 (ChangeKind::Delete, ChangeKind::Insert) => std::cmp::Ordering::Less,
@@ -178,20 +495,14 @@ impl ShareJsRanges {
         });
     }
 
-    fn insert_into_changes(
-        &mut self,
-        p: usize,
-        text: &[u16],
-        tracked: bool,
-        undo: bool,
-        user: Option<&str>,
-    ) {
+    fn insert_into_changes(&mut self, p: usize, text: &[u16], undo: bool, author: &Author) {
         let mut pass = InsertPass {
             p,
             text,
-            tracked,
+            tracked: author.tracked,
             undo,
-            user,
+            user: author.user,
+            ts: author.ts,
             merged: false,
             previous: None,
             deletes_here: Vec::new(),
@@ -205,16 +516,19 @@ impl ShareJsRanges {
             }
             pass.previous = Some(index);
         }
-        if tracked && !pass.merged {
-            self.add(
-                ChangeKind::Insert,
-                p,
-                text.to_vec(),
-                user.map(str::to_string),
-            );
+        if author.tracked && !pass.merged {
+            self.add(TrackedChange {
+                key: 0,
+                id: None,
+                kind: ChangeKind::Insert,
+                at: p,
+                text: text.to_vec(),
+                user: author.user.map(str::to_string),
+                ts: author.ts,
+            });
         }
         for change in pass.split {
-            self.add(change.kind, change.at, change.text, change.user);
+            self.add(change);
         }
         self.changes
             .retain(|change| !pass.emptied.contains(&change.key));
@@ -280,6 +594,7 @@ impl ShareJsRanges {
             change
                 .text
                 .splice(offset..offset, pass.text.iter().copied());
+            change.ts = earlier(change.ts, pass.ts);
             pass.merged = true;
         } else if p <= start {
             change.at += pass.text.len();
@@ -288,10 +603,12 @@ impl ShareJsRanges {
             let after = change.text.split_off(offset);
             pass.split.push(TrackedChange {
                 key: 0,
+                id: None,
                 kind: ChangeKind::Insert,
                 at: start + offset + pass.text.len(),
                 text: after,
                 user: change.user.clone(),
+                ts: change.ts,
             });
         }
     }
@@ -300,13 +617,12 @@ impl ShareJsRanges {
         &mut self,
         p: usize,
         deleted: &[u16],
-        tracked: bool,
-        user: Option<&str>,
+        author: &Author,
     ) -> Result<(), CodecError> {
         let mut pass = DeletePass {
             p,
             deleted,
-            tracked,
+            tracked: author.tracked,
             removed: Vec::new(),
             edits: Vec::new(),
         };
@@ -317,9 +633,17 @@ impl ShareJsRanges {
             }
         }
         let remaining = apply_edits(deleted, pass.edits)?;
-        let remaining = self.reuse_removed_delete(pass.removed, remaining, p, user);
-        if tracked && !remaining.is_empty() {
-            self.add(ChangeKind::Delete, p, remaining, user.map(str::to_string));
+        let remaining = self.reuse_removed_delete(pass.removed, remaining, p, author);
+        if author.tracked && !remaining.is_empty() {
+            self.add(TrackedChange {
+                key: 0,
+                id: None,
+                kind: ChangeKind::Delete,
+                at: p,
+                text: remaining,
+                user: author.user.map(str::to_string),
+                ts: author.ts,
+            });
         } else {
             self.merge_neighbours();
         }
@@ -331,7 +655,7 @@ impl ShareJsRanges {
         removed: Vec<u64>,
         mut remaining: Vec<u16>,
         p: usize,
-        user: Option<&str>,
+        author: &Author,
     ) -> Vec<u16> {
         let mut dropped: Vec<u64> = Vec::new();
         for key in removed {
@@ -344,7 +668,8 @@ impl ShareJsRanges {
             if !remaining.is_empty() && reusable {
                 change.at = p;
                 change.text = std::mem::take(&mut remaining);
-                change.user = user.map(str::to_string);
+                change.user = author.user.map(str::to_string);
+                change.ts = author.ts;
             } else {
                 dropped.push(key);
             }
@@ -362,17 +687,19 @@ impl ShareJsRanges {
                 continue;
             };
             let (left, right) = self.changes.split_at_mut(index);
-            let (earlier, current) = (&mut left[before], &mut right[0]);
-            match (earlier.kind, current.kind) {
+            let (earlier_change, current) = (&mut left[before], &mut right[0]);
+            match (earlier_change.kind, current.kind) {
                 (ChangeKind::Insert, ChangeKind::Insert) => {
-                    if earlier.at + earlier.text.len() == current.at && earlier.user == current.user
+                    if earlier_change.at + earlier_change.text.len() == current.at
+                        && earlier_change.user == current.user
                     {
-                        earlier.text.extend_from_slice(&current.text);
+                        earlier_change.text.extend_from_slice(&current.text);
+                        earlier_change.ts = earlier(earlier_change.ts, current.ts);
                         dropped.push(index);
                     }
                 }
-                (ChangeKind::Delete, ChangeKind::Delete) if earlier.at == current.at => {
-                    earlier.text.extend_from_slice(&current.text);
+                (ChangeKind::Delete, ChangeKind::Delete) if earlier_change.at == current.at => {
+                    earlier_change.text.extend_from_slice(&current.text);
                     dropped.push(index);
                 }
                 _ => previous = Some(index),
@@ -432,6 +759,7 @@ struct InsertPass<'a> {
     tracked: bool,
     undo: bool,
     user: Option<&'a str>,
+    ts: Option<i64>,
     merged: bool,
     previous: Option<usize>,
     deletes_here: Vec<usize>,

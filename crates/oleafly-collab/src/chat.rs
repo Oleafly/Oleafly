@@ -22,9 +22,9 @@ const WRITTEN: [&str; 5] = [ID, AUTHOR, AT, BODY, MENTIONS];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ChatMessage {
-    pub id: ChatMessageId,
-    pub author: AccountId,
+pub struct ChatMessage<Id = ChatMessageId, Who = AccountId> {
+    pub id: Id,
+    pub author: Who,
     pub at: i64,
     pub body: String,
     pub deleted: bool,
@@ -33,8 +33,10 @@ pub struct ChatMessage {
     pub reactions: Vec<Reaction>,
     #[serde(default)]
     pub pending: bool,
+    #[serde(default = "Vec::new")]
+    pub mentions: Vec<Who>,
     #[serde(default)]
-    pub mentions: Vec<AccountId>,
+    pub edited_at: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -102,15 +104,20 @@ fn chat_of(map: &LoroMap, judge: &Judge<'_>) -> Option<ChatMessage> {
         } else {
             accounts_of(fields.get(MENTIONS))
         },
+        edited_at: None,
     })
 }
 
-fn checked_body(body: &str) -> Result<&str, CollabError> {
+pub fn checked_chat_body(
+    body: &str,
+    limit: usize,
+    length: fn(&str) -> usize,
+) -> Result<&str, CollabError> {
     let body = body.trim();
     if body.is_empty() {
         return Err(refused(400, "empty", "a message needs some text"));
     }
-    if body.chars().count() > MAX_CHAT_CHARS {
+    if length(body) > limit {
         return Err(refused(413, "too_large", "this message is too long"));
     }
     Ok(body)
@@ -200,7 +207,7 @@ impl ProjectDoc {
         mentions: &[AccountId],
     ) -> Result<ChatMessage, CollabError> {
         self.writable()?;
-        let body = checked_body(body)?;
+        let body = checked_chat_body(body, MAX_CHAT_CHARS, |text| text.chars().count())?;
         let mentions = unique(mentions);
         let id = ChatMessageId::new_v7();
         let map = self
@@ -224,6 +231,7 @@ impl ProjectDoc {
             reactions: Vec::new(),
             pending: false,
             mentions,
+            edited_at: None,
         })
     }
 
@@ -449,6 +457,21 @@ mod tests {
         assert!(owner.chat_messages(None, 50).is_empty());
     }
 
+    #[test]
+    fn the_length_check_counts_with_the_measure_it_is_given() {
+        let astral = "\u{1F600}".repeat(3);
+        let units = |text: &str| text.encode_utf16().count();
+        assert_eq!(
+            checked_chat_body(&astral, 3, |text| text.chars().count()).unwrap(),
+            astral
+        );
+        assert!(matches!(
+            checked_chat_body(&astral, 5, units),
+            Err(CollabError::Api { code, .. }) if code == "too_large"
+        ));
+        assert_eq!(checked_chat_body(&astral, 6, units).unwrap(), astral);
+    }
+
     fn reaction(emoji: &str, by: &[AccountId]) -> Reaction {
         Reaction {
             emoji: emoji.to_owned(),
@@ -656,6 +679,23 @@ mod tests {
         });
         let read: ChatMessage = serde_json::from_value(old).unwrap();
         assert!(read.reactions.is_empty());
+        assert_eq!(read.edited_at, None);
+        let wire = serde_json::to_value(&read).unwrap();
+        assert_eq!(wire["editedAt"], serde_json::Value::Null);
+        let online: ChatMessage<String, String> = serde_json::from_value(serde_json::json!({
+            "id": "6b04e5f6c0ffee0010000001",
+            "author": "6b04e5f6c0ffee0020000001",
+            "at": 2,
+            "body": "edited",
+            "deleted": false,
+            "verified": true,
+            "editedAt": 3
+        }))
+        .unwrap();
+        assert_eq!(
+            (online.id.as_str(), online.edited_at),
+            ("6b04e5f6c0ffee0010000001", Some(3))
+        );
     }
 
     #[test]

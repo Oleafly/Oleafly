@@ -350,6 +350,53 @@ describe("live note editors", () => {
     expect(base.doc.childCount).toBe(1);
   });
 
+  it("keeps the caret in its paragraph while a collaborator types a new paragraph above it", async () => {
+    const source = "---\ntitle: Ideas\nkind: note\n---\n\nAn idea to try.\n";
+    const channel = new FakeChannel(source);
+    const clock = new Clock();
+    const peer = await join(channel, clock);
+    const { editor } = peer.pad;
+    let caret = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text?.includes("try")) caret = pos + node.text.indexOf("try") + 3;
+    });
+    editor.commands.setTextSelection(caret);
+    const at = source.indexOf("\n---\n") + 5;
+    for (const [index, character] of [..."COAUTHOR\n\n"].entries()) {
+      const offset = at + index;
+      channel.remote(new TextOperation().retain(offset).insert(character).retain(channel.text.length - offset));
+      channel.drain();
+      clock.settle();
+      const { $head } = editor.state.selection;
+      expect($head.parent.textBetween(0, $head.parentOffset), JSON.stringify(channel.text)).toMatch(/An idea to try$/u);
+    }
+    expect(channel.text).toBe("---\ntitle: Ideas\nkind: note\n---\nCOAUTHOR\n\n\nAn idea to try.\n");
+    expect(editor.state.doc.child(0).textContent).toBe("COAUTHOR");
+    const { $head } = editor.state.selection;
+    expect($head.parent.textBetween(0, $head.parentOffset)).toBe("An idea to try");
+  });
+
+  it("keeps the caret in its text when a collaborator joins the paragraph above to it", async () => {
+    const source = "---\ntitle: Ideas\nkind: note\n---\n\nFirst idea.\n\nAn idea to try.\n";
+    const channel = new FakeChannel(source);
+    const clock = new Clock();
+    const peer = await join(channel, clock);
+    const { editor } = peer.pad;
+    let caret = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text?.includes("try")) caret = pos + node.text.indexOf("try") + 3;
+    });
+    editor.commands.setTextSelection(caret);
+    const blank = source.indexOf("\n\nAn idea");
+    channel.remote(new TextOperation().retain(blank).delete(1).retain(channel.text.length - blank - 1));
+    channel.drain();
+    clock.settle();
+    expect(channel.text).toBe("---\ntitle: Ideas\nkind: note\n---\n\nFirst idea.\nAn idea to try.\n");
+    expect(editor.state.doc.childCount).toBe(1);
+    const { $head } = editor.state.selection;
+    expect($head.parent.textBetween(0, $head.parentOffset)).toBe("First idea. An idea to try");
+  });
+
   it("refreshes front matter facts from remote text", async () => {
     const channel = new FakeChannel(NOTE);
     const clock = new Clock();

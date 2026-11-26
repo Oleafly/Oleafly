@@ -59,6 +59,16 @@ describe("toolRisk", () => {
     }
   });
 
+  it("asks before opening an Overleaf project live and keeps it out of plan mode", () => {
+    expect(toolRisk("open_overleaf_live")).toBe("write");
+    expect(isReadOnlyTool("open_overleaf_live")).toBe(false);
+    expect(
+      decideToolApproval({ mode: "approve-for-me", toolCall: { name: "open_overleaf_live" }, risk: "write" }),
+    ).toBe("prompt");
+    expect(toolRisk("list_overleaf_projects")).toBe("network");
+    expect(toolRisk("import_overleaf_projects")).toBe("write");
+  });
+
   it("treats unknown tools as write so they never run silently", () => {
     expect(toolRisk("brand_new_tool")).toBe("write");
   });

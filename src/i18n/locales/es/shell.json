@@ -517,7 +517,8 @@
       "open": "Seguir el archivo abierto",
       "main": "Siempre el documento principal",
       "change": "Cambiar documento principal…"
-    }
+    },
+    "filling": "El proyecto todavía se está descargando de Overleaf. Podrás compilar cuando estén aquí todos los archivos."
   },
   "datePicker": {
     "placeholder": "Elige una fecha"
@@ -1737,8 +1738,9 @@
     "resume": "Reanudar la edición en directo",
     "reconnectNow": "Reconectar ahora",
     "open": "Abrir en Overleaf",
-    "share": "Compartir en Overleaf…",
+    "share": "Compartir en Overleaf",
     "signIn": "Iniciar sesión…",
+    "signInAs": "Iniciar sesión como {{email}}",
     "reconnectingIn": "Reintentando en {{seconds}} s.",
     "notConfirmed": "Overleaf aún no lo ha confirmado.",
     "copyDetails": "Copiar los detalles de conexión",

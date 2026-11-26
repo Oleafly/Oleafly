@@ -7,6 +7,7 @@ use oleafly_sandbox::process::identity::ProcessIdentity;
 use super::*;
 use crate::daemon::client;
 use crate::daemon::state::read_state;
+use crate::support::Running;
 
 fn options(data_root: &Path, stay: bool, idle_grace: Duration) -> ServeOptions {
     ServeOptions {
@@ -208,69 +209,168 @@ fn background_tasks_off_stops_a_helper_started_at_sign_in() {
     assert!(!helper_paths(data.path()).state.exists());
 }
 
+const CHILD: &str = "OLEAFLY_TEST_TERMINATION_CHILD";
+
+fn as_child(work: impl std::future::Future<Output = ()>) -> bool {
+    if std::env::var_os(CHILD).is_none() {
+        return false;
+    }
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(work);
+    true
+}
+
+fn start_child(test: &str, prepare: impl FnOnce(&mut std::process::Command)) -> Running {
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            &format!("daemon::serve::tests::{test}"),
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(CHILD, "1")
+        .stderr(std::process::Stdio::null());
+    prepare(&mut command);
+    Running::start(&mut command)
+}
+
+fn expect(child: &Running, wanted: &str) {
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        match child
+            .lines
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+        {
+            Ok(line) if line.ends_with(wanted) => return,
+            Ok(_) => {}
+            Err(_) => panic!("the child never printed {wanted:?}"),
+        }
+    }
+}
+
+#[cfg(unix)]
+fn signal(child: &Running, signal: i32) {
+    let pid = i32::try_from(child.process.id()).unwrap();
+    // SAFETY: signalling the child process this test started.
+    assert_eq!(unsafe { libc::kill(pid, signal) }, 0);
+}
+
+fn succeeds(mut child: Running, what: &str) {
+    let status = crate::support::exit_within(&mut child.process, Duration::from_secs(10));
+    assert!(status.success(), "{what}: {status}");
+}
+
+fn registered() -> Terminations {
+    Terminations::register(|signal, error| panic!("{signal:?} was not registered: {error}"))
+}
+
 #[cfg(unix)]
 #[test]
 fn termination_resolves_on_sigterm_and_sighup() {
-    use std::io::{BufRead, BufReader};
-    use std::process::{Command, Stdio};
-
-    const CHILD: &str = "OLEAFLY_TEST_TERMINATION_CHILD";
-    if std::env::var_os(CHILD).is_some() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        runtime.block_on(async {
-            let mut waiting = Box::pin(termination());
-            let _ = tokio::time::timeout(Duration::from_millis(50), &mut waiting).await;
-            println!("ready");
-            waiting.await;
-        });
+    if as_child(async {
+        let waiting = termination();
+        println!("ready");
+        waiting.await;
+    }) {
         return;
     }
-    for signal in [libc::SIGTERM, libc::SIGHUP] {
-        let mut child = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "daemon::serve::tests::termination_resolves_on_sigterm_and_sighup",
-                "--nocapture",
-                "--test-threads=1",
-            ])
-            .env(CHILD, "1")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
-        let stdout = child.stdout.take().unwrap();
-        let (ready_sender, ready) = std::sync::mpsc::channel();
-        let reader = std::thread::spawn(move || {
-            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                if line.ends_with("ready") {
-                    let _ = ready_sender.send(());
-                }
-            }
+    for number in [libc::SIGTERM, libc::SIGHUP] {
+        let child = start_child("termination_resolves_on_sigterm_and_sighup", |command| {
+            crate::support::set_hangup(command, libc::SIG_DFL);
         });
-        if ready.recv_timeout(Duration::from_secs(60)).is_err() {
-            let _ = child.kill();
-            panic!("the child never became ready");
-        }
-        let pid = i32::try_from(child.id()).unwrap();
-        // SAFETY: signalling the child process this test started.
-        assert_eq!(unsafe { libc::kill(pid, signal) }, 0);
-        let deadline = Instant::now() + Duration::from_secs(10);
-        let status = loop {
-            if let Some(status) = child.try_wait().unwrap() {
-                break status;
-            }
-            if Instant::now() > deadline {
-                let _ = child.kill();
-                panic!("signal {signal} did not end the wait");
-            }
-            std::thread::sleep(Duration::from_millis(20));
-        };
-        reader.join().unwrap();
-        assert!(status.success(), "signal {signal}: {status}");
+        expect(&child, "ready");
+        signal(&child, number);
+        succeeds(child, &format!("signal {number}"));
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_second_signal_is_seen_after_the_first() {
+    if as_child(async {
+        let mut terminations = registered();
+        println!("ready");
+        println!("first {:?}", terminations.next().await);
+        println!("second {:?}", terminations.next().await);
+    }) {
+        return;
+    }
+    let child = start_child("a_second_signal_is_seen_after_the_first", |command| {
+        crate::support::set_hangup(command, libc::SIG_DFL);
+    });
+    expect(&child, "ready");
+    signal(&child, libc::SIGTERM);
+    expect(&child, "first Terminate");
+    signal(&child, libc::SIGINT);
+    expect(&child, "second Interrupt");
+    succeeds(child, "the second signal");
+}
+
+#[cfg(unix)]
+#[test]
+fn an_inherited_ignored_sighup_stays_ignored() {
+    if as_child(async {
+        let mut terminations = registered();
+        println!("ready, ignored {}", hangup_ignored());
+        println!("first {:?}", terminations.next().await);
+    }) {
+        return;
+    }
+    let mut child = start_child("an_inherited_ignored_sighup_stays_ignored", |command| {
+        crate::support::set_hangup(command, libc::SIG_IGN);
+    });
+    expect(&child, "ready, ignored true");
+    signal(&child, libc::SIGHUP);
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(
+        child.process.try_wait().unwrap().is_none(),
+        "an ignored SIGHUP ended the child"
+    );
+    assert!(
+        child.lines.try_recv().is_err(),
+        "an ignored SIGHUP ended the wait"
+    );
+    signal(&child, libc::SIGTERM);
+    expect(&child, "first Terminate");
+    succeeds(child, "SIGTERM after an ignored SIGHUP");
+}
+
+#[cfg(windows)]
+#[test]
+fn ctrl_break_is_a_termination() {
+    use std::os::windows::process::CommandExt;
+    use windows_sys::Win32::System::Console::{
+        AllocConsole, GenerateConsoleCtrlEvent, CTRL_BREAK_EVENT,
+    };
+    use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
+
+    if as_child(async {
+        let mut terminations = registered();
+        println!("ready");
+        println!("first {:?}", terminations.next().await);
+    }) {
+        return;
+    }
+    // SAFETY: AllocConsole takes no arguments, and it fails harmlessly when this process already has a console.
+    unsafe { AllocConsole() };
+    let child = start_child("ctrl_break_is_a_termination", |command| {
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    });
+    expect(&child, "ready");
+    // SAFETY: sends Ctrl+Break to the process group of the child this test started.
+    let sent = unsafe { GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, child.process.id()) };
+    assert_ne!(
+        sent,
+        0,
+        "Ctrl+Break was not sent: {}",
+        std::io::Error::last_os_error()
+    );
+    expect(&child, "first Break");
+    succeeds(child, "Ctrl+Break");
 }
 
 #[test]

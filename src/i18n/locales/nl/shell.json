@@ -516,7 +516,8 @@
       "open": "Het geopende bestand volgen",
       "main": "Altijd het hoofddocument",
       "change": "Hoofddocument wijzigen…"
-    }
+    },
+    "filling": "Het project wordt nog gedownload van Overleaf. Je kunt compileren zodra alle bestanden er zijn."
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -1702,8 +1703,9 @@
     "resume": "Live bewerken hervatten",
     "reconnectNow": "Nu opnieuw verbinden",
     "open": "Openen in Overleaf",
-    "share": "Delen op Overleaf…",
+    "share": "Delen op Overleaf",
     "signIn": "Aanmelden…",
+    "signInAs": "Aanmelden als {{email}}",
     "reconnectingIn": "Opnieuw proberen over {{seconds}} s.",
     "notConfirmed": "Nog niet bevestigd door Overleaf.",
     "copyDetails": "Verbindingsgegevens kopiëren",

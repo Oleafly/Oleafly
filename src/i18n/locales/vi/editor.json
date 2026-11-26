@@ -312,6 +312,15 @@
     "spellLanguageFolderHint": "Được lưu trong project.json của thư mục này, nên áp dụng cho mọi người mở thư mục. Tải thêm ngôn ngữ trong Cài đặt.",
     "spellLanguageReadOnly": "Thư mục này chỉ đọc, nên không đổi được ngôn ngữ trong project.json của nó.",
     "spellLanguageFailed": "Không thể đổi ngôn ngữ kiểm tra chính tả.",
+    "onOverleaf": "Trên Overleaf",
+    "texLive": "Phiên bản TeX Live",
+    "texLiveAriaLabel": "Phiên bản TeX Live trên Overleaf",
+    "bibliography": "Tài liệu tham khảo chính",
+    "bibliographyAriaLabel": "Tài liệu tham khảo chính trên Overleaf",
+    "bibliographyNone": "Chưa chọn",
+    "overleafHint": "Các thiết lập này nằm trên Overleaf và áp dụng cho mọi người trong dự án.",
+    "overleafReadOnly": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các thiết lập này trên Overleaf.",
+    "overleafFailed": "Không thể đổi thiết lập này trên Overleaf.",
     "notChecked": "Chưa kiểm tra",
     "dictionaryMissing": "Chưa tải {{name}}, nên không kiểm tra chính tả. Hãy tải trong Cài đặt hoặc chọn ngôn ngữ khác.",
     "grammarEnglishOnly": "Kiểm tra ngữ pháp chỉ hoạt động với tài liệu tiếng Anh.",
@@ -725,11 +734,11 @@
     "ignoreEverywhere": "Bỏ qua mọi nơi",
     "keyboardHint": "Dùng Tab hoặc phím mũi tên để di chuyển giữa các thao tác. Nhấn Escape để đóng.",
     "endOfDocument": "Cuối tài liệu",
-    "hidePreamble": "Ẩn phần mở đầu tài liệu",
-    "showPreamble": "Hiện phần mở đầu tài liệu",
-    "sharedReadOnly": "Trong dự án chia sẻ, chế độ trực quan chỉ hiển thị tệp. Hãy chuyển sang xem mã nguồn để sửa.",
     "findingLabel": "{{message}}. Mở gợi ý hiệu đính.",
-    "rawBlockFindings_other": "{{count}} phát hiện hiệu đính trong khối thô này. {{message}}. Mở gợi ý."
+    "rawBlockFindings_other": "{{count}} phát hiện hiệu đính trong khối thô này. {{message}}. Mở gợi ý.",
+    "liveViewOnly": "Bạn có thể xem tệp được chia sẻ này nhưng không thể sửa.",
+    "liveConnecting": "Tệp được chia sẻ này vẫn đang kết nối. Bạn có thể sửa khi tệp sẵn sàng.",
+    "suggestInSource": "Các thay đổi của bạn ở đây sẽ là đề xuất, và chế độ trực quan không thể hiển thị chúng. Hãy chuyển sang xem mã nguồn để đề xuất chỉnh sửa."
   },
   "package": {
     "search": {

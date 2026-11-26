@@ -232,8 +232,16 @@
     "suggestion_role": "Your role in this project doesn't allow suggestions.",
     "suggestion_changed": "The text around this suggestion changed, so an owner or editor needs to accept or reject it.",
     "suggestion_too_long": "A suggested deletion can be at most 20,000 characters long. Delete a smaller part at a time.",
+    "suggestion_gone": "That change is gone. Someone may have accepted, rejected or edited it.",
+    "review_off_server": "This server can't do that with tracked changes.",
     "chat_role": "Your role in this project doesn't allow that in the chat.",
+    "chat_edit_off": "This server can't edit chat messages.",
+    "chat_off_server": "This Overleaf server doesn't have chat.",
     "history_unavailable": "This project's history isn't on this computer yet. Try again once it has synced.",
+    "history_plan_limit": "This project's Overleaf plan doesn't keep older versions.",
+    "restore_off_server": "This Overleaf server can't restore older versions. Copy the text from the version instead.",
+    "linked_off_server": "This Overleaf server doesn't refresh linked files.",
+    "linked_refresh_failed": "Overleaf couldn't refresh this file from its source.",
     "account_storage_full": "The project owner's account is out of storage on this server. Remove some files to make room, or ask the server's admin for more space.",
     "too_many_projects": "You already have as many shared projects as this server allows. Stop sharing one before you share another.",
     "too_many_uploads": "You made too many uploads in the last hour. Try again later.",
@@ -241,6 +249,9 @@
     "too_many_pages": "You have as many public pages as this server allows. Unpublish one, then try again.",
     "page_too_large": "This note is too big to publish. Remove some images, then try again.",
     "page_taken_down": "An admin took this page down, so this note can't be published again until they put it back."
+  },
+  "liveElsewhere": {
+    "cli": "This project is live on the command line in process {{pid}}. Stop live editing there, then try again."
   },
   "roles": {
     "admin": "Admin",
@@ -1051,6 +1062,8 @@
     "add": "Add comment",
     "allResolved": "All comments are resolved.",
     "noResolved": "No resolved comments",
+    "noChanges": "No tracked changes",
+    "overleafOff": "This Overleaf server doesn't have comments, so only tracked changes show here.",
     "emptyTitle": "No comments yet",
     "emptyHint": "Select text and choose Add comment, or press {keys}",
     "readOnlyNote": "You can read comments in this project. Ask an owner for commenter access to reply or react.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Suggestion from someone Oleafly couldn't verify",
     "added": "Added",
     "deleted": "Deleted",
+    "replaced": "Changed",
+    "replacedWith": "to",
     "accept": "Accept",
     "reject": "Reject",
     "withdraw": "Withdraw",
@@ -1157,6 +1172,7 @@
     "fileActions": "Suggestions in {{file}}",
     "pendingCount": "Suggestions waiting: {{number}}",
     "loadFailed": "Couldn't load the suggestions for this file.",
+    "acceptOffServer": "This Overleaf server can't accept tracked changes in this file. You can still reject them.",
     "rejectAllConfirm": {
       "title": "Reject every suggestion in {{file}}?",
       "description": "The original text goes back into the file for everyone in this project. Suggestions waiting: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Suggesting",
       "editingHint": "Editing: your edits change the text straight away",
       "suggestingHint": "Suggesting: your edits become suggestions for an owner or editor to accept",
-      "reviewerHint": "You're a reviewer, so your edits become suggestions for an owner or editor to accept"
+      "reviewerHint": "You're a reviewer, so your edits become suggestions for an owner or editor to accept",
+      "locked": {
+        "everyone": "Track changes is on for everyone in this project, so your edits become suggestions",
+        "plan": "This project's Overleaf plan doesn't include track changes",
+        "server": "This Overleaf server can't turn track changes on or off"
+      },
+      "others": "Track changes for others",
+      "forEveryone": "For everyone",
+      "forGuests": "For people who joined with a link"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Viewers can read the chat but not post in it.",
     "offline": "This project isn't connected right now, so you can't post.",
     "messageActions": "More actions for this message",
+    "editLabel": "Edit message",
     "deleteConfirm": {
       "title": "Delete this message?",
       "description": "It's deleted for everyone in this project."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly couldn't load the chat.",
     "loadOlder": "Show older messages"
+  },
+  "people": {
+    "invited": "Invited",
+    "former": "(left the project)"
   },
   "history": {
     "title": "History",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Every file's text goes back to how it was at {{time}} for everyone in this project, and deleted files come back. Renamed files keep their new names, and figures and files added later stay as they are. The current text stays in the history, so you can go back to it.",
       "confirm": "Restore project"
     },
+    "limited": "Older changes need an Overleaf plan with full history.",
+    "unavailable": "Your access to this project doesn't include its history.",
+    "download": "Download as ZIP",
+    "downloading": "Downloading…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Every file goes back to how it was at {{time}} for everyone on Overleaf, and files added since then are deleted. Overleaf keeps the current version in its history, so you can go back to it.",
     "compareTitle": "Changes between two versions",
     "compareDescription": "From {{from}} to {{to}}",
     "changedFiles": "Files changed: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "You're now a commenter. You can read and comment on this project but not edit it.",
     "reviewerBy": "{{name}} made you a reviewer. Your edits become suggestions for an owner or editor to accept.",
     "reviewer": "You're now a reviewer. Your edits become suggestions for an owner or editor to accept.",
-    "reviewing": "You're a reviewer on this project, so your edits go in as suggestions.",
-    "trackingChanges": "Track changes is on in this project, so your edits go in as suggestions.",
     "viewOnly": "You can view this shared project but not edit it.",
     "askOnOverleaf": "Ask for access on Overleaf",
     "connecting": "This shared project is still connecting, so it can't be changed yet. Try again in a moment.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
+    "signedOutAs": "This project belongs to {{email}} on {{server}}. That account isn't signed in, so the project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in as {{email}}.",
+    "signInAs": "Sign in as {{email}}",
     "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
     "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
     "keptAs": "{{file}} is kept as {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Some characters in {{file}}, like emoji, were replaced because Overleaf can't store them.",
     "tryLiveAgain": "Try live again",
     "keepMineAsCopy": "Keep mine as a copy",
-    "stoppedActionFailed": "That didn't go through for {{file}}. Wait a moment, then click it again."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf has nothing that matches this project's {{setting}}, so the {{setting}} on Overleaf stays the same.",
+      "refused": "Overleaf turned down the change to the {{setting}}.",
+      "failed": "Oleafly couldn't send the change to the {{setting}} to Overleaf. It tries again with the next change.",
+      "conflict": "The {{setting}} changed here and on Overleaf at the same time. Overleaf's choice is kept."
+    },
+    "settingNames": {
+      "main_doc": "main document",
+      "compiler": "compiler",
+      "spelling": "spelling language",
+      "image": "TeX Live version",
+      "bibliography": "main bibliography"
+    },
+    "stoppedActionFailed": "That didn't go through for {{file}}. Wait a moment, then click it again.",
+    "filling": "Opening the project from Overleaf: {{done}} of {{total}} files",
+    "fillingFiles": "Opening the project from Overleaf: downloading the last files",
+    "emptyCopy": "This project is gone from Overleaf, and none of its files reached this computer.",
+    "removeEmptyCopy": "Remove the empty copy",
+    "removeFailed": "Oleafly couldn't remove the empty copy."
   },
   "overleafTree": {
     "deleteTitle": "Delete on Overleaf too?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Delete on Overleaf too",
     "keep": "Keep on Overleaf",
     "notAllowed": "You can't change files in this project on Overleaf, so your changes to {{files}} stay on this computer.",
-    "keptAway": "Deleted here but still on Overleaf: {{files}}"
+    "keptAway": "Deleted here but still on Overleaf: {{files}}",
+    "linkedKept": "Overleaf links {{files}} to a source, so your changes stay on this computer. Choose Refresh from source to get the Overleaf copy back."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} is linked to {{source}} on Overleaf.",
+    "bannerNoSource": "{{file}} is linked to a source on Overleaf.",
+    "readOnly": "{{file}} is linked to a source on Overleaf. To update it, choose Refresh from source.",
+    "treeHint": "Linked to a source on Overleaf",
+    "refresh": "Refresh from source",
+    "refreshing": "Refreshing",
+    "refusedWith": "Overleaf couldn't refresh it: {{message}}"
   }
 }

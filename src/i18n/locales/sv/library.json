@@ -328,11 +328,7 @@
       "loading": "Läser in dina Overleaf-projekt",
       "loadFailed": "Oleafly kunde inte läsa in dina Overleaf-projekt.",
       "signInPrompt": "Logga in på Overleaf för att se dina projekt. Ett inloggningsfönster öppnas och stängs av sig självt när du är inloggad.",
-      "signingIn": "Slutför inloggningen på Overleaf i fönstret som öppnades.",
-      "signingInBrowser": "Slutför inloggningen på Overleaf i {{browser}}. Fönstret stängs av sig självt när du är inloggad. Om du stänger det avbryts inloggningen.",
-      "passkeyHint": "Om din nyckel inte fungerar i inloggningsfönstret väljer du ett annat alternativ där, till exempel ditt lösenord eller en uppmaning i telefonen.",
       "expired": "Din Overleaf-inloggning har gått ut. Logga in igen för att se dina projekt.",
-      "signIn": "Logga in på Overleaf",
       "signInWindowTitle": "Logga in på Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adress till Overleaf-servern",
@@ -341,6 +337,7 @@
       "saveServer": "Använd den här servern",
       "signedInAs": "Inloggad som {{email}}",
       "signedIn": "Inloggad på Overleaf",
+      "accountPick": "Overleaf-konto",
       "signOut": "Logga ut",
       "searchLabel": "Sök bland Overleaf-projekt",
       "searchPlaceholder_one": "Sök bland {{count}} projekt",
@@ -362,6 +359,8 @@
       "import_other": "Importera {{count}} projekt",
       "imported": "Importerat",
       "open": "Öppna",
+      "openLive": "Öppna live",
+      "opening": "Öppnar",
       "ownedByYou": "Ditt",
       "owner": "Ägs av {{name}}",
       "archived": "Arkiverat",
@@ -377,7 +376,39 @@
         "downloading": "Laddar ner {{percent}} %",
         "downloadingUnknown": "Laddar ner",
         "importing": "Förbereder"
-      }
+      },
+      "invitations": {
+        "title": "Inbjudningar",
+        "from": "Från {{name}}",
+        "join": "Gå med",
+        "joined": "Du har gått med i det här projektet"
+      },
+      "link": {
+        "checking": "Kontrollerar länken",
+        "unnamed": "Ett projekt på Overleaf",
+        "join": "Gå med",
+        "importInstead": "Importera",
+        "grants": {
+          "edit": "När du går med kan du redigera det som medarbetare.",
+          "view": "När du går med kan du bara visa det. Läsare via länk får inga kommentarer eller chatt.",
+          "already": "Du har redan det här projektet.",
+          "invite": "När du går med accepterar du inbjudan."
+        }
+      },
+      "put": {
+        "menu": "Lägg på Overleaf",
+        "title": "Lägg på Overleaf",
+        "description": "Oleafly laddar upp det här projektet som ett nytt Overleaf-projekt och håller sedan båda synkade medan du redigerar live.",
+        "name": "Namn på Overleaf",
+        "account": "Overleaf-konto",
+        "submit": "Lägg på Overleaf",
+        "working": "Laddar upp",
+        "signedOut": "Logga in på Overleaf i Inställningar först.",
+        "openSettings": "Öppna Inställningar",
+        "cancel": "Avbryt"
+      },
+      "switchAccount": "Byt konto",
+      "signInChoose": "Välj var du vill logga in. Dina projekt visas här när du är inloggad."
     }
   },
   "pdfImport": {

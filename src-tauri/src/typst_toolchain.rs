@@ -267,7 +267,7 @@ pub async fn set_project_typst_version(
     project_id: String,
     version: Option<String>,
 ) -> Result<ProjectMeta, String> {
-    crate::collab::settings::refuse_viewer(&project_id)?;
+    crate::collab::settings::refuse_server_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let owned = project_id.clone();
     let meta = blocking(move || set_project_version_blocking(&owned, version)).await?;

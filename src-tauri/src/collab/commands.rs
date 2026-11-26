@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -29,9 +30,43 @@ const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(300);
 pub(crate) type ApiCall<'a, T> = Pin<Box<dyn Future<Output = Result<T, CollabError>> + Send + 'a>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum ByBackend<S, O> {
+    Server(S),
+    Online(O),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(into = "WireError")]
 pub struct CollabCommandError {
     pub code: &'static str,
     pub message: String,
+}
+
+#[derive(Serialize)]
+struct WireError {
+    code: &'static str,
+    message: String,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    params: BTreeMap<String, String>,
+}
+
+impl From<CollabCommandError> for WireError {
+    fn from(error: CollabCommandError) -> WireError {
+        let holder = match error.code {
+            "live_elsewhere" => crate::app_error::parts(&error.message),
+            _ => None,
+        };
+        let (params, message) = match holder {
+            Some((params, detail)) => (params, detail.unwrap_or(error.message)),
+            None => (BTreeMap::new(), error.message),
+        };
+        WireError {
+            code: error.code,
+            message,
+            params,
+        }
+    }
 }
 
 impl From<CollabError> for CollabCommandError {
@@ -70,7 +105,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 44] = [
+const PASSED_THROUGH: [&str; 52] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -99,8 +134,16 @@ const PASSED_THROUGH: [&str; 44] = [
     "suggestion_role",
     "suggestion_changed",
     "suggestion_too_long",
+    "suggestion_gone",
+    "review_off_server",
     "chat_role",
+    "chat_edit_off",
+    "chat_off_server",
     "history_unavailable",
+    "history_plan_limit",
+    "restore_off_server",
+    "linked_off_server",
+    "linked_refresh_failed",
     "account_storage_full",
     "too_many_projects",
     "too_many_uploads",

@@ -1875,33 +1875,18 @@
       "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
-      "confirmTitle": "Vahvista cookieiden tuonti",
-      "detecting": "Etsitään asennettuja selainprofiileja...",
-      "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
-      "dialogTitle": "Tuo selaimen cookiet",
-      "empty": "Tuettuja selainprofiileja ei löytynyt.",
-      "errors": {
-        "chooseProfile": "Valitse käytettävissä oleva selainprofiili."
-      },
-      "profileGroupLabel": "Selainprofiilit",
-      "profileLegend": "Selainprofiili",
-      "review": "Tarkista tuonti",
-      "status": {
-        "available": "Käytettävissä",
-        "comingSoon": "Tulossa pian",
-        "noCookieStore": "Ei cookie-varastoa",
-        "notInstalled": "Ei asennettu"
-      },
-      "tryAgain": "Yritä uudelleen",
-      "label": "Kopioi selaimen kirjautuminen",
-      "useBrowserSignIn": "Kopioi kirjautuminen selaimestasi",
-      "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
-      "site": "Sivusto: {{domain}}",
-      "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
-      "copyAction": "Kopioi kirjautuminen",
-      "copying": "Kopioidaan…",
-      "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
-      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään."
+      "dialogDescription": "Oleafly kopioi vain palvelun {{server}} cookiet, kirjautuu niillä ja poistaa sitten kopiot. Salasanasi pysyvät selaimessa.",
+      "dialogTitle": "Tuo cookiet selaimestasi",
+      "label": "Tuo cookiet selaimestasi",
+      "useBrowserSignIn": "Valitse profiili",
+      "signInDescription": "Käyttää palvelun {{server}} tiliä, jolla jokin tämän koneen selainprofiili on jo kirjautunut.",
+      "copyAction": "Tuo",
+      "copying": "Tuodaan…",
+      "from": "Mistä",
+      "noCookies": "Ei vielä cookieita",
+      "sameAccount": "Profiilissa {{profile}} on kirjautuneena {{account}}, jota Oleafly jo käyttää. Valitse toinen profiili tai kirjaudu ensin siinä selaimessa toiselle tilillesi.",
+      "orExisting": "tai käytä olemassa olevaa kirjautumista",
+      "noSavedSignIn": "Profiililla {{profile}} ei ole tallennettua kirjautumista palveluun {{server}}, joten kopioidut cookiet eivät kirjanneet sinua sisään. Jos olet kirjautunut siellä, selain ehkä säilyttää kirjautumisen vain siihen asti, kun se suljetaan. Käytä sen sijaan ruutua {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
@@ -1961,7 +1946,12 @@
       "signedIn": "Kirjautunut palvelimelle {{server}}",
       "signOut": "Kirjaudu ulos",
       "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "addAccount": "Lisää toinen tili",
+      "addAccountHint": "Valitse, missä kirjaudut. Kaikki alkavat ilman kirjautumista, joten mikä tahansa tili käy.",
+      "accountPick": "Tuonnissa käytettävä tili",
+      "accountPickDescription": "Uudet tuonnit ja mallipohjat käyttävät tätä tiliä. Jo olemassa olevat projektisi säilyttävät tilin, josta ne tuotiin.",
       "gitTitle": "Git-tokeni synkronointia varten",
+      "gitTitleFor": "Git-tokeni tilille {{email}}",
       "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
       "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
       "gitOpenSettings": "Avaa Overleafin tiliasetukset",
@@ -1970,14 +1960,9 @@
       "gitSave": "Tallenna",
       "gitRemove": "Poista",
       "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin.",
-      "browserLabel": "Kirjaudu selaimellasi",
-      "browserDescription": "Googlen, oppilaitoksen tai pääsyavaimen kirjautumista varten. Oleafly avaa palvelimen {{server}} uuteen selainikkunaan ja sulkee sen, kun olet kirjautunut.",
-      "browserAction": "Kirjaudu",
-      "browserPick": "Selain kirjautumiseen",
       "browserWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} selaimessa {{browser}}. Ikkunan sulkeminen peruu kirjautumisen.",
-      "browserHint": "Käytä tätä Googlen, oppilaitoksen tai pääsyavaimen kirjautumiseen.",
-      "windowLabel": "Kirjaudu palvelimelle {{server}}",
-      "windowDescription": "Oleafly avaa kirjautumisikkunan ja sulkee sen, kun olet kirjautunut. Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja kirjaudu sillä täällä.",
+      "windowLabel": "Kirjaudu Oleafly-sovelluksessa",
+      "windowDescription": "Ikkuna sulkeutuu itsestään, kun olet kirjautunut. Jos pääsyavaimesi ei toimi siellä, käytä salasanaa tai vahvistusta puhelimessa.",
       "windowAction": "Kirjaudu",
       "windowWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} avautuneessa ikkunassa.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Poista myös Overleafista",
           "never": "Säilytä Overleafissa"
         }
-      }
+      },
+      "sameAccount": "Olet jo kirjautunut tilillä {{account}}. Lisää toinen tili kirjautumalla sillä.",
+      "windowTitle": "Kirjaudu palvelimelle {{server}}",
+      "addAccountKept": "Nykyinen tilisi pysyy kirjautuneena.",
+      "noBrowser": "Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja valitse se sitten täältä.",
+      "tileHere": "Tässä sovelluksessa",
+      "tileWindow": "Uusi ikkuna",
+      "tileWaiting": "Odottaa sinua",
+      "signInNote": "Käytä selainta, kun kirjaudut Googlella, oppilaitoksesi tilillä tai pääsyavaimella. Jos pääsyavaimesi ei toimi Oleafly-sovelluksessa, käytä siellä salasanaa tai vahvistusta puhelimessa. Ikkuna sulkeutuu itsestään, kun olet kirjautunut."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "Tämä lataa Cua-asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?"
         }
       }
+    },
+    "signIns": {
+      "title": "Hallitse kirjautumisia",
+      "description": "Tilit, joilla Oleafly on kirjautunut tällä koneella. Jos poistat tilin täältä, pysyt kirjautuneena selaimessa.",
+      "loading": "Ladataan kirjautumisiasi…",
+      "empty": "Et ole kirjautunut millään tilillä.",
+      "inUse": "Käytössä",
+      "switch": "Vaihda",
+      "switchTo": "Vaihda tiliin {{account}}",
+      "removeAccount": "Poista {{account}}",
+      "removeAll": "Poista kaikki",
+      "importMore": "Tuo lisää",
+      "loadFailed": "Oleafly ei voinut ladata kirjautumisiasi.",
+      "changeFailed": "Oleafly ei voinut muuttaa tätä kirjautumista. Yritä uudelleen."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Tyhjennä sanat",
       "descriptionFallback": "Tämä poistaa kaikki termit tästä sanakirjasta. Ne tarkistetaan heti uudelleen.",
       "descriptionGlobal": "Tämä poistaa kaikki termit yleisestä sanakirjasta. Ne tarkistetaan heti uudelleen.",
+      "descriptionOverleaf": "Ne poistetaan myös Overleaf-tililtäsi.",
       "descriptionProject": "Tämä poistaa kaikki termit projektista {{project}}. Ne tarkistetaan heti uudelleen.",
       "descriptionSuppressed": "Tämä poistaa kaikki termit projektin {{project}} ohitetuista huomioista. Ne tarkistetaan heti uudelleen.",
       "suppressedConfirm": "Näytä uudelleen",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Tähän lisätyt sanat ohitetaan kielentarkistuksessa jokaisessa projektissa.",
+      "overleafSynced": "Synkronoidaan Overleaf-tilisi opittujen sanojen kanssa, kun projekti on reaaliaikaisessa muokkauksessa Overleaf-palvelussa.",
       "scope": "Koskee jokaista projektia"
     },
     "intro": "Lisää sanoja henkilökohtaiseen oikolukusanakirjaasi. Nämä sanat tallennetaan paikallisiin asetuksiin ja ohitetaan kaikissa projekteissa. Vertailu on Unicode-normalisoitua eikä erota kirjainkokoa.",

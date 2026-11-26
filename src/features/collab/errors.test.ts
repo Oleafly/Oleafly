@@ -6,6 +6,7 @@ import {
   COLLAB_ERROR_CODES_COMPLETE,
   collabErrorCode,
   collabErrorMessage,
+  collabErrorParams,
   collabErrorText,
 } from "./errors";
 
@@ -42,6 +43,19 @@ describe("collab errors", () => {
     expect(collabErrorText({ code: "wrong_server", message: "elsewhere" })).toBe(enCollab.errors.wrong_server);
     expect(collabErrorText({ code: "already_member", message: "" }, "allowlist")).toBe(enCollab.errors.already_member);
     expect(enCollab.errors.already_member).toContain(enCollab.admin.tabs.members);
+  });
+
+  it("names the command line and its process when it holds a live project", () => {
+    const cli = { code: "live_elsewhere", message: "live on the command line", params: { by: "cli", pid: "41" } };
+    const named = enCollab.liveElsewhere.cli.replace("{{pid}}", "41");
+    expect(collabErrorParams(cli)).toEqual({ by: "cli", pid: "41" });
+    expect(collabErrorText(cli)).toBe(named);
+    expect(collabErrorMessage("live_elsewhere", undefined, cli.params)).toBe(named);
+    const app = { code: "live_elsewhere", message: "live in the app", params: { by: "app", pid: "7" } };
+    expect(collabErrorText(app)).toBe(enCollab.errors.live_elsewhere);
+    expect(collabErrorText({ code: "live_elsewhere", message: "live somewhere" })).toBe(enCollab.errors.live_elsewhere);
+    expect(collabErrorParams({ code: "live_elsewhere", message: "" })).toEqual({});
+    expect(collabErrorParams(new Error("boom"))).toEqual({});
   });
 
   it("shows the server's own sentence for a refusal it has no code for", () => {

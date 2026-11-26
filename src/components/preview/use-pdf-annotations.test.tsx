@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import "@/i18n";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PdfMark, PdfTextRun, PdfTextSelectionInfo } from "@oleafly/preview";
 import enAnnotations from "@/i18n/locales/en/annotations.json" with { type: "json" };
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import type { PdfAnnotation } from "@/lib/tauri";
+import { useCommentsRail } from "@/components/collab/comments-rail";
+import { useFilesStore } from "@/store/files";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
+import { useSettingsStore } from "@/store/settings";
 import { PdfAnnotationsHost, usePdfAnnotations, type PdfAnnotationsView } from "./use-pdf-annotations";
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +25,13 @@ const mocks = vi.hoisted(() => ({
   gotoRect: vi.fn(),
   pdfPageText: vi.fn(async (): Promise<PdfTextRun[] | null> => null),
   sourceTexts: vi.fn((): Record<string, string> => ({})),
+  sourceText: vi.fn((_path: string): string | null => null),
+  sourceLineAt: vi.fn(),
+  openFile: vi.fn(async (_path: string) => undefined),
+  logWarning: vi.fn(async () => undefined),
+  logError: vi.fn(async () => undefined),
+  toastInfo: vi.fn(),
+  notifyError: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -37,8 +47,9 @@ vi.mock("@/features/pdf-annotations/locate", async (importOriginal) => ({
 }));
 vi.mock("@/features/pdf-annotations/place", () => ({ placeAnnotations: mocks.placeAnnotations }));
 vi.mock("@/features/synctex", () => ({
-  sourceText: () => null,
+  sourceText: mocks.sourceText,
   sourceTexts: mocks.sourceTexts,
+  sourceLineAt: mocks.sourceLineAt,
   compiledSourceText: () => null,
   typesetLinesOf: async () => null,
 }));
@@ -47,6 +58,15 @@ vi.mock("@/features/assistant-handoff", () => ({
   ensureAiProviderOrOpenSettings: mocks.ensureAiProviderOrOpenSettings,
 }));
 vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: mocks.pdfPageText }));
+vi.mock("@/lib/log", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/log")>()),
+  logWarning: mocks.logWarning,
+  logError: mocks.logError,
+}));
+vi.mock("@/lib/toast", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/toast")>();
+  return { ...original, toast: { ...original.toast, info: mocks.toastInfo }, notifyError: mocks.notifyError };
+});
 
 const PLACING = { timeout: 5_000 };
 const strings = enAnnotations;
@@ -86,9 +106,16 @@ function note(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
 
 let latest: ReturnType<typeof usePdfAnnotations> | null = null;
 
-function Harness({ build = "build-1", ready = true }: Readonly<{ build?: string; ready?: boolean }>) {
+function Harness({
+  build = "build-1",
+  ready = true,
+  annotate = true,
+  comment = false,
+}: Readonly<{ build?: string; ready?: boolean; annotate?: boolean; comment?: boolean }>) {
   const annotations = usePdfAnnotations({
     projectId: "project",
+    annotate,
+    comment,
     build,
     documentReady: ready,
     checkpoint: null,
@@ -128,6 +155,13 @@ beforeEach(() => {
   mocks.locateSource.mockResolvedValue(source);
   mocks.pdfPageText.mockResolvedValue(null);
   mocks.sourceTexts.mockReturnValue({});
+  mocks.sourceText.mockReturnValue(null);
+  mocks.openFile.mockImplementation(async (path: string) => {
+    useFilesStore.setState({ activePath: path });
+  });
+  useFilesStore.setState({ projectId: "project", activePath: "notes.md", openFile: mocks.openFile });
+  useCommentsRail.setState({ visible: true, canCompose: true, request: null });
+  useSettingsStore.setState({ railTab: "files", showTree: false });
   mocks.update.mockImplementation(async () => usePdfAnnotationsStore.getState().items);
 });
 
@@ -292,6 +326,125 @@ describe("usePdfAnnotations", () => {
   });
 });
 
+describe("commenting for coauthors from a PDF selection", () => {
+  const paper = [
+    String.raw`\documentclass{article}`,
+    String.raw`\begin{document}`,
+    "Intro.",
+    "We make a claim that needs a citation here.",
+    String.raw`\end{document}`,
+  ].join("\n");
+  const coauthors = strings.composer.coauthors;
+
+  function sourceFound() {
+    mocks.sourceLineAt.mockResolvedValue({ path: "main.tex", line: 4, column: null });
+    mocks.sourceText.mockImplementation((path: string) => (path === "main.tex" ? paper : null));
+  }
+
+  async function mountOnly(props: { annotate?: boolean; comment?: boolean } = {}) {
+    mocks.list.mockResolvedValue({ items: [], readOnly: false, setAside: false });
+    render(<Harness annotate={props.annotate ?? false} comment={props.comment ?? true} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it("offers only the coauthor comment while annotations are off, with no notes, toolbar or panel", async () => {
+    await mountOnly();
+    select();
+    expect(await screen.findByRole("button", { name: coauthors })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: strings.composer.action.comment })).toBeNull();
+    expect(screen.queryByRole("button", { name: strings.composer.action.delete })).toBeNull();
+    expect(latest?.toolbar).toBeNull();
+    expect(latest?.viewerProps.marks).toEqual([]);
+    expect(latest?.viewerProps.regionSelect).toBe(false);
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: strings.panel.title })).toBeNull();
+  });
+
+  it("offers both while annotations are on, and no coauthor comment when comments aren't open", async () => {
+    await mount();
+    select();
+    expect(await screen.findByRole("button", { name: strings.composer.action.comment })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: coauthors })).toBeNull();
+    cleanup();
+    await mountOnly({ annotate: true, comment: true });
+    select();
+    expect(await screen.findByRole("button", { name: coauthors })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: strings.composer.action.comment })).toBeInTheDocument();
+  });
+
+  it("maps the selection to its source words and opens the comment composer on them in that file", async () => {
+    sourceFound();
+    await mountOnly();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: coauthors }));
+    const from = paper.indexOf("a claim");
+    await waitFor(() =>
+      expect(useCommentsRail.getState().request).toEqual({
+        path: "main.tex",
+        from,
+        to: from + "a claim that needs a citation".length,
+        quote: "a claim that needs a citation",
+      }),
+    );
+    expect(mocks.sourceLineAt).toHaveBeenCalledWith(3, 11, 26, null);
+    expect(mocks.openFile).toHaveBeenCalledWith("main.tex");
+    expect(useSettingsStore.getState()).toMatchObject({ railTab: "comments", showTree: true });
+    expect(screen.queryByRole("button", { name: coauthors })).toBeNull();
+    expect(mocks.add).not.toHaveBeenCalled();
+  });
+
+  it("says so and keeps the selection when the passage isn't in the source", async () => {
+    mocks.sourceLineAt.mockResolvedValue(null);
+    await mountOnly();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: coauthors }));
+    await waitFor(() => expect(mocks.toastInfo).toHaveBeenCalledWith(strings.composer.noSource));
+    expect(mocks.logWarning).toHaveBeenCalledWith("comment on a PDF selection", expect.stringContaining("page 3"));
+    expect(useCommentsRail.getState().request).toBeNull();
+    expect(mocks.openFile).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: coauthors })).toBeEnabled();
+  });
+
+  it("treats a mapping that breaks like one that finds nothing, and logs why", async () => {
+    mocks.sourceLineAt.mockRejectedValue(new Error("synctex crashed"));
+    await mountOnly();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: coauthors }));
+    await waitFor(() => expect(mocks.toastInfo).toHaveBeenCalledWith(strings.composer.noSource));
+    expect(mocks.logError).toHaveBeenCalledWith("comment on a PDF selection", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a file that couldn't be opened", async () => {
+    sourceFound();
+    const failure = new Error("locked");
+    mocks.openFile.mockRejectedValueOnce(failure);
+    await mountOnly();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: coauthors }));
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("comment on a PDF selection", failure, strings.composer.commentFailed),
+    );
+    expect(useCommentsRail.getState().request).toBeNull();
+  });
+
+  it("says so when comments closed while the file was opening", async () => {
+    sourceFound();
+    mocks.openFile.mockImplementationOnce(async (path: string) => {
+      useCommentsRail.setState({ canCompose: false });
+      useFilesStore.setState({ activePath: path });
+    });
+    await mountOnly();
+    select();
+    await userEvent.click(await screen.findByRole("button", { name: coauthors }));
+    await waitFor(() => expect(mocks.toastInfo).toHaveBeenCalledWith(strings.composer.commentsClosed));
+    expect(mocks.logWarning).toHaveBeenCalledWith("comment on a PDF selection", expect.stringContaining("main.tex"));
+    expect(useCommentsRail.getState().request).toBeNull();
+  });
+});
+
 describe("PdfAnnotationsHost", () => {
   it("hands its viewer props and toolbar to the preview, draws its cards in the slot, and clears them when it goes", async () => {
     mocks.list.mockResolvedValue({ items: [note()], readOnly: false, setAside: false });
@@ -302,6 +455,8 @@ describe("PdfAnnotationsHost", () => {
     const host = (
       <PdfAnnotationsHost
         projectId="project"
+        annotate
+        comment={false}
         build="build-1"
         documentReady
         checkpoint={null}

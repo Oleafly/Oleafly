@@ -315,6 +315,15 @@
     "spellLanguageFolderHint": "Tallennetaan tämän kansion project.json-tiedostoon, joten se koskee kaikkia, jotka avaavat kansion. Lataa lisää kieliä asetuksissa.",
     "spellLanguageReadOnly": "Tämä kansio on vain luku -tilassa, joten sen project.json-tiedoston kieltä ei voi muuttaa.",
     "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa.",
+    "onOverleaf": "Overleaf-palvelussa",
+    "texLive": "TeX Live -versio",
+    "texLiveAriaLabel": "TeX Live -versio Overleaf-palvelussa",
+    "bibliography": "Päälähdeluettelo",
+    "bibliographyAriaLabel": "Päälähdeluettelo Overleaf-palvelussa",
+    "bibliographyNone": "Ei valittu",
+    "overleafHint": "Nämä asetukset ovat Overleaf-palvelussa ja koskevat kaikkia projektin jäseniä.",
+    "overleafReadOnly": "Vain omistajat ja muokkaajat voivat muuttaa näitä Overleaf-palvelussa.",
+    "overleafFailed": "Tätä asetusta ei voitu muuttaa Overleaf-palvelussa.",
     "notChecked": "Ei tarkistettu",
     "dictionaryMissing": "{{name}} ei ole ladattu, joten oikeinkirjoitusta ei tarkisteta. Lataa se asetuksista tai valitse toinen kieli.",
     "grammarEnglishOnly": "Kieliopin tarkistus toimii vain englanninkielisissä asiakirjoissa.",
@@ -736,12 +745,12 @@
     "ignoreEverywhere": "Ohita kaikkialla",
     "keyboardHint": "Siirry toimintojen välillä Tab-näppäimellä tai nuolinäppäimillä. Sulje painamalla Escape.",
     "endOfDocument": "Dokumentin loppu",
-    "hidePreamble": "Piilota dokumentin esittelyosa",
-    "showPreamble": "Näytä dokumentin esittelyosa",
-    "sharedReadOnly": "Jaetussa projektissa visuaalinen tila vain näyttää tiedoston. Vaihda lähdekoodinäkymään, jos haluat muokata sitä.",
     "findingLabel": "{{message}}. Avaa oikolukuehdotukset.",
     "rawBlockFindings_one": "{{count}} oikolukuhavainto tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
-    "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset."
+    "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
+    "liveViewOnly": "Voit katsella tätä jaettua tiedostoa mutta et muokata sitä.",
+    "liveConnecting": "Tämä jaettu tiedosto muodostaa vielä yhteyttä. Voit muokata sitä, kun se on valmis.",
+    "suggestInSource": "Muutoksesi olisivat täällä ehdotuksia, eikä visuaalinen tila voi näyttää niitä. Vaihda lähdekoodinäkymään, jos haluat ehdottaa muokkauksia."
   },
   "package": {
     "search": {

@@ -27,6 +27,7 @@ export function HistoryVersionDialog({
   entry,
   initialPath,
   canRestore,
+  overleaf = false,
   onRestored,
   onClose,
 }: Readonly<{
@@ -34,6 +35,7 @@ export function HistoryVersionDialog({
   entry: CollabHistoryEntry;
   initialPath: string | null;
   canRestore: boolean;
+  overleaf?: boolean;
   onRestored: () => void;
   onClose: () => void;
 }>) {
@@ -194,7 +196,11 @@ export function HistoryVersionDialog({
       <ConfirmationDialog
         open={confirming?.scope === "project"}
         title={t(($) => $.collab.history.restoreProjectConfirm.title)}
-        description={t(($) => $.collab.history.restoreProjectConfirm.textAndDeleted, { time: when })}
+        description={
+          overleaf
+            ? t(($) => $.collab.history.restoreOverleafProject, { time: when })
+            : t(($) => $.collab.history.restoreProjectConfirm.textAndDeleted, { time: when })
+        }
         confirmLabel={t(($) => $.collab.history.restoreProjectConfirm.confirm)}
         destructive
         onConfirm={() => {

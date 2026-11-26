@@ -204,6 +204,7 @@ describe("TemplateImportDialog", () => {
         LINK,
         "IEEE Conference Template",
         "QUJD",
+        null,
       ),
     );
     expect(overleafSignIn).toHaveBeenCalledWith(DEFAULT_OVERLEAF_SERVER, expect.any(String));
@@ -229,6 +230,7 @@ describe("TemplateImportDialog", () => {
         DEFAULT_OVERLEAF_SERVER,
         LINK,
         "IEEE Conference Template",
+        null,
         null,
       ),
     );
@@ -315,6 +317,7 @@ describe("TemplateImportDialog", () => {
         DEFAULT_OVERLEAF_SERVER,
         "a1",
         "Lab master",
+        null,
       ),
     );
     expect(onImported).toHaveBeenCalledWith("lab-master-abc123", "Lab master");

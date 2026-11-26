@@ -1,0 +1,1766 @@
+{
+  "doc": "6b04e335cb4fe3a455d4d085",
+  "format": "history-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "server": {
+        "version": 1,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n"
+                  ]
+                }
+              ],
+              "v": 0,
+              "hash": "e98f98f9f1ca26e2cca48d978b92ec7112da12e0"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 657,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 794,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 794,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 795,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "alice comments on \"commented phrase\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 1,
+        "op": [
+          {
+            "commentId": "6b04e33cc0ffee0001000001",
+            "ranges": [
+              {
+                "pos": 22,
+                "length": 16
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 2,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 22,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 22,
+                "c": "commented phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "alice comments on \"Second paragraph\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 2,
+        "op": [
+          {
+            "commentId": "6b04e33fc0ffee0003000001",
+            "ranges": [
+              {
+                "pos": 46,
+                "length": 16
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 3,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 22,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 46,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 22,
+                "c": "commented phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 46,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "alice comments on \"Third paragraph\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 3,
+        "op": [
+          {
+            "commentId": "6b04e33cc0ffee0002000001",
+            "ranges": [
+              {
+                "pos": 88,
+                "length": 15
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 4,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 22,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 46,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 88,
+                  "length": 15
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 22,
+                "c": "commented phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 46,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 88,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 3,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "alice comments on \"word\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 4,
+        "op": [
+          {
+            "commentId": "6b04e345c0ffee0004000001",
+            "ranges": [
+              {
+                "pos": 110,
+                "length": 4
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 4,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 5,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 22,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 46,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 88,
+                  "length": 15
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 110,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 22,
+                "c": "commented phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 46,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 88,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 110,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "bob types strictly inside \"commented phrase\"",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 31,
+          "insert": " long"
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 6,
+        "text": "First paragraph has a commented long phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has a commented long phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 22,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 51,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 93,
+                  "length": 15
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 115,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 22,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 51,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 93,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 115,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    31,
+                    {
+                      "i": " long",
+                      "commentIds": [
+                        "6b04e33cc0ffee0001000001"
+                      ]
+                    },
+                    95
+                  ]
+                }
+              ],
+              "v": 5,
+              "lastV": 0,
+              "hash": "7ea365b69cc6a0a4afe4910662ee6512e2a622d2"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "bob cuts the commented text in the web editor",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 20,
+          "to": 44
+        },
+        "userEvent": "delete.cut"
+      },
+      "server": {
+        "version": 7,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": []
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 15
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 91,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 0,
+                "c": "",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 69,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 91,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 3,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    20,
+                    -24,
+                    87
+                  ]
+                }
+              ],
+              "v": 6,
+              "lastV": 5
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "bob pastes the same text into line 2",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 63,
+          "insert": "a commented long phrase "
+        },
+        "userEvent": "input.paste"
+      },
+      "server": {
+        "version": 8,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented long phrase goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond paragraph is where the paste a commented long phrase goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 93,
+                  "length": 15
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 115,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 65,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 93,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 115,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    63,
+                    "a commented long phrase ",
+                    44
+                  ]
+                },
+                {
+                  "commentId": "6b04e33cc0ffee0001000001",
+                  "ranges": [
+                    {
+                      "pos": 65,
+                      "length": 21
+                    }
+                  ]
+                }
+              ],
+              "v": 7,
+              "lastV": 6,
+              "hash": "e389d67f41e3f4d91089ee5ffab27423803e3015"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "alice inserts strictly inside \"Second paragraph\" without commentIds",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 8,
+        "op": [
+          {
+            "textOperation": [
+              33,
+              " new",
+              98
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 8,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 9,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 97,
+                  "length": 15
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 119,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 97,
+                "c": "Third paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 119,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "alice inserts strictly inside \"Third paragraph\" with commentIds",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 9,
+        "op": [
+          {
+            "textOperation": [
+              102,
+              {
+                "i": " next",
+                "commentIds": [
+                  "6b04e33cc0ffee0002000001"
+                ]
+              },
+              33
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 9,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 10,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 97,
+                  "length": 20
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 124,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 97,
+                "c": "Third next paragraph",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 124,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 11,
+      "label": "alice appends a line and re-adds the \"Third paragraph\" comment on it in the same update",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 10,
+        "op": [
+          {
+            "textOperation": [
+              140,
+              "Moved comment text.\n"
+            ]
+          },
+          {
+            "commentId": "6b04e33cc0ffee0002000001",
+            "ranges": [
+              {
+                "pos": 140,
+                "length": 19
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 10,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 11,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 140,
+                  "length": 19
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 124,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 140,
+                "c": "Moved comment text.",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 124,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 12,
+      "label": "alice resolves the pasted comment",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 11,
+        "op": [
+          {
+            "commentId": "6b04e33cc0ffee0001000001",
+            "resolved": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 11,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 12,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 140,
+                  "length": 19
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 124,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": true
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 140,
+                "c": "Moved comment text.",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 124,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 13,
+      "label": "alice re-adds the resolved comment with its ranges and no resolved field",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e335cb4fe3a455d4d085",
+        "v": 12,
+        "op": [
+          {
+            "commentId": "6b04e33cc0ffee0001000001",
+            "ranges": [
+              {
+                "pos": 69,
+                "length": 21
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 12,
+          "doc": "6b04e335cb4fe3a455d4d085"
+        }
+      },
+      "server": {
+        "version": 13,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 140,
+                  "length": 19
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 124,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 140,
+                "c": "Moved comment text.",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 124,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 14,
+      "label": "bob deletes \"word \" in the web editor",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 124,
+          "to": 129
+        },
+        "userEvent": "delete"
+      },
+      "server": {
+        "version": 14,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a to delete.\nMoved comment text.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a to delete.\nMoved comment text.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 135,
+                  "length": 19
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": []
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 135,
+                "c": "Moved comment text.",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    124,
+                    -5,
+                    31
+                  ]
+                }
+              ],
+              "v": 13,
+              "lastV": 7,
+              "hash": "6604a4bdd52be9b5ab651baafbb167a0f60b5881"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 15,
+      "label": "bob undoes the delete in the web editor",
+      "who": "bob",
+      "edit": {
+        "undo": true
+      },
+      "server": {
+        "version": 15,
+        "text": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+        "raw": {
+          "content": "First paragraph has in it.\nSecond new paragraph is where the paste a commented long phrase goes.\nThird next paragraph has a word to delete.\nMoved comment text.\n",
+          "comments": [
+            {
+              "id": "6b04e33cc0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 69,
+                  "length": 21
+                }
+              ]
+            },
+            {
+              "id": "6b04e33fc0ffee0003000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 6
+                },
+                {
+                  "pos": 37,
+                  "length": 10
+                }
+              ]
+            },
+            {
+              "id": "6b04e33cc0ffee0002000001",
+              "ranges": [
+                {
+                  "pos": 140,
+                  "length": 19
+                }
+              ]
+            },
+            {
+              "id": "6b04e345c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 124,
+                  "length": 4
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 69,
+                "c": "commented long phrase",
+                "t": "6b04e33cc0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0001000001"
+            },
+            {
+              "op": {
+                "p": 27,
+                "c": "Second new paragraph",
+                "t": "6b04e33fc0ffee0003000001",
+                "resolved": false
+              },
+              "id": "6b04e33fc0ffee0003000001"
+            },
+            {
+              "op": {
+                "p": 140,
+                "c": "Moved comment text.",
+                "t": "6b04e33cc0ffee0002000001",
+                "resolved": false
+              },
+              "id": "6b04e33cc0ffee0002000001"
+            },
+            {
+              "op": {
+                "p": 124,
+                "c": "word",
+                "t": "6b04e345c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e345c0ffee0004000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e335cb4fe3a455d4d085",
+              "op": [
+                {
+                  "textOperation": [
+                    124,
+                    "word ",
+                    31
+                  ]
+                },
+                {
+                  "commentId": "6b04e345c0ffee0004000001",
+                  "ranges": [
+                    {
+                      "pos": 124,
+                      "length": 4
+                    }
+                  ]
+                }
+              ],
+              "v": 14,
+              "lastV": 13
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

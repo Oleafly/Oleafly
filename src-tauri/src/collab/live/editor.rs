@@ -3,6 +3,7 @@ use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
+use oleafly_online::live::doc::Origin;
 use oleafly_ot::{DocOpened, DocSink, TextOperation};
 
 use super::payloads::ActivityPayload;
@@ -44,10 +45,11 @@ pub fn doc_change(
     file_id: &str,
     rev: u64,
     operation: TextOperation,
+    origin: Option<Origin>,
 ) -> Result<(), CollabError> {
     let active = match live_for(project_id).ok_or_else(not_live)? {
         Live::Server(active) => active,
-        Live::Overleaf(live) => return live.change(file_id, rev, operation),
+        Live::Overleaf(live) => return live.change(file_id, rev, operation, origin),
     };
     let (suggested, refused) = {
         let mut live = lock(&active.live);
@@ -67,11 +69,10 @@ pub fn doc_change(
     active.kick();
     active.refresh_pending();
     if let Some(path) = suggested {
-        crate::collab::suggesting::tell(active.local.host.as_ref(), project_id, path, true);
+        crate::collab::suggesting::tell(active.host.as_ref(), project_id, path, true);
     }
     if let Some((code, path)) = refused {
         active
-            .local
             .host
             .suggestion_refused(crate::collab::suggesting::SuggestionRefusedPayload {
                 project_id: project_id.to_owned(),
@@ -203,17 +204,22 @@ mod tests {
         Mutex<Vec<SuggestionRefusedPayload>>,
     );
 
-    impl LiveHost for Heard {
+    impl oleafly_live::DiskHost for Heard {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for Heard {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
+
         fn suggestions_changed(&self, payload: SuggestionsChangedPayload) {
             self.0.lock().unwrap().push(payload);
         }
+
         fn suggestion_refused(&self, payload: SuggestionRefusedPayload) {
             self.1.lock().unwrap().push(payload);
         }
@@ -252,10 +258,17 @@ mod tests {
         }
         let (main, rev) = rig.open("main.tex");
         let (plain, plain_rev) = rig.open("plain.tex");
-        doc_change("editing-refresh", &plain, plain_rev, typed("abc\n", 0, "x")).unwrap();
+        doc_change(
+            "editing-refresh",
+            &plain,
+            plain_rev,
+            typed("abc\n", 0, "x"),
+            None,
+        )
+        .unwrap();
         assert!(heard.0.lock().unwrap().is_empty());
         let text = rig.text("main.tex").unwrap();
-        doc_change("editing-refresh", &main, rev, typed(&text, 0, "> ")).unwrap();
+        doc_change("editing-refresh", &main, rev, typed(&text, 0, "> "), None).unwrap();
         let heard = heard.0.lock().unwrap();
         assert_eq!(heard.len(), 1, "{heard:?}");
         assert_eq!(heard[0].paths, vec!["main.tex".to_owned()]);
@@ -287,7 +300,7 @@ mod tests {
         operation
             .delete(oleafly_collab::suggestions::MAX_DELETED_CHARS + 1)
             .retain(4);
-        doc_change("too-long-refusal", &main, rev, operation).unwrap();
+        doc_change("too-long-refusal", &main, rev, operation, None).unwrap();
         assert_eq!(rig.text("main.tex").unwrap(), long);
         let refused = heard.1.lock().unwrap().clone();
         assert_eq!(

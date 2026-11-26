@@ -32,7 +32,7 @@ describe("overleaf sync bridge", () => {
     await overleafSyncUnlink("p1");
     await overleafSyncSetAuto("p1", false);
     await overleafGitTokenStatus("");
-    await overleafGitTokenSet("https://www.overleaf.com", "olp_x");
+    await overleafGitTokenSet("https://www.overleaf.com", "olp_x", "u-ada");
     await overleafGitTokenClear(null);
     expect(mocks.invoke.mock.calls).toEqual([
       ["overleaf_sync_status", { projectId: "p1" }],
@@ -43,9 +43,9 @@ describe("overleaf sync bridge", () => {
       ["overleaf_sync_check", { projectId: "p1" }],
       ["overleaf_sync_unlink", { projectId: "p1" }],
       ["overleaf_sync_set_auto", { projectId: "p1", auto: false }],
-      ["overleaf_git_token_status", { server: null }],
-      ["overleaf_git_token_set", { server: "https://www.overleaf.com", token: "olp_x" }],
-      ["overleaf_git_token_clear", { server: null }],
+      ["overleaf_git_token_status", { server: null, account: null }],
+      ["overleaf_git_token_set", { server: "https://www.overleaf.com", account: "u-ada", token: "olp_x" }],
+      ["overleaf_git_token_clear", { server: null, account: null }],
     ]);
   });
 

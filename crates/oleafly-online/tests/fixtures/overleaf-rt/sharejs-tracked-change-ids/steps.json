@@ -1,0 +1,1647 @@
+{
+  "doc": "6b04e5eecb4fe3a455d4d2a6",
+  "format": "sharejs-text-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "Alpha beta gamma delta epsilon zeta eta theta iota kappa.\nA plain second line.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5eecb4fe3a455d4d2a6",
+              "op": [
+                {
+                  "p": 0,
+                  "i": "Alpha beta gamma delta epsilon zeta eta theta iota kappa.\nA plain second line.\n"
+                }
+              ],
+              "v": 0,
+              "hash": "fec14a0a7f65ccbe06fcdd891e9857830c72bdad"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": [
+            {
+              "t": 800,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 982,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 982,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 982,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "carol inserts \"NEW \" before \"beta\"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 1,
+        "op": [
+          {
+            "p": 6,
+            "i": "NEW "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e5f6c0ffee0010"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e5f6c0ffee0010",
+      "expect": [
+        "6b04e5f6c0ffee0010000001"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e5f6c0ffee0010000001"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 2,
+        "text": "Alpha NEW beta gamma delta epsilon zeta eta theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NEW "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "carol sends two tracked inserts in one update, the later position first",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 2,
+        "op": [
+          {
+            "p": 44,
+            "i": "two "
+          },
+          {
+            "p": 21,
+            "i": "one "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e5f9c0ffee0011"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e5f9c0ffee0011",
+      "expect": [
+        "6b04e5f9c0ffee0011000001",
+        "6b04e5f9c0ffee0011000002"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e5f9c0ffee0011000002",
+          "6b04e5f9c0ffee0011000001"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 3,
+        "text": "Alpha NEW beta gamma one delta epsilon zeta eta two theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NEW "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 21,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 48,
+                "i": "two "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "carol deletes \"epsilon \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 3,
+        "op": [
+          {
+            "p": 31,
+            "d": "epsilon "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e5fcc0ffee0012"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e5fcc0ffee0012",
+      "expect": [
+        "6b04e5fcc0ffee0012000001"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e5fcc0ffee0012000001"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 4,
+        "text": "Alpha NEW beta gamma one delta zeta eta two theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NEW "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 21,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 31,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 40,
+                "i": "two "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "alice inserts inside Carol's \"NEW \", splitting it",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 4,
+        "op": [
+          {
+            "p": 8,
+            "i": "ALICE"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e5ffc0ffee0013"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 4,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e5ffc0ffee0013",
+      "expect": [
+        "6b04e5ffc0ffee0013000001",
+        "6b04e5ffc0ffee0013000002"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e5ffc0ffee0013000001",
+          "6b04e5ffc0ffee0013000002"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 5,
+        "text": "Alpha NEALICEW beta gamma one delta zeta eta two theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 36,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 45,
+                "i": "two "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "bob (untracked, web editor) types inside Carol's \"two \", splitting it",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 46,
+          "insert": "bob"
+        },
+        "userEvent": "input.type"
+      },
+      "changeIds": {
+        "added": [
+          "6b04e602783f710736000001"
+        ],
+        "removed": []
+      },
+      "server": {
+        "version": 6,
+        "text": "Alpha NEALICEW beta gamma one delta zeta eta tbobwo theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 36,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 45,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 49
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5eecb4fe3a455d4d2a6",
+              "op": [
+                {
+                  "p": 46,
+                  "i": "bob"
+                }
+              ],
+              "v": 5,
+              "lastV": 0,
+              "hash": "4fa64d1f911c3c18b1aac6d0bf76b8d20520a2bb"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "carol inserts \"more \" touching the end of her own \"one \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 6,
+        "op": [
+          {
+            "p": 30,
+            "i": "more "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e605c0ffee0014"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 6,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e605c0ffee0014",
+      "expect": [],
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 7,
+        "text": "Alpha NEALICEW beta gamma one more delta zeta eta tbobwo theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one more "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 41,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 50,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 54
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "carol deletes \"more delta\", the end of her own insert and plain text",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 7,
+        "op": [
+          {
+            "p": 30,
+            "d": "more delta"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e608c0ffee0015"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 7,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e608c0ffee0015",
+      "expect": [
+        "6b04e608c0ffee0015000001"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e608c0ffee0015000001"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 8,
+        "text": "Alpha NEALICEW beta gamma one  zeta eta tbobwo theta iota kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 30,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 31,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 40,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 44
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "carol reuses the first seed for a new insert before \"kappa\"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 8,
+        "op": [
+          {
+            "p": 58,
+            "i": "dup "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e5f6c0ffee0010"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 8,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e5f6c0ffee0010",
+      "expect": [
+        "6b04e5f6c0ffee0010000001"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e5f6c0ffee0010000001"
+        ],
+        "removed": [],
+        "duplicated": [
+          "6b04e5f6c0ffee0010000001"
+        ]
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 9,
+        "text": "Alpha NEALICEW beta gamma one  zeta eta tbobwo theta iota dup kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 30,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 31,
+                "d": "epsilon "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:52.507Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 40,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 44
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 58,
+                "i": "dup "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:07.640Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "carol deletes \"zeta \", touching her earlier delete of \"epsilon \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 9,
+        "op": [
+          {
+            "p": 31,
+            "d": "zeta "
+          }
+        ],
+        "meta": {
+          "tc": "6b04e60ec0ffee0016"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 9,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e60ec0ffee0016",
+      "expect": [],
+      "changeIds": {
+        "added": [],
+        "removed": [],
+        "duplicated": [
+          "6b04e5f6c0ffee0010000001"
+        ]
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 10,
+        "text": "Alpha NEALICEW beta gamma one  eta tbobwo theta iota dup kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 6,
+                "i": "NE"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 8,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 13
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 26,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 30,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 31,
+                "d": "epsilon zeta "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:10.855Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 35,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 39
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 53,
+                "i": "dup "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:07.640Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 11,
+      "label": "alice (tracked) deletes \"NE\", the part of Carol's insert before her own",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 10,
+        "op": [
+          {
+            "p": 6,
+            "d": "NE"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e611c0ffee0017"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 10,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e611c0ffee0017",
+      "expect": [],
+      "changeIds": {
+        "added": [],
+        "removed": [
+          "6b04e5f6c0ffee0010000001"
+        ]
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 11,
+        "text": "Alpha ALICEW beta gamma one  eta tbobwo theta iota dup kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 6,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000002",
+              "op": {
+                "i": "W ",
+                "p": 11
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:46.359Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 24,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 28,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 29,
+                "d": "epsilon zeta "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:10.855Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 33,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 37
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 51,
+                "i": "dup "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:07.640Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 12,
+      "label": "bob (untracked) deletes \"W \", the rest of Carol's split insert",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 11,
+          "to": 13
+        },
+        "userEvent": "delete"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": [
+          "6b04e5ffc0ffee0013000002"
+        ]
+      },
+      "server": {
+        "version": 12,
+        "text": "Alpha ALICEbeta gamma one  eta tbobwo theta iota dup kappa.\nA plain second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 6,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 22,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 26,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 27,
+                "d": "epsilon zeta "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:10.855Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 31,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 35
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 49,
+                "i": "dup "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:07.640Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5eecb4fe3a455d4d2a6",
+              "op": [
+                {
+                  "p": 11,
+                  "d": "W "
+                }
+              ],
+              "v": 11,
+              "lastV": 5,
+              "hash": "f4a5f56f1231e47b6ec0097f63306b86439eba0a"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 13,
+      "label": "carol deletes two ranges in one update, the later position first",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5eecb4fe3a455d4d2a6",
+        "v": 12,
+        "op": [
+          {
+            "p": 62,
+            "d": "plain"
+          },
+          {
+            "p": 0,
+            "d": "Alpha"
+          }
+        ],
+        "meta": {
+          "tc": "6b04e617c0ffee0018"
+        }
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 12,
+          "doc": "6b04e5eecb4fe3a455d4d2a6"
+        }
+      },
+      "tc": "6b04e617c0ffee0018",
+      "expect": [
+        "6b04e617c0ffee0018000001",
+        "6b04e617c0ffee0018000002"
+      ],
+      "changeIds": {
+        "added": [
+          "6b04e617c0ffee0018000002",
+          "6b04e617c0ffee0018000001"
+        ],
+        "removed": []
+      },
+      "predictionHeld": true,
+      "server": {
+        "version": 13,
+        "text": " ALICEbeta gamma one  eta tbobwo theta iota dup kappa.\nA  second line.\n",
+        "ranges": {
+          "changes": [
+            {
+              "id": "6b04e617c0ffee0018000002",
+              "op": {
+                "p": 0,
+                "d": "Alpha"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:20.181Z"
+              }
+            },
+            {
+              "id": "6b04e5ffc0ffee0013000001",
+              "op": {
+                "p": 1,
+                "i": "ALICE"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:18:55.661Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000002",
+              "op": {
+                "p": 17,
+                "i": "one "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e608c0ffee0015000001",
+              "op": {
+                "p": 21,
+                "d": "delta"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:04.446Z"
+              }
+            },
+            {
+              "id": "6b04e5fcc0ffee0012000001",
+              "op": {
+                "p": 22,
+                "d": "epsilon zeta "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:10.855Z"
+              }
+            },
+            {
+              "id": "6b04e5f9c0ffee0011000001",
+              "op": {
+                "p": 26,
+                "i": "t"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e602783f710736000001",
+              "op": {
+                "i": "wo ",
+                "p": 30
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:18:49.454Z"
+              }
+            },
+            {
+              "id": "6b04e5f6c0ffee0010000001",
+              "op": {
+                "p": 44,
+                "i": "dup "
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:07.640Z"
+              }
+            },
+            {
+              "id": "6b04e617c0ffee0018000001",
+              "op": {
+                "p": 57,
+                "d": "plain"
+              },
+              "metadata": {
+                "user_id": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:19:20.180Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

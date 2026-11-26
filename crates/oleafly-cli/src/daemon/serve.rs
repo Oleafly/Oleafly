@@ -218,64 +218,137 @@ pub fn serve(options: ServeOptions) -> i32 {
     code
 }
 
-/// Resolves on SIGTERM, SIGINT or SIGHUP (Unix), Ctrl+C on a Windows console.
-/// `agent run`, `ask` and `mcp` use it too: a process ended by a signal never
-/// runs its destructors, so the commands it started would keep running.
-pub(crate) fn termination() -> impl std::future::Future<Output = ()> {
-    // The handlers are registered here, when the future is made, not when it
-    // is first polled: a signal that arrives in between (a client that stops
-    // the MCP server right after its first reply) would otherwise end the
-    // process with the default action, before the work is wound down.
-    #[cfg(unix)]
-    {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Termination {
+    Interrupt,
+    Terminate,
+    Hangup,
+    Break,
+    Close,
+    Logoff,
+    Shutdown,
+}
+
+fn registered<T>(
+    signal: Termination,
+    made: std::io::Result<T>,
+    failed: &mut impl FnMut(Termination, std::io::Error),
+) -> Option<T> {
+    made.map_err(|error| failed(signal, error)).ok()
+}
+
+#[cfg(unix)]
+pub struct Terminations {
+    interrupt: Option<tokio::signal::unix::Signal>,
+    terminate: Option<tokio::signal::unix::Signal>,
+    hangup: Option<tokio::signal::unix::Signal>,
+}
+
+#[cfg(unix)]
+impl Terminations {
+    pub fn register(mut failed: impl FnMut(Termination, std::io::Error)) -> Terminations {
         use tokio::signal::unix::{signal, SignalKind};
-        let signals = (
-            signal(SignalKind::terminate()),
-            signal(SignalKind::interrupt()),
-            signal(SignalKind::hangup()),
-        );
-        async move {
-            match signals {
-                (Ok(mut terminate), Ok(mut interrupt), Ok(mut hangup)) => {
-                    tokio::select! {
-                        _ = terminate.recv() => {}
-                        _ = interrupt.recv() => {}
-                        _ = hangup.recv() => {}
-                    }
-                }
-                _ => std::future::pending::<()>().await,
-            }
+        Terminations {
+            interrupt: registered(
+                Termination::Interrupt,
+                signal(SignalKind::interrupt()),
+                &mut failed,
+            ),
+            terminate: registered(
+                Termination::Terminate,
+                signal(SignalKind::terminate()),
+                &mut failed,
+            ),
+            hangup: if hangup_ignored() {
+                None
+            } else {
+                registered(
+                    Termination::Hangup,
+                    signal(SignalKind::hangup()),
+                    &mut failed,
+                )
+            },
         }
     }
-    #[cfg(windows)]
-    {
-        use tokio::signal::windows::{ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
-        let signals = (ctrl_c(), ctrl_close(), ctrl_logoff(), ctrl_shutdown());
-        async move {
-            match signals {
-                (Ok(mut interrupt), Ok(mut close), Ok(mut logoff), Ok(mut shutdown)) => {
-                    tokio::select! {
-                        _ = interrupt.recv() => {}
-                        _ = close.recv() => {}
-                        _ = logoff.recv() => {}
-                        _ = shutdown.recv() => {}
-                    }
-                }
-                _ => {
-                    if tokio::signal::ctrl_c().await.is_err() {
-                        std::future::pending::<()>().await;
-                    }
-                }
-            }
+
+    pub async fn next(&mut self) -> Termination {
+        let Terminations {
+            interrupt,
+            terminate,
+            hangup,
+        } = self;
+        tokio::select! {
+            Some(()) = async move { interrupt.as_mut()?.recv().await } => Termination::Interrupt,
+            Some(()) = async move { terminate.as_mut()?.recv().await } => Termination::Terminate,
+            Some(()) = async move { hangup.as_mut()?.recv().await } => Termination::Hangup,
+            else => std::future::pending().await,
         }
     }
-    #[cfg(not(any(unix, windows)))]
-    {
-        async {
-            if tokio::signal::ctrl_c().await.is_err() {
-                std::future::pending::<()>().await;
-            }
+}
+
+#[cfg(unix)]
+fn hangup_ignored() -> bool {
+    // SAFETY: a zeroed sigaction is valid, and a null new action only reads SIGHUP's disposition into it.
+    unsafe {
+        let mut current: libc::sigaction = std::mem::zeroed();
+        libc::sigaction(libc::SIGHUP, std::ptr::null(), &mut current) == 0
+            && current.sa_sigaction == libc::SIG_IGN
+    }
+}
+
+#[cfg(windows)]
+pub struct Terminations {
+    interrupt: Option<tokio::signal::windows::CtrlC>,
+    ctrl_break: Option<tokio::signal::windows::CtrlBreak>,
+    close: Option<tokio::signal::windows::CtrlClose>,
+    logoff: Option<tokio::signal::windows::CtrlLogoff>,
+    shutdown: Option<tokio::signal::windows::CtrlShutdown>,
+}
+
+#[cfg(windows)]
+impl Terminations {
+    pub fn register(mut failed: impl FnMut(Termination, std::io::Error)) -> Terminations {
+        use tokio::signal::windows::{ctrl_break, ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
+        Terminations {
+            interrupt: registered(Termination::Interrupt, ctrl_c(), &mut failed),
+            ctrl_break: registered(Termination::Break, ctrl_break(), &mut failed),
+            close: registered(Termination::Close, ctrl_close(), &mut failed),
+            logoff: registered(Termination::Logoff, ctrl_logoff(), &mut failed),
+            shutdown: registered(Termination::Shutdown, ctrl_shutdown(), &mut failed),
         }
+    }
+
+    pub async fn next(&mut self) -> Termination {
+        let Terminations {
+            interrupt,
+            ctrl_break,
+            close,
+            logoff,
+            shutdown,
+        } = self;
+        tokio::select! {
+            Some(()) = async move { interrupt.as_mut()?.recv().await } => Termination::Interrupt,
+            Some(()) = async move { ctrl_break.as_mut()?.recv().await } => Termination::Break,
+            Some(()) = async move { close.as_mut()?.recv().await } => Termination::Close,
+            Some(()) = async move { logoff.as_mut()?.recv().await } => Termination::Logoff,
+            Some(()) = async move { shutdown.as_mut()?.recv().await } => Termination::Shutdown,
+            else => std::future::pending().await,
+        }
+    }
+}
+
+pub(crate) fn log_unregistered(signal: Termination, error: std::io::Error) {
+    if let Some(root) = crate::app_paths::data_root() {
+        let _ = oleafly_core::app_log::AppLog::at(&root).write(&format!(
+            "The command line couldn't listen for {signal:?}: {error}"
+        ));
+    }
+}
+
+pub(crate) fn termination() -> impl std::future::Future<Output = ()> {
+    let mut terminations = Terminations::register(log_unregistered);
+    async move {
+        terminations.next().await;
     }
 }
 
@@ -559,7 +632,17 @@ async fn run(
         return 1;
     };
 
-    let signal = termination();
+    let mut terminations = Terminations::register(|signal, error| {
+        log.event(
+            "warning",
+            "signal_unavailable",
+            &[
+                ("signal", &format!("{signal:?}")),
+                ("error", &error.to_string()),
+            ],
+        );
+    });
+    let signal = terminations.next();
     tokio::pin!(signal);
     let mut idle_since = Instant::now();
     let mut announced = false;

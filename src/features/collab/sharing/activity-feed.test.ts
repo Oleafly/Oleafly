@@ -199,6 +199,16 @@ describe("startCollabActivity", () => {
     useCollabLiveStore.setState({ backend: null });
   });
 
+  it("shows the rail for a project live on Overleaf and hides it while paused", () => {
+    const link = { server: "https://latex.uni.edu", remoteId: "6af963ebc9037022065bb53f", signedIn: true, paused: false };
+    useCollabLiveStore.setState({ projectId: "grant", backend: "overleaf", share: null, overleaf: link, status: { state: "online" } });
+    stop = startCollabActivity();
+    expect(useCollabRail.getState().visible).toBe(true);
+    useCollabLiveStore.setState({ overleaf: { ...link, paused: true } });
+    expect(useCollabRail.getState().visible).toBe(false);
+    useCollabLiveStore.setState({ backend: null, overleaf: null });
+  });
+
   it("notes quietly, with a rail dot, when someone signs in on a new device", () => {
     joined("owner");
     stop = startCollabActivity();

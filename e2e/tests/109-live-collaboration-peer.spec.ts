@@ -5,25 +5,35 @@ import { createInterface } from "node:readline";
 import { test, expect } from "../fixtures";
 import {
   chooseAppSelectOption,
+  clickButton,
+  COLLAB_PANE,
   createBlankProject,
   createProjectFromTemplate,
   editorSource,
+  openCollabPane,
   openSettings,
   readProjectText,
   replaceEditorSource,
   setTypstFormField,
   waitEditorContains,
+  waitForText,
   waitLong,
   writeProjectText,
   type Page,
 } from "../helpers";
+import {
+  richCaretContext,
+  richEditorEditable,
+  typeInRichEditorAfter,
+  typeInRichEditorAtCaret,
+  waitRichEditorText,
+} from "../rich-editor";
 import { scriptValue } from "../script-value";
 
 const STACK = process.env.OLEAFLY_E2E_COLLAB_STACK ?? "";
 const PROTOCOL = "e2e-peer ";
 const SHARE_DIALOG = '[data-testid="collab-share-dialog"]';
-const PANE = '[data-testid="collab-pane"]';
-const PANE_STATUS = `${PANE} header button[aria-haspopup="dialog"]`;
+const PANE_STATUS = `${COLLAB_PANE} header button[aria-haspopup="dialog"]`;
 const LINK_ROLE = `${SHARE_DIALOG} [aria-label="Role for people who open the link"]`;
 const APP_LIVE = "APP-LIVE-1";
 const PEER_LIVE = "PEER-LIVE-café";
@@ -118,22 +128,6 @@ async function bridge<T>(page: Page, call: string): Promise<T> {
   );
 }
 
-async function clickButton(page: Page, scope: string, text: string, timeoutMs = 20_000) {
-  await waitLong(
-    page,
-    `(() => {
-      const scopes = [...document.querySelectorAll(${scriptValue(scope)})];
-      const button = scopes.flatMap((node) => [...node.querySelectorAll("button")])
-        .reverse()
-        .find((entry) => entry.textContent.trim() === ${scriptValue(text)} && !entry.disabled);
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`,
-    timeoutMs,
-  );
-}
-
 async function typeInAppAfter(page: Page, anchor: string, text: string, delayMs: number) {
   const typed = await page.evaluate<boolean>(
     `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
@@ -158,39 +152,8 @@ async function typeInAppAfter(page: Page, anchor: string, text: string, delayMs:
   if (!typed) throw new Error(`the app editor has no ${JSON.stringify(anchor)} to type after`);
 }
 
-async function waitForText(page: Page, selector: string, needles: string[], timeoutMs: number) {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const text = await page.evaluate<string>(`document.querySelector(${scriptValue(selector)})?.innerText ?? ""`);
-    if (needles.every((needle) => text.includes(needle))) return;
-    if (Date.now() > deadline) {
-      throw new Error(`${selector} never showed ${JSON.stringify(needles)}; it shows ${JSON.stringify(text.slice(0, 800))}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-}
-
 async function paneStatus(page: Page): Promise<string> {
   return page.evaluate<string>(`document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") ?? ""`);
-}
-
-async function openCollabPane(page: Page) {
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const state = await page.evaluate<string>(`(() => {
-      const tab = document.querySelector('[data-tour="rail-collab"]');
-      if (!tab) {
-        const show = document.querySelector('[aria-label^="Show sidebar"]');
-        if (show) { show.click(); return "revealing"; }
-        return "missing";
-      }
-      if (tab.getAttribute("aria-current") === "page" && document.querySelector(${scriptValue(PANE)})) return "open";
-      if (tab.getAttribute("aria-current") !== "page") tab.click();
-      return "opening";
-    })()`);
-    if (state === "open") return;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error("the Live collaboration pane never opened");
 }
 
 async function waitAppUpToDate(page: Page, timeoutMs = 30_000) {
@@ -321,7 +284,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await waitEditorContains(page, PEER_AWAY, 60_000);
       await expectConverged(page, stack, [APP_LIVE, PEER_LIVE, APP_AWAY, PEER_AWAY]);
       await openCollabPane(page);
-      await clickButton(page, `${PANE} ul[aria-label="Activity"]`, "Review", 30_000);
+      await clickButton(page, `${COLLAB_PANE} ul[aria-label="Activity"]`, "Review", 30_000);
       const review = '[data-testid="collab-merge-review"]';
       await waitForText(page, review, ["main.tex: "], 30_000);
       reviewText = await page.evaluate<string>(`document.querySelector(${scriptValue(review)})?.innerText ?? ""`);
@@ -415,6 +378,57 @@ test("a form field edit reaches the peer, and the peer's edit leaves a draft in 
       );
       await stack.request({ cmd: "wait_text", contains: ['subject: "Draft subject"', "Peer note."] });
       await expectConverged(page, stack, ['to: "Board"', 'subject: "Draft subject"', "Peer note."], "main.typ");
+    });
+  } finally {
+    await stack.stop();
+  }
+});
+
+const VISUAL_APP = "APP-VISUAL-1";
+const VISUAL_PEER = "PEER-VISUAL-2";
+
+test("a Markdown Visual edit reaches the peer, and the peer's typing keeps the app's caret", async ({ tauriPage: page }, testInfo) => {
+  test.setTimeout(600_000);
+  const stack = new CollabStack(STACK, testInfo.outputPath("collab-stack-visual.log"));
+  try {
+    const ready = await stack.ready;
+
+    await test.step("the owner shares a Markdown project, the peer joins, and the owner turns on Visual", async () => {
+      await createProjectFromTemplate(page, "blank-markdown", `Live Visual r${testInfo.retry}-${testInfo.repeatEachIndex}`);
+      await signInToServer(page, ready);
+      const link = await shareWithEditors(page);
+      const joined = await stack.request({ cmd: "join", link });
+      expect(joined.file).toBe("main.md");
+      await page.click('[aria-label="Switch to WYSIWYG view"]');
+      await waitRichEditorText(page, "visual", ["Start writing here."], 30_000);
+      await waitLong(
+        page,
+        `import("/src/components/editor/wysiwyg/controller.ts").then(({ getWysiwygEditor }) => !!getWysiwygEditor()?.isEditable)`,
+        30_000,
+      );
+      expect(await page.evaluate<boolean>(`!document.querySelector('[data-testid="visual-live-notice"]')`)).toBe(true);
+    });
+
+    await test.step("text typed in Visual reaches the peer as it is typed", async () => {
+      await typeInRichEditorAfter(page, "visual", "Start writing", ` ${VISUAL_APP}`, 40);
+      await stack.request({ cmd: "wait_text", contains: [`Start writing ${VISUAL_APP} here.`] });
+    });
+
+    await test.step("the peer types in the heading while the app's caret waits in the paragraph", async () => {
+      expect(await richCaretContext(page, "visual")).toBe(`Start writing ${VISUAL_APP}`);
+      await stack.request({ cmd: "type", text: ` ${VISUAL_PEER}`, after: "# Untitled", delay_ms: 40 });
+      await waitRichEditorText(page, "visual", [`Untitled ${VISUAL_PEER} Markdown Document`], 30_000);
+      expect(await richCaretContext(page, "visual")).toBe(`Start writing ${VISUAL_APP}`);
+      expect(await richEditorEditable(page, "visual")).toBe(true);
+      await typeInRichEditorAtCaret(page, "visual", "!", 0);
+      await stack.request({ cmd: "wait_text", contains: [`${VISUAL_APP}! here.`, VISUAL_PEER] });
+    });
+
+    await test.step("the source view, the peer and the file on disk hold the same text", async () => {
+      await page.click('[aria-label="Switch to source view"]');
+      const merged = await expectConverged(page, stack, [`${VISUAL_APP}!`, VISUAL_PEER], "main.md");
+      expect(merged.startsWith("---\ntitle: Untitled Markdown Document\n---\n")).toBe(true);
+      expect(merged).toContain(`# Untitled ${VISUAL_PEER} Markdown Document`);
     });
   } finally {
     await stack.stop();

@@ -1875,33 +1875,18 @@
       "disconnectFailed": "De verbinding met alphaXiv kon niet worden verbroken. Probeer het opnieuw."
     },
     "cookies": {
-      "confirmTitle": "Cookie-import bevestigen",
-      "detecting": "Zoeken naar geïnstalleerde browserprofielen...",
-      "dialogDescription": "Kies één geïnstalleerd browserprofiel. Oleafly leest het pas nadat je de import hebt bekeken en bevestigd. Chromium-cookies worden lokaal ontgrendeld via de macOS-sleutelhanger. Oleafly stuurt geen cookiewaarden naar een Oleafly-dienst.",
-      "dialogTitle": "Browsercookies importeren",
-      "empty": "Er zijn geen ondersteunde browserprofielen gevonden.",
-      "errors": {
-        "chooseProfile": "Kies een beschikbaar browserprofiel."
-      },
-      "profileGroupLabel": "Browserprofielen",
-      "profileLegend": "Browserprofiel",
-      "review": "Import bekijken",
-      "status": {
-        "available": "Beschikbaar",
-        "comingSoon": "Binnenkort",
-        "noCookieStore": "Geen cookieopslag",
-        "notInstalled": "Niet geïnstalleerd"
-      },
-      "tryAgain": "Opnieuw proberen",
-      "label": "Aanmelding uit een browser kopiëren",
-      "useBrowserSignIn": "De aanmelding uit je browser kopiëren",
-      "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
-      "copyAction": "Aanmelding kopiëren",
-      "copying": "Kopiëren…",
-      "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",
-      "notSignedIn_other": "{{count}} cookies gekopieerd uit {{browser}}, maar die hebben je niet aangemeld. Meld je rechtstreeks aan."
+      "dialogDescription": "Oleafly kopieert alleen de cookies voor {{server}}, meldt zich daarmee aan en verwijdert daarna de kopieën. Je wachtwoorden blijven in de browser.",
+      "dialogTitle": "Cookies uit je browser importeren",
+      "label": "Cookies uit je browser importeren",
+      "useBrowserSignIn": "Profiel kiezen",
+      "signInDescription": "Gebruikt het account op {{server}} waarmee een browserprofiel op deze computer al is aangemeld.",
+      "copyAction": "Importeren",
+      "copying": "Importeren…",
+      "from": "Uit",
+      "noCookies": "Nog geen cookies",
+      "sameAccount": "{{profile}} is aangemeld als {{account}}, en dat account gebruikt Oleafly al. Kies een ander profiel of meld je in die browser eerst aan met je andere account.",
+      "orExisting": "of gebruik een aanmelding die je al hebt",
+      "noSavedSignIn": "{{profile}} heeft geen opgeslagen aanmelding voor {{server}}, dus de gekopieerde cookies hebben je niet aangemeld. Ben je daar wel aangemeld, dan bewaart de browser de aanmelding misschien alleen tot hij sluit. Gebruik in plaats daarvan de tegel {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
@@ -1961,7 +1946,12 @@
       "signedIn": "Aangemeld op {{server}}",
       "signOut": "Afmelden",
       "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "addAccount": "Nog een account toevoegen",
+      "addAccountHint": "Kies waar je je aanmeldt. Alles begint zonder aanmelding, dus elk account werkt.",
+      "accountPick": "Account voor importeren",
+      "accountPickDescription": "Nieuwe imports en sjablonen gebruiken dit account. Projecten die je al hebt, houden het account waar ze vandaan komen.",
       "gitTitle": "Git-token voor synchronisatie",
+      "gitTitleFor": "Git-token voor {{email}}",
       "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
       "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
       "gitOpenSettings": "Overleaf-accountinstellingen openen",
@@ -1970,14 +1960,9 @@
       "gitSave": "Opslaan",
       "gitRemove": "Weghalen",
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt.",
-      "browserLabel": "Aanmelden met je browser",
-      "browserDescription": "Voor aanmelden met Google, je instelling of een passkey. Oleafly opent {{server}} in een nieuw browservenster en sluit het zodra je bent aangemeld.",
-      "browserAction": "Aanmelden",
-      "browserPick": "Browser om mee aan te melden",
       "browserWaiting": "Rond het aanmelden bij {{server}} af in {{browser}}. Als je het venster sluit, wordt het aanmelden geannuleerd.",
-      "browserHint": "Gebruik dit voor aanmelden met Google, je instelling of een passkey.",
-      "windowLabel": "Aanmelden bij {{server}}",
-      "windowDescription": "Oleafly opent een aanmeldvenster en sluit het zodra je bent aangemeld. Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en meld je hier daarmee aan.",
+      "windowLabel": "Aanmelden in Oleafly",
+      "windowDescription": "Het venster sluit vanzelf zodra je bent aangemeld. Werkt je passkey daar niet, gebruik dan je wachtwoord of een melding op je telefoon.",
       "windowAction": "Aanmelden",
       "windowWaiting": "Rond het aanmelden bij {{server}} af in het venster dat is geopend.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Ook op Overleaf verwijderen",
           "never": "Houden op Overleaf"
         }
-      }
+      },
+      "sameAccount": "Je bent al aangemeld als {{account}}. Meld je aan met een ander account om het toe te voegen.",
+      "windowTitle": "Aanmelden bij {{server}}",
+      "addAccountKept": "Je huidige account blijft aangemeld.",
+      "noBrowser": "Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en kies die hier.",
+      "tileHere": "In deze app",
+      "tileWindow": "Nieuw venster",
+      "tileWaiting": "Wacht op je",
+      "signInNote": "Gebruik een browser om je aan te melden met Google, je instelling of een passkey. Werkt je passkey niet in Oleafly, gebruik daar dan je wachtwoord of een melding op je telefoon. Het venster sluit vanzelf zodra je bent aangemeld."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "Dit downloadt het installatieprogramma van Cua van cua.ai en voert het uit in je terminal. Doorgaan?"
         }
       }
+    },
+    "signIns": {
+      "title": "Aanmeldingen beheren",
+      "description": "De accounts waarmee Oleafly op deze computer is aangemeld. Als je er hier een weghaalt, blijf je in je browser aangemeld.",
+      "loading": "Je aanmeldingen worden geladen…",
+      "empty": "Je bent met geen enkel account aangemeld.",
+      "inUse": "In gebruik",
+      "switch": "Wisselen",
+      "switchTo": "Wisselen naar {{account}}",
+      "removeAccount": "{{account}} weghalen",
+      "removeAll": "Alles weghalen",
+      "importMore": "Meer importeren",
+      "loadFailed": "Oleafly kon je aanmeldingen niet laden.",
+      "changeFailed": "Oleafly kon deze aanmelding niet wijzigen. Probeer het opnieuw."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Woorden wissen",
       "descriptionFallback": "Hiermee verdwijnen alle termen uit dit woordenboek. Ze worden meteen weer gecontroleerd.",
       "descriptionGlobal": "Hiermee verdwijnen alle termen uit het algemene woordenboek. Ze worden meteen weer gecontroleerd.",
+      "descriptionOverleaf": "Ze worden ook uit je Overleaf-account verwijderd.",
       "descriptionProject": "Hiermee verdwijnen alle termen uit {{project}}. Ze worden meteen weer gecontroleerd.",
       "descriptionSuppressed": "Hiermee verdwijnen alle termen uit de gesloten bevindingen in {{project}}. Ze worden meteen weer gecontroleerd.",
       "suppressedConfirm": "Weer tonen",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Woorden die je hier toevoegt slaat de proeflezer in elk project over.",
+      "overleafSynced": "Wordt gesynchroniseerd met de geleerde woorden in je Overleaf-account zolang een project live is op Overleaf.",
       "scope": "Geldt voor elk project"
     },
     "intro": "Voeg woorden toe aan je persoonlijke spellingwoordenboek. Deze woorden staan in je lokale instellingen en worden in alle projecten genegeerd. Het vergelijken is Unicode-genormaliseerd en niet hoofdlettergevoelig.",

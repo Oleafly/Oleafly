@@ -139,7 +139,15 @@ describe("comment events", () => {
     expect(tauri.COLLAB_COMMENTS_STATUS_EVENT).toBe("collab-comments-status");
     const payload: CollabCommentsStatusChanged = {
       projectId: "p",
-      status: { serverAllowed: true, projectEnabled: false, canComment: false, reactions: false },
+      status: {
+        serverAllowed: true,
+        projectEnabled: false,
+        canComment: false,
+        reactions: false,
+        moderate: false,
+        typing: true,
+        suggestionThreads: true,
+      },
     };
     const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabCommentsStatusChanged }) => void;
     handler({ payload });

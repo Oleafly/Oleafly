@@ -5,7 +5,7 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { commentTarget, openCommentThread, requestComment, useCommentsRail } from "./comments-rail";
+import { commentTarget, openCommentThread, requestComment, requestCommentAt, useCommentsRail } from "./comments-rail";
 
 const TEXT = "The quick brown fox jumps.\n   \nEnd.";
 const views: EditorView[] = [];
@@ -84,5 +84,49 @@ describe("starting a comment from the editor", () => {
     openCommentThread("chapters/intro.tex", "thread-2");
     expect(openFile).not.toHaveBeenCalled();
     expect(useCommentsRail.getState().reveal).toEqual({ path: "chapters/intro.tex", threadId: "thread-2" });
+  });
+});
+
+describe("starting a comment on a range in any file", () => {
+  const target = { path: "refs.tex", from: 3, to: 9, quote: "Knuth" };
+
+  it("opens the file first, then asks the Comments tab for the thread and opens the tab", async () => {
+    let opened: () => void = () => undefined;
+    openFile.mockImplementationOnce(
+      (path: string) =>
+        new Promise<undefined>((resolve) => {
+          opened = () => {
+            useFilesStore.setState({ activePath: path });
+            resolve(undefined);
+          };
+        }),
+    );
+    const asked = requestCommentAt(target);
+    expect(openFile).toHaveBeenCalledWith("refs.tex");
+    expect(useCommentsRail.getState().request).toBeNull();
+    expect(useSettingsStore.getState().railTab).toBe("files");
+    opened();
+    await expect(asked).resolves.toBe(true);
+    expect(useCommentsRail.getState().request).toEqual(target);
+    expect(useSettingsStore.getState()).toMatchObject({ railTab: "comments", showTree: true });
+  });
+
+  it("asks at once for a range in the open file", () => {
+    void requestCommentAt({ ...target, path: "chapters/intro.tex" });
+    expect(openFile).not.toHaveBeenCalled();
+    expect(useCommentsRail.getState().request).toEqual({ ...target, path: "chapters/intro.tex" });
+  });
+
+  it("asks for nothing when the person can't comment or the file didn't open", async () => {
+    useCommentsRail.setState({ canCompose: false });
+    await expect(requestCommentAt(target)).resolves.toBe(false);
+    expect(openFile).not.toHaveBeenCalled();
+    useCommentsRail.setState({ canCompose: true });
+    await expect(requestCommentAt(target)).resolves.toBe(false);
+    expect(openFile).toHaveBeenCalledWith("refs.tex");
+    expect(useCommentsRail.getState().request).toBeNull();
+    openFile.mockRejectedValueOnce(new Error("gone"));
+    await expect(requestCommentAt(target)).rejects.toThrow("gone");
+    expect(useSettingsStore.getState().railTab).toBe("files");
   });
 });

@@ -15,11 +15,17 @@ import { type CommentMember, mergeMentionPeople } from "@/components/ui/comments
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { writeClipboardText } from "@/lib/clipboard";
 import { formatDateTime, formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
+import { logWarning } from "@/lib/log";
 import type { CollabPerson, CollabProjectRole } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
+import { onRoster } from "../people";
 import { sendPresenceActivity, usePeerPresence, usePresentAccounts } from "../live/peer-activity";
 import { peerHue } from "../live/peer-hue";
 import { commentFailure, commentRetryable } from "./refusals";
+
+function reportCommentError(what: string, error: unknown): void {
+  void logWarning(what, error);
+}
 
 function DestructiveConfirm(props: Readonly<CommentConfirmProps>) {
   return <ConfirmationDialog {...props} destructive />;
@@ -44,7 +50,7 @@ export function useMentionMembers(): CommentMember[] {
   return useMemo(
     () =>
       mergeMentionPeople(
-        members.map((member) => ({
+        members.filter(onRoster).map((member) => ({
           accountId: member.person.account_id,
           displayName: member.person.display_name,
           login: member.person.login,
@@ -100,7 +106,10 @@ export function DesktopCommentKit({
   members,
   people,
   reactions,
+  typing = true,
   moderate = false,
+  math = false,
+  markdown = true,
   labels: overrides,
   maxLength,
   children,
@@ -110,7 +119,10 @@ export function DesktopCommentKit({
   members: readonly CommentMember[];
   people: ReadonlyMap<string, CollabPerson>;
   reactions: boolean;
+  typing?: boolean;
   moderate?: boolean;
+  math?: boolean;
+  markdown?: boolean;
   labels?: Partial<CommentKitLabels>;
   maxLength?: number;
   children: ReactNode;
@@ -118,6 +130,7 @@ export function DesktopCommentKit({
   const { t } = useTranslation(["collab", "common"]);
   const quote = useCommentQuoteLabels();
   const composer = useCommentComposerLabels();
+  const backend = useCollabLiveStore((state) => state.backend);
   const [presence] = useState(createPresenceFeed);
   const kit = useMemo<CommentKit>(
     () => ({
@@ -179,8 +192,9 @@ export function DesktopCommentKit({
       exact: formatDateTime,
       members,
       self,
-      hue: (accountId) => peerHue(accountId, self),
+      hue: (accountId) => peerHue(accountId, self, backend),
       describeError: commentFailure,
+      reportError: reportCommentError,
       canRetry: commentRetryable,
       Confirm: DestructiveConfirm,
       maxLength,
@@ -189,10 +203,12 @@ export function DesktopCommentKit({
       copyText: writeClipboardText,
       reactions: reactions ? REACTIONS : undefined,
       moderate,
-      activity: sendPresenceActivity,
+      math,
+      markdown,
+      activity: typing ? sendPresenceActivity : undefined,
       presence,
     }),
-    [t, quote, composer, overrides, now, members, self, people, reactions, maxLength, moderate, presence],
+    [t, quote, composer, overrides, now, members, self, backend, people, reactions, typing, maxLength, moderate, math, markdown, presence],
   );
   return (
     <CommentKitProvider value={kit}>

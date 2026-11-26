@@ -46,7 +46,7 @@ export function peerCursors(state: WebState): RemoteCursor[] {
     cursors.push({
       id: peer.deviceId,
       name,
-      hue: peerHue(peer.accountId, self),
+      hue: peerHue(peer.accountId, self, "server"),
       head: peer.head,
       anchor: peer.anchor ?? peer.head,
     });

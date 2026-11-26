@@ -380,7 +380,8 @@
       "runCommand": "Kør en shell-kommando i projektmappen med en grænse på to minutter.",
       "toggleTheme": "Skift mellem lyst og mørkt tema.",
       "listOverleafProjects": "Vis dine Overleaf-projekter, og log ind først, hvis det er nødvendigt.",
-      "importOverleafProjects": "Importer Overleaf-projekter til dit bibliotek med deres kompilator og hovedfil."
+      "importOverleafProjects": "Importer Overleaf-projekter til dit bibliotek med deres kompilator og hovedfil.",
+      "openOverleafLive": "Åbn et Overleaf-projekt til live-redigering, og importer det først, hvis det ikke allerede er i dit bibliotek."
     },
     "disableAll": "Slå alle fra",
     "emptyContext": "Der er ingen værktøjer tilgængelige i denne sammenhæng.",
@@ -406,7 +407,8 @@
       "latexOnly": "Kun i LaTeX-projekter",
       "latexAndTypstOnly": "Kun i LaTeX- og Typst-projekter",
       "pdfCaptureSetting": "Kræver indstillingen for optagelse af PDF-sider",
-      "chatApproval": "Godkendes i chatten, én kommando ad gangen"
+      "chatApproval": "Godkendes i chatten, én kommando ad gangen",
+      "overleafLiveSetting": "Kræver Live-redigering med Overleaf under Eksperimenter"
     },
     "sourceGroups": {
       "figure": "Figur",

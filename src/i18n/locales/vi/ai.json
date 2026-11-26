@@ -370,7 +370,8 @@
       "runCommand": "Chạy lệnh shell trong thư mục dự án, giới hạn hai phút.",
       "toggleTheme": "Chuyển giữa chế độ sáng và tối.",
       "listOverleafProjects": "Liệt kê dự án Overleaf của bạn, đăng nhập trước khi cần.",
-      "importOverleafProjects": "Nhập dự án Overleaf vào thư viện, kèm trình biên dịch và tệp chính."
+      "importOverleafProjects": "Nhập dự án Overleaf vào thư viện, kèm trình biên dịch và tệp chính.",
+      "openOverleafLive": "Mở một dự án Overleaf để chỉnh sửa trực tiếp, nhập dự án trước nếu nó chưa có trong thư viện của bạn."
     },
     "disableAll": "Tắt tất cả",
     "emptyContext": "Không có công cụ nào trong ngữ cảnh này.",
@@ -396,7 +397,8 @@
       "latexOnly": "Chỉ dự án LaTeX",
       "latexAndTypstOnly": "Chỉ dự án LaTeX và Typst",
       "pdfCaptureSetting": "Cần thiết lập chụp trang PDF",
-      "chatApproval": "Được phê duyệt trong trò chuyện, từng lệnh một"
+      "chatApproval": "Được phê duyệt trong trò chuyện, từng lệnh một",
+      "overleafLiveSetting": "Cần thiết lập Chỉnh sửa trực tiếp với Overleaf trong Thử nghiệm"
     },
     "sourceGroups": {
       "figure": "Hình",

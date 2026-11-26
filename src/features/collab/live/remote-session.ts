@@ -1,10 +1,10 @@
-import type { DocumentSession, RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
-import type { CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
+import type { DocumentSession, LocalOrigin, RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
+import type { CollabChangeOrigin, CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
 import { diffOperation, editsFromOperation, OtError, operationFromEdits, TextOperation } from "./ot";
 
 export interface RemoteSessionTransport {
   open(path: string, onMessage: (message: CollabDocMessage) => void): Promise<CollabDocOpened | null>;
-  change(fileId: string, rev: number, op: CollabTextOperation): Promise<void> | void;
+  change(fileId: string, rev: number, op: CollabTextOperation, origin?: CollabChangeOrigin): Promise<void> | void;
   close(fileId: string, session: number): Promise<void> | void;
 }
 
@@ -18,13 +18,23 @@ export interface RemoteSessionOptions {
   transport: RemoteSessionTransport;
   readOnly?: () => boolean;
   onText?: (text: string) => void;
-  onPhase?: (phase: RemoteSessionPhase) => void;
   onDiscarded?: (reason: DiscardReason) => void;
 }
 
 interface Channel {
   fileId: string;
   token: number;
+}
+
+interface Unit {
+  operation: TextOperation;
+  origin?: LocalOrigin;
+}
+
+function composeAll(units: readonly Unit[]): TextOperation | null {
+  let composed: TextOperation | null = null;
+  for (const unit of units) composed = composed ? composed.compose(unit.operation) : unit.operation;
+  return composed;
 }
 
 export class RemoteDocumentSession implements DocumentSession {
@@ -37,15 +47,17 @@ export class RemoteDocumentSession implements DocumentSession {
   private confirmedSince: TextOperation | null = null;
   private base: string;
   private pending: TextOperation | null = null;
-  private outstanding: TextOperation | null = null;
-  private buffer: TextOperation | null = null;
+  private outstanding: Unit | null = null;
+  private buffer: Unit[] = [];
   private resent = false;
   private holding = false;
   private generation = 0;
   private current: RemoteSessionPhase = "opening";
   private detachReason: string | null = null;
   private readonly listeners = new Set<(change: RemoteChange) => void>();
+  private readonly localListeners = new Set<(change: RemoteChange) => void>();
   private readonly moveListeners = new Set<(path: string) => void>();
+  private readonly phaseListeners = new Set<(phase: RemoteSessionPhase) => void>();
   private waiters: (() => void)[] = [];
   private readonly options: RemoteSessionOptions;
 
@@ -78,12 +90,19 @@ export class RemoteDocumentSession implements DocumentSession {
     return this.current;
   }
 
+  subscribePhase(listener: (phase: RemoteSessionPhase) => void): () => void {
+    this.phaseListeners.add(listener);
+    return () => {
+      this.phaseListeners.delete(listener);
+    };
+  }
+
   get readOnly(): boolean {
     return this.current === "detached" || this.current === "closed" || (this.options.readOnly?.() ?? false);
   }
 
   get synchronized(): boolean {
-    return this.pending === null && this.outstanding === null && this.buffer === null;
+    return this.pending === null && this.outstanding === null && this.buffer.length === 0;
   }
 
   get unconfirmed(): boolean {
@@ -117,7 +136,14 @@ export class RemoteDocumentSession implements DocumentSession {
     };
   }
 
-  applyLocal(edits: Utf16Edit[], baseVersion: number): void {
+  subscribeLocal(listener: (change: RemoteChange) => void): () => void {
+    this.localListeners.add(listener);
+    return () => {
+      this.localListeners.delete(listener);
+    };
+  }
+
+  applyLocal(edits: Utf16Edit[], baseVersion: number, origin?: LocalOrigin): void {
     if (this.readOnly) throw new Error(`${this.path} is read-only.`);
     if (baseVersion !== this.localVersion) {
       throw new Error(
@@ -133,10 +159,21 @@ export class RemoteDocumentSession implements DocumentSession {
     if (this.current === "opening") {
       this.pending = this.pending ? this.pending.compose(operation) : operation;
     } else if (this.outstanding === null && !this.holding) {
-      this.outstanding = operation;
-      this.send(operation);
+      this.outstanding = { operation, origin };
+      this.send(this.outstanding);
     } else {
-      this.buffer = this.buffer ? this.buffer.compose(operation) : operation;
+      this.hold({ operation, origin });
+    }
+    const change: RemoteChange = { edits, version: this.localVersion };
+    for (const listener of Array.from(this.localListeners)) listener(change);
+  }
+
+  private hold(unit: Unit): void {
+    const last = this.buffer.at(-1);
+    if (last && last.origin === undefined && unit.origin === undefined) {
+      this.buffer[this.buffer.length - 1] = { operation: last.operation.compose(unit.operation) };
+    } else {
+      this.buffer.push(unit);
     }
   }
 
@@ -147,10 +184,11 @@ export class RemoteDocumentSession implements DocumentSession {
   releaseLocal(): void {
     if (!this.holding) return;
     this.holding = false;
-    if (this.current !== "open" || this.outstanding !== null || this.buffer === null) return;
-    this.outstanding = this.buffer;
-    this.buffer = null;
-    this.send(this.outstanding);
+    if (this.current !== "open" || this.outstanding !== null) return;
+    const next = this.buffer.shift();
+    if (!next) return;
+    this.outstanding = next;
+    this.send(next);
   }
 
   async open(): Promise<void> {
@@ -200,7 +238,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.channel = null;
     this.pending = null;
     this.outstanding = null;
-    this.buffer = null;
+    this.buffer = [];
     this.setPhase("closed");
     if (channel) this.closeChannel(channel);
     this.settle();
@@ -216,13 +254,11 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   private unsent(): TextOperation | null {
-    const { outstanding, buffer } = this;
-    if (outstanding && buffer) return outstanding.compose(buffer);
-    return outstanding ?? buffer;
+    return composeAll(this.outstanding ? [this.outstanding, ...this.buffer] : this.buffer);
   }
 
   private keepUnsent(): void {
-    if (this.pending && this.outstanding === null && this.buffer === null) return;
+    if (this.pending && this.outstanding === null && this.buffer.length === 0) return;
     let base = this.content;
     let pending: TextOperation | null = null;
     let lost = false;
@@ -237,7 +273,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.base = base;
     this.pending = pending;
     this.outstanding = null;
-    this.buffer = null;
+    this.buffer = [];
     if (lost) this.options.onDiscarded?.("refused");
   }
 
@@ -266,11 +302,11 @@ export class RemoteDocumentSession implements DocumentSession {
 
   private queue(operation: TextOperation): void {
     if (this.holding) {
-      this.buffer = this.buffer ? this.buffer.compose(operation) : operation;
+      this.hold({ operation });
       return;
     }
-    this.outstanding = operation;
-    this.send(operation);
+    this.outstanding = { operation };
+    this.send(this.outstanding);
   }
 
   private receive(message: CollabDocMessage): void {
@@ -295,7 +331,7 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   private acknowledge(rev: number, length: number): void {
-    const acked = this.outstanding;
+    const acked = this.outstanding?.operation;
     if (!acked) {
       this.resync();
       return;
@@ -303,8 +339,7 @@ export class RemoteDocumentSession implements DocumentSession {
     if (acked.baseLength !== this.confirmedLength()) throw new OtError("length_mismatch");
     this.serverRev = rev;
     this.resent = false;
-    this.outstanding = this.holding ? null : this.buffer;
-    if (!this.holding) this.buffer = null;
+    this.outstanding = this.holding ? null : (this.buffer.shift() ?? null);
     this.confirm(acked);
     if (!this.checkLength(length)) return;
     if (this.outstanding) {
@@ -318,13 +353,14 @@ export class RemoteDocumentSession implements DocumentSession {
     const server = TextOperation.fromWire(wire);
     if (server.baseLength !== this.confirmedLength()) throw new OtError("length_mismatch");
     let operation = server;
-    let outstanding = this.outstanding;
-    let buffer = this.buffer;
-    if (outstanding) [outstanding, operation] = TextOperation.transform(outstanding, operation);
-    if (buffer) [buffer, operation] = TextOperation.transform(buffer, operation);
+    const moved = (this.outstanding ? [this.outstanding, ...this.buffer] : this.buffer).map((unit) => {
+      const [mine, theirs] = TextOperation.transform(unit.operation, operation);
+      operation = theirs;
+      return { ...unit, operation: mine };
+    });
     const next = operation.apply(this.content);
-    this.outstanding = outstanding;
-    this.buffer = buffer;
+    if (this.outstanding) this.outstanding = moved.shift() ?? null;
+    this.buffer = moved;
     this.serverRev = rev;
     this.publish(next, operation);
     this.confirm(server);
@@ -340,7 +376,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.serverRev = rev;
     this.setConfirmed(text);
     this.outstanding = null;
-    this.buffer = null;
+    this.buffer = [];
     if (!moved) {
       this.resent = false;
       this.applyRemote(diffOperation(this.content, text));
@@ -403,12 +439,13 @@ export class RemoteDocumentSession implements DocumentSession {
     this.options.onText?.(this.content);
   }
 
-  private send(operation: TextOperation): void {
+  private send(unit: Unit): void {
     const channel = this.channel;
     if (!channel) return;
     const generation = this.generation;
     try {
-      void Promise.resolve(this.options.transport.change(channel.fileId, this.serverRev, operation.toWire())).catch(
+      const wire = unit.operation.toWire();
+      void Promise.resolve(this.options.transport.change(channel.fileId, this.serverRev, wire, unit.origin)).catch(
         () => {
           if (generation === this.generation) this.resync();
         },
@@ -437,7 +474,7 @@ export class RemoteDocumentSession implements DocumentSession {
   private setPhase(phase: RemoteSessionPhase): void {
     if (this.current === phase) return;
     this.current = phase;
-    this.options.onPhase?.(phase);
+    for (const listener of Array.from(this.phaseListeners)) listener(phase);
   }
 
   private settle(): void {

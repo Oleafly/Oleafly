@@ -17,6 +17,9 @@ default = []
 # The default build leaves it out; release archives and the app-bundled CLI
 # turn it on.
 proofread = ["oleafly-lint/proofread"]
+# End-to-end tests of `oleafly remote live` against a local Overleaf
+# Community Edition (tools/overleaf-ce/up.sh).
+ce-e2e = ["oleafly-online/ce-e2e"]
 
 [dependencies]
 anstream = "1"
@@ -60,6 +63,7 @@ zeroize = "=1.9.0"
 # (`oleafly auth`, `oleafly remote`, `oleafly server`).
 oleafly-collab = { path = "../oleafly-collab" }
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
+oleafly-live = { path = "../oleafly-live" }
 oleafly-online = { path = "../oleafly-online" }
 open = "5"
 rpassword = "7"
@@ -92,6 +96,10 @@ windows-sys = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+[[test]]
+name = "remote_live_ce"
+required-features = ["ce-e2e"]
+
 [build-dependencies]
 serde_json = "1"
 
@@ -102,3 +110,6 @@ oleafly-online = { path = "../oleafly-online", features = ["test-support"] }
 # The helper's tests hand tasks between owners (`TaskStore::set_owner`).
 oleafly-research = { path = "../oleafly-research", features = ["test-support"] }
 tempfile = { workspace = true }
+
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }

@@ -1,5 +1,6 @@
 import type { EditorView } from "@codemirror/view";
 import { create } from "zustand";
+import { noteCommentSurface } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -34,6 +35,15 @@ export const useCommentsRail = create<CommentsRailState>(() => ({
   reveal: null,
 }));
 
+export function commentsTabOpen(): boolean {
+  const settings = useSettingsStore.getState();
+  return settings.railTab === "comments" && settings.showTree;
+}
+
+export function noteCommentsUnseen(): void {
+  if (!commentsTabOpen() && !useCommentsRail.getState().unread) useCommentsRail.setState({ unread: true });
+}
+
 export function commentsRailShown(): boolean {
   const rail = useCommentsRail.getState();
   return rail.visible || rail.suggestions;
@@ -57,11 +67,31 @@ export function commentTarget(view: EditorView | null): CommentRequest | null {
   return { path, from: range.from, to: range.to, quote };
 }
 
+export async function requestCommentAt(target: CommentRequest): Promise<boolean> {
+  if (!useCommentsRail.getState().canCompose) return false;
+  const files = useFilesStore.getState();
+  if (files.activePath !== target.path) {
+    await files.openFile(target.path);
+    if (useFilesStore.getState().activePath !== target.path || !useCommentsRail.getState().canCompose) return false;
+  }
+  useCommentsRail.setState({ request: target });
+  showCommentsTab();
+  return true;
+}
+
+export function requestLiveNoteComment(projectId: string | null, path?: string | null): boolean {
+  if (!useCommentsRail.getState().canCompose) return false;
+  const surface = noteCommentSurface(projectId, path);
+  const target = surface?.target();
+  if (!surface || !target) return false;
+  useCommentsRail.setState({ request: { path: surface.path, ...target } });
+  return true;
+}
+
 export function requestComment(view: EditorView | null): boolean {
   const target = commentTarget(view);
   if (!target) return false;
-  useCommentsRail.setState({ request: target });
-  showCommentsTab();
+  void requestCommentAt(target);
   return true;
 }
 

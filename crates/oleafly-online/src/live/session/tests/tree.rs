@@ -12,7 +12,7 @@ use super::super::{
 };
 use super::{eventually, project, tuning, Rig, Tab, MAIN, NOTES, WAIT};
 use crate::live::journal::Journal;
-use crate::live::rest::TreeRest;
+use crate::live::rest::ProjectRest;
 use crate::live::tree_queue::{
     LocalFile, QueueState, Queued, TreeChange, TreeFailure, TreeRefusal, MAX_UPLOAD_BYTES,
 };
@@ -28,19 +28,19 @@ use crate::test_support::overleaf_rt::{probe_frames, recordings, Trace};
 const PNG: &[u8] = b"\x89PNG\r\n\x1a\nplot";
 
 #[derive(Default)]
-struct Seen {
+pub(super) struct Seen {
     queues: Vec<Vec<Queued>>,
     uploaded: Vec<(String, String, Option<String>)>,
-    stopped: Vec<(DocId, DocStopReason)>,
+    pub(super) stopped: Vec<(DocId, DocStopReason)>,
     merged: Vec<(DocId, MergeReview)>,
-    trees: Vec<Vec<PathChange>>,
+    pub(super) trees: Vec<Vec<PathChange>>,
     states: Vec<LiveState>,
     order: Vec<String>,
     read: Vec<String>,
 }
 
 #[derive(Default)]
-struct TreePort {
+pub(super) struct TreePort {
     texts: Mutex<BTreeMap<String, String>>,
     files: Mutex<BTreeMap<String, Vec<u8>>>,
     sizes: Mutex<BTreeMap<String, u64>>,
@@ -49,7 +49,7 @@ struct TreePort {
 }
 
 impl TreePort {
-    fn new() -> Arc<TreePort> {
+    pub(super) fn new() -> Arc<TreePort> {
         Arc::new(TreePort::default())
     }
 
@@ -60,7 +60,7 @@ impl TreePort {
         })
     }
 
-    fn text(&self, path: &str, text: &str) {
+    pub(super) fn text(&self, path: &str, text: &str) {
         self.texts
             .lock()
             .unwrap()
@@ -74,7 +74,7 @@ impl TreePort {
             .insert(path.to_string(), bytes.to_vec());
     }
 
-    fn seen(&self) -> MutexGuard<'_, Seen> {
+    pub(super) fn seen(&self) -> MutexGuard<'_, Seen> {
         self.seen.lock().unwrap()
     }
 
@@ -166,7 +166,7 @@ impl LivePort for TreePort {
     }
 }
 
-fn quick() -> SessionTuning {
+pub(super) fn quick() -> SessionTuning {
     SessionTuning {
         tree_retry: Duration::from_millis(50),
         rate_floor: Duration::from_millis(300),
@@ -175,7 +175,7 @@ fn quick() -> SessionTuning {
     }
 }
 
-async fn live_as(
+pub(super) async fn live_as(
     rig: &Rig,
     name: &str,
     port: &Arc<TreePort>,
@@ -253,13 +253,13 @@ fn path_of(live: &OverleafSession, path: &str) -> Option<NodeKind> {
         .map(|node| node.kind)
 }
 
-async fn as_bob(rig: &Rig) -> (TreeRest, crate::session::SessionHandle) {
+async fn as_bob(rig: &Rig) -> (ProjectRest, crate::session::SessionHandle) {
     let bob = rig.handle_for(&rig.mock.user("bob"));
     let page = ProjectPage::load(&rig.http, &bob, &rig.mock.project_id(), false)
         .await
         .unwrap();
     (
-        TreeRest::new(rig.http.clone(), Arc::new(page), &rig.mock.project_id()),
+        ProjectRest::new(rig.http.clone(), Arc::new(page), &rig.mock.project_id()),
         bob,
     )
 }

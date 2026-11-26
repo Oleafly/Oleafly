@@ -30,6 +30,8 @@ describe("collaboration stays out of the startup bundle", () => {
       "src/components/layout/CollabLinkKeeper.tsx",
       "src/components/layout/CollabLiveKeeper.tsx",
       "src/components/layout/SettingsModal.tsx",
+      "src/lib/e2e-import-registry.ts",
+      "src/lib/overleaf-ai-tools.ts",
     ]);
     const app = read("src/App.tsx");
     expect(app).toMatch(/lazy\(\(\) =>\s*import\("@\/components\/layout\/SettingsModal"\)/);

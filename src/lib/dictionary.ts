@@ -12,8 +12,6 @@ import {
   forgetWordIgnoredHere,
 } from "@/lib/proofreading/ignored";
 
-// In-memory fallback so the store also works where localStorage is absent
-// (e.g. Node during tests) without changing behavior in the browser.
 const memory = new Map<string, string>();
 const memoryStorage: StateStorage = {
   getItem: (k) => memory.get(k) ?? null,
@@ -29,6 +27,7 @@ interface DictionaryState {
   ignored: Record<string, string[]>;
   global: string[];
   suppressed: Record<string, string[]>;
+  synced: Record<string, string[]>;
   revision: number;
   ignore: (projectId: string, word: string) => void;
   ignoreGlobal: (word: string) => void;
@@ -40,6 +39,8 @@ interface DictionaryState {
   clear: (projectId: string) => void;
   clearGlobal: () => void;
   clearAll: () => void;
+  applyLearned: (add: readonly string[], remove: readonly string[]) => void;
+  setSynced: (account: string, words: readonly string[]) => void;
 }
 
 export const DICTIONARY_LIMITS = {
@@ -49,6 +50,10 @@ export const DICTIONARY_LIMITS = {
   totalProjectWords: 20_000,
   suppressionsPerProject: 500,
   suppressionCharacters: 320,
+  syncedAccounts: 16,
+  syncedWords: 20_000,
+  syncedWordCharacters: 256,
+  accountCharacters: 512,
 } as const;
 
 export type DictionaryWriteOutcome =
@@ -203,6 +208,44 @@ function sanitizeWords(
   return output;
 }
 
+function canStoreAccount(account: string): boolean {
+  const parts = account.split("\n");
+  return (
+    account.length <= DICTIONARY_LIMITS.accountCharacters &&
+    parts.length === 2 &&
+    parts.every((part) => part.length > 0 && !/[\p{Cc}\p{Cf}]/u.test(part))
+  );
+}
+
+function canStoreSyncedWord(word: string): boolean {
+  return (
+    word.length > 0 &&
+    word.length <= DICTIONARY_LIMITS.syncedWordCharacters &&
+    !/\p{Cc}/u.test(word)
+  );
+}
+
+function sanitizeSyncedWords(value: readonly unknown[]): string[] {
+  const words = new Set<string>();
+  for (const candidate of value) {
+    if (typeof candidate !== "string" || !canStoreSyncedWord(candidate)) continue;
+    words.add(candidate);
+    if (words.size >= DICTIONARY_LIMITS.syncedWords) break;
+  }
+  return [...words];
+}
+
+function sanitizeSynced(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const output: Record<string, string[]> = {};
+  for (const [account, raw] of Object.entries(value)) {
+    if (Object.keys(output).length >= DICTIONARY_LIMITS.syncedAccounts) break;
+    if (!canStoreAccount(account) || !Array.isArray(raw)) continue;
+    output[account] = sanitizeSyncedWords(raw);
+  }
+  return output;
+}
+
 function sanitizeProjectWords(value: unknown): Record<string, string[]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -239,6 +282,7 @@ export const useDictionary = create<DictionaryState>()(
       ignored: {},
       global: [],
       suppressed: {},
+      synced: {},
       revision: 0,
       ignore: (projectId, word) =>
         set((s) => {
@@ -368,6 +412,36 @@ export const useDictionary = create<DictionaryState>()(
           revision: s.revision + 1,
         }));
       },
+      applyLearned: (add, remove) => {
+        const removing = new Set(remove.map(dictionaryKey));
+        for (const word of get().global) {
+          if (removing.has(dictionaryKey(word))) forgetWordIgnoredHere(word);
+        }
+        set((s) => {
+          const global = s.global.filter((word) => !removing.has(dictionaryKey(word)));
+          const keys = new Set(global.map(dictionaryKey));
+          for (const candidate of add) {
+            const word = normalizeDictionaryWord(candidate);
+            const key = dictionaryKey(word);
+            if (global.length >= DICTIONARY_LIMITS.wordsPerScope) break;
+            if (!canStoreWord(word) || keys.has(key)) continue;
+            keys.add(key);
+            global.push(word);
+          }
+          if (global.length === s.global.length && global.every((word, at) => word === s.global[at])) return s;
+          return { global, revision: s.revision + 1 };
+        });
+      },
+      setSynced: (account, words) =>
+        set((s) => {
+          if (!canStoreAccount(account)) return s;
+          const others = Object.keys(s.synced).filter((known) => known !== account);
+          if (others.length >= DICTIONARY_LIMITS.syncedAccounts) return s;
+          const next = sanitizeSyncedWords(words);
+          const known = s.synced[account];
+          if (known?.length === next.length && known.every((word, at) => word === next[at])) return s;
+          return { synced: { ...s.synced, [account]: next } };
+        }),
     }),
     {
       name: "oleafly.dictionary",
@@ -384,6 +458,7 @@ export const useDictionary = create<DictionaryState>()(
           global: sanitizeWords(value.global),
           ignored: sanitizeProjectWords(value.ignored),
           suppressed: sanitizeSuppressions(value.suppressed),
+          synced: sanitizeSynced(value.synced),
         };
       },
     }
@@ -457,4 +532,66 @@ export function grammarSuppressionsFor(
 ): string[] {
   if (!projectId) return EMPTY_WORDS;
   return useDictionary.getState().suppressed[projectId] ?? EMPTY_WORDS;
+}
+
+export interface LearnedMerge {
+  addLocal: string[];
+  removeLocal: string[];
+  learn: string[];
+  unlearn: string[];
+}
+
+function keysOf(words: readonly string[]): Set<string> {
+  return new Set(words.map(dictionaryKey));
+}
+
+function storable(words: readonly string[]): string[] {
+  return words.filter((word) => canStoreWord(normalizeDictionaryWord(word)));
+}
+
+export function mergeLearnedWords(
+  base: readonly string[] | null,
+  remote: readonly string[],
+  local: readonly string[],
+): LearnedMerge {
+  const shared = storable(remote);
+  const was = keysOf(base ?? []);
+  const there = keysOf(shared);
+  const here = keysOf(local);
+  const first = base === null;
+  const added = new Set<string>();
+  const addLocal: string[] = [];
+  for (const word of shared) {
+    const key = dictionaryKey(word);
+    if (here.has(key) || added.has(key) || (!first && was.has(key))) continue;
+    added.add(key);
+    addLocal.push(normalizeDictionaryWord(word));
+  }
+  return {
+    addLocal,
+    removeLocal: first
+      ? []
+      : local.filter((word) => was.has(dictionaryKey(word)) && !there.has(dictionaryKey(word))),
+    learn: local.filter((word) => !there.has(dictionaryKey(word)) && (first || !was.has(dictionaryKey(word)))),
+    unlearn: first
+      ? []
+      : shared.filter((word) => was.has(dictionaryKey(word)) && !here.has(dictionaryKey(word))),
+  };
+}
+
+export function learnedAfter(
+  remote: readonly string[],
+  sent: { learned: readonly string[]; unlearned: readonly string[] },
+): string[] {
+  const gone = new Set(sent.unlearned);
+  return [...new Set([...remote.filter((word) => !gone.has(word)), ...sent.learned])];
+}
+
+export function syncedBase(
+  remote: readonly string[],
+  local: readonly string[],
+  base: readonly string[] | null,
+): string[] {
+  const agreed = keysOf([...local, ...(base ?? [])]);
+  return [...new Set(storable(remote).filter((word) => agreed.has(dictionaryKey(word))))];
 }
