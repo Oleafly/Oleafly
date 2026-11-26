@@ -29,11 +29,7 @@ Oleafly 是一个免费、开源的科学研究写作工作台。它包括：适
 </div>
 
 <div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/readme/oleafly-overview.png" />
-    <source media="(prefers-color-scheme: light)" srcset="../assets/readme/oleafly-overview-light.png" />
-    <img src="../assets/readme/oleafly-overview-light.png" alt="Oleafly 的组成方式：你电脑上的 Oleafly Desktop 和 Oleafly CLI，你实验室机器上的 Oleafly Server 以及浏览器中的 Oleafly Web，还有 Desktop 连接的 AI 代理、参考文献工具、Overleaf、云同步和 Git 托管服务" width="100%" />
-  </picture>
+  <img src="../assets/readme/oleafly-overview.png" alt="Oleafly 的组成方式：你电脑上的 Oleafly Desktop 和 Oleafly CLI，你实验室机器上的 Oleafly Server 以及浏览器中的 Oleafly Web，还有 Desktop 连接的 AI 代理、参考文献工具、Overleaf、云同步和 Git 托管服务" width="100%" />
 </div>
 
 ## 为什么选择 Oleafly
