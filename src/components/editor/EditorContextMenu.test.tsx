@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { shortcut } from "@/lib/utils";
@@ -56,6 +57,7 @@ const fileRename = vi.hoisted(() => ({
 }));
 
 const inlineAi = vi.hoisted(() => ({ openInlineEdit: vi.fn() }));
+const snippetDialog = vi.hoisted(() => ({ openSaveSnippet: vi.fn(() => true) }));
 const synctex = vi.hoisted(() => ({ goToSyncTex: vi.fn() }));
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), success: vi.fn() }));
 
@@ -117,6 +119,7 @@ vi.mock("@/components/editor/typst-commands", async (importOriginal) => {
 });
 vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("./cm/inline-ai/openSession", () => inlineAi);
+vi.mock("@/features/snippets/save-dialog", () => snippetDialog);
 vi.mock("./cm/language-service-format", () => formatting);
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/lib/file-references/rename-at-cursor", () => fileRename);
@@ -582,8 +585,9 @@ describe("EditorContextMenu", () => {
     openMenu(engine, true);
 
     const roots = screen.getAllByRole("menuitem").map((item) => item.textContent?.replace(/\s+/gu, " ").trim());
-    expect(roots.slice(0, 5)).toEqual([
+    expect(roots.slice(0, 6)).toEqual([
       `${menu.askAi}${shortcut("⌘L")}`,
+      enShell.snippets.saveAsSnippet,
       `${menu.cut}${shortcut("⌘X")}`,
       `${menu.copy}${shortcut("⌘C")}`,
       `${menu.paste}${shortcut("⌘V")}`,
@@ -595,6 +599,20 @@ describe("EditorContextMenu", () => {
     for (const nested of [toolbar.bold, menu.table, menu.tableFromFile, menu.equationAsSvg]) {
       expect(screen.queryByText(nested)).not.toBeInTheDocument();
     }
+  });
+
+  it("saves the selection as a snippet only while text is selected", () => {
+    controller.getEditorView.mockReturnValue(view);
+    openMenu(LATEX_ENGINE, true);
+    expect(screen.getByTestId("context-save-snippet")).toHaveAttribute("data-disabled");
+    clipboard.hasSelectedText.mockReturnValue(true);
+    openMenu(LATEX_ENGINE, true);
+    const item = screen.getByTestId("context-save-snippet");
+    expect(item).not.toHaveAttribute("data-disabled");
+    fireEvent.click(item);
+    expect(snippetDialog.openSaveSnippet).toHaveBeenCalledOnce();
+    clipboard.hasSelectedText.mockReturnValue(false);
+    controller.getEditorView.mockReturnValue(null);
   });
 
   it("keeps the file imports and equation exports in Import and export", () => {

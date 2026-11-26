@@ -103,7 +103,7 @@ Consumers resolve the thunk at render through the helpers in `@oleafly/registry`
 
 ## Packages
 
-Packages under `packages/` never import the app's i18n instance. A package that renders text receives a translator through the kit or host object it already accepts and declares its message keys in a `messages.ts` file; a package that produces data (findings, diagnostics) returns `{ key, params }` and the host translates at render. A test in the package asserts that every declared key exists in the English catalog.
+Packages under `packages/` never import the app's i18n instance. A package that renders text receives a translator through the kit or host object it already accepts and declares its message keys in a `messages.ts` file (the editor package keeps its list in `message-keys.ts`, so the startup chunk doesn't carry it); a package that produces data (findings, diagnostics) returns `{ key, params }` and the host translates at render. A test in the package asserts that every declared key exists in the English catalog.
 
 ## Dates, numbers and lists
 

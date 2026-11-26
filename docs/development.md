@@ -23,7 +23,7 @@ oleafly-desktop/
 ├── packages/               @oleafly/* engine packages (consumed as TS source)
 │   ├── latex/  latex-intelligence/  ai-core/  ai-tools/  registry/  preflight/
 │   ├── editor/  wysiwyg/  preview/  diagram/  templates/  search-query/
-│   └── backend-port/  conversion-registry/  i18n-contract/  pdf-to-latex/
+│   └── backend-port/  conversion-registry/  i18n-contract/  pdf-to-latex/  snippets/
 ├── src-tauri/
 │   ├── src/                rust: commands, DocumentEngine, config, git, paths, project, synctex
 │   ├── binaries/           target-suffixed compiler sidecars

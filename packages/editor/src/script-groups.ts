@@ -16,6 +16,7 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
+import { autoExpandYieldsTo } from "./snippets/loader";
 import { isBackslashEscaped } from "@oleafly/latex";
 
 export type ScriptMark = "^" | "_";
@@ -448,6 +449,7 @@ function leaveBeforeNewline(
 export function scriptGroups(syntax: ScriptGroupSyntax): Extension {
   return [
     scriptGroupsField,
+    autoExpandYieldsTo.of((state) => activeGroups(state, syntax) !== null),
     Prec.highest(
       EditorView.inputHandler.of(
         (view, from, to, text) =>

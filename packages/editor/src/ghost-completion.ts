@@ -1,5 +1,4 @@
 import {
-  acceptCompletion,
   CompletionContext,
   selectedCompletion,
   completionStatus,
@@ -29,20 +28,33 @@ import {
   isCompletionTextLexicallyTriggered,
   type CompletionSyntax,
 } from "./completion-trigger";
+import { loadedSnippetRuntime, snippetHintBlocksAi } from "./snippets/loader";
+import { snippetPort } from "./snippets/port";
 
 const GHOST_CLASS = "cm-ghostCompletion";
+export const SNIPPET_CHIP_CLASS = "cm-ghostSnippet";
 
 const MIN_COMMAND_LETTERS = 2;
 const MIN_WORD_LETTERS = 3;
 const MAX_OPTIONS_SCANNED = 2000;
+const DISMISSED_WORD_LIMIT = 256;
 
-interface GhostSuggestion {
+export type GhostKind = "word" | "snippet" | "ai";
+
+export interface GhostSuggestion {
   pos: number;
   text: string;
+  kind: GhostKind;
+  label?: string;
+  recordId?: string;
+  from?: number;
 }
+
+export type GhostHint = (state: EditorState) => Omit<GhostSuggestion, "kind"> | null;
 
 const setGhost = StateEffect.define<GhostSuggestion | null>();
 const setDismissed = StateEffect.define<number | null>();
+const setDismissedHint = StateEffect.define<number>();
 
 const dismissedField = StateField.define<number | null>({
   create: () => null,
@@ -55,13 +67,31 @@ const dismissedField = StateField.define<number | null>({
   },
 });
 
+const dismissedHintField = StateField.define<number | null>({
+  create: () => null,
+  update(value, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setDismissedHint)) return effect.value;
+    }
+    if (value === null || (!tr.docChanged && !tr.selection)) return value;
+    if (!tr.docChanged) return null;
+    const start = tr.changes.mapPos(value, 1);
+    const head = tr.state.selection.main.head;
+    if (head < start || head - start > DISMISSED_WORD_LIMIT) return null;
+    return /\s/u.test(tr.state.sliceDoc(start, head)) ? null : start;
+  },
+});
+
 class GhostWidget extends WidgetType {
-  constructor(readonly text: string) {
+  constructor(
+    readonly text: string,
+    readonly label: string | null,
+  ) {
     super();
   }
 
   eq(other: GhostWidget): boolean {
-    return other.text === this.text;
+    return other.text === this.text && other.label === this.label;
   }
 
   toDOM(): HTMLElement {
@@ -69,7 +99,14 @@ class GhostWidget extends WidgetType {
     span.className = GHOST_CLASS;
     span.textContent = this.text;
     span.setAttribute("aria-hidden", "true");
-    return span;
+    if (this.label === null) return span;
+    const chip = document.createElement("span");
+    chip.className = SNIPPET_CHIP_CLASS;
+    chip.textContent = `⇥ ${this.label}`;
+    const hint = document.createElement("span");
+    hint.setAttribute("aria-hidden", "true");
+    hint.append(...(this.text ? [span] : []), chip);
+    return hint;
   }
 
   ignoreEvent(): boolean {
@@ -99,7 +136,7 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     if (value && tr.docChanged) {
       const typed = typedAt(tr, value.pos);
       if (typed && value.text.startsWith(typed) && value.text.length > typed.length) {
-        return { pos: value.pos + typed.length, text: value.text.slice(typed.length) };
+        return { ...value, pos: value.pos + typed.length, text: value.text.slice(typed.length) };
       }
     }
     if (tr.docChanged || tr.selection) return null;
@@ -110,7 +147,7 @@ const ghostField = StateField.define<GhostSuggestion | null>({
       ghost
         ? Decoration.set([
             Decoration.widget({
-              widget: new GhostWidget(ghost.text),
+              widget: new GhostWidget(ghost.text, ghost.kind === "snippet" ? (ghost.label ?? "") : null),
               side: 1,
             }).range(ghost.pos),
           ])
@@ -213,7 +250,7 @@ function popupGhost(
   const prefix = typedPrefix(before, overlapLength(before, optionText(selected)));
   if (!prefix) return null;
   const label = previewLabel(selected, prefix);
-  return label ? { pos, text: label.slice(prefix.length) } : null;
+  return label ? { pos, text: label.slice(prefix.length), kind: "word" } : null;
 }
 
 function sourceGhost(
@@ -229,35 +266,57 @@ function sourceGhost(
     const prefix = typedPrefix(before, pos - result.from);
     if (!prefix) continue;
     const label = bestOption(result.options, prefix);
-    if (label) return { pos, text: label.slice(prefix.length) };
+    if (label) return { pos, text: label.slice(prefix.length), kind: "word" };
   }
   return null;
+}
+
+function hintStart(ghost: Omit<GhostSuggestion, "kind">): number {
+  return ghost.from ?? ghost.pos;
+}
+
+function hintGhost(state: EditorState, hint: GhostHint, pos: number): GhostSuggestion | null {
+  const found = hint(state);
+  if (!found || found.pos !== pos) return null;
+  if (state.field(dismissedHintField, false) === hintStart(found)) return null;
+  return { ...found, kind: "snippet" };
 }
 
 function computeGhost(
   view: EditorView,
   sources: CompletionSource[],
   syntax: CompletionSyntax,
+  hint: GhostHint | undefined,
 ): GhostSuggestion | null {
   const pos = ghostAnchor(view);
   if (pos === null) return null;
   const before = boundedCompletionContext(view.state, pos);
   if (!before || /\s$/u.test(before)) return null;
+  const words = sources.length > 0;
 
-  if (completionStatus(view.state) === "active") return popupGhost(view, before, pos);
+  if (completionStatus(view.state) === "active") return words ? popupGhost(view, before, pos) : null;
 
-  if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
+  const snippet = hint ? hintGhost(view.state, hint, pos) : null;
+  if (snippet) return snippet;
+
+  if (!words || !isCompletionTextLexicallyTriggered(before, syntax)) return null;
 
   return sourceGhost(view, sources, before, pos);
 }
 
-export function acceptGhostCompletion(view: EditorView): boolean {
-  // CodeMirror's built-in completion keymap accepts with Enter, not Tab. Route
-  // Tab through its command explicitly when the popup is active; inserting the
-  // ghost text ourselves would bypass guarded applies and snippet expansion.
-  if (completionStatus(view.state) === "active" && acceptCompletion(view)) return true;
+function acceptSnippetGhost(view: EditorView, ghost: GhostSuggestion): boolean {
+  const runtime = loadedSnippetRuntime();
+  if (ghost.kind !== "snippet" || ghost.recordId === undefined || !runtime) return false;
+  const record = snippetPort(view.state)?.library().byId(ghost.recordId);
+  return record ? runtime.insertSnippet(view, record, hintStart(ghost), ghost.pos, "hint") : false;
+}
+
+export function acceptGhostSuggestion(view: EditorView, kind: "snippet" | "ai-or-word"): boolean {
   const ghost = view.state.field(ghostField, false);
-  if (!ghost || ghost.pos !== view.state.selection.main.head) return false;
+  const main = view.state.selection.main;
+  if (!ghost || ghost.pos !== main.head || !main.empty) return false;
+  if (kind === "snippet") return acceptSnippetGhost(view, ghost);
+  if (ghost.kind === "snippet") return false;
   view.dispatch({
     changes: { from: ghost.pos, insert: ghost.text },
     selection: { anchor: ghost.pos + ghost.text.length },
@@ -273,7 +332,10 @@ export function clearGhostCompletion(view: EditorView): boolean {
   if (!ghost) return false;
   const popupOpen = completionStatus(view.state) === "active";
   view.dispatch({
-    effects: [setGhost.of(null), setDismissed.of(ghost.pos)],
+    effects: [
+      setGhost.of(null),
+      ghost.kind === "snippet" ? setDismissedHint.of(hintStart(ghost)) : setDismissed.of(ghost.pos),
+    ],
   });
   return !popupOpen;
 }
@@ -289,18 +351,19 @@ const ghostTheme = EditorView.baseTheme({
 const ghostCore: Extension = [
   ghostField,
   dismissedField,
+  dismissedHintField,
   ghostTheme,
-  Prec.highest(
-    keymap.of([
-      { key: "Tab", run: acceptGhostCompletion },
-      { key: "Escape", run: clearGhostCompletion },
-    ]),
-  ),
+  Prec.highest(keymap.of([{ key: "Escape", run: clearGhostCompletion }])),
 ];
+
+function sameGhost(a: GhostSuggestion | null, b: GhostSuggestion | null): boolean {
+  return a?.text === b?.text && a?.pos === b?.pos && a?.kind === b?.kind && a?.recordId === b?.recordId;
+}
 
 export function ghostCompletion(
   sources: CompletionSource[],
   syntax: CompletionSyntax = "generic",
+  hint?: GhostHint,
 ): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
@@ -336,14 +399,9 @@ export function ghostCompletion(
       refresh() {
         const view = this.view;
         if (!view.dom.isConnected) return;
-        // Deliberately not gated on view.hasFocus: it depends on
-        // document.hasFocus(), which an embedded webview reports as false even
-        // while the user types. The suggestion is anchored to the cursor and
-        // only survives until the next edit, so an unfocused editor cannot
-        // accumulate stale previews anyway.
-        const next = computeGhost(view, sources, syntax);
+        const next = computeGhost(view, sources, syntax, hint);
         const current = view.state.field(ghostField, false) ?? null;
-        if (next?.text === current?.text && next?.pos === current?.pos) return;
+        if (sameGhost(next, current) || (!next && current?.kind === "ai")) return;
         view.dispatch({ effects: setGhost.of(next) });
       }
 
@@ -402,6 +460,7 @@ function requestAnchor(state: EditorState): number | null {
   if (completionStatus(state) === "active" || state.field(ghostField, false)) return null;
   const pos = selection.main.head;
   if (state.field(dismissedField, false) === pos) return null;
+  if (state.field(dismissedHintField, false) == null && snippetHintBlocksAi(state)) return null;
   const line = state.doc.lineAt(pos);
   if (!/\S/u.test(state.sliceDoc(line.from, pos))) return null;
   return CLOSING_TAIL.test(state.sliceDoc(pos, line.to)) ? pos : null;
@@ -465,6 +524,7 @@ export function requestedGhostCompletion(
       constructor(readonly view: EditorView) {}
 
       update(update: ViewUpdate) {
+        if (this.snippetTookOver(update)) return;
         const popup = completionStatus(update.state);
         if (this.awaitingPopup && popup !== "pending") {
           this.awaitingPopup = false;
@@ -478,6 +538,22 @@ export function requestedGhostCompletion(
         if (!update.transactions.some(typedEdit) || !enabled()) return;
         this.warm();
         this.schedule(accepted || this.cachedAt(update.state) ? 0 : delay);
+      }
+
+      private snippetTookOver(update: ViewUpdate): boolean {
+        const before = update.startState.field(ghostField, false);
+        const after = update.state.field(ghostField, false);
+        if (after?.kind === "snippet" && before?.kind !== "snippet") {
+          this.cancel();
+          this.dropAhead();
+          return true;
+        }
+        const dismissed = update.state.field(dismissedHintField, false);
+        if (dismissed != null && dismissed !== update.startState.field(dismissedHintField, false) && enabled()) {
+          this.schedule(0);
+          return true;
+        }
+        return false;
       }
 
       private cachedAt(state: EditorState): boolean {
@@ -528,7 +604,7 @@ export function requestedGhostCompletion(
         const cached = this.fromCache(before, after);
         if (cached) {
           if (this.popupHides(state)) return;
-          this.view.dispatch({ effects: setGhost.of({ pos, text: cached }) });
+          this.view.dispatch({ effects: setGhost.of({ pos, text: cached, kind: "ai" }) });
           return;
         }
         const current = this.pending;
@@ -613,7 +689,7 @@ export function requestedGhostCompletion(
         if (this.popupHides(state)) return true;
         const shown = state.field(ghostField, false);
         if (shown?.pos === pos && shown.text === rest) return true;
-        this.view.dispatch({ effects: setGhost.of({ pos, text: rest }) });
+        this.view.dispatch({ effects: setGhost.of({ pos, text: rest, kind: "ai" }) });
         return true;
       }
 

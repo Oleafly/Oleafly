@@ -57,7 +57,7 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   `Mod-Alt-.` closes the innermost open environment and `Mod-Alt-e` surrounds
   the selection with an environment (both also in the command palette).
   `@`-prefixed math shortcuts complete Greek letters and symbols inside math
-  contexts.
+  contexts. They are a built-in snippet collection (see Snippets).
 - Typst editing: `.typ` files get folding, sticky headings and breadcrumbs.
   Typing `$` writes the closing `$`, Enter continues a list, and `/` opens
   snippets. Completion covers functions, file paths, labels, packages and
@@ -303,6 +303,64 @@ the LaTeX one.
   of findings dismissed in the open project, and takes either back. Under
   them it lists every rule the academic profile turns off, each with a switch
   that turns it back on.
+
+## Snippets
+
+One snippet library serves LaTeX, Typst, Markdown, BibTeX and Notes text.
+The slash menus, the `@` math shortcuts and the packs are snippets like the
+ones you write, so each one can be turned off, changed or restored in
+Settings > Snippets.
+
+- A snippet fires in one of three ways. From the list: symbol triggers
+  (`/table`, `@a`) appear in the completion list as you type, and word
+  triggers (`fig`) appear with Ctrl+Space. With Tab: type a trigger set to
+  With Tab and press Tab. As you type: a trigger set to As you type expands
+  the moment its last character is typed.
+- Snippet hints. While you type the start of a Tab trigger, the rest of it
+  appears in dim text with a chip naming the snippet. Tab inserts exactly
+  that snippet. A hint shows only for a complete trigger, or for two or more
+  letters that lead to one snippet (or to a shortest trigger that every other
+  candidate starts with). No hint shows while the completion list is open,
+  and none inside a snippet's fields. Escape hides the hint for that word
+  until the next space.
+- Snippet hints beat AI suggestions. The AI is not asked while a hint shows
+  or while a complete Tab trigger sits at the caret. A hint replaces an AI
+  suggestion already on screen, and an AI reply that arrives late never
+  replaces a hint.
+- Tab order, highest first: move to the next field of an active snippet (the
+  list wins inside a choice or project field while it is open), accept the
+  highlighted completion, insert the hinted snippet, expand a Tab trigger,
+  accept an AI or word suggestion, indent. Shift-Tab moves to the previous
+  field. In Vim normal mode none of this applies.
+- Fields. Tab and Shift-Tab move through a snippet's fields. Fields can hold
+  a default, offer a list of choices, follow another field (a label that
+  follows the caption, through `${4/slug}`), or list the project's images,
+  labels, citation keys, references or files. Snippets nest: a snippet
+  inserted in a field is filled first, then Tab returns to the outer one.
+  Escape leaves the fields and keeps the text. A co-author typing elsewhere
+  never ends your fields.
+- Where As you type snippets fire. Each one fires only where it is allowed,
+  and most only in math. Math is found from the start of the paragraph.
+  Nothing fires in comments, verbatim, command names, `\label`, `\ref`,
+  `\cite`, `\url` or `\texttt` arguments, or while an input method is
+  composing.
+  Characters typed with AltGr count as ordinary typing. Undo right after an
+  expansion, or Backspace, gives back exactly what you typed.
+- Fast math. The Fast math packs for LaTeX and Typst hold Castel-style
+  triggers such as `//` for a fraction, `x1` for `x_1`, `sr` for a square,
+  and `xhat` for `\hat{x}`. They ship turned off. Turn them on from the editor
+  toolbar, the command palette (Toggle Fast math) or Settings > Snippets.
+  After a letter, `x/` already starts a fraction, so `//` works after a space
+  or an operator.
+- Insert snippet in the command palette (`/snippets`) lists every snippet,
+  the open file's language first, with a preview. Save as snippet in the
+  editor's context menu turns a selection into a snippet and suggests which
+  parts should become fields.
+- Files. Your snippets are JSON files in the `snippets` folder of the
+  Oleafly data folder, in VS Code's snippet format with optional extra keys.
+  `_state.json` there holds which collections are off and your changes to
+  built-in snippets. Settings export and import carry the folder. Use counts
+  stay on the device.
 
 ## Editor settings
 

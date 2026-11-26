@@ -6,6 +6,7 @@ import {
   writeThemeCustomization,
 } from "@/lib/theme-customization";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
+import { importSnippetSettingsFiles, snippetSettingsFiles, snippetsReady, useSnippetStore } from "@/features/snippets/store";
 import { useCompileStore } from "@/store/compile";
 import { useCompileRootStore } from "@/store/compile-root";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
@@ -65,6 +66,9 @@ export function watchSettingsSources(listener: () => void): () => void {
     useCompileRootStore.subscribe((state, previous) => {
       if (state.followOpenFile !== previous.followOpenFile) listener();
     }),
+    useSnippetStore.subscribe((state, previous) => {
+      if (state.disk !== previous.disk) listener();
+    }),
   ];
   return () => {
     for (const stop of stops) stop();
@@ -111,8 +115,9 @@ function compilePreferences(): CompilePreferences {
   return { autoCompile, compileMode, checkSyntaxBeforeCompile, stopOnFirstError, followOpenFile };
 }
 
-export function readConfigPreferences(): Promise<ConfigPreferences | null> {
-  return getConfig().then(pickConfig, () => null);
+export async function readConfigPreferences(): Promise<ConfigPreferences | null> {
+  const [config] = await Promise.all([getConfig().then(pickConfig, () => null), snippetsReady().catch(() => undefined)]);
+  return config;
 }
 
 export async function captureSettingsSnapshot(theme: ThemePreference): Promise<SettingsSnapshot> {
@@ -127,6 +132,7 @@ export function readLocalSnapshot(config: ConfigPreferences | null, theme: Theme
     shortcuts: useShortcutStore.getState().bindings,
     editorKeys: useEditorKeymapStore.getState().keys,
     words: useDictionary.getState().global,
+    snippetFiles: snippetSettingsFiles(),
     compile: compilePreferences(),
     config,
   };
@@ -315,4 +321,5 @@ export async function applySettingsPlan(plan: SettingsPlan, theme: ThemeControl)
   if (plan.words) replaceGlobalWords(plan.words);
   applyCompile(plan.compile);
   await applyConfig(plan.config);
+  if (plan.snippetFiles && plan.snippetFiles.length > 0) await importSnippetSettingsFiles(plan.snippetFiles);
 }

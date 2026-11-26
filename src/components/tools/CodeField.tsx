@@ -15,6 +15,8 @@ interface CodeFieldProps {
   className?: string;
   testId?: string;
   readOnly?: boolean;
+  ariaLabel?: string;
+  onView?: (view: EditorView | null) => void;
 }
 
 export function CodeField({
@@ -26,11 +28,15 @@ export function CodeField({
   className,
   testId,
   readOnly = false,
+  ariaLabel,
+  onView,
 }: Readonly<CodeFieldProps>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onViewRef = useRef(onView);
+  onViewRef.current = onView;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recreated only on mount; value updates synced below
   useEffect(() => {
@@ -51,6 +57,7 @@ export function CodeField({
           language(),
           editorTheme(),
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),
+          ...(ariaLabel ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })] : []),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) onChangeRef.current(update.state.doc.toString());
           }),
@@ -59,7 +66,9 @@ export function CodeField({
       parent: hostRef.current,
     });
     viewRef.current = view;
+    onViewRef.current?.(view);
     return () => {
+      onViewRef.current?.(null);
       view.destroy();
       viewRef.current = null;
     };

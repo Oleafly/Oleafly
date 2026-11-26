@@ -2924,5 +2924,190 @@
     "filteredCount_many": "{{shown}} z {{count}} wpisów",
     "filteredCount_one": "{{shown}} z {{count}} wpisu",
     "filteredCount_other": "{{shown}} z {{count}} wpisu"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Na liście autouzupełniania",
+        "description": "Pokazuj fragmenty obok poleceń"
+      },
+      "tab": {
+        "label": "Tab rozwija wyzwalacz",
+        "description": "Dla fragmentów rozwijanych klawiszem Tab"
+      },
+      "auto": {
+        "label": "Rozwijaj podczas pisania",
+        "description": "Dla fragmentów typu Auto, takich jak Fast math"
+      },
+      "hint": {
+        "label": "Pokazuj podpowiedź podczas pisania",
+        "description": "Pokazuje nazwę fragmentu, który zostanie wstawiony przez wyzwalacz. Tab go wstawia."
+      }
+    },
+    "library": {
+      "title": "Twoja biblioteka fragmentów",
+      "collections": "Kolekcje",
+      "all": "Wszystkie fragmenty",
+      "mine": "Twoje",
+      "packs": "Pakiety",
+      "builtIn": "Wbudowane",
+      "add": "Dodaj pakiety lub importuj…",
+      "useCollection": "Używaj kolekcji {{name}}",
+      "search": "Szukaj według nazwy, wyzwalacza lub tekstu",
+      "language": "Język",
+      "allLanguages": "Wszystkie języki",
+      "expands": "Rozwijanie",
+      "anyExpand": "Dowolne",
+      "newSnippet": "Nowy fragment",
+      "columns": {
+        "trigger": "Wyzwalacz",
+        "name": "Nazwa",
+        "languages": "Języki",
+        "where": "Gdzie",
+        "expands": "Rozwijanie"
+      },
+      "modified": "Zmieniony",
+      "turnedOff": "Wyłączony",
+      "restore": "Przywróć",
+      "restoreLabel": "Przywróć: {{name}}",
+      "wraps": "otacza",
+      "noTrigger": "brak",
+      "noMatches": "Brak pasujących fragmentów.",
+      "shown": "{{shown}} z {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_few": "{{count}} problemy",
+      "summary_many": "{{count}} problemów",
+      "summary_other": "{{count}} problemu",
+      "where": "w {{file}}, wiersz {{line}}: {{message}}",
+      "slowRegex": "Sprawdzanie wyzwalacza fragmentu „{{name}}” trwało zbyt długo, więc fragment wyłączono.",
+      "show": "Pokaż",
+      "hide": "Ukryj"
+    },
+    "addDialog": {
+      "title": "Dodaj fragmenty",
+      "packsTab": "Pakiety",
+      "importTab": "Import pliku",
+      "count_one": "{{count}} fragment",
+      "count_few": "{{count}} fragmenty",
+      "count_many": "{{count}} fragmentów",
+      "count_other": "{{count}} fragmentu",
+      "source": "Źródło: {{source}}",
+      "licence": "Licencja {{licence}}",
+      "packNote": "Pakiety aktualizują się razem z aplikacją. Zmiany, które wprowadzisz we fragmentach pakietu, są przechowywane osobno.",
+      "packs": {
+        "fastMathLatex": "Rozwija się podczas pisania we wzorach: ułamki, indeksy dolne i potęgi, litery greckie, operatory i macierze. Wyzwalacze odpowiadają konfiguracji, której używał Gilles Castel.",
+        "fastMathTypst": "Te same wyzwalacze, napisane dla Typst. Pomija to, co Typst robi już sam, na przykład a/b dla ułamka.",
+        "paperStructure": "Rysunki, podrysunki, tabele booktabs, wzory, twierdzenia, dowody i algorytmy."
+      },
+      "useOn": "Używaj pakietu {{name}}",
+      "importIntro": "Wybierz plik fragmentów VS Code (.json lub .code-snippets). Stanie się osobną kolekcją, którą możesz wyłączyć lub zmienić.",
+      "choose": "Wybierz plik",
+      "fileLabel": "Plik fragmentów",
+      "imported_one": "Zaimportowano {{count}} fragment do kolekcji {{collection}}.",
+      "imported_few": "Zaimportowano {{count}} fragmenty do kolekcji {{collection}}.",
+      "imported_many": "Zaimportowano {{count}} fragmentów do kolekcji {{collection}}.",
+      "imported_other": "Zaimportowano {{count}} fragmentu do kolekcji {{collection}}.",
+      "nothing": "W pliku {{file}} nie znaleziono fragmentów.",
+      "leftOut_one": "Pominięto {{count}} wpis:",
+      "leftOut_few": "Pominięto {{count}} wpisy:",
+      "leftOut_many": "Pominięto {{count}} wpisów:",
+      "leftOut_other": "Pominięto {{count}} wpisu:"
+    },
+    "editor": {
+      "newTitle": "Nowy fragment",
+      "duplicate": "Duplikuj",
+      "delete": "Usuń",
+      "turnOff": "Wyłącz",
+      "save": "Zapisz",
+      "copyName": "{{name}} (kopia)",
+      "name": "Nazwa",
+      "namePlaceholder": "Rysunek z podpisem i etykietą",
+      "trigger": "Wyzwalacz",
+      "triggerPlaceholder": "fig",
+      "regex": "Wyrażenie regularne",
+      "expands": "Rozwijanie",
+      "expandOptions": {
+        "list": "Z listy",
+        "tab": "Klawiszem Tab",
+        "auto": "Podczas pisania"
+      },
+      "expandHelp": {
+        "list": "Fragment pojawia się na liście autouzupełniania. Wybierz go tam, aby go wstawić.",
+        "tab": "Wpisz {{trigger}} i naciśnij Tab. Fragment pojawia się też na liście autouzupełniania.",
+        "auto": "Fragment rozwija się, gdy tylko wpiszesz {{trigger}}. Cofnięcie lub Backspace przywraca wyzwalacz."
+      },
+      "languages": "Języki",
+      "where": "Gdzie",
+      "whereOptions": {
+        "any": "Wszędzie",
+        "text": "Tekst",
+        "math": "Wzory",
+        "code": "Kod"
+      },
+      "mathKinds": {
+        "math": "Dowolne",
+        "inline-math": "W wierszu",
+        "display-math": "Wyeksponowane"
+      },
+      "mathKind": "Rodzaj wzorów",
+      "whereHelp": {
+        "any": "W dowolnym miejscu pliku.",
+        "text": "Tekst: poza wzorami, komentarzami i środowiskami verbatim.",
+        "math": "Wzory: wewnątrz wzorów w wierszu lub wyeksponowanych.",
+        "code": "Kod: wewnątrz kodu Typst lub bloków kodu Markdown."
+      },
+      "firesOnly": "Działa tylko",
+      "wholeWord": "jako całe słowo",
+      "lineStart": "na początku wiersza",
+      "collection": "Kolekcja",
+      "keptSeparately": "Twoje zmiany są przechowywane osobno, więc aktualizacje kolekcji {{collection}} nadal będą do Ciebie docierać.",
+      "body": "Wstawiany tekst",
+      "anyLanguage": "Dowolny język",
+      "addField": "+ Pole",
+      "addChoice": "+ Wybór",
+      "choiceText": "pierwszy,drugi",
+      "variable": "Zmienna",
+      "projectField": "Pole projektu",
+      "variables": {
+        "SELECTION": "Zaznaczony tekst",
+        "CLIPBOARD": "Schowek",
+        "DATE": "Dzisiejsza data",
+        "TM_FILENAME": "Nazwa pliku",
+        "PROJECT_NAME": "Nazwa projektu"
+      },
+      "projectFields": {
+        "image": "Obraz",
+        "label": "Etykieta",
+        "cite": "Cytowanie",
+        "ref": "Odwołanie",
+        "file": "Plik"
+      },
+      "chipsNote": "Pola są wyświetlane jako plakietki.",
+      "showSyntax": "Pokaż składnię",
+      "missingName": "Nadaj fragmentowi nazwę.",
+      "missingBody": "Wpisz tekst, który fragment wstawia.",
+      "sameTrigger": "Wyzwalacza {{trigger}} używają też inne fragmenty: {{list}}. Pierwszeństwo ma najbliższa kolekcja.",
+      "sharedStart": "Zaczyna się tak samo jak: {{list}}. Wszystkie są na liście, a Tab wybiera dokładne dopasowanie, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Usunąć „{{name}}”?",
+        "description": "Fragment zostanie usunięty z kolekcji {{collection}}.",
+        "action": "Usuń"
+      },
+      "tryIt": {
+        "title": "Wypróbuj",
+        "howAuto": "Wpisz {{trigger}}, a fragment się rozwinie.",
+        "howTab": "Wpisz {{trigger}}, a potem naciśnij Tab.",
+        "howList": "Wpisz {{trigger}}, naciśnij Ctrl+Space i wybierz fragment z listy.",
+        "noTrigger": "Ten fragment nie ma wyzwalacza. Wstaw go z palety poleceń za pomocą /snippets.",
+        "inText": "w tekście",
+        "inMath": "we wzorach",
+        "fires": "Działa tutaj: {{language}}, {{place}}.",
+        "notLanguage": "Tu nie zadziała: {{language}} nie należy do języków tego fragmentu.",
+        "notPlace": "Nie zadziała {{place}}. Ustawienie „Gdzie” na to nie pozwala."
+      }
+    }
   }
 }

@@ -107,7 +107,9 @@ An error line under a form or an action is an `InlineAlert` from
 `ui/inline-alert.tsx`: red text on a red tint that screen readers announce as
 an alert. Pass `icon` (a Lucide icon) to show one before the message,
 `bordered` for the framed version dialogs use, and `size="sm"` when it sits
-next to larger text. Don't write those classes by hand.
+next to larger text. `tone="warning"` turns it amber, for problems that do not
+stop anything, such as the problems bar on Settings › Snippets. Don't write
+those classes by hand.
 
 A faint background behind a page comes from one of three patterns, each an
 absolutely placed SVG that ignores the pointer, so its parent needs
@@ -159,8 +161,10 @@ A search palette that opens over the window (the command palette, the
 omnibar, the note switcher) is a `CommandDialogShell` from
 `ui/command-dialog.tsx`. It brings the overlay, the panel, the field and the
 list. `leading` and `trailing` sit beside the field, `placement` and
-`className` move and size the panel, and `footer` goes under the list. Its
-rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
+`className` move and size the panel, and `footer` goes under the list.
+`aside` sits to the right of the list, inside the palette, so it can read the
+highlighted row with cmdk's `useCommandState`. The snippets mode uses it for
+its preview. Its rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
 
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in

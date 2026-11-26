@@ -4,6 +4,7 @@ export const SETTINGS_SEARCH_SECTIONS = [
   "general",
   "appearance",
   "dictionary",
+  "snippets",
   "data",
   "ai",
   "research",
@@ -42,6 +43,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
   ],
   appearance: [["settings", "appearance"], ["notes", "appearance", "notes"], keywords("appearance")],
   dictionary: [["settings", "proofreading"], keywords("dictionary")],
+  snippets: [["settings", "snippets"], keywords("snippets")],
   data: [["shell", "settings", "data"], ["settings", "checkpoints"], keywords("data")],
   ai: [
     ["settings", "ai"],

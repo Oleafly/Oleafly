@@ -2870,5 +2870,182 @@
     "count_other": "{{count}} poster",
     "filteredCount_one": "{{shown}} av {{count}} post",
     "filteredCount_other": "{{shown}} av {{count}} poster"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "I kompletteringslistan",
+        "description": "Visa kodsnuttar bredvid kommandon"
+      },
+      "tab": {
+        "label": "Tab ersätter en utlösare",
+        "description": "För kodsnuttar som är inställda på Tab"
+      },
+      "auto": {
+        "label": "Infoga medan du skriver",
+        "description": "För automatiska kodsnuttar, som Fast math"
+      },
+      "hint": {
+        "label": "Visa ett tips medan du skriver",
+        "description": "Visar vilken kodsnutt en utlösare infogar. Tab infogar den."
+      }
+    },
+    "library": {
+      "title": "Ditt bibliotek med kodsnuttar",
+      "collections": "Samlingar",
+      "all": "Alla kodsnuttar",
+      "mine": "Dina",
+      "packs": "Paket",
+      "builtIn": "Inbyggda",
+      "add": "Lägg till paket eller importera…",
+      "useCollection": "Använd {{name}}",
+      "search": "Sök namn, utlösare eller text",
+      "language": "Språk",
+      "allLanguages": "Alla språk",
+      "expands": "Aktivering",
+      "anyExpand": "Alla sätt",
+      "newSnippet": "Ny kodsnutt",
+      "columns": {
+        "trigger": "Utlösare",
+        "name": "Namn",
+        "languages": "Språk",
+        "where": "Var",
+        "expands": "Aktivering"
+      },
+      "modified": "Ändrad",
+      "turnedOff": "Avstängd",
+      "restore": "Återställ",
+      "restoreLabel": "Återställ {{name}}",
+      "wraps": "omsluter",
+      "noTrigger": "ingen",
+      "noMatches": "Inga kodsnuttar matchar.",
+      "shown": "{{shown}} av {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_other": "{{count}} problem",
+      "where": "i {{file}}, rad {{line}}: {{message}}",
+      "slowRegex": "Det tog för lång tid att kontrollera utlösaren för {{name}}. Därför stängdes kodsnutten av.",
+      "show": "Visa",
+      "hide": "Dölj"
+    },
+    "addDialog": {
+      "title": "Lägg till kodsnuttar",
+      "packsTab": "Paket",
+      "importTab": "Importera en fil",
+      "count_one": "{{count}} kodsnutt",
+      "count_other": "{{count}} kodsnuttar",
+      "source": "Från {{source}}",
+      "licence": "{{licence}}-licens",
+      "packNote": "Paket uppdateras med appen. Ändringar du gör i ett pakets kodsnuttar sparas separat.",
+      "packs": {
+        "fastMathLatex": "Infogar medan du skriver matematik: bråk, index och potenser, grekiska bokstäver, operatorer och matriser. Utlösarna följer upplägget från Gilles Castel.",
+        "fastMathTypst": "Samma utlösare, skrivna för Typst. Det som Typst redan gör själv, som a/b för ett bråk, är utelämnat.",
+        "paperStructure": "Figurer, delfigurer, booktabs-tabeller, ekvationer, satser, bevis och algoritmer."
+      },
+      "useOn": "Använd {{name}}",
+      "importIntro": "Välj en fil med kodsnuttar från VS Code (.json eller .code-snippets). Den blir en egen samling, som du kan stänga av eller ändra.",
+      "choose": "Välj en fil",
+      "fileLabel": "Fil med kodsnuttar",
+      "imported_one": "Importerade {{count}} kodsnutt till {{collection}}.",
+      "imported_other": "Importerade {{count}} kodsnuttar till {{collection}}.",
+      "nothing": "Inga kodsnuttar hittades i {{file}}.",
+      "leftOut_one": "{{count}} post utelämnades:",
+      "leftOut_other": "{{count}} poster utelämnades:"
+    },
+    "editor": {
+      "newTitle": "Ny kodsnutt",
+      "duplicate": "Duplicera",
+      "delete": "Radera",
+      "turnOff": "Stäng av",
+      "save": "Spara",
+      "copyName": "Kopia av {{name}}",
+      "name": "Namn",
+      "namePlaceholder": "Figur med bildtext och etikett",
+      "trigger": "Utlösare",
+      "triggerPlaceholder": "fig",
+      "regex": "Reguljärt uttryck",
+      "expands": "Aktivering",
+      "expandOptions": {
+        "list": "Från listan",
+        "tab": "Med Tab",
+        "auto": "Medan du skriver"
+      },
+      "expandHelp": {
+        "list": "Den visas i kompletteringslistan. Välj den där för att infoga den.",
+        "tab": "Skriv {{trigger}} och tryck på Tab. Den visas också i kompletteringslistan.",
+        "auto": "Den infogas så fort du skriver {{trigger}}. Ångra eller Backspace ger tillbaka utlösaren."
+      },
+      "languages": "Språk",
+      "where": "Var",
+      "whereOptions": {
+        "any": "Överallt",
+        "text": "Text",
+        "math": "Matematik",
+        "code": "Kod"
+      },
+      "mathKinds": {
+        "math": "Båda",
+        "inline-math": "I löptext",
+        "display-math": "På egen rad"
+      },
+      "mathKind": "Typ av matematik",
+      "whereHelp": {
+        "any": "Var som helst i filen.",
+        "text": "Text: utanför matematik, kommentarer och verbatim.",
+        "math": "Matematik: i matematik i löptext eller på egen rad.",
+        "code": "Kod: i Typst-kod eller kodblock i Markdown."
+      },
+      "firesOnly": "Aktiveras bara",
+      "wholeWord": "som ett helt ord",
+      "lineStart": "i början av en rad",
+      "collection": "Samling",
+      "keptSeparately": "Dina ändringar sparas separat, så uppdateringar av {{collection}} når dig ändå.",
+      "body": "Text som infogas",
+      "anyLanguage": "Alla språk",
+      "addField": "+ Fält",
+      "addChoice": "+ Val",
+      "choiceText": "första,andra",
+      "variable": "Variabel",
+      "projectField": "Projektfält",
+      "variables": {
+        "SELECTION": "Markerad text",
+        "CLIPBOARD": "Urklipp",
+        "DATE": "Dagens datum",
+        "TM_FILENAME": "Filnamn",
+        "PROJECT_NAME": "Projektnamn"
+      },
+      "projectFields": {
+        "image": "Bild",
+        "label": "Etikett",
+        "cite": "Citering",
+        "ref": "Referens",
+        "file": "Fil"
+      },
+      "chipsNote": "Fälten visas som etiketter.",
+      "showSyntax": "Visa syntax",
+      "missingName": "Ge kodsnutten ett namn.",
+      "missingBody": "Skriv texten som kodsnutten infogar.",
+      "sameTrigger": "{{list}} använder också {{trigger}}. Den närmaste samlingen vinner.",
+      "sharedStart": "Börjar likadant som {{list}}. Alla visas i listan, och Tab väljer den exakta träffen, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Vill du radera {{name}}?",
+        "description": "Den tas bort från {{collection}}.",
+        "action": "Radera"
+      },
+      "tryIt": {
+        "title": "Prova",
+        "howAuto": "Skriv {{trigger}} så infogas den.",
+        "howTab": "Skriv {{trigger}} och tryck sedan på Tab.",
+        "howList": "Skriv {{trigger}}, tryck på Ctrl+Space och välj den i listan.",
+        "noTrigger": "Den här kodsnutten har ingen utlösare. Infoga den från kommandopaletten med /snippets.",
+        "inText": "i text",
+        "inMath": "i matematik",
+        "fires": "Aktiveras här: {{language}}, {{place}}.",
+        "notLanguage": "Skulle inte aktiveras i {{language}}. Det är inte ett av kodsnuttens språk.",
+        "notPlace": "Skulle inte aktiveras {{place}}. Inställningen ”Var” tillåter det inte."
+      }
+    }
   }
 }

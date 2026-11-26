@@ -317,6 +317,10 @@
       "keywords": "uden distraktion fokus fuld skærm skjul brugerflade minimal skrivning",
       "label": "Slå Zen-tilstand til eller fra"
     },
+    "fastMath": {
+      "keywords": "fast math kodestumper snippets indsæt mens du skriver brøk sænket græsk",
+      "label": "Slå Fast math til eller fra"
+    },
     "visualSettings": {
       "keywords": "udseende skrifttype skriftstil tekst størrelse afsnit indrykning afstand justering overskrift skrivning",
       "label": "Indstillinger for Visuel tilstand"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "afhandling kapitel artikel import flet kopier projekt thesis chapter paper merge",
       "label": "Tilføj kapitel fra et andet projekt"
+    },
+    "insertSnippet": {
+      "keywords": "kodestumper snippets skabeloner udløsere gennemse indsæt",
+      "label": "Indsæt kodestump"
+    },
+    "saveSnippet": {
+      "keywords": "kodestump snippet skabelon gem markering genbrug",
+      "label": "Gem markering som kodestump"
     }
   },
   "community": {
@@ -764,7 +776,8 @@
       "projects": "søg i dine projekter",
       "refs": "åbn referencerne for dette projekt",
       "settings": "åbn indstillinger",
-      "theme": "skift farvetema"
+      "theme": "skift farvetema",
+      "snippets": "gennemse og indsæt kodestumper"
     },
     "tryCommand": "Prøv en kommando",
     "unknownCommand": "Ukendt kommando. Skriv / for at se de kommandoer, der findes."
@@ -1132,7 +1145,8 @@
       "integrations": "Integrationer",
       "shortcuts": "Tastaturgenveje",
       "research": "Forskning",
-      "logs": "Logfiler"
+      "logs": "Logfiler",
+      "snippets": "Kodestumper"
     },
     "search": {
       "empty": "Ingen indstillinger matcher",
@@ -1150,7 +1164,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapps, Cua, MCP, citationer, konti, forbindelser",
         "shortcuts": "tastaturgenveje, genvejstaster, genveje, taster, tastatur",
         "research": "forskning opgaver budget notifikationer hold vågen eksperimenter kørsler",
-        "logs": "log, logs, logfiler, fejl, advarsler, nedbrud, builds, diagnostik, fejlfinding, eksporter logfiler, app.log, debug"
+        "logs": "log, logs, logfiler, fejl, advarsler, nedbrud, builds, diagnostik, fejlfinding, eksporter logfiler, app.log, debug",
+        "snippets": "udløsere, skabeloner, Fast math, indsæt mens du skriver, Tab, fuldførelsesliste, skråstregsmenu, @-genveje, kodestumper fra VS Code, snippets, importer, pakker"
       },
       "label": "Søg i indstillinger",
       "results_one": "{{count}} afsnit matcher",
@@ -1723,5 +1738,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Nulstil"
+  },
+  "snippets": {
+    "mySnippets": "Mine kodestumper",
+    "saveAsSnippet": "Gem som kodestump…",
+    "autoNote": "{{trigger}} blev erstattet. Fortryd eller Backspace giver dig den tilbage.",
+    "fastMathTip": "Med Fast math slået til skriver // en brøk i matematik.",
+    "turnOnFastMath": "Slå Fast math til",
+    "expands": {
+      "list": "Liste",
+      "tab": "Tab",
+      "auto": "Automatisk"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Noter",
+      "any": "Alle"
+    },
+    "places": {
+      "any": "Overalt",
+      "text": "Tekst",
+      "math": "Matematik",
+      "inline-math": "Matematik i linjen",
+      "display-math": "Matematik på egen linje",
+      "code": "Kode"
+    },
+    "palette": {
+      "placeholder": "Søg i kodestumper efter navn, udløser eller tekst",
+      "insert": "Indsæt",
+      "edit": "Rediger",
+      "count": "{{shown}} af {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Skriv {{trigger}} for at få den uden at åbne paletten.",
+      "noMatches": "Ingen kodestumper passer."
+    },
+    "save": {
+      "title": "Gem som kodestump",
+      "name": "Navn",
+      "namePlaceholder": "Resultattabel",
+      "trigger": "Udløser",
+      "triggerPlaceholder": "rtab",
+      "expands": "Aktivering",
+      "found": "fundet i din markering",
+      "fields": "Gør disse til felter",
+      "fieldsFound_one": "{{count}} fundet",
+      "fieldsFound_other": "{{count}} fundet",
+      "noFields": "Intet her ligner et felt. Du kan tilføje felter senere under Indstillinger.",
+      "followsCaption": "følger billedteksten",
+      "kinds": {
+        "caption": "billedtekst",
+        "label": "etiket",
+        "cite": "citation",
+        "path": "filsti",
+        "column-spec": "kolonnespecifikation",
+        "number": "tal",
+        "title": "overskrift",
+        "table-body": "tabelindhold"
+      },
+      "preview": "Forhåndsvisning",
+      "saveTo": "Gem i",
+      "submit": "Gem kodestump",
+      "saved": "{{name}} er gemt.",
+      "missingName": "Giv kodestumpen et navn."
+    }
   }
 }

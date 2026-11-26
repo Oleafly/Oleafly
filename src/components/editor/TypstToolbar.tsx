@@ -28,6 +28,7 @@ import {
   Strikethrough,
   Underline,
   Undo2,
+  Zap,
 } from "lucide-react";
 import {
   CodeIntelDropdown,
@@ -86,6 +87,7 @@ import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { goToSyncTex } from "@/features/synctex";
 import { openDiagramComposer } from "@/features/open-tool";
 import { useFilesStore } from "@/store/files";
+import { toggleFastMath, useFastMath } from "@/features/snippets/fast-math";
 
 function TypstListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -123,6 +125,7 @@ export function TypstToolbar({
   );
   const visionReady = useToolsImageReady();
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const fastMath = useFastMath("typst");
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
@@ -210,13 +213,16 @@ export function TypstToolbar({
         insertTypstFraction,
         { tooltip: t(($) => $.editor.toolbar.insertFraction) },
       ),
+      btnControl("fast-math", Zap, t(($) => $.editor.toolbar.fastMath), () => void toggleFastMath("typst"), {
+        active: fastMath,
+      }),
       dividerControl("divider-5"),
       toolbarPicker("symbols", ICON_BUTTON_WIDTH, (menuRow) => <SymbolPicker menuRow={menuRow} language="typst" />),
       btnControl("code-block", SquareCode, t(($) => $.editor.toolbar.codeBlock), insertTypstCodeBlock),
       dropdownControl("code-intel", (variant) => <CodeIntelDropdown variant={variant} />),
     );
     return list;
-  }, [t, visionReady]);
+  }, [t, visionReady, fastMath]);
 
   const history = useEditorHistory();
 

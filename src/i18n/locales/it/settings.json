@@ -2897,5 +2897,186 @@
     "filteredCount_many": "{{shown}} su {{count}} voci",
     "filteredCount_one": "{{shown}} su {{count}} voce",
     "filteredCount_other": "{{shown}} su {{count}} voci"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Nell'elenco dei completamenti",
+        "description": "Mostra i frammenti accanto ai comandi"
+      },
+      "tab": {
+        "label": "Tab espande un attivatore",
+        "description": "Per i frammenti impostati su Tab"
+      },
+      "auto": {
+        "label": "Espandi mentre scrivi",
+        "description": "Per i frammenti in modalità Auto, come Fast math"
+      },
+      "hint": {
+        "label": "Mostra un suggerimento mentre scrivi",
+        "description": "Indica il frammento che un attivatore inserirà. Tab lo inserisce."
+      }
+    },
+    "library": {
+      "title": "La tua libreria di frammenti",
+      "collections": "Raccolte",
+      "all": "Tutti i frammenti",
+      "mine": "Le tue",
+      "packs": "Pacchetti",
+      "builtIn": "Integrate",
+      "add": "Aggiungi pacchetti o importa…",
+      "useCollection": "Usa {{name}}",
+      "search": "Cerca per nome, attivatore o testo",
+      "language": "Linguaggio",
+      "allLanguages": "Tutti i linguaggi",
+      "expands": "Espansione",
+      "anyExpand": "Qualsiasi",
+      "newSnippet": "Nuovo frammento",
+      "columns": {
+        "trigger": "Attivatore",
+        "name": "Nome",
+        "languages": "Linguaggi",
+        "where": "Contesto",
+        "expands": "Espansione"
+      },
+      "modified": "Modificato",
+      "turnedOff": "Disattivato",
+      "restore": "Ripristina",
+      "restoreLabel": "Ripristina {{name}}",
+      "wraps": "avvolge",
+      "noTrigger": "nessuno",
+      "noMatches": "Nessun frammento corrisponde.",
+      "shown": "{{shown}} di {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problema",
+      "summary_many": "{{count}} problemi",
+      "summary_other": "{{count}} problemi",
+      "where": "nel file {{file}}, riga {{line}}: {{message}}",
+      "slowRegex": "Il controllo dell'attivatore del frammento {{name}} ha richiesto troppo tempo, quindi il frammento è stato disattivato.",
+      "show": "Mostra",
+      "hide": "Nascondi"
+    },
+    "addDialog": {
+      "title": "Aggiungi frammenti",
+      "packsTab": "Pacchetti",
+      "importTab": "Importa un file",
+      "count_one": "{{count}} frammento",
+      "count_many": "{{count}} frammenti",
+      "count_other": "{{count}} frammenti",
+      "source": "Fonte: {{source}}",
+      "licence": "Licenza {{licence}}",
+      "packNote": "I pacchetti si aggiornano con l'app. Le modifiche che fai ai frammenti di un pacchetto vengono conservate a parte.",
+      "packs": {
+        "fastMathLatex": "Si espande mentre scrivi in matematica: frazioni, pedici e potenze, lettere greche, operatori e matrici. Gli attivatori seguono la configurazione di Gilles Castel.",
+        "fastMathTypst": "Gli stessi attivatori, scritti per Typst. Tralascia ciò che Typst fa già, come a/b per una frazione.",
+        "paperStructure": "Figure, sottofigure, tabelle booktabs, equazioni, teoremi, dimostrazioni e algoritmi."
+      },
+      "useOn": "Usa {{name}}",
+      "importIntro": "Scegli un file di frammenti di VS Code (.json o .code-snippets). Diventa una raccolta a sé, che puoi disattivare o modificare.",
+      "choose": "Scegli un file",
+      "fileLabel": "File di frammenti",
+      "imported_one": "{{count}} frammento importato nella raccolta {{collection}}.",
+      "imported_many": "{{count}} frammenti importati nella raccolta {{collection}}.",
+      "imported_other": "{{count}} frammenti importati nella raccolta {{collection}}.",
+      "nothing": "Nessun frammento trovato nel file {{file}}.",
+      "leftOut_one": "{{count}} voce è stata esclusa:",
+      "leftOut_many": "{{count}} voci sono state escluse:",
+      "leftOut_other": "{{count}} voci sono state escluse:"
+    },
+    "editor": {
+      "newTitle": "Nuovo frammento",
+      "duplicate": "Duplica",
+      "delete": "Elimina",
+      "turnOff": "Disattiva",
+      "save": "Salva",
+      "copyName": "{{name}} (copia)",
+      "name": "Nome",
+      "namePlaceholder": "Figura con didascalia ed etichetta",
+      "trigger": "Attivatore",
+      "triggerPlaceholder": "fig",
+      "regex": "Espressione regolare",
+      "expands": "Espansione",
+      "expandOptions": {
+        "list": "Dall'elenco",
+        "tab": "Con Tab",
+        "auto": "Mentre scrivi"
+      },
+      "expandHelp": {
+        "list": "Compare nell'elenco dei completamenti. Sceglilo lì per inserirlo.",
+        "tab": "Digita {{trigger}} e premi Tab. Compare anche nell'elenco dei completamenti.",
+        "auto": "Si espande appena digiti {{trigger}}. Annulla o Backspace ripristinano l'attivatore."
+      },
+      "languages": "Linguaggi",
+      "where": "Contesto",
+      "whereOptions": {
+        "any": "Ovunque",
+        "text": "Testo",
+        "math": "Matematica",
+        "code": "Codice"
+      },
+      "mathKinds": {
+        "math": "Entrambi",
+        "inline-math": "In linea",
+        "display-math": "In display"
+      },
+      "mathKind": "Tipo di matematica",
+      "whereHelp": {
+        "any": "Ovunque nel file.",
+        "text": "Testo: fuori dalla matematica, dai commenti e dal verbatim.",
+        "math": "Matematica: dentro la matematica in linea o in display.",
+        "code": "Codice: dentro il codice Typst o i blocchi di codice Markdown."
+      },
+      "firesOnly": "Si attiva soltanto",
+      "wholeWord": "come parola intera",
+      "lineStart": "a inizio riga",
+      "collection": "Raccolta",
+      "keptSeparately": "Le tue modifiche vengono conservate a parte, quindi continui a ricevere gli aggiornamenti della raccolta {{collection}}.",
+      "body": "Testo inserito",
+      "anyLanguage": "Qualsiasi linguaggio",
+      "addField": "+ Campo",
+      "addChoice": "+ Scelta",
+      "choiceText": "primo,secondo",
+      "variable": "Variabile",
+      "projectField": "Campo del progetto",
+      "variables": {
+        "SELECTION": "Testo selezionato",
+        "CLIPBOARD": "Appunti",
+        "DATE": "Data di oggi",
+        "TM_FILENAME": "Nome del file",
+        "PROJECT_NAME": "Nome del progetto"
+      },
+      "projectFields": {
+        "image": "Immagine",
+        "label": "Etichetta",
+        "cite": "Citazione",
+        "ref": "Riferimento",
+        "file": "File"
+      },
+      "chipsNote": "I campi appaiono come chip.",
+      "showSyntax": "Mostra la sintassi",
+      "missingName": "Dai un nome al frammento.",
+      "missingBody": "Scrivi il testo che il frammento inserisce.",
+      "sameTrigger": "{{trigger}} è usato anche da: {{list}}. Vince la raccolta più vicina.",
+      "sharedStart": "Ha lo stesso inizio di: {{list}}. Compaiono tutti nell'elenco e Tab sceglie la corrispondenza esatta, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Vuoi eliminare il frammento {{name}}?",
+        "description": "Verrà rimosso dalla raccolta {{collection}}.",
+        "action": "Elimina"
+      },
+      "tryIt": {
+        "title": "Prova",
+        "howAuto": "Digita {{trigger}} e si espande.",
+        "howTab": "Digita {{trigger}}, poi premi Tab.",
+        "howList": "Digita {{trigger}}, premi Ctrl+Space e sceglilo dall'elenco.",
+        "noTrigger": "Questo frammento non ha un attivatore. Inseriscilo dal riquadro comandi con /snippets.",
+        "inText": "nel testo",
+        "inMath": "in matematica",
+        "fires": "Si attiva qui: {{language}}, {{place}}.",
+        "notLanguage": "Qui non si attiverebbe. {{language}} non è tra i linguaggi di questo frammento.",
+        "notPlace": "Non si attiverebbe {{place}}. L'impostazione Contesto non lo consente."
+      }
+    }
   }
 }

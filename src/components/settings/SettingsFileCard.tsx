@@ -112,6 +112,8 @@ function issueText(t: Translate, issue: SettingIssue): string {
       return t(($) => $.settingsFile.valueErrors.shortcut);
     case "editorKey":
       return t(($) => $.settingsFile.valueErrors.editorKey);
+    case "snippetFileName":
+      return t(($) => $.settingsFile.valueErrors.snippetFileName);
     case "reservedShortcut":
       return t(($) => $.settings.shortcuts.error.reserved, {
         shortcut: t(($) => $.settings.shortcuts.reserved[issue.action]),

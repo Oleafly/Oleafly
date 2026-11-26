@@ -7,6 +7,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
+import { useSnippetStore } from "@/features/snippets/store";
 
 const controller = vi.hoisted(() => ({
   editorFind: vi.fn(),
@@ -126,6 +127,26 @@ describe("EditorToolbar overflow menu", () => {
     useFilesStore.setState({ activePath: "main.tex", engine: LATEX_ENGINE });
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
     expect(screen.getByLabelText(toolbar.goToPdf)).toBeInTheDocument();
+  });
+
+  it("ticks Fast math in the overflow menu when it is on, and turns it off from there", async () => {
+    const initial = useSnippetStore.getState();
+    const setCollectionEnabled = vi.fn(async (collection: string, enabled: boolean) => {
+      useSnippetStore.setState({ state: { ...initial.state, disabledCollections: enabled ? [] : [collection] } });
+    });
+    useSnippetStore.setState({ status: "ready", state: { ...initial.state, disabledCollections: [] }, setCollectionEnabled });
+    try {
+      render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+      fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
+      const item = screen.getByRole("menuitemcheckbox", { name: toolbar.fastMath });
+      expect(item).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(item);
+      await vi.waitFor(() => expect(setCollectionEnabled).toHaveBeenCalledWith("fast-math-latex", false));
+      fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
+      expect(screen.getByRole("menuitemcheckbox", { name: toolbar.fastMath })).toHaveAttribute("aria-checked", "false");
+    } finally {
+      useSnippetStore.setState(initial, true);
+    }
   });
 
   it("names the second mode segment after the surface a diagram project edits", () => {

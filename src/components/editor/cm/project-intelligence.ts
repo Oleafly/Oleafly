@@ -1,6 +1,5 @@
 import {
   closeCompletion,
-  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -13,6 +12,7 @@ import {
   environmentSnippet,
   gateCompletionSource,
   getEditorDocumentPath,
+  insertSnippetTemplate,
   latexReferenceCitationCompletions,
   shouldRunCompletionSource,
   typstBibliographyParameterCompletions,
@@ -38,10 +38,6 @@ import {
 } from "@/lib/file-links";
 import { basename, relativeFilePath } from "@/lib/path-utils";
 import { markdownLinkDestination } from "@oleafly/wysiwyg/link-destination";
-import {
-  atSuggestionCompletion,
-  warmAtSuggestions,
-} from "./at-suggestions";
 import { clearProjectHoverIntel, kindNoun } from "./hover-intel";
 import { zoteroCitationSource } from "./zotero-completion";
 import {
@@ -226,7 +222,7 @@ function guardedApply(
       return;
     }
     if (asSnippet) {
-      snippet(insert)(view, completion, from, targetTo);
+      insertSnippetTemplate(view, insert, from, targetTo, completion);
       return;
     }
     view.dispatch(insertCompletionText(view.state, insert, from, targetTo));
@@ -1996,10 +1992,6 @@ export function projectCompletionSourcesForPath(
   path: string | null,
 ): CompletionSource[] {
   if (!path || !SUPPORTED_SOURCE_RE.test(path)) return [];
-  if (LATEX_SOURCE_RE.test(path)) {
-    warmAtSuggestions();
-    return [projectIntelligenceCompletion, atSuggestionCompletion];
-  }
   return [projectIntelligenceCompletion];
 }
 
@@ -2110,8 +2102,7 @@ export function editorCompletionSourcesForPath(
     return [typstCitationSource(languageService)];
   }
   if (path && LATEX_SOURCE_RE.test(path)) {
-    warmAtSuggestions();
-    return [languageService, latexCitationSource, atSuggestionCompletion];
+    return [languageService, latexCitationSource];
   }
   if (path && MARKDOWN_SOURCE_RE.test(path)) {
     return [languageService, markdownCitationSource];

@@ -318,6 +318,10 @@
       "keywords": "fără distrageri concentrare ecran complet ascunde interfața minimal scris",
       "label": "Comută modul Zen"
     },
+    "fastMath": {
+      "keywords": "fast math formule rapide fragmente snippets extinde la tastare fracție indice grecești",
+      "label": "Comută Fast math"
+    },
     "visualSettings": {
       "keywords": "aspect font tip de literă text dimensiune paragraf indentare spațiere justificat titlu scriere",
       "label": "Setările modului Vizual"
@@ -406,6 +410,14 @@
     "addChapterFromProject": {
       "keywords": "teză capitol lucrare importă îmbină copiază proiect",
       "label": "Adaugă un capitol din alt proiect"
+    },
+    "insertSnippet": {
+      "keywords": "fragmente snippets șabloane declanșatoare răsfoiește inserează",
+      "label": "Inserează un fragment"
+    },
+    "saveSnippet": {
+      "keywords": "fragment snippet șablon salvează selecție refolosește",
+      "label": "Salvează selecția ca fragment"
     }
   },
   "community": {
@@ -766,7 +778,8 @@
       "projects": "caută în proiectele tale",
       "refs": "deschide referințele acestui proiect",
       "settings": "deschide setările",
-      "theme": "schimbă tema de culoare"
+      "theme": "schimbă tema de culoare",
+      "snippets": "răsfoiește și inserează fragmente"
     },
     "tryCommand": "Încearcă o comandă",
     "unknownCommand": "Comandă necunoscută. Scrie / ca să vezi comenzile disponibile."
@@ -1148,7 +1161,8 @@
       "integrations": "Integrări",
       "shortcuts": "Scurtături de tastatură",
       "research": "Cercetare",
-      "logs": "Jurnale"
+      "logs": "Jurnale",
+      "snippets": "Fragmente de cod"
     },
     "search": {
       "empty": "Nicio setare nu se potrivește",
@@ -1166,7 +1180,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, găzduire Git, Computer Use, aplicații desktop, Cua, MCP, citări, conturi, conexiuni",
         "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură",
         "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks",
-        "logs": "jurnal, jurnale, logs, erori, avertismente, blocări, compilări, diagnosticare, depanare, exportă jurnalele, app.log, debug"
+        "logs": "jurnal, jurnale, logs, erori, avertismente, blocări, compilări, diagnosticare, depanare, exportă jurnalele, app.log, debug",
+        "snippets": "declanșatoare, șabloane, Fast math, extinde la tastare, Tab, lista de completări, meniu cu bară oblică, scurtături @, fragmente VS Code, snippets, import, pachete"
       },
       "label": "Caută în setări",
       "results_one": "{{count}} secțiune se potrivește",
@@ -1758,5 +1773,72 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Resetează"
+  },
+  "snippets": {
+    "mySnippets": "Fragmentele mele",
+    "saveAsSnippet": "Salvează ca fragment…",
+    "autoNote": "{{trigger}} a fost extins. Anulează sau Backspace îl readuce.",
+    "fastMathTip": "Cu Fast math activat, // scrie o fracție în formule.",
+    "turnOnFastMath": "Activează Fast math",
+    "expands": {
+      "list": "Listă",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notițe",
+      "any": "Oricare"
+    },
+    "places": {
+      "any": "Oriunde",
+      "text": "Text",
+      "math": "Formule",
+      "inline-math": "Formulă în text",
+      "display-math": "Formulă pe rând separat",
+      "code": "Cod"
+    },
+    "palette": {
+      "placeholder": "Caută fragmente după nume, declanșator sau text",
+      "insert": "Inserează",
+      "edit": "Editează",
+      "count": "{{shown}} din {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Tastează {{trigger}} ca să obții asta fără să deschizi paleta.",
+      "noMatches": "Niciun fragment nu se potrivește."
+    },
+    "save": {
+      "title": "Salvează ca fragment",
+      "name": "Nume",
+      "namePlaceholder": "Tabel cu rezultate",
+      "trigger": "Declanșator",
+      "triggerPlaceholder": "rtab",
+      "expands": "Extindere",
+      "found": "detectate din selecția ta",
+      "fields": "Transformă-le în câmpuri",
+      "fieldsFound_one": "{{count}} găsit",
+      "fieldsFound_few": "{{count}} găsite",
+      "fieldsFound_other": "{{count}} găsite",
+      "noFields": "Nimic de aici nu arată ca un câmp. Poți adăuga câmpuri mai târziu, în Setări.",
+      "followsCaption": "urmează legenda",
+      "kinds": {
+        "caption": "legendă",
+        "label": "etichetă",
+        "cite": "citare",
+        "path": "calea fișierului",
+        "column-spec": "specificația coloanelor",
+        "number": "număr",
+        "title": "titlu",
+        "table-body": "corpul tabelului"
+      },
+      "preview": "Previzualizare",
+      "saveTo": "Salvează în",
+      "submit": "Salvează fragmentul",
+      "saved": "Fragmentul {{name}} a fost salvat.",
+      "missingName": "Dă-i un nume fragmentului."
+    }
   }
 }

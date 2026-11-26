@@ -2870,5 +2870,182 @@
     "count_other": "{{count}} Einträge",
     "filteredCount_one": "{{shown}} von {{count}} Eintrag",
     "filteredCount_other": "{{shown}} von {{count}} Einträgen"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "In der Vervollständigungsliste",
+        "description": "Textbausteine neben Befehlen anzeigen"
+      },
+      "tab": {
+        "label": "Tab ersetzt einen Auslöser",
+        "description": "Für Textbausteine, die auf Tab eingestellt sind"
+      },
+      "auto": {
+        "label": "Beim Tippen einfügen",
+        "description": "Für automatische Textbausteine wie Fast math"
+      },
+      "hint": {
+        "label": "Beim Tippen einen Hinweis zeigen",
+        "description": "Nennt den Textbaustein, den ein Auslöser einfügt. Tab fügt ihn ein."
+      }
+    },
+    "library": {
+      "title": "Ihre Textbaustein-Bibliothek",
+      "collections": "Sammlungen",
+      "all": "Alle Textbausteine",
+      "mine": "Eigene",
+      "packs": "Pakete",
+      "builtIn": "Eingebaut",
+      "add": "Pakete hinzufügen oder importieren…",
+      "useCollection": "{{name}} verwenden",
+      "search": "Name, Auslöser oder Text suchen",
+      "language": "Sprache",
+      "allLanguages": "Alle Sprachen",
+      "expands": "Auslösung",
+      "anyExpand": "Beliebig",
+      "newSnippet": "Neuer Textbaustein",
+      "columns": {
+        "trigger": "Auslöser",
+        "name": "Name",
+        "languages": "Sprachen",
+        "where": "Bereich",
+        "expands": "Auslösung"
+      },
+      "modified": "Geändert",
+      "turnedOff": "Ausgeschaltet",
+      "restore": "Wiederherstellen",
+      "restoreLabel": "{{name}} wiederherstellen",
+      "wraps": "umschließt",
+      "noTrigger": "keiner",
+      "noMatches": "Keine passenden Textbausteine.",
+      "shown": "{{shown}} von {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} Problem",
+      "summary_other": "{{count}} Probleme",
+      "where": "in {{file}}, Zeile {{line}}: {{message}}",
+      "slowRegex": "Die Prüfung des Auslösers von {{name}} dauerte zu lange. Der Textbaustein wurde daher ausgeschaltet.",
+      "show": "Anzeigen",
+      "hide": "Ausblenden"
+    },
+    "addDialog": {
+      "title": "Textbausteine hinzufügen",
+      "packsTab": "Pakete",
+      "importTab": "Datei importieren",
+      "count_one": "{{count}} Textbaustein",
+      "count_other": "{{count}} Textbausteine",
+      "source": "Quelle: {{source}}",
+      "licence": "{{licence}}-Lizenz",
+      "packNote": "Pakete werden mit der App aktualisiert. Ihre Änderungen an den Textbausteinen eines Pakets werden getrennt gespeichert.",
+      "packs": {
+        "fastMathLatex": "Fügt beim Tippen in Formeln ein: Brüche, Indizes und Potenzen, griechische Buchstaben, Operatoren und Matrizen. Die Auslöser folgen der Konfiguration von Gilles Castel.",
+        "fastMathTypst": "Dieselben Auslöser, für Typst geschrieben. Was Typst schon selbst kann, fehlt, etwa a/b für einen Bruch.",
+        "paperStructure": "Abbildungen, Teilabbildungen, booktabs-Tabellen, Formeln, Sätze, Beweise und Algorithmen."
+      },
+      "useOn": "{{name}} verwenden",
+      "importIntro": "Wählen Sie eine Textbausteindatei aus VS Code (.json oder .code-snippets). Sie wird zu einer eigenen Sammlung, die Sie ausschalten oder ändern können.",
+      "choose": "Datei auswählen",
+      "fileLabel": "Textbausteindatei",
+      "imported_one": "{{count}} Textbaustein in {{collection}} importiert.",
+      "imported_other": "{{count}} Textbausteine in {{collection}} importiert.",
+      "nothing": "In {{file}} wurden keine Textbausteine gefunden.",
+      "leftOut_one": "{{count}} Eintrag wurde ausgelassen:",
+      "leftOut_other": "{{count}} Einträge wurden ausgelassen:"
+    },
+    "editor": {
+      "newTitle": "Neuer Textbaustein",
+      "duplicate": "Duplizieren",
+      "delete": "Löschen",
+      "turnOff": "Ausschalten",
+      "save": "Speichern",
+      "copyName": "Kopie von {{name}}",
+      "name": "Name",
+      "namePlaceholder": "Abbildung mit Bildunterschrift und Label",
+      "trigger": "Auslöser",
+      "triggerPlaceholder": "fig",
+      "regex": "Regulärer Ausdruck",
+      "expands": "Auslösung",
+      "expandOptions": {
+        "list": "Aus der Liste",
+        "tab": "Mit Tab",
+        "auto": "Beim Tippen"
+      },
+      "expandHelp": {
+        "list": "Er erscheint in der Vervollständigungsliste. Wählen Sie ihn dort aus, um ihn einzufügen.",
+        "tab": "Tippen Sie {{trigger}} und drücken Sie Tab. Er erscheint auch in der Vervollständigungsliste.",
+        "auto": "Er wird eingefügt, sobald Sie {{trigger}} tippen. Mit Rückgängig oder Backspace kommt der Auslöser zurück."
+      },
+      "languages": "Sprachen",
+      "where": "Bereich",
+      "whereOptions": {
+        "any": "Überall",
+        "text": "Text",
+        "math": "Formel",
+        "code": "Code"
+      },
+      "mathKinds": {
+        "math": "Beides",
+        "inline-math": "Im Text",
+        "display-math": "Abgesetzt"
+      },
+      "mathKind": "Art der Formel",
+      "whereHelp": {
+        "any": "Überall in der Datei.",
+        "text": "Text: außerhalb von Formeln, Kommentaren und verbatim.",
+        "math": "Formel: in Formeln im Text oder abgesetzten Formeln.",
+        "code": "Code: in Typst-Code oder Markdown-Codeblöcken."
+      },
+      "firesOnly": "Wird nur ausgelöst",
+      "wholeWord": "als ganzes Wort",
+      "lineStart": "am Zeilenanfang",
+      "collection": "Sammlung",
+      "keptSeparately": "Ihre Änderungen werden getrennt gespeichert, damit Updates von {{collection}} Sie weiterhin erreichen.",
+      "body": "Eingefügter Text",
+      "anyLanguage": "Jede Sprache",
+      "addField": "+ Feld",
+      "addChoice": "+ Auswahl",
+      "choiceText": "erstes,zweites",
+      "variable": "Variable",
+      "projectField": "Projektfeld",
+      "variables": {
+        "SELECTION": "Ausgewählter Text",
+        "CLIPBOARD": "Zwischenablage",
+        "DATE": "Heutiges Datum",
+        "TM_FILENAME": "Dateiname",
+        "PROJECT_NAME": "Projektname"
+      },
+      "projectFields": {
+        "image": "Bild",
+        "label": "Label",
+        "cite": "Zitation",
+        "ref": "Referenz",
+        "file": "Datei"
+      },
+      "chipsNote": "Felder erscheinen als Chips.",
+      "showSyntax": "Syntax anzeigen",
+      "missingName": "Geben Sie dem Textbaustein einen Namen.",
+      "missingBody": "Schreiben Sie den Text, den der Textbaustein einfügt.",
+      "sameTrigger": "{{list}} verwendet auch {{trigger}}. Die nächstgelegene Sammlung hat Vorrang.",
+      "sharedStart": "Beginnt wie {{list}}. Alle erscheinen in der Liste, und Tab wählt den exakten Treffer, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}} löschen?",
+        "description": "Dadurch wird er aus {{collection}} entfernt.",
+        "action": "Löschen"
+      },
+      "tryIt": {
+        "title": "Ausprobieren",
+        "howAuto": "Tippen Sie {{trigger}}, und er wird eingefügt.",
+        "howTab": "Tippen Sie {{trigger}} und drücken Sie dann Tab.",
+        "howList": "Tippen Sie {{trigger}}, drücken Sie Ctrl+Space und wählen Sie ihn aus der Liste.",
+        "noTrigger": "Dieser Textbaustein hat keinen Auslöser. Fügen Sie ihn über die Befehlspalette mit /snippets ein.",
+        "inText": "im Text",
+        "inMath": "in Formeln",
+        "fires": "Wird hier ausgelöst: {{language}}, {{place}}.",
+        "notLanguage": "Würde in {{language}} nicht ausgelöst. Diese Sprache ist für den Textbaustein nicht ausgewählt.",
+        "notPlace": "Würde {{place}} nicht ausgelöst. Die Einstellung „Bereich“ lässt das nicht zu."
+      }
+    }
   }
 }

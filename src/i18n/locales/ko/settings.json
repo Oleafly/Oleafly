@@ -2843,5 +2843,178 @@
     },
     "count_other": "항목 {{count}}개",
     "filteredCount_other": "항목 {{count}}개 중 {{shown}}개"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "자동 완성 목록에 표시",
+        "description": "명령과 함께 스니펫 표시"
+      },
+      "tab": {
+        "label": "Tab으로 트리거 확장",
+        "description": "Tab으로 설정된 스니펫에 적용"
+      },
+      "auto": {
+        "label": "입력하는 대로 확장",
+        "description": "Fast math 같은 자동 스니펫에 적용"
+      },
+      "hint": {
+        "label": "입력 중 힌트 표시",
+        "description": "트리거가 삽입할 스니펫의 이름을 보여 줍니다. Tab을 누르면 삽입됩니다."
+      }
+    },
+    "library": {
+      "title": "내 스니펫 라이브러리",
+      "collections": "컬렉션",
+      "all": "모든 스니펫",
+      "mine": "내 컬렉션",
+      "packs": "팩",
+      "builtIn": "내장",
+      "add": "팩 추가 또는 가져오기…",
+      "useCollection": "{{name}} 사용",
+      "search": "이름, 트리거, 텍스트 검색",
+      "language": "언어",
+      "allLanguages": "모든 언어",
+      "expands": "확장 방식",
+      "anyExpand": "모든 방식",
+      "newSnippet": "새 스니펫",
+      "columns": {
+        "trigger": "트리거",
+        "name": "이름",
+        "languages": "언어",
+        "where": "적용 범위",
+        "expands": "확장 방식"
+      },
+      "modified": "수정됨",
+      "turnedOff": "꺼짐",
+      "restore": "복원",
+      "restoreLabel": "{{name}} 복원",
+      "wraps": "선택 영역 감싸기",
+      "noTrigger": "없음",
+      "noMatches": "일치하는 스니펫이 없습니다.",
+      "shown": "{{total}}개 중 {{shown}}개"
+    },
+    "problems": {
+      "summary_other": "문제 {{count}}개",
+      "where": "{{file}}, {{line}}번째 줄: {{message}}",
+      "slowRegex": "{{name}}의 트리거를 확인하는 데 시간이 너무 오래 걸려 이 스니펫을 껐습니다.",
+      "show": "보기",
+      "hide": "숨기기"
+    },
+    "addDialog": {
+      "title": "스니펫 추가",
+      "packsTab": "팩",
+      "importTab": "파일 가져오기",
+      "count_other": "스니펫 {{count}}개",
+      "source": "출처: {{source}}",
+      "licence": "{{licence}} 라이선스",
+      "packNote": "팩은 앱과 함께 업데이트됩니다. 팩의 스니펫을 바꾼 내용은 따로 보관됩니다.",
+      "packs": {
+        "fastMathLatex": "수식 안에서 입력하는 대로 확장됩니다. 분수, 아래 첨자와 거듭제곱, 그리스 문자, 연산자, 행렬을 다룹니다. 트리거는 Gilles Castel의 설정을 따릅니다.",
+        "fastMathTypst": "같은 트리거를 Typst용으로 만든 것입니다. 분수를 쓰는 a/b처럼 Typst가 이미 해 주는 것은 뺐습니다.",
+        "paperStructure": "그림, 하위 그림, booktabs 표, 수식, 정리, 증명, 알고리즘."
+      },
+      "useOn": "{{name}} 사용",
+      "importIntro": "VS Code 스니펫 파일(.json 또는 .code-snippets)을 고르세요. 별도의 컬렉션이 되며, 끄거나 바꿀 수 있습니다.",
+      "choose": "파일 고르기",
+      "fileLabel": "스니펫 파일",
+      "imported_other": "스니펫 {{count}}개를 {{collection}}에 가져왔습니다.",
+      "nothing": "{{file}}에서 스니펫을 찾지 못했습니다.",
+      "leftOut_other": "항목 {{count}}개를 제외했습니다:"
+    },
+    "editor": {
+      "newTitle": "새 스니펫",
+      "duplicate": "복제",
+      "delete": "삭제",
+      "turnOff": "끄기",
+      "save": "저장",
+      "copyName": "{{name}} 사본",
+      "name": "이름",
+      "namePlaceholder": "캡션과 레이블이 있는 그림",
+      "trigger": "트리거",
+      "triggerPlaceholder": "fig",
+      "regex": "정규식",
+      "expands": "확장 방식",
+      "expandOptions": {
+        "list": "목록에서",
+        "tab": "Tab으로",
+        "auto": "입력하는 대로"
+      },
+      "expandHelp": {
+        "list": "자동 완성 목록에 표시됩니다. 목록에서 고르면 삽입됩니다.",
+        "tab": "{{trigger}}을(를) 입력하고 Tab을 누르세요. 자동 완성 목록에도 표시됩니다.",
+        "auto": "{{trigger}}을(를) 입력하는 즉시 확장됩니다. 실행 취소나 Backspace를 누르면 트리거로 돌아갑니다."
+      },
+      "languages": "언어",
+      "where": "적용 범위",
+      "whereOptions": {
+        "any": "어디서나",
+        "text": "텍스트",
+        "math": "수식",
+        "code": "코드"
+      },
+      "mathKinds": {
+        "math": "둘 다",
+        "inline-math": "인라인",
+        "display-math": "별행"
+      },
+      "mathKind": "수식 종류",
+      "whereHelp": {
+        "any": "파일 어디에서나.",
+        "text": "텍스트: 수식, 주석, verbatim 환경 밖.",
+        "math": "수식: 인라인 수식이나 별행 수식 안.",
+        "code": "코드: Typst 코드나 Markdown 코드 블록 안."
+      },
+      "firesOnly": "다음 경우에만 작동",
+      "wholeWord": "독립된 단어일 때",
+      "lineStart": "줄 맨 앞일 때",
+      "collection": "컬렉션",
+      "keptSeparately": "변경 사항은 따로 보관되므로 {{collection}} 업데이트도 계속 받을 수 있습니다.",
+      "body": "삽입할 텍스트",
+      "anyLanguage": "모든 언어",
+      "addField": "+ 필드",
+      "addChoice": "+ 선택지",
+      "choiceText": "첫째,둘째",
+      "variable": "변수",
+      "projectField": "프로젝트 필드",
+      "variables": {
+        "SELECTION": "선택한 텍스트",
+        "CLIPBOARD": "클립보드",
+        "DATE": "오늘 날짜",
+        "TM_FILENAME": "파일 이름",
+        "PROJECT_NAME": "프로젝트 이름"
+      },
+      "projectFields": {
+        "image": "이미지",
+        "label": "레이블",
+        "cite": "인용",
+        "ref": "참조",
+        "file": "파일"
+      },
+      "chipsNote": "필드는 칩으로 표시됩니다.",
+      "showSyntax": "구문 표시",
+      "missingName": "스니펫 이름을 입력하세요.",
+      "missingBody": "스니펫이 삽입할 텍스트를 입력하세요.",
+      "sameTrigger": "{{list}}도 {{trigger}}을(를) 사용합니다. 가장 가까운 컬렉션이 우선합니다.",
+      "sharedStart": "{{list}}와(과) 앞부분이 같습니다. 모두 목록에 표시되며, Tab은 정확히 일치하는 {{trigger}}을(를) 고릅니다.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}}을(를) 삭제할까요?",
+        "description": "{{collection}}에서 삭제됩니다.",
+        "action": "삭제"
+      },
+      "tryIt": {
+        "title": "사용해 보기",
+        "howAuto": "{{trigger}}을(를) 입력하면 확장됩니다.",
+        "howTab": "{{trigger}}을(를) 입력한 뒤 Tab을 누르세요.",
+        "howList": "{{trigger}}을(를) 입력하고 Ctrl+Space를 누른 뒤 목록에서 고르세요.",
+        "noTrigger": "이 스니펫에는 트리거가 없습니다. 명령 팔레트에서 /snippets로 삽입하세요.",
+        "inText": "텍스트에서",
+        "inMath": "수식에서",
+        "fires": "여기서 작동합니다: {{language}}, {{place}}.",
+        "notLanguage": "{{language}}에서는 작동하지 않습니다. 이 스니펫의 언어가 아닙니다.",
+        "notPlace": "{{place}}는 작동하지 않습니다. 적용 범위 설정에서 허용하지 않습니다."
+      }
+    }
   }
 }

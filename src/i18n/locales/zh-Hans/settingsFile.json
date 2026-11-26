@@ -55,7 +55,8 @@
     "unknownKey": "不是 Oleafly 可识别的设置",
     "dictionaryLocale": "必须是 en_US 这样的词典代码",
     "shortcut": "必须是 Mod-Shift-k 这样的快捷键，或为 \"default\"",
-    "editorKey": "必须是 Mod-d 这样的按键，或用 \"\" 表示不设按键，或为 \"default\""
+    "editorKey": "必须是 Mod-d 这样的按键，或用 \"\" 表示不设按键，或为 \"default\"",
+    "snippetFileName": "必须是 my-snippets.json 这样的文件名，只能包含字母、数字、空格、点、短横线和下划线"
   },
   "importFromLocal": "从此设备导入",
   "importFromCloud": "从云端导入",

@@ -55,7 +55,8 @@
     "unknownKey": "ei ole asetus, jonka Oleafly tuntee",
     "dictionaryLocale": "saa olla vain sanakirjan koodi, esimerkiksi en_US",
     "shortcut": "saa olla vain pikanäppäin, esimerkiksi Mod-Shift-k, tai \"default\"",
-    "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\""
+    "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\"",
+    "snippetFileName": "saa olla vain tiedostonimi, esimerkiksi my-snippets.json, jossa on vain kirjaimia, numeroita, välilyöntejä, pisteitä, yhdysmerkkejä ja alaviivoja"
   },
   "importFromLocal": "Tuo tältä laitteelta",
   "importFromCloud": "Tuo pilvestä",

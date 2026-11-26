@@ -317,6 +317,10 @@
       "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
       "label": "Slå Zen-modus av eller på"
     },
+    "fastMath": {
+      "keywords": "fast math kodebiter snippets sett inn mens du skriver brøk senket gresk",
+      "label": "Slå Fast math av eller på"
+    },
     "visualSettings": {
       "keywords": "utseende skrift skrifttype tekststørrelse avsnittsinnrykk avstand justering overskrifter skriving",
       "label": "Innstillinger for Visuell modus"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "avhandling kapittel artikkel import slå sammen kopier prosjekt thesis chapter paper merge",
       "label": "Legg til kapittel fra et annet prosjekt"
+    },
+    "insertSnippet": {
+      "keywords": "kodebiter snippets maler utløsere bla sett inn",
+      "label": "Sett inn kodebit"
+    },
+    "saveSnippet": {
+      "keywords": "kodebit snippet mal lagre merket utvalg gjenbruk",
+      "label": "Lagre det merkede som kodebit"
     }
   },
   "community": {
@@ -764,7 +776,8 @@
       "projects": "søk i prosjektene dine",
       "refs": "åpne referansene for dette prosjektet",
       "settings": "åpne innstillingene",
-      "theme": "bytt fargetema"
+      "theme": "bytt fargetema",
+      "snippets": "bla gjennom og sett inn kodebiter"
     },
     "tryCommand": "Prøv en kommando",
     "unknownCommand": "Ukjent kommando. Skriv / for å se hvilke kommandoer som finnes."
@@ -1132,7 +1145,8 @@
       "integrations": "Integrasjoner",
       "shortcuts": "Hurtigtaster",
       "research": "Forskning",
-      "logs": "Logger"
+      "logs": "Logger",
+      "snippets": "Kodebiter"
     },
     "search": {
       "empty": "Ingen innstillinger passer",
@@ -1150,7 +1164,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
         "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier",
         "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer",
-        "logs": "logg, logger, log, logs, feil, advarsler, krasj, bygg, diagnostikk, feilsøking, eksporter logger, app.log, debug"
+        "logs": "logg, logger, log, logs, feil, advarsler, krasj, bygg, diagnostikk, feilsøking, eksporter logger, app.log, debug",
+        "snippets": "utløsere, maler, Fast math, sett inn mens du skriver, Tab, fullføringsliste, skråstrekmeny, @-snarveier, kodebiter fra VS Code, snippets, importer, pakker"
       },
       "label": "Søk i innstillingene",
       "results_one": "{{count}} seksjon passer",
@@ -1723,5 +1738,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Tilbakestill"
+  },
+  "snippets": {
+    "mySnippets": "Mine kodebiter",
+    "saveAsSnippet": "Lagre som kodebit…",
+    "autoNote": "{{trigger}} ble erstattet. Angre eller Backspace gir deg den tilbake.",
+    "fastMathTip": "Med Fast math slått på skriver // en brøk i matematikk.",
+    "turnOnFastMath": "Slå på Fast math",
+    "expands": {
+      "list": "Liste",
+      "tab": "Tab",
+      "auto": "Automatisk"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notater",
+      "any": "Alle"
+    },
+    "places": {
+      "any": "Overalt",
+      "text": "Tekst",
+      "math": "Matematikk",
+      "inline-math": "Matematikk i linjen",
+      "display-math": "Matematikk i egen blokk",
+      "code": "Kode"
+    },
+    "palette": {
+      "placeholder": "Søk i kodebiter etter navn, utløser eller tekst",
+      "insert": "Sett inn",
+      "edit": "Rediger",
+      "count": "{{shown}} av {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Skriv {{trigger}} for å få denne uten å åpne paletten.",
+      "noMatches": "Ingen kodebiter passer."
+    },
+    "save": {
+      "title": "Lagre som kodebit",
+      "name": "Navn",
+      "namePlaceholder": "Resultattabell",
+      "trigger": "Utløser",
+      "triggerPlaceholder": "rtab",
+      "expands": "Aktivering",
+      "found": "funnet i det du har merket",
+      "fields": "Gjør disse om til felt",
+      "fieldsFound_one": "{{count}} funnet",
+      "fieldsFound_other": "{{count}} funnet",
+      "noFields": "Ingenting her ser ut som et felt. Du kan legge til felt senere i Innstillinger.",
+      "followsCaption": "følger bildeteksten",
+      "kinds": {
+        "caption": "bildetekst",
+        "label": "etikett",
+        "cite": "sitering",
+        "path": "filsti",
+        "column-spec": "kolonnespesifikasjon",
+        "number": "tall",
+        "title": "overskrift",
+        "table-body": "tabellinnhold"
+      },
+      "preview": "Forhåndsvisning",
+      "saveTo": "Lagre i",
+      "submit": "Lagre kodebit",
+      "saved": "{{name}} er lagret.",
+      "missingName": "Gi kodebiten et navn."
+    }
   }
 }

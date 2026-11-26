@@ -133,6 +133,7 @@ mod skills;
 mod skills_catalog;
 mod skills_pack;
 mod skills_share;
+mod snippets;
 mod stall_trace;
 mod state;
 mod stats;
@@ -1212,6 +1213,10 @@ pub fn run() {
             dictionaries::install_dictionary,
             dictionaries::remove_dictionary,
             dictionaries::read_dictionary,
+            snippets::snippets_list,
+            snippets::snippets_write,
+            snippets::snippets_delete,
+            snippets::snippets_folder,
             template_packs::list_template_packs,
             template_packs::refresh_pack_catalog,
             template_packs::pack_index,

@@ -1,13 +1,11 @@
-import type { AtSuggestion, CoreCatalog, NameList, PackageCatalog } from "./types";
+import type { CoreCatalog, NameList, PackageCatalog } from "./types";
 import {
-  validateAtSuggestions,
   validateCoreCatalog,
   validateNameList,
   validatePackageCatalog,
 } from "./validate";
 
 export type {
-  AtSuggestion,
   CoreCatalog,
   CoreCommand,
   CoreEnvironment,
@@ -18,7 +16,6 @@ export type {
   PackageCatalog,
 } from "./types";
 export {
-  validateAtSuggestions,
   validateCoreCatalog,
   validateManifest,
   validateNameList,
@@ -80,18 +77,6 @@ export function loadCore(): Promise<CoreCatalog | null> {
       return null;
     });
   return corePromise;
-}
-
-let atSuggestionsPromise: Promise<AtSuggestion[] | null> | null = null;
-
-export function loadAtSuggestions(): Promise<AtSuggestion[] | null> {
-  atSuggestionsPromise ??= requestCorpus("at-suggestions.json")
-    .then((payload) => validateAtSuggestions(payload))
-    .catch((error: unknown) => {
-      console.debug("[latex-intelligence] failed to load at-suggestions", error);
-      return null;
-    });
-  return atSuggestionsPromise;
 }
 
 let packageNamesPromise: Promise<NameList | null> | null = null;

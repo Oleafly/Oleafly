@@ -1,6 +1,5 @@
 import {
   insertCompletionText,
-  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -47,7 +46,7 @@ import {
   corpusClassNames,
   corpusPackageNames,
 } from "@/lib/latex-corpus";
-import { editorColor, isStandardLatexEnvironment } from "@oleafly/editor";
+import { editorColor, insertSnippetTemplate, isStandardLatexEnvironment } from "@oleafly/editor";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
@@ -330,12 +329,7 @@ function guardedCompletionApply(
     const edits = [mainEdit, ...additionalEdits];
     if (!editsDoNotOverlap(edits)) return;
     if (snippetTemplate && additionalEdits.length === 0) {
-      snippet(snippetTemplate)(
-        view,
-        completion,
-        mainEdit.from,
-        mainEdit.to,
-      );
+      insertSnippetTemplate(view, snippetTemplate, mainEdit.from, mainEdit.to, completion);
       return;
     }
     if (additionalEdits.length === 0 && view.state.selection.ranges.length > 1) {

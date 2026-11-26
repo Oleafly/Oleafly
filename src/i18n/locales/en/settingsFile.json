@@ -55,7 +55,8 @@
     "unknownKey": "isn't a setting Oleafly knows",
     "dictionaryLocale": "must be a dictionary code like en_US",
     "shortcut": "must be a shortcut like Mod-Shift-k, or \"default\"",
-    "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\""
+    "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\"",
+    "snippetFileName": "must be a file name like my-snippets.json, made of letters, digits, spaces, dots, dashes and underscores"
   },
   "importFromLocal": "Import from this device",
   "importFromCloud": "Import from cloud",

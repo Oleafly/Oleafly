@@ -318,6 +318,10 @@
       "keywords": "sin distracciones concentración pantalla completa ocultar interfaz mínimo escritura",
       "label": "Activar o desactivar el modo Zen"
     },
+    "fastMath": {
+      "keywords": "fast math fórmulas rápidas fragmentos snippets expandir al escribir fracción subíndice griego",
+      "label": "Activar o desactivar Fast math"
+    },
     "visualSettings": {
       "keywords": "apariencia tipografía tipo de letra texto tamaño párrafo sangría espaciado justificar títulos escritura",
       "label": "Ajustes del modo Visual"
@@ -406,6 +410,14 @@
     "addChapterFromProject": {
       "keywords": "tesis capítulo artículo importar fusionar copiar proyecto thesis chapter paper import merge copy project",
       "label": "Añadir capítulo desde otro proyecto"
+    },
+    "insertSnippet": {
+      "keywords": "fragmentos snippets plantillas disparadores explorar insertar",
+      "label": "Insertar fragmento"
+    },
+    "saveSnippet": {
+      "keywords": "fragmento snippet plantilla guardar selección reutilizar",
+      "label": "Guardar la selección como fragmento"
     }
   },
   "community": {
@@ -766,7 +778,8 @@
       "projects": "buscar en tus proyectos",
       "refs": "abrir las referencias de este proyecto",
       "settings": "abrir los ajustes",
-      "theme": "cambiar el tema de color"
+      "theme": "cambiar el tema de color",
+      "snippets": "explorar e insertar fragmentos"
     },
     "tryCommand": "Prueba un comando",
     "unknownCommand": "Comando desconocido. Escribe / para ver los comandos disponibles."
@@ -1148,7 +1161,8 @@
       "integrations": "Integraciones",
       "shortcuts": "Atajos de teclado",
       "research": "Investigación",
-      "logs": "Registros"
+      "logs": "Registros",
+      "snippets": "Fragmentos de código"
     },
     "search": {
       "empty": "Ningún ajuste coincide",
@@ -1166,7 +1180,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, alojamiento Git, Computer Use, aplicaciones de escritorio, Cua, MCP, citas, cuentas, conexiones",
         "shortcuts": "atajos de teclado, atajos, combinaciones de teclas, teclas, teclado",
         "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks",
-        "logs": "registros, registro, logs, log, errores, advertencias, fallos, compilaciones, diagnóstico, solución de problemas, exportar registros, app.log, depuración"
+        "logs": "registros, registro, logs, log, errores, advertencias, fallos, compilaciones, diagnóstico, solución de problemas, exportar registros, app.log, depuración",
+        "snippets": "disparadores, plantillas, Fast math, expandir al escribir, Tab, lista de autocompletado, menú de barra, atajos @, fragmentos de VS Code, snippets, importar, paquetes"
       },
       "label": "Buscar en ajustes",
       "results_one": "{{count}} sección coincide",
@@ -1758,5 +1773,72 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Restablecer"
+  },
+  "snippets": {
+    "mySnippets": "Mis fragmentos",
+    "saveAsSnippet": "Guardar como fragmento…",
+    "autoNote": "{{trigger}} expandido. Deshacer o Backspace lo devuelven.",
+    "fastMathTip": "Con Fast math activado, // escribe una fracción dentro de una fórmula.",
+    "turnOnFastMath": "Activar Fast math",
+    "expands": {
+      "list": "Lista",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notas",
+      "any": "Cualquiera"
+    },
+    "places": {
+      "any": "En cualquier parte",
+      "text": "Texto",
+      "math": "Fórmulas",
+      "inline-math": "Fórmula en línea",
+      "display-math": "Fórmula en bloque",
+      "code": "Código"
+    },
+    "palette": {
+      "placeholder": "Busca fragmentos por nombre, disparador o texto",
+      "insert": "Insertar",
+      "edit": "Editar",
+      "count": "{{shown}} de {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Escribe {{trigger}} para obtenerlo sin abrir la paleta.",
+      "noMatches": "Ningún fragmento coincide."
+    },
+    "save": {
+      "title": "Guardar como fragmento",
+      "name": "Nombre",
+      "namePlaceholder": "Tabla de resultados",
+      "trigger": "Disparador",
+      "triggerPlaceholder": "rtab",
+      "expands": "Expansión",
+      "found": "detectados en tu selección",
+      "fields": "Convertir en campos",
+      "fieldsFound_one": "{{count}} encontrado",
+      "fieldsFound_many": "{{count}} encontrados",
+      "fieldsFound_other": "{{count}} encontrados",
+      "noFields": "Nada aquí parece un campo. Puedes añadir campos más tarde en Ajustes.",
+      "followsCaption": "sigue el pie",
+      "kinds": {
+        "caption": "pie",
+        "label": "etiqueta",
+        "cite": "cita",
+        "path": "ruta del archivo",
+        "column-spec": "formato de columnas",
+        "number": "número",
+        "title": "título",
+        "table-body": "cuerpo de la tabla"
+      },
+      "preview": "Vista previa",
+      "saveTo": "Guardar en",
+      "submit": "Guardar fragmento",
+      "saved": "Se guardó el fragmento {{name}}.",
+      "missingName": "Ponle un nombre al fragmento."
+    }
   }
 }

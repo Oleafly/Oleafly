@@ -2897,5 +2897,186 @@
     "filteredCount_many": "{{shown}} de {{count}} entradas",
     "filteredCount_one": "{{shown}} de {{count}} entrada",
     "filteredCount_other": "{{shown}} de {{count}} entradas"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Na lista de sugestões",
+        "description": "Mostra os trechos ao lado dos comandos"
+      },
+      "tab": {
+        "label": "Tab expande um gatilho",
+        "description": "Para trechos configurados com Tab"
+      },
+      "auto": {
+        "label": "Expandir ao digitar",
+        "description": "Para trechos no modo Auto, como Fast math"
+      },
+      "hint": {
+        "label": "Mostrar uma dica ao digitar",
+        "description": "Indica o trecho que um gatilho vai inserir. Tab insere o trecho."
+      }
+    },
+    "library": {
+      "title": "Sua biblioteca de trechos",
+      "collections": "Coleções",
+      "all": "Todos os trechos",
+      "mine": "Suas",
+      "packs": "Pacotes",
+      "builtIn": "Embutidas",
+      "add": "Adicionar pacotes ou importar…",
+      "useCollection": "Usar {{name}}",
+      "search": "Buscar por nome, gatilho ou texto",
+      "language": "Linguagem",
+      "allLanguages": "Todas as linguagens",
+      "expands": "Expansão",
+      "anyExpand": "Qualquer uma",
+      "newSnippet": "Novo trecho",
+      "columns": {
+        "trigger": "Gatilho",
+        "name": "Nome",
+        "languages": "Linguagens",
+        "where": "Contexto",
+        "expands": "Expansão"
+      },
+      "modified": "Modificado",
+      "turnedOff": "Desativado",
+      "restore": "Restaurar",
+      "restoreLabel": "Restaurar {{name}}",
+      "wraps": "envolve",
+      "noTrigger": "nenhum",
+      "noMatches": "Nenhum trecho corresponde.",
+      "shown": "{{shown}} de {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problema",
+      "summary_many": "{{count}} problemas",
+      "summary_other": "{{count}} problemas",
+      "where": "no arquivo {{file}}, linha {{line}}: {{message}}",
+      "slowRegex": "A verificação do gatilho do trecho {{name}} demorou demais, então o trecho foi desativado.",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "addDialog": {
+      "title": "Adicionar trechos",
+      "packsTab": "Pacotes",
+      "importTab": "Importar um arquivo",
+      "count_one": "{{count}} trecho",
+      "count_many": "{{count}} trechos",
+      "count_other": "{{count}} trechos",
+      "source": "Fonte: {{source}}",
+      "licence": "Licença {{licence}}",
+      "packNote": "Os pacotes são atualizados com o app. As alterações que você faz nos trechos de um pacote ficam guardadas à parte.",
+      "packs": {
+        "fastMathLatex": "Expande enquanto você digita em modo matemático: frações, subscritos e potências, letras gregas, operadores e matrizes. Os gatilhos seguem a configuração de Gilles Castel.",
+        "fastMathTypst": "Os mesmos gatilhos, escritos para Typst. Deixa de fora o que o Typst já faz, como a/b para uma fração.",
+        "paperStructure": "Figuras, subfiguras, tabelas booktabs, equações, teoremas, demonstrações e algoritmos."
+      },
+      "useOn": "Usar {{name}}",
+      "importIntro": "Escolha um arquivo de trechos do VS Code (.json ou .code-snippets). Ele vira uma coleção própria, que você pode desativar ou alterar.",
+      "choose": "Escolher um arquivo",
+      "fileLabel": "Arquivo de trechos",
+      "imported_one": "{{count}} trecho importado para a coleção {{collection}}.",
+      "imported_many": "{{count}} trechos importados para a coleção {{collection}}.",
+      "imported_other": "{{count}} trechos importados para a coleção {{collection}}.",
+      "nothing": "Nenhum trecho encontrado no arquivo {{file}}.",
+      "leftOut_one": "{{count}} entrada ficou de fora:",
+      "leftOut_many": "{{count}} entradas ficaram de fora:",
+      "leftOut_other": "{{count}} entradas ficaram de fora:"
+    },
+    "editor": {
+      "newTitle": "Novo trecho",
+      "duplicate": "Duplicar",
+      "delete": "Excluir",
+      "turnOff": "Desativar",
+      "save": "Salvar",
+      "copyName": "{{name}} (cópia)",
+      "name": "Nome",
+      "namePlaceholder": "Figura com legenda e rótulo",
+      "trigger": "Gatilho",
+      "triggerPlaceholder": "fig",
+      "regex": "Expressão regular",
+      "expands": "Expansão",
+      "expandOptions": {
+        "list": "Pela lista",
+        "tab": "Com Tab",
+        "auto": "Ao digitar"
+      },
+      "expandHelp": {
+        "list": "Aparece na lista de sugestões. Escolha o trecho ali para inseri-lo.",
+        "tab": "Digite {{trigger}} e pressione Tab. Ele também aparece na lista de sugestões.",
+        "auto": "Expande assim que você digita {{trigger}}. Desfazer ou Backspace devolve o gatilho."
+      },
+      "languages": "Linguagens",
+      "where": "Contexto",
+      "whereOptions": {
+        "any": "Qualquer lugar",
+        "text": "Texto",
+        "math": "Matemática",
+        "code": "Código"
+      },
+      "mathKinds": {
+        "math": "Ambas",
+        "inline-math": "Em linha",
+        "display-math": "Destacada"
+      },
+      "mathKind": "Tipo de matemática",
+      "whereHelp": {
+        "any": "Em qualquer lugar do arquivo.",
+        "text": "Texto: fora de matemática, comentários e verbatim.",
+        "math": "Matemática: dentro de matemática em linha ou destacada.",
+        "code": "Código: dentro de código Typst ou de blocos de código Markdown."
+      },
+      "firesOnly": "Só dispara",
+      "wholeWord": "como palavra inteira",
+      "lineStart": "no início de uma linha",
+      "collection": "Coleção",
+      "keptSeparately": "Suas alterações ficam guardadas à parte, então as atualizações da coleção {{collection}} continuam chegando.",
+      "body": "Texto inserido",
+      "anyLanguage": "Qualquer linguagem",
+      "addField": "+ Campo",
+      "addChoice": "+ Opção",
+      "choiceText": "primeiro,segundo",
+      "variable": "Variável",
+      "projectField": "Campo do projeto",
+      "variables": {
+        "SELECTION": "Texto selecionado",
+        "CLIPBOARD": "Área de transferência",
+        "DATE": "Data de hoje",
+        "TM_FILENAME": "Nome do arquivo",
+        "PROJECT_NAME": "Nome do projeto"
+      },
+      "projectFields": {
+        "image": "Imagem",
+        "label": "Rótulo",
+        "cite": "Citação",
+        "ref": "Referência",
+        "file": "Arquivo"
+      },
+      "chipsNote": "Os campos aparecem como chips.",
+      "showSyntax": "Mostrar a sintaxe",
+      "missingName": "Dê um nome ao trecho.",
+      "missingBody": "Escreva o texto que o trecho insere.",
+      "sameTrigger": "{{trigger}} também é usado por: {{list}}. A coleção mais próxima prevalece.",
+      "sharedStart": "Começa igual a: {{list}}. Todos aparecem na lista, e Tab escolhe a correspondência exata, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Excluir o trecho {{name}}?",
+        "description": "Isso remove o trecho da coleção {{collection}}.",
+        "action": "Excluir"
+      },
+      "tryIt": {
+        "title": "Testar",
+        "howAuto": "Digite {{trigger}} e ele expande.",
+        "howTab": "Digite {{trigger}} e depois pressione Tab.",
+        "howList": "Digite {{trigger}}, pressione Ctrl+Space e escolha o trecho na lista.",
+        "noTrigger": "Este trecho não tem gatilho. Insira-o pela paleta de comandos com /snippets.",
+        "inText": "no texto",
+        "inMath": "em matemática",
+        "fires": "Dispara aqui: {{language}}, {{place}}.",
+        "notLanguage": "Não dispararia aqui. {{language}} não é uma das linguagens deste trecho.",
+        "notPlace": "Não dispararia {{place}}. A configuração Contexto não permite."
+      }
+    }
   }
 }

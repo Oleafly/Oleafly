@@ -23,6 +23,7 @@ export const WEB_ALIASES: Record<string, string> = {
   "@oleafly/editor": path.resolve(repo, "./packages/editor/src"),
   "@oleafly/i18n-contract": path.resolve(repo, "./packages/i18n-contract/src"),
   "@oleafly/preview": path.resolve(repo, "./packages/preview/src"),
+  "@oleafly/snippets": path.resolve(repo, "./packages/snippets/src"),
   "@oleafly/templates": path.resolve(repo, "./packages/templates/src"),
 };
 

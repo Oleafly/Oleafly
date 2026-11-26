@@ -8,6 +8,7 @@ import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
 import { SAVED_INSTRUCTION_LIMITS } from "@/lib/saved-instructions";
+import { type SnippetFileText, validSnippetFileName } from "@/features/snippets/store";
 import {
   NOTE_WIDTHS,
   NOTES_CALLOUT_STYLES,
@@ -148,6 +149,7 @@ export interface SettingsSnapshot {
   shortcuts: Readonly<Record<ShortcutId, ShortcutBinding>>;
   editorKeys: Readonly<EditorKeyBindings>;
   words: readonly string[];
+  snippetFiles: readonly SnippetFileText[];
   compile: CompilePreferences;
   config: ConfigPreferences | null;
 }
@@ -159,6 +161,7 @@ export interface SettingsPlan {
   shortcuts: Partial<Record<ShortcutId, ShortcutBinding | null>>;
   editorKeys: Partial<EditorKeyBindings>;
   words?: string[];
+  snippetFiles?: SnippetFileText[];
   compile: Partial<CompilePreferences>;
   config: Partial<ConfigPreferences>;
 }
@@ -350,6 +353,35 @@ const words: ValueType<string[]> = {
       stored.push(normalized);
     }
     return ok(stored);
+  },
+};
+
+const SNIPPET_FILE_LIMIT = 200;
+const snippetFileText = text(2 * 1024 * 1024, { multiline: true });
+
+function parseSnippetFileItem(item: unknown, at: string, seen: Set<string>): Parsed<SnippetFileText> {
+  if (!isRecord(item)) return fail({ kind: "object" }, at);
+  const unknown = Object.keys(item).find((key) => key !== "name" && key !== "text");
+  if (unknown !== undefined) return fail({ kind: "unknownKey" }, `${at}.${unknown}`);
+  if (typeof item.name !== "string" || !validSnippetFileName(item.name)) return fail({ kind: "snippetFileName" }, `${at}.name`);
+  const key = item.name.toLowerCase();
+  if (seen.has(key)) return fail({ kind: "duplicate" }, `${at}.name`);
+  seen.add(key);
+  const body = snippetFileText.parse(item.text);
+  return body.ok ? ok({ name: item.name, text: body.value }) : fail(body.issue, `${at}.text`);
+}
+
+const snippetFiles: ValueType<SnippetFileText[]> = {
+  parse(raw) {
+    if (!Array.isArray(raw) || raw.length > SNIPPET_FILE_LIMIT) return fail({ kind: "list", max: SNIPPET_FILE_LIMIT });
+    const seen = new Set<string>();
+    const files: SnippetFileText[] = [];
+    for (const [index, item] of raw.entries()) {
+      const file = parseSnippetFileItem(item, `[${index}]`, seen);
+      if (!file.ok) return file;
+      files.push(file.value);
+    }
+    return ok(files);
   },
 };
 
@@ -718,6 +750,14 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   }),
   pref("dictionary.disabledGrammarRules", "harperDisabledRules", lintRules),
   pref("dictionary.enabledGrammarRules", "harperEnabledRules", lintRules),
+
+  pref("snippets.list", "snippetsInList", bool),
+  pref("snippets.tab", "snippetsTab", bool),
+  pref("snippets.auto", "snippetsAuto", bool),
+  pref("snippets.hint", "snippetsHint", bool),
+  field("snippets.files", snippetFiles, (snapshot) => [...snapshot.snippetFiles], (value, plan) => {
+    plan.snippetFiles = value;
+  }),
 
   config("data.checkpoints.afterCompile", "checkpoints_enabled", bool),
   config("data.checkpoints.notifyOnFailure", "checkpoint_notifications", bool),

@@ -317,6 +317,10 @@
       "keywords": "ablenkungsfrei Fokus Vollbild Oberfläche ausblenden minimal schreiben",
       "label": "Zen-Modus ein- oder ausschalten"
     },
+    "fastMath": {
+      "keywords": "fast math textbausteine snippets beim tippen einfügen bruch index griechisch expand fraction subscript greek",
+      "label": "Fast math ein- oder ausschalten"
+    },
     "visualSettings": {
       "keywords": "Darstellung Schrift Schriftart Text Größe Absatz Einzug Abstand Blocksatz Überschrift Schreiben",
       "label": "Einstellungen für den visuellen Modus"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "abschlussarbeit kapitel aufsatz import zusammenführen kopieren projekt thesis chapter paper merge",
       "label": "Kapitel aus einem anderen Projekt hinzufügen"
+    },
+    "insertSnippet": {
+      "keywords": "textbausteine snippets vorlagen auslöser durchsuchen einfügen templates triggers insert",
+      "label": "Textbaustein einfügen"
+    },
+    "saveSnippet": {
+      "keywords": "textbaustein snippet vorlage speichern auswahl wiederverwenden template save",
+      "label": "Auswahl als Textbaustein speichern"
     }
   },
   "community": {
@@ -764,7 +776,8 @@
       "projects": "Ihre Projekte durchsuchen",
       "refs": "Referenzen dieses Projekts öffnen",
       "settings": "Einstellungen öffnen",
-      "theme": "das Farbdesign wechseln"
+      "theme": "das Farbdesign wechseln",
+      "snippets": "Textbausteine durchsuchen und einfügen"
     },
     "tryCommand": "Probieren Sie einen Befehl",
     "unknownCommand": "Unbekannter Befehl. Tippen Sie /, um die verfügbaren Befehle zu sehen."
@@ -1132,7 +1145,8 @@
       "integrations": "Integrationen",
       "shortcuts": "Tastenkürzel",
       "research": "Forschung",
-      "logs": "Protokolle"
+      "logs": "Protokolle",
+      "snippets": "Textbausteine"
     },
     "search": {
       "empty": "Keine passenden Einstellungen",
@@ -1150,7 +1164,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-Hosting, Computer Use, Desktop-Apps, Cua, MCP, Zitationen, Zitate, Konten, Verbindungen",
         "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur",
         "research": "forschung aufgaben budget benachrichtigungen wach halten experimente läufe research tasks",
-        "logs": "Log, Logs, Protokoll, Protokolle, Fehler, Warnungen, Abstürze, Builds, Diagnose, Fehlersuche, Protokolle exportieren, app.log, Debug"
+        "logs": "Log, Logs, Protokoll, Protokolle, Fehler, Warnungen, Abstürze, Builds, Diagnose, Fehlersuche, Protokolle exportieren, app.log, Debug",
+        "snippets": "auslöser, vorlagen, Fast math, beim tippen einfügen, Tab, vervollständigungsliste, slash-menü, @-kürzel, textbausteine aus VS Code, snippets, importieren, pakete"
       },
       "label": "Einstellungen durchsuchen",
       "results_one": "{{count}} Bereich passt",
@@ -1723,5 +1738,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Zurücksetzen"
+  },
+  "snippets": {
+    "mySnippets": "Meine Textbausteine",
+    "saveAsSnippet": "Als Textbaustein speichern…",
+    "autoNote": "{{trigger}} wurde ersetzt. Mit Rückgängig oder Backspace kommt er zurück.",
+    "fastMathTip": "Ist Fast math eingeschaltet, schreibt // in Formeln einen Bruch.",
+    "turnOnFastMath": "Fast math einschalten",
+    "expands": {
+      "list": "Liste",
+      "tab": "Tab",
+      "auto": "Automatisch"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notizen",
+      "any": "Alle"
+    },
+    "places": {
+      "any": "Überall",
+      "text": "Text",
+      "math": "Formel",
+      "inline-math": "Formel im Text",
+      "display-math": "Abgesetzte Formel",
+      "code": "Code"
+    },
+    "palette": {
+      "placeholder": "Textbausteine nach Name, Auslöser oder Text durchsuchen",
+      "insert": "Einfügen",
+      "edit": "Bearbeiten",
+      "count": "{{shown}} von {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Tippen Sie {{trigger}}, um ihn ohne die Palette einzufügen.",
+      "noMatches": "Keine passenden Textbausteine."
+    },
+    "save": {
+      "title": "Als Textbaustein speichern",
+      "name": "Name",
+      "namePlaceholder": "Ergebnistabelle",
+      "trigger": "Auslöser",
+      "triggerPlaceholder": "rtab",
+      "expands": "Auslösung",
+      "found": "aus Ihrer Auswahl erkannt",
+      "fields": "Als Felder übernehmen",
+      "fieldsFound_one": "{{count}} gefunden",
+      "fieldsFound_other": "{{count}} gefunden",
+      "noFields": "Hier sieht nichts wie ein Feld aus. Felder können Sie später in den Einstellungen hinzufügen.",
+      "followsCaption": "folgt der Beschriftung",
+      "kinds": {
+        "caption": "Beschriftung",
+        "label": "Label",
+        "cite": "Zitation",
+        "path": "Dateipfad",
+        "column-spec": "Spaltenformat",
+        "number": "Zahl",
+        "title": "Überschrift",
+        "table-body": "Tabelleninhalt"
+      },
+      "preview": "Vorschau",
+      "saveTo": "Speichern in",
+      "submit": "Textbaustein speichern",
+      "saved": "{{name}} gespeichert.",
+      "missingName": "Geben Sie dem Textbaustein einen Namen."
+    }
   }
 }

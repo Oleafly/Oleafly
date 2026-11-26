@@ -10,6 +10,7 @@ import type { EditorView } from "@codemirror/view";
 import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
+  mathContextAt,
   typstContextAt,
 } from "@oleafly/editor";
 import type { ZoteroHit, ZoteroLibraryStatus } from "@oleafly/backend-port";
@@ -46,7 +47,6 @@ import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { useZoteroDialogStore } from "@/store/zotero-dialogs";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
-import { isMathContext } from "./at-suggestions";
 
 const WINDOW = 2_048;
 const PROJECT_LIMIT = 100;
@@ -296,9 +296,8 @@ export function zoteroCitationSource(format: CiteFormat, base: CompletionSource)
     const before = context.state.sliceDoc(start, context.pos);
     const local = citeSiteAt(before, before.length, format);
     if (!local) return base(context);
-    if (format === "latex" && local.kind === "prose") {
-      const around = context.state.sliceDoc(start, Math.min(context.state.doc.length, context.pos + WINDOW));
-      if (isMathContext(around, context.pos - start)) return base(context);
+    if (format === "latex" && local.kind === "prose" && mathContextAt(context.state, context.pos).inMath) {
+      return base(context);
     }
     if (format === "typst") {
       const where = typstContextAt(context.state, context.pos);

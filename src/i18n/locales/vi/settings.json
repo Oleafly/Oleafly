@@ -2843,5 +2843,178 @@
     },
     "count_other": "{{count}} mục",
     "filteredCount_other": "{{shown}} / {{count}} mục"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Trong danh sách gợi ý",
+        "description": "Hiện đoạn mã bên cạnh các lệnh"
+      },
+      "tab": {
+        "label": "Tab mở rộng từ kích hoạt",
+        "description": "Cho các đoạn mã đặt là Tab"
+      },
+      "auto": {
+        "label": "Mở rộng khi gõ",
+        "description": "Cho các đoạn mã Tự động, như Fast math"
+      },
+      "hint": {
+        "label": "Hiện lời nhắc khi gõ",
+        "description": "Cho biết đoạn mã mà từ kích hoạt sẽ chèn. Tab sẽ chèn đoạn mã đó."
+      }
+    },
+    "library": {
+      "title": "Thư viện đoạn mã của bạn",
+      "collections": "Bộ sưu tập",
+      "all": "Tất cả đoạn mã",
+      "mine": "Của bạn",
+      "packs": "Gói",
+      "builtIn": "Tích hợp sẵn",
+      "add": "Thêm gói hoặc nhập…",
+      "useCollection": "Dùng {{name}}",
+      "search": "Tìm kiếm theo tên, từ kích hoạt hoặc văn bản",
+      "language": "Ngôn ngữ",
+      "allLanguages": "Mọi ngôn ngữ",
+      "expands": "Cách mở rộng",
+      "anyExpand": "Mọi cách",
+      "newSnippet": "Đoạn mã mới",
+      "columns": {
+        "trigger": "Từ kích hoạt",
+        "name": "Tên",
+        "languages": "Ngôn ngữ",
+        "where": "Vị trí",
+        "expands": "Cách mở rộng"
+      },
+      "modified": "Đã sửa",
+      "turnedOff": "Đã tắt",
+      "restore": "Khôi phục",
+      "restoreLabel": "Khôi phục {{name}}",
+      "wraps": "bao quanh",
+      "noTrigger": "không có",
+      "noMatches": "Không có đoạn mã nào khớp.",
+      "shown": "{{shown}}/{{total}}"
+    },
+    "problems": {
+      "summary_other": "{{count}} vấn đề",
+      "where": "trong {{file}}, dòng {{line}}: {{message}}",
+      "slowRegex": "Kiểm tra từ kích hoạt của {{name}} mất quá lâu nên đoạn mã đã bị tắt.",
+      "show": "Hiện",
+      "hide": "Ẩn"
+    },
+    "addDialog": {
+      "title": "Thêm đoạn mã",
+      "packsTab": "Gói",
+      "importTab": "Nhập tệp",
+      "count_other": "{{count}} đoạn mã",
+      "source": "Từ {{source}}",
+      "licence": "Giấy phép {{licence}}",
+      "packNote": "Các gói được cập nhật cùng ứng dụng. Thay đổi bạn thực hiện với đoạn mã của một gói được giữ riêng.",
+      "packs": {
+        "fastMathLatex": "Mở rộng khi bạn gõ trong toán: phân số, chỉ số dưới và luỹ thừa, chữ cái Hy Lạp, toán tử và ma trận. Các từ kích hoạt theo thiết lập của Gilles Castel.",
+        "fastMathTypst": "Cùng các từ kích hoạt đó, viết cho Typst. Gói bỏ qua những gì Typst đã tự làm, như a/b cho phân số.",
+        "paperStructure": "Hình, hình con, bảng booktabs, phương trình, định lý, chứng minh và thuật toán."
+      },
+      "useOn": "Dùng {{name}}",
+      "importIntro": "Chọn một tệp đoạn mã VS Code (.json hoặc .code-snippets). Tệp sẽ thành một bộ sưu tập riêng mà bạn có thể tắt hoặc thay đổi.",
+      "choose": "Chọn tệp",
+      "fileLabel": "Tệp đoạn mã",
+      "imported_other": "Đã nhập {{count}} đoạn mã vào {{collection}}.",
+      "nothing": "Không tìm thấy đoạn mã nào trong {{file}}.",
+      "leftOut_other": "Đã bỏ qua {{count}} mục:"
+    },
+    "editor": {
+      "newTitle": "Đoạn mã mới",
+      "duplicate": "Nhân đôi",
+      "delete": "Xoá",
+      "turnOff": "Tắt",
+      "save": "Lưu",
+      "copyName": "{{name}} (bản sao)",
+      "name": "Tên",
+      "namePlaceholder": "Hình có chú thích và nhãn",
+      "trigger": "Từ kích hoạt",
+      "triggerPlaceholder": "fig",
+      "regex": "Biểu thức chính quy",
+      "expands": "Cách mở rộng",
+      "expandOptions": {
+        "list": "Từ danh sách",
+        "tab": "Bằng Tab",
+        "auto": "Khi gõ"
+      },
+      "expandHelp": {
+        "list": "Đoạn mã hiện trong danh sách gợi ý. Chọn ở đó để chèn.",
+        "tab": "Gõ {{trigger}} rồi nhấn Tab. Đoạn mã cũng hiện trong danh sách gợi ý.",
+        "auto": "Đoạn mã mở rộng ngay khi bạn gõ {{trigger}}. Hoàn tác hoặc Backspace sẽ trả lại từ kích hoạt."
+      },
+      "languages": "Ngôn ngữ",
+      "where": "Vị trí",
+      "whereOptions": {
+        "any": "Mọi nơi",
+        "text": "Văn bản",
+        "math": "Toán",
+        "code": "Mã"
+      },
+      "mathKinds": {
+        "math": "Cả hai",
+        "inline-math": "Trong dòng",
+        "display-math": "Hiển thị"
+      },
+      "mathKind": "Loại toán",
+      "whereHelp": {
+        "any": "Mọi nơi trong tệp.",
+        "text": "Văn bản: ngoài toán, chú thích và môi trường verbatim.",
+        "math": "Toán: bên trong toán trong dòng hoặc toán hiển thị.",
+        "code": "Mã: bên trong mã Typst hoặc khối mã Markdown."
+      },
+      "firesOnly": "Chỉ kích hoạt",
+      "wholeWord": "khi là một từ trọn vẹn",
+      "lineStart": "ở đầu dòng",
+      "collection": "Bộ sưu tập",
+      "keptSeparately": "Thay đổi của bạn được giữ riêng, nên bạn vẫn nhận được bản cập nhật của {{collection}}.",
+      "body": "Văn bản được chèn",
+      "anyLanguage": "Mọi ngôn ngữ",
+      "addField": "+ Trường",
+      "addChoice": "+ Lựa chọn",
+      "choiceText": "một,hai",
+      "variable": "Biến",
+      "projectField": "Trường dự án",
+      "variables": {
+        "SELECTION": "Văn bản đã chọn",
+        "CLIPBOARD": "Bộ nhớ tạm",
+        "DATE": "Ngày hôm nay",
+        "TM_FILENAME": "Tên tệp",
+        "PROJECT_NAME": "Tên dự án"
+      },
+      "projectFields": {
+        "image": "Hình ảnh",
+        "label": "Nhãn",
+        "cite": "Trích dẫn",
+        "ref": "Tham chiếu",
+        "file": "Tệp"
+      },
+      "chipsNote": "Các trường hiển thị dạng thẻ.",
+      "showSyntax": "Hiện cú pháp",
+      "missingName": "Hãy đặt tên cho đoạn mã.",
+      "missingBody": "Hãy viết văn bản mà đoạn mã sẽ chèn.",
+      "sameTrigger": "{{list}} cũng dùng {{trigger}}. Bộ sưu tập gần nhất được ưu tiên.",
+      "sharedStart": "Có cùng phần đầu với {{list}}. Tất cả đều hiện trong danh sách, và Tab chọn mục khớp chính xác, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Xoá {{name}}?",
+        "description": "Thao tác này sẽ gỡ đoạn mã khỏi {{collection}}.",
+        "action": "Xoá"
+      },
+      "tryIt": {
+        "title": "Thử ngay",
+        "howAuto": "Gõ {{trigger}} là đoạn mã mở rộng.",
+        "howTab": "Gõ {{trigger}}, rồi nhấn Tab.",
+        "howList": "Gõ {{trigger}}, nhấn Ctrl+Space rồi chọn từ danh sách.",
+        "noTrigger": "Đoạn mã này không có từ kích hoạt. Hãy chèn từ bảng lệnh bằng /snippets.",
+        "inText": "trong văn bản",
+        "inMath": "trong toán",
+        "fires": "Kích hoạt ở đây: {{language}}, {{place}}.",
+        "notLanguage": "Sẽ không kích hoạt trong {{language}}. Đây không phải một ngôn ngữ của đoạn mã này.",
+        "notPlace": "Sẽ không kích hoạt {{place}}. Thiết lập Vị trí không cho phép."
+      }
+    }
   }
 }

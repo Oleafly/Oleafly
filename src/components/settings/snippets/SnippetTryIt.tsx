@@ -1,0 +1,151 @@
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { EditorView } from "@codemirror/view";
+import { CircleCheck, CircleMinus } from "lucide-react";
+import { languageForPath, type SnippetPort } from "@oleafly/editor";
+import { snippetEditorExtensions } from "@oleafly/editor/snippets/runtime";
+import { buildLibrary, placeAllows, type SnippetLanguage, type SnippetRecord } from "@oleafly/snippets";
+import { CodeField } from "@/components/tools/CodeField";
+import { Chip } from "@/components/ui/chip";
+import { createSnippetPort } from "@/features/snippets/port";
+import { languageLabel } from "@/features/snippets/records";
+import { TONES } from "@/components/ui/tones";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
+
+type TryPlace = "text" | "math";
+
+const SAMPLE_PATH: Record<SnippetLanguage, string> = {
+  latex: "try.tex",
+  typst: "try.typ",
+  markdown: "try.md",
+  bibtex: "try.bib",
+  notes: "try.md",
+};
+
+const MATH_DOC: Partial<Record<SnippetLanguage, string>> = {
+  latex: "$|$",
+  typst: "$|$",
+  markdown: "$|$",
+  notes: "$|$",
+};
+
+function tryPort(record: SnippetRecord, language: SnippetLanguage): SnippetPort {
+  const path = SAMPLE_PATH[language];
+  const library = buildLibrary({
+    files: [{ collection: record.collection, records: [record], problems: [] }],
+    disabledCollections: new Set(),
+    overrides: [],
+    disabledRegex: new Set(),
+  });
+  return {
+    ...createSnippetPort(() => path),
+    library: () => library,
+    language: () => language,
+    enabled: () => ({ list: true, tab: true, auto: true, hint: true }),
+    recordUse: () => undefined,
+    onAutoExpanded: () => undefined,
+    onHandTypedFraction: () => undefined,
+    reportSlowRegex: () => undefined,
+    fieldHintsLeft: () => 0,
+    consumeFieldHint: () => undefined,
+  };
+}
+
+function ignoreChange(): void {}
+
+function firesIn(record: SnippetRecord, language: SnippetLanguage, place: TryPlace): "language" | "place" | null {
+  if (record.languages !== "any" && !record.languages.includes(language)) return "language";
+  const resolved = place === "text" ? "text" : record.place === "display-math" ? "display-math" : "inline-math";
+  return placeAllows(record, resolved) ? null : "place";
+}
+
+export function SnippetTryIt({
+  record,
+  languages,
+}: Readonly<{ record: SnippetRecord; languages: readonly SnippetLanguage[] }>) {
+  const { t } = useTranslation(["settings"]);
+  const themeId = useEditorThemeId();
+  const [chosen, setChosen] = useState<SnippetLanguage>(languages[0] ?? "latex");
+  const language = languages.includes(chosen) ? chosen : (languages[0] ?? "latex");
+  const mathDoc = MATH_DOC[language];
+  const [place, setPlace] = useState<TryPlace>(record.place === "text" || !mathDoc ? "text" : "math");
+  const activePlace: TryPlace = mathDoc ? place : "text";
+  const port = useMemo(() => tryPort(record, language), [record, language]);
+  const extensions = useCallback(() => [languageForPath(SAMPLE_PATH[language]) ?? [], snippetEditorExtensions(port)], [port, language]);
+  const doc = activePlace === "math" && mathDoc ? mathDoc : "|";
+  const caret = doc.indexOf("|");
+  const blocked = firesIn(record, language, activePlace);
+  const trigger = record.trigger ?? record.aliases[0] ?? null;
+  const resetKey = `${language}:${activePlace}:${JSON.stringify(record.bodies)}:${record.trigger}:${record.expand}:${record.place}`;
+
+  const placeView = useCallback(
+    (view: EditorView | null) => {
+      if (view) view.dispatch({ selection: { anchor: caret } });
+    },
+    [caret],
+  );
+
+  const how = (() => {
+    if (!trigger) return t(($) => $.settings.snippets.editor.tryIt.noTrigger);
+    if (record.expand === "auto") return t(($) => $.settings.snippets.editor.tryIt.howAuto, { trigger });
+    if (record.expand === "tab") return t(($) => $.settings.snippets.editor.tryIt.howTab, { trigger });
+    return t(($) => $.settings.snippets.editor.tryIt.howList, { trigger });
+  })();
+
+  return (
+    <div className="space-y-2 rounded-xl border bg-card/60 p-4" data-testid="snippet-try-it">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">{t(($) => $.settings.snippets.editor.tryIt.title)}</span>
+        <span className="text-xs text-muted-foreground">{how}</span>
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          {languages.length > 1
+            ? languages.map((option) => (
+                <Chip key={option} pressed={option === language} onClick={() => setChosen(option)}>
+                  {languageLabel(option)}
+                </Chip>
+              ))
+            : null}
+          {mathDoc ? (
+            <>
+              <Chip pressed={activePlace === "text"} onClick={() => setPlace("text")}>
+                {t(($) => $.settings.snippets.editor.tryIt.inText)}
+              </Chip>
+              <Chip pressed={activePlace === "math"} onClick={() => setPlace("math")}>
+                {t(($) => $.settings.snippets.editor.tryIt.inMath)}
+              </Chip>
+            </>
+          ) : null}
+        </div>
+      </div>
+      <CodeField
+        key={resetKey}
+        value={doc.replace("|", "")}
+        onChange={ignoreChange}
+        language={extensions}
+        themeId={themeId}
+        ariaLabel={t(($) => $.settings.snippets.editor.tryIt.title)}
+        onView={placeView}
+        testId="snippet-try-it-editor"
+        className="min-h-16 overflow-auto rounded-md border bg-background text-xs"
+      />
+      {blocked === null ? (
+        <p className={`flex items-center gap-1.5 text-xs ${TONES.emerald.text}`} data-testid="snippet-try-it-fires">
+          <CircleCheck aria-hidden className="size-3.5" />
+          {t(($) => $.settings.snippets.editor.tryIt.fires, {
+            language: languageLabel(language),
+            place: activePlace === "math" ? t(($) => $.settings.snippets.editor.tryIt.inMath) : t(($) => $.settings.snippets.editor.tryIt.inText),
+          })}
+        </p>
+      ) : (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="snippet-try-it-blocked">
+          <CircleMinus aria-hidden className="size-3.5" />
+          {blocked === "language"
+            ? t(($) => $.settings.snippets.editor.tryIt.notLanguage, { language: languageLabel(language) })
+            : t(($) => $.settings.snippets.editor.tryIt.notPlace, {
+                place: activePlace === "math" ? t(($) => $.settings.snippets.editor.tryIt.inMath) : t(($) => $.settings.snippets.editor.tryIt.inText),
+              })}
+        </p>
+      )}
+    </div>
+  );
+}

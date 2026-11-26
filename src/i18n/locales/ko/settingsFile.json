@@ -55,7 +55,8 @@
     "unknownKey": "항목은 Oleafly가 알지 못하는 설정입니다",
     "dictionaryLocale": "값은 en_US 같은 사전 코드여야 합니다",
     "shortcut": "값은 Mod-Shift-k 같은 단축키이거나 \"default\"여야 합니다",
-    "editorKey": "값은 Mod-d 같은 키, 키를 쓰지 않으려면 \"\", 또는 \"default\"여야 합니다"
+    "editorKey": "값은 Mod-d 같은 키, 키를 쓰지 않으려면 \"\", 또는 \"default\"여야 합니다",
+    "snippetFileName": "값은 my-snippets.json처럼 문자, 숫자, 공백, 마침표, 대시, 밑줄로 이루어진 파일 이름이어야 합니다"
   },
   "importFromLocal": "이 기기에서 가져오기",
   "importFromCloud": "클라우드에서 가져오기",

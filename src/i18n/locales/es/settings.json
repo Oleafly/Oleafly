@@ -2897,5 +2897,186 @@
     "filteredCount_many": "{{shown}} de {{count}} entradas",
     "filteredCount_one": "{{shown}} de {{count}} entrada",
     "filteredCount_other": "{{shown}} de {{count}} entradas"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "En la lista de autocompletado",
+        "description": "Muestra los fragmentos junto a los comandos"
+      },
+      "tab": {
+        "label": "Tab expande un disparador",
+        "description": "Para los fragmentos configurados con Tab"
+      },
+      "auto": {
+        "label": "Expandir al escribir",
+        "description": "Para los fragmentos en modo Auto, como Fast math"
+      },
+      "hint": {
+        "label": "Mostrar una indicación al escribir",
+        "description": "Indica qué fragmento insertará un disparador. Tab lo inserta."
+      }
+    },
+    "library": {
+      "title": "Tu biblioteca de fragmentos",
+      "collections": "Colecciones",
+      "all": "Todos los fragmentos",
+      "mine": "Tuyas",
+      "packs": "Paquetes",
+      "builtIn": "Incluidas",
+      "add": "Añadir paquetes o importar…",
+      "useCollection": "Usar {{name}}",
+      "search": "Buscar por nombre, disparador o texto",
+      "language": "Lenguaje",
+      "allLanguages": "Todos los lenguajes",
+      "expands": "Expansión",
+      "anyExpand": "Cualquiera",
+      "newSnippet": "Nuevo fragmento",
+      "columns": {
+        "trigger": "Disparador",
+        "name": "Nombre",
+        "languages": "Lenguajes",
+        "where": "Contexto",
+        "expands": "Expansión"
+      },
+      "modified": "Modificado",
+      "turnedOff": "Desactivado",
+      "restore": "Restaurar",
+      "restoreLabel": "Restaurar {{name}}",
+      "wraps": "envuelve",
+      "noTrigger": "ninguno",
+      "noMatches": "Ningún fragmento coincide.",
+      "shown": "{{shown}} de {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problema",
+      "summary_many": "{{count}} problemas",
+      "summary_other": "{{count}} problemas",
+      "where": "en {{file}}, línea {{line}}: {{message}}",
+      "slowRegex": "Comprobar el disparador del fragmento {{name}} tardó demasiado, así que el fragmento se desactivó.",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "addDialog": {
+      "title": "Añadir fragmentos",
+      "packsTab": "Paquetes",
+      "importTab": "Importar un archivo",
+      "count_one": "{{count}} fragmento",
+      "count_many": "{{count}} fragmentos",
+      "count_other": "{{count}} fragmentos",
+      "source": "Fuente: {{source}}",
+      "licence": "Licencia {{licence}}",
+      "packNote": "Los paquetes se actualizan con la aplicación. Los cambios que hagas en los fragmentos de un paquete se guardan aparte.",
+      "packs": {
+        "fastMathLatex": "Se expande mientras escribes fórmulas: fracciones, subíndices y potencias, letras griegas, operadores y matrices. Los disparadores siguen la configuración de Gilles Castel.",
+        "fastMathTypst": "Los mismos disparadores, escritos para Typst. Omite lo que Typst ya hace, como a/b para una fracción.",
+        "paperStructure": "Figuras, subfiguras, tablas booktabs, ecuaciones, teoremas, demostraciones y algoritmos."
+      },
+      "useOn": "Usar {{name}}",
+      "importIntro": "Elige un archivo de fragmentos de VS Code (.json o .code-snippets). Se convierte en una colección propia, que puedes desactivar o modificar.",
+      "choose": "Elegir un archivo",
+      "fileLabel": "Archivo de fragmentos",
+      "imported_one": "Se importó {{count}} fragmento en la colección {{collection}}.",
+      "imported_many": "Se importaron {{count}} fragmentos en la colección {{collection}}.",
+      "imported_other": "Se importaron {{count}} fragmentos en la colección {{collection}}.",
+      "nothing": "No se encontraron fragmentos en {{file}}.",
+      "leftOut_one": "Se omitió {{count}} entrada:",
+      "leftOut_many": "Se omitieron {{count}} entradas:",
+      "leftOut_other": "Se omitieron {{count}} entradas:"
+    },
+    "editor": {
+      "newTitle": "Nuevo fragmento",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar",
+      "turnOff": "Desactivar",
+      "save": "Guardar",
+      "copyName": "{{name}} (copia)",
+      "name": "Nombre",
+      "namePlaceholder": "Figura con pie y etiqueta",
+      "trigger": "Disparador",
+      "triggerPlaceholder": "fig",
+      "regex": "Expresión regular",
+      "expands": "Expansión",
+      "expandOptions": {
+        "list": "Desde la lista",
+        "tab": "Con Tab",
+        "auto": "Al escribir"
+      },
+      "expandHelp": {
+        "list": "Aparece en la lista de autocompletado. Elígelo ahí para insertarlo.",
+        "tab": "Escribe {{trigger}} y pulsa Tab. También aparece en la lista de autocompletado.",
+        "auto": "Se expande en cuanto escribes {{trigger}}. Deshacer o Backspace devuelven el disparador."
+      },
+      "languages": "Lenguajes",
+      "where": "Contexto",
+      "whereOptions": {
+        "any": "En cualquier parte",
+        "text": "Texto",
+        "math": "Fórmulas",
+        "code": "Código"
+      },
+      "mathKinds": {
+        "math": "Ambas",
+        "inline-math": "En línea",
+        "display-math": "En bloque"
+      },
+      "mathKind": "Tipo de fórmula",
+      "whereHelp": {
+        "any": "En cualquier parte del archivo.",
+        "text": "Texto: fuera de fórmulas, comentarios y verbatim.",
+        "math": "Fórmulas: dentro de fórmulas en línea o en bloque.",
+        "code": "Código: dentro de código de Typst o de bloques de código de Markdown."
+      },
+      "firesOnly": "Solo se activa",
+      "wholeWord": "como palabra completa",
+      "lineStart": "al principio de una línea",
+      "collection": "Colección",
+      "keptSeparately": "Tus cambios se guardan aparte, así que te siguen llegando las actualizaciones de la colección {{collection}}.",
+      "body": "Texto que inserta",
+      "anyLanguage": "Cualquier lenguaje",
+      "addField": "+ Campo",
+      "addChoice": "+ Opción",
+      "choiceText": "primero,segundo",
+      "variable": "Variable",
+      "projectField": "Campo del proyecto",
+      "variables": {
+        "SELECTION": "Texto seleccionado",
+        "CLIPBOARD": "Portapapeles",
+        "DATE": "Fecha de hoy",
+        "TM_FILENAME": "Nombre del archivo",
+        "PROJECT_NAME": "Nombre del proyecto"
+      },
+      "projectFields": {
+        "image": "Imagen",
+        "label": "Etiqueta",
+        "cite": "Cita",
+        "ref": "Referencia",
+        "file": "Archivo"
+      },
+      "chipsNote": "Los campos se muestran como fichas.",
+      "showSyntax": "Mostrar la sintaxis",
+      "missingName": "Ponle un nombre al fragmento.",
+      "missingBody": "Escribe el texto que inserta el fragmento.",
+      "sameTrigger": "{{trigger}} también se usa en: {{list}}. Gana la colección más cercana.",
+      "sharedStart": "Empieza igual que: {{list}}. Todos aparecen en la lista y Tab elige la coincidencia exacta, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "¿Eliminar el fragmento {{name}}?",
+        "description": "Se quitará de la colección {{collection}}.",
+        "action": "Eliminar"
+      },
+      "tryIt": {
+        "title": "Pruébalo",
+        "howAuto": "Escribe {{trigger}} y se expande.",
+        "howTab": "Escribe {{trigger}} y luego pulsa Tab.",
+        "howList": "Escribe {{trigger}}, pulsa Ctrl+Space y elígelo en la lista.",
+        "noTrigger": "Este fragmento no tiene disparador. Insértalo desde la paleta de comandos con /snippets.",
+        "inText": "en texto",
+        "inMath": "en fórmulas",
+        "fires": "Se activa aquí: {{language}}, {{place}}.",
+        "notLanguage": "No se activaría aquí. {{language}} no es uno de los lenguajes de este fragmento.",
+        "notPlace": "No se activaría {{place}}. El ajuste Contexto no lo permite."
+      }
+    }
   }
 }

@@ -3,7 +3,6 @@ import { LanguageSupport, StreamLanguage } from "@codemirror/language";
 import { type EditorState } from "@codemirror/state";
 import {
   closeCompletion,
-  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -16,6 +15,7 @@ import {
   maskLatexIgnoredRegions,
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
+import { insertTemplate, templateApply } from "./snippets/template";
 import { latexStreamParser } from "./latex-stream";
 import {
   LATEX_DELIMITER_COMPLETIONS,
@@ -108,7 +108,7 @@ function cmd(
     label,
     type: "function",
     detail: editorMessage(detail),
-    apply: template ? snippet(template) : undefined,
+    apply: template ? templateApply(template) : undefined,
   };
 }
 
@@ -780,7 +780,7 @@ function guardedLocalCompletion(
         return;
       }
       if (template !== label) {
-        snippet(template)(view, completion, from, to);
+        insertTemplate(view, template, from, to, completion);
         return;
       }
       view.dispatch(insertCompletionText(view.state, label, from, to));
@@ -808,7 +808,7 @@ function guardedEnvironmentCompletion(
         return;
       }
       const end = view.state.sliceDoc(to, to + 1) === "}" ? to + 1 : to;
-      snippet(environmentSnippet(name))(view, completion, from, end);
+      insertTemplate(view, environmentSnippet(name), from, end, completion);
     },
   };
 }
@@ -1266,38 +1266,4 @@ export function latexCommandCompletions(
     delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, false)
   );
-}
-
-export function slashCompletions(
-  context: CompletionContext
-): CompletionResult | null {
-  if (!shouldRunCompletionSource(context, "latex")) return null;
-  const source = context.state.doc.toString();
-  if (!isLatexCompletionPosition(source, context.pos)) return null;
-  const guard = createCompletionRequestGuard(context);
-  const before = boundedCompletionContext(context.state, context.pos);
-  const m = /\/([a-zA-Z]*)$/.exec(before);
-  if (!m) return null;
-  const slash: Completion[] = [
-    { label: "/section", type: "snippet", detail: editorMessage("latex.snippet.section"), apply: snippet("\\section{${1}}") },
-    { label: "/subsection", type: "snippet", detail: editorMessage("latex.snippet.subsection"), apply: snippet("\\subsection{${1}}") },
-    { label: "/itemize", type: "snippet", detail: editorMessage("latex.snippet.itemize"), apply: snippet("\\begin{itemize}\n  \\item ${1}\n\\end{itemize}") },
-    { label: "/enumerate", type: "snippet", detail: editorMessage("latex.snippet.enumerate"), apply: snippet("\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}") },
-    { label: "/equation", type: "snippet", detail: editorMessage("latex.snippet.equation"), apply: snippet("\\begin{equation}\n  ${1}\n\\end{equation}") },
-    { label: "/align", type: "snippet", detail: editorMessage("latex.snippet.align"), apply: snippet("\\begin{align}\n  ${1}\n\\end{align}") },
-    { label: "/figure", type: "snippet", detail: editorMessage("latex.snippet.figure"), apply: snippet("\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=${1}\\textwidth]{${2}}\n  \\caption{${3}}\n\\end{figure}") },
-    { label: "/table", type: "snippet", detail: editorMessage("latex.snippet.table"), apply: snippet("\\begin{table}[htbp]\n  \\centering\n  \\caption{${1}}\n  \\begin{tabular}{${2}}\n  \\end{tabular}\n\\end{table}") },
-    { label: "/item", type: "snippet", detail: editorMessage("latex.snippet.item"), apply: snippet("\\item ${1}") },
-    { label: "/frac", type: "snippet", detail: editorMessage("latex.snippet.frac"), apply: snippet("\\frac{${1}}{${2}}") },
-    { label: "/bold", type: "snippet", detail: editorMessage("latex.snippet.bold"), apply: snippet("\\textbf{${1}}") },
-    { label: "/italic", type: "snippet", detail: editorMessage("latex.snippet.italic"), apply: snippet("\\textit{${1}}") },
-    { label: "/label", type: "snippet", detail: editorMessage("latex.snippet.label"), apply: snippet("\\label{${1}}") },
-    { label: "/usepackage", type: "snippet", detail: editorMessage("latex.snippet.usepackage"), apply: snippet("\\usepackage{${1}}") },
-  ];
-  return {
-    from: context.pos - m[0].length,
-    options: slash.map((option) =>
-      guardCompletionForSource(guard, option),
-    ),
-  };
 }

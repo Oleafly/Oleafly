@@ -55,7 +55,8 @@
     "unknownKey": "není nastavení, které Oleafly zná",
     "dictionaryLocale": "musí být kód slovníku, například en_US",
     "shortcut": "musí být klávesová zkratka, například Mod-Shift-k, nebo \"default\"",
-    "editorKey": "musí být klávesa, například Mod-d, \"\" pro žádnou, nebo \"default\""
+    "editorKey": "musí být klávesa, například Mod-d, \"\" pro žádnou, nebo \"default\"",
+    "snippetFileName": "musí být název souboru, například my-snippets.json, složený z písmen, číslic, mezer, teček, pomlček a podtržítek"
   },
   "importFromLocal": "Importovat z tohoto zařízení",
   "importFromCloud": "Importovat z cloudu",
