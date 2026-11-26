@@ -7,7 +7,7 @@ use oleafly_online::realtime::events::EntityId;
 use oleafly_online::realtime::tree::NodeKind;
 use oleafly_online::realtime::{DocId, ProjectPage};
 use oleafly_online::session::SessionHandle;
-use oleafly_online::test_support::mock_overleaf::{MockProject, MockUser, Privilege};
+use oleafly_online::test_support::mock_overleaf::{Fault, MockProject, MockUser, Privilege};
 use oleafly_ot::DocMessage;
 
 use super::rig::{eventually, run, session_of, FirstStart, OverleafRig, Place};
@@ -837,6 +837,45 @@ fn a_local_delete_asks_by_default() {
         settle(&rig).await;
         assert!(on_disk(&rig, NOTES).await.is_none());
         assert!(rig.host.removed.lock().unwrap().is_empty());
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn deleting_a_file_yourself_closes_its_tab_and_keeps_no_copy() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let doc = rig.doc(NOTES);
+        let mut tab = rig.open(NOTES);
+        eventually("notes is joined", || rig.live.text_at(NOTES).is_some()).await;
+        rig.mock.hold_updates();
+        tab.typed(&rig.live, "Notes and mine\n");
+        rig.mock.plan_fault(
+            Some("DELETE"),
+            &format!("/project/{}/doc/{doc}", rig.mock.project_id()),
+            Fault::Delay(Duration::from_secs(2)),
+        );
+        tokio::fs::remove_file(rig.root.join(NOTES)).await.unwrap();
+        import(&rig, &[NOTES]).await;
+        rig.live.decide_deletes(&[NOTES.to_owned()], true);
+        eventually("the server deleted it", || {
+            rig.mock.entity_id(NOTES).is_none()
+        })
+        .await;
+        rig.mock.release_updates();
+        eventually("the tab is detached", || !detached(&tab).is_empty()).await;
+        assert_eq!(detached(&tab), vec!["removed".to_owned()]);
+        tab.typed(&rig.live, "Notes and mine, typed late\n");
+        rig.live.close(&tab.file_id, tab.session);
+        settle(&rig).await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let mut entries = tokio::fs::read_dir(&rig.root).await.unwrap();
+        while let Some(entry) = entries.next_entry().await.unwrap() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            assert!(!name.starts_with("notes"), "{name} is still on disk");
+        }
+        assert!(rig.host.removed.lock().unwrap().is_empty());
+        assert!(rig.host.kept.lock().unwrap().is_empty());
         rig.finish().await;
     });
 }
