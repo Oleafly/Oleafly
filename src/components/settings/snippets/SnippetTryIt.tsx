@@ -8,7 +8,7 @@ import { buildLibrary, placeAllows, type SnippetLanguage, type SnippetRecord } f
 import { CodeField } from "@/components/tools/CodeField";
 import { Chip } from "@/components/ui/chip";
 import { createSnippetPort } from "@/features/snippets/port";
-import { languageLabel } from "@/features/snippets/records";
+import { isMathPlace, languageLabel } from "@/features/snippets/records";
 import { TONES } from "@/components/ui/tones";
 import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
@@ -68,7 +68,7 @@ export function SnippetTryIt({
   const [chosen, setChosen] = useState<SnippetLanguage>(languages[0] ?? "latex");
   const language = languages.includes(chosen) ? chosen : (languages[0] ?? "latex");
   const mathDoc = MATH_DOC[language];
-  const [place, setPlace] = useState<TryPlace>(record.place === "text" || !mathDoc ? "text" : "math");
+  const [place, setPlace] = useState<TryPlace>(mathDoc && isMathPlace(record.place) ? "math" : "text");
   const activePlace: TryPlace = mathDoc ? place : "text";
   const port = useMemo(() => tryPort(record, language), [record, language]);
   const extensions = useCallback(() => [languageForPath(SAMPLE_PATH[language]) ?? [], snippetEditorExtensions(port)], [port, language]);

@@ -819,9 +819,10 @@
       "inserted": "Inserted {{name}}",
       "field": {
         "position": "{{current}} of {{total}}",
-        "next": "next",
-        "back": "back",
-        "done": "done"
+        "next": "Next",
+        "back": "Back",
+        "done": "Done",
+        "finish": "Finish"
       },
       "place": {
         "any": "anywhere",

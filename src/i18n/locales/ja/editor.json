@@ -808,7 +808,8 @@
         "position": "{{current}} / {{total}}",
         "next": "次へ",
         "back": "戻る",
-        "done": "完了"
+        "done": "完了",
+        "finish": "確定"
       },
       "place": {
         "any": "どこでも",

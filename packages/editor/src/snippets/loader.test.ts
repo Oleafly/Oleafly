@@ -49,6 +49,20 @@ describe("the snippet loader", () => {
     view.destroy();
   });
 
+  it("says whether the selection is exactly the active snippet field", async () => {
+    const loader = await freshLoader();
+    expect(loader.snippetFieldSelected(EditorState.create({ doc: "x" }))).toBe(false);
+    await loader.loadSnippetRuntime();
+    const { snippetEditor, destroyViews } = await import("./tests/editor");
+    const { insertTemplate } = await import("./insert");
+    const view = snippetEditor("|");
+    insertTemplate(view, "${1:a} and ${2:b}$0", 0, 0);
+    expect(loader.snippetFieldSelected(view.state)).toBe(true);
+    view.dispatch({ selection: { anchor: 0, head: 3 } });
+    expect(loader.snippetFieldSelected(view.state)).toBe(false);
+    destroyViews();
+  });
+
   it("tries again after the snippet code failed to load", async () => {
     vi.doMock("./runtime", () => {
       throw new Error("offline");

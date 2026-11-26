@@ -9,7 +9,7 @@ import { insertSnippet, insertTemplate, templateApply } from "./insert";
 import { provideSnippetRuntime } from "./loader";
 import { snippetPlaceAt } from "./place";
 import { type SnippetPort, snippetPortFacet } from "./port";
-import { previousSnippetField, snippetSessionExtension } from "./session";
+import { activeSnippetField, previousSnippetField, snippetSessionExtension } from "./session";
 import { expandTabTrigger, fieldOrPopup } from "./tab";
 
 export { insertSnippet, type SnippetTriggerKind } from "./insert";
@@ -26,6 +26,7 @@ export function snippetEditorExtensions(port: SnippetPort): Extension {
 }
 
 export const snippetRuntime = {
+  activeSnippetField,
   expandTabTrigger,
   fieldOrPopup,
   fieldOwnsList,

@@ -60,6 +60,7 @@ export const EDITOR_MESSAGE_KEYS = [
   "snippets.field.next",
   "snippets.field.back",
   "snippets.field.done",
+  "snippets.field.finish",
   "snippets.place.any",
   "snippets.place.text",
   "snippets.place.math",

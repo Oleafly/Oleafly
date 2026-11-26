@@ -819,9 +819,10 @@
       "inserted": "Lisätty: {{name}}",
       "field": {
         "position": "{{current}}/{{total}}",
-        "next": "seuraava",
-        "back": "edellinen",
-        "done": "valmis"
+        "next": "Seuraava",
+        "back": "Edellinen",
+        "done": "Valmis",
+        "finish": "Viimeistele"
       },
       "place": {
         "any": "missä tahansa",

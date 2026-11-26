@@ -56,7 +56,7 @@ function CollectionRow({
         labelClassName="flex min-w-0 flex-1 items-center gap-2"
         label={
           <>
-            <span className="truncate">{collection.name}</span>
+            <span className="line-clamp-2 break-words">{collection.name}</span>
             <span className="ml-auto font-mono text-xs text-muted-foreground">{collection.count}</span>
           </>
         }

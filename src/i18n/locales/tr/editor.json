@@ -819,9 +819,10 @@
       "inserted": "Eklendi: {{name}}",
       "field": {
         "position": "{{current}}/{{total}}",
-        "next": "sonraki",
-        "back": "önceki",
-        "done": "bitir"
+        "next": "Sonraki",
+        "back": "Önceki",
+        "done": "Bitir",
+        "finish": "Tamamla"
       },
       "place": {
         "any": "her yerde",

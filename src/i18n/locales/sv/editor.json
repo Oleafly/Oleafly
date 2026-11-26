@@ -819,9 +819,10 @@
       "inserted": "{{name}} infogad",
       "field": {
         "position": "{{current}} av {{total}}",
-        "next": "nästa",
-        "back": "tillbaka",
-        "done": "klar"
+        "next": "Nästa",
+        "back": "Tillbaka",
+        "done": "Klar",
+        "finish": "Slutför"
       },
       "place": {
         "any": "överallt",

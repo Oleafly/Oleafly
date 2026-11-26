@@ -832,9 +832,10 @@
       "inserted": "Fragmentul {{name}} a fost inserat",
       "field": {
         "position": "{{current}} din {{total}}",
-        "next": "înainte",
-        "back": "înapoi",
-        "done": "gata"
+        "next": "Înainte",
+        "back": "Înapoi",
+        "done": "Gata",
+        "finish": "Finalizează"
       },
       "place": {
         "any": "oriunde",

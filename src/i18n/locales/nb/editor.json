@@ -819,9 +819,10 @@
       "inserted": "{{name}} er satt inn",
       "field": {
         "position": "{{current}} av {{total}}",
-        "next": "neste",
-        "back": "tilbake",
-        "done": "ferdig"
+        "next": "Neste",
+        "back": "Tilbake",
+        "done": "Ferdig",
+        "finish": "Fullfør"
       },
       "place": {
         "any": "overalt",

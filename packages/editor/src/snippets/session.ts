@@ -20,7 +20,7 @@ import {
   type Text,
   type Transaction,
 } from "@codemirror/state";
-import { Decoration, type DecorationSet, EditorView, keymap, WidgetType } from "@codemirror/view";
+import { Decoration, type DecorationSet, EditorView, keymap, showTooltip, type Tooltip, WidgetType } from "@codemirror/view";
 import {
   applyHelper,
   applyRegexTransform,
@@ -38,8 +38,19 @@ import {
   ACTIVE_FIELD_CLASS,
   EMPTY_FIELD_CLASS,
   FIELD_CLASS,
+  CARD_CLASS,
+  CARD_COMPACT_CLASS,
+  CARD_COUNT_CLASS,
+  CARD_KEY_CLASS,
+  CARD_KEY_OFF_CLASS,
+  CARD_KEY_PRIMARY_CLASS,
+  CARD_KEYS_CLASS,
+  CARD_SEPARATOR_CLASS,
+  CARD_STEP_CLASS,
+  CARD_STEP_DONE_CLASS,
+  CARD_STEP_NOW_CLASS,
+  CARD_STEPS_CLASS,
   MIRROR_CLASS,
-  PILL_CLASS,
   snippetSessionTheme,
 } from "./session-theme";
 
@@ -393,59 +404,11 @@ class EmptyField extends WidgetType {
   }
 }
 
-function keyHint(key: string, label: string): HTMLElement {
-  const wrapper = document.createElement("span");
-  const kbd = document.createElement("kbd");
-  kbd.textContent = key;
-  wrapper.append(kbd, ` ${label}`);
-  return wrapper;
-}
-
-class FieldPill extends WidgetType {
-  constructor(
-    readonly current: number,
-    readonly total: number,
-  ) {
-    super();
-  }
-
-  eq(other: FieldPill): boolean {
-    return other.current === this.current && other.total === this.total;
-  }
-
-  toDOM(): HTMLElement {
-    const pill = document.createElement("span");
-    pill.className = PILL_CLASS;
-    pill.setAttribute("aria-hidden", "true");
-    const position = document.createElement("span");
-    position.textContent = editorMessage("snippets.field.position", { current: this.current, total: this.total });
-    pill.append(
-      position,
-      keyHint("Tab", editorMessage("snippets.field.next")),
-      keyHint("⇧Tab", editorMessage("snippets.field.back")),
-      keyHint("Esc", editorMessage("snippets.field.done")),
-    );
-    return pill;
-  }
-}
-
 const activeMark = Decoration.mark({ class: ACTIVE_FIELD_CLASS });
 const fieldMark = Decoration.mark({ class: FIELD_CLASS });
 const mirrorMark = Decoration.mark({ class: MIRROR_CLASS });
 const activeEmpty = Decoration.widget({ widget: new EmptyField(true) });
 const fieldEmpty = Decoration.widget({ widget: new EmptyField(false) });
-
-function pillFor(state: EditorState, stack: Stack): Range<Decoration> | null {
-  const top = stack.at(-1);
-  const field = top?.fields[top.active];
-  if (!stack[0].hint || !top || !field || field.index === 0) return null;
-  const numbered = top.fields.filter((candidate) => candidate.index !== 0);
-  const line = state.doc.lineAt(field.ranges[0].to);
-  return Decoration.widget({
-    widget: new FieldPill(numbered.indexOf(field) + 1, numbered.length),
-    side: 1,
-  }).range(line.to);
-}
 
 function sessionDecorations(state: EditorState): DecorationSet {
   const stack = snippetSessions(state);
@@ -465,16 +428,78 @@ function sessionDecorations(state: EditorState): DecorationSet {
     });
     for (const mirror of session.mirrors) if (mirror.to > mirror.from) ranges.push(mirrorMark.range(mirror.from, mirror.to));
   });
-  const pill = pillFor(state, stack);
-  if (pill) ranges.push(pill);
   return Decoration.set(ranges, true);
 }
 
 const decorations = EditorView.decorations.compute([snippetSessionField], sessionDecorations);
 
+const MAX_STEPS = 8;
+
+function element(tag: string, className: string, text?: string): HTMLElement {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function cardKey(key: string, label: string, extra = ""): HTMLElement {
+  const wrapper = element("span", extra ? `${CARD_KEY_CLASS} ${extra}` : CARD_KEY_CLASS);
+  wrapper.append(element("kbd", "", key), label);
+  return wrapper;
+}
+
+function fieldCardDom(current: number, total: number, keys: boolean): HTMLElement {
+  const card = element("div", keys ? CARD_CLASS : `${CARD_CLASS} ${CARD_COMPACT_CLASS}`);
+  card.setAttribute("aria-hidden", "true");
+  if (total <= MAX_STEPS) {
+    const steps = element("span", CARD_STEPS_CLASS);
+    for (let step = 1; step <= total; step += 1) {
+      const state = step < current ? CARD_STEP_DONE_CLASS : step === current ? CARD_STEP_NOW_CLASS : "";
+      steps.append(element("span", state ? `${CARD_STEP_CLASS} ${state}` : CARD_STEP_CLASS));
+    }
+    card.append(steps);
+  }
+  card.append(element("span", CARD_COUNT_CLASS, editorMessage("snippets.field.position", { current, total })));
+  if (!keys) return card;
+  const last = current === total;
+  const list = element("span", CARD_KEYS_CLASS);
+  list.append(
+    cardKey("Tab", editorMessage(last ? "snippets.field.finish" : "snippets.field.next"), CARD_KEY_PRIMARY_CLASS),
+    cardKey("⇧ Tab", editorMessage("snippets.field.back"), current === 1 ? CARD_KEY_OFF_CLASS : ""),
+    cardKey("Esc", editorMessage("snippets.field.done")),
+  );
+  card.append(element("span", CARD_SEPARATOR_CLASS), list);
+  return card;
+}
+
+const cards = new Map<string, Tooltip>();
+
+function fieldCard(state: EditorState): Tooltip | null {
+  const stack = state.field(snippetSessionField, false);
+  const top = stack?.at(-1);
+  const field = top?.fields[top.active];
+  if (!stack || !top || !field || field.index === 0) return null;
+  const numbered = top.fields.filter((candidate) => candidate.index !== 0);
+  const current = numbered.indexOf(field) + 1;
+  const keys = stack[0].hint === true;
+  if (!keys && numbered.length < 2) return null;
+  const pos = field.ranges[0].from;
+  const key = `${pos}:${current}:${numbered.length}:${keys}`;
+  let card = cards.get(key);
+  if (!card) {
+    cards.clear();
+    card = { pos, above: true, arrow: true, create: () => ({ dom: fieldCardDom(current, numbered.length, keys) }) };
+    cards.set(key, card);
+  }
+  return card;
+}
+
+const fieldCardTooltip = showTooltip.compute([snippetSessionField], fieldCard);
+
 const sessionExtension: Extension = [
   snippetSessionField,
   decorations,
+  fieldCardTooltip,
   mirrorFilter,
   sessionHistory,
   compositionSync,

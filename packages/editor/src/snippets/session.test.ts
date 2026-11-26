@@ -225,15 +225,42 @@ describe("nested sessions", () => {
     expect(view.state.doc.toString()).toBe("\\begin{align}\n\n\\end{align}");
   });
 
-  it("shows the field pill for a top-level session and consumes one hint", () => {
+  it("shows the field card with keys for a top-level session and consumes one hint", () => {
     const consumeFieldHint = vi.fn();
     const view = snippetEditor("|", { port: fakePort({ fieldHintsLeft: () => 3, consumeFieldHint }) });
     expand(view);
-    const pill = view.dom.querySelector(".cm-oleaflySnippetPill");
-    expect(pill?.textContent).toBe("1 of 2Tab next⇧Tab backEsc done");
+    const card = () => view.dom.querySelector(".cm-oleaflySnippetCard");
+    expect(card()?.textContent).toBe("1 of 2TabNext⇧ TabBackEscDone");
+    expect(card()?.querySelectorAll(".cm-oleaflySnippetCard-step")).toHaveLength(2);
+    expect(card()?.querySelector(".cm-oleaflySnippetCard-step-now")).toBe(card()?.querySelector(".cm-oleaflySnippetCard-step"));
+    expect(card()?.querySelector(".cm-oleaflySnippetCard-key-off")?.textContent).toBe("⇧ TabBack");
+    press(view, "Tab");
+    expect(card()?.textContent).toBe("2 of 2TabFinish⇧ TabBackEscDone");
+    expect(card()?.querySelector(".cm-oleaflySnippetCard-key-off")).toBeNull();
+    expect(card()?.querySelectorAll(".cm-oleaflySnippetCard-step-done")).toHaveLength(1);
     expand(view, sum);
     expect(consumeFieldHint).toHaveBeenCalledTimes(1);
-    expect(view.dom.querySelector(".cm-oleaflySnippetPill")?.textContent).toContain("1 of 2");
+    expect(card()?.textContent).toContain("1 of 2");
+    press(view, "Escape");
+    expect(card()?.textContent).toContain("2 of 2");
+    press(view, "Escape");
+    expect(card()).toBeNull();
+  });
+
+  it("keeps only the progress once the hints are used up, and nothing for a single field", () => {
+    const view = expand(snippetEditor("|"));
+    const card = view.dom.querySelector(".cm-oleaflySnippetCard");
+    expect(card?.classList.contains("cm-oleaflySnippetCard-compact")).toBe(true);
+    expect(card?.textContent).toBe("1 of 2");
+    const single = expand(snippetEditor("|"), caption);
+    expect(single.dom.querySelector(".cm-oleaflySnippetCard")).toBeNull();
+  });
+
+  it("drops the dots for long snippets but keeps the count", () => {
+    const view = expand(snippetEditor("|"), snippetRecord("many", "$1 $2 $3 $4 $5 $6 $7 $8 $9$0"));
+    const card = view.dom.querySelector(".cm-oleaflySnippetCard");
+    expect(card?.querySelector(".cm-oleaflySnippetCard-steps")).toBeNull();
+    expect(card?.textContent).toBe("1 of 9");
   });
 });
 
@@ -395,6 +422,6 @@ describe("decorations", () => {
     expect(view.dom.querySelector(".cm-oleaflySnippetMirror")?.textContent).toBe("caption");
     const empty = expand(snippetEditor("|"));
     expect(empty.dom.querySelectorAll(".cm-oleaflySnippetPosition")).toHaveLength(2);
-    expect(empty.dom.querySelector(".cm-oleaflySnippetPill")).toBeNull();
+    expect(empty.dom.querySelector(".cm-oleaflySnippetField")).not.toBeNull();
   });
 });

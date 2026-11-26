@@ -832,9 +832,10 @@
       "inserted": "Trecho {{name}} inserido",
       "field": {
         "position": "{{current}} de {{total}}",
-        "next": "próximo",
-        "back": "voltar",
-        "done": "concluir"
+        "next": "Próximo",
+        "back": "Voltar",
+        "done": "Concluir",
+        "finish": "Finalizar"
       },
       "place": {
         "any": "qualquer lugar",

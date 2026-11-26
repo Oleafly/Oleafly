@@ -806,9 +806,10 @@
       "inserted": "Đã chèn {{name}}",
       "field": {
         "position": "{{current}}/{{total}}",
-        "next": "tiếp",
-        "back": "lùi",
-        "done": "xong"
+        "next": "Tiếp",
+        "back": "Lùi",
+        "done": "Xong",
+        "finish": "Hoàn tất"
       },
       "place": {
         "any": "mọi nơi",

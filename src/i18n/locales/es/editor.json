@@ -832,9 +832,10 @@
       "inserted": "Fragmento {{name}} insertado",
       "field": {
         "position": "{{current}} de {{total}}",
-        "next": "siguiente",
-        "back": "anterior",
-        "done": "terminar"
+        "next": "Siguiente",
+        "back": "Anterior",
+        "done": "Terminar",
+        "finish": "Completar"
       },
       "place": {
         "any": "en cualquier parte",

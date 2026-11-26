@@ -49,6 +49,13 @@ export function snippetHintBlocksAi(state: EditorState): boolean {
   return runtime?.snippetHintBlocksAi(state) ?? false;
 }
 
+export function snippetFieldSelected(state: EditorState): boolean {
+  const field = runtime?.activeSnippetField(state);
+  if (!field) return false;
+  const { from, to } = state.selection.main;
+  return field.ranges.some((range) => range.from === from && range.to === to);
+}
+
 const source: CompletionSource = (context) => runtime?.snippetCompletionSource()(context) ?? null;
 
 export function withSnippetCompletions(sources: readonly CompletionSource[]): CompletionSource[] {

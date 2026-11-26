@@ -808,7 +808,8 @@
         "position": "{{current}} / {{total}}",
         "next": "下一項",
         "back": "上一項",
-        "done": "完成"
+        "done": "完成",
+        "finish": "確定"
       },
       "place": {
         "any": "任何位置",

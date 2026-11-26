@@ -845,9 +845,10 @@
       "inserted": "Вставлено: {{name}}",
       "field": {
         "position": "{{current}} из {{total}}",
-        "next": "далее",
-        "back": "назад",
-        "done": "готово"
+        "next": "Далее",
+        "back": "Назад",
+        "done": "Готово",
+        "finish": "Завершить"
       },
       "place": {
         "any": "везде",

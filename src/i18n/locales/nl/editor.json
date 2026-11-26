@@ -819,9 +819,10 @@
       "inserted": "{{name}} ingevoegd",
       "field": {
         "position": "{{current}} van {{total}}",
-        "next": "volgende",
-        "back": "terug",
-        "done": "klaar"
+        "next": "Volgende",
+        "back": "Terug",
+        "done": "Klaar",
+        "finish": "Afronden"
       },
       "place": {
         "any": "overal",

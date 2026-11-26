@@ -832,9 +832,10 @@
       "inserted": "Frammento {{name}} inserito",
       "field": {
         "position": "{{current}} di {{total}}",
-        "next": "avanti",
-        "back": "indietro",
-        "done": "fine"
+        "next": "Avanti",
+        "back": "Indietro",
+        "done": "Fine",
+        "finish": "Completa"
       },
       "place": {
         "any": "ovunque",

@@ -832,9 +832,10 @@
       "inserted": "Extrait {{name}} inséré",
       "field": {
         "position": "{{current}} sur {{total}}",
-        "next": "suivant",
-        "back": "précédent",
-        "done": "terminer"
+        "next": "Suivant",
+        "back": "Précédent",
+        "done": "Terminer",
+        "finish": "Valider"
       },
       "place": {
         "any": "partout",

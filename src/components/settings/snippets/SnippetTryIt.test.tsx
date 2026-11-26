@@ -100,6 +100,14 @@ describe("SnippetTryIt", () => {
     expect(screen.getByTestId("snippet-try-it-fires")).toBeTruthy();
   });
 
+  it("starts in text unless the snippet only fires in math", () => {
+    const { unmount } = render(<SnippetTryIt record={record({ prefix: "tab", body: "x" })} languages={["latex"]} />);
+    expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain(copy.inText);
+    unmount();
+    render(<SnippetTryIt record={record({ prefix: "sq", body: "^2", where: "math" })} languages={["latex"]} />);
+    expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain(copy.inMath);
+  });
+
   it("falls back to the first language when the chosen one is no longer offered", () => {
     const fig = record({ prefix: "fig", body: "x" });
     const { rerender } = render(<SnippetTryIt record={fig} languages={["latex", "typst"]} />);

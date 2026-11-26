@@ -50,7 +50,7 @@ export {
   mathContextAt,
 } from "./latex-lexical";
 export type { SnippetPort, SnippetSwitches } from "./snippets/port";
-export { loadedSnippetRuntime, loadSnippetRuntime } from "./snippets/loader";
+export { loadedSnippetRuntime, loadSnippetRuntime, snippetFieldSelected } from "./snippets/loader";
 export { insertTemplate as insertSnippetTemplate, templateApply } from "./snippets/template";
 export { latexSnippetLiteral } from "./latex-delimiters";
 export {

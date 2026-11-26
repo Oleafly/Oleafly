@@ -819,9 +819,10 @@
       "inserted": "{{name}} er indsat",
       "field": {
         "position": "{{current}} af {{total}}",
-        "next": "næste",
-        "back": "tilbage",
-        "done": "færdig"
+        "next": "Næste",
+        "back": "Tilbage",
+        "done": "Færdig",
+        "finish": "Afslut"
       },
       "place": {
         "any": "overalt",

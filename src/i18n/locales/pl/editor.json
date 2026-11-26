@@ -845,9 +845,10 @@
       "inserted": "Wstawiono: {{name}}",
       "field": {
         "position": "{{current}} z {{total}}",
-        "next": "dalej",
-        "back": "wstecz",
-        "done": "gotowe"
+        "next": "Dalej",
+        "back": "Wstecz",
+        "done": "Gotowe",
+        "finish": "Zakończ"
       },
       "place": {
         "any": "wszędzie",

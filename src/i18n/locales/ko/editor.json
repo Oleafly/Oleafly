@@ -808,7 +808,8 @@
         "position": "{{current}} / {{total}}",
         "next": "다음",
         "back": "이전",
-        "done": "완료"
+        "done": "완료",
+        "finish": "확정"
       },
       "place": {
         "any": "어디서나",
