@@ -9,6 +9,7 @@ import {
   Asterisk,
   Bold,
   BookmarkPlus,
+  Braces,
   ClipboardPaste,
   Code,
   Copy,
@@ -71,6 +72,7 @@ import { engineSyncsPath, sourceLanguageForPath } from "@/lib/document-engine";
 import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
 import { convertLatexMathAtSelection } from "./convert-latex-math";
 import type { MarkdownTarget } from "./markdown-model";
+import { openSaveSnippet } from "@/features/snippets/save-dialog";
 import { useTableImportStore } from "@/store/table-import";
 import { useStyleRuleDialogStore } from "@/store/style-rule-dialog";
 import { useFilesStore } from "@/store/files";
@@ -225,12 +227,17 @@ function ClipboardMenuItems() {
 }
 
 function EditMenuItems() {
-  const { t } = useTranslation(["common", "editor"]);
+  const { t } = useTranslation(["common", "editor", "shell"]);
+  const view = getEditorView();
+  const selected = view !== null && hasSelectedText(view.state);
   return (
     <>
       <ContextMenuItem onClick={() => withView(openInlineEdit)}>
         <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
         <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
+      </ContextMenuItem>
+      <ContextMenuItem data-testid="context-save-snippet" disabled={!selected} onClick={() => openSaveSnippet()}>
+        <Braces className="mr-2 size-4" /> {t(($) => $.shell.snippets.saveAsSnippet)}
       </ContextMenuItem>
       <CommentMenuItem />
       <ContextMenuSeparator />

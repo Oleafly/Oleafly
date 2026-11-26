@@ -2879,5 +2879,182 @@
     "count_other": "{{count}} merkintää",
     "filteredCount_one": "{{shown}} / {{count}} merkintä",
     "filteredCount_other": "{{shown}} / {{count}} merkintää"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Täydennysluettelossa",
+        "description": "Näytä katkelmat komentojen rinnalla"
+      },
+      "tab": {
+        "label": "Tab laajentaa laukaisimen",
+        "description": "Katkelmille, joille on valittu Tab"
+      },
+      "auto": {
+        "label": "Laajenna kirjoittaessa",
+        "description": "Automaattisille katkelmille, kuten Fast math -paketeille"
+      },
+      "hint": {
+        "label": "Näytä vihje kirjoittaessa",
+        "description": "Kertoo, minkä katkelman laukaisin lisää. Tab lisää sen."
+      }
+    },
+    "library": {
+      "title": "Katkelmakirjastosi",
+      "collections": "Kokoelmat",
+      "all": "Kaikki katkelmat",
+      "mine": "Omat",
+      "packs": "Paketit",
+      "builtIn": "Sisäänrakennetut",
+      "add": "Lisää paketteja tai tuo…",
+      "useCollection": "Käytä kokoelmaa {{name}}",
+      "search": "Hae nimellä, laukaisimella tai tekstillä",
+      "language": "Kieli",
+      "allLanguages": "Kaikki kielet",
+      "expands": "Laajenee",
+      "anyExpand": "Miten tahansa",
+      "newSnippet": "Uusi katkelma",
+      "columns": {
+        "trigger": "Laukaisin",
+        "name": "Nimi",
+        "languages": "Kielet",
+        "where": "Sijainti",
+        "expands": "Laajenee"
+      },
+      "modified": "Muokattu",
+      "turnedOff": "Pois käytöstä",
+      "restore": "Palauta",
+      "restoreLabel": "Palauta katkelma {{name}}",
+      "wraps": "ympäröi",
+      "noTrigger": "ei mitään",
+      "noMatches": "Ei osuvia katkelmia.",
+      "shown": "{{shown}}/{{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} ongelma",
+      "summary_other": "{{count}} ongelmaa",
+      "where": "{{file}}, rivi {{line}}: {{message}}",
+      "slowRegex": "Katkelman {{name}} laukaisimen tarkistus kesti liian kauan, joten katkelma poistettiin käytöstä.",
+      "show": "Näytä",
+      "hide": "Piilota"
+    },
+    "addDialog": {
+      "title": "Lisää katkelmia",
+      "packsTab": "Paketit",
+      "importTab": "Tuo tiedosto",
+      "count_one": "{{count}} katkelma",
+      "count_other": "{{count}} katkelmaa",
+      "source": "Lähde: {{source}}",
+      "licence": "{{licence}}-lisenssi",
+      "packNote": "Paketit päivittyvät sovelluksen mukana. Pakettien katkelmiin tekemäsi muutokset säilytetään erikseen.",
+      "packs": {
+        "fastMathLatex": "Laajenee kirjoittaessa matematiikassa: murtoluvut, alaindeksit ja potenssit, kreikkalaiset kirjaimet, operaattorit ja matriisit. Laukaisimet noudattavat Gilles Castelin mallia.",
+        "fastMathTypst": "Samat laukaisimet Typst-kielelle kirjoitettuina. Mukana ei ole sitä, minkä Typst tekee jo itse, kuten a/b murtolukuna.",
+        "paperStructure": "Kuvat, alakuvat, booktabs-taulukot, kaavat, lauseet, todistukset ja algoritmit."
+      },
+      "useOn": "Käytä pakettia {{name}}",
+      "importIntro": "Valitse VS Code -katkelmatiedosto (.json tai .code-snippets). Siitä tulee oma kokoelmansa, jonka voit poistaa käytöstä tai jota voit muuttaa.",
+      "choose": "Valitse tiedosto",
+      "fileLabel": "Katkelmatiedosto",
+      "imported_one": "Tuotiin {{count}} katkelma kokoelmaan {{collection}}.",
+      "imported_other": "Tuotiin {{count}} katkelmaa kokoelmaan {{collection}}.",
+      "nothing": "Tiedostosta {{file}} ei löytynyt katkelmia.",
+      "leftOut_one": "{{count}} kohta jätettiin pois:",
+      "leftOut_other": "{{count}} kohtaa jätettiin pois:"
+    },
+    "editor": {
+      "newTitle": "Uusi katkelma",
+      "duplicate": "Monista",
+      "delete": "Poista",
+      "turnOff": "Poista käytöstä",
+      "save": "Tallenna",
+      "copyName": "{{name}} (kopio)",
+      "name": "Nimi",
+      "namePlaceholder": "Kuva, kuvateksti ja nimike",
+      "trigger": "Laukaisin",
+      "triggerPlaceholder": "fig",
+      "regex": "Säännöllinen lauseke",
+      "expands": "Laajenee",
+      "expandOptions": {
+        "list": "Luettelosta",
+        "tab": "Tab-näppäimellä",
+        "auto": "Kirjoittaessa"
+      },
+      "expandHelp": {
+        "list": "Näkyy täydennysluettelossa. Valitse se sieltä, niin se lisätään.",
+        "tab": "Kirjoita {{trigger}} ja paina Tab. Näkyy myös täydennysluettelossa.",
+        "auto": "Laajenee heti, kun kirjoitat {{trigger}}. Kumoa tai Backspace palauttaa laukaisimen."
+      },
+      "languages": "Kielet",
+      "where": "Sijainti",
+      "whereOptions": {
+        "any": "Missä tahansa",
+        "text": "Teksti",
+        "math": "Matematiikka",
+        "code": "Koodi"
+      },
+      "mathKinds": {
+        "math": "Molemmat",
+        "inline-math": "Tekstin sisäinen",
+        "display-math": "Erillinen"
+      },
+      "mathKind": "Matematiikan tyyppi",
+      "whereHelp": {
+        "any": "Missä tahansa tiedostossa.",
+        "text": "Teksti: matematiikan, kommenttien ja verbatim-ympäristöjen ulkopuolella.",
+        "math": "Matematiikka: tekstin sisäisessä tai erillisessä matematiikassa.",
+        "code": "Koodi: Typst-koodissa tai Markdown-koodilohkoissa."
+      },
+      "firesOnly": "Laukeaa vain",
+      "wholeWord": "kokonaisena sanana",
+      "lineStart": "rivin alussa",
+      "collection": "Kokoelma",
+      "keptSeparately": "Muutoksesi säilytetään erikseen, joten saat edelleen kokoelman {{collection}} päivitykset.",
+      "body": "Lisättävä teksti",
+      "anyLanguage": "Mikä tahansa kieli",
+      "addField": "+ Kenttä",
+      "addChoice": "+ Valinta",
+      "choiceText": "ensimmäinen,toinen",
+      "variable": "Muuttuja",
+      "projectField": "Projektin kenttä",
+      "variables": {
+        "SELECTION": "Valittu teksti",
+        "CLIPBOARD": "Leikepöytä",
+        "DATE": "Tämän päivän päivämäärä",
+        "TM_FILENAME": "Tiedostonimi",
+        "PROJECT_NAME": "Projektin nimi"
+      },
+      "projectFields": {
+        "image": "Kuva",
+        "label": "Nimike",
+        "cite": "Viittaus",
+        "ref": "Ristiviittaus",
+        "file": "Tiedosto"
+      },
+      "chipsNote": "Kentät näkyvät tunnisteina.",
+      "showSyntax": "Näytä syntaksi",
+      "missingName": "Anna katkelmalle nimi.",
+      "missingBody": "Kirjoita teksti, jonka katkelma lisää.",
+      "sameTrigger": "Laukaisinta {{trigger}} käyttää myös: {{list}}. Lähin kokoelma on etusijalla.",
+      "sharedStart": "Alkaa samoin kuin {{list}}. Kaikki näkyvät luettelossa, ja Tab valitsee tarkan osuman, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Poistetaanko {{name}}?",
+        "description": "Se poistetaan kokoelmasta {{collection}}.",
+        "action": "Poista"
+      },
+      "tryIt": {
+        "title": "Kokeile",
+        "howAuto": "Kirjoita {{trigger}}, niin se laajenee.",
+        "howTab": "Kirjoita {{trigger}} ja paina sitten Tab.",
+        "howList": "Kirjoita {{trigger}}, paina Ctrl+Space ja valitse se luettelosta.",
+        "noTrigger": "Tällä katkelmalla ei ole laukaisinta. Lisää se komentopaletista komennolla /snippets.",
+        "inText": "tekstissä",
+        "inMath": "matematiikassa",
+        "fires": "Laukeaa tässä: {{language}}, {{place}}.",
+        "notLanguage": "Ei laukeaisi, kun kieli on {{language}}. Kieli ei kuulu tämän katkelman kieliin.",
+        "notPlace": "Ei laukeaisi {{place}}. Sijainti-asetus ei salli sitä."
+      }
+    }
   }
 }

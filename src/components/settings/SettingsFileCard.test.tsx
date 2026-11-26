@@ -183,6 +183,15 @@ describe("SettingsFileCard", () => {
     );
   });
 
+  it("says what a snippet file may be called when an imported one can't be", async () => {
+    mocks.pickSettingsFile.mockResolvedValue(settingsFile({ snippets: { files: [{ name: "../x.json", text: "{}" }] } }));
+    render(<SettingsFileCard />);
+    await chooseLocalImport();
+    expect(await screen.findByTestId("settings-file-problem")).toHaveTextContent(
+      "snippets.files[0].name must be a file name like my-snippets.json, made of letters, digits, spaces, dots, dashes and underscores",
+    );
+  });
+
   it("names a file that isn't a settings file", async () => {
     mocks.pickSettingsFile.mockResolvedValue({ name: "notes.json", text: "{\"hello\": 1}" });
     render(<SettingsFileCard />);

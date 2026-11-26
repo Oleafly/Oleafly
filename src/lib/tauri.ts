@@ -1869,6 +1869,17 @@ export const searchDocs = (query: string) =>
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
+export interface SnippetFileEntry {
+  name: string;
+  text: string | null;
+  error: string | null;
+  modifiedMs: number;
+}
+
+export const listSnippetFiles = () => invoke<SnippetFileEntry[]>("snippets_list");
+export const writeSnippetFile = (name: string, text: string) =>
+  invoke<void>("snippets_write", { name, text });
+
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });

@@ -5,7 +5,6 @@ type IndexModule = typeof import("./index");
 
 const CORE = { commands: [{ name: "section", snippet: "\\section{${1}}" }], environments: [{ name: "itemize" }] };
 const NAMES = { names: ["amsmath", "graphicx"], details: { amsmath: "AMS math" } };
-const AT = [{ trigger: "@a", replacement: "\\alpha", detail: "alpha" }];
 
 function catalog(deps: string[] = [], macroName = "cmd"): PackageCatalog {
   return { deps, macros: [{ name: macroName }], envs: [], keys: {}, args: [] };
@@ -60,12 +59,12 @@ describe("default fetch transport", () => {
 
   it("uses a root-relative path when the href cannot be parsed as a URL", async () => {
     vi.stubGlobal("location", { origin: "null", href: "not a url" });
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => AT }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => NAMES }));
     vi.stubGlobal("fetch", fetchMock);
     const mod = await freshModule();
 
-    await expect(mod.loadAtSuggestions()).resolves.toEqual(AT);
-    expect(fetchMock).toHaveBeenCalledWith("/latex-intelligence/at-suggestions.json");
+    await expect(mod.loadClassNames()).resolves.toEqual(NAMES);
+    expect(fetchMock).toHaveBeenCalledWith("/latex-intelligence/class-names.json");
   });
 
   it("resolves null for a non-ok response without reading the body", async () => {
@@ -109,7 +108,6 @@ describe("default fetch transport", () => {
 
 describe.each([
   { loader: "loadCore", path: "core.json", valid: CORE, invalid: { commands: "nope", environments: [] } },
-  { loader: "loadAtSuggestions", path: "at-suggestions.json", valid: AT, invalid: [{ trigger: "@a" }] },
   { loader: "loadPackageNames", path: "package-names.json", valid: NAMES, invalid: { names: [1], details: {} } },
   { loader: "loadClassNames", path: "class-names.json", valid: NAMES, invalid: { names: [], details: { a: 1 } } },
 ] as const)("$loader", ({ loader, path, valid, invalid }) => {

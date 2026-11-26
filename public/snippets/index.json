@@ -1,0 +1,17 @@
+[
+  {
+    "file": "fast-math-latex.json",
+    "collection": "fast-math-latex",
+    "defaultOn": false
+  },
+  {
+    "file": "fast-math-typst.json",
+    "collection": "fast-math-typst",
+    "defaultOn": false
+  },
+  {
+    "file": "paper-structure.json",
+    "collection": "paper-structure",
+    "defaultOn": true
+  }
+]

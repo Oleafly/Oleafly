@@ -22,7 +22,7 @@ const TYPST_CITATION =
   /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_REFERENCE =
   /(?:#|(?<![\p{L}\p{N}_.-]))(?:ref|link)\s*\(\s*<[\p{L}\p{M}\p{N}_:.+/-]*$/u;
-const TYPST_SLASH_COMMAND = /(?:^|\s)\/[A-Za-z]*$/u;
+const SLASH_COMMAND_AFTER_SPACE = /(?:^|\s)\/[A-Za-z]*$/u;
 const TYPST_HASH_IDENTIFIER = /#[\p{L}_][\p{L}\p{M}\p{N}_-]*$/u;
 const TYPST_PATH_FUNCTION =
   /(?<![\p{L}\p{N}_.-])(?:image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*$/u;
@@ -132,7 +132,12 @@ function latexTriggered(before: string): boolean {
 }
 
 function markdownTriggered(before: string): boolean {
-  return MARKDOWN_ANCHOR.test(before) || AT_REFERENCE.test(before) || CHUNK_OPTION.test(before);
+  return (
+    MARKDOWN_ANCHOR.test(before) ||
+    AT_REFERENCE.test(before) ||
+    CHUNK_OPTION.test(before) ||
+    SLASH_COMMAND_AFTER_SPACE.test(before)
+  );
 }
 
 function typstPathArgument(before: string): boolean {
@@ -148,7 +153,7 @@ function typstTriggered(before: string): boolean {
     AT_REFERENCE.test(before) ||
     TYPST_CITATION.test(before) ||
     TYPST_REFERENCE.test(before) ||
-    TYPST_SLASH_COMMAND.test(before) ||
+    SLASH_COMMAND_AFTER_SPACE.test(before) ||
     TYPST_HASH_IDENTIFIER.test(before) ||
     CHUNK_OPTION.test(before) ||
     typstPathArgument(before)

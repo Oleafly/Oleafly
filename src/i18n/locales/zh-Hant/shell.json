@@ -316,6 +316,10 @@
       "keywords": "專注 無干擾 全螢幕 隱藏介面 極簡 寫作",
       "label": "切換禪模式"
     },
+    "fastMath": {
+      "keywords": "fast math 程式碼片段 片段 snippets 展開 輸入時 自動 分數 下標 希臘字母 公式",
+      "label": "切換 Fast math"
+    },
     "visualSettings": {
       "keywords": "外觀 字型 字型類型 文字大小 段落 縮排 間距 左右對齊 標題 寫作 appearance font typeface paragraph indent justify heading",
       "label": "視覺化模式設定"
@@ -404,6 +408,14 @@
     "addChapterFromProject": {
       "keywords": "學位論文 章 論文 匯入 合併 複製 專案",
       "label": "從其他專案加入一章"
+    },
+    "insertSnippet": {
+      "keywords": "程式碼片段 片段 snippets 範本 觸發詞 瀏覽 插入",
+      "label": "插入程式碼片段"
+    },
+    "saveSnippet": {
+      "keywords": "程式碼片段 片段 snippet 範本 儲存 選取範圍 重複使用",
+      "label": "將選取範圍儲存為程式碼片段"
     }
   },
   "community": {
@@ -763,7 +775,8 @@
       "projects": "搜尋你的專案",
       "refs": "開啟這個專案的參考文獻",
       "settings": "開啟設定",
-      "theme": "切換配色主題"
+      "theme": "切換配色主題",
+      "snippets": "瀏覽並插入程式碼片段"
     },
     "tryCommand": "試試指令",
     "unknownCommand": "未知的指令。輸入 / 可查看可用的指令。"
@@ -1117,7 +1130,8 @@
       "integrations": "整合",
       "shortcuts": "鍵盤快捷鍵",
       "research": "研究",
-      "logs": "記錄檔"
+      "logs": "記錄檔",
+      "snippets": "程式碼片段"
     },
     "search": {
       "empty": "沒有相符的設定",
@@ -1135,7 +1149,8 @@
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 代管，Computer Use，桌面應用程式，Cua，MCP，引用，帳號，連線",
         "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤",
         "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks",
-        "logs": "記錄檔，錯誤，警告，當機，建置，診斷，疑難排解，匯出記錄檔，偵錯，log，logs，app.log"
+        "logs": "記錄檔，錯誤，警告，當機，建置，診斷，疑難排解，匯出記錄檔，偵錯，log，logs，app.log",
+        "snippets": "觸發詞，範本，Fast math，輸入時展開，Tab，補完清單，斜線選單，@ 捷徑，VS Code 程式碼片段，匯入，片段包"
       },
       "label": "搜尋設定",
       "results_other": "{{count}} 個分區相符"
@@ -1692,5 +1707,70 @@
   "zoomIndicator": {
     "label": "縮放",
     "reset": "重設"
+  },
+  "snippets": {
+    "mySnippets": "我的程式碼片段",
+    "saveAsSnippet": "儲存為程式碼片段…",
+    "autoNote": "已展開 {{trigger}}。復原或按 Backspace 可還原。",
+    "fastMathTip": "開啟 Fast math 後，在公式中輸入 // 即可寫出分數。",
+    "turnOnFastMath": "開啟 Fast math",
+    "expands": {
+      "list": "清單",
+      "tab": "Tab",
+      "auto": "自動"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "筆記",
+      "any": "全部"
+    },
+    "places": {
+      "any": "任何位置",
+      "text": "文字",
+      "math": "公式",
+      "inline-math": "行內公式",
+      "display-math": "行間公式",
+      "code": "程式碼"
+    },
+    "palette": {
+      "placeholder": "依名稱、觸發詞或文字搜尋程式碼片段",
+      "insert": "插入",
+      "edit": "編輯",
+      "count": "{{shown}} / {{total}} 個",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "輸入 {{trigger}} 即可直接插入，不必開啟面板。",
+      "noMatches": "沒有相符的程式碼片段。"
+    },
+    "save": {
+      "title": "儲存為程式碼片段",
+      "name": "名稱",
+      "namePlaceholder": "結果表格",
+      "trigger": "觸發詞",
+      "triggerPlaceholder": "rtab",
+      "expands": "展開方式",
+      "found": "根據選取範圍偵測",
+      "fields": "將以下內容設為欄位",
+      "fieldsFound_other": "找到 {{count}} 個",
+      "noFields": "這裡沒有看起來像欄位的內容。你可以稍後在設定中新增欄位。",
+      "followsCaption": "跟隨說明文字",
+      "kinds": {
+        "caption": "說明文字",
+        "label": "標籤",
+        "cite": "引用",
+        "path": "檔案路徑",
+        "column-spec": "欄格式",
+        "number": "數字",
+        "title": "標題",
+        "table-body": "表格主體"
+      },
+      "preview": "預覽",
+      "saveTo": "儲存到",
+      "submit": "儲存程式碼片段",
+      "saved": "已儲存 {{name}}。",
+      "missingName": "請為程式碼片段命名。"
+    }
   }
 }

@@ -67,6 +67,13 @@ describe("settings search index", () => {
     expect(matchSettingsSections(index, SECTIONS, "zotero")).toEqual(["integrations"]);
   });
 
+  it("finds the Snippets section by its name, its switches and the words people use for it", () => {
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "snippets"))).toBe("snippets");
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "fast math"))).toBe("snippets");
+    expect(matchSettingsSections(index, SECTIONS, "tab expands a trigger")).toEqual(["snippets"]);
+    expect(rowLabels(index, "snippets")).toContain(enSettings.snippets.switches.hint.label);
+  });
+
   it("finds the settings file card in General by its words, not its error messages", () => {
     expect(matchSettingsSections(index, SECTIONS, "export settings")).toEqual(["general"]);
     expect(matchSettingsSections(index, SECTIONS, "settings json")).toContain("general");

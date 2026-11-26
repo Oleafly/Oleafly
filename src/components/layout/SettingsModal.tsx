@@ -11,6 +11,7 @@ import {
 import {
   Blocks,
   BookMarked,
+  Braces,
   BookOpen,
   Check,
   ChevronRight,
@@ -193,6 +194,11 @@ const CollaborationSection = lazy(
   { warm: () => intended("settings") },
 );
 
+const SnippetsSection = lazy(
+  () => import("@/components/settings/snippets/SnippetsSection").then((module) => ({ default: module.SnippetsSection })),
+  { warm: () => intended("settings") },
+);
+
 type Section = SettingsSearchSection;
 
 type DeveloperSettingsModule = typeof import("@/developer/DeveloperSettings");
@@ -228,6 +234,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
       return i18n.t(($) => $.shell.settings.nav.dictionary);
     },
     icon: BookMarked,
+  },
+  {
+    id: "snippets",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.snippets);
+    },
+    icon: Braces,
   },
   {
     id: "data",
@@ -903,6 +916,12 @@ export function SettingsModal() {
       {renderGeneralSection()}
 
       {section === "dictionary" && <DictionarySection />}
+
+      {section === "snippets" && (
+        <Suspense fallback={<LoadingState size="compact" label={t(($) => $.common.state.loading)} />}>
+          <SnippetsSection />
+        </Suspense>
+      )}
 
       {renderDataSection()}
 

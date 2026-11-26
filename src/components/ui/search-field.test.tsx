@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { ModalShell } from "./modal-shell";
 import { SearchField } from "./search-field";
 
 const copy = enWorkspace.tree;
@@ -53,5 +55,29 @@ describe("SearchField", () => {
     } finally {
       document.removeEventListener("keydown", outer);
     }
+  });
+
+  it("keeps the dialog around it open while Escape still has text to clear", () => {
+    const close = vi.fn();
+    function Filter({ clearOnEscape }: Readonly<{ clearOnEscape: boolean }>) {
+      const [value, setValue] = useState("fig");
+      return (
+        <ModalShell open onClose={close} closeLabel={"Close"}>
+          <SearchField value={value} onChange={setValue} label={LABEL} clearOnEscape={clearOnEscape} />
+        </ModalShell>
+      );
+    }
+    const { unmount } = render(<Filter clearOnEscape />);
+    const input = screen.getByRole("searchbox", { name: LABEL });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input).toHaveValue("");
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(close).toHaveBeenCalledOnce();
+    unmount();
+
+    render(<Filter clearOnEscape={false} />);
+    fireEvent.keyDown(screen.getByRole("searchbox", { name: LABEL }), { key: "Escape" });
+    expect(close).toHaveBeenCalledTimes(2);
   });
 });

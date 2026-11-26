@@ -317,6 +317,10 @@
       "keywords": "störningsfri fokus helskärm dölj gränssnitt minimal skriva",
       "label": "Växla Zen-läge"
     },
+    "fastMath": {
+      "keywords": "fast math kodsnuttar snippets infoga medan du skriver bråk index grekiska",
+      "label": "Växla Fast math"
+    },
     "visualSettings": {
       "keywords": "utseende typsnitt typsnittsstil text storlek stycke indrag avstånd marginaljustering rubrik skrivande",
       "label": "Inställningar för visuellt läge"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "avhandling kapitel artikel importera slå ihop kopiera projekt",
       "label": "Lägg till kapitel från ett annat projekt"
+    },
+    "insertSnippet": {
+      "keywords": "kodsnuttar snippets mallar utlösare bläddra infoga",
+      "label": "Infoga kodsnutt"
+    },
+    "saveSnippet": {
+      "keywords": "kodsnutt snippet mall spara markering återanvänd",
+      "label": "Spara markeringen som kodsnutt"
     }
   },
   "community": {
@@ -765,7 +777,8 @@
       "projects": "sök bland dina projekt",
       "refs": "öppna referenserna för det här projektet",
       "settings": "öppna inställningar",
-      "theme": "byt färgtema"
+      "theme": "byt färgtema",
+      "snippets": "bläddra bland och infoga kodsnuttar"
     },
     "tryCommand": "Prova ett kommando",
     "unknownCommand": "Okänt kommando. Skriv / för att se tillgängliga kommandon."
@@ -1133,7 +1146,8 @@
       "integrations": "Integrationer",
       "shortcuts": "Kortkommandon",
       "research": "Forskning",
-      "logs": "Loggar"
+      "logs": "Loggar",
+      "snippets": "Kodsnuttar"
     },
     "search": {
       "empty": "Inga inställningar matchar",
@@ -1151,7 +1165,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-värdtjänster, Computer Use, skrivbordsappar, Cua, MCP, citeringar, konton, anslutningar",
         "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord",
         "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar",
-        "logs": "logg, loggar, log, logs, fel, varningar, krascher, byggen, diagnostik, felsökning, exportera loggar, app.log, debug"
+        "logs": "logg, loggar, log, logs, fel, varningar, krascher, byggen, diagnostik, felsökning, exportera loggar, app.log, debug",
+        "snippets": "utlösare, mallar, Fast math, infoga medan du skriver, Tab, kompletteringslista, snedstrecksmeny, @-genvägar, kodsnuttar från VS Code, snippets, importera, paket"
       },
       "label": "Sök i inställningar",
       "results_one": "{{count}} avsnitt matchar",
@@ -1727,5 +1742,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Återställ"
+  },
+  "snippets": {
+    "mySnippets": "Mina kodsnuttar",
+    "saveAsSnippet": "Spara som kodsnutt…",
+    "autoNote": "{{trigger}} ersattes. Ångra eller Backspace ger tillbaka den.",
+    "fastMathTip": "Med Fast math påslaget skriver // ett bråk i matematik.",
+    "turnOnFastMath": "Slå på Fast math",
+    "expands": {
+      "list": "Lista",
+      "tab": "Tab",
+      "auto": "Automatisk"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Anteckningar",
+      "any": "Alla"
+    },
+    "places": {
+      "any": "Överallt",
+      "text": "Text",
+      "math": "Matematik",
+      "inline-math": "Matematik i löptext",
+      "display-math": "Matematik på egen rad",
+      "code": "Kod"
+    },
+    "palette": {
+      "placeholder": "Sök kodsnuttar efter namn, utlösare eller text",
+      "insert": "Infoga",
+      "edit": "Redigera",
+      "count": "{{shown}} av {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Skriv {{trigger}} för att få den här utan att öppna paletten.",
+      "noMatches": "Inga kodsnuttar matchar."
+    },
+    "save": {
+      "title": "Spara som kodsnutt",
+      "name": "Namn",
+      "namePlaceholder": "Resultattabell",
+      "trigger": "Utlösare",
+      "triggerPlaceholder": "rtab",
+      "expands": "Aktivering",
+      "found": "hittat i din markering",
+      "fields": "Gör dessa till fält",
+      "fieldsFound_one": "{{count}} hittades",
+      "fieldsFound_other": "{{count}} hittades",
+      "noFields": "Inget här ser ut som ett fält. Du kan lägga till fält senare i Inställningar.",
+      "followsCaption": "följer bildtexten",
+      "kinds": {
+        "caption": "bildtext",
+        "label": "etikett",
+        "cite": "citering",
+        "path": "sökväg",
+        "column-spec": "kolumnspecifikation",
+        "number": "tal",
+        "title": "rubrik",
+        "table-body": "tabellinnehåll"
+      },
+      "preview": "Förhandsvisning",
+      "saveTo": "Spara i",
+      "submit": "Spara kodsnutt",
+      "saved": "{{name}} sparades.",
+      "missingName": "Ge kodsnutten ett namn."
+    }
   }
 }

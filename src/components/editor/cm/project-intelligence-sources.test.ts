@@ -356,10 +356,10 @@ describe("completion source wiring", () => {
   it("chooses sources by file type", () => {
     expect(projectCompletionSourcesForPath(null)).toEqual([]);
     expect(projectCompletionSourcesForPath("image.png")).toEqual([]);
-    expect(projectCompletionSourcesForPath("main.tex")).toHaveLength(2);
+    expect(projectCompletionSourcesForPath("main.tex")).toEqual([projectIntelligenceCompletion]);
     expect(projectCompletionSourcesForPath("notes.md")).toEqual([projectIntelligenceCompletion]);
     expect(editorCompletionSourcesForPath(null, languageService)).toEqual([languageService]);
-    expect(editorCompletionSourcesForPath("main.tex", languageService)).toHaveLength(3);
+    expect(editorCompletionSourcesForPath("main.tex", languageService)).toHaveLength(2);
     expect(editorCompletionSourcesForPath("main.typ", languageService)).toHaveLength(1);
   });
 

@@ -16,7 +16,6 @@ import {
   latexCommandCompletions,
   setBibKeysProvider,
   setEditorDocumentPath,
-  slashCompletions,
 } from "@oleafly/editor";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
@@ -224,7 +223,6 @@ describe("project LaTeX completion revisions and argument parity", () => {
     );
     const project = synchronousProjectCompletion(context);
     latexCommandCompletions(context);
-    slashCompletions(context);
 
     const candidate = option(project, "classic");
     const view = new EditorView({

@@ -317,6 +317,10 @@
       "keywords": "dikkat dağıtmayan odak tam ekran arayüzü gizle sade yazı",
       "label": "Zen Kipini Aç/Kapat"
     },
+    "fastMath": {
+      "keywords": "fast math parçacık yazarken genişlet kesir alt simge yunan snippets expand fraction subscript greek",
+      "label": "Fast math özelliğini aç/kapat"
+    },
     "visualSettings": {
       "keywords": "görünüm yazı tipi yazı stili metin boyut paragraf girinti aralık yaslama başlık yazım",
       "label": "Görsel kip ayarları"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "tez bölüm makale içe aktar birleştir kopyala proje",
       "label": "Başka bir projeden bölüm ekle"
+    },
+    "insertSnippet": {
+      "keywords": "parçacıklar şablonlar tetikleyiciler göz at ekle snippets templates triggers insert",
+      "label": "Parçacık ekle"
+    },
+    "saveSnippet": {
+      "keywords": "parçacık şablon kaydet seçim yeniden kullan snippet template save selection",
+      "label": "Seçimi parçacık olarak kaydet"
     }
   },
   "community": {
@@ -765,7 +777,8 @@
       "projects": "projelerinizde arar",
       "refs": "bu projenin kaynaklarını açar",
       "settings": "ayarları açar",
-      "theme": "renk temasını değiştirir"
+      "theme": "renk temasını değiştirir",
+      "snippets": "parçacıklara göz atar ve ekler"
     },
     "tryCommand": "Bir komut deneyin",
     "unknownCommand": "Bilinmeyen komut. Kullanılabilir komutları görmek için / yazın."
@@ -1133,7 +1146,8 @@
       "integrations": "Tümleştirmeler",
       "shortcuts": "Klavye Kısayolları",
       "research": "Araştırma",
-      "logs": "Günlükler"
+      "logs": "Günlükler",
+      "snippets": "Parçacıklar"
     },
     "search": {
       "empty": "Eşleşen ayar yok",
@@ -1151,7 +1165,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git barındırma, Computer Use, masaüstü uygulamaları, Cua, MCP, atıflar, hesaplar, bağlantılar",
         "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye",
         "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks",
-        "logs": "günlük, günlükler, hatalar, uyarılar, çökmeler, derlemeler, tanılama, sorun giderme, günlükleri dışa aktar, app.log, hata ayıklama, log, logs"
+        "logs": "günlük, günlükler, hatalar, uyarılar, çökmeler, derlemeler, tanılama, sorun giderme, günlükleri dışa aktar, app.log, hata ayıklama, log, logs",
+        "snippets": "tetikleyiciler, şablonlar, Fast math, yazarken genişlet, Tab, tamamlama listesi, eğik çizgi menüsü, @ kısayolları, VS Code parçacıkları, içe aktar, paketler, snippets"
       },
       "label": "Ayarlarda ara",
       "results_one": "{{count}} bölüm eşleşiyor",
@@ -1727,5 +1742,71 @@
   "zoomIndicator": {
     "label": "Yakınlaştırma",
     "reset": "Sıfırla"
+  },
+  "snippets": {
+    "mySnippets": "Parçacıklarım",
+    "saveAsSnippet": "Parçacık olarak kaydet…",
+    "autoNote": "Genişletildi: {{trigger}}. Geri al veya Backspace onu geri getirir.",
+    "fastMathTip": "Fast math açıkken // matematikte kesir yazar.",
+    "turnOnFastMath": "Fast math özelliğini aç",
+    "expands": {
+      "list": "Liste",
+      "tab": "Tab",
+      "auto": "Otomatik"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notlar",
+      "any": "Herhangi"
+    },
+    "places": {
+      "any": "Her yerde",
+      "text": "Metin",
+      "math": "Matematik",
+      "inline-math": "Satır içi matematik",
+      "display-math": "Blok matematik",
+      "code": "Kod"
+    },
+    "palette": {
+      "placeholder": "Parçacıkları ada, tetikleyiciye veya metne göre ara",
+      "insert": "Ekle",
+      "edit": "Düzenle",
+      "count": "{{shown}}/{{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Paleti açmadan bunu almak için {{trigger}} yazın.",
+      "noMatches": "Eşleşen parçacık yok."
+    },
+    "save": {
+      "title": "Parçacık olarak kaydet",
+      "name": "Ad",
+      "namePlaceholder": "Sonuç tablosu",
+      "trigger": "Tetikleyici",
+      "triggerPlaceholder": "rtab",
+      "expands": "Genişleme",
+      "found": "seçiminizden algılandı",
+      "fields": "Bunları alana dönüştür",
+      "fieldsFound_one": "{{count}} bulundu",
+      "fieldsFound_other": "{{count}} bulundu",
+      "noFields": "Burada alana benzeyen bir şey yok. Alanları daha sonra Ayarlar'dan ekleyebilirsiniz.",
+      "followsCaption": "alt yazıyı izler",
+      "kinds": {
+        "caption": "alt yazı",
+        "label": "etiket",
+        "cite": "atıf",
+        "path": "dosya yolu",
+        "column-spec": "sütun belirtimi",
+        "number": "sayı",
+        "title": "başlık",
+        "table-body": "tablo gövdesi"
+      },
+      "preview": "Önizleme",
+      "saveTo": "Şuraya kaydet",
+      "submit": "Parçacığı kaydet",
+      "saved": "Kaydedildi: {{name}}.",
+      "missingName": "Parçacığa bir ad verin."
+    }
   }
 }

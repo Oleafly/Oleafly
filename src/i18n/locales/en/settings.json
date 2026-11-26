@@ -2879,5 +2879,182 @@
     "dialog": {
       "filterName": "Zip archive"
     }
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "In the completion list",
+        "description": "Show snippets beside commands"
+      },
+      "tab": {
+        "label": "Tab expands a trigger",
+        "description": "For snippets set to Tab"
+      },
+      "auto": {
+        "label": "Expand as you type",
+        "description": "For Auto snippets, like Fast math"
+      },
+      "hint": {
+        "label": "Show a hint while typing",
+        "description": "Names the snippet a trigger will insert. Tab inserts it."
+      }
+    },
+    "library": {
+      "title": "Your snippet library",
+      "collections": "Collections",
+      "all": "All snippets",
+      "mine": "Yours",
+      "packs": "Packs",
+      "builtIn": "Built-in",
+      "add": "Add packs or import…",
+      "useCollection": "Use {{name}}",
+      "search": "Search name, trigger or text",
+      "language": "Language",
+      "allLanguages": "All languages",
+      "expands": "Expands",
+      "anyExpand": "Any way",
+      "newSnippet": "New snippet",
+      "columns": {
+        "trigger": "Trigger",
+        "name": "Name",
+        "languages": "Languages",
+        "where": "Where",
+        "expands": "Expands"
+      },
+      "modified": "Modified",
+      "turnedOff": "Turned off",
+      "restore": "Restore",
+      "restoreLabel": "Restore {{name}}",
+      "wraps": "wraps",
+      "noTrigger": "none",
+      "noMatches": "No snippets match.",
+      "shown": "{{shown}} of {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_other": "{{count}} problems",
+      "where": "in {{file}}, line {{line}}: {{message}}",
+      "slowRegex": "The trigger of {{name}} took too long to check, so the snippet was turned off.",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "addDialog": {
+      "title": "Add snippets",
+      "packsTab": "Packs",
+      "importTab": "Import a file",
+      "count_one": "{{count}} snippet",
+      "count_other": "{{count}} snippets",
+      "source": "From {{source}}",
+      "licence": "{{licence}} licence",
+      "packNote": "Packs update with the app. Changes you make to a pack's snippets are kept separately.",
+      "packs": {
+        "fastMathLatex": "Expands as you type in math: fractions, subscripts and powers, Greek letters, operators and matrices. The triggers follow Gilles Castel's setup.",
+        "fastMathTypst": "The same triggers, written for Typst. It leaves out what Typst does already, like a/b for a fraction.",
+        "paperStructure": "Figures, subfigures, booktabs tables, equations, theorems, proofs and algorithms."
+      },
+      "useOn": "Use {{name}}",
+      "importIntro": "Choose a VS Code snippet file (.json or .code-snippets). It becomes a collection of its own, which you can turn off or change.",
+      "choose": "Choose a file",
+      "fileLabel": "Snippet file",
+      "imported_one": "Imported {{count}} snippet into {{collection}}.",
+      "imported_other": "Imported {{count}} snippets into {{collection}}.",
+      "nothing": "No snippets were found in {{file}}.",
+      "leftOut_one": "{{count}} entry was left out:",
+      "leftOut_other": "{{count}} entries were left out:"
+    },
+    "editor": {
+      "newTitle": "New snippet",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "turnOff": "Turn off",
+      "save": "Save",
+      "copyName": "{{name}} copy",
+      "name": "Name",
+      "namePlaceholder": "Figure with caption and label",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "fig",
+      "regex": "Regular expression",
+      "expands": "Expands",
+      "expandOptions": {
+        "list": "From the list",
+        "tab": "With Tab",
+        "auto": "As you type"
+      },
+      "expandHelp": {
+        "list": "It shows in the completion list. Pick it there to insert it.",
+        "tab": "Type {{trigger}} and press Tab. It also shows in the completion list.",
+        "auto": "It expands as soon as you type {{trigger}}. Undo or Backspace gives the trigger back."
+      },
+      "languages": "Languages",
+      "where": "Where",
+      "whereOptions": {
+        "any": "Anywhere",
+        "text": "Text",
+        "math": "Math",
+        "code": "Code"
+      },
+      "mathKinds": {
+        "math": "Both",
+        "inline-math": "Inline",
+        "display-math": "Display"
+      },
+      "mathKind": "Kind of math",
+      "whereHelp": {
+        "any": "Anywhere in the file.",
+        "text": "Text: outside math, comments and verbatim.",
+        "math": "Math: inside inline or display math.",
+        "code": "Code: inside Typst code or Markdown code blocks."
+      },
+      "firesOnly": "Fires only",
+      "wholeWord": "as a whole word",
+      "lineStart": "at the start of a line",
+      "collection": "Collection",
+      "keptSeparately": "Your changes are kept separately, so updates to {{collection}} still reach you.",
+      "body": "Text it inserts",
+      "anyLanguage": "Any language",
+      "addField": "+ Field",
+      "addChoice": "+ Choice",
+      "choiceText": "first,second",
+      "variable": "Variable",
+      "projectField": "Project field",
+      "variables": {
+        "SELECTION": "Selected text",
+        "CLIPBOARD": "Clipboard",
+        "DATE": "Today's date",
+        "TM_FILENAME": "File name",
+        "PROJECT_NAME": "Project name"
+      },
+      "projectFields": {
+        "image": "Image",
+        "label": "Label",
+        "cite": "Citation",
+        "ref": "Reference",
+        "file": "File"
+      },
+      "chipsNote": "Fields show as chips.",
+      "showSyntax": "Show syntax",
+      "missingName": "Give the snippet a name.",
+      "missingBody": "Write the text the snippet inserts.",
+      "sameTrigger": "{{list}} also uses {{trigger}}. The closest collection wins.",
+      "sharedStart": "Shares its start with {{list}}. They all show in the list, and Tab picks the exact match, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Delete {{name}}?",
+        "description": "This removes it from {{collection}}.",
+        "action": "Delete"
+      },
+      "tryIt": {
+        "title": "Try it",
+        "howAuto": "Type {{trigger}} and it expands.",
+        "howTab": "Type {{trigger}}, then press Tab.",
+        "howList": "Type {{trigger}}, press Ctrl+Space and pick it from the list.",
+        "noTrigger": "This snippet has no trigger. Insert it from the command palette with /snippets.",
+        "inText": "in text",
+        "inMath": "in math",
+        "fires": "Fires here: {{language}}, {{place}}.",
+        "notLanguage": "Would not fire in {{language}}. It isn't one of this snippet's languages.",
+        "notPlace": "Would not fire {{place}}. The Where setting doesn't allow it."
+      }
+    }
   }
 }

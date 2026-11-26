@@ -2879,5 +2879,182 @@
     "count_other": "{{count}} oppføringer",
     "filteredCount_one": "{{shown}} av {{count}} oppføring",
     "filteredCount_other": "{{shown}} av {{count}} oppføringer"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "I fullføringslisten",
+        "description": "Vis kodebiter ved siden av kommandoer"
+      },
+      "tab": {
+        "label": "Tab erstatter en utløser",
+        "description": "For kodebiter som er satt til Tab"
+      },
+      "auto": {
+        "label": "Sett inn mens du skriver",
+        "description": "For automatiske kodebiter, som Fast math"
+      },
+      "hint": {
+        "label": "Vis et tips mens du skriver",
+        "description": "Viser hvilken kodebit en utløser vil sette inn. Tab setter den inn."
+      }
+    },
+    "library": {
+      "title": "Biblioteket ditt med kodebiter",
+      "collections": "Samlinger",
+      "all": "Alle kodebiter",
+      "mine": "Dine",
+      "packs": "Pakker",
+      "builtIn": "Innebygd",
+      "add": "Legg til pakker eller importer…",
+      "useCollection": "Bruk {{name}}",
+      "search": "Søk i navn, utløser eller tekst",
+      "language": "Språk",
+      "allLanguages": "Alle språk",
+      "expands": "Aktivering",
+      "anyExpand": "Alle måter",
+      "newSnippet": "Ny kodebit",
+      "columns": {
+        "trigger": "Utløser",
+        "name": "Navn",
+        "languages": "Språk",
+        "where": "Hvor",
+        "expands": "Aktivering"
+      },
+      "modified": "Endret",
+      "turnedOff": "Slått av",
+      "restore": "Gjenopprett",
+      "restoreLabel": "Gjenopprett {{name}}",
+      "wraps": "omslutter",
+      "noTrigger": "ingen",
+      "noMatches": "Ingen kodebiter passer.",
+      "shown": "{{shown}} av {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_other": "{{count}} problemer",
+      "where": "i {{file}}, linje {{line}}: {{message}}",
+      "slowRegex": "Det tok for lang tid å sjekke utløseren til {{name}}. Derfor ble kodebiten slått av.",
+      "show": "Vis",
+      "hide": "Skjul"
+    },
+    "addDialog": {
+      "title": "Legg til kodebiter",
+      "packsTab": "Pakker",
+      "importTab": "Importer en fil",
+      "count_one": "{{count}} kodebit",
+      "count_other": "{{count}} kodebiter",
+      "source": "Fra {{source}}",
+      "licence": "{{licence}}-lisens",
+      "packNote": "Pakker oppdateres sammen med appen. Endringer du gjør i kodebitene i en pakke, lagres for seg.",
+      "packs": {
+        "fastMathLatex": "Setter inn mens du skriver matematikk: brøker, senket skrift og potenser, greske bokstaver, operatorer og matriser. Utløserne følger oppsettet til Gilles Castel.",
+        "fastMathTypst": "De samme utløserne, skrevet for Typst. Det Typst allerede gjør selv, som a/b for en brøk, er utelatt.",
+        "paperStructure": "Figurer, underfigurer, booktabs-tabeller, ligninger, teoremer, bevis og algoritmer."
+      },
+      "useOn": "Bruk {{name}}",
+      "importIntro": "Velg en fil med kodebiter fra VS Code (.json eller .code-snippets). Den blir en egen samling, som du kan slå av eller endre.",
+      "choose": "Velg en fil",
+      "fileLabel": "Fil med kodebiter",
+      "imported_one": "Importerte {{count}} kodebit til {{collection}}.",
+      "imported_other": "Importerte {{count}} kodebiter til {{collection}}.",
+      "nothing": "Fant ingen kodebiter i {{file}}.",
+      "leftOut_one": "{{count}} oppføring ble utelatt:",
+      "leftOut_other": "{{count}} oppføringer ble utelatt:"
+    },
+    "editor": {
+      "newTitle": "Ny kodebit",
+      "duplicate": "Dupliser",
+      "delete": "Slett",
+      "turnOff": "Slå av",
+      "save": "Lagre",
+      "copyName": "Kopi av {{name}}",
+      "name": "Navn",
+      "namePlaceholder": "Figur med bildetekst og etikett",
+      "trigger": "Utløser",
+      "triggerPlaceholder": "fig",
+      "regex": "Regulært uttrykk",
+      "expands": "Aktivering",
+      "expandOptions": {
+        "list": "Fra listen",
+        "tab": "Med Tab",
+        "auto": "Mens du skriver"
+      },
+      "expandHelp": {
+        "list": "Den vises i fullføringslisten. Velg den der for å sette den inn.",
+        "tab": "Skriv {{trigger}} og trykk Tab. Den vises også i fullføringslisten.",
+        "auto": "Den settes inn så snart du skriver {{trigger}}. Angre eller Backspace gir deg utløseren tilbake."
+      },
+      "languages": "Språk",
+      "where": "Hvor",
+      "whereOptions": {
+        "any": "Overalt",
+        "text": "Tekst",
+        "math": "Matematikk",
+        "code": "Kode"
+      },
+      "mathKinds": {
+        "math": "Begge",
+        "inline-math": "I linjen",
+        "display-math": "I egen blokk"
+      },
+      "mathKind": "Type matematikk",
+      "whereHelp": {
+        "any": "Hvor som helst i filen.",
+        "text": "Tekst: utenfor matematikk, kommentarer og verbatim.",
+        "math": "Matematikk: inne i matematikk i linjen eller i egen blokk.",
+        "code": "Kode: inne i Typst-kode eller kodeblokker i Markdown."
+      },
+      "firesOnly": "Aktiveres bare",
+      "wholeWord": "som et helt ord",
+      "lineStart": "i starten av en linje",
+      "collection": "Samling",
+      "keptSeparately": "Endringene dine lagres for seg, så oppdateringer av {{collection}} når deg fortsatt.",
+      "body": "Tekst den setter inn",
+      "anyLanguage": "Alle språk",
+      "addField": "+ Felt",
+      "addChoice": "+ Valg",
+      "choiceText": "første,andre",
+      "variable": "Variabel",
+      "projectField": "Prosjektfelt",
+      "variables": {
+        "SELECTION": "Merket tekst",
+        "CLIPBOARD": "Utklippstavle",
+        "DATE": "Dagens dato",
+        "TM_FILENAME": "Filnavn",
+        "PROJECT_NAME": "Prosjektnavn"
+      },
+      "projectFields": {
+        "image": "Bilde",
+        "label": "Etikett",
+        "cite": "Sitering",
+        "ref": "Referanse",
+        "file": "Fil"
+      },
+      "chipsNote": "Felt vises som brikker.",
+      "showSyntax": "Vis syntaks",
+      "missingName": "Gi kodebiten et navn.",
+      "missingBody": "Skriv teksten kodebiten setter inn.",
+      "sameTrigger": "{{list}} bruker også {{trigger}}. Den nærmeste samlingen vinner.",
+      "sharedStart": "Starter likt med {{list}}. Alle vises i listen, og Tab velger det nøyaktige treffet, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Slette {{name}}?",
+        "description": "Den fjernes fra {{collection}}.",
+        "action": "Slett"
+      },
+      "tryIt": {
+        "title": "Prøv den",
+        "howAuto": "Skriv {{trigger}}, så settes den inn.",
+        "howTab": "Skriv {{trigger}}, og trykk deretter Tab.",
+        "howList": "Skriv {{trigger}}, trykk Ctrl+Space og velg den i listen.",
+        "noTrigger": "Denne kodebiten har ingen utløser. Sett den inn fra kommandopaletten med /snippets.",
+        "inText": "i tekst",
+        "inMath": "i matematikk",
+        "fires": "Aktiveres her: {{language}}, {{place}}.",
+        "notLanguage": "Ville ikke blitt aktivert i {{language}}. Det er ikke ett av språkene til denne kodebiten.",
+        "notPlace": "Ville ikke blitt aktivert {{place}}. Innstillingen «Hvor» tillater det ikke."
+      }
+    }
   }
 }

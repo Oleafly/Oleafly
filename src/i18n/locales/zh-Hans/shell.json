@@ -316,6 +316,10 @@
       "keywords": "专注 无干扰 全屏 隐藏界面 极简 写作",
       "label": "切换禅模式"
     },
+    "fastMath": {
+      "keywords": "fast math 代码片段 片段 snippets 展开 输入时 自动 分式 分数 下标 希腊字母 公式",
+      "label": "切换 Fast math"
+    },
     "visualSettings": {
       "keywords": "外观 字体 字体类型 文字大小 段落 缩进 间距 两端对齐 标题 写作",
       "label": "可视化模式设置"
@@ -404,6 +408,14 @@
     "addChapterFromProject": {
       "keywords": "学位论文 章 论文 导入 合并 复制 项目",
       "label": "从其他项目添加一章"
+    },
+    "insertSnippet": {
+      "keywords": "代码片段 片段 snippets 模板 触发词 浏览 插入",
+      "label": "插入代码片段"
+    },
+    "saveSnippet": {
+      "keywords": "代码片段 片段 snippet 模板 保存 选区 复用",
+      "label": "将选区保存为代码片段"
     }
   },
   "community": {
@@ -763,7 +775,8 @@
       "projects": "搜索你的项目",
       "refs": "打开此项目的参考文献。",
       "settings": "打开设置",
-      "theme": "切换配色主题。"
+      "theme": "切换配色主题。",
+      "snippets": "浏览并插入代码片段"
     },
     "tryCommand": "试试命令",
     "unknownCommand": "未知命令。输入 / 查看可用命令。"
@@ -1117,7 +1130,8 @@
       "integrations": "集成",
       "shortcuts": "键盘快捷键",
       "research": "研究",
-      "logs": "日志"
+      "logs": "日志",
+      "snippets": "代码片段"
     },
     "search": {
       "empty": "没有匹配的设置",
@@ -1135,7 +1149,8 @@
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，Computer Use，桌面应用，Cua，MCP，引用，账户，连接",
         "shortcuts": "按键绑定，快捷键，热键，按键，键盘",
         "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks",
-        "logs": "日志，错误，警告，崩溃，构建，诊断，故障排查，导出日志，调试，log，logs，app.log"
+        "logs": "日志，错误，警告，崩溃，构建，诊断，故障排查，导出日志，调试，log，logs，app.log",
+        "snippets": "触发词，模板，Fast math，输入时展开，Tab，补全列表，斜杠菜单，@ 快捷方式，VS Code 代码片段，导入，片段包"
       },
       "label": "搜索设置",
       "results_other": "{{count}} 个分区匹配"
@@ -1692,5 +1707,70 @@
   "zoomIndicator": {
     "label": "缩放",
     "reset": "重置"
+  },
+  "snippets": {
+    "mySnippets": "我的代码片段",
+    "saveAsSnippet": "保存为代码片段…",
+    "autoNote": "已展开 {{trigger}}。撤销或按 Backspace 可恢复。",
+    "fastMathTip": "开启 Fast math 后，在公式中输入 // 即可写出分式。",
+    "turnOnFastMath": "开启 Fast math",
+    "expands": {
+      "list": "列表",
+      "tab": "Tab",
+      "auto": "自动"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "笔记",
+      "any": "全部"
+    },
+    "places": {
+      "any": "任意位置",
+      "text": "文本",
+      "math": "公式",
+      "inline-math": "行内公式",
+      "display-math": "行间公式",
+      "code": "代码"
+    },
+    "palette": {
+      "placeholder": "按名称、触发词或文本搜索代码片段",
+      "insert": "插入",
+      "edit": "编辑",
+      "count": "{{shown}} / {{total}} 个",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "输入 {{trigger}} 即可直接插入，无需打开面板。",
+      "noMatches": "没有匹配的代码片段。"
+    },
+    "save": {
+      "title": "保存为代码片段",
+      "name": "名称",
+      "namePlaceholder": "结果表格",
+      "trigger": "触发词",
+      "triggerPlaceholder": "rtab",
+      "expands": "展开方式",
+      "found": "根据选区识别",
+      "fields": "将以下内容设为字段",
+      "fieldsFound_other": "找到 {{count}} 个",
+      "noFields": "这里没有像字段的内容。你可以稍后在设置中添加字段。",
+      "followsCaption": "跟随题注",
+      "kinds": {
+        "caption": "题注",
+        "label": "标签",
+        "cite": "引用",
+        "path": "文件路径",
+        "column-spec": "列格式",
+        "number": "数字",
+        "title": "标题",
+        "table-body": "表格主体"
+      },
+      "preview": "预览",
+      "saveTo": "保存到",
+      "submit": "保存代码片段",
+      "saved": "已保存 {{name}}。",
+      "missingName": "请为代码片段命名。"
+    }
   }
 }

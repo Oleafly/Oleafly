@@ -1,5 +1,4 @@
 import {
-  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -20,6 +19,7 @@ import {
 } from "./completion-trigger";
 import { guardCompletionForSource } from "./latex";
 import { editorMessage } from "./messages";
+import { templateApply } from "./snippets/template";
 
 const ENTRY_TYPE_BEFORE = /(?:^|\n)[ \t]*@([A-Za-z]*)$/u;
 const ENTRY_OPENER = /@([A-Za-z][A-Za-z0-9_-]*)[ \t]*([{(])/gu;
@@ -48,13 +48,13 @@ function entryTypeOptions(guard: CompletionRequestGuard): Completion[] {
     label: `@${type.name}`,
     type: "type",
     detail: editorMessage("bibtex.completion.entryType"),
-    apply: snippet(entrySnippet(type.name)),
+    apply: templateApply(entrySnippet(type.name)),
   }));
   const directives = BIBTEX_DIRECTIVES.map((name) => ({
     label: `@${name}`,
     type: "keyword",
     detail: editorMessage("bibtex.completion.directive"),
-    apply: snippet(DIRECTIVE_TEMPLATES[name]),
+    apply: templateApply(DIRECTIVE_TEMPLATES[name]),
   }));
   return [...entries, ...directives].map((option) =>
     guardCompletionForSource(guard, option),
@@ -163,7 +163,7 @@ export function bibtexFieldCompletions(
             : "bibtex.completion.optionalField",
         ),
         boost: required.has(field) ? 1 : 0,
-        apply: snippet(`${field} = {\${1}}`),
+        apply: templateApply(`${field} = {\${1}}`),
       }),
     ),
   };

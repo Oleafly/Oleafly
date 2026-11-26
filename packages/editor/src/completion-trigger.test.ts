@@ -18,6 +18,7 @@ describe("completion lexical triggers", () => {
     ["latex", "/sec"],
     ["markdown", "[Jump](#intro"],
     ["markdown", "See @knuth"],
+    ["markdown", "Intro /tab"],
     ["typst", "See @knuth"],
     ["typst", "#cite(<knuth"],
     ["typst", "#ref(<intro"],

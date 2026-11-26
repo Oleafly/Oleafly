@@ -2931,5 +2931,190 @@
     "filteredCount_many": "{{shown}} z {{count}} záznamu",
     "filteredCount_one": "{{shown}} z {{count}} záznamu",
     "filteredCount_other": "{{shown}} z {{count}} záznamů"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "V seznamu doplňování",
+        "description": "Zobrazovat úryvky vedle příkazů"
+      },
+      "tab": {
+        "label": "Tab rozbalí spouštěč",
+        "description": "Pro úryvky rozbalované klávesou Tab"
+      },
+      "auto": {
+        "label": "Rozbalovat při psaní",
+        "description": "Pro úryvky typu Auto, například Fast math"
+      },
+      "hint": {
+        "label": "Zobrazovat nápovědu při psaní",
+        "description": "Ukáže název úryvku, který se po napsání spouštěče vloží. Tab ho vloží."
+      }
+    },
+    "library": {
+      "title": "Vaše knihovna úryvků",
+      "collections": "Kolekce",
+      "all": "Všechny úryvky",
+      "mine": "Vaše",
+      "packs": "Balíčky",
+      "builtIn": "Vestavěné",
+      "add": "Přidat balíčky nebo importovat…",
+      "useCollection": "Používat kolekci {{name}}",
+      "search": "Hledat podle názvu, spouštěče nebo textu",
+      "language": "Jazyk",
+      "allLanguages": "Všechny jazyky",
+      "expands": "Rozbalení",
+      "anyExpand": "Jakékoli",
+      "newSnippet": "Nový úryvek",
+      "columns": {
+        "trigger": "Spouštěč",
+        "name": "Název",
+        "languages": "Jazyky",
+        "where": "Kde",
+        "expands": "Rozbalení"
+      },
+      "modified": "Upraveno",
+      "turnedOff": "Vypnuto",
+      "restore": "Obnovit",
+      "restoreLabel": "Obnovit: {{name}}",
+      "wraps": "obaluje",
+      "noTrigger": "žádný",
+      "noMatches": "Žádné úryvky neodpovídají.",
+      "shown": "{{shown}} z {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problém",
+      "summary_few": "{{count}} problémy",
+      "summary_many": "{{count}} problému",
+      "summary_other": "{{count}} problémů",
+      "where": "v {{file}}, řádek {{line}}: {{message}}",
+      "slowRegex": "Kontrola spouštěče úryvku „{{name}}“ trvala příliš dlouho, a proto byl úryvek vypnut.",
+      "show": "Zobrazit",
+      "hide": "Skrýt"
+    },
+    "addDialog": {
+      "title": "Přidat úryvky",
+      "packsTab": "Balíčky",
+      "importTab": "Import souboru",
+      "count_one": "{{count}} úryvek",
+      "count_few": "{{count}} úryvky",
+      "count_many": "{{count}} úryvku",
+      "count_other": "{{count}} úryvků",
+      "source": "Zdroj: {{source}}",
+      "licence": "Licence {{licence}}",
+      "packNote": "Balíčky se aktualizují spolu s aplikací. Změny, které v úryvcích balíčku uděláte, se ukládají zvlášť.",
+      "packs": {
+        "fastMathLatex": "Rozbaluje se při psaní v matematice: zlomky, indexy a mocniny, řecká písmena, operátory a matice. Spouštěče vycházejí z nastavení, které používal Gilles Castel.",
+        "fastMathTypst": "Stejné spouštěče, napsané pro Typst. Vynechává to, co Typst umí sám, například a/b pro zlomek.",
+        "paperStructure": "Obrázky, podobrázky, tabulky booktabs, rovnice, věty, důkazy a algoritmy."
+      },
+      "useOn": "Používat balíček {{name}}",
+      "importIntro": "Vyberte soubor úryvků VS Code (.json nebo .code-snippets). Stane se samostatnou kolekcí, kterou můžete vypnout nebo upravit.",
+      "choose": "Vybrat soubor",
+      "fileLabel": "Soubor úryvků",
+      "imported_one": "Do kolekce {{collection}} byl importován {{count}} úryvek.",
+      "imported_few": "Do kolekce {{collection}} byly importovány {{count}} úryvky.",
+      "imported_many": "Do kolekce {{collection}} bylo importováno {{count}} úryvku.",
+      "imported_other": "Do kolekce {{collection}} bylo importováno {{count}} úryvků.",
+      "nothing": "V souboru {{file}} nebyly nalezeny žádné úryvky.",
+      "leftOut_one": "Byla vynechána {{count}} položka:",
+      "leftOut_few": "Byly vynechány {{count}} položky:",
+      "leftOut_many": "Bylo vynecháno {{count}} položky:",
+      "leftOut_other": "Bylo vynecháno {{count}} položek:"
+    },
+    "editor": {
+      "newTitle": "Nový úryvek",
+      "duplicate": "Duplikovat",
+      "delete": "Smazat",
+      "turnOff": "Vypnout",
+      "save": "Uložit",
+      "copyName": "{{name}} (kopie)",
+      "name": "Název",
+      "namePlaceholder": "Obrázek s popiskem a návěštím",
+      "trigger": "Spouštěč",
+      "triggerPlaceholder": "fig",
+      "regex": "Regulární výraz",
+      "expands": "Rozbalení",
+      "expandOptions": {
+        "list": "Ze seznamu",
+        "tab": "Klávesou Tab",
+        "auto": "Při psaní"
+      },
+      "expandHelp": {
+        "list": "Úryvek se zobrazí v seznamu doplňování. Vložíte ho tak, že ho tam vyberete.",
+        "tab": "Napište {{trigger}} a stiskněte Tab. Úryvek se zobrazí i v seznamu doplňování.",
+        "auto": "Úryvek se rozbalí hned, jak napíšete {{trigger}}. Zpět nebo Backspace vrátí spouštěč."
+      },
+      "languages": "Jazyky",
+      "where": "Kde",
+      "whereOptions": {
+        "any": "Kdekoli",
+        "text": "Text",
+        "math": "Matematika",
+        "code": "Kód"
+      },
+      "mathKinds": {
+        "math": "Obojí",
+        "inline-math": "V řádku",
+        "display-math": "Na samostatném řádku"
+      },
+      "mathKind": "Druh matematiky",
+      "whereHelp": {
+        "any": "Kdekoli v souboru.",
+        "text": "Text: mimo matematiku, komentáře a prostředí verbatim.",
+        "math": "Matematika: uvnitř matematiky v řádku nebo na samostatném řádku.",
+        "code": "Kód: uvnitř kódu Typst nebo bloků kódu Markdown."
+      },
+      "firesOnly": "Spouští se jen",
+      "wholeWord": "jako celé slovo",
+      "lineStart": "na začátku řádku",
+      "collection": "Kolekce",
+      "keptSeparately": "Vaše změny se ukládají zvlášť, takže aktualizace kolekce {{collection}} k vám budou dál přicházet.",
+      "body": "Vkládaný text",
+      "anyLanguage": "Jakýkoli jazyk",
+      "addField": "+ Pole",
+      "addChoice": "+ Výběr",
+      "choiceText": "první,druhý",
+      "variable": "Proměnná",
+      "projectField": "Pole projektu",
+      "variables": {
+        "SELECTION": "Vybraný text",
+        "CLIPBOARD": "Schránka",
+        "DATE": "Dnešní datum",
+        "TM_FILENAME": "Název souboru",
+        "PROJECT_NAME": "Název projektu"
+      },
+      "projectFields": {
+        "image": "Obrázek",
+        "label": "Návěští",
+        "cite": "Citace",
+        "ref": "Křížový odkaz",
+        "file": "Soubor"
+      },
+      "chipsNote": "Pole se zobrazují jako štítky.",
+      "showSyntax": "Zobrazit syntaxi",
+      "missingName": "Pojmenujte úryvek.",
+      "missingBody": "Napište text, který úryvek vkládá.",
+      "sameTrigger": "Spouštěč {{trigger}} mají i jiné úryvky: {{list}}. Přednost má nejbližší kolekce.",
+      "sharedStart": "Začíná stejně jako: {{list}}. Všechny se zobrazí v seznamu a Tab vybere přesnou shodu, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Smazat „{{name}}“?",
+        "description": "Úryvek se odstraní z kolekce {{collection}}.",
+        "action": "Smazat"
+      },
+      "tryIt": {
+        "title": "Vyzkoušet",
+        "howAuto": "Napište {{trigger}} a úryvek se rozbalí.",
+        "howTab": "Napište {{trigger}} a pak stiskněte Tab.",
+        "howList": "Napište {{trigger}}, stiskněte Ctrl+Space a vyberte úryvek ze seznamu.",
+        "noTrigger": "Tento úryvek nemá spouštěč. Vložte ho z palety příkazů pomocí /snippets.",
+        "inText": "v textu",
+        "inMath": "v matematice",
+        "fires": "Spustí se tady: {{language}}, {{place}}.",
+        "notLanguage": "Tady se nespustí: {{language}} nepatří mezi jazyky tohoto úryvku.",
+        "notPlace": "Nespustí se {{place}}. Nastavení „Kde“ to nedovoluje."
+      }
+    }
   }
 }

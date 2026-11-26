@@ -2905,5 +2905,186 @@
     "filteredCount_few": "{{shown}} din {{count}} intrări",
     "filteredCount_one": "{{shown}} din {{count}} intrare",
     "filteredCount_other": "{{shown}} din {{count}} de intrări"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "În lista de completări",
+        "description": "Arată fragmentele lângă comenzi"
+      },
+      "tab": {
+        "label": "Tab extinde un declanșator",
+        "description": "Pentru fragmentele setate pe Tab"
+      },
+      "auto": {
+        "label": "Extinde la tastare",
+        "description": "Pentru fragmentele în modul Auto, precum Fast math"
+      },
+      "hint": {
+        "label": "Arată un indiciu la tastare",
+        "description": "Numește fragmentul pe care îl va insera un declanșator. Tab îl inserează."
+      }
+    },
+    "library": {
+      "title": "Biblioteca ta de fragmente",
+      "collections": "Colecții",
+      "all": "Toate fragmentele",
+      "mine": "Ale tale",
+      "packs": "Pachete",
+      "builtIn": "Incluse",
+      "add": "Adaugă pachete sau importă…",
+      "useCollection": "Folosește {{name}}",
+      "search": "Caută după nume, declanșator sau text",
+      "language": "Limbaj",
+      "allLanguages": "Toate limbajele",
+      "expands": "Extindere",
+      "anyExpand": "Oricare",
+      "newSnippet": "Fragment nou",
+      "columns": {
+        "trigger": "Declanșator",
+        "name": "Nume",
+        "languages": "Limbaje",
+        "where": "Context",
+        "expands": "Extindere"
+      },
+      "modified": "Modificat",
+      "turnedOff": "Dezactivat",
+      "restore": "Restabilește",
+      "restoreLabel": "Restabilește {{name}}",
+      "wraps": "încadrează",
+      "noTrigger": "niciunul",
+      "noMatches": "Niciun fragment nu se potrivește.",
+      "shown": "{{shown}} din {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problemă",
+      "summary_few": "{{count}} probleme",
+      "summary_other": "{{count}} de probleme",
+      "where": "în {{file}}, linia {{line}}: {{message}}",
+      "slowRegex": "Verificarea declanșatorului fragmentului {{name}} a durat prea mult, așa că fragmentul a fost dezactivat.",
+      "show": "Arată",
+      "hide": "Ascunde"
+    },
+    "addDialog": {
+      "title": "Adaugă fragmente",
+      "packsTab": "Pachete",
+      "importTab": "Importă un fișier",
+      "count_one": "{{count}} fragment",
+      "count_few": "{{count}} fragmente",
+      "count_other": "{{count}} de fragmente",
+      "source": "Sursa: {{source}}",
+      "licence": "Licența {{licence}}",
+      "packNote": "Pachetele se actualizează odată cu aplicația. Modificările pe care le faci în fragmentele unui pachet sunt păstrate separat.",
+      "packs": {
+        "fastMathLatex": "Se extinde pe măsură ce tastezi în formule: fracții, indici și puteri, litere grecești, operatori și matrice. Declanșatoarele urmează configurația lui Gilles Castel.",
+        "fastMathTypst": "Aceleași declanșatoare, scrise pentru Typst. Lasă deoparte ce face deja Typst, cum ar fi a/b pentru o fracție.",
+        "paperStructure": "Figuri, subfiguri, tabele booktabs, ecuații, teoreme, demonstrații și algoritmi."
+      },
+      "useOn": "Folosește {{name}}",
+      "importIntro": "Alege un fișier de fragmente VS Code (.json sau .code-snippets). Devine o colecție separată, pe care o poți dezactiva sau modifica.",
+      "choose": "Alege un fișier",
+      "fileLabel": "Fișier de fragmente",
+      "imported_one": "{{count}} fragment importat în colecția {{collection}}.",
+      "imported_few": "{{count}} fragmente importate în colecția {{collection}}.",
+      "imported_other": "{{count}} de fragmente importate în colecția {{collection}}.",
+      "nothing": "Nu s-au găsit fragmente în {{file}}.",
+      "leftOut_one": "{{count}} intrare a fost omisă:",
+      "leftOut_few": "{{count}} intrări au fost omise:",
+      "leftOut_other": "{{count}} de intrări au fost omise:"
+    },
+    "editor": {
+      "newTitle": "Fragment nou",
+      "duplicate": "Duplică",
+      "delete": "Șterge",
+      "turnOff": "Dezactivează",
+      "save": "Salvează",
+      "copyName": "{{name}} (copie)",
+      "name": "Nume",
+      "namePlaceholder": "Figură cu legendă și etichetă",
+      "trigger": "Declanșator",
+      "triggerPlaceholder": "fig",
+      "regex": "Expresie regulată",
+      "expands": "Extindere",
+      "expandOptions": {
+        "list": "Din listă",
+        "tab": "Cu Tab",
+        "auto": "La tastare"
+      },
+      "expandHelp": {
+        "list": "Apare în lista de completări. Alege-l de acolo ca să-l inserezi.",
+        "tab": "Tastează {{trigger}} și apasă Tab. Apare și în lista de completări.",
+        "auto": "Se extinde imediat ce tastezi {{trigger}}. Anulează sau Backspace readuce declanșatorul."
+      },
+      "languages": "Limbaje",
+      "where": "Context",
+      "whereOptions": {
+        "any": "Oriunde",
+        "text": "Text",
+        "math": "Formule",
+        "code": "Cod"
+      },
+      "mathKinds": {
+        "math": "Ambele",
+        "inline-math": "În text",
+        "display-math": "Pe rând separat"
+      },
+      "mathKind": "Tipul de formulă",
+      "whereHelp": {
+        "any": "Oriunde în fișier.",
+        "text": "Text: în afara formulelor, a comentariilor și a textului verbatim.",
+        "math": "Formule: în formulele din text sau pe rând separat.",
+        "code": "Cod: în codul Typst sau în blocurile de cod Markdown."
+      },
+      "firesOnly": "Se declanșează doar",
+      "wholeWord": "ca un cuvânt întreg",
+      "lineStart": "la început de rând",
+      "collection": "Colecție",
+      "keptSeparately": "Modificările tale sunt păstrate separat, așa că actualizările colecției {{collection}} ajung în continuare la tine.",
+      "body": "Textul inserat",
+      "anyLanguage": "Orice limbaj",
+      "addField": "+ Câmp",
+      "addChoice": "+ Variantă",
+      "choiceText": "unu,doi",
+      "variable": "Variabilă",
+      "projectField": "Câmp de proiect",
+      "variables": {
+        "SELECTION": "Textul selectat",
+        "CLIPBOARD": "Clipboard",
+        "DATE": "Data de azi",
+        "TM_FILENAME": "Numele fișierului",
+        "PROJECT_NAME": "Numele proiectului"
+      },
+      "projectFields": {
+        "image": "Imagine",
+        "label": "Etichetă",
+        "cite": "Citare",
+        "ref": "Referință",
+        "file": "Fișier"
+      },
+      "chipsNote": "Câmpurile apar ca jetoane.",
+      "showSyntax": "Arată sintaxa",
+      "missingName": "Dă-i un nume fragmentului.",
+      "missingBody": "Scrie textul pe care îl inserează fragmentul.",
+      "sameTrigger": "{{trigger}} este folosit și de: {{list}}. Câștigă colecția cea mai apropiată.",
+      "sharedStart": "Începe la fel ca: {{list}}. Toate apar în listă, iar Tab alege potrivirea exactă, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Ștergi fragmentul {{name}}?",
+        "description": "Fragmentul va fi eliminat din colecția {{collection}}.",
+        "action": "Șterge"
+      },
+      "tryIt": {
+        "title": "Încearcă",
+        "howAuto": "Tastează {{trigger}} și se extinde.",
+        "howTab": "Tastează {{trigger}}, apoi apasă Tab.",
+        "howList": "Tastează {{trigger}}, apasă Ctrl+Space și alege-l din listă.",
+        "noTrigger": "Acest fragment nu are declanșator. Inserează-l din paleta de comenzi cu /snippets.",
+        "inText": "în text",
+        "inMath": "în formule",
+        "fires": "Se declanșează aici: {{language}}, {{place}}.",
+        "notLanguage": "Nu s-ar declanșa aici. {{language}} nu este unul dintre limbajele acestui fragment.",
+        "notPlace": "Nu s-ar declanșa {{place}}. Setarea Context nu permite."
+      }
+    }
   }
 }

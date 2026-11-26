@@ -2879,5 +2879,182 @@
     "count_other": "{{count}} vermeldingen",
     "filteredCount_one": "{{shown}} van {{count}} vermelding",
     "filteredCount_other": "{{shown}} van {{count}} vermeldingen"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "In de lijst met aanvullingen",
+        "description": "Toon fragmenten naast opdrachten"
+      },
+      "tab": {
+        "label": "Tab vervangt een trigger",
+        "description": "Voor fragmenten die op Tab staan"
+      },
+      "auto": {
+        "label": "Invoegen tijdens het typen",
+        "description": "Voor automatische fragmenten, zoals Fast math"
+      },
+      "hint": {
+        "label": "Tip tonen tijdens het typen",
+        "description": "Noemt het fragment dat een trigger invoegt. Tab voegt het in."
+      }
+    },
+    "library": {
+      "title": "Je fragmentenbibliotheek",
+      "collections": "Verzamelingen",
+      "all": "Alle fragmenten",
+      "mine": "Eigen",
+      "packs": "Pakketten",
+      "builtIn": "Ingebouwd",
+      "add": "Pakketten toevoegen of importeren…",
+      "useCollection": "{{name}} gebruiken",
+      "search": "Zoek op naam, trigger of tekst",
+      "language": "Taal",
+      "allLanguages": "Alle talen",
+      "expands": "Activering",
+      "anyExpand": "Elke manier",
+      "newSnippet": "Nieuw fragment",
+      "columns": {
+        "trigger": "Trigger",
+        "name": "Naam",
+        "languages": "Talen",
+        "where": "Waar",
+        "expands": "Activering"
+      },
+      "modified": "Gewijzigd",
+      "turnedOff": "Uitgezet",
+      "restore": "Herstellen",
+      "restoreLabel": "{{name}} herstellen",
+      "wraps": "omsluit",
+      "noTrigger": "geen",
+      "noMatches": "Geen fragmenten gevonden.",
+      "shown": "{{shown}} van {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} probleem",
+      "summary_other": "{{count}} problemen",
+      "where": "in {{file}}, regel {{line}}: {{message}}",
+      "slowRegex": "Het controleren van de trigger van {{name}} duurde te lang. Daarom is het fragment uitgezet.",
+      "show": "Tonen",
+      "hide": "Verbergen"
+    },
+    "addDialog": {
+      "title": "Fragmenten toevoegen",
+      "packsTab": "Pakketten",
+      "importTab": "Een bestand importeren",
+      "count_one": "{{count}} fragment",
+      "count_other": "{{count}} fragmenten",
+      "source": "Van {{source}}",
+      "licence": "{{licence}}-licentie",
+      "packNote": "Pakketten worden samen met de app bijgewerkt. Wijzigingen die je in de fragmenten van een pakket maakt, worden apart bewaard.",
+      "packs": {
+        "fastMathLatex": "Voegt tijdens het typen in wiskunde in: breuken, subscripts en machten, Griekse letters, operatoren en matrices. De triggers volgen de opzet van Gilles Castel.",
+        "fastMathTypst": "Dezelfde triggers, geschreven voor Typst. Wat Typst al zelf doet, zoals a/b voor een breuk, is weggelaten.",
+        "paperStructure": "Figuren, subfiguren, booktabs-tabellen, vergelijkingen, stellingen, bewijzen en algoritmen."
+      },
+      "useOn": "{{name}} gebruiken",
+      "importIntro": "Kies een fragmentbestand van VS Code (.json of .code-snippets). Het wordt een eigen verzameling, die je kunt uitzetten of aanpassen.",
+      "choose": "Bestand kiezen",
+      "fileLabel": "Fragmentbestand",
+      "imported_one": "{{count}} fragment geïmporteerd in {{collection}}.",
+      "imported_other": "{{count}} fragmenten geïmporteerd in {{collection}}.",
+      "nothing": "Er zijn geen fragmenten gevonden in {{file}}.",
+      "leftOut_one": "{{count}} item is weggelaten:",
+      "leftOut_other": "{{count}} items zijn weggelaten:"
+    },
+    "editor": {
+      "newTitle": "Nieuw fragment",
+      "duplicate": "Dupliceren",
+      "delete": "Verwijderen",
+      "turnOff": "Uitzetten",
+      "save": "Opslaan",
+      "copyName": "Kopie van {{name}}",
+      "name": "Naam",
+      "namePlaceholder": "Figuur met bijschrift en label",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "fig",
+      "regex": "Reguliere expressie",
+      "expands": "Activering",
+      "expandOptions": {
+        "list": "Uit de lijst",
+        "tab": "Met Tab",
+        "auto": "Tijdens het typen"
+      },
+      "expandHelp": {
+        "list": "Het staat in de lijst met aanvullingen. Kies het daar om het in te voegen.",
+        "tab": "Typ {{trigger}} en druk op Tab. Het staat ook in de lijst met aanvullingen.",
+        "auto": "Het wordt ingevoegd zodra je {{trigger}} typt. Met Ongedaan maken of Backspace krijg je de trigger terug."
+      },
+      "languages": "Talen",
+      "where": "Waar",
+      "whereOptions": {
+        "any": "Overal",
+        "text": "Tekst",
+        "math": "Wiskunde",
+        "code": "Code"
+      },
+      "mathKinds": {
+        "math": "Beide",
+        "inline-math": "In de tekst",
+        "display-math": "Op een eigen regel"
+      },
+      "mathKind": "Soort wiskunde",
+      "whereHelp": {
+        "any": "Overal in het bestand.",
+        "text": "Tekst: buiten wiskunde, commentaar en verbatim.",
+        "math": "Wiskunde: in wiskunde in de tekst of op een eigen regel.",
+        "code": "Code: in Typst-code of Markdown-codeblokken."
+      },
+      "firesOnly": "Alleen activeren",
+      "wholeWord": "als heel woord",
+      "lineStart": "aan het begin van een regel",
+      "collection": "Verzameling",
+      "keptSeparately": "Je wijzigingen worden apart bewaard, zodat updates van {{collection}} je blijven bereiken.",
+      "body": "Tekst die wordt ingevoegd",
+      "anyLanguage": "Elke taal",
+      "addField": "+ Veld",
+      "addChoice": "+ Keuze",
+      "choiceText": "eerste,tweede",
+      "variable": "Variabele",
+      "projectField": "Projectveld",
+      "variables": {
+        "SELECTION": "Geselecteerde tekst",
+        "CLIPBOARD": "Klembord",
+        "DATE": "Datum van vandaag",
+        "TM_FILENAME": "Bestandsnaam",
+        "PROJECT_NAME": "Projectnaam"
+      },
+      "projectFields": {
+        "image": "Afbeelding",
+        "label": "Label",
+        "cite": "Citatie",
+        "ref": "Verwijzing",
+        "file": "Bestand"
+      },
+      "chipsNote": "Velden worden als labels getoond.",
+      "showSyntax": "Syntaxis tonen",
+      "missingName": "Geef het fragment een naam.",
+      "missingBody": "Schrijf de tekst die het fragment invoegt.",
+      "sameTrigger": "{{list}} gebruikt ook {{trigger}}. De dichtstbijzijnde verzameling wint.",
+      "sharedStart": "Begint hetzelfde als {{list}}. Ze staan allemaal in de lijst, en Tab kiest de exacte overeenkomst, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}} verwijderen?",
+        "description": "Hiermee wordt het uit {{collection}} verwijderd.",
+        "action": "Verwijderen"
+      },
+      "tryIt": {
+        "title": "Uitproberen",
+        "howAuto": "Typ {{trigger}} en het wordt ingevoegd.",
+        "howTab": "Typ {{trigger}} en druk dan op Tab.",
+        "howList": "Typ {{trigger}}, druk op Ctrl+Space en kies het uit de lijst.",
+        "noTrigger": "Dit fragment heeft geen trigger. Voeg het in vanuit het opdrachtenpalet met /snippets.",
+        "inText": "in tekst",
+        "inMath": "in wiskunde",
+        "fires": "Wordt hier geactiveerd: {{language}}, {{place}}.",
+        "notLanguage": "Zou in {{language}} niet worden geactiveerd. Dat is geen van de talen van dit fragment.",
+        "notPlace": "Zou {{place}} niet worden geactiveerd. De instelling “Waar” staat dat niet toe."
+      }
+    }
   }
 }

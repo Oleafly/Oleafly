@@ -7,6 +7,7 @@ import { useCollabReady } from "@/components/collab/CollabSlots";
 import { Input } from "@/components/ui/input";
 import { MenuRow } from "@/components/ui/menu-row";
 import { placeAboveSelection, useMeasuredBox } from "@/components/ui/selection-placement";
+import { snippetFieldSelected } from "@oleafly/editor";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { SavedInstructionChips } from "@/components/editor/cm/inline-ai/SavedInstructionChips";
@@ -164,7 +165,7 @@ export function SelectionActionMenu() {
       }
       setReadOnly(v.state.readOnly);
       const sel = v.state.selection.main;
-      if (sel.from === sel.to) {
+      if (sel.from === sel.to || snippetFieldSelected(v.state)) {
         hide(true);
         return;
       }

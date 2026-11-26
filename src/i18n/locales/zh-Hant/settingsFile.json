@@ -55,7 +55,8 @@
     "unknownKey": "不是 Oleafly 能辨識的設定",
     "dictionaryLocale": "必須是 en_US 這類的字典代碼",
     "shortcut": "必須是 Mod-Shift-k 這類的快捷鍵，或為 \"default\"",
-    "editorKey": "必須是 Mod-d 這類的按鍵，或用 \"\" 表示不設按鍵，或為 \"default\""
+    "editorKey": "必須是 Mod-d 這類的按鍵，或用 \"\" 表示不設按鍵，或為 \"default\"",
+    "snippetFileName": "必須是 my-snippets.json 這類的檔名，只能包含字母、數字、空格、句點、連字號與底線"
   },
   "importFromLocal": "從此裝置匯入",
   "importFromCloud": "從雲端匯入",
