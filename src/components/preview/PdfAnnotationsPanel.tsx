@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowRight, CheckCheck, Crosshair, PencilLine, RotateCcw, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,6 +145,59 @@ function AnnotationChange({
   );
 }
 
+function badgeTone(picked: boolean, resolved: boolean): string {
+  if (picked) return "bg-primary text-primary-foreground hover:bg-primary/85";
+  if (resolved) return cn(TONES.emerald.tint, TONES.emerald.text, TONES.emerald.hover);
+  return "bg-primary/20 text-primary hover:bg-primary/30";
+}
+
+function RowActions({ item, shown }: Readonly<{ item: PdfAnnotation; shown: boolean }>) {
+  const { t } = useTranslation(["annotations"]);
+  const store = usePdfAnnotationsStore.getState;
+  const resolved = item.status === "resolved";
+  return (
+    <div className={cn("flex shrink-0 items-center", !shown && "invisible group-focus-within:visible group-hover:visible")}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => void store().update([{ id: item.id, status: resolved ? "draft" : "resolved" }])}
+        aria-label={
+          resolved
+            ? t(($) => $.annotations.panel.reopen, { number: item.number })
+            : t(($) => $.annotations.panel.resolve, { number: item.number })
+        }
+      >
+        {resolved ? <RotateCcw className="size-3.5" /> : <CheckCheck className="size-3.5" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => void store().remove([item.id])}
+        aria-label={t(($) => $.annotations.panel.delete, { number: item.number })}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function PlaceAgain({ placing, onPlaceAgain }: Readonly<{ placing: boolean; onPlaceAgain: () => void }>) {
+  const { t } = useTranslation(["annotations"]);
+  return (
+    <div className="space-y-1.5 pt-0.5">
+      <p className="text-xs text-muted-foreground">
+        {placing ? t(($) => $.annotations.panel.placing) : t(($) => $.annotations.panel.notFound)}
+      </p>
+      <Button variant="outline" size="xs" className="gap-1" onClick={onPlaceAgain}>
+        <Crosshair className="size-3" />
+        {placing ? t(($) => $.annotations.composer.cancel) : t(($) => $.annotations.panel.placeAgain)}
+      </Button>
+    </div>
+  );
+}
+
 function AnnotationRow({
   item,
   active,
@@ -171,7 +224,6 @@ function AnnotationRow({
   onDone: () => void;
 }>) {
   const { t } = useTranslation(["annotations"]);
-  const store = usePdfAnnotationsStore.getState;
   const location = sourceLabel(item);
   const page = t(($) => $.annotations.panel.page, { page: item.page });
   const resolved = item.status === "resolved";
@@ -194,9 +246,7 @@ function AnnotationRow({
           onClick={onPick}
           className={cn(
             "mt-px flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[0.6875rem] font-medium tabular-nums transition-colors",
-            picked && "bg-primary text-primary-foreground hover:bg-primary/85",
-            !picked && resolved && cn(TONES.emerald.tint, TONES.emerald.text, TONES.emerald.hover),
-            !picked && !resolved && "bg-primary/20 text-primary hover:bg-primary/30",
+            badgeTone(picked, resolved),
           )}
         >
           {item.number}
@@ -219,43 +269,10 @@ function AnnotationRow({
               {location ? `${location} · ${page}` : page}
             </span>
           </button>
-          <div className={cn("flex shrink-0 items-center", !active && "invisible group-focus-within:visible group-hover:visible")}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={() => void store().update([{ id: item.id, status: resolved ? "draft" : "resolved" }])}
-              aria-label={
-                resolved
-                  ? t(($) => $.annotations.panel.reopen, { number: item.number })
-                  : t(($) => $.annotations.panel.resolve, { number: item.number })
-              }
-            >
-              {resolved ? <RotateCcw className="size-3.5" /> : <CheckCheck className="size-3.5" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={() => void store().remove([item.id])}
-              aria-label={t(($) => $.annotations.panel.delete, { number: item.number })}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
+          <RowActions item={item} shown={active} />
         </div>
         <AnnotationChange item={item} editing={editing} onEdit={onEdit} onDone={onDone} />
-        {item.placement === "needsPlacing" ? (
-          <div className="space-y-1.5 pt-0.5">
-            <p className="text-xs text-muted-foreground">
-              {placing ? t(($) => $.annotations.panel.placing) : t(($) => $.annotations.panel.notFound)}
-            </p>
-            <Button variant="outline" size="xs" className="gap-1" onClick={onPlaceAgain}>
-              <Crosshair className="size-3" />
-              {placing ? t(($) => $.annotations.composer.cancel) : t(($) => $.annotations.panel.placeAgain)}
-            </Button>
-          </div>
-        ) : null}
+        {item.placement === "needsPlacing" ? <PlaceAgain placing={placing} onPlaceAgain={onPlaceAgain} /> : null}
       </div>
     </li>
   );
@@ -329,6 +346,59 @@ export function PdfAnnotationsPanel({
     ({ members }) => members.length > 0,
   );
 
+  let content: ReactNode;
+  if (!loaded && !error) {
+    content = (
+      <div className="flex justify-center py-4">
+        <Spinner size="sm" />
+      </div>
+    );
+  } else if (items.length === 0) {
+    content = <p className="px-2 py-3 text-xs text-muted-foreground">{t(($) => $.annotations.panel.empty)}</p>;
+  } else {
+    content = (
+      <div className="divide-y divide-border">
+        {sections.map(({ group, members }) => {
+          const placingGroup = group === "placing";
+          return (
+            <CollapsibleSection
+              key={group}
+              id={`${id}-${group}`}
+              variant="group"
+              open={groups.isOpen(group)}
+              onOpenChange={(next) => groups.setOpen(group, next)}
+              leading={placingGroup ? <AlertTriangle aria-hidden className={cn("size-3.5 shrink-0", TONES.amber.icon)} /> : undefined}
+              title={
+                <span className={cn("tabular-nums", placingGroup && TONES.amber.text)}>
+                  {`${groupTitle(group)} · ${members.length}`}
+                </span>
+              }
+            >
+              <ul className="pb-1">
+                {members.map((item) => (
+                  <AnnotationRow
+                    key={item.id}
+                    item={item}
+                    active={item.id === activeId}
+                    activeRef={activeRef}
+                    picked={isPicked(item)}
+                    placing={placingId === item.id}
+                    editing={editingId === item.id}
+                    onPick={() => setPicked((current) => ({ ...current, [item.id]: !isPicked(item) }))}
+                    onShow={() => onShow(item)}
+                    onPlaceAgain={() => onPlaceAgain(placingId === item.id ? null : item)}
+                    onEdit={() => setEditingId(item.id)}
+                    onDone={() => setEditingId(null)}
+                  />
+                ))}
+              </ul>
+            </CollapsibleSection>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <FloatingSidePanel
       id={id}
@@ -370,53 +440,7 @@ export function PdfAnnotationsPanel({
           <InlineAlert>{t(($) => $.annotations.panel.setAside)}</InlineAlert>
         </div>
       ) : null}
-      {!loaded && !error ? (
-        <div className="flex justify-center py-4">
-          <Spinner size="sm" />
-        </div>
-      ) : items.length === 0 ? (
-        <p className="px-2 py-3 text-xs text-muted-foreground">{t(($) => $.annotations.panel.empty)}</p>
-      ) : (
-        <div className="divide-y divide-border">
-          {sections.map(({ group, members }) => {
-            const placingGroup = group === "placing";
-            return (
-              <CollapsibleSection
-                key={group}
-                id={`${id}-${group}`}
-                variant="group"
-                open={groups.isOpen(group)}
-                onOpenChange={(next) => groups.setOpen(group, next)}
-                leading={placingGroup ? <AlertTriangle aria-hidden className={cn("size-3.5 shrink-0", TONES.amber.icon)} /> : undefined}
-                title={
-                  <span className={cn("tabular-nums", placingGroup && TONES.amber.text)}>
-                    {`${groupTitle(group)} · ${members.length}`}
-                  </span>
-                }
-              >
-                <ul className="pb-1">
-                  {members.map((item) => (
-                    <AnnotationRow
-                      key={item.id}
-                      item={item}
-                      active={item.id === activeId}
-                      activeRef={activeRef}
-                      picked={isPicked(item)}
-                      placing={placingId === item.id}
-                      editing={editingId === item.id}
-                      onPick={() => setPicked((current) => ({ ...current, [item.id]: !isPicked(item) }))}
-                      onShow={() => onShow(item)}
-                      onPlaceAgain={() => onPlaceAgain(placingId === item.id ? null : item)}
-                      onEdit={() => setEditingId(item.id)}
-                      onDone={() => setEditingId(null)}
-                    />
-                  ))}
-                </ul>
-              </CollapsibleSection>
-            );
-          })}
-        </div>
-      )}
+      {content}
     </FloatingSidePanel>
   );
 }
