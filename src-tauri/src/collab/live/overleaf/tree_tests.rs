@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use oleafly_online::client::Http;
-use oleafly_online::live::rest::TreeRest;
+use oleafly_online::live::rest::ProjectRest;
 use oleafly_online::realtime::events::EntityId;
 use oleafly_online::realtime::tree::NodeKind;
 use oleafly_online::realtime::{DocId, ProjectPage};
@@ -34,7 +34,7 @@ fn project() -> MockProject {
 }
 
 struct Bob {
-    rest: TreeRest,
+    rest: ProjectRest,
     session: SessionHandle,
     root: EntityId,
 }
@@ -46,7 +46,7 @@ async fn bob(rig: &OverleafRig) -> Bob {
         .await
         .unwrap();
     Bob {
-        rest: TreeRest::new(http, Arc::new(page), &rig.mock.project_id()),
+        rest: ProjectRest::new(http, Arc::new(page), &rig.mock.project_id()),
         session,
         root: EntityId(rig.mock.root_folder_id()),
     }
@@ -293,7 +293,7 @@ fn unsent_text_kept_after_its_removal_was_announced_still_reaches_the_notice() {
             })
         })
         .await;
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
         let id = DocId(doc);
         port.merged(
             &id,
@@ -302,6 +302,7 @@ fn unsent_text_kept_after_its_removal_was_announced_still_reaches_the_notice() {
             },
         );
         port.doc_stopped(&id, DocStopReason::Removed);
+        rig.live.mirror.chores.drained().await;
         let latest = rig.host.removed.lock().unwrap().last().cloned().unwrap();
         let file = latest.files.iter().find(|file| file.path == NOTES).unwrap();
         assert!(file.yours, "{latest:?}");
@@ -1430,7 +1431,7 @@ fn the_service_never_gets_another_files_text_through_a_name_that_differs_by_case
         let made = renamed_docs(&rig).await;
         let capital = &made[2].1;
         disk_matches(&rig, capital, b"Capital").await;
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
         assert_eq!(port.disk_text("Notes.tex").as_deref(), Some("Capital"));
         assert_eq!(port.disk_text(NOTES).as_deref(), Some("Notes\n"));
         assert_eq!(
@@ -1526,13 +1527,14 @@ fn unsent_text_of_a_document_with_no_path_is_kept_beside_its_last_path() {
             path: "sections/gone.tex".to_owned(),
             kind: NodeKind::Doc,
         }]);
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
         port.merged(
             &DocId("gone".to_owned()),
             MergeReview::Kept {
                 text: "Words not sent\n".to_owned(),
             },
         );
+        rig.live.mirror.chores.drained().await;
         let kept = guard(&rig.live.mirror.kept)
             .iter()
             .find(|file| file.path == "sections/gone.tex")

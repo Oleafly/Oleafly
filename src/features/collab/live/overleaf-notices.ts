@@ -1,6 +1,12 @@
-import type { OverleafLiveNotice, OverleafStopReason } from "@oleafly/backend-port";
+import type {
+  CollabLiveSyncState,
+  OverleafLiveNotice,
+  OverleafSettingKey,
+  OverleafSettingNotSent,
+  OverleafStopReason,
+} from "@oleafly/backend-port";
 import { create } from "zustand";
-import { collabRelive } from "@/lib/collab-live-bridge";
+import { collabRelive, useOverleafFilling } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import { overleafLiveKeepCopy, overleafLiveResolve, overleafLiveRetry } from "@/lib/overleaf-live";
 import { onOverleafLiveNotice } from "@/lib/tauri-collab";
@@ -25,6 +31,11 @@ export interface OverleafStopped {
   reason: OverleafStopReason;
 }
 
+export interface OverleafSettingNotice {
+  setting: OverleafSettingKey;
+  reason: OverleafSettingNotSent;
+}
+
 interface OverleafNoticesState {
   projectId: string | null;
   maintenance: { message: string; until: number } | null;
@@ -34,6 +45,8 @@ interface OverleafNoticesState {
   stopped: OverleafStopped[];
   external: string[];
   replaced: string | null;
+  settings: OverleafSettingNotice[];
+  filling: { done: number; total: number } | null;
   slowAck: boolean;
   resolving: string | null;
   failed: string | null;
@@ -41,6 +54,7 @@ interface OverleafNoticesState {
   dismissUnsteady: (path: string) => void;
   dismissExternal: (path: string) => void;
   dismissReplaced: () => void;
+  dismissSettings: () => void;
   resolve: (path: string, keep: "mine" | "theirs") => Promise<boolean>;
   tryLiveAgain: (path: string) => Promise<boolean>;
   keepCopy: (path: string) => Promise<boolean>;
@@ -54,6 +68,8 @@ const EMPTY = {
   stopped: [],
   external: [],
   replaced: null,
+  settings: [],
+  filling: null,
   slowAck: false,
   resolving: null,
   failed: null,
@@ -107,6 +123,7 @@ export const useOverleafNotices = create<OverleafNoticesState>()((set, get) => {
     dismissUnsteady: (path) => set((state) => ({ unsteady: state.unsteady.filter((entry) => entry !== path) })),
     dismissExternal: (path) => set((state) => ({ external: state.external.filter((entry) => entry !== path) })),
     dismissReplaced: () => set({ replaced: null }),
+    dismissSettings: () => set({ settings: [] }),
     resolve: (path, keep) =>
       act(
         path,
@@ -146,7 +163,27 @@ export function applyOverleafNotice(notice: OverleafLiveNotice, now = Date.now()
       return;
     case "replaced":
       useOverleafNotices.setState({ replaced: notice.path });
+      return;
+    case "setting_not_sent":
+      useOverleafNotices.setState({
+        settings: [
+          ...state.settings.filter((entry) => entry.setting !== notice.setting),
+          { setting: notice.setting, reason: notice.reason },
+        ],
+      });
+      return;
+    case "filling":
+      useOverleafNotices.setState({ filling: { done: notice.done, total: notice.total } });
+      return;
+    case "filled":
+      useOverleafNotices.setState({ filling: null });
   }
+}
+
+const NOT_FILLING: ReadonlySet<CollabLiveSyncState["state"]> = new Set(["offline", "signed_out", "ended"]);
+
+function fillingProject({ filling, projectId }: OverleafNoticesState): string | null {
+  return filling && filling.done < filling.total ? projectId : null;
 }
 
 function follow(projectId: string | null) {
@@ -158,9 +195,14 @@ function follow(projectId: string | null) {
 export function startOverleafNotices(): () => void {
   const stopFollowing = followProject(useCollabLiveStore, follow);
   const unsubscribe = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.status?.state === "online" && previous.status?.state !== "online") {
-      useOverleafNotices.setState({ maintenance: null, slowAck: false });
-    }
+    const now = state.status?.state;
+    if (!now || now === previous.status?.state) return;
+    if (now === "online") useOverleafNotices.setState({ maintenance: null, slowAck: false });
+    if (NOT_FILLING.has(now)) useOverleafNotices.setState({ filling: null });
+  });
+  const stopFilling = useOverleafNotices.subscribe((state) => {
+    const projectId = fillingProject(state);
+    if (useOverleafFilling.getState().projectId !== projectId) useOverleafFilling.setState({ projectId });
   });
   const stopListening = onOverleafLiveNotice((notice) => applyOverleafNotice(notice)).catch((error) => {
     void logError("listen for overleaf live notices", error);
@@ -169,6 +211,8 @@ export function startOverleafNotices(): () => void {
   return () => {
     stopFollowing();
     unsubscribe();
+    stopFilling();
+    useOverleafFilling.setState({ projectId: null });
     void stopListening.then((unlisten) => unlisten());
   };
 }

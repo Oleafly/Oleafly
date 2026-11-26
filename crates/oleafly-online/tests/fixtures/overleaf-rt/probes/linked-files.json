@@ -1,0 +1,842 @@
+{
+  "probe": "linked-files",
+  "description": "Alice makes a source project and a target project (Bob editor, Carol reviewer, Dave viewer on the target, added in the container) and links sample.bib from the source into the target (provider project_file), then a compiled output.log (provider project_output_file) and a URL (provider url, not enabled on this harness). Bob watches the target. She edits the source and refreshes the link; refreshes of an unknown id, an ordinary file, by each role; the join's linkedFileData. Both projects are deleted.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "linked file settings: {\"enabledLinkedFileTypes\":[\"project_file\",\"project_output_file\"],\"linkedUrlProxy\":null}",
+    "alice links sample.bib from the source: 200 {\"new_file_id\":\"6b04ff50cb4fe3a455d4de25\"}; bob saw [[\"reciveNewFile\",[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:06:56.554Z\"},\"hash\":\"a0e21c740cf81e868f158e30e88985b5ea1d6c19\",\"_id\":\"6b04ff50cb4fe3a455d4de25\",\"created\":\"2026-11-24T03:06:56.802Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:06:56.554Z\"},\"6afab5bb1222cc50aa4c16ec\"]]]",
+    "alice links frog.jpg (a binary) from the source: 200 {\"new_file_id\":\"6b04ff53cb4fe3a455d4de2e\"}; bob saw [[\"reciveNewFile\",[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked-frog.jpg\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/frog.jpg\",\"importedAt\":\"2026-11-24T03:06:58.968Z\"},\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\",\"_id\":\"6b04ff53cb4fe3a455d4de2e\",\"created\":\"2026-11-24T03:06:59.083Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/frog.jpg\",\"importedAt\":\"2026-11-24T03:06:58.968Z\"},\"6afab5bb1222cc50aa4c16ec\"]]]",
+    "alice links a path the source does not have: 404 \"Source file not found\"; bob saw []",
+    "bob (no access to the source) links sample.bib: 403 \"The project that contains this file is not shared with you\"; bob saw []",
+    "alice links a URL (provider url): 400 \"Bad Request\"; bob saw []",
+    "source compile: 200 success",
+    "alice links the source output.log (provider project_output_file): 200 {\"new_file_id\":\"6b04ff60cb4fe3a455d4de38\"}; bob saw [[\"reciveNewFile\",[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"source-output.log\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_output_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_output_file_path\":\"output.log\",\"build_id\":\"1a20b857d10-fea12784e6548d9f\",\"importedAt\":\"2026-11-24T03:07:12.007Z\"},\"hash\":\"2497a8c74fc175df56b05875c5bc7b1df0b7515c\",\"_id\":\"6b04ff60cb4fe3a455d4de38\",\"created\":\"2026-11-24T03:07:12.166Z\"},\"upload\",{\"provider\":\"project_output_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_output_file_path\":\"output.log\",\"build_id\":\"1a20b857d10-fea12784e6548d9f\",\"importedAt\":\"2026-11-24T03:07:12.007Z\"},\"6afab5bb1222cc50aa4c16ec\"]]]",
+    "the join's fileRefs: [{\"name\":\"frog.jpg\",\"linkedFileData\":null,\"keys\":[\"_id\",\"name\",\"linkedFileData\",\"created\",\"hash\"]},{\"name\":\"linked.bib\",\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:06:56.554Z\"},\"keys\":[\"_id\",\"name\",\"linkedFileData\",\"created\",\"hash\"]},{\"name\":\"linked-frog.jpg\",\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/frog.jpg\",\"importedAt\":\"2026-11-24T03:06:58.968Z\"},\"keys\":[\"_id\",\"name\",\"linkedFileData\",\"created\",\"hash\"]},{\"name\":\"source-output.log\",\"linkedFileData\":{\"provider\":\"project_output_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_output_file_path\":\"output.log\",\"build_id\":\"1a20b857d10-fea12784e6548d9f\",\"importedAt\":\"2026-11-24T03:07:12.007Z\"},\"keys\":[\"_id\",\"name\",\"linkedFileData\",\"created\",\"hash\"]}]",
+    "alice refreshes linked.bib after the source changed: 200 {\"new_file_id\":\"6b04ff64cb4fe3a455d4de42\"}; bob saw [[\"removeEntity\",[\"6b04ff50cb4fe3a455d4de25\",\"upload\"],\"+336ms\"],[\"reciveNewFile\",[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:15.849Z\"},\"hash\":\"a90b023e085fd9d44f3c78b095e4c9b926684a71\",\"_id\":\"6b04ff64cb4fe3a455d4de42\",\"created\":\"2026-11-24T03:07:16.084Z\"}],\"+336ms\"]]",
+    "alice refreshes it again with {shouldReindexReferences: true}: 200 {\"new_file_id\":\"6b04ff66cb4fe3a455d4de4c\"}; bob saw [[\"removeEntity\",[\"6b04ff64cb4fe3a455d4de42\",\"upload\"],\"+149ms\"],[\"reciveNewFile\",[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:18.185Z\"},\"hash\":\"a90b023e085fd9d44f3c78b095e4c9b926684a71\",\"_id\":\"6b04ff66cb4fe3a455d4de4c\",\"created\":\"2026-11-24T03:07:18.264Z\"}],\"+149ms\"],[\"references:keys:updated\",[[],true],\"+151ms\"]]",
+    "alice refreshes the old (replaced) file id: 404 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title translate=\\\"no\\\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\\\"twitter:title\\\" content=\\\"Page Not Found\\\"><meta name=\\\"og; bob saw []",
+    "alice refreshes an unknown id: 404 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title translate=\\\"no\\\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\\\"twitter:title\\\" content=\\\"Page Not Found\\\"><meta name=\\\"og; bob saw []",
+    "alice refreshes an ordinary file (frog.jpg): 409 \"Conflict\"; bob saw []",
+    "bob (editor without access to the source) refreshes: 403 \"The project that contains this file is not shared with you\"; bob saw []",
+    "carol (reviewer) refreshes: 403 {\"message\":\"restricted\"}; bob saw []",
+    "dave (viewer) refreshes: 403 {\"message\":\"restricted\"}; bob saw []",
+    "alice refreshes with an unknown body key: 400 {\"error\":\"Validation error: Unrecognized key: \\\"extra\\\" at \\\"body\\\"\",\"statusCode\":400}; bob saw []"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "linked-source-20261124-030623",
+          "template": "example"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04ff2fcb4fe3a455d4ddca",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 710,
+      "answeredAt": 1615
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "linked-target-20261124-030624",
+          "template": "example"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04ff30cb4fe3a455d4dde4",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 1615,
+      "answeredAt": 2005
+    },
+    {
+      "serverSettings": {
+        "enabledLinkedFileTypes": [
+          "project_file",
+          "project_output_file"
+        ],
+        "linkedUrlProxy": null
+      }
+    },
+    {
+      "label": "alice links sample.bib from the source",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "alice",
+        "body": {
+          "name": "linked.bib",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "project_file",
+          "data": {
+            "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+            "source_entity_path": "/sample.bib"
+          }
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "42",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "new_file_id": "6b04ff50cb4fe3a455d4de25"
+      },
+      "sentAt": 33346,
+      "answeredAt": 33732,
+      "events": {
+        "bob": [
+          {
+            "t": 33730,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ff30cb4fe3a455d4dde3",
+              {
+                "name": "linked.bib",
+                "rev": 0,
+                "linkedFileData": {
+                  "provider": "project_file",
+                  "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                  "source_entity_path": "/sample.bib",
+                  "importedAt": "2026-11-24T03:06:56.554Z"
+                },
+                "hash": "a0e21c740cf81e868f158e30e88985b5ea1d6c19",
+                "_id": "6b04ff50cb4fe3a455d4de25",
+                "created": "2026-11-24T03:06:56.802Z"
+              },
+              "upload",
+              {
+                "provider": "project_file",
+                "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                "source_entity_path": "/sample.bib",
+                "importedAt": "2026-11-24T03:06:56.554Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice links frog.jpg (a binary) from the source",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "alice",
+        "body": {
+          "name": "linked-frog.jpg",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "project_file",
+          "data": {
+            "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+            "source_entity_path": "/frog.jpg"
+          }
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "42",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "new_file_id": "6b04ff53cb4fe3a455d4de2e"
+      },
+      "sentAt": 35734,
+      "answeredAt": 35964,
+      "events": {
+        "bob": [
+          {
+            "t": 35960,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ff30cb4fe3a455d4dde3",
+              {
+                "name": "linked-frog.jpg",
+                "rev": 0,
+                "linkedFileData": {
+                  "provider": "project_file",
+                  "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                  "source_entity_path": "/frog.jpg",
+                  "importedAt": "2026-11-24T03:06:58.968Z"
+                },
+                "hash": "5b889ef3cf71c83a4c027c4e4dc3d1a106b27809",
+                "_id": "6b04ff53cb4fe3a455d4de2e",
+                "created": "2026-11-24T03:06:59.083Z"
+              },
+              "upload",
+              {
+                "provider": "project_file",
+                "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                "source_entity_path": "/frog.jpg",
+                "importedAt": "2026-11-24T03:06:58.968Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice links a path the source does not have",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "alice",
+        "body": {
+          "name": "missing.bib",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "project_file",
+          "data": {
+            "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+            "source_entity_path": "/nope.bib"
+          }
+        }
+      },
+      "status": 404,
+      "headers": {
+        "content-length": "21",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Source file not found",
+      "sentAt": 37966,
+      "answeredAt": 38084,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "bob (no access to the source) links sample.bib",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "bob",
+        "body": {
+          "name": "bob-linked.bib",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "project_file",
+          "data": {
+            "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+            "source_entity_path": "/sample.bib"
+          }
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "58",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "The project that contains this file is not shared with you",
+      "sentAt": 40086,
+      "answeredAt": 40153,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "alice links a URL (provider url)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "alice",
+        "body": {
+          "name": "from-url.bib",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "url",
+          "data": {
+            "url": "https://example.test/refs.bib"
+          }
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "11",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Bad Request",
+      "sentAt": 42153,
+      "answeredAt": 42194,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "alice compiles the source",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff2fcb4fe3a455d4ddca/compile",
+        "user": "alice",
+        "body": {
+          "draft": false,
+          "check": "silent",
+          "incrementalCompilesEnabled": true,
+          "stopOnFirstError": false
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2689",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "status": "success",
+        "outputFiles": [
+          "output.aux",
+          "output.bbl",
+          "output.blg",
+          "output.fdb_latexmk",
+          "output.fls",
+          "output.log",
+          "output.out",
+          "output.pdf",
+          "output.stdout",
+          "output.synctex.gz"
+        ],
+        "buildId": "1a20b857d10-fea12784e6548d9f"
+      },
+      "sentAt": 44196,
+      "answeredAt": 48790
+    },
+    {
+      "label": "alice links the source output.log (provider project_output_file)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file",
+        "user": "alice",
+        "body": {
+          "name": "source-output.log",
+          "parent_folder_id": "6b04ff30cb4fe3a455d4dde3",
+          "provider": "project_output_file",
+          "data": {
+            "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+            "source_output_file_path": "output.log",
+            "build_id": "1a20b857d10-fea12784e6548d9f"
+          }
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "42",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "new_file_id": "6b04ff60cb4fe3a455d4de38"
+      },
+      "sentAt": 48792,
+      "answeredAt": 49107,
+      "events": {
+        "bob": [
+          {
+            "t": 49108,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ff30cb4fe3a455d4dde3",
+              {
+                "name": "source-output.log",
+                "rev": 0,
+                "linkedFileData": {
+                  "provider": "project_output_file",
+                  "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                  "source_output_file_path": "output.log",
+                  "build_id": "1a20b857d10-fea12784e6548d9f",
+                  "importedAt": "2026-11-24T03:07:12.007Z"
+                },
+                "hash": "2497a8c74fc175df56b05875c5bc7b1df0b7515c",
+                "_id": "6b04ff60cb4fe3a455d4de38",
+                "created": "2026-11-24T03:07:12.166Z"
+              },
+              "upload",
+              {
+                "provider": "project_output_file",
+                "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                "source_output_file_path": "output.log",
+                "build_id": "1a20b857d10-fea12784e6548d9f",
+                "importedAt": "2026-11-24T03:07:12.007Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "join": {
+        "fileRefs": [
+          {
+            "name": "frog.jpg",
+            "linkedFileData": null,
+            "keys": [
+              "_id",
+              "name",
+              "linkedFileData",
+              "created",
+              "hash"
+            ]
+          },
+          {
+            "name": "linked.bib",
+            "linkedFileData": {
+              "provider": "project_file",
+              "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+              "source_entity_path": "/sample.bib",
+              "importedAt": "2026-11-24T03:06:56.554Z"
+            },
+            "keys": [
+              "_id",
+              "name",
+              "linkedFileData",
+              "created",
+              "hash"
+            ]
+          },
+          {
+            "name": "linked-frog.jpg",
+            "linkedFileData": {
+              "provider": "project_file",
+              "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+              "source_entity_path": "/frog.jpg",
+              "importedAt": "2026-11-24T03:06:58.968Z"
+            },
+            "keys": [
+              "_id",
+              "name",
+              "linkedFileData",
+              "created",
+              "hash"
+            ]
+          },
+          {
+            "name": "source-output.log",
+            "linkedFileData": {
+              "provider": "project_output_file",
+              "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+              "source_output_file_path": "output.log",
+              "build_id": "1a20b857d10-fea12784e6548d9f",
+              "importedAt": "2026-11-24T03:07:12.007Z"
+            },
+            "keys": [
+              "_id",
+              "name",
+              "linkedFileData",
+              "created",
+              "hash"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice refreshes linked.bib after the source changed",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff50cb4fe3a455d4de25/refresh",
+        "user": "alice",
+        "body": {}
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "42",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "new_file_id": "6b04ff64cb4fe3a455d4de42"
+      },
+      "sentAt": 52639,
+      "answeredAt": 52983,
+      "events": {
+        "bob": [
+          {
+            "t": 52975,
+            "name": "removeEntity",
+            "args": [
+              "6b04ff50cb4fe3a455d4de25",
+              "upload"
+            ]
+          },
+          {
+            "t": 52975,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ff30cb4fe3a455d4dde3",
+              {
+                "name": "linked.bib",
+                "rev": 0,
+                "linkedFileData": {
+                  "provider": "project_file",
+                  "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                  "source_entity_path": "/sample.bib",
+                  "importedAt": "2026-11-24T03:07:15.849Z"
+                },
+                "hash": "a90b023e085fd9d44f3c78b095e4c9b926684a71",
+                "_id": "6b04ff64cb4fe3a455d4de42",
+                "created": "2026-11-24T03:07:16.084Z"
+              },
+              "upload",
+              {
+                "provider": "project_file",
+                "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                "source_entity_path": "/sample.bib",
+                "importedAt": "2026-11-24T03:07:15.849Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice refreshes it again with {shouldReindexReferences: true}",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff64cb4fe3a455d4de42/refresh",
+        "user": "alice",
+        "body": {
+          "shouldReindexReferences": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "42",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "new_file_id": "6b04ff66cb4fe3a455d4de4c"
+      },
+      "sentAt": 54985,
+      "answeredAt": 55138,
+      "events": {
+        "bob": [
+          {
+            "t": 55134,
+            "name": "removeEntity",
+            "args": [
+              "6b04ff64cb4fe3a455d4de42",
+              "upload"
+            ]
+          },
+          {
+            "t": 55134,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ff30cb4fe3a455d4dde3",
+              {
+                "name": "linked.bib",
+                "rev": 0,
+                "linkedFileData": {
+                  "provider": "project_file",
+                  "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                  "source_entity_path": "/sample.bib",
+                  "importedAt": "2026-11-24T03:07:18.185Z"
+                },
+                "hash": "a90b023e085fd9d44f3c78b095e4c9b926684a71",
+                "_id": "6b04ff66cb4fe3a455d4de4c",
+                "created": "2026-11-24T03:07:18.264Z"
+              },
+              "upload",
+              {
+                "provider": "project_file",
+                "source_project_id": "6b04ff2fcb4fe3a455d4ddca",
+                "source_entity_path": "/sample.bib",
+                "importedAt": "2026-11-24T03:07:18.185Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 55136,
+            "name": "references:keys:updated",
+            "args": [
+              [],
+              true,
+              null
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "alice refreshes the old (replaced) file id",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff50cb4fe3a455d4de25/refresh",
+        "user": "alice",
+        "body": {}
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 57142,
+      "answeredAt": 57308,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "alice refreshes an unknown id",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff6ac0ffee0001000001/refresh",
+        "user": "alice",
+        "body": {}
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 59314,
+      "answeredAt": 59394,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "alice refreshes an ordinary file (frog.jpg)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff31cb4fe3a455d4ddf6/refresh",
+        "user": "alice",
+        "body": {}
+      },
+      "status": 409,
+      "headers": {
+        "content-length": "8",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Conflict",
+      "sentAt": 61397,
+      "answeredAt": 61480,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "bob (editor without access to the source) refreshes",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff66cb4fe3a455d4de4c/refresh",
+        "user": "bob",
+        "body": {}
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "58",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "The project that contains this file is not shared with you",
+      "sentAt": 63481,
+      "answeredAt": 63597,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "carol (reviewer) refreshes",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff66cb4fe3a455d4de4c/refresh",
+        "user": "carol",
+        "body": {}
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 65599,
+      "answeredAt": 65644,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "dave (viewer) refreshes",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff66cb4fe3a455d4de4c/refresh",
+        "user": "dave",
+        "body": {}
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 67646,
+      "answeredAt": 67677,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "alice refreshes with an unknown body key",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4/linked_file/6b04ff66cb4fe3a455d4de4c/refresh",
+        "user": "alice",
+        "body": {
+          "extra": true
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "86",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "error": "Validation error: Unrecognized key: \"extra\" at \"body\"",
+        "statusCode": 400
+      },
+      "sentAt": 69679,
+      "answeredAt": 69714,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "socket": {
+        "user": "bob",
+        "projectId": "6b04ff30cb4fe3a455d4dde4",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 33162,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 33279,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.lIsTN244XZZyGrfvAACl\",\"project\":{\"_id\":\"6b04ff30cb4fe3a455d4dde4\",\"name\":\"linked-target-20261124-030624\",\"rootDoc_id\":\"6b04ff30cb4fe3a455d4dde9\",\"rootFolder\":[{\"_id\":\"6b04ff30cb4fe3a455d4dde3\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[{\"_id\":\"6b04ff31cb4fe3a455d4ddf6\",\"name\":\"frog.jpg\",\"linkedFileData\":null,\"created\":\"2026-11-24T03:06:25.131Z\",\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\"}],\"docs\":[{\"_id\":\"6b04ff30cb4fe3a455d4dde9\",\"name\":\"main.tex\"},{\"_id\":\"6b04ff31cb4fe3a455d4ddf0\",\"name\":\"sample.bib\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[{\"_id\":\"6afab5bc1222cc50aa4c16f2\",\"first_name\":\"Bob\",\"last_name\":\"Editor\",\"email\":\"bob@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:20.391Z\"},{\"_id\":\"6afab5bc1222cc50aa4c16f8\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-16T07:50:20.935Z\"},{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readOnly\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"}],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":{\"6afab5bc1222cc50aa4c16f8\":true}},\"permissionsLevel\":\"readAndWrite\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 33730,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:06:56.554Z\"},\"hash\":\"a0e21c740cf81e868f158e30e88985b5ea1d6c19\",\"_id\":\"6b04ff50cb4fe3a455d4de25\",\"created\":\"2026-11-24T03:06:56.802Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:06:56.554Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 35960,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked-frog.jpg\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/frog.jpg\",\"importedAt\":\"2026-11-24T03:06:58.968Z\"},\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\",\"_id\":\"6b04ff53cb4fe3a455d4de2e\",\"created\":\"2026-11-24T03:06:59.083Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/frog.jpg\",\"importedAt\":\"2026-11-24T03:06:58.968Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 49108,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"source-output.log\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_output_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_output_file_path\":\"output.log\",\"build_id\":\"1a20b857d10-fea12784e6548d9f\",\"importedAt\":\"2026-11-24T03:07:12.007Z\"},\"hash\":\"2497a8c74fc175df56b05875c5bc7b1df0b7515c\",\"_id\":\"6b04ff60cb4fe3a455d4de38\",\"created\":\"2026-11-24T03:07:12.166Z\"},\"upload\",{\"provider\":\"project_output_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_output_file_path\":\"output.log\",\"build_id\":\"1a20b857d10-fea12784e6548d9f\",\"importedAt\":\"2026-11-24T03:07:12.007Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 51230,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"clientTracking.clientDisconnected\",\"args\":[\"P.V6pcBeDeZG4fz6XbAACm\"]}"
+          },
+          {
+            "t": 52975,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ff50cb4fe3a455d4de25\",\"upload\"]}"
+          },
+          {
+            "t": 52975,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:15.849Z\"},\"hash\":\"a90b023e085fd9d44f3c78b095e4c9b926684a71\",\"_id\":\"6b04ff64cb4fe3a455d4de42\",\"created\":\"2026-11-24T03:07:16.084Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:15.849Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 55134,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ff64cb4fe3a455d4de42\",\"upload\"]}"
+          },
+          {
+            "t": 55134,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ff30cb4fe3a455d4dde3\",{\"name\":\"linked.bib\",\"rev\":0,\"linkedFileData\":{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:18.185Z\"},\"hash\":\"a90b023e085fd9d44f3c78b095e4c9b926684a71\",\"_id\":\"6b04ff66cb4fe3a455d4de4c\",\"created\":\"2026-11-24T03:07:18.264Z\"},\"upload\",{\"provider\":\"project_file\",\"source_project_id\":\"6b04ff2fcb4fe3a455d4ddca\",\"source_entity_path\":\"/sample.bib\",\"importedAt\":\"2026-11-24T03:07:18.185Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 55136,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"references:keys:updated\",\"args\":[[],true,null]}"
+          },
+          {
+            "t": 58164,
+            "dir": "in",
+            "frame": "2::"
+          },
+          {
+            "t": 58164,
+            "dir": "out",
+            "frame": "2::"
+          },
+          {
+            "t": 71715,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff30cb4fe3a455d4dde4"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 71716,
+      "answeredAt": 72377
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ff2fcb4fe3a455d4ddca"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 72377,
+      "answeredAt": 72711
+    }
+  ]
+}

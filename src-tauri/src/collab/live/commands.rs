@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use oleafly_online::live::doc::Origin;
 use oleafly_ot::{DocMessage, DocOpened, DocSink, TextOperation};
 use tauri::ipc::Channel;
 
@@ -72,8 +73,9 @@ pub async fn collab_doc_change(
     file_id: String,
     rev: u64,
     op: TextOperation,
+    origin: Option<Origin>,
 ) -> Result<(), CollabCommandError> {
-    doc_change(&project_id, &file_id, rev, op).map_err(CollabCommandError::from)
+    doc_change(&project_id, &file_id, rev, op, origin).map_err(CollabCommandError::from)
 }
 
 #[tauri::command]

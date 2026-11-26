@@ -1,0 +1,551 @@
+{
+  "probe": "spelling-learned-words",
+  "description": "Bob learns and unlearns words (POST /spelling/learn and /spelling/unlearn) and reloads the editor page each time to read ol-learnedWords; duplicates, case, a non-ASCII word, an empty word, an unknown key, an unknown word to unlearn, whether any GET route reads the dictionary, and whether a learn reaches the room. His dictionary is put back at the end.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "ol-learnedWords before: []",
+    "ol-learnedWords after learning: [\"Oleaflyish\",\"oleaflyish\",\"Größenordnungsx\",\"two words\"]",
+    "after unlearning oleaflyish: [\"Oleaflyish\",\"Größenordnungsx\",\"two words\"]",
+    "GET routes: /spelling/learn 404, /spelling/unlearn 404, /spelling/dict 404, /user/dictionary 404, /spelling/check 404",
+    "events alice received while bob learned words: []",
+    "after putting back: []"
+  ],
+  "steps": [
+    {
+      "label": "the editor page before",
+      "page": {
+        "user": "bob",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-learnedWords": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": []
+          },
+          "ol-languages": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "code": "en",
+                "name": "English"
+              },
+              {
+                "code": "en_US",
+                "dic": "en_US",
+                "name": "English (American)"
+              },
+              {
+                "code": "en_GB",
+                "dic": "en_GB",
+                "name": "English (British)"
+              }
+            ],
+            "count": 84
+          }
+        }
+      }
+    },
+    {
+      "label": "learn Oleaflyish",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "Oleaflyish"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 982,
+      "answeredAt": 998
+    },
+    {
+      "label": "learn Oleaflyish again",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "Oleaflyish"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 998,
+      "answeredAt": 1005
+    },
+    {
+      "label": "learn oleaflyish (lower case)",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "oleaflyish"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1005,
+      "answeredAt": 1013
+    },
+    {
+      "label": "learn Größenordnungsx",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "Größenordnungsx"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1013,
+      "answeredAt": 1020
+    },
+    {
+      "label": "learn two words with a space",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "two words"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1020,
+      "answeredAt": 1028
+    },
+    {
+      "label": "the editor page after learning",
+      "page": {
+        "user": "bob",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-learnedWords": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "Oleaflyish",
+              "oleaflyish",
+              "Größenordnungsx",
+              "two words"
+            ]
+          },
+          "ol-languages": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "code": "en",
+                "name": "English"
+              },
+              {
+                "code": "en_US",
+                "dic": "en_US",
+                "name": "English (American)"
+              },
+              {
+                "code": "en_GB",
+                "dic": "en_GB",
+                "name": "English (British)"
+              }
+            ],
+            "count": 84
+          }
+        }
+      }
+    },
+    {
+      "label": "learn an empty word",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": ""
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "113",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "error": "Validation error: Too small: expected string to have >=1 characters at \"body.word\"",
+        "statusCode": 400
+      },
+      "sentAt": 1044,
+      "answeredAt": 1057
+    },
+    {
+      "label": "learn with no word",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {}
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "114",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "error": "Validation error: Invalid input: expected string, received undefined at \"body.word\"",
+        "statusCode": 400
+      },
+      "sentAt": 1057,
+      "answeredAt": 1063
+    },
+    {
+      "label": "learn with an unknown key",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "Strictly",
+          "extra": 1
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "86",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "error": "Validation error: Unrecognized key: \"extra\" at \"body\"",
+        "statusCode": 400
+      },
+      "sentAt": 1063,
+      "answeredAt": 1067
+    },
+    {
+      "label": "learn without the anti-forgery header",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "user": "bob",
+        "body": {
+          "word": "NoToken"
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "9",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Forbidden",
+      "sentAt": 1067,
+      "answeredAt": 1070
+    },
+    {
+      "label": "unlearn oleaflyish",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/unlearn",
+        "user": "bob",
+        "body": {
+          "word": "oleaflyish"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1070,
+      "answeredAt": 1076
+    },
+    {
+      "label": "unlearn a word never learned",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/unlearn",
+        "user": "bob",
+        "body": {
+          "word": "Neverlearned"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1076,
+      "answeredAt": 1081
+    },
+    {
+      "label": "the editor page after unlearning one",
+      "page": {
+        "user": "bob",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-learnedWords": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "Oleaflyish",
+              "Größenordnungsx",
+              "two words"
+            ]
+          },
+          "ol-languages": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "code": "en",
+                "name": "English"
+              },
+              {
+                "code": "en_US",
+                "dic": "en_US",
+                "name": "English (American)"
+              },
+              {
+                "code": "en_GB",
+                "dic": "en_GB",
+                "name": "English (British)"
+              }
+            ],
+            "count": 84
+          }
+        }
+      }
+    },
+    {
+      "label": "GET /spelling/learn",
+      "request": {
+        "method": "GET",
+        "route": "/spelling/learn",
+        "user": "bob"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 1097,
+      "answeredAt": 1105
+    },
+    {
+      "label": "GET /spelling/unlearn",
+      "request": {
+        "method": "GET",
+        "route": "/spelling/unlearn",
+        "user": "bob"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 1105,
+      "answeredAt": 1109
+    },
+    {
+      "label": "GET /spelling/dict",
+      "request": {
+        "method": "GET",
+        "route": "/spelling/dict",
+        "user": "bob"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 1109,
+      "answeredAt": 1114
+    },
+    {
+      "label": "GET /user/dictionary",
+      "request": {
+        "method": "GET",
+        "route": "/user/dictionary",
+        "user": "bob"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 1114,
+      "answeredAt": 1118
+    },
+    {
+      "label": "GET /spelling/check",
+      "request": {
+        "method": "GET",
+        "route": "/spelling/check",
+        "user": "bob"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…",
+      "sentAt": 1118,
+      "answeredAt": 1122
+    },
+    {
+      "label": "learn with no session",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/learn",
+        "body": {
+          "word": "Anonymous"
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "9",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Forbidden",
+      "sentAt": 1122,
+      "answeredAt": 1125
+    },
+    {
+      "label": "the editor page before putting back",
+      "page": {
+        "user": "bob",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-learnedWords": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "Oleaflyish",
+              "Größenordnungsx",
+              "two words"
+            ]
+          },
+          "ol-languages": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "code": "en",
+                "name": "English"
+              },
+              {
+                "code": "en_US",
+                "dic": "en_US",
+                "name": "English (American)"
+              },
+              {
+                "code": "en_GB",
+                "dic": "en_GB",
+                "name": "English (British)"
+              }
+            ],
+            "count": 84
+          }
+        }
+      }
+    },
+    {
+      "label": "put back: unlearn Oleaflyish",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/unlearn",
+        "user": "bob",
+        "body": {
+          "word": "Oleaflyish"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1140,
+      "answeredAt": 1145
+    },
+    {
+      "label": "put back: unlearn Größenordnungsx",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/unlearn",
+        "user": "bob",
+        "body": {
+          "word": "Größenordnungsx"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1145,
+      "answeredAt": 1150
+    },
+    {
+      "label": "put back: unlearn two words",
+      "request": {
+        "method": "POST",
+        "route": "/spelling/unlearn",
+        "user": "bob",
+        "body": {
+          "word": "two words"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1150,
+      "answeredAt": 1154
+    },
+    {
+      "label": "the editor page after putting back",
+      "page": {
+        "user": "bob",
+        "route": "/project/6afab5be1222cc50aa4c170b",
+        "status": 200,
+        "meta": {
+          "ol-learnedWords": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": []
+          },
+          "ol-languages": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              {
+                "code": "en",
+                "name": "English"
+              },
+              {
+                "code": "en_US",
+                "dic": "en_US",
+                "name": "English (American)"
+              },
+              {
+                "code": "en_GB",
+                "dic": "en_GB",
+                "name": "English (British)"
+              }
+            ],
+            "count": 84
+          }
+        }
+      }
+    }
+  ]
+}

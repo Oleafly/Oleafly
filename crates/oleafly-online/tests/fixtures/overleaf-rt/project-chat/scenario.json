@@ -1,0 +1,85 @@
+{
+  "scenario": "project-chat",
+  "description": "Global project chat on CE while Alice and Bob have the editor open and Dave (a viewer) listens on a scripted websocket: send with and without client_id, a viewer sending, paging with limit and before, editing your own message, editing and deleting somebody else's (refused, even for the owner), bad content, and each author deleting their own messages at the end so the project chat is empty again. chat.json holds every REST step with sentAt/answeredAt on the same clock as the frames.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "project": {
+    "name": "sharejs-project",
+    "id": "6afab5be1222cc50aa4c170b"
+  },
+  "doc": {
+    "id": "6b04fdcdcb4fe3a455d4dcc6",
+    "name": "project-chat-20261124-030029.tex"
+  },
+  "format": "sharejs-text-ot",
+  "pageMeta": {
+    "ol-wsUrl": "",
+    "ol-wsRetryHandshake": "5",
+    "ol-maxDocLength": "2097152",
+    "ol-maxReconnectGracefullyIntervalMs": "30000",
+    "ol-useShareJsHash": "",
+    "ol-otMigrationStage": "0",
+    "ol-hasTrackChangesFeature": "",
+    "ol-user_id": "6afab5bb1222cc50aa4c16ec"
+  },
+  "participants": [
+    {
+      "name": "alice",
+      "email": "alice@example.test",
+      "userId": "6afab5bb1222cc50aa4c16ec",
+      "frames": "alice.frames.jsonl",
+      "har": "alice.har",
+      "console": "alice.console.jsonl",
+      "client": "web",
+      "joinDocType": "sharejs-text-ot"
+    },
+    {
+      "name": "bob",
+      "email": "bob@example.test",
+      "userId": "6afab5bc1222cc50aa4c16f2",
+      "frames": "bob.frames.jsonl",
+      "har": "bob.har",
+      "console": "bob.console.jsonl",
+      "client": "web",
+      "joinDocType": "sharejs-text-ot"
+    },
+    {
+      "name": "dave",
+      "email": "dave@example.test",
+      "userId": "6afab5bd1222cc50aa4c16fe",
+      "frames": "dave.frames.jsonl",
+      "har": null,
+      "client": "scripted",
+      "joinDocType": null
+    }
+  ],
+  "converged": true,
+  "finalText": {
+    "alice": "final.txt",
+    "bob": "final.txt"
+  },
+  "notes": [
+    "ol-capabilities for alice: [\"chat\",\"link-sharing\"]",
+    "bob sends with client_id: 204; event minus 204 (ms): alice 5, bob 5, dave 2",
+    "alice sends without client_id: 204; event minus 204 (ms): alice 9, bob 9, dave 1",
+    "dave (viewer) sends: 204; event minus 204 (ms): alice 2, bob 2, dave 1",
+    "new-chat-message keys: id,content,timestamp,user_id,room_id,user,clientId; user keys id,first_name,last_name,email; without client_id the keys are id,content,timestamp,user_id,room_id,user",
+    "alice sends page message 1: 204; event minus 204 (ms): alice 2, bob 2, dave -1",
+    "alice sends page message 2: 204; event minus 204 (ms): alice -1, bob 0, dave -2",
+    "alice sends page message 3: 204; event minus 204 (ms): alice 2, bob 0, dave -1",
+    "alice sends page message 4: 204; event minus 204 (ms): alice 0, bob 0, dave -1",
+    "pages: Paging message 4 f | Paging message 3 f | Paging message 2 f // Paging message 1 f | Dave the viewer ca | Alice answers with // Hello from Bob, wi",
+    "newest first: true",
+    "alice edits her own message: 204; events {\"alice\":[{\"messageId\":\"6b04fdd5296ea5fec7324e27\",\"userId\":\"6afab5bb1222cc50aa4c16ec\",\"content\":\"Alice answers, edited.\"}],\"bob\":[{\"messageId\":\"6b04fdd5296ea5fec7324e27\",\"userId\":\"6afab5bb1222cc50aa4c16ec\",\"content\":\"Alice answers, edited.\"}],\"dave\":[{\"messageId\":\"6b04fdd5296ea5fec7324e27\",\"userId\":\"6afab5bb1222cc50aa4c16ec\",\"content\":\"Alice answers, edited.\"}]}",
+    "bob edits alice's message: 403; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "alice (owner) edits bob's message: 403; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "dave (viewer) edits his own message: 204; events {\"alice\":[{\"messageId\":\"6b04fdd5296ea5fec7324e28\",\"userId\":\"6afab5bd1222cc50aa4c16fe\",\"content\":\"Dave the viewer edited this.\"}],\"bob\":[{\"messageId\":\"6b04fdd5296ea5fec7324e28\",\"userId\":\"6afab5bd1222cc50aa4c16fe\",\"content\":\"Dave the viewer edited this.\"}],\"dave\":[{\"messageId\":\"6b04fdd5296ea5fec7324e28\",\"userId\":\"6afab5bd1222cc50aa4c16fe\",\"content\":\"Dave the viewer edited this.\"}]}",
+    "alice edits with empty content: 500; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "an edited message: {\"id\":\"6b04fdd5296ea5fec7324e28\",\"content\":\"Dave the viewer edited this.\",\"timestamp\":1795489237807,\"user_id\":\"6afab5bd1222cc50aa4c16fe\",\"edited_at\":1795489244746,\"user\":{\"id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\"}}",
+    "alice (owner) deletes bob's message: 403; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "bob deletes alice's message: 403; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "alice deletes an unknown message id: 500; events {\"alice\":null,\"bob\":null,\"dave\":null}",
+    "alice deletes own message: 204; events {\"alice\":[{\"messageId\":\"6b04fdd7296ea5fec7324e2c\",\"userId\":\"6afab5bb1222cc50aa4c16ec\"}],\"bob\":[{\"messageId\":\"6b04fdd7296ea5fec7324e2c\",\"userId\":\"6afab5bb1222cc50aa4c16ec\"}],\"dave\":[{\"messageId\":\"6b04fdd7296ea5fec7324e2c\",\"userId\":\"6afab5bb1222cc50aa4c16ec\"}]}",
+    "chat events per listener: {\"alice\":\"new-chat-message 7, edit-global-message 2, delete-global-message 7\",\"bob\":\"new-chat-message 7, edit-global-message 2, delete-global-message 7\",\"dave\":\"new-chat-message 7, edit-global-message 2, delete-global-message 7\"}"
+  ]
+}

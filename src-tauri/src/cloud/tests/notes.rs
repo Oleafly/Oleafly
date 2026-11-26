@@ -315,7 +315,7 @@ fn note_targets(links: &[NoteLinks], project: &str) -> Vec<String> {
 }
 
 fn assert_still_the_note(text: &str, id: &str) {
-    assert!(crate::project::front_matter_declares_note(text), "{text}");
+    assert!(oleafly_core::front_matter::declares_note(text), "{text}");
     assert_eq!(note_id_of(text).as_deref(), Some(id), "{text}");
 }
 

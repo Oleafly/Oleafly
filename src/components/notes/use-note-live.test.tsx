@@ -4,7 +4,7 @@ import { createMarkdownSourceSnapshot, type MarkdownSourceSnapshot } from "@olea
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { TextOperation } from "@/features/collab/live/ot";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
 import type { LivePeer } from "@/features/collab/live/live-store";
@@ -36,6 +36,7 @@ import { useCollabLiveStore } from "@/features/collab/live/live-store";
 import {
   claimLiveNote,
   collabHoldsDocument,
+  installCollabEditorPort,
   noteLiveHolds,
   useCollabEditorGate,
   useCollabLiveNote,
@@ -372,7 +373,7 @@ describe("useNoteLiveEditor", () => {
       await settle();
     });
     expect(host.settled).toBe(1);
-    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false });
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false, suggesting: false });
     expect(hook.result.current.control.holds()).toBe(true);
 
     editor.commands.setTextSelection(editor.state.doc.content.size - 1);
@@ -426,7 +427,7 @@ describe("useNoteLiveEditor", () => {
       goLive("viewer");
       await settle();
     });
-    expect(hook.result.current.state).toEqual({ live: true, readOnly: true, viewOnly: true });
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: true, viewOnly: true, suggesting: false });
     expect(editor.isEditable).toBe(false);
     expect(hasPending(editor, "agent")).toBe(false);
     act(() => setRole("editor"));
@@ -800,7 +801,7 @@ describe("useNoteLiveEditor while the binding is down", () => {
       goLive("viewer");
       await settle();
     });
-    expect(hook.result.current.state).toEqual({ live: false, readOnly: true, viewOnly: true });
+    expect(hook.result.current.state).toEqual({ live: false, readOnly: true, viewOnly: true, suggesting: false });
     expect(editor.isEditable).toBe(false);
     act(() => setRole("editor"));
     expect(hook.result.current.state.readOnly).toBe(false);
@@ -994,7 +995,7 @@ describe("useNoteLiveEditor edge cases", () => {
     useFilesStore.setState({ projects: [{ id: NOTE, main_doc: "note.md", shared: { server_name: "Lab", role } }] } as never);
     const { editor, hook } = mount(TEXT, new FakeChannel(TEXT));
     const gate = renderHook(() => useNoteReadOnly(NOTE));
-    expect(hook.result.current.state).toEqual({ live: false, readOnly: locked, viewOnly: locked });
+    expect(hook.result.current.state).toEqual({ live: false, readOnly: locked, viewOnly: locked, suggesting: false });
     expect(editor.isEditable).toBe(!locked);
     expect(gate.result.current).toBe(locked);
   });
@@ -1006,7 +1007,7 @@ describe("useNoteLiveEditor edge cases", () => {
       goLive("editor");
       await settle();
     });
-    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false });
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false, suggesting: false });
     expect(editor.isEditable).toBe(true);
   });
 
@@ -1040,7 +1041,18 @@ describe("live project notes", () => {
     vi.useFakeTimers();
     const editor = editorFor(TEXT);
     const presence = { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) };
-    install({ transport: () => new FakeChannel(TEXT).transport(), presence, clock: new Clock() });
+    const channel = new FakeChannel(TEXT);
+    install({ transport: () => channel.transport(), presence, clock: new Clock() });
+    const document = new RemoteDocumentSession(PLAN.path, TEXT, { transport: channel.transport() });
+    void document.open();
+    const uninstallDocuments = installCollabEditorPort({
+      documentSession: (path) => (path === PLAN.path ? document : null),
+      flush: async () => {},
+    });
+    onTestFinished(() => {
+      uninstallDocuments();
+      document.close();
+    });
     const hook = renderHook(
       ({ shown }: { shown: boolean }) => useNoteLiveEditor("project-note:paper:plan", editor, new Host(editor, TEXT), PLAN, shown),
       { initialProps: { shown: false } },
@@ -1069,6 +1081,8 @@ describe("live project notes", () => {
     expect(presence.set).toHaveBeenCalledOnce();
     expect(presence.leave).not.toHaveBeenCalled();
     hook.unmount();
+    expect(channel.opens).toHaveLength(1);
+    expect(document.phase).toBe("open");
   });
 });
 

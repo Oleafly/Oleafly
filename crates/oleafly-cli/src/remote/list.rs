@@ -6,14 +6,14 @@ use oleafly_online::archive::{
     folder_name_for, import_into_folder, unique_folder, ImportLimits, ImportProgress,
 };
 use oleafly_online::client::Http;
-use oleafly_online::projects::{imported_projects, list_projects};
+use oleafly_online::projects::{imported_projects, list_projects, OverleafLink};
 use oleafly_online::session;
 use oleafly_online::sync::{claim, export_link_backups, probe, remove_link};
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use serde_json::{json, Value};
 
 use super::scope::{git_token_for, parse_remote_ref, project_url, resolve_scope, server_is_known};
-use super::sync::backups_folder;
+use super::sync::{backups_folder, git_linked};
 use super::{ImportArgs, RemoteDeps, StatusArgs};
 use crate::auth::online::{online_error, server_for};
 use crate::auth::shared::{from_online, one_line, user_agent, Env, Report};
@@ -47,7 +47,7 @@ fn http_for(server: &str) -> Result<Http, CliError> {
 pub(crate) async fn list(env: &Env, server: Option<&str>) -> Result<Report, CliError> {
     let server = server_for(env, server)?;
     let http = http_for(&server)?;
-    let (session, mut projects) = list_projects(&http, &env.store)
+    let (session, mut projects) = list_projects(&http, &env.store, None)
         .await
         .map_err(|error| online_error(error, &server))?;
     let imported = imported_projects(&env.projects_root(), &server);
@@ -111,7 +111,7 @@ pub(crate) async fn import(
         None => std::env::current_dir().map_err(CliError::from)?,
     };
     let http = http_for(&server)?;
-    let (session, projects) = list_projects(&http, &env.store)
+    let (session, projects) = list_projects(&http, &env.store, None)
         .await
         .map_err(|error| online_error(error, &server))?;
     let mut imported = Vec::new();
@@ -150,7 +150,7 @@ pub(crate) async fn import(
         let report = move |step: ImportProgress| progress(&name, step);
         match import_into_folder(
             &http,
-            &session.cookie,
+            &session,
             project,
             &target,
             &ImportLimits::default(),
@@ -159,6 +159,12 @@ pub(crate) async fn import(
         .await
         {
             Ok(folder) => {
+                let link = OverleafLink {
+                    server: server.clone(),
+                    project_id: folder.remote_id.clone(),
+                    user_id: Some(session.user_id.clone()),
+                };
+                super::live::record_import(&env.data_root, link, &folder.folder).await;
                 lines.push(format!(
                     "Imported {} into {}.",
                     one_line(&folder.name),
@@ -293,9 +299,9 @@ pub(crate) fn unlink(
     dry_run: bool,
 ) -> Result<Report, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
+    scope.ensure_not_live(&env.data_root)?;
     let paths = scope.sync_paths(&env.data_root)?;
-    let linked = paths.dir.exists();
-    if !linked {
+    if !git_linked(&paths) {
         return Ok(Report::new(json!({"unlinked": false, "dryRun": dry_run}))
             .line("This folder isn't linked to an online project."));
     }
@@ -304,6 +310,7 @@ pub(crate) fn unlink(
             .line("Dry run: would unlink this folder. Your files would stay as they are."));
     }
     let _claim = claim(&paths).map_err(|error| from_online(&error))?;
+    scope.ensure_not_live(&env.data_root)?;
     let saved = saved_copies(deps_for, &scope, &paths)?;
     remove_link(&paths).map_err(|error| from_online(&error))?;
     let mut report = Report::new(json!({"unlinked": true, "dryRun": false, "backups": saved}))
@@ -493,11 +500,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let env = env_at(dir.path());
         let folder = dir.path().join("paper");
+        std::fs::create_dir_all(folder.join(".oleafly/online")).unwrap();
+        std::fs::write(folder.join(".oleafly/online/live.lock"), "").unwrap();
+        let no_git =
+            |_: &Path| -> Result<RemoteDeps, CliError> { unreachable!("no copies to save") };
+        let live_only = unlink(&env, &no_git, &folder, false).unwrap();
+        assert_eq!(live_only.data["unlinked"], false);
+        assert!(folder.join(".oleafly/online/live.lock").exists());
         std::fs::create_dir_all(folder.join(".oleafly/online/repo")).unwrap();
         std::fs::write(folder.join(".oleafly/online/link.json"), "{}").unwrap();
         std::fs::write(folder.join("main.tex"), "hello").unwrap();
-        let no_git =
-            |_: &Path| -> Result<RemoteDeps, CliError> { unreachable!("no copies to save") };
         let dry = unlink(&env, &no_git, &folder, true).unwrap();
         assert_eq!(dry.data["unlinked"], false);
         assert!(folder.join(".oleafly/online").exists());

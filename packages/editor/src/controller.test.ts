@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { history } from "@codemirror/commands";
-import { EditorSelection, EditorState, StateEffect } from "@codemirror/state";
+import { EditorSelection, EditorState, StateEffect, Text } from "@codemirror/state";
 import { type BlockInfo, EditorView } from "@codemirror/view";
 import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 import {
@@ -14,9 +14,11 @@ import {
   gotoLine,
   insertListEnvironment,
   insertTemplate,
+  quoteRange,
   revealEditorRange,
   selectWordNearLine,
   setEditorView,
+  wordRangeNearLine,
 } from "./controller";
 
 let view: EditorView | null = null;
@@ -441,5 +443,77 @@ describe("selecting the word clicked in the PDF", () => {
     expect(selectWordNearLine(4, "study", { before: pdf.slice(0, at), after: pdf.slice(at + 5) })).toBe(true);
     const { from } = editor.state.selection.main;
     expect(editor.state.doc.lineAt(from).number).toBe(4);
+  });
+});
+
+describe("finding the source range of a quote from the PDF", () => {
+  function docOf(text: string): Text {
+    return EditorState.create({ doc: text }).doc;
+  }
+
+  function quoted(doc: Text, startLine: number, endLine: number, text: string, before = "", after = ""): string {
+    const range = quoteRange(doc, startLine, endLine, { text, before, after });
+    return doc.sliceString(range.from, range.to);
+  }
+
+  it("finds a word without an open editor, as selecting it would", () => {
+    const doc = docOf("x\nCats and dogs and birds and fish.\n");
+    expect(wordRangeNearLine(doc, 2, "and", { before: "Cats and dogs ", after: " birds" })).toEqual({ from: 16, to: 19 });
+    expect(wordRangeNearLine(doc, 2, "   ")).toBeNull();
+    expect(wordRangeNearLine(doc, 2, "zebra")).toBeNull();
+  });
+
+  it("covers plain text from its first word to its last", () => {
+    const doc = docOf("x\nWe make a claim that needs a citation here.\n");
+    expect(quoted(doc, 2, 2, "a claim that needs a citation", "We make ", " here.")).toBe("a claim that needs a citation");
+  });
+
+  it("picks the occurrence the words around the quote point at", () => {
+    const doc = docOf("x\nThe model fits. The model fails on noise.\n");
+    expect(quoted(doc, 2, 2, "The model", "fits. ", " fails on noise.")).toBe("The model");
+    const range = quoteRange(doc, 2, 2, { text: "The model", before: "fits. ", after: " fails on noise." });
+    expect(range.from).toBe(doc.line(2).from + 16);
+  });
+
+  it("keeps the LaTeX markup between the first and last word", () => {
+    const doc = docOf("x\n" + String.raw`We make a \emph{bold claim} that needs \textbf{a} citation.` + "\n");
+    expect(quoted(doc, 2, 2, "bold claim that needs a citation", "We make a ", ".")).toBe(
+      String.raw`bold claim} that needs \textbf{a} citation`,
+    );
+  });
+
+  it("joins a word LaTeX hyphenated at the end of a PDF line", () => {
+    const doc = docOf("x\nas in the section of the model shows the data.\n");
+    expect(quoted(doc, 2, 2, "tion of the model", "as in the sec- ", " shows")).toBe("section of the model");
+    expect(quoted(doc, 2, 2, "as in the sec-", "", " tion of the model")).toBe("as in the section");
+  });
+
+  it("spans several source lines", () => {
+    const doc = docOf("x\nCats and dogs\nand birds and fish.\n");
+    expect(quoted(doc, 2, 3, "dogs and birds", "Cats and ", " and fish.")).toBe("dogs\nand birds");
+  });
+
+  it("finds words inside Typst markup", () => {
+    const doc = docOf("= Intro\nWe make a *bold* claim that _needs_ a citation.\n");
+    expect(quoted(doc, 2, 2, "bold claim that needs", "We make a ", " a citation.")).toBe("bold* claim that _needs");
+  });
+
+  it("starts at the first word with letters, past a number LaTeX wrote", () => {
+    const doc = docOf(String.raw`\section{Introduction}` + "\nWe start here.\n");
+    expect(quoted(doc, 1, 2, "1 Introduction We start", "", " here.")).toBe("Introduction}\nWe start");
+  });
+
+  it("falls back to the lines without their outer spaces when the words aren't there", () => {
+    const doc = docOf("x\n   Something else entirely.  \nand more of it.\t\n");
+    expect(quoted(doc, 2, 3, "zebra unicorn", "", "")).toBe("Something else entirely.  \nand more of it.");
+    expect(quoted(doc, 3, 2, "", "", "")).toBe("Something else entirely.  \nand more of it.");
+    expect(quoted(doc, 0, 99, "zebra", "", "")).toBe("x\n   Something else entirely.  \nand more of it.");
+    const blank = docOf("x\n  \n\ny\n");
+    expect(quoteRange(blank, 2, 3, { text: "zebra", before: "", after: "" })).toEqual({ from: 5, to: 5 });
+  });
+
+  it("falls back to the lines when the last word comes before the first", () => {
+    const doc = docOf("x\nfish then cats\n");
+    expect(quoted(doc, 2, 2, "cats and fish", "", "")).toBe("fish then cats");
   });
 });

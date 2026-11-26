@@ -31,7 +31,7 @@ pub mod version;
 mod support;
 
 use clap::{CommandFactory, FromArgMatches, Parser};
-use contract::{CliError, Context, ErrorKind, Exit, GlobalArgs, Outcome};
+use contract::{CliError, Context, Exit, GlobalArgs, Outcome};
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
 use std::path::Path;
@@ -39,6 +39,8 @@ use std::process::ExitCode;
 
 pub use commands::registry::Command;
 pub use native::executable_name;
+
+const EXIT_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
 
 const CONTRACT_NOTICE: &str = "\
 Run `oleafly help json` for the --json contract and `oleafly help exit-codes`
@@ -77,11 +79,18 @@ pub fn main() -> ExitCode {
         Ok(cli) => cli,
         Err(error) => return parse_failure(error, &arguments),
     };
+    let bounded_exit = cli.command.bounded_exit();
     match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
     {
-        Ok(runtime) => ExitCode::from(runtime.block_on(run(cli, project_explicit))),
+        Ok(runtime) => {
+            let code = runtime.block_on(run(cli, project_explicit));
+            if bounded_exit {
+                runtime.shutdown_timeout(EXIT_WAIT);
+            }
+            ExitCode::from(code)
+        }
         Err(error) => {
             human::error(&format!("Oleafly couldn't start: {error}"));
             ExitCode::from(Exit::Internal as u8)
@@ -191,17 +200,9 @@ fn is_subcommand(argument: &OsStr) -> bool {
         })
 }
 
-/// Resolves when the process is asked to stop: Ctrl+C, and on Unix SIGTERM
-/// and SIGHUP too (never, when the handlers can't be set). A process ended by
-/// a signal runs no destructors, so the compiler a build started would keep
-/// running and the outputs it was holding aside would not go back.
-pub(crate) fn stop_requested() -> impl std::future::Future<Output = ()> {
-    daemon::serve::termination()
-}
-
 async fn interrupted(stop: impl std::future::Future<Output = ()>) -> CliError {
     stop.await;
-    CliError::new(ErrorKind::Interrupted, "interrupted", "Stopped.")
+    contract::exit_error(Exit::Interrupted)
 }
 
 fn panic_error(payload: &(dyn std::any::Any + Send)) -> CliError {
@@ -236,7 +237,7 @@ pub async fn run(cli: Cli, project_explicit: bool) -> u8 {
         if cli.command.handles_interrupt() {
             cli.command.run(&ctx).await
         } else {
-            let stop = stop_requested();
+            let stop = daemon::serve::termination();
             tokio::select! {
                 result = cli.command.run(&ctx) => result,
                 error = interrupted(stop) => Err(error),
@@ -286,6 +287,7 @@ mod tests {
     use super::*;
     use commands::build::Commands as BuildCommands;
     use commands::workspace::Commands as WorkspaceCommands;
+    use contract::ErrorKind;
     use std::path::PathBuf;
 
     #[tokio::test]

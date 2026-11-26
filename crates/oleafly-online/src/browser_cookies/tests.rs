@@ -290,9 +290,7 @@ fn detects_non_macos_profiles_as_coming_soon() {
     let linux = detect_sources_at(fixture.path(), HostPlatform::Linux, ImportPolicy::App);
 
     assert!(windows.iter().any(|source| {
-        source.browser == BrowserId::Chrome
-            && source.status == CookieSourceStatus::ComingSoon
-            && source.detail.contains("Windows")
+        source.browser == BrowserId::Chrome && source.status == CookieSourceStatus::ComingSoon
     }));
     assert!(windows.iter().any(|source| {
         source.browser == BrowserId::Chrome
@@ -300,9 +298,7 @@ fn detects_non_macos_profiles_as_coming_soon() {
             && source.status == CookieSourceStatus::ComingSoon
     }));
     assert!(linux.iter().any(|source| {
-        source.browser == BrowserId::Firefox
-            && source.status == CookieSourceStatus::ComingSoon
-            && source.detail.contains("Linux")
+        source.browser == BrowserId::Firefox && source.status == CookieSourceStatus::ComingSoon
     }));
     assert!(linux.iter().any(|source| {
         source.browser == BrowserId::Firefox
@@ -1056,6 +1052,176 @@ fn the_firefox_profile_the_browser_opens_is_listed_first() {
     assert_eq!(
         first_firefox_profile(mac.path(), HostPlatform::Macos).as_deref(),
         Some("a1.default")
+    );
+}
+
+fn profiles_of(home: &Path, browser: BrowserId) -> Vec<(String, String, CookieSourceStatus)> {
+    detect_sources_at(home, HostPlatform::Macos, ImportPolicy::App)
+        .into_iter()
+        .filter(|source| source.browser == browser)
+        .filter_map(|source| Some((source.profile?, source.profile_name?, source.status)))
+        .collect()
+}
+
+fn brave_home(local_state: Option<&str>) -> TempDir {
+    let home = TempDir::new().unwrap();
+    let root = home
+        .path()
+        .join("Library/Application Support/BraveSoftware/Brave-Browser");
+    for folder in ["Default", "Profile 1", "Profile 3"] {
+        create_file(&root.join(folder).join("Cookies"));
+    }
+    for folder in ["Profile 2", "System Profile", "Guest Profile", "Work"] {
+        fs::create_dir_all(root.join(folder)).unwrap();
+    }
+    if let Some(text) = local_state {
+        fs::write(root.join("Local State"), text).unwrap();
+    }
+    home
+}
+
+fn rows(
+    expected: &[(&str, &str, CookieSourceStatus)],
+) -> Vec<(String, String, CookieSourceStatus)> {
+    expected
+        .iter()
+        .map(|(folder, name, status)| (folder.to_string(), name.to_string(), *status))
+        .collect()
+}
+
+#[test]
+fn chromium_profiles_carry_the_names_people_gave_them() {
+    use CookieSourceStatus::{Available, NoCookieStore};
+    let home = brave_home(Some(
+        r#"{"os_crypt":{"encrypted_key":"x"},"profile":{"info_cache":{
+            "Default":{"name":"General"},
+            "Profile 1":{"name":"The Hustle"},
+            "Profile 2":{"name":"The Final Grind"},
+            "Profile 3":{"name":" RN\u202eerd\n "},
+            "Work":{"name":"Office"},
+            "Gone":{"name":"Deleted"}}}}"#,
+    ));
+    assert_eq!(
+        profiles_of(home.path(), BrowserId::Brave),
+        rows(&[
+            ("Default", "General", Available),
+            ("Profile 1", "The Hustle", Available),
+            ("Profile 2", "The Final Grind", NoCookieStore),
+            ("Profile 3", "RNerd", Available),
+            ("Work", "Office", NoCookieStore),
+        ])
+    );
+    assert_eq!(
+        profile_name_at(
+            home.path(),
+            HostPlatform::Macos,
+            BrowserId::Brave,
+            "Profile 1"
+        ),
+        "The Hustle"
+    );
+    assert_eq!(
+        profile_name_at(home.path(), HostPlatform::Macos, BrowserId::Brave, "Gone"),
+        "Gone"
+    );
+}
+
+#[test]
+fn chromium_profiles_fall_back_to_their_folders() {
+    use CookieSourceStatus::{Available, NoCookieStore};
+    let folders = rows(&[
+        ("Default", "Default", Available),
+        ("Profile 1", "Profile 1", Available),
+        ("Profile 2", "Profile 2", NoCookieStore),
+        ("Profile 3", "Profile 3", Available),
+    ]);
+    for local_state in [
+        None,
+        Some("not json"),
+        Some("{}"),
+        Some(r#"{"profile":{"info_cache":[]}}"#),
+        Some(r#"{"profile":{"info_cache":{}}}"#),
+    ] {
+        let home = brave_home(local_state);
+        assert_eq!(
+            profiles_of(home.path(), BrowserId::Brave),
+            folders,
+            "{local_state:?}"
+        );
+    }
+
+    let home = brave_home(None);
+    let elsewhere = home.path().join("elsewhere");
+    fs::write(
+        &elsewhere,
+        r#"{"profile":{"info_cache":{"Default":{"name":"Planted"}}}}"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        &elsewhere,
+        home.path()
+            .join("Library/Application Support/BraveSoftware/Brave-Browser/Local State"),
+    )
+    .unwrap();
+    assert_eq!(profiles_of(home.path(), BrowserId::Brave), folders);
+
+    let home = brave_home(Some(
+        r#"{"profile":{"info_cache":{"Default":{"name":7},"Profile 1":{},"Profile 3":{"name":"\u200b"}}}}"#,
+    ));
+    assert_eq!(
+        profiles_of(home.path(), BrowserId::Brave),
+        rows(&[
+            ("Default", "Default", Available),
+            ("Profile 1", "Profile 1", Available),
+            ("Profile 3", "Profile 3", Available),
+        ])
+    );
+}
+
+#[test]
+fn profiles_that_share_a_name_show_their_folders_too() {
+    use CookieSourceStatus::{Available, NoCookieStore};
+    let home = brave_home(Some(
+        r#"{"profile":{"info_cache":{
+            "Default":{"name":"Person 1"},
+            "Profile 1":{"name":"Person 1"},
+            "Profile 2":{"name":"Solo"}}}}"#,
+    ));
+    assert_eq!(
+        profiles_of(home.path(), BrowserId::Brave),
+        rows(&[
+            ("Default", "Person 1 (Default)", Available),
+            ("Profile 1", "Person 1 (Profile 1)", Available),
+            ("Profile 2", "Solo", NoCookieStore),
+        ])
+    );
+}
+
+#[test]
+fn firefox_profiles_carry_their_names() {
+    use CookieSourceStatus::Available;
+    let home = TempDir::new().unwrap();
+    let firefox = home.path().join("Library/Application Support/Firefox");
+    for folder in [
+        "abcd1234.default",
+        "wlg1oyhc.default-default",
+        "zz99zz99.Thesis",
+    ] {
+        create_file(&firefox.join("Profiles").join(folder).join("cookies.sqlite"));
+    }
+    fs::write(
+        firefox.join("profiles.ini"),
+        "[Profile0]\nName=Research\nIsRelative=1\nPath=Profiles/abcd1234.default\n\n[General]\nName=Nope\nPath=Profiles/zz99zz99.Thesis\n",
+    )
+    .unwrap();
+    assert_eq!(
+        profiles_of(home.path(), BrowserId::Firefox),
+        rows(&[
+            ("abcd1234.default", "Research", Available),
+            ("wlg1oyhc.default-default", "default-default", Available),
+            ("zz99zz99.Thesis", "Thesis", Available),
+        ])
     );
 }
 

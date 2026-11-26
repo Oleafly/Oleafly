@@ -1875,33 +1875,18 @@
       "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
-      "confirmTitle": "Cookie içe aktarmayı onaylayın",
-      "detecting": "Kurulu tarayıcı profilleri aranıyor...",
-      "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
-      "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
-      "empty": "Desteklenen tarayıcı profili bulunamadı.",
-      "errors": {
-        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin."
-      },
-      "profileGroupLabel": "Tarayıcı profilleri",
-      "profileLegend": "Tarayıcı profili",
-      "review": "İçe aktarmayı incele",
-      "status": {
-        "available": "Kullanılabilir",
-        "comingSoon": "Yakında",
-        "noCookieStore": "Cookie deposu yok",
-        "notInstalled": "Kurulu değil"
-      },
-      "tryAgain": "Yeniden deneyin",
-      "label": "Bir tarayıcının oturumunu kopyala",
-      "useBrowserSignIn": "Tarayıcınızdaki oturumu kopyala",
-      "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly, {{domain}} çerezlerini {{browser}} tarayıcısındaki {{profile}} profilinden okuyacak. Çerezler Oleafly içinde kalır ve yalnızca {{domain}} adresine gönderilir. Bir sistem iletişim kutusunda bir kez daha onaylayacaksınız.",
-      "copyAction": "Oturumu kopyala",
-      "copying": "Kopyalanıyor…",
-      "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
-      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın."
+      "dialogDescription": "Oleafly yalnızca {{server}} cookie'lerini kopyalar, bunlarla oturum açar ve ardından kopyaları siler. Parolalarınız tarayıcıda kalır.",
+      "dialogTitle": "Tarayıcınızdaki cookie'leri içe aktarın",
+      "label": "Tarayıcınızdan cookie içe aktarın",
+      "useBrowserSignIn": "Profil seç",
+      "signInDescription": "Bu bilgisayardaki bir tarayıcı profilinde zaten oturumu açık olan {{server}} hesabını kullanır.",
+      "copyAction": "İçe aktar",
+      "copying": "İçe aktarılıyor…",
+      "from": "Kaynak",
+      "noCookies": "Henüz cookie yok",
+      "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın.",
+      "orExisting": "ya da var olan bir oturumu kullanın",
+      "noSavedSignIn": "{{profile}} profilinde {{server}} için kayıtlı bir oturum yok, bu yüzden kopyalanan cookie'ler oturumunuzu açmadı. Orada oturumunuz açıksa tarayıcı oturumu yalnızca kapanana kadar tutuyor olabilir. Bunun yerine {{browser}} kutucuğunu kullanın."
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
@@ -1961,7 +1946,12 @@
       "signedIn": "{{server}} üzerinde oturum açıldı",
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "addAccount": "Başka bir hesap ekle",
+      "addAccountHint": "Nerede oturum açacağınızı seçin. Hepsi oturum açılmamış olarak başlar, bu yüzden her hesap olur.",
+      "accountPick": "İçe aktarma hesabı",
+      "accountPickDescription": "Yeni içe aktarmalar ve şablonlar bu hesabı kullanır. Mevcut projeleriniz geldikleri hesabı korur.",
       "gitTitle": "Eşitleme için Git belirteci",
+      "gitTitleFor": "{{email}} için Git belirteci",
       "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
       "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
       "gitOpenSettings": "Overleaf hesap ayarlarını aç",
@@ -1970,14 +1960,9 @@
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun.",
-      "browserLabel": "Tarayıcınızla oturum açın",
-      "browserDescription": "Google, kurum veya geçiş anahtarıyla oturum açmak için. Oleafly, {{server}} sunucusunu yeni bir tarayıcı penceresinde açar ve giriş yaptığınızda kapatır.",
-      "browserAction": "Oturum aç",
-      "browserPick": "Oturum açılacak tarayıcı",
       "browserWaiting": "{{browser}} tarayıcısında {{server}} sunucusunda oturum açmayı tamamlayın. Pencereyi kapatmak işlemi iptal eder.",
-      "browserHint": "Google, kurum veya geçiş anahtarıyla oturum açmak için bunu kullanın.",
-      "windowLabel": "{{server}} sunucusunda oturum aç",
-      "windowDescription": "Oleafly bir oturum açma penceresi açar ve giriş yaptığınızda kapatır. Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra burada onunla oturum açın.",
+      "windowLabel": "Oleafly içinde oturum aç",
+      "windowDescription": "Oturum açtığınızda pencere kendiliğinden kapanır. Geçiş anahtarınız orada çalışmazsa şifrenizi veya telefonunuzdaki bir onayı kullanın.",
       "windowAction": "Oturum aç",
       "windowWaiting": "{{server}} sunucusunda oturum açmayı açılan pencerede tamamlayın.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Overleaf'ten de sil",
           "never": "Overleaf'te tut"
         }
-      }
+      },
+      "sameAccount": "Zaten {{account}} olarak oturum açtınız. Başka bir hesap eklemek için o hesapla oturum açın.",
+      "windowTitle": "{{server}} sunucusunda oturum aç",
+      "addAccountKept": "Geçerli hesabınızın oturumu açık kalır.",
+      "noBrowser": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra onu burada seçin.",
+      "tileHere": "Bu uygulamada",
+      "tileWindow": "Yeni pencere",
+      "tileWaiting": "Sizi bekliyor",
+      "signInNote": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için bir tarayıcı kullanın. Geçiş anahtarınız Oleafly içinde çalışmazsa orada şifrenizi veya telefonunuzdaki bir onayı kullanın. Oturum açtığınızda pencere kendiliğinden kapanır."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "Bu işlem Cua yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?"
         }
       }
+    },
+    "signIns": {
+      "title": "Oturumları yönet",
+      "description": "Oleafly uygulamasının bu bilgisayarda oturum açtığı hesaplar. Burada bir hesabı kaldırmak tarayıcıdaki oturumunuzu kapatmaz.",
+      "loading": "Oturumlarınız yükleniyor…",
+      "empty": "Hiçbir hesapla oturum açmadınız.",
+      "inUse": "Kullanımda",
+      "switch": "Geç",
+      "switchTo": "{{account}} hesabına geç",
+      "removeAccount": "{{account}} hesabını kaldır",
+      "removeAll": "Tümünü kaldır",
+      "importMore": "Daha fazla içe aktar",
+      "loadFailed": "Oleafly oturumlarınızı yükleyemedi.",
+      "changeFailed": "Oleafly bu oturumu değiştiremedi. Yeniden deneyin."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Sözcükleri temizle",
       "descriptionFallback": "Bu işlem, bu sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionGlobal": "Bu işlem, genel sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionOverleaf": "Overleaf hesabınızdan da kaldırılırlar.",
       "descriptionProject": "Bu işlem, {{project}} projesindeki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionSuppressed": "Bu işlem, {{project}} projesinde kapatılmış bulguların tümünü kaldırır. Hemen yeniden denetlenirler.",
       "suppressedConfirm": "Yeniden göster",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Buraya eklediğiniz sözcükler her projede redaksiyon tarafından atlanır.",
+      "overleafSynced": "Bir proje Overleaf üzerinde canlı olduğu sürece Overleaf hesabınızdaki öğrenilmiş sözcüklerle eşitlenir.",
       "scope": "Her projede geçerlidir"
     },
     "intro": "Kişisel yazım denetimi sözlüğünüze sözcük ekleyin. Bu sözcükler yerel ayarlarda saklanır ve projeler genelinde yok sayılır. Eşleştirme Unicode normalleştirmesi kullanır ve büyük küçük harfe duyarsızdır.",

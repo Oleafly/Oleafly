@@ -328,11 +328,7 @@
       "loading": "Loading your Overleaf projects",
       "loadFailed": "Oleafly could not load your Overleaf projects.",
       "signInPrompt": "Sign in to Overleaf to see your projects. A sign-in window opens and closes by itself once you're in.",
-      "signingIn": "Finish signing in to Overleaf in the window that opened.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in. Closing it cancels.",
-      "passkeyHint": "If your passkey doesn't work in the sign-in window, pick another option there, like your password or a prompt on your phone.",
       "expired": "Your Overleaf sign-in expired. Sign in again to see your projects.",
-      "signIn": "Sign in to Overleaf",
       "signInWindowTitle": "Sign in to Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Overleaf server address",
@@ -341,6 +337,7 @@
       "saveServer": "Use this server",
       "signedInAs": "Signed in as {{email}}",
       "signedIn": "Signed in to Overleaf",
+      "accountPick": "Overleaf account",
       "signOut": "Sign out",
       "searchLabel": "Search Overleaf projects",
       "searchPlaceholder_one": "Search {{count}} project",
@@ -362,6 +359,8 @@
       "import_other": "Import {{count}} projects",
       "imported": "Imported",
       "open": "Open",
+      "openLive": "Open live",
+      "opening": "Opening",
       "ownedByYou": "Yours",
       "owner": "Owned by {{name}}",
       "archived": "Archived",
@@ -377,7 +376,39 @@
         "downloading": "Downloading {{percent}}%",
         "downloadingUnknown": "Downloading",
         "importing": "Setting up"
-      }
+      },
+      "invitations": {
+        "title": "Invitations",
+        "from": "From {{name}}",
+        "join": "Join",
+        "joined": "You joined this project"
+      },
+      "link": {
+        "checking": "Checking the link",
+        "unnamed": "A project on Overleaf",
+        "join": "Join",
+        "importInstead": "Import",
+        "grants": {
+          "edit": "Joining lets you edit it as a collaborator.",
+          "view": "Joining lets you view it only. Link viewers get no comments or chat.",
+          "already": "You already have this project.",
+          "invite": "Joining accepts the invitation."
+        }
+      },
+      "put": {
+        "menu": "Put on Overleaf",
+        "title": "Put on Overleaf",
+        "description": "Oleafly uploads this project as a new Overleaf project, then keeps both in sync while you edit live.",
+        "name": "Name on Overleaf",
+        "account": "Overleaf account",
+        "submit": "Put on Overleaf",
+        "working": "Uploading",
+        "signedOut": "Sign in to Overleaf in Settings first.",
+        "openSettings": "Open Settings",
+        "cancel": "Cancel"
+      },
+      "switchAccount": "Switch account",
+      "signInChoose": "Choose where to sign in. Your projects show up here once you're in."
     }
   },
   "pdfImport": {

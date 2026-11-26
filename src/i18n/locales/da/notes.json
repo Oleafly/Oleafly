@@ -1178,6 +1178,7 @@
     "elsewhere": "Liveredigering er slået til i en anden note",
     "makeLive": "Rediger live her",
     "viewOnly": "Du kan læse denne note, men ikke redigere den.",
+    "suggesting": "Forslag er slået til, så du kan ikke redigere denne note her. Slå forslag fra for at redigere den.",
     "someone": "Nogen",
     "unsentReadOnly": "Dine seneste ændringer i noten blev ikke sendt, fordi du nu kun kan se den.",
     "unsentRefused": "Oleafly kunne ikke sende dine seneste ændringer i noten, så de blev kasseret."

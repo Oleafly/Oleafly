@@ -156,7 +156,7 @@ fn skipped_file(name: &str) -> bool {
     SKIPPED_FILES
         .iter()
         .any(|skipped| name.eq_ignore_ascii_case(skipped))
-        || crate::checkpoint_capture::is_oleafly_owned(name)
+        || oleafly_core::exclude::is_oleafly_owned_name(name)
 }
 
 pub(super) fn mtime_ns(metadata: &std::fs::Metadata) -> Option<i64> {

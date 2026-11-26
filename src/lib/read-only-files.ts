@@ -1,5 +1,10 @@
 import { i18n } from "@/i18n";
-import { collabProjectReadOnly, useCollabProjectReadOnly } from "@/lib/collab-live-bridge";
+import {
+  collabProjectReadOnly,
+  overleafLinkedAt,
+  useCollabProjectReadOnly,
+  useOverleafLinked,
+} from "@/lib/collab-live-bridge";
 import { isManagedProjectPath, isReadOnlyLink, isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
 import {
@@ -13,7 +18,8 @@ export function activeFileReadOnly(): boolean {
   return (
     projectFolderIsReadOnly(projectId) ||
     collabProjectReadOnly(projectId) ||
-    (!!activePath && isReadOnlyProjectPath(activePath, manifestHome, tree))
+    (!!activePath &&
+      (isReadOnlyProjectPath(activePath, manifestHome, tree) || overleafLinkedAt(projectId, activePath) !== null))
   );
 }
 
@@ -22,9 +28,11 @@ export function useActiveFileReadOnly(): boolean {
   const readOnlyPath = useFilesStore(
     (s) => !!s.activePath && isReadOnlyProjectPath(s.activePath, s.manifestHome, s.tree),
   );
+  const activePath = useFilesStore((s) => s.activePath);
   const readOnlyFolder = useProjectFolderReadOnly(projectId);
   const collabViewer = useCollabProjectReadOnly(projectId);
-  return readOnlyFolder || collabViewer || readOnlyPath;
+  const overleafLinked = useOverleafLinked(projectId, activePath) !== null;
+  return readOnlyFolder || collabViewer || readOnlyPath || overleafLinked;
 }
 
 export function readOnlyEditMessage(path: string | null): string | null {
@@ -36,6 +44,9 @@ export function readOnlyEditMessage(path: string | null): string | null {
   }
   if (isReadOnlyLink(path, tree)) {
     return i18n.t(($) => $.editor.shell.linkedFileReadOnly, { file: path });
+  }
+  if (overleafLinkedAt(projectId, path)) {
+    return i18n.t(($) => $.collab.overleafLinked.readOnly, { file: path });
   }
   return null;
 }

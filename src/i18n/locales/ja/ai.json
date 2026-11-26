@@ -370,7 +370,8 @@
       "runCommand": "プロジェクトフォルダで shell コマンドを実行します。制限時間は 2 分です。",
       "toggleTheme": "ライトモードとダークモードを切り替えます。",
       "listOverleafProjects": "Overleaf のプロジェクトを一覧表示します。必要に応じて先にサインインします。",
-      "importOverleafProjects": "Overleaf のプロジェクトを、コンパイラとメインファイルの設定ごとライブラリに読み込みます。"
+      "importOverleafProjects": "Overleaf のプロジェクトを、コンパイラとメインファイルの設定ごとライブラリに読み込みます。",
+      "openOverleafLive": "Overleaf のプロジェクトをライブ編集用に開きます。まだライブラリにない場合は、先に読み込みます。"
     },
     "disableAll": "すべて無効にする",
     "emptyContext": "この場面で使えるツールはありません。",
@@ -396,7 +397,8 @@
       "latexOnly": "LaTeX プロジェクトのみ",
       "latexAndTypstOnly": "LaTeX と Typst のプロジェクトのみ",
       "pdfCaptureSetting": "PDF のページ取り込み設定が必要",
-      "chatApproval": "チャットで 1 コマンドずつ承認"
+      "chatApproval": "チャットで 1 コマンドずつ承認",
+      "overleafLiveSetting": "「実験的な機能」の「Overleaf とのライブ編集」が必要"
     },
     "sourceGroups": {
       "figure": "図",

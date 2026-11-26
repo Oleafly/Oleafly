@@ -45,7 +45,15 @@ fn closest_base(
     text: &str,
 ) -> Option<String> {
     let read = reads.into_iter().flat_map(|reads| reads.kept(path));
-    nearest(bases.kept(path).chain(read), text).cloned()
+    let known: Vec<&String> = bases.kept(path).chain(read).collect();
+    if known.iter().any(|known| *known == text) {
+        return Some(
+            bases
+                .latest(path)
+                .map_or_else(|| text.to_owned(), Clone::clone),
+        );
+    }
+    nearest(known.into_iter(), text).cloned()
 }
 
 type Placed = HashMap<String, (String, NodeKind, Option<String>)>;
@@ -239,7 +247,7 @@ impl Active {
         }
         if let Some(path) = suggested {
             crate::collab::suggesting::tell(
-                self.local.host.as_ref(),
+                self.host.as_ref(),
                 &self.local.project_id,
                 Some(path),
                 true,
@@ -270,6 +278,26 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
         .record(&path, &lf_text(text));
 }
 
+pub(super) fn forget_reads(project_id: &str) {
+    guard(&READS).remove(project_id);
+}
+
+#[cfg(test)]
+pub(super) fn reads_kept(project_id: &str) -> bool {
+    guard(&READS).contains_key(project_id)
+}
+
+fn read_base(
+    bases: &Mutex<WrittenTexts>,
+    project_id: &str,
+    path: &str,
+    text: &str,
+) -> Option<String> {
+    let path = normalized(path)?;
+    let reads = guard(&READS);
+    closest_base(&guard(bases), reads.get(project_id), &path, &lf_text(text))
+}
+
 pub fn note_read(project_id: &str, path: &str, text: &str) {
     if live_for(project_id).is_some() {
         remember_read(project_id, path, text);
@@ -290,7 +318,13 @@ pub async fn write_text(
     };
     let outcome = match live {
         Live::Server(active) => active.write_text(path, base, text).await?,
-        Live::Overleaf(live) => live.write_text(path, base, text).await?,
+        Live::Overleaf(live) => {
+            let base = match base {
+                Some(base) => Some(lf_text(base).into_owned()),
+                None => read_base(&live.mirror.disk.bases, project_id, path, text),
+            };
+            live.write_text(path, base.as_deref(), text).await?
+        }
     };
     if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
@@ -634,6 +668,49 @@ mod tests {
             bases.latest("main.tex").map(String::as_str),
             Some("ONE\ntwo\nthree\n")
         );
+    }
+
+    #[test]
+    fn a_write_without_a_base_back_to_an_earlier_text_is_applied() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, main) = shared("one\n");
+        let mut bases = WrittenTexts::default();
+        bases.record("main.tex", "one\n");
+        let mut reads = WrittenTexts::default();
+        reads.record("main.tex", "one\n");
+        for text in ["one\ntwo\n", "one\n"] {
+            assert!(write_into(
+                &mut live,
+                &mut bases,
+                Some(&reads),
+                dir.path(),
+                "main.tex",
+                None,
+                text,
+            )
+            .unwrap());
+            assert_eq!(live.doc().text(&main).unwrap(), text);
+        }
+    }
+
+    #[test]
+    fn a_write_without_a_base_of_the_last_written_text_keeps_newer_edits() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, main) = shared("one\n");
+        let mut bases = WrittenTexts::default();
+        bases.record("main.tex", "one\n");
+        live.local_text(&main, "one\ntyped since\n").unwrap();
+        assert!(write_into(
+            &mut live,
+            &mut bases,
+            None,
+            dir.path(),
+            "main.tex",
+            None,
+            "one\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "one\ntyped since\n");
     }
 
     #[test]
@@ -1005,13 +1082,16 @@ mod tests {
 
     struct QuietHost;
 
-    impl LiveHost for QuietHost {
+    impl oleafly_live::DiskHost for QuietHost {
         fn status(&self, _: super::super::StatusPayload) {}
         fn role(&self, _: super::super::RolePayload) {}
-        fn merged(&self, _: super::super::MergedPayload) {}
         fn presence(&self, _: super::super::PresencePayload) {}
         fn presence_left(&self, _: super::super::PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for QuietHost {
+        fn merged(&self, _: super::super::MergedPayload) {}
         fn new_device(&self, _: super::super::NewDevicePayload) {}
     }
 
@@ -1057,16 +1137,16 @@ mod tests {
             let mut bases = WrittenTexts::default();
             bases.record("main.tex", "alpha\nbeta\n");
             let active = Arc::new(Active {
-                local: LiveDisk {
-                    project_id: "written-live".to_owned(),
-                    root: root.clone(),
-                    disk_file: dir.path().join("disk.json"),
-                    disk: Mutex::new(disk),
-                    bases: Mutex::new(bases),
-                    host: Arc::new(QuietHost),
+                local: LiveDisk::assembled(
+                    "written-live",
+                    root.clone(),
+                    dir.path().join("disk.json"),
+                    disk,
+                    bases,
+                    Arc::new(QuietHost),
                     writer,
-                    upkeep: Default::default(),
-                },
+                ),
+                host: Arc::new(QuietHost),
                 document_dir: dir.path().join("document"),
                 live: Arc::clone(&shared_live),
                 handle,

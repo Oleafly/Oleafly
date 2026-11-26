@@ -316,6 +316,15 @@
     "spellLanguageFolderHint": "Lagres i mappens project.json, så det gjelder for alle som åpner mappen. Last ned flere språk i Innstillinger.",
     "spellLanguageReadOnly": "Denne mappen er skrivebeskyttet, så språket i project.json kan ikke endres.",
     "spellLanguageFailed": "Kunne ikke endre språk for stavekontroll.",
+    "onOverleaf": "På Overleaf",
+    "texLive": "TeX Live-versjon",
+    "texLiveAriaLabel": "TeX Live-versjon på Overleaf",
+    "bibliography": "Hovedlitteraturliste",
+    "bibliographyAriaLabel": "Hovedlitteraturliste på Overleaf",
+    "bibliographyNone": "Ingen valgt",
+    "overleafHint": "Disse innstillingene ligger på Overleaf og gjelder for alle i prosjektet.",
+    "overleafReadOnly": "Bare eiere og redaktører kan endre dem på Overleaf.",
+    "overleafFailed": "Kunne ikke endre denne innstillingen på Overleaf.",
     "notChecked": "Ikke kontrollert",
     "dictionaryMissing": "{{name}} er ikke lastet ned, så stavingen kontrolleres ikke. Last den ned i Innstillinger, eller velg et annet språk.",
     "grammarEnglishOnly": "Grammatikkontroll fungerer bare for engelske dokumenter.",
@@ -737,12 +746,12 @@
     "ignoreEverywhere": "Se bort fra overalt",
     "keyboardHint": "Bruk Tab eller piltastene for å bevege deg mellom handlingene. Trykk Escape for å lukke.",
     "endOfDocument": "Slutten av dokumentet",
-    "hidePreamble": "Skjul innledningen i dokumentet",
-    "showPreamble": "Vis innledningen i dokumentet",
-    "sharedReadOnly": "I et delt prosjekt viser visuell modus bare filen. Bytt til kildevisning for å redigere den.",
     "findingLabel": "{{message}}. Åpne korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
-    "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag."
+    "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
+    "liveViewOnly": "Du kan se denne delte filen, men ikke redigere den.",
+    "liveConnecting": "Denne delte filen kobler fortsatt til. Du kan redigere den når den er klar.",
+    "suggestInSource": "Endringene dine her ville blitt forslag, og visuell modus kan ikke vise dem. Bytt til kildevisning for å foreslå endringer."
   },
   "package": {
     "search": {

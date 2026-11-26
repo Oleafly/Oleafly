@@ -2,18 +2,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
-import { documentContextForPreamble, WysiwygEditor } from "./WysiwygEditor";
+import { WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
-import {
-  flushWysiwygPendingEdits,
-  getWysiwygDocumentContext,
-  invalidateWysiwygProjectSession,
-} from "./controller";
+import { flushWysiwygPendingEdits, invalidateWysiwygProjectSession } from "./controller";
 
 let lastEditor: Editor | null = null;
 
@@ -29,19 +25,9 @@ vi.mock("@tiptap/react", async (importOriginal) => {
   };
 });
 
-const LATEX_A = `\\documentclass{article}
-\\begin{document}
-\\section{Intro}
-Hello.
-\\end{document}
-`;
+const MARKDOWN_A = "# Intro\n\nHello.\n";
 
-const LATEX_B = `\\documentclass{article}
-\\begin{document}
-\\section{Second}
-World.
-\\end{document}
-`;
+const MARKDOWN_B = "# Second\n\nWorld.\n";
 
 const MARKDOWN_WITH_FRONTMATTER = `---
 title: My Doc
@@ -70,9 +56,9 @@ describe("WysiwygEditor", () => {
     lastEditor = null;
     setFiles(
       {
-        "main.tex": { content: LATEX_A, dirty: false },
+        "main.md": { content: MARKDOWN_A, dirty: false },
       },
-      "main.tex",
+      "main.md",
     );
   });
 
@@ -106,10 +92,10 @@ describe("WysiwygEditor", () => {
   it("clears visual history when the active file changes", () => {
     setFiles(
       {
-        "a.tex": { content: LATEX_A, dirty: false },
-        "b.tex": { content: LATEX_B, dirty: false },
+        "a.md": { content: MARKDOWN_A, dirty: false },
+        "b.md": { content: MARKDOWN_B, dirty: false },
       },
-      "a.tex",
+      "a.md",
     );
     render(<WysiwygEditor wysiwyg={true} />);
     const editor = requireEditor();
@@ -117,7 +103,7 @@ describe("WysiwygEditor", () => {
     act(() => {
       editor.chain().insertContentAt(editor.state.doc.content.size, " EDITED-A").run();
       useFilesStore.setState({
-        activePath: "b.tex",
+        activePath: "b.md",
       } as unknown as ReturnType<typeof useFilesStore.getState>);
     });
 
@@ -128,34 +114,29 @@ describe("WysiwygEditor", () => {
     expect(editor.getText()).toContain("Second");
   });
 
-  it("preserves the LaTeX preamble/suffix and wraps the edited body on unmount", () => {
+  it("writes the edited Markdown back on unmount", () => {
     const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
     expect(lastEditor).not.toBeNull();
 
     act(() => {
       const editor = requireEditor();
-      editor.chain().focus().insertContentAt(editor.state.doc.content.size, " Edited.").run();
+      editor.chain().focus().insertContentAt(editor.state.doc.content.size - 1, " Edited.").run();
     });
 
     act(() => {
       unmount();
     });
 
-    const saved = useFilesStore.getState().files["main.tex"].content;
-    expect(saved.startsWith("\\documentclass{article}\n\\begin{document}\n")).toBe(true);
-    expect(saved.endsWith("\\end{document}\n")).toBe(true);
-    expect(saved).toContain("\\section{Intro}");
-    expect(saved).toContain("Hello.");
-    expect(saved).toContain("Edited.");
+    expect(useFilesStore.getState().files["main.md"].content).toBe("# Intro\n\nHello. Edited.\n");
   });
 
   it("saves the PREVIOUS file's edits to the PREVIOUS path when activePath switches, and loads the new file", () => {
     setFiles(
       {
-        "a.tex": { content: LATEX_A, dirty: false },
-        "b.tex": { content: LATEX_B, dirty: false },
+        "a.md": { content: MARKDOWN_A, dirty: false },
+        "b.md": { content: MARKDOWN_B, dirty: false },
       },
-      "a.tex",
+      "a.md",
     );
 
     render(<WysiwygEditor wysiwyg={true} />);
@@ -168,16 +149,16 @@ describe("WysiwygEditor", () => {
     });
 
     act(() => {
-      useFilesStore.setState({ activePath: "b.tex" } as unknown as ReturnType<typeof useFilesStore.getState>);
+      useFilesStore.setState({ activePath: "b.md" } as unknown as ReturnType<typeof useFilesStore.getState>);
     });
 
-    const aContent = useFilesStore.getState().files["a.tex"].content;
-    const bContent = useFilesStore.getState().files["b.tex"].content;
+    const aContent = useFilesStore.getState().files["a.md"].content;
+    const bContent = useFilesStore.getState().files["b.md"].content;
 
     expect(aContent).toContain("Hello.");
     expect(aContent).toContain("EDITED-A");
-    expect(aContent).toContain("\\section{Intro}");
-    expect(bContent).toBe(LATEX_B);
+    expect(aContent).toContain("# Intro");
+    expect(bContent).toBe(MARKDOWN_B);
 
     expect(screen.getByText("Second")).toBeInTheDocument();
     expect(screen.queryByText("Intro")).not.toBeInTheDocument();
@@ -186,25 +167,25 @@ describe("WysiwygEditor", () => {
   it("does not overwrite newer content with a stale doc when hidden (wysiwyg=false) and the file switches", () => {
     setFiles(
       {
-        "a.tex": { content: LATEX_A, dirty: false },
-        "b.tex": { content: LATEX_B, dirty: false },
+        "a.md": { content: MARKDOWN_A, dirty: false },
+        "b.md": { content: MARKDOWN_B, dirty: false },
       },
-      "a.tex",
+      "a.md",
     );
 
     render(<WysiwygEditor wysiwyg={false} />);
     expect(lastEditor).not.toBeNull();
 
-    const newerContent = "\\documentclass{article}\n\\begin{document}\n\\section{From CodeMirror}\n\\end{document}\n";
+    const newerContent = "# From CodeMirror\n";
     act(() => {
-      useFilesStore.getState().setContent("a.tex", newerContent);
+      useFilesStore.getState().setContent("a.md", newerContent);
     });
 
     act(() => {
-      useFilesStore.setState({ activePath: "b.tex" } as unknown as ReturnType<typeof useFilesStore.getState>);
+      useFilesStore.setState({ activePath: "b.md" } as unknown as ReturnType<typeof useFilesStore.getState>);
     });
 
-    expect(useFilesStore.getState().files["a.tex"].content).toBe(newerContent);
+    expect(useFilesStore.getState().files["a.md"].content).toBe(newerContent);
   });
 
   it("flushes an edit to the store while still in WYSIWYG mode, without unmounting or switching files", () => {
@@ -218,13 +199,13 @@ describe("WysiwygEditor", () => {
         editor.chain().insertContentAt(editor.state.doc.content.size, " EDITED-LIVE").run();
       });
 
-      expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_A);
+      expect(useFilesStore.getState().files["main.md"].content).toBe(MARKDOWN_A);
 
       act(() => {
         vi.advanceTimersByTime(500);
       });
 
-      const saved = useFilesStore.getState().files["main.tex"].content;
+      const saved = useFilesStore.getState().files["main.md"].content;
       expect(saved).toContain("EDITED-LIVE");
     } finally {
       vi.useRealTimers();
@@ -242,7 +223,7 @@ describe("WysiwygEditor", () => {
       flushWysiwygPendingEdits();
     });
 
-    expect(useFilesStore.getState().files["main.tex"].content).toContain(
+    expect(useFilesStore.getState().files["main.md"].content).toContain(
       "TRANSITION-EDIT",
     );
   });
@@ -252,8 +233,8 @@ describe("WysiwygEditor", () => {
 
     act(() => flushWysiwygPendingEdits());
 
-    expect(useFilesStore.getState().files["main.tex"]).toEqual({
-      content: LATEX_A,
+    expect(useFilesStore.getState().files["main.md"]).toEqual({
+      content: MARKDOWN_A,
       dirty: false,
     });
   });
@@ -269,13 +250,13 @@ describe("WysiwygEditor", () => {
         .run();
       useFilesStore.setState({
         projectId: "replacement-project",
-        files: { "main.tex": { content: LATEX_B, dirty: false } },
-        activePath: "main.tex",
+        files: { "main.md": { content: MARKDOWN_B, dirty: false } },
+        activePath: "main.md",
       } as unknown as ReturnType<typeof useFilesStore.getState>);
       unmount();
     });
 
-    expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_B);
+    expect(useFilesStore.getState().files["main.md"].content).toBe(MARKDOWN_B);
   });
 
   it("does not flush an old editor into a reopened session of the same project", () => {
@@ -290,13 +271,13 @@ describe("WysiwygEditor", () => {
       invalidateWysiwygProjectSession();
       useFilesStore.setState({
         projectId: "project",
-        files: { "main.tex": { content: LATEX_B, dirty: false } },
-        activePath: "main.tex",
+        files: { "main.md": { content: MARKDOWN_B, dirty: false } },
+        activePath: "main.md",
       } as unknown as ReturnType<typeof useFilesStore.getState>);
       unmount();
     });
 
-    expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_B);
+    expect(useFilesStore.getState().files["main.md"].content).toBe(MARKDOWN_B);
   });
 
   it("does not rewrite the store merely from loading a file with no edits", () => {
@@ -309,8 +290,8 @@ describe("WysiwygEditor", () => {
         vi.advanceTimersByTime(500);
       });
 
-      expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_A);
-      expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+      expect(useFilesStore.getState().files["main.md"].content).toBe(MARKDOWN_A);
+      expect(useFilesStore.getState().files["main.md"].dirty).toBe(false);
     } finally {
       vi.useRealTimers();
     }
@@ -415,55 +396,24 @@ Platí 1 < 2.
     expect(useFilesStore.getState().files["main.md"].content).toBe(expected);
   });
 
-  it("shows a collapsed preamble toggle for a full LaTeX document, hidden by default", () => {
+  it("keeps the front matter's own line break when the body is edited", () => {
+    const source = "---\ntitle: Tight\n---\n# Heading\n\nBody.\n";
+    setFiles({ "tight.md": { content: source, dirty: false } }, "tight.md");
     render(<WysiwygEditor wysiwyg={true} />);
-    expect(screen.getByText("Show document preamble")).toBeInTheDocument();
-    expect(screen.queryByDisplayValue(/documentclass/)).not.toBeInTheDocument();
-  });
-
-  it("reveals and edits the preamble, and the edit is saved back on unmount", () => {
-    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
-
-    fireEvent.click(screen.getByText("Show document preamble"));
-    const textarea = screen.getByDisplayValue(/documentclass/) as HTMLTextAreaElement;
-    expect(textarea.value).toBe("\\documentclass{article}\n\\begin{document}\n");
-
-    fireEvent.change(textarea, { target: { value: "\\documentclass{report}\n\\begin{document}\n" } });
+    const editor = requireEditor();
 
     act(() => {
-      unmount();
+      editor.commands.insertContentAt(editor.state.doc.content.size - 1, " More.");
     });
+    act(() => flushWysiwygPendingEdits());
 
-    const saved = useFilesStore.getState().files["main.tex"].content;
-    expect(saved.startsWith("\\documentclass{report}\n\\begin{document}\n")).toBe(true);
-    expect(saved).toContain("\\section{Intro}");
-  });
-
-  it("does not show a preamble toggle for markdown files or LaTeX without \\begin{document}", () => {
-    setFiles(
-      {
-        "notes.md": { content: MARKDOWN_WITH_FRONTMATTER, dirty: false },
-      },
-      "notes.md",
-    );
-    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
-    expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
-    unmount();
-
-    setFiles(
-      {
-        "snippet.tex": { content: "Just a snippet, no document environment.\n", dirty: false },
-      },
-      "snippet.tex",
-    );
-    render(<WysiwygEditor wysiwyg={true} />);
-    expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
+    expect(useFilesStore.getState().files["tight.md"].content).toBe("---\ntitle: Tight\n---\n# Heading\n\nBody. More.\n");
   });
 });
 
 
 it("blocks visual commands while leased and flushes edits made before acquisition", async () => {
-  useFilesStore.setState({ projectId: "lease-project", activePath: "main.tex", files: { "main.tex": { content: LATEX_A, dirty: false } } });
+  useFilesStore.setState({ projectId: "lease-project", activePath: "main.md", files: { "main.md": { content: MARKDOWN_A, dirty: false } } });
   const mounted = render(<WysiwygEditor wysiwyg={true} />);
   const editor = requireEditor();
   act(() => { editor.commands.insertContentAt(editor.state.doc.content.size, " Pending"); });
@@ -473,10 +423,10 @@ it("blocks visual commands while leased and flushes edits made before acquisitio
       flushWysiwygPendingEdits();
       editor.commands.insertContentAt(editor.state.doc.content.size, " Blocked");
     });
-    expect(useFilesStore.getState().files["main.tex"].content).toContain("Pending");
+    expect(useFilesStore.getState().files["main.md"].content).toContain("Pending");
     expect(editor.getText()).not.toContain("Blocked");
     await act(async () => {
-      useFilesStore.setState({ files: { "main.tex": { content: LATEX_B, dirty: false } } });
+      useFilesStore.setState({ files: { "main.md": { content: MARKDOWN_B, dirty: false } } });
       await lease.reconcile();
     });
     expect(editor.getText()).toContain("Second");
@@ -500,8 +450,8 @@ describe("Visual mode in a read-only folder", () => {
     lastEditor = null;
     useFilesStore.setState({
       projectId: "read-only-project",
-      activePath: "main.tex",
-      files: { "main.tex": { content: LATEX_A, dirty: false } },
+      activePath: "main.md",
+      files: { "main.md": { content: MARKDOWN_A, dirty: false } },
     });
   });
 
@@ -518,7 +468,7 @@ describe("Visual mode in a read-only folder", () => {
       expect(editor.getText()).not.toContain("Blocked");
       act(() => acquireEditorMutationLease("read-only-project").release());
       expect(editor.isEditable).toBe(false);
-      expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: LATEX_A, dirty: false });
+      expect(useFilesStore.getState().files["main.md"]).toEqual({ content: MARKDOWN_A, dirty: false });
     } finally {
       mounted.unmount();
       useFolderAccessStore.getState().reset(null);
@@ -537,8 +487,8 @@ describe("Visual mode in a read-only folder", () => {
         editor.commands.insertContentAt(editor.state.doc.content.size, " Typed");
         flushWysiwygPendingEdits();
       });
-      expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ dirty: true });
-      expect(useFilesStore.getState().files["main.tex"].content).toContain("Typed");
+      expect(useFilesStore.getState().files["main.md"]).toMatchObject({ dirty: true });
+      expect(useFilesStore.getState().files["main.md"].content).toContain("Typed");
     } finally {
       mounted.unmount();
       useFolderAccessStore.getState().reset(null);
@@ -553,36 +503,10 @@ describe("WysiwygEditor native nodes", () => {
     useFilesStore.setState({ projectId: null });
   });
 
-  it("derives theorem environments and booktabs from the preamble", () => {
-    expect(
-      documentContextForPreamble(
-        "\\usepackage[T1]{fontenc}\n\\usepackage{booktabs,graphicx}\n\\newtheorem{claim}{Claim}\n",
-      ),
-    ).toEqual({ theoremEnvironments: ["claim"], booktabs: true });
-    expect(documentContextForPreamble("\\usepackage{amsmath}\n")).toEqual({
-      theoremEnvironments: [],
-      booktabs: false,
-    });
-  });
-
-  it("renders math through KaTeX and theorem environments declared in the preamble", () => {
-    setFiles(
-      {
-        "main.tex": {
-          content:
-            "\\documentclass{article}\n\\newtheorem{observation}{Observation}\n\\begin{document}\nInline $a^2$ here.\n\n\\begin{observation}[Main]\nBody.\n\\end{observation}\n\\end{document}\n",
-          dirty: false,
-        },
-      },
-      "main.tex",
-    );
+  it("renders math through KaTeX", () => {
+    setFiles({ "main.md": { content: "Inline $a^2$ here.\n", dirty: false } }, "main.md");
     const { container } = render(<WysiwygEditor wysiwyg={true} />);
     expect(container.querySelector('[data-type="math-inline"] .math-rendered .katex')).not.toBeNull();
-    const theorem = container.querySelector('[data-type="theorem"][data-environment="observation"]');
-    expect(theorem).not.toBeNull();
-    expect(theorem?.querySelector(".theorem-name")?.textContent).toBe("Observation");
-    expect(theorem?.querySelector(".theorem-title")?.textContent).toBe("(Main)");
-    expect(getWysiwygDocumentContext()).toEqual({ theoremEnvironments: ["observation"], booktabs: false });
   });
 
 });
@@ -599,8 +523,28 @@ describe("Visual Markdown in a live shared project", () => {
     });
   });
 
-  it("is read-only while the project is live and editable again once it is local", () => {
-    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
+  function leave() {
+    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false, suggesting: false });
+    useFilesStore.setState({ projectId: null });
+  }
+
+  it("stays editable for an editor of a live project", () => {
+    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false, locked: false });
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    try {
+      expect(requireEditor().isEditable).toBe(true);
+      expect(screen.queryByTestId("visual-live-notice")).toBeNull();
+    } finally {
+      mounted.unmount();
+      leave();
+    }
+  });
+
+  it.each([
+    ["a viewer", { viewer: true, locked: true }, "view", enEditor.visual.liveViewOnly],
+    ["a project that is still connecting", { connecting: true }, "connecting", enEditor.visual.liveConnecting],
+  ] as const)("is read-only for %s and says why", (_case, gate, lock, message) => {
+    useCollabEditorGate.setState({ projectId: "shared-project", ...gate });
     const mounted = render(<WysiwygEditor wysiwyg={true} />);
     const editor = requireEditor();
     try {
@@ -613,53 +557,33 @@ describe("Visual Markdown in a live shared project", () => {
       act(() => acquireEditorMutationLease("shared-project").release());
       expect(editor.isEditable).toBe(false);
       expect(useFilesStore.getState().files["notes.md"]).toEqual({ content: NOTES, dirty: false });
-      act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
+      const notice = screen.getByTestId("visual-live-notice");
+      expect(notice).toHaveAttribute("data-lock", lock);
+      expect(notice).toHaveTextContent(message);
+      act(() => leave());
       expect(editor.isEditable).toBe(true);
+      expect(screen.queryByTestId("visual-live-notice")).toBeNull();
     } finally {
       mounted.unmount();
-      useCollabEditorGate.setState({ projectId: null, viewer: false });
-      useFilesStore.setState({ projectId: null });
+      leave();
     }
   });
 
-  it("says why it can't be edited and switches to the source view on request", () => {
-    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
+  it.each([
+    ["a reviewer", { locked: true }],
+    ["an editor whose edits are suggestions", { suggesting: true }],
+  ] as const)("is read-only for %s and offers the source view", (_case, gate) => {
+    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false, locked: false, ...gate });
     useVisualModeStore.setState({ projectId: null, kinds: { markdown: "visual" }, files: {} });
     const mounted = render(<WysiwygEditor wysiwyg={true} />);
     try {
-      const notice = screen.getByTestId("visual-shared-notice");
-      expect(notice).toHaveTextContent(enEditor.visual.sharedReadOnly);
+      expect(requireEditor().isEditable).toBe(false);
+      expect(screen.getByTestId("visual-live-notice")).toHaveTextContent(enEditor.visual.suggestInSource);
       fireEvent.click(screen.getByRole("button", { name: enEditor.toolbar.switchToSource }));
       expect(fileMode(useVisualModeStore.getState(), "notes.md")).toBe("code");
-      act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
-      expect(screen.queryByTestId("visual-shared-notice")).toBeNull();
     } finally {
       mounted.unmount();
-      useCollabEditorGate.setState({ projectId: null, viewer: false });
-      useFilesStore.setState({ projectId: null });
-    }
-  });
-
-  it("follows a collaborator's edits that reach the store without a version bump", async () => {
-    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
-    const mounted = render(<WysiwygEditor wysiwyg={true} />);
-    const editor = requireEditor();
-    try {
-      const before = useFilesStore.getState().docVersion;
-      act(() =>
-        useFilesStore.setState((state) => ({
-          files: { ...state.files, "notes.md": { content: `${NOTES}\nAdded by Bob.\n`, dirty: false } },
-        })),
-      );
-      expect(useFilesStore.getState().docVersion).toBe(before);
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      });
-      expect(editor.getText()).toContain("Added by Bob.");
-    } finally {
-      mounted.unmount();
-      useCollabEditorGate.setState({ projectId: null, viewer: false });
-      useFilesStore.setState({ projectId: null });
+      leave();
     }
   });
 });

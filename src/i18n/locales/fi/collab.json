@@ -232,8 +232,16 @@
     "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia.",
     "suggestion_changed": "Ehdotuksen ympärillä oleva teksti muuttui, joten omistajan tai muokkaajan on hyväksyttävä tai hylättävä se.",
     "suggestion_too_long": "Ehdotettu poisto voi olla enintään 20 000 merkkiä pitkä. Poista kerrallaan pienempi osa.",
+    "suggestion_gone": "Muutosta ei enää ole. Joku on ehkä hyväksynyt, hylännyt tai muokannut sen.",
+    "review_off_server": "Tämä palvelin ei voi tehdä tätä seuratuille muutoksille.",
     "chat_role": "Roolisi tässä projektissa ei salli tätä keskustelussa.",
+    "chat_edit_off": "Tämä palvelin ei voi muokata keskusteluviestejä.",
+    "chat_off_server": "Tällä Overleaf-palvelimella ei ole keskustelua.",
     "history_unavailable": "Tämän projektin historia ei ole vielä tällä koneella. Yritä uudelleen, kun se on synkronoitu.",
+    "history_plan_limit": "Tämän projektin Overleaf-tilaus ei säilytä vanhempia versioita.",
+    "restore_off_server": "Tämä Overleaf-palvelin ei voi palauttaa vanhempia versioita. Kopioi teksti versiosta sen sijaan.",
+    "linked_off_server": "Tämä Overleaf-palvelin ei päivitä linkitettyjä tiedostoja.",
+    "linked_refresh_failed": "Overleaf ei voinut päivittää tätä tiedostoa sen lähteestä.",
     "account_storage_full": "Projektin omistajan tililtä on loppunut tallennustila tällä palvelimella. Poista joitakin tiedostoja vapauttaaksesi tilaa tai pyydä palvelimen ylläpitäjältä lisää tilaa.",
     "too_many_projects": "Sinulla on jo niin monta jaettua projektia kuin tämä palvelin sallii. Lopeta yhden projektin jakaminen ennen kuin jaat uuden.",
     "too_many_uploads": "Olet lähettänyt viimeisen tunnin aikana liian monta tiedostoa. Yritä myöhemmin uudelleen.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Sinulla on jo niin monta julkista sivua kuin tämä palvelin sallii. Peru yhden julkaisu ja yritä sitten uudelleen.",
     "page_too_large": "Tämä muistiinpano on liian suuri julkaistavaksi. Poista osa kuvista ja yritä sitten uudelleen.",
     "page_taken_down": "Ylläpitäjä poisti tämän sivun näkyvistä, joten muistiinpanoa ei voi julkaista uudelleen, ennen kuin ylläpitäjä palauttaa sen."
+  },
+  "liveElsewhere": {
+    "cli": "Tämä projekti on auki reaaliaikaisessa muokkauksessa komentorivillä prosessissa {{pid}}. Lopeta reaaliaikainen muokkaus siellä ja yritä sitten uudelleen."
   },
   "roles": {
     "admin": "Ylläpitäjä",
@@ -1051,6 +1062,8 @@
     "add": "Lisää kommentti",
     "allResolved": "Kaikki kommentit on ratkaistu.",
     "noResolved": "Ei ratkaistuja kommentteja",
+    "noChanges": "Ei seurattuja muutoksia",
+    "overleafOff": "Tällä Overleaf-palvelimella ei ole kommentteja, joten tässä näkyvät vain seuratut muutokset.",
     "emptyTitle": "Ei vielä kommentteja",
     "emptyHint": "Valitse tekstiä ja valitse Lisää kommentti tai paina {keys}",
     "readOnlyNote": "Voit lukea tämän projektin kommentteja. Pyydä omistajalta kommentointioikeutta, jotta voit vastata tai reagoida.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Ehdotus joltakulta, jota Oleafly ei voinut vahvistaa",
     "added": "Lisätty",
     "deleted": "Poistettu",
+    "replaced": "Muutettu",
+    "replacedWith": "muotoon",
     "accept": "Hyväksy",
     "reject": "Hylkää",
     "withdraw": "Peru",
@@ -1157,6 +1172,7 @@
     "fileActions": "Ehdotukset tiedostossa {{file}}",
     "pendingCount": "Odottavia ehdotuksia: {{number}}",
     "loadFailed": "Tämän tiedoston ehdotuksia ei voitu ladata.",
+    "acceptOffServer": "Tämä Overleaf-palvelin ei voi hyväksyä tämän tiedoston seurattuja muutoksia. Voit silti hylätä ne.",
     "rejectAllConfirm": {
       "title": "Hylätäänkö kaikki ehdotukset tiedostossa {{file}}?",
       "description": "Alkuperäinen teksti palautetaan tiedostoon kaikille tämän projektin jäsenille. Odottavia ehdotuksia: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Ehdottaminen",
       "editingHint": "Muokkaaminen: muokkauksesi muuttavat tekstiä heti",
       "suggestingHint": "Ehdottaminen: muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä",
-      "reviewerHint": "Olet tarkastaja, joten muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä"
+      "reviewerHint": "Olet tarkastaja, joten muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä",
+      "locked": {
+        "everyone": "Muutosten seuranta on käytössä kaikille tämän projektin jäsenille, joten muokkauksistasi tulee ehdotuksia",
+        "plan": "Tämän projektin Overleaf-tilaukseen ei sisälly muutosten seurantaa",
+        "server": "Tämä Overleaf-palvelin ei voi ottaa muutosten seurantaa käyttöön tai poistaa sitä käytöstä"
+      },
+      "others": "Muiden muutosten seuranta",
+      "forEveryone": "Kaikille",
+      "forGuests": "Linkillä liittyneille"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Katselijat voivat lukea keskustelua mutta eivät kirjoittaa siihen.",
     "offline": "Tämä projekti ei ole nyt yhteydessä, joten et voi lähettää viestejä.",
     "messageActions": "Lisää toimintoja tälle viestille",
+    "editLabel": "Muokkaa viestiä",
     "deleteConfirm": {
       "title": "Poistetaanko tämä viesti?",
       "description": "Se poistetaan kaikilta tämän projektin jäseniltä."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly ei voinut ladata keskustelua.",
     "loadOlder": "Näytä vanhemmat viestit"
+  },
+  "people": {
+    "invited": "Kutsuttu",
+    "former": "(poistunut projektista)"
   },
   "history": {
     "title": "Historia",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Kaikkien tiedostojen teksti palautuu kaikille tämän projektin jäsenille sellaiseksi kuin se oli ajankohtana {{time}}, ja poistetut tiedostot palaavat takaisin. Uudelleen nimetyt tiedostot säilyttävät uudet nimensä, ja myöhemmin lisätyt kuvat ja tiedostot pysyvät ennallaan. Nykyinen teksti jää historiaan, joten voit palata siihen.",
       "confirm": "Palauta projekti"
     },
+    "limited": "Vanhemmat muutokset vaativat Overleaf-tilauksen, jossa on koko historia.",
+    "unavailable": "Käyttöoikeutesi tähän projektiin ei kata sen historiaa.",
+    "download": "Lataa ZIP-tiedostona",
+    "downloading": "Ladataan…",
+    "downloadKind": "ZIP-tiedosto",
+    "restoreOverleafProject": "Jokainen tiedosto palautetaan Overleaf-palvelussa kaikille sellaiseksi kuin se oli ajankohtana {{time}}, ja sen jälkeen lisätyt tiedostot poistetaan. Overleaf säilyttää nykyisen version historiassaan, joten voit palata siihen.",
     "compareTitle": "Muutokset kahden version välillä",
     "compareDescription": "{{from}} ja {{to}} välillä",
     "changedFiles": "Muuttuneita tiedostoja: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Olet nyt kommentoija. Voit lukea ja kommentoida projektia mutta et muokata sitä.",
     "reviewerBy": "{{name}} muutti sinut tarkastajaksi. Muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä.",
     "reviewer": "Olet nyt tarkastaja. Muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä.",
-    "reviewing": "Olet tämän projektin tarkastaja, joten muokkauksistasi tulee ehdotuksia.",
-    "trackingChanges": "Muutosten seuranta on päällä tässä projektissa, joten muokkauksistasi tulee ehdotuksia.",
     "viewOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä.",
     "askOnOverleaf": "Pyydä pääsyä Overleafissa",
     "connecting": "Tätä jaettua projektia yhdistetään vielä, joten sitä ei voi vielä muuttaa. Yritä hetken päästä uudelleen.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Olet kirjautunut ulos palvelimelta {{server}}, joten tämä projekti ei synkronoidu. Voit jatkaa kirjoittamista. Muutoksesi pysyvät tällä tietokoneella ja menevät Overleafiin, kun kirjaudut uudelleen sisään.",
+    "signedOutAs": "Tämä projekti kuuluu käyttäjälle {{email}} palvelimella {{server}}. Tällä tilillä ei ole kirjauduttu sisään, joten projekti ei synkronoidu. Voit jatkaa kirjoittamista. Muutoksesi pysyvät tällä tietokoneella ja menevät Overleaf-palveluun, kun kirjaudut sisään käyttäjänä {{email}}.",
+    "signInAs": "Kirjaudu sisään käyttäjänä {{email}}",
     "accountChangedOne": "Olet nyt kirjautunut eri tilillä, joten käyttäjänä {{email}} tekemiäsi muutoksia ei lähetetty. Ne on tallennettu nimellä {{copy}}.",
     "accountChangedMany": "Olet nyt kirjautunut eri tilillä, joten käyttäjänä {{email}} tekemiäsi muutoksia ei lähetetty. Ne on tallennettu kopioina tiedostojensa viereen:",
     "keptAs": "{{file}} on tallennettu nimellä {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Joitakin tiedoston {{file}} merkkejä, kuten emojeita, korvattiin, koska Overleaf ei voi tallentaa niitä.",
     "tryLiveAgain": "Yritä reaaliaikaista muokkausta uudelleen",
     "keepMineAsCopy": "Pidä omani kopiona",
-    "stoppedActionFailed": "Tämä ei onnistunut tiedostolle {{file}}. Odota hetki ja napsauta sitten uudelleen."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf-palvelussa ei ole vastinetta tämän projektin asetukselle {{setting}}, joten asetus {{setting}} pysyy Overleaf-palvelussa ennallaan.",
+      "refused": "Overleaf hylkäsi asetuksen {{setting}} muutoksen.",
+      "failed": "Oleafly ei voinut lähettää asetuksen {{setting}} muutosta Overleaf-palveluun. Se yrittää uudelleen seuraavan muutoksen yhteydessä.",
+      "conflict": "Asetus {{setting}} muuttui yhtä aikaa täällä ja Overleaf-palvelussa. Overleaf-palvelun valinta säilytetään."
+    },
+    "settingNames": {
+      "main_doc": "päädokumentti",
+      "compiler": "kääntäjä",
+      "spelling": "oikoluvun kieli",
+      "image": "TeX Live -versio",
+      "bibliography": "päälähdeluettelo"
+    },
+    "stoppedActionFailed": "Tämä ei onnistunut tiedostolle {{file}}. Odota hetki ja napsauta sitten uudelleen.",
+    "filling": "Avataan projektia Overleaf-palvelusta: {{done}}/{{total}} tiedostoa",
+    "fillingFiles": "Avataan projektia Overleaf-palvelusta: ladataan viimeisiä tiedostoja",
+    "emptyCopy": "Tämä projekti on poistunut Overleaf-palvelusta, eikä yksikään sen tiedostoista ehtinyt tälle tietokoneelle.",
+    "removeEmptyCopy": "Poista tyhjä kopio",
+    "removeFailed": "Oleafly ei voinut poistaa tyhjää kopiota."
   },
   "overleafTree": {
     "deleteTitle": "Poistetaanko myös Overleafista?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Poista myös Overleafista",
     "keep": "Säilytä Overleafissa",
     "notAllowed": "Et voi muuttaa tämän projektin tiedostoja Overleafissa, joten tiedostoihin {{files}} tekemäsi muutokset jäävät tälle tietokoneelle.",
-    "keptAway": "Poistettu täältä mutta yhä Overleafissa: {{files}}"
+    "keptAway": "Poistettu täältä mutta yhä Overleafissa: {{files}}",
+    "linkedKept": "Overleaf linkittää tiedostot {{files}} lähteeseen, joten muutoksesi jäävät tälle tietokoneelle. Saat Overleaf-kopion takaisin valitsemalla Päivitä lähteestä."
+  },
+  "overleafLinked": {
+    "banner": "Tiedosto {{file}} on linkitetty Overleaf-palvelussa lähteeseen {{source}}.",
+    "bannerNoSource": "Tiedosto {{file}} on linkitetty Overleaf-palvelussa lähteeseen.",
+    "readOnly": "Tiedosto {{file}} on linkitetty Overleaf-palvelussa lähteeseen. Päivitä se valitsemalla Päivitä lähteestä.",
+    "treeHint": "Linkitetty Overleaf-palvelussa lähteeseen",
+    "refresh": "Päivitä lähteestä",
+    "refreshing": "Päivitetään",
+    "refusedWith": "Overleaf ei voinut päivittää sitä: {{message}}"
   }
 }

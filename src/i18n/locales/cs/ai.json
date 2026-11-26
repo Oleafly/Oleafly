@@ -400,7 +400,8 @@
       "runCommand": "Spustit příkaz shell ve složce projektu s dvouminutovým limitem.",
       "toggleTheme": "Přepnout mezi světlým a tmavým režimem.",
       "listOverleafProjects": "Vypsat vaše projekty z Overleafu, v případě potřeby se nejdřív přihlásit.",
-      "importOverleafProjects": "Importovat projekty z Overleafu do knihovny i s překladačem a hlavním souborem."
+      "importOverleafProjects": "Importovat projekty z Overleafu do knihovny i s překladačem a hlavním souborem.",
+      "openOverleafLive": "Otevřít projekt ze služby Overleaf pro živé úpravy a nejdřív ho importovat, pokud ještě není ve vaší knihovně."
     },
     "disableAll": "Vypnout vše",
     "emptyContext": "V tomto kontextu nejsou k dispozici žádné nástroje.",
@@ -426,7 +427,8 @@
       "latexOnly": "Jen projekty LaTeX",
       "latexAndTypstOnly": "Jen projekty LaTeX a Typst",
       "pdfCaptureSetting": "Vyžaduje nastavení snímání stránek PDF",
-      "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz"
+      "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz",
+      "overleafLiveSetting": "Vyžaduje nastavení Živé úpravy s Overleafem v sekci Experimenty"
     },
     "sourceGroups": {
       "figure": "Obrázek",

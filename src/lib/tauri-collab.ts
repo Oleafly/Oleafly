@@ -9,8 +9,10 @@ import type {
   CollabAdminProjectsQuery,
   CollabAllowlistEntry,
   CollabCapabilities,
+  CollabChangeOrigin,
   CollabChatChanged,
   CollabChatMessage,
+  CollabChatStatus,
   CollabCommandError,
   CollabCommentCount,
   CollabCommentError,
@@ -32,12 +34,15 @@ import type {
   CollabEmailPreferencesPatch,
   CollabEmailStatus,
   CollabEditMode,
+  CollabEditModeScope,
+  CollabEditModeState,
   CollabEmailTestResult,
   CollabErrorCode,
   CollabFileAtVersion,
   CollabGuestInvitation,
   CollabGuestInviteResult,
   CollabHistoryPage,
+  CollabHistoryStatus,
   CollabLiveInfo,
   CollabLiveMerged,
   CollabLiveNewDevice,
@@ -131,8 +136,16 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "suggestion_role",
   "suggestion_changed",
   "suggestion_too_long",
+  "suggestion_gone",
+  "review_off_server",
   "chat_role",
+  "chat_edit_off",
+  "chat_off_server",
   "history_unavailable",
+  "history_plan_limit",
+  "restore_off_server",
+  "linked_off_server",
+  "linked_refresh_failed",
   "account_storage_full",
   "too_many_projects",
   "too_many_uploads",
@@ -275,7 +288,8 @@ export const collabDocChange = (
   fileId: string,
   rev: number,
   op: CollabTextOperation,
-) => invoke<void>("collab_doc_change", { projectId, fileId, rev, op });
+  origin?: CollabChangeOrigin,
+) => invoke<void>("collab_doc_change", { projectId, fileId, rev, op, origin });
 export const collabDocClose = (projectId: string, fileId: string, session: number) =>
   invoke<void>("collab_doc_close", { projectId, fileId, session });
 export const collabPresenceSet = (
@@ -669,9 +683,9 @@ export const COLLAB_SUGGESTIONS_CHANGED_EVENT = "collab://suggestions-changed";
 export const COLLAB_CHAT_CHANGED_EVENT = "collab://chat-changed";
 
 export const collabEditModeGet = (projectId: string) =>
-  invoke<CollabEditMode>("collab_edit_mode_get", { projectId });
-export const collabEditModeSet = (projectId: string, mode: CollabEditMode) =>
-  invoke<void>("collab_edit_mode_set", { projectId, mode });
+  invoke<CollabEditModeState>("collab_edit_mode_get", { projectId });
+export const collabEditModeSet = (projectId: string, mode: CollabEditMode, scope: CollabEditModeScope = "me") =>
+  invoke<void>("collab_edit_mode_set", { projectId, mode, scope });
 export const collabSuggestionList = (projectId: string, path: string) =>
   invoke<CollabSuggestionList>("collab_suggestion_list", { projectId, path });
 export const collabSuggestionCounts = (projectId: string) =>
@@ -716,6 +730,9 @@ export const collabChatList = (projectId: string, before: string | null, limit: 
   invoke<CollabChatMessage[]>("collab_chat_list", { projectId, before, limit });
 export const collabChatSend = (projectId: string, body: string, members: CollabCommentMember[] = []) =>
   invoke<CollabChatMessage>("collab_chat_send", { projectId, body, members });
+export const collabChatEdit = (projectId: string, id: string, body: string, members: CollabCommentMember[] = []) =>
+  invoke<CollabChatMessage>("collab_chat_edit", { projectId, id, body, members });
+export const collabChatStatus = (projectId: string) => invoke<CollabChatStatus>("collab_chat_status", { projectId });
 export const collabChatDelete = (projectId: string, id: string) =>
   invoke<void>("collab_chat_delete", { projectId, id });
 export const collabChatReact = (projectId: string, messageId: string, emoji: string, on: boolean) =>
@@ -738,6 +755,10 @@ export const collabVersionName = (projectId: string, versionId: string, name: st
   invoke<void>("collab_version_name", { projectId, versionId, name });
 export const collabVersionUnname = (projectId: string, versionId: string) =>
   invoke<void>("collab_version_unname", { projectId, versionId });
+export const collabHistoryStatus = (projectId: string) =>
+  invoke<CollabHistoryStatus>("collab_history_status", { projectId });
+export const collabHistoryZip = (projectId: string, versionId: string, dest: string) =>
+  invoke<number>("collab_history_zip", { projectId, versionId, dest });
 
 export const collabOutputInfo = (projectId: string) =>
   invoke<CollabOutputInfo[]>("collab_output_info", { projectId });

@@ -1,0 +1,668 @@
+{
+  "probe": "project-upload-create",
+  "description": "Alice creates projects from ZIP uploads (POST /project/new/upload): a project with \\title and \\documentclass and files the server ignores, one with neither, one wrapped in a single top-level folder, an invalid ZIP, an empty ZIP and no file; then invalid uploads until the 20 per minute limit answers. Records each reply, the resulting names, root docs and trees, and the server upload limit. Created projects are deleted.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "server limits: {\"maxUploadSize\":52428800,\"maxEntitiesPerProject\":2000,\"fileIgnorePattern\":\"**/{{__MACOSX,.git,.texpadtmp,.R,.venv,venv}{,/**},.!(latexmkrc),*.{dvi,aux,log,toc,out,pdfsync,synctex,synctex(busy),fdb_latexmk,fls,nlo,ind,glo,gls,glg,bbl,blg,doc,docx,gz,swp}}\"}",
+    "titled: {\"name\":\"Uploaded From Oleafly\",\"rootDoc\":\"main.tex\",\"compiler\":\"pdflatex\",\"entities\":[{\"path\":\"/figures/pixel.png\",\"type\":\"file\"},{\"path\":\"/main.tex\",\"type\":\"doc\"},{\"path\":\"/refs.bib\",\"type\":\"doc\"},{\"path\":\"/sections/intro.tex\",\"type\":\"doc\"}]}",
+    "untitled: {\"name\":\"Untitled Upload\",\"rootDoc\":\"paper.tex\",\"compiler\":\"pdflatex\",\"entities\":[{\"path\":\"/notes.tex\",\"type\":\"doc\"},{\"path\":\"/paper.tex\",\"type\":\"doc\"}]}",
+    "same name: {\"name\":\"Untitled Upload (1)\",\"rootDoc\":\"paper.tex\",\"compiler\":\"pdflatex\",\"entities\":[{\"path\":\"/notes.tex\",\"type\":\"doc\"},{\"path\":\"/paper.tex\",\"type\":\"doc\"}]}",
+    "wrapped: {\"name\":\"repo-main\",\"rootDoc\":\"main.tex\",\"compiler\":\"pdflatex\",\"entities\":[{\"path\":\"/img/pixel.png\",\"type\":\"file\"},{\"path\":\"/main.tex\",\"type\":\"doc\"}]}",
+    "no tex: {\"name\":\"readme-only\",\"rootDoc\":null,\"compiler\":\"pdflatex\",\"entities\":[{\"path\":\"/readme.md\",\"type\":\"doc\"}]}",
+    "upload attempt 13 of the burst answered 429 \"Rate limit reached, please try again later\" headers {\"transfer-encoding\":\"chunked\"}",
+    "replies: a titled project with ignored files 200 {\"success\":true,\"project_id\":\"6b04faf5cb4fe3a455d4d615\"} | no \\title, the root is the doc with \\doc 200 {\"success\":true,\"project_id\":\"6b04faf6cb4fe3a455d4d630\"} | the same name again 200 {\"success\":true,\"project_id\":\"6b04faf6cb4fe3a455d4d643\"} | a single top-level folder 200 {\"success\":true,\"project_id\":\"6b04faf6cb4fe3a455d4d656\"} | no tex file at all 200 {\"success\":true,\"project_id\":\"6b04faf6cb4fe3a455d4d66b\"} | not a zip 422 {\"success\":false,\"error\":\"Invalid zip file\"} | an empty zip 422 {\"success\":false,\"error\":\"Invalid zip file\"} | no file 400 {\"success\":false,\"error\":\"invalid_upload_request\"} | invalid upload 1 for the rate limit 422 {\"success\":false,\"error\":\"Invalid zip file\"}"
+  ],
+  "steps": [
+    {
+      "serverLimits": {
+        "maxUploadSize": 52428800,
+        "maxEntitiesPerProject": 2000,
+        "fileIgnorePattern": "**/{{__MACOSX,.git,.texpadtmp,.R,.venv,venv}{,/**},.!(latexmkrc),*.{dvi,aux,log,toc,out,pdfsync,synctex,synctex(busy),fdb_latexmk,fls,nlo,ind,glo,gls,glg,bbl,blg,doc,docx,gz,swp}}"
+      }
+    },
+    {
+      "label": "a titled project with ignored files",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "my-archive.zip",
+          "bytes": 1181
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "56",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": true,
+        "project_id": "6b04faf5cb4fe3a455d4d615"
+      },
+      "sentAt": 1435,
+      "answeredAt": 1762
+    },
+    {
+      "label": "titled: the created project",
+      "created": {
+        "name": "Uploaded From Oleafly",
+        "rootDoc": "main.tex",
+        "compiler": "pdflatex",
+        "entities": [
+          {
+            "path": "/figures/pixel.png",
+            "type": "file"
+          },
+          {
+            "path": "/main.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/refs.bib",
+            "type": "doc"
+          },
+          {
+            "path": "/sections/intro.tex",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "label": "no \\title, the root is the doc with \\documentclass",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "Untitled Upload.zip",
+          "bytes": 291
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "56",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": true,
+        "project_id": "6b04faf6cb4fe3a455d4d630"
+      },
+      "sentAt": 1886,
+      "answeredAt": 1995
+    },
+    {
+      "label": "untitled: the created project",
+      "created": {
+        "name": "Untitled Upload",
+        "rootDoc": "paper.tex",
+        "compiler": "pdflatex",
+        "entities": [
+          {
+            "path": "/notes.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/paper.tex",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "label": "the same name again",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "Untitled Upload.zip",
+          "bytes": 291
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "56",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": true,
+        "project_id": "6b04faf6cb4fe3a455d4d643"
+      },
+      "sentAt": 2113,
+      "answeredAt": 2207
+    },
+    {
+      "label": "same name: the created project",
+      "created": {
+        "name": "Untitled Upload (1)",
+        "rootDoc": "paper.tex",
+        "compiler": "pdflatex",
+        "entities": [
+          {
+            "path": "/notes.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/paper.tex",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "label": "a single top-level folder",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "repo-main.zip",
+          "bytes": 396
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "56",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": true,
+        "project_id": "6b04faf6cb4fe3a455d4d656"
+      },
+      "sentAt": 2321,
+      "answeredAt": 2439
+    },
+    {
+      "label": "wrapped: the created project",
+      "created": {
+        "name": "repo-main",
+        "rootDoc": "main.tex",
+        "compiler": "pdflatex",
+        "entities": [
+          {
+            "path": "/img/pixel.png",
+            "type": "file"
+          },
+          {
+            "path": "/main.tex",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "label": "no tex file at all",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "readme-only.zip",
+          "bytes": 130
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "56",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": true,
+        "project_id": "6b04faf6cb4fe3a455d4d66b"
+      },
+      "sentAt": 2554,
+      "answeredAt": 2630
+    },
+    {
+      "label": "no tex: the created project",
+      "created": {
+        "name": "readme-only",
+        "rootDoc": null,
+        "compiler": "pdflatex",
+        "entities": [
+          {
+            "path": "/readme.md",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "label": "not a zip",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 29
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2743,
+      "answeredAt": 2757
+    },
+    {
+      "label": "an empty zip",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "empty.zip",
+          "bytes": 22
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2757,
+      "answeredAt": 2766
+    },
+    {
+      "label": "no file",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "nothing.zip",
+          "bytes": null
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "50",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "invalid_upload_request"
+      },
+      "sentAt": 2766,
+      "answeredAt": 2771
+    },
+    {
+      "label": "invalid upload 1 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2771,
+      "answeredAt": 2781
+    },
+    {
+      "label": "invalid upload 2 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2781,
+      "answeredAt": 2792
+    },
+    {
+      "label": "invalid upload 3 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2792,
+      "answeredAt": 2801
+    },
+    {
+      "label": "invalid upload 4 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2801,
+      "answeredAt": 2807
+    },
+    {
+      "label": "invalid upload 5 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2807,
+      "answeredAt": 2813
+    },
+    {
+      "label": "invalid upload 6 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2813,
+      "answeredAt": 2820
+    },
+    {
+      "label": "invalid upload 7 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2820,
+      "answeredAt": 2826
+    },
+    {
+      "label": "invalid upload 8 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2826,
+      "answeredAt": 2833
+    },
+    {
+      "label": "invalid upload 9 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2833,
+      "answeredAt": 2840
+    },
+    {
+      "label": "invalid upload 10 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2840,
+      "answeredAt": 2846
+    },
+    {
+      "label": "invalid upload 11 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2846,
+      "answeredAt": 2852
+    },
+    {
+      "label": "invalid upload 12 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 422,
+      "headers": {
+        "content-length": "44",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "success": false,
+        "error": "Invalid zip file"
+      },
+      "sentAt": 2852,
+      "answeredAt": 2858
+    },
+    {
+      "label": "invalid upload 13 for the rate limit",
+      "request": {
+        "method": "POST",
+        "route": "/project/new/upload",
+        "user": "alice",
+        "upload": {
+          "name": "garbage.zip",
+          "bytes": 9
+        }
+      },
+      "status": 429,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "Rate limit reached, please try again later",
+      "sentAt": 2858,
+      "answeredAt": 2864
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04faf5cb4fe3a455d4d615"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 2864,
+      "answeredAt": 2980
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04faf6cb4fe3a455d4d630"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 2980,
+      "answeredAt": 3127
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04faf6cb4fe3a455d4d643"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 3127,
+      "answeredAt": 3215
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04faf6cb4fe3a455d4d656"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 3215,
+      "answeredAt": 3343
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04faf6cb4fe3a455d4d66b"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 3343,
+      "answeredAt": 3451
+    }
+  ]
+}

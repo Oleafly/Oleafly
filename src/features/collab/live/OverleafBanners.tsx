@@ -1,14 +1,18 @@
-import { GitMerge, LogOut, TriangleAlert, Unplug, UserRoundCog, Wrench } from "lucide-react";
-import { useState } from "react";
+import { CloudDownload, FolderX, GitMerge, LogOut, Settings2, TriangleAlert, Unplug, UserRoundCog, Wrench } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VersionPickDialog } from "@/components/cloud/VersionPickDialog";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { Progress } from "@/components/ui/progress";
 import { WorkspaceBanner, WorkspaceBannerAlert, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { useNow } from "@/hooks/use-now";
 import { decodeXmlEntities, stripTags } from "@/lib/citation/text";
-import { serverHost } from "@/lib/overleaf-live";
+import { logError } from "@/lib/log";
+import { overleafLiveProject, serverHost } from "@/lib/overleaf-live";
+import { recycleProject } from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "./live-store";
 import { NoticeGroup } from "./NoticeGroup";
@@ -21,13 +25,19 @@ function SignedOutBanner() {
   const { t } = useTranslation(["collab"]);
   const signedOut = useCollabLiveStore((state) => state.status?.state === "signed_out");
   const server = useCollabLiveStore((state) => state.overleaf?.server ?? null);
+  const email = useCollabLiveStore((state) => state.overleaf?.account?.email ?? null);
   if (!signedOut || !server) return null;
+  const host = serverHost(server);
   return (
     <WorkspaceBanner tone="warning" data-testid="overleaf-signed-out-banner">
       <LogOut aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1">{t(($) => $.collab.overleafBanners.signedOut, { server: serverHost(server) })}</p>
+      <p className="min-w-0 flex-1">
+        {email
+          ? t(($) => $.collab.overleafBanners.signedOutAs, { email, server: host })
+          : t(($) => $.collab.overleafBanners.signedOut, { server: host })}
+      </p>
       <WorkspaceBannerButton tone="warning" onClick={() => useSettingsStore.getState().openSettingsAt("integrations")}>
-        {t(($) => $.collab.activity.signIn)}
+        {email ? t(($) => $.collab.overleafBanners.signInAs, { email }) : t(($) => $.collab.activity.signIn)}
       </WorkspaceBannerButton>
     </WorkspaceBanner>
   );
@@ -205,6 +215,110 @@ function UnsteadyRows() {
   );
 }
 
+function FillingBanner() {
+  const { t } = useTranslation(["collab"]);
+  const filling = useOverleafNotices((state) => state.filling);
+  if (!filling) return null;
+  const { done, total } = filling;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 100;
+  return (
+    <WorkspaceBanner tone="primary" data-testid="overleaf-filling-banner">
+      <CloudDownload aria-hidden className="size-3.5 shrink-0 text-primary" />
+      <p className="min-w-0 flex-1">
+        {done < total
+          ? t(($) => $.collab.overleafBanners.filling, { done, total })
+          : t(($) => $.collab.overleafBanners.fillingFiles)}
+      </p>
+      <Progress value={percent} className="h-1 w-24" />
+    </WorkspaceBanner>
+  );
+}
+
+const GONE = new Set(["project_deleted", "access_ended", "removed"]);
+
+async function removeEmptyCopy(projectId: string): Promise<boolean> {
+  const fresh = await overleafLiveProject(projectId);
+  if (!fresh?.unfilled) return false;
+  const files = useFilesStore.getState();
+  if (files.projectId === projectId) await files.closeProject();
+  if (useFilesStore.getState().projectId === projectId) return true;
+  await recycleProject(projectId);
+  await files.refreshProjects();
+  return true;
+}
+
+function EmptyCopyBanner() {
+  const { t } = useTranslation(["collab"]);
+  const projectId = useCollabLiveStore((state) => state.projectId);
+  const gone = useCollabLiveStore(
+    (state) => state.status?.state === "ended" && GONE.has(state.status.reason),
+  );
+  const [empty, setEmpty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setEmpty(false);
+    if (!gone || !projectId) return;
+    let cancelled = false;
+    overleafLiveProject(projectId).then(
+      (project) => {
+        if (!cancelled) setEmpty(project?.unfilled === true);
+      },
+      (error: unknown) => void logError("read the overleaf live project", error),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [gone, projectId]);
+  if (!gone || !empty || !projectId) return null;
+  const remove = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      if (!(await removeEmptyCopy(projectId))) setEmpty(false);
+    } catch (error) {
+      void logError("remove an empty overleaf copy", error);
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <WorkspaceBanner tone="warning" data-testid="overleaf-empty-copy-banner">
+      <FolderX aria-hidden className="size-3.5 shrink-0" />
+      <p className="min-w-0 flex-1">{t(($) => $.collab.overleafBanners.emptyCopy)}</p>
+      <WorkspaceBannerButton tone="warning" disabled={busy} onClick={() => void remove()}>
+        {t(($) => $.collab.overleafBanners.removeEmptyCopy)}
+      </WorkspaceBannerButton>
+      {failed ? <WorkspaceBannerAlert>{t(($) => $.collab.overleafBanners.removeFailed)}</WorkspaceBannerAlert> : null}
+    </WorkspaceBanner>
+  );
+}
+
+function SettingsBanner() {
+  const { t } = useTranslation(["collab"]);
+  const settings = useOverleafNotices((state) => state.settings);
+  const dismiss = useOverleafNotices((state) => state.dismissSettings);
+  if (settings.length === 0) return null;
+  return (
+    <WorkspaceBanner tone="warning" data-testid="overleaf-settings-banner">
+      <Settings2 aria-hidden className="size-3.5 shrink-0" />
+      <ul className="min-w-0 flex-1 space-y-0.5 select-text">
+        {settings.map((entry) => (
+          <li key={entry.setting}>
+            {t(($) => $.collab.overleafBanners.settingNotSent[entry.reason], {
+              setting: t(($) => $.collab.overleafBanners.settingNames[entry.setting]),
+            })}
+          </li>
+        ))}
+      </ul>
+      <WorkspaceBannerButton tone="warning" onClick={dismiss}>
+        {t(($) => $.collab.files.dismiss)}
+      </WorkspaceBannerButton>
+    </WorkspaceBanner>
+  );
+}
+
 function CompareDialog({ shown, onClose }: Readonly<{ shown: Shown; onClose: () => void }>) {
   const { t } = useTranslation(["collab"]);
   const resolve = useOverleafNotices((state) => state.resolve);
@@ -260,11 +374,14 @@ export function OverleafBanners() {
   return (
     <>
       <SignedOutBanner />
+      <EmptyCopyBanner />
       <AccountChangedBanner />
+      <FillingBanner />
       <MaintenanceBanner />
       <ReviewRows onShow={setShown} />
       <MergedRows onShow={setShown} />
       <UnsteadyRows />
+      <SettingsBanner />
       {shown ? <CompareDialog shown={shown} onClose={() => setShown(null)} /> : null}
       <OverleafDeleteDialog />
     </>

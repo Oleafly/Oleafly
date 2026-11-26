@@ -55,19 +55,24 @@ impl Recording {
     }
 }
 
-impl LiveHost for Recording {
+impl oleafly_live::DiskHost for Recording {
     fn status(&self, payload: StatusPayload) {
         self.statuses.lock().unwrap().push(payload.status);
     }
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
-    fn new_device(&self, _: NewDevicePayload) {}
+
     fn uploads(&self, payload: UploadsPayload) {
         self.uploads.lock().unwrap().push(payload);
     }
+}
+
+impl LiveHost for Recording {
+    fn merged(&self, _: MergedPayload) {}
+    fn new_device(&self, _: NewDevicePayload) {}
+
     fn upload_progress(&self, payload: UploadProgress) {
         self.progress.lock().unwrap().push(payload);
     }
@@ -255,16 +260,16 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     tokio::fs::create_dir_all(&collab).await.unwrap();
     let host = Arc::new(Recording::default());
     let active = Arc::new(Active {
-        local: LiveDisk {
-            project_id: "uploads".to_owned(),
-            root: root.clone(),
-            disk_file: collab.join("materializer-index.json"),
-            disk: Mutex::new(disk),
-            bases: Mutex::new(bases),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+        local: LiveDisk::assembled(
+            "uploads",
+            root.clone(),
+            collab.join("materializer-index.json"),
+            disk,
+            bases,
+            host.clone(),
             writer,
-            upkeep: Default::default(),
-        },
+        ),
+        host: Arc::clone(&host) as Arc<dyn LiveHost>,
         document_dir: collab.join("document"),
         live: shared,
         handle,
@@ -1216,6 +1221,29 @@ fn a_figure_that_downloaded_but_could_not_be_written_is_written_later_without_do
         })
         .await;
         assert_eq!(server.gets.load(Ordering::SeqCst), 1);
+    });
+}
+
+#[test]
+fn a_downloaded_figure_is_in_the_saved_file_state_once_it_lands() {
+    run(async {
+        let server = canned(0, 50).await;
+        let figure = b"figure".as_slice();
+        server.serve(figure);
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", figure);
+        alice.pass().await;
+        let saved = || {
+            crate::collab::disk::DiskState::load(&alice.active.local.disk_file)
+                .hashes
+                .get("figures/plot.png")
+                .cloned()
+        };
+        until("the figure in the saved file state", || {
+            saved() == Some(sha256_hex(figure))
+        })
+        .await;
+        assert_eq!(alice.figure("figures/plot.png").as_deref(), Some(figure));
     });
 }
 

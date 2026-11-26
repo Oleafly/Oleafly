@@ -61,6 +61,8 @@ for path in \
   crates/oleafly-collab/src/sync.rs \
   crates/oleafly-collab/examples/e2e_peer.rs \
   crates/oleafly-collab-protocol/src/frames.rs \
+  crates/oleafly-live/src/disk.rs \
+  crates/oleafly-live/src/live/live_disk.rs \
   crates/oleafly-ot/src/editor.rs \
   crates/oleafly-net/src/lib.rs \
   crates/oleafly-server/src/routes/ws.rs \
@@ -73,15 +75,22 @@ for path in \
   src/lib/tauri-collab.ts \
   packages/editor/src/collaboration.ts \
   packages/editor/src/document-session.ts \
-  src/components/editor/cm/collab-slot.ts \
+  src/components/editor/cm/editor-slots.ts \
+  src/components/editor/cm/editor-slots.test.ts \
+  src/components/editor/wysiwyg/WysiwygEditor.tsx \
+  src/components/editor/wysiwyg/controller.ts \
+  src/components/notes/note-live-doc.ts \
+  src/components/notes/use-note-live.ts \
   src/components/layout/CollabLiveKeeper.tsx \
   src/components/layout/CollabLinkKeeper.tsx \
   e2e/tests/109-live-collaboration-peer.spec.ts \
+  e2e/helpers.ts \
+  e2e/rich-editor.ts \
   crates/oleafly-online/src/browser_signin/cdp.rs \
   crates/oleafly-online/examples/fake_browser.rs \
   crates/oleafly-online/tests/browser_signin.rs \
   src-tauri/src/overleaf/signin.rs \
-  src/components/settings/BrowserSignInCopy.tsx \
+  src/components/settings/browser-sign-in/SignInOptions.tsx \
   e2e/tests/146-online-browser-sign-in.spec.ts \
   scripts/e2e-collab-browser.sh \
   scripts/ci/collab-changes.sh \
@@ -97,6 +106,8 @@ for path in \
   src/lib/collaborator.ts \
   src/lib/tauri.test.ts \
   packages/editor/src/view.ts \
+  src/components/editor/cm/controller.ts \
+  src/components/editor/cm/collab-slot.ts \
   src/components/layout/TopToolbar.tsx \
   src-tauri/src/project.rs \
   src-tauri/src/collaboration.rs \
@@ -104,7 +115,10 @@ for path in \
   crates/oleafly-online/src/session.rs \
   src-tauri/src/overleaf/mod.rs \
   e2e/tests/21-library.spec.ts \
-  e2e/helpers.ts \
+  e2e/fixtures.ts \
+  e2e/notes-page.ts \
+  e2e/overleaf-stack.ts \
+  src/components/editor/MarkdownToolbar.tsx \
   scripts/e2e.sh \
   package.json \
   README.md; do

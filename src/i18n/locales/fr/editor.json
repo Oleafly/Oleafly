@@ -319,6 +319,15 @@
     "spellLanguageFolderHint": "Enregistrée dans le project.json de ce dossier, elle s'applique donc à toute personne qui l'ouvre. Téléchargez d'autres langues dans les Paramètres.",
     "spellLanguageReadOnly": "Ce dossier est en lecture seule, la langue de son project.json ne peut donc pas être modifiée.",
     "spellLanguageFailed": "Impossible de changer la langue de correction orthographique.",
+    "onOverleaf": "Sur Overleaf",
+    "texLive": "Version de TeX Live",
+    "texLiveAriaLabel": "Version de TeX Live sur Overleaf",
+    "bibliography": "Bibliographie principale",
+    "bibliographyAriaLabel": "Bibliographie principale sur Overleaf",
+    "bibliographyNone": "Aucune choisie",
+    "overleafHint": "Ces réglages sont stockés sur Overleaf et s'appliquent à tout le monde dans le projet.",
+    "overleafReadOnly": "Seuls les propriétaires et les éditeurs peuvent les modifier sur Overleaf.",
+    "overleafFailed": "Impossible de modifier ce réglage sur Overleaf.",
     "notChecked": "Non vérifié",
     "dictionaryMissing": "{{name}} n’est pas téléchargé, l’orthographe n’est donc pas vérifiée. Téléchargez-le dans les Réglages ou choisissez une autre langue.",
     "grammarEnglishOnly": "La vérification grammaticale ne fonctionne que pour les documents en anglais.",
@@ -748,13 +757,13 @@
     "ignoreEverywhere": "Ignorer partout",
     "keyboardHint": "Utilisez Tab ou les flèches pour passer d'une action à l'autre. Appuyez sur Escape pour fermer.",
     "endOfDocument": "Fin du document",
-    "hidePreamble": "Masquer le préambule du document",
-    "showPreamble": "Afficher le préambule du document",
-    "sharedReadOnly": "Dans un projet partagé, le mode visuel affiche seulement le fichier. Basculez en vue source pour le modifier.",
     "findingLabel": "{{message}}. Ouvrir les suggestions de correction.",
     "rawBlockFindings_one": "{{count}} remarque de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
     "rawBlockFindings_many": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
-    "rawBlockFindings_other": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions."
+    "rawBlockFindings_other": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
+    "liveViewOnly": "Vous pouvez consulter ce fichier partagé, mais pas le modifier.",
+    "liveConnecting": "Ce fichier partagé est encore en cours de connexion. Vous pourrez le modifier dès qu'il sera prêt.",
+    "suggestInSource": "Ici, vos modifications seraient des suggestions, et le mode Visuel ne peut pas les afficher. Basculez en vue source pour suggérer des modifications."
   },
   "package": {
     "search": {

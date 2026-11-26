@@ -1,4 +1,5 @@
-use std::io::Read;
+use std::collections::BTreeMap;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use oleafly_core::{detect_main_document, DetectOptions, Engine, ProjectManifest};
@@ -9,12 +10,14 @@ use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::projects::{origin_record, RemoteProject};
 use crate::realtime::project::{self, ProjectSettings};
+use crate::session::Session;
 use crate::sync::{check_remote_paths, now_seconds};
 
 const SKIPPED_NAMES: [&str; 5] = ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"];
 const MAX_FOLDER_NAME: usize = 80;
 const MAX_FOLDER_BYTES: usize = 180;
 const MANIFEST: &str = "project.json";
+const BASE_TEXT_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ImportLimits {
@@ -141,6 +144,52 @@ fn not_an_archive<E>(_: E) -> OnlineError {
 
 fn write_error(path: &Path, error: std::io::Error) -> OnlineError {
     OnlineError::io(format!("could not write {}: {error}", path.display()))
+}
+
+fn zip_error(path: &Path, error: zip::result::ZipError) -> OnlineError {
+    OnlineError::io(format!("could not write {}: {error}", path.display()))
+}
+
+pub fn one_top_folder<'a>(paths: impl IntoIterator<Item = &'a str>) -> Option<String> {
+    let mut top: Option<&str> = None;
+    for path in paths {
+        let (first, _) = path.split_once('/')?;
+        if top.is_some_and(|top| top != first) {
+            return None;
+        }
+        top = Some(first);
+    }
+    top.map(str::to_owned)
+}
+
+pub fn zip_files(
+    files: &BTreeMap<String, PathBuf>,
+    dest: &Path,
+) -> Result<BTreeMap<String, String>, OnlineError> {
+    let file = std::fs::File::create(dest).map_err(|error| write_error(dest, error))?;
+    let mut writer = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    let mut texts = BTreeMap::new();
+    for (rel, path) in files {
+        let bytes = std::fs::read(path).map_err(|error| {
+            OnlineError::io(format!("could not read {}: {error}", path.display()))
+        })?;
+        writer
+            .start_file(rel.as_str(), options)
+            .map_err(|error| zip_error(dest, error))?;
+        writer
+            .write_all(&bytes)
+            .map_err(|error| write_error(dest, error))?;
+        if bytes.len() <= BASE_TEXT_BYTES && !bytes.contains(&0) {
+            if let Ok(text) = String::from_utf8(bytes) {
+                texts.insert(rel.clone(), text);
+            }
+        }
+    }
+    let file = writer.finish().map_err(|error| zip_error(dest, error))?;
+    file.sync_all().map_err(|error| write_error(dest, error))?;
+    Ok(texts)
 }
 
 pub fn extract_project_zip(
@@ -308,7 +357,7 @@ fn path_exists(path: &Path) -> bool {
 
 pub async fn import_into_folder(
     http: &Http,
-    cookie: &str,
+    account: &Session,
     remote: &RemoteProject,
     target: &Path,
     limits: &ImportLimits,
@@ -336,6 +385,7 @@ pub async fn import_into_folder(
         archive: parent.join(format!(".{name}.oleafly-import-{tag}.zip")),
         folder: parent.join(format!(".{name}.oleafly-import-{tag}.tmp")),
     };
+    let cookie = account.cookie.as_str();
     let settings = project::fetch_project(http, cookie, &remote.id)
         .await
         .map(|fetched| project::settings_from_project(&fetched))
@@ -345,7 +395,7 @@ pub async fn import_into_folder(
     })
     .await?;
     progress(ImportProgress::Extracting);
-    let origin = origin_record(&http.base, remote, &settings, now_seconds());
+    let origin = origin_record(&http.base, remote, &settings, account, now_seconds());
     let limits = *limits;
     let task_settings = settings.clone();
     let destination = target.to_path_buf();
@@ -376,7 +426,6 @@ pub async fn import_into_folder(
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write as _;
     use std::sync::{Arc, Mutex};
 
     use serde_json::json;
@@ -388,6 +437,15 @@ mod tests {
         dashboard_page, remote_project_json, socket_handler, zip_bytes, FixtureServer, Reply,
         Request,
     };
+
+    fn signed_in() -> Session {
+        Session {
+            cookie: "site_session=good".into(),
+            user_id: "u-ada".into(),
+            email: "ada@uni.edu".into(),
+            saved_by: None,
+        }
+    }
 
     fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {
         let file = std::fs::File::create(path).unwrap();
@@ -608,7 +666,7 @@ mod tests {
         let events = Mutex::new(Vec::new());
         let imported = import_into_folder(
             &http,
-            "site_session=good",
+            &signed_in(),
             &thesis_remote(),
             &target,
             &ImportLimits::default(),
@@ -633,6 +691,8 @@ mod tests {
         assert_eq!(manifest["importedFrom"]["projectId"], "a1");
         assert_eq!(manifest["importedFrom"]["server"], server.base.as_str());
         assert_eq!(manifest["importedFrom"]["texLive"], "2025");
+        assert_eq!(manifest["importedFrom"]["userId"], "u-ada");
+        assert_eq!(manifest["importedFrom"]["email"], "ada@uni.edu");
         let events = events.into_inner().unwrap();
         assert!(events
             .iter()
@@ -667,7 +727,7 @@ mod tests {
         let target = parent.path().join("Mine");
         let imported = import_into_folder(
             &http,
-            "site_session=good",
+            &signed_in(),
             &thesis_remote(),
             &target,
             &ImportLimits::default(),
@@ -704,7 +764,7 @@ mod tests {
         let target = parent.path().join("Mine");
         import_into_folder(
             &http,
-            "site_session=good",
+            &signed_in(),
             &thesis_remote(),
             &target,
             &ImportLimits::default(),
@@ -747,7 +807,7 @@ mod tests {
         std::fs::write(target.join("main.tex"), "old").unwrap();
         let error = import_into_folder(
             &http,
-            "site_session=good",
+            &signed_in(),
             &thesis_remote(),
             &target,
             &ImportLimits::default(),
@@ -775,7 +835,7 @@ mod tests {
         };
         let error = import_into_folder(
             &http,
-            "site_session=good",
+            &signed_in(),
             &thesis_remote(),
             &target,
             &few,
@@ -786,5 +846,46 @@ mod tests {
         assert_eq!(error.kind, OnlineErrorKind::TooLarge);
         assert!(!target.exists());
         assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn a_project_goes_online_without_build_outputs_and_keeps_the_texts_it_sent() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for (path, bytes) in [
+            ("main.tex", b"\\documentclass{article}\r\n".as_slice()),
+            ("main.aux", b"built"),
+            (".env", b"SECRET=1"),
+            (".oleafly/state.json", b"{}"),
+            ("project.json", b"{}"),
+            ("figures/pixel.png", b"\x89PNG\0data"),
+        ] {
+            let target = root.join(path);
+            std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+            std::fs::write(target, bytes).unwrap();
+        }
+        let files = crate::sync::online_files(root).unwrap();
+        assert_eq!(
+            files.keys().map(String::as_str).collect::<Vec<_>>(),
+            ["figures/pixel.png", "main.tex"]
+        );
+        assert_eq!(one_top_folder(files.keys().map(String::as_str)), None);
+        assert_eq!(
+            one_top_folder(["paper/main.tex", "paper/refs.bib"]),
+            Some("paper".to_string())
+        );
+        let zip = dir.path().join("out.zip");
+        let texts = zip_files(&files, &zip).unwrap();
+        assert_eq!(
+            texts.into_iter().collect::<Vec<_>>(),
+            [(
+                "main.tex".to_string(),
+                "\\documentclass{article}\r\n".to_string()
+            )]
+        );
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(&zip).unwrap()).unwrap();
+        assert_eq!(archive.len(), 2);
+        let entry = archive.by_name("main.tex").unwrap();
+        assert_eq!(entry.compression(), zip::CompressionMethod::Deflated);
     }
 }

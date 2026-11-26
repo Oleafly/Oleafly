@@ -232,8 +232,16 @@
     "suggestion_role": "Rolul tău în acest proiect nu permite sugestii.",
     "suggestion_changed": "Textul din jurul acestei sugestii s-a schimbat, așa că un proprietar sau un editor trebuie să o accepte sau să o respingă.",
     "suggestion_too_long": "O ștergere sugerată poate avea maximum 20.000 de caractere. Șterge o porțiune mai mică de fiecare dată.",
+    "suggestion_gone": "Această modificare nu mai există. Poate că cineva a acceptat-o, a respins-o sau a editat-o.",
+    "review_off_server": "Acest server nu poate face asta cu modificările urmărite.",
     "chat_role": "Rolul tău în acest proiect nu permite acest lucru în chat.",
+    "chat_edit_off": "Acest server nu poate edita mesajele din chat.",
+    "chat_off_server": "Acest server Overleaf nu are chat.",
     "history_unavailable": "Istoricul acestui proiect nu este încă pe acest computer. Încearcă din nou după ce se sincronizează.",
+    "history_plan_limit": "Planul Overleaf al acestui proiect nu păstrează versiunile mai vechi.",
+    "restore_off_server": "Acest server Overleaf nu poate restaura versiunile mai vechi. Copiază în schimb textul din versiune.",
+    "linked_off_server": "Acest server Overleaf nu reîmprospătează fișierele asociate unei surse.",
+    "linked_refresh_failed": "Overleaf nu a putut reîmprospăta acest fișier din sursa lui.",
     "account_storage_full": "Contul proprietarului proiectului a rămas fără spațiu de stocare pe acest server. Elimină câteva fișiere ca să faci loc sau cere-i administratorului serverului mai mult spațiu.",
     "too_many_projects": "Ai deja câte proiecte partajate permite acest server. Oprește partajarea unuia înainte să partajezi altul.",
     "too_many_uploads": "Ai încărcat prea multe fișiere în ultima oră. Încearcă din nou mai târziu.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Ai deja atâtea pagini publice câte permite acest server. Anulează publicarea uneia, apoi încearcă din nou.",
     "page_too_large": "Această notiță este prea mare pentru a fi publicată. Elimină câteva imagini, apoi încearcă din nou.",
     "page_taken_down": "Un administrator a retras această pagină, așa că notița nu poate fi publicată din nou până când pagina nu este repusă."
+  },
+  "liveElsewhere": {
+    "cli": "Acest proiect este live în linia de comandă, în procesul {{pid}}. Oprește editarea live acolo, apoi încearcă din nou."
   },
   "roles": {
     "admin": "Administrator",
@@ -1051,6 +1062,8 @@
     "add": "Adaugă comentariu",
     "allResolved": "Toate comentariile sunt rezolvate.",
     "noResolved": "Niciun comentariu rezolvat",
+    "noChanges": "Nicio modificare urmărită",
+    "overleafOff": "Acest server Overleaf nu are comentarii, așa că aici apar doar modificările urmărite.",
     "emptyTitle": "Încă nu există comentarii",
     "emptyHint": "Selectează un text și alege Adaugă comentariu sau apasă {keys}",
     "readOnlyNote": "Poți citi comentariile din acest proiect. Ca să răspunzi sau să reacționezi, cere unui proprietar acces de comentator.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Sugestie de la cineva pe care Oleafly nu l-a putut verifica",
     "added": "Adăugat",
     "deleted": "Șters",
+    "replaced": "Înlocuit",
+    "replacedWith": "cu",
     "accept": "Acceptă",
     "reject": "Respinge",
     "withdraw": "Retrage",
@@ -1157,6 +1172,7 @@
     "fileActions": "Sugestiile din {{file}}",
     "pendingCount": "Sugestii în așteptare: {{number}}",
     "loadFailed": "Sugestiile acestui fișier nu s-au putut încărca.",
+    "acceptOffServer": "Acest server Overleaf nu poate accepta modificările urmărite din acest fișier. Totuși, le poți respinge.",
     "rejectAllConfirm": {
       "title": "Respingi toate sugestiile din {{file}}?",
       "description": "Textul original revine în fișier pentru toată lumea din acest proiect. Sugestii în așteptare: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Sugerare",
       "editingHint": "Editare: modificările tale schimbă textul imediat",
       "suggestingHint": "Sugerare: modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta",
-      "reviewerHint": "Ești recenzent, așa că modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta"
+      "reviewerHint": "Ești recenzent, așa că modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta",
+      "locked": {
+        "everyone": "Urmărirea modificărilor este activată pentru toată lumea din acest proiect, așa că modificările tale devin sugestii",
+        "plan": "Planul Overleaf al acestui proiect nu include urmărirea modificărilor",
+        "server": "Acest server Overleaf nu poate activa sau dezactiva urmărirea modificărilor"
+      },
+      "others": "Urmărirea modificărilor pentru ceilalți",
+      "forEveryone": "Pentru toată lumea",
+      "forGuests": "Pentru cei care s-au alăturat printr-un link"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Cititorii pot citi chatul, dar nu pot scrie în el.",
     "offline": "Acest proiect nu este conectat acum, așa că nu poți scrie mesaje.",
     "messageActions": "Mai multe acțiuni pentru acest mesaj",
+    "editLabel": "Editează mesajul",
     "deleteConfirm": {
       "title": "Ștergi acest mesaj?",
       "description": "Se șterge pentru toată lumea din acest proiect."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly nu a putut încărca chatul.",
     "loadOlder": "Arată mesajele mai vechi"
+  },
+  "people": {
+    "invited": "Invitat",
+    "former": "(a părăsit proiectul)"
   },
   "history": {
     "title": "Istoric",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Textul fiecărui fișier revine la cum era la {{time}} pentru toată lumea din acest proiect, iar fișierele șterse revin. Fișierele redenumite își păstrează noile nume, iar figurile și fișierele adăugate ulterior rămân așa cum sunt. Textul actual rămâne în istoric, așa că poți reveni la el.",
       "confirm": "Restaurează proiectul"
     },
+    "limited": "Modificările mai vechi necesită un plan Overleaf cu istoric complet.",
+    "unavailable": "Accesul tău la acest proiect nu include istoricul lui.",
+    "download": "Descarcă ca ZIP",
+    "downloading": "Se descarcă…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Fiecare fișier revine la cum era la {{time}} pentru toată lumea din Overleaf, iar fișierele adăugate între timp sunt șterse. Overleaf păstrează versiunea actuală în istoricul său, așa că poți reveni la ea.",
     "compareTitle": "Modificări între două versiuni",
     "compareDescription": "De la {{from}} la {{to}}",
     "changedFiles": "Fișiere modificate: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Acum ești comentator. Poți citi și comenta acest proiect, dar nu îl poți edita.",
     "reviewerBy": "{{name}} te-a făcut recenzent. Modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta.",
     "reviewer": "Acum ești recenzent. Modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta.",
-    "reviewing": "Ești recenzent în acest proiect, așa că modificările tale devin sugestii.",
-    "trackingChanges": "Urmărirea modificărilor este activă în acest proiect, așa că modificările tale devin sugestii.",
     "viewOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita.",
     "askOnOverleaf": "Cere acces în Overleaf",
     "connecting": "Acest proiect partajat încă se conectează, așa că nu poate fi modificat încă. Încearcă din nou peste câteva momente.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Ești deconectat de la {{server}}, așa că acest proiect nu se sincronizează. Poți continua să scrii. Modificările tale rămân pe acest computer și ajung în Overleaf după ce te autentifici din nou.",
+    "signedOutAs": "Acest proiect aparține contului {{email}} pe {{server}}. Acest cont nu este autentificat, așa că proiectul nu se sincronizează. Poți continua să scrii. Modificările tale rămân pe acest computer și ajung în Overleaf după ce te autentifici ca {{email}}.",
+    "signInAs": "Autentifică-te ca {{email}}",
     "accountChangedOne": "Acum ești autentificat cu alt cont, așa că modificările făcute ca {{email}} nu au fost trimise. Sunt păstrate ca {{copy}}.",
     "accountChangedMany": "Acum ești autentificat cu alt cont, așa că modificările făcute ca {{email}} nu au fost trimise. Sunt păstrate ca copii lângă fișierele lor:",
     "keptAs": "{{file}} este păstrat ca {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Unele caractere din {{file}}, cum ar fi emoji-urile, au fost înlocuite pentru că Overleaf nu le poate stoca.",
     "tryLiveAgain": "Încearcă din nou live",
     "keepMineAsCopy": "Păstrează versiunea mea ca o copie",
-    "stoppedActionFailed": "Nu a funcționat pentru {{file}}. Așteaptă puțin, apoi dă clic din nou."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf nu are nimic care să corespundă setării „{{setting}}” din acest proiect, așa că în Overleaf setarea „{{setting}}” rămâne la fel.",
+      "refused": "Overleaf a respins modificarea setării „{{setting}}”.",
+      "failed": "Oleafly nu a putut trimite în Overleaf modificarea setării „{{setting}}”. Va încerca din nou la următoarea modificare.",
+      "conflict": "Setarea „{{setting}}” s-a schimbat aici și în Overleaf în același timp. Se păstrează alegerea din Overleaf."
+    },
+    "settingNames": {
+      "main_doc": "document principal",
+      "compiler": "compilator",
+      "spelling": "limba verificării ortografice",
+      "image": "versiune TeX Live",
+      "bibliography": "bibliografie principală"
+    },
+    "stoppedActionFailed": "Nu a funcționat pentru {{file}}. Așteaptă puțin, apoi dă clic din nou.",
+    "filling": "Se deschide proiectul din Overleaf (fișiere: {{done}} din {{total}})",
+    "fillingFiles": "Se deschide proiectul din Overleaf: se descarcă ultimele fișiere",
+    "emptyCopy": "Acest proiect nu mai există în Overleaf și niciunul dintre fișierele lui nu a ajuns pe acest computer.",
+    "removeEmptyCopy": "Elimină copia goală",
+    "removeFailed": "Oleafly nu a putut elimina copia goală."
   },
   "overleafTree": {
     "deleteTitle": "Ștergi și din Overleaf?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Șterge și din Overleaf",
     "keep": "Păstrează în Overleaf",
     "notAllowed": "Nu poți modifica fișierele acestui proiect în Overleaf, așa că modificările tale la {{files}} rămân pe acest computer.",
-    "keptAway": "Șters aici, dar încă în Overleaf: {{files}}"
+    "keptAway": "Șters aici, dar încă în Overleaf: {{files}}",
+    "linkedKept": "Overleaf asociază {{files}} cu o sursă, așa că modificările tale rămân pe acest computer. Alege Reîmprospătează din sursă ca să recuperezi copia din Overleaf."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} este asociat cu {{source}} în Overleaf.",
+    "bannerNoSource": "{{file}} este asociat cu o sursă în Overleaf.",
+    "readOnly": "{{file}} este asociat cu o sursă în Overleaf. Ca să-l actualizezi, alege Reîmprospătează din sursă.",
+    "treeHint": "Asociat cu o sursă în Overleaf",
+    "refresh": "Reîmprospătează din sursă",
+    "refreshing": "Se reîmprospătează",
+    "refusedWith": "Overleaf nu l-a putut reîmprospăta: {{message}}"
   }
 }

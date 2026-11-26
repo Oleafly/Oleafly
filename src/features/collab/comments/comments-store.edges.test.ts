@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import { setEditorDocumentPath, setEditorView } from "@oleafly/editor";
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentsChanged, CollabCommentThread, CollabCommentThreadList } from "@/lib/tauri";
-import { useCommentsRail } from "@/components/collab/comments-rail";
+import { requestCommentAt, useCommentsRail } from "@/components/collab/comments-rail";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
@@ -53,7 +53,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-vi.mock("@/components/editor/cm/comments-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setCommentsEditorExtension: (extension: unknown) => {
     mocks.installed(extension);
     return mocks.released;
@@ -559,6 +560,32 @@ describe("writing comments", () => {
     await shown();
     await act(() => createThread("Nothing selected"));
     expect(mocks.collabCommentCreate).not.toHaveBeenCalled();
+  });
+
+  it("opens the file a range from elsewhere belongs to and posts the comment on that range", async () => {
+    start();
+    await waitFor(() => expect(useCommentsRail.getState().canCompose).toBe(true));
+    mocks.openFile.mockImplementationOnce(async (path: string) => {
+      useFilesStore.setState({ activePath: path });
+    });
+    const range = { path: "refs.tex", from: 12, to: 20, quote: "the data" };
+    await act(async () => {
+      await expect(requestCommentAt(range)).resolves.toBe(true);
+    });
+    expect(mocks.openFile).toHaveBeenCalledWith("refs.tex");
+    expect(useComments.getState().draft).toEqual(range);
+    mocks.collabCommentCreate.mockResolvedValue(commentThread("r-pdf", { from: 12, to: 20 }, { fileId: REFS_FILE }));
+    await act(() => createThread("Is this right?"));
+    expect(mocks.collabCommentCreate).toHaveBeenCalledWith(
+      "paper",
+      "refs.tex",
+      12,
+      20,
+      null,
+      "Is this right?",
+      expect.any(Array),
+    );
+    expect(useComments.getState()).toMatchObject({ draft: null, selectedId: "r-pdf" });
   });
 
   it("keeps a newer draft and the open file's list when a thread is created for another file", async () => {

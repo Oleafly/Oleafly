@@ -90,7 +90,7 @@ pub(super) async fn pump(
                     device_id: device_id.to_string(),
                 })
             }
-            LiveEvent::Members(change) => active.local.host.members(MembersPayload {
+            LiveEvent::Members(change) => active.host.members(MembersPayload {
                 project_id: active.local.project_id.clone(),
                 account_id: change.account_id,
                 by: change.by,
@@ -100,7 +100,7 @@ pub(super) async fn pump(
             LiveEvent::NewDevice {
                 account_id,
                 device_id,
-            } => active.local.host.new_device(NewDevicePayload {
+            } => active.host.new_device(NewDevicePayload {
                 project_id: active.local.project_id.clone(),
                 account_id,
                 device_id,
@@ -120,7 +120,7 @@ pub(super) async fn pump(
                     "Live collaboration skipped change {seq} from {from} in project {}: this app could not read it",
                     active.local.project_id
                 ));
-                active.local.host.change_skipped(ChangeSkippedPayload {
+                active.host.change_skipped(ChangeSkippedPayload {
                     project_id: active.local.project_id.clone(),
                     seq,
                     device_id,
@@ -143,7 +143,7 @@ pub(super) async fn pump(
                     &active.local.project_id,
                     &active.live,
                     unsent,
-                    active.local.host.as_ref(),
+                    active.host.as_ref(),
                 );
             }
             LiveEvent::Comments(switches) => {
@@ -153,7 +153,7 @@ pub(super) async fn pump(
                     &active.local.project_id,
                     switches,
                     role,
-                    active.local.host.as_ref(),
+                    active.host.as_ref(),
                 );
             }
         }
@@ -165,7 +165,7 @@ pub(super) fn on_project_full(active: &Active) {
         "Live collaboration in project {} reached the server's size limit; changes stay on this computer for now",
         active.local.project_id
     ));
-    active.local.host.project_full(ProjectFullPayload {
+    active.host.project_full(ProjectFullPayload {
         project_id: active.local.project_id.clone(),
     });
 }
@@ -187,10 +187,7 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
             active.detach(paths);
         }
         if let Some(session) = reason.session() {
-            active
-                .local
-                .host
-                .session_ended(active.link.server_id, session);
+            active.host.session_ended(active.link.server_id, session);
         }
         let mut slot = guard(&ACTIVE);
         if slot
@@ -230,14 +227,14 @@ fn on_acknowledged(active: &Active) {
         &active.local.project_id,
         &active.live,
         active.account_id,
-        active.local.host.as_ref(),
+        active.host.as_ref(),
         true,
     );
     crate::collab::chat::announce(
         &active.local.project_id,
         &active.live,
         active.account_id,
-        active.local.host.as_ref(),
+        active.host.as_ref(),
         true,
     );
 }
@@ -248,26 +245,26 @@ fn on_changed(active: &Active) {
         active.handle.flush();
     }
     for renamed in settled.renamed {
-        active.local.host.renamed(renamed);
+        active.host.renamed(renamed);
     }
     active.kick();
     crate::collab::comments::announce(
         &active.local.project_id,
         &active.live,
         active.account_id,
-        active.local.host.as_ref(),
+        active.host.as_ref(),
         false,
     );
     crate::collab::suggesting::announce(
         &active.local.project_id,
         &active.live,
-        active.local.host.as_ref(),
+        active.host.as_ref(),
     );
     crate::collab::chat::announce(
         &active.local.project_id,
         &active.live,
         active.account_id,
-        active.local.host.as_ref(),
+        active.host.as_ref(),
         false,
     );
 }
@@ -278,6 +275,6 @@ fn on_merged(active: &Active, report: MergeReport) {
     }
     let layout = materialize::layout(&lock(&active.live).doc().nodes().unwrap_or_default());
     if let Some(payload) = merged_payload(&active.local.project_id, &layout, report) {
-        active.local.host.merged(payload);
+        active.host.merged(payload);
     }
 }

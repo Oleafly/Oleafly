@@ -1,4 +1,4 @@
-import type { CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
+import type { CollabChangeOrigin, CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
 import { TextOperation } from "../ot";
 import type { RemoteSessionTransport } from "../remote-session";
 
@@ -13,6 +13,7 @@ interface Change {
   client: string;
   rev: number;
   op: CollabTextOperation;
+  origin?: CollabChangeOrigin;
 }
 
 export class FakeChannel {
@@ -41,8 +42,8 @@ export class FakeChannel {
         this.opens.push(id);
         return { file_id: id, rev: this.rev, text: this.text, session: this.next };
       },
-      change: (fileId, rev, op) => {
-        const change = { client: fileId, rev, op };
+      change: (fileId, rev, op, origin) => {
+        const change = { client: fileId, rev, op, origin };
         this.sent.push(change);
         this.inbox.push(change);
       },

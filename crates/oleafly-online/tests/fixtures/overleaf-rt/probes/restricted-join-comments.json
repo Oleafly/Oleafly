@@ -1,0 +1,621 @@
+{
+  "probe": "restricted-join-comments",
+  "description": "Alice makes a throwaway ShareJS project and a throwaway history-ot project, comments on each doc and turns on link sharing; Erin opens each read-only link and joins the doc. Records what a restricted (token read-only) user gets of comments in joinDoc and in later ops, and whether her own comment ops are accepted. Both projects are deleted at the end.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "sharejs-text-ot: erin's editor page meta {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "sharejs-text-ot: erin joins with permissionsLevel readOnly; her joinDoc comments []; alice's [{\"id\":\"6b04e0adc0ffee0001000001\",\"op\":{\"c\":\"Restricted users\",\"p\":0,\"t\":\"6b04e0adc0ffee0001000001\"},\"metadata\":{\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":\"2026-11-24T00:56:13.233Z\"}}]",
+    "sharejs-text-ot: when alice adds a comment, erin receives [[{\"p\":21,\"c\":\"comments\",\"t\":\"6b04e0adc0ffee0002000001\"}]]",
+    "sharejs-text-ot: erin's own comment op: {\"outcome\":\"applied\",\"ack\":{\"v\":3,\"doc\":\"6b04e0accb4fe3a455d4cdad\"}}",
+    "sharejs-text-ot: the server keeps [{\"id\":\"6b04e0adc0ffee0001000001\",\"op\":{\"c\":\"Restricted users\",\"p\":0,\"t\":\"6b04e0adc0ffee0001000001\"},\"metadata\":{\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":\"2026-11-24T00:56:13.233Z\"}},{\"id\":\"6b04e0adc0ffee0002000001\",\"op\":{\"c\":\"comments\",\"p\":21,\"t\":\"6b04e0adc0ffee0002000001\"},\"metadata\":{\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":\"2026-11-24T00:56:13.718Z\"}},{\"id\":\"6b04e0afc0ffee0003000001\",\"op\":{\"c\":\"users\",\"p\":11,\"t\":\"6b04e0afc0ffee0003000001\"},\"metadata\":{\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"ts\":\"2026-11-24T00:56:15.323Z\"}}]",
+    "history-ot: erin's editor page meta {\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]},\"ol-useShareJsHash\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-showAiFeatures\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-showAiFeaturesDisabled\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false},\"ol-hasTrackChangesFeature\":{\"type\":\"boolean\",\"contentAttribute\":false,\"value\":false}}",
+    "history-ot: erin joins with permissionsLevel readOnly; her joinDoc comments [{\"id\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]}]; alice's [{\"id\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]}]",
+    "history-ot: when alice adds a comment, erin receives [[{\"commentId\":\"6b04e0b2c0ffee0005000001\",\"ranges\":[{\"pos\":21,\"length\":8}]}]]",
+    "history-ot: erin's own comment op: {\"outcome\":\"applied\",\"ack\":{\"v\":3,\"doc\":\"6b04e0afcb4fe3a455d4cdd3\"}}",
+    "history-ot: the server keeps [{\"id\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]},{\"id\":\"6b04e0b2c0ffee0005000001\",\"ranges\":[{\"pos\":21,\"length\":8}]},{\"id\":\"6b04e0b4c0ffee0006000001\",\"ranges\":[{\"pos\":11,\"length\":5}]}]"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04e0accb4fe3a455d4cda8",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04e0accb4fe3a455d4cda8/settings/admin"
+      },
+      "status": 204,
+      "headers": {},
+      "body": ""
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b04e0accb4fe3a455d4cda8",
+        "tokenAccessGranted": "readOnly"
+      }
+    },
+    {
+      "page": {
+        "user": "erin",
+        "format": "sharejs-text-ot",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "format": "sharejs-text-ot",
+        "projectId": "6b04e0accb4fe3a455d4cda8",
+        "docId": "6b04e0accb4fe3a455d4cdad",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 593,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 601,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.kuq6jmUU9gIBUVT-AAAd\",\"project\":{\"_id\":\"6b04e0accb4fe3a455d4cda8\",\"name\":\"restricted-comments-sharejs-text-ot-20261124-005612\",\"rootDoc_id\":\"6b04e0accb4fe3a455d4cdad\",\"rootFolder\":[{\"_id\":\"6b04e0accb4fe3a455d4cda7\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04e0accb4fe3a455d4cdad\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 694,
+            "dir": "out",
+            "frame": "5:1+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 717,
+            "dir": "in",
+            "frame": "6:::1+[null,[\"\\\\documentclass{article}\",\"\\\\usepackage{graphicx} % Required for inserting images\",\"\",\"\\\\title{restricted-comments-sharejs-text-ot-20261124-005612}\",\"\\\\author{Alice Owner}\",\"\\\\date{November 2026}\",\"\",\"\\\\begin{document}\",\"\",\"\\\\maketitle\",\"\",\"\\\\section{Introduction}\",\"\",\"\\\\end{document}\",\"\"],0,[],{},\"sharejs-text-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 796,
+            "dir": "out",
+            "frame": "5:2+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":0,\"i\":\"Restricted users and comments.\\n\"}],\"v\":0}]}"
+          },
+          {
+            "t": 798,
+            "dir": "in",
+            "frame": "6:::2"
+          },
+          {
+            "t": 801,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":0,\"doc\":\"6b04e0accb4fe3a455d4cdad\"}]}"
+          },
+          {
+            "t": 898,
+            "dir": "out",
+            "frame": "5:3+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":0,\"c\":\"Restricted users\",\"t\":\"6b04e0adc0ffee0001000001\"}],\"v\":1}]}"
+          },
+          {
+            "t": 901,
+            "dir": "in",
+            "frame": "6:::3"
+          },
+          {
+            "t": 905,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":1,\"doc\":\"6b04e0accb4fe3a455d4cdad\"}]}"
+          },
+          {
+            "t": 1276,
+            "dir": "out",
+            "frame": "5:4+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 1285,
+            "dir": "in",
+            "frame": "6:::4+[null,[\"Restricted users and comments.\",\"\\\\documentclass{article}\",\"\\\\usepackage{graphicx} % Required for inserting images\",\"\",\"\\\\title{restricted-comments-sharejs-text-ot-20261124-005612}\",\"\\\\author{Alice Owner}\",\"\\\\date{November 2026}\",\"\",\"\\\\begin{document}\",\"\",\"\\\\maketitle\",\"\",\"\\\\section{Introduction}\",\"\",\"\\\\end{document}\",\"\"],2,[],{\"comments\":[{\"id\":\"6b04e0adc0ffee0001000001\",\"op\":{\"c\":\"Restricted users\",\"p\":0,\"t\":\"6b04e0adc0ffee0001000001\"},\"metadata\":{\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":\"2026-11-24T00:56:13.233Z\"}}]},\"sharejs-text-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 1378,
+            "dir": "out",
+            "frame": "5:5+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":21,\"c\":\"comments\",\"t\":\"6b04e0adc0ffee0002000001\"}],\"v\":2}]}"
+          },
+          {
+            "t": 1384,
+            "dir": "in",
+            "frame": "6:::5"
+          },
+          {
+            "t": 1388,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":2,\"doc\":\"6b04e0accb4fe3a455d4cdad\"}]}"
+          },
+          {
+            "t": 2994,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":11,\"c\":\"users\",\"t\":\"6b04e0afc0ffee0003000001\"}],\"v\":3,\"meta\":{\"source\":\"P.q_B1RUeABBoRLGK1AAAe\",\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"ts\":1795481775322}}]}"
+          },
+          {
+            "t": 3291,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "erin",
+        "format": "sharejs-text-ot",
+        "projectId": "6b04e0accb4fe3a455d4cda8",
+        "docId": "6b04e0accb4fe3a455d4cdad",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1075,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1083,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.q_B1RUeABBoRLGK1AAAe\",\"project\":{\"_id\":\"6b04e0accb4fe3a455d4cda8\",\"name\":\"restricted-comments-sharejs-text-ot-20261124-005612\",\"rootDoc_id\":\"6b04e0accb4fe3a455d4cdad\",\"rootFolder\":[{\"_id\":\"6b04e0accb4fe3a455d4cda7\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04e0accb4fe3a455d4cdad\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\"},\"members\":[],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"readOnly\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 1175,
+            "dir": "out",
+            "frame": "5:1+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 1183,
+            "dir": "in",
+            "frame": "6:::1+[null,[\"Restricted users and comments.\",\"\\\\documentclass{article}\",\"\\\\usepackage{graphicx} % Required for inserting images\",\"\",\"\\\\title{restricted-comments-sharejs-text-ot-20261124-005612}\",\"\\\\author{Alice Owner}\",\"\\\\date{November 2026}\",\"\",\"\\\\begin{document}\",\"\",\"\\\\maketitle\",\"\",\"\\\\section{Introduction}\",\"\",\"\\\\end{document}\",\"\"],2,[],{\"comments\":[]},\"sharejs-text-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 1389,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":21,\"c\":\"comments\",\"t\":\"6b04e0adc0ffee0002000001\"}],\"v\":2,\"meta\":{\"source\":\"P.kuq6jmUU9gIBUVT-AAAd\",\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":1795481773716}}]}"
+          },
+          {
+            "t": 2983,
+            "dir": "out",
+            "frame": "5:2+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0accb4fe3a455d4cdad\",{\"doc\":\"6b04e0accb4fe3a455d4cdad\",\"op\":[{\"p\":11,\"c\":\"users\",\"t\":\"6b04e0afc0ffee0003000001\"}],\"v\":3}]}"
+          },
+          {
+            "t": 2990,
+            "dir": "in",
+            "frame": "6:::2"
+          },
+          {
+            "t": 2994,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":3,\"doc\":\"6b04e0accb4fe3a455d4cdad\"}]}"
+          },
+          {
+            "t": 3291,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "server": {
+        "format": "sharejs-text-ot",
+        "docId": "6b04e0accb4fe3a455d4cdad",
+        "version": 4,
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e0adc0ffee0001000001",
+              "op": {
+                "c": "Restricted users",
+                "p": 0,
+                "t": "6b04e0adc0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T00:56:13.233Z"
+              }
+            },
+            {
+              "id": "6b04e0adc0ffee0002000001",
+              "op": {
+                "c": "comments",
+                "p": 21,
+                "t": "6b04e0adc0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T00:56:13.718Z"
+              }
+            },
+            {
+              "id": "6b04e0afc0ffee0003000001",
+              "op": {
+                "c": "users",
+                "p": 11,
+                "t": "6b04e0afc0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bd1222cc50aa4c1704",
+                "ts": "2026-11-24T00:56:15.323Z"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04e0afcb4fe3a455d4cdce",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04e0afcb4fe3a455d4cdce/settings/admin"
+      },
+      "status": 204,
+      "headers": {},
+      "body": ""
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b04e0afcb4fe3a455d4cdce",
+        "tokenAccessGranted": "readOnly"
+      }
+    },
+    {
+      "page": {
+        "user": "erin",
+        "format": "history-ot",
+        "status": 200,
+        "meta": {
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          },
+          "ol-useShareJsHash": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-showAiFeatures": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-showAiFeaturesDisabled": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          },
+          "ol-hasTrackChangesFeature": {
+            "type": "boolean",
+            "contentAttribute": false,
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "format": "history-ot",
+        "projectId": "6b04e0afcb4fe3a455d4cdce",
+        "docId": "6b04e0afcb4fe3a455d4cdd3",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 5537,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 5546,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.lsHV9uuwNdYr_DN7AAAf\",\"project\":{\"_id\":\"6b04e0afcb4fe3a455d4cdce\",\"name\":\"restricted-comments-history-ot-20261124-005615\",\"rootDoc_id\":\"6b04e0afcb4fe3a455d4cdd3\",\"rootFolder\":[{\"_id\":\"6b04e0afcb4fe3a455d4cdcd\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04e0afcb4fe3a455d4cdd3\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 5637,
+            "dir": "out",
+            "frame": "5:1+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 5653,
+            "dir": "in",
+            "frame": "6:::1+[null,{\"content\":\"\\\\documentclass{article}\\n\\\\usepackage{graphicx} % Required for inserting images\\n\\n\\\\title{restricted-comments-history-ot-20261124-005615}\\n\\\\author{Alice Owner}\\n\\\\date{November 2026}\\n\\n\\\\begin{document}\\n\\n\\\\maketitle\\n\\n\\\\section{Introduction}\\n\\n\\\\end{document}\\n\"},0,[],{},\"history-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 5739,
+            "dir": "out",
+            "frame": "5:2+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"textOperation\":[\"Restricted users and comments.\\n\",246]}],\"v\":0}]}"
+          },
+          {
+            "t": 5742,
+            "dir": "in",
+            "frame": "6:::2"
+          },
+          {
+            "t": 5747,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":0,\"doc\":\"6b04e0afcb4fe3a455d4cdd3\"}]}"
+          },
+          {
+            "t": 5841,
+            "dir": "out",
+            "frame": "5:3+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"commentId\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]}],\"v\":1}]}"
+          },
+          {
+            "t": 5845,
+            "dir": "in",
+            "frame": "6:::3"
+          },
+          {
+            "t": 5848,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":1,\"doc\":\"6b04e0afcb4fe3a455d4cdd3\"}]}"
+          },
+          {
+            "t": 6186,
+            "dir": "out",
+            "frame": "5:4+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 6199,
+            "dir": "in",
+            "frame": "6:::4+[null,{\"content\":\"Restricted users and comments.\\n\\\\documentclass{article}\\n\\\\usepackage{graphicx} % Required for inserting images\\n\\n\\\\title{restricted-comments-history-ot-20261124-005615}\\n\\\\author{Alice Owner}\\n\\\\date{November 2026}\\n\\n\\\\begin{document}\\n\\n\\\\maketitle\\n\\n\\\\section{Introduction}\\n\\n\\\\end{document}\\n\",\"comments\":[{\"id\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]}]},2,[],{},\"history-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 6288,
+            "dir": "out",
+            "frame": "5:5+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"commentId\":\"6b04e0b2c0ffee0005000001\",\"ranges\":[{\"pos\":21,\"length\":8}]}],\"v\":2}]}"
+          },
+          {
+            "t": 6292,
+            "dir": "in",
+            "frame": "6:::5"
+          },
+          {
+            "t": 6297,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":2,\"doc\":\"6b04e0afcb4fe3a455d4cdd3\"}]}"
+          },
+          {
+            "t": 7905,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"commentId\":\"6b04e0b4c0ffee0006000001\",\"ranges\":[{\"pos\":11,\"length\":5}]}],\"v\":3,\"meta\":{\"source\":\"P.Yt0Q8tS9gkbjS7FlAAAg\",\"user_id\":\"6afab5bd1222cc50aa4c1704\",\"ts\":1795481780230}}]}"
+          },
+          {
+            "t": 8203,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "erin",
+        "format": "history-ot",
+        "projectId": "6b04e0afcb4fe3a455d4cdce",
+        "docId": "6b04e0afcb4fe3a455d4cdd3",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 5984,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 5991,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.Yt0Q8tS9gkbjS7FlAAAg\",\"project\":{\"_id\":\"6b04e0afcb4fe3a455d4cdce\",\"name\":\"restricted-comments-history-ot-20261124-005615\",\"rootDoc_id\":\"6b04e0afcb4fe3a455d4cdd3\",\"rootFolder\":[{\"_id\":\"6b04e0afcb4fe3a455d4cdcd\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04e0afcb4fe3a455d4cdd3\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\"},\"members\":[],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"readOnly\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 6084,
+            "dir": "out",
+            "frame": "5:1+::{\"name\":\"joinDoc\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"encodeRanges\":true,\"supportsHistoryOT\":true}]}"
+          },
+          {
+            "t": 6088,
+            "dir": "in",
+            "frame": "6:::1+[null,{\"content\":\"Restricted users and comments.\\n\\\\documentclass{article}\\n\\\\usepackage{graphicx} % Required for inserting images\\n\\n\\\\title{restricted-comments-history-ot-20261124-005615}\\n\\\\author{Alice Owner}\\n\\\\date{November 2026}\\n\\n\\\\begin{document}\\n\\n\\\\maketitle\\n\\n\\\\section{Introduction}\\n\\n\\\\end{document}\\n\",\"comments\":[{\"id\":\"6b04e0b2c0ffee0004000001\",\"ranges\":[{\"pos\":0,\"length\":16}]}]},2,[],{},\"history-ot\",{\"canSkipLeaveDoc\":true}]"
+          },
+          {
+            "t": 6297,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"commentId\":\"6b04e0b2c0ffee0005000001\",\"ranges\":[{\"pos\":21,\"length\":8}]}],\"v\":2,\"meta\":{\"source\":\"P.lsHV9uuwNdYr_DN7AAAf\",\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":1795481778624}}]}"
+          },
+          {
+            "t": 7892,
+            "dir": "out",
+            "frame": "5:2+::{\"name\":\"applyOtUpdate\",\"args\":[\"6b04e0afcb4fe3a455d4cdd3\",{\"doc\":\"6b04e0afcb4fe3a455d4cdd3\",\"op\":[{\"commentId\":\"6b04e0b4c0ffee0006000001\",\"ranges\":[{\"pos\":11,\"length\":5}]}],\"v\":3}]}"
+          },
+          {
+            "t": 7898,
+            "dir": "in",
+            "frame": "6:::2"
+          },
+          {
+            "t": 7905,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"v\":3,\"doc\":\"6b04e0afcb4fe3a455d4cdd3\"}]}"
+          },
+          {
+            "t": 8202,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "server": {
+        "format": "history-ot",
+        "docId": "6b04e0afcb4fe3a455d4cdd3",
+        "version": 4,
+        "raw": {
+          "content": "Restricted users and comments.\n\\documentclass{article}\n\\usepackage{graphicx} % Required for inserting images\n\n\\title{restricted-comments-history-ot-20261124-005615}\n\\author{Alice Owner}\n\\date{November 2026}\n\n\\begin{document}\n\n\\maketitle\n\n\\section{Introduction}\n\n\\end{document}\n",
+          "comments": [
+            {
+              "id": "6b04e0b2c0ffee0004000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e0b2c0ffee0005000001",
+              "ranges": [
+                {
+                  "pos": 21,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e0b4c0ffee0006000001",
+              "ranges": [
+                {
+                  "pos": 11,
+                  "length": 5
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 0,
+                "c": "Restricted users",
+                "t": "6b04e0b2c0ffee0004000001",
+                "resolved": false
+              },
+              "id": "6b04e0b2c0ffee0004000001"
+            },
+            {
+              "op": {
+                "p": 21,
+                "c": "comments",
+                "t": "6b04e0b2c0ffee0005000001",
+                "resolved": false
+              },
+              "id": "6b04e0b2c0ffee0005000001"
+            },
+            {
+              "op": {
+                "p": 11,
+                "c": "users",
+                "t": "6b04e0b4c0ffee0006000001",
+                "resolved": false
+              },
+              "id": "6b04e0b4c0ffee0006000001"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

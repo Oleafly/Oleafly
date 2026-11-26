@@ -134,6 +134,7 @@ mod skills_catalog;
 mod skills_pack;
 mod skills_share;
 mod snippets;
+mod staging;
 mod stall_trace;
 mod state;
 mod stats;
@@ -218,8 +219,12 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             quick_capture::close_window(window.app_handle());
         }
     }
-    if let tauri::WindowEvent::Focused(focused) = event {
-        collab::live::window_focused(*focused);
+    match event {
+        tauri::WindowEvent::Focused(focused) => {
+            collab::live::window_focused(window.label(), *focused);
+        }
+        tauri::WindowEvent::Destroyed => collab::live::window_focused(window.label(), false),
+        _ => {}
     }
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         use tauri::{Emitter, Manager};
@@ -425,6 +430,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
     tauri::async_runtime::spawn_blocking(crate::overleaf::sweep_browser_profiles);
+    tauri::async_runtime::spawn_blocking(crate::overleaf::sweep_import_staging);
 
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
@@ -940,8 +946,13 @@ pub fn run() {
             collab::live::overleaf::notices::overleaf_live_keep_copy,
             collab::live::overleaf::notices::overleaf_live_connection_details,
             collab::live::overleaf::commands::overleaf_live_members,
+            collab::live::overleaf::settings::overleaf_live_settings,
+            collab::live::overleaf::settings::overleaf_live_set_setting,
             collab::live::overleaf::commands::overleaf_live_delete,
             collab::live::overleaf::commands::overleaf_live_restore,
+            collab::live::overleaf::commands::overleaf_live_refresh_linked,
+            collab::live::overleaf::commands::overleaf_live_learned_words,
+            collab::live::overleaf::commands::overleaf_live_learn_words,
             collab::live::commands::collab_live_stop,
             collab::live::commands::collab_live_flush,
             collab::live::commands::collab_live_reconnect_now,
@@ -993,8 +1004,10 @@ pub fn run() {
             collab::suggesting::collab_suggestion_accept_file,
             collab::suggesting::collab_suggestion_reject_file,
             collab::suggesting::collab_suggestion_reply,
+            collab::chat::collab_chat_status,
             collab::chat::collab_chat_list,
             collab::chat::collab_chat_send,
+            collab::chat::collab_chat_edit,
             collab::chat::collab_chat_delete,
             collab::chat::collab_chat_react,
             collab::chat::collab_chat_clear,
@@ -1004,6 +1017,8 @@ pub fn run() {
             collab::history::collab_history_restore,
             collab::history::collab_version_name,
             collab::history::collab_version_unname,
+            collab::history::collab_history_status,
+            collab::history::collab_history_zip,
             collab::output::collab_output_info,
             community::discord_community_stats,
             release_notes::release_notes_page,
@@ -1137,10 +1152,17 @@ pub fn run() {
             project::project_tex_status,
             project::import_overleaf_project,
             overleaf::overleaf_status,
+            overleaf::overleaf_use_account,
+            overleaf::overleaf_sign_ins,
             overleaf::overleaf_sign_in,
             overleaf::overleaf_sign_out,
             overleaf::overleaf_list_projects,
             overleaf::overleaf_import_projects,
+            overleaf::overleaf_open_live,
+            overleaf::create::overleaf_create_from_local,
+            overleaf::links::overleaf_link_preview,
+            overleaf::links::overleaf_link_join,
+            overleaf::links::overleaf_invite_accept,
             overleaf::template::overleaf_template_details,
             overleaf::template::overleaf_template_pdf,
             overleaf::template::overleaf_import_template,
@@ -1398,6 +1420,7 @@ pub fn run() {
             mathpix::mathpix_pdf_cancel,
             overleaf::overleaf_sign_in_with_app_cookies,
             overleaf::overleaf_sign_in_browsers,
+            overleaf::overleaf_browser_icons,
             overleaf::overleaf_sign_in_with_browser,
             cua_driver::commands::cua_driver_status,
             cua_driver::commands::cua_driver_settings_set,

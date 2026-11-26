@@ -2,16 +2,20 @@ mod ranges;
 #[cfg(test)]
 mod tests;
 
-use oleafly_ot::{utf16_len, Component, TextOperation};
+use oleafly_ot::{utf16_len, Bias, Component, TextOperation};
 use ring::rand::{SecureRandom, SystemRandom};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 pub use ranges::{
-    ChangeKind, CommentAnchor, ShareJsRanges, TrackedChange, MAX_CHANGES, MAX_COMMENTS,
+    Author, ChangeKind, CommentAnchor, RangeChange, ShareJsRanges, TrackedChange, MAX_CHANGES,
+    MAX_COMMENTS,
 };
 
-use super::history_ot::{edits_from_json, Edit, RawDoc, RawOp};
+use super::history_ot::{edits_from_json, edits_to_json, Edit, RawDoc, RawOp};
+use super::journal::InflightRecord;
 use super::{AppliedUpdate, Tracking};
+use crate::realtime::events::iso_ms;
 
 pub const SHAREJS_TYPE: &str = "sharejs-text-ot";
 pub const HISTORY_OT_TYPE: &str = "history-ot";
@@ -26,6 +30,13 @@ pub(crate) fn bounded(count: u64) -> Option<usize> {
     usize::try_from(count)
         .ok()
         .filter(|units| *units <= MAX_UNITS)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Decision {
+    Accept,
+    Reject,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -73,28 +84,149 @@ pub struct Limits {
     pub replay_window: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SentComment {
+    pub thread: String,
+    pub from: usize,
+    pub to: usize,
+}
+
+impl SentComment {
+    fn moved(&self, op: &TextOperation) -> SentComment {
+        let from = op.map_position(self.from, Bias::After);
+        SentComment {
+            thread: self.thread.clone(),
+            from,
+            to: op.map_position(self.to, Bias::Before).max(from),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Accepted {
+    pub kind: ChangeKind,
+    pub at: usize,
+    pub text: String,
+}
+
+impl Accepted {
+    fn pieces(&self) -> [Piece; 2] {
+        let text = self.text.clone();
+        match self.kind {
+            ChangeKind::Insert => [
+                Piece::Insert {
+                    p: self.at + utf16_len(&self.text),
+                    text: text.clone(),
+                    undo: false,
+                },
+                Piece::Delete {
+                    p: self.at,
+                    text,
+                    undo: false,
+                },
+            ],
+            ChangeKind::Delete => [
+                Piece::Insert {
+                    p: self.at,
+                    text: text.clone(),
+                    undo: true,
+                },
+                Piece::Delete {
+                    p: self.at,
+                    text,
+                    undo: false,
+                },
+            ],
+        }
+    }
+
+    fn end(&self) -> usize {
+        match self.kind {
+            ChangeKind::Insert => self.at + utf16_len(&self.text),
+            ChangeKind::Delete => self.at,
+        }
+    }
+
+    fn moved(&mut self, step: &TextOperation) -> bool {
+        let (from, to) = (self.at, self.end());
+        let mut at = 0;
+        let mut touched = false;
+        for component in step.components() {
+            match component {
+                Component::Retain(count) => at += count,
+                Component::Insert(_) => touched |= from <= at && at <= to,
+                Component::Delete(count) => {
+                    touched |= at <= to && from <= at + count;
+                    at += count;
+                }
+            }
+        }
+        self.at = step.map_position(self.at, Bias::After);
+        touched
+    }
+}
+
+pub fn accepted_pieces(accepts: &[Accepted]) -> Vec<Piece> {
+    let mut order: Vec<&Accepted> = accepts.iter().collect();
+    order.sort_by(|a, b| {
+        b.at.cmp(&a.at).then_with(|| match (a.kind, b.kind) {
+            (ChangeKind::Insert, ChangeKind::Delete) => std::cmp::Ordering::Less,
+            (ChangeKind::Delete, ChangeKind::Insert) => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal,
+        })
+    });
+    order.into_iter().flat_map(Accepted::pieces).collect()
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Extra {
+    pub undo: bool,
+    pub unhide: bool,
+    pub comments: Vec<SentComment>,
+    pub edits: Vec<Edit>,
+    pub fixed: Option<RawOp>,
+    pub accepts: Vec<Accepted>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Echo {
     ShareJs {
         tracked_by: Option<String>,
+        tc: Option<String>,
+        ts: Option<i64>,
+        undo: bool,
+        comments: Vec<SentComment>,
+        accepts: Vec<Accepted>,
+        clashed: bool,
     },
     HistoryOt {
         raw: RawOp,
         tracked_by: Option<String>,
+        edits: Vec<Edit>,
+        fixed: bool,
     },
 }
 
 impl Echo {
-    pub fn restored(
-        format: DocFormat,
-        raw: Option<&Value>,
-        tracked_by: Option<String>,
-    ) -> Result<Echo, CodecError> {
-        match (format, raw) {
-            (DocFormat::ShareJs, _) => Ok(Echo::ShareJs { tracked_by }),
+    pub fn restored(format: DocFormat, record: &InflightRecord) -> Result<Echo, CodecError> {
+        match (format, &record.raw) {
+            (DocFormat::ShareJs, _) => Ok(Echo::ShareJs {
+                tracked_by: record.tracked_by.clone(),
+                tc: record.tc.clone(),
+                ts: record.ts,
+                undo: record.undo,
+                comments: record.comments.clone(),
+                accepts: record.accepts.clone(),
+                clashed: false,
+            }),
             (DocFormat::HistoryOt, Some(raw)) => Ok(Echo::HistoryOt {
                 raw: RawOp::from_json(raw)?,
-                tracked_by,
+                tracked_by: record.tracked_by.clone(),
+                edits: match &record.edits {
+                    Some(edits) => edits_from_json(edits)?,
+                    None => Vec::new(),
+                },
+                fixed: record.fixed,
             }),
             (DocFormat::HistoryOt, None) => Err(CodecError::Malformed(
                 "a history-ot op without its raw form".into(),
@@ -102,17 +234,117 @@ impl Echo {
         }
     }
 
-    pub fn raw_json(&self) -> Result<Option<Value>, CodecError> {
+    pub fn record_into(&self, record: &mut InflightRecord) -> Result<(), CodecError> {
+        record.tracked_by = self.tracked_by().map(str::to_string);
         match self {
-            Echo::ShareJs { .. } => Ok(None),
-            Echo::HistoryOt { raw, .. } => raw.to_json().map(Some),
+            Echo::ShareJs {
+                tc,
+                ts,
+                undo,
+                comments,
+                accepts,
+                ..
+            } => {
+                record.raw = None;
+                record.tc.clone_from(tc);
+                record.ts = *ts;
+                record.undo = *undo;
+                record.comments.clone_from(comments);
+                record.accepts.clone_from(accepts);
+            }
+            Echo::HistoryOt {
+                raw, edits, fixed, ..
+            } => {
+                record.raw = Some(raw.to_json()?);
+                record.edits = (!edits.is_empty())
+                    .then(|| edits_to_json(edits))
+                    .transpose()?;
+                record.fixed = *fixed;
+            }
         }
+        Ok(())
+    }
+
+    pub fn author(&self) -> Author<'_> {
+        match self {
+            Echo::ShareJs {
+                tracked_by, tc, ts, ..
+            } => Author {
+                user: tracked_by.as_deref(),
+                ts: *ts,
+                tracked: tracked_by.is_some(),
+                seed: tc.as_deref(),
+            },
+            Echo::HistoryOt { tracked_by, .. } => Author {
+                user: tracked_by.as_deref(),
+                ts: None,
+                tracked: tracked_by.is_some(),
+                seed: None,
+            },
+        }
+    }
+
+    pub fn clashed(&self) -> bool {
+        matches!(self, Echo::ShareJs { clashed: true, .. })
+    }
+
+    pub fn accepts_by_ops(&self) -> bool {
+        matches!(self, Echo::ShareJs { accepts, .. } if !accepts.is_empty())
     }
 
     pub fn tracked_by(&self) -> Option<&str> {
         match self {
-            Echo::ShareJs { tracked_by } | Echo::HistoryOt { tracked_by, .. } => {
+            Echo::ShareJs { tracked_by, .. } | Echo::HistoryOt { tracked_by, .. } => {
                 tracked_by.as_deref()
+            }
+        }
+    }
+
+    pub fn extra(&self) -> Extra {
+        match self {
+            Echo::ShareJs {
+                undo,
+                comments,
+                accepts,
+                ..
+            } => Extra {
+                undo: *undo,
+                comments: comments.clone(),
+                accepts: accepts.clone(),
+                ..Extra::default()
+            },
+            Echo::HistoryOt {
+                raw, edits, fixed, ..
+            } => Extra {
+                edits: edits.clone(),
+                fixed: fixed.then(|| raw.clone()),
+                ..Extra::default()
+            },
+        }
+    }
+
+    pub fn carries_edits(&self) -> bool {
+        match self {
+            Echo::ShareJs {
+                comments, accepts, ..
+            } => !accepts.is_empty() || comments.iter().any(|comment| comment.from < comment.to),
+            Echo::HistoryOt { raw, edits, .. } => !edits.is_empty() || !raw.is_noop(),
+        }
+    }
+
+    pub fn view_only(&self, op: &TextOperation) -> bool {
+        match self {
+            Echo::ShareJs {
+                comments, accepts, ..
+            } => {
+                op.is_noop()
+                    && accepts.is_empty()
+                    && comments.iter().any(|comment| comment.from < comment.to)
+            }
+            Echo::HistoryOt { raw, edits, .. } => {
+                raw.is_noop()
+                    && !edits.is_empty()
+                    && edits.iter().all(|edit| matches!(edit, Edit::AddComment(_)))
             }
         }
     }
@@ -132,7 +364,7 @@ pub struct Step {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Piece {
+pub enum Piece {
     Insert {
         p: usize,
         text: String,
@@ -154,6 +386,145 @@ pub(crate) enum Piece {
 pub enum FormatState {
     ShareJs(ShareJsRanges),
     HistoryOt(RawDoc),
+}
+
+fn op_of(update: &AppliedUpdate) -> &Value {
+    update.op.as_ref().unwrap_or(&Value::Null)
+}
+
+fn past_sharejs(
+    ours: &mut TextOperation,
+    echo: &mut Echo,
+    step: TextOperation,
+) -> Result<Step, CodecError> {
+    let (ours_after, theirs) =
+        TextOperation::transform(ours, &step).map_err(|_| CodecError::Mismatch)?;
+    *ours = ours_after;
+    if let Echo::ShareJs {
+        comments,
+        accepts,
+        clashed,
+        ..
+    } = echo
+    {
+        for comment in comments.iter_mut() {
+            *comment = comment.moved(&theirs);
+        }
+        for accepted in accepts.iter_mut() {
+            let undone = accepted.kind == ChangeKind::Delete;
+            *clashed |= accepted.moved(&step) || undone;
+        }
+    }
+    Ok(Step {
+        confirmed: step,
+        past_inflight: theirs,
+    })
+}
+
+fn decode_sharejs(
+    ranges: &mut ShareJsRanges,
+    visible: &str,
+    update: &AppliedUpdate,
+    mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+) -> Result<(Vec<Step>, RangeChange), CodecError> {
+    let pieces = pieces_from_json(op_of(update))?;
+    let steps = steps_of(visible, &pieces)?;
+    let author = Author::of(update.user_id.as_deref(), update.ts, update.tc.as_deref());
+    let change = ranges.apply_update(&pieces, &author)?;
+    if let Some((ours, Echo::ShareJs { undo, clashed, .. })) = inflight.as_mut() {
+        let reinserts = ours
+            .components()
+            .iter()
+            .any(|component| matches!(component, Component::Insert(_)));
+        if *undo && reinserts {
+            *clashed = true;
+        } else {
+            *undo = false;
+        }
+    }
+    let steps = steps
+        .into_iter()
+        .map(|step| match inflight.as_mut() {
+            Some((ours, echo)) => past_sharejs(ours, echo, step),
+            None => Ok(Step {
+                past_inflight: step.clone(),
+                confirmed: step,
+            }),
+        })
+        .collect::<Result<Vec<Step>, CodecError>>()?;
+    Ok((steps, change))
+}
+
+fn past_history_ot(
+    raw: &mut RawDoc,
+    ours: &mut TextOperation,
+    echo: &mut Echo,
+    remote: &RawOp,
+) -> Result<(TextOperation, RangeChange), CodecError> {
+    let Echo::HistoryOt {
+        raw: sent, edits, ..
+    } = echo
+    else {
+        return Err(CodecError::Mismatch);
+    };
+    let (sent_after, remote_after) = RawOp::transform(sent, remote)?;
+    let mut mine = raw.clone();
+    mine.apply(sent)?;
+    let past_inflight = mine.project(&remote_after)?;
+    let change = raw.apply(remote)?;
+    *ours = raw.project(&sent_after)?;
+    *sent = sent_after;
+    for edit in edits.iter_mut() {
+        if let Edit::AddComment(comment) = edit {
+            *comment = comment.moved(&remote_after);
+        }
+    }
+    Ok((past_inflight, change))
+}
+
+fn decode_history_ot(
+    raw: &mut RawDoc,
+    update: &AppliedUpdate,
+    mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+) -> Result<(Vec<Step>, RangeChange), CodecError> {
+    let mut steps = Vec::new();
+    let mut change = RangeChange::Same;
+    for edit in edits_from_json(op_of(update))? {
+        let Edit::Text(remote) = edit else {
+            if let Some((_, Echo::HistoryOt { edits, .. })) = inflight.as_mut() {
+                for ours in edits.iter_mut() {
+                    yield_to(ours, &edit);
+                }
+            }
+            change = change.and(raw.edit_comments(&edit));
+            continue;
+        };
+        let confirmed = raw.project(&remote)?;
+        let (past_inflight, moved) = match inflight.as_mut() {
+            Some((ours, echo)) => past_history_ot(raw, ours, echo, &remote)?,
+            None => (confirmed.clone(), raw.apply(&remote)?),
+        };
+        change = change.and(moved);
+        steps.push(Step {
+            confirmed,
+            past_inflight,
+        });
+    }
+    Ok((steps, change))
+}
+
+fn yield_to(ours: &mut Edit, theirs: &Edit) {
+    let Edit::AddComment(comment) = ours else {
+        return;
+    };
+    match theirs {
+        Edit::AddComment(other) if other.id == comment.id => *ours = Edit::NoOp,
+        Edit::DeleteComment(id) if *id == comment.id => *ours = Edit::NoOp,
+        Edit::SetCommentState { id, resolved } if *id == comment.id => {
+            comment.resolved = *resolved;
+        }
+        _ => {}
+    }
 }
 
 fn tracking_props(tracking: &Tracking) -> Value {
@@ -228,74 +599,15 @@ impl FormatState {
         }
     }
 
-    pub fn decode(
+    pub fn decode_ranges(
         &mut self,
         visible: &str,
         update: &AppliedUpdate,
-        mut inflight: Option<(&mut TextOperation, &mut Echo)>,
-    ) -> Result<Vec<Step>, CodecError> {
-        let op = update.op.as_ref().unwrap_or(&Value::Null);
+        inflight: Option<(&mut TextOperation, &mut Echo)>,
+    ) -> Result<(Vec<Step>, RangeChange), CodecError> {
         match self {
-            FormatState::ShareJs(ranges) => {
-                let pieces = pieces_from_json(op)?;
-                let steps = steps_of(visible, &pieces)?;
-                let tracked = update.tc.is_some();
-                for piece in &pieces {
-                    ranges.apply(piece, tracked, update.user_id.as_deref())?;
-                }
-                steps
-                    .into_iter()
-                    .map(|step| match inflight.as_mut() {
-                        Some((ours, _)) => {
-                            let (ours_after, theirs) = TextOperation::transform(ours, &step)
-                                .map_err(|_| CodecError::Mismatch)?;
-                            **ours = ours_after;
-                            Ok(Step {
-                                confirmed: step,
-                                past_inflight: theirs,
-                            })
-                        }
-                        None => Ok(Step {
-                            past_inflight: step.clone(),
-                            confirmed: step,
-                        }),
-                    })
-                    .collect()
-            }
-            FormatState::HistoryOt(raw) => {
-                let mut steps = Vec::new();
-                for edit in edits_from_json(op)? {
-                    let Edit::Text(remote) = edit else {
-                        raw.edit_comments(&edit);
-                        continue;
-                    };
-                    let confirmed = raw.project(&remote)?;
-                    match inflight.as_mut() {
-                        Some((ours, Echo::HistoryOt { raw: sent, .. })) => {
-                            let (sent_after, remote_after) = RawOp::transform(sent, &remote)?;
-                            let mut mine = raw.clone();
-                            mine.apply(sent)?;
-                            let past_inflight = mine.project(&remote_after)?;
-                            raw.apply(&remote)?;
-                            **ours = raw.project(&sent_after)?;
-                            *sent = sent_after;
-                            steps.push(Step {
-                                confirmed,
-                                past_inflight,
-                            });
-                        }
-                        Some((_, Echo::ShareJs { .. })) => return Err(CodecError::Mismatch),
-                        None => {
-                            raw.apply(&remote)?;
-                            steps.push(Step {
-                                past_inflight: confirmed.clone(),
-                                confirmed,
-                            });
-                        }
-                    }
-                }
-                Ok(steps)
-            }
+            FormatState::ShareJs(ranges) => decode_sharejs(ranges, visible, update, inflight),
+            FormatState::HistoryOt(raw) => decode_history_ot(raw, update, inflight),
         }
     }
 
@@ -305,56 +617,139 @@ impl FormatState {
         op: &TextOperation,
         tracking: Option<&Tracking>,
         previous: Option<&Echo>,
+        extra: &Extra,
     ) -> Result<Encoded, CodecError> {
         let tracked_by = tracking.map(|tracking| tracking.user_id.clone());
         match self {
             FormatState::ShareJs(_) => {
-                let pieces = pieces_of(visible, op)?;
-                let tc = tracking.map(|_| tc_seed()).transpose()?;
+                let mut pieces = pieces_of_flagged(visible, op, extra.undo)?;
+                let texts = !pieces.is_empty();
+                pieces.splice(0..0, accepted_pieces(&extra.accepts));
+                let comments = if extra.comments.is_empty() {
+                    Vec::new()
+                } else {
+                    let after = op.apply(visible).map_err(|_| CodecError::Mismatch)?;
+                    let kept: Vec<SentComment> = extra
+                        .comments
+                        .iter()
+                        .filter(|comment| comment.from < comment.to)
+                        .filter_map(|comment| {
+                            let piece =
+                                comment_piece(&after, comment.from, comment.to, &comment.thread)
+                                    .ok()?;
+                            pieces.push(piece);
+                            Some(comment.clone())
+                        })
+                        .collect();
+                    kept
+                };
+                let kept = match previous {
+                    Some(Echo::ShareJs {
+                        tracked_by: before,
+                        tc: Some(tc),
+                        ts,
+                        ..
+                    }) if *before == tracked_by => Some((tc.clone(), *ts)),
+                    _ => None,
+                };
+                let (tc, ts) = match (tracking.filter(|_| texts), kept) {
+                    (None, _) => (None, None),
+                    (Some(_), Some((tc, ts))) => (Some(tc), ts),
+                    (Some(tracking), None) => (Some(tc_seed()?), iso_ms(&tracking.ts)),
+                };
                 Ok(Encoded {
-                    op: Value::Array(pieces.iter().map(piece_to_json).collect()),
-                    tc,
-                    echo: Echo::ShareJs { tracked_by },
+                    op: pieces_to_json(&pieces),
+                    tc: tc.clone(),
+                    echo: Echo::ShareJs {
+                        tracked_by: tracked_by.filter(|_| texts),
+                        tc,
+                        ts,
+                        undo: extra.undo,
+                        comments,
+                        accepts: extra.accepts.clone(),
+                        clashed: previous.is_some_and(Echo::clashed),
+                    },
                 })
             }
             FormatState::HistoryOt(raw) => {
-                let sent = match previous {
-                    Some(Echo::HistoryOt {
-                        raw: sent,
-                        tracked_by: before,
-                    }) if *before == tracked_by => sent.clone(),
-                    _ => raw.encode(op, tracking.map(tracking_props).as_ref())?,
+                let (sent, fixed) = match (&extra.fixed, previous) {
+                    (Some(fixed), _) => (fixed.clone(), true),
+                    (
+                        None,
+                        Some(Echo::HistoryOt {
+                            raw: sent,
+                            tracked_by: before,
+                            ..
+                        }),
+                    ) if *before == tracked_by => (sent.clone(), false),
+                    _ => {
+                        let unhide = extra
+                            .unhide
+                            .then(|| tracking.map_or("", |tracking| tracking.user_id.as_str()));
+                        let props = tracking.map(tracking_props);
+                        (raw.encode_with(op, props.as_ref(), unhide)?, false)
+                    }
                 };
+                let mut wire = Vec::with_capacity(1 + extra.edits.len());
+                if !sent.is_noop() {
+                    wire.push(json!({ "textOperation": sent.to_json()? }));
+                }
+                for edit in &extra.edits {
+                    wire.push(edit.to_json()?);
+                }
                 Ok(Encoded {
-                    op: json!([{ "textOperation": sent.to_json()? }]),
+                    op: Value::Array(wire),
                     tc: None,
                     echo: Echo::HistoryOt {
                         raw: sent,
-                        tracked_by,
+                        tracked_by: tracked_by.filter(|_| !fixed),
+                        edits: extra.edits.clone(),
+                        fixed,
                     },
                 })
             }
         }
     }
 
-    pub fn acknowledge(
+    pub fn acknowledge_ranges(
         &mut self,
         visible: &str,
         op: &TextOperation,
         echo: &Echo,
-    ) -> Result<(), CodecError> {
+    ) -> Result<RangeChange, CodecError> {
         match (self, echo) {
-            (FormatState::ShareJs(ranges), Echo::ShareJs { tracked_by }) => {
-                for piece in pieces_of(visible, op)? {
-                    ranges.apply(&piece, tracked_by.is_some(), tracked_by.as_deref())?;
+            (
+                FormatState::ShareJs(ranges),
+                Echo::ShareJs {
+                    undo,
+                    comments,
+                    accepts,
+                    ..
+                },
+            ) => {
+                let mut pieces = accepted_pieces(accepts);
+                pieces.extend(pieces_of_flagged(visible, op, *undo)?);
+                if !comments.is_empty() {
+                    let after = op.apply(visible).map_err(|_| CodecError::Mismatch)?;
+                    pieces.extend(comments.iter().filter_map(|comment| {
+                        comment_piece(&after, comment.from, comment.to, &comment.thread).ok()
+                    }));
                 }
-                Ok(())
+                ranges.apply_update(&pieces, &echo.author())
             }
-            (FormatState::HistoryOt(raw), Echo::HistoryOt { raw: sent, .. }) => {
-                raw.apply(sent)?;
+            (
+                FormatState::HistoryOt(raw),
+                Echo::HistoryOt {
+                    raw: sent, edits, ..
+                },
+            ) => {
+                let mut change = raw.apply(sent)?;
+                for edit in edits {
+                    change = change.and(raw.edit_comments(edit));
+                }
                 let expected = op.apply(visible).map_err(|_| CodecError::Mismatch)?;
                 if raw.visible()? == expected {
-                    Ok(())
+                    Ok(change)
                 } else {
                     Err(CodecError::Mismatch)
                 }
@@ -376,14 +771,34 @@ impl FormatState {
         op: &TextOperation,
         echo: &Echo,
     ) -> Result<Option<(usize, usize)>, CodecError> {
-        let (FormatState::ShareJs(ranges), Echo::ShareJs { tracked_by }) = (self, echo) else {
+        let (
+            FormatState::ShareJs(ranges),
+            Echo::ShareJs {
+                undo,
+                comments,
+                accepts,
+                ..
+            },
+        ) = (self, echo)
+        else {
             return Ok(None);
         };
-        let mut after = ranges.clone();
-        for piece in pieces_of(visible, op)? {
-            after.apply(&piece, tracked_by.is_some(), tracked_by.as_deref())?;
+        let mut pieces = accepted_pieces(accepts);
+        pieces.extend(pieces_of_flagged(visible, op, *undo)?);
+        if !comments.is_empty() {
+            let after = op.apply(visible).map_err(|_| CodecError::Mismatch)?;
+            pieces.extend(comments.iter().filter_map(|comment| {
+                comment_piece(&after, comment.from, comment.to, &comment.thread).ok()
+            }));
         }
-        Ok(Some(after.counts()))
+        ranges.counts_after(&pieces, &echo.author()).map(Some)
+    }
+
+    pub fn counts(&self) -> (usize, usize) {
+        match self {
+            FormatState::ShareJs(ranges) => ranges.counts(),
+            FormatState::HistoryOt(raw) => raw.counts(),
+        }
     }
 
     pub fn reencodes_on_one_connection(&self) -> bool {
@@ -451,12 +866,31 @@ fn clean_insert(text: &str, correction: &mut TextOperation) -> String {
     clean
 }
 
-fn tc_seed() -> Result<String, CodecError> {
-    let mut seed = [0_u8; 9];
+fn random_hex(bytes: usize) -> Result<String, CodecError> {
+    let mut seed = vec![0_u8; bytes];
     SystemRandom::new()
         .fill(&mut seed)
-        .map_err(|_| CodecError::Malformed("no random source for the suggestion id".into()))?;
+        .map_err(|_| CodecError::Malformed("no random source for a new id".into()))?;
     Ok(oleafly_core::encoding::hex_lower(&seed))
+}
+
+fn tc_seed() -> Result<String, CodecError> {
+    random_hex(9)
+}
+
+pub fn new_thread_id() -> Result<String, CodecError> {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs());
+    Ok(format!(
+        "{:08x}{}000001",
+        seconds & 0xffff_ffff,
+        random_hex(5)?
+    ))
+}
+
+pub(crate) fn pack(text: &str) -> String {
+    text.bytes().map(char::from).collect()
 }
 
 pub(crate) fn unpack(packed: &str) -> Result<String, CodecError> {
@@ -496,7 +930,7 @@ fn field<'a>(object: &'a Map<String, Value>, name: &str) -> Result<Option<&'a st
     }
 }
 
-pub(crate) fn pieces_from_json(op: &Value) -> Result<Vec<Piece>, CodecError> {
+pub fn pieces_from_json(op: &Value) -> Result<Vec<Piece>, CodecError> {
     let components = op
         .as_array()
         .ok_or_else(|| CodecError::Malformed("the op is not a list".into()))?;
@@ -543,12 +977,40 @@ pub(crate) fn pieces_from_json(op: &Value) -> Result<Vec<Piece>, CodecError> {
         .collect()
 }
 
-fn piece_to_json(piece: &Piece) -> Value {
+pub fn piece_to_json(piece: &Piece) -> Value {
+    let flagged = |mut component: Value, undo: bool| {
+        if undo {
+            component["u"] = json!(true);
+        }
+        component
+    };
     match piece {
-        Piece::Insert { p, text, .. } => json!({ "p": p, "i": text }),
-        Piece::Delete { p, text, .. } => json!({ "p": p, "d": text }),
+        Piece::Insert { p, text, undo } => flagged(json!({ "p": p, "i": text }), *undo),
+        Piece::Delete { p, text, undo } => flagged(json!({ "p": p, "d": text }), *undo),
         Piece::Comment { p, text, thread } => json!({ "p": p, "c": text, "t": thread }),
     }
+}
+
+pub fn pieces_to_json(pieces: &[Piece]) -> Value {
+    Value::Array(pieces.iter().map(piece_to_json).collect())
+}
+
+pub fn comment_piece(
+    visible: &str,
+    from: usize,
+    to: usize,
+    thread: &str,
+) -> Result<Piece, CodecError> {
+    let start = byte_at(visible, from).ok_or(CodecError::Mismatch)?;
+    let end = byte_at(visible, to).ok_or(CodecError::Mismatch)?;
+    if start > end || thread.is_empty() {
+        return Err(CodecError::Mismatch);
+    }
+    Ok(Piece::Comment {
+        p: from,
+        text: visible[start..end].to_string(),
+        thread: thread.to_string(),
+    })
 }
 
 pub(crate) fn steps_of(visible: &str, pieces: &[Piece]) -> Result<Vec<TextOperation>, CodecError> {
@@ -595,36 +1057,45 @@ pub(crate) fn operation_of(visible: &str, pieces: &[Piece]) -> Result<TextOperat
     Ok(total)
 }
 
-pub(crate) fn pieces_of(visible: &str, op: &TextOperation) -> Result<Vec<Piece>, CodecError> {
+pub fn pieces_of_flagged(
+    visible: &str,
+    op: &TextOperation,
+    undo: bool,
+) -> Result<Vec<Piece>, CodecError> {
     if op.base_len() != utf16_len(visible) {
         return Err(CodecError::Mismatch);
     }
     let mut pieces = Vec::new();
     let mut rest = visible;
     let mut at = 0;
+    let mut replacing = 0;
     for component in op.components() {
         match component {
             Component::Retain(count) => {
                 let split = byte_at(rest, *count).ok_or(CodecError::Mismatch)?;
                 rest = &rest[split..];
                 at += count;
+                replacing = 0;
             }
             Component::Insert(text) => {
                 pieces.push(Piece::Insert {
                     p: at,
                     text: text.clone(),
-                    undo: false,
+                    undo,
                 });
-                at += utf16_len(text);
+                replacing = utf16_len(text);
+                at += replacing;
             }
             Component::Delete(count) => {
                 let split = byte_at(rest, *count).ok_or(CodecError::Mismatch)?;
-                pieces.push(Piece::Delete {
-                    p: at,
+                let deleted = Piece::Delete {
+                    p: at - replacing,
                     text: rest[..split].to_string(),
-                    undo: false,
-                });
+                    undo,
+                };
+                pieces.insert(pieces.len() - usize::from(replacing > 0), deleted);
                 rest = &rest[split..];
+                replacing = 0;
             }
         }
     }

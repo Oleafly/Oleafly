@@ -78,6 +78,7 @@ function mount(node: ReactNode) {
       reactions: [],
       mentions: [],
       pending: false,
+      editedAt: null,
     })),
     peers: [peer(0, null)],
   });

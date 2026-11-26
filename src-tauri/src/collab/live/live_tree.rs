@@ -4,77 +4,16 @@ use std::sync::Arc;
 
 use futures_util::future::BoxFuture;
 use oleafly_collab::doc::FileNode;
-use oleafly_collab::live::{DiskWork, LiveProject};
 use oleafly_collab::materialize::Layout;
 use oleafly_collab::CollabError;
 
-use super::import::{import_renaming, LocalImport};
-use super::kept::{self, KeptFile};
+pub use oleafly_live::live::live_tree::*;
+
+use super::import::import_renaming;
+use super::kept;
 use super::session::{guard, lock, Active};
-use super::sync_hold::{self, KeptEdit};
+use super::sync_hold;
 use super::{moves, uploads, LiveDisk};
-
-pub(super) struct Outgoing {
-    pub(super) work: DiskWork,
-    pub(super) next: Layout,
-    pub(super) texts: Vec<(String, String)>,
-    pub(super) crlf: BTreeSet<String>,
-    pub(super) kept: Vec<KeptFile>,
-    pub(super) copied: bool,
-}
-
-pub(super) struct TreeRequest<'a> {
-    pub(super) import: LocalImport,
-    pub(super) edits: Vec<KeptEdit>,
-    pub(super) hold_dir: &'a Path,
-}
-
-pub(super) enum TreeAnswer {
-    Applied,
-}
-
-pub(super) trait TreeRead {
-    fn nodes(&self) -> Result<Vec<FileNode>, CollabError>;
-    fn text(&self, id: &str) -> Result<Option<String>, CollabError>;
-    fn crlf(&self, id: &str) -> bool;
-}
-
-pub(super) trait LiveTree: TreeRead + Send + Sync {
-    fn read_out(
-        &self,
-        previous: &mut Layout,
-        hashes: &BTreeMap<String, String>,
-    ) -> Result<Option<Outgoing>, CollabError>;
-    fn can_edit(&self) -> bool;
-    fn refused(&self, _import: &LocalImport) {}
-    fn open(&self, ids: &[String]) -> BTreeSet<String>;
-    fn mark_dirty(&self, ids: &[String]);
-    fn noticed(&self, previous: &Layout, changed: &BTreeSet<String>, removed: &[String]);
-    fn upload<'a>(
-        &'a self,
-        root: &'a Path,
-        blobs: &'a [(String, String, u64)],
-    ) -> BoxFuture<'a, BTreeSet<String>>;
-    fn request_tree(
-        &self,
-        disk: &LiveDisk,
-        change: TreeRequest<'_>,
-    ) -> Result<TreeAnswer, CollabError>;
-}
-
-impl TreeRead for LiveProject {
-    fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
-        self.doc().nodes()
-    }
-
-    fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
-        self.doc().text(id).map(Some)
-    }
-
-    fn crlf(&self, id: &str) -> bool {
-        self.doc().crlf(id)
-    }
-}
 
 impl TreeRead for Active {
     fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
@@ -152,7 +91,7 @@ impl LiveTree for Active {
     ) -> BoxFuture<'a, BTreeSet<String>> {
         Box::pin(async move {
             let progress = |path: &str| {
-                uploads::progress_for(Arc::clone(&self.local.host), &self.local.project_id, path)
+                uploads::progress_for(Arc::clone(&self.host), &self.local.project_id, path)
             };
             let failed = uploads::send(&self.link, root, blobs, self.online(), &progress).await;
             self.announce_uploads();
@@ -169,6 +108,7 @@ impl LiveTree for Active {
             mut import,
             edits,
             hold_dir,
+            ..
         } = change;
         let (changed, renamed) = {
             let mut state = guard(&disk.disk);

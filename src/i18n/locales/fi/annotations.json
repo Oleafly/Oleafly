@@ -26,6 +26,10 @@
       "region": "Kommentoi tätä aluetta…"
     },
     "placeHere": "Sijoita tähän",
+    "coauthors": "Kommentoi kanssakirjoittajille",
+    "noSource": "Tätä kohtaa ei löytynyt lähdetiedostoista.",
+    "commentFailed": "Tämän kommentin tiedostoa ei voitu avata.",
+    "commentsClosed": "Kommentit eivät ole tällä hetkellä käytettävissä tässä projektissa.",
     "cancel": "Peruuta",
     "save": "Lisää",
     "saving": "Tallennetaan",

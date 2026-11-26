@@ -1,0 +1,350 @@
+{
+  "doc": "6b04e4b7cb4fe3a455d4d1c6",
+  "format": "history-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e4b7cb4fe3a455d4d1c6",
+              "op": [
+                {
+                  "textOperation": [
+                    "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n"
+                  ]
+                }
+              ],
+              "v": 0,
+              "hash": "ab18ef9993949f39ce41dc37cc843b94f6757051"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 625,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 752,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 752,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 752,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "dave adds a comment whose range runs past the end of the doc",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e4b7cb4fe3a455d4d1c6",
+        "v": 1,
+        "op": [
+          {
+            "commentId": "6b04e4bec0ffee0001000001",
+            "ranges": [
+              {
+                "pos": 86,
+                "length": 10
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e4b7cb4fe3a455d4d1c6"
+        }
+      },
+      "server": {
+        "version": 2,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e4bec0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 86,
+                  "length": 10
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 86,
+                "c": ".\n",
+                "t": "6b04e4bec0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e4bec0ffee0001000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "dave adds a comment with an empty range",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e4b7cb4fe3a455d4d1c6",
+        "v": 2,
+        "op": [
+          {
+            "commentId": "6b04e4c1c0ffee0002000001",
+            "ranges": [
+              {
+                "pos": 4,
+                "length": 0
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "error",
+        "error": [
+          "AddCommentOperation can't be built with empty ranges",
+          {
+            "project_id": "6afab5c71222cc50aa4c1741",
+            "doc_id": "6b04e4b7cb4fe3a455d4d1c6",
+            "error": "AddCommentOperation can't be built with empty ranges",
+            "_id": "doc:c84a3935d1d3:e876b9c6-170",
+            "message": "otUpdateError"
+          }
+        ],
+        "disconnected": true
+      },
+      "server": {
+        "version": 2,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e4bec0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 86,
+                  "length": 10
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 86,
+                "c": ".\n",
+                "t": "6b04e4bec0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e4bec0ffee0001000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 1,
+          "updateErrors": [
+            "5:::{\"name\":\"otUpdateError\",\"args\":[\"AddCommentOperation can't be built with empty ranges\",{\"project_id\":\"6afab5c71222cc50aa4c1741\",\"doc_id\":\"6b04e4b7cb4fe3a455d4d1c6\",\"error\":\"AddCommentOperation can't be built with empty ranges\",\"_id\":\"doc:c84a3935d1d3:e876b9c6-170\",\"message\":\"otUpdateError\"}]}"
+          ],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "dave adds a comment whose id is not an ObjectId",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e4b7cb4fe3a455d4d1c6",
+        "v": 2,
+        "op": [
+          {
+            "commentId": "not-an-object-id",
+            "ranges": [
+              {
+                "pos": 4,
+                "length": 5
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "invalid Mongo ObjectId"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 2,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e4bec0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 86,
+                  "length": 10
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 86,
+                "c": ".\n",
+                "t": "6b04e4bec0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e4bec0ffee0001000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "bob types after the bad comments",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 0,
+          "insert": "Still here. "
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 2,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e4bec0ffee0001000001",
+              "ranges": [
+                {
+                  "pos": 86,
+                  "length": 10
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 86,
+                "c": ".\n",
+                "t": "6b04e4bec0ffee0001000001",
+                "resolved": false
+              },
+              "id": "6b04e4bec0ffee0001000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": false,
+          "text": "Still here. The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

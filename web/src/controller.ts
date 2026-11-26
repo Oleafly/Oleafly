@@ -921,30 +921,29 @@ export class ProjectController implements ProjectActions, EditorBridge {
   private ensureEntry(file: WebFile): Entry {
     const existing = this.entries.get(file.fileId);
     if (existing) return existing;
-    let overlays: FileOverlays | null = null;
     const session = new WebDocumentSession(file.fileId, file.path, "", {
       transport: this.gateway.transport,
       readOnly: () => {
         const state = useWeb.getState();
         return !abilitiesFor(state.role, state.features).edit;
       },
-      onPhase: (phase) => {
-        if (phase === "open") {
-          const loaded = useWeb.getState().loaded;
-          if (!loaded[file.fileId]) useWeb.setState({ loaded: { ...loaded, [file.fileId]: true } });
-          this.restoreUnsent(file.fileId, session);
-        }
-        overlays?.settle();
-        this.revealPending();
-      },
       onDiscarded: (reason) => useWeb.setState({ discarded: reason }),
     });
-    overlays = new FileOverlays(session, {
+    const overlays = new FileOverlays(session, {
       self: () => useWeb.getState().me?.accountId ?? null,
       suggesting: () => this.suggesting(),
     });
+    const stopPhase = session.subscribePhase((phase) => {
+      if (phase === "open") {
+        const loaded = useWeb.getState().loaded;
+        if (!loaded[file.fileId]) useWeb.setState({ loaded: { ...loaded, [file.fileId]: true } });
+        this.restoreUnsent(file.fileId, session);
+      }
+      overlays.settle();
+      this.revealPending();
+    });
     const stopEdits = session.onEdit((edit) => {
-      overlays?.edit(edit);
+      overlays.edit(edit);
       if (!edit.local) return;
       this.compiler.edited();
       this.queueSave(file.fileId);
@@ -957,6 +956,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
       session,
       overlays,
       stop: () => {
+        stopPhase();
         stopEdits();
         stopOverlays();
       },

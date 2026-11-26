@@ -1,0 +1,809 @@
+{
+  "doc": "6b04e308cb4fe3a455d4d044",
+  "format": "sharejs-text-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e308cb4fe3a455d4d044",
+              "op": [
+                {
+                  "p": 0,
+                  "i": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n"
+                }
+              ],
+              "v": 0,
+              "hash": "e98f98f9f1ca26e2cca48d978b92ec7112da12e0"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 684,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 815,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 815,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 815,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "alice comments on \"commented phrase\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e308cb4fe3a455d4d044",
+        "v": 1,
+        "op": [
+          {
+            "p": 22,
+            "c": "commented phrase",
+            "t": "6b04e310c0ffee0001000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e308cb4fe3a455d4d044"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 2,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 22,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "alice comments on \"Second paragraph\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e308cb4fe3a455d4d044",
+        "v": 2,
+        "op": [
+          {
+            "p": 46,
+            "c": "Second paragraph",
+            "t": "6b04e310c0ffee0002000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e308cb4fe3a455d4d044"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 3,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 22,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Second paragraph",
+                "p": 46,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "alice comments on \"word\"",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e308cb4fe3a455d4d044",
+        "v": 3,
+        "op": [
+          {
+            "p": 110,
+            "c": "word",
+            "t": "6b04e316c0ffee0003000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e308cb4fe3a455d4d044"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 4,
+        "text": "First paragraph has a commented phrase in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 22,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Second paragraph",
+                "p": 46,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "bob cuts \"a commented phrase \" in the web editor",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 20,
+          "to": 39
+        },
+        "userEvent": "delete.cut"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 5,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "",
+                "p": 20,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Second paragraph",
+                "p": 27,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 91,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e308cb4fe3a455d4d044",
+              "op": [
+                {
+                  "p": 20,
+                  "d": "a commented phrase "
+                }
+              ],
+              "v": 4,
+              "lastV": 0,
+              "hash": "01e085341af5d0985034003fe56d2502ccde7e52"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "bob pastes the same text into line 2",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 63,
+          "insert": "a commented phrase "
+        },
+        "userEvent": "input.paste"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 6,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented phrase goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 65,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Second paragraph",
+                "p": 27,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e308cb4fe3a455d4d044",
+              "op": [
+                {
+                  "p": 63,
+                  "i": "a commented phrase "
+                },
+                {
+                  "c": "commented phrase",
+                  "p": 65,
+                  "t": "6b04e310c0ffee0001000001"
+                }
+              ],
+              "v": 5,
+              "lastV": 4
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "dave (viewer) re-sends the \"Second paragraph\" thread on \"Third paragraph\"",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e308cb4fe3a455d4d044",
+        "v": 6,
+        "op": [
+          {
+            "p": 88,
+            "c": "Third paragraph",
+            "t": "6b04e310c0ffee0002000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 6,
+          "doc": "6b04e308cb4fe3a455d4d044"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 7,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented phrase goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 65,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Third paragraph",
+                "p": 88,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "dave (viewer) re-sends the pasted comment on its new text",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e308cb4fe3a455d4d044",
+        "v": 7,
+        "op": [
+          {
+            "p": 65,
+            "c": "commented phrase",
+            "t": "6b04e310c0ffee0001000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 7,
+          "doc": "6b04e308cb4fe3a455d4d044"
+        }
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 8,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented phrase goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 65,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Third paragraph",
+                "p": 88,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "bob deletes \"word \" in the web editor",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 110,
+          "to": 115
+        },
+        "userEvent": "delete"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 9,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented phrase goes.\nThird paragraph has a to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 65,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Third paragraph",
+                "p": 88,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e308cb4fe3a455d4d044",
+              "op": [
+                {
+                  "p": 110,
+                  "d": "word "
+                }
+              ],
+              "v": 8,
+              "lastV": 5,
+              "hash": "188418994427de389412352eff84777c2e62a19c"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "bob undoes the delete in the web editor",
+      "who": "bob",
+      "edit": {
+        "undo": true
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 10,
+        "text": "First paragraph has in it.\nSecond paragraph is where the paste a commented phrase goes.\nThird paragraph has a word to delete.\n",
+        "ranges": {
+          "comments": [
+            {
+              "id": "6b04e310c0ffee0001000001",
+              "op": {
+                "c": "commented phrase",
+                "p": 65,
+                "t": "6b04e310c0ffee0001000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:24.552Z"
+              }
+            },
+            {
+              "id": "6b04e310c0ffee0002000001",
+              "op": {
+                "c": "Third paragraph",
+                "p": 88,
+                "t": "6b04e310c0ffee0002000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:27.511Z"
+              }
+            },
+            {
+              "id": "6b04e316c0ffee0003000001",
+              "op": {
+                "c": "word",
+                "p": 110,
+                "t": "6b04e316c0ffee0003000001"
+              },
+              "metadata": {
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "ts": "2026-11-24T01:06:30.439Z"
+              }
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e308cb4fe3a455d4d044",
+              "op": [
+                {
+                  "p": 110,
+                  "i": "word ",
+                  "u": true
+                },
+                {
+                  "c": "word",
+                  "p": 110,
+                  "t": "6b04e316c0ffee0003000001"
+                }
+              ],
+              "v": 9,
+              "lastV": 8
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

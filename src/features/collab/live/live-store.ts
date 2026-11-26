@@ -7,7 +7,7 @@ import {
   useLiveBackend,
 } from "@/lib/collab-live-bridge";
 import { logError, logWarning } from "@/lib/log";
-import { overleafLiveMembers, type OverleafLiveProject } from "@/lib/overleaf-live";
+import { type OverleafLinkedFile, overleafLiveMembers, type OverleafLiveProject } from "@/lib/overleaf-live";
 import type { OverleafLiveAccountChanged } from "@oleafly/backend-port";
 import type {
   CollabCommentNotSent,
@@ -50,7 +50,7 @@ import {
   onCollabServerChanged,
 } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
-import { collabErrorCode } from "../errors";
+import { type CollabErrorParams, collabErrorCode, collabErrorParams, NO_PARAMS } from "../errors";
 import { canEditProjectRole } from "../roles";
 import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
@@ -137,6 +137,7 @@ export interface CollabLiveStoreState {
   share: CollabShareInfo | null;
   shareChecked: boolean;
   refused: CollabErrorCode | null;
+  refusedParams: CollabErrorParams;
   overleaf: OverleafLiveProject | null;
   role: CollabProjectRole | null;
   selfId: string | null;
@@ -147,6 +148,7 @@ export interface CollabLiveStoreState {
   pending: number;
   pendingPaths: readonly string[];
   storedAsFiles: readonly string[];
+  overleafLinked: readonly OverleafLinkedFile[];
   peers: Record<string, LivePeer>;
   members: CollabProjectMember[];
   merged: CollabLiveMerged | null;
@@ -205,6 +207,7 @@ function emptyLive(projectId: string | null): LiveData {
     share: null,
     shareChecked: false,
     refused: null,
+    refusedParams: NO_PARAMS,
     overleaf: null,
     role: null,
     selfId: null,
@@ -215,6 +218,7 @@ function emptyLive(projectId: string | null): LiveData {
     pending: 0,
     pendingPaths: [],
     storedAsFiles: [],
+    overleafLinked: [],
     peers: {},
     members: [],
     merged: null,
@@ -358,8 +362,34 @@ export function noteStoredAsFiles(projectId: string, paths: readonly string[]): 
   useCollabLiveStore.setState({ storedAsFiles: paths });
 }
 
+export function noteLinked(projectId: string, files: readonly OverleafLinkedFile[]): void {
+  if (useCollabLiveStore.getState().projectId !== projectId) return;
+  useCollabLiveStore.setState({ overleafLinked: files });
+}
+
 export function liveTarget(): string | null {
   return useCollabLiveNote.getState().noteId ?? useFilesStore.getState().projectId;
+}
+
+export function liveReviewProjectId(
+  state: Pick<CollabLiveStoreState, "projectId" | "share" | "backend" | "overleaf">,
+): string | null {
+  if (state.projectId === null) return null;
+  if (state.share !== null) return state.projectId;
+  const link = state.overleaf;
+  return state.backend === "overleaf" && link !== null && !link.paused ? state.projectId : null;
+}
+
+export function liveSelfId(state: Pick<CollabLiveStoreState, "share" | "selfId">): string | null {
+  return state.share?.account_id ?? state.selfId;
+}
+
+export function liveJoinedProjectId(
+  state: Pick<CollabLiveStoreState, "projectId" | "share" | "backend" | "overleaf" | "role" | "selfId">,
+): string | null {
+  const projectId = liveReviewProjectId(state);
+  if (projectId === null || state.role === null) return null;
+  return state.share !== null || state.selfId !== null ? projectId : null;
 }
 
 export function startCollabLive(hooks: LiveHooks = {}): () => void {
@@ -405,7 +435,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (!told) void (code === "failed" ? logError : logWarning)("collab live start refused", error);
     const state = store.getState();
     if (reason !== "server_removed" && state.status?.state === "ended") return;
-    store.setState({ status: { state: "ended", reason }, ended: reason, peers: {}, refused: told ? null : code });
+    store.setState({
+      status: { state: "ended", reason },
+      ended: reason,
+      peers: {},
+      refused: told ? null : code,
+      refusedParams: told ? NO_PARAMS : collabErrorParams(error),
+    });
   };
 
   const startCancelled = (run: LiveRun) => {
@@ -420,7 +456,9 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     resumable = false;
     holdEditors(projectId);
     const before = store.getState();
-    if (before.backend !== driver.kind || before.refused !== null) store.setState({ backend: driver.kind, refused: null });
+    if (before.backend !== driver.kind || before.refused !== null || before.selfId !== null) {
+      store.setState({ backend: driver.kind, refused: null, refusedParams: NO_PARAMS, selfId: null });
+    }
     let info: CollabLiveInfo;
     try {
       await useFilesStore
@@ -512,7 +550,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     const state = store.getState();
     const unknown = accountIds.filter(
       (accountId) =>
-        accountId !== (state.share?.account_id ?? state.selfId) &&
+        accountId !== liveSelfId(state) &&
         !personFor(state.members, accountId) &&
         !askedAbout.has(accountId),
     );
@@ -533,7 +571,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     });
     if (payload.status.state !== "ended") return;
     releaseEditors(payload.projectId);
-    store.setState({ pendingPaths: [], storedAsFiles: [] });
+    store.setState({ pendingPaths: [], storedAsFiles: [], overleafLinked: [] });
     if (payload.status.reason === "stopped") return;
     const ending = live?.projectId === payload.projectId ? live : null;
     const driver = ending?.driver ?? driverOf(store.getState().backend);
@@ -544,7 +582,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
     resumable = driver.resumable(payload.status.reason);
     const removedBy = payload.status.reason === "removed" ? takeOwnChange("removed") : "";
-    const self = store.getState().share?.account_id ?? null;
+    const self = liveSelfId(store.getState());
     const notice: AccessNotice | null =
       payload.status.reason === "removed" && (removedBy === "" || removedBy !== self)
         ? { kind: "removed", byName: changedBy(removedBy) }
@@ -593,7 +631,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (payload.projectId !== current()) return;
     const state = store.getState();
     const before = state.members;
-    if (payload.accountId === state.share?.account_id) ownChange = { by: payload.by, kind: payload.kind };
+    const self = liveSelfId(state);
+    if (payload.accountId === self) ownChange = { by: payload.by, kind: payload.kind };
     const settle = () => {
       if (store.getState().projectId !== payload.projectId) return;
       const lists = [store.getState().members, before];
@@ -601,7 +640,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         memberChange: { ...payload, name: nameIn(lists, payload.accountId), byName: nameIn(lists, payload.by) },
       });
     };
-    if (payload.kind === "removed" && payload.accountId === state.share?.account_id) {
+    if (payload.kind === "removed" && payload.accountId === self) {
       settle();
       return;
     }
@@ -622,7 +661,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
           cursor: payload.cursor,
           anchor: payload.anchor,
           seenAt: Date.now(),
-          hue: peerHue(payload.accountId, state.share?.account_id ?? state.selfId),
+          hue: peerHue(payload.accountId, liveSelfId(state), state.backend),
           activity: payload.activity ?? null,
           activityAt: payload.activity ? Date.now() : 0,
         },
@@ -755,6 +794,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         pending: 0,
         pendingPaths: [],
         storedAsFiles: [],
+        overleafLinked: [],
         peers: {},
         members: [],
       });
@@ -770,7 +810,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       published.backend !== backend ||
       published.overleaf !== overleaf ||
       published.pendingPaths !== state.pendingPaths ||
-      published.storedAsFiles !== state.storedAsFiles
+      published.storedAsFiles !== state.storedAsFiles ||
+      published.linked !== state.overleafLinked
     ) {
       useLiveBackend.setState({
         projectId: state.projectId,
@@ -778,6 +819,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         overleaf,
         pendingPaths: state.pendingPaths,
         storedAsFiles: state.storedAsFiles,
+        linked: state.overleafLinked,
       });
     }
   };
@@ -818,6 +860,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     stopLive();
     for (const pending of unlisteners) void pending.then((unlisten) => unlisten());
     store.setState(emptyLive(null));
-    useLiveBackend.setState({ projectId: null, backend: null, overleaf: null, pendingPaths: [], storedAsFiles: [] });
+    useLiveBackend.setState({
+      projectId: null,
+      backend: null,
+      overleaf: null,
+      pendingPaths: [],
+      storedAsFiles: [],
+      linked: [],
+    });
   };
 }

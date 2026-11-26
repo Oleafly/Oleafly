@@ -1,0 +1,294 @@
+{
+  "probe": "chat-restricted-user",
+  "description": "Alice turns on link sharing for a throwaway project and Erin joins it through the read-only link (a restricted user). Alice sends, edits and deletes a chat message while both listen on websockets: which chat events reach Erin, and what the chat routes answer her.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "erin's editor page: {\"ol-user_id\":{\"type\":null,\"contentAttribute\":true,\"value\":\"6afab5bd1222cc50aa4c1704\"},\"ol-isTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-isRestrictedTokenMember\":{\"type\":\"boolean\",\"contentAttribute\":true,\"value\":true},\"ol-capabilities\":{\"type\":\"json\",\"contentAttribute\":true,\"value\":[\"chat\",\"link-sharing\"]}}",
+    "erin joins as readOnly",
+    "alice received [\"new-chat-message\",\"edit-global-message\",\"delete-global-message\"]",
+    "erin received []; all erin's events []",
+    "erin GET messages 403 {\"message\":\"restricted\"}, POST 403 {\"message\":\"restricted\"}"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "chat-restricted-20261124-025203",
+          "template": "none"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04fbd3cb4fe3a455d4d9b9",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 813,
+      "answeredAt": 908
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/settings/admin",
+        "body": {
+          "publicAccessLevel": "tokenBased"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 908,
+      "answeredAt": 932
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant",
+        "user": "erin",
+        "body": {
+          "confirmedByUser": true
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "80",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6b04fbd3cb4fe3a455d4d9b9",
+        "tokenAccessGranted": "readOnly"
+      },
+      "sentAt": 971,
+      "answeredAt": 997
+    },
+    {
+      "page": {
+        "user": "erin",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9",
+        "status": 200,
+        "meta": {
+          "ol-user_id": {
+            "type": null,
+            "contentAttribute": true,
+            "value": "6afab5bd1222cc50aa4c1704"
+          },
+          "ol-isTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-isRestrictedTokenMember": {
+            "type": "boolean",
+            "contentAttribute": true,
+            "value": true
+          },
+          "ol-capabilities": {
+            "type": "json",
+            "contentAttribute": true,
+            "value": [
+              "chat",
+              "link-sharing"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages",
+        "user": "alice",
+        "body": {
+          "content": "Alice says hello to the room.",
+          "client_id": "alice-probe"
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 1237,
+      "answeredAt": 1281
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "251",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [
+        {
+          "id": "6b04fbd4296ea5fec7324db3",
+          "content": "Alice says hello to the room.",
+          "timestamp": 1795488724090,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "user": {
+            "id": "6afab5bb1222cc50aa4c16ec",
+            "first_name": "Alice",
+            "last_name": "Owner",
+            "email": "alice@example.test"
+          }
+        }
+      ],
+      "sentAt": 2782,
+      "answeredAt": 2819
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages/6b04fbd4296ea5fec7324db3/edit",
+        "user": "alice",
+        "body": {
+          "content": "Alice edited it."
+        }
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 2819,
+      "answeredAt": 2879
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages/6b04fbd4296ea5fec7324db3",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 4380,
+      "answeredAt": 4417
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages",
+        "user": "erin"
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 5917,
+      "answeredAt": 5935
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9/messages",
+        "user": "erin",
+        "body": {
+          "content": "Erin tries to chat."
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 5935,
+      "answeredAt": 5949
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "projectId": "6b04fbd3cb4fe3a455d4d9b9",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1038,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1059,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.Xf36vB14_7KL_86wAACT\",\"project\":{\"_id\":\"6b04fbd3cb4fe3a455d4d9b9\",\"name\":\"chat-restricted-20261124-025203\",\"rootDoc_id\":\"6b04fbd3cb4fe3a455d4d9be\",\"rootFolder\":[{\"_id\":\"6b04fbd3cb4fe3a455d4d9b8\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04fbd3cb4fe3a455d4d9be\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[],\"invites\":[],\"editAccessRequests\":[],\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"owner\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 1281,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-chat-message\",\"args\":[{\"id\":\"6b04fbd4296ea5fec7324db3\",\"content\":\"Alice says hello to the room.\",\"timestamp\":1795488724090,\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"room_id\":\"6b04fbd3cb4fe3a455d4d9b9\",\"user\":{\"id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\"},\"clientId\":\"alice-probe\"}]}"
+          },
+          {
+            "t": 2878,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"edit-global-message\",\"args\":[{\"messageId\":\"6b04fbd4296ea5fec7324db3\",\"userId\":\"6afab5bb1222cc50aa4c16ec\",\"content\":\"Alice edited it.\"}]}"
+          },
+          {
+            "t": 4417,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"delete-global-message\",\"args\":[{\"messageId\":\"6b04fbd4296ea5fec7324db3\",\"userId\":\"6afab5bb1222cc50aa4c16ec\"}]}"
+          },
+          {
+            "t": 5950,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "erin",
+        "projectId": "6b04fbd3cb4fe3a455d4d9b9",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 1140,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1155,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.rA3cThciClpvP-jQAACU\",\"project\":{\"_id\":\"6b04fbd3cb4fe3a455d4d9b9\",\"name\":\"chat-restricted-20261124-025203\",\"rootDoc_id\":\"6b04fbd3cb4fe3a455d4d9be\",\"rootFolder\":[{\"_id\":\"6b04fbd3cb4fe3a455d4d9b8\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6b04fbd3cb4fe3a455d4d9be\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\"},\"members\":[],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"readOnly\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 5950,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04fbd3cb4fe3a455d4d9b9"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 5951,
+      "answeredAt": 6067
+    }
+  ]
+}

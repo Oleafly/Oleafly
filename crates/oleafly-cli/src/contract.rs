@@ -7,6 +7,8 @@ use clap::{Args, ValueEnum};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
+pub mod printer;
+
 pub const SCHEMA_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -69,7 +71,7 @@ impl ErrorKind {
     }
 }
 
-fn exit_error(exit: Exit) -> CliError {
+pub(crate) fn exit_error(exit: Exit) -> CliError {
     let (kind, code, message) = match exit {
         Exit::Ok | Exit::Internal => (ErrorKind::Internal, "internal", "The command failed."),
         Exit::Usage => (
@@ -292,6 +294,18 @@ pub fn envelope(command: &str, outcome: &Outcome, warnings: &[Warning]) -> Value
     }
     value.insert("warnings".into(), json!(warnings));
     Value::Object(value)
+}
+
+pub fn event_line(command: &str, name: &str, fields: Value) -> String {
+    let mut value = Map::new();
+    value.insert("schema_version".into(), json!(SCHEMA_VERSION));
+    value.insert("type".into(), json!("event"));
+    value.insert("command".into(), json!(command));
+    value.insert("event".into(), json!(name));
+    for (key, field) in fields_of(fields) {
+        value.insert(key, field);
+    }
+    Value::Object(value).to_string()
 }
 
 pub fn error_envelope(command: Option<&str>, error: &CliError, warnings: &[Warning]) -> Value {
@@ -560,23 +574,13 @@ impl Context {
     }
 
     fn write_event(&self, name: &str, fields: Value) -> Result<(), CliError> {
-        let mut value = Map::new();
-        value.insert("schema_version".into(), json!(SCHEMA_VERSION));
-        value.insert("type".into(), json!("event"));
-        value.insert("command".into(), json!(self.command));
-        value.insert("event".into(), json!(name));
-        for (key, field) in fields_of(fields) {
-            value.insert(key, field);
-        }
+        let line = event_line(self.command, name, fields);
         let _guard = self
             .out
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut stdout = std::io::stdout().lock();
-        serde_json::to_writer(&mut stdout, &Value::Object(value)).map_err(|error| {
-            CliError::internal(format!("Oleafly couldn't write the event: {error}"))
-        })?;
-        writeln!(stdout)?;
+        writeln!(stdout, "{line}")?;
         stdout.flush().map_err(CliError::from)
     }
 

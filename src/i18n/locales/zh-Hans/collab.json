@@ -232,8 +232,16 @@
     "suggestion_role": "你在此项目中的角色不允许提建议。",
     "suggestion_changed": "这条建议周围的文本已更改，因此需要所有者或编辑者来接受或拒绝它。",
     "suggestion_too_long": "一条删除建议最多只能包含 20,000 个字符。请每次删除较小的一部分。",
+    "suggestion_gone": "该更改已不存在。可能有人接受、拒绝或编辑了它。",
+    "review_off_server": "此服务器无法对修订执行该操作。",
     "chat_role": "你在此项目中的角色不允许在聊天中执行此操作。",
+    "chat_edit_off": "此服务器无法编辑聊天消息。",
+    "chat_off_server": "此 Overleaf 服务器没有聊天功能。",
     "history_unavailable": "此项目的历史记录尚未同步到这台电脑。请在同步完成后重试。",
+    "history_plan_limit": "此项目的 Overleaf 方案不保留旧版本。",
+    "restore_off_server": "此 Overleaf 服务器无法恢复旧版本。请改为从该版本中复制文本。",
+    "linked_off_server": "此 Overleaf 服务器不会刷新链接的文件。",
+    "linked_refresh_failed": "Overleaf 无法从来源刷新此文件。",
     "account_storage_full": "项目所有者的账户在此服务器上的存储空间已用完。请移除一些文件以腾出空间，或请服务器的管理员提供更多空间。",
     "too_many_projects": "你的共享项目数量已达到此服务器允许的上限。请先停止共享其中一个，再共享其他项目。",
     "too_many_uploads": "你在过去一小时内上传次数过多。请稍后再试。",
@@ -241,6 +249,9 @@
     "too_many_pages": "你的公开页面数量已达到此服务器允许的上限。请取消发布其中一个，然后重试。",
     "page_too_large": "这篇笔记太大，无法发布。请移除一些图片，然后重试。",
     "page_taken_down": "管理员已下架此页面，在管理员恢复之前，这篇笔记无法再次发布。"
+  },
+  "liveElsewhere": {
+    "cli": "此项目正在命令行中实时编辑（进程 {{pid}}）。请先在那里停止实时编辑，然后再试。"
   },
   "roles": {
     "admin": "管理员",
@@ -1051,6 +1062,8 @@
     "add": "添加评论",
     "allResolved": "所有评论都已解决。",
     "noResolved": "没有已解决的评论",
+    "noChanges": "没有修订",
+    "overleafOff": "此 Overleaf 服务器没有评论功能，因此这里只显示修订。",
     "emptyTitle": "还没有评论",
     "emptyHint": "选中文本并选择“添加评论”，或按 {keys}",
     "readOnlyNote": "你可以阅读此项目中的评论。如需回复或添加回应，请向所有者申请评论者权限。",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "来自 Oleafly 无法确认身份的人的建议",
     "added": "已添加",
     "deleted": "已删除",
+    "replaced": "更改前",
+    "replacedWith": "更改后",
     "accept": "接受",
     "reject": "拒绝",
     "withdraw": "撤回",
@@ -1157,6 +1172,7 @@
     "fileActions": "{{file}} 中的建议",
     "pendingCount": "等待审阅的建议：{{number}}",
     "loadFailed": "无法加载此文件的建议。",
+    "acceptOffServer": "此 Overleaf 服务器无法接受此文件中的修订。你仍然可以拒绝它们。",
     "rejectAllConfirm": {
       "title": "要拒绝 {{file}} 中的所有建议吗？",
       "description": "文件会为本项目中的所有人恢复原来的文本。等待审阅的建议：{{number}}。",
@@ -1175,7 +1191,15 @@
       "suggesting": "建议",
       "editingHint": "编辑：你的编辑会立即修改文本",
       "suggestingHint": "建议：你的编辑会变成建议，由所有者或编辑者接受",
-      "reviewerHint": "你是审阅者，所以你的编辑会变成建议，由所有者或编辑者接受"
+      "reviewerHint": "你是审阅者，所以你的编辑会变成建议，由所有者或编辑者接受",
+      "locked": {
+        "everyone": "此项目已为所有人开启修订，因此你的编辑会变成建议",
+        "plan": "此项目的 Overleaf 方案不包含修订功能",
+        "server": "此 Overleaf 服务器无法开启或关闭修订"
+      },
+      "others": "为其他人开启修订",
+      "forEveryone": "对所有人",
+      "forGuests": "对通过链接加入的人"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "查看者可以阅读聊天内容，但不能发送消息。",
     "offline": "此项目当前未连接，所以你无法发送消息。",
     "messageActions": "此消息的更多操作",
+    "editLabel": "编辑消息",
     "deleteConfirm": {
       "title": "删除这条消息吗？",
       "description": "它会对本项目中的所有人删除。"
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly 无法加载聊天。",
     "loadOlder": "显示更早的消息"
+  },
+  "people": {
+    "invited": "已邀请",
+    "former": "（已离开项目）"
   },
   "history": {
     "title": "历史记录",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "所有文件的文本会为本项目中的所有人恢复到 {{time}} 时的状态，已删除的文件也会恢复。重命名过的文件会保留新名称，之后添加的图片和文件保持不变。当前的文本会保留在历史记录中，所以你可以再回到它。",
       "confirm": "恢复项目"
     },
+    "limited": "更早的更改需要提供完整历史记录的 Overleaf 方案。",
+    "unavailable": "你对此项目的访问权限不包括其历史记录。",
+    "download": "下载为 ZIP",
+    "downloading": "正在下载…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "所有文件都会为 Overleaf 上的所有人恢复到 {{time}} 时的状态，此后添加的文件会被删除。Overleaf 会在历史记录中保留当前版本，所以你可以再回到它。",
     "compareTitle": "两个版本之间的更改",
     "compareDescription": "从 {{from}} 到 {{to}}",
     "changedFiles": "更改的文件：{{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "你现在是评论者。你可以阅读和评论此项目，但不能编辑。",
     "reviewerBy": "{{name}} 已将你设为审阅者。你的编辑会变成建议，由所有者或编辑者接受。",
     "reviewer": "你现在是审阅者。你的编辑会变成建议，由所有者或编辑者接受。",
-    "reviewing": "你是此项目的审阅者，因此你的编辑会作为建议提交。",
-    "trackingChanges": "此项目已开启修订，因此你的编辑会作为建议提交。",
     "viewOnly": "你可以查看这个共享项目，但不能编辑。",
     "askOnOverleaf": "在 Overleaf 上申请访问权限",
     "connecting": "这个共享项目仍在连接，所以暂时无法更改。请稍后再试。",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "你已退出 {{server}} 的登录，因此此项目不再同步。你可以继续输入。你的更改会保留在这台电脑上，重新登录后会发送到 Overleaf。",
+    "signedOutAs": "此项目属于 {{server}} 上的 {{email}}。该账户未登录，因此项目没有同步。你可以继续输入。你的更改会保留在这台电脑上，以 {{email}} 身份登录后会发送到 Overleaf。",
+    "signInAs": "以 {{email}} 身份登录",
     "accountChangedOne": "你现在登录的是另一个账户，因此你以 {{email}} 身份所做的更改没有发送，已保存为 {{copy}}。",
     "accountChangedMany": "你现在登录的是另一个账户，因此你以 {{email}} 身份所做的更改没有发送，已作为副本保存在对应文件旁边：",
     "keptAs": "{{file}} 已保存为 {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "{{file}} 中的部分字符（例如表情符号）已被替换，因为 Overleaf 无法存储它们。",
     "tryLiveAgain": "重试实时编辑",
     "keepMineAsCopy": "将我的保留为副本",
-    "stoppedActionFailed": "{{file}} 的这项操作没有成功。请稍等片刻，然后再点击一次。"
+    "settingNotSent": {
+      "no_equivalent": "Overleaf 没有与此项目的 {{setting}} 对应的选项，因此 Overleaf 上的 {{setting}} 保持不变。",
+      "refused": "Overleaf 拒绝了对 {{setting}} 的更改。",
+      "failed": "Oleafly 无法将对 {{setting}} 的更改发送到 Overleaf。下次更改时会再次尝试。",
+      "conflict": "{{setting}} 在这里和 Overleaf 上同时被更改。将保留 Overleaf 上的选择。"
+    },
+    "settingNames": {
+      "main_doc": "主文档",
+      "compiler": "编译器",
+      "spelling": "拼写检查语言",
+      "image": "TeX Live 版本",
+      "bibliography": "主参考文献"
+    },
+    "stoppedActionFailed": "{{file}} 的这项操作没有成功。请稍等片刻，然后再点击一次。",
+    "filling": "正在从 Overleaf 打开项目：{{done}}/{{total}} 个文件",
+    "fillingFiles": "正在从 Overleaf 打开项目：正在下载最后几个文件",
+    "emptyCopy": "此项目已不在 Overleaf 上，而且它的文件一个都没有传到这台电脑上。",
+    "removeEmptyCopy": "移除空副本",
+    "removeFailed": "Oleafly 无法移除空副本。"
   },
   "overleafTree": {
     "deleteTitle": "也在 Overleaf 上删除？",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "也在 Overleaf 上删除",
     "keep": "保留在 Overleaf 上",
     "notAllowed": "你无法在 Overleaf 上更改此项目中的文件，因此你对 {{files}} 的更改会保留在这台电脑上。",
-    "keptAway": "已在此处删除，但仍在 Overleaf 上：{{files}}"
+    "keptAway": "已在此处删除，但仍在 Overleaf 上：{{files}}",
+    "linkedKept": "Overleaf 将 {{files}} 链接到某个来源，因此你的更改会保留在这台电脑上。选择“从来源刷新”可取回 Overleaf 上的副本。"
+  },
+  "overleafLinked": {
+    "banner": "{{file}} 在 Overleaf 上链接到 {{source}}。",
+    "bannerNoSource": "{{file}} 在 Overleaf 上链接到某个来源。",
+    "readOnly": "{{file}} 在 Overleaf 上链接到某个来源。要更新它，请选择“从来源刷新”。",
+    "treeHint": "已在 Overleaf 上链接到某个来源",
+    "refresh": "从来源刷新",
+    "refreshing": "正在刷新",
+    "refusedWith": "Overleaf 无法刷新它：{{message}}"
   }
 }

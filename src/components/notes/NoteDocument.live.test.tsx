@@ -151,6 +151,7 @@ afterEach(() => {
   uninstall?.();
   uninstall = null;
   useCollabLiveNote.setState({ noteId: null, session: null });
+  useCollabEditorGate.setState({ suggesting: false });
 });
 
 describe("a shared note edited live", () => {
@@ -217,6 +218,23 @@ describe("a shared note edited live", () => {
     expect(screen.getAllByText(enNotes.live.viewOnly)).toHaveLength(2);
     expect(screen.getAllByLabelText<HTMLInputElement>(enNotes.document.titleLabel)[0].readOnly).toBe(true);
     expect(screen.getAllByTestId("note-assistant").map((section) => section.dataset.viewOnly)).toEqual(["true", "true"]);
+  });
+
+  it("is read-only while my edits are suggestions and says how to edit again", async () => {
+    const fake = fakeData();
+    const { alice } = await openTwo(fake);
+    await act(async () => {
+      goLive();
+      await Promise.resolve();
+    });
+    await exchange();
+    act(() => useCollabEditorGate.setState({ suggesting: true }));
+    expect(alice.isEditable).toBe(false);
+    expect(screen.getAllByText(enNotes.live.suggesting)).toHaveLength(2);
+    expect(screen.queryByText(enNotes.live.viewOnly)).toBeNull();
+    act(() => useCollabEditorGate.setState({ suggesting: false }));
+    expect(alice.isEditable).toBe(true);
+    expect(screen.queryByText(enNotes.live.suggesting)).toBeNull();
   });
 
   it("saves edits made while connecting once the note turns out not to go live", async () => {

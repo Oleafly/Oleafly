@@ -1,0 +1,1610 @@
+{
+  "doc": "6b04e25dcb4fe3a455d4cf8b",
+  "format": "history-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "alice types the base text",
+      "who": "alice",
+      "server": {
+        "version": 1,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e25dcb4fe3a455d4cf8b",
+              "op": [
+                {
+                  "textOperation": [
+                    "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n"
+                  ]
+                }
+              ],
+              "v": 0,
+              "hash": "9da3e1274d7067d00ac34af4e0711a6f83025a0f"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 585,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 707,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 707,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 708,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "carol suggests inserting \"whole \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 1,
+        "op": [
+          {
+            "textOperation": [
+              10,
+              {
+                "i": "whole ",
+                "tracking": {
+                  "type": "insert",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:33.203Z"
+                }
+              },
+              115
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 2,
+        "text": "Keep this whole sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e267191ee57d3e000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 1,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "carol suggests deleting \"word \"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 2,
+        "op": [
+          {
+            "textOperation": [
+              38,
+              {
+                "r": 5,
+                "tracking": {
+                  "type": "delete",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:36.133Z"
+                }
+              },
+              88
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 3,
+        "text": "Keep this whole sentence. Remove this please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e26a82cd1e52c2000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e26a61dc4b01b1000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 1,
+            "d": 1
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "carol suggests inserting \"NEW \" on line 2",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 3,
+        "op": [
+          {
+            "textOperation": [
+              59,
+              {
+                "i": "NEW ",
+                "tracking": {
+                  "type": "insert",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:39.156Z"
+                }
+              },
+              72
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 4,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to change here.\nThird line with more words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line with more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e26dbd08c81728000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e26dbc30256723000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e26d7dc95d145f000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 2,
+            "d": 1
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "carol suggests deleting \"change \" on line 2",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 4,
+        "op": [
+          {
+            "textOperation": [
+              71,
+              {
+                "r": 7,
+                "tracking": {
+                  "type": "delete",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:42.179Z"
+                }
+              },
+              57
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 4,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 5,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line with more words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line with more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 71,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e270c6bf92156a000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e270d3c0ea000c000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e270b5cf1a3e26000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27006e44c4cef000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 2,
+            "d": 2
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "carol suggests an insert and a delete on line 3 in one text operation",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 5,
+        "op": [
+          {
+            "textOperation": [
+              95,
+              {
+                "i": "X",
+                "tracking": {
+                  "type": "insert",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:45.190Z"
+                }
+              },
+              5,
+              {
+                "r": 5,
+                "tracking": {
+                  "type": "delete",
+                  "userId": "6afab5bc1222cc50aa4c16f8",
+                  "ts": "2026-11-24T01:03:45.190Z"
+                }
+              },
+              30
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 5,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 6,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 71,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 95,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 101,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2730609420cee000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2739fbb7c46f6000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e273783e40400f000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2735fd8b36c4f000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2739adf2d3663000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2732aafb45191000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 3,
+            "d": 3
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "carol (reviewer) accepts her own insert by clearing its tracking",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 6,
+        "op": [
+          {
+            "textOperation": [
+              10,
+              {
+                "r": 6,
+                "tracking": {
+                  "type": "none"
+                }
+              },
+              120
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 6,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 71,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 95,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 101,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e277587cec1f11000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27761cba8291b000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e277ca51251b7a000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2773874fc5430000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e277d1d7fc4be5000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e277a621bd75e6000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 3,
+            "d": 3
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "carol (reviewer) accepts her own delete with a raw delete",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 6,
+        "op": [
+          {
+            "textOperation": [
+              38,
+              -5,
+              93
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 6,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 10,
+                "length": 6
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:33.203Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 71,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 95,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 101,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 10,
+                "i": "whole "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:33.203Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a41cb141e33000001"
+            },
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a09be297bfe000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a639e5a1ae8000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a0d4df62c6a000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a2c90c609ce000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27a2f4e975322000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 3,
+            "d": 3
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "bob accepts the insert \"whole \" by clearing its tracking",
+      "who": "bob",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 6,
+        "op": [
+          {
+            "textOperation": [
+              10,
+              {
+                "r": 6,
+                "tracking": {
+                  "type": "none"
+                }
+              },
+              120
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 6,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 7,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this word please.\nAnother NEW line to change here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 38,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:36.133Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 59,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 71,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 95,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 101,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 38,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:36.133Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27dc1943e508d000001"
+            },
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27da312ca3808000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27d09b27d3b69000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27dd55d5b13ae000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e27d10787e4330000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 2,
+            "d": 3
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "bob accepts the delete \"word \" with a raw delete",
+      "who": "bob",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 7,
+        "op": [
+          {
+            "textOperation": [
+              38,
+              -5,
+              93
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 7,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 8,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this please.\nAnother NEW line to change here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 54,
+                "length": 4
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:39.156Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 66,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:42.179Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 90,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 96,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 54,
+                "i": "NEW "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:39.156Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e28094a2580ebd000001"
+            },
+            {
+              "op": {
+                "p": 66,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:42.179Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e280190f944a21000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e280d710d46df0000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e280a896594b16000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 2,
+            "d": 2
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 11,
+      "label": "bob accepts the insert \"NEW \" and the delete \"change \" in one text operation",
+      "who": "bob",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 8,
+        "op": [
+          {
+            "textOperation": [
+              54,
+              {
+                "r": 4,
+                "tracking": {
+                  "type": "none"
+                }
+              },
+              8,
+              -7,
+              58
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 8,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 9,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith more words.\nFourth line to accept.\n",
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 83,
+                "length": 1
+              },
+              "tracking": {
+                "type": "insert",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 89,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T01:03:45.190Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 83,
+                "i": "X"
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2834a50aa6c46000001"
+            },
+            {
+              "op": {
+                "p": 89,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T01:03:45.190Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b04e2838be9487152000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 1,
+            "d": 1
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 12,
+      "label": "bob accepts both line-3 suggestions in one text operation",
+      "who": "bob",
+      "sent": {
+        "doc": "6b04e25dcb4fe3a455d4cf8b",
+        "v": 9,
+        "op": [
+          {
+            "textOperation": [
+              83,
+              {
+                "r": 1,
+                "tracking": {
+                  "type": "none"
+                }
+              },
+              5,
+              -5,
+              30
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 9,
+          "doc": "6b04e25dcb4fe3a455d4cf8b"
+        }
+      },
+      "server": {
+        "version": 10,
+        "text": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this please.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 13,
+      "label": "alice types at the end of line 1 after the accepts",
+      "who": "alice",
+      "edit": {
+        "changes": {
+          "from": 45,
+          "insert": " Alice was here."
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 11,
+        "text": "Keep this whole sentence. Remove this please. Alice was here.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n",
+        "raw": {
+          "content": "Keep this whole sentence. Remove this please. Alice was here.\nAnother NEW line to here.\nThird line Xwith words.\nFourth line to accept.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e25dcb4fe3a455d4cf8b",
+              "op": [
+                {
+                  "textOperation": [
+                    45,
+                    " Alice was here.",
+                    74
+                  ]
+                }
+              ],
+              "v": 10,
+              "lastV": 0,
+              "hash": "f7c32bc4eac30fb5fbadcc2b34a7f762cdeba948"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

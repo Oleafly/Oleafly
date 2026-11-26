@@ -111,7 +111,7 @@ export function buildOverlayDecorations(
     if (to > from) ranges.push(Decoration.mark({ class: "cm-comment-draft" }).range(from, to));
   }
   for (const suggestion of snapshot.suggestions) {
-    const hue = peerHue(suggestion.author || "unknown", self);
+    const hue = peerHue(suggestion.author || "unknown", self, "server");
     const active = suggestion.id !== null && selected.suggestion === suggestion.id;
     if (suggestion.kind === "delete") {
       if (!suggestion.text) continue;

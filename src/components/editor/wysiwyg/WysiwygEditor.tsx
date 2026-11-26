@@ -1,31 +1,29 @@
 import { Extension } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin } from "@tiptap/pm/state";
+import type { DocumentSession } from "@oleafly/editor/document-session";
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
-import { collabVisualReadOnly, useCollabVisualReadOnly } from "@/lib/collab-live-bridge";
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+  collabDocumentSession,
+  collabRichTextLock,
+  type LiveNoteSession,
+  type NoteHandBack,
+  type NoteLiveHandle,
+  type NoteLivePort,
+  useCollabLiveProject,
+  useCollabNoteLivePort,
+  useCollabRichTextLock,
+} from "@/lib/collab-live-bridge";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { renderMathExpression } from "@oleafly/editor/math-render";
-import { scanMathExpressions } from "@oleafly/editor/math-source";
 import {
   createMarkdownSourceSnapshot,
   createWysiwygExtensions,
-  parseLatexBody,
-  serializeLatexBody,
-  splitLatexDocument,
-  joinLatexDocument,
   parseMarkdownBody,
-  serializeMarkdownBody,
-  theoremEnvironmentsFromPreamble,
-  type LatexDocumentSplit,
+  splitMarkdownFrontMatter,
   type MarkdownSourceSnapshot,
 } from "@oleafly/wysiwyg";
 import { useFilesStore } from "@/store/files";
@@ -36,16 +34,27 @@ import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import { isRecompileShortcut } from "@/components/editor/cm/recompile-shortcut";
+import { requestLiveNoteComment, showCommentsTab } from "@/components/collab/comments-rail";
+import { NoteCommentMarks } from "@/components/notes/note-comment-marks";
+import { isRemoteTransaction, noteSourceOf, VISUAL_DIALECT } from "@/components/notes/note-live-doc";
+import { NOTE_CORE_EXTENSIONS } from "@/components/notes/note-markdown";
+import { NotePeerMarks } from "@/components/notes/note-presence-decorations";
+import {
+  createNoteLiveEditor,
+  type NoteLiveAdapter,
+  useCompositionSettled,
+} from "@/components/notes/use-note-live";
+import { i18n } from "@/i18n";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import {
   getWysiwygProjectSessionGeneration,
   setWysiwygDocument,
-  setWysiwygDocumentContext,
   setWysiwygEditor,
   setWysiwygFlushController,
   setWysiwygInsertions,
   setWysiwygProjectNavigation,
   setWysiwygVisible,
-  type WysiwygDocumentContext,
 } from "./controller";
 import { visualInsertions } from "./insert";
 import {
@@ -71,12 +80,9 @@ import { markdownMathRanges } from "./markdown-source";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 import { publishVisualEditorHistory } from "@/components/editor/history-signal";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
-import { isMarkdownPath } from "@/lib/wysiwyg-mode";
 
 const FLUSH_DEBOUNCE_MS = 300;
-const FOLLOW_REMOTE_MS = 150;
 const EXTERNAL_DOCUMENT_SYNC = "oleaflyExternalDocumentSync";
-const BOOKTABS_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{[^}]*\bbooktabs\b[^}]*\}/u;
 const PACKAGE_EXTENSIONS = createWysiwygExtensions({
   renderMath: renderMathExpression,
   resolveAssetUrl: resolveVisualAssetUrl,
@@ -85,14 +91,8 @@ const PACKAGE_EXTENSIONS = createWysiwygExtensions({
 });
 const PASTE_HANDLERS = createVisualPasteHandlers();
 
-export function documentContextForPreamble(preamble: string): WysiwygDocumentContext {
-  return {
-    theoremEnvironments: theoremEnvironmentsFromPreamble(preamble),
-    booktabs: BOOKTABS_PACKAGE.test(preamble),
-  };
-}
 function visualReadOnly(projectId: string | null): boolean {
-  return activeFileReadOnly() || collabVisualReadOnly(projectId);
+  return activeFileReadOnly() || collabRichTextLock(projectId) !== null;
 }
 
 const ExternalMutationGate = Extension.create({
@@ -101,6 +101,7 @@ const ExternalMutationGate = Extension.create({
     return [new Plugin({
       filterTransaction: (transaction) => !transaction.docChanged ||
         transaction.getMeta(EXTERNAL_DOCUMENT_SYNC) === true ||
+        isRemoteTransaction(transaction) ||
         (!isEditorMutationLocked(useFilesStore.getState().projectId) &&
           !visualReadOnly(useFilesStore.getState().projectId)),
     })];
@@ -115,18 +116,59 @@ function replaceContentAndResetHistory(editor: Editor, content: Parameters<Edito
   editor.view.updateState(resetState);
 }
 
+interface LoadedText {
+  path: string;
+  text: string;
+  doc: ProseMirrorNode;
+}
+
+interface LiveBinding {
+  path: string;
+  document: DocumentSession;
+  session: LiveNoteSession;
+  port: NoteLivePort;
+  handle: NoteLiveHandle;
+  adapter: NoteLiveAdapter;
+}
+
+function VisualLiveNotice({ lock }: Readonly<{ lock: "view" | "connecting" | "suggest" }>) {
+  const { t } = useTranslation(["editor"]);
+  const message = {
+    view: t(($) => $.editor.visual.liveViewOnly),
+    connecting: t(($) => $.editor.visual.liveConnecting),
+    suggest: t(($) => $.editor.visual.suggestInSource),
+  }[lock];
+  return (
+    <output
+      data-testid="visual-live-notice"
+      data-lock={lock}
+      className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-sm text-muted-foreground"
+    >
+      <span>{message}</span>
+      {lock === "suggest" ? (
+        <Button type="button" variant="outline" size="xs" onClick={() => setActiveFileMode("code")}>
+          {t(($) => $.editor.toolbar.switchToSource)}
+        </Button>
+      ) : null}
+    </output>
+  );
+}
+
 export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
-  const { t } = useTranslation(["common", "editor"]);
   const synchronizeRef = useRef<() => void>(() => {});
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
   const saveFile = useFilesStore((s) => s.saveFile);
-  const collabReadOnly = useCollabVisualReadOnly(projectId);
-  const readOnly = useActiveFileReadOnly() || collabReadOnly;
-  const latexSplitRef = useRef<LatexDocumentSplit | null>(null);
+  const liveLock = useCollabRichTextLock(projectId);
+  const readOnly = useActiveFileReadOnly() || liveLock !== null;
+  const liveProject = useCollabLiveProject((state) => (state.session?.projectId === projectId ? state.session : null));
+  const livePort = useCollabNoteLivePort((state) => state.port);
   const frontmatterRef = useRef("");
+  const separatorRef = useRef("");
   const markdownSourceRef = useRef<MarkdownSourceSnapshot | null>(null);
+  const loadedRef = useRef<LoadedText | null>(null);
+  const liveRef = useRef<LiveBinding | null>(null);
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activePath;
   const projectIdRef = useRef<string | null>(null);
@@ -136,12 +178,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const intelligenceRevisionRef = useRef("");
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualDirtyRef = useRef(false);
-  const preambleRef = useRef("");
-  const lastSyncedTextRef = useRef<string | null>(null);
-  const lastSyncedPathRef = useRef<string | null>(null);
-  const [preamble, setPreamble] = useState("");
-  const [hasDocumentEnv, setHasDocumentEnv] = useState(false);
-  const [showPreamble, setShowPreamble] = useState(false);
   const [proofreadingIssue, setProofreadingIssue] =
     useState<VisualProofreadingIssue | null>(null);
   const closeProofreading = useCallback(
@@ -175,6 +211,12 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   ].join(":");
   intelligenceRevisionRef.current = `${activePath ?? ""}:${intelligenceRevision}`;
 
+  const sourceOf = useCallback(
+    (doc: ProseMirrorNode) =>
+      noteSourceOf(doc, frontmatterRef.current, separatorRef.current, markdownSourceRef.current, VISUAL_DIALECT),
+    [],
+  );
+
   const flush = useCallback((
     editorInstance: Editor,
     target?: { path: string | null; projectId: string | null },
@@ -183,34 +225,27 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       path: activePathRef.current,
       projectId: projectIdRef.current,
     };
+    const live = liveRef.current;
+    if (live && live.path === path) {
+      void live.handle.flush(0);
+      return false;
+    }
     const filesState = useFilesStore.getState();
     if (
       !path ||
       filesState.projectId !== targetProjectId ||
       !filesState.files[path] ||
-      !visualDirtyRef.current
+      !visualDirtyRef.current ||
+      loadedRef.current?.path !== path
     ) {
       return false;
     }
-    const json = editorInstance.getJSON();
-    let nextSource: string;
-    if (isMarkdownPath(path)) {
-      const body = serializeMarkdownBody(json, markdownSourceRef.current);
-      const frontmatter = frontmatterRef.current;
-      nextSource = frontmatter ? `${frontmatter}\n\n${body}` : body;
-    } else {
-      const body = serializeLatexBody(json);
-      const split = latexSplitRef.current;
-      nextSource = split
-        ? joinLatexDocument({ ...split, preamble: preambleRef.current, body })
-        : body;
-    }
-    lastSyncedTextRef.current = nextSource;
-    lastSyncedPathRef.current = path;
+    const nextSource = sourceOf(editorInstance.state.doc);
+    loadedRef.current = { path, text: nextSource, doc: editorInstance.state.doc };
     visualDirtyRef.current = false;
     filesState.setContent(path, nextSource, { bumpVersion: true });
     return true;
-  }, []);
+  }, [sourceOf]);
   const editor = useEditor({
     extensions: [
       ...PACKAGE_EXTENSIONS,
@@ -218,9 +253,12 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       ExternalMutationGate,
       VisualProjectIntelligence,
       VisualProofreading,
+      NotePeerMarks,
+      NoteCommentMarks,
     ],
     content: { type: "doc", content: [{ type: "paragraph" }] },
     immediatelyRender: false,
+    enableCoreExtensions: NOTE_CORE_EXTENSIONS,
     editorProps: {
       handleScrollToSelection:
         scrollVisualSelectionLocally,
@@ -232,6 +270,12 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
         // ProseMirror only calls preventDefault, so App still compiles.
         if (isRecompileShortcut(event)) return true;
         if (!(event.metaKey || event.ctrlKey)) return false;
+        if (event.altKey && !event.shiftKey && event.code === "KeyM") {
+          if (!requestLiveNoteComment(projectIdRef.current, activePathRef.current)) return false;
+          event.preventDefault();
+          showCommentsTab();
+          return true;
+        }
         const key = event.key.toLowerCase();
         if (key === "z" && !event.shiftKey) {
           event.preventDefault();
@@ -246,12 +290,112 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
         return false;
       },
     },
-    onUpdate: ({ editor: editorInstance }) => {
+    onUpdate: ({ editor: editorInstance, transaction }) => {
+      const live = liveRef.current;
+      if (live) {
+        if (isRemoteTransaction(transaction)) return;
+        live.adapter.invalidate();
+        live.handle.localChanged();
+        return;
+      }
       visualDirtyRef.current = true;
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       flushTimerRef.current = setTimeout(() => flush(editorInstance), FLUSH_DEBOUNCE_MS);
     },
   });
+
+  const load = useCallback((editorInstance: Editor, path: string, raw: string) => {
+    const { doc, frontmatter, separator, layout } = parseMarkdownBody(raw, {
+      preservedInlineRanges: markdownMathRanges(raw),
+    });
+    frontmatterRef.current = frontmatter;
+    separatorRef.current = separator;
+    replaceContentAndResetHistory(editorInstance, doc);
+    markdownSourceRef.current = createMarkdownSourceSnapshot(layout, editorInstance.getJSON());
+    loadedRef.current = { path, text: raw, doc: editorInstance.state.doc };
+    visualDirtyRef.current = false;
+    refreshVisualProjectIntelligence(editorInstance, intelligenceRevisionRef.current);
+    setWysiwygDocument(editorInstance, path);
+  }, []);
+
+  const endLive = useCallback(() => {
+    const live = liveRef.current;
+    if (!live) return;
+    liveRef.current = null;
+    live.handle.end();
+  }, []);
+
+  const handBack = useCallback((editorInstance: Editor, path: string, state: NoteHandBack) => {
+    if (editorInstance.isDestroyed) return;
+    const text = state.edited ? sourceOf(editorInstance.state.doc) : state.text;
+    loadedRef.current = { path, text, doc: editorInstance.state.doc };
+    if (state.edited) {
+      if (collabDocumentSession(path) === null) {
+        useFilesStore.getState().setContent(path, text, { bumpVersion: true });
+        return;
+      }
+      void logError("visual live editing", new Error(`Unsent Visual edits to ${path} were dropped.`));
+      toast.info(i18n.t(($) => $.collab.access.unsentReadOnly, { path }));
+    }
+    useFilesStore.getState().bumpDocVersion();
+  }, [sourceOf]);
+
+  const beginLive = useCallback((
+    editorInstance: Editor,
+    path: string,
+    document: DocumentSession,
+    session: LiveNoteSession,
+    port: NoteLivePort,
+  ) => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    const text = document.text();
+    const loaded = loadedRef.current;
+    if (loaded?.path !== path || (loaded.text !== text && !visualDirtyRef.current)) {
+      load(editorInstance, path, text);
+    }
+    const shown = loadedRef.current ?? { path, text, doc: editorInstance.state.doc };
+    const baseline = { text: shown.text, serialized: sourceOf(shown.doc) };
+    visualDirtyRef.current = false;
+    const host = {
+      sourceOf,
+      adopt: (shared: { text: string; frontmatter: string; snapshot: MarkdownSourceSnapshot | null }) => {
+        frontmatterRef.current = shared.frontmatter;
+        separatorRef.current = splitMarkdownFrontMatter(shared.text).separator;
+        markdownSourceRef.current = shared.snapshot;
+      },
+    };
+    const adapter = createNoteLiveEditor(
+      editorInstance,
+      () => host,
+      baseline.text,
+      () => wysiwygRef.current,
+      VISUAL_DIALECT,
+    );
+    let ended = false;
+    let handle: NoteLiveHandle;
+    try {
+      handle = port.bind({
+        noteId: session.projectId,
+        path,
+        session,
+        document,
+        editor: adapter,
+        baseline,
+        onEnd: (state) => {
+          ended = true;
+          if (liveRef.current?.adapter === adapter) liveRef.current = null;
+          handBack(editorInstance, path, state);
+        },
+      });
+    } catch (error) {
+      void logError("visual live editing", error);
+      return;
+    }
+    if (!ended) liveRef.current = { path, document, session, port, handle, adapter };
+  }, [handBack, load, sourceOf]);
 
   // WebKit restores ProseMirror's DOM selection after a persisted Visual
   // editor remount. That platform operation can finish after React layout and
@@ -297,7 +441,11 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     const unregisterMutationOwner = editor ? registerEditorMutationOwner({
       projectId: () => projectIdRef.current,
       setLocked: (locked) => editor.setEditable(!locked && !visualReadOnly(projectIdRef.current), false),
-      reconcile: () => synchronizeRef.current(),
+      reconcile: () => {
+        const live = liveRef.current;
+        if (live) live.handle.resync();
+        else synchronizeRef.current();
+      },
     }) : undefined;
     setWysiwygFlushController(
       editor
@@ -390,89 +538,48 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     }
   }, [editor, intelligenceState, activePath]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the document version retriggers the check for a new or detached live session, which the files store doesn't expose as state.
+  useEffect(() => {
+    if (!editor) return;
+    const document =
+      wysiwyg && activePath && liveProject && livePort ? collabDocumentSession(activePath) : null;
+    const live = liveRef.current;
+    if (
+      live &&
+      (live.path !== activePath || live.document !== document || live.session !== liveProject || live.port !== livePort)
+    ) {
+      endLive();
+    }
+    if (document && activePath && liveProject && livePort && !liveRef.current) {
+      beginLive(editor, activePath, document, liveProject, livePort);
+    }
+  }, [beginLive, editor, endLive, wysiwyg, activePath, liveProject, livePort, docVersion]);
+
+  useEffect(() => endLive, [endLive]);
+
+  useCompositionSettled(editor ?? null, () => liveRef.current?.handle.compositionEnd());
+
   synchronizeRef.current = () => {
     const activePath = useFilesStore.getState().activePath;
-    if (!editor) return;
+    if (!editor || liveRef.current) return;
     if (!activePath) {
       visualDirtyRef.current = false;
-      lastSyncedPathRef.current = null;
-      lastSyncedTextRef.current = "";
+      loadedRef.current = null;
       markdownSourceRef.current = null;
       replaceContentAndResetHistory(editor, { type: "doc", content: [{ type: "paragraph" }] });
       setWysiwygDocument(editor, null);
       return;
     }
     const raw = useFilesStore.getState().files[activePath]?.content ?? "";
-    if (
-      activePath === lastSyncedPathRef.current &&
-      raw === lastSyncedTextRef.current
-    ) {
-      return;
-    }
-    lastSyncedTextRef.current = raw;
-    lastSyncedPathRef.current = activePath;
-    visualDirtyRef.current = false;
-    if (isMarkdownPath(activePath)) {
-      const { doc, frontmatter, layout } = parseMarkdownBody(raw, {
-        preservedInlineRanges: markdownMathRanges(raw),
-      });
-      frontmatterRef.current = frontmatter;
-      latexSplitRef.current = null;
-      preambleRef.current = "";
-      setPreamble("");
-      setHasDocumentEnv(false);
-      setWysiwygDocumentContext(null);
-      replaceContentAndResetHistory(editor, doc);
-      markdownSourceRef.current = createMarkdownSourceSnapshot(layout, editor.getJSON());
-    } else {
-      markdownSourceRef.current = null;
-      const split = splitLatexDocument(raw);
-      latexSplitRef.current = split;
-      preambleRef.current = split.preamble;
-      setPreamble(split.preamble);
-      setHasDocumentEnv(split.hasDocumentEnv);
-      frontmatterRef.current = "";
-      const context = documentContextForPreamble(split.preamble);
-      setWysiwygDocumentContext(context);
-      replaceContentAndResetHistory(
-        editor,
-        parseLatexBody(split.body, {
-          preservedInlineRanges: scanMathExpressions(split.body, {
-            format: "latex",
-          }).map(({ from, to }) => ({ from, to })),
-          theoremEnvironments: context.theoremEnvironments,
-        }),
-      );
-    }
-    refreshVisualProjectIntelligence(
-      editor,
-      intelligenceRevisionRef.current,
-    );
-    setWysiwygDocument(editor, activePath);
+    const loaded = loadedRef.current;
+    if (loaded?.path === activePath && loaded.text === raw) return;
+    load(editor, activePath, raw);
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: path, visibility and document version deliberately retrigger the imperative editor synchronization.
   useEffect(() => {
     if (!editor) return;
     synchronizeRef.current();
   }, [editor, activePath, wysiwyg, docVersion]);
-
-  useEffect(() => {
-    if (!editor || !collabReadOnly || !wysiwyg) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const stop = useFilesStore.subscribe((state, previous) => {
-      const path = state.activePath;
-      if (!path || state.files[path]?.content === previous.files[path]?.content) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        synchronizeRef.current();
-      }, FOLLOW_REMOTE_MS);
-    });
-    return () => {
-      stop();
-      if (timer) clearTimeout(timer);
-    };
-  }, [editor, collabReadOnly, wysiwyg]);
 
   useEffect(() => {
     if (!editor || !activePath) return;
@@ -496,75 +603,13 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     };
   }, [editor, activePath, projectId, saveFile, flush]);
 
-  const onPreambleChange = (value: string) => {
-    if (isEditorMutationLocked(projectIdRef.current) || visualReadOnly(projectIdRef.current)) return;
-    setPreamble(value);
-    preambleRef.current = value;
-    setWysiwygDocumentContext(documentContextForPreamble(value));
-    visualDirtyRef.current = true;
-    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
-    flushTimerRef.current = setTimeout(() => {
-      if (editor) flush(editor);
-    }, FLUSH_DEBOUNCE_MS);
-  };
-
   return (
     <div className="flex h-full flex-col">
-      {collabReadOnly && wysiwyg ? (
-        <output
-          data-testid="visual-shared-notice"
-          className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-sm text-muted-foreground"
-        >
-          <span>{t(($) => $.editor.visual.sharedReadOnly)}</span>
-          <Button type="button" variant="outline" size="xs" onClick={() => setActiveFileMode("code")}>
-            {t(($) => $.editor.toolbar.switchToSource)}
-          </Button>
-        </output>
-      ) : null}
+      {liveLock && wysiwyg ? <VisualLiveNotice lock={liveLock} /> : null}
       <div data-keep-scroll data-visual-document className="wysiwyg-content flex min-h-0 flex-1 flex-col overflow-auto">
-        {hasDocumentEnv && (
-          <div className="mx-auto w-full max-w-[42rem] px-8 pt-6">
-            <div className="rounded-md border border-border">
-              <button
-                type="button"
-                onClick={() => setShowPreamble((v) => !v)}
-                className="flex w-full items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showPreamble
-                  ? t(($) => $.editor.visual.hidePreamble)
-                  : t(($) => $.editor.visual.showPreamble)}
-                {showPreamble ? (
-                  <ChevronUp className="size-3.5" />
-                ) : (
-                  <ChevronDown className="size-3.5" />
-                )}
-              </button>
-              {showPreamble && (
-                <textarea
-                  value={preamble}
-                  readOnly={readOnly}
-                  onChange={(e) => onPreambleChange(e.target.value)}
-                  spellCheck={false}
-                  rows={Math.min(
-                    Math.max(preamble.split("\n").length, 3),
-                    20,
-                  )}
-                  className="w-full resize-none border-t border-border bg-muted/40 px-3 py-2 font-mono text-xs text-foreground"
-                />
-              )}
-            </div>
-          </div>
-        )}
         <div className="flex-1 px-8 py-6">
           <EditorContent editor={editor} />
         </div>
-        {hasDocumentEnv && (
-          <div className="mx-auto w-full max-w-[42rem] px-8 pb-6">
-            <div className="rounded-md border border-border px-3 py-2 text-center text-xs text-muted-foreground">
-              {t(($) => $.editor.visual.endOfDocument)}
-            </div>
-          </div>
-        )}
       </div>
       {editor && proofreadingIssue && wysiwyg && (
         <ProofreadingPopover

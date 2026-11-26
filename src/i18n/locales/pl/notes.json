@@ -1210,6 +1210,7 @@
     "elsewhere": "Edycja na żywo jest włączona w innej notatce",
     "makeLive": "Edytuj na żywo tutaj",
     "viewOnly": "Możesz czytać tę notatkę, ale nie możesz jej edytować.",
+    "suggesting": "Sugerowanie jest włączone, więc nie możesz tu edytować tej notatki. Wyłącz sugerowanie, aby ją edytować.",
     "someone": "Ktoś",
     "unsentReadOnly": "Twoich ostatnich zmian w tej notatce nie wysłano, bo możesz ją teraz tylko wyświetlać.",
     "unsentRefused": "Oleafly nie mógł wysłać Twoich ostatnich zmian w tej notatce, więc zostały odrzucone."

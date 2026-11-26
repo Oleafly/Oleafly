@@ -839,6 +839,10 @@ pub fn project_files(root: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineErr
     files_in(root, Scope::Library)
 }
 
+pub fn online_files(project: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
+    files_in(project, Scope::Folder)
+}
+
 fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
     let mut found = FoundFiles::default();
     let mut stack = vec![(root.to_path_buf(), String::new())];

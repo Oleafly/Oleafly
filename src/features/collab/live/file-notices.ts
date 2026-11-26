@@ -50,6 +50,7 @@ export interface FileNoticesState {
   broughtIn: string | null;
   notAllowed: readonly string[];
   keptAway: readonly string[];
+  linkedKept: readonly string[];
   retry: () => Promise<void>;
   dismissUpload: (path: string) => void;
   dismissKept: (id: string) => void;
@@ -58,9 +59,12 @@ export interface FileNoticesState {
   dismissBroughtIn: () => void;
   dismissNotAllowed: () => void;
   dismissKeptAway: () => void;
+  dismissLinkedKept: () => void;
 }
 
-type TreeNoticeKind = "not_allowed" | "kept_away";
+type TreeNoticeKind = "not_allowed" | "kept_away" | "linked_kept";
+
+const TREE_KEYS = { not_allowed: "notAllowed", kept_away: "keptAway", linked_kept: "linkedKept" } as const;
 
 const NO_OFFER = { offer: null, bringing: false, offerFailure: null, broughtIn: null } as const;
 
@@ -68,7 +72,7 @@ const NO_UPLOADS: readonly CollabUploadFile[] = [];
 const NO_PROGRESS: Readonly<Record<string, UploadProgress>> = {};
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
 const NO_PATHS: readonly string[] = [];
-const NO_TREE = { notAllowed: NO_PATHS, keptAway: NO_PATHS } as const;
+const NO_TREE = { notAllowed: NO_PATHS, keptAway: NO_PATHS, linkedKept: NO_PATHS } as const;
 const NO_FILES = { uploads: NO_UPLOADS, progress: NO_PROGRESS, downloads: NO_PROGRESS, kept: NO_KEPT, ...NO_TREE } as const;
 const NOTHING = { ...NO_FILES, retrying: false, ...NO_OFFER } as const;
 
@@ -118,6 +122,7 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
   dismissBroughtIn: () => set({ broughtIn: null }),
   dismissNotAllowed: () => set({ notAllowed: NO_PATHS }),
   dismissKeptAway: () => set({ keptAway: NO_PATHS }),
+  dismissLinkedKept: () => set({ linkedKept: NO_PATHS }),
 }));
 
 export function withPaths(known: readonly string[], paths: readonly string[]): readonly string[] {
@@ -127,7 +132,7 @@ export function withPaths(known: readonly string[], paths: readonly string[]): r
 
 export function treeNoticed(projectId: string, kind: TreeNoticeKind, paths: readonly string[]): void {
   if (useFilesStore.getState().projectId !== projectId) return;
-  const key = kind === "not_allowed" ? "notAllowed" : "keptAway";
+  const key = TREE_KEYS[kind];
   useFileNotices.setState((state) =>
     state.projectId === projectId ? { [key]: withPaths(state[key], paths) } : { projectId, ...NO_FILES, [key]: paths },
   );

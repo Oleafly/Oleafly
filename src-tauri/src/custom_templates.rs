@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use tauri::AppHandle;
 
@@ -10,7 +10,7 @@ use crate::templates::{TemplateLicense, TemplateManifest, TemplateRequires, CUST
 
 const FILES_DIR: &str = "files";
 const STAGING_PREFIX: &str = ".staging-import-";
-pub(crate) const DOWNLOAD_PREFIX: &str = ".download-";
+pub(crate) const DOWNLOAD_PREFIX: &str = ".download";
 const STALE_AFTER: Duration = Duration::from_secs(24 * 60 * 60);
 const NAME_LIMIT: usize = 120;
 const DESCRIPTION_LIMIT: usize = 500;
@@ -45,7 +45,7 @@ pub(crate) fn publish_template(
 ) -> Result<String, String> {
     let name = clean_name(&draft.name)?;
     std::fs::create_dir_all(custom_root).map_err(|error| error.to_string())?;
-    sweep_stale_staging(custom_root);
+    crate::staging::sweep_stale(custom_root, &[STAGING_PREFIX, DOWNLOAD_PREFIX], STALE_AFTER);
     let staging = custom_root.join(format!(
         "{STAGING_PREFIX}{}-{}",
         std::process::id(),
@@ -264,44 +264,6 @@ fn make_writable(dir: &Path) -> Result<(), String> {
 #[cfg(not(windows))]
 fn make_writable(_dir: &Path) -> Result<(), String> {
     Ok(())
-}
-
-fn sweep_stale_staging(custom_root: &Path) {
-    let Ok(entries) = std::fs::read_dir(custom_root) else {
-        return;
-    };
-    let now = SystemTime::now();
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if !name.starts_with(STAGING_PREFIX) && !name.starts_with(DOWNLOAD_PREFIX) {
-            continue;
-        }
-        let stale = entry
-            .metadata()
-            .and_then(|metadata| metadata.modified())
-            .ok()
-            .and_then(|modified| now.duration_since(modified).ok())
-            .is_some_and(|age| age > STALE_AFTER);
-        if !stale {
-            continue;
-        }
-        let path = entry.path();
-        let _ = if path.is_dir() {
-            std::fs::remove_dir_all(&path)
-        } else {
-            std::fs::remove_file(&path)
-        };
-    }
-}
-
-pub(crate) fn download_path(custom_root: &Path) -> Result<PathBuf, String> {
-    std::fs::create_dir_all(custom_root).map_err(|error| error.to_string())?;
-    Ok(custom_root.join(format!(
-        "{DOWNLOAD_PREFIX}{}-{}.zip",
-        std::process::id(),
-        STAGING.fetch_add(1, Ordering::SeqCst)
-    )))
 }
 
 pub(crate) fn decode_preview(base64: Option<&str>) -> Option<Vec<u8>> {

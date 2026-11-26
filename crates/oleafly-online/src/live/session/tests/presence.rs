@@ -277,10 +277,11 @@ async fn membership_change_refreshes_roles() {
     let live = rig.live("alice", &port).await;
     let vera = rig.user_id("vera");
     let role_of_vera = || {
-        live.members()
+        live.people()
+            .people
             .into_iter()
-            .find(|member| member.id == vera)
-            .map(|member| member.role)
+            .find(|person| person.id == vera)
+            .and_then(|person| person.role)
     };
     assert_eq!(role_of_vera(), Some(Role::Viewer));
     rig.mock

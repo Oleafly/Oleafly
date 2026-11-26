@@ -12,8 +12,8 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
-import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, person, projectMember, shareInfo } from "../tests/fixtures";
-import { commentMessage, commentsStatus, commentThread, INTRO_FILE, threadList } from "../tests/comment-fixtures";
+import { LIVE_SEEDS, liveReset, OVERLEAF_SEED, overleafLink, projectMember } from "../tests/fixtures";
+import { commentFixtures, commentsStatus, fakeSession, threadList } from "../tests/comment-fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabCommentsStatus: vi.fn(),
@@ -58,7 +58,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-vi.mock("@/components/editor/cm/comments-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setCommentsEditorExtension: (extension: unknown) => {
     mocks.installed(extension);
     return mocks.released;
@@ -81,13 +82,6 @@ import {
   useComments,
 } from "./comments-store";
 
-const MEMBERS = [projectMember(person(), "editor"), projectMember(BOB, "owner"), projectMember(CAROL, "viewer")];
-const COMMENT_MEMBERS = [
-  { accountId: ALICE_ID, displayName: "Alice Chen", login: "alice-chen" },
-  { accountId: BOB_ID, displayName: "Bob Smith", login: "bobsmith" },
-  { accountId: CAROL_ID, displayName: "Carol Diaz", login: "carol" },
-];
-
 let stop: (() => void) | null = null;
 
 function start() {
@@ -96,10 +90,6 @@ function start() {
 
 function emit(event: string, payload: unknown) {
   act(() => mocks.listeners.get(event)?.({ payload }));
-}
-
-function changed(overrides: Partial<CollabCommentsChanged> = {}): CollabCommentsChanged {
-  return { projectId: "paper", fileIds: [INTRO_FILE], paths: ["intro.tex"], mentioned: [], local: false, ...overrides };
 }
 
 async function loaded(count: number) {
@@ -116,33 +106,6 @@ function watchShown(): { shown: string[]; stop: () => void } {
   return { shown, stop };
 }
 
-function fakeSession(revision: number, synchronized = true) {
-  const listeners = new Set<() => void>();
-  let release: () => void = () => undefined;
-  const session = {
-    phase: "open",
-    revision,
-    synchronized,
-    settled: vi.fn(() =>
-      session.synchronized ? Promise.resolve() : new Promise<void>((resolve) => (release = resolve)),
-    ),
-    subscribe: vi.fn((listener: () => void) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }),
-    catchUp(next: number) {
-      session.revision = next;
-      for (const listener of [...listeners]) listener();
-    },
-    finishTyping(next: number) {
-      session.synchronized = true;
-      session.revision = next;
-      release();
-    },
-  };
-  return session;
-}
-
 beforeAll(async () => {
   await loadNamespace("collab");
 });
@@ -157,13 +120,6 @@ beforeEach(() => {
   mocks.session.mockReturnValue(null);
   useSettingsStore.setState({ railTab: "files", showTree: true });
   useFilesStore.setState({ projectId: "paper", activePath: "intro.tex" });
-  useCollabLiveStore.setState({
-    projectId: "paper",
-    share: shareInfo({ project_id: "paper", role: "editor", account_id: ALICE_ID }),
-    role: "editor",
-    status: { state: "online" },
-    members: MEMBERS,
-  });
   useCollabActivity.getState().open("paper");
 });
 
@@ -171,11 +127,29 @@ afterEach(() => {
   stop?.();
   stop = null;
   useCollabActivity.getState().open(null);
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
+  useCollabLiveStore.setState(liveReset());
   useCommentsRail.setState({ visible: false, unread: false, canCompose: false, request: null, reveal: null });
 });
 
-describe("comments for a shared project", () => {
+describe.each(LIVE_SEEDS)("comments for a project live on the $name backend", (seed) => {
+  const ALICE_ID = seed.alice.account_id;
+  const BOB_ID = seed.bob.account_id;
+  const { commentMessage, commentThread, INTRO_FILE } = commentFixtures(seed);
+  const MEMBERS = [projectMember(seed.alice, "editor"), projectMember(seed.bob, "owner"), projectMember(seed.carol, "viewer")];
+  const COMMENT_MEMBERS = [seed.alice, seed.bob, seed.carol].map((who) => ({
+    accountId: who.account_id,
+    displayName: who.display_name,
+    login: who.login,
+  }));
+
+  function changed(overrides: Partial<CollabCommentsChanged> = {}): CollabCommentsChanged {
+    return { projectId: "paper", fileIds: [INTRO_FILE], paths: ["intro.tex"], mentioned: [], local: false, ...overrides };
+  }
+
+  beforeEach(() => {
+    useCollabLiveStore.setState({ ...seed.live("paper", "editor"), status: { state: "online" }, members: MEMBERS });
+  });
+
   it("shows comments only while the server and the project allow them and keeps the threads when hidden", async () => {
     start();
     await waitFor(() => expect(useCommentsRail.getState()).toMatchObject({ visible: true, canCompose: true }));
@@ -187,7 +161,9 @@ describe("comments for a shared project", () => {
     emit("collab-comments-status", { projectId: "paper", status: commentsStatus() });
     expect(useCommentsRail.getState().visible).toBe(true);
     emit("collab-comments-status", { projectId: "paper", status: commentsStatus({ serverAllowed: false, canComment: false }) });
-    expect(useCommentsRail.getState().visible).toBe(false);
+    expect(useCommentsRail.getState()).toMatchObject({ visible: seed.name === "overleaf", canCompose: false });
+    expect(mocks.released).toHaveBeenCalledTimes(2);
+    expect(useComments.getState().threads).toEqual([]);
     expect(mocks.collabCommentThreadDelete).not.toHaveBeenCalled();
     expect(mocks.collabCommentDelete).not.toHaveBeenCalled();
   });
@@ -232,7 +208,7 @@ describe("comments for a shared project", () => {
 
   it("offers writing to commenters and reviewers", async () => {
     for (const role of ["commenter", "reviewer"] as const) {
-      useCollabLiveStore.setState({ role, share: shareInfo({ project_id: "paper", role, account_id: ALICE_ID }) });
+      useCollabLiveStore.setState(seed.live("paper", role));
       start();
       await waitFor(() => expect(useCommentsRail.getState()).toMatchObject({ visible: true, canCompose: true }));
       stop?.();
@@ -440,11 +416,11 @@ describe("comments for a shared project", () => {
     expect(useComments.getState().focus).toBe(focus + 1);
   });
 
-  it("clears everything when the project stops being shared", async () => {
+  it("clears everything when the project stops being live", async () => {
     mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", { from: 0, to: 4 })]));
     start();
     await loaded(1);
-    act(() => useCollabLiveStore.setState({ share: null }));
+    act(() => useCollabLiveStore.setState(seed.unlive()));
     expect(useCommentsRail.getState()).toMatchObject({ visible: false, canCompose: false });
     expect(useComments.getState().threads).toEqual([]);
   });
@@ -672,5 +648,77 @@ describe("comments for a shared project", () => {
     emit("collab-comments-changed", changed());
     await waitFor(() => expect(useComments.getState().threads[0].messages).toHaveLength(2));
     expect(useCommentsRail.getState().unread).toBe(true);
+  });
+});
+
+describe("comments on an Overleaf project", () => {
+  const { commentThread } = commentFixtures(OVERLEAF_SEED);
+  const NO_MODULE = commentsStatus({
+    serverAllowed: false,
+    canComment: false,
+    typing: false,
+    suggestionThreads: false,
+  });
+
+  beforeEach(() => {
+    useCollabLiveStore.setState({ ...OVERLEAF_SEED.live("paper", "editor"), status: { state: "online" } });
+  });
+
+  it("keeps the Comments tab while live on a server without comments, and offers no comment anywhere", async () => {
+    mocks.collabCommentsStatus.mockResolvedValue(NO_MODULE);
+    start();
+    await waitFor(() => expect(useCommentsRail.getState().visible).toBe(true));
+    expect(useCommentsRail.getState().canCompose).toBe(false);
+    expect(mocks.installed).not.toHaveBeenCalled();
+    expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
+    act(() => useCommentsRail.setState({ request: { path: "intro.tex", from: 0, to: 3, quote: "The" } }));
+    expect(useComments.getState().draft).toBeNull();
+    act(() => useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 1_000 } }));
+    expect(useCommentsRail.getState().visible).toBe(true);
+    act(() => useCollabLiveStore.setState({ status: { state: "ended", reason: "stopped" } }));
+    expect(useCommentsRail.getState().visible).toBe(false);
+  });
+
+  it("shows no comments to someone who joined with a view link, and shows them once that changes", async () => {
+    useCollabLiveStore.setState({ restricted: true, role: "viewer" });
+    mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", { from: 0, to: 4 })]));
+    start();
+    await waitFor(() => expect(useComments.getState().status).toMatchObject({ projectEnabled: false, canComment: false }));
+    expect(useCommentsRail.getState().visible).toBe(false);
+    expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
+    act(() => useCollabLiveStore.setState({ restricted: false }));
+    await loaded(1);
+    expect(useCommentsRail.getState().visible).toBe(true);
+  });
+
+  it("asks for the status only once the session has started, and takes the status the session sends before that", async () => {
+    useCollabLiveStore.setState({ role: null, selfId: null, status: null });
+    start();
+    await act(async () => undefined);
+    expect(useComments.getState().projectId).toBe("paper");
+    expect(mocks.collabCommentsStatus).not.toHaveBeenCalled();
+    emit("collab-comments-status", { projectId: "paper", status: commentsStatus() });
+    await waitFor(() => expect(useCommentsRail.getState().visible).toBe(true));
+    expect(useCommentsRail.getState().canCompose).toBe(false);
+    act(() => useCollabLiveStore.setState({ role: "editor", status: { state: "online" } }));
+    await act(async () => undefined);
+    expect(mocks.collabCommentsStatus).not.toHaveBeenCalled();
+    act(() => useCollabLiveStore.setState({ selfId: OVERLEAF_SEED.alice.account_id }));
+    await waitFor(() => expect(mocks.collabCommentsStatus).toHaveBeenCalledExactlyOnceWith("paper"));
+    await waitFor(() => expect(useCommentsRail.getState().canCompose).toBe(true));
+  });
+
+  it("waits for the link before asking, and drops everything when live editing pauses", async () => {
+    useCollabLiveStore.setState({ overleaf: null });
+    start();
+    await act(async () => undefined);
+    expect(mocks.collabCommentsStatus).not.toHaveBeenCalled();
+    expect(useComments.getState().projectId).toBeNull();
+    act(() => useCollabLiveStore.setState({ overleaf: overleafLink() }));
+    await waitFor(() => expect(useCommentsRail.getState().visible).toBe(true));
+    expect(mocks.collabCommentsStatus).toHaveBeenCalledWith("paper");
+    act(() => useCollabLiveStore.setState({ overleaf: overleafLink({ paused: true }) }));
+    expect(useComments.getState().projectId).toBeNull();
+    expect(useCommentsRail.getState().visible).toBe(false);
   });
 });

@@ -68,7 +68,7 @@ afterEach(() => {
   setEditorView(null);
   editor.destroy();
   view.destroy();
-  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false });
+  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, suggesting: false });
 });
 
 describe("palette formatting in Visual mode", () => {
@@ -84,8 +84,15 @@ describe("palette formatting in Visual mode", () => {
     expect(view.state.doc.toString()).toBe(SOURCE);
   });
 
+  it("formats Visual's selection for an editor of a shared project", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: false, locked: false });
+    runEngineFormatting("bold");
+    await vi.waitFor(() => expect(visual()).toBe("First para.\n\nSecond para **word**."));
+  });
+
   it.each([
-    ["read-only in a shared project", () => useCollabEditorGate.setState({ projectId: "p1", viewer: false, locked: false })],
+    ["read-only for a viewer of a shared project", () => useCollabEditorGate.setState({ projectId: "p1", viewer: true, locked: true })],
+    ["read-only while my edits are suggestions", () => useCollabEditorGate.setState({ projectId: "p1", suggesting: true })],
     ["locked for edits", () => editor.setEditable(false, false)],
   ])("does nothing while Visual is %s", async (_, lock) => {
     lock();

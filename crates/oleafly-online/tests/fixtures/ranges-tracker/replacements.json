@@ -1,0 +1,75 @@
+{
+  "source": "libraries/ranges-tracker/index.cjs in overleaf/overleaf, transcribed and run by hand",
+  "scenarios": [
+    {
+      "name": "a tracked replacement rejected whole, as the web editor sends it",
+      "text": "hello abc world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 6, "d": "abc"}, {"p": 6, "i": "X"}], "text": "hello X world", "changes": [{"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 6, "d": "X", "u": true}, {"p": 6, "i": "abc", "u": true}], "text": "hello abc world", "changes": []}
+      ]
+    },
+    {
+      "name": "a tracked replacement rejected whole by someone who is tracking",
+      "text": "hello abc world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 6, "d": "abc"}, {"p": 6, "i": "X"}], "text": "hello X world", "changes": [{"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": "aaaaaaaaaaaaaaaa03", "op": [{"p": 6, "d": "X", "u": true}, {"p": 6, "i": "abc", "u": true}], "text": "hello abc world", "changes": []}
+      ]
+    },
+    {
+      "name": "a tracked replacement undone by its author while tracking",
+      "text": "hello abc world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 6, "d": "abc"}, {"p": 6, "i": "X"}], "text": "hello X world", "changes": [{"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa03", "op": [{"p": 6, "d": "X", "u": true}, {"p": 6, "i": "abc", "u": true}], "text": "hello abc world", "changes": []}
+      ]
+    },
+    {
+      "name": "the insert sent before the delete leaves the marker, and rejecting that doubles the text",
+      "text": "hello abc world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 6, "d": "abc"}, {"p": 6, "i": "X"}], "text": "hello X world", "changes": [{"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 6, "i": "abc", "u": true}, {"p": 9, "d": "X", "u": true}], "text": "hello abc world", "changes": [{"p": 9, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 9, "i": "abc", "u": true}], "text": "hello abcabc world", "changes": []}
+      ]
+    },
+    {
+      "name": "the insert sent before the delete leaves two changes when the author undoes it",
+      "text": "hello abc world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 6, "d": "abc"}, {"p": 6, "i": "X"}], "text": "hello X world", "changes": [{"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa03", "op": [{"p": 6, "i": "abc", "u": true}, {"p": 9, "d": "X", "u": true}], "text": "hello abc world", "changes": [{"p": 6, "i": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 9, "d": "abc", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]}
+      ]
+    },
+    {
+      "name": "a replacement beside another tracked delete, rejected in one update, swallows the other marker",
+      "text": "hello abc def world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 10, "d": "def"}, {"p": 10, "i": "X"}], "text": "hello abc X world", "changes": [{"p": 10, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 11, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa02", "op": [{"p": 6, "d": "abc "}], "text": "hello X world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}, {"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 6, "d": "X", "u": true}, {"p": 6, "i": "def", "u": true}], "text": "hello def world", "changes": [{"p": 9, "d": "abc def", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}]}
+      ]
+    },
+    {
+      "name": "a replacement beside another tracked delete, its text restored before its insert is removed",
+      "text": "hello abc def world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 10, "d": "def"}, {"p": 10, "i": "X"}], "text": "hello abc X world", "changes": [{"p": 10, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 11, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa02", "op": [{"p": 6, "d": "abc "}], "text": "hello X world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}, {"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 7, "i": "def", "u": true}], "text": "hello Xdef world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}, {"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}]},
+        {"user": "bob", "tc": null, "op": [{"p": 6, "d": "X", "u": true}], "text": "hello def world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}]}
+      ]
+    },
+    {
+      "name": "the same, by someone who is tracking",
+      "text": "hello abc def world",
+      "steps": [
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa01", "op": [{"p": 10, "d": "def"}, {"p": 10, "i": "X"}], "text": "hello abc X world", "changes": [{"p": 10, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 11, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "carol", "tc": "aaaaaaaaaaaaaaaa02", "op": [{"p": 6, "d": "abc "}], "text": "hello X world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}, {"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}, {"p": 7, "d": "def", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000001"}]},
+        {"user": "bob", "tc": "aaaaaaaaaaaaaaaa03", "op": [{"p": 7, "i": "def", "u": true}], "text": "hello Xdef world", "changes": [{"p": 6, "d": "abc ", "user": "carol", "id": "aaaaaaaaaaaaaaaa02000001"}, {"p": 6, "i": "X", "user": "carol", "id": "aaaaaaaaaaaaaaaa01000002"}]},
+        {"user": "bob", "tc": "aaaaaaaaaaaaaaaa04", "op": [{"p": 6, "d": "X", "u": true}], "text": "hello def world", "changes": [{"p": 6, "d": "abc ", "user": "bob", "id": "aaaaaaaaaaaaaaaa02000001"}]}
+      ]
+    }
+  ]
+}

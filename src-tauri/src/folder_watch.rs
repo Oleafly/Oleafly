@@ -1,34 +1,20 @@
 use crate::collab::guard::{MassChangeGuard, SyncPauseHost, SyncResumed};
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
-use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex, PoisonError};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 pub(crate) const FOLDER_CHANGED_EVENT: &str = "project-folder-changed";
 pub(crate) const DEBOUNCE: Duration = Duration::from_millis(300);
 const MAX_LATENCY: Duration = Duration::from_millis(1_500);
 const NETWORK_POLL_INTERVAL: Duration = Duration::from_secs(3);
 const MAX_BATCH_PATHS: usize = 256;
-const OWN_WRITE_WINDOW: Duration = Duration::from_secs(10);
-const MAX_OWN_WRITES: usize = 512;
 const ROOT_POLL: Duration = Duration::from_secs(1);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FolderChange {
-    pub project_id: String,
-    pub paths: Vec<String>,
-    pub rescan: bool,
-    pub structural: bool,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub renamed: Vec<(String, String)>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub deleted: Vec<String>,
-}
+pub use oleafly_live::live::payloads::FolderChange;
 
 pub(crate) type ChangeSink = Arc<dyn Fn(FolderChange) + Send + Sync>;
 
@@ -281,82 +267,9 @@ fn wake_next(next: Option<(Restart, u64)>) {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Fingerprint {
-    len: u64,
-    modified: Option<SystemTime>,
-    identity: u64,
-}
-
-struct OwnWrite {
-    path: PathBuf,
-    fingerprint: Option<Fingerprint>,
-    at: Instant,
-}
-
-static OWN_WRITES: Mutex<Vec<OwnWrite>> = Mutex::new(Vec::new());
-
-fn own_writes() -> std::sync::MutexGuard<'static, Vec<OwnWrite>> {
-    OWN_WRITES.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
-#[cfg(unix)]
-fn file_identity(metadata: &std::fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt as _;
-    metadata.ino()
-}
-
-#[cfg(not(unix))]
-fn file_identity(_metadata: &std::fs::Metadata) -> u64 {
-    0
-}
-
-fn fingerprint(path: &Path) -> Option<Fingerprint> {
-    let metadata = std::fs::symlink_metadata(path).ok()?;
-    metadata.is_file().then(|| Fingerprint {
-        len: metadata.len(),
-        modified: metadata.modified().ok(),
-        identity: file_identity(&metadata),
-    })
-}
-
-pub(crate) fn note_own_write(path: &Path) {
-    let Some(fingerprint) = fingerprint(path) else {
-        return;
-    };
-    remember_own_change(path, Some(fingerprint));
-}
-
-pub(crate) fn note_own_removal(path: &Path) {
-    remember_own_change(path, None);
-}
-
-fn remember_own_change(path: &Path, fingerprint: Option<Fingerprint>) {
-    let now = Instant::now();
-    let mut writes = own_writes();
-    writes.retain(|write| now.duration_since(write.at) < OWN_WRITE_WINDOW && write.path != path);
-    if writes.len() >= MAX_OWN_WRITES {
-        writes.remove(0);
-    }
-    writes.push(OwnWrite {
-        path: path.to_path_buf(),
-        fingerprint,
-        at: now,
-    });
-}
-
-pub(crate) fn is_own_write(path: &Path) -> bool {
-    let now = Instant::now();
-    let mut writes = own_writes();
-    writes.retain(|write| now.duration_since(write.at) < OWN_WRITE_WINDOW);
-    writes
-        .iter()
-        .find(|write| write.path == path)
-        .is_some_and(|write| {
-            fingerprint(path) == write.fingerprint
-                && !(write.fingerprint.is_none() && path.exists())
-        })
-}
+pub(crate) use oleafly_core::own_writes::{
+    is_own as is_own_write, note_removal as note_own_removal, note_write as note_own_write,
+};
 
 fn is_structural(kind: &EventKind) -> bool {
     !matches!(
@@ -381,7 +294,7 @@ pub(crate) fn relevant_path(root: &Path, path: &Path) -> Option<String> {
     }
     if last.eq_ignore_ascii_case(".git")
         || last.eq_ignore_ascii_case(".DS_Store")
-        || crate::checkpoint_capture::is_oleafly_owned(last)
+        || oleafly_core::exclude::is_oleafly_owned_name(last)
         || is_replace_file_scratch(last)
     {
         return None;
@@ -1090,6 +1003,7 @@ mod tests {
     use super::*;
     use notify::event::{AccessKind, CreateKind, DataChange, MetadataKind, RemoveKind, RenameMode};
     use std::sync::mpsc;
+    use std::time::SystemTime;
 
     fn event(kind: EventKind, paths: &[&Path]) -> Event {
         let mut event = Event::new(kind);
@@ -1537,7 +1451,7 @@ mod tests {
             .write(true)
             .open(root.join("main.tex"))
             .unwrap()
-            .set_modified(std::time::SystemTime::now() - Duration::from_secs(60))
+            .set_modified(SystemTime::now() - Duration::from_secs(60))
             .unwrap();
         let (sink, receiver) = recorder();
 

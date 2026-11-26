@@ -71,7 +71,7 @@ import { registerCommand, type AppContext } from "@oleafly/registry";
 import type { Editor, TiptapEditorHTMLElement } from "@tiptap/core";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import type { MarkdownTarget } from "@/components/editor/markdown-model";
-import { collabVisualReadOnly } from "@/lib/collab-live-bridge";
+import { collabRichTextLock } from "@/lib/collab-live-bridge";
 import { noteHistoryAt } from "@/lib/open-note-editors";
 import { projectCovered } from "@/lib/project-covered";
 import { activeFileReadOnly } from "@/lib/read-only-files";
@@ -236,7 +236,7 @@ const visualWritable = (editor: Editor) =>
   getWysiwygEditor() === editor &&
   projectEditorShown() &&
   !activeFileReadOnly() &&
-  !collabVisualReadOnly(useFilesStore.getState().projectId);
+  collabRichTextLock(useFilesStore.getState().projectId) === null;
 const runRichTextFormatting = (editor: Editor, writable: (editor: Editor) => boolean, action: EngineFormattingAction) => {
   if (!writable(editor)) return;
   void import("@/components/editor/markdown-model").then(({ visualTarget }) => {

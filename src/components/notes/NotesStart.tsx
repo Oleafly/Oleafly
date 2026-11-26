@@ -1,9 +1,10 @@
 import { FileInput, LayoutTemplate, Plus } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PRIMARY_TEXT } from "@/components/layout/ReleaseNotes";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { TileButton } from "@/components/ui/tile-button";
 import { formatDate } from "@/lib/intl";
 import { randomFraction } from "@/lib/random";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,6 @@ const STARTERS: readonly StarterId[] = ["daily", "experimentLog", "paperReading"
 const STARTERS_WITH_NOTES = 5;
 const DATE_LINE: Intl.DateTimeFormatOptions = { weekday: "long", month: "long", day: "numeric" };
 export const QUIET_BUTTON = "h-7 gap-1.5 px-2 font-normal text-muted-foreground";
-const TILE = "h-24 min-w-0 flex-col items-start justify-between gap-1 whitespace-normal rounded-xl bg-card p-3.5 text-left font-normal";
 
 let lastGreeting: Greeting | null = null;
 
@@ -37,24 +37,6 @@ function useGreeting(lines: readonly Greeting[]): Greeting {
     lastGreeting = picked;
   }, [picked]);
   return picked;
-}
-
-function Tile({
-  icon,
-  name,
-  hint,
-  disabled = false,
-  onClick,
-}: Readonly<{ icon: ReactNode; name: string; hint: ReactNode; disabled?: boolean; onClick: () => void }>) {
-  return (
-    <Button variant="outline" disabled={disabled} className={TILE} onClick={onClick}>
-      {icon}
-      <span className="flex w-full min-w-0 flex-col gap-0.5">
-        <span className="truncate text-sm font-semibold leading-tight">{name}</span>{" "}
-        <span className="truncate text-xs text-muted-foreground">{hint}</span>
-      </span>
-    </Button>
-  );
 }
 
 interface NotesStartProps {
@@ -88,7 +70,7 @@ export function NotesStart({ hasNotes, onNewNote, onOpenNote, onImport, classNam
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 gap-3 @min-[26rem]:grid-cols-2 @min-[36rem]:grid-cols-3">
             {onNewNote && (
-              <Tile
+              <TileButton
                 icon={
                   <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
                     <Plus />
@@ -101,7 +83,7 @@ export function NotesStart({ hasNotes, onNewNote, onOpenNote, onImport, classNam
             )}
             {template.canCreate &&
               starters.map((id) => (
-                <Tile
+                <TileButton
                   key={id}
                   icon={<NoteChip icon={TEMPLATES_BY_ID[id].icon} color={TEMPLATES_BY_ID[id].color} className="size-7" />}
                   name={template.templateName(TEMPLATES_BY_ID[id])}

@@ -195,7 +195,15 @@ describe("ManageSharing settings", () => {
     const toggle = await screen.findByRole("switch", { name: manage.comments.label });
     view.rerender(<ManageSharing projectId="thesis" name="Thesis" share={shareInfo({ project_id: "thesis" })} />);
     await waitFor(() => expect(mocks.collabCommentsStatus).toHaveBeenCalledWith("thesis"));
-    await act(async () => stale.resolve({ serverAllowed: false, projectEnabled: true, canComment: false, reactions: false }));
+    await act(async () => stale.resolve({
+      serverAllowed: false,
+      projectEnabled: true,
+      canComment: false,
+      reactions: false,
+      moderate: false,
+      typing: true,
+      suggestionThreads: true,
+    }));
     expect(toggle).toHaveAttribute("aria-checked", "true");
     expect(toggle).toBeEnabled();
     expect(screen.queryByText(fill(manage.comments.serverOff, { server: "Smith Lab" }))).toBeNull();

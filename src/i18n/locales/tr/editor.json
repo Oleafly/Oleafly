@@ -316,6 +316,15 @@
     "spellLanguageFolderHint": "Bu klasörün project.json dosyasına kaydedilir, bu yüzden klasörü açan herkes için geçerlidir. Daha fazla dili Ayarlar'dan indirin.",
     "spellLanguageReadOnly": "Bu klasör salt okunur olduğundan project.json dosyasındaki dil değiştirilemez.",
     "spellLanguageFailed": "Yazım denetimi dili değiştirilemedi.",
+    "onOverleaf": "Overleaf üzerinde",
+    "texLive": "TeX Live sürümü",
+    "texLiveAriaLabel": "Overleaf üzerindeki TeX Live sürümü",
+    "bibliography": "Ana kaynakça",
+    "bibliographyAriaLabel": "Overleaf üzerindeki ana kaynakça",
+    "bibliographyNone": "Seçilmedi",
+    "overleafHint": "Bu ayarlar Overleaf üzerinde tutulur ve projedeki herkes için geçerlidir.",
+    "overleafReadOnly": "Bunları Overleaf üzerinde yalnızca sahipler ve düzenleyenler değiştirebilir.",
+    "overleafFailed": "Bu ayar Overleaf üzerinde değiştirilemedi.",
     "notChecked": "Denetlenmedi",
     "dictionaryMissing": "{{name}} indirilmedi, bu yüzden yazım denetlenmiyor. Ayarlar'dan indirin veya başka bir dil seçin.",
     "grammarEnglishOnly": "Dil bilgisi denetimi yalnızca İngilizce belgelerde çalışır.",
@@ -737,12 +746,12 @@
     "ignoreEverywhere": "Her yerde yok say",
     "keyboardHint": "Eylemler arasında geçmek için Tab veya ok tuşlarını kullanın. Kapatmak için Escape tuşuna basın.",
     "endOfDocument": "Belgenin sonu",
-    "hidePreamble": "Belge ön bölümünü gizle",
-    "showPreamble": "Belge ön bölümünü göster",
-    "sharedReadOnly": "Paylaşılan bir projede görsel mod dosyayı yalnızca gösterir. Düzenlemek için kaynak görünümüne geçin.",
     "findingLabel": "{{message}}. Düzeltme önerilerini aç.",
     "rawBlockFindings_one": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç.",
-    "rawBlockFindings_other": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç."
+    "rawBlockFindings_other": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç.",
+    "liveViewOnly": "Bu paylaşılan dosyayı görüntüleyebilirsiniz ama düzenleyemezsiniz.",
+    "liveConnecting": "Bu paylaşılan dosya hâlâ bağlanıyor. Hazır olduğunda düzenleyebilirsiniz.",
+    "suggestInSource": "Buradaki değişiklikleriniz öneri olur ve görsel mod bunları gösteremez. Düzenleme önermek için kaynak görünümüne geçin."
   },
   "package": {
     "search": {

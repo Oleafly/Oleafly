@@ -328,11 +328,7 @@
       "loading": "Je Overleaf-projecten laden",
       "loadFailed": "Oleafly kon je Overleaf-projecten niet laden.",
       "signInPrompt": "Meld je aan bij Overleaf om je projecten te zien. Er opent een aanmeldvenster dat vanzelf sluit zodra je bent aangemeld.",
-      "signingIn": "Rond het aanmelden bij Overleaf af in het venster dat is geopend.",
-      "signingInBrowser": "Rond het aanmelden bij Overleaf af in {{browser}}. Het venster sluit vanzelf zodra je bent aangemeld. Als je het sluit, wordt het aanmelden geannuleerd.",
-      "passkeyHint": "Werkt je passkey niet in het aanmeldvenster, kies daar dan een andere optie, zoals je wachtwoord of een melding op je telefoon.",
       "expired": "Je Overleaf-aanmelding is verlopen. Meld je opnieuw aan om je projecten te zien.",
-      "signIn": "Aanmelden bij Overleaf",
       "signInWindowTitle": "Aanmelden bij Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adres van de Overleaf-server",
@@ -341,6 +337,7 @@
       "saveServer": "Deze server gebruiken",
       "signedInAs": "Aangemeld als {{email}}",
       "signedIn": "Aangemeld bij Overleaf",
+      "accountPick": "Overleaf-account",
       "signOut": "Afmelden",
       "searchLabel": "Overleaf-projecten zoeken",
       "searchPlaceholder_one": "Zoek in {{count}} project",
@@ -362,6 +359,8 @@
       "import_other": "{{count}} projecten importeren",
       "imported": "Geïmporteerd",
       "open": "Openen",
+      "openLive": "Live openen",
+      "opening": "Openen",
       "ownedByYou": "Van jou",
       "owner": "Eigendom van {{name}}",
       "archived": "Gearchiveerd",
@@ -377,7 +376,39 @@
         "downloading": "Downloaden {{percent}}%",
         "downloadingUnknown": "Downloaden",
         "importing": "Instellen"
-      }
+      },
+      "invitations": {
+        "title": "Uitnodigingen",
+        "from": "Van {{name}}",
+        "join": "Deelnemen",
+        "joined": "Je bent toegetreden tot dit project"
+      },
+      "link": {
+        "checking": "De link controleren",
+        "unnamed": "Een project op Overleaf",
+        "join": "Deelnemen",
+        "importInstead": "Importeren",
+        "grants": {
+          "edit": "Als je deelneemt, kun je het als medewerker bewerken.",
+          "view": "Als je deelneemt, kun je het alleen bekijken. Lezers via een link krijgen geen opmerkingen of chat.",
+          "already": "Je hebt dit project al.",
+          "invite": "Door deel te nemen accepteer je de uitnodiging."
+        }
+      },
+      "put": {
+        "menu": "Op Overleaf zetten",
+        "title": "Op Overleaf zetten",
+        "description": "Oleafly uploadt dit project als nieuw Overleaf-project en houdt daarna beide gesynchroniseerd terwijl je live bewerkt.",
+        "name": "Naam op Overleaf",
+        "account": "Overleaf-account",
+        "submit": "Op Overleaf zetten",
+        "working": "Uploaden",
+        "signedOut": "Meld je eerst aan bij Overleaf via Instellingen.",
+        "openSettings": "Instellingen openen",
+        "cancel": "Annuleren"
+      },
+      "switchAccount": "Van account wisselen",
+      "signInChoose": "Kies waar je je aanmeldt. Je projecten verschijnen hier zodra je bent aangemeld."
     }
   },
   "pdfImport": {

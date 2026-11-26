@@ -43,6 +43,16 @@ pub enum DocEvent {
     Error { args: Vec<Value> },
 }
 
+impl Frame {
+    fn recorded(frame: &Value) -> Frame {
+        Frame {
+            t: frame["t"].as_u64().unwrap_or_default(),
+            outgoing: frame["dir"] == "out",
+            raw: frame["frame"].as_str().unwrap().to_string(),
+        }
+    }
+}
+
 fn read(path: &Path) -> String {
     std::fs::read_to_string(path).unwrap_or_else(|error| panic!("{}: {error}", path.display()))
 }
@@ -65,14 +75,7 @@ impl Recording {
                 let frames = read(&dir.join(participant["frames"].as_str().unwrap()))
                     .lines()
                     .filter(|line| !line.is_empty())
-                    .map(|line| {
-                        let frame: Value = serde_json::from_str(line).unwrap();
-                        Frame {
-                            t: frame["t"].as_u64().unwrap_or_default(),
-                            outgoing: frame["dir"] == "out",
-                            raw: frame["frame"].as_str().unwrap().to_string(),
-                        }
-                    })
+                    .map(|line| Frame::recorded(&serde_json::from_str(line).unwrap()))
                     .collect();
                 Trace {
                     name: participant["name"].as_str().unwrap().to_string(),
@@ -122,30 +125,48 @@ pub fn probe(name: &str) -> Value {
     serde_json::from_str(&read(&path)).unwrap()
 }
 
-pub fn probe_frames(name: &str, transport: &str) -> Vec<Frame> {
-    probe(name)["steps"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter_map(|step| step.get("socket"))
-        .find(|socket| {
-            socket
-                .get("transport")
-                .is_none_or(|found| found == transport)
-        })
-        .map(|socket| {
-            socket["frames"]
+pub fn probe_steps(name: &str, keep: impl Fn(&Value) -> bool) -> Vec<Value> {
+    let Value::Array(steps) = probe(name)["steps"].take() else {
+        panic!("probe {name} has no steps");
+    };
+    steps.into_iter().filter(|step| keep(step)).collect()
+}
+
+pub fn probe_step(name: &str, label: &str) -> Value {
+    probe_steps(name, |step| step["label"] == label)
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("probe {name} has no step {label}"))
+}
+
+pub fn probe_requests(name: &str, route: impl Fn(&str) -> bool) -> Vec<Value> {
+    probe_steps(name, |step| {
+        step.pointer("/request/route")
+            .and_then(Value::as_str)
+            .is_some_and(&route)
+    })
+}
+
+pub fn probe_socket(name: &str, select: impl Fn(&Value) -> bool) -> Vec<Frame> {
+    probe_steps(name, |step| step.get("socket").is_some_and(&select))
+        .first()
+        .map(|step| {
+            step["socket"]["frames"]
                 .as_array()
                 .unwrap()
                 .iter()
-                .map(|frame| Frame {
-                    t: frame["t"].as_u64().unwrap_or_default(),
-                    outgoing: frame["dir"] == "out",
-                    raw: frame["frame"].as_str().unwrap().to_string(),
-                })
+                .map(Frame::recorded)
                 .collect()
         })
         .unwrap_or_default()
+}
+
+pub fn probe_frames(name: &str, transport: &str) -> Vec<Frame> {
+    probe_socket(name, |socket| {
+        socket
+            .get("transport")
+            .is_none_or(|found| found == transport)
+    })
 }
 
 pub fn probe_event(name: &str, transport: &str, event: &str) -> Option<Vec<Value>> {
@@ -158,16 +179,9 @@ pub fn probe_event(name: &str, transport: &str, event: &str) -> Option<Vec<Value
 }
 
 pub fn probe_http(name: &str, route_contains: &str) -> Value {
-    probe(name)["steps"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|step| {
-            step.pointer("/request/route")
-                .and_then(Value::as_str)
-                .is_some_and(|route| route.contains(route_contains))
-        })
-        .cloned()
+    probe_requests(name, |route| route.contains(route_contains))
+        .into_iter()
+        .next()
         .unwrap_or_else(|| panic!("probe {name} has no request to {route_contains}"))
 }
 
@@ -515,7 +529,7 @@ mod tests {
             .collect();
         assert!(history.len() >= 3);
         for recording in &all {
-            let expected = if recording.project == "history-ot-project" {
+            let expected = if recording.project.contains("history-ot") {
                 "history-ot"
             } else {
                 "sharejs-text-ot"
@@ -572,7 +586,8 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .map(|edit| TextOperation::from_json(&edit["textOperation"]).unwrap())
+            .filter_map(|edit| edit.get("textOperation"))
+            .map(|scans| TextOperation::from_json(scans).unwrap())
             .collect()
     }
 

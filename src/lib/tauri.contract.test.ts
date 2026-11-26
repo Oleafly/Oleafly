@@ -247,6 +247,14 @@ describe("IPC helpers with client-side logic", () => {
   it("sends a live document change and closes the channel with the token it opened", async () => {
     await tauriCollab.collabDocChange("p", "file-1", 4, [3, "x"]);
     expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_change", { projectId: "p", fileId: "file-1", rev: 4, op: [3, "x"] });
+    await tauriCollab.collabDocChange("p", "file-1", 5, [3, "y"], "paste");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("collab_doc_change", {
+      projectId: "p",
+      fileId: "file-1",
+      rev: 5,
+      op: [3, "y"],
+      origin: "paste",
+    });
     await tauriCollab.collabDocClose("p", "file-1", 7);
     expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_close", { projectId: "p", fileId: "file-1", session: 7 });
   });

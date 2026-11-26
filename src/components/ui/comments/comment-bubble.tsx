@@ -48,6 +48,7 @@ function BubbleMeta({ entry, own }: Readonly<{ entry: CommentEntry; own: boolean
       <CommentByline
         name={named ? entry.author.name : undefined}
         nameClassName={cn("font-medium", META, entry.author.verified ? "text-foreground/80" : "italic")}
+        note={entry.author.note}
         at={settled ? entry.at : 0}
         editedAt={settled ? entry.editedAt : null}
       />
@@ -84,6 +85,8 @@ function BubbleText({
           <CommentBody
             body={entry.body}
             members={mentioned}
+            math={kit.math}
+            markdown={kit.markdown}
             className={cn("mt-0", entry.delivery && "text-muted-foreground")}
           />
         )}

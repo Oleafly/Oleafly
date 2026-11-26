@@ -1863,32 +1863,18 @@
       "disconnectFailed": "无法断开 alphaXiv。请重试。"
     },
     "cookies": {
-      "confirmTitle": "确认导入 Cookie",
-      "detecting": "正在查找已安装的浏览器配置文件…",
-      "dialogDescription": "选择一个已安装的浏览器配置文件。Oleafly 只会在你查看并确认导入后才读取该文件。Chromium 的 Cookie 在本地通过 macOS 钥匙串解锁。Oleafly 不会将 Cookie 值发送到任何 Oleafly 服务。",
-      "dialogTitle": "导入浏览器 Cookie",
-      "empty": "未找到支持的浏览器配置文件。",
-      "errors": {
-        "chooseProfile": "请选择一个可用的浏览器配置文件。"
-      },
-      "profileGroupLabel": "浏览器配置文件",
-      "profileLegend": "浏览器配置文件",
-      "review": "查看导入内容",
-      "status": {
-        "available": "可用",
-        "comingSoon": "即将推出",
-        "noCookieStore": "无 Cookie 存储",
-        "notInstalled": "未安装"
-      },
-      "tryAgain": "重试",
-      "label": "复制浏览器的登录信息",
-      "useBrowserSignIn": "复制浏览器中的登录信息",
-      "signInDescription": "从这台计算机上的浏览器复制你在 {{server}} 的登录信息，这样就不必重新登录。",
-      "site": "网站：{{domain}}",
-      "confirmCopy": "Oleafly 会从 {{browser}} 的 {{profile}} 配置文件中读取 {{domain}} 的 Cookie。它们会留在 Oleafly 中，并且只会发送到 {{domain}}。你还需要在系统对话框中再确认一次。",
-      "copyAction": "复制登录信息",
-      "copying": "正在复制…",
-      "notSignedIn_other": "已从 {{browser}} 复制 {{count}} 个 Cookie，但它们没有让你登录。请直接登录。"
+      "dialogDescription": "Oleafly 只复制 {{server}} 的 Cookie，用它们登录，然后删除副本。你的密码仍留在浏览器中。",
+      "dialogTitle": "从浏览器导入 Cookie",
+      "label": "从浏览器导入 Cookie",
+      "useBrowserSignIn": "选择配置文件",
+      "signInDescription": "使用这台计算机上某个浏览器配置文件中已登录的 {{server}} 账户。",
+      "copyAction": "导入",
+      "copying": "正在导入…",
+      "from": "来源",
+      "noCookies": "还没有 Cookie",
+      "sameAccount": "{{profile}} 登录的是 {{account}}，而 Oleafly 已在使用这个账户。请选择其他配置文件，或先在该浏览器中登录另一个账户。",
+      "orExisting": "或使用已有的登录",
+      "noSavedSignIn": "{{profile}} 没有保存 {{server}} 的登录，因此复制的 Cookie 无法让你登录。如果你在那里已登录，浏览器可能只在关闭前保留该登录。请改用 {{browser}} 磁贴。"
     },
     "zotero": {
       "apiKeyHint": "获取密钥的方法：登录 <siteLink>zotero.org</siteLink>，打开 <keyLink>API 密钥页面</keyLink> 创建密钥，并在同一页面复制你的数字用户 ID。",
@@ -1945,7 +1931,12 @@
       "signedIn": "已在 {{server}} 上登录",
       "signOut": "退出登录",
       "signOutFailed": "Oleafly 无法退出 Overleaf 登录。",
+      "addAccount": "添加其他账户",
+      "addAccountHint": "选择在哪里登录。每一种都从未登录状态开始，因此任何账户都可以。",
+      "accountPick": "用于导入的账户",
+      "accountPickDescription": "新的导入和模板会使用此账户。你已有的项目会保留其来源账户。",
       "gitTitle": "用于同步的 Git 令牌",
+      "gitTitleFor": "{{email}} 的 Git 令牌",
       "gitSaved": "已保存 Git 令牌。你关联的项目会与 Overleaf 保持同步。",
       "gitMissing": "尚无 Git 令牌。请在 Overleaf 账户设置的“Git 集成”中创建一个，以便同步项目。",
       "gitOpenSettings": "打开 Overleaf 账户设置",
@@ -1954,14 +1945,9 @@
       "gitSave": "保存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。",
-      "browserLabel": "使用浏览器登录",
-      "browserDescription": "适用于 Google、机构或通行密钥登录。Oleafly 会在新的浏览器窗口中打开 {{server}}，登录完成后自动关闭。",
-      "browserAction": "登录",
-      "browserPick": "用于登录的浏览器",
       "browserWaiting": "请在 {{browser}} 中完成 {{server}} 的登录。关闭窗口会取消登录。",
-      "browserHint": "使用 Google、机构或通行密钥登录时，请选择此方式。",
-      "windowLabel": "登录 {{server}}",
-      "windowDescription": "Oleafly 会打开登录窗口，登录完成后自动关闭。若要使用 Google、机构或通行密钥登录，请安装 Chrome、Edge、Brave、Chromium 或 Firefox，然后在这里通过它登录。",
+      "windowLabel": "在 Oleafly 内登录",
+      "windowDescription": "登录完成后窗口会自动关闭。如果通行密钥在那里无法使用，请使用密码或手机上的确认提示。",
       "windowAction": "登录",
       "windowWaiting": "请在打开的窗口中完成 {{server}} 的登录。",
       "unsent": {
@@ -1979,7 +1965,15 @@
           "always": "也在 Overleaf 上删除",
           "never": "保留在 Overleaf 上"
         }
-      }
+      },
+      "sameAccount": "你已经以 {{account}} 的身份登录。要添加其他账户，请用该账户登录。",
+      "windowTitle": "登录 {{server}}",
+      "addAccountKept": "你当前的账户会保持登录。",
+      "noBrowser": "若要使用 Google、机构或通行密钥登录，请安装 Chrome、Edge、Brave、Chromium 或 Firefox，然后在这里选择它。",
+      "tileHere": "在此应用中",
+      "tileWindow": "新窗口",
+      "tileWaiting": "等待你操作",
+      "signInNote": "使用 Google、机构或通行密钥登录时，请选择浏览器。如果通行密钥在 Oleafly 中无法使用，请在那里使用密码或手机上的确认提示。登录完成后窗口会自动关闭。"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2111,6 +2105,20 @@
           "confirm": "这会从 cua.ai 下载 Cua 安装程序并在你的终端中运行。要继续吗？"
         }
       }
+    },
+    "signIns": {
+      "title": "管理登录",
+      "description": "Oleafly 在这台计算机上登录的账户。在这里移除账户不会让你在浏览器中退出登录。",
+      "loading": "正在加载登录信息…",
+      "empty": "你没有登录任何账户。",
+      "inUse": "使用中",
+      "switch": "切换",
+      "switchTo": "切换到 {{account}}",
+      "removeAccount": "移除 {{account}}",
+      "removeAll": "全部移除",
+      "importMore": "导入更多",
+      "loadFailed": "Oleafly 无法加载登录信息。",
+      "changeFailed": "Oleafly 无法更改此登录。请重试。"
     }
   },
   "language": {
@@ -2313,6 +2321,7 @@
       "confirm": "清除词语",
       "descriptionFallback": "这会从该词典中移除所有词语，它们将立即重新接受检查。",
       "descriptionGlobal": "这会从全局词典中移除所有词语，它们将立即重新接受检查。",
+      "descriptionOverleaf": "它们也会从你的 Overleaf 账户中移除。",
       "descriptionProject": "这会从 {{project}} 中移除所有词语，它们将立即重新接受检查。",
       "descriptionSuppressed": "这会从 {{project}} 中已忽略的检查结果里移除所有词语，它们将立即重新接受检查。",
       "suppressedConfirm": "重新显示",
@@ -2329,6 +2338,7 @@
     },
     "global": {
       "emptyDescription": "你在这里添加的词语会在所有项目中被校对工具跳过。",
+      "overleafSynced": "当有项目在 Overleaf 上实时编辑时，会与你 Overleaf 账户中已学习的词语同步。",
       "scope": "适用于所有项目"
     },
     "intro": "向你的个人拼写检查词典添加词语。这些词语存储在本地设置中，并在所有项目中被忽略。匹配基于 Unicode 规范化，且不区分大小写。",

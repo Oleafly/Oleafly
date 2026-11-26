@@ -50,6 +50,7 @@ import {
   insertAtCursor,
   replaceRange as replaceRangeInEditor,
 } from "@/components/editor/cm/controller";
+import { flushWysiwygPendingEdits, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import { openProjectLocation } from "@/lib/open-location";
 import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
 
@@ -197,59 +198,50 @@ const insertTargetPathHost: NonNullable<AiToolsHost["insertTargetPath"]> = (proj
   return files.projectId === projectId ? insertTargetPathFor(files) : null;
 };
 
-const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
-  projectId,
-  text,
-  allowed = () => true,
-) => {
-  if (!mutationAllowed(projectId, allowed)) return false;
-  assertFolderWritable(projectId);
-  assertSharedWritable(projectId);
-  if (getEditorView()) {
-    insertAtCursor(text);
-    return true;
-  }
-  const path = insertTargetPathFor(useFilesStore.getState());
-  const expectedGeneration = await prepareExternalMutation(projectId);
-  const current = await currentDiskContent(projectId, path);
-  if (!mutationAllowed(projectId, allowed)) return false;
-  const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
-  const at = documentEnd >= 0 ? documentEnd : current.length;
-  const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
-  if (!(await writeSharedText(projectId, path, next, current))) {
-    const result = await writeFileContent(projectId, path, next, expectedGeneration);
-    recordMutationResult(projectId, result);
-  }
-  return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
-};
+function sourceEditorTakesEdits(): boolean {
+  if (!isWysiwygActive()) return getEditorView() !== null;
+  flushWysiwygPendingEdits();
+  return false;
+}
 
-const replaceRangeHost: AiToolsHost["replaceRange"] = async (
-  projectId,
-  from,
-  to,
-  text,
-  allowed = () => true,
-) => {
+async function editOpenDocument(
+  projectId: string,
+  allowed: () => boolean,
+  inSourceEditor: () => void,
+  edited: (current: string) => string,
+): Promise<boolean> {
   if (!mutationAllowed(projectId, allowed)) return false;
   assertFolderWritable(projectId);
   assertSharedWritable(projectId);
-  if (getEditorView()) {
-    replaceRangeInEditor(from, to, text);
+  if (sourceEditorTakesEdits()) {
+    inSourceEditor();
     return true;
   }
   const path = insertTargetPathFor(useFilesStore.getState());
   const expectedGeneration = await prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
-  const start = Math.max(0, Math.min(from, current.length));
-  const end = Math.max(start, Math.min(to, current.length));
-  const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
+  const next = edited(current);
   if (!(await writeSharedText(projectId, path, next, current))) {
     const result = await writeFileContent(projectId, path, next, expectedGeneration);
     recordMutationResult(projectId, result);
   }
   return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
-};
+}
+
+const insertAtCursorHost: AiToolsHost["insertAtCursor"] = (projectId, text, allowed = () => true) =>
+  editOpenDocument(projectId, allowed, () => insertAtCursor(text), (current) => {
+    const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
+    const at = documentEnd >= 0 ? documentEnd : current.length;
+    return `${current.slice(0, at)}${text}\n${current.slice(at)}`;
+  });
+
+const replaceRangeHost: AiToolsHost["replaceRange"] = (projectId, from, to, text, allowed = () => true) =>
+  editOpenDocument(projectId, allowed, () => replaceRangeInEditor(from, to, text), (current) => {
+    const start = Math.max(0, Math.min(from, current.length));
+    const end = Math.max(start, Math.min(to, current.length));
+    return `${current.slice(0, start)}${text}${current.slice(end)}`;
+  });
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {

@@ -74,6 +74,8 @@ vi.mock("@/store/files", async () => {
   };
 });
 
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 import { overleafLiveActions, useCollabEditorGate, useLiveBackend } from "@/lib/collab-live-bridge";
 import { collabLiveStart, collabLiveStop, collabShareInfo } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
@@ -158,6 +160,24 @@ describe("live editing with Overleaf", () => {
     expect(mocks.start).not.toHaveBeenCalled();
     mocks.project.mockResolvedValue(link());
     useOverleafImportStore.setState({ status: { server: link().server, signedIn: true, email: "a@example.com" } });
+    await settle();
+    expect(mocks.start).toHaveBeenCalledWith(PROJECT);
+  });
+
+  it("goes live once the project's own account is added next to another one", async () => {
+    const ada = { userId: "u-ada", email: "ada@uni.edu" };
+    const bea = { userId: "u-bea", email: "bea@lab.org" };
+    mocks.project.mockResolvedValue(link({ signedIn: false, account: bea }));
+    useOverleafImportStore.setState({
+      status: { server: link().server, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada] },
+    });
+    begin();
+    await settle();
+    expect(mocks.start).not.toHaveBeenCalled();
+    mocks.project.mockResolvedValue(link({ account: bea }));
+    useOverleafImportStore.setState({
+      status: { server: link().server, signedIn: true, email: ada.email, userId: ada.userId, accounts: [ada, bea] },
+    });
     await settle();
     expect(mocks.start).toHaveBeenCalledWith(PROJECT);
   });
@@ -279,6 +299,38 @@ describe("live editing with Overleaf", () => {
     expect(useCollabLiveStore.getState().members).toEqual([bob]);
   });
 
+  it("keeps invited people and people who left next to the members, each with its standing", async () => {
+    const person = (account_id: string, display_name: string) => ({ account_id, display_name, avatar_url: null, email: null, login: null });
+    const rows = [
+      { person: person("u-bob", "Bob Tester"), role: "editor" as const, granted_at: 0 },
+      { person: person("i-dana", "dana@uni.edu"), role: "viewer" as const, granted_at: 0, standing: "invited" as const },
+      { person: person("u-erin", "Erin Former"), role: "unknown" as const, granted_at: 0, standing: "former" as const },
+    ];
+    mocks.members.mockResolvedValue(rows);
+    begin();
+    await settle();
+    expect(useCollabLiveStore.getState().members).toEqual(rows);
+    expect(useCollabLiveStore.getState().members.map((member) => member.standing)).toEqual([undefined, "invited", "former"]);
+  });
+
+  it("colours carets the way Overleaf does: you in 200, nobody in 100, others by their user id", async () => {
+    const self = "65a0c3e1f2b4d5c6a7b8c9d0";
+    mocks.start.mockResolvedValue({ ...INFO, account_id: self });
+    begin();
+    await settle();
+    const caret = (deviceId: string, accountId: string) =>
+      mocks.handlers.presence?.({ projectId: PROJECT, deviceId, accountId, path: "main.tex", cursor: 1, anchor: 1 });
+    caret("coauthor", "5f9a1b2c3d4e5f6a7b8c9d0e");
+    caret("me-elsewhere", self);
+    caret("guest", "");
+    caret("shifted", "000000000000000000000001");
+    const peers = useCollabLiveStore.getState().peers;
+    expect(peers.coauthor?.hue).toBe(89);
+    expect(peers["me-elsewhere"]?.hue).toBe(200);
+    expect(peers.guest?.hue).toBe(100);
+    expect(peers.shifted?.hue).toBe(351);
+  });
+
   it("keeps an account change for this project until it is dismissed", async () => {
     begin();
     await settle();
@@ -311,6 +363,15 @@ describe("live editing with Overleaf", () => {
     expect(mocks.start).toHaveBeenCalledTimes(2);
   });
 
+  it("describes a refused pause or resume with the collaboration text", async () => {
+    await loadNamespace("collab");
+    begin();
+    await settle();
+    const refusal = { code: "live_elsewhere", message: "live elsewhere", params: { by: "cli", pid: "41" } };
+    expect(overleafLiveActions().errorText?.(refusal)).toBe(enCollab.liveElsewhere.cli.replace("{{pid}}", "41"));
+    expect(overleafLiveActions().errorText?.({ code: "live_elsewhere", message: "" })).toBe(enCollab.errors.live_elsewhere);
+  });
+
   it.each([
     ["live_elsewhere", "failed"],
     ["collab_shared", "failed"],
@@ -333,6 +394,34 @@ describe("live editing with Overleaf", () => {
       await vi.advanceTimersByTimeAsync(60_000);
       expect(mocks.start).toHaveBeenCalledTimes(1);
       expect([...mocks.logError.mock.calls, ...mocks.logWarning.mock.calls]).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      mocks.start.mockReset();
+    }
+  });
+
+  it("keeps who holds the project when the start is refused, and forgets it on the next try", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.start
+        .mockRejectedValueOnce({
+          code: "live_elsewhere",
+          message: "this project is live on the command line (process 41)",
+          params: { by: "cli", pid: "41" },
+        })
+        .mockResolvedValueOnce(INFO);
+      begin();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(useCollabLiveStore.getState()).toMatchObject({
+        refused: "live_elsewhere",
+        refusedParams: { by: "cli", pid: "41" },
+        ended: "failed",
+      });
+      useCollabLiveStore.getState().goLiveAgain();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mocks.start).toHaveBeenCalledTimes(2);
+      expect(useCollabLiveStore.getState()).toMatchObject({ refused: null, ended: null });
+      expect(useCollabLiveStore.getState().refusedParams).toEqual({});
     } finally {
       vi.useRealTimers();
       mocks.start.mockReset();

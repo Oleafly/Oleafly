@@ -316,6 +316,15 @@
     "spellLanguageFolderHint": "Saved in this folder's project.json, so it applies to anyone who opens the folder. Download more languages in Settings.",
     "spellLanguageReadOnly": "This folder is read-only, so the language in its project.json can't be changed.",
     "spellLanguageFailed": "Couldn't change the spell-check language.",
+    "onOverleaf": "On Overleaf",
+    "texLive": "TeX Live version",
+    "texLiveAriaLabel": "TeX Live version on Overleaf",
+    "bibliography": "Main bibliography",
+    "bibliographyAriaLabel": "Main bibliography on Overleaf",
+    "bibliographyNone": "None chosen",
+    "overleafHint": "These settings live on Overleaf and apply to everyone in the project.",
+    "overleafReadOnly": "Only owners and editors can change these on Overleaf.",
+    "overleafFailed": "Couldn't change this setting on Overleaf.",
     "notChecked": "Not checked",
     "dictionaryMissing": "{{name}} is not downloaded, so spelling is not checked. Download it in Settings or pick another language.",
     "grammarEnglishOnly": "Grammar checking only works for English documents.",
@@ -737,12 +746,12 @@
     "ignoreEverywhere": "Ignore everywhere",
     "keyboardHint": "Use Tab or the arrow keys to move between actions. Press Escape to close.",
     "endOfDocument": "End of document",
-    "hidePreamble": "Hide document preamble",
-    "showPreamble": "Show document preamble",
-    "sharedReadOnly": "In a shared project, visual mode only shows the file. Switch to the source view to edit it.",
     "findingLabel": "{{message}}. Open proofreading suggestions.",
     "rawBlockFindings_one": "{{count}} proofreading finding in this raw block. {{message}}. Open suggestions.",
-    "rawBlockFindings_other": "{{count}} proofreading findings in this raw block. {{message}}. Open suggestions."
+    "rawBlockFindings_other": "{{count}} proofreading findings in this raw block. {{message}}. Open suggestions.",
+    "liveViewOnly": "You can view this shared file but not edit it.",
+    "liveConnecting": "This shared file is still connecting. You can edit it once it's ready.",
+    "suggestInSource": "Your changes here would be suggestions, and visual mode can't show them. Switch to the source view to suggest edits."
   },
   "package": {
     "search": {

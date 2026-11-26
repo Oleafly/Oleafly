@@ -1,4 +1,4 @@
-use crate::{utf16_len, Component, DocMessage, OtError, TextOperation};
+use crate::{utf16_len, Bias, DocMessage, OtError, TextOperation};
 
 pub struct Rng(u64);
 
@@ -78,35 +78,6 @@ pub fn deletion(total: usize, at: usize, count: usize) -> TextOperation {
         .delete(count)
         .retain(total - at - count);
     operation
-}
-
-pub fn map_position(operation: &TextOperation, position: usize) -> usize {
-    let mut old = 0;
-    let mut new = 0;
-    for component in operation.components() {
-        match component {
-            Component::Retain(count) => {
-                if position <= old + count {
-                    return new + position - old;
-                }
-                old += count;
-                new += count;
-            }
-            Component::Insert(text) => {
-                if position == old {
-                    return new;
-                }
-                new += utf16_len(text);
-            }
-            Component::Delete(count) => {
-                if position <= old + count {
-                    return new;
-                }
-                old += count;
-            }
-        }
-    }
-    new
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -304,7 +275,7 @@ impl EditorDoc {
         self.server_rev = rev;
         self.content = operation.apply(&self.content)?;
         self.length = operation.target_len();
-        self.cursor = map_position(&operation, self.cursor);
+        self.cursor = operation.map_position(self.cursor, Bias::Before);
         if self.outstanding.is_none() && self.length != length {
             return Ok(Reaction::Resync);
         }

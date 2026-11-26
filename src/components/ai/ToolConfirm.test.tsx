@@ -44,6 +44,17 @@ describe("ToolConfirm", () => {
     expect(html).toContain('aria-label="Confirm internet access"');
   });
 
+  it("says what a change with no file to show will do, and leaves the summary out when a file shows it", () => {
+    const render = (req: ToolApprovalRequest) =>
+      renderToStaticMarkup(createElement(ToolConfirm, { req, onApprove: vi.fn(), onReject: vi.fn() }));
+    expect(render({ tool: "open_overleaf_live", summary: "Open “Thesis” from Overleaf with live editing" })).toContain(
+      "Open “Thesis” from Overleaf with live editing",
+    );
+    expect(render({ tool: "delete_file", summary: "Delete notes.tex", path: "notes.tex" })).not.toContain(
+      'data-testid="tool-confirm-summary"',
+    );
+  });
+
   it("shows MCP provenance and a redacted argument preview as an external action", () => {
     const req = {
       tool: "mcp__papers__7d28a7_search_papers",

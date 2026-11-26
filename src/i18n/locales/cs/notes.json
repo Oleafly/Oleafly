@@ -1210,6 +1210,7 @@
     "elsewhere": "Živé úpravy jsou zapnuté v jiné poznámce",
     "makeLive": "Upravovat živě tady",
     "viewOnly": "Tuto poznámku můžete číst, ale ne upravovat.",
+    "suggesting": "Navrhování je zapnuté, takže tuto poznámku tady nemůžete upravovat. Pokud ji chcete upravit, vypněte navrhování.",
     "someone": "Někdo",
     "unsentReadOnly": "Vaše poslední změny této poznámky se neodeslaly, protože ji teď můžete jen zobrazit.",
     "unsentRefused": "Oleafly nedokázal odeslat vaše poslední změny této poznámky, a proto byly zahozeny."

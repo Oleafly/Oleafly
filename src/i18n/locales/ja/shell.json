@@ -527,7 +527,8 @@
       "open": "開いているファイルに合わせる",
       "main": "常にメイン文書",
       "change": "メイン文書を変更…"
-    }
+    },
+    "filling": "プロジェクトはまだ Overleaf からダウンロード中です。すべてのファイルが揃ったらコンパイルできます。"
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -1682,8 +1683,9 @@
     "resume": "ライブ編集を再開",
     "reconnectNow": "今すぐ再接続",
     "open": "Overleaf で開く",
-    "share": "Overleaf で共有…",
+    "share": "Overleaf で共有",
     "signIn": "サインイン…",
+    "signInAs": "{{email}} でサインイン",
     "reconnectingIn": "{{seconds}} 秒後にもう一度試します。",
     "notConfirmed": "Overleaf にまだ確認されていません。",
     "copyDetails": "接続の詳細をコピー",

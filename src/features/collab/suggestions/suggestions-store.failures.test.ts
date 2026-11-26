@@ -9,6 +9,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
 import { ALICE_ID, BOB, deferred, person, projectMember, shareInfo } from "../tests/fixtures";
+import { fakeSession } from "../tests/comment-fixtures";
 import { suggestion, suggestionList, suggestionsChanged } from "../tests/suggestion-fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -43,7 +44,8 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
-vi.mock("@/components/editor/cm/suggestions-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setSuggestionsEditorExtension: () => () => undefined,
 }));
 
@@ -95,33 +97,6 @@ function listsBy(byPath: Record<string, () => Promise<CollabSuggestionList>>) {
   mocks.collabSuggestionList.mockImplementation((_project: string, path: string) =>
     (byPath[path] ?? (async () => suggestionList([])))(),
   );
-}
-
-function fakeSession(revision: number, synchronized = true) {
-  const listeners = new Set<() => void>();
-  let release: () => void = () => undefined;
-  const session = {
-    phase: "open",
-    revision,
-    synchronized,
-    settled: vi.fn(() =>
-      session.synchronized ? Promise.resolve() : new Promise<void>((resolve) => (release = resolve)),
-    ),
-    subscribe: vi.fn((listener: () => void) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }),
-    catchUp(next: number) {
-      session.revision = next;
-      for (const listener of [...listeners]) listener();
-    },
-    finishTyping(next: number) {
-      session.synchronized = true;
-      session.revision = next;
-      release();
-    },
-  };
-  return session;
 }
 
 beforeAll(async () => {

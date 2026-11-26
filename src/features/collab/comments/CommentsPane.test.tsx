@@ -865,7 +865,7 @@ describe("live comment states", () => {
     const user = userEvent.setup();
     viewAs("owner");
     mocks.collabCommentRemove.mockResolvedValue(undefined);
-    show([conversation]);
+    show([conversation], { status: commentsStatus({ moderate: true }) });
     openMenu(entry("m-bob"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.remove }));
     await confirmDelete(copy.removeConfirm.title, copy.removeConfirm.confirm);
@@ -874,7 +874,8 @@ describe("live comment states", () => {
     expect(entry("m-alice")).toHaveTextContent("Yes, I checked");
   });
 
-  it("offers no Remove to anyone but the owner", () => {
+  it("offers Remove only when the backend says this person may moderate", () => {
+    viewAs("owner");
     show([conversation]);
     openMenu(entry("m-bob"), copy.messageActions);
     expect(screen.queryByRole("menuitem", { name: copy.remove })).toBeNull();

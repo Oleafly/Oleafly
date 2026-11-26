@@ -528,7 +528,8 @@
       "open": "Der geöffneten Datei folgen",
       "main": "Immer das Hauptdokument",
       "change": "Hauptdokument ändern…"
-    }
+    },
+    "filling": "Das Projekt wird noch von Overleaf heruntergeladen. Sie können kompilieren, sobald alle Dateien da sind."
   },
   "datePicker": {
     "placeholder": "Datum wählen"
@@ -1717,8 +1718,9 @@
     "resume": "Live-Bearbeitung fortsetzen",
     "reconnectNow": "Jetzt neu verbinden",
     "open": "In Overleaf öffnen",
-    "share": "Bei Overleaf teilen…",
+    "share": "Bei Overleaf teilen",
     "signIn": "Anmelden…",
+    "signInAs": "Als {{email}} anmelden",
     "reconnectingIn": "Neuer Versuch in {{seconds}} s.",
     "notConfirmed": "Von Overleaf noch nicht bestätigt.",
     "copyDetails": "Verbindungsdetails kopieren",

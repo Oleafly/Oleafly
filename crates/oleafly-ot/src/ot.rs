@@ -15,6 +15,12 @@ pub struct TextOperation {
     target_len: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Bias {
+    Before,
+    After,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OtError {
     #[error("the change does not fit the document")]
@@ -163,6 +169,38 @@ impl TextOperation {
             Component::Insert(text) => self.insert(&text),
             Component::Delete(count) => self.delete(count),
         };
+    }
+
+    pub fn map_position(&self, position: usize, bias: Bias) -> usize {
+        let mut target = position;
+        let mut old = 0;
+        let mut new = 0;
+        for op in &self.ops {
+            match op {
+                Component::Retain(count) => {
+                    let end = old + count;
+                    if target < end || (target == end && bias == Bias::Before) {
+                        return new + target - old;
+                    }
+                    old = end;
+                    new += count;
+                }
+                Component::Insert(text) => {
+                    if target == old && bias == Bias::Before {
+                        return new;
+                    }
+                    new += utf16_len(text);
+                }
+                Component::Delete(count) => {
+                    let end = old + count;
+                    if target <= end {
+                        target = end;
+                    }
+                    old = end;
+                }
+            }
+        }
+        new
     }
 
     pub fn apply(&self, document: &str) -> Result<String, OtError> {
@@ -524,6 +562,45 @@ mod tests {
         assert!(TextOperation::between("same", "same").is_noop());
         let emoji = TextOperation::between("a😀b", "a😀😀b");
         assert_eq!(emoji.apply("a😀b").unwrap(), "a😀😀b");
+    }
+
+    #[test]
+    fn positions_follow_an_operation_on_the_chosen_side_of_inserts() {
+        let replace = op(|o| {
+            o.retain(2).delete(2).insert("XY").retain(2);
+        });
+        let before: Vec<usize> = (0..=6)
+            .map(|at| replace.map_position(at, Bias::Before))
+            .collect();
+        let after: Vec<usize> = (0..=6)
+            .map(|at| replace.map_position(at, Bias::After))
+            .collect();
+        assert_eq!(before, vec![0, 1, 2, 4, 4, 5, 6]);
+        assert_eq!(after, vec![0, 1, 4, 4, 4, 5, 6]);
+        let lead = op(|o| {
+            o.insert("ab").retain(1);
+        });
+        assert_eq!(lead.map_position(0, Bias::Before), 0);
+        assert_eq!(lead.map_position(0, Bias::After), 2);
+        assert_eq!(lead.map_position(1, Bias::Before), 3);
+        let tail = op(|o| {
+            o.retain(1).insert("z");
+        });
+        assert_eq!(tail.map_position(1, Bias::Before), 1);
+        assert_eq!(tail.map_position(1, Bias::After), 2);
+        let mut rng = Rng(0x51ed_270b_27d2_1a4f);
+        for _ in 0..500 {
+            let document = random_text(&mut rng, 10);
+            let operation = random_operation(&mut rng, &document);
+            let length = utf16_len(&document);
+            let mut last = 0;
+            for at in 0..=length {
+                let moved = operation.map_position(at, Bias::Before);
+                assert!(moved >= last && moved <= operation.target_len());
+                assert!(operation.map_position(at, Bias::After) >= moved);
+                last = moved;
+            }
+        }
     }
 
     #[test]

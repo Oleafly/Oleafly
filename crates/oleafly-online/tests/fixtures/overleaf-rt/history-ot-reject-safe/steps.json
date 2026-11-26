@@ -1,0 +1,608 @@
+{
+  "doc": "6b050a3ecb4fe3a455d4e254",
+  "format": "history-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "alice types the base text",
+      "who": "alice",
+      "server": {
+        "version": 1,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b050a3ecb4fe3a455d4e254",
+              "op": [
+                {
+                  "textOperation": [
+                    "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n"
+                  ]
+                }
+              ],
+              "v": 0,
+              "hash": "11179d44785797d607cc83f23c70a101abcd0750"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": [
+            {
+              "t": 1346,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 1551,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 1551,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 1551,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "bob (live doc client) comments on \"this word please\"",
+      "who": "bob",
+      "thread": "6b050a4a51de449030000001",
+      "server": {
+        "version": 2,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this word please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "carol (live doc client, reviewer) deletes the commented \"word \" with tracking",
+      "who": "carol",
+      "server": {
+        "version": 3,
+        "text": "Keep this sentence. Remove this please.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ],
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 32,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 32,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a5091f5ec6667000001"
+            }
+          ],
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 1
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "carol deletes \"change \" and \"more \" with tracking",
+      "who": "carol",
+      "server": {
+        "version": 5,
+        "text": "Keep this sentence. Remove this please.\nAnother line to here.\nThird line with words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ],
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 32,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 61,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 90,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 32,
+                "d": "word "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a578be4262614000001"
+            },
+            {
+              "op": {
+                "p": 56,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a573f7f42405f000001"
+            },
+            {
+              "op": {
+                "p": 78,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a577722f41b21000001"
+            }
+          ],
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 3
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "bob rejects the deletion of the commented \"word \" with a plain copy and a raw delete",
+      "who": "bob",
+      "ids": [
+        "b4d3e23d5c67bf7f0000"
+      ],
+      "server": {
+        "version": 6,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to here.\nThird line with words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ],
+          "trackedChanges": [
+            {
+              "range": {
+                "pos": 61,
+                "length": 7
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            },
+            {
+              "range": {
+                "pos": 90,
+                "length": 5
+              },
+              "tracking": {
+                "type": "delete",
+                "userId": "6afab5bc1222cc50aa4c16f8",
+                "ts": "2026-11-24T03:53:46.048Z"
+              }
+            }
+          ]
+        },
+        "ranges": {
+          "changes": [
+            {
+              "op": {
+                "p": 61,
+                "d": "change "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a5a2e67c230dd000001"
+            },
+            {
+              "op": {
+                "p": 83,
+                "d": "more "
+              },
+              "metadata": {
+                "ts": "2026-11-24T03:53:46.048Z",
+                "user_id": "6afab5bc1222cc50aa4c16f8"
+              },
+              "id": "6b050a5acbf6e13d87000001"
+            }
+          ],
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this word please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 2
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "bob rejects the deletions of \"change \" and \"more \" in one text operation",
+      "who": "bob",
+      "ids": [
+        "b4d3e23d5c67bf7f0000",
+        "b4d3e23d5c67bf7f0001"
+      ],
+      "server": {
+        "version": 7,
+        "text": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this word please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "alice types at the end of line 1 after the rejects",
+      "who": "alice",
+      "edit": {
+        "changes": {
+          "from": 44,
+          "insert": " Alice was here."
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 8,
+        "text": "Keep this sentence. Remove this word please. Alice was here.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please. Alice was here.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this word please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b050a3ecb4fe3a455d4e254",
+              "op": [
+                {
+                  "textOperation": [
+                    44,
+                    " Alice was here.",
+                    58
+                  ]
+                }
+              ],
+              "v": 7,
+              "lastV": 0,
+              "hash": "dfa5e5e4ab6f55d597bb6723f7ecdde77c3c6607"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "everyone agrees after alice typed",
+      "who": "alice",
+      "server": {
+        "version": 8,
+        "text": "Keep this sentence. Remove this word please. Alice was here.\nAnother line to change here.\nThird line with more words.\n",
+        "raw": {
+          "content": "Keep this sentence. Remove this word please. Alice was here.\nAnother line to change here.\nThird line with more words.\n",
+          "comments": [
+            {
+              "id": "6b050a4a51de449030000001",
+              "ranges": [
+                {
+                  "pos": 27,
+                  "length": 16
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 27,
+                "c": "this word please",
+                "t": "6b050a4a51de449030000001",
+                "resolved": false
+              },
+              "id": "6b050a4a51de449030000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "alice": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
-use crate::service::{BARE_HOST, DEFAULT_SERVER, GIT_TOKENS_ACCOUNT, SESSIONS_ACCOUNT, WWW_HOST};
+use crate::service::{
+    ACCOUNT_GIT_TOKENS, BARE_HOST, DEFAULT_SERVER, GIT_TOKENS_ACCOUNT, SESSIONS_ACCOUNT, WWW_HOST,
+};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -62,8 +64,6 @@ pub fn normalize_server(input: Option<&str>) -> Result<String, OnlineError> {
         .filter(|host| !host.is_empty())
         .ok_or_else(invalid)?
         .to_ascii_lowercase();
-    // Plain http would send the session cookie and the Git token in the
-    // clear, so it is only for a server on this computer.
     if !(url.scheme() == "https" || (url.scheme() == "http" && is_loopback(&url)))
         || url.query().is_some()
         || url.fragment().is_some()
@@ -240,54 +240,216 @@ fn encode<T: Serialize>(map: &BTreeMap<String, T>) -> Option<String> {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+struct Accounts {
+    #[serde(flatten)]
+    current: Session,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    accounts: Vec<Session>,
+    #[serde(
+        default,
+        rename = "signedInAt",
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    signed_in_at: BTreeMap<String, i64>,
+}
+
+impl Accounts {
+    fn of(session: Session) -> Accounts {
+        Accounts {
+            current: session,
+            accounts: Vec::new(),
+            signed_in_at: BTreeMap::new(),
+        }
+    }
+
+    fn all(&self) -> impl Iterator<Item = &Session> {
+        std::iter::once(&self.current).chain(&self.accounts)
+    }
+
+    fn find_mut(&mut self, user_id: &str) -> Option<&mut Session> {
+        std::iter::once(&mut self.current)
+            .chain(&mut self.accounts)
+            .find(|session| session.user_id == user_id)
+    }
+
+    fn make_current(&mut self, session: Session) {
+        self.accounts
+            .retain(|other| other.user_id != session.user_id);
+        let previous = std::mem::replace(&mut self.current, session);
+        if previous.user_id != self.current.user_id {
+            self.accounts.insert(0, previous);
+        }
+    }
+}
+
+type Servers = BTreeMap<String, Accounts>;
+
 fn with_sessions<T>(
     store: &SecretStore,
-    work: impl FnOnce(&mut BTreeMap<String, Session>) -> T,
+    work: impl FnOnce(&mut Servers) -> T,
 ) -> Result<T, OnlineError> {
+    update_slot(store, SESSIONS_ACCOUNT, work)
+}
+
+fn read_sessions(store: &SecretStore) -> Result<Servers, OnlineError> {
+    read_slot(store, SESSIONS_ACCOUNT)
+}
+
+fn update_slot<V, T>(
+    store: &SecretStore,
+    slot_name: &str,
+    work: impl FnOnce(&mut BTreeMap<String, V>) -> T,
+) -> Result<T, OnlineError>
+where
+    V: Serialize + serde::de::DeserializeOwned + Clone + PartialEq,
+{
     store
-        .update(SESSIONS_ACCOUNT, |slot| {
-            let mut sessions: BTreeMap<String, Session> = decode(slot);
-            let before = sessions.clone();
-            let output = work(&mut sessions);
-            if sessions != before {
-                *slot = encode(&sessions);
+        .update(slot_name, |slot| {
+            let mut values: BTreeMap<String, V> = decode(slot);
+            let before = values.clone();
+            let output = work(&mut values);
+            if values != before {
+                *slot = encode(&values);
             }
             output
         })
         .map_err(store_error)
 }
 
-fn with_tokens<T>(
+fn read_slot<V: serde::de::DeserializeOwned>(
     store: &SecretStore,
-    work: impl FnOnce(&mut BTreeMap<String, String>) -> T,
-) -> Result<T, OnlineError> {
-    store
-        .update(GIT_TOKENS_ACCOUNT, |slot| {
-            let mut tokens: BTreeMap<String, String> = decode(slot);
-            let before = tokens.clone();
-            let output = work(&mut tokens);
-            if tokens != before {
-                *slot = encode(&tokens);
-            }
-            output
-        })
-        .map_err(store_error)
+    slot_name: &str,
+) -> Result<BTreeMap<String, V>, OnlineError> {
+    let raw = store.get(slot_name).map_err(store_error)?;
+    Ok(decode(&raw))
 }
 
 pub fn load(store: &SecretStore, base: &str) -> Result<Option<Session>, OnlineError> {
-    let raw = store.get(SESSIONS_ACCOUNT).map_err(store_error)?;
-    let mut sessions: BTreeMap<String, Session> = decode(&raw);
-    Ok(sessions.remove(base))
+    Ok(read_sessions(store)?
+        .remove(base)
+        .map(|accounts| accounts.current))
+}
+
+pub fn load_account(
+    store: &SecretStore,
+    base: &str,
+    user_id: &str,
+) -> Result<Option<Session>, OnlineError> {
+    Ok(read_sessions(store)?.remove(base).and_then(|accounts| {
+        accounts
+            .all()
+            .find(|session| session.user_id == user_id)
+            .cloned()
+    }))
+}
+
+pub fn load_for(
+    store: &SecretStore,
+    base: &str,
+    user_id: Option<&str>,
+) -> Result<Option<Session>, OnlineError> {
+    match user_id {
+        Some(user_id) => load_account(store, base, user_id),
+        None => load(store, base),
+    }
+}
+
+pub fn accounts(store: &SecretStore, base: &str) -> Result<Vec<Session>, OnlineError> {
+    Ok(read_sessions(store)?
+        .remove(base)
+        .map(|accounts| accounts.all().cloned().collect())
+        .unwrap_or_default())
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignIn {
+    pub server: String,
+    pub user_id: String,
+    pub email: String,
+    pub current: bool,
+    pub signed_in_at: Option<i64>,
+}
+
+pub fn sign_ins(store: &SecretStore) -> Result<Vec<SignIn>, OnlineError> {
+    let mut listed: Vec<SignIn> = read_sessions(store)?
+        .into_iter()
+        .flat_map(|(server, accounts)| {
+            let current = accounts.current.user_id.clone();
+            let signed_in_at = accounts.signed_in_at.clone();
+            accounts
+                .all()
+                .map(|session| SignIn {
+                    server: server.clone(),
+                    user_id: session.user_id.clone(),
+                    email: session.email.clone(),
+                    current: session.user_id == current,
+                    signed_in_at: signed_in_at.get(&session.user_id).copied(),
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    listed.sort_by_key(|sign_in| std::cmp::Reverse(sign_in.signed_in_at));
+    Ok(listed)
 }
 
 pub fn save(store: &SecretStore, base: &str, session: &Session) -> Result<(), OnlineError> {
     with_sessions(store, |sessions| {
-        sessions.insert(base.to_string(), session.clone());
+        match sessions.get_mut(base) {
+            Some(accounts) => accounts.make_current(session.clone()),
+            None => {
+                sessions.insert(base.to_string(), Accounts::of(session.clone()));
+            }
+        }
+        if let Some(accounts) = sessions.get_mut(base) {
+            accounts
+                .signed_in_at
+                .insert(session.user_id.clone(), crate::unix_now());
+        }
+    })
+}
+
+pub fn use_account(store: &SecretStore, base: &str, user_id: &str) -> Result<bool, OnlineError> {
+    with_sessions(store, |sessions| {
+        let Some(accounts) = sessions.get_mut(base) else {
+            return false;
+        };
+        let Some(chosen) = accounts
+            .all()
+            .find(|session| session.user_id == user_id)
+            .cloned()
+        else {
+            return false;
+        };
+        accounts.make_current(chosen);
+        true
     })
 }
 
 pub fn forget(store: &SecretStore, base: &str) -> Result<bool, OnlineError> {
     with_sessions(store, |sessions| sessions.remove(base).is_some())
+}
+
+pub fn forget_account(store: &SecretStore, base: &str, user_id: &str) -> Result<bool, OnlineError> {
+    with_sessions(store, |sessions| {
+        let Some(accounts) = sessions.get_mut(base) else {
+            return false;
+        };
+        accounts.signed_in_at.remove(user_id);
+        if accounts.current.user_id == user_id {
+            if accounts.accounts.is_empty() {
+                sessions.remove(base);
+            } else {
+                accounts.current = accounts.accounts.remove(0);
+            }
+            return true;
+        }
+        let before = accounts.accounts.len();
+        accounts
+            .accounts
+            .retain(|session| session.user_id != user_id);
+        accounts.accounts.len() != before
+    })
 }
 
 pub fn refresh_cookie(
@@ -300,10 +462,11 @@ pub fn refresh_cookie(
         return Ok(());
     }
     with_sessions(store, |sessions| {
-        if let Some(stored) = sessions.get_mut(base) {
-            if stored.user_id == session.user_id {
-                stored.cookie = cookie.to_string();
-            }
+        if let Some(stored) = sessions
+            .get_mut(base)
+            .and_then(|accounts| accounts.find_mut(&session.user_id))
+        {
+            stored.cookie = cookie.to_string();
         }
     })
 }
@@ -407,35 +570,125 @@ impl SessionHandle {
 }
 
 pub fn session_servers(store: &SecretStore) -> Result<Vec<String>, OnlineError> {
-    let raw = store.get(SESSIONS_ACCOUNT).map_err(store_error)?;
-    let sessions: BTreeMap<String, Session> = decode(&raw);
-    Ok(sessions.into_keys().collect())
+    Ok(read_sessions(store)?.into_keys().collect())
 }
 
-pub fn git_token(store: &SecretStore, base: &str) -> Result<Option<String>, OnlineError> {
-    let raw = store.get(GIT_TOKENS_ACCOUNT).map_err(store_error)?;
-    let mut tokens: BTreeMap<String, String> = decode(&raw);
-    Ok(tokens.remove(base))
+type AccountTokens = BTreeMap<String, String>;
+
+pub fn git_token(
+    store: &SecretStore,
+    base: &str,
+    account: Option<&str>,
+) -> Result<Option<String>, OnlineError> {
+    let mut by_account: BTreeMap<String, AccountTokens> = read_slot(store, ACCOUNT_GIT_TOKENS)?;
+    let mut own = by_account.remove(base).unwrap_or_default();
+    if let Some(user_id) = account {
+        if let Some(token) = own.remove(user_id) {
+            return Ok(Some(token));
+        }
+    }
+    let mut shared: BTreeMap<String, String> = read_slot(store, GIT_TOKENS_ACCOUNT)?;
+    if let Some(token) = shared.remove(base) {
+        return Ok(Some(token));
+    }
+    if account.is_some() {
+        return Ok(None);
+    }
+    if let Some(current) = load(store, base)? {
+        if let Some(token) = own.remove(&current.user_id) {
+            return Ok(Some(token));
+        }
+    }
+    let mut left = own.into_values();
+    Ok(match (left.next(), left.next()) {
+        (Some(only), None) => Some(only),
+        _ => None,
+    })
 }
 
-pub fn save_git_token(store: &SecretStore, base: &str, token: &str) -> Result<(), OnlineError> {
+pub fn save_git_token(
+    store: &SecretStore,
+    base: &str,
+    account: Option<&str>,
+    token: &str,
+) -> Result<(), OnlineError> {
     let token = token.trim();
     if !valid_git_token(token) {
         return Err(OnlineError::new(OnlineErrorKind::GitTokenInvalid));
     }
-    with_tokens(store, |tokens| {
-        tokens.insert(base.to_string(), token.to_string());
-    })
+    match account {
+        Some(user_id) => update_slot(
+            store,
+            ACCOUNT_GIT_TOKENS,
+            |tokens: &mut BTreeMap<String, AccountTokens>| {
+                tokens
+                    .entry(base.to_string())
+                    .or_default()
+                    .insert(user_id.to_string(), token.to_string());
+            },
+        ),
+        None => update_slot(
+            store,
+            GIT_TOKENS_ACCOUNT,
+            |tokens: &mut BTreeMap<String, String>| {
+                tokens.insert(base.to_string(), token.to_string());
+            },
+        ),
+    }
 }
 
-pub fn forget_git_token(store: &SecretStore, base: &str) -> Result<bool, OnlineError> {
-    with_tokens(store, |tokens| tokens.remove(base).is_some())
+pub fn forget_git_token(
+    store: &SecretStore,
+    base: &str,
+    account: Option<&str>,
+) -> Result<bool, OnlineError> {
+    let own = update_slot(
+        store,
+        ACCOUNT_GIT_TOKENS,
+        |tokens: &mut BTreeMap<String, AccountTokens>| {
+            let Some(server) = tokens.get_mut(base) else {
+                return false;
+            };
+            let removed = match account {
+                Some(user_id) => server.remove(user_id).is_some(),
+                None => {
+                    let any = !server.is_empty();
+                    server.clear();
+                    any
+                }
+            };
+            if server.is_empty() {
+                tokens.remove(base);
+            }
+            removed
+        },
+    )?;
+    if own && account.is_some() {
+        return Ok(true);
+    }
+    let shared = update_slot(
+        store,
+        GIT_TOKENS_ACCOUNT,
+        |tokens: &mut BTreeMap<String, String>| tokens.remove(base).is_some(),
+    )?;
+    Ok(own || shared)
 }
 
 pub fn git_token_servers(store: &SecretStore) -> Result<Vec<String>, OnlineError> {
-    let raw = store.get(GIT_TOKENS_ACCOUNT).map_err(store_error)?;
-    let tokens: BTreeMap<String, String> = decode(&raw);
-    Ok(tokens.into_keys().collect())
+    let shared: BTreeMap<String, String> = read_slot(store, GIT_TOKENS_ACCOUNT)?;
+    let by_account: BTreeMap<String, AccountTokens> = read_slot(store, ACCOUNT_GIT_TOKENS)?;
+    let mut servers: Vec<String> = shared
+        .into_keys()
+        .chain(
+            by_account
+                .into_iter()
+                .filter(|(_, tokens)| !tokens.is_empty())
+                .map(|(base, _)| base),
+        )
+        .collect();
+    servers.sort();
+    servers.dedup();
+    Ok(servers)
 }
 
 pub fn default_server(store: &SecretStore) -> Result<String, OnlineError> {

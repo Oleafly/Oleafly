@@ -1,5 +1,5 @@
 import { registerConnector } from "./connectors";
-import type { ConfirmFn, ToolApprovalRequest } from "./tools";
+import { declined, type ConfirmFn, type ToolApprovalRequest } from "./tools";
 
 type RawSchema = {
   type: "object";
@@ -49,16 +49,12 @@ registerConnector({
   toolNames: ["project_library_search"],
 });
 
+const NO_INTERNET = "The user declined internet access.";
+
 export function createResearchTools(
   host: ResearchToolsHost,
   opts?: { confirm?: ConfirmFn },
 ): Record<string, { description: string; inputSchema: RawSchema; execute: RawToolDef["execute"] }> {
-  const declined = (tool: string) => ({
-    message: "The user declined internet access.",
-    declined: true as const,
-    status: "declined" as const,
-    tool,
-  });
   const confirm = opts?.confirm;
   const tools: Record<string, RawToolDef> = {
     literature_search: {
@@ -95,7 +91,7 @@ export function createResearchTools(
             summary: `Search scholarly indexes for ${query}`,
           }))
         ) {
-          return declined("literature_search");
+          return declined("literature_search", NO_INTERNET);
         }
         try {
           return await host.searchLiterature(query, sources.length > 0 ? { limit, sources } : { limit });
@@ -128,7 +124,7 @@ export function createResearchTools(
             summary: "Verify citation with Crossref",
           }))
         ) {
-          return declined("verify_citation");
+          return declined("verify_citation", NO_INTERNET);
         }
         try {
           return await host.verifyCitation({ ...(doi ? { doi } : {}), ...(title ? { title } : {}) });
@@ -331,7 +327,7 @@ export function createResearchTaskTools(
             researchTask: details,
           };
           if (!(await confirm(request))) {
-            return { message: "The user declined.", declined: true, status: "declined", tool: "research_task_create" };
+            return declined("research_task_create", "The user declined.");
           }
         }
         try {

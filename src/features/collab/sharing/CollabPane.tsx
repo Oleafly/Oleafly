@@ -65,11 +65,11 @@ import { readSidebarView } from "@/store/sidebar-view-state";
 import { collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { goToPerson } from "../live/go-to-person";
-import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
+import { liveJoinedProjectId, liveSelfId, peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
 import { InactiveBadge, isInactive } from "../InactiveBadge";
-import { collabPerson } from "../people";
-import { peerHue } from "../live/peer-hue";
+import { collabPerson, inPeople } from "../people";
+import { type PeerHueBackend, peerHue } from "../live/peer-hue";
 import { canEditProjectRole } from "../roles";
 import { AccessLog, useAccessLogShown } from "./AccessLog";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
@@ -134,11 +134,13 @@ function presencePaths(peers: PeerPlaces): Map<string, string | null> {
 function PersonRow({
   member,
   selfId,
+  backend,
   details,
   goTo,
 }: Readonly<{
   member: CollabProjectMember;
   selfId: string | null;
+  backend: PeerHueBackend;
   details: ReactNode;
   goTo: string | null;
 }>) {
@@ -148,11 +150,16 @@ function PersonRow({
   const self = accountId === selfId;
   const content = (
     <>
-      <Avatar person={{ ...collabPerson(member.person), hue: peerHue(accountId, selfId) }} size="sm" />
+      <Avatar person={{ ...collabPerson(member.person), hue: peerHue(accountId, selfId, backend) }} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1.5 text-xs">
           <span className="truncate font-medium">{member.person.display_name}</span>
           {member.person.guest ? <GuestBadge /> : null}
+          {member.standing === "invited" ? (
+            <Badge variant="muted" size="sm">
+              {t(($) => $.collab.people.invited)}
+            </Badge>
+          ) : null}
           {isInactive(member.person) ? <InactiveBadge /> : null}
           {self ? (
             <Badge variant="primaryGhost" size="sm">
@@ -190,10 +197,12 @@ const People = memo(function People({
   title,
   members,
   selfId,
+  backend,
 }: Readonly<{
   title: string;
   members: readonly CollabProjectMember[];
   selfId: string | null;
+  backend: PeerHueBackend;
 }>) {
   const { t } = useTranslation(["collab"]);
   const peers = useCollabLiveStore((state) => peerPlaces(state.peers));
@@ -221,6 +230,7 @@ const People = memo(function People({
             key={accountId}
             member={member}
             selfId={selfId}
+            backend={backend}
             details={self ? null : whereabouts(accountId)}
             goTo={
               !self && here.get(accountId)
@@ -738,6 +748,9 @@ export function CollabPane() {
       projectId: state.projectId,
       share: state.share,
       members: state.members,
+      selfId: liveSelfId(state),
+      backend: state.backend,
+      historyId: liveJoinedProjectId(state),
     })),
   );
   const entries = useCollabActivity((state) => state.entries);
@@ -753,7 +766,7 @@ export function CollabPane() {
   const historyTitle = t(($) => $.collab.history.title);
   const accessLogTitle = t(($) => $.collab.pane.accessLog);
   const projectId = live.projectId;
-  const selfId = live.share?.account_id ?? null;
+  const selfId = live.selfId;
   const resizeLabel = useCallback(
     (first: string, second: string) => t(($) => $.workspace.explorer.resizeSections, { first, second }),
     [t],
@@ -776,20 +789,21 @@ export function CollabPane() {
   });
 
   const sections: StackSection[] = [];
-  if (live.members.length > 0) {
+  const people = live.members.filter(inPeople);
+  if (people.length > 0) {
     sections.push(
       section("people", "collab-people-v", peopleTitle, "collab-people-resize", (open, onOpenChange) => (
         <SidebarSection
           id="collab-people"
           title={peopleTitle}
           icon={<Users aria-hidden className="size-3.5" />}
-          count={live.members.length}
+          count={people.length}
           open={open}
           onOpenChange={onOpenChange}
           className={open ? SECTION_OPEN : SECTION_SHUT}
           contentClassName={SECTION_SCROLL}
         >
-          <People title={peopleTitle} members={live.members} selfId={selfId} />
+          <People title={peopleTitle} members={people} selfId={selfId} backend={live.backend} />
         </SidebarSection>
       )),
     );
@@ -810,18 +824,20 @@ export function CollabPane() {
       </SidebarSection>
     )),
   );
-  if (live.share) {
+  if (live.historyId) {
     sections.push(
       section("history", "collab-history-v", historyTitle, "collab-history-resize", (open, onOpenChange) => (
         <SharedHistory open={open} onOpenChange={onOpenChange} />
       )),
     );
   }
-  sections.push(
-    section("deleted", "collab-deleted-v", deletedTitle, "collab-deleted-resize", (open, onOpenChange) => (
-      <RecentlyDeleted open={open} onOpenChange={onOpenChange} />
-    )),
-  );
+  if (live.share) {
+    sections.push(
+      section("deleted", "collab-deleted-v", deletedTitle, "collab-deleted-resize", (open, onOpenChange) => (
+        <RecentlyDeleted open={open} onOpenChange={onOpenChange} />
+      )),
+    );
+  }
   if (accessLogShown) {
     sections.push(
       section("accessLog", "collab-access-log-v", accessLogTitle, "collab-access-log-resize", (open, onOpenChange) => (

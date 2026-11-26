@@ -12,6 +12,7 @@ import type { CollabSuggestionList } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
+import { peerHue } from "../live/peer-hue";
 import { ALICE_ID, BOB, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 import { SUGGESTED_AT, suggestion, suggestionList } from "../tests/suggestion-fixtures";
 import { suggestionSpansIn } from "./editor-suggestions";
@@ -45,7 +46,8 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => undefined) }));
 
-vi.mock("@/components/editor/cm/suggestions-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setSuggestionsEditorExtension: (extension: unknown) => {
     mocks.installed(extension);
     return () => undefined;
@@ -143,7 +145,7 @@ afterEach(() => {
   setEditorView(null);
   vi.useRealTimers();
   useSuggestions.setState({ projectId: null, path: null, suggestions: [], selectedId: null, hoveredId: null });
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
+  useCollabLiveStore.setState({ projectId: null, backend: null, share: null, role: null, status: null, members: [] });
   useCommentsRail.setState({ visible: false, suggestions: false, unread: false, canCompose: false });
 });
 
@@ -185,6 +187,34 @@ describe("suggestions in the editor", () => {
     expect(mark(view, "s-jumps").title).toBe(copy.unverifiedLabel);
     expect(mark(view, "s-brown").title).toBe(fill(copy.insertedBy, { name: enCollab.toolbar.unknownPerson }));
     expect(suggestionSpansIn(view.state).find((span) => span.id === "s-lazy")).toMatchObject({ from: 16, to: 16 });
+  });
+
+  it("paints marks in the author's colour and repaints them in Overleaf's when the project is on Overleaf", async () => {
+    const coauthor = "5f9a1b2c3d4e5f6a7b8c9d0e";
+    listsBy({ "intro.tex": suggestionList([suggestion("s-coauthor", { author: coauthor })]) });
+    await start();
+    const view = await mount();
+    const hue = () => suggestionSpansIn(view.state).find((span) => span.id === "s-coauthor")?.hue;
+    expect(hue()).toBe(peerHue(coauthor, ALICE_ID, "server"));
+    expect(hue()).not.toBe(89);
+    const asked = mocks.collabSuggestionList.mock.calls.length;
+    act(() => useCollabLiveStore.setState({ backend: "overleaf" }));
+    await settle();
+    expect(hue()).toBe(89);
+    expect(mark(view, "s-coauthor").getAttribute("style")).toContain("--suggestion-hue: 89");
+    expect(mocks.collabSuggestionList).toHaveBeenCalledTimes(asked);
+  });
+
+  it("names an author once the member list arrives, without asking for the list again", async () => {
+    useCollabLiveStore.setState({ members: [] });
+    await start();
+    const view = await mount();
+    expect(mark(view, "s-quick").title).toBe(fill(copy.insertedBy, { name: enCollab.toolbar.unknownPerson }));
+    const asked = mocks.collabSuggestionList.mock.calls.length;
+    act(() => useCollabLiveStore.setState({ members: MEMBERS }));
+    await settle();
+    expect(mark(view, "s-quick").title).toBe(fill(copy.insertedBy, { name: "Bob Smith" }));
+    expect(mocks.collabSuggestionList).toHaveBeenCalledTimes(asked);
   });
 
   it("highlights the suggestion under the pointer and falls back to the selected one", async () => {

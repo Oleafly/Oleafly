@@ -84,7 +84,7 @@ fn data_url(mime: &str, bytes: &[u8]) -> String {
     )
 }
 
-fn load(source: &IconSource) -> Option<String> {
+pub(crate) fn load(source: &IconSource) -> Option<String> {
     match source {
         IconSource::Bundle(bundle) => bundle_icon(bundle).map(|png| data_url("image/png", &png)),
         IconSource::Program(program) => {

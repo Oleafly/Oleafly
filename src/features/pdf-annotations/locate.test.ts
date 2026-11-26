@@ -1,5 +1,13 @@
+import { EditorState, type Text } from "@codemirror/state";
 import { describe, expect, it, vi } from "vitest";
-import { chooseSource, locateSource, regionProbePoints, sourceOfQuote } from "./locate";
+import {
+  chooseSource,
+  commentRequestOf,
+  type CommentSourceDeps,
+  locateSource,
+  regionProbePoints,
+  sourceOfQuote,
+} from "./locate";
 
 const text = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).join("\n");
 
@@ -115,5 +123,94 @@ describe("chooseSource", () => {
     const figure = { text: "", before: "", after: "" };
     expect(chooseSource(figure, heading, true, texts)).toBe(heading);
     expect(chooseSource({ text: "not in any file at all", before: "", after: "" }, null, true, texts)).toBeNull();
+  });
+});
+
+describe("commentRequestOf", () => {
+  const paper = [
+    String.raw`\documentclass{article}`,
+    String.raw`\begin{document}`,
+    String.raw`\section{Results}`,
+    String.raw`We find that the \emph{effect} of noise is small,`,
+    "and the model fits the data well.",
+    String.raw`\end{document}`,
+  ].join("\n");
+  const selection = {
+    text: "effect of noise is small, and the model",
+    before: "1 Results We find that the ",
+    after: " fits the data well.",
+    start: { page: 1, x: 120, y: 80 },
+    end: { page: 1, x: 140, y: 92 },
+  };
+
+  function deps(overrides: Partial<CommentSourceDeps> = {}): CommentSourceDeps {
+    return {
+      lineAt: vi.fn().mockResolvedValueOnce({ path: "main.tex", line: 4 }).mockResolvedValueOnce({ path: "main.tex", line: 5 }),
+      textOf: (path) => (path === "main.tex" ? paper : null),
+      texts: () => ({ "main.tex": paper }),
+      editorDoc: () => null,
+      ...overrides,
+    };
+  }
+
+  function docOf(text: string): Text {
+    return EditorState.create({ doc: text }).doc;
+  }
+
+  it("maps a selection through SyncTeX to the words it covers in the source", async () => {
+    const used = deps();
+    const request = await commentRequestOf(selection, null, true, used);
+    expect(used.lineAt).toHaveBeenNthCalledWith(1, 1, 120, 80, null);
+    expect(request).toEqual({
+      path: "main.tex",
+      from: paper.indexOf("effect"),
+      to: paper.indexOf(" fits"),
+      quote: "effect} of noise is small,\nand the model",
+    });
+  });
+
+  it("counts a Windows line break as one character, like the editor does", async () => {
+    const crlf = paper.replaceAll("\n", "\r\n");
+    const request = await commentRequestOf(selection, null, true, deps({ textOf: () => crlf }));
+    const editor = docOf(crlf);
+    expect(request?.from).toBe(editor.toString().indexOf("effect"));
+    expect(editor.sliceString(request?.from ?? 0, request?.to ?? 0)).toBe("effect} of noise is small,\nand the model");
+  });
+
+  it("follows the passage into the open editor when lines were added since the build", async () => {
+    const edited = `% a note\n% another\n${paper}`;
+    const editor = docOf(edited);
+    const request = await commentRequestOf(selection, null, true, deps({ editorDoc: () => editor }));
+    expect(request?.from).toBe(edited.indexOf("effect"));
+    expect(editor.sliceString(request?.from ?? 0, request?.to ?? 0)).toBe("effect} of noise is small,\nand the model");
+  });
+
+  it("finds the passage by its words when SyncTeX isn't there", async () => {
+    const used = deps();
+    const request = await commentRequestOf(selection, null, false, used);
+    expect(used.lineAt).not.toHaveBeenCalled();
+    expect(request?.quote).toBe("effect} of noise is small,\nand the model");
+  });
+
+  it("gives up when the selection maps nowhere or onto a file that isn't project source", async () => {
+    const nowhere = deps({ lineAt: vi.fn().mockResolvedValue(null), texts: () => ({}) });
+    expect(await commentRequestOf(selection, null, true, nowhere)).toBeNull();
+    const generated = deps({
+      lineAt: vi.fn().mockResolvedValue({ path: "main.bbl", line: 2 }),
+      textOf: () => "\\bibitem{a} effect of noise is small, and the model",
+    });
+    expect(await commentRequestOf(selection, null, true, generated)).toBeNull();
+    expect(await commentRequestOf({ ...selection, text: "  " }, null, true, deps())).toBeNull();
+  });
+
+  it("gives up when it can't read the file it mapped to", async () => {
+    expect(await commentRequestOf(selection, null, true, deps({ textOf: () => null, texts: () => ({}) }))).toBeNull();
+  });
+
+  it("gives up when the lines it mapped to hold only spaces", async () => {
+    const blank = "x\n   \n\ny";
+    const lineAt = vi.fn().mockResolvedValue({ path: "main.tex", line: 2 });
+    const used = deps({ lineAt, textOf: () => blank, texts: () => ({}) });
+    expect(await commentRequestOf({ ...selection, text: "zebra" }, null, true, used)).toBeNull();
   });
 });

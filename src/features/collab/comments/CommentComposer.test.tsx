@@ -3,12 +3,14 @@
 import { act, fireEvent, render as renderPlain, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentMember } from "@/lib/tauri";
+import { useCollabLiveStore } from "../live/live-store";
+import { peerHue } from "../live/peer-hue";
 import { DesktopCommentKit } from "./desktop-comment-kit";
 
 const copy = enCollab.comments;
@@ -39,7 +41,43 @@ beforeAll(async () => {
   await loadNamespace("collab");
 });
 
+afterEach(() => {
+  useCollabLiveStore.setState({ backend: null });
+});
+
 describe("comment composer", () => {
+  it("paints the people it offers in the colours of the project's backend", async () => {
+    const user = userEvent.setup();
+    const avatar = (option: HTMLElement) => option.querySelector('[data-slot="avatar"]');
+    const view = renderPlain(
+      <DesktopCommentKit now={0} self="alice" members={MEMBERS} people={new Map()} reactions={false}>
+        <CommentComposer label={copy.replyLabel} submitLabel={copy.reply} onSubmit={vi.fn(async () => undefined)} />
+      </DesktopCommentKit>,
+    );
+    await user.type(screen.getByRole("textbox", { name: copy.replyLabel }), "@");
+    expect(avatar(options()[0])).toHaveStyle({ backgroundColor: `hsl(${peerHue("bob", "alice", "server")} 55% 45%)` });
+    view.unmount();
+    act(() => useCollabLiveStore.setState({ backend: "overleaf" }));
+    const coauthor = "5f9a1b2c3d4e5f6a7b8c9d0e";
+    const self = "65a0c3e1f2b4d5c6a7b8c9d0";
+    renderPlain(
+      <DesktopCommentKit
+        now={0}
+        self={self}
+        members={[
+          { accountId: self, displayName: "Alice Chen", login: null },
+          { accountId: coauthor, displayName: "Bob Smith", login: null },
+        ]}
+        people={new Map()}
+        reactions={false}
+      >
+        <CommentComposer label={copy.replyLabel} submitLabel={copy.reply} onSubmit={vi.fn(async () => undefined)} />
+      </DesktopCommentKit>,
+    );
+    await user.type(screen.getByRole("textbox", { name: copy.replyLabel }), "@");
+    expect(avatar(options()[0])).toHaveStyle({ backgroundColor: "hsl(89 55% 45%)" });
+  });
+
   it("keeps typed text on Escape and leaves discarding it to Cancel", async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();

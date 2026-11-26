@@ -1875,33 +1875,18 @@
       "disconnectFailed": "Could not disconnect alphaXiv. Try again."
     },
     "cookies": {
-      "confirmTitle": "Confirm cookie import",
-      "detecting": "Looking for installed browser profiles...",
-      "dialogDescription": "Choose one installed browser profile. Oleafly reads it only after you review and confirm the import. Chromium cookies are unlocked locally through macOS Keychain. Oleafly does not send cookie values to an Oleafly service.",
-      "dialogTitle": "Import browser cookies",
-      "empty": "No supported browser profiles were found.",
-      "errors": {
-        "chooseProfile": "Choose an available browser profile."
-      },
-      "profileGroupLabel": "Browser profiles",
-      "profileLegend": "Browser profile",
-      "review": "Review import",
-      "status": {
-        "available": "Available",
-        "comingSoon": "Coming soon",
-        "noCookieStore": "No cookie store",
-        "notInstalled": "Not installed"
-      },
-      "tryAgain": "Try again",
-      "label": "Copy a browser's sign-in",
-      "useBrowserSignIn": "Copy the sign-in from your browser",
-      "signInDescription": "Copy your sign-in for {{server}} from a browser on this computer, so you don't have to sign in again.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly will read the cookies for {{domain}} from the {{profile}} profile in {{browser}}. They stay in Oleafly and go only to {{domain}}. You'll confirm once more in a system dialog.",
-      "copyAction": "Copy sign-in",
-      "copying": "Copying…",
-      "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",
-      "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead."
+      "dialogDescription": "Oleafly copies the cookies for {{server}} only, signs in with them, then deletes the copies. Your passwords stay in the browser.",
+      "dialogTitle": "Import cookies from your browser",
+      "label": "Import cookies from your browser",
+      "useBrowserSignIn": "Choose a profile",
+      "signInDescription": "Uses the {{server}} account that a browser profile on this computer is already signed in to.",
+      "copyAction": "Import",
+      "copying": "Importing…",
+      "from": "From",
+      "noCookies": "No cookies yet",
+      "sameAccount": "{{profile}} is signed in as {{account}}, which Oleafly already uses. Choose another profile, or sign in to your other account in that browser first.",
+      "orExisting": "or use a sign-in you already have",
+      "noSavedSignIn": "{{profile}} has no saved sign-in for {{server}}, so the copied cookies didn't sign you in. If you're signed in there, the browser may only keep the sign-in until it closes. Use the {{browser}} tile instead."
     },
     "zotero": {
       "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",
@@ -1961,7 +1946,12 @@
       "signedIn": "Signed in on {{server}}",
       "signOut": "Sign out",
       "signOutFailed": "Oleafly could not sign out of Overleaf.",
+      "addAccount": "Add another account",
+      "addAccountHint": "Choose where to sign in. Each one starts signed out, so any account works.",
+      "accountPick": "Account for importing",
+      "accountPickDescription": "New imports and templates use this account. Projects you already have keep the account they came from.",
       "gitTitle": "Git token for sync",
+      "gitTitleFor": "Git token for {{email}}",
       "gitSaved": "A Git token is saved. Projects you link stay in sync with Overleaf.",
       "gitMissing": "No Git token yet. Create one under Git integration in your Overleaf account settings to sync projects.",
       "gitOpenSettings": "Open Overleaf account settings",
@@ -1970,14 +1960,9 @@
       "gitSave": "Save",
       "gitRemove": "Remove",
       "gitFailed": "Oleafly could not save the Git token. Check that you pasted the whole token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
       "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
-      "browserHint": "Use this for Google, institution or passkey sign-in.",
-      "windowLabel": "Sign in to {{server}}",
-      "windowDescription": "Oleafly opens a sign-in window and closes it once you're in. To sign in with Google, your institution or a passkey, install Chrome, Edge, Brave, Chromium or Firefox, then sign in with it here.",
+      "windowLabel": "Sign in inside Oleafly",
+      "windowDescription": "The window closes by itself once you're in. If your passkey doesn't work there, use your password or a prompt on your phone.",
       "windowAction": "Sign in",
       "windowWaiting": "Finish signing in to {{server}} in the window that opened.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Delete it on Overleaf too",
           "never": "Keep it on Overleaf"
         }
-      }
+      },
+      "sameAccount": "You're already signed in as {{account}}. Sign in with a different account to add it.",
+      "windowTitle": "Sign in to {{server}}",
+      "addAccountKept": "Your current account stays signed in.",
+      "noBrowser": "To sign in with Google, your institution or a passkey, install Chrome, Edge, Brave, Chromium or Firefox, then choose it here.",
+      "tileHere": "In this app",
+      "tileWindow": "New window",
+      "tileWaiting": "Waiting for you",
+      "signInNote": "Use a browser for Google, institution or passkey sign-in. If your passkey doesn't work in Oleafly, use your password or a prompt on your phone there. The window closes by itself once you're in."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "This downloads the Cua installer from cua.ai and runs it in your terminal. Continue?"
         }
       }
+    },
+    "signIns": {
+      "title": "Manage sign-ins",
+      "description": "The accounts Oleafly is signed in to on this computer. Removing one here doesn't sign you out in your browser.",
+      "loading": "Loading your sign-ins…",
+      "empty": "You aren't signed in to any account.",
+      "inUse": "In use",
+      "switch": "Switch",
+      "switchTo": "Switch to {{account}}",
+      "removeAccount": "Remove {{account}}",
+      "removeAll": "Remove all",
+      "importMore": "Import more",
+      "loadFailed": "Oleafly couldn't load your sign-ins.",
+      "changeFailed": "Oleafly couldn't change this sign-in. Try again."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Clear words",
       "descriptionFallback": "This removes all terms from this dictionary. They will be checked again immediately.",
       "descriptionGlobal": "This removes all terms from the global dictionary. They will be checked again immediately.",
+      "descriptionOverleaf": "They're removed from your Overleaf account too.",
       "descriptionProject": "This removes all terms from {{project}}. They will be checked again immediately.",
       "descriptionSuppressed": "This removes all terms from dismissed findings in {{project}}. They will be checked again immediately.",
       "suppressedConfirm": "Show again",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Words you add here are skipped by the proofreader across every project.",
+      "overleafSynced": "Synced with the learned words on your Overleaf account while a project is live on Overleaf.",
       "scope": "Applies to every project"
     },
     "intro": "Add words to your personal spellcheck dictionary. These words are stored in local settings and ignored across projects. Matching is Unicode-normalized and case-insensitive.",

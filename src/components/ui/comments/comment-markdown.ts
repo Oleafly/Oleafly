@@ -1,8 +1,16 @@
+import { scanMathEnvironments, scanMathExpressions } from "@oleafly/editor/math-source";
+
 export type CommentInline =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }
   | { kind: "bold" | "italic" | "strike"; children: CommentInline[] }
-  | { kind: "link"; href: string; text: string };
+  | { kind: "link"; href: string; text: string }
+  | { kind: "math"; source: string; body: string; display: boolean };
+
+export interface CommentParseOptions {
+  math?: boolean;
+  markdown?: boolean;
+}
 
 export type CommentBlock =
   | { kind: "paragraph"; children: CommentInline[] }
@@ -60,13 +68,46 @@ interface Match {
   end: number;
 }
 
-function matchAt(text: string, index: number): Match | null {
-  const char = text[index];
-  if (char === "`") {
-    const close = text.indexOf("`", index + 1);
-    if (close > index + 1) return { node: { kind: "code", text: text.slice(index + 1, close) }, end: close + 1 };
-    return null;
-  }
+function formulas(text: string, options: CommentParseOptions): ReadonlyMap<number, Match> {
+  if (!options.math || !/[$\\]/u.test(text)) return new Map();
+  const environments = text.includes(String.raw`\begin{`) ? scanMathEnvironments(text) : [];
+  return new Map([
+    ...environments.map(({ from, to, source }): [number, Match] => [
+      from,
+      { node: { kind: "math", source, body: source, display: true }, end: to },
+    ]),
+    ...scanMathExpressions(text, { format: "markdown", excluded: environments })
+      .filter((found) => found.status === "complete" && found.body.trim() !== "")
+      .map((found): [number, Match] => [
+        found.from,
+        { node: { kind: "math", source: found.source, body: found.body, display: found.display }, end: found.to },
+      ]),
+  ]);
+}
+
+function escapeAt(text: string, index: number, options: CommentParseOptions): string | null {
+  if (!options.math || text[index] !== "\\") return null;
+  if (text[index + 1] === "$") return "$";
+  return text[index + 1] === "\\" ? "\\\\" : null;
+}
+
+function linkAt(text: string, index: number): Match | null {
+  if (text[index] !== "h" || isWord(text[index - 1])) return null;
+  URL_AT.lastIndex = index;
+  const found = URL_AT.exec(text);
+  if (!found) return null;
+  let end = index + found[0].length;
+  while (end > index && TRAILING.has(text[end - 1])) end -= 1;
+  const href = text.slice(index, end);
+  return href.length > "https://".length ? { node: { kind: "link", href, text: href }, end } : null;
+}
+
+function codeAt(text: string, index: number): Match | null {
+  const close = text.indexOf("`", index + 1);
+  return close > index + 1 ? { node: { kind: "code", text: text.slice(index + 1, close) }, end: close + 1 } : null;
+}
+
+function pairAt(text: string, index: number, options: CommentParseOptions): Match | null {
   for (const [marker, kind] of [
     ["**", "bold"],
     ["~~", "strike"],
@@ -74,40 +115,46 @@ function matchAt(text: string, index: number): Match | null {
     if (!text.startsWith(marker, index) || isSpace(text[index + 2])) continue;
     const close = closingPair(text, index + 2, marker);
     if (close !== -1) {
-      return { node: { kind, children: parseInline(text.slice(index + 2, close)) }, end: close + 2 };
-    }
-  }
-  if (char === "*" && text[index - 1] !== "*" && text[index + 1] !== "*" && !isSpace(text[index + 1])) {
-    const close = closingStar(text, index + 1);
-    if (close !== -1) {
-      return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close)) }, end: close + 1 };
-    }
-  }
-  if (char === "_" && !isWord(text[index - 1]) && !isSpace(text[index + 1])) {
-    const close = closingUnderscore(text, index + 1);
-    if (close !== -1) {
-      return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close)) }, end: close + 1 };
-    }
-  }
-  if (char === "h" && !isWord(text[index - 1])) {
-    URL_AT.lastIndex = index;
-    const found = URL_AT.exec(text);
-    if (found) {
-      let end = index + found[0].length;
-      while (end > index && TRAILING.has(text[end - 1])) end -= 1;
-      const href = text.slice(index, end);
-      if (href.length > "https://".length) return { node: { kind: "link", href, text: href }, end };
+      return { node: { kind, children: parseInline(text.slice(index + 2, close), options) }, end: close + 2 };
     }
   }
   return null;
 }
 
-export function parseInline(text: string): CommentInline[] {
+function italicEnd(text: string, index: number): number {
+  const char = text[index];
+  if (char === "*" && text[index - 1] !== "*" && text[index + 1] !== "*" && !isSpace(text[index + 1])) {
+    return closingStar(text, index + 1);
+  }
+  if (char === "_" && !isWord(text[index - 1]) && !isSpace(text[index + 1])) return closingUnderscore(text, index + 1);
+  return -1;
+}
+
+function italicAt(text: string, index: number, options: CommentParseOptions): Match | null {
+  const close = italicEnd(text, index);
+  if (close === -1) return null;
+  return { node: { kind: "italic", children: parseInline(text.slice(index + 1, close), options) }, end: close + 1 };
+}
+
+function matchAt(text: string, index: number, options: CommentParseOptions): Match | null {
+  if (options.markdown === false) return linkAt(text, index);
+  if (text[index] === "`") return codeAt(text, index);
+  return pairAt(text, index, options) ?? italicAt(text, index, options) ?? linkAt(text, index);
+}
+
+export function parseInline(text: string, options: CommentParseOptions = {}): CommentInline[] {
   const nodes: CommentInline[] = [];
+  const math = formulas(text, options);
   let plain = "";
   let index = 0;
   while (index < text.length) {
-    const match = matchAt(text, index);
+    const match = math.get(index) ?? matchAt(text, index, options);
+    const escaped = match ? null : escapeAt(text, index, options);
+    if (escaped !== null) {
+      plain += escaped;
+      index += 2;
+      continue;
+    }
     if (!match) {
       plain += text[index];
       index += 1;
@@ -122,47 +169,57 @@ export function parseInline(text: string): CommentInline[] {
   return nodes;
 }
 
-export function parseComment(body: string): CommentBlock[] {
+type ListLine = { kind: "bullet"; text: string } | { kind: "ordered"; start: number; text: string };
+
+function listLine(line: string): ListLine | null {
+  const bullet = BULLET.exec(line);
+  if (bullet) return { kind: "bullet", text: bullet[1] };
+  const ordered = ORDERED.exec(line);
+  return ordered ? { kind: "ordered", start: Number(ordered[1]), text: ordered[2] } : null;
+}
+
+function appendListLine(blocks: CommentBlock[], line: ListLine, options: CommentParseOptions): void {
+  const item = parseInline(line.text, options);
+  const last = blocks.at(-1);
+  if (last?.kind === line.kind) last.items.push(item);
+  else if (line.kind === "bullet") blocks.push({ kind: "bullet", items: [item] });
+  else blocks.push({ kind: "ordered", start: line.start, items: [item] });
+}
+
+export function parseComment(body: string, options: CommentParseOptions = {}): CommentBlock[] {
   const blocks: CommentBlock[] = [];
   let paragraph: string[] = [];
   const flush = () => {
-    if (paragraph.length === 0) return;
-    blocks.push({ kind: "paragraph", children: parseInline(paragraph.join("\n")) });
+    const text = paragraph.join("\n");
+    if (text.trim() !== "") blocks.push({ kind: "paragraph", children: parseInline(text, options) });
     paragraph = [];
   };
+  const lists = options.markdown !== false;
   for (const line of body.replaceAll("\r\n", "\n").split("\n")) {
-    const bullet = BULLET.exec(line);
-    const ordered = ORDERED.exec(line);
-    const last = blocks.at(-1);
-    if (bullet) {
+    const listed = lists ? listLine(line) : null;
+    if (listed) {
       flush();
-      if (last?.kind === "bullet") last.items.push(parseInline(bullet[1]));
-      else blocks.push({ kind: "bullet", items: [parseInline(bullet[1])] });
-      continue;
+      appendListLine(blocks, listed, options);
+    } else {
+      paragraph.push(line);
     }
-    if (ordered) {
-      flush();
-      if (last?.kind === "ordered") last.items.push(parseInline(ordered[2]));
-      else blocks.push({ kind: "ordered", start: Number(ordered[1]), items: [parseInline(ordered[2])] });
-      continue;
-    }
-    paragraph.push(line);
   }
   flush();
-  return blocks.filter((block) => block.kind !== "paragraph" || block.children.length > 0);
+  return blocks;
 }
 
 function plainInline(nodes: readonly CommentInline[]): string {
   return nodes
     .map((node) => {
       if (node.kind === "text" || node.kind === "code" || node.kind === "link") return node.text;
+      if (node.kind === "math") return node.source;
       return plainInline(node.children);
     })
     .join("");
 }
 
-export function commentPlainText(body: string): string {
-  return parseComment(body)
+export function commentPlainText(body: string, options: CommentParseOptions = {}): string {
+  return parseComment(body, options)
     .map((block) => {
       if (block.kind === "paragraph") return plainInline(block.children);
       return block.items

@@ -2,15 +2,18 @@ import type { OverleafConnectionDetails } from "@oleafly/backend-port";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { logWarning } from "@/lib/log";
+import type { OverleafAccount } from "@/lib/overleaf";
 import { withoutTrailingSlashes } from "@/lib/path-utils";
 import { openInSystemBrowser } from "@/lib/system-browser";
-import type { CollabLiveInfo, CollabProjectMember } from "@/lib/tauri";
+import type { CollabErrorCode, CollabLiveInfo, CollabProjectMember } from "@/lib/tauri";
 
 export interface OverleafLiveProject {
   server: string;
   remoteId: string;
   signedIn: boolean;
   paused: boolean;
+  account?: OverleafAccount | null;
+  unfilled?: boolean;
 }
 
 export interface OverleafPauseOutcome {
@@ -45,6 +48,27 @@ export const overleafLiveKeepCopy = (projectId: string, path: string) =>
 export const overleafLiveConnectionDetails =(projectId: string) =>
   invoke<OverleafConnectionDetails>("overleaf_live_connection_details", { projectId });
 
+export interface OverleafImage {
+  name: string;
+  description: string;
+}
+
+export interface OverleafLiveSettings {
+  image: string | null;
+  images: OverleafImage[];
+  bibliography: string | null;
+  bibliographies: string[];
+  canChange: boolean;
+}
+
+export type OverleafSettingChoice = "image" | "bibliography";
+
+export const overleafLiveSettings = (projectId: string) =>
+  invoke<OverleafLiveSettings>("overleaf_live_settings", { projectId });
+
+export const overleafLiveSetSetting = (projectId: string, setting: OverleafSettingChoice, value: string) =>
+  invoke<void>("overleaf_live_set_setting", { projectId, setting, value });
+
 export const overleafLiveMembers = (projectId: string) =>
   invoke<CollabProjectMember[]>("overleaf_live_members", { projectId });
 
@@ -60,20 +84,30 @@ export function serverHost(server: string): string {
   }
 }
 
+export function overleafProjectUrl(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
+  return `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
+}
+
 export async function openOverleafProject(link: Pick<OverleafLiveProject, "server" | "remoteId">): Promise<void> {
-  const page = `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
+  const page = overleafProjectUrl(link);
   if (!(await openInSystemBrowser(page))) {
     void logWarning("open the project's online page", `the system browser didn't open ${serverHost(link.server)}`);
   }
 }
 
-type OverleafTreeNoticeKind = "delete_asked" | "not_allowed" | "kept_away" | "stored_as_files";
+type OverleafTreePathsKind = "delete_asked" | "not_allowed" | "kept_away" | "stored_as_files" | "linked_kept";
 
-export interface OverleafTreeNotice {
-  projectId: string;
-  kind: OverleafTreeNoticeKind;
-  paths: string[];
+export interface OverleafLinkedFile {
+  path: string;
+  provider: string;
+  url: string | null;
+  sourceProject: string | null;
+  sourcePath: string | null;
 }
+
+export type OverleafTreeNotice =
+  | { projectId: string; kind: OverleafTreePathsKind; paths: string[] }
+  | { projectId: string; kind: "linked"; files: OverleafLinkedFile[] };
 
 const OVERLEAF_LIVE_TREE_EVENT = "overleaf-live-tree";
 
@@ -85,3 +119,23 @@ export const overleafLiveDelete = (projectId: string, paths: string[], onOverlea
 
 export const overleafLiveRestore = (projectId: string, path: string) =>
   invoke<void>("overleaf_live_restore", { projectId, path });
+
+export const overleafLiveRefreshLinked = (projectId: string, path: string) =>
+  invoke<void>("overleaf_live_refresh_linked", { projectId, path });
+
+export interface OverleafLearnedWords {
+  account: string;
+  words: string[] | null;
+}
+
+export interface OverleafWordsSent {
+  learned: string[];
+  unlearned: string[];
+  stopped: CollabErrorCode | null;
+}
+
+export const overleafLiveLearnedWords = (projectId: string) =>
+  invoke<OverleafLearnedWords>("overleaf_live_learned_words", { projectId });
+
+export const overleafLiveLearnWords = (projectId: string, learn: string[], unlearn: string[]) =>
+  invoke<OverleafWordsSent>("overleaf_live_learn_words", { projectId, learn, unlearn });

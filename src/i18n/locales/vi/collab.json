@@ -232,8 +232,16 @@
     "suggestion_role": "Vai trò của bạn trong dự án này không cho phép đề xuất.",
     "suggestion_changed": "Văn bản xung quanh đề xuất này đã thay đổi nên chủ sở hữu hoặc biên tập viên cần chấp nhận hoặc từ chối nó.",
     "suggestion_too_long": "Một đề xuất xóa có thể dài tối đa 20.000 ký tự. Hãy xóa mỗi lần một phần nhỏ hơn.",
+    "suggestion_gone": "Thay đổi đó không còn nữa. Có thể ai đó đã chấp nhận, từ chối hoặc chỉnh sửa nó.",
+    "review_off_server": "Máy chủ này không thể làm việc đó với thay đổi được theo dõi.",
     "chat_role": "Vai trò của bạn trong dự án này không cho phép thao tác đó trong cuộc trò chuyện.",
+    "chat_edit_off": "Máy chủ này không thể sửa tin nhắn trò chuyện.",
+    "chat_off_server": "Máy chủ Overleaf này không có trò chuyện.",
     "history_unavailable": "Lịch sử của dự án này chưa có trên máy tính này. Hãy thử lại sau khi đồng bộ xong.",
+    "history_plan_limit": "Gói Overleaf của dự án này không lưu các phiên bản cũ.",
+    "restore_off_server": "Máy chủ Overleaf này không thể khôi phục phiên bản cũ. Hãy sao chép văn bản từ phiên bản đó.",
+    "linked_off_server": "Máy chủ Overleaf này không làm mới tệp được liên kết.",
+    "linked_refresh_failed": "Overleaf không thể làm mới tệp này từ nguồn của nó.",
     "account_storage_full": "Tài khoản của chủ sở hữu dự án đã hết dung lượng trên máy chủ này. Hãy gỡ bớt tệp để có chỗ, hoặc đề nghị quản trị viên máy chủ cấp thêm.",
     "too_many_projects": "Bạn đã có số dự án được chia sẻ tối đa mà máy chủ này cho phép. Hãy ngừng chia sẻ một dự án trước khi chia sẻ dự án khác.",
     "too_many_uploads": "Bạn đã tải lên quá nhiều trong giờ qua. Hãy thử lại sau.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Bạn đã có số trang công khai tối đa mà máy chủ này cho phép. Hãy huỷ xuất bản một trang rồi thử lại.",
     "page_too_large": "Ghi chú này quá lớn để xuất bản. Hãy gỡ bớt ảnh rồi thử lại.",
     "page_taken_down": "Quản trị viên đã gỡ trang này xuống, nên không thể xuất bản lại ghi chú này cho đến khi họ khôi phục trang."
+  },
+  "liveElsewhere": {
+    "cli": "Dự án này đang được chỉnh sửa trực tiếp trên dòng lệnh trong tiến trình {{pid}}. Hãy dừng chỉnh sửa trực tiếp ở đó rồi thử lại."
   },
   "roles": {
     "admin": "Quản trị viên",
@@ -1051,6 +1062,8 @@
     "add": "Thêm bình luận",
     "allResolved": "Mọi bình luận đã được giải quyết.",
     "noResolved": "Không có bình luận nào đã giải quyết",
+    "noChanges": "Không có thay đổi được theo dõi",
+    "overleafOff": "Máy chủ Overleaf này không có bình luận nên ở đây chỉ hiện thay đổi được theo dõi.",
     "emptyTitle": "Chưa có bình luận nào",
     "emptyHint": "Chọn văn bản rồi chọn Thêm bình luận, hoặc nhấn {keys}",
     "readOnlyNote": "Bạn có thể đọc bình luận trong dự án này. Hãy đề nghị chủ sở hữu cấp quyền bình luận để trả lời hoặc bày tỏ cảm xúc.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Đề xuất từ người mà Oleafly không xác minh được",
     "added": "Đã thêm",
     "deleted": "Đã xóa",
+    "replaced": "Đã thay đổi",
+    "replacedWith": "thành",
     "accept": "Chấp nhận",
     "reject": "Từ chối",
     "withdraw": "Rút lại",
@@ -1157,6 +1172,7 @@
     "fileActions": "Đề xuất trong {{file}}",
     "pendingCount": "Đề xuất đang chờ: {{number}}",
     "loadFailed": "Không thể tải các đề xuất cho tệp này.",
+    "acceptOffServer": "Máy chủ Overleaf này không thể chấp nhận thay đổi được theo dõi trong tệp này. Bạn vẫn có thể từ chối chúng.",
     "rejectAllConfirm": {
       "title": "Từ chối mọi đề xuất trong {{file}}?",
       "description": "Văn bản gốc trở lại tệp với mọi người trong dự án này. Đề xuất đang chờ: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Đang đề xuất",
       "editingHint": "Chỉnh sửa: thay đổi của bạn sửa văn bản ngay",
       "suggestingHint": "Đề xuất: thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận",
-      "reviewerHint": "Bạn là phản biện viên nên thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận"
+      "reviewerHint": "Bạn là phản biện viên nên thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận",
+      "locked": {
+        "everyone": "Theo dõi thay đổi đang bật cho mọi người trong dự án này nên các chỉnh sửa của bạn trở thành đề xuất",
+        "plan": "Gói Overleaf của dự án này không có tính năng theo dõi thay đổi",
+        "server": "Máy chủ Overleaf này không thể bật hoặc tắt theo dõi thay đổi"
+      },
+      "others": "Theo dõi thay đổi cho người khác",
+      "forEveryone": "Cho mọi người",
+      "forGuests": "Cho người tham gia qua liên kết"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Người xem đọc được trò chuyện nhưng không đăng tin.",
     "offline": "Dự án này hiện không được kết nối nên bạn không đăng tin được.",
     "messageActions": "Thêm hành động cho tin nhắn này",
+    "editLabel": "Sửa tin nhắn",
     "deleteConfirm": {
       "title": "Xóa tin nhắn này?",
       "description": "Tin nhắn bị xóa với mọi người trong dự án này."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly không thể tải cuộc trò chuyện.",
     "loadOlder": "Hiện tin nhắn cũ hơn"
+  },
+  "people": {
+    "invited": "Đã mời",
+    "former": "(đã rời dự án)"
   },
   "history": {
     "title": "Lịch sử",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Văn bản của mọi tệp trở về trạng thái tại {{time}} với mọi người trong dự án này, và các tệp đã xóa được khôi phục. Tệp đã đổi tên giữ tên mới, còn hình và tệp được thêm sau đó giữ nguyên. Văn bản hiện tại vẫn nằm trong lịch sử nên bạn có thể quay lại.",
       "confirm": "Khôi phục dự án"
     },
+    "limited": "Các thay đổi cũ hơn cần gói Overleaf có lịch sử đầy đủ.",
+    "unavailable": "Quyền truy cập của bạn vào dự án này không bao gồm lịch sử của nó.",
+    "download": "Tải xuống dạng ZIP",
+    "downloading": "Đang tải xuống…",
+    "downloadKind": "tệp ZIP",
+    "restoreOverleafProject": "Mọi tệp sẽ trở về trạng thái lúc {{time}} với mọi người trên Overleaf, và các tệp được thêm từ đó đến nay sẽ bị xoá. Overleaf giữ phiên bản hiện tại trong lịch sử nên bạn có thể quay lại phiên bản đó.",
     "compareTitle": "Thay đổi giữa hai phiên bản",
     "compareDescription": "Từ {{from}} đến {{to}}",
     "changedFiles": "Tệp đã thay đổi: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Bạn giờ là người bình luận. Bạn đọc và bình luận được trên dự án này nhưng không chỉnh sửa được.",
     "reviewerBy": "{{name}} đã đặt bạn làm phản biện viên. Thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận.",
     "reviewer": "Bạn giờ là phản biện viên. Thay đổi của bạn trở thành đề xuất để chủ sở hữu hoặc biên tập viên chấp nhận.",
-    "reviewing": "Bạn là phản biện viên trong dự án này nên thay đổi của bạn trở thành đề xuất.",
-    "trackingChanges": "Theo dõi thay đổi đang bật trong dự án này nên thay đổi của bạn trở thành đề xuất.",
     "viewOnly": "Bạn xem được dự án được chia sẻ này nhưng không chỉnh sửa được.",
     "askOnOverleaf": "Xin quyền truy cập trên Overleaf",
     "connecting": "Dự án được chia sẻ này vẫn đang kết nối nên chưa thay đổi được. Hãy thử lại sau giây lát.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Bạn đã đăng xuất khỏi {{server}} nên dự án này không đồng bộ. Bạn vẫn có thể tiếp tục gõ. Thay đổi của bạn ở lại trên máy tính này và được gửi lên Overleaf khi bạn đăng nhập lại.",
+    "signedOutAs": "Dự án này thuộc về {{email}} trên {{server}}. Tài khoản đó chưa đăng nhập nên dự án không đồng bộ. Bạn vẫn có thể tiếp tục gõ. Thay đổi của bạn ở lại trên máy tính này và được gửi lên Overleaf khi bạn đăng nhập với tên {{email}}.",
+    "signInAs": "Đăng nhập với tên {{email}}",
     "accountChangedOne": "Bạn hiện đăng nhập bằng tài khoản khác nên các thay đổi bạn thực hiện với tên {{email}} chưa được gửi. Chúng được giữ là {{copy}}.",
     "accountChangedMany": "Bạn hiện đăng nhập bằng tài khoản khác nên các thay đổi bạn thực hiện với tên {{email}} chưa được gửi. Chúng được giữ thành các bản sao bên cạnh tệp của chúng:",
     "keptAs": "{{file}} được giữ là {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Một số ký tự trong {{file}}, như emoji, đã bị thay thế vì Overleaf không lưu được chúng.",
     "tryLiveAgain": "Thử chỉnh sửa trực tiếp lại",
     "keepMineAsCopy": "Giữ bản của tôi làm bản sao",
-    "stoppedActionFailed": "Thao tác không thành công với {{file}}. Hãy chờ giây lát rồi bấm lại."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf không có thiết lập nào tương ứng với {{setting}} của dự án này nên {{setting}} trên Overleaf vẫn giữ nguyên.",
+      "refused": "Overleaf đã từ chối thay đổi {{setting}}.",
+      "failed": "Oleafly không thể gửi thay đổi {{setting}} lên Overleaf. Oleafly sẽ thử lại ở lần thay đổi tiếp theo.",
+      "conflict": "Thiết lập {{setting}} đã thay đổi ở đây và trên Overleaf cùng lúc. Lựa chọn của Overleaf được giữ lại."
+    },
+    "settingNames": {
+      "main_doc": "tài liệu chính",
+      "compiler": "trình biên dịch",
+      "spelling": "ngôn ngữ kiểm tra chính tả",
+      "image": "phiên bản TeX Live",
+      "bibliography": "tài liệu tham khảo chính"
+    },
+    "stoppedActionFailed": "Thao tác không thành công với {{file}}. Hãy chờ giây lát rồi bấm lại.",
+    "filling": "Đang mở dự án từ Overleaf: {{done}}/{{total}} tệp",
+    "fillingFiles": "Đang mở dự án từ Overleaf: đang tải xuống các tệp cuối cùng",
+    "emptyCopy": "Dự án này không còn trên Overleaf và chưa có tệp nào của nó về đến máy tính này.",
+    "removeEmptyCopy": "Xoá bản sao trống",
+    "removeFailed": "Oleafly không thể xoá bản sao trống."
   },
   "overleafTree": {
     "deleteTitle": "Xoá cả trên Overleaf?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Xoá cả trên Overleaf",
     "keep": "Giữ trên Overleaf",
     "notAllowed": "Bạn không thể thay đổi tệp của dự án này trên Overleaf nên các thay đổi của bạn đối với {{files}} vẫn ở trên máy tính này.",
-    "keptAway": "Đã xoá ở đây nhưng vẫn còn trên Overleaf: {{files}}"
+    "keptAway": "Đã xoá ở đây nhưng vẫn còn trên Overleaf: {{files}}",
+    "linkedKept": "Overleaf liên kết {{files}} với một nguồn nên các thay đổi của bạn vẫn ở trên máy tính này. Chọn Làm mới từ nguồn để lấy lại bản của Overleaf."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} được liên kết với {{source}} trên Overleaf.",
+    "bannerNoSource": "{{file}} được liên kết với một nguồn trên Overleaf.",
+    "readOnly": "{{file}} được liên kết với một nguồn trên Overleaf. Để cập nhật, hãy chọn Làm mới từ nguồn.",
+    "treeHint": "Được liên kết với một nguồn trên Overleaf",
+    "refresh": "Làm mới từ nguồn",
+    "refreshing": "Đang làm mới",
+    "refusedWith": "Overleaf không thể làm mới tệp: {{message}}"
   }
 }

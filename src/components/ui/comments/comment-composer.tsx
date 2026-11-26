@@ -189,7 +189,8 @@ export function CommentComposer({
   onCancel,
   onActivity,
 }: Readonly<CommentComposerProps>) {
-  const { labels, describeError, canRetry, maxLength, members, self, hue } = useCommentKit();
+  const { labels, describeError, canRetry, maxLength, members, self, hue, markdown } = useCommentKit();
+  const formatting = markdown !== false;
   const [body, setBody] = useState(initial);
   const [caret, setCaret] = useState(initial.length);
   const [dismissed, setDismissed] = useState<number | null>(null);
@@ -321,7 +322,7 @@ export function CommentComposer({
       void submit();
       return;
     }
-    if (command && !event.shiftKey && !event.altKey && (event.key === "b" || event.key === "i")) {
+    if (formatting && command && !event.shiftKey && !event.altKey && (event.key === "b" || event.key === "i")) {
       event.preventDefault();
       format(event.key === "b" ? "bold" : "italic");
       return;
@@ -387,18 +388,22 @@ export function CommentComposer({
           />
         ) : null}
         <div className="flex items-center gap-0.5 px-1.5 pb-1.5">
-          {FORMATS.map((kind) => (
-            <FormatButton
-              key={kind}
-              label={labels.format[kind]}
-              icon={FORMAT_ICONS[kind]}
-              onPress={() => format(kind)}
-            />
-          ))}
-          <FormatButton label={labels.format.list} icon={List} onPress={bullets} />
+          {formatting ? (
+            <>
+              {FORMATS.map((kind) => (
+                <FormatButton
+                  key={kind}
+                  label={labels.format[kind]}
+                  icon={FORMAT_ICONS[kind]}
+                  onPress={() => format(kind)}
+                />
+              ))}
+              <FormatButton label={labels.format.list} icon={List} onPress={bullets} />
+            </>
+          ) : null}
           {mentionButton && members.length > 0 ? (
             <>
-              <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+              {formatting ? <span aria-hidden className="mx-1 h-4 w-px bg-border" /> : null}
               <FormatButton label={labels.format.mention} icon={AtSign} onPress={mention} />
             </>
           ) : null}

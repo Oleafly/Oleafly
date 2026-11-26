@@ -2,23 +2,48 @@ import {
   createMarkdownSourceSnapshot,
   markdownBlockKey,
   markdownPreservedRanges,
+  parseMarkdownBody,
   serializeMarkdownDoc,
   splitMarkdownFrontMatter,
+  WYSIWYG_EXTENSIONS,
   type MarkdownSourceLayout,
   type MarkdownSourceSnapshot,
 } from "@oleafly/wysiwyg";
-import type { Editor, JSONContent } from "@tiptap/core";
+import type { AnyExtension, Editor, JSONContent } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode, type Schema } from "@tiptap/pm/model";
 import { type EditorState, TextSelection, type Selection, type Transaction } from "@tiptap/pm/state";
-import { noteMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import { markdownMathRanges, noteMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import { myersEditScript } from "@/lib/myers-diff";
 import { diffNoteDocs, type NoteChangeDraft } from "./note-diff";
 import { mergeSequences } from "./note-merge";
-import { joinNoteSource, noteMarkdownExtensions, parseNoteMarkdown } from "./note-markdown";
+import { joinNoteSource, noteMarkdownExtensions } from "./note-markdown";
 
 export const NOTE_REMOTE = "noteRemote";
 
 const LEAF = "\uFFFC";
+
+interface TextRange {
+  from: number;
+  to: number;
+}
+
+export interface MarkdownDialect {
+  extensions(): AnyExtension[];
+  mathRanges(source: string): TextRange[];
+  readonly callouts: boolean;
+}
+
+export const NOTE_DIALECT: MarkdownDialect = { extensions: noteMarkdownExtensions, mathRanges: noteMathRanges, callouts: false };
+
+export const VISUAL_DIALECT: MarkdownDialect = {
+  extensions: () => WYSIWYG_EXTENSIONS,
+  mathRanges: markdownMathRanges,
+  callouts: true,
+};
+
+function parseDialect(dialect: MarkdownDialect, source: string) {
+  return parseMarkdownBody(source, { preservedInlineRanges: dialect.mathRanges(source), extensions: dialect.extensions() });
+}
 
 export interface SharedNote {
   text: string;
@@ -27,6 +52,7 @@ export interface SharedNote {
   layout: MarkdownSourceLayout | null;
   readonly sources: readonly string[];
   starts: number[];
+  dialect: MarkdownDialect;
 }
 
 export function isRemoteTransaction(transaction: Pick<Transaction, "getMeta">): boolean {
@@ -72,7 +98,13 @@ function mappedLength(layout: MarkdownSourceLayout): number {
   );
 }
 
-function sharedNoteOf(text: string, doc: ProseMirrorNode, frontmatter: string, layout: MarkdownSourceLayout | null): SharedNote {
+function sharedNoteOf(
+  text: string,
+  doc: ProseMirrorNode,
+  frontmatter: string,
+  layout: MarkdownSourceLayout | null,
+  dialect: MarkdownDialect,
+): SharedNote {
   const count = doc.childCount;
   const unit: number[] = [];
   const node: number[] = [];
@@ -93,7 +125,7 @@ function sharedNoteOf(text: string, doc: ProseMirrorNode, frontmatter: string, l
     node.push(0);
     starts.push(layout ? text.length : 0);
   }
-  return noteWith({ text, doc, frontmatter, layout, starts }, layout ? { layout, unit, node } : null);
+  return noteWith({ text, doc, frontmatter, layout, starts, dialect }, layout ? { layout, unit, node } : null);
 }
 
 export function noteUnitAt(note: SharedNote, at: number): { node: number; source: string } | null {
@@ -176,7 +208,7 @@ export function alignSharedNote(note: SharedNote, doc: ProseMirrorNode): SharedN
     next = starts[at];
   }
   const index = unitIndexes.get(note);
-  const fields = { text: note.text, doc, frontmatter: note.frontmatter, layout: note.layout, starts };
+  const fields = { text: note.text, doc, frontmatter: note.frontmatter, layout: note.layout, starts, dialect: note.dialect };
   const aligned = index
     ? noteWith(fields, {
         layout: index.layout,
@@ -245,11 +277,6 @@ function sameUnit(left: MarkdownSourceLayout["units"][number] | undefined, right
   return left?.source === right.source && left.nodes === right.nodes;
 }
 
-interface TextRange {
-  from: number;
-  to: number;
-}
-
 function crosses(ranges: readonly TextRange[], at: number): boolean {
   return ranges.some((range) => range.from < at && at < range.to);
 }
@@ -261,15 +288,15 @@ interface ProtectedRanges {
 
 const protectedRanges = new WeakMap<SharedNote, ProtectedRanges>();
 
-function scanRanges(text: string): ProtectedRanges {
+function scanRanges(text: string, dialect: MarkdownDialect): ProtectedRanges {
   const bodyOffset = text.length - splitMarkdownFrontMatter(text).body.length;
-  return { math: noteMathRanges(text), preserved: markdownPreservedRanges(text, bodyOffset) };
+  return { math: dialect.mathRanges(text), preserved: markdownPreservedRanges(text, bodyOffset, dialect.callouts) };
 }
 
 function rangesOf(note: SharedNote): ProtectedRanges {
   let found = protectedRanges.get(note);
   if (!found) {
-    found = scanRanges(note.text);
+    found = scanRanges(note.text, note.dialect);
     protectedRanges.set(note, found);
   }
   return found;
@@ -353,10 +380,11 @@ function changedRegion(previous: SharedNote, text: string): ChangedRegion | null
 function rangesKeptAround(previous: SharedNote, text: string, span: ChangedRegion): ProtectedRanges | null {
   const { region, regionStart, regionEnd, nextEnd } = span;
   if (changesDocument(region) || changesDocument(previous.text.slice(regionStart, regionEnd))) return null;
+  const { dialect } = previous;
   const was = rangesOf(previous);
-  const now = scanRanges(text);
-  if (!sameRangesIn(now.math, regionStart, nextEnd, noteMathRanges(region))) return null;
-  if (!sameRangesIn(now.preserved, regionStart, nextEnd, markdownPreservedRanges(region))) return null;
+  const now = scanRanges(text, dialect);
+  if (!sameRangesIn(now.math, regionStart, nextEnd, dialect.mathRanges(region))) return null;
+  if (!sameRangesIn(now.preserved, regionStart, nextEnd, markdownPreservedRanges(region, 0, dialect.callouts))) return null;
   if (!sameOutside(was.math, now.math, regionStart, regionEnd, nextEnd)) return null;
   if (!sameOutside(was.preserved, now.preserved, regionStart, regionEnd, nextEnd)) return null;
   return now;
@@ -376,9 +404,15 @@ function closedRegionNodes(fresh: ProseMirrorNode[], counted: number, trailing: 
   return nodes.length === counted ? nodes : null;
 }
 
-function parsedRegion(schema: Schema, region: string, afterFirst: boolean, toEnd: boolean): ParsedRegion | null {
+function parsedRegion(
+  schema: Schema,
+  dialect: MarkdownDialect,
+  region: string,
+  afterFirst: boolean,
+  toEnd: boolean,
+): ParsedRegion | null {
   const lead = afterFirst ? leadWord(region) : "";
-  const sub = parseNoteMarkdown(lead ? `${lead}\n\n${region}` : region);
+  const sub = parseDialect(dialect, lead ? `${lead}\n\n${region}` : region);
   if (!sub.layout || sub.frontmatter !== "") return null;
   let units = sub.layout.units;
   let separators = sub.layout.separators;
@@ -416,7 +450,7 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
   if (!span) return null;
   const now = rangesKeptAround(previous, text, span);
   if (!now) return null;
-  const parsed = parsedRegion(schema, span.region, span.first > 0, span.toEnd);
+  const parsed = parsedRegion(schema, previous.dialect, span.region, span.first > 0, span.toEnd);
   if (!parsed) return null;
   const { layout, first, last, toEnd } = span;
   const kept = children(previous.doc);
@@ -434,18 +468,24 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
     separators: [...layout.separators.slice(0, first), ...parsed.separators, ...layout.separators.slice(last)],
     trailing: toEnd ? parsed.trailing : layout.trailing,
   };
-  const note = sharedNoteOf(text, doc, previous.frontmatter, nextLayout);
+  const note = sharedNoteOf(text, doc, previous.frontmatter, nextLayout, previous.dialect);
   protectedRanges.set(note, now);
   definitions.set(note, false);
   return note;
 }
 
-export function parseSharedNote(schema: Schema, text: string, previous: SharedNote | null = null): SharedNote {
-  if (previous?.text === text) return previous;
-  const reparsed = previous ? reparsedNote(schema, previous, text) : null;
+export function parseSharedNote(
+  schema: Schema,
+  text: string,
+  previous: SharedNote | null = null,
+  dialect: MarkdownDialect = NOTE_DIALECT,
+): SharedNote {
+  const known = previous?.dialect === dialect ? previous : null;
+  if (known?.text === text) return known;
+  const reparsed = known ? reparsedNote(schema, known, text) : null;
   if (reparsed) return reparsed;
-  const parsed = parseNoteMarkdown(text);
-  return sharedNoteOf(text, schema.nodeFromJSON(parsed.doc), parsed.frontmatter, parsed.layout);
+  const parsed = parseDialect(dialect, text);
+  return sharedNoteOf(text, schema.nodeFromJSON(parsed.doc), parsed.frontmatter, parsed.layout, dialect);
 }
 
 const blockJson = new WeakMap<ProseMirrorNode, JSONContent>();
@@ -473,6 +513,7 @@ interface KnownSource {
   frontMatter: string;
   separator: string;
   snapshot: MarkdownSourceSnapshot | null;
+  dialect: MarkdownDialect;
   text: string;
 }
 
@@ -483,11 +524,19 @@ export function noteSourceOf(
   frontMatter: string,
   separator: string,
   snapshot: MarkdownSourceSnapshot | null,
+  dialect: MarkdownDialect = NOTE_DIALECT,
 ): string {
   const known = knownSources.get(doc);
-  if (known?.frontMatter === frontMatter && known.separator === separator && known.snapshot === snapshot) return known.text;
-  const text = joinNoteSource(frontMatter, separator, serializeMarkdownDoc(doc, snapshot, noteMarkdownExtensions()));
-  knownSources.set(doc, { frontMatter, separator, snapshot, text });
+  if (
+    known?.frontMatter === frontMatter &&
+    known.separator === separator &&
+    known.snapshot === snapshot &&
+    known.dialect === dialect
+  ) {
+    return known.text;
+  }
+  const text = joinNoteSource(frontMatter, separator, serializeMarkdownDoc(doc, snapshot, dialect.extensions()));
+  knownSources.set(doc, { frontMatter, separator, snapshot, dialect, text });
   return text;
 }
 
@@ -575,6 +624,28 @@ function blockStart(doc: ProseMirrorNode, index: number): number {
   return start;
 }
 
+function positionByText(tr: Transaction, before: ProseMirrorNode, from: number, to: number, pos: number): number | null {
+  const start = tr.mapping.map(from, -1);
+  const end = tr.mapping.map(to, 1);
+  const previous = before.textBetween(from, to, "\n", LEAF);
+  const next = tr.doc.textBetween(start, end, "\n", LEAF);
+  const offset = before.textBetween(from, pos, "\n", LEAF).length;
+  const prefix = commonPrefix(previous, next);
+  if (offset <= prefix) return offsetIn(tr.doc, start, end, offset);
+  const after = previous.length - offset;
+  const suffix = commonSuffix(previous, next, Math.min(previous.length, next.length) - prefix);
+  if (after > suffix) return null;
+  const placed = offsetIn(tr.doc, start, end, next.length - after);
+  const $placed = tr.doc.resolve(placed);
+  if (!$placed.parent.isTextblock) return null;
+  const placedFrom = tr.doc.textBetween(start, Math.max(start, $placed.start()), "\n", LEAF).length;
+  if (next.length - suffix <= placedFrom) return placed;
+  const $caret = before.resolve(pos);
+  if (!$caret.parent.isTextblock) return null;
+  const caretFrom = before.textBetween(from, Math.max(from, $caret.start()), "\n", LEAF).length;
+  return previous.length - suffix <= caretFrom ? placed : null;
+}
+
 function restoredPosition(
   tr: Transaction,
   before: ProseMirrorNode,
@@ -584,6 +655,8 @@ function restoredPosition(
   const place = placeOf(before, pos);
   const draft = drafts.find((change) => change.kind === "blocks" && change.from <= place.start && place.end <= change.to);
   if (draft?.kind !== "blocks" || draft.nodes.length === 0) return tr.mapping.map(pos);
+  const kept = positionByText(tr, before, draft.from, draft.to, pos);
+  if (kept !== null) return kept;
   let skipped = 0;
   let at = draft.from;
   while (at < place.start) {

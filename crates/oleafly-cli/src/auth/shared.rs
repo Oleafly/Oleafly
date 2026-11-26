@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use oleafly_collab::{CollabError, SecretPort};
 use oleafly_collab_protocol::capabilities::VersionMismatch;
 use oleafly_online::browser_cookies::HostPlatform;
+use oleafly_online::live::journal::{Holder, HolderKind};
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use oleafly_secrets::SecretStore;
 use serde_json::{json, Value};
@@ -292,6 +293,13 @@ pub(crate) fn from_online(error: &OnlineError) -> CliError {
         Kind::TemplateUnavailable | Kind::TemplateLinkInvalid => {
             new(ErrorKind::InvalidInput, "online.template_unavailable", "This template couldn't be opened.".to_string())
         }
+        Kind::LinkInvalid => new(ErrorKind::Usage, "online.link_invalid", format!("That isn't a project link from {server}."))
+            .hint("Copy the whole link the online editor shows when you share a project."),
+        Kind::LinkUnavailable => new(
+            ErrorKind::InvalidInput,
+            "online.link_unavailable",
+            "This link doesn't open a project anymore. It may have been turned off.".to_string(),
+        ),
         Kind::GitTokenInvalid => new(ErrorKind::Usage, "online.git_token_invalid", "That doesn't look like a Git token.".to_string())
             .hint("Copy the whole token from your account settings."),
         Kind::GitTokenMissing => new(ErrorKind::Auth, "online.git_token_missing", format!("No Git token is saved for {server}.")).hint(TOKEN_HINT),
@@ -310,8 +318,7 @@ pub(crate) fn from_online(error: &OnlineError) -> CliError {
         Kind::WorktreeBusy => new(ErrorKind::Conflict, "remote.project_busy", "The Oleafly app is changing this project right now.".to_string())
             .hint("Try again in a moment.")
             .retryable(),
-        Kind::LiveElsewhere => new(ErrorKind::Conflict, "remote.live_elsewhere", "This project is live in another Oleafly window.".to_string())
-            .hint("Stop live editing there, then try again."),
+        Kind::LiveElsewhere => live_elsewhere(None),
         Kind::SyncNotLinked => new(ErrorKind::InvalidInput, "remote.not_linked", "This folder isn't linked to an online project.".to_string())
             .hint("Run oleafly remote link first."),
         Kind::SyncAlreadyLinked => new(ErrorKind::Conflict, "remote.already_linked", "This folder is linked to a different online project.".to_string())
@@ -349,6 +356,29 @@ pub(crate) fn from_online(error: &OnlineError) -> CliError {
     match (&error.detail, shares_detail) {
         (Some(detail), true) => failure.details(json!({"cause": detail})),
         _ => failure,
+    }
+}
+
+pub(crate) fn live_elsewhere(holder: Option<&Holder>) -> CliError {
+    let message = match holder {
+        Some(Holder {
+            by: HolderKind::App,
+            ..
+        }) => "This project is live in the Oleafly app.".to_string(),
+        Some(Holder {
+            by: HolderKind::Cli,
+            pid,
+            ..
+        }) => format!("This project is live on the command line in process {pid}."),
+        None => {
+            "This project is live in another Oleafly window or on the command line.".to_string()
+        }
+    };
+    let failure = CliError::new(ErrorKind::Conflict, "remote.live_elsewhere", message)
+        .hint("Stop live editing there, then try again.");
+    match holder {
+        Some(holder) => failure.details(json!({"holder": {"by": holder.by, "pid": holder.pid}})),
+        None => failure,
     }
 }
 
@@ -653,6 +683,7 @@ mod tests {
             Kind::SyncCaseClash,
             Kind::SyncTooLarge,
             Kind::FolderExists,
+            Kind::LinkInvalid,
             Kind::Io,
         ] {
             let error = online(kind);
@@ -661,10 +692,36 @@ mod tests {
                 "{kind:?}"
             );
             let service = oleafly_online::service::SERVICE_ID;
+            let hint = error.hint.as_deref().unwrap_or_default();
             assert!(
                 !error.code.contains(service)
-                    && !error.message.to_ascii_lowercase().contains(service),
+                    && !error.message.to_ascii_lowercase().contains(service)
+                    && !hint.to_ascii_lowercase().contains(service),
                 "{kind:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn live_elsewhere_names_the_app_or_the_process() {
+        let holder = |by: HolderKind| Holder {
+            by,
+            pid: 4242,
+            since_ms: 1,
+        };
+        let app = live_elsewhere(Some(&holder(HolderKind::App)));
+        assert!(app.message.contains("Oleafly app"), "{}", app.message);
+        assert_eq!(app.details.as_deref().unwrap()["holder"]["by"], "app");
+        let cli = live_elsewhere(Some(&holder(HolderKind::Cli)));
+        assert!(cli.message.contains("process 4242"), "{}", cli.message);
+        assert_eq!(cli.details.as_deref().unwrap()["holder"]["pid"], 4242);
+        let unknown = live_elsewhere(None);
+        assert!(unknown.message.contains("on the command line"));
+        assert!(unknown.details.is_none());
+        for error in [app, cli, unknown] {
+            assert_eq!(
+                (error.code.as_ref(), error.exit() as u8, error.retryable),
+                ("remote.live_elsewhere", 8, false)
             );
         }
     }

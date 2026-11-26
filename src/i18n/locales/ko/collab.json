@@ -232,8 +232,16 @@
     "suggestion_role": "이 프로젝트에서 내 역할로는 제안할 수 없습니다.",
     "suggestion_changed": "이 제안 주변의 텍스트가 변경되어 소유자나 편집자가 수락하거나 거부해야 합니다.",
     "suggestion_too_long": "삭제를 제안할 수 있는 길이는 최대 20,000자입니다. 한 번에 더 작은 부분만 삭제하세요.",
+    "suggestion_gone": "그 변경 사항은 더 이상 없습니다. 누군가 수락하거나 거부하거나 편집했을 수 있습니다.",
+    "review_off_server": "이 서버에서는 추적된 변경 사항으로 그 작업을 할 수 없습니다.",
     "chat_role": "이 프로젝트에서 내 역할로는 채팅에서 그 작업을 할 수 없습니다.",
+    "chat_edit_off": "이 서버에서는 채팅 메시지를 편집할 수 없습니다.",
+    "chat_off_server": "이 Overleaf 서버에는 채팅이 없습니다.",
     "history_unavailable": "이 프로젝트의 기록이 아직 이 컴퓨터에 없습니다. 동기화가 끝나면 다시 시도하세요.",
+    "history_plan_limit": "이 프로젝트의 Overleaf 요금제는 이전 버전을 보관하지 않습니다.",
+    "restore_off_server": "이 Overleaf 서버에서는 이전 버전을 복원할 수 없습니다. 대신 해당 버전에서 텍스트를 복사하세요.",
+    "linked_off_server": "이 Overleaf 서버는 연결된 파일을 새로 고치지 않습니다.",
+    "linked_refresh_failed": "Overleaf가 이 파일을 소스에서 새로 고치지 못했습니다.",
     "account_storage_full": "프로젝트 소유자의 계정이 이 서버의 저장소를 모두 사용했습니다. 파일을 일부 제거해 공간을 확보하거나 서버 관리자에게 공간을 늘려 달라고 요청하세요.",
     "too_many_projects": "이 서버가 허용하는 최대 개수의 공유 프로젝트가 이미 있습니다. 다른 프로젝트를 공유하려면 먼저 하나의 공유를 중지하세요.",
     "too_many_uploads": "지난 한 시간 동안 업로드를 너무 많이 했습니다. 나중에 다시 시도하세요.",
@@ -241,6 +249,9 @@
     "too_many_pages": "이 서버에서 허용하는 공개 페이지 수를 모두 사용했습니다. 하나를 게시 취소한 다음 다시 시도하세요.",
     "page_too_large": "이 노트는 너무 커서 게시할 수 없습니다. 이미지를 일부 제거한 다음 다시 시도하세요.",
     "page_taken_down": "관리자가 이 페이지를 내렸으므로, 관리자가 다시 올릴 때까지 이 노트를 다시 게시할 수 없습니다."
+  },
+  "liveElsewhere": {
+    "cli": "이 프로젝트는 명령줄(프로세스 {{pid}})에서 실시간 편집 중입니다. 그곳에서 실시간 편집을 중지한 뒤 다시 시도하세요."
   },
   "roles": {
     "admin": "관리자",
@@ -1051,6 +1062,8 @@
     "add": "댓글 추가",
     "allResolved": "모든 댓글이 해결되었습니다.",
     "noResolved": "해결된 댓글이 없습니다",
+    "noChanges": "추적된 변경 사항이 없습니다",
+    "overleafOff": "이 Overleaf 서버에는 댓글 기능이 없어서 여기에는 추적된 변경 사항만 표시됩니다.",
     "emptyTitle": "아직 댓글이 없습니다",
     "emptyHint": "텍스트를 선택하고 댓글 추가를 누르거나 {keys} 키를 누르세요",
     "readOnlyNote": "이 프로젝트의 댓글을 읽을 수 있습니다. 답글을 달거나 반응을 남기려면 소유자에게 댓글 작성자 권한을 요청하세요.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Oleafly가 확인할 수 없는 사람의 제안",
     "added": "추가됨",
     "deleted": "삭제됨",
+    "replaced": "변경 전",
+    "replacedWith": "변경 후",
     "accept": "수락",
     "reject": "거부",
     "withdraw": "철회",
@@ -1157,6 +1172,7 @@
     "fileActions": "{{file}}의 제안",
     "pendingCount": "검토 대기 중인 제안: {{number}}개",
     "loadFailed": "이 파일의 제안을 불러오지 못했습니다.",
+    "acceptOffServer": "이 Overleaf 서버에서는 이 파일의 추적된 변경 사항을 수락할 수 없습니다. 거부는 할 수 있습니다.",
     "rejectAllConfirm": {
       "title": "{{file}}의 모든 제안을 거부할까요?",
       "description": "이 프로젝트의 모든 사람에게 원래 텍스트가 파일로 돌아갑니다. 검토 대기 중인 제안: {{number}}개.",
@@ -1175,7 +1191,15 @@
       "suggesting": "제안",
       "editingHint": "편집: 편집한 내용이 텍스트에 바로 반영됩니다",
       "suggestingHint": "제안: 편집한 내용이 제안이 되고 소유자나 편집자가 수락합니다",
-      "reviewerHint": "검토자이므로 편집한 내용이 제안이 되고 소유자나 편집자가 수락합니다"
+      "reviewerHint": "검토자이므로 편집한 내용이 제안이 되고 소유자나 편집자가 수락합니다",
+      "locked": {
+        "everyone": "이 프로젝트의 모든 사람에게 변경 내용 추적이 켜져 있어서 편집한 내용이 제안이 됩니다",
+        "plan": "이 프로젝트의 Overleaf 요금제에는 변경 내용 추적이 포함되어 있지 않습니다",
+        "server": "이 Overleaf 서버에서는 변경 내용 추적을 켜거나 끌 수 없습니다"
+      },
+      "others": "다른 사람의 변경 내용 추적",
+      "forEveryone": "모든 사람에게",
+      "forGuests": "링크로 참여한 사람에게"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "뷰어는 채팅을 읽을 수 있지만 게시할 수는 없습니다.",
     "offline": "지금은 이 프로젝트가 연결되어 있지 않아 게시할 수 없습니다.",
     "messageActions": "이 메시지의 추가 작업",
+    "editLabel": "메시지 편집",
     "deleteConfirm": {
       "title": "이 메시지를 삭제할까요?",
       "description": "이 프로젝트의 모든 사람에게서 삭제됩니다."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly가 채팅을 불러오지 못했습니다.",
     "loadOlder": "이전 메시지 보기"
+  },
+  "people": {
+    "invited": "초대됨",
+    "former": "(프로젝트에서 나감)"
   },
   "history": {
     "title": "기록",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "이 프로젝트의 모든 사람에게 모든 파일의 텍스트가 {{time}} 시점의 상태로 돌아가고, 삭제된 파일도 복원됩니다. 이름을 바꾼 파일은 새 이름을 유지하며, 이후에 추가한 그림과 파일은 그대로 남습니다. 현재 텍스트는 기록에 남으므로 다시 되돌릴 수 있습니다.",
       "confirm": "프로젝트 복원"
     },
+    "limited": "이전 변경 사항에는 전체 기록을 제공하는 Overleaf 요금제가 필요합니다.",
+    "unavailable": "이 프로젝트에 대한 내 접근 권한에는 기록이 포함되지 않습니다.",
+    "download": "ZIP으로 다운로드",
+    "downloading": "다운로드 중…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Overleaf의 모든 사람에게 모든 파일이 {{time}} 시점의 상태로 돌아가고, 그 이후에 추가된 파일은 삭제됩니다. Overleaf는 현재 버전을 기록에 남기므로 다시 되돌릴 수 있습니다.",
     "compareTitle": "두 버전 사이의 변경 사항",
     "compareDescription": "{{from}}부터 {{to}}까지",
     "changedFiles": "변경된 파일: {{number}}개",
@@ -1310,8 +1345,6 @@
     "commenter": "이제 댓글 작성자입니다. 이 프로젝트를 읽고 댓글을 달 수는 있지만 편집할 수는 없습니다.",
     "reviewerBy": "{{name}} 님이 나를 검토자로 변경했습니다. 내 편집은 제안이 되고 소유자나 편집자가 수락합니다.",
     "reviewer": "이제 검토자입니다. 내 편집은 제안이 되고 소유자나 편집자가 수락합니다.",
-    "reviewing": "이 프로젝트의 검토자이므로 내 편집은 제안으로 반영됩니다.",
-    "trackingChanges": "이 프로젝트는 변경 내용 추적이 켜져 있어서 내 편집은 제안으로 반영됩니다.",
     "viewOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다.",
     "askOnOverleaf": "Overleaf에서 접근 권한 요청",
     "connecting": "이 공유 프로젝트는 아직 연결 중이라 아직 변경할 수 없습니다. 잠시 후 다시 시도하세요.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "{{server}}에서 로그아웃되어 이 프로젝트가 동기화되지 않고 있습니다. 계속 입력해도 됩니다. 변경 사항은 이 컴퓨터에 남아 있다가 다시 로그인하면 Overleaf로 전송됩니다.",
+    "signedOutAs": "이 프로젝트는 {{server}}의 {{email}} 계정에 속해 있습니다. 그 계정이 로그인되어 있지 않아 프로젝트가 동기화되지 않고 있습니다. 계속 입력해도 됩니다. 변경 사항은 이 컴퓨터에 남아 있다가 {{email}}(으)로 로그인하면 Overleaf로 전송됩니다.",
+    "signInAs": "{{email}}(으)로 로그인",
     "accountChangedOne": "지금은 다른 계정으로 로그인되어 있어서 {{email}}(으)로 만든 변경 사항이 전송되지 않았습니다. 변경 사항은 {{copy}}(으)로 보관되어 있습니다.",
     "accountChangedMany": "지금은 다른 계정으로 로그인되어 있어서 {{email}}(으)로 만든 변경 사항이 전송되지 않았습니다. 변경 사항은 각 파일 옆에 사본으로 보관되어 있습니다.",
     "keptAs": "{{file}} 파일은 {{copy}}(으)로 보관되어 있습니다",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Overleaf가 저장할 수 없어서 {{file}} 파일의 일부 문자(이모지 등)가 다른 문자로 바뀌었습니다.",
     "tryLiveAgain": "실시간 편집 다시 시도",
     "keepMineAsCopy": "내 버전을 사본으로 유지",
-    "stoppedActionFailed": "{{file}} 파일에 대한 작업이 완료되지 않았습니다. 잠시 기다렸다가 다시 클릭하세요."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf에는 이 프로젝트의 {{setting}}에 해당하는 항목이 없어서 Overleaf의 {{setting}}은(는) 그대로 유지됩니다.",
+      "refused": "Overleaf가 {{setting}} 변경을 거부했습니다.",
+      "failed": "Oleafly가 {{setting}} 변경 사항을 Overleaf로 보내지 못했습니다. 다음 변경 때 다시 시도합니다.",
+      "conflict": "{{setting}}이(가) 여기와 Overleaf에서 동시에 변경되었습니다. Overleaf의 선택이 유지됩니다."
+    },
+    "settingNames": {
+      "main_doc": "주 문서",
+      "compiler": "컴파일러",
+      "spelling": "맞춤법 검사 언어",
+      "image": "TeX Live 버전",
+      "bibliography": "주 참고문헌"
+    },
+    "stoppedActionFailed": "{{file}} 파일에 대한 작업이 완료되지 않았습니다. 잠시 기다렸다가 다시 클릭하세요.",
+    "filling": "Overleaf에서 프로젝트를 여는 중: 파일 {{total}}개 중 {{done}}개",
+    "fillingFiles": "Overleaf에서 프로젝트를 여는 중: 마지막 파일을 다운로드하는 중",
+    "emptyCopy": "이 프로젝트는 Overleaf에서 사라졌고, 이 컴퓨터로 받은 파일도 하나도 없습니다.",
+    "removeEmptyCopy": "빈 사본 제거",
+    "removeFailed": "Oleafly가 빈 사본을 제거하지 못했습니다."
   },
   "overleafTree": {
     "deleteTitle": "Overleaf에서도 삭제할까요?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Overleaf에서도 삭제",
     "keep": "Overleaf에 유지",
     "notAllowed": "Overleaf에서 이 프로젝트의 파일을 변경할 수 없어서 {{files}}에 대한 변경 사항은 이 컴퓨터에 남습니다.",
-    "keptAway": "여기서는 삭제했지만 Overleaf에는 남아 있음: {{files}}"
+    "keptAway": "여기서는 삭제했지만 Overleaf에는 남아 있음: {{files}}",
+    "linkedKept": "Overleaf에서 {{files}}이(가) 소스에 연결되어 있어서 변경 사항은 이 컴퓨터에 남습니다. Overleaf 사본을 다시 받으려면 소스에서 새로 고침을 선택하세요."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} 파일은 Overleaf에서 {{source}}에 연결되어 있습니다.",
+    "bannerNoSource": "{{file}} 파일은 Overleaf에서 소스에 연결되어 있습니다.",
+    "readOnly": "{{file}} 파일은 Overleaf에서 소스에 연결되어 있습니다. 업데이트하려면 소스에서 새로 고침을 선택하세요.",
+    "treeHint": "Overleaf에서 소스에 연결됨",
+    "refresh": "소스에서 새로 고침",
+    "refreshing": "새로 고치는 중",
+    "refusedWith": "Overleaf가 새로 고치지 못했습니다: {{message}}"
   }
 }

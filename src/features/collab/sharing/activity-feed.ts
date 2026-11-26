@@ -16,7 +16,13 @@ import {
 import { useEngineStore } from "@/store/engine";
 import { latexmkBlocked } from "@/lib/tex-distributions";
 import { useFilesStore } from "@/store/files";
-import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
+import {
+  liveReviewProjectId,
+  liveSelfId,
+  useCollabLiveStore,
+  type CollabLiveStoreState,
+  type LivePeer,
+} from "../live/live-store";
 import { useCollabActivity, type NewActivity } from "./activity-store";
 
 export const WELCOMED_KEY = "oleafly.collab.welcomed";
@@ -39,7 +45,7 @@ function markWelcomed(projectId: string): void {
 }
 
 function presentAccounts(state: CollabLiveStoreState): Map<string, LivePeer> {
-  const selfId = state.share?.account_id ?? null;
+  const selfId = liveSelfId(state);
   const accounts = new Map<string, LivePeer>();
   for (const peer of Object.values(state.peers)) {
     if (peer.accountId !== selfId && !accounts.has(peer.accountId)) accounts.set(peer.accountId, peer);
@@ -65,13 +71,13 @@ function welcome(state: CollabLiveStoreState, at: number): NewActivity | null {
 }
 
 function isGuest(state: CollabLiveStoreState): boolean {
-  const selfId = state.share?.account_id ?? null;
+  const selfId = liveSelfId(state);
   return state.members.some((member) => member.person.account_id === selfId && member.person.guest === true);
 }
 
 function memberEntry(state: CollabLiveStoreState, at: number): NewActivity | null {
   const change = state.memberChange;
-  const selfId = state.share?.account_id ?? null;
+  const selfId = liveSelfId(state);
   if (!change || change.accountId === selfId) return null;
   if (change.kind !== "added" && change.kind !== "removed") return null;
   return {
@@ -87,7 +93,7 @@ function memberEntry(state: CollabLiveStoreState, at: number): NewActivity | nul
 
 function removedBy(state: CollabLiveStoreState): string | undefined {
   const change = state.memberChange;
-  const selfId = state.share?.account_id ?? null;
+  const selfId = liveSelfId(state);
   if (change?.kind !== "removed" || change.accountId !== selfId || change.by === selfId) return undefined;
   return change.byName || undefined;
 }
@@ -260,8 +266,8 @@ async function noteMissingTex(projectId: string): Promise<void> {
 function syncRail() {
   const live = useCollabLiveStore.getState();
   const visible =
-    live.projectId !== null &&
-    (live.share !== null || (live.status?.state === "ended" && live.backend !== "overleaf"));
+    liveReviewProjectId(live) !== null ||
+    (live.projectId !== null && live.status?.state === "ended" && live.backend !== "overleaf");
   const unread = visible && useCollabActivity.getState().unread;
   const rail = useCollabRail.getState();
   if (rail.visible !== visible || rail.unread !== unread) useCollabRail.setState({ visible, unread });

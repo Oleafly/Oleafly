@@ -4,11 +4,13 @@ import type { PdfAnnotationLayer, PdfMark, PdfRegionSelectionInfo, PdfTextSelect
 import type { PdfViewerHandle } from "@/components/pdf/PdfViewer";
 import { gotoRect, pdfPageText } from "@/components/pdf/pdfController";
 import type { PopoverAnchor } from "@/components/ui/popover";
+import { type CommentRequest, requestCommentAt } from "@/components/collab/comments-rail";
 import { ensureAiProviderOrOpenSettings, handoffToAssistant } from "@/features/assistant-handoff";
 import { annotationContextItems } from "@/features/pdf-annotations/context";
 import type { PlaceDeps } from "@/features/pdf-annotations/place";
 import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
+import { notifyError, toast } from "@/lib/toast";
 import { lazy } from "@/lib/preloadable";
 import { i18n, loadNamespace } from "@/i18n";
 import type {
@@ -45,8 +47,16 @@ interface Fractions {
   height: number;
 }
 
+interface TextDraft {
+  from: "text";
+  build: string;
+  selection: PdfTextSelectionInfo;
+  range: Range | null;
+  kind: TextAnnotationKind | null;
+}
+
 type Draft =
-  | { from: "text"; build: string; selection: PdfTextSelectionInfo; range: Range | null; kind: TextAnnotationKind | null }
+  | TextDraft
   | { from: "region"; build: string; region: PdfRegionSelectionInfo; fractions: Fractions | null; kind: "region" };
 
 export interface PdfAnnotationsToolbar {
@@ -61,6 +71,8 @@ export interface PdfAnnotationsToolbar {
 
 interface Options {
   projectId: string;
+  annotate: boolean;
+  comment: boolean;
   build: string | null;
   documentReady: boolean;
   checkpoint: CompileSuccessCheckpoint | null;
@@ -129,6 +141,8 @@ const markLabel = (mark: PdfMark) => i18n.t(($) => $.annotations.markBadge, { la
 
 export function usePdfAnnotations({
   projectId,
+  annotate,
+  comment,
   build,
   documentReady,
   checkpoint,
@@ -146,13 +160,14 @@ export function usePdfAnnotations({
   const [placingId, setPlacingId] = useState<string | null>(null);
   const [layer, setLayer] = useState<PdfAnnotationLayer | null>(null);
   const [stringsReady, setStringsReady] = useState(false);
+  const [commenting, setCommenting] = useState(false);
   const attemptedRef = useRef<{ key: string; ids: Set<string> } | null>(null);
   const checkpointRef = useRef(checkpoint);
   checkpointRef.current = checkpoint;
 
   useEffect(() => {
-    void usePdfAnnotationsStore.getState().load(projectId);
-  }, [projectId]);
+    if (annotate) void usePdfAnnotationsStore.getState().load(projectId);
+  }, [projectId, annotate]);
 
   useEffect(() => {
     if (stringsReady) return;
@@ -186,7 +201,15 @@ export function usePdfAnnotations({
   }, [build]);
 
   useEffect(() => {
-    if (!loaded || !build || !documentReady) return;
+    if (annotate) return;
+    setPanelOpen(false);
+    setPlacingId(null);
+    setRegionMode(false);
+    setDraft((current) => (current?.from === "text" && !current.kind ? current : null));
+  }, [annotate]);
+
+  useEffect(() => {
+    if (!annotate || !loaded || !build || !documentReady) return;
     const key = `${projectId}:${build}`;
     if (attemptedRef.current?.key !== key) attemptedRef.current = { key, ids: new Set() };
     const tried = attemptedRef.current.ids;
@@ -209,16 +232,16 @@ export function usePdfAnnotations({
         void logError("place PDF annotations again", error);
       }
     })();
-  }, [loaded, build, documentReady, projectId, items]);
+  }, [annotate, loaded, build, documentReady, projectId, items]);
 
   const marks = useMemo<readonly PdfMark[]>(
     () =>
-      marksShown
+      annotate && marksShown
         ? items
             .filter((item) => item.build === build && item.boxes.length > 0 && item.placement !== "needsPlacing")
             .map((item) => ({ id: item.id, label: String(item.number), rects: item.boxes, active: item.id === activeId }))
         : [],
-    [marksShown, items, build, activeId],
+    [annotate, marksShown, items, build, activeId],
   );
 
   const onSelectText = useCallback(
@@ -314,6 +337,40 @@ export function usePdfAnnotations({
     else pdfRef.current?.gotoPage(annotation.page);
   };
 
+  const sourceRangeOf = async (current: TextDraft): Promise<CommentRequest | null> => {
+    try {
+      const { commentRequestOf } = await import("@/features/pdf-annotations/locate");
+      const request = await commentRequestOf(current.selection, checkpointRef.current, syncAvailable);
+      if (!request) {
+        void logWarning("comment on a PDF selection", `no source range for the selection on page ${current.selection.page}`);
+      }
+      return request;
+    } catch (error) {
+      void logError("comment on a PDF selection", error);
+      return null;
+    }
+  };
+
+  const commentOn = async (current: TextDraft) => {
+    if (commenting) return;
+    setCommenting(true);
+    try {
+      const request = await sourceRangeOf(current);
+      if (!request) {
+        toast.info(i18n.t(($) => $.annotations.composer.noSource));
+        return;
+      }
+      finishDraft(current);
+      if (await requestCommentAt(request)) return;
+      void logWarning("comment on a PDF selection", `comments closed before ${request.path} was ready`);
+      toast.info(i18n.t(($) => $.annotations.composer.commentsClosed));
+    } catch (error) {
+      notifyError("comment on a PDF selection", error, i18n.t(($) => $.annotations.composer.commentFailed));
+    } finally {
+      setCommenting(false);
+    }
+  };
+
   const send = async (annotations: PdfAnnotation[]) => {
     if (annotations.length === 0) return;
     if (!(await ensureAiProviderOrOpenSettings())) return;
@@ -327,16 +384,16 @@ export function usePdfAnnotations({
       marks,
       onMarkActivate,
       onSelectText,
-      regionSelect: regionMode,
+      regionSelect: annotate && regionMode,
       onSelectRegion,
     }),
-    [layer, marks, onMarkActivate, onSelectText, regionMode, onSelectRegion],
+    [layer, marks, onMarkActivate, onSelectText, annotate, regionMode, onSelectRegion],
   );
 
   const count = items.length;
   const toolbar = useMemo<PdfAnnotationsToolbar | null>(
     () =>
-      stringsReady
+      stringsReady && annotate
         ? {
             count,
             panelOpen,
@@ -350,7 +407,7 @@ export function usePdfAnnotations({
             toggleMarks: () => setMarksShown((shown) => !shown),
           }
         : null,
-    [stringsReady, count, panelOpen, regionMode, marksShown],
+    [stringsReady, annotate, count, panelOpen, regionMode, marksShown],
   );
 
   let anchor: PopoverAnchor | null = null;
@@ -393,8 +450,11 @@ export function usePdfAnnotations({
               key={draft.from === "text" ? `${draft.selection.page}:${draft.selection.text}` : "region"}
               anchor={anchor}
               contextElement={contextElement}
+              annotate={annotate}
               kind={placingId || draft.kind === "delete" ? null : draft.kind}
               placing={placingId !== null}
+              commenting={commenting}
+              onComment={comment && draft.from === "text" ? () => void commentOn(draft) : undefined}
               onPick={(kind) => {
                 if (kind === "delete") {
                   void save(draft, kind, "");
@@ -408,20 +468,22 @@ export function usePdfAnnotations({
             />
           </Suspense>
         ) : null}
-        <Suspense fallback={null}>
-          <PdfAnnotationsPanel
-            id="pdf-annotations-panel"
-            open={panelOpen}
-            placingId={placingId}
-            onClose={() => {
-              setPanelOpen(false);
-              setPlacingId(null);
-            }}
-            onShow={show}
-            onPlaceAgain={(annotation) => setPlacingId(annotation?.id ?? null)}
-            onSend={(annotations) => void send(annotations)}
-          />
-        </Suspense>
+        {annotate ? (
+          <Suspense fallback={null}>
+            <PdfAnnotationsPanel
+              id="pdf-annotations-panel"
+              open={panelOpen}
+              placingId={placingId}
+              onClose={() => {
+                setPanelOpen(false);
+                setPlacingId(null);
+              }}
+              onShow={show}
+              onPlaceAgain={(annotation) => setPlacingId(annotation?.id ?? null)}
+              onSend={(annotations) => void send(annotations)}
+            />
+          </Suspense>
+        ) : null}
       </>
     ),
   };

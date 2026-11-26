@@ -6,10 +6,13 @@ use serde_json::json;
 use crate::client::{self, Http};
 use crate::error::OnlineErrorKind;
 use crate::html;
-use crate::projects::{self, imported_from, list_projects, ImportedFrom, RemoteProject};
+use crate::projects::{
+    self, imported_from, list_projects, live_link, ImportedFrom, OverleafLink, RemoteProject,
+};
 use crate::realtime::project::{self, ProjectSettings};
 use crate::service::{DEFAULT_SERVER, SERVICE_ID, SESSIONS_ACCOUNT};
 use crate::session::{self, Session};
+use crate::sync::SyncLink;
 use crate::test_support::{
     dashboard_page, payload, remote_project_json as remote, socket_handler, zip_bytes,
     FixtureServer, Reply, Request,
@@ -79,6 +82,24 @@ async fn a_capped_read_refuses_an_oversized_or_endless_body() {
     let fits =
         crate::test_support::streaming_server(None, Some(4), std::time::Duration::ZERO).await;
     assert_eq!(read(fits).await.map(|body| body.len()), Ok(limit));
+}
+
+#[tokio::test]
+async fn an_endless_dashboard_or_project_list_is_cut_off() {
+    let endless =
+        crate::test_support::streaming_server(None, None, std::time::Duration::ZERO).await;
+    let http = Http::new(&endless, AGENT).unwrap();
+    let patience = std::time::Duration::from_secs(30);
+    let dashboard = tokio::time::timeout(patience, http.dashboard("site_session=s"))
+        .await
+        .expect("the dashboard was read without a cap");
+    let error = dashboard.err().unwrap();
+    assert_eq!(error.kind, OnlineErrorKind::Unreachable);
+    assert!(format!("{error:?}").contains("larger than"), "{error:?}");
+    let listed = tokio::time::timeout(patience, http.api_projects("site_session=s", "t", 10))
+        .await
+        .expect("the project list was read without a cap");
+    assert_eq!(listed.err().unwrap().kind, OnlineErrorKind::Unreachable);
 }
 
 #[test]
@@ -560,13 +581,63 @@ async fn listing_without_a_session_asks_to_sign_in_and_an_expired_session_is_for
     let data = tempfile::tempdir().unwrap();
     let store = SecretStore::at(data.path());
     let http = Http::new(&fixture.base, AGENT).unwrap();
-    let error = list_projects(&http, &store).await.err().unwrap();
+    let error = list_projects(&http, &store, None).await.err().unwrap();
     assert_eq!(error.kind, OnlineErrorKind::SignedOut);
     session::save(&store, &fixture.base, &session_of("s=old", "u")).unwrap();
     assert!(session::load(&store, &fixture.base).unwrap().is_some());
-    let error = list_projects(&http, &store).await.err().unwrap();
+    let error = list_projects(&http, &store, None).await.err().unwrap();
     assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
     assert!(session::load(&store, &fixture.base).unwrap().is_none());
+}
+
+#[tokio::test]
+async fn an_expired_account_is_forgotten_alone_and_each_account_lists_its_own_projects() {
+    let fixture = FixtureServer::start(Arc::new(|request: &Request| {
+        let cookie = request.headers.get("cookie").cloned().unwrap_or_default();
+        if cookie.contains("bea=1") {
+            Reply::ok(dashboard_page(
+                &json!({ "projects": [remote("b2", "Lab notes")] }),
+            ))
+        } else {
+            Reply::status(302).header("Location", "/login")
+        }
+    }))
+    .await;
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let http = Http::new(&fixture.base, AGENT).unwrap();
+    session::save(
+        &store,
+        &fixture.base,
+        &account("ada=1", "u-ada", "ada@uni.edu"),
+    )
+    .unwrap();
+    session::save(
+        &store,
+        &fixture.base,
+        &account("bea=1", "u-bea", "bea@lab.org"),
+    )
+    .unwrap();
+    let (signed_in, listed) = list_projects(&http, &store, Some("u-bea")).await.unwrap();
+    assert_eq!(signed_in.cookie, "bea=1");
+    assert_eq!(listed.len(), 1);
+    assert!(session::use_account(&store, &fixture.base, "u-ada").unwrap());
+    let error = list_projects(&http, &store, None).await.err().unwrap();
+    assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
+    let left: Vec<String> = session::accounts(&store, &fixture.base)
+        .unwrap()
+        .into_iter()
+        .map(|session| session.user_id)
+        .collect();
+    assert_eq!(left, vec!["u-bea"]);
+    assert_eq!(
+        list_projects(&http, &store, Some("u-ada"))
+            .await
+            .err()
+            .unwrap()
+            .kind,
+        OnlineErrorKind::SignedOut
+    );
 }
 
 async fn session_against(
@@ -591,7 +662,7 @@ async fn a_firewall_or_maintenance_page_does_not_sign_the_account_out() {
     for reply in replies {
         let (fixture, store, _data) = session_against(reply).await;
         let http = Http::new(&fixture.base, AGENT).unwrap();
-        let error = list_projects(&http, &store).await.err().unwrap();
+        let error = list_projects(&http, &store, None).await.err().unwrap();
         assert_ne!(error.kind, OnlineErrorKind::SessionExpired, "{error:?}");
         assert!(
             session::load(&store, &fixture.base).unwrap().is_some(),
@@ -602,7 +673,7 @@ async fn a_firewall_or_maintenance_page_does_not_sign_the_account_out() {
         session_against(|_| Reply::ok("<html><body>Please wait</body></html>")).await;
     let http = Http::new(&fixture.base, AGENT).unwrap();
     assert_eq!(
-        list_projects(&http, &store).await.err().unwrap().kind,
+        list_projects(&http, &store, None).await.err().unwrap().kind,
         OnlineErrorKind::SignInFailed
     );
 }
@@ -617,7 +688,7 @@ async fn only_the_services_own_login_page_forgets_the_sign_in() {
     for reply in replies {
         let (fixture, store, _data) = session_against(reply).await;
         let http = Http::new(&fixture.base, AGENT).unwrap();
-        let error = list_projects(&http, &store).await.err().unwrap();
+        let error = list_projects(&http, &store, None).await.err().unwrap();
         assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
         assert!(session::load(&store, &fixture.base).unwrap().is_none());
     }
@@ -627,7 +698,7 @@ async fn only_the_services_own_login_page_forgets_the_sign_in() {
     .await;
     let http = Http::new(&fixture.base, AGENT).unwrap();
     assert_ne!(
-        list_projects(&http, &store).await.err().unwrap().kind,
+        list_projects(&http, &store, None).await.err().unwrap().kind,
         OnlineErrorKind::SessionExpired
     );
     assert!(session::load(&store, &fixture.base).unwrap().is_some());
@@ -656,7 +727,7 @@ async fn listing_returns_the_projects_newest_first_and_keeps_the_refreshed_cooki
     )
     .unwrap();
     let http = Http::new(&fixture.base, AGENT).unwrap();
-    let (signed_in, listed) = list_projects(&http, &store).await.unwrap();
+    let (signed_in, listed) = list_projects(&http, &store, None).await.unwrap();
     let ids: Vec<_> = listed.iter().map(|project| project.id.as_str()).collect();
     assert_eq!(ids, vec!["new1", "old1"]);
     assert_eq!(signed_in.cookie, "site_session=rotated");
@@ -687,6 +758,236 @@ fn a_0_4_7_session_map_loads() {
         (loaded.cookie.as_str(), loaded.saved_by),
         ("site_session=abc", None)
     );
+}
+
+fn account(cookie: &str, user: &str, email: &str) -> Session {
+    Session {
+        email: email.into(),
+        ..session_of(cookie, user)
+    }
+}
+
+#[test]
+fn two_accounts_on_one_server_are_kept_apart() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://latex.example.edu";
+    let ada = account("a=1", "u-ada", "ada@uni.edu");
+    let bea = account("b=1", "u-bea", "bea@lab.org");
+    session::save(&store, base, &ada).unwrap();
+    session::save(&store, base, &bea).unwrap();
+    assert_eq!(session::load(&store, base).unwrap(), Some(bea.clone()));
+    assert_eq!(
+        session::load_account(&store, base, "u-ada").unwrap(),
+        Some(ada.clone())
+    );
+    let users = |store: &SecretStore| -> Vec<String> {
+        session::accounts(store, base)
+            .unwrap()
+            .into_iter()
+            .map(|session| session.user_id)
+            .collect()
+    };
+    assert_eq!(users(&store), vec!["u-bea", "u-ada"]);
+    assert!(session::use_account(&store, base, "u-ada").unwrap());
+    assert_eq!(users(&store), vec!["u-ada", "u-bea"]);
+    assert!(!session::use_account(&store, base, "u-cy").unwrap());
+    assert!(!session::use_account(&store, "https://other.example", "u-ada").unwrap());
+    let renewed = account("a=2", "u-ada", "ada@uni.edu");
+    session::save(&store, base, &renewed).unwrap();
+    assert_eq!(users(&store), vec!["u-ada", "u-bea"]);
+    assert_eq!(session::load(&store, base).unwrap().unwrap().cookie, "a=2");
+    assert_eq!(session::session_servers(&store).unwrap(), vec![base]);
+
+    assert!(session::forget_account(&store, base, "u-ada").unwrap());
+    assert!(!session::forget_account(&store, base, "u-ada").unwrap());
+    assert_eq!(session::load(&store, base).unwrap(), Some(bea.clone()));
+    assert_eq!(session::load_account(&store, base, "u-ada").unwrap(), None);
+    session::save(&store, base, &ada).unwrap();
+    assert!(session::forget_account(&store, base, "u-bea").unwrap());
+    assert_eq!(users(&store), vec!["u-ada"]);
+    assert!(session::forget_account(&store, base, "u-ada").unwrap());
+    assert!(session::session_servers(&store).unwrap().is_empty());
+    assert_eq!(store.get(SESSIONS_ACCOUNT).unwrap(), None);
+
+    session::save(&store, base, &ada).unwrap();
+    session::save(&store, base, &bea).unwrap();
+    assert!(session::forget(&store, base).unwrap());
+    assert!(session::accounts(&store, base).unwrap().is_empty());
+}
+
+#[test]
+fn sign_ins_list_every_server_newest_first() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    assert!(session::sign_ins(&store).unwrap().is_empty());
+    store
+        .set(&[(
+            SESSIONS_ACCOUNT,
+            r#"{"https://old.example.edu":{"cookie":"o=1","userId":"u-old","email":""},
+                "https://latex.example.edu":{"cookie":"a=1","userId":"u-ada","email":"ada@uni.edu",
+                  "accounts":[{"cookie":"b=1","userId":"u-bea","email":"bea@lab.org"}],
+                  "signedInAt":{"u-ada":100,"u-bea":200}}}"#,
+        )])
+        .unwrap();
+    let listed = |store: &SecretStore| {
+        session::sign_ins(store)
+            .unwrap()
+            .into_iter()
+            .map(|sign_in| (sign_in.user_id, sign_in.current, sign_in.signed_in_at))
+            .collect::<Vec<_>>()
+    };
+    let row = |user: &str, current: bool, at: Option<i64>| (user.to_owned(), current, at);
+    assert_eq!(
+        listed(&store),
+        vec![
+            row("u-bea", false, Some(200)),
+            row("u-ada", true, Some(100)),
+            row("u-old", true, None),
+        ]
+    );
+
+    let before = crate::unix_now();
+    let base = "https://latex.example.edu";
+    session::save(&store, base, &account("c=1", "u-cy", "cy@lab.org")).unwrap();
+    let (user, current, at) = listed(&store).remove(0);
+    assert_eq!((user.as_str(), current), ("u-cy", true));
+    assert!(at.is_some_and(|at| at >= before));
+
+    assert!(session::use_account(&store, base, "u-ada").unwrap());
+    assert!(session::forget_account(&store, base, "u-cy").unwrap());
+    assert!(session::forget_account(&store, base, "u-bea").unwrap());
+    assert_eq!(
+        listed(&store),
+        vec![row("u-ada", true, Some(100)), row("u-old", true, None)]
+    );
+    let raw = store.get(SESSIONS_ACCOUNT).unwrap().unwrap();
+    assert!(!raw.contains("u-cy") && !raw.contains("u-bea"), "{raw}");
+}
+
+#[test]
+fn load_for_picks_the_linked_account() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://latex.example.edu";
+    assert_eq!(session::load_for(&store, base, None).unwrap(), None);
+    let ada = account("a=1", "u-ada", "ada@uni.edu");
+    let bea = account("b=1", "u-bea", "bea@lab.org");
+    session::save(&store, base, &ada).unwrap();
+    session::save(&store, base, &bea).unwrap();
+    assert_eq!(
+        session::load_for(&store, base, Some("u-ada")).unwrap(),
+        Some(ada)
+    );
+    assert_eq!(session::load_for(&store, base, None).unwrap(), Some(bea));
+    assert_eq!(session::load_for(&store, base, Some("u-cy")).unwrap(), None);
+    assert_eq!(
+        session::load_for(&store, "https://other.example.edu", Some("u-ada")).unwrap(),
+        None
+    );
+}
+
+#[test]
+fn old_single_session_store_still_loads() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://latex.example.edu";
+    store
+        .set(&[(
+            SESSIONS_ACCOUNT,
+            r#"{"https://latex.example.edu":{"cookie":"site_session=abc","userId":"u1","email":"a@b.edu","savedBy":"cli"}}"#,
+        )])
+        .unwrap();
+    let loaded = session::load(&store, base).unwrap().unwrap();
+    assert_eq!(
+        (
+            loaded.cookie.as_str(),
+            loaded.user_id.as_str(),
+            loaded.saved_by.as_deref()
+        ),
+        ("site_session=abc", "u1", Some("cli"))
+    );
+    assert_eq!(
+        session::accounts(&store, base).unwrap(),
+        vec![loaded.clone()]
+    );
+    session::save(&store, base, &account("b=1", "u2", "b@c.org")).unwrap();
+    let raw = store.get(SESSIONS_ACCOUNT).unwrap().unwrap();
+    let old: std::collections::BTreeMap<String, Session> = serde_json::from_str(&raw).unwrap();
+    assert_eq!(
+        old[base].user_id, "u2",
+        "an older reader still finds the current account"
+    );
+    assert_eq!(
+        session::load_account(&store, base, "u1").unwrap(),
+        Some(loaded)
+    );
+}
+
+#[test]
+fn refresh_cookie_updates_only_that_account() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://latex.example.edu";
+    let ada = account("a=1", "u-ada", "ada@uni.edu");
+    let bea = account("b=1", "u-bea", "bea@lab.org");
+    session::save(&store, base, &ada).unwrap();
+    session::save(&store, base, &bea).unwrap();
+    session::refresh_cookie(&store, base, &ada, "a=9").unwrap();
+    let cookie = |user: &str| {
+        session::load_account(&store, base, user)
+            .unwrap()
+            .unwrap()
+            .cookie
+    };
+    assert_eq!(cookie("u-ada"), "a=9");
+    assert_eq!(cookie("u-bea"), "b=1");
+    assert_eq!(
+        session::load(&store, base).unwrap().unwrap().user_id,
+        "u-bea"
+    );
+    session::refresh_cookie(&store, base, &account("x=1", "u-cy", ""), "x=2").unwrap();
+    assert_eq!(session::load_account(&store, base, "u-cy").unwrap(), None);
+}
+
+#[test]
+fn git_tokens_are_kept_per_account_and_fall_back_to_the_server_token() {
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    let base = "https://latex.example.edu";
+    let token = |account: Option<&str>| session::git_token(&store, base, account).unwrap();
+    session::save_git_token(&store, base, None, "olp_shared_1234").unwrap();
+    assert_eq!(token(Some("u-ada")).as_deref(), Some("olp_shared_1234"));
+    session::save_git_token(&store, base, Some("u-ada"), "olp_ada_12345").unwrap();
+    session::save_git_token(&store, base, Some("u-bea"), "olp_bea_12345").unwrap();
+    assert_eq!(token(Some("u-ada")).as_deref(), Some("olp_ada_12345"));
+    assert_eq!(token(Some("u-bea")).as_deref(), Some("olp_bea_12345"));
+    assert_eq!(token(Some("u-cy")).as_deref(), Some("olp_shared_1234"));
+    assert_eq!(token(None).as_deref(), Some("olp_shared_1234"));
+    assert_eq!(session::git_token_servers(&store).unwrap(), vec![base]);
+
+    assert!(session::forget_git_token(&store, base, Some("u-ada")).unwrap());
+    assert_eq!(token(Some("u-ada")).as_deref(), Some("olp_shared_1234"));
+    assert!(session::forget_git_token(&store, base, Some("u-ada")).unwrap());
+    assert_eq!(token(Some("u-ada")), None);
+    assert_eq!(token(Some("u-bea")).as_deref(), Some("olp_bea_12345"));
+    assert_eq!(token(None).as_deref(), Some("olp_bea_12345"));
+
+    session::save_git_token(&store, base, Some("u-ada"), "olp_ada_12345").unwrap();
+    assert_eq!(
+        token(None),
+        None,
+        "two account tokens and no current account"
+    );
+    session::save(&store, base, &account("a=1", "u-ada", "ada@uni.edu")).unwrap();
+    assert_eq!(token(None).as_deref(), Some("olp_ada_12345"));
+    assert!(session::save_git_token(&store, base, Some("u-ada"), "bad token").is_err());
+
+    assert!(session::forget_git_token(&store, base, None).unwrap());
+    assert_eq!(token(Some("u-ada")), None);
+    assert_eq!(token(Some("u-bea")), None);
+    assert!(session::git_token_servers(&store).unwrap().is_empty());
+    assert!(!session::forget_git_token(&store, base, None).unwrap());
 }
 
 #[test]
@@ -752,7 +1053,7 @@ fn default_server_is_the_only_saved_server_or_the_service_default() {
     assert_eq!(session::default_server(&empty).unwrap(), DEFAULT_SERVER);
     let data = tempfile::tempdir().unwrap();
     let store = SecretStore::at(data.path());
-    session::save_git_token(&store, "https://latex.example.edu", "tok_12345678").unwrap();
+    session::save_git_token(&store, "https://latex.example.edu", None, "tok_12345678").unwrap();
     assert_eq!(
         session::default_server(&store).unwrap(),
         "https://latex.example.edu"
@@ -811,14 +1112,84 @@ fn imported_from_reads_only_records_of_this_service() {
         ),
         Some(ImportedFrom {
             server: "https://latex.example.edu".into(),
-            project_id: "a1".into()
+            project_id: "a1".into(),
+            user_id: None,
+            email: None,
         })
     );
+    assert_eq!(
+        imported_from(&json!({
+            "service": SERVICE_ID, "server": "s", "projectId": "a1",
+            "userId": "u-ada", "email": "ada@uni.edu"
+        }))
+        .and_then(|origin| origin.user_id.zip(origin.email)),
+        Some(("u-ada".to_string(), "ada@uni.edu".to_string()))
+    );
+    let mut record = json!({"service": SERVICE_ID, "server": "s", "projectId": "a1"});
+    assert!(projects::record_account(
+        &mut record,
+        "u-ada",
+        "ada@uni.edu"
+    ));
+    assert!(!projects::record_account(
+        &mut record,
+        "u-ada",
+        "ada@uni.edu"
+    ));
+    assert_eq!(record["userId"], "u-ada");
+    assert_eq!(record["email"], "ada@uni.edu");
     assert_eq!(
         imported_from(&json!({"service": "other", "server": "s", "projectId": "a1"})),
         None
     );
     assert_eq!(imported_from(&json!({"service": SERVICE_ID})), None);
+}
+
+#[test]
+fn live_link_prefers_the_git_link_and_keeps_the_account() {
+    let project = "64f0c0ffee0123456789abcd";
+    let other = "64f0c0ffee0123456789abce";
+    let origin = ImportedFrom {
+        server: "https://latex.example.edu".into(),
+        project_id: project.into(),
+        user_id: Some("u-ada".into()),
+        email: None,
+    };
+    let git = SyncLink {
+        server: "https://git.example.edu".into(),
+        remote_id: project.into(),
+        linked_at: 1,
+        auto: false,
+        last_sync_at: None,
+    };
+    assert_eq!(
+        live_link(Some(git.clone()), Some(origin.clone())),
+        Some(OverleafLink {
+            server: git.server.clone(),
+            project_id: project.into(),
+            user_id: Some("u-ada".into()),
+        })
+    );
+    let elsewhere = SyncLink {
+        remote_id: other.into(),
+        ..git.clone()
+    };
+    let linked = live_link(Some(elsewhere), Some(origin.clone())).unwrap();
+    assert_eq!((linked.project_id.as_str(), linked.user_id), (other, None));
+    let bea = ImportedFrom {
+        user_id: Some("u-bea".into()),
+        ..origin
+    };
+    assert_eq!(
+        live_link(None, Some(bea.clone())),
+        Some(OverleafLink {
+            server: bea.server,
+            project_id: project.into(),
+            user_id: Some("u-bea".into()),
+        })
+    );
+    assert_eq!(live_link(Some(git), None).unwrap().user_id, None);
+    assert_eq!(live_link(None, None), None);
 }
 
 #[test]

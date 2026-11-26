@@ -7,21 +7,12 @@ use oleafly_collab::doc::{FileNode, NodeKind, NodeParent};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout, Placed};
 use oleafly_collab::CollabError;
-use serde::Serialize;
+
+pub use oleafly_live::live::payloads::{KeptFile, KeptKind, KeptPayload};
 
 use super::{guard, lock, name_of, parent_of, Active, LiveDisk};
 
 pub const LIVE_KEPT_EVENT: &str = "collab-live-kept";
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum KeptKind {
-    Replaced,
-    Added,
-    Beside,
-    Unsent,
-    Differed,
-}
 
 pub(super) const ARRIVAL_WINDOW: Duration = Duration::from_secs(10);
 
@@ -35,6 +26,10 @@ type Arrivals = HashMap<String, Arrival>;
 
 static ARRIVALS: LazyLock<Mutex<HashMap<PathBuf, Arrivals>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+pub(super) fn forget_arrivals(root: &Path) {
+    guard(&ARRIVALS).remove(root);
+}
 
 fn recent(arrivals: &mut Arrivals) {
     arrivals.retain(|_, arrival| arrival.at.elapsed() < ARRIVAL_WINDOW);
@@ -144,23 +139,6 @@ impl Active {
             );
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KeptFile {
-    pub id: String,
-    pub path: String,
-    pub copy: Option<String>,
-    pub kind: KeptKind,
-    pub by: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KeptPayload {
-    pub project_id: String,
-    pub files: Vec<KeptFile>,
 }
 
 pub(super) struct LostFigure {
@@ -330,17 +308,21 @@ mod tests {
         kept: Mutex<Vec<KeptPayload>>,
     }
 
-    impl LiveHost for Recording {
+    impl oleafly_live::DiskHost for Recording {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
-        fn new_device(&self, _: NewDevicePayload) {}
+
         fn kept(&self, payload: KeptPayload) {
             self.kept.lock().unwrap().push(payload);
         }
+    }
+
+    impl LiveHost for Recording {
+        fn merged(&self, _: MergedPayload) {}
+        fn new_device(&self, _: NewDevicePayload) {}
     }
 
     fn run(test: impl std::future::Future<Output = ()>) {
@@ -381,16 +363,16 @@ mod tests {
         let collab: PathBuf = dir.join("collab");
         std::fs::create_dir_all(&collab).unwrap();
         Arc::new(Active {
-            local: LiveDisk {
-                project_id: "kept".to_owned(),
-                root: root.to_path_buf(),
-                disk_file: collab.join("materializer-index.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(bases),
-                host,
+            local: LiveDisk::assembled(
+                "kept",
+                root.to_path_buf(),
+                collab.join("materializer-index.json"),
+                disk,
+                bases,
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host,
             document_dir: collab.join("document"),
             live: shared,
             handle,

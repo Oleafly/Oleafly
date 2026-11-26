@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 
-const loaded = vi.hoisted(() => ({ pane: vi.fn(), keeper: vi.fn(), activity: vi.fn() }));
+const loaded = vi.hoisted(() => ({ pane: vi.fn(), keeper: vi.fn(), activity: vi.fn(), suggestions: vi.fn(), chat: vi.fn() }));
 
 vi.mock("@/features/collab/comments/CommentsPane", () => ({
   CommentsPane: () => {
@@ -19,6 +19,18 @@ vi.mock("@/features/collab/comments/CommentsKeeper", () => ({
     return null;
   },
 }));
+vi.mock("@/features/collab/suggestions/SuggestionsKeeper", () => ({
+  SuggestionsKeeper: () => {
+    loaded.suggestions();
+    return null;
+  },
+}));
+vi.mock("@/features/collab/chat/ChatKeeper", () => ({
+  ChatKeeper: () => {
+    loaded.chat();
+    return null;
+  },
+}));
 vi.mock("@/features/collab/sharing/CollabActivityKeeper", () => ({
   CollabActivityKeeper: () => {
     loaded.activity();
@@ -26,8 +38,10 @@ vi.mock("@/features/collab/sharing/CollabActivityKeeper", () => ({
   },
 }));
 
+import { useLiveBackend } from "@/lib/collab-live-bridge";
 import { useCollabRail } from "./collab-rail";
-import { CollabActivitySlot, CommentsPanel, CommentsRailIcon, commentsRailLabel } from "./CollabSlots";
+import { ChatRailIcon, CollabActivitySlot, CommentsPanel, CommentsRailIcon, commentsRailLabel } from "./CollabSlots";
+import { useChatRail } from "./chat-rail";
 import { useCommentsRail } from "./comments-rail";
 
 async function settle() {
@@ -45,8 +59,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  useLiveBackend.setState({ projectId: null, backend: null, overleaf: null });
   useCollabRail.setState({ visible: false, unread: false });
   useCommentsRail.setState({ visible: false, unread: false });
+  useChatRail.setState({ unread: false });
 });
 
 describe("comment slots", () => {
@@ -59,6 +75,19 @@ describe("comment slots", () => {
     expect(loaded.keeper).not.toHaveBeenCalled();
     act(() => useCollabRail.setState({ visible: true }));
     await vi.waitFor(() => expect(loaded.keeper).toHaveBeenCalled(), { timeout: 10_000 });
+    await vi.waitFor(() => expect(loaded.chat).toHaveBeenCalled(), { timeout: 10_000 });
+    expect(loaded.suggestions).toHaveBeenCalled();
+  }, 20_000);
+
+  it("start the comment, suggestion and chat keepers for a project live on Overleaf", async () => {
+    render(<CollabActivitySlot />);
+    await vi.waitFor(() => expect(loaded.activity).toHaveBeenCalled(), { timeout: 10_000 });
+    await settle();
+    expect(loaded.chat).not.toHaveBeenCalled();
+    act(() => useLiveBackend.setState({ projectId: "paper", backend: "overleaf" }));
+    await vi.waitFor(() => expect(loaded.keeper).toHaveBeenCalled(), { timeout: 10_000 });
+    await vi.waitFor(() => expect(loaded.suggestions).toHaveBeenCalled(), { timeout: 10_000 });
+    await vi.waitFor(() => expect(loaded.chat).toHaveBeenCalled(), { timeout: 10_000 });
   }, 20_000);
 
   it("load the Comments tab on demand", async () => {
@@ -68,11 +97,19 @@ describe("comment slots", () => {
 
   it("dot the rail icon and name the unseen activity", () => {
     const { container } = render(<CommentsRailIcon className="size-4" />);
-    expect(container.querySelector("svg.lucide-message-square")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-message-square-quote")).toBeInTheDocument();
     expect(screen.queryByTestId("comments-rail-dot")).not.toBeInTheDocument();
     expect(commentsRailLabel()).toBe(enCollab.comments.title);
     act(() => useCommentsRail.setState({ unread: true }));
     expect(screen.getByTestId("comments-rail-dot")).toBeInTheDocument();
     expect(commentsRailLabel()).toBe(enCollab.comments.titleUnread);
+  });
+
+  it("draw chat with round bubbles and dot it for unseen messages", () => {
+    const { container } = render(<ChatRailIcon className="size-4" />);
+    expect(container.querySelector("svg.lucide-messages-circle")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-rail-dot")).not.toBeInTheDocument();
+    act(() => useChatRail.setState({ unread: true }));
+    expect(screen.getByTestId("chat-rail-dot")).toBeInTheDocument();
   });
 });

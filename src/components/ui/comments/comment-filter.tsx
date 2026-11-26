@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -48,7 +49,9 @@ export function CommentFilterMenu({
         {COMMENT_FILTERS.map((filter) => (
           <DropdownMenuCheckboxItem key={filter} checked={value === filter} onSelect={() => onChange(filter)}>
             <span className="flex-1">{labels[filter]}</span>
-            <span className="tabular-nums text-muted-foreground">{format(counts[filter])}</span>
+            <Badge variant="muted" size="sm" className="tabular-nums">
+              {format(counts[filter])}
+            </Badge>
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -18,6 +18,7 @@ use super::client::Http;
 use super::errors::app_error;
 use super::session::{self, Session};
 use crate::app_error::AppError;
+use crate::cua_driver::icons::{self, IconSource};
 
 pub(crate) const LABEL_PREFIX: &str = "overleaf-sign-in-";
 const SIGN_IN_LIMIT: Duration = Duration::from_secs(20 * 60);
@@ -200,6 +201,36 @@ pub(crate) fn sign_in_browsers() -> Vec<InstalledBrowser> {
         return vec![scripted];
     }
     browser_signin::installed(HostPlatform::current())
+}
+
+fn icon_sources(browser: &InstalledBrowser) -> Vec<IconSource> {
+    if cfg!(target_os = "macos") {
+        return browser
+            .path
+            .ancestors()
+            .find(|path| path.extension().is_some_and(|extension| extension == "app"))
+            .map(|bundle| IconSource::Bundle(bundle.to_path_buf()))
+            .into_iter()
+            .collect();
+    }
+    if cfg!(windows) {
+        return vec![IconSource::Program(browser.path.clone())];
+    }
+    browser
+        .icon_names()
+        .into_iter()
+        .map(|name| IconSource::Named(name.to_string()))
+        .collect()
+}
+
+pub(crate) fn browser_icons() -> BTreeMap<String, String> {
+    sign_in_browsers()
+        .iter()
+        .filter_map(|browser| {
+            let icon = icon_sources(browser).iter().find_map(icons::load)?;
+            Some((browser.key(), icon))
+        })
+        .collect()
 }
 
 pub(crate) fn sweep_browser_profiles() {

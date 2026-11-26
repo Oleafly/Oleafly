@@ -316,6 +316,15 @@
     "spellLanguageFolderHint": "Sparas i mappens project.json, så det gäller alla som öppnar mappen. Ladda ner fler språk i Inställningar.",
     "spellLanguageReadOnly": "Den här mappen är skrivskyddad, så språket i dess project.json kan inte ändras.",
     "spellLanguageFailed": "Det gick inte att byta språk för stavningskontroll.",
+    "onOverleaf": "På Overleaf",
+    "texLive": "TeX Live-version",
+    "texLiveAriaLabel": "TeX Live-version på Overleaf",
+    "bibliography": "Huvudbibliografi",
+    "bibliographyAriaLabel": "Huvudbibliografi på Overleaf",
+    "bibliographyNone": "Ingen vald",
+    "overleafHint": "De här inställningarna finns på Overleaf och gäller alla i projektet.",
+    "overleafReadOnly": "Bara ägare och redigerare kan ändra dem på Overleaf.",
+    "overleafFailed": "Det gick inte att ändra den här inställningen på Overleaf.",
     "notChecked": "Inte kontrollerad",
     "dictionaryMissing": "{{name}} är inte nedladdad, så stavningen kontrolleras inte. Ladda ned den i Inställningar eller välj ett annat språk.",
     "grammarEnglishOnly": "Grammatikkontroll fungerar bara för engelska dokument.",
@@ -737,12 +746,12 @@
     "ignoreEverywhere": "Ignorera överallt",
     "keyboardHint": "Använd Tab eller piltangenterna för att flytta mellan åtgärder. Tryck på Escape för att stänga.",
     "endOfDocument": "Dokumentets slut",
-    "hidePreamble": "Dölj dokumentets ingress",
-    "showPreamble": "Visa dokumentets ingress",
-    "sharedReadOnly": "I ett delat projekt visar det visuella läget bara filen. Byt till källkodsvyn för att redigera den.",
     "findingLabel": "{{message}}. Öppna korrekturförslag.",
     "rawBlockFindings_one": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
-    "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag."
+    "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
+    "liveViewOnly": "Du kan visa den här delade filen men inte redigera den.",
+    "liveConnecting": "Den här delade filen ansluter fortfarande. Du kan redigera den när den är klar.",
+    "suggestInSource": "Dina ändringar här skulle bli förslag, och det visuella läget kan inte visa dem. Byt till källkodsvyn för att föreslå ändringar."
   },
   "package": {
     "search": {
