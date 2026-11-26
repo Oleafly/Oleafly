@@ -9,6 +9,7 @@ import type {
 } from "@oleafly/snippets";
 import { isWindowsReservedComponent } from "@/lib/project-notes";
 import { isRecord } from "@/lib/is-record";
+import { logError } from "@/lib/log";
 
 export const STATE_FILE = "_state.json";
 const USES_KEY = "oleafly.snippets.uses";
@@ -115,12 +116,15 @@ export const useSnippetStore = create<SnippetStore>((set, get) => ({
   stateProblems: [],
   load: () => {
     if (get().status === "idle") set({ status: "loading" });
-    loading ??= engine()
+    if (loading) return loading;
+    const run = engine()
       .then((module) => module.load())
       .finally(() => {
         loading = null;
       });
-    return loading;
+    run.catch((error: unknown) => logError("load snippets", error));
+    loading = run;
+    return run;
   },
   saveRecord: (collection, record) => engine().then((module) => module.saveRecord(collection, record)),
   deleteRecord: (collection, id) => engine().then((module) => module.deleteRecord(collection, id)),
@@ -144,12 +148,4 @@ export function snippetSettingsFiles(): SnippetFileText[] {
 
 export function importSnippetSettingsFiles(files: readonly SnippetFileText[]): Promise<void> {
   return engine().then((module) => module.importSnippetSettingsFiles(files));
-}
-
-export function watchSnippetFiles(): () => void {
-  const onFocus = () => {
-    if (useSnippetStore.getState().status !== "idle") void useSnippetStore.getState().load();
-  };
-  window.addEventListener("focus", onFocus);
-  return () => window.removeEventListener("focus", onFocus);
 }

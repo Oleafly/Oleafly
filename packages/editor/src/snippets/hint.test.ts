@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import { autocompletion, type CompletionSource, completionStatus, startCompletion } from "@codemirror/autocomplete";
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, Transaction } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { remoteChange } from "../collaboration";
 import {
   acceptGhostSuggestion,
   type GhostRequest,
@@ -187,6 +188,20 @@ describe("snippet hints", () => {
     type(view, " th");
     await flush();
     expect(chip(view)).toBe("⇥ Theorem");
+  });
+
+  it("asks AI once on Escape, not again for each remote edit before the caret", async () => {
+    const view = type(hintEditor("Notes\n|", { ai: true }), "th");
+    await flush();
+    press(view, "Escape");
+    await flush();
+    expect(calls).toHaveLength(1);
+    for (let round = 0; round < 2; round += 1) {
+      view.dispatch({ changes: { from: 0, insert: "x" }, annotations: [remoteChange.of(true), Transaction.addToHistory.of(false)] });
+      await flush();
+    }
+    expect(calls).toHaveLength(1);
+    expect(calls[0].request.signal.aborted).toBe(true);
   });
 
   it("clears the dismissal when the caret jumps", async () => {

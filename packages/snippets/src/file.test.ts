@@ -218,6 +218,9 @@ describe("parseSnippetFile", () => {
     [{ prefix: "a" }, "no-body"],
     [{ prefix: "a", body: {} }, "no-body"],
     [{ prefix: "re:(", body: "x" }, "bad-regex"],
+    [{ prefix: "re:(\\w+\\s?)+\\d\\d", body: "x" }, "bad-regex"],
+    [{ prefix: "a", body: "${1/^(a+)+$/x/}" }, "bad-transform"],
+    [{ prefix: "a", body: "${1:foo $1} bar" }, "bad-field"],
     [{ prefix: "a", body: "\\caption{${1:x" }, "unclosed"],
     [{ prefix: "a", body: { latex: "ok", typst: "${1/shout}" } }, "unknown-helper"],
     ["text", "entry-not-object"],
@@ -227,6 +230,13 @@ describe("parseSnippetFile", () => {
     expect(file.records).toEqual([]);
     expect(file.problems).toEqual([expect.objectContaining({ id: "x", code, severity: "error", line: 1 })]);
     expect(file.problems[0].message).toContain('"x"');
+  });
+
+  it("skips a body with fields nested too deeply instead of throwing", () => {
+    const body = Array.from({ length: 2000 }, (_, index) => `\${${index + 1}:`).join("") + "}".repeat(2000);
+    const file = parseSnippetFile(JSON.stringify({ x: { prefix: "a", body } }), "mine", "user");
+    expect(file.records).toEqual([]);
+    expect(file.problems).toEqual([expect.objectContaining({ id: "x", code: "bad-field", severity: "error" })]);
   });
 
   it("shortens long values in messages", () => {
@@ -260,6 +270,38 @@ describe("parseSnippetFile", () => {
     const file = parseSnippetFile(JSON.stringify({ x: { prefix: "re:a.", body: "y", expand: "auto" } }), "p", "pack");
     expect(file.records).toHaveLength(1);
     expect(file.problems).toEqual([expect.objectContaining({ id: "x", code: "regex-every-key", severity: "warning" })]);
+  });
+
+  it("does not warn about a regex trigger that ends in a literal star", () => {
+    expect(problemsOf(JSON.stringify({ x: { prefix: "re:x\\*", body: "y", expand: "auto" } }), "pack")).toEqual([]);
+  });
+
+  it("explains the skip of a trigger that repeats a group which repeats inside", () => {
+    const [problem] = problemsOf(JSON.stringify({ x: { prefix: "re:(\\w+\\s?)+\\d\\d", body: "y" } }));
+    expect(problem.message).toBe('The trigger of "x" has a repeat inside a repeated group, like (a+)+, which can freeze typing, so it was left out');
+  });
+
+  it("warns that a regex snippet uses only its first prefix", () => {
+    const file = parseSnippetFile(JSON.stringify({ x: { prefix: ["re:x(\\d)", "xx", "re:y"], body: "y" } }), "p", "pack");
+    expect(file.records).toHaveLength(1);
+    expect(file.problems).toEqual([
+      {
+        collection: "p",
+        line: 1,
+        id: "x",
+        code: "regex-aliases",
+        message: '"x" has a regular expression trigger, so its other prefixes are never used',
+        severity: "warning",
+      },
+    ]);
+    expect(problemsOf(JSON.stringify({ x: { prefix: ["re:x(\\d)", "re:x(\\d)"], body: "y" } }), "pack")).toEqual([]);
+  });
+
+  it("reads [[n]] as a capture only in a regex snippet", () => {
+    const literal = only(JSON.stringify({ x: { prefix: "st", body: "#strong[[1]] x" } }));
+    expect(literal.bodies.default).toEqual([{ kind: "text", text: "#strong[[1]] x" }]);
+    const regex = only(JSON.stringify({ x: { prefix: "re:x(\\d)", body: "[[0]]" } }), "pack");
+    expect(regex.bodies.default).toEqual([{ kind: "capture", group: 1 }]);
   });
 });
 

@@ -48,6 +48,12 @@ describe("applyRegexTransform", () => {
     expect(transform("a", "(a)", "${1:+a\\}b}")).toBe("a}b");
   });
 
+  it("splits an if-else on the first colon that is not escaped", () => {
+    expect(transform("a", "(a)?(b)?", "${2:?yes\\:1:no}")).toBe("no");
+    expect(transform("a", "(a)?(b)?", "${1:?yes\\:1:no}")).toBe("yes:1");
+    expect(transform("a", "(a)?(b)?", "${1:?a\\\\:b}")).toBe("a\\");
+  });
+
   it("inserts groups and escapes", () => {
     expect(transform("main.tex", "(.*)\\.(.+)", "$2:${1}\\n\\t\\$\\/$")).toBe("tex:main\n\t$/$");
     expect(transform("x", "(?<name>x)", "[$1]")).toBe("[x]");
@@ -66,6 +72,14 @@ describe("applyRegexTransform", () => {
     expect(transform("abc", "a", "x", "q")).toBe("abc");
     expect(validRegexTransform({ source: "a", format: "", flags: "gimsu" })).toBe(true);
   });
+
+  it("refuses a regular expression that repeats a group which repeats inside", () => {
+    expect(validRegexTransform({ source: "^(a+)+$", format: "x", flags: "" })).toBe(false);
+    expect(validRegexTransform({ source: "(.*)\\.(.+)", format: "x", flags: "" })).toBe(true);
+    const started = performance.now();
+    expect(transform(`${"a".repeat(30)}!`, "^(a+)+$", "x")).toBe(`${"a".repeat(30)}!`);
+    expect(performance.now() - started).toBeLessThan(100);
+  });
 });
 
 describe("formatDate", () => {
@@ -82,5 +96,12 @@ describe("formatDate", () => {
     const now = new Date(2007, 2, 4, 23, 59, 0);
     expect(formatDate(now, "M/D/YY MM-DD HH:mm:ss")).toBe("3/4/07 03-04 23:59:00");
     expect(formatDate(now, "at dd")).toBe("at dd");
+  });
+
+  it("writes text in square brackets as it is", () => {
+    const now = new Date(2026, 10, 26);
+    expect(formatDate(now, "[Day] D [of] MMMM")).toBe("Day 26 of November");
+    expect(formatDate(now, "[[]D[]] [] YYYY")).toBe("[26]  2026");
+    expect(formatDate(now, "[D")).toBe("[26");
   });
 });

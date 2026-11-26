@@ -114,8 +114,16 @@ export function AddSnippetsDialog({ open, onOpenChange }: Readonly<{ open: boole
     }
   };
 
+  const change = (next: boolean) => {
+    if (!next) {
+      setOutcome(null);
+      setPackError(null);
+    }
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={change}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{t(($) => $.settings.snippets.addDialog.title)}</DialogTitle>

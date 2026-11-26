@@ -97,6 +97,14 @@ describe("buildLibrary", () => {
     ]);
   });
 
+  it("keeps the old trigger when an override's trigger repeats a group which repeats inside", () => {
+    const snippets = library([fastMath], {
+      overrides: [{ id: "fm.hat", collection: "fast-math-latex", patch: { trigger: "(\\w+\\s?)+hat" } }],
+    });
+    expect(snippets.byId("fm.hat")?.trigger).toBe("([A-Za-z])hat");
+    expect(snippets.problems).toEqual([expect.objectContaining({ id: "fm.hat", code: "bad-regex" })]);
+  });
+
   it("drops a regex record that was switched off for being slow", () => {
     const snippets = library([fastMath, mine], { disabledRegex: new Set(["fm.sub", "anywhere"]) });
     expect(snippets.byId("fm.sub")).toBeUndefined();

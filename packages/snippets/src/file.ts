@@ -1,7 +1,7 @@
 import { bodyUses, parseBody, serializeBody } from "./body";
 import { parseJsoncDocument } from "./jsonc";
 import { lineAt } from "./locate";
-import { compileTrigger, EVERY_KEY, REGEX_PREFIX, regexEndClass } from "./trigger";
+import { compileTrigger, EVERY_KEY, hasNestedQuantifier, REGEX_PREFIX, regexEndClass } from "./trigger";
 import {
   type BodyNode,
   EXPANDS,
@@ -89,12 +89,12 @@ function readBodies(id: string, raw: unknown): Record<string, string> {
   return bodies;
 }
 
-function parseBodies(id: string, texts: Record<string, string>): Bodies {
+function parseBodies(id: string, texts: Record<string, string>, captures: boolean): Bodies {
   const bodies: Bodies = {};
   for (const key of BODY_KEYS) {
     const text = texts[key];
     if (text === undefined) continue;
-    const parsed = parseBody(text);
+    const parsed = parseBody(text, { captures });
     const [error] = parsed.errors;
     if (error) throw new Skip(error.code, `"${id}" was left out. ${error.message}`);
     bodies[key] = parsed.nodes;
@@ -127,6 +127,34 @@ interface RecordResult {
   warnings: { code: SnippetProblemCode; message: string }[];
 }
 
+function triggerRegex(id: string, trigger: string): RegExp {
+  try {
+    return compileTrigger(trigger);
+  } catch {
+    const reason = hasNestedQuantifier(trigger)
+      ? "has a repeat inside a repeated group, like (a+)+, which can freeze typing"
+      : "is not a valid regular expression";
+    throw new Skip("bad-regex", `The trigger of "${id}" ${reason}, so it was left out`);
+  }
+}
+
+function regexWarnings(id: string, trigger: string, aliases: readonly string[]): RecordResult["warnings"] {
+  const warnings: RecordResult["warnings"] = [];
+  if (regexEndClass(trigger) === EVERY_KEY) {
+    warnings.push({
+      code: "regex-every-key",
+      message: `The trigger of "${id}" is checked after every key you type, which can slow typing`,
+    });
+  }
+  if (aliases.length > 0) {
+    warnings.push({
+      code: "regex-aliases",
+      message: `"${id}" has a regular expression trigger, so its other prefixes are never used`,
+    });
+  }
+  return warnings;
+}
+
 function readRecord(id: string, entry: unknown, collection: string, layer: LayerId): RecordResult {
   if (!isObject(entry)) throw new Skip("entry-not-object", `"${id}" is not a snippet object, so it was left out`);
   const warnings: RecordResult["warnings"] = [];
@@ -146,21 +174,10 @@ function readRecord(id: string, entry: unknown, collection: string, layer: Layer
   const priority = optional(entry, id, "priority", isNumber) ?? 0;
   const typstSince = optional(entry, id, "typstSince", isVersion);
   const texts = readBodies(id, entry.body);
-  const bodies = parseBodies(id, texts);
-  let regex: RegExp | null = null;
-  if (isRegex) {
-    try {
-      regex = compileTrigger(trigger as string);
-    } catch {
-      throw new Skip("bad-regex", `The trigger of "${id}" is not a valid regular expression, so it was left out`);
-    }
-    if (regexEndClass(trigger as string) === EVERY_KEY) {
-      warnings.push({
-        code: "regex-every-key",
-        message: `The trigger of "${id}" is checked after every key you type, which can slow typing`,
-      });
-    }
-  }
+  const bodies = parseBodies(id, texts, isRegex);
+  const aliases = rest.filter((alias) => alias !== trigger && alias !== first);
+  const regex = isRegex ? triggerRegex(id, trigger as string) : null;
+  if (isRegex) warnings.push(...regexWarnings(id, trigger as string, aliases));
   let languages: SnippetLanguage[] | "any" = languagesValue ?? "any";
   if (languagesValue === undefined && scope !== undefined) {
     languages = scopeLanguages(scope);
@@ -184,7 +201,7 @@ function readRecord(id: string, entry: unknown, collection: string, layer: Layer
     id,
     name,
     trigger,
-    aliases: rest.filter((alias) => alias !== trigger),
+    aliases,
     regex,
     expand,
     languages,

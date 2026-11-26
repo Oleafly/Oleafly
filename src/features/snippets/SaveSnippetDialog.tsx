@@ -1,12 +1,13 @@
 import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { bodyFromSelection, type Expand, type FieldSuggestion, suggestFields } from "@oleafly/snippets";
+import { bodyFromSelection, EXPANDS, type Expand, type FieldSuggestion, suggestFields } from "@oleafly/snippets";
 import { SnippetBodyEditor } from "@/components/settings/snippets/SnippetBodyEditor";
 import { ToolSegmentedControl } from "@/components/tools/ToolWorkspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,8 +18,6 @@ import { draftRecord, newDraft, uniqueRecordId } from "./draft";
 import { collectionName, expandLabel, languageLabel, placeLabel, userCollections } from "./records";
 import { type SnippetSelection, useSaveSnippetDialog } from "./save-dialog";
 import { useSnippetStore } from "./store";
-
-const EXPANDS: readonly Expand[] = ["list", "tab", "auto"];
 
 function SaveSnippetForm({ selection, onClose }: Readonly<{ selection: SnippetSelection; onClose: () => void }>) {
   const { t } = useTranslation(["common", "shell"]);
@@ -87,21 +86,15 @@ function SaveSnippetForm({ selection, onClose }: Readonly<{ selection: SnippetSe
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
-        <div className="space-y-1.5">
-          <label htmlFor={`${id}-name`} className="text-xs font-medium">
-            {t(($) => $.shell.snippets.save.name)}
-          </label>
+        <Field id={`${id}-name`} label={t(($) => $.shell.snippets.save.name)}>
           <Input
             id={`${id}-name`}
             value={name}
             placeholder={t(($) => $.shell.snippets.save.namePlaceholder)}
             onChange={(event) => setName(event.target.value)}
           />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor={`${id}-trigger`} className="text-xs font-medium">
-            {t(($) => $.shell.snippets.save.trigger)}
-          </label>
+        </Field>
+        <Field id={`${id}-trigger`} label={t(($) => $.shell.snippets.save.trigger)}>
           <Input
             id={`${id}-trigger`}
             {...LITERAL_INPUT}
@@ -110,7 +103,7 @@ function SaveSnippetForm({ selection, onClose }: Readonly<{ selection: SnippetSe
             placeholder={t(($) => $.shell.snippets.save.triggerPlaceholder)}
             onChange={(event) => setTrigger(event.target.value)}
           />
-        </div>
+        </Field>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium">{t(($) => $.shell.snippets.save.expands)}</span>

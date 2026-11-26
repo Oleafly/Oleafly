@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { buildLibrary, parseSnippetFile, type ParsedSnippetFile, type SnippetRecord, serializeBody } from "@oleafly/snippets";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ModalShell } from "@/components/ui/modal-shell";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { draftFromRecord, newDraft } from "@/features/snippets/draft";
 import { useSnippetStore } from "@/features/snippets/store";
@@ -30,7 +32,7 @@ const MINE = file("my-snippets", "user", {
 });
 const IMPORTED = file("imported", "user", {});
 
-function setup(start: SnippetEditorStart) {
+function setup(start: SnippetEditorStart, wrap: (editor: ReactNode) => ReactNode = (editor) => editor) {
   const files = [PAPER, MINE, IMPORTED];
   useSnippetStore.setState({
     status: "ready",
@@ -44,13 +46,20 @@ function setup(start: SnippetEditorStart) {
     saveRecord,
     deleteRecord,
   });
-  return render(<SnippetEditor start={start} onClose={onClose} />);
+  return render(wrap(<SnippetEditor start={start} onClose={onClose} />));
 }
 
 function body(): EditorView {
   const editor = screen.getByTestId("snippet-body").querySelector(".cm-editor");
   const view = editor ? EditorView.findFromDOM(editor as HTMLElement) : null;
   if (!view) throw new Error("no body editor");
+  return view;
+}
+
+function tryIt(): EditorView {
+  const editor = screen.getByTestId("snippet-try-it-editor").querySelector(".cm-editor");
+  const view = editor ? EditorView.findFromDOM(editor as HTMLElement) : null;
+  if (!view) throw new Error("no Try it editor");
   return view;
 }
 
@@ -269,5 +278,49 @@ describe("SnippetEditor", () => {
     await userEvent.click(screen.getByRole("button", { name: copy.delete }));
     await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /Cancel/u }));
     expect(deleteRecord).not.toHaveBeenCalled();
+  });
+
+  it("leaves Escape to the body and Try it editors inside Settings", () => {
+    const closeSettings = vi.fn();
+    setup({ base: RTAB, draft: draftFromRecord(RTAB) }, (editor) => (
+      <ModalShell open onClose={closeSettings} closeLabel={"Close settings"}>
+        {editor}
+      </ModalShell>
+    ));
+    fireEvent.keyDown(body().contentDOM, { key: "Escape" });
+    fireEvent.keyDown(tryIt().contentDOM, { key: "Escape" });
+    expect(closeSettings).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByLabelText(copy.name), { key: "Escape" });
+    expect(closeSettings).toHaveBeenCalledOnce();
+  });
+
+  it("offers Regular expression only on your own snippets", () => {
+    const { unmount } = setup({ base: FIGURE, draft: draftFromRecord(FIGURE) });
+    expect(screen.getByLabelText(copy.regex)).toBeDisabled();
+    unmount();
+    setup({ base: RTAB, draft: draftFromRecord(RTAB) });
+    expect(screen.getByLabelText(copy.regex)).toBeEnabled();
+  });
+
+  it("keeps a language's body when its chip is turned off and on again", async () => {
+    setup({ base: null, draft: newDraft("latex") });
+    setBody("latex body");
+    await userEvent.click(screen.getByRole("button", { name: "Typst" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Typst" }));
+    setBody("typst body");
+    await userEvent.click(screen.getByRole("button", { name: "Typst" }));
+    await userEvent.click(screen.getByRole("button", { name: "Typst" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Typst" }));
+    expect(body().state.doc.toString()).toBe("typst body");
+    await userEvent.click(screen.getByRole("tab", { name: "LaTeX" }));
+    expect(body().state.doc.toString()).toBe("latex body");
+  });
+
+  it("names the collection the snippet is deleted from, not the one chosen for the move", async () => {
+    setup({ base: RTAB, draft: draftFromRecord(RTAB) });
+    await userEvent.click(screen.getByRole("combobox", { name: copy.collection }));
+    await userEvent.click(await screen.findByRole("option", { name: "imported" }));
+    await userEvent.click(screen.getByRole("button", { name: copy.delete }));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("This removes it from My snippets.");
   });
 });

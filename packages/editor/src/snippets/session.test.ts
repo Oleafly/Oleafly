@@ -10,6 +10,7 @@ import { latexLanguage } from "../latex";
 import { latexPairInputHandler, latexPairKeymap } from "../latex-pairs";
 import { stubRangeGeometry } from "../test-geometry";
 import { installEnglishEditorMessages } from "../test-messages";
+import { snippetCompletionSource } from "./completion";
 import { insertSnippet, insertTemplate } from "./insert";
 import {
   activeSnippetField,
@@ -44,6 +45,10 @@ function expand(view: EditorView, record = frac, kind: "tab" | "list" = "tab"): 
   return view;
 }
 
+function popup() {
+  return autocompletion({ override: [snippetCompletionSource()], activateOnTyping: false, interactionDelay: 0 });
+}
+
 function depth(view: EditorView): number {
   return snippetSessions(view.state).length;
 }
@@ -67,6 +72,24 @@ describe("field navigation", () => {
     expect(withCursor(view)).toBe("$\\frac{a}{b}|$");
     expect(depth(view)).toBe(0);
     expect(nextSnippetField(view)).toBe(false);
+  });
+
+  it("makes a clicked field the active one, so the card and Tab follow it", () => {
+    const view = snippetEditor("|");
+    insertSnippet(view, snippetRecord("three", "${1:a} ${2:b} ${3:c}$0"), 0, 0, "tab");
+    view.dispatch({ selection: EditorSelection.cursor(5), userEvent: "select.pointer" });
+    expect(view.dom.querySelector(".cm-oleaflySnippetCard")?.textContent).toContain("3 of 3");
+    press(view, "Tab");
+    expect(withCursor(view)).toBe("a b c|");
+    expect(depth(view)).toBe(0);
+  });
+
+  it("keeps text typed at the end of a field out of the next field", () => {
+    const view = snippetEditor("|");
+    insertSnippet(view, snippetRecord("pair", "<${1:a}${2:b}>$0"), 0, 0, "tab");
+    type(view, "xy");
+    press(view, "Tab");
+    expect(withCursor(view)).toBe("<xy[b]>");
   });
 
   it("goes back with Shift-Tab and lets Shift-Tab fall through on the first field", () => {
@@ -225,6 +248,18 @@ describe("nested sessions", () => {
     expect(view.state.doc.toString()).toBe("\\begin{align}\n\n\\end{align}");
   });
 
+  it("keeps the inner session when a composition inside it syncs an outer mirror", async () => {
+    vi.useFakeTimers();
+    const view = snippetEditor("|");
+    insertTemplate(view, "\\begin{${1}}\n${2}\n\\end{${1}}", 0, 0);
+    expand(view, snippetRecord("al", "ali${1:gn}$0"));
+    view.dispatch(view.state.replaceSelection("x"), { userEvent: "input.type.compose.start" });
+    view.contentDOM.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    await vi.runAllTimersAsync();
+    expect(view.state.doc.toString()).toBe("\\begin{alix}\n\n\\end{alix}");
+    expect(depth(view)).toBe(2);
+  });
+
   it("shows the field card with its keys and follows the inner session while one is open", () => {
     const view = expand(snippetEditor("|"));
     const card = () => view.dom.querySelector(".cm-oleaflySnippetCard");
@@ -342,7 +377,7 @@ describe("staying alive and ending", () => {
   });
 
   it("leaves the session alone on Escape while the popup is open", async () => {
-    const view = snippetEditor("|", { extensions: [autocompletion({ activateOnTyping: false, interactionDelay: 0 })] });
+    const view = snippetEditor("|", { extensions: [popup()] });
     insertSnippet(view, figure, 0, 0, "list");
     await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
     expect(endSnippetSession(view)).toBe(false);
@@ -361,7 +396,7 @@ describe("staying alive and ending", () => {
 
 describe("choice and project fields", () => {
   it("offers the choices and replaces the field with the pick", async () => {
-    const view = snippetEditor("|", { extensions: [autocompletion({ activateOnTyping: false, interactionDelay: 0 })] });
+    const view = snippetEditor("|", { extensions: [popup()] });
     insertSnippet(view, figure, 0, 0, "list");
     await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
     expect(currentCompletions(view.state).map((option) => option.label)).toEqual(["htbp", "t", "b", "H"]);
@@ -404,7 +439,7 @@ describe("choice and project fields", () => {
   });
 
   it("opens the list again when Tab reaches a choice field", async () => {
-    const view = snippetEditor("|", { extensions: [autocompletion({ activateOnTyping: false, interactionDelay: 0 })] });
+    const view = snippetEditor("|", { extensions: [popup()] });
     insertSnippet(view, snippetRecord("pick", "$1 [${2|a,b|}]"), 0, 0, "list");
     expect(completionStatus(view.state)).toBeNull();
     press(view, "Tab");

@@ -25,7 +25,7 @@ import { editorMessage } from "../messages";
 import { scheduleFlashEnd, snippetFlashEffect } from "./flash";
 import { type SnippetPort, snippetPort } from "./port";
 import {
-  firstFieldOffersList,
+  fieldOffersList,
   firstFieldSelection,
   needsSnippetSession,
   pushSnippetSession,
@@ -35,7 +35,13 @@ import {
 
 export type SnippetTriggerKind = "list" | "tab" | "auto" | "hint" | "palette";
 
-interface InsertPlan {
+interface SnippetInsertOptions {
+  captures?: readonly string[];
+  completion?: Completion;
+  rangeEffect?: (from: number, to: number) => StateEffect<unknown>;
+}
+
+interface InsertPlan extends Pick<SnippetInsertOptions, "completion" | "rangeEffect"> {
   nodes: BodyNode[];
   recordId: string;
   name: string | null;
@@ -43,7 +49,6 @@ interface InsertPlan {
   captures: readonly string[];
   clipboard: string;
   userEvent: string | null;
-  completion?: Completion;
 }
 
 const INDENT_PROBE = 256;
@@ -58,11 +63,13 @@ export function snippetName(record: SnippetRecord): string {
   return editorMessageOr(record.nameKey, record.name);
 }
 
+export function defaultLineComment(language: SnippetLanguage | null): string {
+  return language === "latex" || language === "bibtex" ? "%" : "//";
+}
+
 function lineComment(state: EditorState, at: number, language: SnippetLanguage | null): string {
   const tokens = state.languageDataAt<{ line?: string }>("commentTokens", at);
-  const line = tokens.find((token) => token.line)?.line;
-  if (line) return line;
-  return language === "latex" || language === "bibtex" ? "%" : "//";
+  return tokens.find((token) => token.line)?.line || defaultLineComment(language);
 }
 
 function renderEnv(
@@ -119,7 +126,8 @@ function insertAtMain(view: EditorView, plan: InsertPlan, from: number, to: numb
   const port = snippetPort(state);
   const rendered = renderBody(plan.nodes, renderEnv(state, state.selection.main, from, plan, port));
   const session = needsSnippetSession(rendered) ? snippetSessionFor(plan.recordId, rendered, from) : null;
-  const flash = snippetFlashEffect(from, from + rendered.text.length);
+  const end = from + rendered.text.length;
+  const flash = snippetFlashEffect(from, end);
   view.dispatch({
     changes: { from, to, insert: rendered.text },
     selection: session ? firstFieldSelection(session) : restSelection(rendered, from),
@@ -128,13 +136,14 @@ function insertAtMain(view: EditorView, plan: InsertPlan, from: number, to: numb
       ...snippetSessionInstall(state),
       ...(session ? [pushSnippetSession.of(session)] : []),
       ...(flash ? [flash] : []),
+      ...(plan.rangeEffect ? [plan.rangeEffect(from, end)] : []),
       ...announced(plan),
     ],
     annotations: annotationsFor(plan),
     scrollIntoView: true,
   });
   scheduleFlashEnd(view, flash);
-  if (session && firstFieldOffersList(session)) startCompletion(view);
+  if (session && fieldOffersList(session.fields[0])) startCompletion(view);
 }
 
 function insertAtEachCursor(view: EditorView, plan: InsertPlan, from: number, to: number): void {
@@ -184,8 +193,7 @@ export function insertSnippet(
   from: number,
   to: number,
   kind: SnippetTriggerKind,
-  captures: readonly string[] = [],
-  completion?: Completion,
+  options: SnippetInsertOptions = {},
 ): boolean {
   const state = view.state;
   if (state.readOnly) return false;
@@ -197,10 +205,11 @@ export function insertSnippet(
     recordId: record.id,
     name: snippetName(record),
     wraps: record.wraps,
-    captures,
+    captures: options.captures ?? [],
     clipboard: "",
     userEvent: kind === "auto" ? "input.type" : "input.complete",
-    ...(completion ? { completion } : {}),
+    completion: options.completion,
+    rangeEffect: options.rangeEffect,
   };
   if (port && bodyUses(nodes, "CLIPBOARD")) withClipboard(view, port, plan, from, to);
   else runPlan(view, plan, from, to);

@@ -90,22 +90,24 @@ function mapMirror(mirror: SessionMirror, changes: ChangeDesc): SessionMirror {
   return range === mirror ? mirror : { ...mirror, ...range };
 }
 
-function mapFields(fields: readonly ActiveField[], changes: ChangeDesc, fromAssoc: number, toAssoc: number): ActiveField[] {
-  return fields.map((field) => ({
+function mapField(field: ActiveField, changes: ChangeDesc, fromAssoc: number, toAssoc: number): ActiveField {
+  return {
     ...field,
     ranges: field.ranges.map((range) =>
       field.index === 0 && range.from === range.to
         ? mapRange(range, changes, 1, 1)
         : mapRange(range, changes, fromAssoc, toAssoc),
     ),
-  }));
+  };
 }
 
 export function mapSnippetSession(session: SnippetSession, changes: ChangeDesc): SnippetSession {
   if (changes.empty) return session;
   return {
     ...session,
-    fields: mapFields(session.fields, changes, -1, 1),
+    fields: session.fields.map((field, order) =>
+      order === session.active ? mapField(field, changes, -1, 1) : mapField(field, changes, 1, -1),
+    ),
     mirrors: session.mirrors.map((mirror) => mapMirror(mirror, changes)),
     exit: changes.mapPos(session.exit, 1),
   };
@@ -121,7 +123,7 @@ export const popSnippetSession = StateEffect.define<null>();
 
 const setActiveField = StateEffect.define<number>();
 
-export const restoreSnippetSessions = StateEffect.define<Stack>({ map: mapStack });
+const restoreSnippetSessions = StateEffect.define<Stack>({ map: mapStack });
 
 const syncSessions = StateEffect.define<ReadonlyMap<SnippetSession, SnippetSession>>();
 
@@ -150,8 +152,12 @@ function brokenByRemote(session: SnippetSession, changes: ChangeDesc): boolean {
   return broken;
 }
 
+function covers(range: FieldRange, selection: SelectionRange): boolean {
+  return selection.from >= range.from && selection.to <= range.to;
+}
+
 function holds(session: SnippetSession, selection: SelectionRange): boolean {
-  return sessionRanges(session).some((range) => selection.from >= range.from && selection.to <= range.to);
+  return sessionRanges(session).some((range) => covers(range, selection));
 }
 
 function dropFromTop(stack: Stack, keep: (session: SnippetSession) => boolean): Stack {
@@ -185,6 +191,18 @@ function withActive(stack: Stack, active: number): Stack {
   return top ? [...stack.slice(0, -1), { ...top, active }] : stack;
 }
 
+function fieldUnder(session: SnippetSession, selection: SelectionRange): number {
+  const under = (field: ActiveField) => field.ranges.some((range) => covers(range, selection));
+  return under(session.fields[session.active]) ? session.active : session.fields.findIndex(under);
+}
+
+function followSelection(stack: Stack, selection: SelectionRange): Stack {
+  const top = stack.at(-1);
+  if (!top) return stack;
+  const field = fieldUnder(top, selection);
+  return field < 0 || field === top.active ? stack : withActive(stack, field);
+}
+
 export const snippetSessionField = StateField.define<Stack>({
   create: () => EMPTY,
   update(stack, tr) {
@@ -197,7 +215,7 @@ export const snippetSessionField = StateField.define<Stack>({
     }
     if (next.length > 0 && tr.selection && !tr.annotation(remoteChange) && !sessionsChangedOnPurpose(tr)) {
       const main = tr.newSelection.main;
-      next = dropFromTop(next, (session) => holds(session, main));
+      next = followSelection(dropFromTop(next, (session) => holds(session, main)), main);
     }
     return next.length === 0 ? EMPTY : next;
   },
@@ -254,7 +272,7 @@ function mirrorSync(stack: Stack, changes: ChangeDesc, doc: Text): MirrorSync | 
     const session = mapped[index];
     sessions.set(original, {
       ...session,
-      fields: mapFields(session.fields, mirrorChanges, 1, -1),
+      fields: session.fields.map((field) => mapField(field, mirrorChanges, 1, -1)),
       mirrors: session.mirrors.map(place),
       exit: mirrorChanges.mapPos(session.exit, 1),
     });
@@ -273,9 +291,14 @@ function localEdit(tr: Transaction): boolean {
   );
 }
 
+function sessionsLeftBy(tr: Transaction): Stack {
+  const stack = snippetSessions(tr.startState);
+  return tr.effects.some((effect) => effect.is(popSnippetSession)) ? stack.slice(0, -1) : stack;
+}
+
 const mirrorFilter = EditorState.transactionFilter.of((tr) => {
   if (!tr.docChanged) return tr;
-  const stack = snippetSessions(tr.startState);
+  const stack = sessionsLeftBy(tr);
   if (stack.length === 0 || !localEdit(tr)) return tr;
   const sync = mirrorSync(stack, tr.changes, tr.newDoc);
   if (!sync) return tr;
@@ -291,7 +314,7 @@ export function syncSnippetMirrors(view: EditorView): boolean {
   if (!sync) return false;
   view.dispatch({
     changes: sync.changes,
-    effects: syncSessions.of(sync.sessions),
+    effects: restoreSnippetSessions.of(stack.map((session) => sync.sessions.get(session) ?? session)),
     userEvent: "input.type.compose",
   });
   return true;
@@ -315,7 +338,7 @@ function fieldSelection(field: ActiveField): EditorSelection {
   return EditorSelection.create(field.ranges.map((range) => EditorSelection.range(range.from, range.to)));
 }
 
-function offersList(field: ActiveField): boolean {
+export function fieldOffersList(field: ActiveField): boolean {
   return field.choices !== undefined || field.project !== undefined;
 }
 
@@ -343,7 +366,7 @@ function moveToField(view: EditorView, session: SnippetSession, target: number):
     scrollIntoView: true,
     userEvent: "select",
   });
-  if (!finishes && offersList(field)) startCompletion(view);
+  if (!finishes && fieldOffersList(field)) startCompletion(view);
   return true;
 }
 
@@ -365,7 +388,7 @@ export function endSnippetSession(view: EditorView): boolean {
 
 export function snippetFieldCompletions(context: CompletionContext): CompletionResult | null {
   const field = activeSnippetField(context.state);
-  if (!field || !offersList(field)) return null;
+  if (!field || !fieldOffersList(field)) return null;
   const range = field.ranges[0];
   if (context.pos < range.from || context.pos > range.to) return null;
   const items: readonly SnippetProjectItem[] = field.choices
@@ -376,11 +399,10 @@ export function snippetFieldCompletions(context: CompletionContext): CompletionR
   const query = whole ? "" : context.state.sliceDoc(range.from, context.pos).toLowerCase();
   const options: Completion[] = items
     .filter((item) => item.label.toLowerCase().includes(query))
-    .map((item, order) => ({
+    .map((item) => ({
       label: item.label,
       ...(item.detail ? { detail: item.detail } : {}),
       type: field.choices ? "enum" : "variable",
-      boost: 99 - Math.min(order, 198),
     }));
   return options.length > 0 ? { from: range.from, to: range.to, options, filter: false } : null;
 }
@@ -469,24 +491,23 @@ function fieldCardDom(current: number, total: number): HTMLElement {
   return card;
 }
 
-const cards = new Map<string, Tooltip>();
+let lastCard: { key: string; tooltip: Tooltip } | null = null;
 
 function fieldCard(state: EditorState): Tooltip | null {
-  const stack = state.field(snippetSessionField, false);
-  const top = stack?.at(-1);
+  const top = innermostSnippetSession(state);
   const field = top?.fields[top.active];
-  if (!stack || !top || !field || field.index === 0) return null;
+  if (!top || !field || field.index === 0) return null;
   const numbered = top.fields.filter((candidate) => candidate.index !== 0);
   const current = numbered.indexOf(field) + 1;
   const pos = field.ranges[0].from;
   const key = `${pos}:${current}:${numbered.length}`;
-  let card = cards.get(key);
-  if (!card) {
-    cards.clear();
-    card = { pos, above: true, arrow: true, create: () => ({ dom: fieldCardDom(current, numbered.length) }) };
-    cards.set(key, card);
+  if (lastCard?.key !== key) {
+    lastCard = {
+      key,
+      tooltip: { pos, above: true, arrow: true, create: () => ({ dom: fieldCardDom(current, numbered.length) }) },
+    };
   }
-  return card;
+  return lastCard.tooltip;
 }
 
 const fieldCardTooltip = showTooltip.compute([snippetSessionField], fieldCard);
@@ -500,7 +521,6 @@ const sessionExtension: Extension = [
   compositionSync,
   snippetFlashField,
   snippetSessionTheme,
-  EditorState.languageData.of(() => [{ autocomplete: snippetFieldCompletions }]),
   Prec.highest(keymap.of([{ key: "Escape", run: endSnippetSession }])),
 ];
 
@@ -553,8 +573,4 @@ export function snippetSessionFor(recordId: string, rendered: Rendered, offset: 
 
 export function firstFieldSelection(session: SnippetSession): EditorSelection {
   return fieldSelection(session.fields[0]);
-}
-
-export function firstFieldOffersList(session: SnippetSession): boolean {
-  return offersList(session.fields[0]);
 }

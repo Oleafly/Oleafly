@@ -9,7 +9,7 @@ import { draftFromRecord, newDraft } from "@/features/snippets/draft";
 import { useSnippetSettingsRequest } from "@/features/snippets/open-settings";
 import { snippetLanguageForPath } from "@/features/snippets/language";
 import { collectionName, snippetMatches, snippetName, USER_COLLECTION, userCollections } from "@/features/snippets/records";
-import { snippetsReady, useSnippetStore } from "@/features/snippets/store";
+import { collectionOf, STATE_FILE, snippetsReady, useSnippetStore } from "@/features/snippets/store";
 import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
@@ -19,8 +19,6 @@ import { collectionsOf, SnippetCollections } from "./SnippetCollections";
 import { SnippetEditor, type SnippetEditorStart } from "./SnippetEditor";
 import { type ShownProblem, SnippetProblems } from "./SnippetProblems";
 import { type SnippetFilters, type SnippetRow, type SnippetStatus, SnippetTable } from "./SnippetTable";
-
-const STATE_COLLECTION = "_state";
 
 const SWITCHES = [
   { key: "snippetsInList", setter: "setSnippetsInList", copy: "list" },
@@ -36,7 +34,7 @@ function statusOf(record: SnippetRecord, overrides: readonly SnippetOverride[]):
 }
 
 function fileLabel(collection: string, userFiles: ReadonlySet<string>, names: (collection: string) => string): string {
-  if (collection === STATE_COLLECTION) return "_state.json";
+  if (collection === collectionOf(STATE_FILE)) return STATE_FILE;
   return userFiles.has(collection) ? `${collection}.json` : names(collection);
 }
 

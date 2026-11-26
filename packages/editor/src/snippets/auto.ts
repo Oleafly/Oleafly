@@ -14,18 +14,20 @@ import { insertSnippet } from "./insert";
 import { autoExpandYieldsTo } from "./loader";
 import { fitsAt, snippetLookup } from "./lookup";
 import { snippetPort } from "./port";
-import { restoreSnippetSessions, type SnippetSession, snippetSessions } from "./session";
+import { popSnippetSession, snippetSessions } from "./session";
 
 interface AutoExpansion {
   from: number;
   to: number;
   typed: string;
-  sessions: readonly SnippetSession[];
+  depth: number;
 }
 
 const HAND_TYPED_FRACTION = "\\frac{";
 
-const setAutoExpansion = StateEffect.define<AutoExpansion>();
+const setAutoExpansion = StateEffect.define<AutoExpansion>({
+  map: (value, mapping) => ({ ...value, from: mapping.mapPos(value.from, 1), to: mapping.mapPos(value.to, -1) }),
+});
 
 export const lastAutoExpansion = StateField.define<AutoExpansion | null>({
   create: () => null,
@@ -58,21 +60,16 @@ function expand(view: EditorView, from: number, to: number, text: string, insert
     if (text === "{" && lookup.ctx.lineBefore.endsWith(HAND_TYPED_FRACTION)) port.onHandTypedFraction();
     return false;
   }
-  const start = lookup.offset + hit.from;
-  view.dispatch(insert());
-  const typed = view.state;
-  const caret = typed.selection.main.head;
-  insertSnippet(view, hit.record, start, caret, "auto", hit.captures);
-  if (view.state.doc !== typed.doc) {
-    view.dispatch({
-      effects: setAutoExpansion.of({
-        from: start,
-        to: caret + view.state.doc.length - typed.doc.length,
-        typed: typed.sliceDoc(start, caret),
-        sessions: snippetSessions(typed),
-      }),
-    });
-  }
+  const typing = insert();
+  view.dispatch(typing);
+  const start = typing.changes.mapPos(lookup.offset + hit.from, -1);
+  const caret = view.state.selection.main.head;
+  const typed = view.state.sliceDoc(start, caret);
+  const depth = snippetSessions(view.state).length;
+  insertSnippet(view, hit.record, start, caret, "auto", {
+    captures: hit.captures,
+    rangeEffect: (from, to) => setAutoExpansion.of({ from, to, typed, depth }),
+  });
   port.onAutoExpanded(hit.record);
   return true;
 }
@@ -83,7 +80,7 @@ export function restoreAutoTrigger(view: EditorView): boolean {
   view.dispatch({
     changes: { from: last.from, to: last.to, insert: last.typed },
     selection: EditorSelection.cursor(last.from + last.typed.length),
-    effects: restoreSnippetSessions.of(last.sessions),
+    effects: snippetSessions(view.state).length > last.depth ? popSnippetSession.of(null) : [],
     userEvent: "delete.backward",
     scrollIntoView: true,
   });

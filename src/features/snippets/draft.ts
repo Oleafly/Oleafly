@@ -17,7 +17,6 @@ import { snippetName, USER_COLLECTION } from "./records";
 export type BodyKey = SnippetLanguage | "default";
 
 export interface SnippetDraft {
-  id: string | null;
   collection: string;
   name: string;
   trigger: string;
@@ -52,7 +51,6 @@ export function bodyKeys(languages: SnippetDraft["languages"]): BodyKey[] {
 
 export function newDraft(language: SnippetLanguage | null, collection = USER_COLLECTION): SnippetDraft {
   return {
-    id: null,
     collection,
     name: "",
     trigger: "",
@@ -73,7 +71,6 @@ export function draftFromRecord(record: SnippetRecord): SnippetDraft {
     if (nodes) bodies[key] = serializeBody(nodes);
   }
   return {
-    id: record.id,
     collection: record.collection,
     name: snippetName(record),
     trigger: record.trigger ?? "",
@@ -175,14 +172,14 @@ function overlaps(left: SnippetRecord["languages"], right: SnippetRecord["langua
   return left === "any" || right === "any" || left.some((language) => right.includes(language));
 }
 
-export function snippetClashes(draft: SnippetDraft, library: SnippetLibrary): SnippetClash[] {
+export function snippetClashes(draft: SnippetDraft, library: SnippetLibrary, base: SnippetRecord | null): SnippetClash[] {
   const trigger = draft.trigger.trim();
   if (!trigger || draft.regex) return [];
   const others = library.records.filter(
     (record) =>
       record.trigger !== null &&
       record.regex === null &&
-      !(record.id === draft.id && record.collection === draft.collection) &&
+      !(record.id === base?.id && record.collection === base.collection) &&
       overlaps(record.languages, draft.languages),
   );
   const duplicate = others.filter((record) => record.trigger === trigger);

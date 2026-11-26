@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { TONES } from "@/components/ui/tones";
 import { cn } from "@/lib/utils";
 
 const ALERT_SIZE = {
@@ -9,7 +10,7 @@ const ALERT_SIZE = {
 
 const ALERT_TONE = {
   destructive: { text: "bg-destructive/10 text-destructive", border: "border-destructive/30" },
-  warning: { text: "bg-amber-500/10 text-amber-700 dark:text-amber-300", border: "border-amber-500/30" },
+  warning: { text: cn(TONES.amber.tint, TONES.amber.text), border: "border-amber-500/30" },
 } as const;
 
 export interface InlineAlertProps {

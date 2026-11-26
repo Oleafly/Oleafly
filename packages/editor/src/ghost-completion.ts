@@ -466,6 +466,10 @@ function requestAnchor(state: EditorState): number | null {
   return CLOSING_TAIL.test(state.sliceDoc(pos, line.to)) ? pos : null;
 }
 
+function hintDismissedIn(update: ViewUpdate): boolean {
+  return update.transactions.some((tr) => tr.effects.some((effect) => effect.is(setDismissedHint)));
+}
+
 function typedEdit(transaction: Transaction): boolean {
   return (
     transaction.docChanged &&
@@ -548,8 +552,7 @@ export function requestedGhostCompletion(
           this.dropAhead();
           return true;
         }
-        const dismissed = update.state.field(dismissedHintField, false);
-        if (dismissed != null && dismissed !== update.startState.field(dismissedHintField, false) && enabled()) {
+        if (hintDismissedIn(update) && enabled()) {
           this.schedule(0);
           return true;
         }

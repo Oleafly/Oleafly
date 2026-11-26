@@ -299,4 +299,24 @@ describe("Settings › Snippets", () => {
     await userEvent.click(within(within(dialog).getByTestId("snippet-pack-paper-structure")).getByRole("switch"));
     await waitFor(() => expect(within(dialog).getByText("Read-only folder")).toBeInTheDocument());
   });
+
+  it("opens Add snippets afresh after it was closed", async () => {
+    actions.setCollectionEnabled.mockRejectedValueOnce(new Error("Read-only folder"));
+    render(<SnippetsSection />);
+    await userEvent.click(screen.getByRole("button", { name: copy.library.add }));
+    let dialog = await screen.findByRole("dialog", { name: copy.addDialog.title });
+    await userEvent.click(within(within(dialog).getByTestId("snippet-pack-paper-structure")).getByRole("switch"));
+    expect(await within(dialog).findByText("Read-only folder")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("tab", { name: copy.addDialog.importTab }));
+    await userEvent.upload(within(dialog).getByLabelText(copy.addDialog.fileLabel), new File(["{}"], "empty.json", { type: "application/json" }));
+    expect(await within(dialog).findByText("No snippets were found in empty.json.")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await userEvent.click(screen.getByRole("button", { name: copy.library.add }));
+    dialog = await screen.findByRole("dialog", { name: copy.addDialog.title });
+    expect(within(dialog).queryByText("Read-only folder")).toBeNull();
+    await userEvent.click(within(dialog).getByRole("tab", { name: copy.addDialog.importTab }));
+    expect(within(dialog).queryByText("No snippets were found in empty.json.")).toBeNull();
+  });
 });

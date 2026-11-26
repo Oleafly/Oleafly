@@ -4,18 +4,17 @@ import { tabCandidates } from "@oleafly/snippets";
 import { vimOwnsInput } from "../latex-structure-commands";
 import { insertSnippet } from "./insert";
 import { fitsAt, snippetLookup } from "./lookup";
-import { activeSnippetField, nextSnippetField } from "./session";
+import { type ActiveField, activeSnippetField, fieldOffersList, nextSnippetField } from "./session";
 
-function popupWins(view: EditorView): boolean {
+function popupWins(view: EditorView, field: ActiveField): boolean {
   if (completionStatus(view.state) !== "active") return false;
-  const field = activeSnippetField(view.state);
-  const listField = field?.choices !== undefined || field?.project !== undefined;
-  return listField || Number(selectedCompletionIndex(view.state)) > 0;
+  return fieldOffersList(field) || Number(selectedCompletionIndex(view.state)) > 0;
 }
 
 export function fieldOrPopup(view: EditorView): boolean {
-  if (!activeSnippetField(view.state)) return false;
-  return popupWins(view) ? acceptCompletion(view) : nextSnippetField(view);
+  const field = activeSnippetField(view.state);
+  if (!field) return false;
+  return popupWins(view, field) ? acceptCompletion(view) : nextSnippetField(view);
 }
 
 export function expandTabTrigger(view: EditorView): boolean {
@@ -28,5 +27,5 @@ export function expandTabTrigger(view: EditorView): boolean {
   const hit = tabCandidates(lookup.index, lookup.ctx, (record) => port.reportSlowRegex(record)).find((candidate) =>
     fitsAt(state, candidate.record, lookup.offset + candidate.from, lookup.language),
   );
-  return hit ? insertSnippet(view, hit.record, lookup.offset + hit.from, head, "tab", hit.captures) : false;
+  return hit ? insertSnippet(view, hit.record, lookup.offset + hit.from, head, "tab", { captures: hit.captures }) : false;
 }

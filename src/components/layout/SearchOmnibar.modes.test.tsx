@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   noteSearch: vi.fn(async (_query: string, _limit?: number, _options?: unknown) => [] as unknown[]),
   openNotes: vi.fn(async () => {}),
   gotoLine: vi.fn(),
+  getEditorView: vi.fn((): unknown => ({})),
   toggleTheme: vi.fn(),
   openProject: vi.fn(async () => {}),
   openFile: vi.fn(async () => {}),
@@ -31,7 +32,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 vi.mock("@/lib/tauri", () => ({ textSearch: mocks.textSearch, noteSearch: mocks.noteSearch }));
 vi.mock("@/features/open-tool", () => ({ openNotes: mocks.openNotes }));
-vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
+vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine, getEditorView: mocks.getEditorView }));
 vi.mock("@/features/snippets/insert-at-cursor", () => ({ insertSnippetAtCursor: mocks.insertSnippetAtCursor }));
 vi.mock("@/features/snippets/math-preview", () => ({ renderSnippetMath: mocks.renderSnippetMath }));
 vi.mock("@/components/notes/app-notes", () => ({ vaultSnapshot: mocks.vaultSnapshot }));
@@ -506,6 +507,7 @@ describe("SearchOmnibar snippets", () => {
       load: mocks.snippetLoad,
     });
     useFilesStore.setState({ activePath: "main.tex" });
+    mocks.getEditorView.mockImplementation(() => ({}));
   });
 
   afterEach(() => {
@@ -586,6 +588,32 @@ describe("SearchOmnibar snippets", () => {
     useSettingsStore.getState().setSearchOpen(false);
     render(<SearchOmnibar />);
     act(() => useSettingsStore.getState().setSearchOpen(true, "/snippets "));
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    expect(await screen.findByText("Continued fraction")).toBeInTheDocument();
+  });
+
+  it("is offered only while an editor is open to insert into", async () => {
+    mocks.getEditorView.mockImplementation(() => null);
+    render(<SearchOmnibar />);
+    await type("/sni");
+    expect(await screen.findByText(omnibar.unknownCommand)).toBeInTheDocument();
+    expect(screen.queryByText(omnibar.slash.snippets)).toBeNull();
+  });
+
+  it("opens on the snippets again when Insert snippet runs from inside the palette", async () => {
+    registry.commands.push({
+      id: "snippets.insert",
+      surfaces: ["omnibar"],
+      label: () => "Insert snippet",
+      order: 3,
+      run: () => useSettingsStore.getState().setSearchOpen(true, "/snippets "),
+    });
+    useSettingsStore.getState().setSearchOpen(false);
+    render(<SearchOmnibar />);
+    act(() => useSettingsStore.getState().setSearchOpen(true, "/snippets "));
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    const user = await type("Insert snippet");
+    await user.click(await screen.findByText("Insert snippet"));
     expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
     expect(await screen.findByText("Continued fraction")).toBeInTheDocument();
   });

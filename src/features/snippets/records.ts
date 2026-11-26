@@ -11,6 +11,7 @@ import {
   serializeBody,
 } from "@oleafly/snippets";
 import { i18n } from "@/i18n";
+import { collectionOf, STATE_FILE } from "./store";
 
 export const USER_COLLECTION = "my-snippets";
 
@@ -113,9 +114,7 @@ export function isMathPlace(place: Place): boolean {
   return place === "math" || place === "inline-math" || place === "display-math";
 }
 
-const STATE_FILE = "_state.json";
-
 export function userCollections(disk: readonly { name: string }[]): string[] {
-  const names = disk.filter((file) => file.name !== STATE_FILE).map((file) => file.name.replace(/\.json$/u, ""));
+  const names = disk.filter((file) => file.name !== STATE_FILE).map((file) => collectionOf(file.name));
   return [USER_COLLECTION, ...names.filter((name) => name !== USER_COLLECTION)];
 }

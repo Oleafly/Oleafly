@@ -1,15 +1,54 @@
 export type EndClass = "digit" | "letter" | string;
 
 export const REGEX_PREFIX = "re:";
-export const EVERY_KEY: EndClass = "*";
+export const EVERY_KEY: EndClass = "every";
 
 const LETTER_CLASS = /^(?:a-z|A-Z|\\p\{L(?:etter)?\})+$/u;
 const LETTER_PROPERTY = /^L(?:etter)?$/u;
 const QUANTIFIER = /^(?:([*+?])|\{(\d+)(?:,\d*)?\})\??/u;
+const REPEAT = /(?:[*+?]|\{\d+,\d*\})\??/y;
 const LITERAL_ESCAPE = /^[^A-Za-z0-9]$/u;
 
 export function compileTrigger(source: string): RegExp {
+  if (hasNestedQuantifier(source)) throw new SyntaxError("A repeated group repeats inside");
   return new RegExp(`(?:${source})$`, "u");
+}
+
+function atomEnd(source: string, index: number): number {
+  if (source[index] === "\\") return escapeAt(source, index)[1];
+  if (source[index] === "[") return classEnd(source, index);
+  return index + 1;
+}
+
+function repeatLength(source: string, index: number): number {
+  REPEAT.lastIndex = index;
+  return REPEAT.exec(source)?.[0].length ?? 0;
+}
+
+function loops(token: string): boolean {
+  if (token[0] === "*" || token[0] === "+") return true;
+  const bounds = /^\{(\d+),(\d*)\}/u.exec(token);
+  return bounds !== null && (bounds[2] === "" || Number(bounds[2]) > 1);
+}
+
+export function hasNestedQuantifier(source: string): boolean {
+  const groups: boolean[] = [];
+  let index = 0;
+  while (index < source.length) {
+    if (source[index] === "(") {
+      groups.push(false);
+      index += source[index + 1] === "?" ? 2 : 1;
+      continue;
+    }
+    const closes = source[index] === ")";
+    const inner = closes && groups.pop() === true;
+    index = closes ? index + 1 : atomEnd(source, index);
+    const repeat = repeatLength(source, index);
+    if (inner && loops(source.slice(index, index + repeat))) return true;
+    if ((repeat > 0 || inner) && groups.length > 0) groups[groups.length - 1] = true;
+    index += repeat;
+  }
+  return false;
 }
 
 function matchingParen(source: string, open: number): number {
@@ -78,7 +117,7 @@ function groupClass(content: string): EndClass | null {
   if (content.startsWith("?:")) return sequenceClass(content.slice(2));
   if (/^\?<?[=!]/u.test(content)) return null;
   if (content.startsWith("?<")) return sequenceClass(content.slice(content.indexOf(">") + 1));
-  return sequenceClass(content);
+  return content.startsWith("?") ? EVERY_KEY : sequenceClass(content);
 }
 
 function atomAt(source: string, index: number): Atom {

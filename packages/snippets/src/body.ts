@@ -1,10 +1,9 @@
-import { validRegexTransform } from "./helpers";
+import { HELPERS, validRegexTransform } from "./helpers";
 import {
   type BodyError,
   type BodyErrorCode,
   type BodyNode,
   type BodyParseResult,
-  HELPERS,
   isOneOf,
   PROJECT_FIELD_KINDS,
   type RegexTransform,
@@ -38,16 +37,20 @@ const MESSAGES: Readonly<Record<BodyErrorCode, string>> = {
   "bad-field": "This is not a field. Write $1, ${1:text} or a variable such as ${SELECTION}",
   "unknown-helper": "Unknown helper. Use slug, lower, upper, title or initials",
   "unknown-project-field": "Unknown project field. Use image, label, cite, ref or file",
-  "bad-transform": "This transform has an invalid regular expression or flags",
+  "bad-transform": "This transform has an invalid regular expression or flags, or a repeat inside a repeated group like (a+)+",
 };
 
 const DIGITS = /\d+/y;
 const NAME = /[_a-zA-Z][_a-zA-Z0-9]*/y;
 const CAPTURE = /\[\[(\d+)\]\]/y;
 const KIND = /[a-z]*/y;
+const MAX_DEPTH = 50;
 
-class Unclosed {
-  constructor(readonly offset: number) {}
+class Fatal {
+  constructor(
+    readonly offset: number,
+    readonly code: BodyErrorCode = "unclosed",
+  ) {}
 }
 
 class Invalid {
@@ -72,18 +75,24 @@ function pushText(nodes: BodyNode[], text: string): void {
 
 class BodyParser {
   private pos = 0;
-  private owners = new Map<number, Owned>();
+  private depth = 0;
+  private readonly owners = new Map<number, Owned>();
+  private readonly owned: number[] = [];
+  private readonly openFields = new Set<number>();
   readonly errors: BodyError[] = [];
 
-  constructor(private readonly source: string) {}
+  constructor(
+    private readonly source: string,
+    private readonly captures: boolean,
+  ) {}
 
   parse(): BodyNode[] {
     const nodes: BodyNode[] = [];
     try {
       this.nodesUntil(nodes, false);
     } catch (error) {
-      if (!(error instanceof Unclosed)) throw error;
-      this.error(error.offset, "unclosed");
+      if (!(error instanceof Fatal)) throw error;
+      this.error(error.offset, error.code);
       pushText(nodes, this.source.slice(error.offset));
     }
     return nodes;
@@ -102,7 +111,7 @@ class BodyParser {
   }
 
   private expect(char: string, start: number): void {
-    if (this.pos >= this.source.length) throw new Unclosed(start);
+    if (this.pos >= this.source.length) throw new Fatal(start);
     if (this.source[this.pos] !== char) throw new Invalid(start, "bad-field");
     this.pos += 1;
   }
@@ -132,7 +141,7 @@ class BodyParser {
         }
         continue;
       }
-      if (char === "[") {
+      if (char === "[" && this.captures) {
         CAPTURE.lastIndex = this.pos;
         const capture = CAPTURE.exec(source);
         if (capture) {
@@ -149,22 +158,27 @@ class BodyParser {
 
   private dollar(): BodyNode | null {
     const start = this.pos;
-    const next = this.source[start + 1];
-    if (next === "{") {
-      this.pos += 2;
-      try {
-        return this.braced(start);
-      } catch (error) {
-        if (error instanceof Unclosed) throw new Unclosed(start);
-        if (!(error instanceof Invalid)) throw error;
-        this.error(start, error.code);
-        this.pos = start;
-        return null;
-      }
+    this.depth += 1;
+    try {
+      return this.source[start + 1] === "{" ? this.braced(start) : this.bare(start);
+    } catch (error) {
+      if (error instanceof Fatal) throw new Fatal(start, error.code);
+      if (!(error instanceof Invalid)) throw error;
+      this.error(start, error.code);
+      this.pos = start;
+      return null;
+    } finally {
+      this.depth -= 1;
     }
+  }
+
+  private bare(start: number): BodyNode | null {
     this.pos += 1;
     const digits = this.sticky(DIGITS);
-    if (digits !== null) return this.tabstop(Number(digits));
+    if (digits !== null) {
+      this.refuseOpen(Number(digits), start);
+      return this.tabstop(Number(digits));
+    }
     const name = this.sticky(NAME);
     if (name !== null && KNOWN_VARIABLES.has(normaliseName(name))) {
       return { kind: "variable", name: normaliseName(name), fallback: [] };
@@ -173,21 +187,33 @@ class BodyParser {
     return null;
   }
 
+  private refuseOpen(index: number, start: number): void {
+    if (this.openFields.has(index)) throw new Invalid(start, "bad-field");
+  }
+
   private tabstop(index: number): BodyNode {
-    if (this.owners.has(index)) return { kind: "mirror", index };
-    const node: Owned = { kind: "field", index, placeholder: [] };
-    this.owners.set(index, node);
-    return node;
+    return this.own({ kind: "field", index, placeholder: [] });
   }
 
   private own<T extends Owned>(node: T): BodyNode {
     if (this.owners.has(node.index)) return { kind: "mirror", index: node.index };
-    this.owners.set(node.index, node);
+    this.claim(node);
     return node;
   }
 
+  private claim(node: Owned): void {
+    this.owners.set(node.index, node);
+    this.owned.push(node.index);
+  }
+
+  private rollback(size: number): void {
+    while (this.owned.length > size) this.owners.delete(this.owned.pop() as number);
+  }
+
   private braced(start: number): BodyNode {
-    if (this.pos >= this.source.length) throw new Unclosed(start);
+    if (this.depth > MAX_DEPTH) throw new Fatal(start, "bad-field");
+    this.pos += 2;
+    if (this.pos >= this.source.length) throw new Fatal(start);
     const digits = this.sticky(DIGITS);
     if (digits !== null) return this.numbered(Number(digits), start);
     const name = this.sticky(NAME);
@@ -196,7 +222,8 @@ class BodyParser {
   }
 
   private numbered(index: number, start: number): BodyNode {
-    if (this.pos >= this.source.length) throw new Unclosed(start);
+    if (this.pos >= this.source.length) throw new Fatal(start);
+    this.refuseOpen(index, start);
     const char = this.source[this.pos];
     this.pos += 1;
     switch (char) {
@@ -217,21 +244,28 @@ class BodyParser {
 
   private field(index: number, start: number): BodyNode {
     const owner = this.owners.get(index);
-    const saved = owner ? new Map(this.owners) : null;
+    const size = this.owned.length;
     const node: Owned = { kind: "field", index, placeholder: [] };
-    if (!owner) this.owners.set(index, node);
-    const placeholder = this.nodesUntil([], true);
-    this.expect("}", start);
+    if (!owner) this.claim(node);
+    const placeholder = this.placeholder(index, start);
     if (!owner) {
       node.placeholder = placeholder;
       return node;
     }
     if (owner.kind === "field" && owner.placeholder.length === 0 && placeholder.length > 0) {
       owner.placeholder = placeholder;
-    } else if (saved) {
-      this.owners = saved;
+    } else {
+      this.rollback(size);
     }
     return { kind: "mirror", index };
+  }
+
+  private placeholder(index: number, start: number): BodyNode[] {
+    this.openFields.add(index);
+    const nodes = this.nodesUntil([], true);
+    this.openFields.delete(index);
+    this.expect("}", start);
+    return nodes;
   }
 
   private choice(start: number): string[] {
@@ -258,7 +292,7 @@ class BodyParser {
       }
       this.pos += 1;
     }
-    throw new Unclosed(start);
+    throw new Fatal(start);
   }
 
   private plainUntilBrace(start: number): string {
@@ -278,12 +312,12 @@ class BodyParser {
       value += char;
       this.pos += 1;
     }
-    throw new Unclosed(start);
+    throw new Fatal(start);
   }
 
   private project(index: number, start: number): BodyNode {
     const kind = this.sticky(KIND) ?? "";
-    if (this.pos >= this.source.length) throw new Unclosed(start);
+    if (this.pos >= this.source.length) throw new Fatal(start);
     if (!isOneOf(PROJECT_FIELD_KINDS, kind)) {
       this.plainUntilBrace(start);
       throw new Invalid(start, "unknown-project-field");
@@ -314,7 +348,7 @@ class BodyParser {
       value += char;
       this.pos += 1;
     }
-    throw new Unclosed(start);
+    throw new Fatal(start);
   }
 
   private formatPart(start: number): string {
@@ -342,7 +376,7 @@ class BodyParser {
       value += char;
       this.pos += 1;
     }
-    throw new Unclosed(start);
+    throw new Fatal(start);
   }
 
   private transform(start: number): RegexTransform {
@@ -360,7 +394,7 @@ class BodyParser {
     while (scan < source.length && source[scan] !== "/" && source[scan] !== "}") {
       scan += source[scan] === "\\" ? 2 : 1;
     }
-    if (scan >= source.length) throw new Unclosed(start);
+    if (scan >= source.length) throw new Fatal(start);
     if (source[scan] === "}") {
       const helper = source.slice(this.pos, scan);
       this.pos = scan + 1;
@@ -371,7 +405,7 @@ class BodyParser {
   }
 
   private variable(name: string, start: number): BodyNode {
-    if (this.pos >= this.source.length) throw new Unclosed(start);
+    if (this.pos >= this.source.length) throw new Fatal(start);
     const char = this.source[this.pos];
     this.pos += 1;
     if (char === "}") return { kind: "variable", name, fallback: [] };
@@ -384,13 +418,13 @@ class BodyParser {
   }
 }
 
-export function parseBody(body: string): BodyParseResult {
-  const parser = new BodyParser(body);
+export function parseBody(body: string, options: { captures?: boolean } = {}): BodyParseResult {
+  const parser = new BodyParser(body, options.captures ?? false);
   const nodes = parser.parse();
   return { nodes, errors: parser.errors };
 }
 
-export type EscapeMode = "top" | "placeholder" | "choice";
+type EscapeMode = "top" | "placeholder" | "choice";
 
 const ESCAPED: Readonly<Record<EscapeMode, string>> = { top: "$", placeholder: "$}", choice: ",|" };
 const AFTER_BACKSLASH: Readonly<Record<EscapeMode, string>> = {

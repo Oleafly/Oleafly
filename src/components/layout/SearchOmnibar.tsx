@@ -43,7 +43,8 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { libraryProjects } from "@/lib/library-projects";
 import { i18n } from "@/i18n";
-import { gotoLine } from "@/components/editor/cm/controller";
+import { getEditorView, gotoLine } from "@/components/editor/cm/controller";
+import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import { objectKey } from "@/lib/react-key";
 import { COMMAND_GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -344,12 +345,15 @@ export function SearchOmnibar() {
     () => commandsFor("omnibar", ctx),
     [ctx],
   );
+  const editorOpen = useMemo(() => open && (isWysiwygActive() || getEditorView() !== null), [open]);
   const slashEntries = useMemo(
     () => [
-      ...BUILT_IN_SLASH.filter((entry) => notesOn || entry.mode !== "notes"),
+      ...BUILT_IN_SLASH.filter(
+        (entry) => (notesOn || entry.mode !== "notes") && (editorOpen || entry.mode !== "snippets"),
+      ),
       ...commandSlashEntries(availableCommands, ctx),
     ],
-    [availableCommands, ctx, notesOn],
+    [availableCommands, ctx, notesOn, editorOpen],
   );
   const { mode, term, cmd, action } = useMemo(
     () => parse(query, slashEntries),
@@ -394,8 +398,10 @@ export function SearchOmnibar() {
   );
 
   useEffect(() => {
-    if (open && initialQuery) setQuery(initialQuery);
-  }, [open, initialQuery]);
+    if (!open || !initialQuery) return;
+    setQuery(initialQuery);
+    setSearchOpen(true);
+  }, [open, initialQuery, setSearchOpen]);
 
   useEffect(() => {
     if (!open) return;

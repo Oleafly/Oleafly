@@ -11,23 +11,20 @@ import { createSnippetPort } from "@/features/snippets/port";
 import { isMathPlace, languageLabel } from "@/features/snippets/records";
 import { TONES } from "@/components/ui/tones";
 import { useEditorThemeId } from "@/hooks/use-editor-theme";
+import { SAMPLE_PATH } from "./SnippetBodyEditor";
 
 type TryPlace = "text" | "math";
+type MathPlace = "inline-math" | "display-math";
 
-const SAMPLE_PATH: Record<SnippetLanguage, string> = {
-  latex: "try.tex",
-  typst: "try.typ",
-  markdown: "try.md",
-  bibtex: "try.bib",
-  notes: "try.md",
+const MATH_DOCS: Partial<Record<SnippetLanguage, Readonly<Record<MathPlace, string>>>> = {
+  latex: { "inline-math": "$|$", "display-math": "\\[|\\]" },
+  typst: { "inline-math": "$|$", "display-math": "$ | $" },
+  markdown: { "inline-math": "$|$", "display-math": "$$|$$" },
 };
 
-const MATH_DOC: Partial<Record<SnippetLanguage, string>> = {
-  latex: "$|$",
-  typst: "$|$",
-  markdown: "$|$",
-  notes: "$|$",
-};
+function mathPlaceOf(record: SnippetRecord): MathPlace {
+  return record.place === "display-math" ? "display-math" : "inline-math";
+}
 
 function tryPort(record: SnippetRecord, language: SnippetLanguage): SnippetPort {
   const path = SAMPLE_PATH[language];
@@ -53,8 +50,7 @@ function ignoreChange(): void {}
 
 function firesIn(record: SnippetRecord, language: SnippetLanguage, place: TryPlace): "language" | "place" | null {
   if (record.languages !== "any" && !record.languages.includes(language)) return "language";
-  const resolved = place === "text" ? "text" : record.place === "display-math" ? "display-math" : "inline-math";
-  return placeAllows(record, resolved) ? null : "place";
+  return placeAllows(record, place === "text" ? "text" : mathPlaceOf(record)) ? null : "place";
 }
 
 export function SnippetTryIt({
@@ -65,7 +61,7 @@ export function SnippetTryIt({
   const themeId = useEditorThemeId();
   const [chosen, setChosen] = useState<SnippetLanguage>(languages[0] ?? "latex");
   const language = languages.includes(chosen) ? chosen : (languages[0] ?? "latex");
-  const mathDoc = MATH_DOC[language];
+  const mathDoc = MATH_DOCS[language]?.[mathPlaceOf(record)];
   const [place, setPlace] = useState<TryPlace>(mathDoc && isMathPlace(record.place) ? "math" : "text");
   const activePlace: TryPlace = mathDoc ? place : "text";
   const port = useMemo(() => tryPort(record, language), [record, language]);
@@ -74,7 +70,19 @@ export function SnippetTryIt({
   const caret = doc.indexOf("|");
   const blocked = firesIn(record, language, activePlace);
   const trigger = record.trigger ?? record.aliases[0] ?? null;
-  const resetKey = `${language}:${activePlace}:${JSON.stringify(record.bodies)}:${record.trigger}:${record.expand}:${record.place}`;
+  const resetKey = JSON.stringify([
+    language,
+    activePlace,
+    record.bodies,
+    record.trigger,
+    record.regex?.source ?? null,
+    record.aliases,
+    record.expand,
+    record.place,
+    record.inWord,
+    record.lineStart,
+    record.languages,
+  ]);
 
   const placeView = useCallback(
     (view: EditorView | null) => {

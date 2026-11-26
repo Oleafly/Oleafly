@@ -378,11 +378,18 @@ already. A placeholder too long for its field ends in an ellipsis
 (`placeholder-shown:text-ellipsis`) rather than stopping mid-word. German
 labels run long, so this comes up.
 
+A label over a form control is a `Field` from `ui/field.tsx`. Pass the
+control's `id` and the label points at it. Leave `id` out when the field holds
+controls that name themselves, like a segmented control or a row of chips.
+Anything that belongs under the control, like the Regular expression checkbox
+under a snippet's trigger, goes in as a child after it.
+
 A plain filter box at the top of a panel, with a search icon and a clear
 button, is a `SearchField` from `ui/search-field.tsx`. Clearing it puts focus
-back in the field. Pass `clearOnEscape` to let Escape empty it as well. Once
-it's empty, Escape goes on to the panel as usual. The browser's own clear
-button is hidden, so the field never shows two.
+back in the field. Pass `clearOnEscape` to let Escape empty it as well. While
+it has text, Escape only empties it, so a dialog around it stays open. Once
+it's empty, Escape goes on to the panel or the dialog as usual. The browser's
+own clear button is hidden, so the field never shows two.
 
 A floating "find in this view" panel is a `FindBar` from `ui/find-bar.tsx`.
 It brings the field, a match count that screen readers announce, the

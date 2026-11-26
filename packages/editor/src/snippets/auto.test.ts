@@ -9,9 +9,10 @@ import { latexScriptGroups } from "../latex-scripts";
 import { stubRangeGeometry } from "../test-geometry";
 import { installEnglishEditorMessages } from "../test-messages";
 import { lastAutoExpansion, restoreAutoTrigger, snippetAutoExpand } from "./auto";
+import { insertSnippet } from "./insert";
 import type { SnippetPort } from "./port";
 import { snippetSessions } from "./session";
-import { destroyViews, portWith, press, snippetEditor, type, withCursor } from "./tests/editor";
+import { destroyViews, portWith, press, snippetEditor, snippetRecord, type, withCursor } from "./tests/editor";
 import { FAST_MATH_ENTRIES, PAPER_ENTRIES } from "./tests/fixtures";
 
 stubRangeGeometry();
@@ -23,7 +24,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const ENTRIES = { ...FAST_MATH_ENTRIES, ...PAPER_ENTRIES };
+const ENTRIES = {
+  ...FAST_MATH_ENTRIES,
+  ...PAPER_ENTRIES,
+  "math.pair": { languages: ["latex"], prefix: "qq", body: "${1:a}=${1/upper}$0", expand: "auto", where: "text" },
+  "math.wide": { languages: ["latex"], prefix: "xx", body: "YYYY", expand: "auto", where: "text", inWord: true },
+};
+
+const theorem = snippetRecord("thm", "\\begin{theorem}[${1:Name}]\\label{thm:${1/slug}}\n\t$0\n\\end{theorem}");
 
 function mathEditor(marked: string, overrides: Partial<SnippetPort> = {}, scripts = true): EditorView {
   return snippetEditor(marked, {
@@ -76,6 +84,28 @@ describe("snippetAutoExpand", () => {
     press(view, "Backspace");
     expect(withCursor(view)).toBe("$\\frac{sum|}{}$");
     expect(snippetSessions(view.state)).toHaveLength(1);
+  });
+
+  it.each([
+    ["Bound $x ooo", "[Bound $x ooo|$]\\label{thm:bound-x-ooo}"],
+    ["Energy mk", "[Energy mk|]\\label{thm:energy-mk}"],
+    ["Pair qq", "[Pair qq|]\\label{thm:pair-qq}"],
+  ])("gives back %s inside a field with a mirror and lets the mirror follow", (typed, expected) => {
+    const view = mathEditor("|");
+    insertSnippet(view, theorem, 0, 0, "tab");
+    type(view, typed);
+    press(view, "Backspace");
+    expect(withCursor(view).split("\n")[0]).toBe(`\\begin{theorem}${expected}`);
+    expect(snippetSessions(view.state)).toHaveLength(1);
+  });
+
+  it("keeps the text before the trigger when a mirror before the field grows, and gives the trigger back", () => {
+    const view = mathEditor("|");
+    insertSnippet(view, snippetRecord("wrap", "A${1/upper}B${1:p}C"), 0, 0, "tab");
+    type(view, "xx");
+    expect(view.state.doc.toString()).toBe("AYYYYBYYYYC");
+    press(view, "Backspace");
+    expect(withCursor(view)).toBe("AXXBxx|C");
   });
 
   it("expands mk after a space into inline math", () => {

@@ -1,8 +1,6 @@
 import { bodiesWrap } from "./file";
 import { compileTrigger, type EndClass, regexEndClass } from "./trigger";
-import type { LayerId, ParsedSnippetFile, SnippetLanguage, SnippetProblem, SnippetRecord } from "./types";
-
-export type { EndClass } from "./trigger";
+import { LAYERS, type LayerId, type ParsedSnippetFile, type SnippetLanguage, type SnippetProblem, type SnippetRecord } from "./types";
 
 type Patchable = "trigger" | "expand" | "place" | "inWord" | "lineStart" | "priority" | "languages" | "name" | "bodies";
 
@@ -36,10 +34,8 @@ export interface SnippetLibrary {
   forLanguage(language: SnippetLanguage): LanguageIndex;
 }
 
-const LAYER_RANK: Readonly<Record<LayerId, number>> = { builtin: 0, pack: 1, user: 2, project: 3 };
-
 export function layerRank(layer: LayerId): number {
-  return LAYER_RANK[layer];
+  return LAYERS.indexOf(layer);
 }
 
 export function compareCandidates(a: SnippetRecord, b: SnippetRecord, lengthA: number, lengthB: number): number {
@@ -81,7 +77,7 @@ function applyPatch(record: SnippetRecord, override: SnippetOverride, problems: 
   return next;
 }
 
-function keysOf(record: SnippetRecord): string[] {
+export function keysOf(record: SnippetRecord): string[] {
   return record.trigger === null ? [] : [record.trigger, ...record.aliases];
 }
 

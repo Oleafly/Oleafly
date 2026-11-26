@@ -27,7 +27,7 @@ afterEach(() => {
 describe("snippet field chips", () => {
   it("finds fields, choices, project fields, mirrors, variables and captures", () => {
     const body = `\\begin{figure}[\${1|htbp,t,b,H|}] \${2:0.8} \${3@image} {\${4:Caption}} fig:\${4/slug} $4 $0 \${SELECTION} [[0]] \${5/(.*)/x/}`;
-    expect(fieldTokens(body).map(({ label, kind }) => [label, kind])).toEqual([
+    expect(fieldTokens(body, true).map(({ label, kind }) => [label, kind])).toEqual([
       ["1 · htbp t b H", "field"],
       ["2 · 0.8", "field"],
       ["3 · image", "field"],
@@ -39,6 +39,11 @@ describe("snippet field chips", () => {
       ["[[0]]", "variable"],
       ["5 · x", "mirror"],
     ]);
+  });
+
+  it("shows [[n]] as a capture only in a regex snippet", () => {
+    expect(fieldTokens("#strong[[1]] x")).toEqual([]);
+    expect(fieldTokens("#strong[[1]] x", true)).toEqual([{ from: 7, to: 12, label: "[[1]]", kind: "variable" }]);
   });
 
   it("leaves escapes, plain dollars, unclosed fields and brackets as text", () => {

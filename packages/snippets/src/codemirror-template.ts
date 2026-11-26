@@ -47,61 +47,55 @@ class TemplateParser {
   private field(start: number): CmField | null {
     this.pos = start + 2;
     DIGITS.lastIndex = this.pos;
-    const digits = DIGITS.exec(this.source);
-    if (digits) {
-      this.pos += digits[0].length;
-      const seq = Number(digits[0]);
-      if (this.source[this.pos] === "}") {
-        this.pos += 1;
-        return { kind: "field", seq, name: "", children: [] };
-      }
-      if (this.source[this.pos] === ":") {
-        this.pos += 1;
-        const children = this.content(true);
-        if (children && this.source[this.pos] === "}") {
-          this.pos += 1;
-          return { kind: "field", seq, name: flatten(children), children };
-        }
-      }
-      this.pos = start + 2;
+    const digits = DIGITS.exec(this.source)?.[0] ?? "";
+    const after = this.source[this.pos + digits.length];
+    if (digits && after === "}") {
+      this.pos += digits.length + 1;
+      return { kind: "field", seq: Number(digits), name: "", children: [] };
     }
-    const children = this.content(false);
-    if (children && this.source[this.pos] === "}") {
-      this.pos += 1;
-      return { kind: "field", seq: null, name: flatten(children), children };
+    const content = this.content();
+    if (!content) {
+      this.pos = start;
+      return null;
     }
-    this.pos = start;
-    return null;
+    this.pos += 1;
+    const numbered = digits !== "" && after === ":" && !content.escaped;
+    const children = numbered ? withoutPrefix(content.nodes, digits.length + 1) : content.nodes;
+    return { kind: "field", seq: numbered ? Number(digits) : null, name: flatten(children), children };
   }
 
-  private content(numbered: boolean): CmNode[] | null {
+  private content(): { nodes: CmNode[]; escaped: boolean } | null {
     const nodes: CmNode[] = [];
+    let escaped = false;
     const source = this.source;
     while (this.pos < source.length) {
       const char = source[this.pos];
       const next = source[this.pos + 1];
-      if (char === "}") return nodes;
+      if (char === "}") return { nodes, escaped };
       if (char === "{" || char === "\n" || char === "\r") return null;
       if (char === "\\" && (next === "{" || next === "}")) {
-        if (numbered) return null;
+        escaped = true;
         pushText(nodes, next);
         this.pos += 2;
         continue;
       }
       if ((char === "$" || char === "#") && next === "{") {
-        const resume = this.pos;
-        const field = this.field(resume);
-        if (field) {
-          nodes.push(field);
-          continue;
-        }
-        this.pos = resume;
+        const field = this.field(this.pos);
+        if (!field) return null;
+        nodes.push(field);
+        continue;
       }
       pushText(nodes, char);
       this.pos += 1;
     }
     return null;
   }
+}
+
+function withoutPrefix(nodes: readonly CmNode[], length: number): CmNode[] {
+  const [first, ...rest] = nodes;
+  const text = first.kind === "text" ? first.text.slice(length) : "";
+  return text ? [{ kind: "text", text }, ...rest] : rest;
 }
 
 function keyOf(field: CmField, unnamed: Map<CmField, string>): string {

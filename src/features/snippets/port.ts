@@ -5,7 +5,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { snippetLanguageForPath } from "./language";
 import { openSnippetSettings } from "./open-settings";
-import { useSnippetStore, watchSnippetFiles } from "./store";
+import { useSnippetStore } from "./store";
 
 type PortServices = typeof import("./port-services");
 
@@ -21,8 +21,7 @@ function logLoadFailure(error: unknown): void {
 function startSnippets(): void {
   if (started) return;
   started = true;
-  useSnippetStore.getState().load().catch(logLoadFailure);
-  watchSnippetFiles();
+  void useSnippetStore.getState().load();
   import("./port-services").then((loaded) => {
     services = loaded;
   }, logLoadFailure);

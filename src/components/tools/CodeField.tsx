@@ -87,6 +87,7 @@ export function CodeField({
     <div
       ref={hostRef}
       data-editor-theme={themeId}
+      data-modal-escape-inner={readOnly ? undefined : ""}
       data-testid={testId}
       className={className}
     />

@@ -179,6 +179,34 @@ describe("snippets in a settings file", () => {
     ]);
   });
 
+  it("refuses a snippet file that is not a JSON object, or is too large for the snippets folder, before writing anything", async () => {
+    const current = await snapshot();
+    expect(problemsOf([{ name: "mine.json", text: MINE }, { name: "_state.json", text: "{ nope" }], current)).toEqual([
+      { path: "snippets.files[1].text", issue: { kind: "detail", message: expect.stringMatching(/^Not valid JSON\. /u) } },
+    ]);
+    expect(problemsOf([{ name: "mine.json", text: "[1]" }], current)).toEqual([
+      { path: "snippets.files[0].text", issue: { kind: "detail", message: "A snippet file is a JSON object with one entry per snippet" } },
+    ]);
+    const wide = JSON.stringify({ wide: { prefix: "ww", body: "é".repeat(1_100_000) } });
+    expect(wide.length).toBeLessThan(2 * 1024 * 1024);
+    expect(problemsOf([{ name: "wide.json", text: wide }], current)).toEqual([
+      { path: "snippets.files[0].text", issue: { kind: "text", max: 2 * 1024 * 1024 } },
+    ]);
+    expect(problemsOf([{ name: "mine.json", text: MINE }, { name: "_state.json", text: STATE }], current)).toEqual([]);
+  });
+
+  it("leaves the settings view alone when a reload finds the same files", async () => {
+    disk.set("mine.json", MINE);
+    await useSnippetStore.getState().load();
+    const listener = vi.fn();
+    const stop = watchSettingsSources(listener);
+    mocks.writeSnippetFile.mockImplementationOnce(async () => undefined);
+    await useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
+    expect(mocks.writeSnippetFile).toHaveBeenCalledOnce();
+    expect(listener).not.toHaveBeenCalled();
+    stop();
+  });
+
   it("wakes the settings view when the snippet files change on disk", async () => {
     await useSnippetStore.getState().load();
     const listener = vi.fn();

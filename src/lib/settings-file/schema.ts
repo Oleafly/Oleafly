@@ -9,6 +9,7 @@ import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
 import { SAVED_INSTRUCTION_LIMITS } from "@/lib/saved-instructions";
 import { type SnippetFileText, validSnippetFileName } from "@/features/snippets/store";
+import { parseUserFile, wholeFileProblem } from "@/features/snippets/user-file";
 import {
   NOTE_WIDTHS,
   NOTES_CALLOUT_STYLES,
@@ -357,7 +358,16 @@ const words: ValueType<string[]> = {
 };
 
 const SNIPPET_FILE_LIMIT = 200;
-const snippetFileText = text(2 * 1024 * 1024, { multiline: true });
+const SNIPPET_FILE_BYTES = 2 * 1024 * 1024;
+const snippetFileText = text(SNIPPET_FILE_BYTES, { multiline: true });
+
+function parseSnippetFileText(name: string, raw: unknown): Parsed<string> {
+  const body = snippetFileText.parse(raw);
+  if (!body.ok) return body;
+  if (new TextEncoder().encode(body.value).length > SNIPPET_FILE_BYTES) return fail({ kind: "text", max: SNIPPET_FILE_BYTES });
+  const problem = wholeFileProblem(parseUserFile(name, body.value));
+  return problem ? fail({ kind: "detail", message: problem.message }) : body;
+}
 
 function parseSnippetFileItem(item: unknown, at: string, seen: Set<string>): Parsed<SnippetFileText> {
   if (!isRecord(item)) return fail({ kind: "object" }, at);
@@ -367,7 +377,7 @@ function parseSnippetFileItem(item: unknown, at: string, seen: Set<string>): Par
   const key = item.name.toLowerCase();
   if (seen.has(key)) return fail({ kind: "duplicate" }, `${at}.name`);
   seen.add(key);
-  const body = snippetFileText.parse(item.text);
+  const body = parseSnippetFileText(item.name, item.text);
   return body.ok ? ok({ name: item.name, text: body.value }) : fail(body.issue, `${at}.text`);
 }
 

@@ -132,36 +132,18 @@ pub(crate) fn write_in(root: &Path, name: &str, text: &str) -> Result<(), String
     crate::sandbox::atomic_write(&target, text.as_bytes())
 }
 
-pub(crate) fn delete_in(root: &Path, name: &str) -> Result<(), String> {
-    valid_name(name)?;
-    let target = root.join(name);
-    match std::fs::remove_file(&target) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("failed to delete {name}: {error}")),
-    }
+#[tauri::command]
+pub async fn snippets_list() -> Result<Vec<SnippetFileEntry>, String> {
+    tauri::async_runtime::spawn_blocking(|| list_in(&snippets_root()?))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn snippets_list() -> Result<Vec<SnippetFileEntry>, String> {
-    list_in(&snippets_root()?)
-}
-
-#[tauri::command]
-pub fn snippets_write(name: String, text: String) -> Result<(), String> {
-    write_in(&snippets_root()?, &name, &text)
-}
-
-#[tauri::command]
-pub fn snippets_delete(name: String) -> Result<(), String> {
-    delete_in(&snippets_root()?, &name)
-}
-
-#[tauri::command]
-pub fn snippets_folder() -> Result<String, String> {
-    let root = snippets_root()?;
-    ensure_root(&root)?;
-    Ok(root.to_string_lossy().into_owned())
+pub async fn snippets_write(name: String, text: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || write_in(&snippets_root()?, &name, &text))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[cfg(test)]
@@ -172,6 +154,20 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("snippets");
         (dir, root)
+    }
+
+    #[test]
+    fn the_commands_write_and_list_the_data_folder_as_async_tasks() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
+        let written = tauri::async_runtime::block_on(snippets_write("a.json".into(), "{}".into()));
+        let listed = tauri::async_runtime::block_on(snippets_list());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        written.unwrap();
+        let names: Vec<String> = listed.unwrap().into_iter().map(|file| file.name).collect();
+        assert_eq!(names, ["a.json"]);
+        assert!(dir.path().join("snippets").join("a.json").is_file());
     }
 
     #[test]
@@ -227,7 +223,6 @@ mod tests {
                 "{name} should be rejected"
             );
         }
-        assert!(delete_in(&root, "../config.json").is_err());
     }
 
     #[test]
@@ -242,8 +237,6 @@ mod tests {
             .map(|file| file.name)
             .collect();
         assert_eq!(names, [STATE_FILE]);
-        delete_in(&root, STATE_FILE).unwrap();
-        assert!(list_in(&root).unwrap().is_empty());
     }
 
     #[test]
@@ -292,20 +285,5 @@ mod tests {
             .map(|file| file.name)
             .collect();
         assert_eq!(names, ["ok.json"]);
-    }
-
-    #[test]
-    fn delete_removes_only_that_file_and_ignores_missing_ones() {
-        let (_dir, root) = root();
-        write_in(&root, "a.json", "{}").unwrap();
-        write_in(&root, "b.json", "{}").unwrap();
-        delete_in(&root, "a.json").unwrap();
-        delete_in(&root, "a.json").unwrap();
-        let names: Vec<String> = list_in(&root)
-            .unwrap()
-            .into_iter()
-            .map(|file| file.name)
-            .collect();
-        assert_eq!(names, ["b.json"]);
     }
 }

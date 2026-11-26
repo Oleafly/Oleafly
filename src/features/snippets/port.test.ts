@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
     files: [] as unknown[],
   },
   files: { projectName: "", engine: { typst_resolved: null as null | { version: string } } },
-  watch: vi.fn(() => () => undefined),
   toast: { info: vi.fn() },
   notifyError: vi.fn(),
   logError: vi.fn(async () => undefined),
@@ -26,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   setFastMath: vi.fn(async () => undefined),
 }));
 
-vi.mock("./store", () => ({ useSnippetStore: { getState: () => mocks.store }, watchSnippetFiles: mocks.watch }));
+vi.mock("./store", () => ({ useSnippetStore: { getState: () => mocks.store } }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.notifyError }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -74,14 +73,10 @@ beforeEach(() => {
 });
 
 describe("createSnippetPort", () => {
-  it("loads the snippet files and watches them once, however many editors ask, and logs a failed load", async () => {
-    const failure = new Error("disk gone");
-    mocks.store.load.mockRejectedValueOnce(failure);
+  it("loads the snippet files once, however many editors ask", () => {
     createSnippetPort(() => path);
     createSnippetPort(() => "other.typ");
     expect(mocks.store.load).toHaveBeenCalledOnce();
-    expect(mocks.watch).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("load snippets", failure));
   });
 
   it("maps the file's extension to a snippet language and reports the path it was given", async () => {

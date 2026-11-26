@@ -11,7 +11,6 @@ export const PLACES: readonly Place[] = ["any", "text", "math", "inline-math", "
 export const SNIPPET_LANGUAGES: readonly SnippetLanguage[] = ["latex", "typst", "markdown", "bibtex", "notes"];
 export const LAYERS: readonly LayerId[] = ["builtin", "pack", "user", "project"];
 export const PROJECT_FIELD_KINDS: readonly ProjectFieldKind[] = ["image", "label", "cite", "ref", "file"];
-export const HELPERS: readonly Helper[] = ["slug", "lower", "upper", "title", "initials"];
 
 export interface RegexTransform {
   source: string;
@@ -73,6 +72,7 @@ export type SnippetProblemCode =
   | "no-language"
   | "ordinary-words"
   | "regex-every-key"
+  | "regex-aliases"
   | "header"
   | "unreadable";
 

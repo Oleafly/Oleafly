@@ -1,16 +1,18 @@
 import { useCallback } from "react";
 import type { EditorView } from "@codemirror/view";
 import { languageForPath } from "@oleafly/editor";
+import type { SnippetLanguage } from "@oleafly/snippets";
 import { CodeField } from "@/components/tools/CodeField";
 import type { BodyKey } from "@/features/snippets/draft";
 import { snippetFieldChips } from "@/features/snippets/body-chips";
 import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
-const SAMPLE_PATHS: Partial<Record<BodyKey, string>> = {
+export const SAMPLE_PATH: Readonly<Record<SnippetLanguage, string>> = {
   latex: "snippet.tex",
   typst: "snippet.typ",
   markdown: "snippet.md",
   bibtex: "snippet.bib",
+  notes: "snippet.md",
 };
 
 export function SnippetBodyEditor({
@@ -18,6 +20,7 @@ export function SnippetBodyEditor({
   onChange,
   language,
   showSyntax,
+  captures = false,
   ariaLabel,
   readOnly = false,
   onView,
@@ -27,6 +30,7 @@ export function SnippetBodyEditor({
   onChange?: (value: string) => void;
   language: BodyKey;
   showSyntax: boolean;
+  captures?: boolean;
   ariaLabel: string;
   readOnly?: boolean;
   onView?: (view: EditorView | null) => void;
@@ -34,13 +38,12 @@ export function SnippetBodyEditor({
 }>) {
   const themeId = useEditorThemeId();
   const extensions = useCallback(() => {
-    const path = SAMPLE_PATHS[language];
-    const support = path ? languageForPath(path) : null;
-    return [support ?? [], showSyntax ? [] : snippetFieldChips()];
-  }, [language, showSyntax]);
+    const support = language === "default" ? null : languageForPath(SAMPLE_PATH[language]);
+    return [support ?? [], showSyntax ? [] : snippetFieldChips(captures)];
+  }, [language, showSyntax, captures]);
   return (
     <CodeField
-      key={`${language}:${showSyntax}`}
+      key={`${language}:${showSyntax}:${captures}`}
       value={value}
       onChange={(next) => onChange?.(next)}
       language={extensions}

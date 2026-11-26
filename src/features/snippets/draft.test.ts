@@ -44,7 +44,7 @@ afterAll(() => setEditorTranslator(null));
 
 describe("snippet drafts", () => {
   it("starts a new snippet in the open file's language, or for any language", () => {
-    expect(newDraft("typst")).toMatchObject({ id: null, collection: "my-snippets", languages: ["typst"], expand: "tab", place: "any", wholeWord: true });
+    expect(newDraft("typst")).toMatchObject({ collection: "my-snippets", languages: ["typst"], expand: "tab", place: "any", wholeWord: true });
     expect(newDraft(null, "imported").languages).toBe("any");
     expect(newDraft(null, "imported").collection).toBe("imported");
     expect(bodyKeys("any")).toEqual(["default"]);
@@ -53,7 +53,6 @@ describe("snippet drafts", () => {
 
   it("opens a record with one body per language and the translated name", () => {
     expect(draftFromRecord(FIGURE)).toMatchObject({
-      id: "paper.figure",
       collection: "paper-structure",
       name: "Figure",
       trigger: "fig",
@@ -159,16 +158,24 @@ describe("snippet drafts", () => {
 
   it("finds snippets that share a trigger or its start in the same languages", () => {
     const library = libraryOf(PAPER, MINE, SLASH);
-    const clashes = snippetClashes(draft({ trigger: "fig" }), library);
+    const clashes = snippetClashes(draft({ trigger: "fig" }), library, null);
     expect(clashes.map((clash) => clash.kind)).toEqual(["duplicate", "shared-start"]);
     expect(clashes[0].records.map((record: SnippetRecord) => record.id)).toEqual(["paper.figure"]);
     expect(clashes[1].records.map((record: SnippetRecord) => record.id).sort()).toEqual(["paper.figures", "user.figref"]);
-    expect(snippetClashes(draft({ trigger: "figu" }), library)).toEqual([
+    expect(snippetClashes(draft({ trigger: "figu" }), library, null)).toEqual([
       { kind: "shared-start", records: [FIGURE] },
     ]);
-    expect(snippetClashes(draftFromRecord(FIGURE), library).map((clash) => clash.kind)).toEqual(["shared-start"]);
-    expect(snippetClashes(draft({ trigger: "fig", languages: ["markdown"] }), library)).toEqual([]);
-    expect(snippetClashes(draft({ trigger: "" }), library)).toEqual([]);
-    expect(snippetClashes(draft({ trigger: "fig", regex: true }), library)).toEqual([]);
+    expect(snippetClashes(draftFromRecord(FIGURE), library, FIGURE).map((clash) => clash.kind)).toEqual(["shared-start"]);
+    expect(snippetClashes(draft({ trigger: "fig", languages: ["markdown"] }), library, null)).toEqual([]);
+    expect(snippetClashes(draft({ trigger: "" }), library, null)).toEqual([]);
+    expect(snippetClashes(draft({ trigger: "fig", regex: true }), library, null)).toEqual([]);
+  });
+
+  it("never finds a snippet clashing with itself after it moves to another collection", () => {
+    const library = libraryOf(PAPER, MINE, SLASH);
+    const figref = MINE.records[0];
+    const moved = { ...draftFromRecord(figref), collection: "imported" };
+    expect(snippetClashes(moved, library, figref)).toEqual([{ kind: "shared-start", records: [FIGURE] }]);
+    expect(snippetClashes(moved, library, null).map((clash) => clash.kind)).toEqual(["duplicate", "shared-start"]);
   });
 });

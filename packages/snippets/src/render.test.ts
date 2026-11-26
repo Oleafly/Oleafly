@@ -172,7 +172,12 @@ describe("renderBody", () => {
   });
 
   it("inserts regex captures", () => {
-    expect(render("[[0]]_[[1]][[2]]", { captures: ["x", "1"] }).text).toBe("x_1");
+    const parsed = parseBody("[[0]]_[[1]][[2]]", { captures: true });
+    expect(renderBody(parsed.nodes, { ...ENV, captures: ["x", "1"] }).text).toBe("x_1");
+  });
+
+  it("writes square-bracketed text in a date format as it is", () => {
+    expect(render("${DATE:[Day] D [of] MMMM}").text).toBe("Day 25 of November");
   });
 
   it("adds a second range when a field index repeats through nesting", () => {

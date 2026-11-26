@@ -153,24 +153,34 @@ describe("autoCandidates", () => {
   });
 
   it("reports a slow pattern once and then stops running it", () => {
-    const index = indexOf({ slow: { prefix: "re:(a+)+b\\d", body: "x", expand: "auto" } });
+    const index = indexOf({ slow: { prefix: "re:a+b\\d", body: "x", expand: "auto" } });
     const onSlow = vi.fn();
-    const line = `${"a".repeat(22)}1`;
-    expect(autoCandidates(index, ctx(line), "1", onSlow)).toEqual([]);
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => (now += 5));
+    expect(autoCandidates(index, ctx("aab1"), "1", onSlow)).toHaveLength(1);
     expect(onSlow).toHaveBeenCalledTimes(1);
     expect(onSlow.mock.calls[0][0].id).toBe("slow");
     const exec = vi.spyOn(index.regexByEnd.get("digit")?.[0].regex as RegExp, "exec");
-    expect(autoCandidates(index, ctx(line), "1", onSlow)).toEqual([]);
+    expect(autoCandidates(index, ctx("aab1"), "1", onSlow)).toEqual([]);
     expect(exec).not.toHaveBeenCalled();
     expect(onSlow).toHaveBeenCalledTimes(1);
   });
 
-  it("times every regex run", () => {
+  it("times every regex run and calls a pattern slow when a second run is slow too", () => {
     const index = indexOf({ sub: { prefix: "re:([a-z])(\\d)", body: "x", expand: "auto" } });
-    vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(2.5);
+    vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(2.5).mockReturnValueOnce(3).mockReturnValueOnce(5.5);
     const onSlow = vi.fn();
     expect(autoCandidates(index, ctx("x1"), "1", onSlow)).toHaveLength(1);
     expect(onSlow).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a pattern whose slow run was a one-off", () => {
+    const index = indexOf({ sub: { prefix: "re:([a-z])(\\d)", body: "x", expand: "auto" } });
+    vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(2.5).mockReturnValueOnce(3).mockReturnValueOnce(3.5);
+    const onSlow = vi.fn();
+    expect(autoCandidates(index, ctx("x1"), "1", onSlow)).toHaveLength(1);
+    expect(onSlow).not.toHaveBeenCalled();
+    expect(autoCandidates(index, ctx("y2"), "2", onSlow)).toHaveLength(1);
   });
 });
 
@@ -206,11 +216,13 @@ describe("tabCandidates", () => {
   });
 
   it("passes slow regex reports on", () => {
-    const slowIndex = indexOf({ slow: { prefix: "re:(a+)+b\\d", body: "x" } });
+    const slowIndex = indexOf({ slow: { prefix: "re:a+b\\d", body: "x" } });
     const onSlow = vi.fn();
-    tabCandidates(slowIndex, ctx(`${"a".repeat(22)}2`), onSlow);
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => (now += 5));
+    tabCandidates(slowIndex, ctx("aab2"), onSlow);
     expect(onSlow).toHaveBeenCalledTimes(1);
-    tabCandidates(slowIndex, ctx(`${"a".repeat(22)}2`));
+    tabCandidates(slowIndex, ctx("aab2"));
   });
 });
 

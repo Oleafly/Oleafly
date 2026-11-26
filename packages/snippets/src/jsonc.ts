@@ -1,4 +1,4 @@
-export interface JsoncError {
+interface JsoncError {
   offset: number;
   message: string;
 }

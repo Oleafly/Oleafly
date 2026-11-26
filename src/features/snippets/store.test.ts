@@ -16,8 +16,24 @@ vi.mock("@/lib/tauri", () => ({
   writeSnippetFile: mocks.writeSnippetFile,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@oleafly/snippets", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@oleafly/snippets")>();
+  return {
+    ...actual,
+    parseSnippetFile: (...args: Parameters<typeof actual.parseSnippetFile>) => {
+      if (args[0].includes('"$overflow"')) throw new RangeError("Maximum call stack size exceeded");
+      return actual.parseSnippetFile(...args);
+    },
+  };
+});
 
 type StoreModule = typeof import("./store");
+
+const addListener = vi.spyOn(window, "addEventListener");
+
+function focusListeners(): EventListenerOrEventListenerObject[] {
+  return addListener.mock.calls.filter(([type]) => type === "focus").map(([, listener]) => listener);
+}
 
 const PUBLIC = resolve(process.cwd(), "public/snippets");
 const KNOWN = ["fast-math-latex", "fast-math-typst", "paper-structure"];
@@ -69,6 +85,8 @@ beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   vi.stubGlobal("fetch", fetchMock);
+  mocks.listSnippetFiles.mockReset();
+  mocks.writeSnippetFile.mockReset();
   mocks.listSnippetFiles.mockImplementation(async () =>
     [...disk.entries()]
       .sort(([left], [right]) => (left < right ? -1 : 1))
@@ -78,6 +96,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const listener of focusListeners()) window.removeEventListener("focus", listener);
   vi.unstubAllGlobals();
 });
 
@@ -174,18 +193,35 @@ describe("loading the library", () => {
     expect(useSnippetStore.getState().state.disabledCollections).toEqual(["fast-math-latex", "fast-math-typst"]);
   });
 
-  it("finishes the first load without user files when the folder can't be listed, and keeps them after", async () => {
-    mocks.listSnippetFiles.mockRejectedValueOnce(new Error("denied"));
-    const { useSnippetStore } = await loaded();
-    expect(useSnippetStore.getState().status).toBe("ready");
-    expect(useSnippetStore.getState().disk).toEqual([]);
-    expect(mocks.logError).toHaveBeenCalledWith("list snippet files", expect.any(Error));
-
+  it("stays on the bundled snippets and refuses changes until the folder can be listed", async () => {
     put("mine.json", json(MINE));
-    await useSnippetStore.getState().load();
+    const denied = new Error("denied");
+    mocks.listSnippetFiles.mockRejectedValueOnce(denied).mockRejectedValueOnce(denied);
+    const { snippetsReady, useSnippetStore } = await fresh();
+    await expect(useSnippetStore.getState().load()).rejects.toBe(denied);
+    expect(useSnippetStore.getState().status).toBe("loading");
+    expect(useSnippetStore.getState().library.byId("latex.slash.section")).toBeDefined();
+    expect(useSnippetStore.getState().library.byId("mine.fraction")).toBeUndefined();
+    expect(mocks.logError).toHaveBeenCalledWith("load snippets", denied);
+
+    const added = userRecord("mine.root", { prefix: "sq", body: "\\sqrt{$1}" });
+    await expect(useSnippetStore.getState().saveRecord("mine", added)).rejects.toThrow("denied");
+    expect(mocks.writeSnippetFile).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event("focus"));
+    await snippetsReady();
+    expect(useSnippetStore.getState().status).toBe("ready");
+    await useSnippetStore.getState().saveRecord("mine", added);
+    expect(Object.keys(JSON.parse(written("mine.json") ?? "{}"))).toEqual(["mine.fraction", "mine.root"]);
+  });
+
+  it("keeps what it has when a later listing fails", async () => {
+    put("mine.json", json(MINE));
+    const { useSnippetStore } = await loaded();
     const library = useSnippetStore.getState().library;
     mocks.listSnippetFiles.mockRejectedValueOnce(new Error("denied"));
-    await useSnippetStore.getState().load();
+    await expect(useSnippetStore.getState().load()).rejects.toThrow("denied");
+    expect(useSnippetStore.getState().status).toBe("ready");
     expect(useSnippetStore.getState().library).toBe(library);
     expect(library.byId("mine.fraction")).toBeDefined();
   });
@@ -249,6 +285,24 @@ describe("user files that go wrong", () => {
     put("big.json", null, "too big");
     await useSnippetStore.getState().load();
     expect(useSnippetStore.getState().library.byId("mine.fraction")).toBeDefined();
+  });
+
+  it("reports a file that makes the parser fail and still loads the others", async () => {
+    put("deep.json", '{ "$overflow": {} }');
+    put("mine.json", json(MINE));
+    const { useSnippetStore } = await loaded();
+    expect(useSnippetStore.getState().status).toBe("ready");
+    expect(useSnippetStore.getState().library.byId("mine.fraction")).toBeDefined();
+    expect(useSnippetStore.getState().library.problems).toEqual([
+      expect.objectContaining({ collection: "deep", code: "unreadable", message: "deep.json could not be read. Maximum call stack size exceeded" }),
+    ]);
+    await expect(useSnippetStore.getState().saveRecord("deep", userRecord("deep.one", { prefix: "dd", body: "d" }))).rejects.toThrow(
+      "deep.json has problems to fix before it can be changed here",
+    );
+
+    const parsed = await useSnippetStore.getState().importVsCodeFile("nested.code-snippets", '{ "$overflow": {} }');
+    expect(parsed).toMatchObject({ collection: "nested", records: [], problems: [expect.objectContaining({ code: "unreadable" })] });
+    expect(mocks.writeSnippetFile).not.toHaveBeenCalled();
   });
 
   it("refuses to rewrite a user file that has problems, so nothing in it is lost", async () => {
@@ -343,6 +397,41 @@ describe("_state.json", () => {
       "disabledRegex is not a list of names, so it was left out",
     ]);
     expect(stateProblems.every((problem) => problem.line > 1)).toBe(true);
+  });
+
+  it("refuses to change the state while _state.json is broken or unreadable, so nothing in it is lost", async () => {
+    put("_state.json", '{\n  "disabledCollections": ["paper-structure"],\n  "overrides": [\n');
+    const { useSnippetStore } = await loaded();
+    const refused = "_state.json has problems to fix before it can be changed here";
+    await expect(useSnippetStore.getState().setCollectionEnabled("fast-math-latex", true)).rejects.toThrow(refused);
+    await expect(useSnippetStore.getState().disableRegex("fm.subscript")).rejects.toThrow(refused);
+    expect(useSnippetStore.getState().state.disabledCollections).toEqual(["fast-math-latex", "fast-math-typst"]);
+    put("_state.json", null, "busy");
+    await expect(useSnippetStore.getState().deleteRecord("builtin-latex-at", "at.alpha")).rejects.toThrow(refused);
+    put("_state.json", "[]");
+    await expect(useSnippetStore.getState().setOverride({ id: "at.alpha", collection: "builtin-latex-at", disabled: true })).rejects.toThrow(refused);
+    expect(mocks.writeSnippetFile).not.toHaveBeenCalled();
+
+    put("_state.json", json({ disabledCollections: ["paper-structure"], knownCollections: KNOWN, disabledRegex: 3 }));
+    await useSnippetStore.getState().disableRegex("fm.subscript");
+    expect(JSON.parse(written("_state.json") ?? "{}")).toMatchObject({ disabledCollections: ["paper-structure"], disabledRegex: ["fm.subscript"] });
+  });
+
+  it("keeps the captures in a changed body of a regex pack snippet", async () => {
+    put(
+      "_state.json",
+      json({
+        knownCollections: KNOWN,
+        overrides: [{ id: "fm.subscript", collection: "fast-math-latex", patch: { bodies: { latex: "[[0]]_{[[1]]}" } } }],
+      }),
+    );
+    const { useSnippetStore } = await loaded();
+    expect(useSnippetStore.getState().library.byId("fm.subscript")?.bodies.latex).toEqual([
+      { kind: "capture", group: 1 },
+      { kind: "text", text: "_{" },
+      { kind: "capture", group: 2 },
+      { kind: "text", text: "}" },
+    ]);
   });
 
   it("reports overrides that are not a list", async () => {
@@ -476,6 +565,47 @@ describe("changing snippets", () => {
   });
 });
 
+describe("changes from more than one place", () => {
+  it("reads the folder again before a change, so what another window saved is kept", async () => {
+    put("mine.json", json(MINE));
+    const { useSnippetStore } = await loaded();
+    put("_state.json", json({ disabledCollections: ["fast-math-latex", "fast-math-typst", "paper-structure"], knownCollections: KNOWN }));
+    put("mine.json", json({ ...MINE, "mine.other": { prefix: "oo", body: "o" } }));
+    await useSnippetStore.getState().setCollectionEnabled("fast-math-latex", true);
+    expect(JSON.parse(written("_state.json") ?? "{}").disabledCollections).toEqual(["fast-math-typst", "paper-structure"]);
+    await useSnippetStore.getState().saveRecord("mine", userRecord("mine.root", { prefix: "sq", body: "\\sqrt{$1}" }));
+    expect(Object.keys(JSON.parse(written("mine.json") ?? "{}"))).toEqual(["mine.fraction", "mine.other", "mine.root"]);
+  });
+
+  it("runs overlapping changes one after another, so none of them is lost", async () => {
+    put("mine.json", json(MINE));
+    const { useSnippetStore } = await loaded();
+    const store = useSnippetStore.getState();
+    await Promise.all([
+      store.saveRecord("mine", userRecord("mine.a", { prefix: "aa", body: "a" })),
+      store.saveRecord("mine", userRecord("mine.b", { prefix: "bb", body: "b" })),
+      store.deleteRecord("mine", "mine.fraction"),
+      store.setCollectionEnabled("paper-structure", false),
+      store.disableRegex("fm.subscript"),
+    ]);
+    expect(Object.keys(JSON.parse(written("mine.json") ?? "{}"))).toEqual(["mine.a", "mine.b"]);
+    expect(JSON.parse(written("_state.json") ?? "{}")).toMatchObject({
+      disabledCollections: ["fast-math-latex", "fast-math-typst", "paper-structure"],
+      disabledRegex: ["fm.subscript"],
+    });
+  });
+
+  it("goes on with the next change after one fails", async () => {
+    const { useSnippetStore } = await loaded();
+    mocks.writeSnippetFile.mockRejectedValueOnce(new Error("disk full"));
+    const failed = useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
+    const next = useSnippetStore.getState().disableRegex("fm.subscript");
+    await expect(failed).rejects.toThrow("disk full");
+    await next;
+    expect(JSON.parse(written("_state.json") ?? "{}")).toMatchObject({ disabledCollections: ["fast-math-latex", "fast-math-typst"], disabledRegex: ["fm.subscript"] });
+  });
+});
+
 describe("use counts", () => {
   it("counts uses in this browser only and never writes them to _state.json", async () => {
     localStorage.setItem("oleafly.snippets.uses", json({ "paper.figure": 2, bad: -1, worse: "x", half: 1.5 }));
@@ -594,17 +724,15 @@ describe("settings export and import", () => {
 });
 
 describe("reloading on focus", () => {
-  it("reads the folder again when the window comes back, once snippets were loaded", async () => {
-    const { useSnippetStore, watchSnippetFiles } = await fresh();
-    const stop = watchSnippetFiles();
+  it("reads the folder again when the window comes back, once anything loaded the snippets", async () => {
+    const { useSnippetStore } = await fresh();
     window.dispatchEvent(new Event("focus"));
     expect(mocks.listSnippetFiles).not.toHaveBeenCalled();
+    await useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
     await useSnippetStore.getState().load();
+    expect(focusListeners()).toHaveLength(1);
     put("mine.json", json(MINE));
     window.dispatchEvent(new Event("focus"));
     await vi.waitFor(() => expect(useSnippetStore.getState().library.byId("mine.fraction")).toBeDefined());
-    stop();
-    window.dispatchEvent(new Event("focus"));
-    expect(mocks.listSnippetFiles).toHaveBeenCalledTimes(2);
   });
 });

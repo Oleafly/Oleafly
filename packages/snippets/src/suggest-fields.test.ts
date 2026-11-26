@@ -226,6 +226,10 @@ describe("bodyFromSelection", () => {
     expect(body("costs $5 \\", [])).toBe("costs \\$5 \\\\$0");
   });
 
+  it("keeps double square brackets as text", () => {
+    expect(renders("#strong[[1]] x", [])).toBe("#strong[[1]] x");
+  });
+
   it("ignores overlapping suggestions", () => {
     const text = "abcdef";
     const accepted: FieldSuggestion[] = [

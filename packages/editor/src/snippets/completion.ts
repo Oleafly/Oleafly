@@ -12,11 +12,11 @@ import { createCompletionRequestGuard } from "../completion-request";
 import { type CompletionSyntax, isCompletionLexicallyTriggered } from "../completion-trigger";
 import { guardCompletionForSource } from "../latex";
 import { type EditorMessageKey, editorMessage } from "../messages";
-import { insertSnippet, snippetBody, snippetName } from "./insert";
+import { defaultLineComment, insertSnippet, snippetBody, snippetName } from "./insert";
 import { type SnippetLookup, snippetLookup } from "./lookup";
 import { snippetPlaceAt } from "./place";
 import type { SnippetPort } from "./port";
-import { activeSnippetField, snippetFieldCompletions } from "./session";
+import { activeSnippetField, fieldOffersList, snippetFieldCompletions } from "./session";
 import {
   ACTIVE_FIELD_CLASS,
   FIELD_CLASS,
@@ -77,7 +77,7 @@ function previewEnv(port: SnippetPort, language: SnippetLanguage) {
     now: new Date(),
     fileName: port.filePath(),
     projectName: port.projectName(),
-    lineComment: language === "latex" || language === "bibtex" ? "%" : "//",
+    lineComment: defaultLineComment(language),
     captures: [],
     indent: "",
     indentUnit: "  ",
@@ -163,7 +163,7 @@ function option(record: SnippetRecord, lookup: SnippetLookup, typed: string): Co
     boost: boost(record, port, label === typed),
     info: () => snippetInfo(record, port, language),
     apply: (view, completion, from, to) => {
-      insertSnippet(view, record, from, to, "list", [], completion);
+      insertSnippet(view, record, from, to, "list", { completion });
     },
   };
 }
@@ -204,7 +204,7 @@ function listAt(context: CompletionContext, lookup: SnippetLookup): CompletionRe
 
 export function fieldOwnsList(context: CompletionContext): boolean {
   const field = activeSnippetField(context.state);
-  if (!field || (field.choices === undefined && field.project === undefined)) return false;
+  if (!field || !fieldOffersList(field)) return false;
   const range = field.ranges[0];
   return context.pos >= range.from && context.pos <= range.to;
 }

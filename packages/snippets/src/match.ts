@@ -1,4 +1,4 @@
-import { compareCandidates, compareKeys, type LanguageIndex } from "./library";
+import { compareCandidates, compareKeys, keysOf, type LanguageIndex } from "./library";
 import { EVERY_KEY } from "./trigger";
 import type { Expand, ResolvedPlace, SnippetLanguage, SnippetRecord } from "./types";
 
@@ -14,15 +14,15 @@ export interface Hit {
   captures: string[];
 }
 
-export interface HintCandidate {
+interface HintCandidate {
   record: SnippetRecord;
   typed: string;
   rest: string;
   exact: boolean;
 }
 
-export const REGEX_LOOK_BACK = 100;
-export const SLOW_REGEX_MS = 2;
+const REGEX_LOOK_BACK = 100;
+const SLOW_REGEX_MS = 2;
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 const LETTER = /\p{L}/u;
@@ -44,10 +44,6 @@ interface KeyTable {
 
 const tables = new WeakMap<LanguageIndex, KeyTable>();
 const slowRecords = new WeakSet<SnippetRecord>();
-
-function keysOf(record: SnippetRecord): string[] {
-  return record.trigger === null ? [] : [record.trigger, ...record.aliases];
-}
 
 function keyTable(index: LanguageIndex): KeyTable {
   const cached = tables.get(index);
@@ -131,8 +127,21 @@ function regexBuckets(index: LanguageIndex, lastChar: string): (readonly Snippet
   const buckets: (readonly SnippetRecord[] | undefined)[] = [index.regexByEnd.get(lastChar)];
   if (DIGIT.test(lastChar)) buckets.push(index.regexByEnd.get("digit"));
   else if (LETTER.test(lastChar)) buckets.push(index.regexByEnd.get("letter"));
-  if (lastChar !== EVERY_KEY) buckets.push(index.regexByEnd.get(EVERY_KEY));
+  buckets.push(index.regexByEnd.get(EVERY_KEY));
   return buckets.filter((bucket): bucket is readonly SnippetRecord[] => bucket !== undefined);
+}
+
+function timedExec(regex: RegExp, text: string): [RegExpExecArray | null, number] {
+  const started = performance.now();
+  const match = regex.exec(text);
+  return [match, performance.now() - started];
+}
+
+function slowExec(regex: RegExp, text: string): [RegExpExecArray | null, boolean] {
+  const [match, took] = timedExec(regex, text);
+  if (took <= SLOW_REGEX_MS) return [match, false];
+  const [again, retook] = timedExec(regex, text);
+  return [again, retook > SLOW_REGEX_MS];
 }
 
 function regexHits(
@@ -148,9 +157,8 @@ function regexHits(
   for (const bucket of regexBuckets(index, line.slice(-1))) {
     for (const record of bucket) {
       if (record.expand !== expand || slowRecords.has(record) || !versionAllows(record, ctx)) continue;
-      const started = performance.now();
-      const match = (record.regex as RegExp).exec(tail);
-      if (performance.now() - started > SLOW_REGEX_MS) {
+      const [match, slow] = slowExec(record.regex as RegExp, tail);
+      if (slow) {
         slowRecords.add(record);
         onSlowRegex?.(record);
       }

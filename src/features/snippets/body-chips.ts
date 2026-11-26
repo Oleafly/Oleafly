@@ -80,7 +80,7 @@ function tokenEnd(text: string, at: number): number {
   return pattern.exec(text) ? pattern.lastIndex : -1;
 }
 
-export function fieldTokens(text: string): FieldToken[] {
+export function fieldTokens(text: string, captures = false): FieldToken[] {
   const tokens: FieldToken[] = [];
   const seen = new Set<number>();
   let index = 0;
@@ -90,7 +90,7 @@ export function fieldTokens(text: string): FieldToken[] {
       index += 2;
       continue;
     }
-    if (char === "[") {
+    if (captures && char === "[") {
       CAPTURE.lastIndex = index;
       const capture = CAPTURE.exec(text);
       if (capture) {
@@ -137,20 +137,25 @@ class ChipWidget extends WidgetType {
   }
 }
 
-function decorationsFor(state: EditorState): DecorationSet {
+function decorationsFor(state: EditorState, captures: boolean): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  for (const token of fieldTokens(state.doc.toString())) {
+  for (const token of fieldTokens(state.doc.toString(), captures)) {
     builder.add(token.from, token.to, Decoration.replace({ widget: new ChipWidget(token.label, token.kind) }));
   }
   return builder.finish();
 }
 
-const chips = StateField.define<DecorationSet>({
-  create: decorationsFor,
-  update: (decorations, transaction) => (transaction.docChanged ? decorationsFor(transaction.state) : decorations),
-  provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((view) => view.state.field(field))],
-});
+function chipsField(captures: boolean): StateField<DecorationSet> {
+  return StateField.define<DecorationSet>({
+    create: (state) => decorationsFor(state, captures),
+    update: (decorations, transaction) => (transaction.docChanged ? decorationsFor(transaction.state, captures) : decorations),
+    provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((view) => view.state.field(field))],
+  });
+}
 
-export function snippetFieldChips(): Extension {
-  return chips;
+const textChips = chipsField(false);
+const regexChips = chipsField(true);
+
+export function snippetFieldChips(captures = false): Extension {
+  return captures ? regexChips : textChips;
 }

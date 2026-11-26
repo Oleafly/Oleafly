@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EditorView } from "@codemirror/view";
 import { parseSnippetFile, type SnippetRecord } from "@oleafly/snippets";
@@ -115,5 +115,50 @@ describe("SnippetTryIt", () => {
     expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain("Markdown");
     rerender(<SnippetTryIt record={fig} languages={[]} />);
     expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain("LaTeX");
+  });
+
+  it("starts over with the snippet as it is now when whole word, start of line, the pattern, languages or aliases change", () => {
+    const changes: [Record<string, unknown>, Record<string, unknown>][] = [
+      [{ inWord: false }, { inWord: true }],
+      [{ lineStart: false }, { lineStart: true }],
+      [{ prefix: "ab" }, { prefix: "re:ab" }],
+      [{ languages: ["latex"] }, { languages: ["latex", "typst"] }],
+      [{ prefix: "ab" }, { prefix: ["ab", "abc"] }],
+    ];
+    for (const [before, after] of changes) {
+      const { rerender, unmount } = render(<SnippetTryIt record={record({ prefix: "ab", body: "X", where: "text", ...before })} languages={["latex"]} />);
+      type(editorView(), "q");
+      rerender(<SnippetTryIt record={record({ prefix: "ab", body: "X", where: "text", ...after })} languages={["latex"]} />);
+      expect(editorView().state.doc.toString()).toBe("");
+      unmount();
+    }
+    const { rerender } = render(<SnippetTryIt record={record({ prefix: "fig", body: "FIG", where: "text", inWord: false })} languages={["latex"]} />);
+    type(editorView(), "afig");
+    pressTab(editorView());
+    expect(editorView().state.doc.toString()).toBe("afig");
+    rerender(<SnippetTryIt record={record({ prefix: "fig", body: "FIG", where: "text", inWord: true })} languages={["latex"]} />);
+    type(editorView(), "afig");
+    pressTab(editorView());
+    expect(editorView().state.doc.toString()).toBe("aFIG");
+  });
+
+  it("tries a display math snippet inside display math", () => {
+    const square = record({ prefix: "sq", body: "^2", expand: "tab", where: "display-math", languages: ["latex", "typst", "markdown"] });
+    render(<SnippetTryIt record={square} languages={["latex", "typst", "markdown"]} />);
+    const samples: [string, string, string][] = [
+      ["LaTeX", "\\[\\]", "\\[^2\\]"],
+      ["Typst", "$  $", "$ ^2 $"],
+      ["Markdown", "$$$$", "$$^2$$"],
+    ];
+    for (const [language, sample, expanded] of samples) {
+      fireEvent.click(screen.getByRole("button", { name: language }));
+      const view = editorView();
+      expect(view.state.doc.toString()).toBe(sample);
+      expect(view.state.selection.main.head).toBe(2);
+      type(view, "sq");
+      pressTab(view);
+      expect(view.state.doc.toString()).toBe(expanded);
+      expect(screen.getByTestId("snippet-try-it-fires")).toBeTruthy();
+    }
   });
 });

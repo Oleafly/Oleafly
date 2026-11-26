@@ -3,8 +3,8 @@ import { bodyUses, escapeBodyText, parseBody, serializeBody } from "./body";
 import { parseCodeMirrorTemplate } from "./codemirror-template";
 import type { BodyNode } from "./types";
 
-function nodes(body: string): BodyNode[] {
-  const result = parseBody(body);
+function nodes(body: string, options?: { captures: boolean }): BodyNode[] {
+  const result = parseBody(body, options);
   expect(result.errors).toEqual([]);
   return result.nodes;
 }
@@ -145,13 +145,17 @@ describe("parseBody", () => {
     expect(nodes("$foo ${foo}")).toEqual([text("$foo "), { kind: "variable", name: "foo", fallback: [] }]);
   });
 
-  it("reads regex captures", () => {
-    expect(nodes("[[0]]_[[1]] [[x]] [[2]")).toEqual([
+  it("reads regex captures when the snippet is a regex", () => {
+    expect(nodes("[[0]]_[[1]] [[x]] [[2]", { captures: true })).toEqual([
       { kind: "capture", group: 1 },
       text("_"),
       { kind: "capture", group: 2 },
       text(" [[x]] [[2]"),
     ]);
+  });
+
+  it("keeps [[n]] as text in a snippet that is not a regex", () => {
+    expect(nodes("#strong[[1]] x")).toEqual([text("#strong[[1]] x")]);
   });
 
   it("reads nested fields", () => {
@@ -207,6 +211,36 @@ describe("parseBody", () => {
     expect(result.nodes).toEqual([text(kept)]);
   });
 
+  it("reports fields nested deeper than fifty as one bad field", () => {
+    const fields = (depth: number) =>
+      Array.from({ length: depth }, (_, index) => `\${${index + 1}:`).join("") + "}".repeat(depth);
+    expect(parseBody(fields(50)).errors).toEqual([]);
+    const deep = fields(2000);
+    expect(parseBody(deep)).toEqual({
+      nodes: [text(deep)],
+      errors: [{ offset: 0, code: "bad-field", message: expect.any(String) }],
+    });
+    expect(() => parseBody(`${"${1:".repeat(2000)}${"}".repeat(2000)}`)).not.toThrow();
+  });
+
+  it("parses many repeated fields in linear time", () => {
+    const count = 10000;
+    const body = Array.from({ length: count }, (_, index) => `$${index + 1} `).join("") + "${1:x} ".repeat(count);
+    const started = performance.now();
+    expect(parseBody(body).errors).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it.each([
+    ["${1:foo $1} bar", 8],
+    ["${1:a ${1}}", 6],
+    ["${1:a ${1/upper}}", 6],
+    ["${1:a ${2:b $1}}", 12],
+    ["${CLIPBOARD:${1:a $1}}", 18],
+  ])("refuses %s, where a field refers to itself", (body, offset) => {
+    expect(parseBody(body).errors).toEqual([{ offset, code: "bad-field", message: expect.any(String) }]);
+  });
+
   it("keeps a lone trailing backslash", () => {
     expect(nodes("a\\")).toEqual([text("a\\")]);
   });
@@ -225,6 +259,11 @@ describe("serializeBody", () => {
   ])("round-trips %s", (body) => {
     const parsed = nodes(body);
     expect(parseBody(serializeBody(parsed))).toEqual({ nodes: parsed, errors: [] });
+  });
+
+  it("round-trips captures in a regex snippet", () => {
+    const parsed = nodes("[[0]]_[[1]]", { captures: true });
+    expect(parseBody(serializeBody(parsed), { captures: true })).toEqual({ nodes: parsed, errors: [] });
   });
 
   it("writes the short form when no digit follows", () => {
@@ -321,6 +360,17 @@ describe("parseCodeMirrorTemplate", () => {
       text(" "),
       field(0, [text("1:a{b")]),
     ]);
+  });
+
+  it("reads a numbered field with an escaped brace as a name around its inner field", () => {
+    expect(parseCodeMirrorTemplate("${1:${1:x}\\{}")).toEqual([field(0, [text("1:"), field(1, [text("x")]), text("{")])]);
+  });
+
+  it("reads deeply nested fields without trying each one twice", () => {
+    const started = performance.now();
+    expect(parseCodeMirrorTemplate("${1:".repeat(24))).toEqual([text("${1:".repeat(24))]);
+    parseCodeMirrorTemplate(`${"${1:".repeat(24)}x}${"\\{}".repeat(23)}`);
+    expect(performance.now() - started).toBeLessThan(200);
   });
 
   it("keeps text that is not a field", () => {

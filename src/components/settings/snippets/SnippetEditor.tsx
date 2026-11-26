@@ -1,10 +1,10 @@
-import { useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useDeferredValue, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorView } from "@codemirror/view";
 import { ChevronDown, Copy, Power, Save, Trash2 } from "lucide-react";
 import {
   escapeBodyText,
-  type Expand,
+  EXPANDS,
   type Place,
   type ProjectFieldKind,
   PROJECT_FIELD_KINDS,
@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Field } from "@/components/ui/field";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,7 +42,6 @@ import { describeError } from "@/lib/app-error";
 import { SnippetBodyEditor } from "./SnippetBodyEditor";
 import { SnippetTryIt } from "./SnippetTryIt";
 
-const EXPANDS: readonly Expand[] = ["list", "tab", "auto"];
 const WHERE = ["any", "text", "math", "code"] as const;
 const MATH_KINDS = ["math", "inline-math", "display-math"] as const;
 const VARIABLES = ["SELECTION", "CLIPBOARD", "DATE", "TM_FILENAME", "PROJECT_NAME"] as const;
@@ -67,10 +67,9 @@ function whereOf(place: Place): Where {
 }
 
 function withLanguages(draft: SnippetDraft, languages: SnippetDraft["languages"]): SnippetDraft {
-  const oldKeys = bodyKeys(draft.languages);
-  const carried = draft.bodies[oldKeys[0]] ?? "";
-  const bodies: SnippetDraft["bodies"] = {};
-  for (const key of bodyKeys(languages)) bodies[key] = draft.bodies[key] ?? carried;
+  const carried = draft.bodies[bodyKeys(draft.languages)[0]] ?? "";
+  const bodies = { ...draft.bodies };
+  for (const key of bodyKeys(languages)) bodies[key] ??= carried;
   return { ...draft, languages, bodies };
 }
 
@@ -80,21 +79,6 @@ function toggledLanguages(current: SnippetDraft["languages"], choice: SnippetLan
   if (!current.includes(choice)) return SNIPPET_LANGUAGES.filter((language) => language === choice || current.includes(language));
   const rest = current.filter((language) => language !== choice);
   return rest.length > 0 ? rest : "any";
-}
-
-function Field({ id, label, children }: Readonly<{ id?: string; label: string; children: ReactNode }>) {
-  return (
-    <div className="space-y-1.5">
-      {id ? (
-        <label htmlFor={id} className="text-xs font-medium">
-          {label}
-        </label>
-      ) : (
-        <div className="text-xs font-medium">{label}</div>
-      )}
-      {children}
-    </div>
-  );
 }
 
 function Help({ children }: Readonly<{ children: ReactNode }>) {
@@ -121,7 +105,8 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
   const activeTab = keys.includes(tab) ? tab : keys[0];
   const recordId = base?.id ?? uniqueRecordId(draft.name, (candidate) => library.all.some((record) => record.id === candidate));
   const result = useMemo(() => draftRecord(draft, base, recordId), [draft, base, recordId]);
-  const clashes = useMemo(() => snippetClashes(draft, library), [draft, library]);
+  const tried = useDeferredValue(result.record);
+  const clashes = useMemo(() => snippetClashes(draft, library, base), [draft, library, base]);
   const collections = useMemo(() => userCollections(disk), [disk]);
   const name = draft.name.trim() || t(($) => $.settings.snippets.editor.newTitle);
   const trigger = draft.trigger.trim();
@@ -171,7 +156,6 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
     setAttempted(false);
     setDraft((current) => ({
       ...current,
-      id: null,
       collection: collections[0],
       name: t(($) => $.settings.snippets.editor.copyName, { name: current.name }),
     }));
@@ -235,22 +219,25 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
             onChange={(event) => update({ name: event.target.value })}
           />
         </Field>
-        <div className="space-y-1.5">
-          <Field id={`${id}-trigger`} label={t(($) => $.settings.snippets.editor.trigger)}>
-            <Input
-              id={`${id}-trigger`}
-              {...LITERAL_INPUT}
-              className="font-mono"
-              value={draft.trigger}
-              placeholder={t(($) => $.settings.snippets.editor.triggerPlaceholder)}
-              onChange={(event) => update({ trigger: event.target.value })}
-            />
-          </Field>
+        <Field id={`${id}-trigger`} label={t(($) => $.settings.snippets.editor.trigger)}>
+          <Input
+            id={`${id}-trigger`}
+            {...LITERAL_INPUT}
+            className="font-mono"
+            value={draft.trigger}
+            placeholder={t(($) => $.settings.snippets.editor.triggerPlaceholder)}
+            onChange={(event) => update({ trigger: event.target.value })}
+          />
           <label htmlFor={`${id}-regex`} className="flex cursor-pointer items-center gap-2 text-xs">
-            <Checkbox id={`${id}-regex`} checked={draft.regex} onCheckedChange={(checked) => update({ regex: checked === true })} />
+            <Checkbox
+              id={`${id}-regex`}
+              checked={draft.regex}
+              disabled={!own}
+              onCheckedChange={(checked) => update({ regex: checked === true })}
+            />
             {t(($) => $.settings.snippets.editor.regex)}
           </label>
-        </div>
+        </Field>
 
         <Field label={t(($) => $.settings.snippets.editor.expands)}>
           <ToolSegmentedControl
@@ -391,6 +378,7 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
           onChange={(text) => setBody(activeTab, text)}
           language={activeTab}
           showSyntax={showSyntax}
+          captures={draft.regex}
           ariaLabel={t(($) => $.settings.snippets.editor.body)}
           onView={(next) => {
             view.current = next;
@@ -406,9 +394,9 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
         </div>
       </div>
 
-      {result.record ? (
+      {tried ? (
         <SnippetTryIt
-          record={result.record}
+          record={tried}
           languages={draft.languages === "any" ? ["latex", "typst", "markdown"] : draft.languages}
         />
       ) : null}
@@ -432,7 +420,7 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
         open={confirmDelete}
         title={t(($) => $.settings.snippets.editor.deleteDialog.title, { name })}
         description={t(($) => $.settings.snippets.editor.deleteDialog.description, {
-          collection: collectionName(draft.collection, files),
+          collection: collectionName((base ?? draft).collection, files),
         })}
         confirmLabel={t(($) => $.settings.snippets.editor.deleteDialog.action)}
         destructive
