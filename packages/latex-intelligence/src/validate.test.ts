@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  validateAtSuggestions,
   validateCoreCatalog,
   validateManifest,
   validateNameList,
@@ -84,26 +83,6 @@ describe("validatePackageCatalog", () => {
     ["options with a number", { ...PACKAGE, options: [1] }],
   ])("rejects %s", (_label, value) => {
     expect(validatePackageCatalog(value)).toBeNull();
-  });
-});
-
-describe("validateAtSuggestions", () => {
-  it("accepts an empty list and suggestions with or without detail", () => {
-    expect(validateAtSuggestions([])).toEqual([]);
-    const value = [
-      { trigger: "@a", replacement: "\\alpha" },
-      { trigger: "@b", replacement: "\\beta", detail: "beta" },
-    ];
-    expect(validateAtSuggestions(value)).toBe(value);
-  });
-
-  it.each([
-    ["an object", { trigger: "@a", replacement: "\\alpha" }],
-    ["a missing replacement", [{ trigger: "@a" }]],
-    ["a numeric detail", [{ trigger: "@a", replacement: "x", detail: 1 }]],
-    ["a non-record entry", ["@a"]],
-  ])("rejects %s", (_label, value) => {
-    expect(validateAtSuggestions(value)).toBeNull();
   });
 });
 

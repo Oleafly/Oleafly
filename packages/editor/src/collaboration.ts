@@ -3,6 +3,8 @@ import type { LocalOrigin, Utf16Edit } from "./document-session";
 
 export const remoteChange = Annotation.define<boolean>();
 
+export const documentLoad = Annotation.define<boolean>();
+
 // While a document session is bound, a carriage return in the shared text has
 // to count as one character in the editor too, or every offset after it is
 // off by one between the editor and everyone else. CodeMirror's default treats

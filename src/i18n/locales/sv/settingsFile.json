@@ -55,7 +55,8 @@
     "unknownKey": "är inte en inställning som Oleafly känner till",
     "dictionaryLocale": "måste vara en ordlistekod som en_US",
     "shortcut": "måste vara ett kortkommando som Mod-Shift-k, eller \"default\"",
-    "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\""
+    "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\"",
+    "snippetFileName": "måste vara ett filnamn som my-snippets.json, med bara bokstäver, siffror, mellanslag, punkter, bindestreck och understreck"
   },
   "importFromLocal": "Importera från den här enheten",
   "importFromCloud": "Importera från molnet",

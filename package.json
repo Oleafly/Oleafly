@@ -102,6 +102,7 @@
     "@oleafly/preview": "workspace:*",
     "@oleafly/registry": "workspace:*",
     "@oleafly/search-query": "workspace:*",
+    "@oleafly/snippets": "workspace:*",
     "@oleafly/templates": "workspace:*",
     "@oleafly/workspace": "workspace:*",
     "@oleafly/wysiwyg": "workspace:*",

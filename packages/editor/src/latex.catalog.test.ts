@@ -4,7 +4,7 @@ import { type Completion, CompletionContext, type CompletionResult } from "@code
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
-import { latexCommandCompletions, latexCompletions, slashCompletions } from "./latex";
+import { latexCommandCompletions, latexCompletions } from "./latex";
 import { installEnglishEditorMessages } from "./test-messages";
 import { stubRangeGeometry } from "./test-geometry";
 
@@ -133,17 +133,5 @@ describe("explicit completion", () => {
     expect(result?.from).toBe(doc.length);
     expect(result?.options.some((option) => option.label === "\\section")).toBe(true);
     expect(latexCompletions(new CompletionContext(state, doc.length, false))).toBeNull();
-  });
-
-  it("offers slash snippets after a slash and nothing elsewhere", () => {
-    const doc = "Intro /sec";
-    const state = EditorState.create({ doc });
-    const result = slashCompletions(new CompletionContext(state, doc.length, false));
-    expect(result?.from).toBe(doc.indexOf("/"));
-    expect(result?.options.map((option) => option.label)).toContain("/section");
-    const plain = EditorState.create({ doc: "Intro" });
-    expect(slashCompletions(new CompletionContext(plain, 5, false))).toBeNull();
-    const comment = EditorState.create({ doc: "% /sec" });
-    expect(slashCompletions(new CompletionContext(comment, 6, false))).toBeNull();
   });
 });

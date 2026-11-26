@@ -319,6 +319,10 @@
       "keywords": "bez rozpraszaczy skupienie pełny ekran ukryj interfejs minimalny pisanie",
       "label": "Przełącz tryb Zen"
     },
+    "fastMath": {
+      "keywords": "fast math fragmenty snippety snippets rozwijanie podczas pisania ułamek indeks greckie litery",
+      "label": "Przełącz Fast math"
+    },
     "visualSettings": {
       "keywords": "wygląd czcionka krój pisma rozmiar tekstu wcięcie akapitu odstępy wyjustowanie nagłówki pisanie",
       "label": "Ustawienia trybu wizualnego"
@@ -407,6 +411,14 @@
     "addChapterFromProject": {
       "keywords": "praca rozdział artykuł importuj scal kopiuj projekt",
       "label": "Dodaj rozdział z innego projektu"
+    },
+    "insertSnippet": {
+      "keywords": "fragmenty snippety snippets szablony wyzwalacze przeglądaj wstaw",
+      "label": "Wstaw fragment"
+    },
+    "saveSnippet": {
+      "keywords": "fragment snippet szablon zapisz zaznaczenie użyj ponownie",
+      "label": "Zapisz zaznaczenie jako fragment"
     }
   },
   "community": {
@@ -769,7 +781,8 @@
       "projects": "szuka w Twoich projektach",
       "refs": "otwiera odwołania tego projektu",
       "settings": "otwiera ustawienia",
-      "theme": "przełącza motyw kolorystyczny"
+      "theme": "przełącza motyw kolorystyczny",
+      "snippets": "przegląda i wstawia fragmenty"
     },
     "tryCommand": "Wypróbuj polecenie",
     "unknownCommand": "Nieznane polecenie. Wpisz /, aby zobaczyć dostępne polecenia."
@@ -1165,7 +1178,8 @@
       "integrations": "Integracje",
       "shortcuts": "Skróty klawiaturowe",
       "research": "Badania",
-      "logs": "Dzienniki"
+      "logs": "Dzienniki",
+      "snippets": "Fragmenty"
     },
     "search": {
       "empty": "Brak pasujących ustawień",
@@ -1183,7 +1197,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
         "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura",
         "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks",
-        "logs": "dziennik, dzienniki, logi, błędy, ostrzeżenia, awarie, kompilacje, diagnostyka, rozwiązywanie problemów, eksport dzienników, app.log, debugowanie, log, logs"
+        "logs": "dziennik, dzienniki, logi, błędy, ostrzeżenia, awarie, kompilacje, diagnostyka, rozwiązywanie problemów, eksport dzienników, app.log, debugowanie, log, logs",
+        "snippets": "wyzwalacze, szablony, Fast math, rozwijanie podczas pisania, Tab, lista autouzupełniania, menu ukośnika, skróty @, fragmenty VS Code, snippety, snippets, import, pakiety"
       },
       "label": "Szukaj w ustawieniach",
       "results_one": "{{count}} sekcja pasuje",
@@ -1795,5 +1810,73 @@
   "zoomIndicator": {
     "label": "Powiększenie",
     "reset": "Resetuj"
+  },
+  "snippets": {
+    "mySnippets": "Moje fragmenty",
+    "saveAsSnippet": "Zapisz jako fragment…",
+    "autoNote": "Rozwinięto wyzwalacz {{trigger}}. Cofnięcie lub Backspace go przywraca.",
+    "fastMathTip": "Z włączonym Fast math // we wzorach wstawia ułamek.",
+    "turnOnFastMath": "Włącz Fast math",
+    "expands": {
+      "list": "Lista",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notatki",
+      "any": "Dowolny"
+    },
+    "places": {
+      "any": "Wszędzie",
+      "text": "Tekst",
+      "math": "Wzory",
+      "inline-math": "Wzór w wierszu",
+      "display-math": "Wzór wyeksponowany",
+      "code": "Kod"
+    },
+    "palette": {
+      "placeholder": "Szukaj fragmentów według nazwy, wyzwalacza lub tekstu",
+      "insert": "Wstaw",
+      "edit": "Edytuj",
+      "count": "{{shown}} z {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Wpisz {{trigger}}, aby wstawić to bez otwierania palety.",
+      "noMatches": "Brak pasujących fragmentów."
+    },
+    "save": {
+      "title": "Zapisz jako fragment",
+      "name": "Nazwa",
+      "namePlaceholder": "Tabela wyników",
+      "trigger": "Wyzwalacz",
+      "triggerPlaceholder": "rtab",
+      "expands": "Rozwijanie",
+      "found": "wykryte na podstawie zaznaczenia",
+      "fields": "Zamień na pola",
+      "fieldsFound_one": "znaleziono {{count}} pole",
+      "fieldsFound_few": "znaleziono {{count}} pola",
+      "fieldsFound_many": "znaleziono {{count}} pól",
+      "fieldsFound_other": "znaleziono {{count}} pola",
+      "noFields": "Nic tutaj nie wygląda na pole. Pola możesz dodać później w Ustawieniach.",
+      "followsCaption": "powtarza podpis",
+      "kinds": {
+        "caption": "podpis",
+        "label": "etykieta",
+        "cite": "cytowanie",
+        "path": "ścieżka pliku",
+        "column-spec": "specyfikacja kolumn",
+        "number": "liczba",
+        "title": "nagłówek",
+        "table-body": "treść tabeli"
+      },
+      "preview": "Podgląd",
+      "saveTo": "Zapisz w",
+      "submit": "Zapisz fragment",
+      "saved": "Zapisano: {{name}}.",
+      "missingName": "Nadaj fragmentowi nazwę."
+    }
   }
 }

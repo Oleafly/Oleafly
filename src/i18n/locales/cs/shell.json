@@ -319,6 +319,10 @@
       "keywords": "bez rušení soustředění celá obrazovka skrýt rozhraní minimalistický psaní",
       "label": "Přepnout režim Zen"
     },
+    "fastMath": {
+      "keywords": "fast math úryvky snippety snippets rozbalení při psaní zlomek index řecká písmena",
+      "label": "Přepnout Fast math"
+    },
     "visualSettings": {
       "keywords": "vzhled písmo řez písma text velikost odstavec odsazení mezery zarovnání do bloku nadpis psaní",
       "label": "Nastavení vizuálního režimu"
@@ -407,6 +411,14 @@
     "addChapterFromProject": {
       "keywords": "práce kapitola článek import sloučit kopírovat projekt",
       "label": "Přidat kapitolu z jiného projektu"
+    },
+    "insertSnippet": {
+      "keywords": "úryvky snippety snippets šablony spouštěče procházet vložit",
+      "label": "Vložit úryvek"
+    },
+    "saveSnippet": {
+      "keywords": "úryvek snippet šablona uložit výběr znovu použít",
+      "label": "Uložit výběr jako úryvek"
     }
   },
   "community": {
@@ -769,7 +781,8 @@
       "projects": "hledat ve vašich projektech",
       "refs": "otevřít reference tohoto projektu",
       "settings": "otevřít nastavení",
-      "theme": "přepnout barevný motiv"
+      "theme": "přepnout barevný motiv",
+      "snippets": "procházet a vkládat úryvky"
     },
     "tryCommand": "Zkuste příkaz",
     "unknownCommand": "Neznámý příkaz. Napište / a uvidíte dostupné příkazy."
@@ -1165,7 +1178,8 @@
       "integrations": "Integrace",
       "shortcuts": "Klávesové zkratky",
       "research": "Výzkum",
-      "logs": "Protokoly"
+      "logs": "Protokoly",
+      "snippets": "Úryvky"
     },
     "search": {
       "empty": "Žádné nastavení neodpovídá",
@@ -1183,7 +1197,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikace v počítači, Cua, MCP, citace, účty, připojení",
         "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice",
         "research": "výzkum úlohy rozpočet oznámení neusínat experimenty běhy research tasks",
-        "logs": "protokol, protokoly, logy, chyby, varování, pády, sestavení, diagnostika, řešení potíží, export protokolů, app.log, ladění, log, logs"
+        "logs": "protokol, protokoly, logy, chyby, varování, pády, sestavení, diagnostika, řešení potíží, export protokolů, app.log, ladění, log, logs",
+        "snippets": "spouštěče, šablony, Fast math, rozbalení při psaní, Tab, seznam doplňování, nabídka lomítka, zkratky @, úryvky VS Code, snippety, snippets, import, balíčky"
       },
       "label": "Hledat v nastavení",
       "results_one": "{{count}} odpovídající sekce",
@@ -1795,5 +1810,73 @@
   "zoomIndicator": {
     "label": "Přiblížení",
     "reset": "Obnovit"
+  },
+  "snippets": {
+    "mySnippets": "Moje úryvky",
+    "saveAsSnippet": "Uložit jako úryvek…",
+    "autoNote": "Spouštěč {{trigger}} byl rozbalen. Zpět nebo Backspace ho vrátí.",
+    "fastMathTip": "Se zapnutým Fast math napíše // v matematice zlomek.",
+    "turnOnFastMath": "Zapnout Fast math",
+    "expands": {
+      "list": "Seznam",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Poznámky",
+      "any": "Jakýkoli"
+    },
+    "places": {
+      "any": "Kdekoli",
+      "text": "Text",
+      "math": "Matematika",
+      "inline-math": "Matematika v řádku",
+      "display-math": "Matematika na samostatném řádku",
+      "code": "Kód"
+    },
+    "palette": {
+      "placeholder": "Hledat úryvky podle názvu, spouštěče nebo textu",
+      "insert": "Vložit",
+      "edit": "Upravit",
+      "count": "{{shown}} z {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Napište {{trigger}} a vložíte to bez otevírání palety.",
+      "noMatches": "Žádné úryvky neodpovídají."
+    },
+    "save": {
+      "title": "Uložit jako úryvek",
+      "name": "Název",
+      "namePlaceholder": "Tabulka výsledků",
+      "trigger": "Spouštěč",
+      "triggerPlaceholder": "rtab",
+      "expands": "Rozbalení",
+      "found": "zjištěno z výběru",
+      "fields": "Udělat z nich pole",
+      "fieldsFound_one": "nalezeno {{count}} pole",
+      "fieldsFound_few": "nalezena {{count}} pole",
+      "fieldsFound_many": "nalezeno {{count}} pole",
+      "fieldsFound_other": "nalezeno {{count}} polí",
+      "noFields": "Nic tady nevypadá jako pole. Pole můžete přidat později v Nastavení.",
+      "followsCaption": "přebírá popisek",
+      "kinds": {
+        "caption": "popisek",
+        "label": "návěští",
+        "cite": "citace",
+        "path": "cesta k souboru",
+        "column-spec": "specifikace sloupců",
+        "number": "číslo",
+        "title": "nadpis",
+        "table-body": "obsah tabulky"
+      },
+      "preview": "Náhled",
+      "saveTo": "Uložit do",
+      "submit": "Uložit úryvek",
+      "saved": "Uloženo: {{name}}.",
+      "missingName": "Pojmenujte úryvek."
+    }
   }
 }

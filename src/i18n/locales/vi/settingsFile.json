@@ -55,7 +55,8 @@
     "unknownKey": "không phải cài đặt mà Oleafly biết",
     "dictionaryLocale": "phải là mã từ điển như en_US",
     "shortcut": "phải là phím tắt như Mod-Shift-k, hoặc \"default\"",
-    "editorKey": "phải là phím như Mod-d, \"\" nếu không có, hoặc \"default\""
+    "editorKey": "phải là phím như Mod-d, \"\" nếu không có, hoặc \"default\"",
+    "snippetFileName": "phải là tên tệp như my-snippets.json, chỉ gồm chữ cái, chữ số, dấu cách, dấu chấm, dấu gạch ngang và dấu gạch dưới"
   },
   "importFromLocal": "Nhập từ thiết bị này",
   "importFromCloud": "Nhập từ đám mây",

@@ -33,6 +33,7 @@ import {
   Type,
   Underline,
   Undo2,
+  Zap,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { EditorMode, MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
@@ -50,6 +51,7 @@ import { useFilesStore } from "@/store/files";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { openLatexPackages } from "@/components/packages/open";
+import { toggleFastMath, useFastMath } from "@/features/snippets/fast-math";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -380,6 +382,7 @@ export function EditorToolbar({
     projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engineSyncsPath(engine, activePath);
   const latexProject = engineLoaded && engine.source_format === "latex";
   const latexDocument = latexProject && projectKind !== "diagram" && projectKind !== "image";
+  const fastMath = useFastMath("latex");
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
@@ -470,6 +473,9 @@ export function EditorToolbar({
         insertFraction,
         { tooltip: t(($) => $.editor.toolbar.insertFraction) },
       ),
+      btnControl("fast-math", Zap, t(($) => $.editor.toolbar.fastMath), () => void toggleFastMath("latex"), {
+        active: fastMath,
+      }),
       dividerControl("divider-5"),
       toolbarPicker("symbols", ICON_BUTTON_WIDTH, (menuRow) => <SymbolPicker menuRow={menuRow} />),
       {
@@ -481,7 +487,7 @@ export function EditorToolbar({
     );
 
     return list;
-  }, [t, visionReady]);
+  }, [t, visionReady, fastMath]);
 
   const history = useEditorHistory();
 

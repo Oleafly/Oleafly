@@ -107,7 +107,9 @@ An error line under a form or an action is an `InlineAlert` from
 `ui/inline-alert.tsx`: red text on a red tint that screen readers announce as
 an alert. Pass `icon` (a Lucide icon) to show one before the message,
 `bordered` for the framed version dialogs use, and `size="sm"` when it sits
-next to larger text. Don't write those classes by hand.
+next to larger text. `tone="warning"` turns it amber, for problems that do not
+stop anything, such as the problems bar on Settings › Snippets. Don't write
+those classes by hand.
 
 A faint background behind a page comes from one of three patterns, each an
 absolutely placed SVG that ignores the pointer, so its parent needs
@@ -159,8 +161,10 @@ A search palette that opens over the window (the command palette, the
 omnibar, the note switcher) is a `CommandDialogShell` from
 `ui/command-dialog.tsx`. It brings the overlay, the panel, the field and the
 list. `leading` and `trailing` sit beside the field, `placement` and
-`className` move and size the panel, and `footer` goes under the list. Its
-rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
+`className` move and size the panel, and `footer` goes under the list.
+`aside` sits to the right of the list, inside the palette, so it can read the
+highlighted row with cmdk's `useCommandState`. The snippets mode uses it for
+its preview. Its rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
 
 Another program's own icon, such as a browser in a picker, is an `AppIcon`
 from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
@@ -387,11 +391,18 @@ already. A placeholder too long for its field ends in an ellipsis
 (`placeholder-shown:text-ellipsis`) rather than stopping mid-word. German
 labels run long, so this comes up.
 
+A label over a form control is a `Field` from `ui/field.tsx`. Pass the
+control's `id` and the label points at it. Leave `id` out when the field holds
+controls that name themselves, like a segmented control or a row of chips.
+Anything that belongs under the control, like the Regular expression checkbox
+under a snippet's trigger, goes in as a child after it.
+
 A plain filter box at the top of a panel, with a search icon and a clear
 button, is a `SearchField` from `ui/search-field.tsx`. Clearing it puts focus
-back in the field. Pass `clearOnEscape` to let Escape empty it as well. Once
-it's empty, Escape goes on to the panel as usual. The browser's own clear
-button is hidden, so the field never shows two.
+back in the field. Pass `clearOnEscape` to let Escape empty it as well. While
+it has text, Escape only empties it, so a dialog around it stays open. Once
+it's empty, Escape goes on to the panel or the dialog as usual. The browser's
+own clear button is hidden, so the field never shows two.
 
 A floating "find in this view" panel is a `FindBar` from `ui/find-bar.tsx`.
 It brings the field, a match count that screen readers announce, the

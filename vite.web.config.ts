@@ -23,6 +23,7 @@ export const WEB_ALIASES: Record<string, string> = {
   "@oleafly/editor": path.resolve(repo, "./packages/editor/src"),
   "@oleafly/i18n-contract": path.resolve(repo, "./packages/i18n-contract/src"),
   "@oleafly/preview": path.resolve(repo, "./packages/preview/src"),
+  "@oleafly/snippets": path.resolve(repo, "./packages/snippets/src"),
   "@oleafly/templates": path.resolve(repo, "./packages/templates/src"),
 };
 
@@ -47,7 +48,25 @@ export const packageStringsOnly = (): Plugin => ({
   async load(id) {
     if (!id.endsWith(PACKAGE_STRINGS)) return null;
     const catalog = JSON.parse(await readFile(id.slice(0, -PACKAGE_STRINGS.length), "utf8"));
-    return JSON.stringify({ package: catalog.package ?? {} });
+    const strings = { ...catalog.package };
+    delete strings.snippets;
+    return JSON.stringify({ package: strings });
+  },
+});
+
+const SNIPPET_RUNTIME = path.resolve(repo, "packages/editor/src/snippets/runtime.ts");
+const NO_SNIPPETS = "\0web-without-snippets";
+
+export const withoutSnippets = (): Plugin => ({
+  name: "web-without-snippets",
+  enforce: "pre",
+  async resolveId(source, importer, options) {
+    if (!importer || !source.endsWith("runtime")) return null;
+    const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+    return resolved?.id === SNIPPET_RUNTIME ? NO_SNIPPETS : null;
+  },
+  load(id) {
+    return id === NO_SNIPPETS ? 'throw new Error("The browser app has no snippets");' : null;
   },
 });
 
@@ -60,7 +79,7 @@ export default defineConfig({
   root: path.resolve(repo, "web"),
   base: "/web/",
   publicDir: false,
-  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst(), pdfjsAssets(), packageStringsOnly()],
+  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst(), pdfjsAssets(), packageStringsOnly(), withoutSnippets()],
   resolve: { alias: WEB_ALIASES },
   worker: {
     format: "es",

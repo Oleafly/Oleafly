@@ -1,0 +1,584 @@
+{
+  "$pack": {
+    "name": "Fast math · Typst",
+    "source": "https://github.com/gillescastel/latex-snippets",
+    "licence": "MIT"
+  },
+  "fm-typst.inline-math": {
+    "name": "Inline math",
+    "nameKey": "snippets.records.inlineMath",
+    "prefix": "mk",
+    "body": "\\$$1\\$$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "fm-typst.display-math": {
+    "name": "Display math",
+    "nameKey": "snippets.records.displayMath",
+    "prefix": "dm",
+    "body": "\\$ $1 \\$$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "fm-typst.subscript": {
+    "name": "Subscript",
+    "nameKey": "snippets.records.subscript",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])(\\d)",
+    "body": "[[0]]_[[1]]",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.squared": {
+    "name": "Squared",
+    "nameKey": "snippets.records.squared",
+    "prefix": "sr",
+    "body": "^2",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.cubed": {
+    "name": "Cubed",
+    "nameKey": "snippets.records.cubed",
+    "prefix": "cb",
+    "body": "^3",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.superscript": {
+    "name": "Superscript",
+    "nameKey": "snippets.records.superscript",
+    "prefix": "td",
+    "body": "^($1)$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.subscript-group": {
+    "name": "Subscript group",
+    "nameKey": "snippets.records.subscriptGroup",
+    "prefix": "__",
+    "body": "_($1)$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.infinity": {
+    "name": "Infinity",
+    "nameKey": "snippets.records.infinity",
+    "prefix": "ooo",
+    "body": "infinity",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.sum": {
+    "name": "Sum",
+    "nameKey": "snippets.records.sum",
+    "prefix": "sum",
+    "body": "sum_(${1:i=1})^${2:n} $0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.lim": {
+    "name": "Limit",
+    "nameKey": "snippets.records.lim",
+    "prefix": "lim",
+    "body": "lim_(${1:n} -> ${2:infinity}) $0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.dint": {
+    "name": "Definite integral",
+    "nameKey": "snippets.records.dint",
+    "prefix": "dint",
+    "body": "integral_(${1:a})^${2:b} $3 dif ${4:x}$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.times": {
+    "name": "Times",
+    "nameKey": "snippets.records.times",
+    "prefix": "xx",
+    "body": "times",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.cdot": {
+    "name": "Centred dot",
+    "nameKey": "snippets.records.cdot",
+    "prefix": "**",
+    "body": "dot",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.hat": {
+    "name": "Hat",
+    "nameKey": "snippets.records.hat",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])hat",
+    "body": "hat([[0]])",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.bar": {
+    "name": "Bar",
+    "nameKey": "snippets.records.bar",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])bar",
+    "body": "overline([[0]])",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.vec": {
+    "name": "Vector arrow",
+    "nameKey": "snippets.records.vec",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])vec",
+    "body": "arrow([[0]])",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.tilde": {
+    "name": "Tilde",
+    "nameKey": "snippets.records.tilde",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])tld",
+    "body": "tilde([[0]])",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Delta": {
+    "name": "Delta",
+    "nameKey": "snippets.records.Delta",
+    "prefix": "@D",
+    "body": "Delta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Phi": {
+    "name": "Phi",
+    "nameKey": "snippets.records.Phi",
+    "prefix": "@F",
+    "body": "Phi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Gamma": {
+    "name": "Gamma",
+    "nameKey": "snippets.records.Gamma",
+    "prefix": "@G",
+    "body": "Gamma",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Lambda": {
+    "name": "Lambda",
+    "nameKey": "snippets.records.Lambda",
+    "prefix": "@L",
+    "body": "Lambda",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Pi": {
+    "name": "Pi",
+    "nameKey": "snippets.records.Pi",
+    "prefix": "@P",
+    "body": "Pi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Theta": {
+    "name": "Theta",
+    "nameKey": "snippets.records.Theta",
+    "prefix": "@Q",
+    "body": "Theta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Sigma": {
+    "name": "Sigma",
+    "nameKey": "snippets.records.Sigma",
+    "prefix": "@S",
+    "body": "Sigma",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Upsilon": {
+    "name": "Upsilon",
+    "nameKey": "snippets.records.Upsilon",
+    "prefix": "@U",
+    "body": "Upsilon",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Omega": {
+    "name": "Omega",
+    "nameKey": "snippets.records.Omega",
+    "prefix": "@W",
+    "body": "Omega",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Xi": {
+    "name": "Xi",
+    "nameKey": "snippets.records.Xi",
+    "prefix": "@X",
+    "body": "Xi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.Psi": {
+    "name": "Psi",
+    "nameKey": "snippets.records.Psi",
+    "prefix": "@Y",
+    "body": "Psi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.alpha": {
+    "name": "alpha",
+    "nameKey": "snippets.records.alpha",
+    "prefix": "@a",
+    "body": "alpha",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.beta": {
+    "name": "beta",
+    "nameKey": "snippets.records.beta",
+    "prefix": "@b",
+    "body": "beta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.chi": {
+    "name": "chi",
+    "nameKey": "snippets.records.chi",
+    "prefix": "@c",
+    "body": "chi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.delta": {
+    "name": "delta",
+    "nameKey": "snippets.records.delta",
+    "prefix": "@d",
+    "body": "delta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.epsilon": {
+    "name": "epsilon",
+    "nameKey": "snippets.records.epsilon",
+    "prefix": "@e",
+    "body": "epsilon",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.phi": {
+    "name": "phi",
+    "nameKey": "snippets.records.phi",
+    "prefix": "@f",
+    "body": "phi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.gamma": {
+    "name": "gamma",
+    "nameKey": "snippets.records.gamma",
+    "prefix": "@g",
+    "body": "gamma",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.eta": {
+    "name": "eta",
+    "nameKey": "snippets.records.eta",
+    "prefix": "@h",
+    "body": "eta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.iota": {
+    "name": "iota",
+    "nameKey": "snippets.records.iota",
+    "prefix": "@i",
+    "body": "iota",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.kappa": {
+    "name": "kappa",
+    "nameKey": "snippets.records.kappa",
+    "prefix": "@k",
+    "body": "kappa",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.lambda": {
+    "name": "lambda",
+    "nameKey": "snippets.records.lambda",
+    "prefix": "@l",
+    "body": "lambda",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.mu": {
+    "name": "mu",
+    "nameKey": "snippets.records.mu",
+    "prefix": "@m",
+    "body": "mu",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.nu": {
+    "name": "nu",
+    "nameKey": "snippets.records.nu",
+    "prefix": "@n",
+    "body": "nu",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.omega": {
+    "name": "omega",
+    "nameKey": "snippets.records.omega",
+    "prefix": "@o",
+    "body": "omega",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.pi": {
+    "name": "pi",
+    "nameKey": "snippets.records.pi",
+    "prefix": "@p",
+    "body": "pi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.theta": {
+    "name": "theta",
+    "nameKey": "snippets.records.theta",
+    "prefix": "@q",
+    "body": "theta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.rho": {
+    "name": "rho",
+    "nameKey": "snippets.records.rho",
+    "prefix": "@r",
+    "body": "rho",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.sigma": {
+    "name": "sigma",
+    "nameKey": "snippets.records.sigma",
+    "prefix": "@s",
+    "body": "sigma",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.tau": {
+    "name": "tau",
+    "nameKey": "snippets.records.tau",
+    "prefix": "@t",
+    "body": "tau",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.upsilon": {
+    "name": "upsilon",
+    "nameKey": "snippets.records.upsilon",
+    "prefix": "@u",
+    "body": "upsilon",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.varepsilon": {
+    "name": "varepsilon",
+    "nameKey": "snippets.records.varepsilon",
+    "prefix": "@ve",
+    "body": "epsilon.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.varphi": {
+    "name": "varphi",
+    "nameKey": "snippets.records.varphi",
+    "prefix": "@vf",
+    "body": "phi.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.varpi": {
+    "name": "varpi",
+    "nameKey": "snippets.records.varpi",
+    "prefix": "@vp",
+    "body": "pi.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.vartheta": {
+    "name": "vartheta",
+    "nameKey": "snippets.records.vartheta",
+    "prefix": "@vq",
+    "body": "theta.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.varrho": {
+    "name": "varrho",
+    "nameKey": "snippets.records.varrho",
+    "prefix": "@vr",
+    "body": "rho.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.varsigma": {
+    "name": "varsigma",
+    "nameKey": "snippets.records.varsigma",
+    "prefix": "@vs",
+    "body": "sigma.alt",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.xi": {
+    "name": "xi",
+    "nameKey": "snippets.records.xi",
+    "prefix": "@x",
+    "body": "xi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.psi": {
+    "name": "psi",
+    "nameKey": "snippets.records.psi",
+    "prefix": "@y",
+    "body": "psi",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.zeta": {
+    "name": "zeta",
+    "nameKey": "snippets.records.zeta",
+    "prefix": "@z",
+    "body": "zeta",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.bmatrix": {
+    "name": "Matrix in brackets",
+    "nameKey": "snippets.records.bmatrix",
+    "prefix": "bmat",
+    "body": "mat(delim: \"[\", $1)$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.pmatrix": {
+    "name": "Matrix in parentheses",
+    "nameKey": "snippets.records.pmatrix",
+    "prefix": "pmat",
+    "body": "mat($1)$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.cases": {
+    "name": "Cases",
+    "nameKey": "snippets.records.cases",
+    "prefix": "cases",
+    "body": "cases($1)$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.text": {
+    "name": "Text",
+    "nameKey": "snippets.records.text",
+    "prefix": "tt",
+    "body": "\"$1\"$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.sqrt": {
+    "name": "Square root",
+    "nameKey": "snippets.records.sqrt",
+    "prefix": "sq",
+    "body": "sqrt($1)$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  },
+  "fm-typst.norm": {
+    "name": "Norm",
+    "nameKey": "snippets.records.norm",
+    "prefix": "norm",
+    "body": "norm($1)$0",
+    "expand": "auto",
+    "languages": ["typst"],
+    "where": "math"
+  }
+}

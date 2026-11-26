@@ -1,0 +1,175 @@
+{
+  "$pack": {
+    "name": "LaTeX slash menu",
+    "nameKey": "snippets.packs.latexSlash"
+  },
+  "latex.slash.section": {
+    "name": "Section",
+    "nameKey": "latex.snippet.section",
+    "prefix": "/section",
+    "body": "\\section{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.subsection": {
+    "name": "Subsection",
+    "nameKey": "latex.snippet.subsection",
+    "prefix": "/subsection",
+    "body": "\\subsection{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.itemize": {
+    "name": "Bulleted list",
+    "nameKey": "latex.snippet.itemize",
+    "prefix": "/itemize",
+    "body": [
+      "\\begin{itemize}",
+      "  \\item $1",
+      "\\end{itemize}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.enumerate": {
+    "name": "Numbered list",
+    "nameKey": "latex.snippet.enumerate",
+    "prefix": "/enumerate",
+    "body": [
+      "\\begin{enumerate}",
+      "  \\item $1",
+      "\\end{enumerate}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.equation": {
+    "name": "Display equation",
+    "nameKey": "latex.snippet.equation",
+    "prefix": "/equation",
+    "body": [
+      "\\begin{equation}",
+      "  $1",
+      "\\end{equation}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.align": {
+    "name": "Aligned equations",
+    "nameKey": "latex.snippet.align",
+    "prefix": "/align",
+    "body": [
+      "\\begin{align}",
+      "  $1",
+      "\\end{align}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.figure": {
+    "name": "Figure float",
+    "nameKey": "latex.snippet.figure",
+    "prefix": "/figure",
+    "body": [
+      "\\begin{figure}[htbp]",
+      "  \\centering",
+      "  \\includegraphics[width=$1\\textwidth]{$2}",
+      "  \\caption{$3}",
+      "\\end{figure}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.table": {
+    "name": "Table float",
+    "nameKey": "latex.snippet.table",
+    "prefix": "/table",
+    "body": [
+      "\\begin{table}[htbp]",
+      "  \\centering",
+      "  \\caption{$1}",
+      "  \\begin{tabular}{$2}",
+      "  \\end{tabular}",
+      "\\end{table}"
+    ],
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.item": {
+    "name": "List item",
+    "nameKey": "latex.snippet.item",
+    "prefix": "/item",
+    "body": "\\item $1",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.frac": {
+    "name": "Fraction",
+    "nameKey": "latex.snippet.frac",
+    "prefix": "/frac",
+    "body": "\\frac{$1}{$2}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.bold": {
+    "name": "Bold",
+    "nameKey": "latex.snippet.bold",
+    "prefix": "/bold",
+    "body": "\\textbf{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.italic": {
+    "name": "Italic",
+    "nameKey": "latex.snippet.italic",
+    "prefix": "/italic",
+    "body": "\\textit{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.label": {
+    "name": "Label",
+    "nameKey": "latex.snippet.label",
+    "prefix": "/label",
+    "body": "\\label{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  },
+  "latex.slash.usepackage": {
+    "name": "Use package",
+    "nameKey": "latex.snippet.usepackage",
+    "prefix": "/usepackage",
+    "body": "\\usepackage{$1}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "text",
+    "inWord": true
+  }
+}

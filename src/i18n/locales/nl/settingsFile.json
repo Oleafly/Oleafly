@@ -55,7 +55,8 @@
     "unknownKey": "is geen instelling die Oleafly kent",
     "dictionaryLocale": "moet een woordenboekcode zijn zoals en_US",
     "shortcut": "moet een sneltoets zijn zoals Mod-Shift-k, of \"default\"",
-    "editorKey": "moet een toets zijn zoals Mod-d, \"\" voor geen, of \"default\""
+    "editorKey": "moet een toets zijn zoals Mod-d, \"\" voor geen, of \"default\"",
+    "snippetFileName": "moet een bestandsnaam zijn zoals my-snippets.json, met alleen letters, cijfers, spaties, punten, koppeltekens en underscores"
   },
   "importFromLocal": "Importeren vanaf dit apparaat",
   "importFromCloud": "Importeren uit de cloud",

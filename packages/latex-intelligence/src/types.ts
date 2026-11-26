@@ -50,12 +50,6 @@ export interface PackageCatalog {
   options?: string[];
 }
 
-export interface AtSuggestion {
-  trigger: string;
-  replacement: string;
-  detail?: string;
-}
-
 export interface NameList {
   names: string[];
   details: Record<string, string>;

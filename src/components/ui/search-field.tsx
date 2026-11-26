@@ -50,6 +50,7 @@ export function SearchField({
         }}
         placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
         {...SEARCH_INPUT}
+        data-modal-escape-inner={clearOnEscape && value !== "" ? "" : undefined}
         className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 placeholder-shown:text-ellipsis [&::-webkit-search-cancel-button]:hidden"
       />
       {value ? (

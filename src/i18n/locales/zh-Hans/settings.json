@@ -2853,5 +2853,178 @@
     },
     "count_other": "{{count}} 个条目",
     "filteredCount_other": "显示 {{shown}} / {{count}} 个条目"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "在补全列表中显示",
+        "description": "在命令旁显示代码片段"
+      },
+      "tab": {
+        "label": "按 Tab 展开触发词",
+        "description": "适用于设为 Tab 的代码片段"
+      },
+      "auto": {
+        "label": "输入时展开",
+        "description": "适用于自动展开的代码片段，例如 Fast math"
+      },
+      "hint": {
+        "label": "输入时显示提示",
+        "description": "显示触发词将插入的代码片段名称。按 Tab 即可插入。"
+      }
+    },
+    "library": {
+      "title": "你的代码片段库",
+      "collections": "合集",
+      "all": "所有代码片段",
+      "mine": "我的",
+      "packs": "片段包",
+      "builtIn": "内置",
+      "add": "添加片段包或导入…",
+      "useCollection": "使用 {{name}}",
+      "search": "搜索名称、触发词或文本",
+      "language": "语言",
+      "allLanguages": "所有语言",
+      "expands": "展开方式",
+      "anyExpand": "任意方式",
+      "newSnippet": "新建代码片段",
+      "columns": {
+        "trigger": "触发词",
+        "name": "名称",
+        "languages": "语言",
+        "where": "适用范围",
+        "expands": "展开方式"
+      },
+      "modified": "已修改",
+      "turnedOff": "已关闭",
+      "restore": "恢复",
+      "restoreLabel": "恢复 {{name}}",
+      "wraps": "包裹选区",
+      "noTrigger": "无",
+      "noMatches": "没有匹配的代码片段。",
+      "shown": "{{shown}} / {{total}} 个"
+    },
+    "problems": {
+      "summary_other": "{{count}} 个问题",
+      "where": "{{file}}，第 {{line}} 行：{{message}}",
+      "slowRegex": "{{name}} 的触发词检查耗时过长，已关闭该代码片段。",
+      "show": "显示",
+      "hide": "隐藏"
+    },
+    "addDialog": {
+      "title": "添加代码片段",
+      "packsTab": "片段包",
+      "importTab": "导入文件",
+      "count_other": "{{count}} 个代码片段",
+      "source": "来源：{{source}}",
+      "licence": "{{licence}} 许可证",
+      "packNote": "片段包随应用一起更新。你对片段包中代码片段所做的更改会单独保存。",
+      "packs": {
+        "fastMathLatex": "在公式中边输入边展开：分式、下标和幂、希腊字母、运算符和矩阵。触发词沿用 Gilles Castel 的设置。",
+        "fastMathTypst": "同样的触发词，为 Typst 编写。Typst 本身已能做到的不再包含，例如用 a/b 写分式。",
+        "paperStructure": "图片、子图、booktabs 表格、公式、定理、证明和算法。"
+      },
+      "useOn": "使用 {{name}}",
+      "importIntro": "选择一个 VS Code 代码片段文件（.json 或 .code-snippets）。它会成为一个独立的合集，你可以关闭或修改它。",
+      "choose": "选择文件",
+      "fileLabel": "代码片段文件",
+      "imported_other": "已将 {{count}} 个代码片段导入 {{collection}}。",
+      "nothing": "在 {{file}} 中未找到代码片段。",
+      "leftOut_other": "有 {{count}} 个条目未导入："
+    },
+    "editor": {
+      "newTitle": "新建代码片段",
+      "duplicate": "创建副本",
+      "delete": "删除",
+      "turnOff": "关闭",
+      "save": "保存",
+      "copyName": "{{name}} 副本",
+      "name": "名称",
+      "namePlaceholder": "带图注和标签的图片",
+      "trigger": "触发词",
+      "triggerPlaceholder": "fig",
+      "regex": "正则表达式",
+      "expands": "展开方式",
+      "expandOptions": {
+        "list": "从列表",
+        "tab": "按 Tab",
+        "auto": "输入时"
+      },
+      "expandHelp": {
+        "list": "它会显示在补全列表中。在列表中选择即可插入。",
+        "tab": "输入 {{trigger}} 后按 Tab。它也会显示在补全列表中。",
+        "auto": "输入 {{trigger}} 后会立即展开。撤销或按 Backspace 可恢复触发词。"
+      },
+      "languages": "语言",
+      "where": "适用范围",
+      "whereOptions": {
+        "any": "任意位置",
+        "text": "文本",
+        "math": "公式",
+        "code": "代码"
+      },
+      "mathKinds": {
+        "math": "两者",
+        "inline-math": "行内",
+        "display-math": "行间"
+      },
+      "mathKind": "公式类型",
+      "whereHelp": {
+        "any": "文件中的任意位置。",
+        "text": "文本：公式、注释和 verbatim 环境以外。",
+        "math": "公式：行内公式或行间公式之内。",
+        "code": "代码：Typst 代码或 Markdown 代码块之内。"
+      },
+      "firesOnly": "仅在以下情况触发",
+      "wholeWord": "作为完整单词时",
+      "lineStart": "位于行首时",
+      "collection": "合集",
+      "keptSeparately": "你的更改会单独保存，因此仍能收到 {{collection}} 的更新。",
+      "body": "插入的文本",
+      "anyLanguage": "任意语言",
+      "addField": "+ 字段",
+      "addChoice": "+ 选项",
+      "choiceText": "A,B",
+      "variable": "变量",
+      "projectField": "项目字段",
+      "variables": {
+        "SELECTION": "所选文本",
+        "CLIPBOARD": "剪贴板",
+        "DATE": "今天的日期",
+        "TM_FILENAME": "文件名",
+        "PROJECT_NAME": "项目名称"
+      },
+      "projectFields": {
+        "image": "图片",
+        "label": "标签",
+        "cite": "引用",
+        "ref": "交叉引用",
+        "file": "文件"
+      },
+      "chipsNote": "字段以小标签显示。",
+      "showSyntax": "显示语法",
+      "missingName": "请为代码片段命名。",
+      "missingBody": "请填写代码片段要插入的文本。",
+      "sameTrigger": "{{list}} 也使用 {{trigger}}。最接近的合集优先。",
+      "sharedStart": "与 {{list}} 开头相同。它们都会显示在列表中，按 Tab 会选中完全匹配的 {{trigger}}。",
+      "clashItem": "{{trigger}}（{{collection}}）",
+      "deleteDialog": {
+        "title": "要删除 {{name}} 吗？",
+        "description": "这会将它从 {{collection}} 中移除。",
+        "action": "删除"
+      },
+      "tryIt": {
+        "title": "试一试",
+        "howAuto": "输入 {{trigger}} 即可展开。",
+        "howTab": "输入 {{trigger}}，然后按 Tab。",
+        "howList": "输入 {{trigger}}，按 Ctrl+Space，然后从列表中选择。",
+        "noTrigger": "此代码片段没有触发词。请在命令面板中用 /snippets 插入。",
+        "inText": "在文本中",
+        "inMath": "在公式中",
+        "fires": "此处会触发：{{language}}，{{place}}。",
+        "notLanguage": "在 {{language}} 中不会触发。它不在此代码片段的语言之列。",
+        "notPlace": "{{place}}不会触发。“适用范围”设置不允许。"
+      }
+    }
   }
 }

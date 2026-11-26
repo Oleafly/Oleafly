@@ -2905,5 +2905,186 @@
     "filteredCount_many": "{{shown}} sur {{count}} entrées",
     "filteredCount_one": "{{shown}} sur {{count}} entrée",
     "filteredCount_other": "{{shown}} sur {{count}} entrées"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Dans la liste de complétion",
+        "description": "Afficher les extraits à côté des commandes"
+      },
+      "tab": {
+        "label": "Tab développe un déclencheur",
+        "description": "Pour les extraits réglés sur Tab"
+      },
+      "auto": {
+        "label": "Développer à la frappe",
+        "description": "Pour les extraits en mode Auto, comme Fast math"
+      },
+      "hint": {
+        "label": "Afficher une indication pendant la saisie",
+        "description": "Indique l'extrait qu'un déclencheur va insérer. Tab l'insère."
+      }
+    },
+    "library": {
+      "title": "Votre bibliothèque d'extraits",
+      "collections": "Collections",
+      "all": "Tous les extraits",
+      "mine": "Les vôtres",
+      "packs": "Packs",
+      "builtIn": "Intégrées",
+      "add": "Ajouter des packs ou importer…",
+      "useCollection": "Utiliser {{name}}",
+      "search": "Rechercher un nom, un déclencheur ou du texte",
+      "language": "Langage",
+      "allLanguages": "Tous les langages",
+      "expands": "Déclenchement",
+      "anyExpand": "Tous",
+      "newSnippet": "Nouvel extrait",
+      "columns": {
+        "trigger": "Déclencheur",
+        "name": "Nom",
+        "languages": "Langages",
+        "where": "Contexte",
+        "expands": "Déclenchement"
+      },
+      "modified": "Modifié",
+      "turnedOff": "Désactivé",
+      "restore": "Restaurer",
+      "restoreLabel": "Restaurer {{name}}",
+      "wraps": "entoure",
+      "noTrigger": "aucun",
+      "noMatches": "Aucun extrait ne correspond.",
+      "shown": "{{shown}} sur {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problème",
+      "summary_many": "{{count}} problèmes",
+      "summary_other": "{{count}} problèmes",
+      "where": "dans {{file}}, ligne {{line}} : {{message}}",
+      "slowRegex": "La vérification du déclencheur de l'extrait {{name}} a pris trop de temps. L'extrait a donc été désactivé.",
+      "show": "Afficher",
+      "hide": "Masquer"
+    },
+    "addDialog": {
+      "title": "Ajouter des extraits",
+      "packsTab": "Packs",
+      "importTab": "Importer un fichier",
+      "count_one": "{{count}} extrait",
+      "count_many": "{{count}} extraits",
+      "count_other": "{{count}} extraits",
+      "source": "Source : {{source}}",
+      "licence": "Licence {{licence}}",
+      "packNote": "Les packs se mettent à jour avec l'application. Les modifications que vous apportez aux extraits d'un pack sont conservées à part.",
+      "packs": {
+        "fastMathLatex": "Se développe pendant la saisie dans les maths : fractions, indices et puissances, lettres grecques, opérateurs et matrices. Les déclencheurs reprennent la configuration de Gilles Castel.",
+        "fastMathTypst": "Les mêmes déclencheurs, écrits pour Typst. Le pack laisse de côté ce que Typst fait déjà, comme a/b pour une fraction.",
+        "paperStructure": "Figures, sous-figures, tableaux booktabs, équations, théorèmes, démonstrations et algorithmes."
+      },
+      "useOn": "Utiliser {{name}}",
+      "importIntro": "Choisissez un fichier d'extraits VS Code (.json ou .code-snippets). Il devient une collection à part entière, que vous pouvez désactiver ou modifier.",
+      "choose": "Choisir un fichier",
+      "fileLabel": "Fichier d'extraits",
+      "imported_one": "{{count}} extrait importé dans la collection {{collection}}.",
+      "imported_many": "{{count}} extraits importés dans la collection {{collection}}.",
+      "imported_other": "{{count}} extraits importés dans la collection {{collection}}.",
+      "nothing": "Aucun extrait trouvé dans {{file}}.",
+      "leftOut_one": "{{count}} entrée a été écartée :",
+      "leftOut_many": "{{count}} entrées ont été écartées :",
+      "leftOut_other": "{{count}} entrées ont été écartées :"
+    },
+    "editor": {
+      "newTitle": "Nouvel extrait",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer",
+      "turnOff": "Désactiver",
+      "save": "Enregistrer",
+      "copyName": "{{name}} (copie)",
+      "name": "Nom",
+      "namePlaceholder": "Figure avec légende et étiquette",
+      "trigger": "Déclencheur",
+      "triggerPlaceholder": "fig",
+      "regex": "Expression régulière",
+      "expands": "Déclenchement",
+      "expandOptions": {
+        "list": "Depuis la liste",
+        "tab": "Avec Tab",
+        "auto": "À la frappe"
+      },
+      "expandHelp": {
+        "list": "Il apparaît dans la liste de complétion. Choisissez-le là pour l'insérer.",
+        "tab": "Tapez {{trigger}} puis appuyez sur Tab. Il apparaît aussi dans la liste de complétion.",
+        "auto": "Il se développe dès que vous tapez {{trigger}}. Annuler ou Backspace rétablit le déclencheur."
+      },
+      "languages": "Langages",
+      "where": "Contexte",
+      "whereOptions": {
+        "any": "Partout",
+        "text": "Texte",
+        "math": "Maths",
+        "code": "Code"
+      },
+      "mathKinds": {
+        "math": "Les deux",
+        "inline-math": "En ligne",
+        "display-math": "Hors ligne"
+      },
+      "mathKind": "Type de maths",
+      "whereHelp": {
+        "any": "Partout dans le fichier.",
+        "text": "Texte : hors des maths, des commentaires et du verbatim.",
+        "math": "Maths : dans les maths en ligne ou hors ligne.",
+        "code": "Code : dans du code Typst ou dans des blocs de code Markdown."
+      },
+      "firesOnly": "Se déclenche uniquement",
+      "wholeWord": "sur un mot entier",
+      "lineStart": "en début de ligne",
+      "collection": "Collection",
+      "keptSeparately": "Vos modifications sont conservées à part, vous recevez donc toujours les mises à jour de la collection {{collection}}.",
+      "body": "Texte inséré",
+      "anyLanguage": "Tout langage",
+      "addField": "+ Champ",
+      "addChoice": "+ Choix",
+      "choiceText": "premier,second",
+      "variable": "Variable",
+      "projectField": "Champ du projet",
+      "variables": {
+        "SELECTION": "Texte sélectionné",
+        "CLIPBOARD": "Presse-papiers",
+        "DATE": "Date du jour",
+        "TM_FILENAME": "Nom du fichier",
+        "PROJECT_NAME": "Nom du projet"
+      },
+      "projectFields": {
+        "image": "Image",
+        "label": "Étiquette",
+        "cite": "Citation",
+        "ref": "Référence",
+        "file": "Fichier"
+      },
+      "chipsNote": "Les champs s'affichent sous forme de pastilles.",
+      "showSyntax": "Afficher la syntaxe",
+      "missingName": "Donnez un nom à l'extrait.",
+      "missingBody": "Écrivez le texte que l'extrait insère.",
+      "sameTrigger": "{{trigger}} est aussi utilisé par : {{list}}. La collection la plus proche l'emporte.",
+      "sharedStart": "Même début que : {{list}}. Tous apparaissent dans la liste, et Tab choisit la correspondance exacte, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Supprimer l'extrait {{name}} ?",
+        "description": "Il sera retiré de la collection {{collection}}.",
+        "action": "Supprimer"
+      },
+      "tryIt": {
+        "title": "Essayer",
+        "howAuto": "Tapez {{trigger}} et il se développe.",
+        "howTab": "Tapez {{trigger}}, puis appuyez sur Tab.",
+        "howList": "Tapez {{trigger}}, appuyez sur Ctrl+Space et choisissez-le dans la liste.",
+        "noTrigger": "Cet extrait n'a pas de déclencheur. Insérez-le depuis la palette de commandes avec /snippets.",
+        "inText": "dans le texte",
+        "inMath": "dans les maths",
+        "fires": "Se déclenche ici : {{language}}, {{place}}.",
+        "notLanguage": "Ne se déclencherait pas ici. {{language}} ne fait pas partie des langages de cet extrait.",
+        "notPlace": "Ne se déclencherait pas {{place}}. Le réglage Contexte ne le permet pas."
+      }
+    }
   }
 }

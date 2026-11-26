@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DISCORD_URL, resetDiscordCommunityStatsCache } from "@/lib/community";
 import { useSettingsStore } from "@/store/settings";
+import { useSnippetStore } from "@/features/snippets/store";
 
 const mocks = vi.hoisted(() => ({
   open: vi.fn(),
@@ -196,6 +197,19 @@ describe("Settings Help & About support callout", () => {
     fireEvent.click(screen.getByTestId("settings-section-dictionary"));
 
     expect(body.scrollTop).toBe(0);
+  });
+
+  it("lists Snippets between Dictionary and Data Storage and opens its section", async () => {
+    useSnippetStore.setState({ status: "ready" });
+    render(<SettingsModal />);
+    const ids = [...screen.getByTestId("settings-section-scroll").querySelectorAll("[data-testid^='settings-section-']")].map(
+      (item) => item.getAttribute("data-testid"),
+    );
+    const at = ids.indexOf("settings-section-snippets");
+    expect(ids.slice(at - 1, at + 2)).toEqual(["settings-section-dictionary", "settings-section-snippets", "settings-section-data"]);
+    fireEvent.click(screen.getByTestId("settings-section-snippets"));
+    expect(await screen.findByTestId("snippets-settings")).toBeInTheDocument();
+    useSnippetStore.setState({ status: "idle" });
   });
 
   it("does not list MCP as a top-level settings section", () => {

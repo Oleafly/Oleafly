@@ -317,6 +317,10 @@
       "keywords": "distraction free focus full screen hide interface minimal writing",
       "label": "Toggle Zen Mode"
     },
+    "fastMath": {
+      "keywords": "fast math snippets expand as you type fraction subscript greek",
+      "label": "Toggle Fast math"
+    },
     "visualSettings": {
       "keywords": "appearance font typeface text size paragraph indent spacing justify heading writing",
       "label": "Visual mode settings"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "thesis chapter paper import merge copy project",
       "label": "Add chapter from another project"
+    },
+    "insertSnippet": {
+      "keywords": "snippets templates triggers browse insert",
+      "label": "Insert snippet"
+    },
+    "saveSnippet": {
+      "keywords": "snippet template save selection reuse",
+      "label": "Save selection as snippet"
     }
   },
   "community": {
@@ -765,7 +777,8 @@
       "projects": "search your projects",
       "refs": "open references for this project",
       "settings": "open settings",
-      "theme": "switch the color theme"
+      "theme": "switch the color theme",
+      "snippets": "browse and insert snippets"
     },
     "tryCommand": "Try a command",
     "unknownCommand": "Unknown command. Type / to view available commands."
@@ -1133,7 +1146,8 @@
       "integrations": "Integrations",
       "shortcuts": "Keyboard Shortcuts",
       "research": "Research",
-      "logs": "Logs"
+      "logs": "Logs",
+      "snippets": "Snippets"
     },
     "search": {
       "empty": "No settings match",
@@ -1151,7 +1165,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git hosting, Computer Use, desktop apps, Cua, MCP, citations, accounts, connections",
         "shortcuts": "keybindings, hotkeys, keys, keyboard",
         "research": "research tasks budget notifications keep awake experiments runs",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug",
+        "snippets": "triggers, templates, Fast math, expand as you type, Tab, completion list, slash menu, @ shortcuts, VS Code snippets, import, packs"
       },
       "label": "Search settings",
       "results_one": "{{count}} section matches",
@@ -1725,5 +1740,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Reset"
+  },
+  "snippets": {
+    "mySnippets": "My snippets",
+    "saveAsSnippet": "Save as snippet…",
+    "autoNote": "Expanded {{trigger}}. Undo or Backspace gives it back.",
+    "fastMathTip": "With Fast math on, // writes a fraction in math.",
+    "turnOnFastMath": "Turn on Fast math",
+    "expands": {
+      "list": "List",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notes",
+      "any": "Any"
+    },
+    "places": {
+      "any": "Anywhere",
+      "text": "Text",
+      "math": "Math",
+      "inline-math": "Inline math",
+      "display-math": "Display math",
+      "code": "Code"
+    },
+    "palette": {
+      "placeholder": "Search snippets by name, trigger or text",
+      "insert": "Insert",
+      "edit": "Edit",
+      "count": "{{shown}} of {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Type {{trigger}} to get this without opening the palette.",
+      "noMatches": "No snippets match."
+    },
+    "save": {
+      "title": "Save as snippet",
+      "name": "Name",
+      "namePlaceholder": "Results table",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "rtab",
+      "expands": "Expands",
+      "found": "detected from your selection",
+      "fields": "Make these into fields",
+      "fieldsFound_one": "{{count}} found",
+      "fieldsFound_other": "{{count}} found",
+      "noFields": "Nothing here looks like a field. You can add fields later in Settings.",
+      "followsCaption": "follows the caption",
+      "kinds": {
+        "caption": "caption",
+        "label": "label",
+        "cite": "citation",
+        "path": "file path",
+        "column-spec": "column spec",
+        "number": "number",
+        "title": "heading",
+        "table-body": "table body"
+      },
+      "preview": "Preview",
+      "saveTo": "Save to",
+      "submit": "Save snippet",
+      "saved": "Saved {{name}}.",
+      "missingName": "Give the snippet a name."
+    }
   }
 }

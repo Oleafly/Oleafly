@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),
+      "@oleafly/snippets": path.resolve(__dirname, "./packages/snippets/src"),
     },
   },
   test: {

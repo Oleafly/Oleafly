@@ -1,1 +1,1 @@
-export { latexLanguage, latexMathLanguage, latexCompletions, slashCompletions } from "@oleafly/editor";
+export { latexLanguage, latexMathLanguage } from "@oleafly/editor";

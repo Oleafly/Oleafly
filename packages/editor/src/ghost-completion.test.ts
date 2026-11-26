@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
@@ -11,13 +11,21 @@ import {
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import {
-  acceptGhostCompletion,
+  acceptGhostSuggestion,
   clearGhostCompletion,
   ghostCompletion,
   pendingGhostCompletion,
   requestedGhostCompletion,
 } from "./ghost-completion";
 import { latexCompletions } from "./latex";
+import { loadSnippetRuntime } from "./snippets/loader";
+import { snippetPortFacet } from "./snippets/port";
+import { portWith } from "./snippets/tests/editor";
+import { runTabOrder, tabOrderKeymap } from "./tab-order";
+
+beforeAll(async () => {
+  await loadSnippetRuntime();
+});
 
 function sourceOf(
   labels: Array<string | { label: string; boost?: number; apply?: unknown }>,
@@ -34,8 +42,6 @@ function sourceOf(
   };
 }
 
-// jsdom has no layout, but the ghost only needs the state field and the view
-// plugin, both of which run headless.
 function mount(
   doc: string,
   sources: CompletionSource[],
@@ -45,7 +51,7 @@ function mount(
     state: EditorState.create({
       doc,
       selection: { anchor: selection },
-      extensions: [ghostCompletion(sources)],
+      extensions: [ghostCompletion(sources), tabOrderKeymap()],
     }),
     parent: document.body,
   });
@@ -232,6 +238,7 @@ describe("ghost completion suggestions", () => {
         selection: { anchor: 3 },
         extensions: [
           ghostCompletion([source]),
+          tabOrderKeymap(),
           autocompletion({
             override: [source],
             activateOnTyping: false,
@@ -285,6 +292,7 @@ describe("accepting and dismissing", () => {
         selection: { anchor: 4 },
         extensions: [
           ghostCompletion([source]),
+          tabOrderKeymap(),
           autocompletion({
             override: [source],
             activateOnTyping: false,
@@ -310,8 +318,6 @@ describe("accepting and dismissing", () => {
     view.contentDOM.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
-    // The completion's apply value wins over its label, proving that Tab
-    // delegates to CodeMirror instead of merely inserting the ghost text.
     expect(view.state.doc.toString()).toBe("\\alpha{}");
     expect(completionStatus(view.state)).toBeNull();
     view.destroy();
@@ -325,6 +331,7 @@ describe("accepting and dismissing", () => {
         selection: { anchor: 4 },
         extensions: [
           ghostCompletion([source]),
+          tabOrderKeymap(),
           autocompletion({
             override: [source],
             activateOnTyping: false,
@@ -340,7 +347,7 @@ describe("accepting and dismissing", () => {
     await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
     await settle();
 
-    expect(acceptGhostCompletion(view)).toBe(true);
+    expect(runTabOrder(view)).toBe(true);
     expect(view.state.doc.toString()).toBe("\\alpha");
     view.destroy();
   });
@@ -349,7 +356,7 @@ describe("accepting and dismissing", () => {
     const view = mount("\\alp", [sourceOf(["\\alpha"])]);
     caretToEnd(view);
     await settle();
-    expect(acceptGhostCompletion(view)).toBe(true);
+    expect(runTabOrder(view)).toBe(true);
     expect(view.state.doc.toString()).toBe("\\alpha");
     expect(view.state.selection.main.head).toBe(6);
     expect(pendingGhostCompletion(view)).toBeNull();
@@ -360,7 +367,7 @@ describe("accepting and dismissing", () => {
     const view = mount("plain text", [sourceOf(["\\alpha"])]);
     view.dispatch({ selection: { anchor: 0 } });
     await settle();
-    expect(acceptGhostCompletion(view)).toBe(false);
+    expect(runTabOrder(view)).toBe(false);
     expect(clearGhostCompletion(view)).toBe(false);
     view.destroy();
   });
@@ -382,6 +389,32 @@ describe("accepting and dismissing", () => {
     const widget = view.dom.querySelector(".cm-ghostCompletion");
     expect(widget?.textContent).toBe("ha");
     expect(widget?.getAttribute("aria-hidden")).toBe("true");
+    view.destroy();
+  });
+});
+
+describe("hints from a custom source", () => {
+  it("anchors a hint without a start at the caret", async () => {
+    const port = portWith({ dot: { prefix: "dot", body: "\\cdot", where: "any" } });
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "a",
+        selection: { anchor: 1 },
+        extensions: [
+          snippetPortFacet.of(port),
+          ghostCompletion([], "generic", (state) => ({ pos: state.selection.main.head, text: "", label: "Dot", recordId: "dot" })),
+        ],
+      }),
+      parent: document.body,
+    });
+    await settle();
+    expect(view.dom.querySelector(".cm-ghostSnippet")?.textContent).toBe("⇥ Dot");
+    expect(clearGhostCompletion(view)).toBe(true);
+    view.dispatch({ selection: { anchor: 0 } });
+    view.dispatch({ selection: { anchor: 1 } });
+    await settle();
+    expect(acceptGhostSuggestion(view, "snippet")).toBe(true);
+    expect(view.state.doc.toString()).toBe("a\\cdot");
     view.destroy();
   });
 });
@@ -551,7 +584,7 @@ describe("requested ghost completion", () => {
     expect(pendingGhostCompletion(view)).toBe("ow a clear trend.");
     expect(view.dom.querySelector(".cm-ghostCompletion")?.textContent).toBe("ow a clear trend.");
 
-    expect(acceptGhostCompletion(view)).toBe(true);
+    expect(runTabOrder(view)).toBe(true);
     expect(view.state.doc.toString()).toBe("The results show a clear trend.");
     view.destroy();
   });
@@ -638,7 +671,7 @@ describe("requested ghost completion", () => {
     expect(requests.calls[1].before).toBe("The results show a clear trend.");
     await answer(requests.calls[1], " It holds for every model.");
 
-    acceptGhostCompletion(view);
+    runTabOrder(view);
     await flush();
     expect(pendingGhostCompletion(view)).toBe(" It holds for every model.");
     expect(requests.calls).toHaveLength(2);
@@ -650,7 +683,7 @@ describe("requested ghost completion", () => {
     const view = mountRequested("The results", requests.request);
     type(view, " sh");
     await shown(view, requests, "ow a clear trend.");
-    acceptGhostCompletion(view);
+    runTabOrder(view);
     await flush();
     expect(requests.calls).toHaveLength(2);
     await answer(requests.calls[1], " It holds.");

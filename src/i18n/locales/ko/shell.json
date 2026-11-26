@@ -316,6 +316,10 @@
       "keywords": "집중 방해 없음 전체 화면 인터페이스 숨기기 미니멀 글쓰기",
       "label": "Zen 모드 전환"
     },
+    "fastMath": {
+      "keywords": "fast math 스니펫 snippets 확장 입력 자동 분수 아래첨자 그리스 문자 수식",
+      "label": "Fast math 전환"
+    },
     "visualSettings": {
       "keywords": "모양 글꼴 서체 글자 크기 문단 들여쓰기 간격 양쪽 정렬 제목 글쓰기",
       "label": "비주얼 모드 설정"
@@ -404,6 +408,14 @@
     "addChapterFromProject": {
       "keywords": "학위논문 장 논문 가져오기 병합 복사 프로젝트",
       "label": "다른 프로젝트에서 장 추가"
+    },
+    "insertSnippet": {
+      "keywords": "스니펫 snippets 템플릿 트리거 찾아보기 삽입",
+      "label": "스니펫 삽입"
+    },
+    "saveSnippet": {
+      "keywords": "스니펫 snippet 템플릿 저장 선택 영역 재사용",
+      "label": "선택 영역을 스니펫으로 저장"
     }
   },
   "community": {
@@ -763,7 +775,8 @@
       "projects": "내 프로젝트 검색",
       "refs": "이 프로젝트의 참고문헌 열기",
       "settings": "설정 열기",
-      "theme": "색 테마 전환"
+      "theme": "색 테마 전환",
+      "snippets": "스니펫 찾아보고 삽입"
     },
     "tryCommand": "명령을 써 보세요",
     "unknownCommand": "알 수 없는 명령입니다. /를 입력하면 쓸 수 있는 명령을 볼 수 있습니다."
@@ -1117,7 +1130,8 @@
       "integrations": "연동",
       "shortcuts": "키보드 단축키",
       "research": "연구",
-      "logs": "로그"
+      "logs": "로그",
+      "snippets": "스니펫"
     },
     "search": {
       "empty": "일치하는 설정이 없습니다",
@@ -1135,7 +1149,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, Computer Use, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
         "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드",
         "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks",
-        "logs": "로그, 오류, 경고, 충돌, 빌드, 진단, 문제 해결, 로그 내보내기, 디버그, log, logs, app.log"
+        "logs": "로그, 오류, 경고, 충돌, 빌드, 진단, 문제 해결, 로그 내보내기, 디버그, log, logs, app.log",
+        "snippets": "트리거, 템플릿, Fast math, 입력하는 대로 확장, Tab, 자동 완성 목록, 슬래시 메뉴, @ 단축키, VS Code 스니펫, 가져오기, 팩"
       },
       "label": "설정 검색",
       "results_other": "섹션 {{count}}개가 일치합니다"
@@ -1690,5 +1705,70 @@
   "zoomIndicator": {
     "label": "확대/축소",
     "reset": "초기화"
+  },
+  "snippets": {
+    "mySnippets": "내 스니펫",
+    "saveAsSnippet": "스니펫으로 저장…",
+    "autoNote": "{{trigger}}을(를) 확장했습니다. 실행 취소나 Backspace를 누르면 되돌릴 수 있습니다.",
+    "fastMathTip": "Fast math를 켜면 수식에서 //로 분수를 쓸 수 있습니다.",
+    "turnOnFastMath": "Fast math 켜기",
+    "expands": {
+      "list": "목록",
+      "tab": "Tab",
+      "auto": "자동"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "노트",
+      "any": "모두"
+    },
+    "places": {
+      "any": "어디서나",
+      "text": "텍스트",
+      "math": "수식",
+      "inline-math": "인라인 수식",
+      "display-math": "별행 수식",
+      "code": "코드"
+    },
+    "palette": {
+      "placeholder": "이름, 트리거, 텍스트로 스니펫 검색",
+      "insert": "삽입",
+      "edit": "편집",
+      "count": "{{total}}개 중 {{shown}}개",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "팔레트를 열지 않아도 {{trigger}}을(를) 입력하면 바로 삽입됩니다.",
+      "noMatches": "일치하는 스니펫이 없습니다."
+    },
+    "save": {
+      "title": "스니펫으로 저장",
+      "name": "이름",
+      "namePlaceholder": "결과 표",
+      "trigger": "트리거",
+      "triggerPlaceholder": "rtab",
+      "expands": "확장 방식",
+      "found": "선택 영역에서 감지됨",
+      "fields": "다음을 필드로 만들기",
+      "fieldsFound_other": "{{count}}개 찾음",
+      "noFields": "필드로 보이는 부분이 없습니다. 필드는 나중에 설정에서 추가할 수 있습니다.",
+      "followsCaption": "캡션을 따름",
+      "kinds": {
+        "caption": "캡션",
+        "label": "레이블",
+        "cite": "인용",
+        "path": "파일 경로",
+        "column-spec": "열 지정",
+        "number": "숫자",
+        "title": "제목",
+        "table-body": "표 본문"
+      },
+      "preview": "미리 보기",
+      "saveTo": "저장 위치",
+      "submit": "스니펫 저장",
+      "saved": "{{name}}을(를) 저장했습니다.",
+      "missingName": "스니펫 이름을 입력하세요."
+    }
   }
 }

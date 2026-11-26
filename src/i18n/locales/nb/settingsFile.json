@@ -55,7 +55,8 @@
     "unknownKey": "er ikke en innstilling Oleafly kjenner til",
     "dictionaryLocale": "må være en ordbokskode som en_US",
     "shortcut": "må være en hurtigtast som Mod-Shift-k, eller \"default\"",
-    "editorKey": "må være en tast som Mod-d, \"\" for ingen, eller \"default\""
+    "editorKey": "må være en tast som Mod-d, \"\" for ingen, eller \"default\"",
+    "snippetFileName": "må være et filnavn som my-snippets.json, med bare bokstaver, sifre, mellomrom, punktum, bindestreker og understreker"
   },
   "importFromLocal": "Importer fra denne enheten",
   "importFromCloud": "Importer fra skyen",

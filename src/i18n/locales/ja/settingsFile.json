@@ -55,7 +55,8 @@
     "unknownKey": "は Oleafly が認識できない設定です",
     "dictionaryLocale": "は en_US のような辞書コードである必要があります",
     "shortcut": "は Mod-Shift-k のようなショートカットか \"default\" である必要があります",
-    "editorKey": "は Mod-d のようなキー、キーなしの場合は \"\"、または \"default\" である必要があります"
+    "editorKey": "は Mod-d のようなキー、キーなしの場合は \"\"、または \"default\" である必要があります",
+    "snippetFileName": "は my-snippets.json のような、英字、数字、スペース、ピリオド、ハイフン、アンダースコアだけからなるファイル名である必要があります"
   },
   "importFromLocal": "このデバイスからインポート",
   "importFromCloud": "クラウドからインポート",

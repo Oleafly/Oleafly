@@ -317,6 +317,10 @@
       "keywords": "häiriötön keskittyminen koko näyttö piilota käyttöliittymä minimaalinen kirjoitus",
       "label": "Vaihda Zen-tilaa"
     },
+    "fastMath": {
+      "keywords": "fast math katkelmat laajenna kirjoittaessa murtoluku alaindeksi kreikkalainen snippets expand fraction subscript greek",
+      "label": "Fast math päälle tai pois"
+    },
     "visualSettings": {
       "keywords": "ulkoasu fontti kirjaintyyppi teksti koko kappale sisennys väli tasaus otsikko kirjoittaminen",
       "label": "Visuaalisen tilan asetukset"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "opinnäyte luku artikkeli tuo yhdistä kopioi projekti thesis chapter paper import merge copy project",
       "label": "Lisää luku toisesta projektista"
+    },
+    "insertSnippet": {
+      "keywords": "katkelmat mallipohjat laukaisimet selaa lisää snippets templates triggers insert",
+      "label": "Lisää katkelma"
+    },
+    "saveSnippet": {
+      "keywords": "katkelma mallipohja tallenna valinta uudelleenkäyttö snippet template save selection",
+      "label": "Tallenna valinta katkelmaksi"
     }
   },
   "community": {
@@ -765,7 +777,8 @@
       "projects": "hae omista projekteista",
       "refs": "avaa tämän projektin viitteet",
       "settings": "avaa asetukset",
-      "theme": "vaihda väriteemaa"
+      "theme": "vaihda väriteemaa",
+      "snippets": "selaa ja lisää katkelmia"
     },
     "tryCommand": "Kokeile komentoa",
     "unknownCommand": "Tuntematon komento. Kirjoita / nähdäksesi käytettävissä olevat komennot."
@@ -1133,7 +1146,8 @@
       "integrations": "Integraatiot",
       "shortcuts": "Pikanäppäimet",
       "research": "Tutkimus",
-      "logs": "Lokit"
+      "logs": "Lokit",
+      "snippets": "Katkelmat"
     },
     "search": {
       "empty": "Ei vastaavia asetuksia",
@@ -1151,7 +1165,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, Computer Use, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
         "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö",
         "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot",
-        "logs": "loki, lokit, virheet, varoitukset, kaatumiset, käännökset, diagnostiikka, vianmääritys, vie lokit, app.log, debug, log, logs"
+        "logs": "loki, lokit, virheet, varoitukset, kaatumiset, käännökset, diagnostiikka, vianmääritys, vie lokit, app.log, debug, log, logs",
+        "snippets": "laukaisimet, mallipohjat, Fast math, laajenna kirjoittaessa, Tab, täydennysluettelo, kauttaviivavalikko, @-pikavalinnat, VS Code -katkelmat, tuonti, paketit, snippets"
       },
       "label": "Hae asetuksista",
       "results_one": "{{count}} osio vastaa hakua",
@@ -1725,5 +1740,71 @@
   "zoomIndicator": {
     "label": "Zoomaus",
     "reset": "Palauta"
+  },
+  "snippets": {
+    "mySnippets": "Omat katkelmat",
+    "saveAsSnippet": "Tallenna katkelmaksi…",
+    "autoNote": "Laajennettiin: {{trigger}}. Kumoa tai Backspace palauttaa sen.",
+    "fastMathTip": "Kun Fast math on käytössä, // kirjoittaa matematiikkaan murtoluvun.",
+    "turnOnFastMath": "Ota Fast math käyttöön",
+    "expands": {
+      "list": "Luettelo",
+      "tab": "Tab",
+      "auto": "Automaattinen"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Muistiinpanot",
+      "any": "Mikä tahansa"
+    },
+    "places": {
+      "any": "Missä tahansa",
+      "text": "Teksti",
+      "math": "Matematiikka",
+      "inline-math": "Tekstin sisäinen matematiikka",
+      "display-math": "Erillinen matematiikka",
+      "code": "Koodi"
+    },
+    "palette": {
+      "placeholder": "Hae katkelmia nimellä, laukaisimella tai tekstillä",
+      "insert": "Lisää",
+      "edit": "Muokkaa",
+      "count": "{{shown}}/{{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Kirjoita {{trigger}}, niin saat tämän avaamatta palettia.",
+      "noMatches": "Ei osuvia katkelmia."
+    },
+    "save": {
+      "title": "Tallenna katkelmaksi",
+      "name": "Nimi",
+      "namePlaceholder": "Tulostaulukko",
+      "trigger": "Laukaisin",
+      "triggerPlaceholder": "rtab",
+      "expands": "Laajenee",
+      "found": "tunnistettu valinnastasi",
+      "fields": "Tee näistä kenttiä",
+      "fieldsFound_one": "{{count}} löytyi",
+      "fieldsFound_other": "{{count}} löytyi",
+      "noFields": "Mikään tässä ei näytä kentältä. Voit lisätä kenttiä myöhemmin asetuksissa.",
+      "followsCaption": "seuraa kuvatekstiä",
+      "kinds": {
+        "caption": "kuvateksti",
+        "label": "nimike",
+        "cite": "viittaus",
+        "path": "tiedostopolku",
+        "column-spec": "sarakemäärittely",
+        "number": "luku",
+        "title": "otsikko",
+        "table-body": "taulukon sisältö"
+      },
+      "preview": "Esikatselu",
+      "saveTo": "Tallenna kokoelmaan",
+      "submit": "Tallenna katkelma",
+      "saved": "Tallennettu: {{name}}.",
+      "missingName": "Anna katkelmalle nimi."
+    }
   }
 }

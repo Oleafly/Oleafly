@@ -1,0 +1,213 @@
+{
+  "$pack": {
+    "name": "Typst slash menu",
+    "nameKey": "snippets.packs.typstSlash"
+  },
+  "typst.slash.heading": {
+    "name": "Heading",
+    "nameKey": "typst.snippet.heading",
+    "prefix": "/heading",
+    "body": "= $1",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.figure": {
+    "name": "Figure with image",
+    "nameKey": "typst.snippet.figure",
+    "prefix": "/figure",
+    "body": [
+      "#figure(",
+      "  image(\"$1\"),",
+      "  caption: [$2],",
+      ") <fig:$3>"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.tablefigure": {
+    "name": "Figure with table",
+    "nameKey": "typst.snippet.tableFigure",
+    "prefix": "/tablefigure",
+    "body": [
+      "#figure(",
+      "  table(",
+      "    columns: ${1:2},",
+      "    [$2], [$3],",
+      "  ),",
+      "  caption: [$4],",
+      ") <tab:$5>"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.table": {
+    "name": "Table",
+    "nameKey": "typst.snippet.table",
+    "prefix": "/table",
+    "body": [
+      "#table(",
+      "  columns: ${1:2},",
+      "  [$2], [$3],",
+      ")"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.equation": {
+    "name": "Display equation",
+    "nameKey": "typst.snippet.equation",
+    "prefix": "/equation",
+    "body": "\\$ $1 \\$",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.numberedequation": {
+    "name": "Numbered equation with label",
+    "nameKey": "typst.snippet.numberedEquation",
+    "prefix": "/numberedequation",
+    "body": "#math.equation(block: true, numbering: \"(1)\", \\$ $1 \\$) <eq:$2>",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.footnote": {
+    "name": "Footnote",
+    "nameKey": "typst.snippet.footnote",
+    "prefix": "/footnote",
+    "body": "#footnote[$1]",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.quote": {
+    "name": "Block quote",
+    "nameKey": "typst.snippet.quote",
+    "prefix": "/quote",
+    "body": "#quote(block: true)[$1]",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.code": {
+    "name": "Code block",
+    "nameKey": "typst.snippet.code",
+    "prefix": "/code",
+    "body": [
+      "```$1",
+      "$2",
+      "```"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.outline": {
+    "name": "Table of contents",
+    "nameKey": "typst.snippet.outline",
+    "prefix": "/outline",
+    "body": "#outline()",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.bibliography": {
+    "name": "Bibliography",
+    "nameKey": "typst.snippet.bibliography",
+    "prefix": "/bibliography",
+    "body": "#bibliography(\"$1\")",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.partbibliography": {
+    "name": "Bibliography for one labelled part",
+    "nameKey": "typst.snippet.partBibliography",
+    "prefix": "/partbibliography",
+    "body": [
+      "#bibliography(",
+      "  \"${1:refs.bib}\",",
+      "  title: [${2:References}],",
+      "  target: selector(cite).within(<${3:part}>),",
+      "  group: ${4:none},",
+      ")"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text",
+    "typstSince": [0, 15]
+  },
+  "typst.slash.pagebreak": {
+    "name": "Page break",
+    "nameKey": "typst.snippet.pagebreak",
+    "prefix": "/pagebreak",
+    "body": "#pagebreak()",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.columns": {
+    "name": "Columns",
+    "nameKey": "typst.snippet.columns",
+    "prefix": "/columns",
+    "body": "#columns(${1:2})[$2]",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.grid": {
+    "name": "Grid",
+    "nameKey": "typst.snippet.grid",
+    "prefix": "/grid",
+    "body": [
+      "#grid(",
+      "  columns: ${1:2},",
+      "  gutter: ${2:1em},",
+      "  [$3], [$4],",
+      ")"
+    ],
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.link": {
+    "name": "Link",
+    "nameKey": "typst.snippet.link",
+    "prefix": "/link",
+    "body": "#link(\"$1\")[$2]",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.list": {
+    "name": "Bulleted list",
+    "nameKey": "typst.snippet.list",
+    "prefix": "/list",
+    "body": "- $1",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.enum": {
+    "name": "Numbered list",
+    "nameKey": "typst.snippet.enum",
+    "prefix": "/enum",
+    "body": "+ $1",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  },
+  "typst.slash.terms": {
+    "name": "Term list",
+    "nameKey": "typst.snippet.terms",
+    "prefix": "/terms",
+    "body": "/ $1: $2",
+    "expand": "list",
+    "languages": ["typst"],
+    "where": "text"
+  }
+}

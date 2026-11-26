@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   autocompletion,
   completionKeymap,
@@ -21,6 +21,7 @@ import {
   surroundSelectionWithEnvironment,
 } from "./latex-structure-commands";
 import { setEditorDocumentPath } from "./controller";
+import { loadSnippetRuntime } from "./snippets/loader";
 import { stubRangeGeometry } from "./test-geometry";
 
 stubRangeGeometry();
@@ -419,6 +420,10 @@ describe("closeEnvironmentAtCursor", () => {
 describe("surroundSelectionWithEnvironment", () => {
   let view: EditorView | null = null;
 
+  beforeAll(async () => {
+    await loadSnippetRuntime();
+  });
+
   function makeView(doc: string, anchor: number, head: number): EditorView {
     const parent = document.createElement("div");
     document.body.append(parent);
@@ -443,12 +448,12 @@ describe("surroundSelectionWithEnvironment", () => {
     const v = makeView("hello", 0, 5);
     expect(surroundSelectionWithEnvironment(v)).toBe(true);
     expect(v.state.doc.toString()).toBe("\\begin{env}\nhello\n\\end{env}");
-    const ranges = v.state.selection.ranges;
-    expect(ranges).toHaveLength(2);
-    expect(ranges.map((r) => v.state.sliceDoc(r.from, r.to))).toEqual([
-      "env",
-      "env",
-    ]);
+    const { from, to } = v.state.selection.main;
+    expect(v.state.sliceDoc(from, to)).toBe("env");
+    v.dispatch(v.state.replaceSelection("itemize"), { userEvent: "input.type" });
+    expect(v.state.doc.toString()).toBe(
+      "\\begin{itemize}\nhello\n\\end{itemize}",
+    );
   });
 
   it("escapes snippet field syntax inside the selection", () => {

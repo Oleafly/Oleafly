@@ -20,6 +20,7 @@ import { useTableImportStore } from "@/store/table-import";
 import { useChapterImportStore } from "@/store/chapter-import";
 import { useStyleRuleDialogStore } from "@/store/style-rule-dialog";
 import { useFigureDialogStore } from "@/store/figure-dialog";
+import { useSaveSnippetDialog } from "@/features/snippets/save-dialog";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { OpeningIndicator } from "@/components/ui/opening-indicator";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
@@ -112,6 +113,13 @@ const FigureDialog = mountOnFirstOpen(
     import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })), { warm: true }),
   () => useFigureDialogStore((state) => state.open),
   () => useFigureDialogStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
+);
+const SaveSnippetDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/features/snippets/SaveSnippetDialog").then((module) => ({ default: module.SaveSnippetDialog }))),
+  () => useSaveSnippetDialog((state) => state.selection !== null),
+  () => useSaveSnippetDialog.getState().close(),
   { loading: <OpeningIndicator /> },
 );
 const PresentationWindow = lazy(() =>
@@ -239,6 +247,7 @@ export function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <ChapterImportDialog />
       <StyleRuleDialog />
       <FigureDialog />
+      <SaveSnippetDialog />
       <TypstMigrationHost />
       <TypstDocumentPanels />
       {ReactQueryDevtools && (

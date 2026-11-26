@@ -38,4 +38,16 @@ describe("InlineAlert", () => {
     expect(screen.getByRole("alert")).not.toHaveClass("text-xs", "px-2.5");
     expect(screen.getByRole("alert").querySelector("svg")).toHaveClass("size-4");
   });
+
+  it("takes the amber warning tone, framed or not", () => {
+    const { rerender } = render(<InlineAlert tone="warning">{"1 problem"}</InlineAlert>);
+    expect(screen.getByRole("alert")).toHaveClass("bg-amber-500/10", "text-amber-700");
+    expect(screen.getByRole("alert")).not.toHaveClass("bg-destructive/10", "text-destructive");
+    rerender(
+      <InlineAlert tone="warning" bordered>
+        {"1 problem"}
+      </InlineAlert>,
+    );
+    expect(screen.getByRole("alert")).toHaveClass("border", "border-amber-500/30");
+  });
 });

@@ -90,6 +90,7 @@ import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
+import { useSnippetStore } from "@/features/snippets/store";
 import { TypstToolbar } from "./TypstToolbar";
 
 const toolbar = en.toolbar;
@@ -180,6 +181,29 @@ describe("TypstToolbar", () => {
       requestId: 1,
       chooserOpen: false,
     });
+  });
+
+  it("turns Fast math for Typst on and off, showing whether it is on", async () => {
+    widenToolbar(4000);
+    const initial = useSnippetStore.getState();
+    const setCollectionEnabled = vi.fn(async (collection: string, enabled: boolean) => {
+      useSnippetStore.setState({ state: { ...initial.state, disabledCollections: enabled ? [] : [collection] } });
+    });
+    useSnippetStore.setState({
+      status: "ready",
+      state: { ...initial.state, disabledCollections: ["fast-math-typst"] },
+      setCollectionEnabled,
+    });
+    try {
+      render(<TypstToolbar />);
+      const button = screen.getByLabelText(toolbar.fastMath);
+      expect(button).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(button);
+      await waitFor(() => expect(screen.getByLabelText(toolbar.fastMath)).toHaveAttribute("aria-pressed", "true"));
+      expect(setCollectionEnabled).toHaveBeenCalledWith("fast-math-typst", true);
+    } finally {
+      useSnippetStore.setState(initial, true);
+    }
   });
 
   it("inserts a Typst table from the size picker", () => {

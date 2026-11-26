@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { Command } from "cmdk";
 import {
   Bookmark,
@@ -43,7 +43,8 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { libraryProjects } from "@/lib/library-projects";
 import { i18n } from "@/i18n";
-import { gotoLine } from "@/components/editor/cm/controller";
+import { getEditorView, gotoLine } from "@/components/editor/cm/controller";
+import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import { objectKey } from "@/lib/react-key";
 import { COMMAND_GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -53,6 +54,17 @@ import { basename } from "@/lib/path-utils";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { EmptyState } from "@/components/ui/empty";
 import { NoteSnippet } from "@/components/notes/NoteSnippet";
+import { snippetLanguageForPath } from "@/features/snippets/language";
+import type { SnippetPaletteList } from "@/features/snippets/SnippetPalette";
+import { lazy } from "@/lib/preloadable";
+
+const SnippetPaletteGroups = lazy(
+  () => import("@/features/snippets/SnippetPalette").then((module) => ({ default: module.SnippetPaletteGroups })),
+  { warm: true },
+);
+const SnippetPalettePreview = lazy(() =>
+  import("@/features/snippets/SnippetPalette").then((module) => ({ default: module.SnippetPalettePreview })),
+);
 
 function searchableDate(timestamp: number) {
   if (!timestamp) return "";
@@ -167,6 +179,7 @@ type Mode =
   | "create"
   | "theme"
   | "settings"
+  | "snippets"
   | "command"
   | "help";
 
@@ -229,6 +242,13 @@ const BUILT_IN_SLASH: SlashEntry[] = [
     mode: "settings",
     get hint() {
       return i18n.t(($) => $.shell.omnibar.slash.settings);
+    },
+  },
+  {
+    keys: ["snippets", "snippet"],
+    mode: "snippets",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.snippets);
     },
   },
 ];
@@ -307,6 +327,8 @@ export function SearchOmnibar() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const openProject = useFilesStore((s) => s.openProject);
   const openFile = useFilesStore((s) => s.openFile);
+  const activePath = useFilesStore((s) => s.activePath);
+  const initialQuery = useSettingsStore((s) => s.searchInitialQuery);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation(["common", "shell"]);
@@ -323,18 +345,24 @@ export function SearchOmnibar() {
     () => commandsFor("omnibar", ctx),
     [ctx],
   );
+  const editorOpen = useMemo(() => open && (isWysiwygActive() || getEditorView() !== null), [open]);
   const slashEntries = useMemo(
     () => [
-      ...BUILT_IN_SLASH.filter((entry) => notesOn || entry.mode !== "notes"),
+      ...BUILT_IN_SLASH.filter(
+        (entry) => (notesOn || entry.mode !== "notes") && (editorOpen || entry.mode !== "snippets"),
+      ),
       ...commandSlashEntries(availableCommands, ctx),
     ],
-    [availableCommands, ctx, notesOn],
+    [availableCommands, ctx, notesOn, editorOpen],
   );
   const { mode, term, cmd, action } = useMemo(
     () => parse(query, slashEntries),
     [query, slashEntries],
   );
   const trimmed = term.trim();
+  const snippetLanguage = snippetLanguageForPath(activePath);
+  const [snippetList, setSnippetList] = useState<SnippetPaletteList | null>(null);
+  const snippets = open && mode === "snippets";
   const fileMode = useSearchModeStore((state) => state.files);
   const noteMode = useSearchModeStore((state) => state.notes);
   const searchingFiles = mode === "all" || mode === "docs";
@@ -368,6 +396,12 @@ export function SearchOmnibar() {
         : [],
     [cmd, mode, slashEntries],
   );
+
+  useEffect(() => {
+    if (!open || !initialQuery) return;
+    setQuery(initialQuery);
+    setSearchOpen(true);
+  }, [open, initialQuery, setSearchOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -458,6 +492,7 @@ export function SearchOmnibar() {
     if (mode === "projects") return t(($) => $.shell.omnibar.placeholderProjects);
     if (mode === "docs") return t(($) => $.shell.omnibar.placeholderDocuments);
     if (mode === "notes") return t(($) => $.shell.omnibar.placeholderNotes);
+    if (mode === "snippets") return t(($) => $.shell.snippets.palette.placeholder);
     return t(($) => $.shell.omnibar.placeholder);
   };
   const placeholder = placeholderFor();
@@ -487,16 +522,28 @@ export function SearchOmnibar() {
       }
       listRef={listRef}
       listClassName="max-h-[min(60vh,440px)]"
+      aside={
+        snippets && snippetList ? (
+          <Suspense fallback={null}>
+            <SnippetPalettePreview list={snippetList} language={snippetLanguage} onClose={close} />
+          </Suspense>
+        ) : undefined
+      }
       footer={
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[0.6875rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">{t(($) => $.shell.keys.enter)}</Kbd>
-            <span>{t(($) => $.common.actions.open)}</span>
+            <span>{mode === "snippets" ? t(($) => $.shell.snippets.palette.insert) : t(($) => $.common.actions.open)}</span>
           </span>
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">/</Kbd>
             <span>{t(($) => $.shell.commandGroups.commands)}</span>
           </span>
+          {snippets && snippetList && (
+            <span className="ml-auto">
+              {t(($) => $.shell.snippets.palette.count, { shown: snippetList.shown, total: snippetList.total })}
+            </span>
+          )}
           {truncated && (
             <span role="status" className="ml-auto min-w-0 text-right">
               {t(($) => $.common.querySearch.issues.tooManyBranches)}
@@ -538,6 +585,11 @@ export function SearchOmnibar() {
             onSelect={() => runAction(() => setSettingsOpen(true))}
           />
         </Group>
+      )}
+      {snippets && (
+        <Suspense fallback={null}>
+          <SnippetPaletteGroups term={trimmed} language={snippetLanguage} onList={setSnippetList} onInsert={runAction} />
+        </Suspense>
       )}
       {mode === "command" && action && (
         <Group heading={t(($) => $.shell.omnibar.groups.action)}>

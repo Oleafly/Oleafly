@@ -1,5 +1,4 @@
 import type {
-  AtSuggestion,
   CoreCatalog,
   CoreCommand,
   CoreEnvironment,
@@ -107,22 +106,6 @@ export function validatePackageCatalog(value: unknown): PackageCatalog | null {
     isOptionalStringArray(value.options)
   ) {
     return value as unknown as PackageCatalog;
-  }
-  return null;
-}
-
-function isAtSuggestion(value: unknown): value is AtSuggestion {
-  return (
-    isRecord(value) &&
-    typeof value.trigger === "string" &&
-    typeof value.replacement === "string" &&
-    isOptionalString(value.detail)
-  );
-}
-
-export function validateAtSuggestions(value: unknown): AtSuggestion[] | null {
-  if (Array.isArray(value) && value.every(isAtSuggestion)) {
-    return value as AtSuggestion[];
   }
   return null;
 }
