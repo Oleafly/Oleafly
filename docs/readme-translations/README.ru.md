@@ -29,7 +29,7 @@ Oleafly является бесплатной рабочей средой с о�
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview.png" alt="Как устроен Oleafly: Oleafly Desktop и Oleafly CLI на вашем компьютере, Oleafly Server на машине вашей лаборатории и Oleafly Web в браузере, а также ИИ-агенты, инструменты для работы с литературой, Overleaf, облачная синхронизация и хостинги Git, к которым подключается Desktop" width="100%" />
+  <img src="../assets/readme/oleafly-overview-light.png" alt="Как устроен Oleafly: Oleafly Desktop и Oleafly CLI на вашем компьютере, Oleafly Server на машине вашей лаборатории и Oleafly Web в браузере, а также ИИ-агенты, инструменты для работы с литературой, Overleaf, облачная синхронизация и хостинги Git, к которым подключается Desktop" width="100%" />
 </div>
 
 ## Почему Oleafly

@@ -29,7 +29,7 @@ Gratuito para sempre · Código aberto · Sem conta do Oleafly · Sem rastreamen
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview.png" alt="Como o Oleafly se encaixa: o Oleafly Desktop e o Oleafly CLI no seu computador, o Oleafly Server na máquina do seu laboratório com o Oleafly Web no navegador, e os agentes de IA, as ferramentas de referências, o Overleaf, a sincronização na nuvem e os serviços de hospedagem Git aos quais o Desktop se conecta" width="100%" />
+  <img src="../assets/readme/oleafly-overview-light.png" alt="Como o Oleafly se encaixa: o Oleafly Desktop e o Oleafly CLI no seu computador, o Oleafly Server na máquina do seu laboratório com o Oleafly Web no navegador, e os agentes de IA, as ferramentas de referências, o Overleaf, a sincronização na nuvem e os serviços de hospedagem Git aos quais o Desktop se conecta" width="100%" />
 </div>
 
 ## Por que Oleafly
