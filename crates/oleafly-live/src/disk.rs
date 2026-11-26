@@ -7,7 +7,7 @@ use oleafly_collab::materialize::Layout;
 use oleafly_collab::{write_atomic, CollabError};
 use oleafly_core::exclude::is_oleafly_owned_name;
 use oleafly_core::front_matter::{declares_note, NOTE_DECLARATION_BYTES, NOTE_FILE, NOTE_KIND};
-use oleafly_core::own_writes::{note_removal, note_write};
+use oleafly_core::own_writes::{file_stamp, note_removal, note_stamp};
 pub use oleafly_core::own_writes::{stamp_of, Stamp};
 use ring::digest::{digest, SHA256};
 use serde::{Deserialize, Serialize};
@@ -425,8 +425,7 @@ pub fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<bool, Str
             return Err(format!("refused to write {relative}"));
         }
     }
-    oleafly_core::atomic::write_atomic(&target, bytes).map_err(|error| error.to_string())?;
-    note_write(&target);
+    oleafly_core::own_writes::write_own(&target, bytes).map_err(|error| error.to_string())?;
     Ok(true)
 }
 
@@ -467,8 +466,7 @@ fn commit_unless_changed(
     if stamp_of(target).as_ref() != checked {
         return Ok(WriteOutcome::ChangedOutside);
     }
-    oleafly_core::atomic::commit_staged(staged, target).map_err(|error| error.to_string())?;
-    note_write(target);
+    oleafly_core::own_writes::commit_own(staged, target).map_err(|error| error.to_string())?;
     Ok(WriteOutcome::Written)
 }
 
@@ -709,6 +707,7 @@ pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
             return false;
         }
     }
+    let stamp = file_stamp(&source);
     let moved = if case_only {
         let parking =
             source.with_file_name(format!(".oleafly-rename-{}", sha256_hex(to.as_bytes())));
@@ -718,7 +717,7 @@ pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
     };
     if moved {
         note_removal(&source);
-        note_write(&target);
+        note_stamp(&target, stamp);
     }
     moved
 }

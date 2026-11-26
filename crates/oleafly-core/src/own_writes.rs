@@ -52,15 +52,32 @@ fn ledger() -> MutexGuard<'static, Vec<OwnWrite>> {
     LEDGER.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-pub fn note_write(path: &Path) {
-    let Some(stamp) = std::fs::symlink_metadata(path)
+pub fn file_stamp(path: &Path) -> Option<Stamp> {
+    std::fs::symlink_metadata(path)
         .ok()
         .filter(Metadata::is_file)
         .map(|metadata| Stamp::of(&metadata))
-    else {
-        return;
-    };
-    remember(path, Some(stamp));
+}
+
+pub fn note_write(path: &Path) {
+    note_stamp(path, file_stamp(path));
+}
+
+pub fn note_stamp(path: &Path, stamp: Option<Stamp>) {
+    if let Some(stamp) = stamp {
+        remember(path, Some(stamp));
+    }
+}
+
+pub fn commit_own(staged: tempfile::NamedTempFile, target: &Path) -> std::io::Result<()> {
+    let stamp = file_stamp(staged.path());
+    crate::atomic::commit_staged(staged, target)?;
+    note_stamp(target, stamp);
+    Ok(())
+}
+
+pub fn write_own(target: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    commit_own(crate::atomic::stage_beside(target, bytes)?, target)
 }
 
 pub fn note_removal(path: &Path) {
@@ -97,7 +114,9 @@ pub fn is_own(path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_own, note_removal, note_write, stamp_of};
+    use super::{
+        commit_own, file_stamp, is_own, note_removal, note_stamp, note_write, stamp_of, write_own,
+    };
     use std::path::Path;
     use std::time::{Duration, SystemTime};
 
@@ -159,5 +178,26 @@ mod tests {
             assert_ne!(replaced, rewritten);
         }
         assert_eq!(stamp_of(&directory.path().join("missing")), None);
+    }
+
+    #[test]
+    fn an_edit_that_lands_right_after_our_rename_is_not_taken_for_ours() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("main.tex");
+        std::fs::write(&target, "Hello\n").unwrap();
+        let staged = crate::atomic::stage_beside(&target, b"Hello again\n").unwrap();
+        let ours = file_stamp(staged.path());
+        crate::atomic::commit_staged(staged, &target).unwrap();
+        std::fs::write(&target, "Hello, shorter\n").unwrap();
+        note_stamp(&target, ours);
+        assert!(!is_own(&target));
+
+        write_own(&target, b"Hello\n").unwrap();
+        assert!(is_own(&target));
+        let staged = crate::atomic::stage_beside(&target, b"Hello there\n").unwrap();
+        commit_own(staged, &target).unwrap();
+        assert!(is_own(&target));
+        std::fs::write(&target, "Hello there!\n").unwrap();
+        assert!(!is_own(&target));
     }
 }
