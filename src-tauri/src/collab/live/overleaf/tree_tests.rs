@@ -313,6 +313,51 @@ async fn latest_removal_holds_mine(rig: &OverleafRig) {
 }
 
 #[test]
+fn edits_typed_after_a_coauthor_delete_go_into_the_same_copy() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let doc = rig.doc(NOTES);
+        let mut tab = rig.open(NOTES);
+        eventually("notes is joined", || rig.live.text_at(NOTES).is_some()).await;
+        rig.mock.hold_updates();
+        tab.typed(&rig.live, "Notes and mine\n");
+        let bob = bob(&rig).await;
+        bob.rest
+            .delete(&bob.session, NodeKind::Doc, &EntityId(doc.clone()))
+            .await
+            .unwrap();
+        disk_gone(&rig, NOTES).await;
+        eventually("the tab is detached", || !detached(&tab).is_empty()).await;
+        eventually("the removal is announced as mine", || {
+            rig.host.removed.lock().unwrap().iter().any(|payload| {
+                payload
+                    .files
+                    .iter()
+                    .any(|file| file.path == NOTES && file.yours)
+            })
+        })
+        .await;
+        tab.typed(&rig.live, "Notes and mine, typed late\n");
+        tab.typed(&rig.live, "Notes and mine, typed late, and more\n");
+        rig.live.close(&tab.file_id, tab.session);
+        let copy = removed_copy(&rig, NOTES);
+        disk_matches(&rig, &copy, b"Notes and mine, typed late, and more\n").await;
+        let mut entries = tokio::fs::read_dir(&rig.root).await.unwrap();
+        let mut copies = Vec::new();
+        while let Some(entry) = entries.next_entry().await.unwrap() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with("notes") {
+                copies.push(name);
+            }
+        }
+        assert_eq!(copies, vec![copy]);
+        assert!(rig.host.kept.lock().unwrap().is_empty());
+        rig.mock.release_updates();
+        rig.finish().await;
+    });
+}
+
+#[test]
 fn unsent_text_kept_after_its_removal_was_announced_still_reaches_the_notice() {
     use oleafly_online::live::session::{DocStopReason, LivePort as _};
     run(async {

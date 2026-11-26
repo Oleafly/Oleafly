@@ -138,10 +138,29 @@ impl AppOverleafPort {
     }
 
     fn keep(&self, doc: &DocId, text: String) {
+        let _keeping = guard(&self.mirror.keeping);
+        let session = self.mirror.session.get().and_then(std::sync::Weak::upgrade);
+        let unlisted = session
+            .as_ref()
+            .is_some_and(|session| !session.nodes().iter().any(|node| node.id.0 == doc.0));
+        if unlisted {
+            let copy = guard(&self.mirror.unlisted_copies).get(&doc.0).cloned();
+            let latest = session.as_ref().and_then(|session| session.text(doc));
+            if let Some((copy, latest)) = copy.zip(latest) {
+                if let Err(error) = self.mirror.disk.write_copy(&copy, latest.as_bytes()) {
+                    let _ = crate::project::append_app_log(format!(
+                        "Live editing could not save the text typed after document {} was removed into {copy} in project {}: {error}",
+                        doc.0,
+                        self.mirror.disk.project_id
+                    ));
+                }
+                return;
+            }
+        }
         let kept = doc.clone();
         self.with_path_else(doc, move |port, path| {
             match path.or_else(|| port.mirror.last_path(&kept)) {
-                Some(path) => port.keep_at(kept.0, path, &text),
+                Some(path) => port.keep_at(kept.0, path, &text, unlisted),
                 None => {
                     let _ = crate::project::append_app_log(format!(
                         "Live editing could not keep {} characters of unsent text of document {} in project {}: the service no longer lists it and it had no known path",
@@ -154,9 +173,12 @@ impl AppOverleafPort {
         });
     }
 
-    fn keep_at(&self, id: String, path: String, text: &str) {
+    fn keep_at(&self, id: String, path: String, text: &str, unlisted: bool) {
         match self.mirror.disk.keep_copy(&path, text, None) {
             Ok(copy) => {
+                if unlisted {
+                    guard(&self.mirror.unlisted_copies).insert(id.clone(), copy.clone());
+                }
                 let mut kept = guard(&self.mirror.kept);
                 let gone = !guard(&self.mirror.disk.disk).layout.contains_key(&id);
                 let told = gone.then(|| guard(&self.mirror.told).remove(&id)).flatten();

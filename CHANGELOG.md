@@ -113,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The outline numbers Typst headings from the last compile, the way the PDF bookmarks do. Appendix letters from `#set heading(numbering: "A.1")` and unnumbered headings come out right too (#429).
 - A Markdown file's outline lists the same headings Pandoc reads, including ones with seven or more `#` and ones underlined with a single `=`.
 - On macOS, Left or Right at the start or end of a text field could still add an invisible character after the fix for #445. The webview sometimes types the arrow key's older control code instead of the Apple code point, and Oleafly now drops both.
-- In live editing, when a coauthor deletes a file you have unsent edits in, Oleafly keeps your text in a copy next to it and the removal notice names the copy. Before, the notice sometimes only said the file was removed. If the file left your disk first, your text was dropped, and a copy saved after the notice was never mentioned.
+- In live editing, when a coauthor deletes a file you have unsent edits in, Oleafly keeps your text in a copy next to it and the removal notice names the copy. Before, the notice sometimes only said the file was removed. If the file left your disk first, your text was dropped, and a copy saved after the notice was never mentioned. What you type in the file's tab before it closes now goes into the same copy too. It used to be thrown away.
 
 ## [0.4.13] - 2026-11-20
 

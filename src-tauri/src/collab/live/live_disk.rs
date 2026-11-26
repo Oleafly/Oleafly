@@ -158,14 +158,23 @@ impl LiveDisk {
             })
             .ok_or_else(|| CollabError::Io(format!("no free name to keep a copy of {path}")))?;
         let copy = beside(&named);
-        let target = safe_target(&self.root, &copy)
-            .ok_or_else(|| CollabError::Io(format!("no place to keep a copy of {path}")))?;
         if free(&named) {
-            oleafly_collab::write_atomic(&target, bytes)?;
-            crate::folder_watch::note_own_write(&target);
+            self.write_copy(&copy, bytes)?;
+        } else {
+            guard(&self.disk).hashes.insert(copy.clone(), hash);
         }
-        guard(&self.disk).hashes.insert(copy.clone(), hash);
         Ok(copy)
+    }
+
+    pub(super) fn write_copy(&self, copy: &str, bytes: &[u8]) -> Result<(), CollabError> {
+        let target = safe_target(&self.root, copy)
+            .ok_or_else(|| CollabError::Io(format!("no place to keep {copy}")))?;
+        oleafly_collab::write_atomic(&target, bytes)?;
+        crate::folder_watch::note_own_write(&target);
+        guard(&self.disk)
+            .hashes
+            .insert(copy.to_owned(), sha256_hex(bytes));
+        Ok(())
     }
 
     pub(super) fn draw(
