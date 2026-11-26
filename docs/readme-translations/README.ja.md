@@ -29,7 +29,11 @@ Oleaflyは、科学研究の執筆のための、無料でオープンソース�
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview.png" alt="Oleaflyの全体像。自分のコンピューター上のOleafly DesktopとOleafly CLI、研究室のマシン上のOleafly Serverとブラウザ上のOleafly Web、そしてDesktopが接続するAIエージェント、参考文献ツール、Overleaf、クラウド同期、Gitホスト" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/readme/oleafly-overview.png" />
+    <source media="(prefers-color-scheme: light)" srcset="../assets/readme/oleafly-overview-light.png" />
+    <img src="../assets/readme/oleafly-overview-light.png" alt="Oleaflyの全体像。自分のコンピューター上のOleafly DesktopとOleafly CLI、研究室のマシン上のOleafly Serverとブラウザ上のOleafly Web、そしてDesktopが接続するAIエージェント、参考文献ツール、Overleaf、クラウド同期、Gitホスト" width="100%" />
+  </picture>
 </div>
 
 ## Oleaflyを選ぶ理由

@@ -29,7 +29,11 @@ Oleafly는 과학 연구 글쓰기를 위한 무료 오픈 소스 작업 공간�
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview.png" alt="Oleafly가 어떻게 맞물리는지 보여 주는 그림: 내 컴퓨터의 Oleafly Desktop과 Oleafly CLI, 연구실 컴퓨터의 Oleafly Server와 브라우저의 Oleafly Web, 그리고 Desktop이 연결하는 AI 에이전트, 참고문헌 도구, Overleaf, 클라우드 동기화 및 Git 호스트" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/readme/oleafly-overview.png" />
+    <source media="(prefers-color-scheme: light)" srcset="../assets/readme/oleafly-overview-light.png" />
+    <img src="../assets/readme/oleafly-overview-light.png" alt="Oleafly가 어떻게 맞물리는지 보여 주는 그림: 내 컴퓨터의 Oleafly Desktop과 Oleafly CLI, 연구실 컴퓨터의 Oleafly Server와 브라우저의 Oleafly Web, 그리고 Desktop이 연결하는 AI 에이전트, 참고문헌 도구, Overleaf, 클라우드 동기화 및 Git 호스트" width="100%" />
+  </picture>
 </div>
 
 ## Oleafly를 선택하는 이유
