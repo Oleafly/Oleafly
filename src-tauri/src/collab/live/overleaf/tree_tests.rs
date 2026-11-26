@@ -270,44 +270,71 @@ fn coauthor_delete_with_my_unsent_edits_keeps_a_copy() {
     });
 }
 
+async fn removed_as_theirs(rig: &OverleafRig) -> (DocId, super::AppOverleafPort) {
+    let doc = rig.doc(NOTES);
+    let tab = rig.open(NOTES);
+    eventually("notes is joined", || rig.live.text_at(NOTES).is_some()).await;
+    let bob = bob(rig).await;
+    bob.rest
+        .delete(&bob.session, NodeKind::Doc, &EntityId(doc.clone()))
+        .await
+        .unwrap();
+    disk_gone(rig, NOTES).await;
+    eventually("the removal is announced as theirs", || {
+        rig.host.removed.lock().unwrap().iter().any(|payload| {
+            payload
+                .files
+                .iter()
+                .any(|file| file.path == NOTES && !file.yours)
+        })
+    })
+    .await;
+    eventually("the tab is detached", || !detached(&tab).is_empty()).await;
+    let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+    (DocId(doc), port)
+}
+
+fn keep_mine(port: &super::AppOverleafPort, doc: &DocId) {
+    use oleafly_online::live::session::{LivePort as _, MergeReview};
+    port.merged(
+        doc,
+        MergeReview::Kept {
+            text: "Notes and mine\n".to_owned(),
+        },
+    );
+}
+
+async fn latest_removal_holds_mine(rig: &OverleafRig) {
+    let latest = rig.host.removed.lock().unwrap().last().cloned().unwrap();
+    let file = latest.files.iter().find(|file| file.path == NOTES).unwrap();
+    assert!(file.yours, "{latest:?}");
+    disk_matches(rig, file.copy.as_deref().unwrap(), b"Notes and mine\n").await;
+    assert!(rig.host.kept.lock().unwrap().is_empty());
+}
+
 #[test]
 fn unsent_text_kept_after_its_removal_was_announced_still_reaches_the_notice() {
-    use oleafly_online::live::session::{DocStopReason, LivePort as _, MergeReview};
+    use oleafly_online::live::session::{DocStopReason, LivePort as _};
     run(async {
         let rig = ready(OverleafRig::start(project(), DISK).await).await;
-        let doc = rig.doc(NOTES);
-        let _tab = rig.open(NOTES);
-        eventually("notes is joined", || rig.live.text_at(NOTES).is_some()).await;
-        let bob = bob(&rig).await;
-        bob.rest
-            .delete(&bob.session, NodeKind::Doc, &EntityId(doc.clone()))
-            .await
-            .unwrap();
-        disk_gone(&rig, NOTES).await;
-        eventually("the removal is announced as theirs", || {
-            rig.host.removed.lock().unwrap().iter().any(|payload| {
-                payload
-                    .files
-                    .iter()
-                    .any(|file| file.path == NOTES && !file.yours)
-            })
-        })
-        .await;
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
-        let id = DocId(doc);
-        port.merged(
-            &id,
-            MergeReview::Kept {
-                text: "Notes and mine\n".to_owned(),
-            },
-        );
-        port.doc_stopped(&id, DocStopReason::Removed);
-        let latest = rig.host.removed.lock().unwrap().last().cloned().unwrap();
-        let file = latest.files.iter().find(|file| file.path == NOTES).unwrap();
-        assert!(file.yours, "{latest:?}");
-        let copy = file.copy.clone().unwrap();
-        disk_matches(&rig, &copy, b"Notes and mine\n").await;
-        assert!(rig.host.kept.lock().unwrap().is_empty());
+        let listed = rig.live.session.nodes();
+        let (doc, port) = removed_as_theirs(&rig).await;
+        *guard(&rig.live.mirror.names) = Default::default();
+        rig.live.mirror.files(&listed);
+        keep_mine(&port, &doc);
+        port.doc_stopped(&doc, DocStopReason::Removed);
+        latest_removal_holds_mine(&rig).await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn unsent_text_kept_after_its_document_stopped_still_reaches_the_notice() {
+    run(async {
+        let rig = ready(OverleafRig::start(project(), DISK).await).await;
+        let (doc, port) = removed_as_theirs(&rig).await;
+        keep_mine(&port, &doc);
+        latest_removal_holds_mine(&rig).await;
         rig.finish().await;
     });
 }

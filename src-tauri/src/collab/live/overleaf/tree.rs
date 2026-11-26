@@ -150,7 +150,12 @@ impl Mirror {
         };
         let fresh = Names::of(&files);
         let mut names = guard(&self.names);
-        let gone = std::mem::take(&mut names.gone);
+        let mut gone = std::mem::take(&mut names.gone);
+        gone.extend(
+            std::mem::take(&mut names.engine)
+                .into_iter()
+                .filter(|(id, _)| !fresh.engine.contains_key(id)),
+        );
         *names = Names { gone, ..fresh };
         drop(names);
         files
@@ -613,20 +618,20 @@ impl OverleafLive {
                 .mine
                 .retain(|mine| !removed.iter().any(|path| inside(mine, path)));
             kept.retain(|file| !files.iter().any(|gone| inside(&file.path, &gone.path)));
-        }
-        if !files.is_empty() {
-            *guard(&self.mirror.told) = files
-                .iter()
-                .filter(|file| !file.yours)
-                .flat_map(|file| {
-                    previous
-                        .iter()
-                        .filter(|(_, placed)| {
-                            placed.kind == NodeKind::Text && inside(&placed.path, &file.path)
-                        })
-                        .map(|(text, _)| (text.clone(), file.clone()))
-                })
-                .collect();
+            if !files.is_empty() {
+                *guard(&self.mirror.told) = files
+                    .iter()
+                    .filter(|file| !file.yours)
+                    .flat_map(|file| {
+                        previous
+                            .iter()
+                            .filter(|(_, placed)| {
+                                placed.kind == NodeKind::Text && inside(&placed.path, &file.path)
+                            })
+                            .map(|(text, _)| (text.clone(), file.clone()))
+                    })
+                    .collect();
+            }
         }
         let disk = &self.mirror.disk;
         let told = (!files.is_empty()).then(|| RemovedPayload {

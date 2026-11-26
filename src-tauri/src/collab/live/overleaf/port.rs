@@ -20,7 +20,7 @@ use oleafly_ot::DocMessage;
 
 use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
-use crate::collab::disk::{exists_exact, inside, safe_target, sha256_hex};
+use crate::collab::disk::{exists_exact, safe_target, sha256_hex};
 use crate::collab::live::kept::{KeptFile, KeptKind, KeptPayload};
 use crate::collab::live::moves::{RemovedFile, RemovedPayload};
 use crate::collab::live::payloads::{
@@ -156,13 +156,24 @@ impl AppOverleafPort {
 
     fn keep_at(&self, id: String, path: String, text: &str) {
         match self.mirror.disk.keep_copy(&path, text, None) {
-            Ok(copy) => guard(&self.mirror.kept).push(KeptFile {
-                id,
-                path,
-                copy: Some(copy),
-                kind: KeptKind::Unsent,
-                by: None,
-            }),
+            Ok(copy) => {
+                let mut kept = guard(&self.mirror.kept);
+                let gone = !guard(&self.mirror.disk.disk).layout.contains_key(&id);
+                let told = gone.then(|| guard(&self.mirror.told).remove(&id)).flatten();
+                match told {
+                    Some(file) => {
+                        drop(kept);
+                        self.tell_again_with_copy(file, copy);
+                    }
+                    None => kept.push(KeptFile {
+                        id,
+                        path,
+                        copy: Some(copy),
+                        kind: KeptKind::Unsent,
+                        by: None,
+                    }),
+                }
+            }
             Err(error) => {
                 let _ = crate::project::append_app_log(format!(
                     "Live editing could not keep {} characters of unsent text of {path} (document {id}) in project {}: {error}",
@@ -173,16 +184,7 @@ impl AppOverleafPort {
         }
     }
 
-    fn tell_again_with_copy(&self, file: RemovedFile) {
-        let copy = {
-            let mut kept = guard(&self.mirror.kept);
-            let copy = kept
-                .iter()
-                .find(|kept| inside(&kept.path, &file.path))
-                .and_then(|kept| kept.copy.clone());
-            kept.retain(|kept| !inside(&kept.path, &file.path));
-            copy
-        };
+    fn tell_again_with_copy(&self, file: RemovedFile, copy: String) {
         let disk = &self.mirror.disk;
         let layout = guard(&disk.disk).layout.clone();
         disk.tell_removed(
@@ -190,8 +192,8 @@ impl AppOverleafPort {
             Some(RemovedPayload {
                 project_id: disk.project_id.clone(),
                 files: vec![RemovedFile {
-                    yours: copy.is_some(),
-                    copy,
+                    yours: true,
+                    copy: Some(copy),
                     ..file
                 }],
                 restored: Vec::new(),
@@ -408,14 +410,10 @@ impl LivePort for AppOverleafPort {
         let replaced = guard(&self.mirror.replaced).remove(doc);
         let removed = matches!(reason, DocStopReason::Removed);
         let deleted = removed && !replaced;
-        if deleted && guard(&self.mirror.kept).iter().any(|file| file.id == doc.0) {
-            let told = guard(&self.mirror.told).remove(&doc.0);
-            let gone = !guard(&self.mirror.disk.disk).layout.contains_key(&doc.0);
-            match told.filter(|_| gone) {
-                Some(file) => self.tell_again_with_copy(file),
-                None => {
-                    guard(&self.mirror.removing).insert(doc.0.clone());
-                }
+        if deleted {
+            let kept = guard(&self.mirror.kept);
+            if kept.iter().any(|file| file.id == doc.0) {
+                guard(&self.mirror.removing).insert(doc.0.clone());
             }
         }
         let reason = match reason {
