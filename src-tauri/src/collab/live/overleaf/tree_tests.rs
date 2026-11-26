@@ -141,8 +141,8 @@ fn removed_copy(rig: &OverleafRig, path: &str) -> String {
         .unwrap()
         .iter()
         .flat_map(|payload| payload.files.clone())
-        .find(|file| file.path == path)
-        .and_then(|file| file.copy)
+        .filter(|file| file.path == path)
+        .find_map(|file| file.copy)
         .unwrap()
 }
 

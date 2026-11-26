@@ -1518,6 +1518,8 @@ async fn signing_in_again_as_the_same_user_while_live_sends_nothing_twice() {
     })
     .await;
     tab.type_end(&live, " one");
+    assert!(live.settle(WAIT).await);
+    assert_eq!(rig.updates_for(&main).len(), 1);
     let before = rig.connection_of("alice").unwrap();
     let alice = rig.mock.user("alice");
     assert_eq!(live.signed_in(rig.handle_for(&alice)), SignedIn::Resumed);
