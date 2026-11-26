@@ -1,4 +1,3 @@
-import { pdfPointAt } from "@oleafly/preview";
 import { inverseFromClick } from "@/features/synctex";
 import { useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
@@ -13,6 +12,23 @@ interface PdfPlace {
 }
 
 type ViewFlags = Readonly<{ viewMode: string; workspaceHidden: boolean }>;
+type PointAt = (typeof import("@oleafly/preview"))["pdfPointAt"];
+
+let pointAt: PointAt | null = null;
+let requested = false;
+
+function loadPointAt(): void {
+  if (requested) return;
+  requested = true;
+  void import("@oleafly/preview").then(
+    (module) => {
+      pointAt = module.pdfPointAt;
+    },
+    () => {
+      requested = false;
+    },
+  );
+}
 
 function editorShown({ viewMode, workspaceHidden }: ViewFlags): boolean {
   return !workspaceHidden && viewMode !== "pdf";
@@ -25,7 +41,11 @@ function shownPdf(projectId: string | null): DOMRect | null {
 }
 
 function placeAtTop(box: DOMRect): number | null {
-  const point = pdfPointAt(box.left + box.width / 2, box.top + 1);
+  if (!pointAt) {
+    loadPointAt();
+    return null;
+  }
+  const point = pointAt(box.left + box.width / 2, box.top + 1);
   return point ? point.page + point.fraction : null;
 }
 
@@ -33,6 +53,7 @@ export function startEditorFollowsPdf(): () => void {
   let place: PdfPlace | null = null;
   let project: string | null = null;
   let frame = 0;
+  if (shownPdf(useFilesStore.getState().projectId)) loadPointAt();
 
   const cancel = () => {
     if (frame !== 0) cancelAnimationFrame(frame);
@@ -75,7 +96,7 @@ export function startEditorFollowsPdf(): () => void {
     const box = shownPdf(projectId);
     const at = box ? placeAtTop(box) : null;
     if (!box || at === null || before?.projectId !== projectId || Math.abs(at - before.at) < MOVED_PAGES) return;
-    const center = pdfPointAt(box.left + box.width / 2, box.top + box.height / 2);
+    const center = pointAt?.(box.left + box.width / 2, box.top + box.height / 2);
     if (center) void inverseFromClick(center.page, center.x, center.y);
   });
 

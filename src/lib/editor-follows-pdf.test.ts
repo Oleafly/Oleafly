@@ -27,7 +27,7 @@ function view(viewMode: "editor" | "split" | "pdf") {
   useSettingsStore.setState({ viewMode });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   page = 2;
   shown = true;
   scroller = document.createElement("div");
@@ -39,6 +39,7 @@ beforeEach(() => {
   useFilesStore.setState({ projectId: "p1" });
   usePreviewDetachedStore.setState({ projectId: null });
   stop = startEditorFollowsPdf();
+  await vi.dynamicImportSettled();
   useSettingsStore.setState({ viewMode: "split", workspaceHidden: false });
 });
 
