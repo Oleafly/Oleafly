@@ -1,0 +1,4 @@
+First paragraph has in it.
+Second new paragraph is where the paste a commented long phrase goes.
+Third next paragraph has a word to delete.
+Moved comment text.

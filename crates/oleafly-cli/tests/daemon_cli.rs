@@ -1,5 +1,5 @@
-#[allow(dead_code)]
-mod support;
+#[path = "support/rust_fixture.rs"]
+mod rust_fixture;
 
 #[path = "support/mock_provider.rs"]
 mod mock_provider;
@@ -55,7 +55,7 @@ fn state_path(data: &Path) -> PathBuf {
 }
 
 fn hold_the_lock(data: &Path, bin: &Path) -> Guard {
-    let holder = support::rust_fixture(bin, "lock_holder.rs", "lock-holder", None);
+    let holder = rust_fixture::rust_fixture(bin, "lock_holder.rs", "lock-holder", None);
     let mut child = Command::new(holder)
         .arg(data.join("daemon").join("daemon.lock"))
         .stdout(Stdio::piped())

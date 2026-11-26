@@ -328,11 +328,7 @@
       "loading": "Indlæser dine Overleaf-projekter",
       "loadFailed": "Oleafly kunne ikke indlæse dine Overleaf-projekter.",
       "signInPrompt": "Log ind på Overleaf for at se dine projekter. Et loginvindue åbner og lukker af sig selv, når du er logget ind.",
-      "signingIn": "Gør dit login på Overleaf færdigt i det vindue, der blev åbnet.",
-      "signingInBrowser": "Gør dit login på Overleaf færdigt i {{browser}}. Vinduet lukker af sig selv, når du er logget ind. Hvis du lukker det, bliver loginet annulleret.",
-      "passkeyHint": "Hvis din adgangsnøgle ikke virker i login-vinduet, så vælg en anden mulighed dér, fx din adgangskode eller en anmodning på din telefon.",
       "expired": "Dit Overleaf-login er udløbet. Log ind igen for at se dine projekter.",
-      "signIn": "Log ind på Overleaf",
       "signInWindowTitle": "Log ind på Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adresse på Overleaf-serveren",
@@ -341,6 +337,7 @@
       "saveServer": "Brug denne server",
       "signedInAs": "Logget ind som {{email}}",
       "signedIn": "Logget ind på Overleaf",
+      "accountPick": "Overleaf-konto",
       "signOut": "Log ud",
       "searchLabel": "Søg i Overleaf-projekter",
       "searchPlaceholder_one": "Søg i {{count}} projekt",
@@ -362,6 +359,8 @@
       "import_other": "Importer {{count}} projekter",
       "imported": "Importeret",
       "open": "Åbn",
+      "openLive": "Åbn live",
+      "opening": "Åbner",
       "ownedByYou": "Dit",
       "owner": "Ejes af {{name}}",
       "archived": "Arkiveret",
@@ -377,7 +376,39 @@
         "downloading": "Downloader {{percent}} %",
         "downloadingUnknown": "Downloader",
         "importing": "Klargør"
-      }
+      },
+      "invitations": {
+        "title": "Invitationer",
+        "from": "Fra {{name}}",
+        "join": "Deltag",
+        "joined": "Du deltager nu i dette projekt"
+      },
+      "link": {
+        "checking": "Tjekker linket",
+        "unnamed": "Et projekt på Overleaf",
+        "join": "Deltag",
+        "importInstead": "Importer",
+        "grants": {
+          "edit": "Når du deltager, kan du redigere det som samarbejdspartner.",
+          "view": "Når du deltager, kan du kun se det. Læsere via link får ikke kommentarer eller chat.",
+          "already": "Du har allerede dette projekt.",
+          "invite": "Når du deltager, accepterer du invitationen."
+        }
+      },
+      "put": {
+        "menu": "Læg på Overleaf",
+        "title": "Læg på Overleaf",
+        "description": "Oleafly uploader dette projekt som et nyt Overleaf-projekt og holder derefter begge synkroniseret, mens du redigerer live.",
+        "name": "Navn på Overleaf",
+        "account": "Overleaf-konto",
+        "submit": "Læg på Overleaf",
+        "working": "Uploader",
+        "signedOut": "Log først ind på Overleaf under Indstillinger.",
+        "openSettings": "Åbn Indstillinger",
+        "cancel": "Annuller"
+      },
+      "switchAccount": "Skift konto",
+      "signInChoose": "Vælg, hvor du vil logge ind. Dine projekter vises her, når du er logget ind."
     }
   },
   "pdfImport": {

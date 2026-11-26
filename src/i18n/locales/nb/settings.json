@@ -1875,33 +1875,18 @@
       "disconnectFailed": "Kunne ikke koble fra alphaXiv. Prøv igjen."
     },
     "cookies": {
-      "confirmTitle": "Bekreft import av cookies",
-      "detecting": "Leter etter installerte nettleserprofiler...",
-      "dialogDescription": "Velg én installert nettleserprofil. Oleafly leser den først når du har sett over importen og bekreftet den. Cookies fra Chromium låses opp lokalt via macOS-nøkkelringen. Oleafly sender ikke cookie-verdier til noen Oleafly-tjeneste.",
-      "dialogTitle": "Importer cookies fra nettleseren",
-      "empty": "Fant ingen nettleserprofiler som støttes.",
-      "errors": {
-        "chooseProfile": "Velg en nettleserprofil som er tilgjengelig."
-      },
-      "profileGroupLabel": "Nettleserprofiler",
-      "profileLegend": "Nettleserprofil",
-      "review": "Se over importen",
-      "status": {
-        "available": "Tilgjengelig",
-        "comingSoon": "Kommer snart",
-        "noCookieStore": "Ingen cookie-lager",
-        "notInstalled": "Ikke installert"
-      },
-      "tryAgain": "Prøv igjen",
-      "label": "Kopier innlogging fra en nettleser",
-      "useBrowserSignIn": "Kopier innloggingen fra nettleseren din",
-      "signInDescription": "Kopier innloggingen din for {{server}} fra en nettleser på denne maskinen, så du slipper å logge inn på nytt.",
-      "site": "Nettsted: {{domain}}",
-      "confirmCopy": "Oleafly leser cookies for {{domain}} fra profilen {{profile}} i {{browser}}. De blir værende i Oleafly og sendes bare til {{domain}}. Du bekrefter én gang til i en systemdialog.",
-      "copyAction": "Kopier innloggingen",
-      "copying": "Kopierer…",
-      "notSignedIn_one": "Kopierte {{count}} cookie fra {{browser}}, men den logget deg ikke inn. Logg inn i stedet.",
-      "notSignedIn_other": "Kopierte {{count}} cookies fra {{browser}}, men de logget deg ikke inn. Logg inn i stedet."
+      "dialogDescription": "Oleafly kopierer bare cookies for {{server}}, logger inn med dem og sletter deretter kopiene. Passordene dine blir i nettleseren.",
+      "dialogTitle": "Importer cookies fra nettleseren din",
+      "label": "Importer cookies fra nettleseren din",
+      "useBrowserSignIn": "Velg en profil",
+      "signInDescription": "Bruker kontoen på {{server}} som en nettleserprofil på denne maskinen allerede er logget inn på.",
+      "copyAction": "Importer",
+      "copying": "Importerer…",
+      "from": "Fra",
+      "noCookies": "Ingen cookies ennå",
+      "sameAccount": "{{profile}} er logget inn som {{account}}, som Oleafly allerede bruker. Velg en annen profil, eller logg først inn på den andre kontoen din i den nettleseren.",
+      "orExisting": "eller bruk en innlogging du allerede har",
+      "noSavedSignIn": "{{profile}} har ingen lagret innlogging for {{server}}, så de kopierte cookiene logget deg ikke inn. Hvis du er logget inn der, beholder nettleseren kanskje innloggingen bare til den lukkes. Bruk flisen {{browser}} i stedet."
     },
     "zotero": {
       "apiKeyHint": "Slik får du en nøkkel: logg inn på <siteLink>zotero.org</siteLink>, åpne <keyLink>siden for API-nøkler</keyLink> for å lage en nøkkel, og kopier den numeriske bruker-ID-en din fra samme side.",
@@ -1961,7 +1946,12 @@
       "signedIn": "Logget inn på {{server}}",
       "signOut": "Logg ut",
       "signOutFailed": "Oleafly kunne ikke logge ut av Overleaf.",
+      "addAccount": "Legg til en konto til",
+      "addAccountHint": "Velg hvor du vil logge inn. Alle starter uten innlogging, så hvilken som helst konto fungerer.",
+      "accountPick": "Konto for import",
+      "accountPickDescription": "Nye importer og maler bruker denne kontoen. Prosjekter du allerede har, beholder kontoen de kom fra.",
       "gitTitle": "Git-token for synkronisering",
+      "gitTitleFor": "Git-token for {{email}}",
       "gitSaved": "Et Git-token er lagret. Prosjekter du kobler til, holdes synkronisert med Overleaf.",
       "gitMissing": "Ikke noe Git-token ennå. Opprett et under Git-integrasjon i kontoinnstillingene dine på Overleaf for å synkronisere prosjekter.",
       "gitOpenSettings": "Åpne kontoinnstillingene på Overleaf",
@@ -1970,14 +1960,9 @@
       "gitSave": "Lagre",
       "gitRemove": "Fjern",
       "gitFailed": "Oleafly kunne ikke lagre Git-tokenet. Sjekk at du limte inn hele tokenet.",
-      "browserLabel": "Logg inn med nettleseren din",
-      "browserDescription": "For innlogging med Google, institusjonen din eller en passnøkkel. Oleafly åpner {{server}} i et nytt nettleservindu og lukker det når du er logget inn.",
-      "browserAction": "Logg inn",
-      "browserPick": "Nettleser å logge inn med",
       "browserWaiting": "Fullfør innloggingen på {{server}} i {{browser}}. Hvis du lukker vinduet, avbrytes innloggingen.",
-      "browserHint": "Bruk dette for innlogging med Google, institusjonen din eller en passnøkkel.",
-      "windowLabel": "Logg inn på {{server}}",
-      "windowDescription": "Oleafly åpner et innloggingsvindu og lukker det når du er logget inn. Vil du logge inn med Google, institusjonen din eller en passnøkkel, installerer du Chrome, Edge, Brave, Chromium eller Firefox og logger inn med den her.",
+      "windowLabel": "Logg inn inne i Oleafly",
+      "windowDescription": "Vinduet lukkes av seg selv når du er logget inn. Hvis passnøkkelen din ikke fungerer der, bruker du passordet ditt eller en forespørsel på telefonen.",
       "windowAction": "Logg inn",
       "windowWaiting": "Fullfør innloggingen på {{server}} i vinduet som ble åpnet.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Slett på Overleaf også",
           "never": "Behold på Overleaf"
         }
-      }
+      },
+      "sameAccount": "Du er allerede logget inn som {{account}}. Logg inn med en annen konto for å legge den til.",
+      "windowTitle": "Logg inn på {{server}}",
+      "addAccountKept": "Den nåværende kontoen din forblir logget inn.",
+      "noBrowser": "Vil du logge inn med Google, institusjonen din eller en passnøkkel, installerer du Chrome, Edge, Brave, Chromium eller Firefox og velger den her.",
+      "tileHere": "I denne appen",
+      "tileWindow": "Nytt vindu",
+      "tileWaiting": "Venter på deg",
+      "signInNote": "Bruk en nettleser for å logge inn med Google, institusjonen din eller en passnøkkel. Hvis passnøkkelen din ikke fungerer i Oleafly, bruker du passordet ditt eller en forespørsel på telefonen der. Vinduet lukkes av seg selv når du er logget inn."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "Dette laster ned installasjonsprogrammet for Cua fra cua.ai og kjører det i terminalen din. Vil du fortsette?"
         }
       }
+    },
+    "signIns": {
+      "title": "Administrer innlogginger",
+      "description": "Kontoene som Oleafly er logget inn på på denne maskinen. Hvis du fjerner en her, forblir du logget inn i nettleseren.",
+      "loading": "Laster innloggingene dine…",
+      "empty": "Du er ikke logget inn på noen konto.",
+      "inUse": "I bruk",
+      "switch": "Bytt",
+      "switchTo": "Bytt til {{account}}",
+      "removeAccount": "Fjern {{account}}",
+      "removeAll": "Fjern alle",
+      "importMore": "Importer flere",
+      "loadFailed": "Oleafly kunne ikke laste innloggingene dine.",
+      "changeFailed": "Oleafly kunne ikke endre denne innloggingen. Prøv igjen."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Tøm ordlisten",
       "descriptionFallback": "Dette fjerner alle uttrykkene fra denne ordlisten. De blir sjekket igjen med en gang.",
       "descriptionGlobal": "Dette fjerner alle uttrykkene fra den globale ordlisten. De blir sjekket igjen med en gang.",
+      "descriptionOverleaf": "De fjernes også fra Overleaf-kontoen din.",
       "descriptionProject": "Dette fjerner alle uttrykkene fra {{project}}. De blir sjekket igjen med en gang.",
       "descriptionSuppressed": "Dette fjerner alle uttrykkene fra funn du har lukket i {{project}}. De blir sjekket igjen med en gang.",
       "suppressedConfirm": "Vis igjen",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Ord du legger inn her, hoppes over av korrekturlesingen i alle prosjekter.",
+      "overleafSynced": "Synkroniseres med de lærte ordene på Overleaf-kontoen din mens et prosjekt er live på Overleaf.",
       "scope": "Gjelder alle prosjekter"
     },
     "intro": "Legg ord inn i din egen stavekontrollordliste. Ordene lagres i lokale innstillinger, og korrekturlesingen ser bort fra dem i alle prosjekter. Sammenligningen er Unicode-normalisert og skiller ikke mellom store og små bokstaver.",

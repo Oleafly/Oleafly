@@ -516,7 +516,8 @@
       "open": "Açık dosyayı izle",
       "main": "Her zaman ana belge",
       "change": "Ana belgeyi değiştir…"
-    }
+    },
+    "filling": "Proje hâlâ Overleaf üzerinden indiriliyor. Tüm dosyalar buraya geldiğinde derleyebilirsiniz."
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -1704,8 +1705,9 @@
     "resume": "Canlı düzenlemeye devam et",
     "reconnectNow": "Şimdi yeniden bağlan",
     "open": "Overleaf'te aç",
-    "share": "Overleaf'te paylaş…",
+    "share": "Overleaf'te paylaş",
     "signIn": "Oturum aç…",
+    "signInAs": "{{email}} olarak oturum aç",
     "reconnectingIn": "{{seconds}} sn sonra yeniden denenecek.",
     "notConfirmed": "Overleaf henüz onaylamadı.",
     "copyDetails": "Bağlantı ayrıntılarını kopyala",

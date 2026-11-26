@@ -1899,35 +1899,18 @@
       "disconnectFailed": "Nie udało się rozłączyć alphaXiv. Spróbuj ponownie."
     },
     "cookies": {
-      "confirmTitle": "Potwierdź import plików cookie",
-      "detecting": "Szukanie zainstalowanych profili przeglądarek...",
-      "dialogDescription": "Wybierz jeden zainstalowany profil przeglądarki. Oleafly odczyta go dopiero po Twoim przejrzeniu i potwierdzeniu importu. Pliki cookie Chromium są odblokowywane lokalnie przez Pęk kluczy macOS. Oleafly nie wysyła wartości plików cookie do żadnej usługi Oleafly.",
+      "dialogDescription": "Oleafly kopiuje tylko pliki cookie dla {{server}}, loguje się za ich pomocą, a potem usuwa kopie. Twoje hasła zostają w przeglądarce.",
       "dialogTitle": "Importuj pliki cookie z przeglądarki",
-      "empty": "Nie znaleziono obsługiwanych profili przeglądarek.",
-      "errors": {
-        "chooseProfile": "Wybierz dostępny profil przeglądarki."
-      },
-      "profileGroupLabel": "Profile przeglądarek",
-      "profileLegend": "Profil przeglądarki",
-      "review": "Przejrzyj import",
-      "status": {
-        "available": "Dostępny",
-        "comingSoon": "Wkrótce",
-        "noCookieStore": "Brak magazynu plików cookie",
-        "notInstalled": "Niezainstalowana"
-      },
-      "tryAgain": "Spróbuj ponownie",
-      "label": "Skopiuj logowanie z przeglądarki",
-      "useBrowserSignIn": "Skopiuj logowanie z Twojej przeglądarki",
-      "signInDescription": "Skopiuj swoje logowanie do {{server}} z przeglądarki na tym komputerze, aby nie logować się ponownie.",
-      "site": "Strona: {{domain}}",
-      "confirmCopy": "Oleafly odczyta pliki cookie dla {{domain}} z profilu {{profile}} w {{browser}}. Zostaną w Oleafly i będą wysyłane tylko do {{domain}}. Potwierdzisz to jeszcze raz w oknie systemowym.",
-      "copyAction": "Skopiuj logowanie",
-      "copying": "Kopiowanie...",
-      "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_few": "Skopiowano {{count}} pliki cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_many": "Skopiowano {{count}} plików cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio."
+      "label": "Importuj pliki cookie z przeglądarki",
+      "useBrowserSignIn": "Wybierz profil",
+      "signInDescription": "Używa konta na {{server}}, na które zalogowano się już w profilu przeglądarki na tym komputerze.",
+      "copyAction": "Importuj",
+      "copying": "Importowanie...",
+      "from": "Skąd",
+      "noCookies": "Brak plików cookie",
+      "sameAccount": "W profilu {{profile}} zalogowano się jako {{account}}, a Oleafly już używa tego konta. Wybierz inny profil albo najpierw zaloguj się w tej przeglądarce na drugie konto.",
+      "orExisting": "albo użyj logowania, które już masz",
+      "noSavedSignIn": "Profil {{profile}} nie ma zapisanego logowania do {{server}}, więc skopiowane pliki cookie Cię nie zalogowały. Jeśli jesteś tam zalogowany, przeglądarka może przechowywać logowanie tylko do zamknięcia. Zamiast tego użyj kafelka {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Aby zdobyć klucz: zaloguj się w <siteLink>zotero.org</siteLink>, otwórz swoją <keyLink>stronę klucza API</keyLink>, aby utworzyć klucz, i skopiuj z tej samej strony swój liczbowy identyfikator użytkownika.",
@@ -1993,7 +1976,12 @@
       "signedIn": "Zalogowano na {{server}}",
       "signOut": "Wyloguj się",
       "signOutFailed": "Oleafly nie mógł wylogować się z Overleaf.",
+      "addAccount": "Dodaj kolejne konto",
+      "addAccountHint": "Wybierz, gdzie się zalogować. Wszędzie zaczynasz bez zalogowanego konta, więc zadziała dowolne.",
+      "accountPick": "Konto do importu",
+      "accountPickDescription": "Nowe importy i szablony używają tego konta. Projekty, które już masz, zachowują konto, z którego pochodzą.",
       "gitTitle": "Token Git do synchronizacji",
+      "gitTitleFor": "Token Git dla {{email}}",
       "gitSaved": "Token Git jest zapisany. Połączone projekty pozostają zsynchronizowane z Overleaf.",
       "gitMissing": "Nie ma jeszcze tokenu Git. Aby synchronizować projekty, utwórz go w sekcji Integracja z Git w ustawieniach konta Overleaf.",
       "gitOpenSettings": "Otwórz ustawienia konta Overleaf",
@@ -2002,14 +1990,9 @@
       "gitSave": "Zapisz",
       "gitRemove": "Usuń",
       "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token.",
-      "browserLabel": "Zaloguj się przez przeglądarkę",
-      "browserDescription": "Do logowania przez Google, uczelnię lub klucz dostępu. Oleafly otwiera {{server}} w nowym oknie przeglądarki i zamyka je po zalogowaniu.",
-      "browserAction": "Zaloguj się",
-      "browserPick": "Przeglądarka do logowania",
       "browserWaiting": "Dokończ logowanie do {{server}} w przeglądarce {{browser}}. Zamknięcie okna anuluje logowanie.",
-      "browserHint": "Użyj tego do logowania przez Google, uczelnię lub klucz dostępu.",
-      "windowLabel": "Logowanie do {{server}}",
-      "windowDescription": "Oleafly otwiera okno logowania i zamyka je po zalogowaniu. Aby zalogować się przez Google, uczelnię lub klucz dostępu, zainstaluj Chrome, Edge, Brave, Chromium lub Firefox i zaloguj się w nim tutaj.",
+      "windowLabel": "Zaloguj się w Oleafly",
+      "windowDescription": "Okno zamknie się samo po zalogowaniu. Jeśli klucz dostępu tam nie działa, użyj hasła lub potwierdzenia na telefonie.",
       "windowAction": "Zaloguj się",
       "windowWaiting": "Dokończ logowanie do {{server}} w otwartym oknie.",
       "unsent": {
@@ -2027,7 +2010,15 @@
           "always": "Usuwaj też w Overleaf",
           "never": "Zachowuj w Overleaf"
         }
-      }
+      },
+      "sameAccount": "Już zalogowano jako {{account}}. Aby dodać inne konto, zaloguj się na nie.",
+      "windowTitle": "Logowanie do {{server}}",
+      "addAccountKept": "Twoje obecne konto pozostanie zalogowane.",
+      "noBrowser": "Aby zalogować się przez Google, uczelnię lub klucz dostępu, zainstaluj Chrome, Edge, Brave, Chromium lub Firefox, a potem wybierz go tutaj.",
+      "tileHere": "W tej aplikacji",
+      "tileWindow": "Nowe okno",
+      "tileWaiting": "Czeka na Ciebie",
+      "signInNote": "Użyj przeglądarki, aby zalogować się przez Google, uczelnię lub klucz dostępu. Jeśli klucz dostępu nie działa w Oleafly, użyj tam hasła lub potwierdzenia na telefonie. Okno zamknie się samo po zalogowaniu."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2159,6 +2150,20 @@
           "confirm": "To polecenie pobierze instalator Cua z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?"
         }
       }
+    },
+    "signIns": {
+      "title": "Zarządzaj logowaniami",
+      "description": "Konta, na które Oleafly jest zalogowany na tym komputerze. Usunięcie konta tutaj nie wyloguje Cię w przeglądarce.",
+      "loading": "Wczytywanie Twoich logowań...",
+      "empty": "Nie zalogowano na żadne konto.",
+      "inUse": "W użyciu",
+      "switch": "Przełącz",
+      "switchTo": "Przełącz na {{account}}",
+      "removeAccount": "Usuń {{account}}",
+      "removeAll": "Usuń wszystkie",
+      "importMore": "Importuj więcej",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich logowań.",
+      "changeFailed": "Oleafly nie mógł zmienić tego logowania. Spróbuj ponownie."
     }
   },
   "language": {
@@ -2373,6 +2378,7 @@
       "confirm": "Wyczyść słowa",
       "descriptionFallback": "Spowoduje to usunięcie wszystkich terminów z tego słownika. Zostaną znów sprawdzone od razu.",
       "descriptionGlobal": "Spowoduje to usunięcie wszystkich terminów ze słownika globalnego. Zostaną znów sprawdzone od razu.",
+      "descriptionOverleaf": "Zostaną usunięte także z Twojego konta Overleaf.",
       "descriptionProject": "Spowoduje to usunięcie wszystkich terminów z projektu {{project}}. Zostaną znów sprawdzone od razu.",
       "descriptionSuppressed": "Spowoduje to usunięcie wszystkich terminów z ukrytych uwag w projekcie {{project}}. Zostaną znów sprawdzone od razu.",
       "suppressedConfirm": "Pokaż ponownie",
@@ -2392,6 +2398,7 @@
     },
     "global": {
       "emptyDescription": "Słowa dodane tutaj są pomijane przez korektę we wszystkich projektach.",
+      "overleafSynced": "Synchronizowane z nauczonymi słowami na Twoim koncie Overleaf, gdy projekt jest edytowany na żywo w Overleaf.",
       "scope": "Dotyczy każdego projektu"
     },
     "intro": "Dodawaj słowa do osobistego słownika pisowni. Te słowa są przechowywane w ustawieniach lokalnych i pomijane we wszystkich projektach. Dopasowanie jest znormalizowane w Unicode i nie rozróżnia wielkości liter.",

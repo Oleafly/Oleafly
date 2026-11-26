@@ -56,6 +56,7 @@ export function aiToolGroupLabel(group: AiToolGroup): string {
 const latexOnly = () => i18n.t(($) => $.ai.tools.notes.latexOnly);
 const latexAndTypstOnly = () => i18n.t(($) => $.ai.tools.notes.latexAndTypstOnly);
 const noteOnly = () => i18n.t(($) => $.ai.noteScope.notesOnly);
+const overleafLiveOnly = () => i18n.t(($) => $.ai.tools.notes.overleafLiveSetting);
 
 export const AI_TOOLS: AiToolInfo[] = [
   { name: "read_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.readFile) },
@@ -87,6 +88,12 @@ export const AI_TOOLS: AiToolInfo[] = [
   { name: "verify_citation", group: "Research", desc: () => i18n.t(($) => $.ai.tools.catalog.verifyCitation) },
   { name: "list_overleaf_projects", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.listOverleafProjects) },
   { name: "import_overleaf_projects", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.importOverleafProjects) },
+  {
+    name: "open_overleaf_live",
+    group: "System",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.openOverleafLive),
+    note: overleafLiveOnly,
+  },
   {
     name: "project_library_search",
     group: "Research",

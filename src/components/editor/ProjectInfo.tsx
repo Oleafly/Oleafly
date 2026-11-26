@@ -32,7 +32,13 @@ import { notifyError } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
+import { useCollabSettingsLocked, useLiveBackend } from "@/lib/collab-live-bridge";
+import {
+  overleafLiveSetSetting,
+  overleafLiveSettings,
+  type OverleafLiveSettings,
+  type OverleafSettingChoice,
+} from "@/lib/overleaf-live";
 import { useFilesStore } from "@/store/files";
 import { folderIsReadOnly, useFolderAccessStore } from "@/store/folder-access";
 import type { SyncService } from "@/lib/tauri";
@@ -49,6 +55,7 @@ import {
 } from "./LanguageServiceRuntimeBoundary";
 
 const APP_SETTING = "__app__";
+const NO_BIBLIOGRAPHY = "__none__";
 
 function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -425,6 +432,127 @@ function ProjectSpellLanguage() {
   );
 }
 
+function OverleafChoice({
+  label,
+  ariaLabel,
+  testId,
+  value,
+  options,
+  disabled,
+  onChoose,
+}: Readonly<{
+  label: string;
+  ariaLabel: string;
+  testId: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  disabled: boolean;
+  onChoose: (value: string) => void;
+}>) {
+  return (
+    <>
+      <p className="px-0.5 pb-1 pt-2 text-[0.625rem] text-muted-foreground">{label}</p>
+      <Select value={value} onValueChange={onChoose} disabled={disabled}>
+        <SelectTrigger data-testid={testId} aria-label={ariaLabel} className="h-8 w-full text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100] max-h-[280px]">
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value} disabled={option.value === NO_BIBLIOGRAPHY}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  );
+}
+
+function OverleafProjectSettings() {
+  const { t } = useTranslation(["editor"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const live = useLiveBackend(
+    (state) =>
+      projectId !== null &&
+      state.projectId === projectId &&
+      state.backend === "overleaf" &&
+      state.overleaf?.paused === false,
+  );
+  const [settings, setSettings] = useState<OverleafLiveSettings | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setSettings(null);
+    if (!live || !projectId) return;
+    let current = true;
+    overleafLiveSettings(projectId).then(
+      (next) => {
+        if (current) setSettings(next);
+      },
+      (error: unknown) => void logError("read the overleaf project settings", error),
+    );
+    return () => {
+      current = false;
+    };
+  }, [live, projectId]);
+
+  const choose = useCallback(
+    async (setting: OverleafSettingChoice, value: string) => {
+      if (!projectId) return;
+      setBusy(true);
+      try {
+        await overleafLiveSetSetting(projectId, setting, value);
+        const next = await overleafLiveSettings(projectId);
+        if (useFilesStore.getState().projectId === projectId) setSettings(next);
+      } catch (error) {
+        notifyError("change an overleaf project setting", error, t(($) => $.editor.projectInfo.overleafFailed));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [projectId, t],
+  );
+
+  if (!live || !settings) return null;
+  const locked = busy || !settings.canChange;
+  const bibliographies = settings.bibliographies.map((path) => ({ value: path, label: path }));
+  if (!settings.bibliography) {
+    bibliographies.unshift({ value: NO_BIBLIOGRAPHY, label: t(($) => $.editor.projectInfo.bibliographyNone) });
+  }
+  return (
+    <div data-testid="overleaf-project-settings">
+      <SectionLabel>{t(($) => $.editor.projectInfo.onOverleaf)}</SectionLabel>
+      {settings.images.length > 0 ? (
+        <OverleafChoice
+          label={t(($) => $.editor.projectInfo.texLive)}
+          ariaLabel={t(($) => $.editor.projectInfo.texLiveAriaLabel)}
+          testId="overleaf-tex-live"
+          value={settings.image ?? ""}
+          options={settings.images.map((image) => ({ value: image.name, label: image.description }))}
+          disabled={locked}
+          onChoose={(value) => void choose("image", value)}
+        />
+      ) : null}
+      {bibliographies.length > 0 ? (
+        <OverleafChoice
+          label={t(($) => $.editor.projectInfo.bibliography)}
+          ariaLabel={t(($) => $.editor.projectInfo.bibliographyAriaLabel)}
+          testId="overleaf-bibliography"
+          value={settings.bibliography ?? NO_BIBLIOGRAPHY}
+          options={bibliographies}
+          disabled={locked}
+          onChoose={(value) => void choose("bibliography", value)}
+        />
+      ) : null}
+      <p className="pt-1 text-[0.625rem] leading-relaxed text-muted-foreground/70">
+        {settings.canChange
+          ? t(($) => $.editor.projectInfo.overleafHint)
+          : t(($) => $.editor.projectInfo.overleafReadOnly)}
+      </p>
+    </div>
+  );
+}
+
 function FolderSyncNote() {
   const { t } = useTranslation(["shell"]);
   const projectId = useFilesStore((state) => state.projectId);
@@ -518,6 +646,7 @@ export function ProjectInfoContent({
             <ProofreadingSection surface={surface} />
           </div>
           <ProjectSpellLanguage />
+          <OverleafProjectSettings />
           <LanguageSetupNotice />
           <LanguageRuntimeNotice />
         </>

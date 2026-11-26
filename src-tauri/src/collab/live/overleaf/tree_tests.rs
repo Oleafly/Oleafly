@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use oleafly_online::client::Http;
-use oleafly_online::live::rest::TreeRest;
+use oleafly_online::live::rest::ProjectRest;
 use oleafly_online::realtime::events::EntityId;
 use oleafly_online::realtime::tree::NodeKind;
 use oleafly_online::realtime::{DocId, ProjectPage};
@@ -34,7 +34,7 @@ fn project() -> MockProject {
 }
 
 struct Bob {
-    rest: TreeRest,
+    rest: ProjectRest,
     session: SessionHandle,
     root: EntityId,
 }
@@ -46,7 +46,7 @@ async fn bob(rig: &OverleafRig) -> Bob {
         .await
         .unwrap();
     Bob {
-        rest: TreeRest::new(http, Arc::new(page), &rig.mock.project_id()),
+        rest: ProjectRest::new(http, Arc::new(page), &rig.mock.project_id()),
         session,
         root: EntityId(rig.mock.root_folder_id()),
     }
@@ -270,7 +270,7 @@ fn coauthor_delete_with_my_unsent_edits_keeps_a_copy() {
     });
 }
 
-async fn removed_as_theirs(rig: &OverleafRig) -> (DocId, super::AppOverleafPort) {
+async fn removed_as_theirs(rig: &OverleafRig) -> (DocId, super::MirrorPort) {
     let doc = rig.doc(NOTES);
     let tab = rig.open(NOTES);
     eventually("notes is joined", || rig.live.text_at(NOTES).is_some()).await;
@@ -290,11 +290,11 @@ async fn removed_as_theirs(rig: &OverleafRig) -> (DocId, super::AppOverleafPort)
     })
     .await;
     eventually("the tab is detached", || !detached(&tab).is_empty()).await;
-    let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+    let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
     (DocId(doc), port)
 }
 
-fn keep_mine(port: &super::AppOverleafPort, doc: &DocId) {
+fn keep_mine(port: &super::MirrorPort, doc: &DocId) {
     use oleafly_online::live::session::{LivePort as _, MergeReview};
     port.merged(
         doc,
@@ -305,6 +305,7 @@ fn keep_mine(port: &super::AppOverleafPort, doc: &DocId) {
 }
 
 async fn latest_removal_holds_mine(rig: &OverleafRig) {
+    rig.live.mirror.chores.drained().await;
     let latest = rig.host.removed.lock().unwrap().last().cloned().unwrap();
     let file = latest.files.iter().find(|file| file.path == NOTES).unwrap();
     assert!(file.yours, "{latest:?}");
@@ -340,6 +341,7 @@ fn edits_typed_after_a_coauthor_delete_go_into_the_same_copy() {
         tab.typed(&rig.live, "Notes and mine, typed late\n");
         tab.typed(&rig.live, "Notes and mine, typed late, and more\n");
         rig.live.close(&tab.file_id, tab.session);
+        rig.live.mirror.chores.drained().await;
         let copy = removed_copy(&rig, NOTES);
         disk_matches(&rig, &copy, b"Notes and mine, typed late, and more\n").await;
         let mut entries = tokio::fs::read_dir(&rig.root).await.unwrap();
@@ -869,6 +871,7 @@ fn deleting_a_file_yourself_closes_its_tab_and_keeps_no_copy() {
         rig.live.close(&tab.file_id, tab.session);
         settle(&rig).await;
         tokio::time::sleep(Duration::from_millis(300)).await;
+        rig.live.mirror.chores.drained().await;
         let mut entries = tokio::fs::read_dir(&rig.root).await.unwrap();
         while let Some(entry) = entries.next_entry().await.unwrap() {
             let name = entry.file_name().to_string_lossy().into_owned();
@@ -1541,7 +1544,7 @@ fn the_service_never_gets_another_files_text_through_a_name_that_differs_by_case
         let made = renamed_docs(&rig).await;
         let capital = &made[2].1;
         disk_matches(&rig, capital, b"Capital").await;
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
         assert_eq!(port.disk_text("Notes.tex").as_deref(), Some("Capital"));
         assert_eq!(port.disk_text(NOTES).as_deref(), Some("Notes\n"));
         assert_eq!(
@@ -1637,13 +1640,14 @@ fn unsent_text_of_a_document_with_no_path_is_kept_beside_its_last_path() {
             path: "sections/gone.tex".to_owned(),
             kind: NodeKind::Doc,
         }]);
-        let port = super::AppOverleafPort::new(Arc::clone(&rig.live.mirror));
+        let port = super::MirrorPort::new(Arc::clone(&rig.live.mirror.shared));
         port.merged(
             &DocId("gone".to_owned()),
             MergeReview::Kept {
                 text: "Words not sent\n".to_owned(),
             },
         );
+        rig.live.mirror.chores.drained().await;
         let kept = guard(&rig.live.mirror.kept)
             .iter()
             .find(|file| file.path == "sections/gone.tex")

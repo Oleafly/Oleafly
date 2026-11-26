@@ -61,6 +61,14 @@ pub fn truncate_utf8(text: &str, limit: usize) -> &str {
     &text[..end]
 }
 
+pub fn utf8_prefix(bytes: &[u8]) -> String {
+    let end = match std::str::from_utf8(bytes) {
+        Err(error) if error.error_len().is_none() => error.valid_up_to(),
+        _ => bytes.len(),
+    };
+    String::from_utf8_lossy(&bytes[..end]).into_owned()
+}
+
 pub fn hex_lower(bytes: &[u8]) -> String {
     const DIGITS: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len() * 2);
@@ -109,6 +117,13 @@ mod tests {
         assert_eq!(truncate_utf8("héllo", 3), "hé");
         assert_eq!(truncate_utf8("ab", 10), "ab");
         assert_eq!(truncate_utf8("日本", 4), "日");
+    }
+
+    #[test]
+    fn keeps_a_whole_prefix_of_utf8() {
+        assert_eq!(utf8_prefix("aé".as_bytes()), "aé");
+        assert_eq!(utf8_prefix(&"aé".as_bytes()[..2]), "a");
+        assert_eq!(utf8_prefix(&[b'a', 0xff, b'b']), "a\u{fffd}b");
     }
 
     #[test]

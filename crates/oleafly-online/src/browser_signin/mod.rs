@@ -46,6 +46,16 @@ pub struct InstalledBrowser {
     pub profiles: PathBuf,
 }
 
+impl Packaging {
+    pub fn label(self) -> Option<&'static str> {
+        match self {
+            Self::Native => None,
+            Self::Snap => Some("Snap"),
+            Self::Flatpak => Some("Flatpak"),
+        }
+    }
+}
+
 impl InstalledBrowser {
     pub fn key(&self) -> String {
         let id = match self.id {
@@ -64,10 +74,9 @@ impl InstalledBrowser {
     }
 
     pub fn name(&self) -> String {
-        match self.packaging {
-            Packaging::Native => self.id.name().to_string(),
-            Packaging::Snap => format!("{} (Snap)", self.id.name()),
-            Packaging::Flatpak => format!("{} (Flatpak)", self.id.name()),
+        match self.packaging.label() {
+            None => self.id.name().to_string(),
+            Some(packaging) => format!("{} ({packaging})", self.id.name()),
         }
     }
 }

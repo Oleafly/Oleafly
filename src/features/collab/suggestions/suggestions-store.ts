@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
-import { useCommentsRail } from "@/components/collab/comments-rail";
-import { setSuggestionsEditorExtension } from "@/components/editor/cm/suggestions-slot";
+import { noteCommentsUnseen, useCommentsRail } from "@/components/collab/comments-rail";
+import { setSuggestionsEditorExtension } from "@/components/editor/cm/editor-slots";
 import { i18n } from "@/i18n";
 import { installReviewNotice, type ReviewAction } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
@@ -10,8 +10,10 @@ import { toast } from "@/lib/toast";
 import type {
   CollabCommentThread,
   CollabErrorCode,
+  CollabProjectMember,
   CollabSuggestion,
   CollabSuggestionCount,
+  CollabSuggestionList,
   CollabSuggestionsChanged,
 } from "@/lib/tauri";
 import {
@@ -28,17 +30,20 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
-  catchUp,
   commentMembers,
-  freshness,
-  openSession,
+  currentList,
+  keepUnchanged,
+  liveProject,
   reloadThreads,
   replyToThread,
+  revealSoon,
+  sameData,
   useComments,
+  without,
 } from "../comments/comments-store";
 import { collabErrorCode } from "../errors";
-import { useCollabLiveStore } from "../live/live-store";
-import { peerHue } from "../live/peer-hue";
+import { liveJoinedProjectId, liveReviewProjectId, liveSelfId, useCollabLiveStore } from "../live/live-store";
+import { type PeerHueBackend, peerHue } from "../live/peer-hue";
 import {
   editorSuggestions,
   revealSuggestion,
@@ -52,12 +57,14 @@ export interface FileSuggestions {
   phase: SuggestionsPhase;
   suggestions: CollabSuggestion[];
   error: CollabErrorCode | null;
+  canAccept: boolean;
 }
 
 export interface SuggestionsState {
   projectId: string | null;
   path: string | null;
   suggestions: CollabSuggestion[];
+  canAccept: boolean;
   phase: SuggestionsPhase;
   error: CollabErrorCode | null;
   counts: readonly CollabSuggestionCount[] | null;
@@ -68,8 +75,6 @@ export interface SuggestionsState {
 }
 
 const RELOAD_DELAY_MS = 150;
-const LIST_ATTEMPTS = 5;
-const RETRY_REVEAL_MS = 120;
 export const REVIEW_TOAST_KEY = "collab-unreviewed-suggestions";
 
 function blank(projectId: string | null): Omit<SuggestionsState, "focus"> {
@@ -77,6 +82,7 @@ function blank(projectId: string | null): Omit<SuggestionsState, "focus"> {
     projectId,
     path: null,
     suggestions: [],
+    canAccept: true,
     phase: "idle",
     error: null,
     counts: null,
@@ -104,7 +110,43 @@ export function pendingIn(state: Pick<SuggestionsState, "counts">, path: string)
 }
 
 export function suggestionSelf(): string | null {
-  return useCollabLiveStore.getState().share?.account_id ?? null;
+  return liveSelfId(useCollabLiveStore.getState());
+}
+
+export interface SuggestionGroup {
+  suggestion: CollabSuggestion;
+  replaced: CollabSuggestion | null;
+}
+
+function replaces(deletion: CollabSuggestion, insertion: CollabSuggestion): boolean {
+  return (
+    insertion.kind === "insert" &&
+    deletion.kind === "delete" &&
+    deletion.author !== "" &&
+    deletion.author === insertion.author &&
+    deletion.verified === insertion.verified &&
+    deletion.fileId === insertion.fileId &&
+    deletion.from === insertion.to
+  );
+}
+
+export function groupSuggestions(suggestions: readonly CollabSuggestion[]): SuggestionGroup[] {
+  const groups: SuggestionGroup[] = [];
+  let previous: CollabSuggestion | null = null;
+  for (const suggestion of suggestions) {
+    const last = groups.at(-1);
+    if (previous && last?.suggestion === previous && last.replaced === null && replaces(suggestion, previous)) {
+      last.replaced = suggestion;
+    } else {
+      groups.push({ suggestion, replaced: null });
+    }
+    previous = suggestion;
+  }
+  return groups;
+}
+
+export function groupIds(group: SuggestionGroup): string[] {
+  return group.replaced ? [group.suggestion.id, group.replaced.id] : [group.suggestion.id];
 }
 
 function authorName(accountId: string): string {
@@ -122,32 +164,31 @@ export function suggestionLabel(suggestion: CollabSuggestion): string {
     : i18n.t(($) => $.collab.suggestions.deletedBy, { name });
 }
 
-const spanCache = new WeakMap<CollabSuggestion[], readonly SuggestionSpan[]>();
+interface SpanNames {
+  members: readonly CollabProjectMember[];
+  self: string | null;
+  backend: PeerHueBackend;
+  spans: readonly SuggestionSpan[];
+}
+
+const spanCache = new WeakMap<CollabSuggestion[], SpanNames>();
 
 function spansOf(suggestions: CollabSuggestion[]): readonly SuggestionSpan[] {
-  const cached = spanCache.get(suggestions);
-  if (cached) return cached;
+  const { members, backend } = useCollabLiveStore.getState();
   const self = suggestionSelf();
+  const cached = spanCache.get(suggestions);
+  if (cached?.members === members && cached.self === self && cached.backend === backend) return cached.spans;
   const spans = suggestions.map((suggestion) => ({
     id: suggestion.id,
     kind: suggestion.kind,
     from: suggestion.from,
     to: suggestion.kind === "delete" ? suggestion.from : suggestion.to,
     text: suggestion.text,
-    hue: peerHue(suggestion.author, self),
+    hue: peerHue(suggestion.author, self, backend),
     label: suggestionLabel(suggestion),
   }));
-  spanCache.set(suggestions, spans);
+  spanCache.set(suggestions, { members, self, backend, spans });
   return spans;
-}
-
-function tabOpen(): boolean {
-  const settings = useSettingsStore.getState();
-  return settings.railTab === "comments" && settings.showTree;
-}
-
-function noteUnseen(): void {
-  if (!tabOpen() && !useCommentsRail.getState().unread) useCommentsRail.setState({ unread: true });
 }
 
 function revealInEditor(id: string): boolean {
@@ -159,10 +200,7 @@ function revealInEditor(id: string): boolean {
 
 export function selectSuggestion(id: string | null, options: { reveal?: boolean; focus?: boolean } = {}): void {
   useSuggestions.setState((state) => ({ selectedId: id, focus: options.focus ? state.focus + 1 : state.focus }));
-  if (!id || !options.reveal) return;
-  queueMicrotask(() => {
-    if (!revealInEditor(id)) setTimeout(() => revealInEditor(id), RETRY_REVEAL_MS);
-  });
+  if (id && options.reveal) revealSoon(() => revealInEditor(id));
 }
 
 export function hoverSuggestion(id: string | null): void {
@@ -197,28 +235,6 @@ function applyReveal(path: string, suggestions: readonly CollabSuggestion[]): vo
   }
 }
 
-function sameData(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function keepUnchanged(previous: CollabSuggestion[], next: CollabSuggestion[]): CollabSuggestion[] {
-  const known = new Map(previous.map((suggestion) => [suggestion.id, suggestion]));
-  const kept = next.map((suggestion) => {
-    const old = known.get(suggestion.id);
-    return old && sameData(old, suggestion) ? old : suggestion;
-  });
-  const same = kept.length === previous.length && kept.every((suggestion, index) => suggestion === previous[index]);
-  return same ? previous : kept;
-}
-
-function without(
-  elsewhere: Readonly<Record<string, FileSuggestions>>,
-  path: string,
-): Readonly<Record<string, FileSuggestions>> {
-  if (!Object.hasOwn(elsewhere, path)) return elsewhere;
-  return Object.fromEntries(Object.entries(elsewhere).filter(([key]) => key !== path));
-}
-
 let countToken = 0;
 
 async function refreshCounts(): Promise<void> {
@@ -247,7 +263,14 @@ function setElsewhere(path: string, change: (entry: FileSuggestions) => FileSugg
     const entry = state.elsewhere[path];
     if (!entry) return state;
     const next = change(entry);
-    if (next.phase === entry.phase && next.error === entry.error && next.suggestions === entry.suggestions) return state;
+    if (
+      next.phase === entry.phase &&
+      next.error === entry.error &&
+      next.suggestions === entry.suggestions &&
+      next.canAccept === entry.canAccept
+    ) {
+      return state;
+    }
     return { elsewhere: { ...state.elsewhere, [path]: next } };
   });
 }
@@ -265,13 +288,16 @@ async function loadElsewhere(path: string): Promise<void> {
       phase: "ready",
       error: null,
       suggestions: keepUnchanged(entry.suggestions, byPosition(listed.suggestions)),
+      canAccept: listed.canAccept !== false,
     }));
   } catch (error) {
     if (stale()) return;
     const code = collabErrorCode(error);
     if (code !== "not_found") void logError("collab suggestions load", error);
     setElsewhere(path, (entry) =>
-      code === "not_found" ? { phase: "ready", error: null, suggestions: [] } : { ...entry, phase: "failed", error: code },
+      code === "not_found"
+        ? { ...entry, phase: "ready", error: null, suggestions: [] }
+        : { ...entry, phase: "failed", error: code },
     );
   }
 }
@@ -282,7 +308,10 @@ export function expandSuggestionsFile(path: string): void {
     const entry = state.elsewhere[path];
     if (entry && entry.phase !== "failed") return state;
     return {
-      elsewhere: { ...state.elsewhere, [path]: { phase: "loading", suggestions: entry?.suggestions ?? [], error: null } },
+      elsewhere: {
+        ...state.elsewhere,
+        [path]: { phase: "loading", suggestions: entry?.suggestions ?? [], error: null, canAccept: entry?.canAccept ?? true },
+      },
     };
   });
   void loadElsewhere(path);
@@ -296,18 +325,6 @@ export function collapseSuggestionsFile(path: string): void {
 }
 
 let loadToken = 0;
-
-async function currentList(projectId: string, path: string, token: number): Promise<CollabSuggestion[] | null> {
-  for (let attempt = 1; ; attempt += 1) {
-    const listed = await collabSuggestionList(projectId, path);
-    if (token !== loadToken) return null;
-    const session = openSession(path);
-    const verdict = freshness(session, listed.rev);
-    if (!session || verdict === "current" || attempt >= LIST_ATTEMPTS) return listed.suggestions;
-    await catchUp(path, session, verdict);
-    if (token !== loadToken) return null;
-  }
-}
 
 async function load(path: string | null): Promise<CollabSuggestion[] | null> {
   const projectId = useSuggestions.getState().projectId;
@@ -324,6 +341,7 @@ async function load(path: string | null): Promise<CollabSuggestion[] | null> {
       return {
         path,
         suggestions: known?.phase === "ready" ? known.suggestions : [],
+        canAccept: known?.canAccept ?? true,
         phase: "loading",
         error: null,
         selectedId: null,
@@ -332,9 +350,9 @@ async function load(path: string | null): Promise<CollabSuggestion[] | null> {
       };
     });
   }
-  let listed: CollabSuggestion[] | null;
+  let listed: CollabSuggestionList | null;
   try {
-    listed = await currentList(projectId, path, token);
+    listed = await currentList(path, () => collabSuggestionList(projectId, path), () => token !== loadToken);
   } catch (error) {
     if (token !== loadToken) return null;
     const code = collabErrorCode(error);
@@ -347,9 +365,10 @@ async function load(path: string | null): Promise<CollabSuggestion[] | null> {
     return null;
   }
   if (token !== loadToken || listed === null) return null;
-  const suggestions = keepUnchanged(useSuggestions.getState().suggestions, byPosition(listed));
+  const suggestions = keepUnchanged(useSuggestions.getState().suggestions, byPosition(listed.suggestions));
   useSuggestions.setState((state) => ({
     suggestions,
+    canAccept: listed.canAccept !== false,
     phase: "ready",
     error: null,
     selectedId: suggestions.some((suggestion) => suggestion.id === state.selectedId) ? state.selectedId : null,
@@ -369,9 +388,7 @@ export function reloadSuggestions(): void {
 }
 
 function requireProject(): string {
-  const projectId = useSuggestions.getState().projectId;
-  if (!projectId) throw new Error("This project is not shared.");
-  return projectId;
+  return liveProject(useSuggestions.getState().projectId);
 }
 
 function dropLocally(remove: (suggestion: CollabSuggestion) => boolean): void {
@@ -502,9 +519,19 @@ const source: EditorSuggestionsSource = {
   subscribe: (listener) => {
     const stopStore = useSuggestions.subscribe(() => listener());
     const stopDocument = subscribeEditorDocument(() => listener());
+    const stopNames = useCollabLiveStore.subscribe((state, previous) => {
+      if (
+        state.members !== previous.members ||
+        state.backend !== previous.backend ||
+        liveSelfId(state) !== liveSelfId(previous)
+      ) {
+        listener();
+      }
+    });
     return () => {
       stopStore();
       stopDocument();
+      stopNames();
     };
   },
   open: openSuggestionFromEditor,
@@ -530,14 +557,10 @@ export function startSuggestions(): () => void {
     if (useCommentsRail.getState().suggestions !== pending) useCommentsRail.setState({ suggestions: pending });
   };
 
-  const live = () => {
-    const state = useCollabLiveStore.getState();
-    return state.share !== null && state.projectId !== null && state.role !== null;
-  };
+  const live = () => liveJoinedProjectId(useCollabLiveStore.getState()) !== null;
 
   const openProject = () => {
-    const state = useCollabLiveStore.getState();
-    const projectId = state.share && state.projectId ? state.projectId : null;
+    const projectId = liveReviewProjectId(useCollabLiveStore.getState());
     if (projectId === useSuggestions.getState().projectId) return;
     cancelTimers();
     loadToken += 1;
@@ -563,7 +586,7 @@ export function startSuggestions(): () => void {
         void load(useSuggestions.getState().path);
       }, RELOAD_DELAY_MS);
     }
-    if (!payload.local) noteUnseen();
+    if (!payload.local) noteCommentsUnseen();
     for (const path of payload.paths) touched.add(path);
     if (elsewhereTimer !== null) clearTimeout(elsewhereTimer);
     elsewhereTimer = setTimeout(() => {
@@ -578,12 +601,13 @@ export function startSuggestions(): () => void {
   };
 
   const stopLive = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.projectId !== previous.projectId || state.share !== previous.share) {
+    if (liveReviewProjectId(state) !== liveReviewProjectId(previous)) {
       openProject();
       return;
     }
     const cameOnline = state.status?.state === "online" && previous.status?.state !== "online";
-    if ((state.role !== previous.role || cameOnline) && live()) {
+    const joined = liveJoinedProjectId(state) !== null && liveJoinedProjectId(previous) === null;
+    if ((joined || state.role !== previous.role || cameOnline) && live()) {
       void load(currentPath());
       void refreshCounts();
     }

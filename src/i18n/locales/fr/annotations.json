@@ -26,6 +26,10 @@
       "region": "Commentez cette zone…"
     },
     "placeHere": "Placer ici",
+    "coauthors": "Commenter pour les coauteurs",
+    "noSource": "Ce passage est introuvable dans les fichiers source.",
+    "commentFailed": "Impossible d'ouvrir le fichier de ce commentaire.",
+    "commentsClosed": "Les commentaires ne sont pas disponibles pour ce projet pour le moment.",
     "cancel": "Annuler",
     "save": "Ajouter",
     "saving": "Enregistrement",

@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Annotate the PDF preview and send your annotations to the assistant (experimental, Settings > Experimentation > PDF review). Select text and pick Comment, Delete, Replace or Insert, or turn on Annotate a region and drag a box around an equation or figure. Each annotation is drawn on the page with a number and pinned to the source, so it's placed again after a recompile, and one that can't be found is marked Needs placing instead of disappearing. Send to assistant adds the selected annotations as chips, for the built-in assistant or a CLI agent, with their file and lines checked again when the message goes out. The Annotations panel sorts them into Needs placing, Drafts, With the assistant and Resolved. Resolved starts folded, and Oleafly remembers for each project whether you opened it. Each annotation shows its change: replaced and deleted text struck through in red, and new text in green. Drafts are selected for sending, and clicking an annotation's number adds or removes it. Annotations are saved in the project's state folder and stay on this computer.
 - Packagers and administrators can run Oleafly with their own TexLab and Tinymist. Set `OLEAFLY_TEXLAB` or `OLEAFLY_TINYMIST` to the program's full path and Oleafly starts that program instead of the TexLab it downloads or the Tinymist it ships with. The version comes from the program itself. A Tinymist built for one Typst minor version doesn't start for a project on another one, and the editor says why. A wrong setting shows its reason in the editor and the app log, and Oleafly doesn't download a build in its place. The details are in docs/language-server-toolchain.md.
 - Save the instructions you add to AI edits again and again, such as "Keep the original formatting" or "Don't change quoted text", and pick them when you edit. Type one in the inline AI box and choose Save instruction, or add and edit them in Settings > AI > Instructions. They show as chips in the inline AI box and under Ask AI on a selection, with the ones you use most first. Pick several and they all go with your request, whether you type something, pick a preset or send them on their own. A pick stays on for your next edits until you turn it off (#487).
+- Live editing with your online LaTeX service now covers review. Comments and tracked changes from the web editor show in the Comments panel and in the editor, in Code and Visual mode. You can reply, edit and delete your own messages, resolve, reopen and delete threads, and comment on a selection. Accept or reject one change, all the changes in a file, or every change in the project. Turn track changes on for yourself or for everyone. Reviewers can only suggest. A self-hosted server without the review module still shows tracked changes and says that comments aren't available there.
+- The project's chat works in the Chat panel while you're live, with math and links drawn the way the web editor draws them. You can edit and delete your own messages. People shows members, pending invites and people who left, by name, wherever a name appears.
+- History lists the project's versions on the server with their authors. Compare a version with the current text, add and remove labels, restore a file, or download a version as a ZIP.
+- The compiler, main document, main bibliography, spell check language and TeX Live image follow the project's settings on the server, in both directions. So do words you add to the dictionary.
+- Open a project from your account live without importing it first, put a local project on the server and keep editing it live, and accept invitations and share links in the app. Two accounts on the same server can each be signed in, and each project goes live as the account it belongs to.
+- Visual mode and Notes work while a project is live, and so does the Markdown toolbar's comment button.
+- `oleafly remote live` keeps a folder live from the command line: coauthors' edits land in the files, your saves reach the server, and each change prints as an event. Press Ctrl+C to stop. Edits that weren't sent yet are kept and sent once on the next start. It refuses while the app has the same project live, and the app refuses while the command line has it.
+- The assistant can open a project from the server live, after you approve it, and its edits merge with what your coauthors type in the meantime.
 
 ### Changed
 
@@ -65,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The PDF toolbar keeps the annotation tools together between two dividers, and the Annotations button has a pencil icon.
 - The editor's outline popover has the frosted glass background of Advanced filters in the library.
 - Notes suggestions mark removed and added text with the same red and green as the git diff view.
+- Signing in to your online LaTeX service starts from tiles: one for Oleafly and one for each browser it finds, with the browser's own logo. Every one starts signed out, so any account works. Importing cookies instead lists your browser profiles under the names you gave them, including the ones with no cookies yet, and tells you when a profile is signed in to the account you already use. Switch account lists your sign-ins on every server, so you can add one, switch to it or remove it.
 
 ### Fixed
 
@@ -115,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On macOS, Left or Right at the start or end of a text field could still add an invisible character after the fix for #445. The webview sometimes types the arrow key's older control code instead of the Apple code point, and Oleafly now drops both.
 - In live editing, when a coauthor deletes a file you have unsent edits in, Oleafly keeps your text in a copy next to it and the removal notice names the copy. Before, the notice sometimes only said the file was removed. If the file left your disk first, your text was dropped, and a copy saved after the notice was never mentioned. What you type in the file's tab before it closes now goes into the same copy too. It used to be thrown away.
 - In live editing, deleting a file yourself while it's open closes its tab once the deletion goes through. Before, the tab stayed attached to the deleted file, and text you hadn't sent could turn up as a copy that nothing mentioned.
+- Importing from your online LaTeX service offered only Try again when the saved server couldn't be reached. It now lets you switch to another server.
+- Approval cards for assistant tools that don't change a file, such as a literature search, now say what the tool will do.
+- `oleafly build --watch` rebuilds when a folder is renamed or moved into the project.
+- A line of text between two list items in a comment or chat message stays where you wrote it. It used to move below the list.
+- Copying your sign-in from a browser asks you to confirm once, in the system dialog. It used to ask twice.
+- When a file changed both in your folder and online while live editing was off, the next start put your version over your coauthor's. Both changes are kept now, and where they touch the same words Oleafly asks which to keep.
+- Edits you make while live editing is off are sent at the next start. Before, some stayed in the folder until you changed the file again, a new text file was never created online, and edits made before a first start that couldn't connect could be overwritten later.
+- One file or folder that can't be read no longer keeps the rest of a live project from being sent.
+- When your sign-in to an online LaTeX service ends, Oleafly asks you to sign in again. Before, it could say you no longer had access to the project.
+- Pausing live editing while a request was still running could fail and say another window had the project live.
 
 ## [0.4.13] - 2026-11-20
 

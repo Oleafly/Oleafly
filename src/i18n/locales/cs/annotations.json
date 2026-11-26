@@ -26,6 +26,10 @@
       "region": "Komentář k této oblasti…"
     },
     "placeHere": "Umístit sem",
+    "coauthors": "Komentář pro spoluautory",
+    "noSource": "Tento úryvek se ve zdrojových souborech nenašel.",
+    "commentFailed": "Soubor pro tento komentář se nepodařilo otevřít.",
+    "commentsClosed": "Komentáře teď pro tento projekt nejsou k dispozici.",
     "cancel": "Zrušit",
     "save": "Přidat",
     "saving": "Ukládání",

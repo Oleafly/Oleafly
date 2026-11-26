@@ -138,7 +138,7 @@ fn imported_project(world: &Remote) -> (String, PathBuf) {
         serde_json::json!({ "service": "overleaf", "server": world.server, "projectId": PROJECT }),
     );
     crate::project::write_meta(&project_id, &meta).unwrap();
-    super::session::save_git_token(&world.server, TOKEN).unwrap();
+    super::session::save_git_token(&world.server, None, TOKEN).unwrap();
     (project_id, root)
 }
 
@@ -300,7 +300,7 @@ fn the_check_pushes_local_edits_and_hands_remote_changes_to_the_merge() {
         serde_json::json!({ "service": "overleaf", "server": world.server, "projectId": PROJECT }),
     );
     crate::project::write_meta(&project_id, &meta).unwrap();
-    super::session::save_git_token(&world.server, TOKEN).unwrap();
+    super::session::save_git_token(&world.server, None, TOKEN).unwrap();
     let repo = sync::repo_dir(&project_id).unwrap();
     assert!(repo.starts_with(data.path()));
     let remote = sync::fetch(&repo, &world.url(), TOKEN).unwrap();

@@ -16,18 +16,18 @@ use super::scope::{
 };
 use super::{DiffArgs, LinkArgs, RemoteDeps, SideArg, SyncArgs};
 use crate::auth::online::online_error;
-use crate::auth::shared::{from_online, Env, Report};
+use crate::auth::shared::{from_online, one_line, Env, Report};
 use crate::contract::{CliError, ErrorKind, Exit};
 use crate::native::{executable_name, resolve_executable, CandidateResolution};
 
 pub(crate) const MAX_PATCH_BYTES: usize = 8 << 20;
 const LISTED_FILES: usize = 20;
 
-fn listed(files: &[String]) -> String {
-    let shown: Vec<&str> = files
+pub(crate) fn listed(files: &[String]) -> String {
+    let shown: Vec<String> = files
         .iter()
         .take(LISTED_FILES)
-        .map(String::as_str)
+        .map(|file| one_line(file))
         .collect();
     let more = files.len().saturating_sub(shown.len());
     if more > 0 {
@@ -51,6 +51,10 @@ fn pending_uploads(
         worktree,
     )
     .map_err(|error| online_error(error, &prepared.server))
+}
+
+pub(crate) fn git_linked(paths: &online_sync::SyncPaths) -> bool {
+    paths.link.exists() || paths.repo.exists()
 }
 
 pub(crate) fn files(count: usize) -> String {
@@ -216,6 +220,7 @@ pub(crate) fn link(
 ) -> Result<Report, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
     scope.ensure_no_pending_restore()?;
+    scope.ensure_not_live(&env.data_root)?;
     let origin = scope.imported_from();
     let target = match &args.target {
         Some(input) => parse_remote_ref(input, args.server.as_deref(), &env.store)?,
@@ -248,8 +253,9 @@ pub(crate) fn link(
     let url = (deps.url_for)(&target.server, &target.project_id)
         .map_err(|error| online_error(error, &target.server))?;
     let paths = scope.sync_paths(&env.data_root)?;
-    let existed = paths.dir.exists();
+    let existed = git_linked(&paths);
     let _claim = claim(&paths).map_err(|error| online_error(error, &target.server))?;
+    scope.ensure_not_live(&env.data_root)?;
     let mode = if args.dry_run {
         Mode::Plan
     } else {
@@ -376,8 +382,10 @@ pub(crate) fn sync(
     args: SyncArgs,
 ) -> Result<Report, CliError> {
     let resolutions = parse_resolutions(&args.resolve)?;
+    resolve_scope(folder, &env.data_root)?.ensure_not_live(&env.data_root)?;
     let prepared = prepare_linked(env, deps, folder)?;
     let _claim = claim(&prepared.paths).map_err(|error| online_error(error, &prepared.server))?;
+    prepared.scope.ensure_not_live(&env.data_root)?;
     let uploads = if args.dry_run {
         let worktree = prepared.scope.worktree_lock(&env.data_root);
         pending_uploads(deps, &prepared, worktree.as_ref(), false)?
@@ -639,6 +647,7 @@ pub(crate) mod tests {
             oleafly_online::session::save_git_token(
                 &world.env.store,
                 &world.server(),
+                None,
                 "tok-unused-1",
             )
             .unwrap();

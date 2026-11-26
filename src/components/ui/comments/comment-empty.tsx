@@ -1,4 +1,4 @@
-import { MessageSquare, WifiOff } from "lucide-react";
+import { MessageSquareQuote, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/empty";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -43,7 +43,7 @@ export function CommentsEmpty({
       className={cn("px-4 py-6", className)}
       icon={
         <span className="flex size-9 items-center justify-center rounded-lg border bg-muted/60 text-muted-foreground">
-          <MessageSquare aria-hidden className="size-4" />
+          <MessageSquareQuote aria-hidden className="size-4" />
         </span>
       }
       title={title}

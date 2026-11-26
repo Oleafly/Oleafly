@@ -151,7 +151,7 @@ export const ThreadCard = memo(function ThreadCard({
 
 function SuggestionText({ suggestion, self }: Readonly<{ suggestion: CollabSuggestion; self: string | null }>) {
   const { t } = useTranslation(["web"]);
-  const hue = peerHue(suggestion.author || "unknown", self);
+  const hue = peerHue(suggestion.author || "unknown", self, "server");
   const shown = suggestion.text.length > 280 ? `${suggestion.text.slice(0, 280)}…` : suggestion.text;
   const label = shown.trim() === "" ? t(($) => $.web.suggestions.lineBreak) : shown;
   return (

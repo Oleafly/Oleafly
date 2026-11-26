@@ -1875,33 +1875,18 @@
       "disconnectFailed": "Die Verbindung zu alphaXiv konnte nicht getrennt werden. Versuchen Sie es erneut."
     },
     "cookies": {
-      "confirmTitle": "Cookie-Import bestätigen",
-      "detecting": "Es wird nach installierten Browserprofilen gesucht...",
-      "dialogDescription": "Wählen Sie ein installiertes Browserprofil. Oleafly liest es erst, nachdem Sie den Import geprüft und bestätigt haben. Cookies von Chromium werden lokal über den macOS-Schlüsselbund entsperrt. Oleafly sendet keine Cookie-Werte an einen Oleafly-Dienst.",
-      "dialogTitle": "Browser-Cookies importieren",
-      "empty": "Es wurden keine unterstützten Browserprofile gefunden.",
-      "errors": {
-        "chooseProfile": "Wählen Sie ein verfügbares Browserprofil."
-      },
-      "profileGroupLabel": "Browserprofile",
-      "profileLegend": "Browserprofil",
-      "review": "Import prüfen",
-      "status": {
-        "available": "Verfügbar",
-        "comingSoon": "In Kürze",
-        "noCookieStore": "Kein Cookie-Speicher",
-        "notInstalled": "Nicht installiert"
-      },
-      "tryAgain": "Erneut versuchen",
-      "label": "Anmeldung aus einem Browser kopieren",
-      "useBrowserSignIn": "Die Anmeldung aus Ihrem Browser kopieren",
-      "signInDescription": "Übernehmen Sie Ihre Anmeldung für {{server}} aus einem Browser auf diesem Computer, damit Sie sich nicht erneut anmelden müssen.",
-      "site": "Website: {{domain}}",
-      "confirmCopy": "Oleafly liest die Cookies für {{domain}} aus dem Profil {{profile}} in {{browser}}. Sie bleiben in Oleafly und gehen nur an {{domain}}. Sie bestätigen noch einmal in einem Systemdialog.",
-      "copyAction": "Anmeldung kopieren",
-      "copying": "Wird kopiert...",
-      "notSignedIn_one": "{{count}} Cookie aus {{browser}} kopiert, aber es hat Sie nicht angemeldet. Melden Sie sich stattdessen an.",
-      "notSignedIn_other": "{{count}} Cookies aus {{browser}} kopiert, aber sie haben Sie nicht angemeldet. Melden Sie sich stattdessen an."
+      "dialogDescription": "Oleafly kopiert nur die Cookies für {{server}}, meldet sich damit an und löscht die Kopien danach. Ihre Passwörter bleiben im Browser.",
+      "dialogTitle": "Cookies aus Ihrem Browser importieren",
+      "label": "Cookies aus Ihrem Browser importieren",
+      "useBrowserSignIn": "Profil auswählen",
+      "signInDescription": "Verwendet das Konto auf {{server}}, mit dem ein Browserprofil auf diesem Computer bereits angemeldet ist.",
+      "copyAction": "Importieren",
+      "copying": "Wird importiert...",
+      "from": "Von",
+      "noCookies": "Noch keine Cookies",
+      "sameAccount": "{{profile}} ist als {{account}} angemeldet, und dieses Konto verwendet Oleafly bereits. Wählen Sie ein anderes Profil, oder melden Sie sich in diesem Browser zuerst mit Ihrem anderen Konto an.",
+      "orExisting": "oder eine vorhandene Anmeldung verwenden",
+      "noSavedSignIn": "{{profile}} hat keine gespeicherte Anmeldung für {{server}}, daher haben die kopierten Cookies Sie nicht angemeldet. Wenn Sie dort angemeldet sind, behält der Browser die Anmeldung vielleicht nur bis zum Schließen. Verwenden Sie stattdessen die Kachel {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>zotero.org</siteLink> an, öffnen Sie Ihre <keyLink>Seite für API-Schlüssel</keyLink>, um einen Schlüssel zu erstellen, und kopieren Sie Ihre numerische Benutzer-ID von derselben Seite.",
@@ -1961,7 +1946,12 @@
       "signedIn": "Angemeldet auf {{server}}",
       "signOut": "Abmelden",
       "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden.",
+      "addAccount": "Weiteres Konto hinzufügen",
+      "addAccountHint": "Wählen Sie, wo Sie sich anmelden. Alle beginnen ohne bestehende Anmeldung, daher funktioniert jedes Konto.",
+      "accountPick": "Konto für Importe",
+      "accountPickDescription": "Neue Importe und Vorlagen verwenden dieses Konto. Projekte, die Sie bereits haben, behalten das Konto, aus dem sie stammen.",
       "gitTitle": "Git-Token für die Synchronisierung",
+      "gitTitleFor": "Git-Token für {{email}}",
       "gitSaved": "Ein Git-Token ist gespeichert. Verknüpfte Projekte bleiben mit Overleaf synchron.",
       "gitMissing": "Noch kein Git-Token. Erstellen Sie eines in Ihren Overleaf-Kontoeinstellungen unter Git-Integration, um Projekte zu synchronisieren.",
       "gitOpenSettings": "Overleaf-Kontoeinstellungen öffnen",
@@ -1970,14 +1960,9 @@
       "gitSave": "Speichern",
       "gitRemove": "Entfernen",
       "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben.",
-      "browserLabel": "Mit Ihrem Browser anmelden",
-      "browserDescription": "Für die Anmeldung mit Google, über Ihre Hochschule oder per Passkey. Oleafly öffnet {{server}} in einem neuen Browserfenster und schließt es, sobald Sie angemeldet sind.",
-      "browserAction": "Anmelden",
-      "browserPick": "Browser für die Anmeldung",
       "browserWaiting": "Schließen Sie die Anmeldung bei {{server}} in {{browser}} ab. Schließen Sie das Fenster vorher, wird abgebrochen.",
-      "browserHint": "Verwenden Sie dies für die Anmeldung mit Google, über Ihre Hochschule oder per Passkey.",
-      "windowLabel": "Bei {{server}} anmelden",
-      "windowDescription": "Oleafly öffnet ein Anmeldefenster und schließt es, sobald Sie angemeldet sind. Um sich mit Google, über Ihre Hochschule oder per Passkey anzumelden, installieren Sie Chrome, Edge, Brave, Chromium oder Firefox und melden Sie sich dann hier damit an.",
+      "windowLabel": "Direkt in Oleafly anmelden",
+      "windowDescription": "Das Fenster schließt sich von selbst, sobald Sie angemeldet sind. Wenn Ihr Passkey dort nicht funktioniert, verwenden Sie Ihr Passwort oder eine Bestätigung auf Ihrem Telefon.",
       "windowAction": "Anmelden",
       "windowWaiting": "Schließen Sie die Anmeldung bei {{server}} im geöffneten Fenster ab.",
       "unsent": {
@@ -1995,7 +1980,15 @@
           "always": "Auch bei Overleaf löschen",
           "never": "Bei Overleaf behalten"
         }
-      }
+      },
+      "sameAccount": "Sie sind bereits als {{account}} angemeldet. Melden Sie sich mit einem anderen Konto an, um es hinzuzufügen.",
+      "windowTitle": "Bei {{server}} anmelden",
+      "addAccountKept": "Ihr aktuelles Konto bleibt angemeldet.",
+      "noBrowser": "Um sich mit Google, über Ihre Hochschule oder per Passkey anzumelden, installieren Sie Chrome, Edge, Brave, Chromium oder Firefox und wählen Sie ihn dann hier aus.",
+      "tileHere": "In dieser App",
+      "tileWindow": "Neues Fenster",
+      "tileWaiting": "Wartet auf Sie",
+      "signInNote": "Verwenden Sie einen Browser für die Anmeldung mit Google, Ihrer Hochschule oder einem Passkey. Wenn Ihr Passkey in Oleafly nicht funktioniert, verwenden Sie dort Ihr Passwort oder eine Bestätigung auf Ihrem Telefon. Das Fenster schließt sich von selbst, sobald Sie angemeldet sind."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2127,6 +2120,20 @@
           "confirm": "Damit wird der Cua-Installer von cua.ai heruntergeladen und in Ihrem Terminal ausgeführt. Fortfahren?"
         }
       }
+    },
+    "signIns": {
+      "title": "Anmeldungen verwalten",
+      "description": "Die Konten, mit denen Oleafly auf diesem Computer angemeldet ist. Wenn Sie hier eines entfernen, bleiben Sie im Browser angemeldet.",
+      "loading": "Ihre Anmeldungen werden geladen...",
+      "empty": "Sie sind mit keinem Konto angemeldet.",
+      "inUse": "In Verwendung",
+      "switch": "Wechseln",
+      "switchTo": "Zu {{account}} wechseln",
+      "removeAccount": "{{account}} entfernen",
+      "removeAll": "Alle entfernen",
+      "importMore": "Weitere importieren",
+      "loadFailed": "Oleafly konnte Ihre Anmeldungen nicht laden.",
+      "changeFailed": "Oleafly konnte diese Anmeldung nicht ändern. Versuchen Sie es erneut."
     }
   },
   "language": {
@@ -2333,6 +2340,7 @@
       "confirm": "Wörter leeren",
       "descriptionFallback": "Damit werden alle Begriffe aus diesem Wörterbuch entfernt. Sie werden sofort wieder geprüft.",
       "descriptionGlobal": "Damit werden alle Begriffe aus dem globalen Wörterbuch entfernt. Sie werden sofort wieder geprüft.",
+      "descriptionOverleaf": "Sie werden auch aus Ihrem Overleaf-Konto entfernt.",
       "descriptionProject": "Damit werden alle Begriffe aus {{project}} entfernt. Sie werden sofort wieder geprüft.",
       "descriptionSuppressed": "Damit werden alle Begriffe aus den ausgeblendeten Funden in {{project}} entfernt. Sie werden sofort wieder geprüft.",
       "suppressedConfirm": "Wieder anzeigen",
@@ -2350,6 +2358,7 @@
     },
     "global": {
       "emptyDescription": "Wörter, die Sie hier hinzufügen, überspringt die Korrekturprüfung in jedem Projekt.",
+      "overleafSynced": "Wird mit den gelernten Wörtern in Ihrem Overleaf-Konto abgeglichen, solange ein Projekt bei Overleaf live ist.",
       "scope": "Gilt für jedes Projekt"
     },
     "intro": "Fügen Sie Wörter zu Ihrem persönlichen Wörterbuch für die Rechtschreibprüfung hinzu. Diese Wörter liegen in den lokalen Einstellungen und werden projektübergreifend ignoriert. Der Abgleich erfolgt Unicode-normalisiert und ohne Rücksicht auf Groß- und Kleinschreibung.",

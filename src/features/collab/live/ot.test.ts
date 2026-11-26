@@ -6,6 +6,7 @@ import {
   editsFromOperation,
   operationFromEdits,
   replacementOperation,
+  splitsSurrogatePair,
 } from "./ot";
 
 function op(build: (operation: TextOperation) => void): TextOperation {
@@ -231,6 +232,49 @@ describe("diffOperation", () => {
       const before = text(random(30));
       const after = text(random(30));
       expect(diffOperation(before, after).apply(before)).toBe(after);
+    }
+  });
+
+  it("keeps the text between two changes on one line, so a reformatted paragraph keeps its middle", () => {
+    const before = "Alpha *beta* gamma, delta and epsilon.\n";
+    const after = "Alpha _beta_ gamma, delta and epsilon!\n";
+    const operation = diffOperation(before, after);
+    expect(operation.apply(before)).toBe(after);
+    const deleted: number[] = [];
+    operation.forEachStep((step) => {
+      if (typeof step === "number" && step < 0) deleted.push(-step);
+    });
+    expect(deleted).toEqual([1, 1, 1]);
+    expect(editsFromOperation(operation)).toEqual([
+      { from: 6, to: 7, insert: "_" },
+      { from: 11, to: 12, insert: "_" },
+      { from: 37, to: 38, insert: "!" },
+    ]);
+  });
+
+  it("finds one typed character inside a long line without touching the rest", () => {
+    const words = Array.from({ length: 300 }, (_, index) => `word${index}`).join(" ");
+    const before = `${words}\n`;
+    const after = before.replace("word150 ", "word150 x");
+    expect(diffOperation(before, after).toWire()).toEqual([before.indexOf("word151"), "x", before.length - before.indexOf("word151")]);
+  });
+
+  it("never splits a character when words change around emoji and accents", () => {
+    const cases: [string, string][] = [
+      ["a😀b c", "a😃b c"],
+      ["café 😀 ok", "cafe\u0301 😀 ok!"],
+      ["☕ to go", "tea for go"],
+      ["x\u{1F468}\u200D\u{1F469} y", "x\u{1F468}\u200D\u{1F466} y"],
+    ];
+    for (const [before, after] of cases) {
+      const operation = diffOperation(before, after);
+      expect(operation.apply(before), JSON.stringify([before, after])).toBe(after);
+      let at = 0;
+      operation.forEachStep((step) => {
+        if (typeof step === "string") return;
+        at += Math.abs(step);
+        expect(splitsSurrogatePair(before, at), JSON.stringify([before, after, at])).toBe(false);
+      });
     }
   });
 

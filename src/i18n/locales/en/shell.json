@@ -516,7 +516,8 @@
       "open": "Follow the open file",
       "main": "Always the main document",
       "change": "Change main document…"
-    }
+    },
+    "filling": "The project is still downloading from Overleaf. You can compile once every file is here."
   },
   "datePicker": {
     "placeholder": "Pick a date"
@@ -1704,8 +1705,9 @@
     "resume": "Resume live editing",
     "reconnectNow": "Reconnect now",
     "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
+    "share": "Share on Overleaf",
     "signIn": "Sign in…",
+    "signInAs": "Sign in as {{email}}",
     "reconnectingIn": "Trying again in {{seconds}} s.",
     "notConfirmed": "Not confirmed by Overleaf yet.",
     "copyDetails": "Copy connection details",

@@ -26,6 +26,10 @@
       "region": "Commenta quest'area…"
     },
     "placeHere": "Posiziona qui",
+    "coauthors": "Commenta per i coautori",
+    "noSource": "Questo passaggio non è stato trovato nei file sorgente.",
+    "commentFailed": "Impossibile aprire il file di questo commento.",
+    "commentsClosed": "I commenti non sono disponibili per questo progetto al momento.",
     "cancel": "Annulla",
     "save": "Aggiungi",
     "saving": "Salvataggio",

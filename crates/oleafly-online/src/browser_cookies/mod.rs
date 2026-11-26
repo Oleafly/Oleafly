@@ -1,9 +1,9 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt,
     num::NonZeroU32,
     path::{Path, PathBuf},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 
 use aes::Aes128;
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::session::{cookie_applies, cookie_header};
+use oleafly_core::portable::is_ignorable_code_point;
 
 const CHROMIUM_EPOCH_OFFSET_SECONDS: i64 = 11_644_473_600;
 const CHROMIUM_KEY_ITERATIONS: u32 = 1003;
@@ -24,6 +25,9 @@ const MAX_COOKIE_DOMAIN_BYTES: usize = 254;
 const MAX_COOKIE_PATH_BYTES: usize = 4_096;
 const MAX_ENCRYPTED_VALUE_BYTES: usize = 1_048_576;
 const MAX_SELECTED_COOKIE_BYTES: i64 = 64 * 1_024 * 1_024;
+const MAX_FIREFOX_INI_BYTES: u64 = 64 * 1_024;
+const MAX_LOCAL_STATE_BYTES: u64 = 8 * 1_024 * 1_024;
+const MAX_PROFILE_NAME_CHARS: usize = 80;
 const MIN_SUPPORTED_CHROMIUM_DATABASE_VERSION: i64 = 23;
 const MAX_SUPPORTED_CHROMIUM_DATABASE_VERSION: i64 = 24;
 const MIN_SUPPORTED_FIREFOX_DATABASE_VERSION: i64 = 16;
@@ -157,7 +161,6 @@ pub struct DetectedCookieSource {
     pub profile: Option<String>,
     pub profile_name: Option<String>,
     pub status: CookieSourceStatus,
-    pub detail: String,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -511,47 +514,23 @@ pub fn detect_sources_at(
             .as_deref()
             .filter(|_| layout.firefox)
             .and_then(firefox_default_profile);
-        profiles.sort_by_key(|profile| profile_sort_key(&profile.name, preferred.as_deref()));
+        profiles.sort_by_key(|profile| profile_sort_key(&profile.folder, preferred.as_deref()));
         if profiles.is_empty() {
             detected.push(detected_source(
                 layout.browser,
                 None,
                 CookieSourceStatus::NotInstalled,
-                format!("{} was not found on this computer.", layout.browser.name()),
             ));
             continue;
         }
         let supported = policy.supports(platform, layout.browser);
         for profile in profiles {
-            let status = if supported {
-                if profile.has_cookie_store {
-                    CookieSourceStatus::Available
-                } else {
-                    CookieSourceStatus::NoCookieStore
-                }
-            } else {
-                CookieSourceStatus::ComingSoon
+            let status = match (supported, profile.has_cookie_store) {
+                (false, _) => CookieSourceStatus::ComingSoon,
+                (true, true) => CookieSourceStatus::Available,
+                (true, false) => CookieSourceStatus::NoCookieStore,
             };
-            let detail = if supported && profile.has_cookie_store {
-                format!("Import cookies from {}.", layout.browser.name())
-            } else if supported {
-                format!(
-                    "No cookie store was found for this {} profile.",
-                    layout.browser.name()
-                )
-            } else {
-                format!(
-                    "{} cookie import is not supported on {} yet.",
-                    layout.browser.name(),
-                    platform.name()
-                )
-            };
-            detected.push(detected_source(
-                layout.browser,
-                Some(profile.name),
-                status,
-                detail,
-            ));
+            detected.push(detected_source(layout.browser, Some(profile), status));
         }
     }
     let safari_installed = platform == HostPlatform::Macos;
@@ -563,13 +542,21 @@ pub fn detect_sources_at(
         } else {
             CookieSourceStatus::NotInstalled
         },
-        if safari_installed {
-            "Safari cookie import is not supported yet.".to_string()
-        } else {
-            "Safari was not found on this computer.".to_string()
-        },
     ));
     detected
+}
+
+pub fn profile_name_at(
+    home: &Path,
+    platform: HostPlatform,
+    browser: BrowserId,
+    profile: &str,
+) -> String {
+    detect_sources_at(home, platform, ImportPolicy::Cli)
+        .into_iter()
+        .find(|source| source.browser == browser && source.profile.as_deref() == Some(profile))
+        .and_then(|source| source.profile_name)
+        .unwrap_or_else(|| profile.to_string())
 }
 
 pub fn read_cookies(
@@ -696,7 +683,7 @@ pub fn read_chromium_cookie_store(
          AND length(CAST(path AS BLOB)) <= {MAX_COOKIE_PATH_BYTES} \
          ORDER BY last_update_utc DESC, rowid DESC"
     );
-    let now = unix_now();
+    let now = crate::unix_now();
     let cookies = {
         let mut statement = transaction
             .prepare(&query)
@@ -797,7 +784,7 @@ pub fn read_firefox_cookie_store(
          AND length(CAST(value AS BLOB)) <= {MAX_COOKIE_VALUE_BYTES} \
          AND length(CAST(path AS BLOB)) <= {MAX_COOKIE_PATH_BYTES} ORDER BY creationTime"
     );
-    let now = unix_now();
+    let now = crate::unix_now();
     let cookies = {
         let mut statement = transaction
             .prepare(&query)
@@ -988,6 +975,7 @@ fn browser_layouts(platform: HostPlatform) -> [BrowserLayout; 4] {
 }
 
 struct DiscoveredProfile {
+    folder: String,
     name: String,
     has_cookie_store: bool,
 }
@@ -996,29 +984,119 @@ fn discover_profiles(root: &Path, firefox: bool) -> Vec<DiscoveredProfile> {
     let Ok(entries) = std::fs::read_dir(root) else {
         return Vec::new();
     };
-    entries
+    let names = if firefox {
+        firefox_profile_names(root)
+    } else {
+        chromium_profile_names(root)
+    };
+    let listed = |folder: &str| {
+        firefox
+            || names.as_ref().map_or_else(
+                || is_chromium_profile_name(folder),
+                |names| names.contains_key(folder),
+            )
+    };
+    let mut profiles: Vec<DiscoveredProfile> = entries
         .filter_map(Result::ok)
         .filter_map(|entry| {
-            let profile = entry.file_name().to_str()?.to_string();
+            let folder = entry.file_name().to_str()?.to_string();
             let profile_path = entry.path();
             let metadata = std::fs::symlink_metadata(&profile_path).ok()?;
             if !metadata.is_dir()
                 || metadata.file_type().is_symlink()
-                || validate_profile(&profile).is_err()
-                || (!firefox && !is_chromium_profile_name(&profile))
+                || validate_profile(&folder).is_err()
+                || !listed(&folder)
             {
                 return None;
             }
+            let name = names
+                .as_ref()
+                .and_then(|names| names.get(&folder))
+                .and_then(|name| shown_profile_name(name))
+                .unwrap_or_else(|| folder_profile_name(&folder, firefox).to_string());
             Some(DiscoveredProfile {
-                name: profile,
+                name,
                 has_cookie_store: profile_has_cookie_store(&profile_path, firefox),
+                folder,
             })
         })
-        .collect()
+        .collect();
+    tell_apart(&mut profiles);
+    profiles
+}
+
+/// Chromium keeps the names people give their profiles in `Local State`, by
+/// folder. Its own System and Guest folders and deleted profiles aren't there.
+fn chromium_profile_names(root: &Path) -> Option<HashMap<String, String>> {
+    let text = read_small_text(&root.join("Local State"), MAX_LOCAL_STATE_BYTES)?;
+    let state: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let listed = state.get("profile")?.get("info_cache")?.as_object()?;
+    if listed.is_empty() {
+        return None;
+    }
+    Some(
+        listed
+            .iter()
+            .map(|(folder, info)| {
+                let name = info.get("name").and_then(serde_json::Value::as_str);
+                (folder.clone(), name.unwrap_or_default().to_string())
+            })
+            .collect(),
+    )
+}
+
+fn firefox_profile_names(root: &Path) -> Option<HashMap<String, String>> {
+    let folder = firefox_settings_folder(root)?;
+    let profiles = read_small_text(&folder.join("profiles.ini"), MAX_FIREFOX_INI_BYTES)?;
+    Some(
+        ini_sections(&profiles)
+            .into_iter()
+            .filter(|(section, _)| section.starts_with("Profile"))
+            .filter_map(|(_, entries)| {
+                let path = ini_value(&entries, "Path")?;
+                Some((last_path_part(&path)?, ini_value(&entries, "Name")?))
+            })
+            .collect(),
+    )
+}
+
+fn shown_profile_name(name: &str) -> Option<String> {
+    let shown: String = name
+        .chars()
+        .filter(|&character| {
+            !character.is_control()
+                && !is_ignorable_code_point(character)
+                && !matches!(character, '\u{61c}' | '\u{2066}'..='\u{2069}')
+        })
+        .take(MAX_PROFILE_NAME_CHARS)
+        .collect();
+    let shown = shown.trim();
+    (!shown.is_empty()).then(|| shown.to_string())
+}
+
+/// A Firefox folder is eight random letters, a dot and the name it was
+/// created with.
+fn folder_profile_name(folder: &str, firefox: bool) -> &str {
+    match folder.split_once('.') {
+        Some((random, name)) if firefox && random.len() == 8 && !name.is_empty() => name,
+        _ => folder,
+    }
+}
+
+fn tell_apart(profiles: &mut [DiscoveredProfile]) {
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    for profile in profiles.iter() {
+        *seen.entry(profile.name.clone()).or_default() += 1;
+    }
+    for profile in profiles.iter_mut() {
+        if seen[&profile.name] > 1 {
+            profile.name = format!("{} ({})", profile.name, profile.folder);
+        }
+    }
 }
 
 fn is_chromium_profile_name(profile: &str) -> bool {
-    matches!(profile, "Default" | "Guest Profile" | "System Profile")
+    profile == "Default"
         || profile
             .strip_prefix("Profile ")
             .is_some_and(|suffix| !suffix.is_empty())
@@ -1042,17 +1120,19 @@ fn is_regular_nonsymlink_file(path: &Path) -> bool {
 
 fn detected_source(
     browser: BrowserId,
-    profile: Option<String>,
+    profile: Option<DiscoveredProfile>,
     status: CookieSourceStatus,
-    detail: String,
 ) -> DetectedCookieSource {
+    let (profile, profile_name) = match profile {
+        Some(profile) => (Some(profile.folder), Some(profile.name)),
+        None => (None, None),
+    };
     DetectedCookieSource {
         browser,
         browser_name: browser.name().to_string(),
-        profile_name: profile.clone(),
         profile,
+        profile_name,
         status,
-        detail,
     }
 }
 
@@ -1067,9 +1147,9 @@ fn profile_sort_key(profile: &str, preferred: Option<&str>) -> (u8, String) {
     )
 }
 
-fn read_small_ini(path: &Path) -> Option<String> {
+fn read_small_text(path: &Path, limit: u64) -> Option<String> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
-    if !metadata.is_file() || metadata.len() > 64 * 1024 {
+    if !metadata.is_file() || metadata.len() > limit {
         return None;
     }
     std::fs::read_to_string(path).ok()
@@ -1092,31 +1172,38 @@ fn ini_sections(text: &str) -> Vec<(String, Vec<(String, String)>)> {
     sections
 }
 
+fn ini_value(entries: &[(String, String)], wanted: &str) -> Option<String> {
+    entries
+        .iter()
+        .find(|(key, _)| key.eq_ignore_ascii_case(wanted))
+        .map(|(_, value)| value.clone())
+}
+
+fn last_path_part(path: &str) -> Option<String> {
+    path.rsplit(['/', '\\'])
+        .next()
+        .filter(|name| !name.is_empty() && *name != "." && *name != "..")
+        .map(str::to_string)
+}
+
+fn firefox_settings_folder(root: &Path) -> Option<&Path> {
+    [Some(root), root.parent()]
+        .into_iter()
+        .flatten()
+        .find(|folder| {
+            folder.join("profiles.ini").is_file() || folder.join("installs.ini").is_file()
+        })
+}
+
 /// The folder name of the profile Firefox opens: the default of its install
 /// (`installs.ini`, or an `[Install…]` section of `profiles.ini`), else the
 /// profile marked `Default=1`. Profile folders start with random letters, so
 /// their names say nothing about which one is in use.
 fn firefox_default_profile(root: &Path) -> Option<String> {
-    let folder = [Some(root), root.parent()]
-        .into_iter()
-        .flatten()
-        .find(|folder| {
-            folder.join("profiles.ini").is_file() || folder.join("installs.ini").is_file()
-        })?;
-    let value_of = |entries: &[(String, String)], wanted: &str| {
-        entries
-            .iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(wanted))
-            .map(|(_, value)| value.clone())
-    };
-    let last_part = |path: &str| {
-        path.rsplit(['/', '\\'])
-            .next()
-            .filter(|name| !name.is_empty() && *name != "." && *name != "..")
-            .map(str::to_string)
-    };
-    let installs = read_small_ini(&folder.join("installs.ini")).unwrap_or_default();
-    let profiles = read_small_ini(&folder.join("profiles.ini")).unwrap_or_default();
+    let folder = firefox_settings_folder(root)?;
+    let read =
+        |name: &str| read_small_text(&folder.join(name), MAX_FIREFOX_INI_BYTES).unwrap_or_default();
+    let (installs, profiles) = (read("installs.ini"), read("profiles.ini"));
     let installed = ini_sections(&installs)
         .into_iter()
         .chain(
@@ -1124,14 +1211,16 @@ fn firefox_default_profile(root: &Path) -> Option<String> {
                 .into_iter()
                 .filter(|(name, _)| name.starts_with("Install")),
         )
-        .find_map(|(_, entries)| value_of(&entries, "Default").and_then(|path| last_part(&path)));
+        .find_map(|(_, entries)| {
+            ini_value(&entries, "Default").and_then(|path| last_path_part(&path))
+        });
     installed.or_else(|| {
         ini_sections(&profiles)
             .into_iter()
             .filter(|(name, _)| name.starts_with("Profile"))
-            .find(|(_, entries)| value_of(entries, "Default").as_deref() == Some("1"))
-            .and_then(|(_, entries)| value_of(&entries, "Path"))
-            .and_then(|path| last_part(&path))
+            .find(|(_, entries)| ini_value(entries, "Default").as_deref() == Some("1"))
+            .and_then(|(_, entries)| ini_value(&entries, "Path"))
+            .and_then(|path| last_path_part(&path))
     })
 }
 
@@ -1272,13 +1361,6 @@ fn firefox_same_site(value: i64) -> Option<ImportedSameSite> {
         2 => Some(ImportedSameSite::Strict),
         _ => None,
     }
-}
-
-fn unix_now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64
 }
 
 #[cfg(test)]

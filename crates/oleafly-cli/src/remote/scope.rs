@@ -1,17 +1,18 @@
 use std::path::{Path, PathBuf};
 
 use oleafly_online::client::{project_id_in, valid_project_id};
-use oleafly_online::projects::{imported_from, ImportedFrom};
+use oleafly_online::live::journal::{live_in, stands_down, StandDown};
+use oleafly_online::projects::{imported_from, live_link, ImportedFrom, OverleafLink};
 use oleafly_online::service::DEFAULT_SERVER;
 use oleafly_online::session;
 use oleafly_online::sync::{read_link, SyncLink, SyncPaths, WorktreeLock};
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use oleafly_secrets::SecretStore;
-use serde_json::Value;
+use serde_json::{json, Value};
 use zeroize::Zeroizing;
 
 use crate::app_paths::ProjectIdentity;
-use crate::auth::shared::{from_online, Env};
+use crate::auth::shared::{from_collab, from_online, live_elsewhere, Env};
 use crate::contract::{CliError, ErrorKind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -137,6 +138,77 @@ impl RemoteScope {
         }
     }
 
+    pub(crate) fn live_link(&self, data_root: &Path) -> Result<Option<OverleafLink>, CliError> {
+        Ok(live_link(
+            self.current_link(data_root)?,
+            self.imported_from(),
+        ))
+    }
+
+    pub(crate) fn live_key(&self) -> std::io::Result<String> {
+        match self {
+            Self::Library { project_id, .. } | Self::Linked { project_id, .. } => {
+                Ok(project_id.clone())
+            }
+            Self::Folder { root } => oleafly_live::overleaf::folder_key(root),
+        }
+    }
+
+    pub(crate) fn live_mirror_dir(
+        &self,
+        data_root: &Path,
+        link: &OverleafLink,
+    ) -> Result<PathBuf, CliError> {
+        oleafly_live::overleaf::mirror_dir(data_root, link, &self.live_key()?)
+            .map_err(|error| CliError::new(ErrorKind::Io, "io.failed", error.to_string()))
+    }
+
+    pub(crate) fn ensure_worktree_free(&self, data_root: &Path) -> Result<(), CliError> {
+        let Some(identity) = self.app_identity() else {
+            return Ok(());
+        };
+        match crate::daemon::hosts::shared_worktree_lock(data_root, identity.id()) {
+            Ok(Some(_)) => Ok(()),
+            Ok(None) => Err(from_online(&OnlineError::new(
+                OnlineErrorKind::WorktreeBusy,
+            ))),
+            Err(message) => Err(CliError::new(ErrorKind::Io, "io.failed", message)),
+        }
+    }
+
+    pub(crate) fn ensure_not_server_shared(&self, data_root: &Path) -> Result<(), CliError> {
+        let Some(identity) = self.app_identity() else {
+            return Ok(());
+        };
+        let paths = oleafly_collab::CollabPaths::new(data_root.join("collab"));
+        match oleafly_collab::load_binding(&paths, identity.id()) {
+            Ok(None) => Ok(()),
+            Ok(Some(_)) => Err(CliError::new(
+                ErrorKind::Conflict,
+                "remote.server_shared",
+                "This project is shared on an Oleafly Server.",
+            )
+            .hint("Stop sharing it there to edit it live with the online project.")),
+            Err(error) => Err(from_collab(&error, "this computer")),
+        }
+    }
+
+    pub(crate) fn ensure_not_live(&self, data_root: &Path) -> Result<(), CliError> {
+        let link = live_link(
+            self.current_link(data_root).ok().flatten(),
+            self.imported_from(),
+        );
+        let stood = match link {
+            Some(link) => stands_down(data_root, &link.server, &link.project_id, Some(self.root())),
+            None => live_in(self.root()).then_some(StandDown::Live(None)),
+        };
+        match stood {
+            None => Ok(()),
+            Some(StandDown::Live(holder)) => Err(live_elsewhere(holder.as_ref())),
+            Some(StandDown::Unsent(paths)) => Err(live_unsent(&paths)),
+        }
+    }
+
     pub(crate) fn imported_from(&self) -> Option<ImportedFrom> {
         let raw = std::fs::read_to_string(self.root().join("project.json")).ok()?;
         let meta: Value = serde_json::from_str(&raw).ok()?;
@@ -144,6 +216,7 @@ impl RemoteScope {
         Some(ImportedFrom {
             server: session::normalize_server(Some(&origin.server)).ok()?,
             project_id: valid_project_id(&origin.project_id).then_some(origin.project_id)?,
+            ..origin
         })
     }
 
@@ -169,6 +242,20 @@ impl RemoteScope {
             Self::Linked { .. } | Self::Folder { .. } => link,
         })
     }
+}
+
+fn live_unsent(paths: &[String]) -> CliError {
+    CliError::new(
+        ErrorKind::Conflict,
+        "remote.live_unsent",
+        format!(
+            "Live editing hasn't sent {} to the online project yet: {}.",
+            super::sync::files(paths.len()),
+            super::sync::listed(paths)
+        ),
+    )
+    .hint("Run oleafly remote live here until everything is sent, then try again.")
+    .details(json!({"unsent": paths}))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -272,7 +359,7 @@ pub(crate) fn git_token_for(
             return Ok((token.clone(), TokenSource::Env));
         }
     }
-    match session::git_token(&env.store, server).map_err(|error| from_online(&error))? {
+    match session::git_token(&env.store, server, None).map_err(|error| from_online(&error))? {
         Some(token) => Ok((Zeroizing::new(token), TokenSource::Store)),
         None => Err(crate::auth::online::online_error(
             OnlineError::new(OnlineErrorKind::GitTokenMissing),
@@ -366,6 +453,42 @@ mod tests {
         assert_eq!(scope.current_link(&data).unwrap(), None);
         std::fs::write(project.join("project.json"), record("a1")).unwrap();
         assert_eq!(scope.current_link(&data).unwrap().unwrap().remote_id, "a1");
+    }
+
+    #[test]
+    fn live_state_is_keyed_by_the_app_project_or_the_folder_and_waits_for_the_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let data = dir.path().join("data");
+        let project = data.join("projects").join("lib-1");
+        let elsewhere = dir.path().join("paper");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let link = OverleafLink {
+            server: "https://latex.example.edu".into(),
+            project_id: "64a1f0".into(),
+            user_id: None,
+        };
+        let library = resolve_scope(&project, &data).unwrap();
+        assert_eq!(library.live_key().unwrap(), "lib-1");
+        assert!(library
+            .live_mirror_dir(&data, &link)
+            .unwrap()
+            .ends_with(Path::new("64a1f0").join("lib-1")));
+        let folder = resolve_scope(&elsewhere, &data).unwrap();
+        assert!(folder.live_key().unwrap().starts_with("folder-"));
+        folder.ensure_worktree_free(&data).unwrap();
+        library.ensure_worktree_free(&data).unwrap();
+        let lock = library.worktree_lock(&data).unwrap();
+        std::fs::create_dir_all(lock.path.parent().unwrap()).unwrap();
+        let held = std::fs::File::create(&lock.path).unwrap();
+        oleafly_core::locking::lock_file(&held, true, std::time::Duration::ZERO).unwrap();
+        assert_eq!(
+            library.ensure_worktree_free(&data).unwrap_err().code,
+            "remote.project_busy"
+        );
+        drop(held);
+        library.ensure_worktree_free(&data).unwrap();
+        folder.ensure_not_live(&data).unwrap();
     }
 
     #[test]
@@ -560,7 +683,7 @@ mod tests {
             git_token_for(&env, known, false).unwrap().1,
             TokenSource::Env
         );
-        session::save_git_token(&env.store, planted, "olp_GITTOKEN88").unwrap();
+        session::save_git_token(&env.store, planted, None, "olp_GITTOKEN88").unwrap();
         assert_eq!(
             git_token_for(&env, planted, false).unwrap().1,
             TokenSource::Env
@@ -580,7 +703,13 @@ mod tests {
             .hint
             .unwrap()
             .contains("oleafly auth login online --with-token"));
-        session::save_git_token(&env.store, "https://latex.example.edu", "olp_GITTOKEN88").unwrap();
+        session::save_git_token(
+            &env.store,
+            "https://latex.example.edu",
+            None,
+            "olp_GITTOKEN88",
+        )
+        .unwrap();
         assert_eq!(
             git_token_for(&env, "https://latex.example.edu", false)
                 .unwrap()

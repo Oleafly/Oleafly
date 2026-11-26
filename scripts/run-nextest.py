@@ -24,6 +24,7 @@ RUNS = {
         "-p", "oleafly-sandbox",
         "-p", "oleafly-secrets",
         "-p", "oleafly-online",
+        "-p", "oleafly-live",
         "-p", "oleafly-research",
         "-p", "oleafly-acp",
     ),

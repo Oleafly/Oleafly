@@ -574,13 +574,16 @@ mod tests {
 
     struct Quiet;
 
-    impl LiveHost for Quiet {
+    impl oleafly_live::DiskHost for Quiet {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for Quiet {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
     }
 
@@ -631,16 +634,16 @@ mod tests {
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
             let active = Arc::new(Active {
-                local: LiveDisk {
-                    project_id: "r3-paper".to_owned(),
+                local: LiveDisk::assembled(
+                    "r3-paper",
                     root,
-                    disk_file: dir.path().join("disk.json"),
-                    disk: Mutex::new(DiskState::default()),
-                    bases: Mutex::new(WrittenTexts::default()),
-                    host: Arc::new(Quiet),
+                    dir.path().join("disk.json"),
+                    DiskState::default(),
+                    WrittenTexts::default(),
+                    Arc::new(Quiet),
                     writer,
-                    upkeep: Default::default(),
-                },
+                ),
+                host: Arc::new(Quiet),
                 document_dir: dir.path().join("document"),
                 live: shared,
                 handle,
@@ -742,16 +745,16 @@ mod tests {
         let collab = dir.join(project_id);
         std::fs::create_dir_all(&collab).unwrap();
         Arc::new(Active {
-            local: LiveDisk {
-                project_id: project_id.to_owned(),
+            local: LiveDisk::assembled(
+                project_id,
                 root,
-                disk_file: collab.join("materializer-index.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(bases),
-                host: Arc::new(Quiet),
+                collab.join("materializer-index.json"),
+                disk,
+                bases,
+                Arc::new(Quiet),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::new(Quiet),
             document_dir: collab.join("document"),
             live: shared,
             handle,

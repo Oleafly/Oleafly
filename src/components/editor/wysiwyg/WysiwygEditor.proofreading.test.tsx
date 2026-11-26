@@ -50,17 +50,12 @@ import { WysiwygEditor } from "./WysiwygEditor";
 
 const visual = en.visual;
 
-const LATEX = `\\documentclass{article}
-\\begin{document}
-\\section{Intro}
-Hello.
-\\end{document}
-`;
+const MARKDOWN = "# Intro\n\nHello.\n";
 
 function issueWith(overrides: Partial<VisualProofreadingIssue> = {}): VisualProofreadingIssue {
   return {
     id: "issue-1",
-    path: "main.tex",
+    path: "main.md",
     projectId: "project",
     documentVersion: 1,
     revision: 1,
@@ -103,8 +98,8 @@ describe("WysiwygEditor proofreading popover", () => {
     proofreading.current.mockReturnValue(true);
     useFilesStore.setState({
       projectId: null,
-      activePath: "main.tex",
-      files: { "main.tex": { content: LATEX, dirty: false } },
+      activePath: "main.md",
+      files: { "main.md": { content: MARKDOWN, dirty: false } },
     } as unknown as ReturnType<typeof useFilesStore.getState>);
   });
 

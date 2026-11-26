@@ -323,11 +323,7 @@
       "loading": "Đang tải dự án Overleaf của bạn",
       "loadFailed": "Oleafly không thể tải dự án Overleaf của bạn.",
       "signInPrompt": "Đăng nhập Overleaf để xem dự án. Cửa sổ đăng nhập tự mở và đóng khi bạn đăng nhập xong.",
-      "signingIn": "Hãy hoàn tất đăng nhập Overleaf trong cửa sổ vừa mở.",
-      "signingInBrowser": "Hãy hoàn tất đăng nhập Overleaf trong {{browser}}. Cửa sổ tự đóng khi bạn đăng nhập xong. Đóng cửa sổ sẽ huỷ đăng nhập.",
-      "passkeyHint": "Nếu passkey không dùng được trong cửa sổ đăng nhập, hãy chọn cách khác ở đó, như mật khẩu hoặc lời nhắc trên điện thoại.",
       "expired": "Đăng nhập Overleaf của bạn đã hết hạn. Hãy đăng nhập lại để xem dự án.",
-      "signIn": "Đăng nhập Overleaf",
       "signInWindowTitle": "Đăng nhập Overleaf",
       "server": "Máy chủ: {{server}}",
       "serverLabel": "Địa chỉ máy chủ Overleaf",
@@ -336,6 +332,7 @@
       "saveServer": "Dùng máy chủ này",
       "signedInAs": "Đã đăng nhập với {{email}}",
       "signedIn": "Đã đăng nhập Overleaf",
+      "accountPick": "Tài khoản Overleaf",
       "signOut": "Đăng xuất",
       "searchLabel": "Tìm kiếm dự án Overleaf",
       "searchPlaceholder_other": "Tìm {{count}} dự án",
@@ -354,6 +351,8 @@
       "import_other": "Nhập {{count}} dự án",
       "imported": "Đã nhập",
       "open": "Mở",
+      "openLive": "Mở để chỉnh sửa trực tiếp",
+      "opening": "Đang mở",
       "ownedByYou": "Của bạn",
       "owner": "Thuộc {{name}}",
       "archived": "Đã lưu trữ",
@@ -367,7 +366,39 @@
         "downloading": "Đang tải {{percent}}%",
         "downloadingUnknown": "Đang tải",
         "importing": "Đang thiết lập"
-      }
+      },
+      "invitations": {
+        "title": "Lời mời",
+        "from": "Từ {{name}}",
+        "join": "Tham gia",
+        "joined": "Bạn đã tham gia dự án này"
+      },
+      "link": {
+        "checking": "Đang kiểm tra liên kết",
+        "unnamed": "Một dự án trên Overleaf",
+        "join": "Tham gia",
+        "importInstead": "Nhập",
+        "grants": {
+          "edit": "Khi tham gia, bạn có thể chỉnh sửa dự án với tư cách cộng tác viên.",
+          "view": "Khi tham gia, bạn chỉ có thể xem dự án. Người xem qua liên kết không có bình luận hay trò chuyện.",
+          "already": "Bạn đã có dự án này.",
+          "invite": "Tham gia nghĩa là chấp nhận lời mời."
+        }
+      },
+      "put": {
+        "menu": "Đưa lên Overleaf",
+        "title": "Đưa lên Overleaf",
+        "description": "Oleafly tải dự án này lên thành một dự án Overleaf mới, rồi giữ cả hai đồng bộ khi bạn chỉnh sửa trực tiếp.",
+        "name": "Tên trên Overleaf",
+        "account": "Tài khoản Overleaf",
+        "submit": "Đưa lên Overleaf",
+        "working": "Đang tải lên",
+        "signedOut": "Hãy đăng nhập Overleaf trong Cài đặt trước.",
+        "openSettings": "Mở Cài đặt",
+        "cancel": "Huỷ"
+      },
+      "switchAccount": "Chuyển tài khoản",
+      "signInChoose": "Chọn nơi đăng nhập. Các dự án của bạn sẽ hiện ở đây khi bạn đăng nhập xong."
     }
   },
   "pdfImport": {

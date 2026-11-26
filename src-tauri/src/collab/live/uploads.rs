@@ -8,6 +8,9 @@ use oleafly_collab::{CollabError, TransferProgress};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use serde::Serialize;
 
+use oleafly_live::live::downloads::Pacer;
+pub use oleafly_live::live::payloads::{DownloadProgress, UploadFile, UploadState, UploadsPayload};
+
 use super::session::{live_for, Live};
 use super::{active_for, guard, not_live, Active, LiveHost};
 use crate::collab::commands::{with_access, CollabCommandError};
@@ -16,40 +19,12 @@ use crate::collab::disk::safe_target;
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
 pub const UPLOAD_PROGRESS_EVENT: &str = "collab-upload-progress";
 pub const DOWNLOAD_PROGRESS_EVENT: &str = "collab-download-progress";
-const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 const MEBIBYTE: u64 = 1024 * 1024;
 const CHECK_ABOVE: u64 = 4 * MEBIBYTE;
 const FIRST_RETRY: Duration = Duration::from_secs(2);
 const LONGEST_RETRY: Duration = Duration::from_secs(60);
 const RETRIES: u32 = 6;
 const LIMIT_KEPT: Duration = Duration::from_secs(600);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UploadState {
-    Waiting,
-    Failed,
-    TooLarge,
-    ProjectTooLarge,
-    AccountStorageFull,
-    TooManyUploads,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadFile {
-    pub path: String,
-    pub state: UploadState,
-    pub size: u64,
-    pub limit: Option<u64>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadsPayload {
-    pub project_id: String,
-    pub files: Vec<UploadFile>,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,32 +33,6 @@ pub struct UploadProgress {
     pub path: String,
     pub done: u64,
     pub total: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadProgress {
-    pub project_id: String,
-    pub path: String,
-    pub done: u64,
-    pub total: Option<u64>,
-}
-
-pub(super) type DownloadReport = Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
-
-#[derive(Default)]
-struct Pacer(Mutex<Option<Instant>>);
-
-impl Pacer {
-    fn due(&self, finished: bool) -> bool {
-        let now = Instant::now();
-        let mut told = guard(&self.0);
-        if !finished && told.is_some_and(|at| now.duration_since(at) < PROGRESS_EVERY) {
-            return false;
-        }
-        *told = Some(now);
-        true
-    }
 }
 
 pub(super) fn progress_for(
@@ -96,25 +45,6 @@ pub(super) fn progress_for(
     Arc::new(move |done, total| {
         if pacer.due(done >= total) {
             host.upload_progress(UploadProgress {
-                project_id: project_id.clone(),
-                path: path.clone(),
-                done,
-                total,
-            });
-        }
-    })
-}
-
-pub(super) fn download_progress_for(
-    host: Arc<dyn LiveHost>,
-    project_id: &str,
-    path: &str,
-) -> DownloadReport {
-    let (project_id, path) = (project_id.to_owned(), path.to_owned());
-    let pacer = Pacer::default();
-    Arc::new(move |done, total| {
-        if pacer.due(total.is_some_and(|total| done >= total)) {
-            host.download_progress(DownloadProgress {
                 project_id: project_id.clone(),
                 path: path.clone(),
                 done,

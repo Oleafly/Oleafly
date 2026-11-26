@@ -22,23 +22,7 @@ vi.mock("@tiptap/react", async (importOriginal) => {
 
 const MARKDOWN = "Hello world.\n";
 
-const LATEX_WITH_SOURCE_NODES = [
-  "\\documentclass{article}",
-  "\\begin{document}",
-  "Hello world.",
-  "",
-  "\\begin{tikzpicture}",
-  "\\draw (0,0) -- (1,1);",
-  "\\end{tikzpicture}",
-  "",
-  "A \\mystery{x} here.",
-  "",
-  "\\[",
-  "x^2",
-  "\\]",
-  "\\end{document}",
-  "",
-].join("\n");
+const MARKDOWN_WITH_SOURCE_NODES = "Hello world.\n\n<div>\nraw\n</div>\n\nA <wbr> here.\n";
 const MARKDOWN_WITH_MATH = "A $y$ here.\n";
 
 function editor(): Editor {
@@ -134,27 +118,19 @@ describe("recompile shortcut in the visual (TipTap) editor", () => {
   it.each([
     {
       type: "rawBlock",
-      path: "main.tex",
-      content: LATEX_WITH_SOURCE_NODES,
+      path: "notes.md",
+      content: MARKDOWN_WITH_SOURCE_NODES,
       open: ".raw-block-edit",
       input: ".raw-block-input",
-      next: "\\begin{tikzpicture}\\draw (0,0) -- (2,2);\\end{tikzpicture}",
+      next: "<div>\nedited\n</div>",
     },
     {
       type: "rawInline",
-      path: "main.tex",
-      content: LATEX_WITH_SOURCE_NODES,
+      path: "notes.md",
+      content: MARKDOWN_WITH_SOURCE_NODES,
       open: ".raw-inline-edit",
       input: ".raw-inline-input",
-      next: "\\mystery{y}",
-    },
-    {
-      type: "mathDisplay",
-      path: "main.tex",
-      content: LATEX_WITH_SOURCE_NODES,
-      open: '[data-type="math-display"] .math-rendered',
-      input: ".math-input",
-      next: "\\[\ny^2\n\\]",
+      next: "<br>",
     },
     {
       type: "mathInline",

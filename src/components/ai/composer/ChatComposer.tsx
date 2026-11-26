@@ -542,11 +542,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             rows={1}
             style={{ minHeight: resting, maxHeight: growMax }}
             className={cn(
-              // overflow-x-hidden: with the window zoomed past 100%, WebKit
-              // gives the placeholder a wider scroll width than the box, and
-              // the vertical scrolling turned that into a horizontal scrollbar.
-              // Text still wraps at the visible width.
-              "relative w-full resize-none overflow-y-auto overflow-x-hidden rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:bg-transparent placeholder:text-muted-foreground/70",
+              "relative w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:bg-transparent placeholder:text-muted-foreground/70",
               highlight && "text-transparent caret-foreground",
             )}
           />

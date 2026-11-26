@@ -1,19 +1,18 @@
 use std::collections::BTreeSet;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError};
-use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, LazyLock, Mutex};
 
-use oleafly_collab::live::{save_shared, LiveProject};
+use oleafly_collab::live::save_shared;
 use oleafly_collab::materialize;
 use oleafly_collab::remove_binding;
 use oleafly_collab::sync::{LiveHandle, LiveLink, LiveStatus, SharedLive};
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::oneshot;
+use oleafly_core::app_log::AppLog;
 
-use super::bases::WrittenTexts;
+pub use oleafly_live::live::session::*;
+
 use super::downloads::FigureHost;
 use super::host::LiveHost;
 use super::live_disk::{LiveWriter, Mirrored};
@@ -21,27 +20,11 @@ use super::live_tree::LiveTree;
 use super::overleaf::OverleafLive;
 use super::payloads::StatusPayload;
 use super::{local_copy, settings};
-use crate::collab::disk::DiskState;
 use crate::folder_watch::FolderChange;
-
-pub(super) enum WriterSignal {
-    Kick,
-    Flush(oneshot::Sender<()>),
-}
-
-pub struct LiveDisk {
-    pub(super) project_id: String,
-    pub(super) root: PathBuf,
-    pub(super) disk_file: PathBuf,
-    pub(super) disk: Mutex<DiskState>,
-    pub(super) bases: Mutex<WrittenTexts>,
-    pub(super) host: Arc<dyn LiveHost>,
-    pub(super) writer: UnboundedSender<WriterSignal>,
-    pub(super) upkeep: Upkeep,
-}
 
 pub struct Active {
     pub(super) local: LiveDisk,
+    pub(super) host: Arc<dyn LiveHost>,
     pub(super) document_dir: PathBuf,
     pub(super) live: SharedLive,
     pub(super) handle: LiveHandle,
@@ -50,44 +33,6 @@ pub struct Active {
     pub(super) quiet_merge: AtomicBool,
     pub(super) waiting: AtomicBool,
     pub(super) last_status: Mutex<LiveStatus>,
-}
-
-#[derive(Clone, Default)]
-pub(super) struct Alarm(Arc<Mutex<Option<Instant>>>);
-
-impl Alarm {
-    pub(super) fn ring_in(&self, writer: &UnboundedSender<WriterSignal>, delay: Duration) {
-        let at = Instant::now() + delay;
-        {
-            let mut pending = guard(&self.0);
-            if pending.is_some_and(|due| due <= at) {
-                return;
-            }
-            *pending = Some(at);
-        }
-        let (alarm, writer) = (Arc::clone(&self.0), writer.clone());
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(delay).await;
-            {
-                let mut pending = guard(&alarm);
-                if *pending == Some(at) {
-                    *pending = None;
-                }
-            }
-            let _ = writer.send(WriterSignal::Kick);
-        });
-    }
-}
-
-#[derive(Default)]
-pub(super) struct Upkeep {
-    pub(super) pace: Mutex<super::pacing::Pace>,
-    pub(super) failing: Mutex<super::unwritten::Failing>,
-    pub(super) figures: Mutex<super::downloads::Figures>,
-    pub(super) figures_closed: AtomicBool,
-    pub(super) owed: Mutex<super::owed::OwedTries>,
-    pub(super) unannounced: Mutex<BTreeSet<String>>,
-    pub(super) logged: Mutex<BTreeSet<&'static str>>,
 }
 
 #[derive(Clone)]
@@ -162,11 +107,15 @@ pub(super) static FRESH_JOINS: LazyLock<Mutex<BTreeSet<String>>> =
 
 pub(super) struct Starting {
     pub(super) project_id: String,
+    pub(super) server: String,
+    pub(super) user: String,
     pub(super) joined: Arc<tokio::sync::Mutex<()>>,
+    pub(super) cancelled: Arc<tokio::sync::Notify>,
     pub(super) wanted: bool,
 }
 
 pub(super) static STARTING: LazyLock<Mutex<Option<Starting>>> = LazyLock::new(|| Mutex::new(None));
+static LINKS: AtomicU64 = AtomicU64::new(0);
 
 pub(super) fn cancel_start(project_id: Option<&str>) {
     if let Some(starting) = guard(&STARTING)
@@ -174,15 +123,24 @@ pub(super) fn cancel_start(project_id: Option<&str>) {
         .filter(|starting| project_id.is_none_or(|id| id == starting.project_id))
     {
         starting.wanted = false;
+        starting.cancelled.notify_one();
     }
 }
 
-pub(super) fn guard<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+pub(super) fn starting_on(server: &str, user: Option<&str>) -> Option<String> {
+    guard(&STARTING)
+        .as_ref()
+        .filter(|starting| starting.server == server)
+        .filter(|starting| user.is_none_or(|user| starting.user == user))
+        .map(|starting| starting.project_id.clone())
 }
 
-pub(super) fn lock(live: &SharedLive) -> MutexGuard<'_, LiveProject> {
-    live.lock().unwrap_or_else(PoisonError::into_inner)
+pub(super) fn links_seen() -> u64 {
+    LINKS.load(Ordering::SeqCst)
+}
+
+pub(super) fn links_changed() {
+    LINKS.fetch_add(1, Ordering::SeqCst);
 }
 
 pub fn live_for(project_id: &str) -> Option<Live> {
@@ -200,22 +158,27 @@ pub fn note_fresh_join(project_id: &str) {
     guard(&FRESH_JOINS).insert(project_id.to_owned());
 }
 
-pub(super) fn not_live() -> CollabError {
-    CollabError::Api {
-        status: 404,
-        code: "not_found".to_owned(),
-        message: "this project is not live".to_owned(),
-    }
+pub(super) fn app_runtime() -> tokio::runtime::Handle {
+    tauri::async_runtime::handle().inner().clone()
 }
 
-pub(super) fn io(error: impl std::fmt::Display) -> CollabError {
-    CollabError::Io(error.to_string())
+pub(super) fn app_log() -> Result<AppLog, CollabError> {
+    crate::paths::oleafly_root()
+        .map(|root| AppLog::at(&root))
+        .map_err(CollabError::Io)
+}
+
+pub(super) fn forget_live(disk: &LiveDisk) {
+    disk.forget_memory();
+    super::write::forget_reads(&disk.project_id);
+    super::kept::forget_arrivals(&disk.root);
 }
 
 impl Active {
     #[cfg(test)]
     pub(super) fn assembled(
         local: LiveDisk,
+        host: Arc<dyn LiveHost>,
         document_dir: PathBuf,
         live: SharedLive,
         handle: LiveHandle,
@@ -223,6 +186,7 @@ impl Active {
     ) -> Active {
         Active {
             local,
+            host,
             document_dir,
             live,
             handle,
@@ -320,14 +284,14 @@ impl Active {
         if renamed.is_empty() {
             return;
         }
-        announce_renames(self.local.host.as_ref(), &self.local.project_id, &renamed);
+        announce_renames(self.host.as_ref(), &self.local.project_id, &renamed);
         if !self.moves_the_main_file(&renamed) {
             return;
         }
         if let Some(applied) =
             crate::collab::settings::follow_renamed_main(&self.local.project_id, &renamed)
         {
-            self.local.host.settings_changed(applied);
+            self.host.settings_changed(applied);
         }
     }
 
@@ -393,110 +357,5 @@ impl LiveWriter for Active {
 
     async fn import_pass(self: Arc<Self>, only: Vec<String>) -> Result<(), CollabError> {
         self.import_paths(Some(only)).await
-    }
-}
-
-impl LiveDisk {
-    pub(super) fn log_once(&self, kind: &'static str, message: impl FnOnce() -> String) {
-        if !guard(&self.upkeep.logged).insert(kind) {
-            return;
-        }
-        let _ = crate::project::append_app_log(format!(
-            "Live editing in project {}: {}",
-            self.project_id,
-            message()
-        ));
-    }
-
-    #[cfg(test)]
-    pub(super) fn assembled(
-        project_id: &str,
-        root: PathBuf,
-        disk_file: PathBuf,
-        disk: DiskState,
-        bases: WrittenTexts,
-        host: Arc<dyn LiveHost>,
-        writer: UnboundedSender<WriterSignal>,
-    ) -> LiveDisk {
-        LiveDisk {
-            project_id: project_id.to_owned(),
-            root,
-            disk_file,
-            disk: Mutex::new(disk),
-            bases: Mutex::new(bases),
-            host,
-            writer,
-            upkeep: Upkeep::default(),
-        }
-    }
-
-    pub(super) fn note_unannounced(
-        &self,
-        typed_here: &BTreeSet<String>,
-        told: &BTreeSet<String>,
-        moved: &[(String, String)],
-        removed: &[String],
-    ) {
-        let mut unannounced = guard(&self.upkeep.unannounced);
-        if unannounced.is_empty() && typed_here.is_empty() {
-            return;
-        }
-        let kept = std::mem::take(&mut *unannounced);
-        *unannounced = kept
-            .into_iter()
-            .filter(|path| {
-                !told.contains(path)
-                    && !removed
-                        .iter()
-                        .any(|gone| crate::collab::disk::inside(path, gone))
-            })
-            .map(|path| {
-                moved
-                    .iter()
-                    .find_map(|(from, to)| crate::collab::disk::moved_key(&path, from, to))
-                    .unwrap_or(path)
-            })
-            .collect();
-        unannounced.extend(typed_here.iter().cloned());
-    }
-
-    pub(super) fn announce_written(&self) {
-        let paths = std::mem::take(&mut *guard(&self.upkeep.unannounced));
-        if paths.is_empty() {
-            return;
-        }
-        let known: Vec<(String, String)> = {
-            let disk = guard(&self.disk);
-            paths
-                .into_iter()
-                .filter_map(|path| {
-                    let hash = disk.hashes.get(&path)?.clone();
-                    Some((path, hash))
-                })
-                .collect()
-        };
-        let files: Vec<super::payloads::WrittenFile> = known
-            .into_iter()
-            .filter_map(|(path, hash)| {
-                let target = crate::collab::disk::safe_target(&self.root, &path)?;
-                let bytes = std::fs::read(target).ok()?;
-                if crate::collab::disk::sha256_hex(&bytes) != hash {
-                    return None;
-                }
-                let text = std::str::from_utf8(&bytes).ok()?;
-                Some(super::payloads::WrittenFile {
-                    hash: super::payloads::window_hash(&bytes),
-                    crlf: crate::collab::disk::crlf_only(&bytes) == Some(true),
-                    length: text.encode_utf16().count(),
-                    path,
-                })
-            })
-            .collect();
-        if !files.is_empty() {
-            self.host.written(super::payloads::WrittenPayload {
-                project_id: self.project_id.clone(),
-                files,
-            });
-        }
     }
 }

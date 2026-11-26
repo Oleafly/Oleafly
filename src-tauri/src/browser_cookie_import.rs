@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::time::Duration;
 
 use oleafly_online::browser_cookies::{
     self as reader, CookieImportError, DetectedCookieSource, HostPlatform, ImportPolicy,
@@ -11,6 +12,9 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 pub use oleafly_online::browser_cookies::BrowserId as BrowserCookieSourceId;
 
 const MAIN_WEBVIEW_LABEL: &str = "main";
+const STORED_WITHIN: Duration = Duration::from_secs(3);
+const STORED_POLL: Duration = Duration::from_millis(100);
+const NO_PROFILES: &str = "Oleafly could not locate your browser profiles.";
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -32,17 +36,20 @@ pub struct BrowserCookieImportSummary {
 }
 
 #[tauri::command]
-pub fn detect_browser_cookie_sources<R: Runtime>(
+pub async fn detect_browser_cookie_sources<R: Runtime>(
     webview: Webview<R>,
 ) -> Result<Vec<DetectedCookieSource>, String> {
     validate_command_caller(webview.label()).map_err(|error| error.to_string())?;
-    let home = crate::paths::home_dir()
-        .map_err(|_| "Oleafly could not locate your browser profiles.".to_string())?;
-    Ok(reader::detect_sources_at(
-        &home,
-        HostPlatform::current(),
-        ImportPolicy::App,
-    ))
+    let home = browser_home()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        reader::detect_sources_at(&home, HostPlatform::current(), ImportPolicy::App)
+    })
+    .await
+    .map_err(|_| NO_PROFILES.to_string())
+}
+
+fn browser_home() -> Result<std::path::PathBuf, String> {
+    crate::paths::home_dir().map_err(|_| NO_PROFILES.to_string())
 }
 
 #[tauri::command]
@@ -64,17 +71,22 @@ pub async fn import_browser_cookies<R: Runtime>(
         .map_err(|error| error.to_string())?;
     let browser = request.browser;
     let profile = request.profile;
+    let home = browser_home()?;
+    let (names, named) = (home.clone(), profile.clone());
+    let profile_name = tauri::async_runtime::spawn_blocking(move || {
+        reader::profile_name_at(&names, platform, browser, &named)
+    })
+    .await
+    .map_err(|_| NO_PROFILES.to_string())?;
     confirm_native_cookie_import(
         webview.app_handle().clone(),
         browser,
-        &profile,
+        &profile_name,
         domain.as_deref(),
     )
     .await
     .map_err(|error| error.to_string())?;
-    let home = crate::paths::home_dir()
-        .map_err(|_| "Oleafly could not locate your browser profiles.".to_string())?;
-    let read_profile = profile.clone();
+    let read_profile = profile;
     let read_domain = domain.clone();
     let cookies = tauri::async_runtime::spawn_blocking(move || {
         reader::read_cookies(
@@ -92,22 +104,45 @@ pub async fn import_browser_cookies<R: Runtime>(
     .map_err(|error| error.to_string())?;
 
     let cookies = reader::unique_cookies(cookies);
+    if let Some(site) = domain
+        .as_deref()
+        .and_then(|site| tauri::Url::parse(&format!("https://{site}/")).ok())
+    {
+        clear_site_cookies(&webview, &site);
+    }
     let runtime_cookies = cookies
         .iter()
         .map(runtime_cookie)
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for cookie in runtime_cookies {
-        webview
-            .set_cookie(cookie)
-            .map_err(|_| CookieImportError::CookieApplyFailed.to_string())?;
+        let name = cookie.name().to_string();
+        if webview.set_cookie(cookie).is_err() {
+            let _ = crate::project::append_app_log(format!(
+                "Copying cookies: the webview refused the cookie {name}."
+            ));
+        }
     }
-    verify_runtime_cookies(&webview, &cookies).map_err(|error| error.to_string())?;
+    let check = until_stored(STORED_WITHIN, || {
+        Ok(check_stored(&cookies, &stored_cookies(&webview)?))
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let site = domain.as_deref().unwrap_or("every site");
+    if let Some(report) = check.report(cookies.len()) {
+        let _ = crate::project::append_app_log(format!(
+            "Copying cookies for {site} from {} {profile_name}: {report}",
+            browser.name()
+        ));
+    }
+    if check.stored == 0 {
+        return Err(CookieImportError::CookieApplyFailed.to_string());
+    }
 
     Ok(BrowserCookieImportSummary {
-        imported: cookies.len(),
+        imported: check.stored,
         browser_name: browser.name().to_string(),
-        profile_name: profile,
+        profile_name,
         domain,
     })
 }
@@ -197,17 +232,58 @@ fn require_native_confirmation(confirmed: bool) -> Result<(), CookieImportError>
     }
 }
 
+/// wry hands `Cookie::domain()` to WebKit, and the cookie crate drops one
+/// leading dot there, so a site-wide `.example.com` needs a second dot to
+/// arrive as itself.
+fn wry_domain(domain: &str) -> String {
+    if domain.starts_with('.') {
+        format!(".{domain}")
+    } else {
+        domain.to_string()
+    }
+}
+
+/// A stored cookie reads back without its leading dot, so it is deleted as
+/// both the host-only and the site-wide cookie of that name.
+fn deletion_forms(
+    cookie: &tauri::webview::cookie::Cookie<'_>,
+) -> [tauri::webview::cookie::Cookie<'static>; 2] {
+    let bare = cookie
+        .domain()
+        .unwrap_or_default()
+        .trim_start_matches('.')
+        .to_string();
+    let mut host = cookie.clone().into_owned();
+    let mut site = host.clone();
+    site.set_domain(wry_domain(&format!(".{bare}")));
+    host.set_domain(bare);
+    [host, site]
+}
+
+pub(crate) fn clear_site_cookies<R: Runtime>(webview: &Webview<R>, url: &tauri::Url) {
+    let Ok(stored) = webview.cookies() else {
+        return;
+    };
+    for cookie in stored.iter().filter(|cookie| {
+        oleafly_online::session::cookie_applies(
+            cookie.domain(),
+            cookie.path(),
+            cookie.secure().unwrap_or(false),
+            url,
+        )
+    }) {
+        for form in deletion_forms(cookie) {
+            let _ = webview.delete_cookie(form);
+        }
+    }
+}
+
 fn runtime_cookie(
     imported: &ImportedCookie,
 ) -> Result<tauri::webview::cookie::Cookie<'static>, CookieImportError> {
-    let runtime_domain = if imported.domain.starts_with('.') {
-        format!(".{}", imported.domain)
-    } else {
-        imported.domain.clone()
-    };
     let mut builder =
         tauri::webview::cookie::Cookie::build((imported.name.clone(), imported.value.clone()))
-            .domain(runtime_domain)
+            .domain(wry_domain(&imported.domain))
             .path(imported.path.clone())
             .secure(imported.secure)
             .http_only(imported.http_only);
@@ -281,34 +357,146 @@ fn stored_cookie_fingerprint(
     })
 }
 
-fn verify_runtime_cookies<R: Runtime>(
-    webview: &Webview<R>,
-    imported: &[ImportedCookie],
-) -> Result<(), CookieImportError> {
-    if imported.is_empty() {
-        return Ok(());
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct CookieKey {
+    name: String,
+    domain: String,
+    path: String,
+}
+
+fn key_of(cookie: &RuntimeCookieFingerprint) -> CookieKey {
+    CookieKey {
+        name: cookie.name.clone(),
+        domain: cookie.domain.clone(),
+        path: cookie.path.clone(),
     }
+}
+
+fn stored_cookies<R: Runtime>(
+    webview: &Webview<R>,
+) -> Result<HashMap<CookieKey, RuntimeCookieFingerprint>, CookieImportError> {
     let stored = webview
         .cookies()
         .map_err(|_| CookieImportError::CookieApplyFailed)?;
-    let stored_identities = stored
-        .into_iter()
-        .filter_map(|actual| stored_cookie_fingerprint(&actual))
-        .collect::<HashSet<_>>();
-    let all_present = imported
+    Ok(stored
         .iter()
-        .all(|expected| stored_identities.contains(&imported_cookie_fingerprint(expected)));
-    if !all_present {
-        return Err(CookieImportError::CookieApplyFailed);
+        .filter_map(stored_cookie_fingerprint)
+        .map(|cookie| (key_of(&cookie), cookie))
+        .collect())
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct StoreCheck {
+    stored: usize,
+    missing: Vec<String>,
+    changed: Vec<String>,
+}
+
+impl StoreCheck {
+    fn report(&self, copied: usize) -> Option<String> {
+        if self.missing.is_empty() && self.changed.is_empty() {
+            return None;
+        }
+        let mut report = format!("{} of {copied} stored.", self.stored);
+        if !self.missing.is_empty() {
+            report.push_str(&format!(" Not stored: {}.", self.missing.join(", ")));
+        }
+        if !self.changed.is_empty() {
+            report.push_str(&format!(
+                " Stored with other attributes: {}.",
+                self.changed.join(", ")
+            ));
+        }
+        Some(report)
     }
-    Ok(())
+}
+
+fn cookie_label(cookie: &RuntimeCookieFingerprint) -> String {
+    format!("{} ({}{})", cookie.name, cookie.domain, cookie.path)
+}
+
+fn differences(
+    expected: &RuntimeCookieFingerprint,
+    actual: &RuntimeCookieFingerprint,
+) -> Vec<String> {
+    let mut changed = Vec::new();
+    if expected.expires_unix != actual.expires_unix {
+        changed.push(format!(
+            "expiry {:?} became {:?}",
+            expected.expires_unix, actual.expires_unix
+        ));
+    }
+    if expected.secure != actual.secure {
+        changed.push(format!(
+            "secure {} became {}",
+            expected.secure, actual.secure
+        ));
+    }
+    if expected.http_only != actual.http_only {
+        changed.push(format!(
+            "httpOnly {} became {}",
+            expected.http_only, actual.http_only
+        ));
+    }
+    if expected.same_site != actual.same_site {
+        changed.push(format!(
+            "sameSite {:?} became {:?}",
+            expected.same_site, actual.same_site
+        ));
+    }
+    changed
+}
+
+fn check_stored(
+    imported: &[ImportedCookie],
+    stored: &HashMap<CookieKey, RuntimeCookieFingerprint>,
+) -> StoreCheck {
+    let mut check = StoreCheck::default();
+    for cookie in imported {
+        let expected = imported_cookie_fingerprint(cookie);
+        match stored.get(&key_of(&expected)) {
+            Some(actual) if actual.value == expected.value => {
+                check.stored += 1;
+                let changed = differences(&expected, actual);
+                if !changed.is_empty() {
+                    check.changed.push(format!(
+                        "{} {}",
+                        cookie_label(&expected),
+                        changed.join(", ")
+                    ));
+                }
+            }
+            Some(_) => check
+                .missing
+                .push(format!("{} with another value", cookie_label(&expected))),
+            None => check.missing.push(cookie_label(&expected)),
+        }
+    }
+    check
+}
+
+async fn until_stored(
+    within: Duration,
+    mut check: impl FnMut() -> Result<StoreCheck, CookieImportError>,
+) -> Result<StoreCheck, CookieImportError> {
+    let deadline = tokio::time::Instant::now() + within;
+    loop {
+        let latest = check()?;
+        if latest.missing.is_empty() || tokio::time::Instant::now() >= deadline {
+            return Ok(latest);
+        }
+        tokio::time::sleep(STORED_POLL).await;
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{
-        cookie_import_prompt, runtime_cookie, validate_import_request, BrowserCookieImportSummary,
-        BrowserCookieSourceId, CookieImportError, HostPlatform,
+        cookie_import_prompt, runtime_cookie, until_stored, validate_import_request,
+        BrowserCookieImportSummary, BrowserCookieSourceId, CookieImportError, HostPlatform,
+        STORED_POLL,
     };
 
     #[test]
@@ -533,6 +721,130 @@ mod tests {
                 Err(CookieImportError::InvalidDomain),
                 "{domain:?}"
             );
+        }
+    }
+
+    fn imported(name: &str, value: &str, expires_unix: Option<i64>) -> super::ImportedCookie {
+        super::ImportedCookie {
+            name: name.to_string(),
+            value: value.to_string(),
+            domain: ".latex.example".to_string(),
+            path: "/".to_string(),
+            expires_unix,
+            secure: true,
+            http_only: true,
+            same_site: Some(super::ImportedSameSite::Lax),
+        }
+    }
+
+    fn stored(
+        cookies: &[super::ImportedCookie],
+    ) -> HashMap<super::CookieKey, super::RuntimeCookieFingerprint> {
+        cookies
+            .iter()
+            .map(|cookie| {
+                let print =
+                    super::stored_cookie_fingerprint(&runtime_cookie(cookie).unwrap()).unwrap();
+                (super::key_of(&print), print)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_cookie_counts_as_copied_when_its_value_is_stored_and_other_fields_are_only_reported() {
+        let session = imported("site_session", "SECRETVALUE", Some(4_102_444_800));
+        let later = imported("site_session", "SECRETVALUE", Some(1_900_000_000));
+        let other = imported("site_session", "OTHERVALUE", None);
+        let gone = imported("tracker", "SECRETVALUE", None);
+
+        let check = super::check_stored(std::slice::from_ref(&session), &stored(&[later]));
+        assert_eq!(check.stored, 1);
+        assert!(check.missing.is_empty());
+        assert_eq!(
+            check.changed,
+            vec!["site_session (latex.example/) expiry Some(4102444800) became Some(1900000000)"]
+        );
+
+        let check = super::check_stored(&[session.clone(), gone], &stored(&[other]));
+        assert_eq!(check.stored, 0);
+        assert_eq!(
+            check.missing,
+            vec![
+                "site_session (latex.example/) with another value",
+                "tracker (latex.example/)"
+            ]
+        );
+        let report = check.report(2).unwrap();
+        assert_eq!(
+            report,
+            "0 of 2 stored. Not stored: site_session (latex.example/) with another value, tracker (latex.example/)."
+        );
+        assert!(!report.contains("SECRETVALUE") && !report.contains("OTHERVALUE"));
+        assert_eq!(
+            super::check_stored(
+                std::slice::from_ref(&session),
+                &stored(std::slice::from_ref(&session))
+            )
+            .report(1),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn a_copy_waits_for_the_webview_to_store_its_cookies_then_settles_for_what_it_has() {
+        let within = STORED_POLL * 10;
+        let pending = || super::StoreCheck {
+            stored: 1,
+            missing: vec!["late (latex.example/)".to_string()],
+            changed: Vec::new(),
+        };
+        let mut looks = 0;
+        let settled = until_stored(within, || {
+            looks += 1;
+            Ok(if looks > 2 {
+                super::StoreCheck {
+                    stored: 2,
+                    ..Default::default()
+                }
+            } else {
+                pending()
+            })
+        })
+        .await;
+        assert_eq!(settled.map(|check| check.stored), Ok(2));
+        assert_eq!(looks, 3);
+        let started = std::time::Instant::now();
+        assert_eq!(
+            until_stored(STORED_POLL * 2, || Ok(pending())).await,
+            Ok(pending())
+        );
+        assert!(started.elapsed() >= STORED_POLL * 2);
+        assert_eq!(
+            until_stored(within, || Err(CookieImportError::CookieApplyFailed)).await,
+            Err(CookieImportError::CookieApplyFailed)
+        );
+    }
+
+    #[test]
+    fn a_stored_cookie_is_deleted_as_both_its_host_and_its_site_form() {
+        let site_wide = runtime_cookie(&imported("site_session", "SECRETVALUE", None)).unwrap();
+        let read_back = |domain: &str| {
+            tauri::webview::cookie::Cookie::build(("site_session", "SECRETVALUE"))
+                .domain(domain.to_string())
+                .path("/")
+                .build()
+        };
+        for cookie in [
+            site_wide,
+            read_back(".latex.example"),
+            read_back("latex.example"),
+        ] {
+            let forms = super::deletion_forms(&cookie);
+            assert_eq!(forms[0].domain(), Some("latex.example"));
+            assert_eq!(forms[1].domain(), Some(".latex.example"));
+            assert!(forms
+                .iter()
+                .all(|form| form.name() == "site_session" && form.path() == Some("/")));
         }
     }
 

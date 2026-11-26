@@ -9,11 +9,13 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 import { shortcut } from "@/lib/utils";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { registerNoteCommentSurface, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useHomeViewStore } from "@/store/home-view";
@@ -417,10 +419,10 @@ describe("MarkdownToolbar", () => {
     }
   });
 
-  async function renderShared(wysiwyg: boolean) {
+  async function renderShared(wysiwyg: boolean, role: { viewer: boolean; locked: boolean } = { viewer: false, locked: false }) {
     widenToolbar(2000);
     useFilesStore.setState({ projectId: "p1" });
-    useCollabEditorGate.setState({ projectId: "p1", viewer: false, locked: false });
+    useCollabEditorGate.setState({ projectId: "p1", ...role });
     await renderBar({ wysiwyg, onToggleWysiwyg: vi.fn() });
     return {
       bold: screen.getByLabelText(withShortcut(toolbar.boldWithShortcut, "⌘B")),
@@ -429,7 +431,7 @@ describe("MarkdownToolbar", () => {
   }
 
   function leaveShared() {
-    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false });
+    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, suggesting: false });
     useFilesStore.setState({ projectId: null });
   }
 
@@ -443,13 +445,69 @@ describe("MarkdownToolbar", () => {
     }
   });
 
-  it("disables formatting in Visual mode in a shared project, where Visual is read-only", async () => {
+  it("keeps formatting enabled in Visual mode in a shared project an editor can write to", async () => {
     try {
       const { bold, table } = await renderShared(true);
+      expect(bold).not.toBeDisabled();
+      expect(table).not.toBeDisabled();
+    } finally {
+      leaveShared();
+    }
+  });
+
+  it.each([
+    ["a viewer", { viewer: true, locked: true }],
+    ["a reviewer", { viewer: false, locked: true }],
+  ])("disables formatting in Visual mode for %s of a shared project", async (_role, role) => {
+    try {
+      const { bold, table } = await renderShared(true, role);
       expect(bold).toBeDisabled();
       expect(table).toBeDisabled();
     } finally {
       leaveShared();
+    }
+  });
+
+  it("disables formatting in Visual mode while an editor's edits are suggestions", async () => {
+    try {
+      useCollabEditorGate.setState({ suggesting: true });
+      const { bold } = await renderShared(true);
+      expect(bold).toBeDisabled();
+    } finally {
+      leaveShared();
+    }
+  });
+
+  it("offers Add comment in Visual mode on a live file and starts a draft from Visual's selection", async () => {
+    widenToolbar(2000);
+    useFilesStore.setState({ projectId: "p1", activePath: "notes.md" });
+    const target = vi.fn(() => ({ from: 2, to: 7, quote: "Hello" }));
+    let release = () => {};
+    await loadNamespace("collab");
+    try {
+      await renderBar({ wysiwyg: true, onToggleWysiwyg: vi.fn() });
+      act(() => useCommentsRail.setState({ visible: true, canCompose: true }));
+      expect(screen.queryByTestId("visual-comment-button")).toBeNull();
+      act(() => {
+        release = registerNoteCommentSurface({
+          projectId: "p1",
+          path: "notes.md",
+          session: {} as never,
+          flush: vi.fn(),
+          show: vi.fn(),
+          draft: vi.fn(() => null),
+          target,
+          reveal: vi.fn(() => false),
+        });
+      });
+      fireEvent.click(screen.getByTestId("visual-comment-button"));
+      expect(useCommentsRail.getState().request).toEqual({ path: "notes.md", from: 2, to: 7, quote: "Hello" });
+      act(() => release());
+      expect(screen.queryByTestId("visual-comment-button")).toBeNull();
+    } finally {
+      release();
+      act(() => useCommentsRail.setState({ visible: false, canCompose: false, request: null }));
+      useFilesStore.setState({ projectId: null, activePath: null });
     }
   });
 

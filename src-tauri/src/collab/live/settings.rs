@@ -25,7 +25,7 @@ impl Active {
                     self.refresh_pending();
                 }
                 if applied.meta.is_some() || !applied.notices.is_empty() {
-                    self.local.host.settings_changed(applied);
+                    self.host.settings_changed(applied);
                 }
             }
             Err(error) => {
@@ -40,7 +40,7 @@ impl Active {
 
 async fn follow_between_compiles(active: Arc<Active>) {
     use tauri::Manager;
-    let app = active.local.host.app();
+    let app = active.host.app();
     let state = app
         .as_ref()
         .and_then(|app| app.try_state::<crate::state::AppState>());
@@ -53,7 +53,7 @@ async fn follow_between_compiles(active: Arc<Active>) {
 
 pub(super) fn schedule(active: &Arc<Active>) {
     #[cfg(test)]
-    if active.local.host.app().is_none() {
+    if active.host.app().is_none() {
         return;
     }
     {

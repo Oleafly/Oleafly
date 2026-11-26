@@ -93,7 +93,7 @@ import { gateCompletionSource, type CompletionSyntax } from "./completion-trigge
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
-import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
+import { changesToUtf16Edits, localOrigin, remoteChange, sessionLineBreaks } from "./collaboration";
 import {
   capturePathViewState,
   editedPathViewState,
@@ -103,7 +103,7 @@ import {
   remotePathViewState,
   takeSavedPathState,
 } from "./path-view-state";
-import type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
+import { type DocumentSession, type RemoteChange, subscribeEdits, type Utf16Edit } from "./document-session";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
 export type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
@@ -296,6 +296,7 @@ class EditorSessions {
   private readonly background = new Map<string, BackgroundSession>();
   private current: DocumentSession | null = null;
   private currentVersion = 0;
+  private sending = false;
   private stopCurrent: (() => void) | null = null;
 
   constructor(states: Map<string, PathViewState>) {
@@ -315,7 +316,7 @@ class EditorSessions {
     if (this.current === session) return;
     this.dropBackgroundOf(session);
     this.current = session;
-    this.stopCurrent = session.subscribe((change) => {
+    const hear = (change: RemoteChange) => {
       this.currentVersion = change.version;
       let applied = true;
       try {
@@ -325,6 +326,9 @@ class EditorSessions {
         applied = false;
       }
       this.keepAligned(view, session, !applied);
+    };
+    this.stopCurrent = subscribeEdits(session, hear, (change) => {
+      if (!this.sending) hear(change);
     });
   }
 
@@ -336,12 +340,19 @@ class EditorSessions {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
         continue;
       }
+      this.sending = true;
       try {
-        session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+        session.applyLocal(
+          lfEdits(changesToUtf16Edits(transaction.changes)),
+          this.currentVersion,
+          localOrigin(transaction),
+        );
       } catch (error) {
         logException(view.state, error, "shared document");
         this.keepAligned(view, session, true);
         return true;
+      } finally {
+        this.sending = false;
       }
       this.currentVersion = session.version();
     }
@@ -402,11 +413,12 @@ class EditorSessions {
     const followMove = () => {
       if (session.path !== key) key = this.follow(key, session.path, entry);
     };
-    const stopChanges = session.subscribe((change) => {
+    const hear = (change: RemoteChange) => {
       followMove();
       const saved = this.states.get(key);
       if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
-    });
+    };
+    const stopChanges = subscribeEdits(session, hear, hear);
     const stopMoves = session.subscribeMove?.(followMove) ?? (() => {});
     const entry: BackgroundSession = {
       session,

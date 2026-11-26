@@ -481,7 +481,7 @@ describe("Library project dialogs", () => {
     expect(notifyError).not.toHaveBeenCalled();
   });
 
-  it("ignores a held Enter key in the fork name field", async () => {
+  it("ignores a held Enter key and the Enter that confirms an input method's text in the fork name field", async () => {
     render(<Library />);
     await openListActions(PAPER.name);
     fireEvent.click(
@@ -491,6 +491,7 @@ describe("Library project dialogs", () => {
       enLibrary.projects.forkDialog.namePlaceholder,
     );
     fireEvent.keyDown(input, { key: "Enter", repeat: true });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
     expect(duplicateProject).not.toHaveBeenCalled();
   });
 

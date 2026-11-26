@@ -29,6 +29,7 @@ export const NOTE_WORKSPACE_ONLY_TOOLS: readonly string[] = [
   "insert_figure",
   "import_overleaf_projects",
   "list_overleaf_projects",
+  "open_overleaf_live",
 ];
 
 export const NOTE_TASK_TOOLS: readonly string[] = ["research_task_create", "research_task_status"];

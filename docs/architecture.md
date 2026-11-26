@@ -23,6 +23,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-sandbox/` | Isolation for task commands and runs (macOS Seatbelt, Linux bubblewrap, the Windows AppContainer sandbox) and run profiles |
 | `crates/oleafly-secrets/` | The encrypted secret store, the data folder and private-file helpers, shared by the app and the CLI |
 | `crates/oleafly-online/` | Online LaTeX service client: sessions, project lists, folder import, browser cookie reading and Git-bridge sync |
+| `crates/oleafly-live/` | Live editing in the project folder for collaboration server and online LaTeX service projects: the folder mirror, its writes, kept copies and unsent changes. It doesn't depend on Tauri, so the CLI can share it |
 | `crates/oleafly-preflight/` | Preflight checks in Rust, with the same results as the app's panel, for `oleafly check` and research tasks |
 | `crates/oleafly-lint/` | LaTeX, BibTeX, spelling and grammar checks for `oleafly lint` |
 | `crates/oleafly-doctools/` | Document statistics, SyncTeX file reading and Pandoc exports, shared by the app and the CLI |

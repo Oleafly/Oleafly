@@ -51,7 +51,7 @@ export function PersonAvatar({
         id: accountId || "unknown",
         name: (verified && known) || name,
         imageUrl: verified ? avatarUrl : null,
-        hue: peerHue(accountId || "unknown", self),
+        hue: peerHue(accountId || "unknown", self, "server"),
       }}
       size={size}
       fallbackIcon={verified ? undefined : <ShieldQuestion />}

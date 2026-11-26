@@ -1194,6 +1194,7 @@
     "elsewhere": "La modification en direct est active dans une autre note",
     "makeLive": "Modifier en direct ici",
     "viewOnly": "Vous pouvez lire cette note, mais pas la modifier.",
+    "suggesting": "Le mode Suggestion est activé, vous ne pouvez donc pas modifier cette note ici. Désactivez le mode Suggestion pour la modifier.",
     "someone": "Quelqu'un",
     "unsentReadOnly": "Vos dernières modifications de cette note n'ont pas été envoyées, car vous ne pouvez plus que la consulter.",
     "unsentRefused": "Oleafly n'a pas pu envoyer vos dernières modifications de cette note, elles ont donc été abandonnées."

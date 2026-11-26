@@ -19,7 +19,7 @@ import {
 import { hasMouseDownEffect, pointerSelectionTracking, selectionAtMouseDown } from "./selection";
 import { loadedMathRender, loadMathRender, type MathRenderModule } from "../math-render-loader";
 import { paintTypstMath, typstMathTheme } from "../typst-math-render";
-import { type MathSourceFormat, scanMathExpressions } from "../math-source";
+import { type MathSourceFormat, scanMathEnvironments, scanMathExpressions } from "../math-source";
 import { typstMathAt } from "../math-typst";
 import { editorMessage } from "../messages";
 
@@ -40,27 +40,6 @@ export interface MathPreviewTooltipState {
 
 const MAX_WINDOW = 8_000;
 const TYPST_PREVIEW_DEBOUNCE_MS = 180;
-
-const MATH_ENVIRONMENTS = new Set([
-  "align",
-  "align*",
-  "alignat",
-  "alignat*",
-  "displaymath",
-  "eqnarray",
-  "eqnarray*",
-  "equation",
-  "equation*",
-  "flalign",
-  "flalign*",
-  "gather",
-  "gather*",
-  "math",
-  "multline",
-  "multline*",
-]);
-
-const ENVIRONMENT_PATTERN = /\\begin\{([A-Za-z]+\*?)\}/gu;
 
 export const mathPreviewFormat = Facet.define<MathSourceFormat, MathSourceFormat>({
   combine: (values) => values[0] ?? "latex",
@@ -102,23 +81,8 @@ function environmentMathAt(
   offset: number,
   pos: number,
 ): MathPreviewTarget | null {
-  ENVIRONMENT_PATTERN.lastIndex = 0;
-  for (
-    let match = ENVIRONMENT_PATTERN.exec(text);
-    match !== null;
-    match = ENVIRONMENT_PATTERN.exec(text)
-  ) {
-    if (!MATH_ENVIRONMENTS.has(match[1])) continue;
-    const closing = String.raw`\end{${match[1]}}`;
-    const end = text.indexOf(closing, match.index + match[0].length);
-    if (end < 0) continue;
-    const from = match.index + offset;
-    const to = end + closing.length + offset;
-    if (from <= pos && pos <= to) {
-      return { from, to, body: text.slice(match.index, end + closing.length), display: true };
-    }
-  }
-  return null;
+  const found = scanMathEnvironments(text).find(({ from, to }) => from + offset <= pos && pos <= to + offset);
+  return found ? { from: found.from + offset, to: found.to + offset, body: found.source, display: true } : null;
 }
 
 export function mathPreviewTargetAt(

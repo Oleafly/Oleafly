@@ -116,10 +116,38 @@ impl Member {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Invite {
+    pub id: String,
+    pub email: String,
+    pub role: Role,
+}
+
+impl Invite {
+    pub fn list_from_value(list: &Value) -> Vec<Invite> {
+        list.as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|invite| {
+                Some(Invite {
+                    id: invite
+                        .get("_id")?
+                        .as_str()
+                        .map(str::to_string)
+                        .and_then(plain)?,
+                    email: invite.get("email")?.as_str()?.trim().to_string(),
+                    role: Role::from_privilege(invite.get("privileges")?.as_str()?)?,
+                })
+            })
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Members {
     pub owner: Option<Member>,
     pub collaborators: Vec<Member>,
+    pub invites: Vec<Invite>,
 }
 
 impl Members {
@@ -133,6 +161,7 @@ impl Members {
                 .flatten()
                 .filter_map(Member::from_value)
                 .collect(),
+            invites: Invite::list_from_value(project.get("invites").unwrap_or(&Value::Null)),
         }
     }
 
@@ -146,12 +175,11 @@ impl Members {
             .map(|member| member.role)
     }
 
-    pub async fn refresh(
-        &mut self,
+    pub async fn fetch_collaborators(
         http: &Http,
         session: &SessionHandle,
         project_id: &str,
-    ) -> Result<(), OnlineError> {
+    ) -> Result<Vec<Member>, OnlineError> {
         let response = http
             .send_public(
                 http.get(&format!("/project/{project_id}/members"), &session.cookie())
@@ -170,8 +198,7 @@ impl Members {
             .get("members")
             .and_then(Value::as_array)
             .ok_or_else(|| OnlineError::new(OnlineErrorKind::Unrecognized))?;
-        self.collaborators = listed.iter().filter_map(Member::from_value).collect();
-        Ok(())
+        Ok(listed.iter().filter_map(Member::from_value).collect())
     }
 }
 
@@ -206,6 +233,7 @@ pub struct ProjectState {
     pub features: Value,
     pub track_changes: TrackChanges,
     pub members: Members,
+    pub public_access: Option<String>,
     pub tree: OverleafTree,
 }
 
@@ -254,6 +282,7 @@ impl ProjectState {
             features: Value::Null,
             track_changes: TrackChanges::default(),
             members: Members::default(),
+            public_access: None,
             tree: OverleafTree::default(),
         }
     }
@@ -302,6 +331,7 @@ impl ProjectState {
                 project.get("trackChangesState").unwrap_or(&Value::Null),
             ),
             members: Members::from_project(project),
+            public_access: trimmed(project, "publicAccesLevel"),
             tree,
         })
     }
@@ -349,9 +379,12 @@ impl ProjectState {
                 self.track_changes = TrackChanges::from_value(state);
                 false
             }
-            AccessEvent::MembersChanged | AccessEvent::AccessLevelChanged { .. } => {
-                !self.restricted
+            AccessEvent::PublicAccessChanged(level) => {
+                self.public_access.clone_from(level);
+                false
             }
+            AccessEvent::MembersChanged { members: true, .. }
+            | AccessEvent::AccessLevelChanged { .. } => !self.restricted,
             _ => false,
         }
     }
@@ -360,40 +393,59 @@ impl ProjectState {
         self.track_changes.applies_to(user_id)
     }
 
-    pub async fn refresh_members(
-        &mut self,
-        http: &Http,
-        session: &SessionHandle,
-        project_id: &str,
-    ) -> Result<bool, OnlineError> {
-        if self.restricted {
-            return Ok(false);
-        }
-        self.members.refresh(http, session, project_id).await?;
-        Ok(true)
+    pub fn plan_tracks_changes(&self) -> bool {
+        self.feature("trackChanges")
+    }
+
+    fn feature(&self, name: &str) -> bool {
+        self.features.get(name).and_then(Value::as_bool) == Some(true)
     }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Capabilities {
-    pub review: bool,
-    pub chat: bool,
+    pub review: Option<bool>,
+    pub chat: Option<bool>,
 }
 
-async fn probe_route(http: &Http, session: &SessionHandle, path: &str) -> Option<bool> {
-    let response = http
+enum Probe {
+    Answer(bool),
+    Again,
+    Unsure,
+}
+
+async fn probe_once(http: &Http, session: &SessionHandle, path: &str) -> Probe {
+    let sent = http
         .get(path, &session.cookie())
         .header(ACCEPT, "application/json")
         .send()
-        .await
-        .ok()?;
-    let status = response.status();
-    if status.is_success() {
-        Some(true)
-    } else if status == reqwest::StatusCode::NOT_FOUND {
-        Some(false)
-    } else {
-        None
+        .await;
+    let Ok(response) = sent else {
+        return Probe::Again;
+    };
+    session.absorb_headers(response.headers());
+    match response.status() {
+        status if status.is_success() => Probe::Answer(true),
+        reqwest::StatusCode::NOT_FOUND => Probe::Answer(false),
+        status if status.is_server_error() => Probe::Again,
+        _ => Probe::Unsure,
+    }
+}
+
+async fn probe_route(http: &Http, session: &SessionHandle, path: &str) -> Option<bool> {
+    let probed = client::retried(
+        |probe: &Probe| matches!(probe, Probe::Again),
+        || async {
+            match probe_once(http, session, path).await {
+                Probe::Again => Err(Probe::Again),
+                other => Ok(other),
+            }
+        },
+    )
+    .await;
+    match probed {
+        Ok(Probe::Answer(found)) => Some(found),
+        _ => None,
     }
 }
 
@@ -417,9 +469,9 @@ impl CapabilityCache {
         let known = self.get(&http.origin).unwrap_or_default();
         let review = probe_route(http, session, &format!("/project/{project_id}/threads"))
             .await
-            .unwrap_or(known.review);
+            .or(known.review);
         let chat = if features.get("chat").and_then(Value::as_bool) == Some(true) {
-            true
+            Some(true)
         } else {
             probe_route(
                 http,
@@ -427,7 +479,7 @@ impl CapabilityCache {
                 &format!("/project/{project_id}/messages?limit=1"),
             )
             .await
-            .unwrap_or(known.chat)
+            .or(known.chat)
         };
         let found = Capabilities { review, chat };
         locked(&self.by_origin).insert(http.origin.clone(), found);

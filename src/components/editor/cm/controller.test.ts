@@ -35,7 +35,6 @@ vi.mock("@/store/files", () => ({
 const bumpDocVersion = vi.fn();
 
 import {
-  setWysiwygDocumentContext,
   setWysiwygEditor,
   setWysiwygInsertions,
   setWysiwygVisible,
@@ -83,7 +82,6 @@ describe("cm/controller mode-aware routing", () => {
     setWysiwygEditor(null);
     setWysiwygInsertions(null);
     setWysiwygVisible(false);
-    setWysiwygDocumentContext(null);
   });
 
   afterEach(() => {
@@ -150,7 +148,6 @@ describe("cm/controller mode-aware routing", () => {
 
   it("parses figure and table source into native nodes", () => {
     const editor = activateVisualEditor();
-    setWysiwygDocumentContext({ theoremEnvironments: ["observation"], booktabs: false });
     insertAtCursor(
       "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{image-filename}\n  \\caption{Caption text}\n  \\label{fig:label}\n\\end{figure}\n",
     );

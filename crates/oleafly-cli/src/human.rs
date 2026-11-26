@@ -69,12 +69,15 @@ pub fn out_line(text: &str) {
 /// zsh | head`) that is no failure: the process ends quietly, as a filter
 /// does. Anything else is an error.
 pub fn stdout_failed(error: std::io::Error) -> CliError {
-    if error.kind() == std::io::ErrorKind::BrokenPipe
-        || (cfg!(windows) && matches!(error.raw_os_error(), Some(109 | 232)))
-    {
+    if reader_gone(&error) {
         std::process::exit(0);
     }
     CliError::from(error)
+}
+
+pub fn reader_gone(error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::BrokenPipe
+        || (cfg!(windows) && matches!(error.raw_os_error(), Some(109 | 232)))
 }
 
 pub fn write_stdout(bytes: &[u8]) -> Result<(), CliError> {

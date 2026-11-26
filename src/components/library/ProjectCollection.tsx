@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bookmark,
   BookmarkCheck,
+  CloudUpload,
   CopyPlus,
   Eye,
   FileText,
@@ -200,6 +201,7 @@ export type ProjectCardActions = Readonly<{
   saveAsTemplate: (project: ProjectInfo) => void;
   trash: (project: ProjectInfo) => void;
   share?: (project: ProjectInfo) => void;
+  putOnOverleaf?: (project: ProjectInfo) => void;
 }>;
 
 type MenuKit = Readonly<{
@@ -242,6 +244,13 @@ function ProjectMenuItems({
   const colorLabels = useBookColorLabels();
   const { Item, Sub, SubTrigger, SubContent } = kit;
   const share = collab && actions.share ? actions.share : null;
+  const putOnOverleaf =
+    actions.putOnOverleaf && p.imported_from !== "overleaf" && !p.shared ? actions.putOnOverleaf : null;
+  const putItem = putOnOverleaf ? (
+    <Item data-testid="project-put-on-overleaf" disabled={!reachable} onClick={() => putOnOverleaf(p)}>
+      <CloudUpload className="mr-2 size-4" /> {t(($) => $.library.import.overleaf.put.menu)}
+    </Item>
+  ) : null;
   if (p.recovery_pending) {
     return (
       <Item onClick={() => actions.openById(p.id)}>
@@ -285,6 +294,7 @@ function ProjectMenuItems({
             <Share2 className="mr-2 size-4" /> {collab.copyAndShare}
           </Item>
         ) : null}
+        {putItem}
         {colorSub}
         <Item onClick={() => actions.remove(p)}>
           <FolderMinus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.remove)}
@@ -305,6 +315,7 @@ function ProjectMenuItems({
           <Share2 className="mr-2 size-4" /> {collab.share}
         </Item>
       ) : null}
+      {putItem}
       <Item onClick={() => actions.history(p)}>
         <History className="mr-2 size-4" /> {t(($) => $.library.projects.exportHistory)}
       </Item>

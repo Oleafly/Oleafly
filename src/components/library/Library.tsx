@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -160,6 +161,12 @@ const BulkDeleteButton = lazy(() =>
   import("@/components/library/BulkDeleteButton").then((module) => ({ default: module.BulkDeleteButton })),
 );
 
+const PutOnOverleafDialog = lazy(() =>
+  import("@/components/library/overleaf/PutOnOverleafDialog").then((module) => ({
+    default: module.PutOnOverleafDialog,
+  })),
+);
+
 function BulkDeleteSlot({
   projects,
   className,
@@ -264,6 +271,8 @@ export function Library() {
     name: string;
   } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ProjectInfo | null>(null);
+  const [putTarget, setPutTarget] = useState<ProjectInfo | null>(null);
+  const overleafLive = useSettingsStore((s) => s.overleafLive);
   const [unavailableTarget, setUnavailableTarget] = useState<{
     project: ProjectInfo;
     state: UnavailableFolder;
@@ -434,6 +443,9 @@ export function Library() {
     trash: (project) => {
       window.setTimeout(() => setDeleteTarget({ id: project.id, name: project.name }), 0);
     },
+    putOnOverleaf: (project) => {
+      window.setTimeout(() => setPutTarget(project), 0);
+    },
   };
   const cardActions = useMemo<ProjectCardActions>(
     () => ({
@@ -453,8 +465,9 @@ export function Library() {
       saveAsTemplate: (project) => cardHandlers.current?.saveAsTemplate(project),
       trash: (project) => cardHandlers.current?.trash(project),
       share: (project) => useShareDialog.getState().openFor(project.id),
+      putOnOverleaf: overleafLive ? (project) => cardHandlers.current?.putOnOverleaf?.(project) : undefined,
     }),
-    [],
+    [overleafLive],
   );
   const confirmProjectDeletion = async () => {
     const target = deleteTarget;
@@ -1263,7 +1276,7 @@ export function Library() {
               data-modal-initial-focus
               value={forkName}
               onChange={(e) => setForkName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat && !isImeEnter(e)) void submitFork(); }}
               placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
@@ -1326,6 +1339,18 @@ export function Library() {
           window.setTimeout(() => setRemoveTarget(project), 0);
         }}
       />
+      {putTarget ? (
+        <Suspense fallback={null}>
+          <PutOnOverleafDialog
+            project={putTarget}
+            onClose={() => setPutTarget(null)}
+            onDone={(projectId) => {
+              setPutTarget(null);
+              void openProject(projectId);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

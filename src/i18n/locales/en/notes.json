@@ -1178,6 +1178,7 @@
     "elsewhere": "Live editing is on in another note",
     "makeLive": "Edit live here",
     "viewOnly": "You can read this note but not edit it.",
+    "suggesting": "Suggesting is on, so you can't edit this note here. Turn suggesting off to edit it.",
     "someone": "Someone",
     "unsentReadOnly": "Your last changes to this note weren't sent because you can only view it now.",
     "unsentRefused": "Oleafly couldn't send your last changes to this note, so they were dropped."

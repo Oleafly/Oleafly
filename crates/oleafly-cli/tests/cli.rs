@@ -1,10 +1,21 @@
-mod support;
+#[path = "support/compiler.rs"]
+mod compiler;
+#[cfg(unix)]
+#[path = "support/exits.rs"]
+mod exits;
+#[cfg(unix)]
+#[path = "support/hangup.rs"]
+mod hangup;
+#[path = "support/running.rs"]
+mod running;
+#[path = "support/rust_fixture.rs"]
+mod rust_fixture;
 
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::{Child, Command, Output, Stdio};
-use std::sync::mpsc::{self, Receiver};
+use std::process::{Command, Output, Stdio};
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
@@ -22,10 +33,8 @@ fn json(output: &Output) -> Value {
 }
 
 fn compiler_fixture(directory: &TempDir) -> PathBuf {
-    support::compiler_fixture(directory.path(), false)
+    compiler::compiler_fixture(directory.path(), false)
 }
-
-struct ChildGuard(Child);
 
 fn latexmk_installed_outside_path() -> bool {
     let mut search = oleafly_core::tex_distro::TexSearch::from_env();
@@ -35,13 +44,6 @@ fn latexmk_installed_outside_path() -> bool {
         eprintln!("skipped: {} is found without PATH", path.display());
     }
     found.is_some()
-}
-
-impl Drop for ChildGuard {
-    fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
-    }
 }
 
 fn wait_for_json(
@@ -525,31 +527,20 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     let compiler = tools
         .path()
         .join(oleafly_cli::executable_name("fixture-success"));
-    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
-        .args(["--json", "watch"])
-        .current_dir(project.path())
-        .env("PATH", "")
-        .env("OLEAFLY_LATEXMK", &compiler)
-        .env("OLEAFLY_WATCH_POLL", "1")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut child = ChildGuard(child);
-    let stdout = child.0.stdout.take().unwrap();
-    let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if sender.send(line).is_err() {
-                break;
-            }
-        }
-    });
+    let mut child = running::Running::start(
+        Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(["--json", "watch"])
+            .current_dir(project.path())
+            .env("PATH", "")
+            .env("OLEAFLY_LATEXMK", &compiler)
+            .env("OLEAFLY_WATCH_POLL", "1")
+            .stderr(Stdio::piped()),
+    );
 
-    wait_for_json(&receiver, Duration::from_secs(10), |value| {
+    wait_for_json(&child.lines, Duration::from_secs(10), |value| {
         value["event"] == "build_error"
     });
-    assert!(child.0.try_wait().unwrap().is_none());
+    assert!(child.process.try_wait().unwrap().is_none());
 
     let built_compiler = compiler_fixture(&tools);
     assert_eq!(built_compiler, compiler.canonicalize().unwrap());
@@ -564,7 +555,7 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     )
     .unwrap();
 
-    let finished = wait_for_json(&receiver, Duration::from_secs(20), |value| {
+    let finished = wait_for_json(&child.lines, Duration::from_secs(20), |value| {
         value["event"] == "build_finished"
             && value["ok"] == true
             && value["build"]["log"]
@@ -574,33 +565,27 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     assert_eq!(finished["build"]["engine"], "latexmk");
 }
 
-fn spawn_watch(
-    project: &std::path::Path,
-    compiler: &std::path::Path,
-    extra: &[&str],
-) -> (ChildGuard, Receiver<String>) {
-    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+fn watch_command(project: &std::path::Path, compiler: &std::path::Path, extra: &[&str]) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+    command
         .args(["--json", "watch"])
         .args(extra)
         .current_dir(project)
         .env("PATH", "")
         .env("OLEAFLY_TECTONIC", compiler)
         .env("OLEAFLY_WATCH_POLL", "1")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut child = ChildGuard(child);
-    let stdout = child.0.stdout.take().unwrap();
-    let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if sender.send(line).is_err() {
-                break;
-            }
-        }
-    });
-    (child, receiver)
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    hangup::set_hangup(&mut command, libc::SIG_DFL);
+    command
+}
+
+fn spawn_watch(
+    project: &std::path::Path,
+    compiler: &std::path::Path,
+    extra: &[&str],
+) -> running::Running {
+    running::Running::start(&mut watch_command(project, compiler, extra))
 }
 
 #[test]
@@ -609,20 +594,20 @@ fn watch_with_its_output_inside_the_project_builds_once() {
     let tools = TempDir::new().unwrap();
     assert!(run(&["init"], Some(project.path())).status.success());
     let compiler = compiler_fixture(&tools);
-    let (_child, receiver) = spawn_watch(project.path(), &compiler, &["-o", "paper.pdf"]);
+    let watch = spawn_watch(project.path(), &compiler, &["-o", "paper.pdf"]);
 
-    let watching = wait_for_json(&receiver, Duration::from_secs(10), |value| {
+    let watching = wait_for_json(&watch.lines, Duration::from_secs(10), |value| {
         value["event"] == "watching"
     });
     assert_eq!(watching["warnings"], serde_json::json!([]));
-    let finished = wait_for_json(&receiver, Duration::from_secs(20), |value| {
+    let finished = wait_for_json(&watch.lines, Duration::from_secs(20), |value| {
         value["event"] == "build_finished"
     });
     assert_eq!(finished["ok"], true);
     assert_eq!(finished["warnings"], serde_json::json!([]));
     assert!(project.path().join("paper.pdf").is_file());
 
-    let next = receiver.recv_timeout(Duration::from_secs(3));
+    let next = watch.lines.recv_timeout(Duration::from_secs(3));
     assert!(
         next.is_err(),
         "another event after the only build: {next:?}"
@@ -637,53 +622,111 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
     for signal in [libc::SIGTERM, libc::SIGHUP] {
         let project = TempDir::new().unwrap();
         assert!(run(&["init"], Some(project.path())).status.success());
-        let (mut watch, receiver) = spawn_watch(project.path(), &compiler, &[]);
-        wait_for_json(&receiver, Duration::from_secs(20), |value| {
+        let mut watch = spawn_watch(project.path(), &compiler, &[]);
+        wait_for_json(&watch.lines, Duration::from_secs(20), |value| {
             value["event"] == "build_finished"
         });
         std::thread::sleep(Duration::from_millis(300));
-        unsafe { libc::kill(watch.0.id() as i32, signal) };
+        unsafe { libc::kill(watch.process.id() as i32, signal) };
         assert_eq!(
-            wait_with_deadline(&mut watch.0).code(),
+            exits::exit_within(&mut watch.process, Duration::from_secs(20)).code(),
             Some(0),
             "watch {signal}"
         );
 
         let project = TempDir::new().unwrap();
         assert!(run(&["init"], Some(project.path())).status.success());
-        let mut build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        let mut build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+        build
             .args(["--events", "build"])
             .current_dir(project.path())
             .env("PATH", "")
             .env("OLEAFLY_TECTONIC", &compiler)
             .env("FIXTURE_SLEEP_MS", "60000")
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
+            .stderr(Stdio::piped());
+        hangup::set_hangup(&mut build, libc::SIG_DFL);
+        let mut build = build.spawn().unwrap();
         let mut lines = BufReader::new(build.stdout.take().unwrap()).lines();
         let started = lines.next().unwrap().unwrap();
         assert!(started.contains("build_started"), "{started}");
         std::thread::sleep(Duration::from_millis(500));
         unsafe { libc::kill(build.id() as i32, signal) };
         let rest: Vec<String> = lines.map_while(Result::ok).collect();
-        let status = wait_with_deadline(&mut build);
+        let status = exits::exit_within(&mut build, Duration::from_secs(20));
         assert_eq!(status.code(), Some(130), "build {signal}: {rest:?}");
         let result: Value = serde_json::from_str(rest.last().unwrap()).unwrap();
         assert_eq!(result["error"]["code"], "interrupted");
     }
 }
 
-#[cfg(unix)]
-fn wait_with_deadline(child: &mut Child) -> std::process::ExitStatus {
+#[test]
+fn event_lines_match_the_context_writer() {
+    let project = TempDir::new().unwrap();
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--events", "build"])
+        .current_dir(project.path())
+        .env("PATH", "")
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let written = stdout
+        .lines()
+        .find(|line| line.contains("build_started"))
+        .unwrap_or_else(|| panic!("no build_started event: {stdout}"));
+    let Value::Object(line) = serde_json::from_str(written).unwrap() else {
+        panic!("not an object: {written}");
+    };
+    let headers = ["schema_version", "type", "command", "event"];
+    assert!(headers.iter().all(|header| line.contains_key(*header)));
+    let fields = line
+        .into_iter()
+        .filter(|(key, _)| !headers.contains(&key.as_str()))
+        .collect();
+    assert_eq!(
+        oleafly_cli::contract::event_line("build", "build_started", Value::Object(fields)),
+        written
+    );
+}
+
+#[test]
+fn a_closed_stdout_ends_watch_as_an_io_failure() {
+    let project = TempDir::new().unwrap();
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let mut watch = watch_command(project.path(), &compiler, &[])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut first = String::new();
+    let read = BufReader::new(watch.stdout.take().unwrap()).read_line(&mut first);
     let deadline = Instant::now() + Duration::from_secs(20);
-    loop {
-        if let Some(status) = child.try_wait().unwrap() {
-            return status;
+    let status = loop {
+        if let Some(status) = watch.try_wait().unwrap() {
+            break status;
         }
-        assert!(Instant::now() < deadline, "the process didn't stop");
-        std::thread::sleep(Duration::from_millis(50));
-    }
+        if Instant::now() > deadline {
+            let _ = watch.kill();
+            panic!("watch kept running after its reader left");
+        }
+        std::fs::write(
+            project.path().join("main.tex"),
+            format!("% {:?}\n", Instant::now()),
+        )
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(
+        read.is_ok_and(|_| first.contains(r#""event":"watching""#)),
+        "{first}"
+    );
+    assert_eq!(status.code(), Some(3));
 }
 
 #[test]
@@ -1218,7 +1261,7 @@ fn open_refuses_missing_folders_files_and_a_missing_app() {
 
 fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
-    let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
+    let binary = rust_fixture::rust_fixture(directory, "typst.rs", "typst", None);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
     warm_up_typst(&binary);
     binary
@@ -2469,38 +2512,29 @@ fn a_headless_mcp_server_exits_on_sigterm_while_its_client_keeps_stdin_open() {
     let project = TempDir::new().unwrap();
     let data = TempDir::new().unwrap();
     std::fs::write(project.path().join("main.tex"), ARTICLE).unwrap();
-    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
-        .args(["mcp", "--bridge", "never"])
-        .current_dir(project.path())
-        .env("OLEAFLY_DATA_DIR", data.path())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    let mut guard = ChildGuard(child);
+    let mut server = running::Running::start(
+        Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(["mcp", "--bridge", "never"])
+            .current_dir(project.path())
+            .env("OLEAFLY_DATA_DIR", data.path())
+            .stdin(Stdio::piped())
+            .stderr(Stdio::null()),
+    );
     {
         use std::io::Write;
-        let stdin = guard.0.stdin.as_mut().unwrap();
+        let stdin = server.process.stdin.as_mut().unwrap();
         writeln!(stdin, r#"{{"jsonrpc":"2.0","id":1,"method":"ping"}}"#).unwrap();
         stdin.flush().unwrap();
     }
-    let mut reader = BufReader::new(guard.0.stdout.take().unwrap());
-    let mut line = String::new();
-    reader.read_line(&mut line).unwrap();
+    let line = server
+        .lines
+        .recv_timeout(Duration::from_secs(60))
+        .expect("the server never answered the ping");
     assert!(line.contains("\"id\":1"), "{line}");
     // SAFETY: signals the child this test started.
-    unsafe { libc::kill(guard.0.id() as i32, libc::SIGTERM) };
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        if let Some(status) = guard.0.try_wait().unwrap() {
-            assert_eq!(status.code(), Some(0));
-            break;
-        }
-        assert!(
-            Instant::now() < deadline,
-            "the server kept running after SIGTERM"
-        );
-        std::thread::sleep(Duration::from_millis(50));
-    }
+    unsafe { libc::kill(server.process.id() as i32, libc::SIGTERM) };
+    assert_eq!(
+        exits::exit_within(&mut server.process, Duration::from_secs(20)).code(),
+        Some(0)
+    );
 }

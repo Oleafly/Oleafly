@@ -39,6 +39,8 @@ describe("SaveAsTemplateDialog", () => {
     expect(name).toHaveValue("Lab paper");
 
     fireEvent.change(name, { target: { value: "Lab paper template " } });
+    fireEvent.keyDown(name, { key: "Enter", keyCode: 229 });
+    expect(saveProjectTemplate).not.toHaveBeenCalled();
     fireEvent.keyDown(name, { key: "Enter" });
 
     await waitFor(() =>

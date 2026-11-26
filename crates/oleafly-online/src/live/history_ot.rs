@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use oleafly_ot::{Component, TextOperation};
 use serde_json::{json, Map, Value};
 
-use super::format::{bounded, CodecError, MAX_UNITS};
+use super::format::{bounded, ChangeKind, CodecError, Decision, RangeChange, MAX_UNITS};
+use crate::realtime::events::stamp_ms;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TrackedRange {
@@ -58,7 +62,7 @@ pub struct RawOp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Edit {
+pub enum Edit {
     Text(RawOp),
     AddComment(CommentRanges),
     DeleteComment(String),
@@ -66,11 +70,108 @@ pub(crate) enum Edit {
     NoOp,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VisibleChange {
+    pub id: String,
+    pub kind: ChangeKind,
+    pub from: usize,
+    pub to: usize,
+    pub text: String,
+    pub user: Option<String>,
+    pub ts: Option<i64>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VisibleComment {
+    pub id: String,
+    pub ranges: Vec<(usize, usize)>,
+    pub resolved: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Review {
+    pub comments: Vec<VisibleComment>,
+    pub changes: Vec<VisibleChange>,
+}
+
+impl Edit {
+    pub fn to_json(&self) -> Result<Value, CodecError> {
+        Ok(match self {
+            Edit::Text(op) => json!({ "textOperation": op.to_json()? }),
+            Edit::AddComment(comment) => {
+                let ranges: Vec<Value> = comment
+                    .ranges
+                    .iter()
+                    .map(|(pos, length)| json!({ "pos": pos, "length": length }))
+                    .collect();
+                let mut added = json!({ "commentId": comment.id, "ranges": ranges });
+                if comment.resolved {
+                    added["resolved"] = json!(true);
+                }
+                added
+            }
+            Edit::DeleteComment(id) => json!({ "deleteComment": id }),
+            Edit::SetCommentState { id, resolved } => {
+                json!({ "commentId": id, "resolved": resolved })
+            }
+            Edit::NoOp => json!({ "noOp": true }),
+        })
+    }
+
+    pub fn is_comment(&self) -> bool {
+        matches!(
+            self,
+            Edit::AddComment(_) | Edit::DeleteComment(_) | Edit::SetCommentState { .. }
+        )
+    }
+}
+
+pub fn edits_to_json(edits: &[Edit]) -> Result<Value, CodecError> {
+    edits
+        .iter()
+        .map(Edit::to_json)
+        .collect::<Result<Vec<Value>, CodecError>>()
+        .map(Value::Array)
+}
+
 fn is_deleted(mark: &Option<Value>) -> bool {
     mark.as_ref()
         .and_then(|mark| mark.get("type"))
         .and_then(Value::as_str)
         == Some("delete")
+}
+
+fn field<'a>(mark: &'a Option<Value>, name: &str) -> Option<&'a str> {
+    mark.as_ref()?.get(name)?.as_str()
+}
+
+fn joinable(left: &Option<Value>, right: &Option<Value>) -> bool {
+    left.is_some()
+        && right.is_some()
+        && field(left, "type") == field(right, "type")
+        && field(left, "userId") == field(right, "userId")
+}
+
+fn stamp(mark: &Option<Value>) -> Option<i64> {
+    mark.as_ref()?.get("ts").and_then(stamp_ms)
+}
+
+fn earliest(left: Option<Value>, right: &Option<Value>) -> Option<Value> {
+    match (stamp(&left), stamp(right)) {
+        (Some(kept), Some(other)) if other < kept => right.clone(),
+        _ => left,
+    }
+}
+
+fn fnv(parts: &[&str]) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for part in parts {
+        for byte in part.bytes().chain([0]) {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    hash
 }
 
 fn resolve(mark: &Option<Value>) -> Option<Value> {
@@ -103,6 +204,30 @@ impl RawOp {
 
     pub fn target_len(&self) -> usize {
         self.target
+    }
+
+    pub fn is_noop(&self) -> bool {
+        self.parts
+            .iter()
+            .all(|part| matches!(part, RawPart::Retain { tracking: None, .. }))
+    }
+
+    fn shifts(&self) -> Vec<(usize, isize, Option<Value>)> {
+        let mut shifts = Vec::new();
+        let mut cursor = 0;
+        for part in &self.parts {
+            match part {
+                RawPart::Retain { count, .. } => cursor += count,
+                RawPart::Insert {
+                    text, comment_ids, ..
+                } => {
+                    shifts.push((cursor, text.len() as isize, comment_ids.clone()));
+                    cursor += text.len();
+                }
+                RawPart::Delete { count } => shifts.push((cursor, -(*count as isize), None)),
+            }
+        }
+        shifts
     }
 
     fn retain(&mut self, count: usize, tracking: Option<Value>, comment_ids: Option<Value>) {
@@ -396,7 +521,7 @@ fn keys(object: &Map<String, Value>) -> String {
     keys.join(", ")
 }
 
-pub(crate) fn edits_from_json(op: &Value) -> Result<Vec<Edit>, CodecError> {
+pub fn edits_from_json(op: &Value) -> Result<Vec<Edit>, CodecError> {
     let edits = op
         .as_array()
         .ok_or_else(|| malformed("the update is not a list of edits"))?;
@@ -515,7 +640,7 @@ impl RawDoc {
                 .collect::<Result<Vec<_>, CodecError>>()?;
             doc.comments.push(CommentRanges {
                 id: comment["id"].as_str().unwrap_or_default().to_string(),
-                ranges,
+                ranges: merged_ranges(ranges),
                 resolved: comment["resolved"].as_bool().unwrap_or(false),
             });
         }
@@ -610,7 +735,23 @@ impl RawDoc {
         raw
     }
 
-    #[cfg(test)]
+    pub fn to_raw_after(&self, visible: usize) -> usize {
+        let mut seen = 0;
+        let mut raw = 0;
+        for run in &self.runs {
+            if is_deleted(&run.mark) {
+                raw += run.length;
+                continue;
+            }
+            if seen + run.length > visible {
+                return raw + (visible - seen);
+            }
+            seen += run.length;
+            raw += run.length;
+        }
+        raw
+    }
+
     pub fn to_visible(&self, raw: usize) -> usize {
         let mut seen = 0;
         let mut at = 0;
@@ -625,6 +766,232 @@ impl RawDoc {
             at += run.length;
         }
         seen
+    }
+
+    pub fn counts(&self) -> (usize, usize) {
+        (
+            self.comments.len(),
+            self.runs.iter().filter(|run| run.mark.is_some()).count(),
+        )
+    }
+
+    pub fn comment(&self, id: &str) -> Option<&CommentRanges> {
+        self.comments.iter().find(|comment| comment.id == id)
+    }
+
+    pub fn review(&self) -> Review {
+        let mut ends: Vec<(usize, usize)> = Vec::new();
+        for (index, comment) in self.comments.iter().enumerate() {
+            for (pos, length) in &comment.ranges {
+                ends.push((*pos, index));
+                ends.push((pos.saturating_add(*length), index));
+            }
+        }
+        ends.sort_unstable();
+        let mut mapped: Vec<Vec<usize>> = vec![Vec::new(); self.comments.len()];
+        let mut ordinals: HashMap<u64, usize> = HashMap::new();
+        let mut changes = Vec::new();
+        let mut pending = ends.iter().peekable();
+        let (mut raw, mut visible) = (0, 0);
+        for run in &self.runs {
+            let deleted = is_deleted(&run.mark);
+            while let Some(&&(pos, index)) = pending.peek() {
+                if pos > raw + run.length || (pos == raw + run.length && deleted) {
+                    break;
+                }
+                let inside = if deleted { 0 } else { pos.saturating_sub(raw) };
+                mapped[index].push(visible + inside.min(run.length));
+                pending.next();
+            }
+            if run.mark.is_some() {
+                changes.push(self.visible_change(run, raw, visible, &mut ordinals));
+            }
+            raw += run.length;
+            if !deleted {
+                visible += run.length;
+            }
+        }
+        for (_, index) in pending {
+            mapped[*index].push(visible);
+        }
+        let comments = self
+            .comments
+            .iter()
+            .zip(mapped)
+            .map(|(comment, points)| VisibleComment {
+                id: comment.id.clone(),
+                ranges: points
+                    .chunks(2)
+                    .filter_map(|pair| match pair {
+                        [from, to] if from < to => Some((*from, *to)),
+                        _ => None,
+                    })
+                    .collect(),
+                resolved: comment.resolved,
+            })
+            .collect();
+        Review { comments, changes }
+    }
+
+    fn visible_change(
+        &self,
+        run: &Run,
+        raw: usize,
+        visible: usize,
+        ordinals: &mut HashMap<u64, usize>,
+    ) -> VisibleChange {
+        let (kind, to) = if is_deleted(&run.mark) {
+            (ChangeKind::Delete, visible)
+        } else {
+            (ChangeKind::Insert, visible + run.length)
+        };
+        let (kind_name, user) = (
+            field(&run.mark, "type").unwrap_or_default(),
+            field(&run.mark, "userId"),
+        );
+        let ts = run
+            .mark
+            .as_ref()
+            .and_then(|mark| mark.get("ts"))
+            .map(Value::to_string)
+            .unwrap_or_default();
+        let hash = fnv(&[kind_name, user.unwrap_or_default(), &ts]);
+        let ordinal = ordinals.entry(hash).or_default();
+        let id = format!("{hash:016x}{:04x}", *ordinal);
+        *ordinal += 1;
+        VisibleChange {
+            id,
+            kind,
+            from: visible,
+            to,
+            text: String::from_utf16_lossy(&self.content[raw..raw + run.length]),
+            user: user.map(str::to_string),
+            ts: stamp(&run.mark),
+        }
+    }
+
+    fn tracked_spans(&self, ids: &[String]) -> Vec<(usize, usize, bool)> {
+        let review = self.review();
+        let mut spans = Vec::new();
+        let mut raw = 0;
+        let mut index = 0;
+        for run in &self.runs {
+            if run.mark.is_some() {
+                if ids.contains(&review.changes[index].id) {
+                    spans.push((raw, run.length, is_deleted(&run.mark)));
+                }
+                index += 1;
+            }
+            raw += run.length;
+        }
+        spans
+    }
+
+    pub fn decision_op(&self, ids: &[String], decision: Decision) -> Option<RawOp> {
+        let spans = self.tracked_spans(ids);
+        if spans.is_empty() {
+            return None;
+        }
+        let cleared = || Some(json!({ "type": "none" }));
+        let mut op = RawOp::default();
+        let mut at = 0;
+        for (pos, length, deleted) in spans {
+            op.retain(pos - at, None, None);
+            match (decision, deleted) {
+                (Decision::Accept, false) => op.retain(length, cleared(), None),
+                (Decision::Reject, true) => self.restore(&mut op, pos, length),
+                (Decision::Accept, true) | (Decision::Reject, false) => op.delete(length),
+            }
+            at = pos + length;
+        }
+        op.retain(self.content.len() - at, None, None);
+        Some(op)
+    }
+
+    pub fn add_comment(&self, id: &str, from: usize, to: usize, resolved: bool) -> Option<Edit> {
+        self.comment_edit(id, &[(from, to)], resolved)
+    }
+
+    pub fn comment_edit(
+        &self,
+        id: &str,
+        ranges: &[(usize, usize)],
+        resolved: bool,
+    ) -> Option<Edit> {
+        let visible = self.visible_len();
+        let raw: Vec<(usize, usize)> = ranges
+            .iter()
+            .filter(|(from, to)| from < to && *to <= visible)
+            .map(|(from, to)| (self.to_raw_after(*from), self.to_raw(*to)))
+            .filter(|(start, end)| start < end)
+            .map(|(start, end)| (start, end - start))
+            .collect();
+        (!raw.is_empty()).then(|| {
+            Edit::AddComment(CommentRanges {
+                id: id.to_string(),
+                ranges: merged_ranges(raw),
+                resolved,
+            })
+        })
+    }
+
+    fn signature(&self) -> (u64, u64) {
+        let mut shape = DefaultHasher::new();
+        let mut places = DefaultHasher::new();
+        let mut at = 0;
+        for run in &self.runs {
+            if run.mark.is_some() {
+                (
+                    field(&run.mark, "type"),
+                    field(&run.mark, "userId"),
+                    run.length,
+                )
+                    .hash(&mut shape);
+                at.hash(&mut places);
+            }
+            at += run.length;
+        }
+        for comment in &self.comments {
+            (&comment.id, comment.resolved).hash(&mut shape);
+            for (pos, length) in &comment.ranges {
+                length.hash(&mut shape);
+                pos.hash(&mut places);
+            }
+        }
+        (shape.finish(), places.finish())
+    }
+
+    fn restore(&self, op: &mut RawOp, pos: usize, length: usize) {
+        let end = pos + length;
+        let mut cuts = vec![pos, end];
+        for comment in &self.comments {
+            for (start, size) in &comment.ranges {
+                for edge in [*start, start + size] {
+                    if pos < edge && edge < end {
+                        cuts.push(edge);
+                    }
+                }
+            }
+        }
+        cuts.sort_unstable();
+        cuts.dedup();
+        for window in cuts.windows(2) {
+            let (from, to) = (window[0], window[1]);
+            let ids: Vec<Value> = self
+                .comments
+                .iter()
+                .filter(|comment| {
+                    comment
+                        .ranges
+                        .iter()
+                        .any(|(start, size)| *start <= from && to <= start + size)
+                })
+                .map(|comment| json!(comment.id))
+                .collect();
+            let ids = (!ids.is_empty()).then_some(Value::Array(ids));
+            op.insert(self.content[from..to].to_vec(), None, ids);
+        }
+        op.delete(length);
     }
 
     fn comment_ids_at(&self, raw: usize) -> Option<Value> {
@@ -647,6 +1014,32 @@ impl RawDoc {
         op: &TextOperation,
         tracking: Option<&Value>,
     ) -> Result<RawOp, CodecError> {
+        self.encode_with(op, tracking, None)
+    }
+
+    fn hidden_at(&self, raw: usize, text: &[u16], user: &str) -> bool {
+        let mut at = 0;
+        for run in &self.runs {
+            if at == raw {
+                return is_deleted(&run.mark)
+                    && run.length >= text.len()
+                    && (user.is_empty() || field(&run.mark, "userId") == Some(user))
+                    && self.content[raw..raw + text.len()] == *text;
+            }
+            if at > raw {
+                return false;
+            }
+            at += run.length;
+        }
+        false
+    }
+
+    pub fn encode_with(
+        &self,
+        op: &TextOperation,
+        tracking: Option<&Value>,
+        unhide: Option<&str>,
+    ) -> Result<RawOp, CodecError> {
         if op.base_len() != self.visible_len() {
             return Err(CodecError::Mismatch);
         }
@@ -661,21 +1054,34 @@ impl RawDoc {
             *at = target;
             Ok(())
         };
-        for component in op.components() {
+        let mut restored = 0;
+        let mut components = op.components().iter().peekable();
+        while let Some(component) = components.next() {
             match component {
                 Component::Retain(count) => visible += count,
                 Component::Insert(text) => {
                     let pos = self.to_raw(visible);
+                    let units: Vec<u16> = text.encode_utf16().collect();
+                    if pos >= at && unhide.is_some_and(|user| self.hidden_at(pos, &units, user)) {
+                        until(&mut raw, &mut at, pos)?;
+                        self.restore(&mut raw, pos, units.len());
+                        at = pos + units.len();
+                        continue;
+                    }
+                    if let Some(Component::Delete(count)) = components.peek() {
+                        let end = self.to_raw(visible + count);
+                        let own = unhide.filter(|user| !user.is_empty());
+                        if own.is_some_and(|user| self.hidden_at(end, &units, user)) {
+                            restored = units.len();
+                            continue;
+                        }
+                    }
                     until(&mut raw, &mut at, pos)?;
                     let marked = tracking.map(|tracking| with_type(tracking, "insert"));
-                    raw.insert(
-                        text.encode_utf16().collect(),
-                        marked,
-                        self.comment_ids_at(pos),
-                    );
+                    raw.insert(units, marked, self.comment_ids_at(pos));
                 }
                 Component::Delete(count) => {
-                    let start = self.to_raw(visible);
+                    let start = self.to_raw(visible).max(at);
                     let end = self.to_raw(visible + count);
                     until(&mut raw, &mut at, start)?;
                     match tracking {
@@ -684,7 +1090,10 @@ impl RawDoc {
                         }
                         None => raw.delete(end - start),
                     }
-                    at = end;
+                    if restored > 0 {
+                        self.restore(&mut raw, end, restored);
+                    }
+                    at = end + std::mem::take(&mut restored);
                     visible += count;
                 }
             }
@@ -767,15 +1176,15 @@ impl RawDoc {
         Ok(())
     }
 
-    pub fn apply(&mut self, op: &RawOp) -> Result<(), CodecError> {
+    pub fn apply(&mut self, op: &RawOp) -> Result<RangeChange, CodecError> {
         if op.base != self.content.len() {
             return Err(CodecError::Mismatch);
         }
+        let before = self.signature();
         let mut content = Vec::with_capacity(op.target);
         let mut runs = Vec::new();
         let mut walker = Walker::new(&self.runs);
         let mut at = 0;
-        let mut shifts: Vec<(usize, isize, Option<Value>)> = Vec::new();
         for part in &op.parts {
             match part {
                 RawPart::Retain {
@@ -791,12 +1200,7 @@ impl RawDoc {
                         at += length;
                     }
                 }
-                RawPart::Insert {
-                    text,
-                    tracking,
-                    comment_ids,
-                } => {
-                    shifts.push((content.len(), text.len() as isize, comment_ids.clone()));
+                RawPart::Insert { text, tracking, .. } => {
                     content.extend_from_slice(text);
                     runs.push(Run {
                         length: text.len(),
@@ -804,7 +1208,6 @@ impl RawDoc {
                     });
                 }
                 RawPart::Delete { count } => {
-                    shifts.push((content.len(), -(*count as isize), None));
                     walker.take(*count);
                     at += count;
                 }
@@ -812,43 +1215,65 @@ impl RawDoc {
         }
         self.content = content;
         self.runs = normalised(runs);
-        self.shift_comments(&shifts);
-        Ok(())
-    }
-
-    fn shift_comments(&mut self, shifts: &[(usize, isize, Option<Value>)]) {
-        for comment in &mut self.comments {
-            for (pos, length) in &mut comment.ranges {
-                let mut range = (*pos, pos.saturating_add(*length));
-                for (at, by, ids) in shifts {
-                    let named = names(ids, &comment.id);
-                    range = match usize::try_from(*by) {
-                        Ok(by) => grown(range, *at, by, named),
-                        Err(_) => shrunk(range, *at, by.unsigned_abs()),
-                    };
-                }
-                *pos = range.0;
-                *length = range.1 - range.0;
+        let shifts = op.shifts();
+        if !shifts.is_empty() {
+            for comment in &mut self.comments {
+                comment.shift(&shifts);
             }
         }
+        Ok(RangeChange::between(before, self.signature()))
     }
 
-    pub(crate) fn edit_comments(&mut self, edit: &Edit) {
-        match edit {
-            Edit::AddComment(comment) => {
-                self.comments.retain(|existing| existing.id != comment.id);
-                self.comments.push(comment.clone());
+    pub fn edit_comments(&mut self, edit: &Edit) -> RangeChange {
+        let before = self.signature();
+        edit_comment_list(&mut self.comments, edit);
+        RangeChange::between(before, self.signature())
+    }
+}
+
+pub fn edit_comment_list(comments: &mut Vec<CommentRanges>, edit: &Edit) {
+    match edit {
+        Edit::AddComment(comment) => {
+            let added = CommentRanges {
+                ranges: merged_ranges(comment.ranges.clone()),
+                ..comment.clone()
+            };
+            match comments
+                .iter_mut()
+                .find(|existing| existing.id == comment.id)
+            {
+                Some(existing) => *existing = added,
+                None => comments.push(added),
             }
-            Edit::DeleteComment(id) => self.comments.retain(|existing| existing.id != *id),
-            Edit::SetCommentState { id, resolved } => {
-                for comment in &mut self.comments {
-                    if comment.id == *id {
-                        comment.resolved = *resolved;
-                    }
+        }
+        Edit::DeleteComment(id) => comments.retain(|existing| existing.id != *id),
+        Edit::SetCommentState { id, resolved } => {
+            for comment in comments.iter_mut() {
+                if comment.id == *id {
+                    comment.resolved = *resolved;
                 }
             }
-            Edit::Text(_) | Edit::NoOp => {}
         }
+        Edit::Text(_) | Edit::NoOp => {}
+    }
+}
+
+impl CommentRanges {
+    fn shift(&mut self, shifts: &[(usize, isize, Option<Value>)]) {
+        let mut ranges = std::mem::take(&mut self.ranges);
+        for (at, by, ids) in shifts {
+            ranges = match usize::try_from(*by) {
+                Ok(by) => grown(&ranges, *at, by, names(ids, &self.id)),
+                Err(_) => shrunk(&ranges, *at, by.unsigned_abs()),
+            };
+        }
+        self.ranges = ranges;
+    }
+
+    pub fn moved(&self, op: &RawOp) -> CommentRanges {
+        let mut moved = self.clone();
+        moved.shift(&op.shifts());
+        moved
     }
 }
 
@@ -858,24 +1283,68 @@ fn names(ids: &Option<Value>, id: &str) -> bool {
         .is_some_and(|ids| ids.iter().any(|named| named == id))
 }
 
-fn grown((start, end): (usize, usize), at: usize, by: usize, named: bool) -> (usize, usize) {
-    if at < start || (at == start && !named) {
-        (start.saturating_add(by), end.saturating_add(by))
-    } else if at < end || (at == end && named) {
-        (start, end.saturating_add(by))
-    } else {
-        (start, end)
+fn merged_ranges(mut ranges: Vec<(usize, usize)>) -> Vec<(usize, usize)> {
+    ranges.retain(|(_, length)| *length > 0);
+    ranges.sort_unstable();
+    let mut merged: Vec<(usize, usize)> = Vec::with_capacity(ranges.len());
+    for (pos, length) in ranges {
+        let end = pos.saturating_add(length);
+        match merged.last_mut() {
+            Some((last, last_length)) if pos <= last.saturating_add(*last_length) => {
+                *last_length = end.max(last.saturating_add(*last_length)) - *last;
+            }
+            _ => merged.push((pos, length)),
+        }
     }
+    merged
 }
 
-fn shrunk((start, end): (usize, usize), at: usize, gone: usize) -> (usize, usize) {
+fn grown(ranges: &[(usize, usize)], at: usize, by: usize, named: bool) -> Vec<(usize, usize)> {
+    let mut out = Vec::with_capacity(ranges.len() + 1);
+    let mut extended = false;
+    for &(pos, length) in ranges {
+        let end = pos.saturating_add(length);
+        if at == end || at == pos {
+            if named {
+                out.push((pos, length.saturating_add(by)));
+                extended = true;
+            } else if at == end {
+                out.push((pos, length));
+            } else {
+                out.push((pos.saturating_add(by), length));
+            }
+        } else if pos > at {
+            out.push((pos.saturating_add(by), length));
+        } else if at < end {
+            if named {
+                out.push((pos, length.saturating_add(by)));
+                extended = true;
+            } else {
+                out.push((pos, at - pos));
+                out.push((at.saturating_add(by), end - at));
+            }
+        } else {
+            out.push((pos, length));
+        }
+    }
+    if named && !extended {
+        out.push((at, by));
+    }
+    merged_ranges(out)
+}
+
+fn shrunk(ranges: &[(usize, usize)], at: usize, gone: usize) -> Vec<(usize, usize)> {
     let cut_end = at.saturating_add(gone);
-    let removed_before = cut_end.min(start).saturating_sub(at);
-    let removed_inside = cut_end.min(end).saturating_sub(at.max(start));
-    (
-        start - removed_before,
-        end - removed_before - removed_inside,
-    )
+    let out = ranges
+        .iter()
+        .map(|&(pos, length)| {
+            let end = pos.saturating_add(length);
+            let removed_before = cut_end.min(pos).saturating_sub(at);
+            let removed_inside = cut_end.min(end).saturating_sub(at.max(pos));
+            (pos - removed_before, length - removed_inside)
+        })
+        .collect();
+    merged_ranges(out)
 }
 
 fn with_type(tracking: &Value, kind: &str) -> Value {
@@ -892,6 +1361,10 @@ fn normalised(runs: Vec<Run>) -> Vec<Run> {
         }
         match merged.last_mut() {
             Some(last) if last.mark == run.mark => last.length += run.length,
+            Some(last) if joinable(&last.mark, &run.mark) => {
+                last.length += run.length;
+                last.mark = earliest(last.mark.take(), &run.mark);
+            }
             _ => merged.push(run),
         }
     }

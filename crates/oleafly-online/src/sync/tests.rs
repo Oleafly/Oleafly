@@ -818,16 +818,19 @@ fn sync_links_round_trip_and_unlink_removes_the_copy() {
     assert_eq!(read_link(&paths).unwrap(), None);
 
     let store = SecretStore::at(data.path());
-    session::save_git_token(&store, DEFAULT_SERVER, "  olp_token_12345  ").unwrap();
+    session::save_git_token(&store, DEFAULT_SERVER, None, "  olp_token_12345  ").unwrap();
     assert_eq!(
-        session::git_token(&store, DEFAULT_SERVER)
+        session::git_token(&store, DEFAULT_SERVER, None)
             .unwrap()
             .as_deref(),
         Some("olp_token_12345")
     );
-    assert!(session::save_git_token(&store, DEFAULT_SERVER, "bad token").is_err());
-    assert!(session::forget_git_token(&store, DEFAULT_SERVER).unwrap());
-    assert_eq!(session::git_token(&store, DEFAULT_SERVER).unwrap(), None);
+    assert!(session::save_git_token(&store, DEFAULT_SERVER, None, "bad token").is_err());
+    assert!(session::forget_git_token(&store, DEFAULT_SERVER, None).unwrap());
+    assert_eq!(
+        session::git_token(&store, DEFAULT_SERVER, None).unwrap(),
+        None
+    );
 }
 
 #[test]

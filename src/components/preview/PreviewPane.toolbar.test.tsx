@@ -85,6 +85,16 @@ vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
   }),
 }));
 
+const annotationHosts = vi.hoisted(() => ({ props: [] as Record<string, unknown>[] }));
+vi.mock("./use-pdf-annotations", () => ({
+  PdfAnnotationsHost: (props: Record<string, unknown>) => {
+    annotationHosts.props.push(props);
+    return <div data-testid="pdf-annotations-host" />;
+  },
+}));
+
+import { useCommentsRail } from "@/components/collab/comments-rail";
+import { useSettingsStore } from "@/store/settings";
 import { PreviewPane } from "./PreviewPane";
 import { sessionZoomByProject } from "./preview-zoom";
 
@@ -403,5 +413,30 @@ describe("PreviewPane toolbar", () => {
     expect(
       screen.getByRole("button", { name: enPreview.password.submit }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("PreviewPane selection actions", () => {
+  afterEach(() => {
+    annotationHosts.props = [];
+    useCommentsRail.setState({ canCompose: false });
+    useSettingsStore.setState({ pdfReview: false });
+  });
+
+  it("offers PDF selections for comments when coauthors can comment, without turning on annotations", async () => {
+    useSettingsStore.setState({ pdfReview: false });
+    useCommentsRail.setState({ canCompose: false });
+    const view = await renderWithPdf();
+    expect(screen.queryByTestId("pdf-annotations-host")).not.toBeInTheDocument();
+    act(() => useCommentsRail.setState({ canCompose: true }));
+    view.rerender(<PreviewPane />);
+    expect(await screen.findByTestId("pdf-annotations-host")).toBeInTheDocument();
+    expect(annotationHosts.props.at(-1)).toMatchObject({ projectId: PROJECT, annotate: false, comment: true });
+    act(() => useSettingsStore.setState({ pdfReview: true }));
+    await waitFor(() => expect(annotationHosts.props.at(-1)).toMatchObject({ annotate: true, comment: true }));
+    act(() => useCommentsRail.setState({ canCompose: false }));
+    await waitFor(() => expect(annotationHosts.props.at(-1)).toMatchObject({ annotate: true, comment: false }));
+    act(() => useSettingsStore.setState({ pdfReview: false }));
+    await waitFor(() => expect(screen.queryByTestId("pdf-annotations-host")).not.toBeInTheDocument());
   });
 });

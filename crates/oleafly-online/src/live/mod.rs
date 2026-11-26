@@ -24,5 +24,19 @@ pub struct Tracking {
 pub enum SendMode {
     Edit,
     Suggest(Tracking),
+    Review(Tracking),
     Hold,
+}
+
+impl SendMode {
+    pub fn tracking(&self) -> Option<&Tracking> {
+        match self {
+            SendMode::Suggest(tracking) | SendMode::Review(tracking) => Some(tracking),
+            SendMode::Edit | SendMode::Hold => None,
+        }
+    }
+
+    pub fn may_edit(&self) -> bool {
+        matches!(self, SendMode::Edit | SendMode::Suggest(_))
+    }
 }

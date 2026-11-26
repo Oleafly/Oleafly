@@ -1,5 +1,6 @@
 use std::io::Write as _;
 use std::path::Path;
+use std::time::SystemTime;
 
 use super::*;
 use crate::templates::{instantiate_from, read_manifest};
@@ -342,7 +343,7 @@ fn stale_leftovers_are_swept_and_fresh_ones_are_left_alone() {
         .unwrap()
         .set_modified(SystemTime::now() - STALE_AFTER - Duration::from_secs(60))
         .unwrap();
-    sweep_stale_staging(&root);
+    crate::staging::sweep_stale(&root, &[STAGING_PREFIX, DOWNLOAD_PREFIX], STALE_AFTER);
     assert!(!old_download.exists());
     assert!(new_download.exists());
     assert!(fresh.exists());

@@ -1887,34 +1887,18 @@
       "disconnectFailed": "Não foi possível desconectar o alphaXiv. Tente de novo."
     },
     "cookies": {
-      "confirmTitle": "Confirmar a importação de cookies",
-      "detecting": "Procurando os perfis de navegador instalados...",
-      "dialogDescription": "Escolha um perfil de navegador instalado. O Oleafly só o lê depois que você revisa e confirma a importação. Os cookies do Chromium são desbloqueados localmente pelo Keychain do macOS. O Oleafly não envia valores de cookie para nenhum serviço do Oleafly.",
-      "dialogTitle": "Importar cookies do navegador",
-      "empty": "Nenhum perfil de navegador compatível foi encontrado.",
-      "errors": {
-        "chooseProfile": "Escolha um perfil de navegador disponível."
-      },
-      "profileGroupLabel": "Perfis de navegador",
-      "profileLegend": "Perfil de navegador",
-      "review": "Revisar a importação",
-      "status": {
-        "available": "Disponível",
-        "comingSoon": "Em breve",
-        "noCookieStore": "Sem repositório de cookies",
-        "notInstalled": "Não instalado"
-      },
-      "tryAgain": "Tentar de novo",
-      "label": "Copiar o login de um navegador",
-      "useBrowserSignIn": "Copiar o login do seu navegador",
-      "signInDescription": "Copie seu login de {{server}} de um navegador deste computador, para não precisar fazer login de novo.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "O Oleafly vai ler os cookies de {{domain}} do perfil {{profile}} do {{browser}}. Eles ficam no Oleafly e só vão para {{domain}}. Você vai confirmar mais uma vez em uma caixa de diálogo do sistema.",
-      "copyAction": "Copiar o login",
-      "copying": "Copiando…",
-      "notSignedIn_one": "{{count}} cookie copiado do {{browser}}, mas ele não fez o seu login. Faça login diretamente.",
-      "notSignedIn_many": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente.",
-      "notSignedIn_other": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente."
+      "dialogDescription": "O Oleafly copia apenas os cookies de {{server}}, faz login com eles e depois apaga as cópias. Suas senhas ficam no navegador.",
+      "dialogTitle": "Importar cookies do seu navegador",
+      "label": "Importar cookies do seu navegador",
+      "useBrowserSignIn": "Escolher um perfil",
+      "signInDescription": "Usa a conta de {{server}} que já está conectada em um perfil de navegador deste computador.",
+      "copyAction": "Importar",
+      "copying": "Importando…",
+      "from": "De",
+      "noCookies": "Ainda sem cookies",
+      "sameAccount": "{{profile}} está conectado como {{account}}, que o Oleafly já usa. Escolha outro perfil ou faça login primeiro com sua outra conta nesse navegador.",
+      "orExisting": "ou use um login que você já tem",
+      "noSavedSignIn": "{{profile}} não tem um login salvo em {{server}}, então os cookies copiados não fizeram você entrar. Se você está conectado ali, talvez o navegador guarde o login só até ser fechado. Use o bloco {{browser}} em vez disso."
     },
     "zotero": {
       "apiKeyHint": "Para obter uma chave: entre em <siteLink>zotero.org</siteLink>, abra a sua <keyLink>página de chaves de API</keyLink> para criar uma chave e copie o seu ID numérico de usuário da mesma página.",
@@ -1977,7 +1961,12 @@
       "signedIn": "Conectado em {{server}}",
       "signOut": "Sair",
       "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
+      "addAccount": "Adicionar outra conta",
+      "addAccountHint": "Escolha onde fazer login. Todos começam sem conta conectada, então qualquer conta serve.",
+      "accountPick": "Conta para importar",
+      "accountPickDescription": "Novas importações e modelos usam esta conta. Os projetos que você já tem mantêm a conta de onde vieram.",
       "gitTitle": "Token Git para sincronização",
+      "gitTitleFor": "Token Git para {{email}}",
       "gitSaved": "Há um token Git salvo. Os projetos que você vincular ficam sincronizados com o Overleaf.",
       "gitMissing": "Nenhum token Git ainda. Crie um em Integração com Git nas configurações da sua conta do Overleaf para sincronizar projetos.",
       "gitOpenSettings": "Abrir configurações da conta do Overleaf",
@@ -1986,14 +1975,9 @@
       "gitSave": "Salvar",
       "gitRemove": "Remover",
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro.",
-      "browserLabel": "Fazer login com o seu navegador",
-      "browserDescription": "Para login com Google, instituição ou chave de acesso. O Oleafly abre {{server}} em uma nova janela do navegador e a fecha assim que você entrar.",
-      "browserAction": "Fazer login",
-      "browserPick": "Navegador para fazer login",
       "browserWaiting": "Termine o login em {{server}} em {{browser}}. Fechar a janela cancela o login.",
-      "browserHint": "Use para login com Google, instituição ou chave de acesso.",
-      "windowLabel": "Fazer login em {{server}}",
-      "windowDescription": "O Oleafly abre uma janela de login e a fecha assim que você entrar. Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e faça login aqui com ele.",
+      "windowLabel": "Entrar dentro do Oleafly",
+      "windowDescription": "A janela se fecha sozinha assim que você entrar. Se a sua chave de acesso não funcionar ali, use a sua senha ou uma confirmação no celular.",
       "windowAction": "Fazer login",
       "windowWaiting": "Termine o login em {{server}} na janela que abriu.",
       "unsent": {
@@ -2011,7 +1995,15 @@
           "always": "Excluir também no Overleaf",
           "never": "Manter no Overleaf"
         }
-      }
+      },
+      "sameAccount": "Você já está conectado como {{account}}. Faça login com outra conta para adicioná-la.",
+      "windowTitle": "Fazer login em {{server}}",
+      "addAccountKept": "Sua conta atual continua conectada.",
+      "noBrowser": "Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e depois escolha aqui.",
+      "tileHere": "Neste app",
+      "tileWindow": "Nova janela",
+      "tileWaiting": "Esperando por você",
+      "signInNote": "Use um navegador para entrar com Google, sua instituição ou uma chave de acesso. Se a sua chave de acesso não funcionar no Oleafly, use ali a sua senha ou uma confirmação no celular. A janela se fecha sozinha assim que você entrar."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2143,6 +2135,20 @@
           "confirm": "Isto baixa o instalador do Cua do cua.ai e o executa no seu terminal. Continuar?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gerenciar logins",
+      "description": "As contas em que o Oleafly está conectado neste computador. Se você remover uma aqui, continua conectado no navegador.",
+      "loading": "Carregando seus logins…",
+      "empty": "Você não está conectado a nenhuma conta.",
+      "inUse": "Em uso",
+      "switch": "Trocar",
+      "switchTo": "Trocar para {{account}}",
+      "removeAccount": "Remover {{account}}",
+      "removeAll": "Remover todas",
+      "importMore": "Importar mais",
+      "loadFailed": "O Oleafly não conseguiu carregar seus logins.",
+      "changeFailed": "O Oleafly não conseguiu alterar este login. Tente de novo."
     }
   },
   "language": {
@@ -2353,6 +2359,7 @@
       "confirm": "Limpar as palavras",
       "descriptionFallback": "Isso remove todos os termos deste dicionário. Eles voltam a ser verificados na hora.",
       "descriptionGlobal": "Isso remove todos os termos do dicionário global. Eles voltam a ser verificados na hora.",
+      "descriptionOverleaf": "Eles também são removidos da sua conta do Overleaf.",
       "descriptionProject": "Isso remove todos os termos de {{project}}. Eles voltam a ser verificados na hora.",
       "descriptionSuppressed": "Isso remove todos os termos das ocorrências dispensadas em {{project}}. Eles voltam a ser verificados na hora.",
       "suppressedConfirm": "Mostrar de novo",
@@ -2371,6 +2378,7 @@
     },
     "global": {
       "emptyDescription": "As palavras que você adiciona aqui são puladas pela revisão de texto em todos os projetos.",
+      "overleafSynced": "Sincronizado com as palavras aprendidas da sua conta do Overleaf enquanto um projeto está ao vivo no Overleaf.",
       "scope": "Vale para todos os projetos"
     },
     "intro": "Adicione palavras ao seu dicionário pessoal de verificação ortográfica. Elas ficam nas configurações locais e são ignoradas em todos os projetos. A comparação é normalizada em Unicode e não diferencia maiúsculas de minúsculas.",

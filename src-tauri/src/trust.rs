@@ -26,6 +26,7 @@ const NETWORK_TOOLS: &[&str] = &[
     "verify_citation",
     "list_overleaf_projects",
     "import_overleaf_projects",
+    "open_overleaf_live",
     "web_search",
     "web_fetch",
 ];
@@ -1684,6 +1685,16 @@ mod tests {
         assert_eq!(
             ai_tool_gate("read_file", &json!({"path": ".envrc"})),
             AiToolGate::Allow
+        );
+        assert_eq!(
+            ai_tool_gate(
+                "open_overleaf_live",
+                &json!({"id": "64b7f0c2a1e4b5d6c7e8f901"})
+            ),
+            AiToolGate::Confirm(AiConfirm::Network {
+                tool: "open_overleaf_live".into(),
+                target: None,
+            })
         );
     }
 

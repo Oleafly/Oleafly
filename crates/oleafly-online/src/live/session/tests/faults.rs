@@ -1,11 +1,14 @@
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
 use super::super::OverleafSession;
 use super::{
-    eventually, project, record_of, DocFault, DocStopReason, LiveEnd, LiveError, MergeReview,
-    MockProject, MockUser, Port, Privilege, Rig, Tab, FILES, INTRO, MAIN,
+    beside, eventually, manifest_of, project, record_of, DocFault, DocStopReason, LiveEnd,
+    LiveError, MergeReview, MockProject, MockUser, Port, Privilege, Rig, Tab, FILES, INTRO, MAIN,
+    SLOW_DISK,
 };
 use crate::live::DocId;
 
@@ -388,6 +391,150 @@ async fn keep_mine_as_a_copy_reloads_from_overleaf() {
     })
     .await;
     live.stop().await;
+}
+
+#[tokio::test]
+async fn an_outside_edit_racing_keep_mine_as_a_copy_sends_nothing_stale() {
+    let rig = Rig::start(project()).await;
+    let port = Port::new(&FILES);
+    let (live, _tab, main) = stranded(&rig, &port).await;
+    on_disk(&port, "Hello mine");
+    let server = rig.mock.doc_text(&main.0);
+    let sent = rig.mock.received("applyOtUpdate").len();
+    rig.mock.stall();
+    live.keep_and_reload(&main).unwrap();
+    on_disk(&port, "Hello kept");
+    let edited = live
+        .local_edit_with(&main, |current| {
+            (current != "Hello mine").then(|| oleafly_ot::diff(current, "Hello mine"))
+        })
+        .unwrap();
+    assert!(
+        !edited,
+        "the kept text is what the disk holds, so there is nothing to send"
+    );
+    rig.mock.resume();
+    eventually("the doc reloads from the server", || {
+        live.text(&main).as_deref() == Some(server.as_str())
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(rig.mock.doc_text(&main.0), server);
+    assert_eq!(rig.mock.received("applyOtUpdate").len(), sent);
+    live.stop().await;
+}
+
+async fn never_joined(rig: &Rig, port: &Arc<Port>) -> (Arc<OverleafSession>, DocId) {
+    rig.mock
+        .configure(|config| config.doc_type_override = Some("sharejs-json".into()));
+    rig.seed("alice", 0).await;
+    let live = rig.live("alice", port).await;
+    let main = rig.id(MAIN);
+    live.open(MAIN, Arc::new(|_| {}));
+    eventually("the doc stops before its first join", || {
+        port.seen()
+            .stopped
+            .iter()
+            .any(|(doc, reason)| doc == &main && matches!(reason, DocStopReason::Fault(_)))
+    })
+    .await;
+    rig.mock.configure(|config| config.doc_type_override = None);
+    (live, main)
+}
+
+#[tokio::test]
+async fn trying_again_on_a_doc_that_never_joined_asks_before_dropping_the_disk_text() {
+    let rig = Rig::start(project()).await;
+    let port = Port::new(&FILES);
+    let (live, main) = never_joined(&rig, &port).await;
+    on_disk(&port, "Hello from the disk");
+    live.retry(&main).unwrap();
+    let asked = MergeReview::NeedsReview {
+        mine: "Hello from the disk".into(),
+        theirs: "Hello".into(),
+    };
+    eventually("the two versions are put to the user", || {
+        port.seen().merged.contains(&(main.clone(), asked.clone()))
+    })
+    .await;
+    assert_eq!(live.text(&main).as_deref(), Some("Hello from the disk"));
+    assert!(sent_nothing(&rig, &main));
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn trying_again_on_a_doc_that_never_joined_goes_live_when_the_disk_agrees() {
+    let rig = Rig::start(project()).await;
+    let port = Port::new(&FILES);
+    let (live, main) = never_joined(&rig, &port).await;
+    live.retry(&main).unwrap();
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    let mut tab = Tab::open(&live, MAIN);
+    tab.type_end(&live, " again");
+    eventually("the doc is live", || {
+        rig.mock.doc_text(&main.0) == "Hello again"
+    })
+    .await;
+    assert!(port.seen().merged.is_empty());
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn reloading_after_a_second_refusal_forgets_the_text_the_retry_started_from() {
+    let rig = Rig::start(project()).await;
+    let port = Port::new(&FILES);
+    let (live, main) = never_joined(&rig, &port).await;
+    on_disk(&port, "Hello from the disk");
+    let refuse = |kind: Option<&str>| {
+        let kind = kind.map(str::to_string);
+        rig.mock.configure(|config| config.doc_type_override = kind);
+    };
+    refuse(Some("sharejs-json"));
+    live.retry(&main).unwrap();
+    eventually("the second try is refused too", || {
+        port.seen().stopped.len() == 2
+    })
+    .await;
+    eventually("the retry's text is remembered", || {
+        manifest_of(&live).is_some_and(|manifest| manifest.unbased.contains_key(&main.0))
+    })
+    .await;
+    refuse(None);
+    live.keep_and_reload(&main).unwrap();
+    eventually("the doc reloads from the server", || {
+        live.text(&main).as_deref() == Some("Hello")
+    })
+    .await;
+    eventually("nothing is left to compare with", || {
+        manifest_of(&live).is_some_and(|manifest| manifest.unbased.is_empty())
+    })
+    .await;
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_stopped_doc_reads_the_disk_without_holding_the_session() {
+    for reload in [false, true] {
+        let rig = Rig::start(project()).await;
+        let port = Port::new(&FILES);
+        let (live, _tab, main) = stranded(&rig, &port).await;
+        port.slow_disk.store(true, Ordering::SeqCst);
+        let doc = main.clone();
+        let (done, waited) = beside(&live, move |live| {
+            if reload {
+                live.keep_and_reload(&doc)
+            } else {
+                live.retry(&doc)
+            }
+        });
+        port.slow_disk.store(false, Ordering::SeqCst);
+        assert_eq!(done, Ok(()));
+        assert!(waited < SLOW_DISK / 2, "{waited:?}");
+        live.stop().await;
+    }
 }
 
 #[tokio::test]

@@ -85,6 +85,8 @@ vi.mock("@/store/files", () => ({
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => mocks.compileState } }));
 vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
+const overleafHost = vi.hoisted(() => ({ findLive: vi.fn(), openLive: vi.fn() }));
+vi.mock("@/features/collab/live/overleaf-ai-host", () => overleafHost);
 
 import {
   buildMcpToolRegistry,
@@ -218,6 +220,31 @@ describe("mcp tool registry", () => {
     const readOnly = buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {}, notes: true });
     for (const name of reads) expect(readOnly[name], name).toBeDefined();
     for (const name of writes) expect(readOnly[name], name).toBeUndefined();
+  });
+
+  it("advertises opening an Overleaf project live as a change, alone of the Overleaf tools, and drops it in read-only mode", async () => {
+    expect(registry.open_overleaf_live).toBeDefined();
+    expect(registry.list_overleaf_projects).toBeUndefined();
+    expect(registry.import_overleaf_projects).toBeUndefined();
+    expect(registry.open_overleaf_live.description).not.toContain("ends the current run");
+    expect(validateToolInput(registry.open_overleaf_live.inputSchema, { id: "a", server: "x" })).toBe(
+      "arguments.server is not allowed",
+    );
+    expect(buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {} }).open_overleaf_live).toBeUndefined();
+
+    const confirm = vi.fn(async () => true);
+    const mutationAllowed = vi.fn(() => true);
+    overleafHost.findLive.mockResolvedValue({ remoteId: "a", name: "Thesis", importedAs: "local-a", stops: null });
+    overleafHost.openLive.mockResolvedValue({ projectId: "local-a", status: "online", role: "owner" });
+    const local = buildMcpToolRegistry({ confirm, readOnly: false, onImage: () => {}, mutationAllowed });
+    expect(await local.open_overleaf_live.execute({ id: "a" })).toMatchObject({ success: true, projectId: "local-a" });
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ tool: "open_overleaf_live" }));
+    expect(overleafHost.openLive).toHaveBeenCalledWith(expect.objectContaining({ remoteId: "a" }), mutationAllowed);
+
+    overleafHost.findLive.mockClear();
+    const refusing = buildMcpToolRegistry({ confirm: async () => false, readOnly: false, onImage: () => {}, mutationAllowed });
+    expect(await refusing.open_overleaf_live.execute({ id: "a" })).toMatchObject({ declined: true });
+    expect(overleafHost.findLive).not.toHaveBeenCalled();
   });
 
   it("reports a project override as disabled and hands load_skill its script commands", async () => {

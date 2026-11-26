@@ -77,6 +77,7 @@ export function withActions(node: ReactNode, actions: ReactNode, wide: boolean, 
 export function CommentByline({
   name,
   nameClassName,
+  note,
   at,
   editedAt = null,
   className,
@@ -86,6 +87,7 @@ export function CommentByline({
 }: Readonly<{
   name?: string;
   nameClassName?: string;
+  note?: string;
   at: number;
   editedAt?: number | null;
   className?: string;
@@ -100,6 +102,11 @@ export function CommentByline({
     name === undefined ? null : (
       <span key="name" className={cn("max-w-full truncate", alone ? "min-w-0" : "shrink-0", nameClassName)}>
         {name}
+      </span>
+    ),
+    name === undefined || !note ? null : (
+      <span key="note" className={cn("shrink-0", META, "leading-4")}>
+        {note}
       </span>
     ),
     at ? (
@@ -117,7 +124,10 @@ export function CommentByline({
     badged ? <Fragment key="badge">{children}</Fragment> : null,
   ].filter((item) => item !== null);
   const last = items.pop();
-  const { ref, room } = usePillRoom<HTMLSpanElement>(Boolean(actions) && !alone, `${name}\u0000${at}\u0000${editedAt}\u0000${badged}\u0000${wide}`);
+  const { ref, room } = usePillRoom<HTMLSpanElement>(
+    Boolean(actions) && !alone,
+    `${name}\u0000${note}\u0000${at}\u0000${editedAt}\u0000${badged}\u0000${wide}`,
+  );
   return (
     <span ref={ref} className={cn("flex min-w-0 flex-wrap items-baseline gap-x-1.5", className)}>
       {items}

@@ -3,7 +3,7 @@ pub mod chat;
 pub mod commands;
 pub mod comments;
 pub mod console;
-pub mod disk;
+pub use oleafly_live::disk;
 pub mod email;
 pub mod guard;
 pub mod guests;

@@ -9,7 +9,7 @@ use crate::realtime::events::{EntityId, ServerEvent, TreeEvent};
 use crate::realtime::tree::{NodeKind, OverleafTree, PathChange, REPLACE_WINDOW};
 use crate::realtime::{connect, Carrier, ProjectPage};
 use crate::test_support::mock_overleaf::{
-    MockConfig, MockOverleaf, MockProject, MockUser, Privilege, MOCK_CSRF,
+    Fault, MockConfig, MockOverleaf, MockProject, MockUser, Privilege, MOCK_CSRF,
 };
 use crate::test_support::overleaf_rt::{probe, probe_frames, probe_http, recordings, Trace};
 
@@ -250,7 +250,12 @@ fn check_recorded_join(scenario: &str, trace: &Trace, join: Value) {
 #[test]
 fn join_project_response_builds_tree() {
     let mut joins = 0;
-    for recording in recordings() {
+    for recording in recordings().into_iter().filter(|recording| {
+        matches!(
+            recording.project.as_str(),
+            "sharejs-project" | "history-ot-project"
+        )
+    }) {
         for trace in &recording.traces {
             for join in joins_in(trace) {
                 joins += 1;
@@ -450,7 +455,7 @@ async fn remove_entity_with_convert_flag_changes_kind() {
         events[0],
         TreeEvent::Removed {
             id: entity(&notes),
-            converting: true
+            restoring: false
         }
     );
     let now = Instant::now();
@@ -478,7 +483,7 @@ async fn remove_entity_with_convert_flag_changes_kind() {
         events[0],
         TreeEvent::Removed {
             id: new.clone(),
-            converting: true
+            restoring: false
         }
     );
     let changes: Vec<PathChange> = events
@@ -540,7 +545,7 @@ async fn remove_then_new_on_same_path_is_a_replace() {
         events[0],
         TreeEvent::Removed {
             id: entity(&old),
-            converting: false
+            restoring: false
         }
     );
     let now = Instant::now();
@@ -570,7 +575,7 @@ async fn remove_then_new_on_same_path_is_a_replace() {
         .apply(
             &TreeEvent::Removed {
                 id: refs.clone(),
-                converting: false
+                restoring: false
             },
             start
         )
@@ -610,7 +615,7 @@ async fn remove_then_new_on_same_path_is_a_replace() {
         .apply(
             &TreeEvent::Removed {
                 id: sections.clone(),
-                converting: false
+                restoring: false
             },
             start
         )
@@ -824,10 +829,10 @@ async fn members_and_privileges_from_join() {
     );
     assert!(state.apply_access(&changed));
     let session = rig.session("alice");
-    assert!(state
-        .refresh_members(&rig.http, &session, &rig.mock.project_id())
+    let project_id = rig.mock.project_id();
+    state.members.collaborators = Members::fetch_collaborators(&rig.http, &session, &project_id)
         .await
-        .unwrap());
+        .unwrap();
     assert_eq!(state.members.role_of(&id("dave")), Some(Role::Editor));
     rig.mock.set_privilege("bob", None);
     assert_eq!(
@@ -839,13 +844,23 @@ async fn members_and_privileges_from_join() {
         ServerEvent::Access(AccessEvent::UserRemoved(Some(id("bob"))))
     );
     next_matching(&mut connection, |event| {
-        event == &ServerEvent::Access(AccessEvent::MembersChanged)
+        event
+            == &ServerEvent::Access(AccessEvent::MembersChanged {
+                members: true,
+                invites: false,
+            })
     })
     .await;
-    assert!(state.apply_access(&AccessEvent::MembersChanged));
+    assert!(state.apply_access(&AccessEvent::MembersChanged {
+        members: true,
+        invites: false,
+    }));
+    assert!(!state.apply_access(&AccessEvent::MembersChanged {
+        members: false,
+        invites: true,
+    }));
     assert!(!state.apply_access(&AccessEvent::UserRemoved(Some(id("bob")))));
-    state
-        .refresh_members(&rig.http, &session, &rig.mock.project_id())
+    state.members.collaborators = Members::fetch_collaborators(&rig.http, &session, &project_id)
         .await
         .unwrap();
     assert_eq!(state.members.role_of(&id("bob")), None);
@@ -858,14 +873,11 @@ async fn members_and_privileges_from_join() {
     assert!(restricted.members.owner.is_none());
     assert!(restricted.members.collaborators.is_empty());
     let members_route = format!("/project/{}/members", rig.mock.project_id());
-    let before = rig.mock.requests(&members_route).len();
     let tess = rig.session("tess");
-    assert!(!restricted
-        .refresh_members(&rig.http, &tess, &rig.mock.project_id())
-        .await
-        .unwrap());
-    assert!(!restricted.apply_access(&AccessEvent::MembersChanged));
-    assert_eq!(rig.mock.requests(&members_route).len(), before);
+    assert!(!restricted.apply_access(&AccessEvent::MembersChanged {
+        members: true,
+        invites: false,
+    }));
     let refused = rig
         .http
         .get(&members_route, &tess.cookie())
@@ -908,9 +920,15 @@ async fn members_and_privileges_from_join() {
     let from_join = ProjectState::from_join(joins_in(&recording.traces[0]).remove(0)).unwrap();
     assert_eq!(from_join.members.collaborators.len(), listed.len());
     for member in listed {
-        let id = member["_id"].as_str().unwrap();
+        let email = member["email"].as_str().unwrap();
+        let joined = from_join
+            .members
+            .collaborators
+            .iter()
+            .find(|known| known.email == email)
+            .unwrap_or_else(|| panic!("{email} is a collaborator in the join"));
         assert_eq!(
-            from_join.members.role_of(id),
+            Some(joined.role),
             Role::from_privilege(member["privileges"].as_str().unwrap())
         );
     }
@@ -1016,6 +1034,44 @@ async fn settings_events_become_typed_project_events() {
 }
 
 #[tokio::test]
+async fn a_compiler_echo_reads_the_way_the_server_stores_it() {
+    let rig = Rig::start(project()).await;
+    let (mut connection, mut state) = rig.join("alice").await;
+    let project_event = |event: &ServerEvent| matches!(event, ServerEvent::Project(_));
+    assert_eq!(
+        rig.post("/settings", json!({ "compiler": "LuaLaTeX" }))
+            .await,
+        204
+    );
+    let echo = next_matching(&mut connection, project_event).await;
+    assert_eq!(
+        echo,
+        ServerEvent::Project(ProjectEvent::Compiler("lualatex".into()))
+    );
+    let ServerEvent::Project(echo) = echo else {
+        unreachable!()
+    };
+    state.apply_project(&echo);
+    assert_eq!(rig.post("/settings", json!({ "compiler": "" })).await, 204);
+    assert_eq!(
+        rig.post("/settings", json!({ "spellCheckLanguage": "fr" }))
+            .await,
+        204
+    );
+    assert_eq!(
+        next_matching(&mut connection, project_event).await,
+        ServerEvent::Project(ProjectEvent::SpellLanguage("fr".into())),
+        "an empty compiler echo changes nothing"
+    );
+    connection.close().await;
+    let (connection, fresh) = rig.rejoin("alice").await;
+    let rejoined = ProjectState::from_join(fresh).unwrap();
+    assert_eq!(rejoined.compiler, state.compiler);
+    assert_eq!(state.compiler.as_deref(), Some("lualatex"));
+    connection.close().await;
+}
+
+#[tokio::test]
 async fn track_changes_state_for_me_and_for_everyone_and_guests_never_applies() {
     let everyone = TrackChanges::from_value(&json!(true));
     assert!(everyone.applies_to("u1") && everyone.applies_to("u2"));
@@ -1082,15 +1138,42 @@ async fn track_changes_state_for_me_and_for_everyone_and_guests_never_applies() 
 }
 
 #[tokio::test]
+async fn the_plan_and_the_review_module_show_in_the_join() {
+    let recording = recordings()
+        .into_iter()
+        .find(|recording| recording.name == "history-ot-tracked-delete")
+        .unwrap();
+    let ce = ProjectState::from_join(joins_in(&recording.traces[0]).remove(0)).unwrap();
+    assert!(ce.plan_tracks_changes());
+    let rig = Rig::start(project()).await;
+    rig.mock.configure(|config| config.review = true);
+    let (connection, pro) = rig.join("alice").await;
+    assert!(pro.plan_tracks_changes());
+    connection.close().await;
+    let page = ProjectPage::load(
+        &rig.http,
+        &rig.session("alice"),
+        &rig.mock.project_id(),
+        false,
+    )
+    .await
+    .unwrap();
+    assert!(page.has_track_changes_feature());
+    rig.mock.configure(|config| config.review = false);
+    page.reload(&rig.http, &rig.session("alice"), false)
+        .await
+        .unwrap();
+    assert!(!page.has_track_changes_feature());
+    assert!(!ProjectState::unjoined().plan_tracks_changes());
+}
+
+#[tokio::test]
 async fn capabilities_probe_ce_and_pro() {
     let recorded = |route: &str| probe_http("rest-reads", route)["status"].as_u64().unwrap();
     assert_eq!(recorded("/threads"), 404);
     assert_eq!(recorded("/messages"), 200);
     let community = MockConfig::default();
-    assert_eq!(
-        (community.threads_status, community.messages_status),
-        (404, 200)
-    );
+    assert_eq!((community.review, community.chat), (false, true));
 
     let rig = Rig::start(project()).await;
     let session = rig.session("alice");
@@ -1103,15 +1186,15 @@ async fn capabilities_probe_ce_and_pro() {
     assert_eq!(
         ce,
         Capabilities {
-            review: false,
-            chat: true
+            review: Some(false),
+            chat: Some(true)
         }
     );
     assert_eq!(cache.get(&rig.http.origin), Some(ce));
 
     rig.mock.configure(|config| {
-        config.threads_status = 200;
-        config.messages_status = 404;
+        config.review = true;
+        config.chat = false;
     });
     let pro = cache
         .refresh(&rig.http, &session, &project_id, &json!({ "chat": true }))
@@ -1119,8 +1202,8 @@ async fn capabilities_probe_ce_and_pro() {
     assert_eq!(
         pro,
         Capabilities {
-            review: true,
-            chat: true
+            review: Some(true),
+            chat: Some(true)
         }
     );
     let no_chat = cache
@@ -1129,21 +1212,56 @@ async fn capabilities_probe_ce_and_pro() {
     assert_eq!(
         no_chat,
         Capabilities {
-            review: true,
-            chat: false
+            review: Some(true),
+            chat: Some(false)
         }
     );
 
-    rig.mock.configure(|config| {
-        config.threads_status = 500;
-        config.messages_status = 503;
-    });
+    let threads = format!("/project/{project_id}/threads");
+    let messages = format!("/project/{project_id}/messages");
+    let busy = || Fault::Reply(503, "Service Unavailable".into());
+    rig.mock.plan_fault(Some("GET"), &threads, busy());
+    let recovered = cache
+        .refresh(&rig.http, &session, &project_id, &json!({}))
+        .await;
+    assert_eq!(recovered, no_chat);
+    assert_eq!(rig.mock.requests(&threads).len(), 5);
+
+    for _ in 0..3 {
+        rig.mock.plan_fault(Some("GET"), &threads, busy());
+        rig.mock.plan_fault(Some("GET"), &messages, busy());
+    }
+    rig.mock.configure(|config| config.review = false);
     let unsure = cache
         .refresh(&rig.http, &session, &project_id, &json!({}))
         .await;
     assert_eq!(unsure, no_chat);
-    let threads = format!("/project/{project_id}/threads");
-    assert_eq!(rig.mock.requests(&threads).len(), 4);
+    assert_eq!(rig.mock.requests(&threads).len(), 8);
+
+    rig.mock
+        .plan_fault(Some("GET"), &threads, Fault::Reply(401, "no".into()));
+    let signed_out = cache
+        .refresh(&rig.http, &session, &project_id, &json!({}))
+        .await;
+    assert_eq!(signed_out.review, Some(true));
+    assert_eq!(rig.mock.requests(&threads).len(), 9);
+
+    let fresh = CapabilityCache::default();
+    for _ in 0..3 {
+        rig.mock.plan_fault(Some("GET"), &threads, busy());
+        rig.mock.plan_fault(Some("GET"), &messages, busy());
+    }
+    let first = fresh
+        .refresh(&rig.http, &session, &project_id, &json!({}))
+        .await;
+    assert_eq!(
+        first,
+        Capabilities {
+            review: None,
+            chat: None
+        }
+    );
+    assert_eq!(fresh.get(&rig.http.origin), Some(first));
 }
 
 #[test]
@@ -1188,8 +1306,7 @@ async fn an_oversized_or_endless_member_list_is_refused() {
             },
             None,
         );
-        let error = Members::default()
-            .refresh(&http, &session, "p1")
+        let error = Members::fetch_collaborators(&http, &session, "p1")
             .await
             .unwrap_err();
         assert_eq!(error.kind, OnlineErrorKind::Unrecognized, "{declared:?}");

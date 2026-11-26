@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
 
-use super::{NodeKind, OverleafTree, PathChange};
+use super::{LinkedSource, NodeKind, OverleafTree, PathChange, REPLACE_WINDOW, RESTORE_WINDOW};
 use crate::realtime::events::{EntityId, TreeEvent};
 
 fn entity(id: &str) -> EntityId {
@@ -129,12 +129,65 @@ fn a_server_delete_of_a_hidden_node_changes_nothing_visible() {
     let now = Instant::now();
     let removed = TreeEvent::Removed {
         id: entity("notes"),
-        converting: false,
+        restoring: false,
     };
     assert!(tree.apply(&removed, now).is_empty());
     assert!(tree.flush().is_empty());
     assert!(tree.server_node(&entity("notes")).is_none());
     assert!(!tree.is_local(&entity("notes")));
+}
+
+#[test]
+fn a_restore_removal_waits_the_restore_window_for_its_new_doc() {
+    let mut tree = tree();
+    let start = Instant::now();
+    let removed = |id: &str, restoring| TreeEvent::Removed {
+        id: entity(id),
+        restoring,
+    };
+    assert!(tree.apply(&removed("main", true), start).is_empty());
+    assert_eq!(tree.next_due(), Some(start + RESTORE_WINDOW));
+    let gap = REPLACE_WINDOW * 3;
+    assert!(tree.due(start + gap).is_empty());
+    let arrived = tree.apply(
+        &TreeEvent::NewDoc {
+            folder: entity("root"),
+            id: entity("main-restored"),
+            name: "main.tex".into(),
+        },
+        start + gap,
+    );
+    assert_eq!(
+        arrived,
+        vec![PathChange::Replaced {
+            old: entity("main"),
+            new: entity("main-restored"),
+            path: "main.tex".into(),
+            from: NodeKind::Doc,
+            to: NodeKind::Doc,
+        }]
+    );
+
+    assert!(tree.apply(&removed("notes", true), start).is_empty());
+    assert!(tree.apply(&removed("intro", false), start).is_empty());
+    let after_plain = tree.due(start + REPLACE_WINDOW);
+    assert_eq!(
+        after_plain,
+        vec![PathChange::Removed {
+            id: entity("intro"),
+            path: "sections/intro.tex".into(),
+            kind: NodeKind::Doc,
+        }]
+    );
+    assert_eq!(
+        tree.due(start + RESTORE_WINDOW),
+        vec![PathChange::Removed {
+            id: entity("notes"),
+            path: "notes.tex".into(),
+            kind: NodeKind::Doc,
+        }]
+    );
+    assert_eq!(tree.next_due(), None);
 }
 
 #[test]
@@ -172,7 +225,7 @@ fn a_repair_keeps_the_overlay() {
     fresh.apply(
         &TreeEvent::Removed {
             id: entity("sections"),
-            converting: false,
+            restoring: false,
         },
         Instant::now(),
     );
@@ -282,5 +335,80 @@ fn lookups_in_a_large_tree_go_through_the_index() {
         started.elapsed() < Duration::from_secs(10),
         "{:?}",
         started.elapsed()
+    );
+}
+
+#[test]
+fn linked_files_keep_their_source_through_the_join_and_a_refresh() {
+    let link = json!({ "provider": "project_file", "source_project_id": "p2", "source_entity_path": "/sample.bib", "importedAt": "2026-11-23T00:00:00.000Z" });
+    let mut tree = OverleafTree::from_root_folder(&json!([{
+        "_id": "root",
+        "name": "rootFolder",
+        "docs": [{ "_id": "main", "name": "main.tex", "linkedFileData": link }],
+        "fileRefs": [
+            { "_id": "refs", "name": "refs.bib", "hash": "h1", "linkedFileData": link },
+            { "_id": "plot", "name": "plot.png", "hash": "h2", "linkedFileData": null },
+            { "_id": "odd", "name": "odd.png", "linkedFileData": {} },
+            { "_id": "list", "name": "list.png", "linkedFileData": ["project_file"] },
+        ],
+        "folders": [],
+    }]))
+    .unwrap();
+    let source = LinkedSource {
+        provider: "project_file".into(),
+        url: None,
+        source_project: Some("p2".into()),
+        source_path: Some("/sample.bib".into()),
+    };
+    let linked: Vec<(String, Option<LinkedSource>)> = tree
+        .nodes()
+        .into_iter()
+        .map(|node| (node.name, node.linked))
+        .collect();
+    assert_eq!(
+        linked,
+        vec![
+            ("list.png".to_string(), None),
+            ("main.tex".to_string(), None),
+            ("odd.png".to_string(), None),
+            ("plot.png".to_string(), None),
+            ("refs.bib".to_string(), Some(source.clone())),
+        ]
+    );
+    let start = Instant::now();
+    assert!(tree
+        .apply(
+            &TreeEvent::Removed {
+                id: entity("refs"),
+                restoring: false,
+            },
+            start,
+        )
+        .is_empty());
+    let refreshed = tree.apply(
+        &TreeEvent::NewFile {
+            folder: entity("root"),
+            id: entity("refs-2"),
+            name: "refs.bib".into(),
+            hash: Some("h3".into()),
+            converted: false,
+            linked: Some(Box::new(source.clone())),
+        },
+        start,
+    );
+    assert_eq!(
+        refreshed,
+        vec![PathChange::Replaced {
+            old: entity("refs"),
+            new: entity("refs-2"),
+            path: "refs.bib".into(),
+            from: NodeKind::File,
+            to: NodeKind::File,
+        }]
+    );
+    let node = tree.node(&entity("refs-2")).unwrap();
+    assert_eq!(
+        (node.hash.as_deref(), node.linked),
+        (Some("h3"), Some(source))
     );
 }

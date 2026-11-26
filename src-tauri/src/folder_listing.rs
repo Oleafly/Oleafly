@@ -23,7 +23,7 @@ fn hidden_from_listing(name: &OsStr) -> bool {
     name.eq_ignore_ascii_case(".git")
         || name
             .to_str()
-            .is_some_and(crate::checkpoint_capture::is_oleafly_owned)
+            .is_some_and(oleafly_core::exclude::is_oleafly_owned_name)
 }
 
 fn has_resource_extension(path: &Path) -> bool {

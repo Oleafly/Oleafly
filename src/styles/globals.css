@@ -1089,6 +1089,13 @@ select:focus-visible {
   --tw-ring-color: transparent;
 }
 
+/* Zoomed past 100%, WebKit reports a textarea's placeholder as wider than the
+   box, so a textarea that scrolls vertically drew a horizontal scrollbar under
+   it. Textareas wrap long words, so hiding horizontal overflow clips nothing. */
+textarea:not([wrap="off"]) {
+  overflow-x: hidden;
+}
+
 .chat-markdown .katex {
   line-height: normal;
   overflow-wrap: normal;

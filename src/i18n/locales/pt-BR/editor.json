@@ -318,6 +318,15 @@
     "spellLanguageFolderHint": "Salvo no project.json desta pasta, então vale para todos que abrirem a pasta. Baixe mais idiomas em Configurações.",
     "spellLanguageReadOnly": "Esta pasta é somente leitura, então o idioma do project.json dela não pode ser alterado.",
     "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica.",
+    "onOverleaf": "No Overleaf",
+    "texLive": "Versão do TeX Live",
+    "texLiveAriaLabel": "Versão do TeX Live no Overleaf",
+    "bibliography": "Bibliografia principal",
+    "bibliographyAriaLabel": "Bibliografia principal no Overleaf",
+    "bibliographyNone": "Nenhuma escolhida",
+    "overleafHint": "Estas configurações ficam no Overleaf e valem para todas as pessoas do projeto.",
+    "overleafReadOnly": "Só proprietários e editores podem alterá-las no Overleaf.",
+    "overleafFailed": "Não foi possível alterar esta configuração no Overleaf.",
     "notChecked": "Não verificado",
     "dictionaryMissing": "{{name}} não foi baixado, então a ortografia não é verificada. Baixe-o nas Configurações ou escolha outro idioma.",
     "grammarEnglishOnly": "A verificação gramatical só funciona em documentos em inglês.",
@@ -747,13 +756,13 @@
     "ignoreEverywhere": "Ignorar em todo lugar",
     "keyboardHint": "Use Tab ou as setas para circular entre as ações. Pressione Esc para fechar.",
     "endOfDocument": "Fim do documento",
-    "hidePreamble": "Ocultar o preâmbulo do documento",
-    "showPreamble": "Mostrar o preâmbulo do documento",
-    "sharedReadOnly": "Em um projeto compartilhado, o modo visual só mostra o arquivo. Mude para a visualização de código-fonte para editá-lo.",
     "findingLabel": "{{message}}. Abrir sugestões de revisão.",
     "rawBlockFindings_one": "{{count}} apontamento de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
     "rawBlockFindings_many": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
-    "rawBlockFindings_other": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões."
+    "rawBlockFindings_other": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
+    "liveViewOnly": "Você pode ver este arquivo compartilhado, mas não editá-lo.",
+    "liveConnecting": "Este arquivo compartilhado ainda está se conectando. Você poderá editá-lo quando ele estiver pronto.",
+    "suggestInSource": "Aqui as suas alterações seriam sugestões, e o modo Visual não consegue mostrá-las. Mude para a visualização de código-fonte para sugerir edições."
   },
   "package": {
     "search": {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
+import type { LocalOrigin, RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
 import type { CollabDocMessage, CollabDocOpened } from "@/lib/tauri";
 import { TextOperation } from "./ot";
 import { RemoteDocumentSession, type RemoteSessionTransport } from "./remote-session";
@@ -30,8 +30,8 @@ class Editor {
     });
   }
 
-  type(edits: Utf16Edit[]): void {
-    this.session.applyLocal(edits, this.version);
+  type(edits: Utf16Edit[], origin?: LocalOrigin): void {
+    this.session.applyLocal(edits, this.version, origin);
     this.doc = applyEdits(this.doc, edits);
     this.version = this.session.version();
   }
@@ -68,6 +68,24 @@ describe("RemoteDocumentSession", () => {
     expect(onText).toHaveBeenLastCalledWith("hello world");
   });
 
+  it("tells the other editors of the document about a local edit, and the coauthor listeners nothing", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor } = await opened(channel);
+    const heard: RemoteChange[] = [];
+    const stop = session.subscribeLocal((change) => heard.push(change));
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([]);
+    expect(heard).toEqual([{ edits: [{ from: 3, to: 3, insert: "d" }], version: 1 }]);
+    expect(editor.changes).toEqual([]);
+    channel.remote(insertAt(0, ">", 3));
+    channel.drain();
+    expect(heard).toHaveLength(1);
+    expect(editor.changes).toHaveLength(1);
+    stop();
+    editor.type([{ from: 0, to: 0, insert: "x" }]);
+    expect(heard).toHaveLength(1);
+  });
+
   it("sends one change at a time and buffers the rest", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);
@@ -82,6 +100,54 @@ describe("RemoteDocumentSession", () => {
     channel.drain();
     expect(channel.text).toBe("Abcde");
     expect(session.synchronized).toBe(true);
+  });
+
+  it("sends undo, redo, cut and paste each as a change of its own, never merged with typing", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }]);
+    editor.type([{ from: 5, to: 5, insert: "XY" }], "paste");
+    editor.type([{ from: 7, to: 7, insert: "Z" }], "paste");
+    editor.type([{ from: 0, to: 1, insert: "" }], "cut");
+    editor.type([{ from: 0, to: 0, insert: "f" }]);
+    editor.type([{ from: 1, to: 1, insert: "g" }]);
+    editor.type([{ from: 1, to: 3, insert: "" }], "undo");
+    editor.type([{ from: 1, to: 1, insert: "gb" }], "redo");
+    channel.drain();
+    expect(channel.sent.map((change) => [change.op, change.origin])).toEqual([
+      [[3, "d"], undefined],
+      [[4, "e"], undefined],
+      [[5, "XY"], "paste"],
+      [[7, "Z"], "paste"],
+      [[-1, 7], "cut"],
+      [["fg", 7], undefined],
+      [[1, -2, 6], "undo"],
+      [[1, "gb", 6], "redo"],
+    ]);
+    expect(channel.sent.every((change) => change.client === id)).toBe(true);
+    expect(channel.text).toBe("fgbcdeXYZ");
+    expect(session.text()).toBe("fgbcdeXYZ");
+    expect(session.synchronized).toBe(true);
+  });
+
+  it("moves every change waiting to be sent past a remote change, keeping where each came from", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }], "paste");
+    editor.type([{ from: 5, to: 5, insert: "f" }]);
+    channel.remote(insertAt(0, ">", 3));
+    channel.deliverOne(id);
+    expect(session.text()).toBe(">abcdef");
+    channel.drain();
+    expect(channel.sent.map((change) => [change.op, change.origin])).toEqual([
+      [[3, "d"], undefined],
+      [[5, "e"], "paste"],
+      [[6, "f"], undefined],
+    ]);
+    expect(channel.text).toBe(">abcdef");
+    expect(editor.doc).toBe(">abcdef");
   });
 
   it("sends only the committed text of an input method composition, as one change", async () => {
@@ -594,13 +660,30 @@ describe("RemoteDocumentSession", () => {
     const onPhase = vi.fn();
     const session = new RemoteDocumentSession("build/main.pdf", "local", {
       transport: { open: async () => null, change: vi.fn(), close: vi.fn() },
-      onPhase,
     });
+    session.subscribePhase(onPhase);
     await session.open();
     expect(session.phase).toBe("detached");
     expect(session.readOnly).toBe(true);
     expect(session.text()).toBe("local");
     expect(onPhase).toHaveBeenLastCalledWith("detached");
+  });
+
+  it("tells every phase listener each change once, and stops telling one that unsubscribed", async () => {
+    const channel = new FakeChannel("abc");
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport: channel.transport() });
+    const first: string[] = [];
+    const second: string[] = [];
+    session.subscribePhase((phase) => first.push(phase));
+    const stop = session.subscribePhase((phase) => second.push(phase));
+    await session.open();
+    stop();
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "unknown_op");
+    channel.deliverOne(id);
+    session.close();
+    expect(first).toEqual(["open", "detached", "closed"]);
+    expect(second).toEqual(["open"]);
   });
 
   it("reports the channel revision it has applied", async () => {
@@ -969,7 +1052,7 @@ describe("RemoteDocumentSession recovery", () => {
     expect(transport.open).toHaveBeenCalledTimes(2);
     expect(session.text()).toBe("Xabcd");
     expect(editor.doc).toBe("Xabcd");
-    expect(transport.change).toHaveBeenLastCalledWith("second", 1, [4, "d"]);
+    expect(transport.change).toHaveBeenLastCalledWith("second", 1, [4, "d"], undefined);
   });
 
   it("stays closed when a change sent before closing fails afterwards", async () => {
@@ -1000,10 +1083,8 @@ describe("RemoteDocumentSession recovery", () => {
   it("a detached message hands the document back with its unsent text", async () => {
     const channel = new FakeChannel("abc");
     const phases: string[] = [];
-    const session = new RemoteDocumentSession("main.tex", "abc", {
-      transport: channel.transport(),
-      onPhase: (phase) => phases.push(phase),
-    });
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport: channel.transport() });
+    session.subscribePhase((phase) => phases.push(phase));
     await session.open();
     session.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     const id = channel.opens.at(-1) ?? "";

@@ -1,0 +1,589 @@
+{
+  "probe": "history-paging",
+  "description": "Alice makes a throwaway project and applies 2100 single-character updates alternating between two docs (so history cannot merge them), which spills over history-v1's 2000-change chunk. Records how /updates pages: what min_count counts, what nextBeforeTimestamp holds (a version, the older chunk's start), and what before=<that value> returns.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "applied 2100 updates in 212 s",
+    "{\"label\":\"min_count=1\",\"status\":200,\"updates\":[\"2000-2102 (2 paths, 0 project ops)\"],\"nextBeforeTimestamp\":2000}",
+    "{\"label\":\"min_count=1, before=nextBeforeTimestamp\",\"status\":200,\"updates\":[\"2-2000 (2 paths, 0 project ops)\",\"0-2 (0 paths, 2 project ops)\"],\"nextBeforeTimestamp\":null}",
+    "{\"label\":\"min_count=1, before=nextBeforeTimestamp - 1\",\"status\":200,\"updates\":[\"2-1999 (2 paths, 0 project ops)\",\"0-2 (0 paths, 2 project ops)\"],\"nextBeforeTimestamp\":null}",
+    "{\"label\":\"min_count=1, before=the latest version\",\"status\":200,\"updates\":[\"2000-2102 (2 paths, 0 project ops)\"],\"nextBeforeTimestamp\":2000}",
+    "{\"label\":\"min_count=1, before=the latest version - 10\",\"status\":200,\"updates\":[\"2000-2092 (2 paths, 0 project ops)\"],\"nextBeforeTimestamp\":2000}",
+    "{\"label\":\"min_count=2\",\"status\":200,\"updates\":[\"2-2102 (2 paths, 0 project ops)\",\"0-2 (0 paths, 2 project ops)\"],\"nextBeforeTimestamp\":null}",
+    "{\"label\":\"min_count=500\",\"status\":200,\"updates\":[\"2-2102 (2 paths, 0 project ops)\",\"0-2 (0 paths, 2 project ops)\"],\"nextBeforeTimestamp\":null}",
+    "{\"label\":\"no min_count (25 by default)\",\"status\":200,\"updates\":[\"2-2102 (2 paths, 0 project ops)\",\"0-2 (0 paths, 2 project ops)\"],\"nextBeforeTimestamp\":null}",
+    "history id 6b04fc3ecb4fe3a455d4dae2"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "history-paging-20261124-025350",
+          "template": "none"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04fc3ecb4fe3a455d4dae2",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 389,
+      "answeredAt": 452
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/doc",
+        "user": "alice",
+        "body": {
+          "name": "second.tex",
+          "parent_folder_id": "6b04fc3ecb4fe3a455d4dae1"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "54",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "name": "second.tex",
+        "_id": "6b04fc3ecb4fe3a455d4daed"
+      },
+      "sentAt": 557,
+      "answeredAt": 583
+    },
+    {
+      "label": "flush",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 213197,
+      "answeredAt": 213282
+    },
+    {
+      "label": "min_count=1",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "304",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2000,
+            "toV": 2102,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489033040,
+              "end_ts": 1795489043249
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          }
+        ],
+        "nextBeforeTimestamp": 2000
+      },
+      "sentAt": 215283,
+      "answeredAt": 215341
+    },
+    {
+      "label": "min_count=1, before=nextBeforeTimestamp",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=1&before=2000",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "590",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2,
+            "toV": 2000,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830937,
+              "end_ts": 1795489032939
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 2,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830591,
+              "end_ts": 1795488830728
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "second.tex"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 215341,
+      "answeredAt": 215421
+    },
+    {
+      "label": "min_count=1, before=nextBeforeTimestamp - 1",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=1&before=1999",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "590",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2,
+            "toV": 1999,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830937,
+              "end_ts": 1795489032840
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 2,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830591,
+              "end_ts": 1795488830728
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "second.tex"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 215421,
+      "answeredAt": 215510
+    },
+    {
+      "label": "min_count=1, before=the latest version",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=1&before=2102",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "304",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2000,
+            "toV": 2102,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489033040,
+              "end_ts": 1795489043249
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          }
+        ],
+        "nextBeforeTimestamp": 2000
+      },
+      "sentAt": 215511,
+      "answeredAt": 215541
+    },
+    {
+      "label": "min_count=1, before=the latest version - 10",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=1&before=2092",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "304",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2000,
+            "toV": 2092,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489033040,
+              "end_ts": 1795489042235
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          }
+        ],
+        "nextBeforeTimestamp": 2000
+      },
+      "sentAt": 215541,
+      "answeredAt": 215568
+    },
+    {
+      "label": "min_count=2",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=2",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "590",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2,
+            "toV": 2102,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830937,
+              "end_ts": 1795489043249
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 2,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830591,
+              "end_ts": 1795488830728
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "second.tex"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 215568,
+      "answeredAt": 215641
+    },
+    {
+      "label": "min_count=500",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates?min_count=500",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "590",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2,
+            "toV": 2102,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830937,
+              "end_ts": 1795489043249
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 2,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830591,
+              "end_ts": 1795488830728
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "second.tex"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 215641,
+      "answeredAt": 215711
+    },
+    {
+      "label": "no min_count (25 by default)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2/updates",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "590",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 2,
+            "toV": 2102,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830937,
+              "end_ts": 1795489043249
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex",
+              "second.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 2,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795488830591,
+              "end_ts": 1795488830728
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "second.tex"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 215711,
+      "answeredAt": 215795
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04fc3ecb4fe3a455d4dae2"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 218473,
+      "answeredAt": 218784
+    }
+  ]
+}

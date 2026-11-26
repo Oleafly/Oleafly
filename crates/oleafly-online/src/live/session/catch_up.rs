@@ -1,20 +1,10 @@
 use std::collections::BTreeSet;
 
-use reqwest::header::ACCEPT;
-use serde_json::Value;
-
-use crate::client::Http;
+use crate::live::rest::{within, HistoryError, HistoryUpdate, ProjectRest, HISTORY_DEADLINE};
 use crate::session::SessionHandle;
 
 const PAGE: usize = 100;
 const MAX_PAGES: usize = 20;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Update {
-    from: u64,
-    to: u64,
-    started_ms: u64,
-}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct History {
@@ -22,54 +12,24 @@ pub(super) struct History {
     pub changed: Option<BTreeSet<String>>,
 }
 
-async fn get_json(http: &Http, session: &SessionHandle, path: &str) -> Option<Value> {
-    let response = http
-        .send_public(
-            http.get(path, &session.cookie())
-                .header(ACCEPT, "application/json"),
-        )
-        .await
-        .ok()?;
-    if !response.status().is_success() {
-        return None;
-    }
-    response.json().await.ok()
-}
-
-fn update_of(value: &Value) -> Option<Update> {
-    Some(Update {
-        from: value.get("fromV")?.as_u64()?,
-        to: value.get("toV")?.as_u64()?,
-        started_ms: value
-            .pointer("/meta/start_ts")
-            .and_then(Value::as_u64)
-            .unwrap_or_default(),
-    })
-}
-
 async fn updates(
-    http: &Http,
+    rest: &ProjectRest,
     session: &SessionHandle,
-    project_id: &str,
     since: u64,
-) -> Option<Vec<Update>> {
+) -> Option<Vec<HistoryUpdate>> {
     let mut found = Vec::new();
     let mut before: Option<u64> = None;
     for _ in 0..MAX_PAGES {
-        let mut path = format!("/project/{project_id}/updates?min_count={PAGE}");
-        if let Some(before) = before {
-            path.push_str(&format!("&before={before}"));
-        }
-        let page = get_json(http, session, &path).await?;
-        let listed: Vec<Update> = page
-            .get("updates")
-            .and_then(Value::as_array)?
-            .iter()
-            .filter_map(update_of)
-            .collect();
-        let reached = listed.iter().any(|update| update.from <= since);
-        found.extend(listed.into_iter().filter(|update| update.to > since));
-        before = page.get("nextBeforeTimestamp").and_then(Value::as_u64);
+        let page = within(
+            HISTORY_DEADLINE,
+            HistoryError::TimedOut,
+            rest.updates(session, before, PAGE),
+        )
+        .await
+        .ok()?;
+        let reached = page.updates.iter().any(|update| update.from <= since);
+        found.extend(page.updates.into_iter().filter(|update| update.to > since));
+        before = page.next_before;
         if reached || before.is_none() {
             return Some(found);
         }
@@ -78,38 +38,38 @@ async fn updates(
 }
 
 async fn changed_paths(
-    http: &Http,
+    rest: &ProjectRest,
     session: &SessionHandle,
-    project_id: &str,
     from: u64,
     to: u64,
 ) -> Option<BTreeSet<String>> {
-    let path = format!("/project/{project_id}/filetree/diff?from={from}&to={to}");
-    let diff = get_json(http, session, &path).await?;
+    let diff = within(
+        HISTORY_DEADLINE,
+        HistoryError::TimedOut,
+        rest.tree_diff(session, from, to),
+    )
+    .await
+    .ok()?;
     Some(
-        diff.get("diff")
-            .and_then(Value::as_array)?
-            .iter()
-            .filter(|entry| entry.get("operation").is_some())
-            .filter_map(|entry| entry.get("pathname").and_then(Value::as_str))
-            .map(str::to_string)
+        diff.into_iter()
+            .filter(|entry| entry.op.is_some())
+            .map(|entry| entry.path)
             .collect(),
     )
 }
 
 pub(super) async fn since(
-    http: &Http,
+    rest: &ProjectRest,
     session: &SessionHandle,
-    project_id: &str,
     version: Option<u64>,
 ) -> History {
     let Some(version) = version else {
         return History {
-            latest: latest(http, session, project_id).await,
+            latest: latest(rest, session).await,
             changed: None,
         };
     };
-    let Some(found) = updates(http, session, project_id, version).await else {
+    let Some(found) = updates(rest, session, version).await else {
         return History::default();
     };
     let latest = found
@@ -125,18 +85,21 @@ pub(super) async fn since(
     }
     History {
         latest: Some(latest),
-        changed: changed_paths(http, session, project_id, version, latest).await,
+        changed: changed_paths(rest, session, version, latest).await,
     }
 }
 
-pub(super) async fn latest(http: &Http, session: &SessionHandle, project_id: &str) -> Option<u64> {
-    let path = format!("/project/{project_id}/updates?min_count=1");
-    let page = get_json(http, session, &path).await?;
+pub(super) async fn latest(rest: &ProjectRest, session: &SessionHandle) -> Option<u64> {
+    let page = within(
+        HISTORY_DEADLINE,
+        HistoryError::TimedOut,
+        rest.updates(session, None, 1),
+    )
+    .await
+    .ok()?;
     Some(
-        page.get("updates")
-            .and_then(Value::as_array)?
+        page.updates
             .iter()
-            .filter_map(update_of)
             .map(|update| update.to)
             .max()
             .unwrap_or(0),
@@ -144,22 +107,26 @@ pub(super) async fn latest(http: &Http, session: &SessionHandle, project_id: &st
 }
 
 pub(super) async fn changed_between(
-    http: &Http,
+    rest: &ProjectRest,
     session: &SessionHandle,
-    project_id: &str,
     after_ms: u64,
     before_ms: u64,
 ) -> Option<BTreeSet<String>> {
-    let path = format!("/project/{project_id}/updates?min_count={PAGE}");
-    let page = get_json(http, session, &path).await?;
-    let recent: Vec<Update> = page
-        .get("updates")
-        .and_then(Value::as_array)?
+    let page = within(
+        HISTORY_DEADLINE,
+        HistoryError::TimedOut,
+        rest.updates(session, None, PAGE),
+    )
+    .await
+    .ok()?;
+    let window =
+        i64::try_from(after_ms).unwrap_or(i64::MAX)..=i64::try_from(before_ms).unwrap_or(i64::MAX);
+    let recent: Vec<&HistoryUpdate> = page
+        .updates
         .iter()
-        .filter_map(update_of)
-        .filter(|update| (after_ms..=before_ms).contains(&update.started_ms))
+        .filter(|update| window.contains(&update.start_ms))
         .collect();
     let from = recent.iter().map(|update| update.from).min()?;
     let to = recent.iter().map(|update| update.to).max()?;
-    changed_paths(http, session, project_id, from, to).await
+    changed_paths(rest, session, from, to).await
 }

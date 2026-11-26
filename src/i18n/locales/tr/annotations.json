@@ -26,6 +26,10 @@
       "region": "Bu alan hakkında yorum…"
     },
     "placeHere": "Buraya yerleştir",
+    "coauthors": "Ortak yazarlar için yorum",
+    "noSource": "Bu bölüm kaynak dosyalarda bulunamadı.",
+    "commentFailed": "Bu yorumun dosyası açılamadı.",
+    "commentsClosed": "Yorumlar şu anda bu projede kullanılamıyor.",
     "cancel": "İptal",
     "save": "Ekle",
     "saving": "Kaydediliyor",

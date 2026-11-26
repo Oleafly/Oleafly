@@ -150,7 +150,7 @@ async fn access_revoked_ends_live_and_keeps_text() {
     live.stop().await;
     assert_eq!(port.ended(), Some(LiveEnd::Removed));
     assert!(record_of(&live, &main).is_none());
-    assert!(unsent_on(&rig.data("bob"), &rig.mock.base).is_empty());
+    assert!(unsent_on(&rig.data("bob"), &rig.mock.base, None).is_empty());
 }
 
 #[tokio::test]
@@ -179,7 +179,7 @@ async fn unsent_text_already_in_the_file_is_announced_without_a_copy() {
         .contains(&(main.clone(), MergeReview::InFile)));
     live.stop().await;
     assert!(record_of(&live, &main).is_none());
-    assert!(unsent_on(&rig.data("bob"), &rig.mock.base).is_empty());
+    assert!(unsent_on(&rig.data("bob"), &rig.mock.base, None).is_empty());
 }
 
 #[tokio::test]
@@ -293,7 +293,7 @@ async fn project_not_found_on_rejoin_ends_with_project_deleted() {
     .await;
     assert_eq!(kept(&port), vec!["Hello lost?".to_string()]);
     live.stop().await;
-    assert!(unsent_on(&rig.data("alice"), &rig.mock.base).is_empty());
+    assert!(unsent_on(&rig.data("alice"), &rig.mock.base, None).is_empty());
 }
 
 #[tokio::test]
@@ -382,7 +382,7 @@ async fn a_project_deleted_with_unsent_text_keeps_it_as_a_copy_and_stops_no_doc(
     assert_eq!(kept(&port), vec!["Hello gone?".to_string()]);
     assert!(port.seen().stopped.is_empty());
     live.stop().await;
-    assert!(unsent_on(&rig.data("alice"), &rig.mock.base).is_empty());
+    assert!(unsent_on(&rig.data("alice"), &rig.mock.base, None).is_empty());
 }
 
 #[tokio::test]

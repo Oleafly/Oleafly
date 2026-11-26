@@ -1,12 +1,14 @@
 import { create } from "zustand";
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
 import {
+  commentsTabOpen,
+  noteCommentsUnseen,
   openCommentThread,
   showCommentsTab,
   useCommentsRail,
   type CommentRequest,
 } from "@/components/collab/comments-rail";
-import { setCommentsEditorExtension } from "@/components/editor/cm/comments-slot";
+import { setCommentsEditorExtension } from "@/components/editor/cm/editor-slots";
 import { type CommentFilter, keepsThread } from "@/components/ui/comments/comment-filter";
 import {
   collabDocumentSession,
@@ -53,7 +55,14 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";
 import { canCommentProjectRole } from "../roles";
-import { useCollabLiveStore } from "../live/live-store";
+import {
+  type CollabLiveStoreState,
+  liveJoinedProjectId,
+  liveReviewProjectId,
+  liveSelfId,
+  useCollabLiveStore,
+} from "../live/live-store";
+import { onRoster } from "../people";
 import { useCollabActivity } from "../sharing/activity-store";
 import { commentFailure, refusedOutright, reported } from "./refusals";
 import {
@@ -134,8 +143,26 @@ export function commentsShown(status: CollabCommentsStatus | null): boolean {
   return status?.serverAllowed === true && status.projectEnabled;
 }
 
+export function trackedChangesOnly(
+  status: CollabCommentsStatus | null,
+  live: Pick<CollabLiveStoreState, "backend" | "status">,
+): boolean {
+  return (
+    status !== null &&
+    !status.serverAllowed &&
+    status.projectEnabled &&
+    live.backend === "overleaf" &&
+    live.status !== null &&
+    live.status.state !== "ended"
+  );
+}
+
+function statusFor(status: CollabCommentsStatus, restricted: boolean): CollabCommentsStatus {
+  return restricted ? { ...status, projectEnabled: false, canComment: false } : status;
+}
+
 export function commentSelf(): string | null {
-  return useCollabLiveStore.getState().share?.account_id ?? null;
+  return liveSelfId(useCollabLiveStore.getState());
 }
 
 export function canWriteComments(
@@ -157,7 +184,7 @@ export function commentMember(member: CollabProjectMember): CollabCommentMember 
 }
 
 export function commentMembers(): CollabCommentMember[] {
-  return useCollabLiveStore.getState().members.map(commentMember);
+  return useCollabLiveStore.getState().members.filter(onRoster).map(commentMember);
 }
 
 export function byDocument(threads: readonly CollabCommentThread[]): CollabCommentThread[] {
@@ -240,6 +267,22 @@ export function freshness(session: Revisioned | null, rev: number | null): Fresh
   return rev === session.revision ? "current" : "behind";
 }
 
+export async function currentList<L extends { rev: number | null }>(
+  path: string,
+  fetch: () => Promise<L>,
+  stale: () => boolean,
+): Promise<L | null> {
+  for (let attempt = 1; ; attempt += 1) {
+    const listed = await fetch();
+    if (stale()) return null;
+    const session = openSession(path);
+    const verdict = freshness(session, listed.rev);
+    if (!session || verdict === "current" || attempt >= LIST_ATTEMPTS) return listed;
+    await catchUp(path, session, verdict);
+    if (stale()) return null;
+  }
+}
+
 export async function catchUp(path: string, session: Revisioned, verdict: Freshness): Promise<void> {
   await settled(path);
   if (verdict !== "behind") return;
@@ -272,15 +315,6 @@ async function settled(path: string): Promise<void> {
   }
 }
 
-function tabOpen(): boolean {
-  const settings = useSettingsStore.getState();
-  return settings.railTab === "comments" && settings.showTree;
-}
-
-function noteUnseen(): void {
-  if (!tabOpen() && !useCommentsRail.getState().unread) useCommentsRail.setState({ unread: true });
-}
-
 function revealInEditor(id: string): boolean {
   const { path } = useComments.getState();
   const note = noteSurface(path);
@@ -290,12 +324,15 @@ function revealInEditor(id: string): boolean {
   return revealComment(view, id);
 }
 
+export function revealSoon(reveal: () => boolean): void {
+  queueMicrotask(() => {
+    if (!reveal()) setTimeout(reveal, RETRY_REVEAL_MS);
+  });
+}
+
 export function selectThread(id: string | null, options: { reveal?: boolean; focus?: boolean } = {}): void {
   useComments.setState((state) => ({ selectedId: id, focus: options.focus ? state.focus + 1 : state.focus }));
-  if (!id || !options.reveal) return;
-  queueMicrotask(() => {
-    if (!revealInEditor(id)) setTimeout(() => revealInEditor(id), RETRY_REVEAL_MS);
-  });
+  if (id && options.reveal) revealSoon(() => revealInEditor(id));
 }
 
 export function openCommentFromEditor(id: string, from: CommentOpenedFrom): void {
@@ -320,7 +357,7 @@ function applyReveal(): void {
 
 let loadToken = 0;
 
-function sameData(left: unknown, right: unknown): boolean {
+export function sameData(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
   if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
   if (Array.isArray(left) !== Array.isArray(right)) return false;
@@ -333,20 +370,17 @@ function sameData(left: unknown, right: unknown): boolean {
   );
 }
 
-function keepUnchanged(previous: CollabCommentThread[], next: CollabCommentThread[]): CollabCommentThread[] {
-  const known = new Map(previous.map((thread) => [thread.id, thread]));
-  const kept = next.map((thread) => {
-    const old = known.get(thread.id);
-    return old && sameData(old, thread) ? old : thread;
+export function keepUnchanged<T extends { id: string }>(previous: T[], next: T[]): T[] {
+  const known = new Map(previous.map((entry) => [entry.id, entry]));
+  const kept = next.map((entry) => {
+    const old = known.get(entry.id);
+    return old && sameData(old, entry) ? old : entry;
   });
-  const same = kept.length === previous.length && kept.every((thread, index) => thread === previous[index]);
+  const same = kept.length === previous.length && kept.every((entry, index) => entry === previous[index]);
   return same ? previous : kept;
 }
 
-function without(
-  elsewhere: Readonly<Record<string, FileThreads>>,
-  path: string,
-): Readonly<Record<string, FileThreads>> {
+export function without<T>(elsewhere: Readonly<Record<string, T>>, path: string): Readonly<Record<string, T>> {
   if (!Object.hasOwn(elsewhere, path)) return elsewhere;
   return Object.fromEntries(Object.entries(elsewhere).filter(([key]) => key !== path));
 }
@@ -441,18 +475,6 @@ export function openThreadIn(path: string, id: string): void {
   openCommentThread(path, id);
 }
 
-async function currentList(projectId: string, path: string, token: number): Promise<CollabCommentThread[] | null> {
-  for (let attempt = 1; ; attempt += 1) {
-    const listed = await collabCommentThreadList(projectId, path);
-    if (token !== loadToken) return null;
-    const session = openSession(path);
-    const verdict = freshness(session, listed.rev);
-    if (!session || verdict === "current" || attempt >= LIST_ATTEMPTS) return listed.threads;
-    await catchUp(path, session, verdict);
-    if (token !== loadToken) return null;
-  }
-}
-
 async function load(path: string | null): Promise<CollabCommentThread[] | null> {
   const projectId = useComments.getState().projectId;
   const token = ++loadToken;
@@ -475,7 +497,8 @@ async function load(path: string | null): Promise<CollabCommentThread[] | null> 
   }
   let listed: CollabCommentThread[] | null;
   try {
-    listed = await currentList(projectId, path, token);
+    const found = await currentList(path, () => collabCommentThreadList(projectId, path), () => token !== loadToken);
+    listed = found?.threads ?? null;
   } catch (error) {
     if (token !== loadToken) return null;
     const code = collabErrorCode(error);
@@ -551,10 +574,13 @@ export function discardRefused(key: string): void {
   useComments.setState((state) => ({ refused: state.refused.filter((entry) => entry.key !== key) }));
 }
 
-function requireProject(): string {
-  const projectId = useComments.getState().projectId;
+export function liveProject(projectId: string | null): string {
   if (!projectId) throw new Error("This project is not shared.");
   return projectId;
+}
+
+function requireProject(): string {
+  return liveProject(useComments.getState().projectId);
 }
 
 function patched(
@@ -855,15 +881,19 @@ export function startComments(): () => void {
 
   const syncRail = () => {
     const state = useComments.getState();
-    const visible = commentsShown(state.status);
     const live = useCollabLiveStore.getState();
+    const visible = commentsShown(state.status) || trackedChangesOnly(state.status, live);
     const canCompose = canWriteComments(state.status, live.role, live.status?.state ?? null);
     const rail = useCommentsRail.getState();
     if (rail.visible === visible && rail.canCompose === canCompose) return;
     useCommentsRail.setState(visible ? { visible, canCompose } : { visible, canCompose, unread: false, request: null });
   };
 
-  const applyStatus = (status: CollabCommentsStatus) => {
+  let heard: CollabCommentsStatus | null = null;
+
+  const applyStatus = (raw: CollabCommentsStatus) => {
+    heard = raw;
+    const status = statusFor(raw, useCollabLiveStore.getState().restricted);
     const wasShown = commentsShown(useComments.getState().status);
     useComments.setState({ status });
     const shown = commentsShown(status);
@@ -893,7 +923,7 @@ export function startComments(): () => void {
 
   const refreshStatus = async () => {
     const projectId = useComments.getState().projectId;
-    if (!projectId) return;
+    if (!projectId || liveJoinedProjectId(useCollabLiveStore.getState()) !== projectId) return;
     const token = ++statusToken;
     try {
       const status = await collabCommentsStatus(projectId);
@@ -904,8 +934,7 @@ export function startComments(): () => void {
   };
 
   const openProject = () => {
-    const live = useCollabLiveStore.getState();
-    const projectId = live.share && live.projectId ? live.projectId : null;
+    const projectId = liveReviewProjectId(useCollabLiveStore.getState());
     if (projectId === useComments.getState().projectId) {
       syncRail();
       return;
@@ -915,6 +944,7 @@ export function startComments(): () => void {
     forgetElsewhere();
     loadToken += 1;
     statusToken += 1;
+    heard = null;
     useComments.setState(blank(projectId));
     useCommentsRail.setState({ visible: false, canCompose: false, unread: false, request: null, reveal: null });
     if (projectId) void refreshStatus();
@@ -924,7 +954,7 @@ export function startComments(): () => void {
     reloadTimer = null;
     const before = useComments.getState().threads;
     const after = await load(useComments.getState().path);
-    if (!local && after && othersWrote(before, after, commentSelf())) noteUnseen();
+    if (!local && after && othersWrote(before, after, commentSelf())) noteCommentsUnseen();
   };
 
   const marks = noteMarks();
@@ -977,15 +1007,17 @@ export function startComments(): () => void {
       cancelReload();
       reloadTimer = setTimeout(() => void reload(local), RELOAD_DELAY_MS);
     } else if (!payload.local && (payload.fileIds.length > 0 || payload.paths.length > 0)) {
-      noteUnseen();
+      noteCommentsUnseen();
     }
     scheduleElsewhere(payload);
   };
 
   const stopLive = useCollabLiveStore.subscribe((live, previous) => {
-    if (live.projectId !== previous.projectId || live.share !== previous.share) openProject();
+    if (liveReviewProjectId(live) !== liveReviewProjectId(previous)) openProject();
+    if (live.restricted !== previous.restricted && heard) applyStatus(heard);
     if (live.commentsNotSent && live.commentsNotSent !== previous.commentsNotSent) void refreshStatus();
-    if (live.role !== previous.role || (live.status?.state === "online" && previous.status?.state !== "online")) {
+    const joined = liveJoinedProjectId(live) !== null && liveJoinedProjectId(previous) === null;
+    if (joined || live.role !== previous.role || (live.status?.state === "online" && previous.status?.state !== "online")) {
       syncRail();
       void refreshStatus();
     } else if (live.status?.state !== previous.status?.state) {
@@ -1008,7 +1040,7 @@ export function startComments(): () => void {
   });
   const stopSettings = useSettingsStore.subscribe((settings, previous) => {
     if (settings.railTab === previous.railTab && settings.showTree === previous.showTree) return;
-    if (tabOpen() && useCommentsRail.getState().unread) useCommentsRail.setState({ unread: false });
+    if (commentsTabOpen() && useCommentsRail.getState().unread) useCommentsRail.setState({ unread: false });
   });
   const listening = [
     onCollabCommentsChanged(onChanged),
@@ -1040,6 +1072,7 @@ export function startComments(): () => void {
     forgetElsewhere();
     loadToken += 1;
     statusToken += 1;
+    heard = null;
     useComments.setState(blank(null));
     useCommentsRail.setState({ visible: false, canCompose: false, unread: false, request: null, reveal: null });
   };

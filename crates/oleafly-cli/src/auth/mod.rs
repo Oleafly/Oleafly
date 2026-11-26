@@ -385,7 +385,13 @@ mod tests {
             },
         )
         .unwrap();
-        save_git_token(&env.store, "https://latex.example.edu", "olp_GITTOKEN88").unwrap();
+        save_git_token(
+            &env.store,
+            "https://latex.example.edu",
+            None,
+            "olp_GITTOKEN88",
+        )
+        .unwrap();
         oleafly_secrets::accounts::save_forge_token(
             &env.store,
             "https://gitlab.com",

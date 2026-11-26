@@ -1,0 +1,3480 @@
+{
+  "doc": "6b04e5a3cb4fe3a455d4d258",
+  "format": "history-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n"
+        },
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n"
+                  ]
+                }
+              ],
+              "v": 0,
+              "hash": "ab18ef9993949f39ce41dc37cc843b94f6757051"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": [
+            {
+              "t": 773,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 940,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 942,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 942,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "dave (viewer) adds a comment on \"quick brown\"",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 1,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0008000001",
+            "ranges": [
+              {
+                "pos": 4,
+                "length": 11
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 1,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 2,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 1,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "carol (reviewer) adds a comment on \"lazy dog\"",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 2,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0009000001",
+            "ranges": [
+              {
+                "pos": 35,
+                "length": 8
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 2,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 3,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 2,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "alice (owner) adds a comment on \"brown fox\", overlapping the first",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 3,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee000a000001",
+            "ranges": [
+              {
+                "pos": 10,
+                "length": 9
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 3,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 4,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 4,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 5,
+      "label": "dave adds one comment with two ranges",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 4,
+        "op": [
+          {
+            "commentId": "6b04e5b6c0ffee000b000001",
+            "ranges": [
+              {
+                "pos": 0,
+                "length": 3
+              },
+              {
+                "pos": 47,
+                "length": 11
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 4,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 5,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 6,
+      "label": "dave adds two comments in one update",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 5,
+        "op": [
+          {
+            "commentId": "6b04e5bac0ffee000c000001",
+            "ranges": [
+              {
+                "pos": 20,
+                "length": 5
+              }
+            ]
+          },
+          {
+            "commentId": "6b04e5bac0ffee000d000001",
+            "ranges": [
+              {
+                "pos": 65,
+                "length": 7
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 5,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 6,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 8,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 7,
+      "label": "dave (viewer) resolves his comment with SetCommentState",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 6,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0008000001",
+            "resolved": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 6,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 8,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 8,
+      "label": "carol (reviewer) resolves her own comment with SetCommentState",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 6,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0009000001",
+            "resolved": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 6,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 8,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 9,
+      "label": "carol (reviewer) deletes her own comment with DeleteComment",
+      "who": "carol",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 6,
+        "op": [
+          {
+            "deleteComment": "6b04e5abc0ffee0009000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 6,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 8,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 10,
+      "label": "dave (viewer) re-adds his comment with resolved: true",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 6,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0008000001",
+            "ranges": [
+              {
+                "pos": 4,
+                "length": 11
+              }
+            ],
+            "resolved": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 6,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 7,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 11,
+      "label": "alice (owner) reopens that comment with SetCommentState",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 7,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee0008000001",
+            "resolved": false
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 7,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 8,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ]
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 7,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 12,
+      "label": "alice resolves \"brown fox\" with SetCommentState",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 8,
+        "op": [
+          {
+            "commentId": "6b04e5abc0ffee000a000001",
+            "resolved": true
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 8,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 9,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 13,
+      "label": "dave (viewer) sends AddComment and a text operation in one update",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 9,
+        "op": [
+          {
+            "commentId": "6b04e5d3c0ffee000e000001",
+            "ranges": [
+              {
+                "pos": 40,
+                "length": 3
+              }
+            ]
+          },
+          {
+            "textOperation": [
+              "x",
+              88
+            ]
+          }
+        ]
+      },
+      "result": {
+        "outcome": "refused",
+        "error": {
+          "message": "not authorized"
+        },
+        "disconnected": true
+      },
+      "server": {
+        "version": 9,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 35,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 10,
+                  "length": 9
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 20,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 35,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 10,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 20,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 14,
+      "label": "bob types strictly inside \"quick brown\"",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 9,
+          "insert": " very"
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 10,
+        "text": "The quick very brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The quick very brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 4,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 40,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 15,
+                  "length": 9
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 52,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 25,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 70,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 4,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 40,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 15,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The quick very brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 25,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 70,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    9,
+                    {
+                      "i": " very",
+                      "commentIds": [
+                        "6b04e5abc0ffee0008000001"
+                      ]
+                    },
+                    79
+                  ]
+                }
+              ],
+              "v": 9,
+              "lastV": 0,
+              "hash": "a2c767375687f13941ac93c60d14fb825ebdc34a"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 15,
+      "label": "bob types at the start edge of the first comment",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 4,
+          "insert": "so "
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 11,
+        "text": "The so quick very brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The so quick very brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 43,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 9
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 55,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 28,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 73,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 43,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 28,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 73,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    4,
+                    "so ",
+                    89
+                  ]
+                }
+              ],
+              "v": 10,
+              "lastV": 9
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 16,
+      "label": "bob types at the end edge of the first comment, inside the resolved \"brown fox\"",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 23,
+          "insert": "-ish"
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 12,
+        "text": "The so quick very brown-ish fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 47,
+                  "length": 8
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 59,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 77,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 47,
+                "c": "lazy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over the lazy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 77,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    23,
+                    {
+                      "i": "-ish",
+                      "commentIds": [
+                        "6b04e5abc0ffee000a000001"
+                      ]
+                    },
+                    73
+                  ]
+                }
+              ],
+              "v": 11,
+              "lastV": 10
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 17,
+      "label": "bob deletes across the start edge of \"lazy dog\"",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 43,
+          "to": 49
+        },
+        "userEvent": "delete"
+      },
+      "server": {
+        "version": 13,
+        "text": "The so quick very brown-ish fox jumps over zy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over zy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": [
+                {
+                  "pos": 43,
+                  "length": 6
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 53,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 71,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 43,
+                "c": "zy dog",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over zy dog.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 71,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 6,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    43,
+                    -6,
+                    51
+                  ]
+                }
+              ],
+              "v": 12,
+              "lastV": 11,
+              "hash": "08f326e3bbf59255416894e702d3ce478b0dee37"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 18,
+      "label": "bob deletes the rest of the \"lazy dog\" comment",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 43,
+          "to": 49
+        },
+        "userEvent": "delete"
+      },
+      "server": {
+        "version": 14,
+        "text": "The so quick very brown-ish fox jumps over .\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over .\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": []
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 47,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 65,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over .\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 65,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    43,
+                    -6,
+                    45
+                  ]
+                }
+              ],
+              "v": 13,
+              "lastV": 12
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 19,
+      "label": "bob types where the emptied comment sits",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 43,
+          "insert": "sleepy cat"
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 15,
+        "text": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe ☕ to comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe ☕ to comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": []
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 57,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 75,
+                  "length": 7
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 75,
+                "c": "Größe ☕",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    43,
+                    "sleepy cat",
+                    45
+                  ]
+                }
+              ],
+              "v": 14,
+              "lastV": 13
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 20,
+      "label": "bob replaces text across the end of the accented comment",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 81,
+          "to": 85,
+          "insert": "tea for"
+        },
+        "userEvent": "input.type"
+      },
+      "server": {
+        "version": 16,
+        "text": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee0009000001",
+              "ranges": []
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 57,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 75,
+                  "length": 13
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "",
+                "t": "6b04e5abc0ffee0009000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0009000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 75,
+                "c": "Größe tea for",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e5a3cb4fe3a455d4d258",
+              "op": [
+                {
+                  "textOperation": [
+                    81,
+                    {
+                      "i": "tea for",
+                      "commentIds": [
+                        "6b04e5bac0ffee000d000001"
+                      ]
+                    },
+                    -4,
+                    13
+                  ]
+                }
+              ],
+              "v": 15,
+              "lastV": 14,
+              "hash": "4c45390ad809a50497c704948606d8d7f8882564"
+            }
+          ],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 21,
+      "label": "alice (owner) deletes the \"lazy dog\" comment with DeleteComment",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 16,
+        "op": [
+          {
+            "deleteComment": "6b04e5abc0ffee0009000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 16,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 17,
+        "text": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 57,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 75,
+                  "length": 13
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 75,
+                "c": "Größe tea for",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 22,
+      "label": "alice joins the doc again",
+      "who": "alice",
+      "joinDoc": {
+        "version": 17,
+        "comments": [
+          {
+            "id": "6b04e5abc0ffee0008000001",
+            "ranges": [
+              {
+                "pos": 7,
+                "length": 16
+              }
+            ]
+          },
+          {
+            "id": "6b04e5abc0ffee000a000001",
+            "ranges": [
+              {
+                "pos": 18,
+                "length": 13
+              }
+            ],
+            "resolved": true
+          },
+          {
+            "id": "6b04e5b6c0ffee000b000001",
+            "ranges": [
+              {
+                "pos": 0,
+                "length": 3
+              },
+              {
+                "pos": 57,
+                "length": 11
+              }
+            ]
+          },
+          {
+            "id": "6b04e5bac0ffee000c000001",
+            "ranges": [
+              {
+                "pos": 32,
+                "length": 5
+              }
+            ]
+          },
+          {
+            "id": "6b04e5bac0ffee000d000001",
+            "ranges": [
+              {
+                "pos": 75,
+                "length": 13
+              }
+            ]
+          }
+        ]
+      },
+      "server": {
+        "version": 17,
+        "text": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 57,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 75,
+                  "length": 13
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 75,
+                "c": "Größe tea for",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 23,
+      "label": "alice sends DeleteComment for an id the doc does not have",
+      "who": "alice",
+      "sent": {
+        "doc": "6b04e5a3cb4fe3a455d4d258",
+        "v": 17,
+        "op": [
+          {
+            "deleteComment": "6b04e5eac0ffee000f000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "applied",
+        "ack": {
+          "v": 17,
+          "doc": "6b04e5a3cb4fe3a455d4d258"
+        }
+      },
+      "server": {
+        "version": 18,
+        "text": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+        "raw": {
+          "content": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line, with Größe tea for comment on.\n",
+          "comments": [
+            {
+              "id": "6b04e5abc0ffee0008000001",
+              "ranges": [
+                {
+                  "pos": 7,
+                  "length": 16
+                }
+              ]
+            },
+            {
+              "id": "6b04e5abc0ffee000a000001",
+              "ranges": [
+                {
+                  "pos": 18,
+                  "length": 13
+                }
+              ],
+              "resolved": true
+            },
+            {
+              "id": "6b04e5b6c0ffee000b000001",
+              "ranges": [
+                {
+                  "pos": 0,
+                  "length": 3
+                },
+                {
+                  "pos": 57,
+                  "length": 11
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000c000001",
+              "ranges": [
+                {
+                  "pos": 32,
+                  "length": 5
+                }
+              ]
+            },
+            {
+              "id": "6b04e5bac0ffee000d000001",
+              "ranges": [
+                {
+                  "pos": 75,
+                  "length": 13
+                }
+              ]
+            }
+          ]
+        },
+        "ranges": {
+          "comments": [
+            {
+              "op": {
+                "p": 7,
+                "c": "quick very brown",
+                "t": "6b04e5abc0ffee0008000001",
+                "resolved": false
+              },
+              "id": "6b04e5abc0ffee0008000001"
+            },
+            {
+              "op": {
+                "p": 18,
+                "c": "brown-ish fox",
+                "t": "6b04e5abc0ffee000a000001",
+                "resolved": true
+              },
+              "id": "6b04e5abc0ffee000a000001"
+            },
+            {
+              "op": {
+                "p": 0,
+                "c": "The so quick very brown-ish fox jumps over sleepy cat.\nA second line",
+                "t": "6b04e5b6c0ffee000b000001",
+                "resolved": false
+              },
+              "id": "6b04e5b6c0ffee000b000001"
+            },
+            {
+              "op": {
+                "p": 32,
+                "c": "jumps",
+                "t": "6b04e5bac0ffee000c000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000c000001"
+            },
+            {
+              "op": {
+                "p": 75,
+                "c": "Größe tea for",
+                "t": "6b04e5bac0ffee000d000001",
+                "resolved": false
+              },
+              "id": "6b04e5bac0ffee000d000001"
+            }
+          ]
+        }
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 5,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "closed": false,
+          "disconnects": 0,
+          "updateErrors": [],
+          "rejections": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

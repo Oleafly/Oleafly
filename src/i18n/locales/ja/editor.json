@@ -312,6 +312,15 @@
     "spellLanguageFolderHint": "このフォルダの project.json に保存されるため、フォルダを開くすべての人に適用されます。ほかの言語は設定からダウンロードできます。",
     "spellLanguageReadOnly": "このフォルダは読み取り専用のため、project.json の言語は変更できません。",
     "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。",
+    "onOverleaf": "Overleaf 側",
+    "texLive": "TeX Live のバージョン",
+    "texLiveAriaLabel": "Overleaf 上の TeX Live のバージョン",
+    "bibliography": "メインの参考文献",
+    "bibliographyAriaLabel": "Overleaf 上のメインの参考文献",
+    "bibliographyNone": "未選択",
+    "overleafHint": "これらの設定は Overleaf 上にあり、プロジェクトの全員に適用されます。",
+    "overleafReadOnly": "Overleaf でこれらを変更できるのは所有者と編集者だけです。",
+    "overleafFailed": "Overleaf でこの設定を変更できませんでした。",
     "notChecked": "未チェック",
     "dictionaryMissing": "{{name}} がダウンロードされていないため、スペルはチェックされません。設定でダウンロードするか、別の言語を選んでください。",
     "grammarEnglishOnly": "文法チェックは英語のドキュメントでのみ機能します。",
@@ -725,11 +734,11 @@
     "ignoreEverywhere": "どこでも無視",
     "keyboardHint": "Tab または矢印キーで操作を移動できます。Escape で閉じます。",
     "endOfDocument": "文書の終わり",
-    "hidePreamble": "文書のプリアンブルを隠す",
-    "showPreamble": "文書のプリアンブルを表示",
-    "sharedReadOnly": "共有プロジェクトでは、ビジュアルモードはファイルを表示するだけです。編集するにはソース表示に切り替えてください。",
     "findingLabel": "{{message}}。校正の候補を開きます。",
-    "rawBlockFindings_other": "この未加工ブロックに校正の指摘が {{count}} 件あります。{{message}}。候補を開きます。"
+    "rawBlockFindings_other": "この未加工ブロックに校正の指摘が {{count}} 件あります。{{message}}。候補を開きます。",
+    "liveViewOnly": "この共有ファイルは閲覧できますが、編集はできません。",
+    "liveConnecting": "この共有ファイルはまだ接続中です。準備ができたら編集できます。",
+    "suggestInSource": "ここでの変更は提案になりますが、ビジュアルモードでは提案を表示できません。編集を提案するには、ソース表示に切り替えてください。"
   },
   "package": {
     "search": {

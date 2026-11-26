@@ -1,0 +1,118 @@
+{
+  "probe": "online-user-hues",
+  "description": "Alice and Bob open main.tex in CE's web editor; Carol and Dave connect as scripted clients and report cursor positions in main.tex. Reads the online-users widget circles and the remote cursor markers in Alice's and Bob's editors and records the hue each one was drawn in, read back from its colour, with the user it belongs to.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "alice sees circles [\"bob:247\",\"carol:112\",\"dave:135\"] and cursors [\"bob:247\",\"carol:112\",\"dave:135\"]",
+    "bob sees circles [\"alice:100\",\"carol:112\",\"dave:135\"] and cursors [\"alice:100\",\"carol:112\",\"dave:135\"]"
+  ],
+  "steps": [
+    {
+      "viewer": "alice",
+      "viewerId": "6afab5bb1222cc50aa4c16ec",
+      "circles": [
+        {
+          "text": "B",
+          "inline": "background-color: rgb(59, 38, 217);",
+          "computed": "rgb(59, 38, 217)",
+          "user": "bob",
+          "userId": "6afab5bc1222cc50aa4c16f2",
+          "hue": 247
+        },
+        {
+          "text": "C",
+          "inline": "background-color: rgb(62, 217, 38);",
+          "computed": "rgb(62, 217, 38)",
+          "user": "carol",
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "hue": 112
+        },
+        {
+          "text": "D",
+          "inline": "background-color: rgb(38, 217, 83);",
+          "computed": "rgb(38, 217, 83)",
+          "user": "dave",
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "hue": 135
+        }
+      ],
+      "cursors": [
+        {
+          "hue": "247",
+          "computed": "rgb(59, 38, 217)",
+          "user": "bob",
+          "userId": "6afab5bc1222cc50aa4c16f2",
+          "drawnInItsHue": true
+        },
+        {
+          "hue": "112",
+          "computed": "rgb(62, 217, 38)",
+          "user": "carol",
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "drawnInItsHue": true
+        },
+        {
+          "hue": "135",
+          "computed": "rgb(38, 217, 83)",
+          "user": "dave",
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "drawnInItsHue": true
+        }
+      ]
+    },
+    {
+      "viewer": "bob",
+      "viewerId": "6afab5bc1222cc50aa4c16f2",
+      "circles": [
+        {
+          "text": "A",
+          "inline": "background-color: rgb(98, 217, 38);",
+          "computed": "rgb(98, 217, 38)",
+          "user": "alice",
+          "userId": "6afab5bb1222cc50aa4c16ec",
+          "hue": 100
+        },
+        {
+          "text": "C",
+          "inline": "background-color: rgb(62, 217, 38);",
+          "computed": "rgb(62, 217, 38)",
+          "user": "carol",
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "hue": 112
+        },
+        {
+          "text": "D",
+          "inline": "background-color: rgb(38, 217, 83);",
+          "computed": "rgb(38, 217, 83)",
+          "user": "dave",
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "hue": 135
+        }
+      ],
+      "cursors": [
+        {
+          "hue": "100",
+          "computed": "rgb(98, 217, 38)",
+          "user": "alice",
+          "userId": "6afab5bb1222cc50aa4c16ec",
+          "drawnInItsHue": true
+        },
+        {
+          "hue": "112",
+          "computed": "rgb(62, 217, 38)",
+          "user": "carol",
+          "userId": "6afab5bc1222cc50aa4c16f8",
+          "drawnInItsHue": true
+        },
+        {
+          "hue": "135",
+          "computed": "rgb(38, 217, 83)",
+          "user": "dave",
+          "userId": "6afab5bd1222cc50aa4c16fe",
+          "drawnInItsHue": true
+        }
+      ]
+    }
+  ]
+}

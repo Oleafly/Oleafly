@@ -100,6 +100,12 @@ oleafly build -o ~/Desktop/paper.pdf
 oleafly --json build --log tail
 ```
 
+`watch` uses the system's file watcher. When the system runs out of watches,
+as with the inotify limit on Linux, it checks for changes every second instead
+and warns with the code `watch.polling`. It doesn't follow symbolic links into
+other folders. Ctrl+C, closing the terminal and, on Windows, Ctrl+Break stop
+it. If you start it with `nohup`, closing the terminal doesn't stop it.
+
 `--timeout` stops a compiler after that many seconds (300 by default). While
 Tectonic downloads packages, the time counts from the last download, up to 30
 minutes or the `--timeout` value if that's longer.
@@ -388,6 +394,7 @@ oleafly remote diff [--name-only] [--no-fetch] [--exit-code] [--latexdiff [--pdf
 oleafly remote sync [--dry-run] [--no-push] [--resolve PATH=local|remote]...
 oleafly remote unlink [--dry-run]
 oleafly remote open [--print]
+oleafly remote live [PROJECT] [--server URL]
 ```
 
 Projects in your online LaTeX service account. `PROJECT` is a project's ID or
@@ -418,6 +425,50 @@ dot-folder or a dependency or build folder, `.env` files, `.private`, private
 keys, TeX build output such as `main.aux` (or `main.pdf` next to `main.tex`)
 and what the folder's `.gitignore` lists. From the command line you can link
 a library project only if the app imported it from the online service.
+
+`live` turns on live editing between this folder and the online project
+until you stop it. Edits you save here reach the online editor within a
+second or two, and your coauthors' edits are written into the files as they
+type. The folder needs a link, from `link` or from `import`. In an empty
+folder, name the project: `oleafly remote live PROJECT` downloads it and
+keeps it live. A folder that has files but no link is refused with
+`remote.folder_not_empty`.
+
+Only one Oleafly can edit a project live at a time. When the app or another
+`remote live` already has it, `live` stops at once with exit code 8 and says
+which one (`remote.live_elsewhere`, with `holder` in `details`). While `live`
+runs, `sync`, `link` and `unlink` refuse the folder the same way. They also
+refuse while live edits are still waiting to be sent (`remote.live_unsent`).
+A project that's shared on an Oleafly Server can't be edited live here
+(`remote.server_shared`). While a `sync` of the folder runs, `live` is
+refused with `remote.busy`. If the app paused live editing for the project,
+`live` starts anyway and clears the pause.
+
+Changes you made while `live` was off go out at the next start and are merged
+with what changed online. When both sides changed the same lines, the online
+text wins and your version is kept as a copy beside the file. If the server
+refuses a file, `live` tries it once more, and if that fails your version
+becomes a copy and the online text comes back. Files you delete here stay in
+the online project (`delete_asked`). Delete them in the web editor or the app.
+Changes to the project's settings online, such as its main document or
+compiler, are only printed.
+
+When your sign-in expires, `live` keeps your edits and waits. Sign in again
+with `oleafly auth login online` or in the app, and it carries on within a few
+seconds. It stops by itself when your access ends or you're removed from the
+project (exit code 6), when the project is deleted or the folder is moved or
+deleted (3), when the project needs a newer Oleafly (4) or on an error (1). If
+it can't reach the server, it keeps trying. Only the first start in an empty
+folder exits with code 7, because it has to find the project first.
+
+Ctrl+C, closing the terminal, `SIGTERM` and, on Windows, Ctrl+Break stop it
+with exit code 0. Before it exits, it reads the files you just saved and
+spends up to 5 seconds sending what it can. Closing the console window on
+Windows gives it only about 2 seconds in all. Press Ctrl+C a second time to
+quit at once with exit code 130. Edits that weren't sent stay in the folder
+and in Oleafly's journal, and go out at the next start. With `--quiet` it
+prints only errors. Failures go to the app log, so the logs you save with
+Export in Settings > Logs include them.
 
 ### `oleafly server`
 
@@ -803,6 +854,25 @@ events. Each has `ok`: the build's result on `build_finished`, `false` on
 same project. `watching` and `build_finished` also carry the build's
 `warnings`. Notes, progress and warnings for people go to stderr.
 
+`oleafly remote live --json` writes events while it runs and one result when
+it stops:
+
+| Event | Fields |
+|---|---|
+| `live_started` | `server`, `remoteId`, `url`, `folder`, `scope`, `email`, `role`, `filling`, `wasPaused`, `warnings` |
+| `state` | `state` (`connecting`, `online`, `offline`, `signed_out`, `idle` or `ended`), `pending`, and `retryInMs` or `reason` |
+| `remote_edit` | `path`, `by`, `userId`, at most once a second for each file and person |
+| `sent` | `path`, when an edit that had to wait for the server is confirmed online |
+| `peer` | `deviceId`, `userId`, `name`, `path` |
+| `peer_left` | `deviceId`, `userId`, `name` |
+| `kept`, `unwritten` | `files` |
+| `removed` | `files`, and `restored`, the server IDs of deleted files that are back |
+| `delete_asked` | `paths` |
+| `tree` | `kind`, and `paths` (`files` when `kind` is `linked`) |
+| `notice` | `kind`, such as `role`, `merged`, `needs_review`, `filling`, `filled`, `uploads` or `project` |
+| `skipped` | `count`, the lines left out because the reader was slow |
+| `stopped` | `unsent`, the files that weren't sent yet |
+
 ## Exit codes
 
 | Code | Meaning |
@@ -820,8 +890,8 @@ same project. `watching` and `build_finished` also carry the build's
 | 10 | The agent stopped at its step or time limit. |
 | 130 | You pressed Ctrl+C. |
 
-`oleafly watch` and `oleafly daemon run` run until you stop them, so Ctrl+C
-ends them with 0.
+`oleafly watch`, `oleafly remote live` and `oleafly daemon run` run until
+you stop them, so Ctrl+C ends them with 0.
 
 ## Environment
 
@@ -834,7 +904,7 @@ ends them with 0.
 | `OLEAFLY_DOWNLOAD_MIRROR` | Where pinned downloads come from: `automatic`, `original`, or your own mirror's HTTPS address. See [Download sources](download-sources.md). |
 | `OLEAFLY_TEX_REPOSITORY` | The TeX Live repository tlmgr installs packages from. |
 | `OLEAFLY_PACKS_BASE_URL` | Where template packs are downloaded from. |
-| `OLEAFLY_WATCH_POLL` | Set it to make `oleafly watch` poll for changes. |
+| `OLEAFLY_WATCH_POLL` | Set it to make `oleafly watch` and `oleafly remote live` poll for changes. |
 | `OLEAFLY_CLI` | Set for programs Oleafly starts: this command's path. |
 | `OLEAFLY_ONLINE_GIT_TOKEN` | A Git token for the online LaTeX service, used instead of a saved one (for CI). It goes only to the service's own server, a server you name with `--server`, or one you've signed in to. |
 | `OLEAFLY_SANDBOX_FORWARD_URL_LOGINS` | Set it to `1` to keep user names and passwords in proxy and package-index addresses for sandboxed commands. By default they are removed. |

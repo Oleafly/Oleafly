@@ -5,7 +5,8 @@ import {
   collabDocumentSession,
   collabProjectReadOnly,
   collabSettingsLocked,
-  collabVisualReadOnly,
+  collabProjectShared,
+  collabRichTextLock,
   collabHoldsDocument,
   holdNoteLivePath,
   installCollabEditorPort,
@@ -15,7 +16,7 @@ import {
 } from "./collab-live-bridge";
 
 afterEach(() => {
-  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false });
+  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false, suggesting: false });
 });
 
 describe("collab live bridge", () => {
@@ -76,17 +77,28 @@ describe("collab live bridge", () => {
     installCollabEditorPort(first)();
   });
 
-  it("makes a live project read-only for viewers and its visual Markdown read-only for everyone", () => {
+  it("makes a live project read-only for viewers, and rich text only for viewers, reviewers, suggesting or connecting", () => {
     expect(collabProjectReadOnly("project")).toBe(false);
-    expect(collabVisualReadOnly("project")).toBe(false);
-    useCollabEditorGate.setState({ projectId: "project", viewer: false });
+    expect(collabRichTextLock("project")).toBeNull();
+    expect(collabProjectShared("project")).toBe(false);
+    useCollabEditorGate.setState({ projectId: "project", viewer: false, locked: false });
+    expect(collabProjectShared("project")).toBe(true);
+    expect(collabProjectShared("other")).toBe(false);
     expect(collabProjectReadOnly("project")).toBe(false);
-    expect(collabVisualReadOnly("project")).toBe(true);
-    expect(collabVisualReadOnly("other")).toBe(false);
-    useCollabEditorGate.setState({ projectId: "project", viewer: true });
+    expect(collabRichTextLock("project")).toBeNull();
+    useCollabEditorGate.setState({ locked: true });
+    expect(collabRichTextLock("project")).toBe("suggest");
+    useCollabEditorGate.setState({ locked: false, suggesting: true });
+    expect(collabRichTextLock("project")).toBe("suggest");
+    expect(collabRichTextLock("other")).toBeNull();
+    useCollabEditorGate.setState({ suggesting: false, connecting: true });
+    expect(collabRichTextLock("project")).toBe("connecting");
+    useCollabEditorGate.setState({ connecting: false, viewer: true, locked: true });
+    expect(collabRichTextLock("project")).toBe("view");
     expect(collabProjectReadOnly("project")).toBe(true);
     expect(collabProjectReadOnly("other")).toBe(false);
     expect(collabProjectReadOnly(null)).toBe(false);
+    expect(collabRichTextLock(null)).toBeNull();
   });
 
   it("locks shared settings and files for every role that can't edit, while a reviewer can still type", () => {

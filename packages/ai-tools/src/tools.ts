@@ -199,8 +199,8 @@ function occurrenceCount(text: string, needle: string, replaceAll: boolean): num
   return count;
 }
 
-const declined = (tool: string) => ({
-  message: "The user declined this change.",
+export const declined = (tool: string, message = "The user declined this change.") => ({
+  message,
   declined: true as const,
   status: "declined" as const,
   tool,

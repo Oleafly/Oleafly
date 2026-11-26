@@ -516,7 +516,8 @@
       "open": "Seuraa avointa tiedostoa",
       "main": "Aina päädokumentti",
       "change": "Vaihda päädokumentti…"
-    }
+    },
+    "filling": "Projektia ladataan vielä Overleaf-palvelusta. Voit kääntää sen, kun kaikki tiedostot ovat täällä."
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -1704,8 +1705,9 @@
     "resume": "Jatka reaaliaikaista muokkausta",
     "reconnectNow": "Yhdistä uudelleen nyt",
     "open": "Avaa Overleafissa",
-    "share": "Jaa Overleafissa…",
+    "share": "Jaa Overleafissa",
     "signIn": "Kirjaudu sisään…",
+    "signInAs": "Kirjaudu sisään käyttäjänä {{email}}",
     "reconnectingIn": "Yritetään uudelleen {{seconds}} s kuluttua.",
     "notConfirmed": "Overleaf ei ole vielä vahvistanut.",
     "copyDetails": "Kopioi yhteyden tiedot",

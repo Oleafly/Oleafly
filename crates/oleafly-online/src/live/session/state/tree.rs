@@ -157,7 +157,7 @@ impl State {
         slot.doc = Some(OverleafDoc::provisional(doc.clone(), String::new()));
         let mut op = TextOperation::new();
         op.insert(&text);
-        let _ = self.take_local(doc, op, Some(String::new()));
+        let _ = self.take_local(doc, op, Some(String::new()), None);
     }
 
     fn sync_kept_away(&mut self) {
@@ -546,7 +546,7 @@ impl State {
     pub(in crate::live::session) fn deleted(&mut self, entity: &EntityId) {
         self.landed(&TreeEvent::Removed {
             id: entity.clone(),
-            converting: false,
+            restoring: false,
         });
     }
 
@@ -578,7 +578,7 @@ impl State {
         if let Some((old, _)) = self.entity_at(path).filter(|(old, _)| *old != uploaded.id) {
             self.landed(&TreeEvent::Removed {
                 id: old,
-                converting: false,
+                restoring: false,
             });
         }
         let name = name_of(path).to_string();
@@ -594,6 +594,7 @@ impl State {
                 name,
                 hash: uploaded.hash.clone(),
                 converted: false,
+                linked: None,
             },
         };
         self.landed(&event);

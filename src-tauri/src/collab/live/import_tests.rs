@@ -7,7 +7,8 @@ use oleafly_collab::materialize;
 use oleafly_collab_protocol::projects::ProjectRole;
 
 use super::{
-    apply_local_import, apply_to_disk, read_local_changes, sha256_hex, writable, WrittenTexts,
+    apply_local_import, apply_to_disk, read_local_changes, sha256_hex, writable, DiskTexts,
+    WrittenTexts,
 };
 use crate::collab::disk::DiskState;
 
@@ -336,8 +337,10 @@ fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_
         &mut WrittenTexts::default(),
         plan,
         next,
-        &[],
-        &BTreeSet::new(),
+        &DiskTexts {
+            texts: &[],
+            crlf: &BTreeSet::new(),
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
@@ -430,8 +433,10 @@ fn edit_main_then_write_out(live: &mut LiveProject, disk: &mut DiskState, root: 
         &mut bases,
         plan,
         next,
-        &[],
-        &BTreeSet::new(),
+        &DiskTexts {
+            texts: &[],
+            crlf: &BTreeSet::new(),
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
@@ -546,8 +551,10 @@ fn a_case_rename_that_arrives_as_remove_and_add_keeps_the_file() {
         &mut WrittenTexts::default(),
         plan,
         next,
-        &texts,
-        &BTreeSet::new(),
+        &DiskTexts {
+            texts: &texts,
+            crlf: &BTreeSet::new(),
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
@@ -592,8 +599,10 @@ fn files_in_a_folder_renamed_elsewhere_stay_writable() {
         &mut WrittenTexts::default(),
         plan,
         next,
-        &texts,
-        &BTreeSet::new(),
+        &DiskTexts {
+            texts: &texts,
+            crlf: &BTreeSet::new(),
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
@@ -637,8 +646,10 @@ fn a_folder_removed_elsewhere_is_reported_once() {
         &mut WrittenTexts::default(),
         plan,
         next,
-        &[],
-        &BTreeSet::new(),
+        &DiskTexts {
+            texts: &[],
+            crlf: &BTreeSet::new(),
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();

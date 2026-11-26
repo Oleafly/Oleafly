@@ -517,7 +517,8 @@
       "open": "Urmează fișierul deschis",
       "main": "Întotdeauna documentul principal",
       "change": "Schimbă documentul principal…"
-    }
+    },
+    "filling": "Proiectul încă se descarcă din Overleaf. Poți compila după ce ajung toate fișierele."
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -1739,8 +1740,9 @@
     "resume": "Reia editarea live",
     "reconnectNow": "Reconectează acum",
     "open": "Deschide în Overleaf",
-    "share": "Partajează în Overleaf…",
+    "share": "Partajează în Overleaf",
     "signIn": "Autentifică-te…",
+    "signInAs": "Autentifică-te ca {{email}}",
     "reconnectingIn": "Se reîncearcă în {{seconds}} s.",
     "notConfirmed": "Încă neconfirmat de Overleaf.",
     "copyDetails": "Copiază detaliile conexiunii",

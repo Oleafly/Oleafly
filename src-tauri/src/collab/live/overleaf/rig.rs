@@ -1,30 +1,35 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+use oleafly_core::app_log::AppLog;
 use oleafly_online::client::Http;
+use oleafly_online::live::doc::Origin;
 use oleafly_online::live::journal::{Journal, ProjectManifest};
 use oleafly_online::live::session::{SessionConfig, SessionTuning};
 use oleafly_online::realtime::connection::Tuning;
 use oleafly_online::realtime::Carrier;
 use oleafly_online::session::{Session, SessionHandle};
 use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser};
-use oleafly_ot::{DocMessage, DocSink};
+use oleafly_ot::{DocMessage, DocSink, TextOperation};
 
 use super::notices::OverleafNoticePayload;
-use super::{OverleafLive, Parts, TreeNotice, IMPORT_BASES};
-use crate::collab::live::host::LiveHost;
+use super::{GitBase, OverleafLive, Parts, TreeNotice, IMPORT_BASES};
+use crate::collab::chat::ChatChangedPayload;
+use crate::collab::comments::{CommentsChangedPayload, CommentsStatusPayload};
+use crate::collab::live::host::{DiskHost, LiveHost};
 use crate::collab::live::kept::KeptPayload;
 use crate::collab::live::moves::RemovedPayload;
 use crate::collab::live::payloads::{
     DocPendingPayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
 };
-use crate::collab::live::session::{guard, Live, ACTIVE};
+use crate::collab::live::session::{app_runtime, guard, Live, ACTIVE, LIFECYCLE};
 use crate::collab::live::uploads::{DownloadProgress, UploadsPayload};
+use crate::collab::suggesting::SuggestionsChangedPayload;
 use crate::folder_watch::FolderChange;
-use crate::overleaf::OverleafLink;
+use crate::overleaf::{AppMirrorGit, OverleafLink};
 
-pub(crate) const WAIT: Duration = Duration::from_secs(20);
+pub(crate) use oleafly_live::test_support::{eventually, WAIT};
 
 #[derive(Default)]
 pub(crate) struct Quiet {
@@ -41,30 +46,50 @@ pub(crate) struct Quiet {
     pub(crate) uploads: Mutex<Vec<UploadsPayload>>,
     pub(crate) downloads: Mutex<Vec<DownloadProgress>>,
     pub(crate) tree: Mutex<Vec<TreeNotice>>,
+    pub(crate) order: Mutex<Vec<String>>,
+    pub(crate) comments: Mutex<Vec<CommentsChangedPayload>>,
+    pub(crate) comment_status: Mutex<Vec<CommentsStatusPayload>>,
+    pub(crate) suggestions: Mutex<Vec<SuggestionsChangedPayload>>,
+    pub(crate) chat: Mutex<Vec<ChatChangedPayload>>,
 }
 
-impl LiveHost for Quiet {
+impl oleafly_live::DiskHost for Quiet {
     fn status(&self, payload: StatusPayload) {
+        self.order
+            .lock()
+            .unwrap()
+            .push(format!("status {:?}", payload.status));
         self.statuses.lock().unwrap().push(payload);
     }
+
     fn role(&self, payload: RolePayload) {
         self.roles.lock().unwrap().push(payload);
     }
+
     fn kept(&self, payload: KeptPayload) {
         self.kept.lock().unwrap().push(payload);
     }
+
     fn presence(&self, payload: PresencePayload) {
         self.presence.lock().unwrap().push(payload);
     }
+
     fn presence_left(&self, payload: PresenceLeftPayload) {
         self.left.lock().unwrap().push(payload.device_id);
     }
+
     fn overleaf_members(&self, _: crate::collab::live::payloads::OverleafMembersPayload) {
         *self.members_changed.lock().unwrap() += 1;
     }
+
     fn folder_changed(&self, change: FolderChange) {
+        self.order
+            .lock()
+            .unwrap()
+            .push(format!("changed {}", change.paths.join(",")));
         self.changes.lock().unwrap().push(change);
     }
+
     fn doc_pending(&self, payload: DocPendingPayload) {
         self.pending.lock().unwrap().push(payload);
     }
@@ -72,17 +97,39 @@ impl LiveHost for Quiet {
     fn overleaf_notice(&self, payload: OverleafNoticePayload) {
         self.notices.lock().unwrap().push(payload);
     }
+
     fn removed(&self, payload: RemovedPayload) {
         self.removed.lock().unwrap().push(payload);
     }
+
     fn uploads(&self, payload: UploadsPayload) {
         self.uploads.lock().unwrap().push(payload);
     }
+
     fn download_progress(&self, payload: DownloadProgress) {
         self.downloads.lock().unwrap().push(payload);
     }
+
     fn overleaf_tree(&self, notice: TreeNotice) {
         self.tree.lock().unwrap().push(notice);
+    }
+}
+
+impl LiveHost for Quiet {
+    fn comments_changed(&self, payload: CommentsChangedPayload) {
+        self.comments.lock().unwrap().push(payload);
+    }
+
+    fn comments_status(&self, payload: CommentsStatusPayload) {
+        self.comment_status.lock().unwrap().push(payload);
+    }
+
+    fn suggestions_changed(&self, payload: SuggestionsChangedPayload) {
+        self.suggestions.lock().unwrap().push(payload);
+    }
+
+    fn chat_changed(&self, payload: ChatChangedPayload) {
+        self.chat.lock().unwrap().push(payload);
     }
 }
 
@@ -96,10 +143,20 @@ pub(crate) struct Tab {
 
 impl Tab {
     pub(crate) fn typed(&mut self, live: &OverleafLive, next: &str) {
+        self.edit_with(live, None, |text| oleafly_ot::diff(text, next));
+    }
+
+    pub(crate) fn edit_with(
+        &mut self,
+        live: &OverleafLive,
+        origin: Option<Origin>,
+        edit: impl FnOnce(&str) -> TextOperation,
+    ) {
         self.catch_up();
-        let op = oleafly_ot::diff(&self.text, next);
-        live.change(&self.file_id, self.rev, op).unwrap();
-        self.text = next.to_owned();
+        let op = edit(&self.text);
+        let next = op.apply(&self.text).unwrap();
+        live.change(&self.file_id, self.rev, op, origin).unwrap();
+        self.text = next;
     }
 
     pub(crate) fn catch_up(&mut self) {
@@ -140,6 +197,8 @@ pub(crate) struct FirstStart<'a> {
     pub(crate) imported: &'a [(&'a str, &'a str)],
     pub(crate) git_base: &'a [(&'a str, &'a str)],
     pub(crate) stalled: bool,
+    pub(crate) review: bool,
+    pub(crate) chat_off: bool,
 }
 
 fn git(repo: &std::path::Path, args: &[&str]) {
@@ -203,13 +262,7 @@ fn tuning(stalled: bool) -> SessionTuning {
     }
     SessionTuning {
         connection,
-        tick: Duration::from_millis(20),
-        trickle_every: Duration::from_millis(20),
-        legacy_check: Duration::from_millis(400),
-        legacy_grace: Duration::from_millis(50),
-        legacy_every: Duration::from_millis(20),
-        call_timeout: Duration::from_secs(5),
-        ..SessionTuning::default()
+        ..oleafly_live::test_support::tuning()
     }
 }
 
@@ -242,6 +295,20 @@ impl OverleafRig {
         OverleafRig::start_full(project, disk, Place::Scratch, imported, name).await
     }
 
+    pub(crate) async fn start_review(
+        project: MockProject,
+        disk: &[(&str, &str)],
+        name: &str,
+        review: bool,
+    ) -> OverleafRig {
+        let first = FirstStart {
+            imported: disk,
+            review,
+            ..FirstStart::default()
+        };
+        OverleafRig::start_full(project, disk, Place::Scratch, first, name).await
+    }
+
     pub(crate) async fn start_first(
         project: MockProject,
         disk: &[(&str, &str)],
@@ -251,7 +318,7 @@ impl OverleafRig {
         OverleafRig::start_full(project, disk, place, first, "alice").await
     }
 
-    async fn start_full(
+    pub(crate) async fn start_full(
         project: MockProject,
         disk: &[(&str, &str)],
         place: Place,
@@ -262,6 +329,10 @@ impl OverleafRig {
         import_base(dir.path(), first.imported);
         let git_mirror = git_base(dir.path(), first.git_base);
         let mock = MockOverleaf::start(project).await;
+        mock.configure(|config| {
+            config.review = first.review;
+            config.chat = !first.chat_off;
+        });
         if first.stalled {
             mock.stall();
         }
@@ -308,10 +379,11 @@ impl OverleafRig {
             project_id: project_id.clone(),
             root: root.clone(),
             mirror_dir: dir.path().join("mirror"),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+            host: Arc::clone(&host) as Arc<dyn DiskHost>,
             link: OverleafLink {
                 server: mock.base.clone(),
                 project_id: mock.project_id(),
+                user_id: None,
             },
             config: SessionConfig {
                 http: Http::new(&mock.base, "Oleafly/test").unwrap(),
@@ -320,11 +392,19 @@ impl OverleafRig {
                 carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
                 tuning: tuning(first.stalled),
                 seeds: Vec::new(),
+                fill: false,
             },
             journal,
-            git_mirror,
+            git: git_mirror.map(|repo| GitBase {
+                repo,
+                git: Arc::new(AppMirrorGit),
+            }),
+            runtime: app_runtime(),
+            log: AppLog::at(&data),
         };
-        let live = OverleafLive::start_with(parts).await.unwrap();
+        let live = OverleafLive::start_with(parts, Arc::clone(&host) as Arc<dyn LiveHost>)
+            .await
+            .unwrap();
         *guard(&ACTIVE) = Some(Live::Overleaf(Arc::clone(&live)));
         OverleafRig {
             mock,
@@ -374,6 +454,7 @@ impl OverleafRig {
     }
 
     pub(crate) async fn finish(self) {
+        let _lifecycle = LIFECYCLE.lock().await;
         let previous = guard(&ACTIVE).take();
         if let Some(Live::Overleaf(live)) = previous {
             live.finish().await;
@@ -384,12 +465,4 @@ impl OverleafRig {
 pub(crate) fn run(test: impl std::future::Future<Output = ()>) {
     let _turn = crate::collab::live::write::rig::live_turn();
     tauri::async_runtime::block_on(test);
-}
-
-pub(crate) async fn eventually(what: &str, mut check: impl FnMut() -> bool) {
-    let started = Instant::now();
-    while !check() {
-        assert!(started.elapsed() < WAIT, "timed out waiting until {what}");
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
 }

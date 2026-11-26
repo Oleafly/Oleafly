@@ -1,16 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, render, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("./live-editing", () => ({ startLiveEditing: vi.fn(() => () => undefined) }));
-
-import { useCollabLiveProject } from "@/lib/collab-live-bridge";
+import { afterEach, describe, expect, it } from "vitest";
 import { useLiveTree } from "../sharing/tree-version";
 import { useCollabLiveStore } from "./live-store";
-import { startLiveTarget } from "./note-slot";
 import { CollabBanners } from "./SyncPauseBanner";
-
-const SESSION = { projectId: "p1", role: "editor" as const, accountId: "alice", deviceId: "laptop" };
 
 afterEach(() => {
   cleanup();
@@ -29,17 +22,6 @@ describe("Oleafly Server surfaces stay out of an Overleaf project", () => {
     expect(renderHook(() => useLiveTree()).result.current).toBeNull();
     useCollabLiveStore.setState({ backend: "server" });
     expect(renderHook(() => useLiveTree()).result.current).toEqual({ projectId: "p1", version: 0 });
-  });
-
-  it("keeps project notes off the Overleaf session", () => {
-    useCollabLiveStore.setState({ projectId: "p1", backend: "overleaf" });
-    const stop = startLiveTarget(SESSION);
-    expect(useCollabLiveProject.getState().session).toBeNull();
-    stop();
-    useCollabLiveStore.setState({ backend: "server" });
-    const stopServer = startLiveTarget(SESSION);
-    expect(useCollabLiveProject.getState().session).toEqual(SESSION);
-    stopServer();
   });
 });
 

@@ -694,7 +694,7 @@ pub async fn add_font_pack_to_project(
     project_id: String,
     id: String,
 ) -> Result<AddedFontPack, String> {
-    crate::collab::settings::refuse_viewer(&project_id)?;
+    crate::collab::settings::refuse_server_viewer(&project_id)?;
     let pack = find_pack(&app, &id)?;
     if pack.typst {
         return Err(format!("font pack '{id}' is for Typst"));

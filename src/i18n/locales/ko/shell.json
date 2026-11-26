@@ -515,7 +515,8 @@
       "open": "열린 파일 따르기",
       "main": "항상 주 문서",
       "change": "주 문서 변경…"
-    }
+    },
+    "filling": "프로젝트를 아직 Overleaf에서 다운로드하는 중입니다. 모든 파일을 받으면 컴파일할 수 있습니다."
   },
   "datePicker": {
     "placeholder": "날짜 선택"
@@ -1669,8 +1670,9 @@
     "resume": "실시간 편집 다시 시작",
     "reconnectNow": "지금 다시 연결",
     "open": "Overleaf에서 열기",
-    "share": "Overleaf에서 공유…",
+    "share": "Overleaf에서 공유",
     "signIn": "로그인…",
+    "signInAs": "{{email}}(으)로 로그인",
     "reconnectingIn": "{{seconds}}초 후에 다시 시도합니다.",
     "notConfirmed": "아직 Overleaf에서 확인되지 않았습니다.",
     "copyDetails": "연결 세부 정보 복사",

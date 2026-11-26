@@ -333,11 +333,7 @@
       "loading": "Se încarcă proiectele tale din Overleaf",
       "loadFailed": "Oleafly nu a putut încărca proiectele tale din Overleaf.",
       "signInPrompt": "Autentifică-te în Overleaf ca să îți vezi proiectele. Se deschide o fereastră de autentificare care se închide singură după ce te-ai conectat.",
-      "signingIn": "Termină autentificarea în Overleaf în fereastra care s-a deschis.",
-      "signingInBrowser": "Termină autentificarea în Overleaf în {{browser}}. Fereastra se închide singură după ce te-ai conectat. Dacă o închizi, autentificarea se anulează.",
-      "passkeyHint": "Dacă cheia de acces nu funcționează în fereastra de autentificare, alege acolo altă opțiune, cum ar fi parola sau o confirmare pe telefon.",
       "expired": "Autentificarea în Overleaf a expirat. Autentifică-te din nou ca să îți vezi proiectele.",
-      "signIn": "Autentifică-te în Overleaf",
       "signInWindowTitle": "Autentifică-te în Overleaf",
       "server": "Server: {{server}}",
       "serverLabel": "Adresa serverului Overleaf",
@@ -346,6 +342,7 @@
       "saveServer": "Folosește acest server",
       "signedInAs": "Autentificat ca {{email}}",
       "signedIn": "Autentificat în Overleaf",
+      "accountPick": "Cont Overleaf",
       "signOut": "Deconectează-te",
       "searchLabel": "Caută proiecte Overleaf",
       "searchPlaceholder_one": "Caută în {{count}} proiect",
@@ -370,6 +367,8 @@
       "import_other": "Importă {{count}} de proiecte",
       "imported": "Importat",
       "open": "Deschide",
+      "openLive": "Deschide live",
+      "opening": "Se deschide",
       "ownedByYou": "Al tău",
       "owner": "Proprietar: {{name}}",
       "archived": "Arhivat",
@@ -387,7 +386,39 @@
         "downloading": "Se descarcă {{percent}}%",
         "downloadingUnknown": "Se descarcă",
         "importing": "Se pregătește"
-      }
+      },
+      "invitations": {
+        "title": "Invitații",
+        "from": "Expeditor: {{name}}",
+        "join": "Alătură-te",
+        "joined": "Te-ai alăturat acestui proiect"
+      },
+      "link": {
+        "checking": "Se verifică linkul",
+        "unnamed": "Un proiect din Overleaf",
+        "join": "Alătură-te",
+        "importInstead": "Importă",
+        "grants": {
+          "edit": "Dacă te alături, îl poți edita ca colaborator.",
+          "view": "Dacă te alături, îl poți doar vizualiza. Cei care îl vizualizează printr-un link nu au comentarii sau chat.",
+          "already": "Ai deja acest proiect.",
+          "invite": "Dacă te alături, accepți invitația."
+        }
+      },
+      "put": {
+        "menu": "Încarcă în Overleaf",
+        "title": "Încarcă în Overleaf",
+        "description": "Oleafly încarcă acest proiect ca proiect Overleaf nou, apoi le păstrează sincronizate pe amândouă cât timp editezi live.",
+        "name": "Nume în Overleaf",
+        "account": "Cont Overleaf",
+        "submit": "Încarcă în Overleaf",
+        "working": "Se încarcă",
+        "signedOut": "Autentifică-te mai întâi în Overleaf din Setări.",
+        "openSettings": "Deschide Setările",
+        "cancel": "Anulează"
+      },
+      "switchAccount": "Schimbă contul",
+      "signInChoose": "Alege unde te autentifici. Proiectele tale apar aici după ce te-ai conectat."
     }
   },
   "pdfImport": {

@@ -14,6 +14,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/packages/pdf-to-latex/src/pdf-adapter.ts": () => import("../../packages/pdf-to-latex/src/pdf-adapter"),
   "/src/features/citation.ts": () => import("@/features/citation"),
   "/src/features/synctex.ts": () => import("@/features/synctex"),
+  "/src/features/collab/live/peer-hue.ts": () => import("@/features/collab/live/peer-hue"),
   "/src/lib/ai-model-state.ts": () => import("@/lib/ai-model-state"),
   "/src/lib/ai-providers.ts": () => import("@/lib/ai-providers"),
   "/src/lib/aux-numbers.ts": () => import("@/lib/aux-numbers"),

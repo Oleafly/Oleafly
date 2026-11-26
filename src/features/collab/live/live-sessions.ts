@@ -61,10 +61,10 @@ export class LiveSessions {
       transport: this.options.transport,
       readOnly: this.options.readOnly,
       onText: (next) => this.options.mirror(session.path, next),
-      onPhase: (phase) => {
-        if (phase === "detached") this.detach(session.path, session);
-      },
       onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
+    });
+    session.subscribePhase((phase) => {
+      if (phase === "detached") this.detach(session.path, session);
     });
     session.subscribe(() => this.options.coauthorEdited?.(session.path, session.text()));
     this.sessions.set(path, session);
@@ -141,20 +141,18 @@ export class LiveSessions {
     );
     for (const [path, session] of open) {
       if (this.sessions.get(path) !== session || !session.unconfirmed) continue;
-      const shared = sharedText(session);
       this.sessions.delete(path);
-      session.close();
-      this.options.detached(path, session.text(), true, shared);
+      this.local.add(path);
+      this.handOver(path, session, true);
+      this.local.delete(path);
     }
   }
 
   close(): void {
     this.closed = true;
     for (const [path, session] of this.sessions) {
-      const edited = session.unconfirmed;
-      const shared = edited ? sharedText(session) : null;
-      session.close();
-      if (shared !== null) this.options.detached(path, session.text(), true, shared);
+      if (session.unconfirmed) this.handOver(path, session, true);
+      else session.close();
     }
     this.sessions.clear();
     this.local.clear();
@@ -164,11 +162,13 @@ export class LiveSessions {
     if (this.sessions.get(path) !== session) return;
     const reason = session.detachedBecause;
     const gone = reason === "removed" || reason === "replaced";
-    const edited = !gone && session.unconfirmed;
-    const shared = sharedText(session);
     this.sessions.delete(path);
     if (reason !== "replaced") this.local.add(path);
+    this.handOver(path, session, !gone && session.unconfirmed);
+  }
+
+  private handOver(path: string, session: RemoteDocumentSession, edited: boolean): void {
+    this.options.detached(path, session.text(), edited, sharedText(session));
     session.close();
-    this.options.detached(path, session.text(), edited, shared);
   }
 }

@@ -10,7 +10,6 @@ import {
   editorVimRedo as coreEditorVimRedo,
 } from "@oleafly/editor";
 import {
-  getWysiwygDocumentContext,
   getWysiwygEditor,
   getWysiwygInsertions,
   isWysiwygActive,
@@ -42,7 +41,7 @@ function insertRawIntoWysiwyg(source: string, block: boolean): boolean {
   const editor = getWysiwygEditor();
   const insertions = getWysiwygInsertions();
   if (!editor || !insertions) return false;
-  insertions.insertLatex(editor.view, source, block, getWysiwygDocumentContext().theoremEnvironments);
+  insertions.insertLatex(editor.view, source, block);
   return true;
 }
 

@@ -21,7 +21,25 @@ struct Meta {
     max_doc_length: Option<u64>,
     max_reconnect_gracefully: Option<Duration>,
     user_id: Option<String>,
+    track_changes_feature: bool,
+    capabilities: Option<Vec<String>>,
+    image_names: Vec<ImageChoice>,
+    languages: Vec<SpellLanguage>,
+    learned_words: Option<Vec<String>>,
     fallback: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImageChoice {
+    pub name: String,
+    pub description: String,
+    pub allowed: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SpellLanguage {
+    pub code: String,
+    pub name: String,
 }
 
 #[derive(Debug)]
@@ -33,8 +51,84 @@ pub struct ProjectPage {
     websocket_failures: AtomicUsize,
 }
 
+const MAX_CHOICES: usize = 500;
+pub const MAX_LEARNED_WORDS: usize = 20_000;
+pub const MAX_LEARNED_BYTES: usize = 1024 * 1024;
+pub const MAX_WORD_CHARS: usize = 256;
+
 fn number(tags: &std::collections::HashMap<String, String>, name: &str) -> Option<u64> {
     html::meta_text(tags, name).and_then(|text| text.trim().parse().ok())
+}
+
+fn listed<T>(
+    tags: &std::collections::HashMap<String, String>,
+    name: &str,
+    read: impl Fn(&serde_json::Value) -> Option<T>,
+) -> Vec<T> {
+    tags.get(name)
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(raw.trim()).ok())
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .take(MAX_CHOICES)
+        .filter_map(read)
+        .collect()
+}
+
+fn field(value: &serde_json::Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|text| !text.is_empty() && text.len() <= 200)
+        .map(str::to_string)
+}
+
+fn image_choice(value: &serde_json::Value) -> Option<ImageChoice> {
+    let name = field(value, "imageName")?;
+    Some(ImageChoice {
+        description: field(value, "imageDesc").unwrap_or_else(|| name.clone()),
+        allowed: value
+            .get("allowed")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true),
+        name,
+    })
+}
+
+fn spell_language(value: &serde_json::Value) -> Option<SpellLanguage> {
+    let code = field(value, "code")?;
+    Some(SpellLanguage {
+        name: field(value, "name").unwrap_or_else(|| code.clone()),
+        code,
+    })
+}
+
+pub fn plain_word(word: &str) -> bool {
+    !word.is_empty()
+        && word.chars().count() <= MAX_WORD_CHARS
+        && !word.chars().any(char::is_control)
+}
+
+fn learned_words(tags: &std::collections::HashMap<String, String>) -> Option<Vec<String>> {
+    let raw = tags.get("ol-learnedWords")?.trim();
+    if raw.len() > MAX_LEARNED_BYTES {
+        return None;
+    }
+    let listed = serde_json::from_str::<serde_json::Value>(raw).ok()?;
+    let listed = listed.as_array()?;
+    if listed.len() > MAX_LEARNED_WORDS {
+        return None;
+    }
+    let mut words: Vec<String> = listed
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .filter(|word| plain_word(word))
+        .map(str::to_string)
+        .collect();
+    words.sort();
+    words.dedup();
+    Some(words)
 }
 
 fn same_site(base: &Url, target: &Url) -> bool {
@@ -64,6 +158,15 @@ fn read_meta(http: &Http, page: &str, fallback: bool) -> Meta {
         max_reconnect_gracefully: number(&tags, "ol-maxReconnectGracefullyIntervalMs")
             .map(|wait| Duration::from_millis(wait).min(LONGEST_SERVER_WAIT)),
         user_id: html::meta_text(&tags, "ol-user_id"),
+        track_changes_feature: tags
+            .get("ol-hasTrackChangesFeature")
+            .is_some_and(|content| content.trim() != "false"),
+        capabilities: tags
+            .get("ol-capabilities")
+            .and_then(|content| serde_json::from_str::<Vec<String>>(content.trim()).ok()),
+        image_names: listed(&tags, "ol-imageNames", image_choice),
+        languages: listed(&tags, "ol-languages", spell_language),
+        learned_words: learned_words(&tags),
         fallback,
     }
 }
@@ -113,6 +216,9 @@ impl ProjectPage {
             )
             .await?;
         session.absorb_headers(response.headers());
+        if response.status() == StatusCode::FORBIDDEN && http.signed_out(&session.cookie()).await {
+            return Err(client::expired());
+        }
         match response.status() {
             StatusCode::FORBIDDEN | StatusCode::NOT_FOUND => {
                 return Err(OnlineError::new(OnlineErrorKind::ProjectUnavailable));
@@ -163,6 +269,29 @@ impl ProjectPage {
 
     pub fn user_id(&self) -> Option<String> {
         locked(&self.meta).user_id.clone()
+    }
+
+    pub fn has_track_changes_feature(&self) -> bool {
+        locked(&self.meta).track_changes_feature
+    }
+
+    pub fn capability(&self, name: &str) -> Option<bool> {
+        locked(&self.meta)
+            .capabilities
+            .as_ref()
+            .map(|capabilities| capabilities.iter().any(|known| known == name))
+    }
+
+    pub fn image_names(&self) -> Vec<ImageChoice> {
+        locked(&self.meta).image_names.clone()
+    }
+
+    pub fn languages(&self) -> Vec<SpellLanguage> {
+        locked(&self.meta).languages.clone()
+    }
+
+    pub fn learned_words(&self) -> Option<Vec<String>> {
+        locked(&self.meta).learned_words.clone()
     }
 
     #[cfg(test)]
@@ -250,6 +379,133 @@ mod tests {
             );
             assert_eq!(meta.max_reconnect_gracefully, expected, "{raw}");
         }
+    }
+
+    #[test]
+    fn the_track_changes_feature_is_on_only_when_its_boolean_meta_has_content() {
+        let http = Http::new("https://latex.uni.edu", "Oleafly/test").unwrap();
+        let feature = |tag: &str| read_meta(&http, tag, false).track_changes_feature;
+        let name = "ol-hasTrackChangesFeature";
+        assert!(feature(&format!(
+            "<meta name=\"{name}\" data-type=\"boolean\" content>"
+        )));
+        assert!(feature(&format!(
+            "<meta name=\"{name}\" data-type=\"boolean\" content=\"\">"
+        )));
+        assert!(feature(&format!("<meta name=\"{name}\" content=\"true\">")));
+        assert!(!feature(&format!(
+            "<meta name=\"{name}\" data-type=\"boolean\">"
+        )));
+        assert!(!feature(&format!(
+            "<meta name=\"{name}\" content=\"false\">"
+        )));
+        assert!(!feature("<meta name=\"ol-user_id\" content=\"u1\">"));
+    }
+
+    #[test]
+    fn capabilities_come_from_their_json_meta_and_stay_unknown_without_it() {
+        let http = Http::new("https://latex.uni.edu", "Oleafly/test").unwrap();
+        let chat = |tag: &str| {
+            read_meta(&http, tag, false)
+                .capabilities
+                .map(|capabilities| capabilities.iter().any(|known| known == "chat"))
+        };
+        assert_eq!(
+            chat("<meta name=\"ol-capabilities\" data-type=\"json\" content=\"[&quot;chat&quot;,&quot;link-sharing&quot;]\">"),
+            Some(true)
+        );
+        assert_eq!(
+            chat("<meta name=\"ol-capabilities\" data-type=\"json\" content=\"[&quot;link-sharing&quot;]\">"),
+            Some(false)
+        );
+        assert_eq!(
+            chat("<meta name=\"ol-capabilities\" content=\"chat\">"),
+            None
+        );
+        assert_eq!(chat("<meta name=\"ol-user_id\" content=\"u1\">"), None);
+    }
+
+    #[test]
+    fn image_and_language_choices_come_from_the_page() {
+        let http = Http::new("https://latex.uni.edu", "Oleafly/test").unwrap();
+        let tags = concat!(
+            "<meta name=\"ol-imageNames\" data-type=\"json\" content=\"[",
+            "{&quot;imageName&quot;:&quot;texlive-full:2025.1&quot;,&quot;imageDesc&quot;:&quot;TeX Live 2025&quot;,&quot;allowed&quot;:true},",
+            "{&quot;imageName&quot;:&quot;texlive-full:2026.1&quot;,&quot;imageDesc&quot;:&quot;TeX Live 2026&quot;,&quot;allowed&quot;:false},",
+            "{&quot;imageDesc&quot;:&quot;no name&quot;}]\">",
+            "<meta name=\"ol-languages\" data-type=\"json\" content=\"[",
+            "{&quot;code&quot;:&quot;en_US&quot;,&quot;name&quot;:&quot;English (American)&quot;},",
+            "{&quot;code&quot;:&quot;de&quot;,&quot;name&quot;:&quot;German&quot;},{&quot;name&quot;:&quot;none&quot;}]\">",
+        );
+        let meta = read_meta(&http, tags, false);
+        assert_eq!(
+            meta.image_names,
+            vec![
+                ImageChoice {
+                    name: "texlive-full:2025.1".into(),
+                    description: "TeX Live 2025".into(),
+                    allowed: true,
+                },
+                ImageChoice {
+                    name: "texlive-full:2026.1".into(),
+                    description: "TeX Live 2026".into(),
+                    allowed: false,
+                },
+            ]
+        );
+        assert_eq!(
+            meta.languages
+                .iter()
+                .map(|language| language.code.as_str())
+                .collect::<Vec<_>>(),
+            ["en_US", "de"]
+        );
+        let none = read_meta(&http, &page("ol-imageNames", "not json"), false);
+        assert!(none.image_names.is_empty() && none.languages.is_empty());
+    }
+
+    #[test]
+    fn learned_words_come_from_their_json_meta_with_caps_and_stay_unknown_when_odd() {
+        let http = Http::new("https://latex.uni.edu", "Oleafly/test").unwrap();
+        let words = |content: &str| {
+            read_meta(
+                &http,
+                &format!(
+                    "<meta name=\"ol-learnedWords\" data-type=\"json\" content=\"{}\">",
+                    content.replace('&', "&amp;").replace('"', "&quot;")
+                ),
+                false,
+            )
+            .learned_words
+        };
+        assert_eq!(
+            words(
+                r#"["Oleaflyish","oleaflyish","Größenordnungsx","two words","Oleaflyish",7,null,{"w":"x"},"","a\u0000b"]"#
+            ),
+            Some(vec![
+                "Größenordnungsx".to_string(),
+                "Oleaflyish".to_string(),
+                "oleaflyish".to_string(),
+                "two words".to_string(),
+            ])
+        );
+        assert_eq!(words("[]"), Some(Vec::new()));
+        let long = format!("[\"{}\",\"ok\"]", "x".repeat(MAX_WORD_CHARS + 1));
+        assert_eq!(words(&long), Some(vec!["ok".to_string()]));
+        for odd in ["not json", "{\"words\":[]}", "\"word\"", "null"] {
+            assert_eq!(words(odd), None, "{odd}");
+        }
+        let many = serde_json::to_string(&vec!["w"; MAX_LEARNED_WORDS + 1]).unwrap();
+        assert_eq!(words(&many), None);
+        let fits = serde_json::to_string(&vec!["w"; MAX_LEARNED_WORDS]).unwrap();
+        assert_eq!(words(&fits), Some(vec!["w".to_string()]));
+        let heavy = serde_json::to_string(&vec!["x".repeat(200); 6_000]).unwrap();
+        assert!(heavy.len() > MAX_LEARNED_BYTES);
+        assert_eq!(words(&heavy), None);
+        assert_eq!(
+            read_meta(&http, "<meta name=\"ol-user_id\" content=\"u1\">", false).learned_words,
+            None
+        );
     }
 
     #[tokio::test]

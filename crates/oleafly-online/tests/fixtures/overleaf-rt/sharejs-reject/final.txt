@@ -1,0 +1,4 @@
+Keep this sentence. Remove this word please.
+Another line to change here.
+Third line with more words.
+Fourth ACCEPT to accept.

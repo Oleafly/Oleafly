@@ -39,7 +39,7 @@ import { projectEngineLabel } from "@/components/library/project-search";
 import { changeMainDocument } from "@/store/main-document";
 import { useCompileRootStore } from "@/store/compile-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
-import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
+import { useCollabSettingsLocked, useProjectFilling } from "@/lib/collab-live-bridge";
 import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "@/lib/tauri";
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
@@ -76,6 +76,12 @@ function texRootTooltip(
   if (reason === "document") return t(($) => $.shell.compile.texRootDocument, { path });
   if (reason === "include") return t(($) => $.shell.compile.texRootInclude, { path, file });
   return t(($) => $.shell.compile.texRootOverride, { path, file });
+}
+
+function compileBlockedReason(t: TFunction<["shell"]>, noMainDocument: boolean, filling: boolean): string | null {
+  if (noMainDocument) return t(($) => $.shell.openedFolder.noMain);
+  if (filling) return t(($) => $.shell.compile.filling);
+  return null;
 }
 
 function TexRootIndicator() {
@@ -172,6 +178,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const grantTrust = useFolderAccessStore((s) => s.grant);
   const setTypstVersion = useFilesStore((s) => s.setTypstVersion);
   const sharedSettingsLocked = useCollabSettingsLocked(projectId);
+  const filling = useProjectFilling(projectId);
   const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
   const coauthorsChanged = useCoauthorsChangedSince(projectId, lastCompiledAt);
   const typstToolchain = useTypstToolchainFor(engine);
@@ -189,7 +196,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
     {(viewMode === "editor" || detached || successOffer) && <CompileOfferButton placement="toolbar" />}
     <CompileControlsView
       iconOnly={iconOnly}
-      blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
+      blockedReason={compileBlockedReason(t, noMainDocument, filling)}
       systemTexLocked={systemTexLocked}
       sharedSettingsLocked={sharedSettingsLocked}
       coauthorsChanged={coauthorsChanged}

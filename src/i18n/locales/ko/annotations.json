@@ -26,6 +26,10 @@
       "region": "이 영역에 대한 의견…"
     },
     "placeHere": "여기에 배치",
+    "coauthors": "공동 저자에게 댓글",
+    "noSource": "소스 파일에서 이 구절을 찾지 못했습니다.",
+    "commentFailed": "이 댓글의 파일을 열지 못했습니다.",
+    "commentsClosed": "지금은 이 프로젝트에서 댓글을 사용할 수 없습니다.",
     "cancel": "취소",
     "save": "추가",
     "saving": "저장 중",

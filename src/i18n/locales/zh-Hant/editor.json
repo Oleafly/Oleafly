@@ -312,6 +312,15 @@
     "spellLanguageFolderHint": "儲存在這個資料夾的 project.json 中，因此會套用到每位開啟此資料夾的人。可在設定中下載更多語言。",
     "spellLanguageReadOnly": "這個資料夾為唯讀，因此無法變更其 project.json 中的語言。",
     "spellLanguageFailed": "無法變更拼字檢查語言。",
+    "onOverleaf": "在 Overleaf 上",
+    "texLive": "TeX Live 版本",
+    "texLiveAriaLabel": "Overleaf 上的 TeX Live 版本",
+    "bibliography": "主要參考文獻",
+    "bibliographyAriaLabel": "Overleaf 上的主要參考文獻",
+    "bibliographyNone": "未選擇",
+    "overleafHint": "這些設定存放在 Overleaf 上，並套用到專案中的所有人。",
+    "overleafReadOnly": "只有擁有者和編輯者可以在 Overleaf 上變更這些設定。",
+    "overleafFailed": "無法在 Overleaf 上變更這項設定。",
     "notChecked": "未檢查",
     "dictionaryMissing": "{{name}} 尚未下載，因此不會檢查拼字。請在設定中下載，或選擇其他語言。",
     "grammarEnglishOnly": "文法檢查僅適用於英文文件。",
@@ -725,11 +734,11 @@
     "ignoreEverywhere": "一律忽略",
     "keyboardHint": "使用 Tab 或方向鍵在各項操作之間移動。按 Escape 關閉。",
     "endOfDocument": "文件結尾",
-    "hidePreamble": "隱藏文件序言區",
-    "showPreamble": "顯示文件序言區",
-    "sharedReadOnly": "在分享的專案中，視覺化模式只會顯示檔案。若要編輯，請切換到原始碼檢視。",
     "findingLabel": "{{message}}。開啟校對建議。",
-    "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。"
+    "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。",
+    "liveViewOnly": "你可以檢視這個分享的檔案，但無法編輯。",
+    "liveConnecting": "這個分享的檔案仍在連線中。準備就緒後即可編輯。",
+    "suggestInSource": "你在這裡的變更會成為建議，而視覺化模式無法顯示建議。要提出編輯建議，請切換到原始碼檢視。"
   },
   "package": {
     "search": {

@@ -370,7 +370,8 @@
       "runCommand": "在项目文件夹中运行 shell 命令，限时两分钟。",
       "toggleTheme": "在浅色和深色模式之间切换。",
       "listOverleafProjects": "列出你的 Overleaf 项目，必要时先登录。",
-      "importOverleafProjects": "将 Overleaf 项目连同其编译器和主文件设置导入你的库。"
+      "importOverleafProjects": "将 Overleaf 项目连同其编译器和主文件设置导入你的库。",
+      "openOverleafLive": "打开 Overleaf 项目进行实时编辑。如果它还不在你的库中，会先将其导入。"
     },
     "disableAll": "全部禁用",
     "emptyContext": "此上下文中没有可用的工具。",
@@ -396,7 +397,8 @@
       "latexOnly": "仅限 LaTeX 项目",
       "latexAndTypstOnly": "仅限 LaTeX 和 Typst 项目",
       "pdfCaptureSetting": "需要启用 PDF 页面截图设置。",
-      "chatApproval": "在聊天中逐条批准命令。"
+      "chatApproval": "在聊天中逐条批准命令。",
+      "overleafLiveSetting": "需要启用实验功能中的“与 Overleaf 实时编辑”"
     },
     "sourceGroups": {
       "figure": "图片",

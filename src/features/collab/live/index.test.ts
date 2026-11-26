@@ -23,6 +23,7 @@ vi.mock("./sync-pause", () => ({ startSyncPause: mocks.startSyncPause }));
 vi.mock("./removed-notices", () => ({ startRemovedNotices: mocks.startRemovedNotices }));
 vi.mock("./file-notices", () => ({ startFileNotices: mocks.startFileNotices }));
 vi.mock("./overleaf-notices", () => ({ startOverleafNotices: () => () => {} }));
+vi.mock("./learned-words", () => ({ startLearnedWords: () => () => {} }));
 vi.mock("./reconnect-nudges", () => ({ startReconnectNudges: mocks.startReconnectNudges }));
 
 import { startLive } from "./index";

@@ -6,13 +6,14 @@ import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
-import type { CollabSuggestion, CollabSuggestionsChanged } from "@/lib/tauri";
+import type { CollabSuggestionsChanged } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useComments } from "../comments/comments-store";
 import { useCollabLiveStore } from "../live/live-store";
-import { ALICE_ID, BOB, BOB_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
-import { commentThread } from "../tests/comment-fixtures";
+import { fill, LIVE_SEEDS, liveReset, projectMember } from "../tests/fixtures";
+import { commentFixtures } from "../tests/comment-fixtures";
+import { suggestionFixtures, suggestionList } from "../tests/suggestion-fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabSuggestionList: vi.fn(),
@@ -52,7 +53,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-vi.mock("@/components/editor/cm/suggestions-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setSuggestionsEditorExtension: (extension: unknown) => {
     mocks.installed(extension);
     return mocks.released;
@@ -66,6 +68,8 @@ vi.mock("@/lib/toast", () => ({
 import {
   acceptFile,
   acceptSuggestions,
+  groupIds,
+  groupSuggestions,
   openSuggestionFromEditor,
   rejectFile,
   rejectSuggestions,
@@ -74,25 +78,6 @@ import {
   useSuggestions,
   withdrawSuggestions,
 } from "./suggestions-store";
-
-const AT = 1_760_000_000_000;
-const MEMBERS = [projectMember(person(), "editor"), projectMember(BOB, "owner")];
-
-function suggestion(id: string, overrides: Partial<CollabSuggestion> = {}): CollabSuggestion {
-  return {
-    id,
-    fileId: "file-intro",
-    kind: "insert",
-    author: BOB_ID,
-    createdAt: AT,
-    from: 4,
-    to: 10,
-    text: "quick ",
-    threadId: null,
-    verified: true,
-    ...overrides,
-  };
-}
 
 let stop: (() => void) | null = null;
 
@@ -115,7 +100,6 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.listeners.clear();
-  mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [suggestion("s1"), suggestion("s2", { from: 1, to: 2 })] });
   mocks.collabSuggestionCounts.mockResolvedValue([{ path: "intro.tex", pending: 2 }]);
   mocks.collabSuggestionAccept.mockResolvedValue(undefined);
   mocks.collabSuggestionReject.mockResolvedValue(undefined);
@@ -125,19 +109,12 @@ beforeEach(() => {
   mocks.collabCommentThreadList.mockResolvedValue({ rev: null, threads: [] });
   useSettingsStore.setState({ railTab: "files", showTree: true });
   useFilesStore.setState({ projectId: "paper", activePath: "intro.tex" });
-  useCollabLiveStore.setState({
-    projectId: "paper",
-    share: shareInfo({ project_id: "paper", role: "editor", account_id: ALICE_ID }),
-    role: "editor",
-    status: { state: "online" },
-    members: MEMBERS,
-  });
 });
 
 afterEach(() => {
   stop?.();
   stop = null;
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
+  useCollabLiveStore.setState(liveReset());
   useCommentsRail.setState({ visible: false, suggestions: false, unread: false, canCompose: false });
   useComments.setState({ projectId: null, threads: [], elsewhere: {} });
 });
@@ -148,7 +125,19 @@ async function started() {
   await waitFor(() => expect(useSuggestions.getState().counts).toEqual([{ path: "intro.tex", pending: 2 }]));
 }
 
-describe("suggestions for a shared project", () => {
+describe.each(LIVE_SEEDS)("suggestions for a project live on the $name backend", (seed) => {
+  const { suggestion } = suggestionFixtures(seed);
+  const { commentThread } = commentFixtures(seed);
+
+  beforeEach(() => {
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([suggestion("s1"), suggestion("s2", { from: 1, to: 2 })]));
+    useCollabLiveStore.setState({
+      ...seed.live("paper", "editor"),
+      status: { state: "online" },
+      members: [projectMember(seed.alice, "editor"), projectMember(seed.bob, "owner")],
+    });
+  });
+
   it("lists the open file's suggestions in document order and shows the Comments tab while any wait", async () => {
     await started();
     expect(mocks.collabSuggestionList).toHaveBeenCalledWith("paper", "intro.tex");
@@ -161,8 +150,8 @@ describe("suggestions for a shared project", () => {
     await waitFor(() => expect(useCommentsRail.getState().suggestions).toBe(false));
   });
 
-  it("loads nothing for a project that isn't shared", async () => {
-    useCollabLiveStore.setState({ share: null, role: null });
+  it("loads nothing for a project that isn't live", async () => {
+    useCollabLiveStore.setState({ ...seed.unlive(), role: null });
     stop = startSuggestions();
     await act(async () => undefined);
     expect(mocks.collabSuggestionList).not.toHaveBeenCalled();
@@ -184,7 +173,7 @@ describe("suggestions for a shared project", () => {
     await act(() => acceptFile("intro.tex"));
     expect(mocks.collabSuggestionAcceptFile).toHaveBeenCalledWith("paper", "intro.tex");
     expect(ids()).toEqual([]);
-    mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [suggestion("s3")] });
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([suggestion("s3")]));
     emit("collab://suggestions-changed", changed({ local: true }));
     await waitFor(() => expect(ids()).toEqual(["s3"]));
     await act(() => rejectFile("intro.tex"));
@@ -201,7 +190,7 @@ describe("suggestions for a shared project", () => {
 
   it("reloads after someone else's suggestion and marks the Comments tab while it is closed", async () => {
     await started();
-    mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [suggestion("s1")] });
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([suggestion("s1")]));
     emit("collab://suggestions-changed", changed());
     await waitFor(() => expect(ids()).toEqual(["s1"]));
     expect(useCommentsRail.getState().unread).toBe(true);
@@ -211,7 +200,7 @@ describe("suggestions for a shared project", () => {
 
   it("follows the open file", async () => {
     await started();
-    mocks.collabSuggestionList.mockResolvedValue({ rev: null, suggestions: [] });
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([]));
     act(() => useFilesStore.setState({ activePath: "methods.tex" }));
     await waitFor(() => expect(useSuggestions.getState().path).toBe("methods.tex"));
     expect(mocks.collabSuggestionList).toHaveBeenLastCalledWith("paper", "methods.tex");
@@ -263,7 +252,7 @@ describe("suggestions for a shared project", () => {
     mocks.collabCommentReply.mockResolvedValue({ ...created.messages[0], id: "m2", body: "Because." });
     if (!linked) throw new Error("missing link");
     await act(() => replyToSuggestion(linked, "Because."));
-    expect(mocks.collabCommentReply).toHaveBeenCalledWith("paper", "file-intro", "t-new", "Because.", expect.any(Array));
+    expect(mocks.collabCommentReply).toHaveBeenCalledWith("paper", seed.fileId, "t-new", "Because.", expect.any(Array));
     expect(mocks.collabSuggestionReply).toHaveBeenCalledTimes(1);
   });
 
@@ -272,5 +261,67 @@ describe("suggestions for a shared project", () => {
     openSuggestionFromEditor("s1");
     expect(useSuggestions.getState().selectedId).toBe("s1");
     expect(useSettingsStore.getState().railTab).toBe("comments");
+  });
+
+  it("keeps whether the open file's changes can be accepted here", async () => {
+    mocks.collabSuggestionList.mockResolvedValue(
+      suggestionList([suggestion("s1"), suggestion("s2", { from: 1, to: 2 })], null, false),
+    );
+    await started();
+    expect(useSuggestions.getState().canAccept).toBe(false);
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([suggestion("s1")], null, true));
+    emit("collab://suggestions-changed", changed({ local: true }));
+    await waitFor(() => expect(ids()).toEqual(["s1"]));
+    expect(useSuggestions.getState().canAccept).toBe(true);
+  });
+
+  it("never marks the person's own suggestions as unseen", async () => {
+    await started();
+    emit("collab://suggestions-changed", changed({ local: true }));
+    expect(useCommentsRail.getState().unread).toBe(false);
+  });
+});
+
+describe("suggestions for an Overleaf project", () => {
+  const seed = LIVE_SEEDS[1];
+  const { suggestion } = suggestionFixtures(seed);
+
+  it("waits for the session to start before asking, then loads once it has", async () => {
+    mocks.collabSuggestionList.mockResolvedValue(suggestionList([suggestion("s1"), suggestion("s2", { from: 1, to: 2 })]));
+    useCollabLiveStore.setState({ ...seed.live("paper", "editor"), selfId: null, status: { state: "online" } });
+    stop = startSuggestions();
+    await act(async () => undefined);
+    expect(mocks.collabSuggestionList).not.toHaveBeenCalled();
+    expect(mocks.collabSuggestionCounts).not.toHaveBeenCalled();
+    act(() => useCollabLiveStore.setState({ selfId: seed.alice.account_id }));
+    await waitFor(() => expect(ids()).toEqual(["s2", "s1"]));
+    expect(mocks.collabSuggestionList).toHaveBeenCalledWith("paper", "intro.tex");
+  });
+});
+
+describe("a replacement shown as one change", () => {
+  const { suggestion } = suggestionFixtures(LIVE_SEEDS[1]);
+  const inserted = suggestion("i1", { from: 4, to: 7, text: "big" });
+  const deleted = suggestion("d1", { kind: "delete", from: 7, to: 7, text: "small" });
+
+  it("pairs an insertion with the deletion right after it by the same person, as Overleaf does", () => {
+    const groups = groupSuggestions([inserted, deleted]);
+    expect(groups).toEqual([{ suggestion: inserted, replaced: deleted }]);
+    expect(groupIds(groups[0])).toEqual(["i1", "d1"]);
+  });
+
+  it("keeps changes apart when the people, the place or the order differ", () => {
+    const other = suggestion("d2", { kind: "delete", from: 7, to: 7, text: "small", author: "64f1c2a3b4c5d6e7f8091aff" });
+    const elsewhere = suggestion("d3", { kind: "delete", from: 9, to: 9, text: "small" });
+    const before = suggestion("d4", { kind: "delete", from: 4, to: 4, text: "small" });
+    const unknown = { ...deleted, id: "d5", author: "" };
+    for (const list of [[inserted, other], [inserted, elsewhere], [before, inserted], [{ ...inserted, author: "" }, unknown]]) {
+      expect(groupSuggestions(list).map((group) => group.replaced)).toEqual([null, null]);
+    }
+  });
+
+  it("pairs only the first deletion that follows", () => {
+    const again = suggestion("d6", { kind: "delete", from: 7, to: 7, text: "more" });
+    expect(groupSuggestions([inserted, deleted, again]).map(groupIds)).toEqual([["i1", "d1"], ["d6"]]);
   });
 });

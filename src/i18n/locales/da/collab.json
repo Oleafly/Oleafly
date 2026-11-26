@@ -232,8 +232,16 @@
     "suggestion_role": "Din rolle i dette projekt giver ikke lov til forslag.",
     "suggestion_changed": "Teksten omkring dette forslag er blevet ændret, så en ejer eller redaktør skal acceptere eller afvise det.",
     "suggestion_too_long": "En foreslået sletning må højst være 20.000 tegn lang. Slet en mindre del ad gangen.",
+    "suggestion_gone": "Den ændring findes ikke længere. Måske har nogen accepteret, afvist eller redigeret den.",
+    "review_off_server": "Denne server kan ikke gøre det med sporede ændringer.",
     "chat_role": "Din rolle i dette projekt giver ikke lov til det i chatten.",
+    "chat_edit_off": "Denne server kan ikke redigere chatbeskeder.",
+    "chat_off_server": "Denne Overleaf-server har ingen chat.",
     "history_unavailable": "Projektets historik er ikke på denne computer endnu. Prøv igen, når projektet er synkroniseret.",
+    "history_plan_limit": "Projektets Overleaf-abonnement gemmer ikke ældre versioner.",
+    "restore_off_server": "Denne Overleaf-server kan ikke gendanne ældre versioner. Kopiér i stedet teksten fra versionen.",
+    "linked_off_server": "Denne Overleaf-server opdaterer ikke tilknyttede filer.",
+    "linked_refresh_failed": "Overleaf kunne ikke opdatere denne fil fra dens kilde.",
     "account_storage_full": "Projektejerens konto er løbet tør for lagerplads på denne server. Fjern nogle filer for at gøre plads, eller bed serverens administrator om mere plads.",
     "too_many_projects": "Du har allerede så mange delte projekter, som denne server tillader. Stop deling af et projekt, før du deler et nyt.",
     "too_many_uploads": "Du har uploadet for mange filer den sidste time. Prøv igen senere.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Du har så mange offentlige sider, som denne server tillader. Fjern udgivelsen af en af dem, og prøv igen.",
     "page_too_large": "Noten er for stor til at blive udgivet. Fjern nogle billeder, og prøv igen.",
     "page_taken_down": "En administrator har taget siden ned, så noten kan ikke udgives igen, før administratoren genopretter den."
+  },
+  "liveElsewhere": {
+    "cli": "Dette projekt er live på kommandolinjen i proces {{pid}}. Stop live-redigeringen dér, og prøv så igen."
   },
   "roles": {
     "admin": "Administrator",
@@ -1051,6 +1062,8 @@
     "add": "Tilføj kommentar",
     "allResolved": "Alle kommentarer er løst.",
     "noResolved": "Ingen løste kommentarer",
+    "noChanges": "Ingen sporede ændringer",
+    "overleafOff": "Denne Overleaf-server har ingen kommentarer, så kun sporede ændringer vises her.",
     "emptyTitle": "Ingen kommentarer endnu",
     "emptyHint": "Markér tekst, og vælg Tilføj kommentar, eller tryk på {keys}",
     "readOnlyNote": "Du kan læse kommentarerne i projektet. Bed en ejer om kommentatoradgang for at svare eller reagere.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Forslag fra en, som Oleafly ikke kunne bekræfte",
     "added": "Tilføjet",
     "deleted": "Slettet",
+    "replaced": "Ændret",
+    "replacedWith": "til",
     "accept": "Accepter",
     "reject": "Afvis",
     "withdraw": "Træk tilbage",
@@ -1157,6 +1172,7 @@
     "fileActions": "Forslag i {{file}}",
     "pendingCount": "Ventende forslag: {{number}}",
     "loadFailed": "Forslagene til denne fil kunne ikke indlæses.",
+    "acceptOffServer": "Denne Overleaf-server kan ikke acceptere sporede ændringer i denne fil. Du kan stadig afvise dem.",
     "rejectAllConfirm": {
       "title": "Vil du afvise alle forslag i {{file}}?",
       "description": "Den oprindelige tekst kommer tilbage i filen for alle i projektet. Ventende forslag: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Forslag",
       "editingHint": "Redigering: dine ændringer slår igennem i teksten med det samme",
       "suggestingHint": "Forslag: dine ændringer bliver til forslag, som en ejer eller redaktør kan acceptere",
-      "reviewerHint": "Du er korrekturlæser, så dine ændringer bliver til forslag, som en ejer eller redaktør kan acceptere"
+      "reviewerHint": "Du er korrekturlæser, så dine ændringer bliver til forslag, som en ejer eller redaktør kan acceptere",
+      "locked": {
+        "everyone": "Sporing af ændringer er slået til for alle i projektet, så dine ændringer bliver til forslag",
+        "plan": "Projektets Overleaf-abonnement omfatter ikke sporing af ændringer",
+        "server": "Denne Overleaf-server kan ikke slå sporing af ændringer til eller fra"
+      },
+      "others": "Spor ændringer fra andre",
+      "forEveryone": "For alle",
+      "forGuests": "For personer, der er kommet med via et link"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Læsere kan læse chatten, men ikke skrive i den.",
     "offline": "Projektet er ikke forbundet lige nu, så du kan ikke skrive i chatten.",
     "messageActions": "Flere handlinger for denne besked",
+    "editLabel": "Rediger beskeden",
     "deleteConfirm": {
       "title": "Vil du slette denne besked?",
       "description": "Den slettes for alle i projektet."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly kunne ikke indlæse chatten.",
     "loadOlder": "Vis ældre beskeder"
+  },
+  "people": {
+    "invited": "Inviteret",
+    "former": "(har forladt projektet)"
   },
   "history": {
     "title": "Historik",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Teksten i hver fil bliver sat tilbage til, som den var {{time}}, for alle i projektet, og slettede filer kommer tilbage. Omdøbte filer beholder deres nye navne, og figurer og filer, der er tilføjet senere, forbliver, som de er. Den nuværende tekst bliver i historikken, så du kan gå tilbage til den.",
       "confirm": "Gendan projektet"
     },
+    "limited": "Ældre ændringer kræver et Overleaf-abonnement med fuld historik.",
+    "unavailable": "Din adgang til projektet omfatter ikke dets historik.",
+    "download": "Download som ZIP",
+    "downloading": "Downloader…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Alle filer bliver sat tilbage til, som de var {{time}}, for alle på Overleaf, og filer, der er tilføjet siden, bliver slettet. Overleaf beholder den nuværende version i sin historik, så du kan gå tilbage til den.",
     "compareTitle": "Ændringer mellem to versioner",
     "compareDescription": "Fra {{from}} til {{to}}",
     "changedFiles": "Ændrede filer: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Du er nu kommentator. Du kan læse og kommentere projektet, men ikke redigere det.",
     "reviewerBy": "{{name}} har gjort dig til korrekturlæser. Dine ændringer bliver til forslag, som en ejer eller redaktør kan acceptere.",
     "reviewer": "Du er nu korrekturlæser. Dine ændringer bliver til forslag, som en ejer eller redaktør kan acceptere.",
-    "reviewing": "Du er korrekturlæser på dette projekt, så dine ændringer bliver til forslag.",
-    "trackingChanges": "Spor ændringer er slået til i dette projekt, så dine ændringer bliver til forslag.",
     "viewOnly": "Du kan se dette delte projekt, men ikke redigere det.",
     "askOnOverleaf": "Bed om adgang på Overleaf",
     "connecting": "Dette delte projekt er stadig ved at oprette forbindelse, så det kan ikke ændres endnu. Prøv igen om lidt.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "Du er logget ud af {{server}}, så dette projekt bliver ikke synkroniseret. Du kan blive ved med at skrive. Dine ændringer bliver på denne computer og sendes til Overleaf, når du logger ind igen.",
+    "signedOutAs": "Dette projekt tilhører {{email}} på {{server}}. Den konto er ikke logget ind, så projektet bliver ikke synkroniseret. Du kan blive ved med at skrive. Dine ændringer bliver på denne computer og sendes til Overleaf, når du logger ind som {{email}}.",
+    "signInAs": "Log ind som {{email}}",
     "accountChangedOne": "Du er nu logget ind med en anden konto, så de ændringer, du lavede som {{email}}, blev ikke sendt. De er gemt som {{copy}}.",
     "accountChangedMany": "Du er nu logget ind med en anden konto, så de ændringer, du lavede som {{email}}, blev ikke sendt. De er gemt som kopier ved siden af deres filer:",
     "keptAs": "{{file}} er gemt som {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Nogle tegn i {{file}}, for eksempel emojis, blev erstattet, fordi Overleaf ikke kan gemme dem.",
     "tryLiveAgain": "Prøv live igen",
     "keepMineAsCopy": "Behold min som kopi",
-    "stoppedActionFailed": "Det lykkedes ikke for {{file}}. Vent lidt, og klik så på den igen."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf har intet, der svarer til {{setting}} i dette projekt, så {{setting}} på Overleaf ændres ikke.",
+      "refused": "Overleaf afviste ændringen af {{setting}}.",
+      "failed": "Oleafly kunne ikke sende ændringen af {{setting}} til Overleaf. Oleafly prøver igen ved næste ændring.",
+      "conflict": "Både her og på Overleaf blev {{setting}} ændret på samme tid. Overleafs valg bevares."
+    },
+    "settingNames": {
+      "main_doc": "hoveddokumentet",
+      "compiler": "kompilatoren",
+      "spelling": "sproget til stavekontrol",
+      "image": "TeX Live-versionen",
+      "bibliography": "hovedlitteraturlisten"
+    },
+    "stoppedActionFailed": "Det lykkedes ikke for {{file}}. Vent lidt, og klik så på den igen.",
+    "filling": "Åbner projektet fra Overleaf: {{done}} af {{total}} filer",
+    "fillingFiles": "Åbner projektet fra Overleaf: downloader de sidste filer",
+    "emptyCopy": "Dette projekt findes ikke længere på Overleaf, og ingen af dets filer nåede frem til denne computer.",
+    "removeEmptyCopy": "Fjern den tomme kopi",
+    "removeFailed": "Oleafly kunne ikke fjerne den tomme kopi."
   },
   "overleafTree": {
     "deleteTitle": "Slet også på Overleaf?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Slet også på Overleaf",
     "keep": "Behold på Overleaf",
     "notAllowed": "Du kan ikke ændre filer i dette projekt på Overleaf, så dine ændringer i {{files}} bliver på denne computer.",
-    "keptAway": "Slettet her, men stadig på Overleaf: {{files}}"
+    "keptAway": "Slettet her, men stadig på Overleaf: {{files}}",
+    "linkedKept": "Overleaf knytter {{files}} til en kilde, så dine ændringer bliver på denne computer. Vælg Opdater fra kilde for at få Overleaf-kopien tilbage."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} er knyttet til {{source}} på Overleaf.",
+    "bannerNoSource": "{{file}} er knyttet til en kilde på Overleaf.",
+    "readOnly": "{{file}} er knyttet til en kilde på Overleaf. Vælg Opdater fra kilde for at opdatere den.",
+    "treeHint": "Knyttet til en kilde på Overleaf",
+    "refresh": "Opdater fra kilde",
+    "refreshing": "Opdaterer",
+    "refusedWith": "Overleaf kunne ikke opdatere den: {{message}}"
   }
 }

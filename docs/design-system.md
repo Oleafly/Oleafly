@@ -162,6 +162,19 @@ list. `leading` and `trailing` sit beside the field, `placement` and
 `className` move and size the panel, and `footer` goes under the list. Its
 rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
 
+Another program's own icon, such as a browser in a picker, is an `AppIcon`
+from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
+window until it has one. `size="sm"` fits a menu row.
+
+A Lucide icon that is newer than the pinned lucide-react goes in
+`ui/extra-icons.ts`, made with `createLucideIcon` from the upstream SVG so it
+takes the same props and class names as the others. Delete it there once
+lucide-react ships it. Chat uses `MessagesCircle` from there.
+
+A tile that starts something, with an icon, a name and a short hint, is a
+`TileButton` from `ui/tile-button.tsx`, such as a new note's starters or the
+browsers in the sign-in panel. `className` changes how it is arranged.
+
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in
 `ui/dropdown-menu.tsx`. `DropdownMenuItemText` puts a small grey line under an
@@ -542,9 +555,9 @@ message's header when a thread shows no quote, where it joins the ⋯ pill and
 stays while that message is deleted or being edited. A suggestion's discussion is the same
 `CommentThread` with `embedded` on both clients (`EmbeddedThread` on the
 desktop). Thread cards (and the suggestion cards beside them) use
-`commentCardClass(selected)`: `bg-background` on the grey rail, with hover and
-selection shown as a border colour change (`foreground/25` on hover, so it shows
-in light mode too). Every name and time row is a `CommentByline`. The name gets its own 24px
+`commentCardClass(selected)`: `bg-background` on the grey rail with a hairline
+border. Hover is a border colour change (`foreground/25`, so it shows in light
+mode too), and the selected card is the `accent` tint with no visible border. Every name and time row is a `CommentByline`. The name gets its own 24px
 line. If the time, "· edited" or a "New" badge doesn't fit after it, it moves
 to the next line, so nothing is cut to a fragment and the name never moves. A
 time wider than the whole row wraps at its spaces. A name is cut with an
@@ -575,9 +588,9 @@ so the Tooltip always works. A failed send keeps the text
 and shows "Not sent." with the reason, plus Retry when the host says retrying
 can help. The kit has no strings of its own: the host wraps it in a
 `CommentKitProvider` with its labels, time formats, names, error text,
-confirm dialog and reaction support (`DesktopCommentKit` on the desktop,
-`WebCommentKit` in the web client). An error line under an action is an
-`InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
+error logging (`reportError`), confirm dialog and reaction support
+(`DesktopCommentKit` on the desktop, `WebCommentKit` in the web client). An
+error line under an action is an `InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
 for callers that must close it themselves, as the reaction picker does.
 
 Live states come from the same kit. A `CommentEntry` can carry a `delivery`:

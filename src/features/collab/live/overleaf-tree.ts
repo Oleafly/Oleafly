@@ -3,7 +3,7 @@ import { logError } from "@/lib/log";
 import { onOverleafLiveTree, type OverleafTreeNotice, overleafLiveDelete } from "@/lib/overleaf-live";
 import { useSettingsStore } from "@/store/settings";
 import { treeNoticed, withPaths } from "./file-notices";
-import { noteStoredAsFiles } from "./live-store";
+import { noteLinked, noteStoredAsFiles } from "./live-store";
 
 const NONE: readonly string[] = [];
 
@@ -45,6 +45,10 @@ function ask(projectId: string, paths: readonly string[], failed: boolean): void
 }
 
 export function receiveOverleafTree(notice: OverleafTreeNotice): void {
+  if (notice.kind === "linked") {
+    noteLinked(notice.projectId, notice.files);
+    return;
+  }
   if (notice.kind === "stored_as_files") {
     noteStoredAsFiles(notice.projectId, notice.paths);
     return;

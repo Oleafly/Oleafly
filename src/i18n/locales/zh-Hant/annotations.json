@@ -26,6 +26,10 @@
       "region": "對這個區域的意見…"
     },
     "placeHere": "放在這裡",
+    "coauthors": "為共同作者新增評論",
+    "noSource": "在原始檔中找不到這段內容。",
+    "commentFailed": "無法開啟這則評論對應的檔案。",
+    "commentsClosed": "這個專案目前無法使用評論。",
     "cancel": "取消",
     "save": "新增",
     "saving": "正在儲存",

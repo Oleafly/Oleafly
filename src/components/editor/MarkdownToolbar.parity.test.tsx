@@ -220,7 +220,7 @@ describe("Markdown toolbar in Code, Visual and Both", () => {
     }
   });
 
-  it("keeps formatting on in Code and Both and off in Visual in a shared project an editor can write to", async () => {
+  it("keeps formatting on in every mode in a shared project an editor can write to", async () => {
     widenToolbar(2000);
     useFilesStore.setState({ projectId: "p1" });
     useCollabEditorGate.setState({ projectId: "p1", viewer: false, locked: false });
@@ -231,8 +231,7 @@ describe("Markdown toolbar in Code, Visual and Both", () => {
           await import("./markdown-toolbar-controls");
         });
         const bold = screen.getAllByRole("button").find((button) => button.getAttribute("aria-label")?.startsWith("Bold")) as HTMLElement;
-        if (mode === "visual") expect(bold).toBeDisabled();
-        else expect(bold).not.toBeDisabled();
+        expect(bold).not.toBeDisabled();
         rendered.unmount();
       }
     } finally {

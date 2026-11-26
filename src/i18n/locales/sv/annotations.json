@@ -26,6 +26,10 @@
       "region": "Kommentera det här området …"
     },
     "placeHere": "Placera här",
+    "coauthors": "Kommentar till medförfattare",
+    "noSource": "Det här stycket hittades inte i källfilerna.",
+    "commentFailed": "Det gick inte att öppna filen för den här kommentaren.",
+    "commentsClosed": "Kommentarer är inte tillgängliga för det här projektet just nu.",
     "cancel": "Avbryt",
     "save": "Lägg till",
     "saving": "Sparar",

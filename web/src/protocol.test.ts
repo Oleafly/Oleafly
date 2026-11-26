@@ -120,9 +120,14 @@ describe("parseServerFrame", () => {
       t: "output",
       items: [{ kind: "pdf", size: 3, compiledBy: "u", compiledAt: 5, mainFile: "m.tex" }],
     });
-    expect(parseServerFrame('{"t":"chat","messages":[{"id":"m","author":"u","at":1,"body":"hi"}]}')).toEqual({
+    expect(
+      parseServerFrame('{"t":"chat","messages":[{"id":"m","author":"u","at":1,"body":"hi"},{"id":"e","at":2,"body":"fixed","editedAt":3}]}'),
+    ).toEqual({
       t: "chat",
-      messages: [{ id: "m", author: "u", at: 1, body: "hi", deleted: false, verified: false, reactions: [], pending: false, mentions: [] }],
+      messages: [
+        { id: "m", author: "u", at: 1, body: "hi", editedAt: null, deleted: false, verified: false, reactions: [], pending: false, mentions: [] },
+        { id: "e", author: "", at: 2, body: "fixed", editedAt: 3, deleted: false, verified: false, reactions: [], pending: false, mentions: [] },
+      ],
     });
   });
 

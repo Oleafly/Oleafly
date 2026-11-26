@@ -148,7 +148,7 @@ pub(crate) async fn login(
             ));
         }
         if !args.dry_run {
-            session::save_git_token(&env.store, &server, &token)
+            session::save_git_token(&env.store, &server, None, &token)
                 .map_err(|error| online_error(error, &server))?;
         }
         let signed_in = session::load(&env.store, &server)
@@ -207,7 +207,7 @@ pub(crate) async fn login(
         session::save(&env.store, &server, &checked)
             .map_err(|error| online_error(error, &server))?;
     }
-    let git_token = session::git_token(&env.store, &server)
+    let git_token = session::git_token(&env.store, &server, None)
         .map_err(|error| online_error(error, &server))?
         .is_some();
     let line = if args.dry_run {
@@ -235,7 +235,7 @@ pub(crate) fn logout(env: &Env, args: &OnlineLogout) -> Result<Report, CliError>
             .map_err(failed)?
             .is_some();
     let drop_token = !args.session_only
-        && session::git_token(&env.store, &server)
+        && session::git_token(&env.store, &server, None)
             .map_err(failed)?
             .is_some();
     if !args.dry_run {
@@ -243,7 +243,7 @@ pub(crate) fn logout(env: &Env, args: &OnlineLogout) -> Result<Report, CliError>
             session::forget(&env.store, &server).map_err(failed)?;
         }
         if drop_token {
-            session::forget_git_token(&env.store, &server).map_err(failed)?;
+            session::forget_git_token(&env.store, &server, None).map_err(failed)?;
         }
     }
     let mut removed = Vec::new();
@@ -272,7 +272,7 @@ pub(crate) fn token(env: &Env, server: Option<&str>) -> Result<Zeroizing<String>
         return Ok(token.clone());
     }
     let server = server_for(env, server)?;
-    session::git_token(&env.store, &server)
+    session::git_token(&env.store, &server, None)
         .map_err(|error| online_error(error, &server))?
         .map(Zeroizing::new)
         .ok_or_else(|| online_error(OnlineError::new(OnlineErrorKind::GitTokenMissing), &server))
@@ -287,7 +287,7 @@ pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
     let mut rows = Vec::new();
     for server in servers {
         let saved = session::load(&env.store, &server).map_err(failed)?;
-        let token = session::git_token(&env.store, &server)
+        let token = session::git_token(&env.store, &server, None)
             .map_err(failed)?
             .is_some();
         let session = match saved {
@@ -396,7 +396,7 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(
-            session::git_token(&env.store, "https://latex.example.edu")
+            session::git_token(&env.store, "https://latex.example.edu", None)
                 .unwrap()
                 .as_deref(),
             Some("olp_TOKENVALUE123")
@@ -557,7 +557,7 @@ mod tests {
             },
         )
         .unwrap();
-        session::save_git_token(&env.store, server, "olp_GITTOKEN88").unwrap();
+        session::save_git_token(&env.store, server, None, "olp_GITTOKEN88").unwrap();
     }
 
     #[test]
@@ -581,7 +581,9 @@ mod tests {
         };
         logout(&env, &session_only).unwrap();
         assert!(session::load(&env.store, server).unwrap().is_none());
-        assert!(session::git_token(&env.store, server).unwrap().is_some());
+        assert!(session::git_token(&env.store, server, None)
+            .unwrap()
+            .is_some());
         let rest = OnlineLogout {
             server: Some(server.into()),
             ..OnlineLogout::default()
@@ -591,7 +593,9 @@ mod tests {
             report.data["removed"],
             json!([{"kind": "gitToken", "target": server}])
         );
-        assert!(session::git_token(&env.store, server).unwrap().is_none());
+        assert!(session::git_token(&env.store, server, None)
+            .unwrap()
+            .is_none());
     }
 
     #[test]

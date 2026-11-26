@@ -152,7 +152,7 @@ function ZenModeSettings() {
 function CommentColorPreview({ color, sample }: Readonly<{ color: CommentColor; sample: string }>) {
   return (
     <div data-comment-color={color} className="flex h-14 w-full items-center justify-center rounded bg-background">
-      <span style={commentMarkStyle(true)} className="rounded-t-sm px-1 text-sm text-foreground">
+      <span style={commentMarkStyle(true)} className="px-1 text-sm text-foreground">
         {sample}
       </span>
     </div>

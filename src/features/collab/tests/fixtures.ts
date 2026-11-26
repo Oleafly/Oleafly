@@ -1,3 +1,4 @@
+import type { OverleafLiveProject } from "@/lib/overleaf-live";
 import type {
   CollabAccount,
   CollabAllowlistEntry,
@@ -5,9 +6,11 @@ import type {
   CollabConnectionCheck,
   CollabDevice,
   CollabDomainRule,
+  CollabHistoryStatus,
   CollabMember,
   CollabPerson,
   CollabProjectMember,
+  CollabProjectRole,
   CollabProjectSummary,
   CollabRuntimeSettings,
   CollabSecurityEvent,
@@ -18,6 +21,7 @@ import type {
   CollabSharedWithMe,
   ProjectInfo,
 } from "@/lib/tauri";
+import type { CollabLiveStoreState } from "../live/live-store";
 
 export const SERVER_ID = "0192a0b0-0000-7000-8000-0000000000a1";
 export const ALICE_ID = "0192a0b0-0000-7000-8000-000000000001";
@@ -254,4 +258,89 @@ export function libraryProject(overrides: Partial<ProjectInfo> = {}): ProjectInf
     recovery_pending: false,
     ...overrides,
   };
+}
+
+export const OVERLEAF_SERVER = "https://www.overleaf.com";
+export const OVERLEAF_PROJECT = "6af963ebc9037022065bb53f";
+export const OVERLEAF_ALICE_ID = "64f1c2a3b4c5d6e7f8091a2b";
+export const OVERLEAF_BOB_ID = "64f1c2a3b4c5d6e7f8091a2c";
+export const OVERLEAF_CAROL_ID = "64f1c2a3b4c5d6e7f8091a2d";
+export const OVERLEAF_INTRO_DOC = "6af963ebc9037022065bb541";
+
+type LiveSeedState = Partial<CollabLiveStoreState>;
+
+export function overleafLink(overrides: Partial<OverleafLiveProject> = {}): OverleafLiveProject {
+  return { server: OVERLEAF_SERVER, remoteId: OVERLEAF_PROJECT, signedIn: true, paused: false, ...overrides };
+}
+
+export function overleafLive(overrides: LiveSeedState = {}): LiveSeedState {
+  return {
+    backend: "overleaf",
+    share: null,
+    shareChecked: true,
+    overleaf: overleafLink(),
+    selfId: OVERLEAF_ALICE_ID,
+    restricted: false,
+    tracking: false,
+    ...overrides,
+  };
+}
+
+export function liveReset(): LiveSeedState {
+  return {
+    projectId: null,
+    backend: null,
+    share: null,
+    overleaf: null,
+    selfId: null,
+    role: null,
+    status: null,
+    members: [],
+    restricted: false,
+    tracking: false,
+    commentsNotSent: null,
+  };
+}
+
+export interface LiveSeed {
+  name: "server" | "overleaf";
+  alice: CollabPerson;
+  bob: CollabPerson;
+  carol: CollabPerson;
+  fileId: string;
+  live(projectId: string, role: CollabProjectRole): LiveSeedState;
+  unlive(): LiveSeedState;
+}
+
+export const SERVER_SEED: LiveSeed = {
+  name: "server",
+  alice: person(),
+  bob: BOB,
+  carol: CAROL,
+  fileId: "file-intro",
+  live: (projectId, role) => ({
+    projectId,
+    backend: "server",
+    share: shareInfo({ project_id: projectId, role, account_id: ALICE_ID }),
+    selfId: ALICE_ID,
+    role,
+  }),
+  unlive: () => ({ share: null }),
+};
+
+export const OVERLEAF_SEED: LiveSeed = {
+  name: "overleaf",
+  alice: person({ account_id: OVERLEAF_ALICE_ID, login: null }),
+  bob: person({ account_id: OVERLEAF_BOB_ID, display_name: "Bob Smith", email: "bob@uni.edu", login: null }),
+  carol: person({ account_id: OVERLEAF_CAROL_ID, display_name: "Carol Diaz", email: null, login: null }),
+  fileId: OVERLEAF_INTRO_DOC,
+  live: (projectId, role) => ({ projectId, ...overleafLive(), role }),
+  unlive: () => ({ overleaf: overleafLink({ paused: true }) }),
+};
+
+export const LIVE_SEEDS = [SERVER_SEED, OVERLEAF_SEED] as const;
+
+export function historyStatus(role: CollabProjectRole, overrides: Partial<CollabHistoryStatus> = {}): CollabHistoryStatus {
+  const edits = role === "owner" || role === "editor";
+  return { available: true, name: edits, restore: edits, download: false, limited: false, ...overrides };
 }

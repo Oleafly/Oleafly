@@ -11,7 +11,7 @@ rust-version = "1.89"
 # Fixture servers and builders other crates use in their own tests.
 test-support = ["tokio/sync"]
 # End-to-end tests against a local Overleaf Community Edition (tools/overleaf-ce/up.sh).
-ce-e2e = []
+ce-e2e = ["test-support", "oleafly-core/test-support", "oleafly-ot/test-support"]
 
 [dependencies]
 aes = { version = "0.9", features = ["zeroize"] }

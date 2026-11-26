@@ -1,9 +1,11 @@
-import type { RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
+import { type RemoteChange, subscribeEdits, type Utf16Edit } from "@oleafly/editor/document-session";
 import type { NoteLiveEditor as NoteEditorSurface } from "@/lib/collab-live-bridge";
+import { logWarning } from "@/lib/log";
 import { diffOperation, editsFromOperation, operationFromEdits, TextOperation } from "../live/ot";
 
 export const LIVE_SEND_MS = 200;
 export const REMOTE_FRAME_MS = 16;
+export const COMPOSITION_WAIT_MS = 5_000;
 
 export interface NoteLiveSession {
   readonly readOnly: boolean;
@@ -11,6 +13,7 @@ export interface NoteLiveSession {
   text(): string;
   applyLocal(edits: Utf16Edit[], baseVersion: number): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
+  subscribeLocal?(listener: (change: RemoteChange) => void): () => void;
 }
 
 export type NoteLiveEditor = Pick<NoteEditorSurface, "serialize" | "show" | "composing">;
@@ -53,6 +56,8 @@ export class NoteLiveBinding {
   private waiting = false;
   private stopped = false;
   private synced = Number.NEGATIVE_INFINITY;
+  private heldSince: number | null = null;
+  private sending = false;
   private readonly clock: NoteLiveClock;
   private readonly unsubscribe: () => void;
 
@@ -62,7 +67,10 @@ export class NoteLiveBinding {
     this.shared = text;
     this.known = text;
     this.clock = options.clock ?? browserClock;
-    this.unsubscribe = options.session.subscribe((change) => this.received(change));
+    const hear = (change: RemoteChange) => this.received(change);
+    this.unsubscribe = subscribeEdits(options.session, hear, (change) => {
+      if (!this.sending) hear(change);
+    });
   }
 
   get active(): boolean {
@@ -93,10 +101,24 @@ export class NoteLiveBinding {
     this.tick();
   }
 
+  private holdsRemote(): boolean {
+    if (!this.options.editor.composing()) {
+      this.heldSince = null;
+      return false;
+    }
+    const now = this.clock.now?.();
+    if (now === undefined) return true;
+    this.heldSince ??= now;
+    if (now - this.heldSince < COMPOSITION_WAIT_MS) return true;
+    this.heldSince = null;
+    void logWarning("live note", new Error(`A composition held remote edits back for ${COMPOSITION_WAIT_MS} ms, so they were shown anyway.`));
+    return false;
+  }
+
   private tick(): void {
     if (this.stopped) return;
-    if (this.options.editor.composing()) this.localChanged();
-    else if (this.waiting) this.sync();
+    if (this.waiting) this.sync();
+    else if (this.options.editor.composing()) this.localChanged();
     else this.sendLocal();
   }
 
@@ -150,7 +172,7 @@ export class NoteLiveBinding {
 
   private sync(): void {
     if (this.stopped) return;
-    if (this.options.editor.composing()) {
+    if (this.holdsRemote()) {
       this.waiting = true;
       this.localChanged();
       return;
@@ -189,7 +211,12 @@ export class NoteLiveBinding {
       let send = mine;
       let remote: TextOperation | null = null;
       if (current !== this.shared) [send, remote] = TextOperation.transform(mine, this.pendingRemote(current));
-      session.applyLocal(editsFromOperation(send), session.version());
+      this.sending = true;
+      try {
+        session.applyLocal(editsFromOperation(send), session.version());
+      } finally {
+        this.sending = false;
+      }
       const after = session.text();
       if ((remote ? remote.apply(shared) : shared) !== after) throw new RangeError("The live note lost track of its text.");
       this.serialized = next;

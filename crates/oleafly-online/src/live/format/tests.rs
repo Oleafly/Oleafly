@@ -5,6 +5,13 @@ use serde_json::{json, Value};
 use super::*;
 use crate::live::{AppliedUpdate, DocId, PublicId, Tracking};
 
+fn undo_extra() -> Extra {
+    Extra {
+        undo: true,
+        ..Extra::default()
+    }
+}
+
 fn op(build: impl FnOnce(&mut TextOperation)) -> TextOperation {
     let mut operation = TextOperation::new();
     build(&mut operation);
@@ -38,6 +45,7 @@ fn update(op: Value, tc: bool, user: &str) -> AppliedUpdate {
         source: Some(PublicId("P.other".into())),
         user_id: Some(user.into()),
         tc: tc.then(|| "0123456789abcdef01".into()),
+        ts: None,
         dup: false,
         external: false,
     }
@@ -87,11 +95,11 @@ fn sharejs_ops_round_trip_to_text_operation() {
             .delete(1)
             .retain(2);
     });
-    let pieces = pieces_of(text, &edit).unwrap();
+    let pieces = pieces_of_flagged(text, &edit, false).unwrap();
     let wire = Value::Array(pieces.iter().map(piece_to_json).collect());
     assert_eq!(
         wire,
-        json!([{ "p": 2, "i": "XY" }, { "p": 4, "d": "😀" }, { "p": 5, "d": "d" }])
+        json!([{ "p": 2, "d": "😀" }, { "p": 2, "i": "XY" }, { "p": 5, "d": "d" }])
     );
     assert_eq!(
         operation_of(text, &pieces_from_json(&wire).unwrap()).unwrap(),
@@ -106,7 +114,7 @@ fn sharejs_ops_round_trip_to_text_operation() {
         let text = random_text(&mut rng, 14);
         let edit = random_operation(&mut rng, &text);
         let wire = Value::Array(
-            pieces_of(&text, &edit)
+            pieces_of_flagged(&text, &edit, false)
                 .unwrap()
                 .iter()
                 .map(piece_to_json)
@@ -231,8 +239,12 @@ fn a_suggestion_carries_a_fresh_eighteen_hex_seed() {
         user_id: "u1".into(),
         ts: "2026-11-15T00:00:00.000Z".into(),
     };
-    let first = state.encode("abc", &edit, Some(&tracking), None).unwrap();
-    let second = state.encode("abc", &edit, Some(&tracking), None).unwrap();
+    let first = state
+        .encode("abc", &edit, Some(&tracking), None, &Extra::default())
+        .unwrap();
+    let second = state
+        .encode("abc", &edit, Some(&tracking), None, &Extra::default())
+        .unwrap();
     let seed = first.tc.clone().unwrap();
     assert_eq!(seed.len(), 18);
     assert!(seed
@@ -242,10 +254,29 @@ fn a_suggestion_carries_a_fresh_eighteen_hex_seed() {
     assert_eq!(
         first.echo,
         Echo::ShareJs {
-            tracked_by: Some("u1".into())
+            tracked_by: Some("u1".into()),
+            tc: first.tc.clone(),
+            ts: Some(1_794_700_800_000),
+            undo: false,
+            comments: Vec::new(),
+            accepts: Vec::new(),
+            clashed: false,
         }
     );
-    assert_eq!(state.encode("abc", &edit, None, None).unwrap().tc, None);
+    let resent = state
+        .encode(
+            "abc",
+            &edit,
+            Some(&tracking),
+            Some(&first.echo),
+            &Extra::default(),
+        )
+        .unwrap();
+    assert_eq!((resent.tc, resent.echo), (first.tc.clone(), first.echo));
+    let untracked = state
+        .encode("abc", &edit, None, Some(&second.echo), &Extra::default())
+        .unwrap();
+    assert_eq!(untracked.tc, None);
 }
 
 #[test]
@@ -260,8 +291,9 @@ fn comment_anchors_move_with_text() {
     let mut text = "one two three".to_string();
     let remote = |state: &mut FormatState, text: &mut String, wire: Value| {
         let steps = state
-            .decode(text, &update(wire, false, "u2"), None)
-            .unwrap();
+            .decode_ranges(text, &update(wire, false, "u2"), None)
+            .unwrap()
+            .0;
         *text = apply_steps(text, &steps);
     };
     remote(&mut state, &mut text, json!([{ "p": 0, "i": "zero " }]));
@@ -290,21 +322,31 @@ fn comment_anchors_move_with_text() {
     assert_eq!(ranges(&state).counts(), (2, 0));
     let before = text.clone();
     state
-        .acknowledge(
+        .acknowledge_ranges(
             &text,
             &op(|o| {
                 o.insert(">> ").retain(utf16_len(&before));
             }),
-            &Echo::ShareJs { tracked_by: None },
+            &Echo::ShareJs {
+                tracked_by: None,
+                tc: None,
+                ts: None,
+                undo: false,
+                comments: Vec::new(),
+                accepts: Vec::new(),
+                clashed: false,
+            },
         )
         .unwrap();
     assert_eq!(ranges(&state).comments()[1].at, 3);
     assert_eq!(ranges(&state).comments()[0].at, 11);
-    let wrong = state.decode(
-        &text,
-        &update(json!([{ "p": 9, "d": "XY" }]), false, "u2"),
-        None,
-    );
+    let wrong = state
+        .decode_ranges(
+            &text,
+            &update(json!([{ "p": 9, "d": "XY" }]), false, "u2"),
+            None,
+        )
+        .map(|(steps, _)| steps);
     assert_eq!(wrong, Err(CodecError::Mismatch));
 }
 
@@ -313,7 +355,10 @@ fn tracked_changes_merge_split_and_cancel_like_overleaf() {
     let mut state = sharejs("abcdef");
     let mut text = "abcdef".to_string();
     let apply = |state: &mut FormatState, text: &mut String, wire: Value, tc: bool, user: &str| {
-        let steps = state.decode(text, &update(wire, tc, user), None).unwrap();
+        let steps = state
+            .decode_ranges(text, &update(wire, tc, user), None)
+            .unwrap()
+            .0;
         *text = apply_steps(text, &steps);
     };
     for (at, typed) in [(3, "X"), (4, "Y"), (5, "Z")] {
@@ -390,15 +435,16 @@ fn random_remote_edit(state: &mut FormatState, text: &str, rng: &mut Rng, user: 
     let edit = random_operation(rng, text);
     let tracked = rng.chance(50);
     let wire = Value::Array(
-        pieces_of(text, &edit)
+        pieces_of_flagged(text, &edit, false)
             .unwrap()
             .iter()
             .map(piece_to_json)
             .collect(),
     );
     let steps = state
-        .decode(text, &update(wire, tracked, user), None)
-        .unwrap();
+        .decode_ranges(text, &update(wire, tracked, user), None)
+        .unwrap()
+        .0;
     apply_steps(text, &steps)
 }
 
@@ -412,7 +458,7 @@ fn random_comment(state: &mut FormatState, text: &str, rng: &mut Rng, user: &str
     }
     let wire = json!([{ "p": at, "c": commented, "t": format!("t{}", rng.below(4)) }]);
     state
-        .decode(text, &update(wire, false, user), None)
+        .decode_ranges(text, &update(wire, false, user), None)
         .unwrap();
 }
 
@@ -450,4 +496,569 @@ fn random_untracked_and_tracked_edits_keep_ranges_inside_the_text() {
             assert_ranges_inside(&state, &text);
         }
     }
+}
+
+fn seeded(op: Value, tc: Option<&str>, user: &str, ts: i64) -> AppliedUpdate {
+    AppliedUpdate {
+        tc: tc.map(str::to_string),
+        ts: Some(ts),
+        ..update(op, false, user)
+    }
+}
+
+fn decode_into(state: &mut FormatState, text: &mut String, update: &AppliedUpdate) -> RangeChange {
+    let (steps, change) = state.decode_ranges(text, update, None).unwrap();
+    *text = apply_steps(text, &steps);
+    change
+}
+
+type Summary = (Option<String>, usize, String, Option<String>, Option<i64>);
+
+fn summary(state: &FormatState) -> Vec<Summary> {
+    ranges(state)
+        .changes()
+        .iter()
+        .map(|change| {
+            (
+                change.id().map(str::to_string),
+                change.at,
+                String::from_utf16(&change.text).unwrap(),
+                change.user.clone(),
+                change.ts,
+            )
+        })
+        .collect()
+}
+
+const S1: &str = "aaaaaaaaaaaaaaaaa1";
+const S2: &str = "aaaaaaaaaaaaaaaaa2";
+const S3: &str = "aaaaaaaaaaaaaaaaa3";
+
+#[test]
+fn change_ids_follow_the_suggestion_seed_like_the_ranges_tracker() {
+    let mut text = "abcdef".to_string();
+    let mut state = sharejs(&text);
+    let id = |seed: &str, n: u32| Some(format!("{seed}{n:06x}"));
+    let change = decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 3, "i": "XYZ" }]), Some(S1), "u1", 1_000),
+    );
+    assert_eq!(change, RangeChange::Reshaped);
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 6, "i": "W" }]), Some(S2), "u1", 2_000),
+    );
+    assert_eq!(
+        summary(&state),
+        vec![(id(S1, 1), 3, "XYZW".into(), Some("u1".into()), Some(1_000))]
+    );
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 4, "i": "q" }]), Some(S3), "u2", 3_000),
+    );
+    assert_eq!(text, "abcXqYZWdef");
+    assert_eq!(
+        summary(&state),
+        vec![
+            (id(S1, 1), 3, "X".into(), Some("u1".into()), Some(1_000)),
+            (id(S3, 1), 4, "q".into(), Some("u2".into()), Some(3_000)),
+            (id(S3, 2), 5, "YZW".into(), Some("u1".into()), Some(1_000)),
+        ]
+    );
+    assert!(ranges(&state).all_ids_known());
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 6, "i": "!" }]), None, "u3", 4_000),
+    );
+    assert_eq!(text, "abcXqY!ZWdef");
+    let split = summary(&state);
+    assert_eq!(
+        split[2],
+        (id(S3, 2), 5, "Y".into(), Some("u1".into()), Some(1_000))
+    );
+    assert_eq!(
+        split[3],
+        (None, 7, "ZW".into(), Some("u1".into()), Some(1_000))
+    );
+    assert!(!ranges(&state).all_ids_known());
+    let unknown = ranges(&state).changes()[3].key();
+    assert_eq!(
+        ranges(&state)
+            .change_by_key(unknown)
+            .map(|change| change.at),
+        Some(7)
+    );
+    let mut joined = ranges(&state).to_json(true);
+    for change in joined["changes"].as_array_mut().unwrap() {
+        if change["op"]["p"] == 7 {
+            change["id"] = json!("5f0000000000000000000009");
+            change["metadata"]["ts"] = json!("2025-11-15T09:46:40.123Z");
+        }
+    }
+    let fresh = ShareJsRanges::from_join(&joined).unwrap();
+    let keys: Vec<u64> = ranges(&state)
+        .changes()
+        .iter()
+        .map(TrackedChange::key)
+        .collect();
+    let FormatState::ShareJs(held) = &mut state else {
+        panic!("a ShareJS doc");
+    };
+    assert_eq!(held.adopt_all(&fresh), RangeChange::Same);
+    assert!(held.all_ids_known());
+    assert_eq!(
+        held.changes()
+            .iter()
+            .map(TrackedChange::key)
+            .collect::<Vec<_>>(),
+        keys
+    );
+    assert_eq!(
+        held.change_by_key(unknown).and_then(TrackedChange::id),
+        Some("5f0000000000000000000009")
+    );
+    assert_eq!(
+        held.change("5f0000000000000000000009")
+            .map(|change| change.ts),
+        Some(Some(1_763_200_000_123))
+    );
+    let mut trimmed = held.clone();
+    let lone =
+        ShareJsRanges::from_join(&json!({ "changes": [joined["changes"][3].clone()] })).unwrap();
+    assert_eq!(trimmed.adopt_all(&lone), RangeChange::Reshaped);
+    assert_eq!(trimmed.changes().len(), 1);
+    assert_eq!(trimmed.changes()[0].key(), unknown);
+    let deleted = decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 9, "d": "d" }]), Some(S2), "u2", 5_000),
+    );
+    assert_eq!(deleted, RangeChange::Reshaped);
+    assert_eq!(
+        summary(&state).last().cloned(),
+        Some((id(S2, 1), 9, "d".into(), Some("u2".into()), Some(5_000)))
+    );
+}
+
+#[test]
+fn a_delete_that_reuses_a_removed_delete_keeps_its_id_and_takes_the_new_author() {
+    let mut text = "abcdef".to_string();
+    let mut state = sharejs(&text);
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 2, "d": "c" }]), Some(S1), "u1", 1_000),
+    );
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 1, "d": "bd" }]), Some(S2), "u2", 2_000),
+    );
+    assert_eq!(text, "aef");
+    assert_eq!(
+        summary(&state),
+        vec![(
+            Some(format!("{S1}000001")),
+            1,
+            "bcd".into(),
+            Some("u2".into()),
+            Some(2_000)
+        )]
+    );
+}
+
+#[test]
+fn range_reports_tell_a_shift_from_a_change_of_shape() {
+    let mut text = "one two three".to_string();
+    let mut state = FormatState::from_join(
+        DocFormat::ShareJs,
+        &json!([packed(&text)]),
+        &json!({ "comments": [{ "id": "t1", "op": { "c": "two", "p": 4, "t": "t1" }, "metadata": { "user_id": "u1", "ts": 1_000 } }] }),
+    )
+    .unwrap()
+    .1;
+    let plain = |op: Value| seeded(op, None, "u2", 2_000);
+    assert_eq!(
+        decode_into(
+            &mut state,
+            &mut text,
+            &plain(json!([{ "p": 13, "i": "!" }]))
+        ),
+        RangeChange::Same
+    );
+    assert_eq!(
+        decode_into(&mut state, &mut text, &plain(json!([{ "p": 0, "i": ">" }]))),
+        RangeChange::Moved
+    );
+    assert_eq!(
+        decode_into(&mut state, &mut text, &plain(json!([{ "p": 6, "i": "w" }]))),
+        RangeChange::Reshaped
+    );
+    assert_eq!(
+        decode_into(
+            &mut state,
+            &mut text,
+            &plain(json!([{ "p": 0, "c": ">", "t": "t2" }]))
+        ),
+        RangeChange::Reshaped
+    );
+    let comment = ranges(&state).comment("t1").unwrap();
+    assert_eq!(
+        (comment.user.as_deref(), comment.ts),
+        (Some("u1"), Some(1_000))
+    );
+    let added = ranges(&state).comment("t2").unwrap();
+    assert_eq!((added.user.as_deref(), added.ts), (Some("u2"), Some(2_000)));
+    assert_eq!(
+        RangeChange::Moved.and(RangeChange::Same),
+        RangeChange::Moved
+    );
+    assert!(RangeChange::Same.and(RangeChange::Reshaped).reshaped());
+}
+
+#[test]
+fn accepted_changes_and_deleted_threads_leave_the_ranges() {
+    let mut ranges = ShareJsRanges::from_join(&json!({
+        "changes": [
+            { "id": "c1", "op": { "p": 1, "i": "XY" }, "metadata": { "user_id": "u1" } },
+            { "id": "c2", "op": { "p": 4, "d": "gone" }, "metadata": { "user_id": "u2" } },
+        ],
+        "comments": [{ "id": "t1", "op": { "c": "a", "p": 0, "t": "t1" } }],
+    }))
+    .unwrap();
+    assert_eq!(
+        ranges.change("c2").map(|change| change.kind),
+        Some(ChangeKind::Delete)
+    );
+    assert_eq!(ranges.remove_changes(&["c1".into(), "missing".into()]), 1);
+    assert!(ranges.change("c1").is_none());
+    assert!(ranges.remove_comment("t1"));
+    assert!(!ranges.remove_comment("t1"));
+    assert_eq!(ranges.counts(), (0, 1));
+}
+
+#[test]
+fn rejecting_changes_builds_one_operation_against_the_whole_text() {
+    let ranges = ShareJsRanges::from_join(&json!({
+        "changes": [
+            { "id": "d1", "op": { "p": 3, "d": "Q" }, "metadata": { "user_id": "u1" } },
+            { "id": "i1", "op": { "p": 3, "i": "XY" }, "metadata": { "user_id": "u1" } },
+            { "id": "i2", "op": { "p": 6, "i": packed("é") }, "metadata": { "user_id": "u2" } },
+        ],
+    }))
+    .unwrap();
+    let text = "abcXYdéf";
+    let keys: Vec<u64> = ranges.changes().iter().map(TrackedChange::key).collect();
+    let all = ranges.reject_op(&keys, utf16_len(text)).unwrap();
+    assert_eq!(all.apply(text).unwrap(), "abcQdf");
+    let one = ranges.reject_op(&keys[2..], utf16_len(text)).unwrap();
+    assert_eq!(one.apply(text).unwrap(), "abcXYdf");
+    assert_eq!(ranges.reject_op(&[999], utf16_len(text)), None);
+    assert_eq!(ranges.reject_op(&keys, 4), None);
+    let wire = pieces_to_json(&pieces_of_flagged(text, &all, true).unwrap());
+    assert_eq!(
+        wire,
+        json!([{ "p": 3, "d": "XY", "u": true }, { "p": 3, "i": "Q", "u": true }, { "p": 5, "d": "é", "u": true }])
+    );
+}
+
+fn published_tracker() -> Value {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/ranges-tracker/replacements.json"
+    );
+    serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+}
+
+fn tracked_like_the_fixture(state: &FormatState) -> Vec<Value> {
+    ranges(state)
+        .to_json(false)
+        .get("changes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|change| {
+            let mut entry = change["op"].clone();
+            entry["user"] = change["metadata"]["user_id"].clone();
+            entry["id"] = change["id"].clone();
+            entry
+        })
+        .collect()
+}
+
+#[test]
+fn replacements_follow_the_published_ranges_tracker() {
+    for scenario in published_tracker()["scenarios"].as_array().unwrap() {
+        let name = scenario["name"].as_str().unwrap();
+        let mut text = scenario["text"].as_str().unwrap().to_string();
+        let mut state = sharejs(&text);
+        for step in scenario["steps"].as_array().unwrap() {
+            let sent = seeded(
+                step["op"].clone(),
+                step["tc"].as_str(),
+                step["user"].as_str().unwrap(),
+                1,
+            );
+            decode_into(&mut state, &mut text, &sent);
+            assert_eq!(text, step["text"].as_str().unwrap(), "{name}");
+            assert_eq!(
+                tracked_like_the_fixture(&state),
+                *step["changes"].as_array().unwrap(),
+                "{name}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_reject_knows_when_the_tracker_would_fold_its_text_into_another_marker() {
+    let text = "hello X world";
+    let ranges = ShareJsRanges::from_join(&json!({
+        "changes": [
+            { "id": "before", "op": { "p": 6, "d": "abc " }, "metadata": { "user_id": "carol" } },
+            { "id": "new", "op": { "p": 6, "i": "X" }, "metadata": { "user_id": "carol" } },
+            { "id": "old", "op": { "p": 7, "d": "def" }, "metadata": { "user_id": "carol" } },
+        ],
+    }))
+    .unwrap();
+    let keys = |ids: &[&str]| -> Vec<u64> {
+        ids.iter()
+            .map(|id| ranges.change(id).unwrap().key())
+            .collect()
+    };
+    let cleanly = |ids: &[&str]| {
+        let keys = keys(ids);
+        let op = ranges.reject_op(&keys, utf16_len(text)).unwrap();
+        ranges.rejects_cleanly(&keys, &pieces_of_flagged(text, &op, true).unwrap())
+    };
+    assert!(!cleanly(&["new", "old"]));
+    for ids in [
+        &["new"][..],
+        &["old"],
+        &["before"],
+        &["before", "new"],
+        &["before", "new", "old"],
+    ] {
+        assert!(cleanly(ids), "{ids:?}");
+    }
+}
+
+#[test]
+fn an_undone_insert_cancels_a_tracked_delete_and_keeps_its_flag_on_the_wire() {
+    let mut text = "abc".to_string();
+    let mut state = sharejs(&text);
+    decode_into(
+        &mut state,
+        &mut text,
+        &seeded(json!([{ "p": 1, "d": "b" }]), Some(S1), "u1", 1),
+    );
+    let undo = op(|o| {
+        o.retain(1).insert("b").retain(1);
+    });
+    let encoded = state
+        .encode(&text, &undo, None, None, &undo_extra())
+        .unwrap();
+    assert_eq!(encoded.op, json!([{ "p": 1, "i": "b", "u": true }]));
+    let FormatState::ShareJs(_) = &state else {
+        panic!("a ShareJS doc");
+    };
+    assert_eq!(
+        state
+            .acknowledge_ranges(&text, &undo, &encoded.echo)
+            .unwrap(),
+        RangeChange::Reshaped
+    );
+    assert_eq!(ranges(&state).counts(), (0, 0));
+    let plain = state
+        .encode(&text, &undo, None, None, &Extra::default())
+        .unwrap();
+    assert_eq!(plain.op, json!([{ "p": 1, "i": "b" }]));
+    let mut later = sharejs("abc");
+    let mut text = "abc".to_string();
+    decode_into(
+        &mut later,
+        &mut text,
+        &seeded(json!([{ "p": 1, "d": "b" }]), Some(S1), "u1", 1),
+    );
+    let mut sent = undo.clone();
+    let mut echo = later
+        .encode(&text, &undo, None, None, &undo_extra())
+        .unwrap()
+        .echo;
+    later
+        .decode_ranges(
+            &text,
+            &seeded(json!([{ "p": 0, "c": "a", "t": "t1" }]), None, "u2", 2),
+            Some((&mut sent, &mut echo)),
+        )
+        .unwrap();
+    assert!(matches!(
+        echo,
+        Echo::ShareJs {
+            undo: true,
+            clashed: true,
+            ..
+        }
+    ));
+    let mut deleting = sharejs("abc");
+    let mut text = "abc".to_string();
+    decode_into(
+        &mut deleting,
+        &mut text,
+        &seeded(json!([{ "p": 1, "i": "x" }]), Some(S1), "u1", 1),
+    );
+    let mut withdrawn = op(|o| {
+        o.retain(1).delete(1).retain(2);
+    });
+    let mut echo = deleting
+        .encode(&text, &withdrawn, None, None, &undo_extra())
+        .unwrap()
+        .echo;
+    deleting
+        .decode_ranges(
+            &text,
+            &seeded(json!([{ "p": 0, "c": "a", "t": "t1" }]), None, "u2", 2),
+            Some((&mut withdrawn, &mut echo)),
+        )
+        .unwrap();
+    assert!(matches!(
+        echo,
+        Echo::ShareJs {
+            undo: false,
+            clashed: false,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn our_own_acknowledged_suggestion_gets_the_id_the_server_gives_it() {
+    let text = "abc";
+    let mut state = sharejs(text);
+    let tracking = Tracking {
+        user_id: "me".into(),
+        ts: "2025-11-15T09:46:40.123Z".into(),
+    };
+    let edit = op(|o| {
+        o.retain(3).insert("d");
+    });
+    let encoded = state
+        .encode(text, &edit, Some(&tracking), None, &Extra::default())
+        .unwrap();
+    let tc = encoded.tc.clone().unwrap();
+    state
+        .acknowledge_ranges(text, &edit, &encoded.echo)
+        .unwrap();
+    let change = &ranges(&state).changes()[0];
+    assert_eq!(change.id(), Some(format!("{tc}000001").as_str()));
+    assert_eq!(
+        (change.user.as_deref(), change.ts),
+        (Some("me"), Some(1_763_200_000_123))
+    );
+}
+
+#[test]
+fn ranges_round_trip_through_the_join_form() {
+    let wire = json!({
+        "changes": [
+            { "id": "c1", "op": { "i": packed("Größe"), "p": 0 }, "metadata": { "user_id": "u1", "ts": "2025-11-15T09:46:40.123Z" } },
+            { "id": "c2", "op": { "d": packed("😀"), "p": 5 }, "metadata": { "user_id": "u2", "ts": 1_763_200_000_000_i64 } },
+        ],
+        "comments": [{ "id": "t1", "op": { "c": packed("ß"), "p": 3, "t": "t1" }, "metadata": { "user_id": "u3", "ts": "2025-11-15T09:46:40.000Z" } }],
+    });
+    let parsed = ShareJsRanges::from_join(&wire).unwrap();
+    let packed_again = parsed.to_json(true);
+    assert_eq!(packed_again["changes"][0]["op"], wire["changes"][0]["op"]);
+    assert_eq!(
+        packed_again["changes"][1]["metadata"]["ts"],
+        json!("2025-11-15T09:46:40.000Z")
+    );
+    let back = ShareJsRanges::from_join(&packed_again).unwrap();
+    assert_eq!(back.changes().len(), 2);
+    for (a, b) in back.changes().iter().zip(parsed.changes()) {
+        assert_eq!(
+            (a.id(), a.at, &a.text, &a.user, a.ts),
+            (b.id(), b.at, &b.text, &b.user, b.ts)
+        );
+    }
+    assert_eq!(back.comments(), parsed.comments());
+    assert_eq!(parsed.to_json(false)["comments"][0]["op"]["c"], json!("ß"));
+    assert_eq!(ShareJsRanges::default().to_json(true), json!({}));
+}
+
+#[test]
+fn a_comment_anchor_is_the_visible_text_it_covers_and_counts_toward_the_limit() {
+    let text = "a😀bc";
+    let piece = comment_piece(text, 1, 4, "t1").unwrap();
+    assert_eq!(
+        piece_to_json(&piece),
+        json!({ "p": 1, "c": "😀b", "t": "t1" })
+    );
+    assert_eq!(comment_piece(text, 2, 3, "t1"), Err(CodecError::Mismatch));
+    assert_eq!(comment_piece(text, 1, 9, "t1"), Err(CodecError::Mismatch));
+    assert_eq!(comment_piece(text, 1, 2, ""), Err(CodecError::Mismatch));
+    let full: Vec<Value> = (0..MAX_COMMENTS)
+        .map(|at| json!({ "id": format!("t{at}"), "op": { "p": 0, "c": "a", "t": format!("t{at}") } }))
+        .collect();
+    let ranges = ShareJsRanges::from_join(&json!({ "comments": full })).unwrap();
+    let author = Author::of(Some("u1"), None, None);
+    let new = comment_piece(text, 0, 1, "fresh").unwrap();
+    assert_eq!(
+        ranges.counts_after(&[new], &author).unwrap(),
+        (MAX_COMMENTS + 1, 0)
+    );
+    let moved = comment_piece(text, 0, 1, "t1").unwrap();
+    assert_eq!(
+        ranges.counts_after(&[moved], &author).unwrap(),
+        (MAX_COMMENTS, 0)
+    );
+}
+
+#[test]
+fn a_new_thread_id_is_an_object_id_like_the_ranges_tracker_makes() {
+    let first = new_thread_id().unwrap();
+    let second = new_thread_id().unwrap();
+    for id in [&first, &second] {
+        assert_eq!(id.len(), 24);
+        assert!(id
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()));
+        assert!(id.ends_with("000001"));
+    }
+    assert_ne!(first, second);
+}
+
+#[test]
+fn history_ot_updates_report_comment_and_tracking_changes() {
+    let snapshot = json!({
+        "content": "abc def",
+        "comments": [{ "id": "c1", "ranges": [{ "pos": 4, "length": 3 }] }],
+    });
+    let (mut text, mut state) =
+        FormatState::from_join(DocFormat::HistoryOt, &snapshot, &Value::Null).unwrap();
+    let edit = |op: Value| seeded(op, None, "u2", 1);
+    let resolved = edit(json!([{ "commentId": "c1", "resolved": true }]));
+    let (steps, change) = state.decode_ranges(&text, &resolved, None).unwrap();
+    assert!(steps.is_empty());
+    assert_eq!(change, RangeChange::Reshaped);
+    assert_eq!(
+        decode_into(
+            &mut state,
+            &mut text,
+            &edit(json!([{ "textOperation": ["> ", 7] }]))
+        ),
+        RangeChange::Moved
+    );
+    assert_eq!(text, "> abc def");
+    assert_eq!(state.counts(), (1, 0));
+    let tracked = json!([{ "textOperation": [2, { "r": 3, "tracking": { "type": "delete", "userId": "u2", "ts": "2025-11-15T09:46:40.123Z" } }, 4] }]);
+    assert_eq!(
+        decode_into(&mut state, &mut text, &edit(tracked)),
+        RangeChange::Reshaped
+    );
+    assert_eq!((text.as_str(), state.counts()), (">  def", (1, 1)));
 }

@@ -18,29 +18,36 @@ import {
   IntegrationConnected,
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
-import { useOverleafImportStore } from "@/store/overleaf-import";
+import type { OverleafAccount, OverleafStatus } from "@/lib/overleaf";
+import { accountsOf, useOverleafImportStore } from "@/store/overleaf-import";
 import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
-import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
+import { SignInOptions } from "@/components/settings/browser-sign-in/SignInOptions";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 
 export function OverleafSection() {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const status = useOverleafImportStore((state) => state.status);
   const server = useOverleafImportStore((state) => state.server);
   const refreshStatus = useOverleafImportStore((state) => state.refreshStatus);
-  const signOut = useOverleafImportStore((state) => state.signOut);
   const signing = useOverleafImportStore((state) => state.phase === "signing-in");
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const accountsKey = accountsOf(status);
 
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
 
+  useEffect(() => {
+    if (accountsKey) setAdding(false);
+  }, [accountsKey]);
+
   const signedIn = status?.signedIn === true;
-  const host = serverHost(status?.server ?? server);
+  const current = status?.server ?? server;
+  const host = serverHost(current);
+  const accounts = accountsIn(status);
+  const tokenAccount = signedIn ? (status?.userId ?? null) : null;
 
   return (
     <IntegrationCard
@@ -48,49 +55,117 @@ export function OverleafSection() {
       title={"Overleaf"}
       description={t(($) => $.settings.integrations.overleaf.description)}
       actions={
-        signedIn ? (
+        signedIn && !adding ? (
           <Button
             variant="outline"
             size="sm"
-            data-testid="overleaf-settings-sign-out"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setFailed(false);
-              await signOut();
-              const after = useOverleafImportStore.getState();
-              setFailed(after.status?.signedIn === true && after.unsent === null);
-              setBusy(false);
-            }}
+            data-testid="overleaf-add-account"
+            disabled={signing}
+            onClick={() => setAdding(true)}
           >
-            {t(($) => $.settings.integrations.overleaf.signOut)}
+            {t(($) => $.settings.integrations.overleaf.addAccount)}
           </Button>
         ) : null
       }
     >
-      {signedIn ? (
-        <IntegrationConnected testId="overleaf-connected">
-          {status?.email
-            ? t(($) => $.settings.integrations.overleaf.signedInAs, { email: status.email, server: host })
-            : t(($) => $.settings.integrations.overleaf.signedIn, { server: host })}
-        </IntegrationConnected>
+      {accounts.map((account) => (
+        <AccountRow key={account.userId || "current"} account={account} host={host} />
+      ))}
+      {accounts.length > 1 ? <AccountPicker accounts={accounts} current={status?.userId ?? null} /> : null}
+      {signedIn && adding ? (
+        <div data-testid="overleaf-add-account-options" className="mt-3 space-y-4">
+          <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.addAccountHint)}</p>
+          <SignInOptions server={current} onSignedIn={() => void refreshStatus()} />
+          <Button variant="outline" size="sm" onClick={() => setAdding(false)}>
+            {t(($) => $.common.actions.cancel)}
+          </Button>
+        </div>
       ) : null}
-      {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError> : null}
       {signedIn ? null : (
-        <>
-          <OverleafServerField
-            className="mt-1"
-            disabled={signing}
-            onChanged={() => void refreshStatus()}
-          />
-          <BrowserSignIn fallback={<WindowSignIn />} />
-          <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
-        </>
+        <div className="mt-1 space-y-4">
+          <OverleafServerField disabled={signing} onChanged={() => void refreshStatus()} />
+          <SignInOptions server={current} onSignedIn={() => void refreshStatus()} />
+        </div>
       )}
-      <GitTokenField server={status?.server ?? server} />
+      <GitTokenField
+        key={`${current} ${tokenAccount}`}
+        server={current}
+        account={tokenAccount}
+        email={accounts.length > 1 ? (status?.email ?? null) : null}
+      />
       <LiveDeletesField />
       <OverleafSignOutQuestion />
     </IntegrationCard>
+  );
+}
+
+function accountsIn(status: OverleafStatus | null): OverleafAccount[] {
+  if (!status?.signedIn) return [];
+  if (status.accounts && status.accounts.length > 0) return status.accounts;
+  return [{ userId: status.userId ?? "", email: status.email }];
+}
+
+function AccountRow({ account, host }: Readonly<{ account: OverleafAccount; host: string }>) {
+  const { t } = useTranslation("settings");
+  const signOut = useOverleafImportStore((state) => state.signOut);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return (
+    <div data-testid="overleaf-account" className="flex flex-wrap items-center justify-between gap-2 py-1">
+      <IntegrationConnected testId="overleaf-connected">
+        {account.email
+          ? t(($) => $.settings.integrations.overleaf.signedInAs, { email: account.email, server: host })
+          : t(($) => $.settings.integrations.overleaf.signedIn, { server: host })}
+      </IntegrationConnected>
+      <Button
+        size="sm"
+        data-testid="overleaf-settings-sign-out"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setFailed(false);
+          const done = await signOut(false, account.userId || null);
+          setFailed(!done);
+          setBusy(false);
+        }}
+      >
+        {t(($) => $.settings.integrations.overleaf.signOut)}
+      </Button>
+      {failed ? (
+        <div className="basis-full">
+          <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AccountPicker({ accounts, current }: Readonly<{ accounts: OverleafAccount[]; current: string | null }>) {
+  const { t } = useTranslation("settings");
+  const chooseAccount = useOverleafImportStore((state) => state.chooseAccount);
+  const importing = useOverleafImportStore((state) => state.importing);
+  const label = t(($) => $.settings.integrations.overleaf.accountPick);
+  return (
+    <SettingsRow
+      testId="overleaf-account-picker"
+      className="mt-3 flex-wrap gap-y-2"
+      label={label}
+      description={t(($) => $.settings.integrations.overleaf.accountPickDescription)}
+      control={
+        <Select value={current ?? undefined} onValueChange={(value) => void chooseAccount(value)} disabled={importing}>
+          <SelectTrigger className="w-[220px]" aria-label={label} data-testid="overleaf-account-picker-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {accounts.map((account) => (
+              <SelectItem key={account.userId} value={account.userId}>
+                {account.email ?? account.userId}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      }
+    />
   );
 }
 
@@ -127,7 +202,11 @@ function LiveDeletesField() {
   );
 }
 
-function GitTokenField({ server }: Readonly<{ server: string }>) {
+function GitTokenField({
+  server,
+  account,
+  email,
+}: Readonly<{ server: string; account: string | null; email: string | null }>) {
   const { t } = useTranslation("settings");
   const [saved, setSaved] = useState<boolean | null>(null);
   const [draft, setDraft] = useState("");
@@ -136,7 +215,7 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
 
   useEffect(() => {
     let cancelled = false;
-    overleafGitTokenStatus(server)
+    overleafGitTokenStatus(server, account)
       .then((value) => {
         if (!cancelled) setSaved(value);
       })
@@ -144,7 +223,7 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
     return () => {
       cancelled = true;
     };
-  }, [server]);
+  }, [server, account]);
 
   const run = async (work: () => Promise<void>, next: boolean) => {
     setBusy(true);
@@ -163,7 +242,11 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
 
   return (
     <div data-testid="overleaf-git-token" className="mt-4 space-y-2 border-t pt-3">
-      <p className="text-xs font-medium text-foreground">{t(($) => $.settings.integrations.overleaf.gitTitle)}</p>
+      <p className="text-xs font-medium text-foreground">
+        {email
+          ? t(($) => $.settings.integrations.overleaf.gitTitleFor, { email })
+          : t(($) => $.settings.integrations.overleaf.gitTitle)}
+      </p>
       <p className="text-xs text-muted-foreground">
         {saved
           ? t(($) => $.settings.integrations.overleaf.gitSaved)
@@ -184,7 +267,7 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
         className="flex gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          void run(() => overleafGitTokenSet(server, draft.trim()), true);
+          void run(() => overleafGitTokenSet(server, draft.trim(), account), true);
         }}
       >
         <Input
@@ -207,7 +290,7 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
             variant="outline"
             data-testid="overleaf-git-token-clear"
             disabled={busy}
-            onClick={() => void run(() => overleafGitTokenClear(server), false)}
+            onClick={() => void run(() => overleafGitTokenClear(server, account), false)}
           >
             {t(($) => $.settings.integrations.overleaf.gitRemove)}
           </Button>
