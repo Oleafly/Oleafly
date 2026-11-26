@@ -40,8 +40,6 @@ export function fakePort(overrides: Partial<SnippetPort> = {}): SnippetPort {
     useCount: () => 0,
     recordUse: vi.fn(),
     readClipboard: () => Promise.resolve(""),
-    fieldHintsLeft: () => 0,
-    consumeFieldHint: vi.fn(),
     onAutoExpanded: vi.fn(),
     onHandTypedFraction: vi.fn(),
     reportSlowRegex: vi.fn(),

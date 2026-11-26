@@ -966,8 +966,6 @@ interface SettingsState {
   setSnippetsAuto: (v: boolean) => void;
   snippetsHint: boolean;
   setSnippetsHint: (v: boolean) => void;
-  snippetFieldHintsLeft: number;
-  setSnippetFieldHintsLeft: (v: number) => void;
   snippetAutoNoteShown: boolean;
   setSnippetAutoNoteShown: (v: boolean) => void;
   snippetFastMathTipShown: boolean;
@@ -1310,13 +1308,6 @@ function readChoice(key: string, choices: readonly number[], fallback: number): 
 
 const initialEditorKeymap = readEditorKeymap();
 
-const SNIPPET_FIELD_HINTS = 5;
-
-function readSnippetFieldHints(raw: string | number): number {
-  const value = Math.floor(Number(raw));
-  return Number.isFinite(value) ? Math.min(SNIPPET_FIELD_HINTS, Math.max(0, value)) : SNIPPET_FIELD_HINTS;
-}
-
 const PREF_DEFAULTS = {
   editorKeymap: "default" as EditorKeymapMode,
   vim: false,
@@ -1340,7 +1331,6 @@ const PREF_DEFAULTS = {
   snippetsTab: true,
   snippetsAuto: true,
   snippetsHint: true,
-  snippetFieldHintsLeft: SNIPPET_FIELD_HINTS,
   snippetAutoNoteShown: false,
   snippetFastMathTipShown: false,
   editorCursorBlinking: "blink" as EditorCursorBlinking,
@@ -1744,12 +1734,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setSnippetsHint: (v) => {
     saveLs("oleafly.snippets.hint", v ? "1" : "0");
     set({ snippetsHint: v });
-  },
-  snippetFieldHintsLeft: readSnippetFieldHints(ls("oleafly.snippets.fieldHints", String(SNIPPET_FIELD_HINTS))),
-  setSnippetFieldHintsLeft: (v) => {
-    const left = readSnippetFieldHints(v);
-    saveLs("oleafly.snippets.fieldHints", String(left));
-    set({ snippetFieldHintsLeft: left });
   },
   snippetAutoNoteShown: ls("oleafly.snippets.autoNote", "0") === "1",
   setSnippetAutoNoteShown: (v) => {

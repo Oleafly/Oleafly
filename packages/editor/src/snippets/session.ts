@@ -39,7 +39,6 @@ import {
   EMPTY_FIELD_CLASS,
   FIELD_CLASS,
   CARD_CLASS,
-  CARD_COMPACT_CLASS,
   CARD_COUNT_CLASS,
   CARD_KEY_CLASS,
   CARD_KEY_OFF_CLASS,
@@ -74,7 +73,6 @@ export interface SnippetSession {
   mirrors: SessionMirror[];
   active: number;
   exit: number;
-  hint?: boolean;
 }
 
 type Stack = readonly SnippetSession[];
@@ -448,8 +446,8 @@ function cardKey(key: string, label: string, extra = ""): HTMLElement {
   return wrapper;
 }
 
-function fieldCardDom(current: number, total: number, keys: boolean): HTMLElement {
-  const card = element("div", keys ? CARD_CLASS : `${CARD_CLASS} ${CARD_COMPACT_CLASS}`);
+function fieldCardDom(current: number, total: number): HTMLElement {
+  const card = element("div", CARD_CLASS);
   card.setAttribute("aria-hidden", "true");
   if (total <= MAX_STEPS) {
     const steps = element("span", CARD_STEPS_CLASS);
@@ -460,7 +458,6 @@ function fieldCardDom(current: number, total: number, keys: boolean): HTMLElemen
     card.append(steps);
   }
   card.append(element("span", CARD_COUNT_CLASS, editorMessage("snippets.field.position", { current, total })));
-  if (!keys) return card;
   const last = current === total;
   const list = element("span", CARD_KEYS_CLASS);
   list.append(
@@ -481,14 +478,12 @@ function fieldCard(state: EditorState): Tooltip | null {
   if (!stack || !top || !field || field.index === 0) return null;
   const numbered = top.fields.filter((candidate) => candidate.index !== 0);
   const current = numbered.indexOf(field) + 1;
-  const keys = stack[0].hint === true;
-  if (!keys && numbered.length < 2) return null;
   const pos = field.ranges[0].from;
-  const key = `${pos}:${current}:${numbered.length}:${keys}`;
+  const key = `${pos}:${current}:${numbered.length}`;
   let card = cards.get(key);
   if (!card) {
     cards.clear();
-    card = { pos, above: true, arrow: true, create: () => ({ dom: fieldCardDom(current, numbered.length, keys) }) };
+    card = { pos, above: true, arrow: true, create: () => ({ dom: fieldCardDom(current, numbered.length) }) };
     cards.set(key, card);
   }
   return card;
@@ -546,19 +541,13 @@ function offsetField(field: FieldSpec, offset: number): ActiveField {
   };
 }
 
-export function snippetSessionFor(
-  recordId: string,
-  rendered: Rendered,
-  offset: number,
-  hint: boolean,
-): SnippetSession {
+export function snippetSessionFor(recordId: string, rendered: Rendered, offset: number): SnippetSession {
   return {
     recordId,
     fields: rendered.fields.map((field) => offsetField(field, offset)),
     mirrors: rendered.mirrors.map((mirror) => ({ ...mirror, from: mirror.from + offset, to: mirror.to + offset })),
     active: 0,
     exit: rendered.exit + offset,
-    ...(hint ? { hint } : {}),
   };
 }
 

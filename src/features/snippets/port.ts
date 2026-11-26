@@ -56,11 +56,6 @@ export function createSnippetPort(getPath: () => string | null): SnippetPort {
     renderMathPreview: (source, mathLanguage) => services?.renderSnippetMath(source, mathLanguage) ?? null,
     editSnippet: (id) => openSnippetSettings(id),
     collectionName: (collection) => services?.snippetCollectionName(collection) ?? null,
-    fieldHintsLeft: () => useSettingsStore.getState().snippetFieldHintsLeft,
-    consumeFieldHint: () => {
-      const settings = useSettingsStore.getState();
-      settings.setSnippetFieldHintsLeft(settings.snippetFieldHintsLeft - 1);
-    },
     onAutoExpanded: (record) => services?.noteAutoExpansion(record),
     onHandTypedFraction: () => services?.offerFastMath(language()),
     reportSlowRegex: (record) => {

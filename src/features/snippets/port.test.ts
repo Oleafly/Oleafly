@@ -68,7 +68,6 @@ beforeEach(() => {
     snippetsTab: true,
     snippetsAuto: true,
     snippetsHint: true,
-    snippetFieldHintsLeft: 5,
     snippetAutoNoteShown: false,
     snippetFastMathTipShown: false,
   });
@@ -141,14 +140,6 @@ describe("createSnippetPort", () => {
     useSettingsStore.getState().setSnippetsAuto(false);
     useSettingsStore.getState().setSnippetsHint(false);
     expect(snippets.enabled()).toEqual({ list: true, tab: true, auto: false, hint: false });
-  });
-
-  it("counts down the field hints it shows", async () => {
-    const snippets = await port();
-    expect(snippets.fieldHintsLeft()).toBe(5);
-    snippets.consumeFieldHint();
-    snippets.consumeFieldHint();
-    expect(snippets.fieldHintsLeft()).toBe(3);
   });
 
   it("opens Settings at a snippet", async () => {

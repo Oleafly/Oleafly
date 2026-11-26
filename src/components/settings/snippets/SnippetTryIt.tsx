@@ -46,8 +46,6 @@ function tryPort(record: SnippetRecord, language: SnippetLanguage): SnippetPort 
     onAutoExpanded: () => undefined,
     onHandTypedFraction: () => undefined,
     reportSlowRegex: () => undefined,
-    fieldHintsLeft: () => 0,
-    consumeFieldHint: () => undefined,
   };
 }
 

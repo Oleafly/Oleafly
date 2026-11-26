@@ -42,8 +42,6 @@ function port(options: Options, files: ParsedSnippetFile[]): SnippetPort {
     useCount: () => 0,
     recordUse: () => undefined,
     readClipboard: async () => "",
-    fieldHintsLeft: () => 0,
-    consumeFieldHint: () => undefined,
     onAutoExpanded: (record) => {
       expanded.push(record.id);
     },

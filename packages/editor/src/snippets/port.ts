@@ -27,8 +27,6 @@ export interface SnippetPort {
   renderMathPreview?(source: string, language: SnippetLanguage): HTMLElement | null;
   editSnippet?(id: string): void;
   collectionName?(collection: string): string | null;
-  fieldHintsLeft(): number;
-  consumeFieldHint(): void;
   onAutoExpanded(record: SnippetRecord): void;
   onHandTypedFraction(): void;
   reportSlowRegex(record: SnippetRecord): void;

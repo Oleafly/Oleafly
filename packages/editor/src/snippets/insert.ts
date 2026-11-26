@@ -31,7 +31,6 @@ import {
   pushSnippetSession,
   snippetSessionFor,
   snippetSessionInstall,
-  snippetSessions,
 } from "./session";
 
 export type SnippetTriggerKind = "list" | "tab" | "auto" | "hint" | "palette";
@@ -119,10 +118,7 @@ function insertAtMain(view: EditorView, plan: InsertPlan, from: number, to: numb
   const state = view.state;
   const port = snippetPort(state);
   const rendered = renderBody(plan.nodes, renderEnv(state, state.selection.main, from, plan, port));
-  const topLevel = snippetSessions(state).length === 0;
-  const session = needsSnippetSession(rendered)
-    ? snippetSessionFor(plan.recordId, rendered, from, topLevel && port !== null && port.fieldHintsLeft() > 0)
-    : null;
+  const session = needsSnippetSession(rendered) ? snippetSessionFor(plan.recordId, rendered, from) : null;
   const flash = snippetFlashEffect(from, from + rendered.text.length);
   view.dispatch({
     changes: { from, to, insert: rendered.text },
@@ -138,7 +134,6 @@ function insertAtMain(view: EditorView, plan: InsertPlan, from: number, to: numb
     scrollIntoView: true,
   });
   scheduleFlashEnd(view, flash);
-  if (session?.hint) port?.consumeFieldHint();
   if (session && firstFieldOffersList(session)) startCompletion(view);
 }
 

@@ -6,7 +6,6 @@ export const ACTIVE_FIELD_CLASS = "cm-oleaflySnippetField-active";
 export const MIRROR_CLASS = "cm-oleaflySnippetMirror";
 export const EMPTY_FIELD_CLASS = "cm-oleaflySnippetPosition";
 export const CARD_CLASS = "cm-oleaflySnippetCard";
-export const CARD_COMPACT_CLASS = "cm-oleaflySnippetCard-compact";
 export const CARD_STEPS_CLASS = "cm-oleaflySnippetCard-steps";
 export const CARD_STEP_CLASS = "cm-oleaflySnippetCard-step";
 export const CARD_STEP_DONE_CLASS = "cm-oleaflySnippetCard-step-done";
@@ -74,11 +73,6 @@ export const snippetSessionTheme = EditorView.baseTheme({
     whiteSpace: "nowrap",
     userSelect: "none",
     pointerEvents: "none",
-  },
-  [`.cm-tooltip.${CARD_COMPACT_CLASS}`]: {
-    gap: "8px",
-    height: "2em",
-    padding: "0 10px",
   },
   [`.cm-tooltip.${CARD_CLASS} .cm-tooltip-arrow:before`]: {
     borderTopColor: "var(--border, #e5e5e5)",

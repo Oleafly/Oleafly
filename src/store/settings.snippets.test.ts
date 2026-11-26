@@ -13,13 +13,12 @@ beforeEach(() => {
 });
 
 describe("snippet preferences", () => {
-  it("starts with every way to fire a snippet on, five field hints and no tips shown", async () => {
+  it("starts with every way to fire a snippet on and no tips shown", async () => {
     expect(await restart()).toMatchObject({
       snippetsInList: true,
       snippetsTab: true,
       snippetsAuto: true,
       snippetsHint: true,
-      snippetFieldHintsLeft: 5,
       snippetAutoNoteShown: false,
       snippetFastMathTipShown: false,
     });
@@ -31,31 +30,17 @@ describe("snippet preferences", () => {
     settings.setSnippetsTab(false);
     settings.setSnippetsAuto(false);
     settings.setSnippetsHint(false);
-    settings.setSnippetFieldHintsLeft(2);
     settings.setSnippetAutoNoteShown(true);
     settings.setSnippetFastMathTipShown(true);
     expect(localStorage.getItem("oleafly.snippets.list")).toBe("0");
-    expect(localStorage.getItem("oleafly.snippets.fieldHints")).toBe("2");
     expect(await restart()).toMatchObject({
       snippetsInList: false,
       snippetsTab: false,
       snippetsAuto: false,
       snippetsHint: false,
-      snippetFieldHintsLeft: 2,
       snippetAutoNoteShown: true,
       snippetFastMathTipShown: true,
     });
-  });
-
-  it("counts field hints down to zero and never past the five it starts with", async () => {
-    const settings = useSettingsStore.getState();
-    settings.setSnippetFieldHintsLeft(-1);
-    expect(useSettingsStore.getState().snippetFieldHintsLeft).toBe(0);
-    settings.setSnippetFieldHintsLeft(9);
-    expect(useSettingsStore.getState().snippetFieldHintsLeft).toBe(5);
-    settings.setSnippetFieldHintsLeft(3.7);
-    expect(useSettingsStore.getState().snippetFieldHintsLeft).toBe(3);
-    expect((await restart({ "oleafly.snippets.fieldHints": "lots" })).snippetFieldHintsLeft).toBe(5);
   });
 
   it("resets the four switches as the Snippets section, leaving the one-time tips alone", () => {
