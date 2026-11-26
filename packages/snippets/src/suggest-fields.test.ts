@@ -143,6 +143,13 @@ See \citep[p.~3]{smith2020,doe2021} and \parencite{roe}.
     expect(shape(String.raw`\begin{tabular}{} x`, "latex")).toEqual([]);
   });
 
+  it("trims table rules only at a word boundary", () => {
+    const text = "\\begin{tabular}{l}\\topruled x \\\\\n\\bottomrule\n\\end{tabular}";
+    expect(shape(text, "latex").filter((field) => field.kind === "table-body")).toEqual([
+      { kind: "table-body", text: "\\topruled x \\\\", selected: false },
+    ]);
+  });
+
   it("keeps escaped braces inside a group", () => {
     expect(shape(String.raw`\caption{a \} b \{ c}`, "latex")).toEqual([{ kind: "caption", text: String.raw`a \} b \{ c`, selected: true }]);
   });
@@ -170,6 +177,19 @@ See @fig:ignition-map, @smith2020. and a@b.com`;
   });
 });
 
+describe("suggestFields reads headings line by line", () => {
+  it("takes a Typst heading after tabs and skips a bare marker", () => {
+    expect(shape("==\t Results\t\n=\n= \t", "typst")).toEqual([{ kind: "title", text: "Results", selected: true }]);
+  });
+
+  it("takes Markdown headings of one to six marks and drops closing marks", () => {
+    expect(shape("####### Seven\n## Results\t##\t\n#Tight\n# ##", "markdown")).toEqual([
+      { kind: "title", text: "Results", selected: true },
+      { kind: "title", text: "##", selected: true },
+    ]);
+  });
+});
+
 describe("suggestFields in Markdown and Notes", () => {
   const text = `# Field notes #
 ![Ignition map](figures/map.png "Map"){#fig:map}
@@ -187,6 +207,13 @@ As shown [@smith2020; @doe]. ![](empty.png)`;
     expect(shape(text, "markdown")).toEqual(expected);
     expect(shape(text, "notes")).toEqual(expected);
     expect(body(text, suggestFields(text, "markdown"))).toContain("](${3@image:figures/map.png}");
+  });
+
+  it("needs a path for an image and keeps the caption on one line", () => {
+    expect(shape("![no path]() and ![a](b) ![c\n](d)", "markdown")).toEqual([
+      { kind: "caption", text: "a", selected: true },
+      { kind: "path", text: "b", selected: true },
+    ]);
   });
 
   it("offers nothing for BibTeX", () => {

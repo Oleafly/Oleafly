@@ -12,6 +12,14 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function trimDashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === "-") start += 1;
+  while (end > start && value[end - 1] === "-") end -= 1;
+  return value.slice(start, end);
+}
+
 function camelWords(value: string): string[] {
   return value.split(/[-_\s]+/u).filter((word) => word.length > 0);
 }
@@ -19,7 +27,7 @@ function camelWords(value: string): string[] {
 export function applyHelper(helper: Helper, value: string): string {
   switch (helper) {
     case "slug":
-      return value.toLowerCase().replace(NOT_WORD, "-").replace(/^-+|-+$/gu, "");
+      return trimDashes(value.toLowerCase().replace(NOT_WORD, "-"));
     case "lower":
       return value.toLowerCase();
     case "upper":
@@ -98,7 +106,7 @@ function expandFormat(format: string, groups: Groups): string {
         index += bare[0].length;
         continue;
       }
-      const braced = /^\$\{(\d+)(?::((?:\\.|[^}])*))?\}/u.exec(format.slice(index));
+      const braced = /^\$\{(\d+)(?::((?:\\[\s\S]|[^}\\])*))?\}/u.exec(format.slice(index));
       if (braced) {
         const value = groups[Number(braced[1])] ?? "";
         out += braced[2] === undefined ? value : conditional(value, braced[2].replace(/\\(.)/gu, "$1"));

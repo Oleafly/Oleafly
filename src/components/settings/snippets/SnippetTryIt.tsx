@@ -119,7 +119,7 @@ export function SnippetTryIt({
       </div>
       <CodeField
         key={resetKey}
-        value={doc.replace("|", "")}
+        value={doc.slice(0, caret) + doc.slice(caret + 1)}
         onChange={ignoreChange}
         language={extensions}
         themeId={themeId}

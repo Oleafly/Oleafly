@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseBody } from "./body";
 import { type RenderEnv, renderBody } from "./render";
 
@@ -146,6 +146,14 @@ describe("renderBody", () => {
     expect(second).toBe(first);
     expect(random).toMatch(/^\d{6}$/u);
     expect(again).toBe(random);
+  });
+
+  it("skips random nibbles above 9 so every digit is equally likely", () => {
+    const fill = (value: number) => ((array: Uint8Array) => array.fill(value)) as unknown as typeof crypto.getRandomValues;
+    const spy = vi.spyOn(crypto, "getRandomValues").mockImplementationOnce(fill(0xff)).mockImplementationOnce(fill(0x21));
+    expect(render("$RANDOM").text).toBe("121212");
+    expect(spy).toHaveBeenCalledTimes(2);
+    spy.mockRestore();
   });
 
   it("handles missing file and project names", () => {

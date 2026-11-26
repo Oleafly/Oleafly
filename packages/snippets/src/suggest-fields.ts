@@ -35,18 +35,13 @@ const LATEX_GROUPS: ReadonlyArray<readonly [SuggestionKind, RegExp]> = [
 ];
 const TABULAR = new RegExp(String.raw`\\begin\{(tabular|longtable|array)\}${OPTIONAL_ARG}?\{`, "gu");
 const NUMBER = /(?<![\p{L}\p{N}_.\\])(?:\d+\.\d+|\.\d+|\d+)(?![\p{L}\p{N}_])/gu;
-const RULE_START = /^\s*(?:\\toprule\b)?\s*/u;
-const RULE_END = /\s*(?:\\bottomrule\b)?\s*$/u;
 const LABEL_KEY = /^[\p{L}\p{N}_:.-]+$/u;
 const TYPST_LABEL = /<([\p{L}\p{N}_:.-]+)>/dgu;
 const TYPST_CITE = /(?<![\p{L}\p{N}_])@([\p{L}\p{N}_][\p{L}\p{N}_:.-]*)/dgu;
 const TYPST_CAPTION = /caption:\s*\[/gu;
 const TYPST_IMAGE = /image\(\s*"([^"\n]*)"/dgu;
-const TYPST_HEADING = /^=+[ \t]+(.+?)[ \t]*$/dgmu;
-const MARKDOWN_IMAGE = /!\[([^\]\n]*)\]\(([^)\s]+)/dgu;
 const MARKDOWN_CITE = /\[@([\p{L}\p{N}_][\p{L}\p{N}_:.#$%&+?<>~/-]*)/dgu;
 const MARKDOWN_LABEL = /\{#([\p{L}\p{N}_:.-]+)/dgu;
-const MARKDOWN_HEADING = /^#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/dgmu;
 const IMAGE_CONTEXT = /(?:\\includegraphics\*?(?:\[[^\]]*\])?\{|image\(\s*"|\]\()$/u;
 
 interface Draft {
@@ -85,6 +80,83 @@ function captured(text: string, pattern: RegExp, kind: SuggestionKind, group: nu
   return drafts;
 }
 
+const WHITESPACE = /\s/u;
+const WORD_CHARACTER = /\w/u;
+
+function isBlank(char: string | undefined): boolean {
+  return char === " " || char === "\t";
+}
+
+function isSpace(char: string | undefined): boolean {
+  return char !== undefined && WHITESPACE.test(char);
+}
+
+function headingTitles(text: string, marker: string, maxMarks: number, closingMarks: boolean): Draft[] {
+  const drafts: Draft[] = [];
+  let lineStart = 0;
+  for (;;) {
+    const newline = text.indexOf("\n", lineStart);
+    const lineEnd = newline < 0 ? text.length : newline;
+    let from = lineStart;
+    while (from < lineEnd && text[from] === marker) from += 1;
+    const marks = from - lineStart;
+    if (marks > 0 && marks <= maxMarks && isBlank(text[from])) {
+      while (from < lineEnd && isBlank(text[from])) from += 1;
+      let to = lineEnd;
+      while (to > from && isBlank(text[to - 1])) to -= 1;
+      if (closingMarks) {
+        let hashes = to;
+        while (hashes > from && text[hashes - 1] === marker) hashes -= 1;
+        if (hashes < to && hashes > from && isBlank(text[hashes - 1])) {
+          to = hashes;
+          while (to > from && isBlank(text[to - 1])) to -= 1;
+        }
+      }
+      if (to > from) drafts.push({ kind: "title", from, to });
+    }
+    if (newline < 0) return drafts;
+    lineStart = newline + 1;
+  }
+}
+
+function markdownImages(text: string): Draft[] {
+  const drafts: Draft[] = [];
+  let start = text.indexOf("![");
+  while (start >= 0) {
+    const open = start + 2;
+    let close = open;
+    while (close < text.length && text[close] !== "]" && text[close] !== "\n") close += 1;
+    let end = close + 2;
+    if (text[close] === "]" && text[close + 1] === "(") {
+      while (end < text.length && text[end] !== ")" && !isSpace(text[end])) end += 1;
+    }
+    if (end > close + 2) {
+      if (close > open) drafts.push({ kind: "caption", from: open, to: close });
+      drafts.push({ kind: "path", from: close + 2, to: end });
+      start = text.indexOf("![", end);
+    } else {
+      start = text.indexOf("![", close);
+    }
+  }
+  return drafts;
+}
+
+function tableBody(text: string, from: number, to: number): Draft | null {
+  let start = from;
+  while (start < to && isSpace(text[start])) start += 1;
+  if (text.startsWith("\\toprule", start) && !WORD_CHARACTER.test(text[start + 8] ?? "")) {
+    start += 8;
+    while (start < to && isSpace(text[start])) start += 1;
+  }
+  let stop = to;
+  while (stop > start && isSpace(text[stop - 1])) stop -= 1;
+  if (stop - start >= 11 && text.startsWith("\\bottomrule", stop - 11)) {
+    stop -= 11;
+    while (stop > start && isSpace(text[stop - 1])) stop -= 1;
+  }
+  return stop > start ? { kind: "table-body", from: start, to: stop } : null;
+}
+
 function trimKey(drafts: Draft[], text: string): Draft[] {
   return drafts.map((draft) => {
     let to = draft.to;
@@ -114,10 +186,8 @@ function latexDrafts(text: string): { drafts: Draft[]; blocked: Draft[] } {
     others.push({ kind: "column-spec", from, to });
     const end = text.indexOf(`\\end{${match[1]}}`, to);
     if (end < 0) continue;
-    const inner = text.slice(to + 1, end);
-    const start = to + 1 + (RULE_START.exec(inner)?.[0].length ?? 0);
-    const stop = end - (RULE_END.exec(inner)?.[0].length ?? 0);
-    if (stop > start) bodies.push({ kind: "table-body", from: start, to: stop });
+    const body = tableBody(text, to + 1, end);
+    if (body) bodies.push(body);
   }
   const numbers = [...text.matchAll(NUMBER)].map((match): Draft => ({
     kind: "number",
@@ -136,17 +206,16 @@ function typstDrafts(text: string): Draft[] {
     ...labelKeys(captured(text, TYPST_LABEL, "label", 1), text),
     ...cites,
     ...captured(text, TYPST_IMAGE, "path", 1),
-    ...captured(text, TYPST_HEADING, "title", 1),
+    ...headingTitles(text, "=", Number.POSITIVE_INFINITY, false),
   ];
 }
 
 function markdownDrafts(text: string): Draft[] {
   return [
-    ...captured(text, MARKDOWN_IMAGE, "caption", 1),
-    ...captured(text, MARKDOWN_IMAGE, "path", 2),
+    ...markdownImages(text),
     ...trimKey(captured(text, MARKDOWN_CITE, "cite", 1), text),
     ...labelKeys(captured(text, MARKDOWN_LABEL, "label", 1), text),
-    ...captured(text, MARKDOWN_HEADING, "title", 1),
+    ...headingTitles(text, "#", 6, true),
   ];
 }
 

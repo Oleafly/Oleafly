@@ -60,8 +60,17 @@ function withoutExtension(name: string): string {
 }
 
 function randomDigits(): string {
-  const [value] = crypto.getRandomValues(new Uint32Array(1));
-  return String(value % 1_000_000).padStart(6, "0");
+  const bytes = new Uint8Array(16);
+  let digits = "";
+  while (digits.length < 6) {
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      for (const nibble of [byte & 0x0f, byte >> 4]) {
+        if (nibble < 10 && digits.length < 6) digits += String(nibble);
+      }
+    }
+  }
+  return digits;
 }
 
 function variableValue(name: string, format: string | undefined, env: RenderEnv): string {
