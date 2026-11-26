@@ -52,17 +52,29 @@ function LockedMode({ mode, hint }: Readonly<{ mode: CollabEditMode; hint: strin
   const { t } = useTranslation(["collab"]);
   const id = useId();
   const Icon = mode === "editing" ? PencilLine : MessageSquareDiff;
+  const label = modeLabel(mode, t);
   return (
-    <Tooltip label={hint} side="bottom" wide>
+    <Tooltip
+      label={
+        <span className="flex flex-col gap-0.5 text-left">
+          <span>{label}</span>
+          <span className="font-normal text-muted-foreground">{hint}</span>
+        </span>
+      }
+      side="bottom"
+      wide
+    >
       <output
         aria-labelledby={`${id}mode ${id}hint`}
         className={cn(
-          "flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium text-foreground",
+          "flex size-7 items-center justify-center rounded-md border border-border text-foreground",
           mode === "suggesting" ? "bg-primary/10" : "bg-muted/40",
         )}
       >
-        <Icon aria-hidden className="size-3.5" />
-        <span id={`${id}mode`}>{modeLabel(mode, t)}</span>
+        <Icon aria-hidden className="size-4" />
+        <span id={`${id}mode`} className="sr-only">
+          {label}
+        </span>
       </output>
       <span id={`${id}hint`} hidden>
         {hint}

@@ -1668,7 +1668,7 @@
     "resume": "ライブ編集を再開",
     "reconnectNow": "今すぐ再接続",
     "open": "Overleaf で開く",
-    "share": "Overleaf で共有…",
+    "share": "Overleaf で共有",
     "signIn": "サインイン…",
     "signInAs": "{{email}} でサインイン",
     "reconnectingIn": "{{seconds}} 秒後にもう一度試します。",

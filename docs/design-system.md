@@ -166,6 +166,11 @@ Another program's own icon, such as a browser in a picker, is an `AppIcon`
 from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
 window until it has one. `size="sm"` fits a menu row.
 
+A Lucide icon that is newer than the pinned lucide-react goes in
+`ui/extra-icons.ts`, made with `createLucideIcon` from the upstream SVG so it
+takes the same props and class names as the others. Delete it there once
+lucide-react ships it. Chat uses `MessagesCircle` from there.
+
 A tile that starts something, with an icon, a name and a short hint, is a
 `TileButton` from `ui/tile-button.tsx`, such as a new note's starters or the
 browsers in the sign-in panel. `className` changes how it is arranged.

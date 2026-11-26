@@ -1894,13 +1894,11 @@
       "signInDescription": "Usa la cuenta de {{server}} con la que un perfil de navegador de este equipo ya tiene la sesión iniciada.",
       "copyAction": "Importar",
       "copying": "Importando…",
-      "notSignedIn_one": "Se copió {{count}} cookie de {{browser}}, pero no inició tu sesión. Inicia sesión directamente.",
-      "notSignedIn_many": "Se copiaron {{count}} cookies de {{browser}}, pero no iniciaron tu sesión. Inicia sesión directamente.",
-      "notSignedIn_other": "Se copiaron {{count}} cookies de {{browser}}, pero no iniciaron tu sesión. Inicia sesión directamente.",
       "from": "Desde",
       "noCookies": "Aún sin cookies",
       "sameAccount": "{{profile}} tiene la sesión iniciada como {{account}}, que Oleafly ya usa. Elige otro perfil o inicia sesión primero con tu otra cuenta en ese navegador.",
-      "orExisting": "o usa un inicio de sesión que ya tengas"
+      "orExisting": "o usa un inicio de sesión que ya tengas",
+      "noSavedSignIn": "{{profile}} no tiene una sesión guardada en {{server}}, así que las cookies copiadas no iniciaron tu sesión. Si tienes la sesión iniciada ahí, puede que el navegador solo la guarde hasta que se cierre. Usa el mosaico de {{browser}} en su lugar."
     },
     "zotero": {
       "apiKeyHint": "Para conseguir una clave: inicia sesión en <siteLink>zotero.org</siteLink>, abre tu <keyLink>página de claves de API</keyLink> para crear una y copia tu ID numérico de usuario de esa misma página.",

@@ -1882,12 +1882,11 @@
       "signInDescription": "Bu bilgisayardaki bir tarayıcı profilinde zaten oturumu açık olan {{server}} hesabını kullanır.",
       "copyAction": "İçe aktar",
       "copying": "İçe aktarılıyor…",
-      "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
-      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
       "from": "Kaynak",
       "noCookies": "Henüz cookie yok",
       "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın.",
-      "orExisting": "ya da var olan bir oturumu kullanın"
+      "orExisting": "ya da var olan bir oturumu kullanın",
+      "noSavedSignIn": "{{profile}} profilinde {{server}} için kayıtlı bir oturum yok, bu yüzden kopyalanan cookie'ler oturumunuzu açmadı. Orada oturumunuz açıksa tarayıcı oturumu yalnızca kapanana kadar tutuyor olabilir. Bunun yerine {{browser}} kutucuğunu kullanın."
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",

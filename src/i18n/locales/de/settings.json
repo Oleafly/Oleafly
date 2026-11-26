@@ -1882,12 +1882,11 @@
       "signInDescription": "Verwendet das Konto auf {{server}}, mit dem ein Browserprofil auf diesem Computer bereits angemeldet ist.",
       "copyAction": "Importieren",
       "copying": "Wird importiert...",
-      "notSignedIn_one": "{{count}} Cookie aus {{browser}} kopiert, aber es hat Sie nicht angemeldet. Melden Sie sich stattdessen an.",
-      "notSignedIn_other": "{{count}} Cookies aus {{browser}} kopiert, aber sie haben Sie nicht angemeldet. Melden Sie sich stattdessen an.",
       "from": "Von",
       "noCookies": "Noch keine Cookies",
       "sameAccount": "{{profile}} ist als {{account}} angemeldet, und dieses Konto verwendet Oleafly bereits. Wählen Sie ein anderes Profil, oder melden Sie sich in diesem Browser zuerst mit Ihrem anderen Konto an.",
-      "orExisting": "oder eine vorhandene Anmeldung verwenden"
+      "orExisting": "oder eine vorhandene Anmeldung verwenden",
+      "noSavedSignIn": "{{profile}} hat keine gespeicherte Anmeldung für {{server}}, daher haben die kopierten Cookies Sie nicht angemeldet. Wenn Sie dort angemeldet sind, behält der Browser die Anmeldung vielleicht nur bis zum Schließen. Verwenden Sie stattdessen die Kachel {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>zotero.org</siteLink> an, öffnen Sie Ihre <keyLink>Seite für API-Schlüssel</keyLink>, um einen Schlüssel zu erstellen, und kopieren Sie Ihre numerische Benutzer-ID von derselben Seite.",

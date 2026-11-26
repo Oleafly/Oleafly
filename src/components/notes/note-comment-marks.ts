@@ -27,7 +27,7 @@ const NONE: PlacedComments = { spans: [], selected: null, draft: null };
 const commentKey = new PluginKey<CommentState>("noteCommentMarks");
 const SVG = "http://www.w3.org/2000/svg";
 
-const RANGE_STYLE = `${cssText(commentMarkStyle(false))}; border-radius: 2px 2px 0 0`;
+const RANGE_STYLE = cssText(commentMarkStyle(false));
 const ACTIVE_STYLE = cssText(commentMarkStyle(true));
 
 function clamp(doc: ProseMirrorNode, pos: number): number {

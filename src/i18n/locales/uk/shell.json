@@ -1773,7 +1773,7 @@
     "resume": "Відновити редагування наживо",
     "reconnectNow": "Підключитися зараз",
     "open": "Відкрити в Overleaf",
-    "share": "Поділитися в Overleaf…",
+    "share": "Поділитися в Overleaf",
     "signIn": "Увійти…",
     "signInAs": "Увійти як {{email}}",
     "reconnectingIn": "Нова спроба через {{seconds}} с.",

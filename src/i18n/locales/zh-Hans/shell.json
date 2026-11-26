@@ -1668,7 +1668,7 @@
     "resume": "恢复实时编辑",
     "reconnectNow": "立即重新连接",
     "open": "在 Overleaf 中打开",
-    "share": "在 Overleaf 上共享…",
+    "share": "在 Overleaf 上共享",
     "signIn": "登录…",
     "signInAs": "以 {{email}} 身份登录",
     "reconnectingIn": "{{seconds}} 秒后重试。",

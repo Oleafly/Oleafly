@@ -264,11 +264,8 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
         })
         .collect();
     let header = app_cookie_header(&cookies, &base);
-    // The copied cookies were only a way in. The session is saved encrypted
-    // below, nothing else in the app reads the webview's copy, and WebKit
-    // would keep it on disk unencrypted until it expires.
-    for at in copied_cookies(&cookies, &base) {
-        let _ = webview.delete_cookie(stored[at].clone());
+    if let Ok(url) = tauri::Url::parse(&base) {
+        crate::browser_cookie_import::clear_site_cookies(&webview, &url);
     }
     let header = header?;
     let signed_in = signin::session_from_cookie(&base, header)
@@ -281,20 +278,6 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
             }
         })?;
     keep_session(base, signed_in).await
-}
-
-fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
-    let Ok(url) = tauri::Url::parse(base) else {
-        return Vec::new();
-    };
-    cookies
-        .iter()
-        .enumerate()
-        .filter(|(_, (_, _, domain, path, secure))| {
-            session::cookie_applies(domain.as_deref(), path.as_deref(), *secure, &url)
-        })
-        .map(|(at, _)| at)
-        .collect()
 }
 
 fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String> {

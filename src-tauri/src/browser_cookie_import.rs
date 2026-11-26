@@ -104,6 +104,12 @@ pub async fn import_browser_cookies<R: Runtime>(
     .map_err(|error| error.to_string())?;
 
     let cookies = reader::unique_cookies(cookies);
+    if let Some(site) = domain
+        .as_deref()
+        .and_then(|site| tauri::Url::parse(&format!("https://{site}/")).ok())
+    {
+        clear_site_cookies(&webview, &site);
+    }
     let runtime_cookies = cookies
         .iter()
         .map(runtime_cookie)
@@ -226,17 +232,58 @@ fn require_native_confirmation(confirmed: bool) -> Result<(), CookieImportError>
     }
 }
 
+/// wry hands `Cookie::domain()` to WebKit, and the cookie crate drops one
+/// leading dot there, so a site-wide `.example.com` needs a second dot to
+/// arrive as itself.
+fn wry_domain(domain: &str) -> String {
+    if domain.starts_with('.') {
+        format!(".{domain}")
+    } else {
+        domain.to_string()
+    }
+}
+
+/// A stored cookie reads back without its leading dot, so it is deleted as
+/// both the host-only and the site-wide cookie of that name.
+fn deletion_forms(
+    cookie: &tauri::webview::cookie::Cookie<'_>,
+) -> [tauri::webview::cookie::Cookie<'static>; 2] {
+    let bare = cookie
+        .domain()
+        .unwrap_or_default()
+        .trim_start_matches('.')
+        .to_string();
+    let mut host = cookie.clone().into_owned();
+    let mut site = host.clone();
+    site.set_domain(wry_domain(&format!(".{bare}")));
+    host.set_domain(bare);
+    [host, site]
+}
+
+pub(crate) fn clear_site_cookies<R: Runtime>(webview: &Webview<R>, url: &tauri::Url) {
+    let Ok(stored) = webview.cookies() else {
+        return;
+    };
+    for cookie in stored.iter().filter(|cookie| {
+        oleafly_online::session::cookie_applies(
+            cookie.domain(),
+            cookie.path(),
+            cookie.secure().unwrap_or(false),
+            url,
+        )
+    }) {
+        for form in deletion_forms(cookie) {
+            let _ = webview.delete_cookie(form);
+        }
+    }
+}
+
 fn runtime_cookie(
     imported: &ImportedCookie,
 ) -> Result<tauri::webview::cookie::Cookie<'static>, CookieImportError> {
-    let runtime_domain = if imported.domain.starts_with('.') {
-        format!(".{}", imported.domain)
-    } else {
-        imported.domain.clone()
-    };
     let mut builder =
         tauri::webview::cookie::Cookie::build((imported.name.clone(), imported.value.clone()))
-            .domain(runtime_domain)
+            .domain(wry_domain(&imported.domain))
             .path(imported.path.clone())
             .secure(imported.secure)
             .http_only(imported.http_only);
@@ -776,6 +823,29 @@ mod tests {
             until_stored(within, || Err(CookieImportError::CookieApplyFailed)).await,
             Err(CookieImportError::CookieApplyFailed)
         );
+    }
+
+    #[test]
+    fn a_stored_cookie_is_deleted_as_both_its_host_and_its_site_form() {
+        let site_wide = runtime_cookie(&imported("site_session", "SECRETVALUE", None)).unwrap();
+        let read_back = |domain: &str| {
+            tauri::webview::cookie::Cookie::build(("site_session", "SECRETVALUE"))
+                .domain(domain.to_string())
+                .path("/")
+                .build()
+        };
+        for cookie in [
+            site_wide,
+            read_back(".latex.example"),
+            read_back("latex.example"),
+        ] {
+            let forms = super::deletion_forms(&cookie);
+            assert_eq!(forms[0].domain(), Some("latex.example"));
+            assert_eq!(forms[1].domain(), Some(".latex.example"));
+            assert!(forms
+                .iter()
+                .all(|form| form.name() == "site_session" && form.path() == Some("/")));
+        }
     }
 
     #[test]

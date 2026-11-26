@@ -1738,7 +1738,7 @@
     "resume": "Retomar a edição ao vivo",
     "reconnectNow": "Reconectar agora",
     "open": "Abrir no Overleaf",
-    "share": "Compartilhar no Overleaf…",
+    "share": "Compartilhar no Overleaf",
     "signIn": "Fazer login…",
     "signInAs": "Fazer login como {{email}}",
     "reconnectingIn": "Tentando de novo em {{seconds}} s.",

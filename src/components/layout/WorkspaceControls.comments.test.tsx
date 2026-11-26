@@ -52,7 +52,7 @@ describe("Comments rail tab", () => {
     const order = railOrder(container);
     expect(order[order.indexOf("rail-collab") + 1]).toBe("rail-comments");
     const button = screen.getByRole("button", { name: enCollab.comments.title });
-    expect(button.querySelector("svg.lucide-message-square")).toBeInTheDocument();
+    expect(button.querySelector("svg.lucide-message-square-quote")).toBeInTheDocument();
   });
 
   it("shows the same dot as Live collaboration for unseen comments", () => {

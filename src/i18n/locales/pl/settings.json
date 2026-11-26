@@ -1906,14 +1906,11 @@
       "signInDescription": "Używa konta na {{server}}, na które zalogowano się już w profilu przeglądarki na tym komputerze.",
       "copyAction": "Importuj",
       "copying": "Importowanie...",
-      "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_few": "Skopiowano {{count}} pliki cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_many": "Skopiowano {{count}} plików cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
       "from": "Skąd",
       "noCookies": "Brak plików cookie",
       "sameAccount": "W profilu {{profile}} zalogowano się jako {{account}}, a Oleafly już używa tego konta. Wybierz inny profil albo najpierw zaloguj się w tej przeglądarce na drugie konto.",
-      "orExisting": "albo użyj logowania, które już masz"
+      "orExisting": "albo użyj logowania, które już masz",
+      "noSavedSignIn": "Profil {{profile}} nie ma zapisanego logowania do {{server}}, więc skopiowane pliki cookie Cię nie zalogowały. Jeśli jesteś tam zalogowany, przeglądarka może przechowywać logowanie tylko do zamknięcia. Zamiast tego użyj kafelka {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Aby zdobyć klucz: zaloguj się w <siteLink>zotero.org</siteLink>, otwórz swoją <keyLink>stronę klucza API</keyLink>, aby utworzyć klucz, i skopiuj z tej samej strony swój liczbowy identyfikator użytkownika.",

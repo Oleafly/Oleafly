@@ -85,13 +85,11 @@ export function ImportCookies({ server, disabled = false, onSignedIn }: Readonly
   const domain = serverHostname(server);
   const { profiles, detect } = useBrowserProfiles();
   const [shown, setShown] = useState<"import" | "manage" | null>(null);
-  const [outcome, setOutcome] = useState<string | null>(null);
 
   if (!firstImportable(profiles) || !domain) return null;
 
   const open = () => {
     setShown("import");
-    setOutcome(null);
     void detect();
   };
 
@@ -110,15 +108,9 @@ export function ImportCookies({ server, disabled = false, onSignedIn }: Readonly
         }
         label={t(($) => $.settings.integrations.cookies.label)}
         description={t(($) => $.settings.integrations.cookies.signInDescription, { server: domain })}
-        details={
-          outcome ? (
-            <output className="mt-2 block select-text text-xs text-muted-foreground">{outcome}</output>
-          ) : null
-        }
         control={
           <Button
             type="button"
-            variant="outline"
             size="sm"
             data-testid="browser-sign-in-copy"
             disabled={disabled}
@@ -139,10 +131,6 @@ export function ImportCookies({ server, disabled = false, onSignedIn }: Readonly
             setShown(null);
             onSignedIn(status);
           }}
-          onNotSignedIn={(message) => {
-            setShown(null);
-            setOutcome(message);
-          }}
         />
       ) : null}
       <ManageSignInsDialog
@@ -158,14 +146,13 @@ export function ImportCookies({ server, disabled = false, onSignedIn }: Readonly
 type ImportOutcome =
   | { kind: "cancelled" }
   | { kind: "failed"; error: unknown }
-  | { kind: "refused"; error: unknown; imported: number }
+  | { kind: "refused"; error: unknown }
   | { kind: "repeated"; account: string }
   | { kind: "signed-in"; status: OverleafStatus };
 
 async function importSignIn(server: string, domain: string, { browser, profile }: BrowserProfile): Promise<ImportOutcome> {
-  let imported: number;
   try {
-    ({ imported } = await importBrowserCookies({ browser, profile, domain }));
+    await importBrowserCookies({ browser, profile, domain });
   } catch (error) {
     if (describeError(error) === COOKIE_IMPORT_CANCELLED) return { kind: "cancelled" };
     void logError("copy browser cookies", error);
@@ -178,7 +165,7 @@ async function importSignIn(server: string, domain: string, { browser, profile }
     return account === null ? { kind: "signed-in", status } : { kind: "repeated", account };
   } catch (error) {
     void logError("sign in with copied browser cookies", error);
-    return { kind: "refused", error, imported };
+    return { kind: "refused", error };
   }
 }
 
@@ -189,7 +176,6 @@ function ImportCookiesDialog({
   onClose,
   onManage,
   onSignedIn,
-  onNotSignedIn,
 }: Readonly<{
   server: string;
   domain: string;
@@ -197,7 +183,6 @@ function ImportCookiesDialog({
   onClose(): void;
   onManage(): void;
   onSignedIn(status: OverleafStatus): void;
-  onNotSignedIn(message: string): void;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
   const icons = useBrowserIcons();
@@ -220,10 +205,11 @@ function ImportCookiesDialog({
         onSignedIn(outcome.status);
         break;
       case "refused":
-        onNotSignedIn(
+        setProblem(
           isOverleafError(outcome.error, "browser_sign_in_failed")
-            ? t(($) => $.settings.integrations.cookies.notSignedIn, {
-                count: outcome.imported,
+            ? t(($) => $.settings.integrations.cookies.noSavedSignIn, {
+                profile: `${chosen.browserName} ${chosen.profileName}`,
+                server: domain,
                 browser: chosen.browserName,
               })
             : describeError(outcome.error),

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { lazy } from "@/lib/preloadable";
-import { Files, type LucideIcon, MessageSquare, MessagesSquare, RadioTower } from "lucide-react";
+import { Files, type LucideIcon, MessageSquareQuote, RadioTower } from "lucide-react";
+import { MessagesCircle } from "@/components/ui/extra-icons";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";
@@ -298,7 +299,7 @@ export function commentsRailLabel(): string {
 
 export function CommentsRailIcon({ className }: Readonly<{ className?: string }>) {
   const unread = useCommentsRail((state) => state.unread);
-  return <UnreadRailIcon icon={MessageSquare} unread={unread} dot="comments-rail-dot" className={className} />;
+  return <UnreadRailIcon icon={MessageSquareQuote} unread={unread} dot="comments-rail-dot" className={className} />;
 }
 
 export function ChatPanel() {
@@ -315,7 +316,7 @@ export function chatRailLabel(): string {
 
 export function ChatRailIcon({ className }: Readonly<{ className?: string }>) {
   const unread = useChatRail((state) => state.unread);
-  return <UnreadRailIcon icon={MessagesSquare} unread={unread} dot="chat-rail-dot" className={className} />;
+  return <UnreadRailIcon icon={MessagesCircle} unread={unread} dot="chat-rail-dot" className={className} />;
 }
 
 export function SharedWithYouSlot() {

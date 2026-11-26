@@ -1870,11 +1870,11 @@
       "signInDescription": "使用這台電腦上某個瀏覽器設定檔中已登入的 {{server}} 帳號。",
       "copyAction": "匯入",
       "copying": "正在匯入…",
-      "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。",
       "from": "來源",
       "noCookies": "還沒有 Cookie",
       "sameAccount": "{{profile}} 登入的是 {{account}}，而 Oleafly 已在使用這個帳號。請選擇其他設定檔，或先在該瀏覽器中登入另一個帳號。",
-      "orExisting": "或使用已有的登入"
+      "orExisting": "或使用已有的登入",
+      "noSavedSignIn": "{{profile}} 沒有儲存 {{server}} 的登入，因此複製的 Cookie 無法讓你登入。如果你在那裡已登入，瀏覽器可能只在關閉前保留該登入。請改用 {{browser}} 圖塊。"
     },
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",

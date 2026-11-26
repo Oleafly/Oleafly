@@ -40,7 +40,8 @@ vi.mock("@/features/collab/sharing/CollabActivityKeeper", () => ({
 
 import { useLiveBackend } from "@/lib/collab-live-bridge";
 import { useCollabRail } from "./collab-rail";
-import { CollabActivitySlot, CommentsPanel, CommentsRailIcon, commentsRailLabel } from "./CollabSlots";
+import { ChatRailIcon, CollabActivitySlot, CommentsPanel, CommentsRailIcon, commentsRailLabel } from "./CollabSlots";
+import { useChatRail } from "./chat-rail";
 import { useCommentsRail } from "./comments-rail";
 
 async function settle() {
@@ -61,6 +62,7 @@ afterEach(() => {
   useLiveBackend.setState({ projectId: null, backend: null, overleaf: null });
   useCollabRail.setState({ visible: false, unread: false });
   useCommentsRail.setState({ visible: false, unread: false });
+  useChatRail.setState({ unread: false });
 });
 
 describe("comment slots", () => {
@@ -95,11 +97,19 @@ describe("comment slots", () => {
 
   it("dot the rail icon and name the unseen activity", () => {
     const { container } = render(<CommentsRailIcon className="size-4" />);
-    expect(container.querySelector("svg.lucide-message-square")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-message-square-quote")).toBeInTheDocument();
     expect(screen.queryByTestId("comments-rail-dot")).not.toBeInTheDocument();
     expect(commentsRailLabel()).toBe(enCollab.comments.title);
     act(() => useCommentsRail.setState({ unread: true }));
     expect(screen.getByTestId("comments-rail-dot")).toBeInTheDocument();
     expect(commentsRailLabel()).toBe(enCollab.comments.titleUnread);
+  });
+
+  it("draw chat with round bubbles and dot it for unseen messages", () => {
+    const { container } = render(<ChatRailIcon className="size-4" />);
+    expect(container.querySelector("svg.lucide-messages-circle")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-rail-dot")).not.toBeInTheDocument();
+    act(() => useChatRail.setState({ unread: true }));
+    expect(screen.getByTestId("chat-rail-dot")).toBeInTheDocument();
   });
 });

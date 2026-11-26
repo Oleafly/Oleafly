@@ -1882,12 +1882,11 @@
       "signInDescription": "Uses the {{server}} account that a browser profile on this computer is already signed in to.",
       "copyAction": "Import",
       "copying": "Importing…",
-      "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",
-      "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead.",
       "from": "From",
       "noCookies": "No cookies yet",
       "sameAccount": "{{profile}} is signed in as {{account}}, which Oleafly already uses. Choose another profile, or sign in to your other account in that browser first.",
-      "orExisting": "or use a sign-in you already have"
+      "orExisting": "or use a sign-in you already have",
+      "noSavedSignIn": "{{profile}} has no saved sign-in for {{server}}, so the copied cookies didn't sign you in. If you're signed in there, the browser may only keep the sign-in until it closes. Use the {{browser}} tile instead."
     },
     "zotero": {
       "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",

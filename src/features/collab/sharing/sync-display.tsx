@@ -67,6 +67,37 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   engineSpent: "text-destructive",
 };
 
+const SYNC_DOTS: Readonly<Partial<Record<SyncState, string>>> = {
+  syncing: "bg-primary motion-safe:animate-pulse",
+  offline: "bg-amber-500",
+  reconnecting: "bg-amber-500 motion-safe:animate-pulse",
+  signedOut: "bg-destructive",
+  suspended: "bg-destructive",
+  accessEnded: "bg-destructive",
+  removed: "bg-destructive",
+  projectDeleted: "bg-destructive",
+  archived: "bg-muted-foreground",
+  paused: "bg-muted-foreground",
+  serverRemoved: "bg-destructive",
+  clientTooOld: "bg-destructive",
+  serverTooOld: "bg-destructive",
+  serverChanged: "bg-destructive",
+  failed: "bg-destructive",
+  engineSpent: "bg-destructive",
+};
+
+export function SyncStateDot({ state, className }: Readonly<{ state: SyncState; className?: string }>) {
+  const tone = SYNC_DOTS[state];
+  if (!tone) return null;
+  return (
+    <span
+      aria-hidden
+      data-sync-dot={state}
+      className={cn("pointer-events-none absolute size-2 rounded-full border border-background", tone, className)}
+    />
+  );
+}
+
 export function SyncStateIcon({ state, className }: Readonly<{ state: SyncState; className?: string }>) {
   const Glyph = SYNC_ICONS[state];
   return <Glyph aria-hidden className={cn("size-4 shrink-0", SYNC_TONES[state], className)} />;

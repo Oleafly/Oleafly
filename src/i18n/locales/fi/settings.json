@@ -1882,12 +1882,11 @@
       "signInDescription": "Käyttää palvelun {{server}} tiliä, jolla jokin tämän koneen selainprofiili on jo kirjautunut.",
       "copyAction": "Tuo",
       "copying": "Tuodaan…",
-      "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
-      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
       "from": "Mistä",
       "noCookies": "Ei vielä cookieita",
       "sameAccount": "Profiilissa {{profile}} on kirjautuneena {{account}}, jota Oleafly jo käyttää. Valitse toinen profiili tai kirjaudu ensin siinä selaimessa toiselle tilillesi.",
-      "orExisting": "tai käytä olemassa olevaa kirjautumista"
+      "orExisting": "tai käytä olemassa olevaa kirjautumista",
+      "noSavedSignIn": "Profiililla {{profile}} ei ole tallennettua kirjautumista palveluun {{server}}, joten kopioidut cookiet eivät kirjanneet sinua sisään. Jos olet kirjautunut siellä, selain ehkä säilyttää kirjautumisen vain siihen asti, kun se suljetaan. Käytä sen sijaan ruutua {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",

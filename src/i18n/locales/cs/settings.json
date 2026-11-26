@@ -1906,14 +1906,11 @@
       "signInDescription": "Použije účet na {{server}}, ke kterému je už přihlášený některý profil prohlížeče v tomto počítači.",
       "copyAction": "Importovat",
       "copying": "Importuje se…",
-      "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",
-      "notSignedIn_few": "Z prohlížeče {{browser}} byly zkopírovány {{count}} soubory cookie, ale nepřihlásily vás. Přihlaste se přímo.",
-      "notSignedIn_many": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souboru cookie, ale nepřihlásily vás. Přihlaste se přímo.",
-      "notSignedIn_other": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souborů cookie, ale nepřihlásily vás. Přihlaste se přímo.",
       "from": "Odkud",
       "noCookies": "Zatím žádné cookies",
       "sameAccount": "V profilu {{profile}} je přihlášený účet {{account}}, který Oleafly už používá. Vyberte jiný profil, nebo se v tom prohlížeči nejdřív přihlaste ke svému druhému účtu.",
-      "orExisting": "nebo použijte přihlášení, které už máte"
+      "orExisting": "nebo použijte přihlášení, které už máte",
+      "noSavedSignIn": "Profil {{profile}} nemá pro {{server}} uložené přihlášení, takže vás zkopírované cookies nepřihlásily. Pokud jste tam přihlášeni, prohlížeč možná přihlášení drží jen do svého zavření. Použijte místo toho dlaždici {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",

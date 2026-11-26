@@ -35,6 +35,7 @@ type LibraryTranslate = ReturnType<typeof useTranslation<["library"]>>["t"];
 
 const FILTERS: readonly Filter[] = ["all", "owned", "shared"];
 const MAX_NAMED_CARDS = 60;
+const TEXT_LINK = "h-auto px-1 text-xs";
 
 function transitionName(id: string): string {
   return `overleaf-card-${id.replaceAll(/[^A-Za-z0-9_-]/g, "-")}`;
@@ -349,26 +350,30 @@ function SelectionBar({
               : t(($) => $.library.import.overleaf.signedIn)}
           </span>
         )}
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="xs"
           data-testid="overleaf-switch-account"
           disabled={importing}
           onClick={onManageSignIns}
-          className={LINK_BUTTON}
+          className={TEXT_LINK}
         >
           {accounts.length > 1
             ? shared(($) => $.settings.integrations.signIns.title)
             : t(($) => $.library.import.overleaf.switchAccount)}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="link"
+          size="xs"
           data-testid="overleaf-sign-out"
           disabled={importing}
           onClick={() => void signOut()}
-          className={LINK_BUTTON}
+          className={TEXT_LINK}
         >
           {t(($) => $.library.import.overleaf.signOut)}
-        </button>
+        </Button>
       </span>
     </div>
   );
@@ -500,7 +505,7 @@ function SignInPanel({ onCancel }: Readonly<{ onCancel?: () => void }>) {
         {onCancel ? (
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>{shared(($) => $.settings.integrations.overleaf.addAccountKept)}</span>
-            <Button type="button" variant="ghost" size="sm" disabled={signing} onClick={onCancel}>
+            <Button type="button" variant="outline" size="sm" disabled={signing} onClick={onCancel}>
               {shared(($) => $.common.actions.cancel)}
             </Button>
           </div>

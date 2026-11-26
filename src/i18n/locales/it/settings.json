@@ -1894,13 +1894,11 @@
       "signInDescription": "Usa l'account {{server}} con cui un profilo del browser di questo computer ha già effettuato l'accesso.",
       "copyAction": "Importa",
       "copying": "Importazione in corso...",
-      "notSignedIn_one": "Copiato {{count}} cookie da {{browser}}, ma non ti ha fatto accedere. Accedi direttamente.",
-      "notSignedIn_many": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
-      "notSignedIn_other": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
       "from": "Da",
       "noCookies": "Ancora nessun cookie",
       "sameAccount": "{{profile}} ha effettuato l'accesso come {{account}}, che Oleafly usa già. Scegli un altro profilo oppure accedi prima con l'altro account in quel browser.",
-      "orExisting": "oppure usa un accesso che hai già"
+      "orExisting": "oppure usa un accesso che hai già",
+      "noSavedSignIn": "{{profile}} non ha un accesso salvato per {{server}}, quindi i cookie copiati non ti hanno fatto accedere. Se lì hai effettuato l'accesso, il browser forse lo conserva solo fino alla chiusura. Usa invece il riquadro {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>zotero.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink> per crearne una e copia il tuo ID utente numerico dalla stessa pagina.",

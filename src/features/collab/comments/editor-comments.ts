@@ -59,6 +59,11 @@ export interface EditorCommentsSource {
 const FLASH_MS = 1_200;
 const NO_SPANS: readonly CommentSpan[] = [];
 const SVG = "http://www.w3.org/2000/svg";
+const MESSAGE_SQUARE_REPLY = [
+  "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
+  "m10 8-3 3 3 3",
+  "M17 14v-1a2 2 0 0 0-2-2H7",
+] as const;
 
 export const COMMENT_MARK_STYLES = {
   ...COMMENT_RANGE_STYLES,
@@ -134,9 +139,11 @@ function commentIcon(): SVGSVGElement {
   icon.setAttribute("stroke-linecap", "round");
   icon.setAttribute("stroke-linejoin", "round");
   icon.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(SVG, "path");
-  path.setAttribute("d", "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z");
-  icon.appendChild(path);
+  for (const d of MESSAGE_SQUARE_REPLY) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    icon.appendChild(path);
+  }
   return icon;
 }
 

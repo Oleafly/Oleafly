@@ -1870,11 +1870,11 @@
       "signInDescription": "Dùng tài khoản {{server}} mà một hồ sơ trình duyệt trên máy tính này đã đăng nhập.",
       "copyAction": "Nhập",
       "copying": "Đang nhập…",
-      "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp.",
       "from": "Từ",
       "noCookies": "Chưa có cookie",
       "sameAccount": "{{profile}} đang đăng nhập bằng {{account}}, tài khoản mà Oleafly đã dùng. Hãy chọn hồ sơ khác hoặc đăng nhập tài khoản kia trong trình duyệt đó trước.",
-      "orExisting": "hoặc dùng phiên đăng nhập bạn đã có"
+      "orExisting": "hoặc dùng phiên đăng nhập bạn đã có",
+      "noSavedSignIn": "{{profile}} không có phiên đăng nhập đã lưu cho {{server}} nên cookie đã sao chép không đăng nhập được cho bạn. Nếu bạn đang đăng nhập ở đó, có thể trình duyệt chỉ giữ phiên đăng nhập đến khi đóng. Hãy dùng ô {{browser}} thay thế."
     },
     "zotero": {
       "apiKeyHint": "Để lấy khoá: đăng nhập tại <siteLink>zotero.org</siteLink>, mở <keyLink>trang khoá API</keyLink> của bạn để tạo khoá và sao chép ID người dùng dạng số từ cùng trang đó.",

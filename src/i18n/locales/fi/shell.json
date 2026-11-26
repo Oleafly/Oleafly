@@ -1703,7 +1703,7 @@
     "resume": "Jatka reaaliaikaista muokkausta",
     "reconnectNow": "Yhdistä uudelleen nyt",
     "open": "Avaa Overleafissa",
-    "share": "Jaa Overleafissa…",
+    "share": "Jaa Overleafissa",
     "signIn": "Kirjaudu sisään…",
     "signInAs": "Kirjaudu sisään käyttäjänä {{email}}",
     "reconnectingIn": "Yritetään uudelleen {{seconds}} s kuluttua.",

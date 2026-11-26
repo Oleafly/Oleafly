@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Eraser, MessagesSquare } from "lucide-react";
+import { Eraser } from "lucide-react";
+import { MessagesCircle } from "@/components/ui/extra-icons";
 import { useShallow } from "zustand/react/shallow";
 import { useChatRail } from "@/components/collab/chat-rail";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
@@ -340,7 +341,7 @@ function ProjectChat() {
       maxLength={chat.status?.maxLength}
     >
       <div className="flex h-full min-h-0 flex-col" data-testid="chat-pane">
-        <SidebarPanelHeader icon={MessagesSquare} title={title}>
+        <SidebarPanelHeader icon={MessagesCircle} title={title}>
           {canClear ? (
             <Tooltip label={clearLabel}>
               <Button

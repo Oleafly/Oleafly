@@ -20,11 +20,13 @@ import { logError } from "@/lib/log";
 import { openOverleafProject, overleafLiveConnectionDetails } from "@/lib/overleaf-live";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 import { notifyError, toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorMessage } from "../errors";
 import { type CollabLiveStoreState, useCollabLiveStore } from "../live/live-store";
 import { useOverleafNotices } from "../live/overleaf-notices";
-import { SyncStateIcon, useQuietDrop, useSyncWords } from "./sync-display";
+import { SyncStateDot, SyncStateIcon, useQuietDrop, useSyncWords } from "./sync-display";
 import { type SyncState, syncState } from "./sync-state";
 
 function overleafSyncState(state: CollabLiveStoreState): SyncState {
@@ -114,109 +116,113 @@ export function OverleafLiveButton() {
 
   return (
     <>
-      <DropdownMenu>
-        <Tooltip
-          label={
-            <>
-              {words}
-              <StatusNotes notes={notes} retryUntil={retryUntil} />
-            </>
-          }
-          side="bottom"
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="overleaf-live-button"
-              data-sync-state={state}
-              aria-label={`${t(($) => $.shell.overleafLive.title)}: ${words}`}
-              className="h-7 gap-1 px-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <OverleafBrandIcon className="size-4 text-[#47A141]" />
-              <SyncStateIcon state={state} className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-        </Tooltip>
-        <DropdownMenuContent align="end" className="w-72">
-          <DropdownMenuLabel className="space-y-0.5">
-            <span className="block text-sm">{t(($) => $.shell.overleafLive.title)}</span>
-            <span className="block select-text text-xs font-normal text-muted-foreground">
-              <span data-testid="overleaf-live-status" className="block">
-                {state === "upToDate" ? plain : words}
+      <ToolbarAction name="overleaf-live">
+        <DropdownMenu>
+          <Tooltip
+            label={
+              <>
+                {words}
+                <StatusNotes notes={notes} retryUntil={retryUntil} />
+              </>
+            }
+            side="bottom"
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                data-testid="overleaf-live-button"
+                data-sync-state={state}
+                aria-label={`${t(($) => $.shell.overleafLive.title)}: ${words}`}
+                className="relative size-7 text-muted-foreground hover:text-foreground"
+              >
+                <OverleafBrandIcon
+                  className={cn("text-[#47A141]", state === "syncing" && "motion-safe:animate-pulse")}
+                />
+                <SyncStateDot state={state} className="right-1 top-1" />
+              </Button>
+            </DropdownMenuTrigger>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel className="flex select-text items-start gap-2 py-1.5 text-xs font-normal text-muted-foreground">
+              <SyncStateIcon state={state} className="mt-px size-3.5" />
+              <span className="min-w-0">
+                <span data-testid="overleaf-live-status" className="block">
+                  {state === "upToDate" ? plain : words}
+                </span>
+                <StatusNotes notes={notes} retryUntil={retryUntil} />
               </span>
-              <StatusNotes notes={notes} retryUntil={retryUntil} />
-            </span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {link.paused ? (
-            <DropdownMenuItem data-testid="overleaf-live-resume" onSelect={() => resumeLive(projectId)}>
-              <Play className="size-4 text-muted-foreground" />
-              {t(($) => $.shell.overleafLive.resume)}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {link.paused ? (
+              <DropdownMenuItem data-testid="overleaf-live-resume" onSelect={() => resumeLive(projectId)}>
+                <Play className="size-4 text-muted-foreground" />
+                {t(($) => $.shell.overleafLive.resume)}
+              </DropdownMenuItem>
+            ) : null}
+            {failed && !link.paused ? (
+              <DropdownMenuItem
+                data-testid="overleaf-live-again"
+                onSelect={() => useCollabLiveStore.getState().goLiveAgain()}
+              >
+                <RotateCcw className="size-4 text-muted-foreground" />
+                {t(($) => $.collab.activity.goLiveAgain)}
+              </DropdownMenuItem>
+            ) : null}
+            {live ? (
+              <DropdownMenuItem data-testid="overleaf-live-pause" disabled={busy} onSelect={() => void pause(projectId)}>
+                <Pause className="size-4 text-muted-foreground" />
+                {t(($) => $.shell.overleafLive.pause)}
+              </DropdownMenuItem>
+            ) : null}
+            {live && (state === "offline" || state === "reconnecting") ? (
+              <DropdownMenuItem
+                data-testid="overleaf-live-reconnect"
+                onSelect={() => {
+                  collabLiveReconnectNow().catch((error) => void logError("reconnect to overleaf", error));
+                }}
+              >
+                <RefreshCw className="size-4 text-muted-foreground" />
+                {t(($) => $.shell.overleafLive.reconnectNow)}
+              </DropdownMenuItem>
+            ) : null}
+            {live ? (
+              <DropdownMenuItem
+                data-testid="overleaf-live-copy-details"
+                onSelect={() =>
+                  copyDetails(
+                    projectId,
+                    t(($) => $.shell.overleafLive.detailsCopied),
+                    t(($) => $.shell.overleafLive.copyDetailsFailed),
+                  )
+                }
+              >
+                <ClipboardCopy className="size-4 text-muted-foreground" />
+                {t(($) => $.shell.overleafLive.copyDetails)}
+              </DropdownMenuItem>
+            ) : null}
+            {state === "signedOut" ? (
+              <DropdownMenuItem
+                data-testid="overleaf-live-sign-in"
+                onSelect={() => useSettingsStore.getState().openSettingsAt("integrations")}
+              >
+                <LogIn className="size-4 text-muted-foreground" />
+                {link.account?.email
+                  ? t(($) => $.shell.overleafLive.signInAs, { email: link.account.email })
+                  : t(($) => $.shell.overleafLive.signIn)}
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem data-testid="overleaf-live-open" onSelect={() => void openOverleafProject(link)}>
+              <ExternalLink className="size-4 text-muted-foreground" />
+              {t(($) => $.shell.overleafLive.open)}
             </DropdownMenuItem>
-          ) : null}
-          {failed && !link.paused ? (
-            <DropdownMenuItem
-              data-testid="overleaf-live-again"
-              onSelect={() => useCollabLiveStore.getState().goLiveAgain()}
-            >
-              <RotateCcw className="size-4 text-muted-foreground" />
-              {t(($) => $.collab.activity.goLiveAgain)}
+            <DropdownMenuItem data-testid="overleaf-live-share" onSelect={() => void openOverleafProject(link)}>
+              <UserPlus className="size-4 text-muted-foreground" />
+              {t(($) => $.shell.overleafLive.share)}
             </DropdownMenuItem>
-          ) : null}
-          {live ? (
-            <DropdownMenuItem data-testid="overleaf-live-pause" disabled={busy} onSelect={() => void pause(projectId)}>
-              <Pause className="size-4 text-muted-foreground" />
-              {t(($) => $.shell.overleafLive.pause)}
-            </DropdownMenuItem>
-          ) : null}
-          {live && (state === "offline" || state === "reconnecting") ? (
-            <DropdownMenuItem
-              data-testid="overleaf-live-reconnect"
-              onSelect={() => {
-                collabLiveReconnectNow().catch((error) => void logError("reconnect to overleaf", error));
-              }}
-            >
-              <RefreshCw className="size-4 text-muted-foreground" />
-              {t(($) => $.shell.overleafLive.reconnectNow)}
-            </DropdownMenuItem>
-          ) : null}
-          {live ? (
-            <DropdownMenuItem
-              data-testid="overleaf-live-copy-details"
-              onSelect={() =>
-                copyDetails(
-                  projectId,
-                  t(($) => $.shell.overleafLive.detailsCopied),
-                  t(($) => $.shell.overleafLive.copyDetailsFailed),
-                )
-              }
-            >
-              <ClipboardCopy className="size-4 text-muted-foreground" />
-              {t(($) => $.shell.overleafLive.copyDetails)}
-            </DropdownMenuItem>
-          ) : null}
-          {state === "signedOut" ? (
-            <DropdownMenuItem
-              data-testid="overleaf-live-sign-in"
-              onSelect={() => useSettingsStore.getState().openSettingsAt("integrations")}
-            >
-              <LogIn className="size-4 text-muted-foreground" />
-              {link.account?.email
-                ? t(($) => $.shell.overleafLive.signInAs, { email: link.account.email })
-                : t(($) => $.shell.overleafLive.signIn)}
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem data-testid="overleaf-live-open" onSelect={() => void openOverleafProject(link)}>
-            <ExternalLink className="size-4 text-muted-foreground" />
-            {t(($) => $.shell.overleafLive.open)}
-          </DropdownMenuItem>
-          <DropdownMenuItem data-testid="overleaf-live-share" onSelect={() => void openOverleafProject(link)}>
-            <UserPlus className="size-4 text-muted-foreground" />
-            {t(($) => $.shell.overleafLive.share)}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ToolbarAction>
       <PauseLiveDialog
         unsent={unsent}
         busy={busy}

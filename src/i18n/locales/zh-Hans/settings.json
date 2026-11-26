@@ -1870,11 +1870,11 @@
       "signInDescription": "使用这台计算机上某个浏览器配置文件中已登录的 {{server}} 账户。",
       "copyAction": "导入",
       "copying": "正在导入…",
-      "notSignedIn_other": "已从 {{browser}} 复制 {{count}} 个 Cookie，但它们没有让你登录。请直接登录。",
       "from": "来源",
       "noCookies": "还没有 Cookie",
       "sameAccount": "{{profile}} 登录的是 {{account}}，而 Oleafly 已在使用这个账户。请选择其他配置文件，或先在该浏览器中登录另一个账户。",
-      "orExisting": "或使用已有的登录"
+      "orExisting": "或使用已有的登录",
+      "noSavedSignIn": "{{profile}} 没有保存 {{server}} 的登录，因此复制的 Cookie 无法让你登录。如果你在那里已登录，浏览器可能只在关闭前保留该登录。请改用 {{browser}} 磁贴。"
     },
     "zotero": {
       "apiKeyHint": "获取密钥的方法：登录 <siteLink>zotero.org</siteLink>，打开 <keyLink>API 密钥页面</keyLink> 创建密钥，并在同一页面复制你的数字用户 ID。",

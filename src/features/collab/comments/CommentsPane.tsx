@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCheck, FileText, MessageSquare, MessageSquareDiff, Unlink } from "lucide-react";
+import { CheckCheck, FileText, MessageSquareDiff, MessageSquareQuote, Unlink } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { getEditorDocumentPath, getEditorView } from "@oleafly/editor";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
@@ -921,7 +921,7 @@ export function CommentsPane() {
     >
       <div className="flex h-full min-h-0 flex-col" data-testid="comments-pane" data-comments-pane>
         <SidebarPanelHeader
-          icon={MessageSquare}
+          icon={MessageSquareQuote}
           title={t(($) => $.collab.comments.title)}
           adornment={
             commentsOn ? (

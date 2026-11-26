@@ -76,7 +76,7 @@ export function OverleafSection() {
         <div data-testid="overleaf-add-account-options" className="mt-3 space-y-4">
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.addAccountHint)}</p>
           <SignInOptions server={current} onSignedIn={() => void refreshStatus()} />
-          <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
+          <Button variant="outline" size="sm" onClick={() => setAdding(false)}>
             {t(($) => $.common.actions.cancel)}
           </Button>
         </div>
@@ -118,7 +118,6 @@ function AccountRow({ account, host }: Readonly<{ account: OverleafAccount; host
           : t(($) => $.settings.integrations.overleaf.signedIn, { server: host })}
       </IntegrationConnected>
       <Button
-        variant="outline"
         size="sm"
         data-testid="overleaf-settings-sign-out"
         disabled={busy}

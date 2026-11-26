@@ -1882,12 +1882,11 @@
       "signInDescription": "Använder kontot på {{server}} som en webbläsarprofil på den här datorn redan är inloggad på.",
       "copyAction": "Importera",
       "copying": "Importerar…",
-      "notSignedIn_one": "Kopierade {{count}} cookie från {{browser}}, men den loggade inte in dig. Logga in i stället.",
-      "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället.",
       "from": "Från",
       "noCookies": "Inga cookies än",
       "sameAccount": "{{profile}} är inloggad som {{account}}, som Oleafly redan använder. Välj en annan profil eller logga först in på ditt andra konto i den webbläsaren.",
-      "orExisting": "eller använd en inloggning du redan har"
+      "orExisting": "eller använd en inloggning du redan har",
+      "noSavedSignIn": "{{profile}} har ingen sparad inloggning för {{server}}, så de kopierade cookiesen loggade inte in dig. Om du är inloggad där behåller webbläsaren kanske inloggningen bara tills den stängs. Använd rutan {{browser}} i stället."
     },
     "zotero": {
       "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",

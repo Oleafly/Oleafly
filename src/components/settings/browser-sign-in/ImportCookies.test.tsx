@@ -105,10 +105,10 @@ describe("ImportCookies", () => {
     expect(mocks.signInWithCookies).toHaveBeenCalledWith(SERVER);
   });
 
-  it("says the copy didn't sign in when the cookies are stale", async () => {
+  it("says in the dialog when the profile has no saved sign-in, and leaves it open for another", async () => {
     const user = userEvent.setup();
-    mocks.detect.mockResolvedValue([source("chrome", "Default")]);
-    mocks.importCookies.mockResolvedValue({ imported: 3, browserName: "Google Chrome", profileName: "Default", domain: "www.latex.example" });
+    mocks.detect.mockResolvedValue([source("chrome", "Default", "Person 1")]);
+    mocks.importCookies.mockResolvedValue({ imported: 2, browserName: "Google Chrome", profileName: "Person 1", domain: "www.latex.example" });
     mocks.signInWithCookies.mockRejectedValue(
       `@oleafly/error:${JSON.stringify({ code: "overleaf.browser_sign_in_failed", params: {}, detail: null })}`,
     );
@@ -116,9 +116,12 @@ describe("ImportCookies", () => {
     render(<ImportCookies server={SERVER} onSignedIn={onSignedIn} />);
     await copyFromChrome(user);
 
-    expect(
-      await screen.findByText("Copied 3 cookies from Google Chrome, but they didn't sign you in. Sign in instead."),
-    ).toBeVisible();
+    const dialog = screen.getByRole("dialog", { name: copy.dialogTitle });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Google Chrome Person 1 has no saved sign-in for www.latex.example, so the copied cookies didn't sign you in.",
+    );
+    expect(within(dialog).getByText(/Use the Google Chrome tile instead\./)).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: copy.copyAction })).toBeEnabled();
     expect(onSignedIn).not.toHaveBeenCalled();
   });
 

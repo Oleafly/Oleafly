@@ -1703,7 +1703,7 @@
     "resume": "Återuppta liveredigeringen",
     "reconnectNow": "Anslut igen nu",
     "open": "Öppna i Overleaf",
-    "share": "Dela på Overleaf…",
+    "share": "Dela på Overleaf",
     "signIn": "Logga in…",
     "signInAs": "Logga in som {{email}}",
     "reconnectingIn": "Försöker igen om {{seconds}} s.",

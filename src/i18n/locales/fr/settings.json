@@ -1894,13 +1894,11 @@
       "signInDescription": "Utilise le compte {{server}} auquel un profil de navigateur de cet ordinateur est déjà connecté.",
       "copyAction": "Importer",
       "copying": "Importation en cours…",
-      "notSignedIn_one": "{{count}} cookie copié depuis {{browser}}, mais il ne vous a pas connecté. Connectez-vous directement.",
-      "notSignedIn_many": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement.",
-      "notSignedIn_other": "{{count}} cookies copiés depuis {{browser}}, mais ils ne vous ont pas connecté. Connectez-vous directement.",
       "from": "Depuis",
       "noCookies": "Pas encore de cookies",
       "sameAccount": "{{profile}} est connecté en tant que {{account}}, un compte qu'Oleafly utilise déjà. Choisissez un autre profil, ou connectez-vous d'abord à votre autre compte dans ce navigateur.",
-      "orExisting": "ou utilisez une connexion existante"
+      "orExisting": "ou utilisez une connexion existante",
+      "noSavedSignIn": "{{profile}} n'a pas de connexion enregistrée pour {{server}}, donc les cookies copiés ne vous ont pas connecté. Si vous y êtes connecté, le navigateur ne garde peut-être la connexion que jusqu'à sa fermeture. Utilisez plutôt la vignette {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>zotero.org</siteLink>, ouvrez votre <keyLink>page de clés API</keyLink> pour créer une clé, et copiez votre identifiant utilisateur numérique sur la même page.",
