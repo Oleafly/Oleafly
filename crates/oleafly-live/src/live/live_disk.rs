@@ -10,7 +10,7 @@ use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
 use super::disk_pass::{apply_to_disk, DiskPass, DiskTexts, LeftAlone};
-use super::import::{name_of, parent_of, placed_now, scan_local, LocalImport};
+use super::import::{name_of, parent_of, placed_now, scan_local, LocalImport, SETTLE};
 use super::live_tree::{LiveTree, Outgoing, TreeAnswer, TreeRead, TreeRequest};
 use super::payloads::{FolderChange, KeptPayload};
 use super::session::{guard, io, WriterSignal};
@@ -69,18 +69,22 @@ pub async fn writer_loop<W: LiveWriter>(
         let Some(owner) = owner.upgrade() else {
             return;
         };
-        match Arc::clone(&owner).write_pass(!waiters.is_empty()).await {
-            Ok(reread) if !reread.is_empty() => {
-                if let Err(error) = Arc::clone(&owner).import_pass(reread).await {
-                    owner.disk().log_once("reread", || {
-                        format!("could not send files changed while they were written: {error}")
-                    });
-                }
-            }
-            Ok(_) => {}
+        let written = Arc::clone(&owner).write_pass(!waiters.is_empty()).await;
+        let mut reread = owner.disk().take_unsteady();
+        match written {
+            Ok(changed) => reread.extend(changed),
             Err(error) => owner.disk().log_once("write", || {
                 format!("could not write the shared files to disk: {error}")
             }),
+        }
+        reread.sort();
+        reread.dedup();
+        if !reread.is_empty() {
+            if let Err(error) = Arc::clone(&owner).import_pass(reread).await {
+                owner.disk().log_once("reread", || {
+                    format!("could not send files changed while they were written: {error}")
+                });
+            }
         }
         for done in waiters {
             let _ = done.send(());
@@ -404,6 +408,20 @@ impl LiveDisk {
         Ok((import, snapshot))
     }
 
+    fn read_again(&self, paths: Vec<String>) {
+        if paths.is_empty() {
+            return;
+        }
+        guard(&self.upkeep.unsteady).extend(paths);
+        self.upkeep.reread.ring_in(self, SETTLE);
+    }
+
+    pub fn take_unsteady(&self) -> Vec<String> {
+        std::mem::take(&mut *guard(&self.upkeep.unsteady))
+            .into_iter()
+            .collect()
+    }
+
     pub async fn changed(&self, tree: &dyn LiveTree) -> Result<Vec<String>, CollabError> {
         let (import, snapshot) = self.scan(tree, None).await?;
         let texts = import.texts.iter().map(|(path, _, hash)| (path, hash));
@@ -425,6 +443,7 @@ impl LiveDisk {
             return Ok(());
         }
         let (mut import, snapshot) = self.scan(tree, only).await?;
+        self.read_again(std::mem::take(&mut import.unsteady));
         if !tree.ready_to_import() {
             return Ok(());
         }

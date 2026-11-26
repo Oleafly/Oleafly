@@ -72,6 +72,8 @@ pub struct Upkeep {
     pub owed: Mutex<super::owed::OwedTries>,
     pub unannounced: Mutex<BTreeSet<String>>,
     pub logged: Mutex<BTreeSet<&'static str>>,
+    pub unsteady: Mutex<BTreeSet<String>>,
+    pub reread: Alarm,
 }
 
 pub async fn off_runtime<T: Send + 'static>(

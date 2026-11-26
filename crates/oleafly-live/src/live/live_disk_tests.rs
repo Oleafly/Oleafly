@@ -181,7 +181,7 @@ struct Mirrorer {
     disk: LiveDisk,
     host: Arc<Told>,
     hold: PathBuf,
-    _signals: tokio::sync::mpsc::UnboundedReceiver<WriterSignal>,
+    signals: tokio::sync::mpsc::UnboundedReceiver<WriterSignal>,
     _dir: tempfile::TempDir,
 }
 
@@ -207,7 +207,7 @@ impl Mirrorer {
             disk,
             host,
             hold,
-            _signals: signals,
+            signals,
             _dir: dir,
         }
     }
@@ -277,6 +277,61 @@ fn a_fake_live_tree_gets_its_texts_written_and_its_outside_edits_back() {
     mirror.import(&tree, None);
 
     assert_eq!(tree.received().len(), 1);
+}
+
+#[test]
+fn a_file_caught_between_its_truncate_and_its_write_is_read_again_later() {
+    let tree = FakeTree::default();
+    tree.add("main", None, "main.tex", Some("Hello\n"));
+    let mut mirror = Mirrorer::new();
+    mirror.write_out(&tree).unwrap();
+    while mirror.signals.try_recv().is_ok() {}
+
+    mirror.edit("main.tex", "");
+    mirror.import(&tree, Some(&["main.tex"]));
+
+    assert!(tree.received().is_empty());
+    assert_eq!(tree.text_of("main"), "Hello\n");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while mirror.signals.try_recv().is_err() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "no second read was asked for"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(mirror.disk.take_unsteady(), vec!["main.tex".to_owned()]);
+
+    mirror.edit("main.tex", "Hello there\n");
+    mirror.import(&tree, Some(&["main.tex"]));
+
+    assert_eq!(
+        tree.received(),
+        vec![("main.tex".to_owned(), "Hello there\n".to_owned())]
+    );
+}
+
+#[test]
+fn a_file_emptied_on_purpose_is_sent_once_it_has_settled() {
+    let tree = FakeTree::default();
+    tree.add("main", None, "main.tex", Some("Hello\n"));
+    let mirror = Mirrorer::new();
+    mirror.write_out(&tree).unwrap();
+
+    mirror.edit("main.tex", "");
+    std::fs::File::options()
+        .write(true)
+        .open(mirror.disk.root.join("main.tex"))
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(1))
+        .unwrap();
+    mirror.import(&tree, Some(&["main.tex"]));
+
+    assert_eq!(
+        tree.received(),
+        vec![("main.tex".to_owned(), String::new())]
+    );
+    assert!(mirror.disk.take_unsteady().is_empty());
 }
 
 #[test]

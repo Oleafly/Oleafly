@@ -1,6 +1,8 @@
 use std::collections::{BTreeSet, HashMap};
+use std::fs::Metadata;
 use std::io::ErrorKind;
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
@@ -43,6 +45,7 @@ pub struct LocalImport {
     pub crlf: BTreeSet<String>,
     pub moved_dirs: Vec<(String, String)>,
     pub unread: Vec<(String, String)>,
+    pub unsteady: Vec<String>,
 }
 
 impl LocalImport {
@@ -122,7 +125,9 @@ pub fn scan_local(
             .flatten();
         match present {
             Some(metadata) if metadata.is_file() => {
-                if let Err(error) = read_changed_file(&mut scanned, disk, &target, &path, known) {
+                if let Err(error) =
+                    read_changed_file(&mut scanned, disk, &target, &path, known, &metadata)
+                {
                     scanned.import.unread.push((path, error.to_string()));
                 }
             }
@@ -196,12 +201,35 @@ pub type ReadHook = std::sync::Arc<dyn Fn(&str) + Send + Sync>;
 #[cfg(any(test, feature = "test-support"))]
 pub static BEFORE_READ: std::sync::Mutex<Option<ReadHook>> = std::sync::Mutex::new(None);
 
+pub const SETTLE: Duration = Duration::from_millis(150);
+
+fn unsteady(disk: &DiskState, path: &str, bytes: &[u8], before: &Metadata, target: &Path) -> bool {
+    let changed = std::fs::symlink_metadata(target).ok().is_none_or(|after| {
+        after.len() != before.len() || after.modified().ok() != before.modified().ok()
+    });
+    changed || bytes.len() as u64 != before.len() || just_emptied(disk, path, bytes, before)
+}
+
+fn just_emptied(disk: &DiskState, path: &str, bytes: &[u8], before: &Metadata) -> bool {
+    bytes.is_empty()
+        && disk
+            .hashes
+            .get(path)
+            .is_some_and(|known| *known != sha256_hex(b""))
+        && before
+            .modified()
+            .ok()
+            .and_then(|at| SystemTime::now().duration_since(at).ok())
+            .is_some_and(|age| age < SETTLE)
+}
+
 fn read_changed_file(
     scanned: &mut Scanned,
     disk: &DiskState,
     target: &Path,
     path: &str,
     known: Option<&(String, NodeKind, Option<String>)>,
+    before: &Metadata,
 ) -> std::io::Result<()> {
     #[cfg(any(test, feature = "test-support"))]
     {
@@ -217,6 +245,10 @@ fn read_changed_file(
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
         read => read?,
     };
+    if unsteady(disk, path, &bytes, before, target) {
+        scanned.import.unsteady.push(path.to_owned());
+        return Ok(());
+    }
     let hash = sha256_hex(&bytes);
     if disk.hashes.get(path) == Some(&hash) && known.is_some() {
         return Ok(());
