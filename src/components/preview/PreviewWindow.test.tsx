@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   openCompiledHtml: vi.fn(async (_projectId: string) => {}),
   compiledHtmlPreviewUrl: vi.fn(async (_projectId: string) => "http://127.0.0.1:4321/0123abcd/report.html"),
+  onInverse: undefined as undefined | ((page: number, x: number, y: number, word?: string, context?: { before: string; after: string }) => void),
+  showForwardTarget: vi.fn(async (..._args: unknown[]) => {}),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
@@ -30,6 +32,10 @@ vi.mock("@/lib/tauri", () => ({
   pdfSyncNoteSaved: async () => {},
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
+vi.mock("@/features/synctex", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  showForwardTarget: mocks.showForwardTarget,
+}));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError, logWarning: vi.fn() }));
 vi.mock("@/lib/notebook-commands", () => ({
   openCompiledHtml: mocks.openCompiledHtml,
@@ -60,10 +66,12 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
     PdfViewer: React.forwardRef(function MockPdfViewer(
       {
         data,
+        onInverse,
         onPageChange,
         screenReaderMode,
       }: {
         data: Uint8Array;
+        onInverse?: typeof mocks.onInverse;
         onPageChange?: (current: number, total: number) => void;
         screenReaderMode?: boolean;
       },
@@ -77,6 +85,7 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
         getFitScale: mocks.getFitScale,
       }));
       React.useEffect(() => onPageChange?.(1, 3), [onPageChange]);
+      mocks.onInverse = onInverse;
       return (
         <div
           data-testid="detached-pdf-bytes"
@@ -181,6 +190,56 @@ beforeEach(() => {
   mocks.pickSavePath.mockReset();
   mocks.writeBytesFile.mockReset();
   mocks.logError.mockReset();
+  mocks.onInverse = undefined;
+  mocks.showForwardTarget.mockClear();
+});
+
+describe("source and PDF navigation in the PDF window", () => {
+  const workspace: PreviewWorkspaceSnapshot = {
+    projectId: "alpha", engine: LATEX_ENGINE, engineLoaded: true, mainDoc: "main.tex",
+    status: "success", log: "", errors: [], diagnostics: null, compileTimeMs: null,
+    compileRevision: 1, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+    noMainDocument: false, systemTexLocked: false,
+  };
+
+  async function showBuild() {
+    mocks.native = true;
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    render(<PreviewWindow />);
+    const state = successState("alpha", 1, 1);
+    emitRefresh(state);
+    await screen.findByTestId("detached-pdf-bytes");
+    return state;
+  }
+
+  it("sends a click on the PDF to the editor window with the build it shows", async () => {
+    const state = await showBuild();
+    expect(mocks.onInverse).toBeUndefined();
+
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: workspace }));
+    mocks.onInverse?.(2, 30, 40, "model", { before: "the ", after: " of" });
+
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", {
+      projectId: "alpha", action: "inverse", page: 2, x: 30, y: 40,
+      word: "model", wordContext: { before: "the ", after: " of" }, checkpoint: state.checkpoint,
+    });
+  });
+
+  it("draws a jump from the editor only on the build it was found in", async () => {
+    const state = await showBuild();
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:forward")).toBe(true));
+    const hit = { page: 1, x: 10, y: 20, width: 30, height: 12 };
+    const spot = { word: "model", before: "", after: "" };
+    const other = { ...state.checkpoint, outputId: fingerprintCompileOutput(new Uint8Array([2])) };
+
+    mocks.listeners.get("preview:forward")?.({ payload: { projectId: "beta", checkpoint: state.checkpoint, hit, spot, typst: false } });
+    mocks.listeners.get("preview:forward")?.({ payload: { projectId: "alpha", checkpoint: other, hit, spot, typst: false } });
+    mocks.listeners.get("preview:forward")?.({ payload: { projectId: "alpha", checkpoint: state.checkpoint, hit, spot, typst: false } });
+
+    await vi.waitFor(() => expect(mocks.showForwardTarget).toHaveBeenCalledTimes(1));
+    expect(mocks.showForwardTarget).toHaveBeenCalledWith(hit, spot, false);
+  });
 });
 
 describe("detached preview download", () => {

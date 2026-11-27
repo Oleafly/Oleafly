@@ -16,7 +16,8 @@ import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
-import type { TexFlavor } from "@/lib/tauri";
+import type { SynctexForwardHit, TexFlavor } from "@/lib/tauri";
+import { isCompileSuccessCheckpoint, type CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
@@ -57,7 +58,28 @@ export type PreviewWorkspaceCommand =
   | { action: "typst-version"; version: string | null }
   | ({ action: "typst-options" } & Pick<TypstOptionsUpdate, "systemFonts" | "reproducible">)
   | { action: "typst-variant"; variant: string | null }
-  | { action: "source-location"; file: string | null; line: number; column?: number };
+  | { action: "source-location"; file: string | null; line: number; column?: number }
+  | {
+    action: "inverse";
+    page: number;
+    x: number;
+    y: number;
+    word?: string;
+    wordContext?: { before: string; after: string };
+    checkpoint: CompileSuccessCheckpoint;
+  };
+
+function inverseClick(payload: { page?: unknown; x?: unknown; y?: unknown; word?: unknown; wordContext?: unknown; checkpoint?: unknown }) {
+  const { page, x, y, checkpoint } = payload;
+  if (typeof page !== "number" || !Number.isInteger(page) || page < 1) return null;
+  if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (!isCompileSuccessCheckpoint(checkpoint)) return null;
+  const context = payload.wordContext as { before?: unknown; after?: unknown } | null | undefined;
+  const wordContext = context && typeof context === "object" && typeof context.before === "string" && typeof context.after === "string"
+    ? { before: context.before, after: context.after }
+    : undefined;
+  return { page, x, y, word: typeof payload.word === "string" ? payload.word : undefined, wordContext, checkpoint };
+}
 
 function typstOptionsUpdate(payload: { systemFonts?: unknown; reproducible?: unknown }): TypstOptionsUpdate | null {
   if (typeof payload.systemFonts === "boolean") return { systemFonts: payload.systemFonts };
@@ -67,6 +89,20 @@ function typstOptionsUpdate(payload: { systemFonts?: unknown; reproducible?: unk
 
 export function sendPreviewCommand(projectId: string, command: PreviewWorkspaceCommand): Promise<void> {
   return emitTo("main", "preview:command", { projectId, ...command });
+}
+
+export const PREVIEW_FORWARD_EVENT = "preview:forward";
+
+export interface PreviewForwardJump {
+  projectId: string;
+  checkpoint: CompileSuccessCheckpoint;
+  hit: SynctexForwardHit;
+  spot: { word: string; before: string; after: string } | null;
+  typst: boolean;
+}
+
+export function sendPreviewForward(jump: PreviewForwardJump): Promise<void> {
+  return emitTo("preview", PREVIEW_FORWARD_EVENT, jump);
 }
 
 export async function startPreviewWorkspaceBridge(): Promise<() => void> {
@@ -175,6 +211,15 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           const { openFileAndGotoLine } = await import("@/features/synctex");
           const column = Number.isInteger(payload.column) && (payload.column ?? 0) >= 1 ? payload.column : undefined;
           await openFileAndGotoLine(payload.file, payload.line, column);
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          await getCurrentWindow().setFocus();
+          break;
+        }
+        case "inverse": {
+          const click = inverseClick(payload);
+          if (!click) break;
+          const { inverseFromClick } = await import("@/features/synctex");
+          if (!(await inverseFromClick(click.page, click.x, click.y, click.word, click.checkpoint, click.wordContext))) break;
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;

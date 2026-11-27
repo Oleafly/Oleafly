@@ -19,6 +19,7 @@ import {
 } from "@/components/editor/cm/controller";
 import { gotoRect, pdfPageText, type PdfTextRun } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
 import {
   isCompileCheckpointCurrent,
@@ -160,9 +161,13 @@ export function canUseSyncTexForCheckpoint(
   return currentSyncTexContext(checkpoint) !== null;
 }
 
+function pdfInOwnWindow(projectId: string | null): boolean {
+  return projectId !== null && usePreviewDetachedStore.getState().projectId === projectId;
+}
+
 export function goToSyncTex() {
   const s = useSettingsStore.getState();
-  if (s.viewMode === "editor") {
+  if (s.viewMode === "editor" && !pdfInOwnWindow(useFilesStore.getState().projectId)) {
     s.setViewMode("split");
     requestAnimationFrame(() => void forwardFromCursor());
   } else {
@@ -222,6 +227,22 @@ async function typstLineWithCursorWord(
   return pickForwardLine(linesFromAnchor(jump, runsByPage), runsByPage, spot) ?? jump;
 }
 
+function forwardTarget(
+  hit: SynctexForwardHit,
+  spot: ReturnType<typeof wordAtCursor>,
+  typst: boolean,
+): Promise<SynctexRect> {
+  return typst ? typstLineWithCursorWord(hit, spot) : lineWithCursorWord(hit, spot);
+}
+
+export async function showForwardTarget(
+  hit: SynctexForwardHit,
+  spot: ReturnType<typeof wordAtCursor>,
+  typst: boolean,
+) {
+  gotoRect(await forwardTarget(hit, spot, typst));
+}
+
 export async function forwardFromCursor() {
   const files = useFilesStore.getState();
   const { projectId, activePath } = files;
@@ -267,7 +288,12 @@ export async function forwardFromCursor() {
       );
       return;
     }
-    const target = typst ? await typstLineWithCursorWord(rect, spot) : await lineWithCursorWord(rect, spot);
+    if (pdfInOwnWindow(projectId)) {
+      const { sendPreviewForward } = await import("@/lib/preview-workspace");
+      await sendPreviewForward({ projectId, checkpoint: context[0], hit: rect, spot, typst });
+      return;
+    }
+    const target = await forwardTarget(rect, spot, typst);
     if (stillCurrent()) gotoRect(target);
   } catch (e) {
     void logError("synctex forward", e);
@@ -397,13 +423,15 @@ export async function inverseFromClick(
     const currentLine = getCurrentLine();
     if (word && currentLine != null) selectWordNearLine(currentLine, word, wordContext);
   });
-  if (!resolved) return;
+  if (!resolved) return false;
   const { context, target } = resolved;
   try {
-    if (!(await focusInverseTarget(store, context, target.path))) return;
+    if (!(await focusInverseTarget(store, context, target.path))) return false;
     placeInverseCursor(target.line, target.column, word, wordContext);
+    return true;
   } catch (e) {
     void logError("synctex inverse", e);
+    return false;
   }
 }
 

@@ -14,7 +14,12 @@ import {
 } from "./use-pdf-reader";
 import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
-import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
+import {
+  PREVIEW_FORWARD_EVENT,
+  sendPreviewCommand,
+  type PreviewForwardJump,
+  type PreviewWorkspaceCommand,
+} from "@/lib/preview-workspace";
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { LATEX_ENGINE } from "@/lib/document-engine";
@@ -47,6 +52,7 @@ import { PdfViewer, type PdfLoadState } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";
 import {
   fingerprintCompileOutput,
+  isCompileSuccessCheckpoint,
   sameCompileOutput,
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
@@ -474,6 +480,30 @@ export function PreviewWindow({
 
   useEffect(() => {
     if (disableNativeBridge) return;
+    const forwardListener = listen<Partial<PreviewForwardJump> | null>(PREVIEW_FORWARD_EVENT, ({ payload }) => {
+      const shown = previewDocumentRef.current?.checkpoint;
+      if (
+        !payload?.hit ||
+        !Number.isInteger(payload.hit.page) ||
+        payload.projectId !== projectIdRef.current ||
+        !shown ||
+        !isCompileSuccessCheckpoint(payload.checkpoint) ||
+        !sameCompileOutput(shown, payload.checkpoint)
+      ) {
+        return;
+      }
+      const { hit, spot = null, typst } = payload;
+      void import("@/features/synctex")
+        .then(({ showForwardTarget }) => showForwardTarget(hit, spot, typst === true))
+        .catch((error: unknown) => logError("synctex forward", error));
+    });
+    return () => {
+      void forwardListener.then((unlisten) => unlisten());
+    };
+  }, [disableNativeBridge]);
+
+  useEffect(() => {
+    if (disableNativeBridge) return;
     const refreshListener = listen<unknown>(
       "preview:refresh",
       (event) => acceptCompileState(event.payload),
@@ -803,6 +833,8 @@ export function PreviewWindow({
   const staleExplanation =
     retainedLoadFailure ?? artifactFailure ?? staleCompileExplanation();
 
+  const syncTex = !disableNativeBridge && workspace?.engine.capabilities.supports_synctex === true;
+  const shownCheckpoint = previewDocument?.checkpoint ?? null;
   const renderPreviewScrollArea = () => (
     <section
       ref={scrollBoxRef}
@@ -844,6 +876,13 @@ export function PreviewWindow({
             onLoadStateChange={handlePdfLoadState}
             onSearchStateChange={setSearchState}
             onOutlineStateChange={setOutlineState}
+            onInverse={
+              syncTex && shownCheckpoint
+                ? (inversePage, x, y, word, wordContext) =>
+                    void command({ action: "inverse", page: inversePage, x, y, word, wordContext, checkpoint: shownCheckpoint })
+                      .catch(() => {})
+                : undefined
+            }
             onPageChange={(current, total) => {
               markPage(current, total);
               if (!disableNativeBridge) void command({ action: "preview-page", page: current }).catch(() => {});

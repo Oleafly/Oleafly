@@ -1,10 +1,12 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
 import { test, expect } from "../fixtures";
-import { openVisibleMenu, pressVisibleMenuItem, openZoomMenu } from "../preview-menu";
+import { activatePreviewControl, openVisibleMenu, pressVisibleMenuItem, openZoomMenu } from "../preview-menu";
 import {
+  caretIn,
   createBlankProject,
   expectDesktopShellAnchored,
   openProject,
+  pressGlobal,
   revealLibraryProject,
 } from "../helpers";
 
@@ -370,6 +372,58 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
     )
     .toBe("Introduction");
   await expectDesktopShellAnchored(tauriPage);
+});
+
+test("the source and a PDF in its own window stay linked both ways", async ({ tauriPage }) => {
+  test.setTimeout(240_000);
+  await openOrCreateE2eDoc(tauriPage);
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
+    timeout: 90_000,
+  });
+  await activatePreviewControl(tauriPage, "Open preview in a new window");
+  const preview = await tauriPage.waitForWindow((window) => window.label === "preview", {
+    timeout: 20_000,
+  });
+  try {
+    await preview.waitForFunction(
+      `Array.from(document.querySelectorAll('.textLayer')).some(t => (t.textContent || '').includes('Introduction'))`,
+      60_000,
+    );
+    const target = preview.locator(".textLayer span").filter({ hasText: "Introduction" });
+    await target.scrollIntoViewIfNeeded();
+    await target.click();
+    await expect
+      .poll(
+        () =>
+          tauriPage.evaluate<string>(
+            `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+              const view = getEditorView();
+              if (!view) return "";
+              const selection = view.state.selection.main;
+              return view.state.sliceDoc(selection.from, selection.to);
+            })`,
+          ),
+        { timeout: 15_000 },
+      )
+      .toBe("Introduction");
+
+    await caretIn(tauriPage, "Write your");
+    await pressGlobal(tauriPage, "j", { meta: true, shift: true });
+    await expect
+      .poll(() => preview.evaluate<boolean>(`!!document.querySelector('.ll-synctex-hl')`), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+    expect(await tauriPage.evaluate<boolean>(`!!document.querySelector('.ll-synctex-hl')`)).toBe(false);
+  } finally {
+    await preview.evaluate(
+      `setTimeout(() => document.querySelector('[data-testid="preview-reattach"]')?.click(), 0)`,
+    );
+    await expect
+      .poll(async () => (await tauriPage.listWindows()).some((window) => window.label === "preview"))
+      .toBe(false);
+  }
 });
 
 test("clicking after a non-collapsed PDF selection does not invoke inverse SyncTeX", async ({

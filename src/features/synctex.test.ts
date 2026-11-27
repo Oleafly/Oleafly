@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   watchTypstSyncProject: vi.fn(),
   openFile: vi.fn(),
   openProjectLocation: vi.fn(async () => true),
+  sendPreviewForward: vi.fn(async () => {}),
   logError: vi.fn(),
   isCompileCheckpointCurrent: vi.fn(() => true),
   compiledSnapshot: null as null | {
@@ -87,6 +88,7 @@ vi.mock("@/store/project-index", () => ({
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/open-location", () => ({ openProjectLocation: mocks.openProjectLocation }));
+vi.mock("@/lib/preview-workspace", () => ({ sendPreviewForward: mocks.sendPreviewForward }));
 vi.mock("@/store/compile", () => ({
   isCompileCheckpointCurrent: mocks.isCompileCheckpointCurrent,
   useCompileStore: {
@@ -98,12 +100,14 @@ vi.mock("@/store/compile", () => ({
 }));
 
 import { useSettingsStore } from "@/store/settings";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
 import {
   canUseSyncTexForCheckpoint,
   forwardFromCursor,
   goToSyncTex,
   inverseFromClick,
   openFileAndGotoLine,
+  showForwardTarget,
   sourceTexts,
 } from "./synctex";
 
@@ -123,6 +127,8 @@ beforeEach(() => {
   ] as const)
     mocks[k].mockReset();
   mocks.openProjectLocation.mockClear();
+  mocks.sendPreviewForward.mockClear();
+  usePreviewDetachedStore.setState({ projectId: null });
   mocks.synctexForward.mockReset();
   mocks.pdfPageText.mockReset().mockResolvedValue(null);
   mocks.wordAtCursor.mockReset().mockReturnValue(null);
@@ -645,6 +651,60 @@ describe("forward SyncTeX from the editor", () => {
 
     expect(mocks.synctexForward).not.toHaveBeenCalled();
     expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  describe("with the PDF in its own window", () => {
+    const spot = { word: "model", before: "and the ", after: " of the data" };
+
+    beforeEach(() => {
+      usePreviewDetachedStore.setState({ projectId: "proj" });
+      mocks.wordAtCursor.mockReturnValue(spot);
+      mocks.synctexForward.mockResolvedValue(rect);
+    });
+
+    it("sends the jump to the PDF window with the build it was found in", async () => {
+      await forwardFromCursor();
+
+      expect(mocks.sendPreviewForward).toHaveBeenCalledWith({
+        projectId: "proj",
+        checkpoint: mocks.compileCheckpoint,
+        hit: rect,
+        spot,
+        typst: false,
+      });
+      expect(mocks.gotoRect).not.toHaveBeenCalled();
+      expect(mocks.pdfPageText).not.toHaveBeenCalled();
+    });
+
+    it("keeps the editor layout instead of docking the PDF back", async () => {
+      useSettingsStore.setState({ viewMode: "editor" });
+
+      goToSyncTex();
+
+      expect(useSettingsStore.getState().viewMode).toBe("editor");
+      await vi.waitFor(() => expect(mocks.sendPreviewForward).toHaveBeenCalledTimes(1));
+    });
+
+    it("draws a jump it receives on the pages of the window it runs in", async () => {
+      const line = { page: 1, x: 72, y: 124, width: 400, height: 10, from: 72, to: 300 };
+      const runs = [{ str: "the model of the data", x: 72, top: 124, width: 120, height: 10 }];
+      mocks.pdfPageText.mockResolvedValue(runs);
+      mocks.pickForwardLine.mockReturnValue(line);
+
+      await showForwardTarget({ ...rect, lines: [line] }, spot, false);
+
+      expect(mocks.pdfPageText).toHaveBeenCalledWith(1);
+      expect(mocks.gotoRect).toHaveBeenCalledWith(line);
+    });
+
+    it("jumps in the docked pane again once the PDF window is closed", async () => {
+      usePreviewDetachedStore.setState({ projectId: null });
+
+      await forwardFromCursor();
+
+      expect(mocks.gotoRect).toHaveBeenCalledWith(rect);
+      expect(mocks.sendPreviewForward).not.toHaveBeenCalled();
+    });
   });
 
   it("drops a jump whose compile output was replaced while it ran", async () => {
