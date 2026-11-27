@@ -29,7 +29,7 @@ Für immer kostenlos · Open Source · Kein Oleafly-Konto · Kein Tracking
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview-light.png" alt="So passt Oleafly zusammen: Oleafly Desktop und Oleafly CLI auf deinem Computer, Oleafly Server auf dem Rechner deiner Arbeitsgruppe mit Oleafly Web im Browser sowie die KI-Agenten, Referenzwerkzeuge, Overleaf, Cloud-Synchronisierung und Git-Hosts, mit denen sich Desktop verbindet" width="100%" />
+  <img src="../assets/readme/oleafly-overview.png" alt="So passt Oleafly zusammen: Oleafly Desktop und Oleafly CLI auf deinem Computer, Oleafly Server auf dem Rechner deiner Arbeitsgruppe mit Oleafly Web im Browser sowie die KI-Agenten, Referenzwerkzeuge, Overleaf, Cloud-Synchronisierung und Git-Hosts, mit denen sich Desktop verbindet" width="100%" />
 </div>
 
 ## Warum Oleafly

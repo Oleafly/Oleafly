@@ -29,7 +29,7 @@ Oleafly مساحة عمل مجانية ومفتوحة المصدر لكتابة 
 </div>
 
 <div align="center">
-  <img src="../assets/readme/oleafly-overview-light.png" alt="كيف يترابط Oleafly: Oleafly Desktop وOleafly CLI على حاسوبك، وOleafly Server على جهاز مختبرك مع Oleafly Web في المتصفح، ووكلاء الذكاء الاصطناعي وأدوات المراجع وOverleaf والمزامنة السحابية ومضيفات Git التي يتصل بها Desktop" width="100%" />
+  <img src="../assets/readme/oleafly-overview.png" alt="كيف يترابط Oleafly: Oleafly Desktop وOleafly CLI على حاسوبك، وOleafly Server على جهاز مختبرك مع Oleafly Web في المتصفح، ووكلاء الذكاء الاصطناعي وأدوات المراجع وOverleaf والمزامنة السحابية ومضيفات Git التي يتصل بها Desktop" width="100%" />
 </div>
 
 ## لماذا Oleafly
