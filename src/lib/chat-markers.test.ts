@@ -5,9 +5,15 @@ import {
   OUTPUT_LIMIT_MARKER,
   STEP_LIMIT_MARKER,
   STOPPED_MARKER,
+  TOKEN_LIMIT_MARKER,
 } from "./chat-markers";
 
-const labels = { stopped: "Angehalten.", stepLimit: "Schrittlimit erreicht.", outputLimit: "Ausgabelimit." };
+const labels = {
+  stopped: "Angehalten.",
+  stepLimit: "Schrittlimit erreicht.",
+  tokenLimit: "Tokenlimit erreicht.",
+  outputLimit: "Ausgabelimit.",
+};
 
 describe("chat markers", () => {
   it("appends a marker as its own paragraph", () => {
@@ -19,6 +25,7 @@ describe("chat markers", () => {
     expect(localizeMarkers("Started.\n\n_Stopped._", labels)).toBe("Started.\n\n_Angehalten._");
     expect(localizeMarkers(`x\n\n${STEP_LIMIT_MARKER}`, labels)).toBe("x\n\n_Schrittlimit erreicht._");
     expect(localizeMarkers(OUTPUT_LIMIT_MARKER, labels)).toBe("_Ausgabelimit._");
+    expect(localizeMarkers(`x\n\n${TOKEN_LIMIT_MARKER}`, labels)).toBe("x\n\n_Tokenlimit erreicht._");
   });
 
   it("leaves marker text that is part of a longer paragraph alone", () => {

@@ -964,6 +964,7 @@
     "retrying": "Vấn đề kết nối. Đang thử lại ({{attempt}} trên {{max}})…",
     "stopped": "Đã dừng.",
     "stepLimit": "Đã chạm giới hạn bước. Hãy gửi thêm tin nhắn để tiếp tục.",
+    "tokenLimit": "Đã chạm giới hạn token của lượt này. Hãy gửi thêm tin nhắn để tiếp tục.",
     "outputLimit": "Câu trả lời chạm giới hạn đầu ra của mô hình. Hãy gửi thêm tin nhắn để tiếp tục.",
     "tooLargeToSave": "Trò chuyện này quá dài để lưu. Tin nhắn mới được giữ cho tới khi bạn đóng Oleafly. Hãy xuất trò chuyện để giữ bản sao.",
     "exportChat": "Xuất trò chuyện",

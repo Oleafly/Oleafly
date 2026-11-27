@@ -17,6 +17,15 @@ pub(crate) fn default_max_tokens(caps: &ModelCaps, cap: u32) -> u32 {
         .min(cap)
 }
 
+pub(crate) fn anthropic_default_max_tokens(resolved: &Resolved) -> u32 {
+    let ceiling = default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP);
+    if anthropic_checks_output_room(&resolved.model_id) {
+        ceiling.min(OUTPUT_ROOM_MAX_TOKENS)
+    } else {
+        ceiling
+    }
+}
+
 /// A Claude model id as `(family, major, minor)`: `claude-opus-4-6` is
 /// `("opus", 4, 6)`; a date suffix (`claude-sonnet-4-20250514`) reads as
 /// minor 0. Older `claude-3-…` ids have no family word and return `None`.

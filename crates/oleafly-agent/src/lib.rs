@@ -20,7 +20,8 @@ pub mod wire;
 
 pub use caps::{BudgetRange, ModelCaps, ReasoningCaps, MAX_AGENT_DOCUMENTS, MAX_RUN_START_IMAGES};
 pub use complete::{
-    complete, CompletionRequest, CompletionResponse, InputTokenSemantics, Usage, WebTools,
+    cap_output_tokens, complete, CompletionRequest, CompletionResponse, InputTokenSemantics, Usage,
+    WebTools,
 };
 pub use effort::{
     apply_custom_effort, clamp_effort, effective_effort, effort_choices,
@@ -33,7 +34,7 @@ pub use models::{list_models, ModelInfo};
 pub use provider::{resolve, CustomProvider, ProviderConfig, Resolved, Wire};
 pub use run::{
     bound_tool_output, run_agent, run_agent_with_pipeline, validate_completion_request, RunConfig,
-    RunOutcome, SteerHandle, ToolOutput, ToolPipeline, ToolRunner,
+    RunOutcome, SteerHandle, TokenBudget, ToolOutput, ToolPipeline, ToolRunner,
 };
 pub use session::turn::assistant_message;
 pub use stream::{

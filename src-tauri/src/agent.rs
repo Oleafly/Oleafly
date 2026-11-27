@@ -15,6 +15,7 @@ use crate::config::{AppConfig, ModelProbe, ProbeVerdict};
 
 mod acp_usage;
 mod child_acp;
+pub mod limits;
 mod registry;
 mod subagents;
 pub mod task_runtime;
@@ -848,11 +849,11 @@ pub async fn agent_run(
         .map_err(|error| error.to_string())??;
         let mut request = resolved_request;
         let trust_project = pinned_project.clone();
-        let (search_key, reasoning_summaries, hosted_web, fetch_gate) =
+        let (search_key, reasoning_summaries, limits, hosted_web, fetch_gate) =
             tauri::async_runtime::spawn_blocking(move || {
-                let summaries = crate::config::read_config()
-                    .map(|cfg| cfg.ai_reasoning_summaries)
-                    .unwrap_or(false);
+                let settings = crate::config::read_config().unwrap_or_default();
+                let summaries = settings.ai_reasoning_summaries;
+                let limits = limits::AgentLimits::stored(&settings);
                 let hosted_web = run_trusted(trust_project.as_deref());
                 let fetch_policy = |project: &str| {
                     crate::approvals::policy_for(
@@ -874,6 +875,7 @@ pub async fn agent_run(
                 (
                     web::configured_search_key(),
                     summaries,
+                    limits,
                     hosted_web,
                     fetch_gate,
                 )
@@ -929,7 +931,8 @@ pub async fn agent_run(
             approval_classifier(pinned_project.clone()),
         );
         let classified_tool = allowlisted_tool_runner(shared_tools, classified_tool);
-        let pipeline = tool_pipeline();
+        let mut pipeline = tool_pipeline();
+        pipeline.token_budget = limits.token_budget();
         let multi_agent = crate::agent_config::MultiAgentConfig::load(&data_root);
         for notice in notices {
             let _ = on_event.send(notice);
@@ -969,8 +972,13 @@ pub async fn agent_run(
             task_path: subagents::RunContext::root_task_path(),
             multi_agent,
             cost_tally: cost_tally.clone(),
+            token_budget: pipeline.token_budget.clone(),
             web: web_ctx.clone(),
         };
+        let config = limits.turn_config(config);
+        if let Some(cap) = limits.max_output_tokens {
+            oleafly_agent::cap_output_tokens(&resolved, &mut request, cap);
+        }
         let subagent_manager_for_registry = subagent_manager.clone();
         let event_web = web_ctx.clone();
         let run_tool = subagents::multi_agent_tool_runner(

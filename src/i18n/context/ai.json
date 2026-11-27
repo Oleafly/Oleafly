@@ -313,7 +313,8 @@
   },
   "conversation": {
     "stopped": "Replaces a stored English marker at the end of a reply the user stopped",
-    "stepLimit": "Replaces a stored English marker when a run hit its step limit"
+    "stepLimit": "Replaces a stored English marker when a run hit its step limit",
+    "tokenLimit": "Replaces a stored English marker when a run stopped at the token limit for a turn set in Settings"
   },
   "attachments": {
     "pagesLimited": "Under a PDF chip: the model only sees the first {{limit}} pages of {{count}}",

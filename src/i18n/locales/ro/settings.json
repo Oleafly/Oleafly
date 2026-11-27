@@ -313,6 +313,21 @@
       "toolsHint": "Cere-i lucruri precum „repară erorile LaTeX”, „adaugă o secțiune Publicații” sau „recompilează și verifică PDF-ul”.",
       "toolsTitle": "Asistentul acceptă momentan aceste instrumente"
     },
+    "limits": {
+      "description": "Cât poate face agentul Oleafly într-un schimb înainte să se oprească și să te aștepte. Lasă un câmp gol ca să păstrezi valoarea implicită.",
+      "modelDefault": "Implicit pentru model",
+      "noLimit": "Fără limită",
+      "outputHint": "Cel mult cât scrie modelul într-un răspuns. Lasă gol ca să folosești limita modelului.",
+      "outputLabel": "Tokenuri de ieșire pe răspuns",
+      "rangeError": "{{field}} trebuie să fie un număr întreg între {{min}} și {{max}}.",
+      "save": "Salvează limitele",
+      "saved": "Salvat",
+      "stepsHint": "Până la 2.000. Peste 50, un schimb poate dura și 8 ore în loc de 30 de minute.",
+      "stepsLabel": "Pași pe schimb",
+      "title": "Limite pe schimb",
+      "turnTokensHint": "Numără toate tokenurile pe care agentul și subagenții lui le citesc și le scriu și le estimează când un furnizor nu le raportează. Când totalul trece de această valoare, schimbul se oprește înainte de pasul următor.",
+      "turnTokensLabel": "Tokenuri pe schimb"
+    },
     "models": {
       "addError": {
         "duplicate": "Modelul acela este deja în listă.",

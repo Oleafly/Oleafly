@@ -180,6 +180,12 @@ pub struct AppConfig {
     #[serde(default)]
     pub ai_reasoning_summaries: bool,
     #[serde(default)]
+    pub ai_agent_max_steps: Option<u32>,
+    #[serde(default)]
+    pub ai_agent_max_output_tokens: Option<u32>,
+    #[serde(default)]
+    pub ai_agent_turn_tokens: Option<u64>,
+    #[serde(default)]
     pub ai_provider_models: std::collections::HashMap<String, Vec<StoredModel>>,
     #[serde(default)]
     pub ai_custom_providers: Vec<CustomProvider>,
@@ -290,6 +296,9 @@ impl Default for AppConfig {
             ai_system_prompt: String::new(),
             ai_pdf_capture: true,
             ai_reasoning_summaries: false,
+            ai_agent_max_steps: None,
+            ai_agent_max_output_tokens: None,
+            ai_agent_turn_tokens: None,
             ai_provider_models: std::collections::HashMap::new(),
             ai_custom_providers: Vec::new(),
             ai_tools_model: None,
@@ -1284,6 +1293,9 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.tex_package_repository = stored.tex_package_repository;
     config.cua_driver = stored.cua_driver;
     config.research_tasks_enabled = stored.research_tasks_enabled;
+    config.ai_agent_max_steps = stored.ai_agent_max_steps;
+    config.ai_agent_max_output_tokens = stored.ai_agent_max_output_tokens;
+    config.ai_agent_turn_tokens = stored.ai_agent_turn_tokens;
     config.research_background_enabled = stored.research_background_enabled;
     config.research_background_at_login = stored.research_background_at_login;
     config.phitex_enabled = stored.phitex_enabled;
@@ -1377,6 +1389,43 @@ mod tests {
         incoming.research_tasks_enabled = false;
         tauri::async_runtime::block_on(set_config(incoming)).unwrap();
         assert!(read_config().unwrap().research_tasks_enabled);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn turn_limits_only_change_through_their_own_command() {
+        use crate::agent::limits::{agent_limits_get, agent_limits_set, AgentLimits};
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.ai_agent_max_steps = Some(2_000);
+        incoming.ai_agent_turn_tokens = Some(5_000);
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert_eq!(
+            AgentLimits::stored(&read_config().unwrap()),
+            AgentLimits::default()
+        );
+
+        let saved = tauri::async_runtime::block_on(agent_limits_set(AgentLimits {
+            max_steps: Some(300),
+            max_output_tokens: Some(4_096),
+            turn_tokens: None,
+        }))
+        .unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.ai_agent_max_steps = None;
+        incoming.ai_system_prompt = "Be brief.".into();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        let stored = read_config().unwrap();
+        assert_eq!(stored.ai_system_prompt, "Be brief.");
+        assert_eq!(AgentLimits::stored(&stored), saved);
+        assert_eq!(
+            tauri::async_runtime::block_on(agent_limits_get()).unwrap(),
+            saved
+        );
         std::fs::remove_dir_all(dir).ok();
     }
 

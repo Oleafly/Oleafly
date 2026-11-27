@@ -12,6 +12,7 @@ import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { AiCompletionModelSetting } from "@/components/settings/AiCompletionModelSetting";
 import { useSettingsStore } from "@/store/settings";
+import { AgentLimitsSection } from "./AgentLimits";
 import { SavedInstructionsSection } from "./SavedInstructionsSection";
 
 export interface InstructionsTabProps {
@@ -99,6 +100,8 @@ export function InstructionsTab({
           )}
         </div>
       </div>
+
+      <AgentLimitsSection />
 
       <SavedInstructionsSection cfg={cfg} configLoaded={configLoaded} persist={persist} />
 

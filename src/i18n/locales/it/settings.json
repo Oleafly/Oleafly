@@ -313,6 +313,21 @@
       "toolsHint": "Chiedigli cose come \"correggi gli errori LaTeX\", \"aggiungi una sezione Pubblicazioni\" oppure \"ricompila e controlla il PDF\".",
       "toolsTitle": "Al momento l'assistente supporta questi strumenti"
     },
+    "limits": {
+      "description": "Quanto può fare l'agente Oleafly in un turno prima di fermarsi e aspettarti. Lascia vuoto un campo per mantenere il valore predefinito.",
+      "modelDefault": "Predefinito del modello",
+      "noLimit": "Nessun limite",
+      "outputHint": "Il massimo che il modello scrive in una risposta. Lascia vuoto per usare il limite del modello.",
+      "outputLabel": "Token di output per risposta",
+      "rangeError": "{{field}} deve essere un numero intero tra {{min}} e {{max}}.",
+      "save": "Salva limiti",
+      "saved": "Salvati",
+      "stepsHint": "Fino a 2.000. Oltre 50, un turno può anche durare 8 ore invece di 30 minuti.",
+      "stepsLabel": "Passi per turno",
+      "title": "Limiti per turno",
+      "turnTokensHint": "Conta tutti i token che l'agente e i suoi sottoagenti leggono e scrivono, con una stima quando un provider non li comunica. Quando il totale supera questo valore, il turno si ferma prima del passo successivo.",
+      "turnTokensLabel": "Token per turno"
+    },
     "models": {
       "addError": {
         "duplicate": "Quel modello è già nell'elenco.",

@@ -311,6 +311,21 @@
       "toolsHint": "Be den om saker som \"rätta LaTeX-felen\", \"lägg till ett avsnitt om publikationer\" eller \"kompilera om och kontrollera PDF:en\".",
       "toolsTitle": "Assistenten stöder just nu de här verktygen"
     },
+    "limits": {
+      "description": "Hur mycket Oleafly-agenten får göra under en tur innan den stannar och väntar på dig. Lämna ett fält tomt för att behålla standardvärdet.",
+      "modelDefault": "Modellens standard",
+      "noLimit": "Ingen gräns",
+      "outputHint": "Det mesta modellen skriver i ett svar. Lämna tomt för att använda modellens egen gräns.",
+      "outputLabel": "Utdatatokens per svar",
+      "rangeError": "{{field}} måste vara ett heltal från {{min}} till {{max}}.",
+      "save": "Spara gränser",
+      "saved": "Sparat",
+      "stepsHint": "Upp till 2 000. Över 50 kan en tur också pågå i 8 timmar i stället för 30 minuter.",
+      "stepsLabel": "Steg per tur",
+      "title": "Gränser per tur",
+      "turnTokensHint": "Räknar alla tokens som agenten och dess underagenter läser och skriver, och uppskattar dem när en leverantör inte rapporterar dem. När summan passerar värdet stannar turen före nästa steg.",
+      "turnTokensLabel": "Tokens per tur"
+    },
     "models": {
       "addError": {
         "duplicate": "Modellen finns redan i listan.",

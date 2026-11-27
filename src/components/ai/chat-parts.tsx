@@ -1502,6 +1502,7 @@ export const MessageItem = memo(function MessageItem({
   const markerLabels: MarkerLabels = {
     stopped: t(($) => $.ai.conversation.stopped),
     stepLimit: t(($) => $.ai.conversation.stepLimit),
+    tokenLimit: t(($) => $.ai.conversation.tokenLimit),
     outputLimit: t(($) => $.ai.conversation.outputLimit),
   };
   const shown = bubbleText(msg, displayText, markerLabels);

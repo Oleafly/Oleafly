@@ -311,6 +311,21 @@
       "toolsHint": "Bitten Sie ihn um Dinge wie „behebe die LaTeX-Fehler“, „ergänze einen Abschnitt Publikationen“ oder „kompiliere neu und prüfe das PDF“.",
       "toolsTitle": "Der Assistent unterstützt derzeit diese Werkzeuge"
     },
+    "limits": {
+      "description": "Wie viel der Oleafly Agent in einem Durchgang erledigen darf, bevor er anhält und auf Sie wartet. Lassen Sie ein Feld leer, um den Standardwert zu behalten.",
+      "modelDefault": "Standard des Modells",
+      "noLimit": "Kein Limit",
+      "outputHint": "So viel schreibt das Modell höchstens in einer Antwort. Leer lassen, um das Limit des Modells zu verwenden.",
+      "outputLabel": "Ausgabe-Token pro Antwort",
+      "rangeError": "{{field}} muss eine ganze Zahl von {{min}} bis {{max}} sein.",
+      "save": "Grenzen speichern",
+      "saved": "Gespeichert",
+      "stepsHint": "Bis zu 2.000. Über 50 kann ein Durchgang außerdem 8 Stunden statt 30 Minuten laufen.",
+      "stepsLabel": "Schritte pro Durchgang",
+      "title": "Grenzen pro Durchgang",
+      "turnTokensHint": "Zählt alle Token, die der Agent und seine Unteragenten lesen und schreiben, und schätzt sie, wenn ein Anbieter sie nicht meldet. Sobald die Summe diesen Wert überschreitet, hält der Durchgang vor dem nächsten Schritt an.",
+      "turnTokensLabel": "Token pro Durchgang"
+    },
     "models": {
       "addError": {
         "duplicate": "Dieses Modell steht bereits in der Liste.",

@@ -10,6 +10,7 @@ function markerLabels() {
   return {
     stopped: i18n.t(($) => $.ai.conversation.stopped),
     stepLimit: i18n.t(($) => $.ai.conversation.stepLimit),
+    tokenLimit: i18n.t(($) => $.ai.conversation.tokenLimit),
     outputLimit: i18n.t(($) => $.ai.conversation.outputLimit),
   };
 }

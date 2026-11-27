@@ -994,6 +994,7 @@
     "retrying": "Problema de conexión. Reintentando ({{attempt}} de {{max}})…",
     "stopped": "Detenido.",
     "stepLimit": "Se alcanzó el límite de pasos. Envía otro mensaje para continuar.",
+    "tokenLimit": "Se alcanzó el límite de tokens de este turno. Envía otro mensaje para continuar.",
     "outputLimit": "La respuesta alcanzó el límite de salida del modelo. Envía otro mensaje para continuar.",
     "tooLargeToSave": "Este chat es demasiado largo para guardarlo. Los mensajes nuevos se conservan hasta que cierres Oleafly. Exporta el chat para guardar una copia.",
     "exportChat": "Exportar el chat",

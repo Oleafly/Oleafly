@@ -87,6 +87,17 @@
     "instructions": {
       "saved": "Confirmation shown beside the button after custom instructions are saved"
     },
+    "limits": {
+      "description": "Introduces the three fields. An empty field keeps the default",
+      "modelDefault": "Placeholder of the empty output field: the model's own output limit applies",
+      "noLimit": "Placeholder of the empty tokens-per-turn field",
+      "outputHint": "Help under the output field. The cap applies to each reply the model writes",
+      "rangeError": "Error under the form. {{field}} is the field's label, {{min}} and {{max}} are formatted numbers",
+      "saved": "Shown beside the button after the limits are saved",
+      "stepsHint": "Help under the steps field. 2,000 is the maximum. Above 50 steps a turn may run for 8 hours instead of 30 minutes. Write the numbers the way the locale formats them",
+      "title": "Section heading for limits on one turn of the built-in Oleafly agent. Separate from the dollar AI budget under ai.budget",
+      "turnTokensHint": "Help under the tokens field. The count covers the agent and its subagents together, and is estimated when the provider sends no usage"
+    },
     "models": {
       "custom": "Badge on a model the user typed in by hand rather than one the provider listed",
       "metadata": {

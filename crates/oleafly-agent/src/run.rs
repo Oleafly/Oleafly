@@ -1,6 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -96,6 +96,38 @@ pub struct ToolPipeline {
     pub gate: ToolGate,
     pub token: CancellationToken,
     pub suspend: Option<CancellationToken>,
+    pub token_budget: Option<Arc<TokenBudget>>,
+}
+
+#[derive(Debug)]
+pub struct TokenBudget {
+    limit: u64,
+    used: AtomicU64,
+}
+
+impl TokenBudget {
+    pub fn new(limit: u64) -> Self {
+        Self {
+            limit,
+            used: AtomicU64::new(0),
+        }
+    }
+
+    pub fn used(&self) -> u64 {
+        self.used.load(Ordering::Relaxed)
+    }
+
+    pub fn reached(&self) -> bool {
+        self.used() >= self.limit
+    }
+
+    pub(crate) fn charge(&self, tokens: u64) {
+        let _ = self
+            .used
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
+                Some(used.saturating_add(tokens))
+            });
+    }
 }
 
 impl ToolPipeline {
@@ -105,6 +137,7 @@ impl ToolPipeline {
             gate: ToolGate::new(),
             token: CancellationToken::new(),
             suspend: None,
+            token_budget: None,
         }
     }
 }
@@ -1144,6 +1177,69 @@ mod tests {
         assert_eq!(outcome.steps, 61);
         assert!(!outcome.stopped_at_cap);
         assert_eq!(outcome.text, "done");
+    }
+
+    async fn run_with_budget(replies: Vec<String>, budget: Arc<TokenBudget>) -> RunOutcome {
+        let (addr, _receiver) = serve_replies(replies);
+        tokio::time::timeout(
+            Duration::from_secs(10),
+            run_agent_with_pipeline(
+                &crate::build_client().unwrap(),
+                &local_resolved(addr),
+                CompletionRequest::prompt("system", "prompt"),
+                &RunConfig {
+                    max_retries: 0,
+                    ..RunConfig::default()
+                },
+                ToolPipeline {
+                    token_budget: Some(budget),
+                    ..ToolPipeline::default()
+                },
+                None,
+                ok_tools(),
+                |_| {},
+            ),
+        )
+        .await
+        .expect("run timed out")
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_token_budget_stops_the_turn_before_another_step() {
+        let first = sse(&[
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_0","function":{"name":"read_file","arguments":"{}"}}]}}]}"#,
+            r#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#,
+            r#"{"choices":[],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120}}"#,
+            "[DONE]",
+        ]);
+        let budget = Arc::new(TokenBudget::new(100));
+        let outcome = run_with_budget(vec![first, tool_call_reply(1)], budget.clone()).await;
+        assert_eq!(outcome.steps, 1);
+        assert!(outcome.stopped_at_cap);
+        assert_eq!(outcome.stop_reason.as_deref(), Some("token_budget"));
+        assert_eq!(budget.used(), 120);
+    }
+
+    #[tokio::test]
+    async fn a_provider_without_usage_still_spends_the_budget() {
+        let budget = Arc::new(TokenBudget::new(1));
+        let outcome =
+            run_with_budget(vec![tool_call_reply(0), tool_call_reply(1)], budget.clone()).await;
+        assert_eq!(outcome.usage.reported_input(), None);
+        assert_eq!(outcome.steps, 1);
+        assert_eq!(outcome.stop_reason.as_deref(), Some("token_budget"));
+        assert!(budget.used() > 0);
+    }
+
+    #[tokio::test]
+    async fn a_spent_shared_budget_stops_a_run_before_its_first_step() {
+        let budget = Arc::new(TokenBudget::new(50));
+        budget.charge(50);
+        let outcome = run_with_budget(Vec::new(), budget).await;
+        assert_eq!(outcome.steps, 0);
+        assert!(outcome.stopped_at_cap);
+        assert_eq!(outcome.stop_reason.as_deref(), Some("token_budget"));
     }
 
     #[tokio::test]

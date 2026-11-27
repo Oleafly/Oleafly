@@ -313,6 +313,21 @@
       "toolsHint": "Demandez-lui par exemple « corrige les erreurs LaTeX », « ajoute une section Publications » ou « recompile et vérifie le PDF ».",
       "toolsTitle": "L'assistant prend actuellement en charge ces outils"
     },
+    "limits": {
+      "description": "Ce que l'agent Oleafly peut faire en un tour avant de s'arrêter pour vous attendre. Laissez un champ vide pour garder sa valeur par défaut.",
+      "modelDefault": "Valeur du modèle",
+      "noLimit": "Aucune limite",
+      "outputHint": "Le maximum que le modèle écrit dans une réponse. Laissez vide pour utiliser la limite du modèle.",
+      "outputLabel": "Jetons de sortie par réponse",
+      "rangeError": "{{field}} doit être un nombre entier entre {{min}} et {{max}}.",
+      "save": "Enregistrer les limites",
+      "saved": "Enregistré",
+      "stepsHint": "Jusqu'à 2 000. Au-delà de 50, un tour peut aussi durer 8 heures au lieu de 30 minutes.",
+      "stepsLabel": "Étapes par tour",
+      "title": "Limites par tour",
+      "turnTokensHint": "Compte tous les jetons que l'agent et ses sous-agents lisent et écrivent, avec une estimation quand un fournisseur ne les indique pas. Dès que le total dépasse cette valeur, le tour s'arrête avant l'étape suivante.",
+      "turnTokensLabel": "Jetons par tour"
+    },
     "models": {
       "addError": {
         "duplicate": "Ce modèle figure déjà dans la liste.",

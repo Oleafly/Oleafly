@@ -1009,6 +1009,7 @@
     "retrying": "Problem z połączeniem. Ponawiam ({{attempt}} z {{max}})…",
     "stopped": "Zatrzymano.",
     "stepLimit": "Osiągnięto limit kroków. Wyślij kolejną wiadomość, aby kontynuować.",
+    "tokenLimit": "Osiągnięto limit tokenów w tej turze. Wyślij kolejną wiadomość, aby kontynuować.",
     "outputLimit": "Odpowiedź osiągnęła limit długości odpowiedzi modelu. Wyślij kolejną wiadomość, aby kontynuować.",
     "tooLargeToSave": "Ten czat jest za długi, aby go zapisać. Nowe wiadomości są przechowywane do zamknięcia Oleafly. Wyeksportuj czat, aby zachować kopię.",
     "exportChat": "Eksportuj czat",

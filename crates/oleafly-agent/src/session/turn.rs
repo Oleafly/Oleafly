@@ -6,9 +6,11 @@ use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, ProviderWire, Role};
 use crate::provider::{Resolved, Wire};
-use crate::run::{RunConfig, RunOutcome, SteeredInput, ToolOutput, ToolPipeline, ToolRunner};
+use crate::run::{
+    RunConfig, RunOutcome, SteeredInput, TokenBudget, ToolOutput, ToolPipeline, ToolRunner,
+};
 use crate::session::compact;
-use crate::session::context_window::{is_history_limit, HistoryBudget};
+use crate::session::context_window::{completion_context_chars, is_history_limit, HistoryBudget};
 use crate::stream::{
     is_output_limit_stop, is_refusal_stop, stream_completion, AssistantBlock, StreamOutcome,
     ToolCall, MAX_TOOL_CALLS_PER_TURN,
@@ -23,6 +25,7 @@ pub(crate) const MAX_AGENT_STEPS: u32 = 50;
 pub(crate) const MAX_AGENT_RETRIES: u32 = 8;
 pub(crate) const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
 pub(crate) const MAX_PAUSE_CONTINUATIONS: u32 = 5;
+const ESTIMATED_CHARS_PER_TOKEN: usize = 4;
 
 const OUTPUT_LIMITED_CALL: &str = "This tool call was cut off because the reply reached the output limit, so it did not run. Send it again with shorter arguments, or split the work into smaller steps.";
 const TOO_MANY_CALLS: &str = "This reply sent more tool calls than one turn runs, so this call did not run. Send it again in your next reply.";
@@ -52,6 +55,7 @@ where
     let mut ledger = TurnLedger {
         usage: TurnUsage {
             context_window: resolved.caps.context_window,
+            budget: pipeline.token_budget.clone(),
             ..TurnUsage::default()
         },
         retries: RetryBudget::new(config),
@@ -75,6 +79,9 @@ where
         config.max_steps.min(MAX_AGENT_STEPS)
     };
     for step in 0..step_limit {
+        if ledger.usage.budget_reached() {
+            break;
+        }
         if pipeline
             .suspend
             .as_ref()
@@ -110,7 +117,7 @@ where
         if let Some(container) = &outcome.container {
             request.anthropic_container = Some(container.clone());
         }
-        let has_next_step = step.saturating_add(1) < step_limit;
+        let has_next_step = step.saturating_add(1) < step_limit && !ledger.usage.budget_reached();
         if should_continue_paused_turn(&outcome, has_next_step, pauses) {
             pauses += 1;
             continuing = true;
@@ -188,6 +195,9 @@ where
 
     result.usage = ledger.usage.total;
     result.stopped_at_cap = true;
+    if ledger.usage.budget_reached() {
+        result.stop_reason = Some("token_budget".into());
+    }
     result.history = request.messages;
     Ok(result)
 }
@@ -386,6 +396,7 @@ where
         match streamed {
             Ok(outcome) => {
                 ledger.usage.record_step(outcome.usage, on_event);
+                ledger.usage.charge_unreported(request, &outcome);
                 return Ok(outcome);
             }
             Err(error) => {
@@ -616,6 +627,7 @@ struct TurnUsage {
     has_calls: bool,
     last_step: Option<Usage>,
     context_window: Option<u32>,
+    budget: Option<Arc<TokenBudget>>,
 }
 
 impl TurnUsage {
@@ -652,8 +664,53 @@ impl TurnUsage {
     fn record(&mut self, addition: Usage, on_event: &mut impl FnMut(AgentEvent)) {
         self.total = self.snapshot(addition);
         self.has_calls = true;
+        if let Some(budget) = &self.budget {
+            budget.charge(budget_tokens(addition));
+        }
         on_event(self.event(self.total, self.last_step));
     }
+
+    fn charge_unreported(&self, request: &CompletionRequest, outcome: &StreamOutcome) {
+        let Some(budget) = &self.budget else {
+            return;
+        };
+        let input = if outcome.usage.reported_input().is_none() {
+            completion_context_chars(request).unwrap_or(0)
+        } else {
+            0
+        };
+        let output = if outcome.usage.reported_output().is_none() {
+            outcome.text.chars().count()
+                + outcome.reasoning.chars().count()
+                + outcome
+                    .tool_calls
+                    .iter()
+                    .map(|call| call.name.chars().count() + call.arguments.chars().count())
+                    .sum::<usize>()
+        } else {
+            0
+        };
+        let estimate = input
+            .saturating_add(output)
+            .div_ceil(ESTIMATED_CHARS_PER_TOKEN);
+        budget.charge(u64::try_from(estimate).unwrap_or(u64::MAX));
+    }
+
+    fn budget_reached(&self) -> bool {
+        self.budget.as_deref().is_some_and(TokenBudget::reached)
+    }
+}
+
+fn budget_tokens(usage: Usage) -> u64 {
+    let cached = match usage.input_semantics {
+        InputTokenSemantics::Exclusive => {
+            u64::from(usage.cache_read.unwrap_or(0)) + u64::from(usage.cache_write.unwrap_or(0))
+        }
+        InputTokenSemantics::Inclusive | InputTokenSemantics::Unknown => 0,
+    };
+    u64::from(usage.reported_input().unwrap_or(0))
+        + cached
+        + u64::from(usage.reported_output().unwrap_or(0))
 }
 
 async fn compact_with_usage<F>(
@@ -2178,6 +2235,29 @@ mod tests {
         assert_eq!(usage.output, u32::MAX);
         assert_eq!(usage.cache_read, Some(u32::MAX));
         assert_eq!(usage.cache_write, Some(5));
+    }
+
+    #[test]
+    fn the_budget_counts_cached_input_the_same_on_every_provider() {
+        let exclusive = Usage {
+            input: 10,
+            output: 5,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(100),
+            cache_write: Some(20),
+            input_semantics: InputTokenSemantics::Exclusive,
+            ..Usage::default()
+        };
+        let inclusive = Usage {
+            input: 130,
+            cache_write: Some(0),
+            input_semantics: InputTokenSemantics::Inclusive,
+            ..exclusive
+        };
+        assert_eq!(budget_tokens(exclusive), 135);
+        assert_eq!(budget_tokens(inclusive), 135);
+        assert_eq!(budget_tokens(Usage::default()), 0);
     }
 
     #[test]

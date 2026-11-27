@@ -309,6 +309,21 @@
       "toolsHint": "你可以要求它「修正 LaTeX 錯誤」、「新增 Publications 章節」或「重新編譯並檢查 PDF」。",
       "toolsTitle": "助理目前支援下列工具"
     },
+    "limits": {
+      "description": "Oleafly 代理程式在一輪中停下來等你之前，最多能做多少。留空即保留預設值。",
+      "modelDefault": "模型預設值",
+      "noLimit": "不限制",
+      "outputHint": "模型在一次回覆中最多寫多少。留空則使用模型本身的上限。",
+      "outputLabel": "每次回覆的輸出 token 數",
+      "rangeError": "{{field}} 必須是 {{min}} 到 {{max}} 之間的整數。",
+      "save": "儲存限制",
+      "saved": "已儲存",
+      "stepsHint": "最多 2,000。超過 50 時，一輪最長還可執行 8 小時，而不是 30 分鐘。",
+      "stepsLabel": "每輪步驟數",
+      "title": "每輪限制",
+      "turnTokensHint": "計算代理程式及其子代理讀寫的所有 token，供應商未回報時會加以估算。總數超過此值後，這一輪會在下一個步驟前停止。",
+      "turnTokensLabel": "每輪 token 數"
+    },
     "models": {
       "addError": {
         "duplicate": "這個模型已在清單中。",

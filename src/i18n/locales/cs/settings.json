@@ -315,6 +315,21 @@
       "toolsHint": "Zkuste ho požádat třeba o „oprav chyby v LaTeXu“, „přidej sekci Publikace“ nebo „zkompiluj znovu a zkontroluj PDF“.",
       "toolsTitle": "Asistent aktuálně podporuje tyto nástroje"
     },
+    "limits": {
+      "description": "Kolik toho agent Oleafly v jednom tahu udělá, než se zastaví a počká na vás. Prázdné pole ponechá výchozí hodnotu.",
+      "modelDefault": "Výchozí podle modelu",
+      "noLimit": "Bez limitu",
+      "outputHint": "Kolik nejvýš model napíše v jedné odpovědi. Když pole necháte prázdné, platí limit modelu.",
+      "outputLabel": "Výstupní tokeny na odpověď",
+      "rangeError": "{{field}}: zadejte celé číslo od {{min}} do {{max}}.",
+      "save": "Uložit limity",
+      "saved": "Uloženo",
+      "stepsHint": "Až 2 000. Nad 50 kroků může tah běžet až 8 hodin místo 30 minut.",
+      "stepsLabel": "Kroky v jednom tahu",
+      "title": "Limity tahu",
+      "turnTokensHint": "Počítá všechny tokeny, které agent a jeho podagenti přečtou a napíšou. Když je poskytovatel nehlásí, odhadne je. Jakmile součet tuto hodnotu překročí, tah se před dalším krokem zastaví.",
+      "turnTokensLabel": "Tokeny v jednom tahu"
+    },
     "models": {
       "addError": {
         "duplicate": "Tento model už v seznamu je.",

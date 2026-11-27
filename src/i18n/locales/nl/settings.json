@@ -311,6 +311,21 @@
       "toolsHint": "Vraag bijvoorbeeld \"los de LaTeX-fouten op\", \"voeg een sectie Publicaties toe\" of \"compileer opnieuw en controleer de PDF\".",
       "toolsTitle": "De assistent ondersteunt op dit moment deze tools"
     },
+    "limits": {
+      "description": "Hoeveel de Oleafly-agent in één beurt mag doen voordat hij stopt en op je wacht. Laat een veld leeg om de standaardwaarde te houden.",
+      "modelDefault": "Standaard van het model",
+      "noLimit": "Geen limiet",
+      "outputHint": "Het maximum dat het model in één antwoord schrijft. Laat het leeg om de eigen limiet van het model te gebruiken.",
+      "outputLabel": "Uitvoertokens per antwoord",
+      "rangeError": "{{field}} moet een geheel getal van {{min}} tot {{max}} zijn.",
+      "save": "Limieten opslaan",
+      "saved": "Opgeslagen",
+      "stepsHint": "Tot 2.000. Boven de 50 kan een beurt ook 8 uur duren in plaats van 30 minuten.",
+      "stepsLabel": "Stappen per beurt",
+      "title": "Limieten per beurt",
+      "turnTokensHint": "Telt alle tokens die de agent en zijn subagents lezen en schrijven, en schat ze als een provider ze niet doorgeeft. Zodra het totaal deze waarde passeert, stopt de beurt voor de volgende stap.",
+      "turnTokensLabel": "Tokens per beurt"
+    },
     "models": {
       "addError": {
         "duplicate": "Dat model staat al in de lijst.",

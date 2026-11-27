@@ -994,6 +994,7 @@
     "retrying": "Problemă de conexiune. Se reîncearcă ({{attempt}} din {{max}})…",
     "stopped": "Oprit.",
     "stepLimit": "S-a atins limita de pași. Trimite alt mesaj ca să continui.",
+    "tokenLimit": "S-a atins limita de tokenuri pentru acest schimb. Trimite alt mesaj ca să continui.",
     "outputLimit": "Răspunsul a atins limita de ieșire a modelului. Trimite alt mesaj ca să continui.",
     "tooLargeToSave": "Această conversație este prea lungă pentru a fi salvată. Mesajele noi se păstrează până închizi Oleafly. Exportă conversația ca să păstrezi o copie.",
     "exportChat": "Exportă conversația",

@@ -979,6 +979,7 @@
     "retrying": "Verbindingsprobleem. Opnieuw proberen ({{attempt}} van {{max}})…",
     "stopped": "Gestopt.",
     "stepLimit": "De limiet voor stappen is bereikt. Stuur nog een bericht om door te gaan.",
+    "tokenLimit": "De tokenlimiet voor deze beurt is bereikt. Stuur nog een bericht om door te gaan.",
     "outputLimit": "Het antwoord heeft de uitvoerlimiet van het model bereikt. Stuur nog een bericht om door te gaan.",
     "tooLargeToSave": "Deze chat is te lang om op te slaan. Nieuwe berichten blijven bewaard tot je Oleafly sluit. Exporteer de chat om een kopie te houden.",
     "exportChat": "Chat exporteren",

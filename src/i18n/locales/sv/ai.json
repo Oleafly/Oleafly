@@ -979,6 +979,7 @@
     "retrying": "Anslutningsproblem. Försöker igen ({{attempt}} av {{max}})…",
     "stopped": "Stoppad.",
     "stepLimit": "Stegränsen nåddes. Skicka ett nytt meddelande för att fortsätta.",
+    "tokenLimit": "Gränsen för tokens under den här turen nåddes. Skicka ett nytt meddelande för att fortsätta.",
     "outputLimit": "Svaret nådde modellens gräns för utdata. Skicka ett nytt meddelande för att fortsätta.",
     "tooLargeToSave": "Den här chatten är för lång för att sparas. Nya meddelanden finns kvar tills du stänger Oleafly. Exportera chatten för att behålla en kopia.",
     "exportChat": "Exportera chatten",

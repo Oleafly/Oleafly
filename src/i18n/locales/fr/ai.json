@@ -994,6 +994,7 @@
     "retrying": "Problème de connexion. Nouvelle tentative ({{attempt}} sur {{max}})…",
     "stopped": "Arrêté.",
     "stepLimit": "Limite d'étapes atteinte. Envoyez un autre message pour continuer.",
+    "tokenLimit": "Limite de jetons atteinte pour ce tour. Envoyez un autre message pour continuer.",
     "outputLimit": "La réponse a atteint la limite de sortie du modèle. Envoyez un autre message pour continuer.",
     "tooLargeToSave": "Cette discussion est trop longue pour être enregistrée. Les nouveaux messages sont conservés jusqu'à la fermeture d'Oleafly. Exportez la discussion pour en garder une copie.",
     "exportChat": "Exporter la discussion",

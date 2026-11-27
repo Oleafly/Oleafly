@@ -311,6 +311,21 @@
       "toolsHint": "Ona \"LaTeX hatalarını düzelt\", \"Yayınlar bölümü ekle\" veya \"yeniden derle ve PDF'i denetle\" gibi şeyler söyleyin.",
       "toolsTitle": "Asistan şu anda bu araçları destekliyor"
     },
+    "limits": {
+      "description": "Oleafly ajanının durup sizi beklemeden önce bir turda ne kadar iş yapabileceğini belirler. Varsayılanı korumak için alanı boş bırakın.",
+      "modelDefault": "Model varsayılanı",
+      "noLimit": "Sınır yok",
+      "outputHint": "Modelin tek bir yanıtta yazacağı en fazla miktar. Modelin kendi sınırını kullanmak için boş bırakın.",
+      "outputLabel": "Yanıt başına çıktı token sayısı",
+      "rangeError": "{{field}} için {{min}} ile {{max}} arasında bir tam sayı girin.",
+      "save": "Sınırları kaydet",
+      "saved": "Kaydedildi",
+      "stepsHint": "En fazla 2.000. 50'nin üzerinde bir tur, 30 dakika yerine 8 saate kadar da sürebilir.",
+      "stepsLabel": "Tur başına adım",
+      "title": "Tur başına sınırlar",
+      "turnTokensHint": "Ajanın ve alt ajanlarının okuyup yazdığı tüm token'ları sayar. Sağlayıcı bildirmediğinde tahmin eder. Toplam bu değeri geçtiğinde tur bir sonraki adımdan önce durur.",
+      "turnTokensLabel": "Tur başına token"
+    },
     "models": {
       "addError": {
         "duplicate": "Bu model listede zaten var.",

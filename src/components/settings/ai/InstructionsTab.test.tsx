@@ -8,6 +8,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   setConfig: mocks.setConfig,
 }));
+vi.mock("./AgentLimits", () => ({ AgentLimitsSection: () => null }));
 
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";

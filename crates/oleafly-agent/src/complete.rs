@@ -517,6 +517,17 @@ pub(crate) async fn read_provider_error(
 /// A blocking call gets a modest output ceiling when it sets none: always on
 /// Anthropic (which requires one), and on Google and Groq when the model's
 /// limit is known.
+pub fn cap_output_tokens(resolved: &Resolved, request: &mut CompletionRequest, cap: u32) {
+    let ceiling = match &resolved.wire {
+        Wire::Anthropic { .. } => Some(crate::wire::reasoning::anthropic_default_max_tokens(
+            resolved,
+        )),
+        _ => resolved.caps.output_limit.filter(|limit| *limit > 0),
+    };
+    let asked = request.max_tokens.or(ceiling);
+    request.max_tokens = Some(asked.map_or(cap, |asked| asked.min(cap)));
+}
+
 pub(crate) fn with_blocking_ceiling<'a>(
     resolved: &Resolved,
     req: &'a CompletionRequest,
@@ -1004,6 +1015,59 @@ mod tests {
     fn a_content_free_reply_is_empty_text_rather_than_an_error() {
         let body = json!({ "choices": [{ "message": { "role": "assistant" } }] });
         assert_eq!(parse_openai(&body).unwrap().0, "");
+    }
+
+    #[test]
+    fn the_output_cap_keeps_each_models_own_ceiling() {
+        let resolved = |model: &str, wire: Wire, output_limit: Option<u32>| Resolved {
+            provider_id: "test".into(),
+            model_id: model.into(),
+            credential: String::new(),
+            auth: None,
+            wire,
+            caps: crate::caps::ModelCaps {
+                output_limit,
+                ..crate::caps::ModelCaps::default()
+            },
+        };
+        let anthropic = || Wire::Anthropic {
+            base_url: "https://example.test".into(),
+        };
+        let chat = || Wire::OpenAiChat {
+            base_url: "https://example.test".into(),
+            reasoning_content: false,
+        };
+        let capped = |resolved: Resolved, asked: Option<u32>| {
+            let mut request = CompletionRequest {
+                max_tokens: asked,
+                ..CompletionRequest::default()
+            };
+            cap_output_tokens(&resolved, &mut request, 32_000);
+            request.max_tokens
+        };
+        assert_eq!(
+            capped(
+                resolved("claude-sonnet-4-0", anthropic(), Some(64_000)),
+                None
+            ),
+            Some(16_000)
+        );
+        assert_eq!(
+            capped(
+                resolved("claude-opus-5-5", anthropic(), Some(128_000)),
+                None
+            ),
+            Some(32_000)
+        );
+        assert_eq!(
+            capped(resolved("local", chat(), Some(8_192)), None),
+            Some(8_192)
+        );
+        assert_eq!(capped(resolved("local", chat(), None), None), Some(32_000));
+        assert_eq!(
+            capped(resolved("local", chat(), None), Some(4_096)),
+            Some(4_096)
+        );
     }
 
     #[test]

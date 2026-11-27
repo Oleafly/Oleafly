@@ -309,6 +309,21 @@
       "toolsHint": "Hãy yêu cầu những việc như \"sửa lỗi LaTeX\", \"thêm phần Công bố\" hoặc \"biên dịch lại và kiểm tra PDF\".",
       "toolsTitle": "Trợ lý hiện hỗ trợ các công cụ này"
     },
+    "limits": {
+      "description": "Agent Oleafly được làm bao nhiêu trong một lượt trước khi dừng lại chờ bạn. Để trống một ô để giữ giá trị mặc định.",
+      "modelDefault": "Mặc định của mô hình",
+      "noLimit": "Không giới hạn",
+      "outputHint": "Lượng tối đa mô hình viết trong một câu trả lời. Để trống để dùng giới hạn riêng của mô hình.",
+      "outputLabel": "Token đầu ra mỗi câu trả lời",
+      "rangeError": "{{field}} phải là số nguyên từ {{min}} đến {{max}}.",
+      "save": "Lưu giới hạn",
+      "saved": "Đã lưu",
+      "stepsHint": "Tối đa 2.000. Trên 50, một lượt còn có thể chạy đến 8 giờ thay vì 30 phút.",
+      "stepsLabel": "Số bước mỗi lượt",
+      "title": "Giới hạn mỗi lượt",
+      "turnTokensHint": "Đếm mọi token mà agent và các agent phụ đọc và viết, và ước tính khi nhà cung cấp không báo. Khi tổng vượt quá giá trị này, lượt sẽ dừng trước bước tiếp theo.",
+      "turnTokensLabel": "Token mỗi lượt"
+    },
     "models": {
       "addError": {
         "duplicate": "Mô hình đó đã có trong danh sách.",

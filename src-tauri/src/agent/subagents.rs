@@ -33,6 +33,7 @@ pub struct RunContext {
     pub task_path: String,
     pub multi_agent: MultiAgentConfig,
     pub cost_tally: Arc<super::usage::CostTally>,
+    pub token_budget: Option<Arc<oleafly_agent::TokenBudget>>,
     pub web: Option<Arc<oleafly_agent::tools::web::WebToolContext>>,
 }
 
@@ -1009,6 +1010,7 @@ fn spawn_child_run(
                     registry: ctx.registry.clone(),
                     gate: ctx.gate.clone(),
                     token: token.clone(),
+                    token_budget: ctx.token_budget.clone(),
                     ..Default::default()
                 };
                 let runner =
@@ -1486,6 +1488,7 @@ mod tests {
             task_path: "/root".into(),
             multi_agent: MultiAgentConfig::default(),
             cost_tally: Arc::default(),
+            token_budget: None,
             web: None,
         };
         let manager = Arc::new(SubagentManager::default());

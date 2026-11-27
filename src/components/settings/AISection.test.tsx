@@ -84,6 +84,9 @@ let skillsFixture: SkillEntry[] = [];
 let configFixture: AppConfig;
 let failSkillReset = false;
 let budgetFixture: number | null = null;
+const noLimits = { max_steps: null, max_output_tokens: null, turn_tokens: null };
+let limitsFixture: { max_steps: number | null; max_output_tokens: number | null; turn_tokens: number | null } =
+  noLimits;
 let listedModels: ProviderModel[] = [];
 
 function providerUpdated(provider: string): string {
@@ -207,6 +210,7 @@ function resetHarness() {
   configFixture = configuredAiConfig();
   failSkillReset = false;
   budgetFixture = null;
+  limitsFixture = noLimits;
   listedModels = [];
   captured.providersTab = null;
   captured.dialog = null;
@@ -244,6 +248,8 @@ function resetHarness() {
     }
     if (command === "budget_get_cmd") return budgetFixture;
     if (command === "budget_set_cmd") return undefined;
+    if (command === "agent_limits_get") return limitsFixture;
+    if (command === "agent_limits_set") return (args as { limits: typeof noLimits }).limits;
     throw new Error(`Unexpected command: ${command}`);
   });
 }
@@ -465,6 +471,22 @@ describe("AISection", () => {
     );
   });
 
+  it("marks Reset while a turn limit is set", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_system_prompt: "",
+      ai_pdf_capture: true,
+      ai_provider_models: {},
+    };
+    limitsFixture = { ...noLimits, max_steps: 300 };
+    renderSection();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: enSettings.reset.button }),
+      ).toHaveAccessibleDescription(enSettings.reset.changed),
+    );
+  });
+
   it("marks Reset while reasoning summaries are on", async () => {
     configFixture = {
       ...configuredAiConfig(),
@@ -649,6 +671,7 @@ describe("AISection", () => {
       projectId: "project-ai-reset",
       budgetUsd: null,
     });
+    expect(mockInvoke).toHaveBeenCalledWith("agent_limits_set", { limits: noLimits });
     expect(
       await screen.findByText(enSettings.ai.section.messages.preferencesReset),
     ).toBeInTheDocument();

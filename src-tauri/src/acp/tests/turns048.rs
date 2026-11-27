@@ -294,16 +294,17 @@ async fn steering_injects_into_a_running_turn_and_records_a_steered_message() {
             .prompt(&prompt_id, "slow-silent".into(), Vec::new())
             .await
     });
+    let mut outcome = SteerOutcome::PromptRequired;
     for _ in 0..200 {
-        if runtime.snapshot(&id).await.unwrap().session.status == SessionStatus::Running {
+        outcome = runtime
+            .steer(&id, "Also fix the abstract".into())
+            .await
+            .unwrap();
+        if outcome == SteerOutcome::Injected {
             break;
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    let outcome = runtime
-        .steer(&id, "Also fix the abstract".into())
-        .await
-        .unwrap();
     assert_eq!(outcome, SteerOutcome::Injected);
     turn.await.unwrap().unwrap();
     let events = runtime.events_all(&id).unwrap();

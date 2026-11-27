@@ -315,6 +315,21 @@
       "toolsHint": "Poproś go o rzeczy w rodzaju \"popraw błędy LaTeX\", \"dodaj sekcję Publikacje\" albo \"skompiluj ponownie i sprawdź PDF\".",
       "toolsTitle": "Asystent obsługuje obecnie te narzędzia"
     },
+    "limits": {
+      "description": "Ile agent Oleafly może zrobić w jednej turze, zanim się zatrzyma i zaczeka na Ciebie. Zostaw pole puste, aby zachować wartość domyślną.",
+      "modelDefault": "Domyślnie dla modelu",
+      "noLimit": "Bez limitu",
+      "outputHint": "Najwięcej, ile model napisze w jednej odpowiedzi. Puste pole oznacza limit samego modelu.",
+      "outputLabel": "Tokeny wyjściowe na odpowiedź",
+      "rangeError": "{{field}}: podaj liczbę całkowitą od {{min}} do {{max}}.",
+      "save": "Zapisz limity",
+      "saved": "Zapisano",
+      "stepsHint": "Do 2000. Powyżej 50 tura może też trwać 8 godzin zamiast 30 minut.",
+      "stepsLabel": "Kroki na turę",
+      "title": "Limity na turę",
+      "turnTokensHint": "Liczy wszystkie tokeny, które agent i jego podagenci czytają i piszą, a gdy dostawca ich nie podaje, szacuje je. Gdy suma przekroczy tę wartość, tura zatrzyma się przed kolejnym krokiem.",
+      "turnTokensLabel": "Tokeny na turę"
+    },
     "models": {
       "addError": {
         "duplicate": "Ten model jest już na liście.",

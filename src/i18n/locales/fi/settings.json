@@ -311,6 +311,21 @@
       "toolsHint": "Pyydä esimerkiksi \"korjaa LaTeX-virheet\", \"lisää Julkaisut-osio\" tai \"käännä uudelleen ja tarkista PDF\".",
       "toolsTitle": "Avustaja tukee tällä hetkellä näitä työkaluja"
     },
+    "limits": {
+      "description": "Kuinka paljon Oleafly-agentti saa tehdä yhden vuoron aikana, ennen kuin se pysähtyy odottamaan sinua. Jätä kenttä tyhjäksi, niin oletus säilyy.",
+      "modelDefault": "Mallin oletus",
+      "noLimit": "Ei rajaa",
+      "outputHint": "Enimmäismäärä, jonka malli kirjoittaa yhteen vastaukseen. Tyhjä kenttä käyttää mallin omaa rajaa.",
+      "outputLabel": "Tulostokeneita vastausta kohden",
+      "rangeError": "{{field}}: anna kokonaisluku {{min}} ja {{max}} väliltä.",
+      "save": "Tallenna rajat",
+      "saved": "Tallennettu",
+      "stepsHint": "Enintään 2 000. Yli 50 vaiheen vuoro voi kestää 8 tuntia 30 minuutin sijaan.",
+      "stepsLabel": "Vaiheita vuorossa",
+      "title": "Vuoron rajat",
+      "turnTokensHint": "Laskee kaikki tokenit, jotka agentti ja sen aliagentit lukevat ja kirjoittavat, ja arvioi ne, jos palveluntarjoaja ei ilmoita niitä. Kun määrä ylittää tämän, vuoro pysähtyy ennen seuraavaa vaihetta.",
+      "turnTokensLabel": "Tokeneita vuorossa"
+    },
     "models": {
       "addError": {
         "duplicate": "Tämä malli on jo luettelossa.",
