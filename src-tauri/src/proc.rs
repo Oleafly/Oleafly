@@ -23,6 +23,8 @@ pub use output::{
     OutputBounds,
 };
 
+pub(crate) const ENGLISH_MESSAGES: [(&str, &str); 2] = [("LANGUAGE", "en"), ("LC_MESSAGES", "C")];
+
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(windows)]
@@ -62,6 +64,7 @@ impl NoConsole for tokio::process::Command {
 }
 
 pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
+    clear_appimage_env(command);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -180,6 +183,32 @@ mod unix_tests {
         let error = std::io::Error::last_os_error();
         assert_eq!(found, -1, "the helper was left as a zombie");
         assert_eq!(error.raw_os_error(), Some(libc::ECHILD));
+    }
+
+    #[test]
+    fn host_programs_started_through_the_contained_helpers_leave_the_appimage_libraries_behind() {
+        let image = SimulatedAppImage::start();
+        let bundled = format!("{}/usr/lib/", image.root.display());
+
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "printf '%s' \"${LD_LIBRARY_PATH-unset}\""])
+            .env("LD_LIBRARY_PATH", &bundled);
+        let output =
+            output_contained_with_timeout(command, std::time::Duration::from_secs(30)).unwrap();
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "unset");
+
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "exit 0"])
+            .env("LD_LIBRARY_PATH", &bundled);
+        spawn_contained(&mut command).unwrap();
+        let library_path: Vec<_> = command
+            .get_envs()
+            .filter(|(name, _)| *name == "LD_LIBRARY_PATH")
+            .map(|(_, value)| value)
+            .collect();
+        assert_eq!(library_path, [None]);
     }
 }
 

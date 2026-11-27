@@ -60,6 +60,14 @@ pub fn rename_tree_with_retry(from: &Path, to: &Path) -> io::Result<()> {
     retry_tree_operation(|| std::fs::rename(from, to))
 }
 
+pub fn move_file(from: &Path, to: &Path) -> io::Result<()> {
+    if std::fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    std::fs::copy(from, to)?;
+    std::fs::remove_file(from)
+}
+
 /// A staging file beside `destination`, named `.{name}.oleafly-….tmp` so
 /// Oleafly's own folder scans skip it (`exclude::is_oleafly_owned_name`).
 /// It is created the way any new file is, so on Unix the umask decides its
@@ -231,6 +239,21 @@ pub fn copy_atomic(source: &Path, destination: &Path) -> io::Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn move_file_moves_into_another_folder_and_reports_a_missing_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let from = dir.path().join("a.tex");
+        let to = dir.path().join("trash").join("a.tex");
+        std::fs::create_dir(dir.path().join("trash")).unwrap();
+        std::fs::write(&from, "body").unwrap();
+
+        move_file(&from, &to).unwrap();
+
+        assert!(!from.exists());
+        assert_eq!(std::fs::read_to_string(&to).unwrap(), "body");
+        assert!(move_file(&from, &to).is_err());
+    }
 
     #[test]
     fn write_atomic_replaces_and_leaves_no_temp_files() {

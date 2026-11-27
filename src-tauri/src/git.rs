@@ -204,7 +204,7 @@ fn prepared_git(
     testing::apply_inherited_env(&mut command);
     clear_inherited_git_env(&mut command);
     command.env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
-    command.env("LANGUAGE", "en").env("LC_MESSAGES", "C");
+    command.envs(crate::proc::ENGLISH_MESSAGES);
     configure(&mut command);
     Ok((command, program))
 }
