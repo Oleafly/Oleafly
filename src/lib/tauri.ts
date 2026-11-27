@@ -2251,6 +2251,15 @@ export const budgetGet = (projectId: string) =>
 export const budgetSet = (projectId: string, budgetUsd: number | null) =>
   invoke<void>("budget_set_cmd", { projectId, budgetUsd });
 
+export interface AgentLimits {
+  max_steps: number | null;
+  max_output_tokens: number | null;
+  turn_tokens: number | null;
+}
+export const agentLimitsGet = () => invoke<AgentLimits>("agent_limits_get");
+export const agentLimitsSet = (limits: AgentLimits) =>
+  invoke<AgentLimits>("agent_limits_set", { limits });
+
 export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
 export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
 export const approvalsList = (projectId: string) =>

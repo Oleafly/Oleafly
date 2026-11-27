@@ -276,16 +276,6 @@
       "submitAddAnyway": "Tilføj uden modeller"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Agentens kørselsbudgetter",
-        "description": "Kun for den indbyggede assistent. Tomt felt bruger den eksisterende standardværdi. Mere end 50 trin aktiverer en grænse på otte timer pr. tur. Det samlede tokenmål kontrolleres mellem modeltrin ud fra det rapporterede forbrug. Forespørgsler kan overskride det, og forbrug fra separat kørende subagenter er ikke inkluderet.",
-        "stepsLabel": "Maksimalt antal trin (1-2000)",
-        "outputLabel": "Maksimalt antal outputtokens pr. forespørgsel",
-        "totalLabel": "Samlede rapporterede tokens pr. tur (blød grænse)",
-        "auto": "Automatisk",
-        "save": "Gem budgetter",
-        "invalid": "Ugyldigt budget: {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Agentens evner",
       "completionModelDescription": "Den model, der skriver fuldførelser, mens du skriver. Hurtige modeller og modeller, der kører på denne computer, svarer hurtigst.",
       "completionModelTitle": "Model til AI-fuldførelser",
@@ -320,6 +310,21 @@
       },
       "toolsHint": "Bed den om ting som »ret LaTeX-fejlene«, »tilføj et afsnit med publikationer« eller »kompiler igen, og tjek PDF'en«.",
       "toolsTitle": "Assistenten understøtter disse værktøjer lige nu"
+    },
+    "limits": {
+      "description": "Hvor meget Oleafly-agenten må gøre i én tur, før den stopper og venter på dig. Lad et felt stå tomt for at beholde standarden.",
+      "modelDefault": "Modellens standard",
+      "noLimit": "Ingen grænse",
+      "outputHint": "Det meste, modellen skriver i ét svar. Lad feltet stå tomt for at bruge modellens egen grænse.",
+      "outputLabel": "Output-tokens pr. svar",
+      "rangeError": "{{field}} skal være et helt tal fra {{min}} til {{max}}.",
+      "save": "Gem grænser",
+      "saved": "Gemt",
+      "stepsHint": "Op til 2.000. Over 50 kan en tur også køre i 8 timer i stedet for 30 minutter.",
+      "stepsLabel": "Trin pr. tur",
+      "title": "Grænser for en tur",
+      "turnTokensHint": "Tæller alle tokens, agenten og dens underagenter læser og skriver, og anslår dem, når en udbyder ikke oplyser dem. Når tallet passerer grænsen, stopper turen før næste trin.",
+      "turnTokensLabel": "Tokens pr. tur"
     },
     "models": {
       "addError": {

@@ -276,16 +276,6 @@
       "submitAddAnyway": "Add without models"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Agent execution budgets",
-        "description": "Built-in assistant only. Blank uses the existing default. More than 50 steps opts into an eight-hour turn limit. The total token target is checked between model steps using reported usage. Requests may overshoot it, and separate subagent usage is not included.",
-        "stepsLabel": "Maximum steps (1-2000)",
-        "outputLabel": "Maximum output tokens per request",
-        "totalLabel": "Total reported tokens per turn (soft limit)",
-        "auto": "Auto",
-        "save": "Save budgets",
-        "invalid": "Invalid budget: {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Agent capabilities",
       "completionModelDescription": "The model that writes completions while you type. Fast models, and models running on this computer, answer quickest.",
       "completionModelTitle": "AI completion model",
@@ -320,6 +310,21 @@
       },
       "toolsHint": "Ask it things like \"fix the LaTeX errors\", \"add a Publications section\", or \"recompile and check the PDF\".",
       "toolsTitle": "The assistant currently supports these tools"
+    },
+    "limits": {
+      "description": "How much the Oleafly agent can do in one turn before it stops and waits for you. Leave a field empty to keep its default.",
+      "modelDefault": "Model default",
+      "noLimit": "No limit",
+      "outputHint": "The most the model writes in one reply. Leave it empty to use the model's own limit.",
+      "outputLabel": "Output tokens per reply",
+      "rangeError": "{{field}} takes a whole number from {{min}} to {{max}}.",
+      "save": "Save limits",
+      "saved": "Saved",
+      "stepsHint": "Up to 2,000. Above 50, a turn can also run for 8 hours instead of 30 minutes.",
+      "stepsLabel": "Steps per turn",
+      "title": "Turn limits",
+      "turnTokensHint": "Counts every token the agent and its subagents read and write, estimated when a provider doesn't report them. Once the count passes this, the turn stops before its next step.",
+      "turnTokensLabel": "Tokens per turn"
     },
     "models": {
       "addError": {

@@ -979,6 +979,7 @@
     "retrying": "Bağlantı sorunu. Yeniden deneniyor ({{max}} denemeden {{attempt}}.)…",
     "stopped": "Durduruldu.",
     "stepLimit": "Adım sınırına ulaşıldı. Devam etmek için bir ileti daha gönderin.",
+    "tokenLimit": "Bu turun token sınırına ulaşıldı. Devam etmek için bir ileti daha gönderin.",
     "outputLimit": "Yanıt, modelin çıktı sınırına ulaştı. Devam etmek için bir ileti daha gönderin.",
     "tooLargeToSave": "Bu sohbet kaydedilemeyecek kadar uzun. Yeni iletiler Oleafly'yi kapatana kadar tutulur. Bir kopya saklamak için sohbeti dışa aktarın.",
     "exportChat": "Sohbeti dışa aktar",

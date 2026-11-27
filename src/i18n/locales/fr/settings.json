@@ -277,16 +277,6 @@
       "submitAddAnyway": "Ajouter sans modèles"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Budgets d'exécution de l'agent",
-        "description": "Assistant intégré uniquement. Laisser vide conserve la valeur par défaut existante. Plus de 50 étapes active une limite de huit heures par tour. L'objectif total de tokens est vérifié entre les étapes du modèle à partir de l'usage rapporté. Les requêtes peuvent le dépasser, et l'usage des sous-agents exécutés séparément n'est pas inclus.",
-        "stepsLabel": "Nombre maximal d'étapes (1-2000)",
-        "outputLabel": "Tokens de sortie maximaux par requête",
-        "totalLabel": "Total de tokens rapportés par tour (limite souple)",
-        "auto": "Auto",
-        "save": "Enregistrer les budgets",
-        "invalid": "Budget invalide : {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Capacités de l'agent",
       "completionModelDescription": "Le modèle qui rédige les complétions pendant que vous écrivez. Les modèles rapides, et ceux qui tournent sur cet ordinateur, répondent le plus vite.",
       "completionModelTitle": "Modèle des complétions par IA",
@@ -322,6 +312,21 @@
       },
       "toolsHint": "Demandez-lui par exemple « corrige les erreurs LaTeX », « ajoute une section Publications » ou « recompile et vérifie le PDF ».",
       "toolsTitle": "L'assistant prend actuellement en charge ces outils"
+    },
+    "limits": {
+      "description": "Ce que l'agent Oleafly peut faire en un tour avant de s'arrêter pour vous attendre. Laissez un champ vide pour garder sa valeur par défaut.",
+      "modelDefault": "Valeur du modèle",
+      "noLimit": "Aucune limite",
+      "outputHint": "Le maximum que le modèle écrit dans une réponse. Laissez vide pour utiliser la limite du modèle.",
+      "outputLabel": "Jetons de sortie par réponse",
+      "rangeError": "{{field}} doit être un nombre entier entre {{min}} et {{max}}.",
+      "save": "Enregistrer les limites",
+      "saved": "Enregistré",
+      "stepsHint": "Jusqu'à 2 000. Au-delà de 50, un tour peut aussi durer 8 heures au lieu de 30 minutes.",
+      "stepsLabel": "Étapes par tour",
+      "title": "Limites par tour",
+      "turnTokensHint": "Compte tous les jetons que l'agent et ses sous-agents lisent et écrivent, avec une estimation quand un fournisseur ne les indique pas. Dès que le total dépasse cette valeur, le tour s'arrête avant l'étape suivante.",
+      "turnTokensLabel": "Jetons par tour"
     },
     "models": {
       "addError": {

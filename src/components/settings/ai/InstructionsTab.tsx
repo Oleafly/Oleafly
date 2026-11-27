@@ -2,7 +2,6 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AppConfig } from "@/lib/tauri";
@@ -13,6 +12,7 @@ import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { AiCompletionModelSetting } from "@/components/settings/AiCompletionModelSetting";
 import { useSettingsStore } from "@/store/settings";
+import { AgentLimitsSection } from "./AgentLimits";
 import { SavedInstructionsSection } from "./SavedInstructionsSection";
 
 export interface InstructionsTabProps {
@@ -40,8 +40,6 @@ export function InstructionsTab({
 }: Readonly<InstructionsTabProps>) {
   const { t, i18n } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [budgetDraft, setBudgetDraft] = useState<Record<string, string>>({});
-  const [budgetSaving, setBudgetSaving] = useState(false);
   const aiCompletion = useSettingsStore((s) => s.aiCompletion);
   const defaultModelGroups = configuredModelGroups(
     {
@@ -103,78 +101,7 @@ export function InstructionsTab({
         </div>
       </div>
 
-      <div className="space-y-2 border-t pt-4">
-        <p className="font-medium">{t(($) => $.settings.ai.instructions.agentBudgets.title)}</p>
-        <p className="text-xs text-muted-foreground">
-          {t(($) => $.settings.ai.instructions.agentBudgets.description)}
-        </p>
-        {([
-          ["ai_agent_max_steps", t(($) => $.settings.ai.instructions.agentBudgets.stepsLabel), 2000, 50],
-          [
-            "ai_agent_max_output_tokens",
-            t(($) => $.settings.ai.instructions.agentBudgets.outputLabel),
-            1048576,
-            0,
-          ],
-          [
-            "ai_agent_total_tokens",
-            t(($) => $.settings.ai.instructions.agentBudgets.totalLabel),
-            100000000,
-            0,
-          ],
-        ] as const).map(([key, label, max, fallback]) => (
-          <label key={key} htmlFor={key} className="block space-y-1 text-xs">
-            <span>{label}</span>
-            <Input
-              id={key}
-              type="number"
-              min={1}
-              max={max}
-              step={1}
-              placeholder={
-                fallback ? String(fallback) : t(($) => $.settings.ai.instructions.agentBudgets.auto)
-              }
-              value={budgetDraft[key] ?? (cfg[key] == null ? "" : String(cfg[key]))}
-              disabled={!configLoaded || budgetSaving}
-              onChange={(event) => setBudgetDraft((prev) => ({ ...prev, [key]: event.target.value }))}
-            />
-          </label>
-        ))}
-        <Button
-          size="sm"
-          disabled={!configLoaded || budgetSaving || Object.keys(budgetDraft).length === 0}
-          onClick={() => {
-            const next = { ...cfg };
-            for (const [key, max] of [
-              ["ai_agent_max_steps", 2000],
-              ["ai_agent_max_output_tokens", 1048576],
-              ["ai_agent_total_tokens", 100000000],
-            ] as const) {
-              const raw = budgetDraft[key];
-              if (raw === undefined) continue;
-              const value = raw.trim() === "" ? null : Number(raw);
-              if (value !== null && (!Number.isSafeInteger(value) || value < 1 || value > max)) {
-                setMsg({
-                  ok: false,
-                  text: t(($) => $.settings.ai.instructions.agentBudgets.invalid, {
-                    field: key,
-                    max,
-                  }),
-                });
-                return;
-              }
-              next[key] = value;
-            }
-            setBudgetSaving(true);
-            void persist(next)
-              .then(() => setBudgetDraft({}))
-              .catch((err) => setMsg({ ok: false, text: describeError(err) }))
-              .finally(() => setBudgetSaving(false));
-          }}
-        >
-          {t(($) => $.settings.ai.instructions.agentBudgets.save)}
-        </Button>
-      </div>
+      <AgentLimitsSection />
 
       <SavedInstructionsSection cfg={cfg} configLoaded={configLoaded} persist={persist} />
 

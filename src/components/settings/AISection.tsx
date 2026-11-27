@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
+  agentLimitsGet,
+  agentLimitsSet,
   budgetGet,
   budgetSet,
   getConfig,
@@ -45,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { ApprovalsFileEditor } from "./ai/ApprovalsFileEditor";
 import { ProjectApprovals } from "./ai/ProjectApprovals";
+import { AGENT_LIMITS_QUERY_KEY, hasAgentLimits, NO_AGENT_LIMITS } from "./ai/AgentLimits";
 import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
@@ -268,6 +271,11 @@ export function AISection() {
     enabled: !!projectId,
     meta: { silent: true },
   });
+  const agentLimits = useQuery({
+    queryKey: AGENT_LIMITS_QUERY_KEY,
+    queryFn: agentLimitsGet,
+    meta: { silent: true },
+  });
   const preferencesChanged =
     configLoaded &&
     (Boolean(cfg.ai_system_prompt) ||
@@ -276,7 +284,8 @@ export function AISection() {
       Object.values(cfg.ai_provider_models).some((models) =>
         models.some((model) => !model.enabled),
       ) ||
-      projectBudget.data != null);
+      projectBudget.data != null ||
+      hasAgentLimits(agentLimits.data));
   const ollamaQuery = useQuery({
     queryKey: ["ollama-models", ollamaHost],
     queryFn: () => listOllamaModels(ollamaHost),
@@ -683,9 +692,6 @@ export function AISection() {
       ai_system_prompt: "",
       ai_pdf_capture: true,
       ai_reasoning_summaries: false,
-      ai_agent_max_steps: null,
-      ai_agent_max_output_tokens: null,
-      ai_agent_total_tokens: null,
     };
     try {
       await persist(next);
@@ -694,6 +700,7 @@ export function AISection() {
       } catch {}
       setSysPrompt("");
       setSysPromptSaved(false);
+      queryClient.setQueryData(AGENT_LIMITS_QUERY_KEY, await agentLimitsSet(NO_AGENT_LIMITS));
       const skills = await resetSkillPreferences(projectId);
       queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), skills);
       void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
@@ -708,6 +715,7 @@ export function AISection() {
       });
     } catch (error) {
       void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: AGENT_LIMITS_QUERY_KEY });
       if (projectId) {
         void queryClient.invalidateQueries({
           queryKey: ["project-budget", projectId],

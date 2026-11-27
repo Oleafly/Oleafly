@@ -1,6 +1,8 @@
 export const STOPPED_MARKER = "_Stopped._";
 export const STEP_LIMIT_MARKER =
   "_Reached the step safety limit. You can continue by sending another message._";
+export const TOKEN_LIMIT_MARKER =
+  "_Reached the token limit for this turn. Send another message to continue._";
 export const OUTPUT_LIMIT_MARKER =
   "_The reply reached the model's output limit. Send another message to continue._";
 
@@ -11,6 +13,7 @@ export function appendMarker(content: string, marker: string): string {
 export interface MarkerLabels {
   stopped: string;
   stepLimit: string;
+  tokenLimit: string;
   outputLimit: string;
 }
 
@@ -18,6 +21,7 @@ export function localizeMarkers(content: string, labels: MarkerLabels): string {
   const replacements: [string, string][] = [
     [STOPPED_MARKER, labels.stopped],
     [STEP_LIMIT_MARKER, labels.stepLimit],
+    [TOKEN_LIMIT_MARKER, labels.tokenLimit],
     [OUTPUT_LIMIT_MARKER, labels.outputLimit],
   ];
   if (!replacements.some(([marker]) => content.includes(marker))) return content;

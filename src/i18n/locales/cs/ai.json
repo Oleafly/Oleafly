@@ -1009,6 +1009,7 @@
     "retrying": "Problém s připojením. Zkouší se znovu ({{attempt}} z {{max}})…",
     "stopped": "Zastaveno.",
     "stepLimit": "Byl dosažen limit kroků. Pokračujte odesláním další zprávy.",
+    "tokenLimit": "Byl dosažen limit tokenů pro tento tah. Pokračujte odesláním další zprávy.",
     "outputLimit": "Odpověď dosáhla limitu výstupu modelu. Pokračujte odesláním další zprávy.",
     "tooLargeToSave": "Tento chat je příliš dlouhý na uložení. Nové zprávy se uchovají, dokud nezavřete Oleafly. Chcete-li si ponechat kopii, chat exportujte.",
     "exportChat": "Exportovat chat",

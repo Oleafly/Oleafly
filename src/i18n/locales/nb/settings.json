@@ -276,16 +276,6 @@
       "submitAddAnyway": "Legg til uten modeller"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Agentens kjørebudsjetter",
-        "description": "Gjelder bare den innebygde assistenten. Tomt felt bruker den eksisterende standardverdien. Mer enn 50 trinn aktiverer en åttetimersgrense per tur. Det samlede tokenmålet sjekkes mellom modelltrinn basert på rapportert forbruk. Forespørsler kan overskride det, og forbruk fra separat kjørende subagenter er ikke inkludert.",
-        "stepsLabel": "Maksimalt antall trinn (1-2000)",
-        "outputLabel": "Maksimalt antall utdata-tokens per forespørsel",
-        "totalLabel": "Totalt rapporterte tokens per tur (myk grense)",
-        "auto": "Automatisk",
-        "save": "Lagre budsjetter",
-        "invalid": "Ugyldig budsjett: {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Hva agenten kan",
       "completionModelDescription": "Modellen som skriver fullføringer mens du skriver. Raske modeller og modeller som kjører på denne datamaskinen, svarer raskest.",
       "completionModelTitle": "Modell for AI-fullføringer",
@@ -320,6 +310,21 @@
       },
       "toolsHint": "Be om ting som \"rett LaTeX-feilene\", \"legg til en seksjon med publikasjoner\" eller \"kompiler på nytt og sjekk PDF-en\".",
       "toolsTitle": "Assistenten støtter disse verktøyene nå"
+    },
+    "limits": {
+      "description": "Hvor mye Oleafly-agenten kan gjøre i én runde før den stopper og venter på deg. La et felt stå tomt for å beholde standarden.",
+      "modelDefault": "Modellens standard",
+      "noLimit": "Ingen grense",
+      "outputHint": "Det meste modellen skriver i ett svar. La feltet stå tomt for å bruke modellens egen grense.",
+      "outputLabel": "Utdatatokener per svar",
+      "rangeError": "{{field}} må være et heltall fra {{min}} til {{max}}.",
+      "save": "Lagre grenser",
+      "saved": "Lagret",
+      "stepsHint": "Opptil 2 000. Over 50 kan en runde også vare i 8 timer i stedet for 30 minutter.",
+      "stepsLabel": "Trinn per runde",
+      "title": "Grenser per runde",
+      "turnTokensHint": "Teller alle tokener agenten og underagentene leser og skriver, og anslår dem når en leverandør ikke oppgir dem. Når summen passerer denne verdien, stopper runden før neste trinn.",
+      "turnTokensLabel": "Tokener per runde"
     },
     "models": {
       "addError": {

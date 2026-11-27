@@ -123,6 +123,7 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "ai.agents": "agents",
   "ai.approvals": "providers",
   "ai.budget": "providers",
+  "ai.limits": "instructions",
   "ai.models": "providers",
   "settings.data.storage": "local",
   "settings.data.recycleBin": "local",

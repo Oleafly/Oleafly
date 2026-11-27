@@ -5299,6 +5299,22 @@ describe("ChatCore streaming details", () => {
     );
   });
 
+  it("names the token limit when a run stopped on the turn's token budget", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Refactor every chapter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    act(() => {
+      handlersOf(0).onText("Halfway there.");
+    });
+    await act(async () => resolveRun(0, { stopped_at_cap: true, stop_reason: "token_budget", steps: 12 }));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(savedReply()?.content).toBe(
+      "Halfway there.\n\n_Reached the token limit for this turn. Send another message to continue._",
+    );
+  });
+
   it("marks a reply stopped when the user cancels the run", async () => {
     mocks.runAgentHarness.mockImplementationOnce(
       (options: HarnessOptions & { signal?: AbortSignal }) =>

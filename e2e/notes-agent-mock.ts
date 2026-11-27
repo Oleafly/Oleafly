@@ -392,6 +392,7 @@ export function installNotesAgentMock(options: MockOptions): NotesAgentMock {
     agent_provider_credit: () => null,
     agent_thread_claim_prewarmed: () => null,
     budget_get_cmd: () => null,
+    agent_limits_get: () => ({ max_steps: null, max_output_tokens: null, turn_tokens: null }),
     approvals_list: () => ({}),
     approvals_mode_get: () => "approve-for-me",
     acp_catalog: () => [],

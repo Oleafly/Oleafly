@@ -277,16 +277,6 @@
       "submitAddAnyway": "Añadir sin modelos"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Presupuestos de ejecución del agente",
-        "description": "Solo para el asistente integrado. Dejar en blanco usa el valor predeterminado existente. Más de 50 pasos activa un límite de ocho horas por turno. El objetivo total de tokens se comprueba entre los pasos del modelo según el uso informado. Las solicitudes pueden superarlo, y el uso de subagentes ejecutados por separado no se incluye.",
-        "stepsLabel": "Pasos máximos (1-2000)",
-        "outputLabel": "Tokens de salida máximos por solicitud",
-        "totalLabel": "Tokens totales informados por turno (límite flexible)",
-        "auto": "Automático",
-        "save": "Guardar los presupuestos",
-        "invalid": "Presupuesto no válido: {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Capacidades del agente",
       "completionModelDescription": "El modelo que escribe las sugerencias mientras escribes. Los modelos rápidos y los que se ejecutan en este equipo responden antes.",
       "completionModelTitle": "Modelo para el autocompletado con IA",
@@ -322,6 +312,21 @@
       },
       "toolsHint": "Pídele cosas como \"corrige los errores de LaTeX\", \"añade una sección de Publicaciones\" o \"recompila y revisa el PDF\".",
       "toolsTitle": "Ahora mismo el asistente admite estas herramientas"
+    },
+    "limits": {
+      "description": "Cuánto puede hacer el agente de Oleafly en un turno antes de detenerse y esperarte. Deja un campo vacío para mantener su valor predeterminado.",
+      "modelDefault": "Valor del modelo",
+      "noLimit": "Sin límite",
+      "outputHint": "Lo máximo que escribe el modelo en una respuesta. Déjalo vacío para usar el límite del propio modelo.",
+      "outputLabel": "Tokens de salida por respuesta",
+      "rangeError": "{{field}} debe ser un número entero entre {{min}} y {{max}}.",
+      "save": "Guardar límites",
+      "saved": "Guardado",
+      "stepsHint": "Hasta 2000. Por encima de 50, un turno también puede durar 8 horas en lugar de 30 minutos.",
+      "stepsLabel": "Pasos por turno",
+      "title": "Límites por turno",
+      "turnTokensHint": "Cuenta todos los tokens que el agente y sus subagentes leen y escriben, y los estima cuando un proveedor no los informa. Cuando el total supera este valor, el turno se detiene antes del siguiente paso.",
+      "turnTokensLabel": "Tokens por turno"
     },
     "models": {
       "addError": {

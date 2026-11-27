@@ -250,7 +250,7 @@ fn checked_context_fields<const N: usize>(fields: [&str; N]) -> Result<usize> {
     })
 }
 
-fn completion_context_chars(request: &CompletionRequest) -> Result<usize> {
+pub(crate) fn completion_context_chars(request: &CompletionRequest) -> Result<usize> {
     let system = [request.system.as_deref(), request.system_suffix.as_deref()]
         .into_iter()
         .flatten()

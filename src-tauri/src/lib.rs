@@ -694,6 +694,8 @@ pub fn run() {
             agent::agent_subagents_stop,
             agent::agent_stream,
             agent::agent_run,
+            agent::limits::agent_limits_get,
+            agent::limits::agent_limits_set,
             agent::agent_tool_result,
             agent::agent_list_models,
             agent::agent_probe_model,

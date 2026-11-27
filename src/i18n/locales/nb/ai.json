@@ -979,6 +979,7 @@
     "retrying": "Tilkoblingsproblem. Prøver igjen ({{attempt}} av {{max}})…",
     "stopped": "Stoppet.",
     "stepLimit": "Grensen for antall trinn er nådd. Send en ny melding for å fortsette.",
+    "tokenLimit": "Grensen for tokener i denne runden er nådd. Send en ny melding for å fortsette.",
     "outputLimit": "Svaret nådde grensen for utdata til modellen. Send en ny melding for å fortsette.",
     "tooLargeToSave": "Denne samtalen er for lang til å lagres. Nye meldinger beholdes til du lukker Oleafly. Eksporter samtalen for å beholde en kopi.",
     "exportChat": "Eksporter samtalen",

@@ -964,6 +964,7 @@
     "retrying": "連線發生問題。正在重試（第 {{attempt}} 次，共 {{max}} 次）…",
     "stopped": "已停止。",
     "stepLimit": "已達步驟上限。傳送另一則訊息即可繼續。",
+    "tokenLimit": "已達本輪的 token 上限。傳送另一則訊息即可繼續。",
     "outputLimit": "回覆已達模型的輸出上限。傳送另一則訊息即可繼續。",
     "tooLargeToSave": "這個聊天太長，無法儲存。新訊息會保留到你關閉 Oleafly 為止。匯出聊天即可保留一份副本。",
     "exportChat": "匯出聊天",

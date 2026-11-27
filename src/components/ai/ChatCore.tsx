@@ -159,6 +159,7 @@ import {
   OUTPUT_LIMIT_MARKER,
   STEP_LIMIT_MARKER,
   STOPPED_MARKER,
+  TOKEN_LIMIT_MARKER,
 } from "@/lib/chat-markers";
 import {
   resolveRunEffort,
@@ -3350,7 +3351,8 @@ ${sandboxedCustom}`;
         }));
       }
       if (outcome.stopped_at_cap) {
-        updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", STEP_LIMIT_MARKER) }));
+        const marker = outcome.stop_reason === "token_budget" ? TOKEN_LIMIT_MARKER : STEP_LIMIT_MARKER;
+        updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", marker) }));
       } else if (!outcome.error && isOutputLimitStop(outcome.stop_reason)) {
         updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", OUTPUT_LIMIT_MARKER) }));
       }

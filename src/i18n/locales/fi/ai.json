@@ -979,6 +979,7 @@
     "retrying": "Yhteysongelma. Yritetään uudelleen ({{attempt}}/{{max}})…",
     "stopped": "Pysäytetty.",
     "stepLimit": "Vaiheraja saavutettiin. Jatka lähettämällä uusi viesti.",
+    "tokenLimit": "Tämän vuoron tokenraja saavutettiin. Jatka lähettämällä uusi viesti.",
     "outputLimit": "Vastaus saavutti mallin tulosteen enimmäispituuden. Jatka lähettämällä uusi viesti.",
     "tooLargeToSave": "Tämä keskustelu on liian pitkä tallennettavaksi. Uudet viestit säilyvät, kunnes suljet Oleaflyn. Vie keskustelu, jos haluat säilyttää kopion.",
     "exportChat": "Vie keskustelu",

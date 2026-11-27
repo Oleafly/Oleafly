@@ -278,16 +278,6 @@
       "submitAddAnyway": "Dodaj bez modeli"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "Budżety wykonywania agenta",
-        "description": "Dotyczy tylko wbudowanego asystenta. Puste pole używa istniejącej wartości domyślnej. Ponad 50 kroków włącza ośmiogodzinny limit na turę. Łączny cel tokenów jest sprawdzany między krokami modelu na podstawie zgłoszonego zużycia. Żądania mogą go przekroczyć, a zużycie osobno uruchamianych subagentów nie jest wliczane.",
-        "stepsLabel": "Maksymalna liczba kroków (1-2000)",
-        "outputLabel": "Maksymalna liczba tokenów wyjściowych na żądanie",
-        "totalLabel": "Łączna liczba zgłoszonych tokenów na turę (miękki limit)",
-        "auto": "Automatycznie",
-        "save": "Zapisz budżety",
-        "invalid": "Nieprawidłowy budżet: {{field}} (1-{{max}})"
-      },
       "capabilitiesTitle": "Możliwości agenta",
       "completionModelDescription": "Model, który podpowiada uzupełnienia podczas pisania. Najszybciej odpowiadają szybkie modele i modele działające na tym komputerze.",
       "completionModelTitle": "Model do uzupełniania przez AI",
@@ -324,6 +314,21 @@
       },
       "toolsHint": "Poproś go o rzeczy w rodzaju \"popraw błędy LaTeX\", \"dodaj sekcję Publikacje\" albo \"skompiluj ponownie i sprawdź PDF\".",
       "toolsTitle": "Asystent obsługuje obecnie te narzędzia"
+    },
+    "limits": {
+      "description": "Ile agent Oleafly może zrobić w jednej turze, zanim się zatrzyma i zaczeka na Ciebie. Zostaw pole puste, aby zachować wartość domyślną.",
+      "modelDefault": "Domyślnie dla modelu",
+      "noLimit": "Bez limitu",
+      "outputHint": "Najwięcej, ile model napisze w jednej odpowiedzi. Puste pole oznacza limit samego modelu.",
+      "outputLabel": "Tokeny wyjściowe na odpowiedź",
+      "rangeError": "{{field}}: podaj liczbę całkowitą od {{min}} do {{max}}.",
+      "save": "Zapisz limity",
+      "saved": "Zapisano",
+      "stepsHint": "Do 2000. Powyżej 50 tura może też trwać 8 godzin zamiast 30 minut.",
+      "stepsLabel": "Kroki na turę",
+      "title": "Limity na turę",
+      "turnTokensHint": "Liczy wszystkie tokeny, które agent i jego podagenci czytają i piszą, a gdy dostawca ich nie podaje, szacuje je. Gdy suma przekroczy tę wartość, tura zatrzyma się przed kolejnym krokiem.",
+      "turnTokensLabel": "Tokeny na turę"
     },
     "models": {
       "addError": {

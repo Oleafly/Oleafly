@@ -275,16 +275,6 @@
       "submitAddAnyway": "添加但不含模型"
     },
     "instructions": {
-      "agentBudgets": {
-        "title": "代理执行预算",
-        "description": "仅适用于内置助手。留空使用现有默认值。超过 50 步会启用八小时的单轮时限。总 token 目标在模型步骤之间按报告的用量检查。单次请求可能超出该目标，且不包含单独运行的子代理用量。",
-        "stepsLabel": "最大步数（1-2000）",
-        "outputLabel": "每次请求的最大输出 token 数",
-        "totalLabel": "每轮报告的 token 总量（软限制）",
-        "auto": "自动",
-        "save": "保存预算",
-        "invalid": "预算无效：{{field}}（1-{{max}}）"
-      },
       "capabilitiesTitle": "代理能力",
       "completionModelDescription": "在你输入时生成补全内容的模型。速度快的模型和在这台电脑上运行的模型响应最快。",
       "completionModelTitle": "AI 补全模型",
@@ -318,6 +308,21 @@
       },
       "toolsHint": "例如，你可以让它“修复 LaTeX 错误”、“添加 Publications 章节”或“重新编译并检查 PDF”。",
       "toolsTitle": "助手目前支持以下工具"
+    },
+    "limits": {
+      "description": "Oleafly 代理在一轮中停下来等你之前，最多能做多少。留空即保留默认值。",
+      "modelDefault": "模型默认值",
+      "noLimit": "不限制",
+      "outputHint": "模型在一次回复中最多写多少。留空则使用模型自身的上限。",
+      "outputLabel": "每次回复的输出 Token 数",
+      "rangeError": "{{field}} 须为 {{min}} 到 {{max}} 之间的整数。",
+      "save": "保存限制",
+      "saved": "已保存",
+      "stepsHint": "最多 2,000。超过 50 时，一轮最长还可运行 8 小时，而不是 30 分钟。",
+      "stepsLabel": "每轮步骤数",
+      "title": "每轮限制",
+      "turnTokensHint": "统计代理及其子代理读写的全部 Token，提供商未报告时会进行估算。总数超过此值后，本轮会在下一步之前停止。",
+      "turnTokensLabel": "每轮 Token 数"
     },
     "models": {
       "addError": {
