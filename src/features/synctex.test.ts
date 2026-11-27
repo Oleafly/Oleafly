@@ -88,7 +88,7 @@ vi.mock("@/store/project-index", () => ({
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/open-location", () => ({ openProjectLocation: mocks.openProjectLocation }));
-vi.mock("@/lib/preview-workspace", () => ({ sendPreviewForward: mocks.sendPreviewForward }));
+vi.mock("@/lib/preview-forward", () => ({ sendPreviewForward: mocks.sendPreviewForward }));
 vi.mock("@/store/compile", () => ({
   isCompileCheckpointCurrent: mocks.isCompileCheckpointCurrent,
   useCompileStore: {
@@ -691,7 +691,7 @@ describe("forward SyncTeX from the editor", () => {
       mocks.pdfPageText.mockResolvedValue(runs);
       mocks.pickForwardLine.mockReturnValue(line);
 
-      await showForwardTarget({ ...rect, lines: [line] }, spot, false);
+      await showForwardTarget({ hit: { ...rect, lines: [line] }, spot, typst: false });
 
       expect(mocks.pdfPageText).toHaveBeenCalledWith(1);
       expect(mocks.gotoRect).toHaveBeenCalledWith(line);

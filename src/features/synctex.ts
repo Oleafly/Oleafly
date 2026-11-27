@@ -20,6 +20,7 @@ import {
 import { gotoRect, pdfPageText, type PdfTextRun } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { sendPreviewForward, type PreviewForwardJump } from "@/lib/preview-forward";
 import { useSettingsStore } from "@/store/settings";
 import {
   isCompileCheckpointCurrent,
@@ -227,20 +228,14 @@ async function typstLineWithCursorWord(
   return pickForwardLine(linesFromAnchor(jump, runsByPage), runsByPage, spot) ?? jump;
 }
 
-function forwardTarget(
-  hit: SynctexForwardHit,
-  spot: ReturnType<typeof wordAtCursor>,
-  typst: boolean,
-): Promise<SynctexRect> {
+type ForwardJump = Pick<PreviewForwardJump, "hit" | "spot" | "typst">;
+
+function forwardTarget({ hit, spot, typst }: ForwardJump): Promise<SynctexRect> {
   return typst ? typstLineWithCursorWord(hit, spot) : lineWithCursorWord(hit, spot);
 }
 
-export async function showForwardTarget(
-  hit: SynctexForwardHit,
-  spot: ReturnType<typeof wordAtCursor>,
-  typst: boolean,
-) {
-  gotoRect(await forwardTarget(hit, spot, typst));
+export async function showForwardTarget(jump: ForwardJump) {
+  gotoRect(await forwardTarget(jump));
 }
 
 export async function forwardFromCursor() {
@@ -289,11 +284,10 @@ export async function forwardFromCursor() {
       return;
     }
     if (pdfInOwnWindow(projectId)) {
-      const { sendPreviewForward } = await import("@/lib/preview-workspace");
       await sendPreviewForward({ projectId, checkpoint: context[0], hit: rect, spot, typst });
       return;
     }
-    const target = await forwardTarget(rect, spot, typst);
+    const target = await forwardTarget({ hit: rect, spot, typst });
     if (stillCurrent()) gotoRect(target);
   } catch (e) {
     void logError("synctex forward", e);

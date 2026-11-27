@@ -238,7 +238,7 @@ describe("source and PDF navigation in the PDF window", () => {
     mocks.listeners.get("preview:forward")?.({ payload: { projectId: "alpha", checkpoint: state.checkpoint, hit, spot, typst: false } });
 
     await vi.waitFor(() => expect(mocks.showForwardTarget).toHaveBeenCalledTimes(1));
-    expect(mocks.showForwardTarget).toHaveBeenCalledWith(hit, spot, false);
+    expect(mocks.showForwardTarget).toHaveBeenCalledWith({ hit, spot, typst: false });
   });
 });
 
