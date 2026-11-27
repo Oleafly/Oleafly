@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -139,14 +140,16 @@ describe("PdfFileView", () => {
     tauri.readFileBase64.mockResolvedValue(PDF);
     render(<PdfFileView projectId="p1" path="paper.pdf" />);
     await screen.findByTestId("pdf-viewer");
+    const user = userEvent.setup();
 
-    fireEvent.click(screen.getByRole("button", { name: actions.rotate }));
+    await user.click(screen.getByRole("button", { name: actions.rotate }));
     expect(screen.getByTestId("pdf-viewer")).toHaveAttribute("data-rotation", "90");
 
     const pageBox = screen.getByRole("textbox", { name: enPreview.pages.number });
-    fireEvent.change(pageBox, { target: { value: "3" } });
-    fireEvent.keyDown(pageBox, { key: "Enter" });
-    await waitFor(() => expect(viewer.gotoPage).toHaveBeenCalledWith(3));
+    viewer.gotoPage.mockClear();
+    await user.clear(pageBox);
+    await user.type(pageBox, "3{Enter}");
+    expect(viewer.gotoPage).toHaveBeenCalledExactlyOnceWith(3);
   });
 
   it("opens the PDF settings from its toolbar", async () => {
