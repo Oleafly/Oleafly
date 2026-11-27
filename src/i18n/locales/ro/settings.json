@@ -1897,34 +1897,18 @@
       "disconnectFailed": "alphaXiv nu a putut fi deconectat. Încearcă din nou."
     },
     "cookies": {
-      "confirmTitle": "Confirmă importul de cookie-uri",
-      "detecting": "Se caută profilurile de browser instalate...",
-      "dialogDescription": "Alege un singur profil de browser instalat. Oleafly îl citește doar după ce verifici și confirmi importul. Cookie-urile Chromium se deblochează local, prin macOS Keychain. Oleafly nu trimite valorile cookie-urilor către niciun serviciu Oleafly.",
-      "dialogTitle": "Importă cookie-uri din browser",
-      "empty": "Nu s-a găsit niciun profil de browser acceptat.",
-      "errors": {
-        "chooseProfile": "Alege un profil de browser disponibil."
-      },
-      "profileGroupLabel": "Profiluri de browser",
-      "profileLegend": "Profil de browser",
-      "review": "Verifică importul",
-      "status": {
-        "available": "Disponibil",
-        "comingSoon": "În curând",
-        "noCookieStore": "Fără depozit de cookie-uri",
-        "notInstalled": "Neinstalat"
-      },
-      "tryAgain": "Încearcă din nou",
-      "label": "Copiază autentificarea unui browser",
-      "useBrowserSignIn": "Copiază autentificarea din browserul tău",
-      "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
-      "copyAction": "Copiază autentificarea",
-      "copying": "Se copiază…",
-      "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",
-      "notSignedIn_few": "S-au copiat {{count}} cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct.",
-      "notSignedIn_other": "S-au copiat {{count}} de cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct."
+      "dialogDescription": "Oleafly copiază doar cookie-urile pentru {{server}}, se autentifică folosindu-le, apoi șterge copiile. Parolele tale rămân în browser.",
+      "dialogTitle": "Importă cookie-uri din browserul tău",
+      "label": "Importă cookie-uri din browserul tău",
+      "useBrowserSignIn": "Alege un profil",
+      "signInDescription": "Folosește contul {{server}} cu care un profil de browser de pe acest computer este deja autentificat.",
+      "copyAction": "Importă",
+      "copying": "Se importă…",
+      "from": "Din",
+      "noCookies": "Niciun cookie încă",
+      "sameAccount": "{{profile}} este autentificat ca {{account}}, cont pe care Oleafly îl folosește deja. Alege alt profil sau autentifică-te mai întâi cu celălalt cont în acel browser.",
+      "orExisting": "sau folosește o autentificare pe care o ai deja",
+      "noSavedSignIn": "{{profile}} nu are o autentificare salvată pentru {{server}}, așa că cookie-urile copiate nu te-au autentificat. Dacă ești autentificat acolo, browserul poate păstra autentificarea doar până la închidere. Folosește în schimb dala {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
@@ -1987,7 +1971,12 @@
       "signedIn": "Autentificat pe {{server}}",
       "signOut": "Deconectează-te",
       "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
+      "addAccount": "Adaugă alt cont",
+      "addAccountHint": "Alege unde te autentifici. Fiecare pornește fără cont autentificat, așa că merge orice cont.",
+      "accountPick": "Cont pentru import",
+      "accountPickDescription": "Importurile noi și șabloanele folosesc acest cont. Proiectele pe care le ai deja păstrează contul din care provin.",
       "gitTitle": "Token Git pentru sincronizare",
+      "gitTitleFor": "Token Git pentru {{email}}",
       "gitSaved": "Un token Git este salvat. Proiectele pe care le asociezi rămân sincronizate cu Overleaf.",
       "gitMissing": "Niciun token Git încă. Creează unul la Integrare Git în setările contului tău Overleaf ca să sincronizezi proiecte.",
       "gitOpenSettings": "Deschide setările contului Overleaf",
@@ -1996,14 +1985,9 @@
       "gitSave": "Salvează",
       "gitRemove": "Elimină",
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul.",
-      "browserLabel": "Autentifică-te cu browserul",
-      "browserDescription": "Pentru autentificare cu Google, instituție sau cheie de acces. Oleafly deschide {{server}} într-o fereastră nouă de browser și o închide după ce te-ai conectat.",
-      "browserAction": "Autentifică-te",
-      "browserPick": "Browser pentru autentificare",
       "browserWaiting": "Termină autentificarea pe {{server}} în {{browser}}. Dacă închizi fereastra, autentificarea se anulează.",
-      "browserHint": "Folosește asta pentru autentificare cu Google, instituție sau cheie de acces.",
-      "windowLabel": "Autentifică-te pe {{server}}",
-      "windowDescription": "Oleafly deschide o fereastră de autentificare și o închide după ce te-ai conectat. Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi autentifică-te cu el aici.",
+      "windowLabel": "Autentifică-te în Oleafly",
+      "windowDescription": "Fereastra se închide singură după ce te-ai conectat. Dacă cheia de acces nu funcționează acolo, folosește parola sau o confirmare pe telefon.",
       "windowAction": "Autentifică-te",
       "windowWaiting": "Termină autentificarea pe {{server}} în fereastra care s-a deschis.",
       "unsent": {
@@ -2021,7 +2005,15 @@
           "always": "Șterge și din Overleaf",
           "never": "Păstrează în Overleaf"
         }
-      }
+      },
+      "sameAccount": "Ești deja autentificat ca {{account}}. Autentifică-te cu alt cont ca să îl adaugi.",
+      "windowTitle": "Autentifică-te pe {{server}}",
+      "addAccountKept": "Contul tău actual rămâne autentificat.",
+      "noBrowser": "Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi alege-l aici.",
+      "tileHere": "În această aplicație",
+      "tileWindow": "Fereastră nouă",
+      "tileWaiting": "Te așteaptă",
+      "signInNote": "Folosește un browser ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces. Dacă cheia de acces nu funcționează în Oleafly, folosește acolo parola sau o confirmare pe telefon. Fereastra se închide singură după ce te-ai conectat."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2153,6 +2145,20 @@
           "confirm": "Comanda descarcă programul de instalare Cua de pe cua.ai și îl rulează în terminalul tău. Continui?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gestionează autentificările",
+      "description": "Conturile cu care Oleafly este autentificat pe acest computer. Dacă elimini unul aici, rămâi autentificat în browser.",
+      "loading": "Se încarcă autentificările tale…",
+      "empty": "Nu ești autentificat cu niciun cont.",
+      "inUse": "În uz",
+      "switch": "Comută",
+      "switchTo": "Comută la {{account}}",
+      "removeAccount": "Elimină {{account}}",
+      "removeAll": "Elimină tot",
+      "importMore": "Importă mai multe",
+      "loadFailed": "Oleafly nu a putut încărca autentificările tale.",
+      "changeFailed": "Oleafly nu a putut modifica această autentificare. Încearcă din nou."
     }
   },
   "language": {
@@ -2363,6 +2369,7 @@
       "confirm": "Șterge cuvintele",
       "descriptionFallback": "Aceasta elimină toți termenii din acest dicționar. Ei vor fi verificați din nou imediat.",
       "descriptionGlobal": "Aceasta elimină toți termenii din dicționarul global. Ei vor fi verificați din nou imediat.",
+      "descriptionOverleaf": "Sunt eliminați și din contul tău Overleaf.",
       "descriptionProject": "Aceasta elimină toți termenii din {{project}}. Ei vor fi verificați din nou imediat.",
       "descriptionSuppressed": "Aceasta elimină toți termenii din rezultatele ignorate în {{project}}. Ei vor fi verificați din nou imediat.",
       "suppressedConfirm": "Arată-le din nou",
@@ -2381,6 +2388,7 @@
     },
     "global": {
       "emptyDescription": "Cuvintele pe care le adaugi aici sunt sărite de corector în toate proiectele.",
+      "overleafSynced": "Sincronizat cu cuvintele învățate din contul tău Overleaf cât timp un proiect este live în Overleaf.",
       "scope": "Se aplică fiecărui proiect"
     },
     "intro": "Adaugă cuvinte în dicționarul tău personal de verificare ortografică. Aceste cuvinte se păstrează în setările locale și sunt ignorate în toate proiectele. Potrivirea se face normalizat Unicode și fără să țină cont de majuscule.",
@@ -2907,5 +2915,186 @@
     "filteredCount_few": "{{shown}} din {{count}} intrări",
     "filteredCount_one": "{{shown}} din {{count}} intrare",
     "filteredCount_other": "{{shown}} din {{count}} de intrări"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "În lista de completări",
+        "description": "Arată fragmentele lângă comenzi"
+      },
+      "tab": {
+        "label": "Tab extinde un declanșator",
+        "description": "Pentru fragmentele setate pe Tab"
+      },
+      "auto": {
+        "label": "Extinde la tastare",
+        "description": "Pentru fragmentele în modul Auto, precum Fast math"
+      },
+      "hint": {
+        "label": "Arată un indiciu la tastare",
+        "description": "Numește fragmentul pe care îl va insera un declanșator. Tab îl inserează."
+      }
+    },
+    "library": {
+      "title": "Biblioteca ta de fragmente",
+      "collections": "Colecții",
+      "all": "Toate fragmentele",
+      "mine": "Ale tale",
+      "packs": "Pachete",
+      "builtIn": "Incluse",
+      "add": "Adaugă pachete sau importă…",
+      "useCollection": "Folosește {{name}}",
+      "search": "Caută după nume, declanșator sau text",
+      "language": "Limbaj",
+      "allLanguages": "Toate limbajele",
+      "expands": "Extindere",
+      "anyExpand": "Oricare",
+      "newSnippet": "Fragment nou",
+      "columns": {
+        "trigger": "Declanșator",
+        "name": "Nume",
+        "languages": "Limbaje",
+        "where": "Context",
+        "expands": "Extindere"
+      },
+      "modified": "Modificat",
+      "turnedOff": "Dezactivat",
+      "restore": "Restabilește",
+      "restoreLabel": "Restabilește {{name}}",
+      "wraps": "încadrează",
+      "noTrigger": "niciunul",
+      "noMatches": "Niciun fragment nu se potrivește.",
+      "shown": "{{shown}} din {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problemă",
+      "summary_few": "{{count}} probleme",
+      "summary_other": "{{count}} de probleme",
+      "where": "în {{file}}, linia {{line}}: {{message}}",
+      "slowRegex": "Verificarea declanșatorului fragmentului {{name}} a durat prea mult, așa că fragmentul a fost dezactivat.",
+      "show": "Arată",
+      "hide": "Ascunde"
+    },
+    "addDialog": {
+      "title": "Adaugă fragmente",
+      "packsTab": "Pachete",
+      "importTab": "Importă un fișier",
+      "count_one": "{{count}} fragment",
+      "count_few": "{{count}} fragmente",
+      "count_other": "{{count}} de fragmente",
+      "source": "Sursa: {{source}}",
+      "licence": "Licența {{licence}}",
+      "packNote": "Pachetele se actualizează odată cu aplicația. Modificările pe care le faci în fragmentele unui pachet sunt păstrate separat.",
+      "packs": {
+        "fastMathLatex": "Se extinde pe măsură ce tastezi în formule: fracții, indici și puteri, litere grecești, operatori și matrice. Declanșatoarele urmează configurația lui Gilles Castel.",
+        "fastMathTypst": "Aceleași declanșatoare, scrise pentru Typst. Lasă deoparte ce face deja Typst, cum ar fi a/b pentru o fracție.",
+        "paperStructure": "Figuri, subfiguri, tabele booktabs, ecuații, teoreme, demonstrații și algoritmi."
+      },
+      "useOn": "Folosește {{name}}",
+      "importIntro": "Alege un fișier de fragmente VS Code (.json sau .code-snippets). Devine o colecție separată, pe care o poți dezactiva sau modifica.",
+      "choose": "Alege un fișier",
+      "fileLabel": "Fișier de fragmente",
+      "imported_one": "{{count}} fragment importat în colecția {{collection}}.",
+      "imported_few": "{{count}} fragmente importate în colecția {{collection}}.",
+      "imported_other": "{{count}} de fragmente importate în colecția {{collection}}.",
+      "nothing": "Nu s-au găsit fragmente în {{file}}.",
+      "leftOut_one": "{{count}} intrare a fost omisă:",
+      "leftOut_few": "{{count}} intrări au fost omise:",
+      "leftOut_other": "{{count}} de intrări au fost omise:"
+    },
+    "editor": {
+      "newTitle": "Fragment nou",
+      "duplicate": "Duplică",
+      "delete": "Șterge",
+      "turnOff": "Dezactivează",
+      "save": "Salvează",
+      "copyName": "{{name}} (copie)",
+      "name": "Nume",
+      "namePlaceholder": "Figură cu legendă și etichetă",
+      "trigger": "Declanșator",
+      "triggerPlaceholder": "fig",
+      "regex": "Expresie regulată",
+      "expands": "Extindere",
+      "expandOptions": {
+        "list": "Din listă",
+        "tab": "Cu Tab",
+        "auto": "La tastare"
+      },
+      "expandHelp": {
+        "list": "Apare în lista de completări. Alege-l de acolo ca să-l inserezi.",
+        "tab": "Tastează {{trigger}} și apasă Tab. Apare și în lista de completări.",
+        "auto": "Se extinde imediat ce tastezi {{trigger}}. Anulează sau Backspace readuce declanșatorul."
+      },
+      "languages": "Limbaje",
+      "where": "Context",
+      "whereOptions": {
+        "any": "Oriunde",
+        "text": "Text",
+        "math": "Formule",
+        "code": "Cod"
+      },
+      "mathKinds": {
+        "math": "Ambele",
+        "inline-math": "În text",
+        "display-math": "Pe rând separat"
+      },
+      "mathKind": "Tipul de formulă",
+      "whereHelp": {
+        "any": "Oriunde în fișier.",
+        "text": "Text: în afara formulelor, a comentariilor și a textului verbatim.",
+        "math": "Formule: în formulele din text sau pe rând separat.",
+        "code": "Cod: în codul Typst sau în blocurile de cod Markdown."
+      },
+      "firesOnly": "Se declanșează doar",
+      "wholeWord": "ca un cuvânt întreg",
+      "lineStart": "la început de rând",
+      "collection": "Colecție",
+      "keptSeparately": "Modificările tale sunt păstrate separat, așa că actualizările colecției {{collection}} ajung în continuare la tine.",
+      "body": "Textul inserat",
+      "anyLanguage": "Orice limbaj",
+      "addField": "+ Câmp",
+      "addChoice": "+ Variantă",
+      "choiceText": "unu,doi",
+      "variable": "Variabilă",
+      "projectField": "Câmp de proiect",
+      "variables": {
+        "SELECTION": "Textul selectat",
+        "CLIPBOARD": "Clipboard",
+        "DATE": "Data de azi",
+        "TM_FILENAME": "Numele fișierului",
+        "PROJECT_NAME": "Numele proiectului"
+      },
+      "projectFields": {
+        "image": "Imagine",
+        "label": "Etichetă",
+        "cite": "Citare",
+        "ref": "Referință",
+        "file": "Fișier"
+      },
+      "chipsNote": "Câmpurile apar ca jetoane.",
+      "showSyntax": "Arată sintaxa",
+      "missingName": "Dă-i un nume fragmentului.",
+      "missingBody": "Scrie textul pe care îl inserează fragmentul.",
+      "sameTrigger": "{{trigger}} este folosit și de: {{list}}. Câștigă colecția cea mai apropiată.",
+      "sharedStart": "Începe la fel ca: {{list}}. Toate apar în listă, iar Tab alege potrivirea exactă, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Ștergi fragmentul {{name}}?",
+        "description": "Fragmentul va fi eliminat din colecția {{collection}}.",
+        "action": "Șterge"
+      },
+      "tryIt": {
+        "title": "Încearcă",
+        "howAuto": "Tastează {{trigger}} și se extinde.",
+        "howTab": "Tastează {{trigger}}, apoi apasă Tab.",
+        "howList": "Tastează {{trigger}}, apasă Ctrl+Space și alege-l din listă.",
+        "noTrigger": "Acest fragment nu are declanșator. Inserează-l din paleta de comenzi cu /snippets.",
+        "inText": "în text",
+        "inMath": "în formule",
+        "fires": "Se declanșează aici: {{language}}, {{place}}.",
+        "notLanguage": "Nu s-ar declanșa aici. {{language}} nu este unul dintre limbajele acestui fragment.",
+        "notPlace": "Nu s-ar declanșa {{place}}. Setarea Context nu permite."
+      }
+    }
   }
 }

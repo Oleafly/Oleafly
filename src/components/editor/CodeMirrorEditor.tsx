@@ -22,7 +22,6 @@ import {
   setEditorTranslator,
   setTypstCslStyleProvider,
   setTypstStyleVersionProvider,
-  bibKeysFromSources,
   closeEnvironmentOnEnter,
   latexListKeymap,
   latexStructureKeymap,
@@ -39,9 +38,7 @@ import { typstFormsPort } from "./visual-typst-forms";
 import { imagePasteExtension } from "./cm/image-paste";
 import { projectFileLinksExtension } from "./cm/file-links";
 import { cursorSignalExtension } from "./cm/cursor-signal";
-import { collabEditorSlot } from "./cm/collab-slot";
-import { commentsEditorSlot } from "./cm/comments-slot";
-import { suggestionsEditorSlot } from "./cm/suggestions-slot";
+import { collabEditorSlot, commentsEditorSlot, suggestionsEditorSlot } from "./cm/editor-slots";
 import { requestComment } from "@/components/collab/comments-rail";
 import { historySignalExtension } from "./history-signal";
 import { recompileShortcutBinding } from "./cm/recompile-shortcut";
@@ -60,12 +57,15 @@ import {
 } from "./cm/language-service";
 import { formatsOnSave, saveTypstDocument } from "./cm/language-service-format";
 import { getEditorView } from "./cm/controller";
+import { createSnippetPort } from "@/features/snippets/port";
+import type { SnippetPort } from "@oleafly/editor";
 import { isOutlineDocument, outlineRailClearance } from "./cm/outline-rail-clearance";
 import { resolveVisualAsset } from "./wysiwyg/asset-url";
 import { openVisualFigureEditor } from "./visual-figure-edit";
 import { referenceKindIn } from "./visual-reference-kind";
 import { completionSyntaxForPath } from "@/lib/document-engine";
 import { reportFileSaveFailure, useFilesStore } from "@/store/files";
+import { projectBibKeys } from "@/lib/project-intelligence/retained";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
@@ -200,25 +200,7 @@ setTypstCslStyleProvider(() =>
     .map((entry) => `/${entry.path}`),
 );
 
-setBibKeysProvider(() => {
-  const filesState = useFilesStore.getState();
-  const bibs = Object.entries(filesState.files)
-    .filter(([path]) => path.endsWith(".bib"))
-    .map(([, state]) => state.content);
-  const intelligence = useIndexStore.getState().intelligenceState;
-  const retainedProjectKeys =
-    intelligence.identity?.projectId === filesState.projectId
-      ? (intelligence.data?.bibliography.entries.map(
-          (entry) => entry.key,
-        ) ?? [])
-      : [];
-  return [
-    ...new Set([
-      ...bibKeysFromSources(bibs),
-      ...retainedProjectKeys,
-    ]),
-  ];
-});
+setBibKeysProvider(projectBibKeys);
 
 installLatexCorpus();
 installAuxNumbers();
@@ -358,6 +340,13 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-Alt-m", run: requestComment },
 ];
 
+let snippetPort: SnippetPort | null = null;
+
+function editorSnippetPort(): SnippetPort {
+  snippetPort ??= createSnippetPort(() => useFilesStore.getState().activePath);
+  return snippetPort;
+}
+
 export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean }>) {
   useEffect(
     () =>
@@ -400,6 +389,7 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
       }
       extraGhostCompletionSourcesForPath={projectCompletionSourcesForPath}
       extraKeymap={EXTRA_KEYMAP}
+      snippets={editorSnippetPort()}
     />
   );
 }

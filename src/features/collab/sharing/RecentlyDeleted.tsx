@@ -13,7 +13,7 @@ import { collabTrashList, collabTrashRestore } from "@/lib/tauri-collab";
 import { useBusyRows } from "../busy-rows";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
-import { useCollabLiveStore } from "../live/live-store";
+import { liveSelfId, useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
 import { canEditProjectRole } from "../roles";
 import { useLiveTree } from "./tree-version";
@@ -152,7 +152,7 @@ const DeletedList = memo(function DeletedList({
   const { t } = useTranslation(["collab"]);
   const now = useNow(TICK_MS);
   const people = useCollabLiveStore(
-    useShallow((state) => ({ members: state.members, selfId: state.share?.account_id ?? null })),
+    useShallow((state) => ({ members: state.members, selfId: liveSelfId(state) })),
   );
   const names = useMemo(
     () => new Map(people.members.map((member) => [member.person.account_id, member.person.display_name])),

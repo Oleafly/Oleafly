@@ -1,12 +1,16 @@
 mod client;
+pub(crate) mod create;
 mod errors;
 mod html;
 mod import;
+pub(crate) mod links;
 mod session;
 mod signin;
 mod sync;
 pub(crate) mod template;
 
+#[cfg(test)]
+mod flow_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]
@@ -17,17 +21,21 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Runtime};
 
-pub use import::{ImportEvent, ImportOutcome, RemoteProject};
+pub(crate) use import::sweep_import_staging;
+pub use import::{ImportEvent, ImportOutcome, OpenedLive, RemoteProject};
+pub(crate) use oleafly_online::projects::OverleafLink;
 pub(crate) use signin::sweep_browser_profiles;
 pub(crate) use signin::LABEL_PREFIX as SIGN_IN_LABEL_PREFIX;
+pub(crate) use sync::AppMirrorGit;
 pub use sync::Side;
 
 use std::collections::BTreeMap;
 
 use crate::app_error::AppError;
 use crate::collab::live::overleaf::account::{
-    overleaf_signed_in, overleaf_stop_live, overleaf_unsent,
+    overleaf_signed_in, overleaf_signed_out, overleaf_stop_live, overleaf_unsent,
 };
+use crate::collab::live::overleaf::off_runtime;
 use crate::collab::live::{UnsentProject, SIGN_OUT_WAIT};
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
@@ -36,6 +44,25 @@ pub struct OverleafStatus {
     pub server: String,
     pub signed_in: bool,
     pub email: Option<String>,
+    pub user_id: Option<String>,
+    pub accounts: Vec<OverleafAccount>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafAccount {
+    pub user_id: String,
+    pub email: Option<String>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafSignIn {
+    pub server: String,
+    pub user_id: String,
+    pub email: Option<String>,
+    pub current: bool,
+    pub signed_in_at: Option<i64>,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -43,42 +70,88 @@ pub struct OverleafStatus {
 pub struct OverleafProjects {
     pub status: OverleafStatus,
     pub projects: Vec<RemoteProject>,
+    pub invites: Vec<oleafly_online::client::ProjectInvite>,
 }
 
-fn status_for(base: &str, stored: Option<&session::Session>) -> OverleafStatus {
+fn email_of(session: &session::Session) -> Option<String> {
+    known_email(&session.email)
+}
+
+fn known_email(email: &str) -> Option<String> {
+    Some(email.to_owned()).filter(|email| !email.is_empty())
+}
+
+fn status_for(base: &str, accounts: &[session::Session]) -> OverleafStatus {
+    let current = accounts.first();
     OverleafStatus {
         server: base.to_string(),
-        signed_in: stored.is_some(),
-        email: stored
-            .map(|session| session.email.clone())
-            .filter(|email| !email.is_empty()),
+        signed_in: current.is_some(),
+        email: current.and_then(email_of),
+        user_id: current.map(|session| session.user_id.clone()),
+        accounts: accounts
+            .iter()
+            .map(|session| OverleafAccount {
+                user_id: session.user_id.clone(),
+                email: email_of(session),
+            })
+            .collect(),
     }
+}
+
+async fn stored_status(base: &str) -> Result<OverleafStatus, String> {
+    let base = base.to_owned();
+    blocking(move || Ok(status_for(&base, &session::accounts(&base)?))).await
 }
 
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(work)
-        .await
-        .map_err(|error| error.to_string())?
+    off_runtime(work).await?
 }
 
 async fn keep_session(base: String, signed_in: session::Session) -> Result<OverleafStatus, String> {
-    let status = status_for(&base, Some(&signed_in));
     blocking(move || {
         session::save(&base, &signed_in)?;
-        overleaf_signed_in(&base, &signed_in)
+        overleaf_signed_in(&base, &signed_in)?;
+        Ok(status_for(&base, &session::accounts(&base)?))
     })
-    .await?;
-    Ok(status)
+    .await
 }
 
 #[tauri::command]
 pub async fn overleaf_status(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
+    stored_status(&base).await
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_ins() -> Result<Vec<OverleafSignIn>, String> {
+    blocking(|| {
+        Ok(session::sign_ins()?
+            .into_iter()
+            .map(|sign_in| OverleafSignIn {
+                email: known_email(&sign_in.email),
+                server: sign_in.server,
+                user_id: sign_in.user_id,
+                current: sign_in.current,
+                signed_in_at: sign_in.signed_in_at,
+            })
+            .collect())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn overleaf_use_account(
+    server: Option<String>,
+    account: String,
+) -> Result<OverleafStatus, String> {
+    let base = session::normalize_server(server.as_deref())?;
     blocking(move || {
-        let stored = session::load(&base)?;
-        Ok(status_for(&base, stored.as_ref()))
+        if !session::use_account(&base, &account)? {
+            return Err(AppError::new("overleaf.signed_out").into());
+        }
+        Ok(status_for(&base, &session::accounts(&base)?))
     })
     .await
 }
@@ -99,6 +172,8 @@ pub async fn overleaf_sign_in<R: Runtime>(
 pub struct SignInBrowser {
     pub key: String,
     pub name: String,
+    pub product: String,
+    pub packaging: Option<String>,
 }
 
 fn main_window_only<R: Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
@@ -120,10 +195,20 @@ pub async fn overleaf_sign_in_browsers<R: Runtime>(
             .map(|browser| SignInBrowser {
                 key: browser.key(),
                 name: browser.name(),
+                product: browser.id.name().to_string(),
+                packaging: browser.packaging.label().map(str::to_string),
             })
             .collect())
     })
     .await
+}
+
+#[tauri::command]
+pub async fn overleaf_browser_icons<R: Runtime>(
+    webview: tauri::Webview<R>,
+) -> Result<BTreeMap<String, String>, String> {
+    main_window_only(&webview)?;
+    blocking(|| Ok(signin::browser_icons())).await
 }
 
 #[tauri::command]
@@ -179,11 +264,8 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
         })
         .collect();
     let header = app_cookie_header(&cookies, &base);
-    // The copied cookies were only a way in. The session is saved encrypted
-    // below, nothing else in the app reads the webview's copy, and WebKit
-    // would keep it on disk unencrypted until it expires.
-    for at in copied_cookies(&cookies, &base) {
-        let _ = webview.delete_cookie(stored[at].clone());
+    if let Ok(url) = tauri::Url::parse(&base) {
+        crate::browser_cookie_import::clear_site_cookies(&webview, &url);
     }
     let header = header?;
     let signed_in = signin::session_from_cookie(&base, header)
@@ -196,20 +278,6 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
             }
         })?;
     keep_session(base, signed_in).await
-}
-
-fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
-    let Ok(url) = tauri::Url::parse(base) else {
-        return Vec::new();
-    };
-    cookies
-        .iter()
-        .enumerate()
-        .filter(|(_, (_, _, domain, path, secure))| {
-            session::cookie_applies(domain.as_deref(), path.as_deref(), *secure, &url)
-        })
-        .map(|(at, _)| at)
-        .collect()
 }
 
 fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String> {
@@ -244,19 +312,22 @@ pub struct OverleafSignOut {
 
 pub(crate) async fn sign_out_within(
     base: String,
+    account: Option<String>,
     keep_local_copy: bool,
     wait: std::time::Duration,
 ) -> Result<OverleafSignOut, String> {
-    let unsent = overleaf_unsent(&base, wait).await?;
+    let account = account.as_deref();
+    let unsent = overleaf_unsent(&base, account, wait).await?;
     if !unsent.is_empty() && !keep_local_copy {
-        let status = overleaf_status(Some(base)).await?;
+        let status = stored_status(&base).await?;
         return Ok(OverleafSignOut { status, unsent });
     }
-    overleaf_stop_live(&base).await;
-    let forget_base = base.clone();
-    blocking(move || session::forget(&forget_base)).await?;
+    overleaf_stop_live(&base, account).await;
+    let (forget_base, forget_account) = (base.clone(), account.map(str::to_owned));
+    blocking(move || session::forget(&forget_base, forget_account.as_deref())).await?;
+    overleaf_signed_out(&base, account).await;
     Ok(OverleafSignOut {
-        status: status_for(&base, None),
+        status: stored_status(&base).await?,
         unsent,
     })
 }
@@ -264,19 +335,30 @@ pub(crate) async fn sign_out_within(
 #[tauri::command]
 pub async fn overleaf_sign_out(
     server: Option<String>,
+    account: Option<String>,
     keep_local_copy: Option<bool>,
 ) -> Result<OverleafSignOut, String> {
     let base = session::normalize_server(server.as_deref())?;
-    sign_out_within(base, keep_local_copy.unwrap_or(false), SIGN_OUT_WAIT).await
+    sign_out_within(
+        base,
+        account,
+        keep_local_copy.unwrap_or(false),
+        SIGN_OUT_WAIT,
+    )
+    .await
 }
 
 #[tauri::command]
-pub async fn overleaf_list_projects(server: Option<String>) -> Result<OverleafProjects, String> {
+pub async fn overleaf_list_projects(
+    server: Option<String>,
+    account: Option<String>,
+) -> Result<OverleafProjects, String> {
     let base = session::normalize_server(server.as_deref())?;
-    let (signed_in, projects) = import::list(&base).await?;
+    let listing = import::list(&base, account.as_deref()).await?;
     Ok(OverleafProjects {
-        status: status_for(&base, Some(&signed_in)),
-        projects,
+        status: stored_status(&base).await?,
+        projects: listing.projects,
+        invites: listing.invites,
     })
 }
 
@@ -284,6 +366,7 @@ pub async fn overleaf_list_projects(server: Option<String>) -> Result<OverleafPr
 pub async fn overleaf_import_projects<R: Runtime>(
     app: AppHandle<R>,
     server: Option<String>,
+    account: Option<String>,
     ids: Vec<String>,
     on_event: Channel<ImportEvent>,
 ) -> Result<Vec<ImportOutcome>, String> {
@@ -291,7 +374,7 @@ pub async fn overleaf_import_projects<R: Runtime>(
     let emit = move |event: ImportEvent| {
         let _ = on_event.send(event);
     };
-    let outcomes = import::import(&base, &ids, &emit).await?;
+    let outcomes = import::import(&base, account.as_deref(), &ids, &emit).await?;
     for project_id in outcomes
         .iter()
         .filter_map(|outcome| outcome.project_id.as_deref())
@@ -299,6 +382,21 @@ pub async fn overleaf_import_projects<R: Runtime>(
         crate::project::record_tex_spec_for_new_project(&app, project_id);
     }
     Ok(outcomes)
+}
+
+#[tauri::command]
+pub async fn overleaf_open_live<R: Runtime>(
+    app: AppHandle<R>,
+    server: Option<String>,
+    account: Option<String>,
+    remote_id: String,
+) -> Result<OpenedLive, String> {
+    let base = session::normalize_server(server.as_deref())?;
+    let opened = import::open_live(&base, account.as_deref(), &remote_id).await?;
+    if !opened.reused {
+        crate::project::record_tex_spec_for_new_project(&app, &opened.project_id);
+    }
+    Ok(opened)
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
@@ -354,27 +452,42 @@ fn current_link(project_id: &str) -> Result<Option<sync::SyncLink>, String> {
     Ok(owned.then_some(link))
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct OverleafLink {
-    pub(crate) server: String,
-    pub(crate) project_id: String,
+pub(crate) fn overleaf_link_of(project_id: &str) -> Result<Option<OverleafLink>, String> {
+    Ok(oleafly_online::projects::live_link(
+        current_link(project_id)?,
+        imported_from(project_id),
+    ))
 }
 
-pub(crate) fn overleaf_link_of(project_id: &str) -> Result<Option<OverleafLink>, String> {
-    if let Some(link) = current_link(project_id)? {
-        return Ok(Some(OverleafLink {
-            server: link.server,
-            project_id: link.remote_id,
-        }));
-    }
-    Ok(imported_from(project_id).map(|origin| OverleafLink {
-        server: origin.server,
-        project_id: origin.project_id,
-    }))
+pub(crate) fn linked_account(project_id: &str) -> Option<OverleafAccount> {
+    let origin = imported_from(project_id)?;
+    Some(OverleafAccount {
+        user_id: origin.user_id?,
+        email: origin.email,
+    })
+}
+
+pub(crate) fn record_linked_account(
+    project_id: &str,
+    link: &OverleafLink,
+    user_id: &str,
+    email: &str,
+) -> Result<bool, String> {
+    crate::project::update_imported_from(project_id, |record| {
+        let origin = oleafly_online::projects::imported_from(record);
+        if origin.is_none_or(|origin| {
+            origin.server != link.server
+                || origin.project_id != link.project_id
+                || origin.user_id.is_some()
+        }) {
+            return false;
+        }
+        oleafly_online::projects::record_account(record, user_id, email)
+    })
 }
 
 pub(crate) fn live_session(
-    base: &str,
+    link: &OverleafLink,
 ) -> Result<
     Option<(
         oleafly_online::client::Http,
@@ -382,20 +495,23 @@ pub(crate) fn live_session(
     )>,
     String,
 > {
-    let Some(stored) = session::load(base)? else {
+    let Some(stored) = session::load(&link.server, link.user_id.as_deref())? else {
         return Ok(None);
     };
-    let http = client::Http::new(base)?.online().clone();
+    let http = client::Http::new(&link.server)?.online().clone();
     let store = crate::secrets::store()?;
     Ok(Some((
         http,
-        oleafly_online::session::SessionHandle::new(base, stored, Some(store)),
+        oleafly_online::session::SessionHandle::new(&link.server, stored, Some(store)),
     )))
 }
 
-pub(crate) fn linked_mirror(project_id: &str) -> Option<std::path::PathBuf> {
+pub(crate) fn linked_git(project_id: &str) -> Option<oleafly_live::overleaf::GitBase> {
     sync::read_link(project_id).ok().flatten()?;
-    sync::repo_dir(project_id).ok()
+    Some(oleafly_live::overleaf::GitBase {
+        repo: sync::repo_dir(project_id).ok()?,
+        git: std::sync::Arc::new(AppMirrorGit),
+    })
 }
 
 fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
@@ -405,11 +521,13 @@ fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
 fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
     let link = current_link(project_id)?;
     let imported = imported_from(project_id);
-    let server = overleaf_link_of(project_id)?
+    let link_of = overleaf_link_of(project_id)?;
+    let account = link_of.as_ref().and_then(|link| link.user_id.clone());
+    let server = link_of
         .map(|link| link.server)
         .unwrap_or_else(|| session::DEFAULT_SERVER.to_string());
     Ok(SyncStatus {
-        token_saved: session::git_token(&server)?.is_some(),
+        token_saved: session::git_token(&server, account.as_deref())?.is_some(),
         linked: link.is_some(),
         remote_id: link.as_ref().map(|link| link.remote_id.clone()),
         auto: link.as_ref().is_some_and(|link| link.auto),
@@ -420,8 +538,8 @@ fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
     })
 }
 
-fn required_token(base: &str) -> Result<String, String> {
-    session::git_token(base)?
+fn required_token(base: &str, account: Option<&str>) -> Result<String, String> {
+    session::git_token(base, account)?
         .ok_or_else(|| String::from(AppError::new("overleaf.git_token_missing")))
 }
 
@@ -450,21 +568,31 @@ pub async fn overleaf_sync_status(project_id: String) -> Result<SyncStatus, Stri
 }
 
 #[tauri::command]
-pub async fn overleaf_git_token_status(server: Option<String>) -> Result<bool, String> {
+pub async fn overleaf_git_token_status(
+    server: Option<String>,
+    account: Option<String>,
+) -> Result<bool, String> {
     let base = session::normalize_server(server.as_deref())?;
-    blocking(move || Ok(session::git_token(&base)?.is_some())).await
+    blocking(move || Ok(session::git_token(&base, account.as_deref())?.is_some())).await
 }
 
 #[tauri::command]
-pub async fn overleaf_git_token_set(server: Option<String>, token: String) -> Result<(), String> {
+pub async fn overleaf_git_token_set(
+    server: Option<String>,
+    account: Option<String>,
+    token: String,
+) -> Result<(), String> {
     let base = session::normalize_server(server.as_deref())?;
-    blocking(move || session::save_git_token(&base, &token)).await
+    blocking(move || session::save_git_token(&base, account.as_deref(), &token)).await
 }
 
 #[tauri::command]
-pub async fn overleaf_git_token_clear(server: Option<String>) -> Result<(), String> {
+pub async fn overleaf_git_token_clear(
+    server: Option<String>,
+    account: Option<String>,
+) -> Result<(), String> {
     let base = session::normalize_server(server.as_deref())?;
-    blocking(move || session::forget_git_token(&base)).await
+    blocking(move || session::forget_git_token(&base, account.as_deref())).await
 }
 
 #[tauri::command]
@@ -503,7 +631,15 @@ pub async fn overleaf_sync_link<R: Runtime>(
     let base = session::normalize_server(server.as_deref())?;
     let _guard = sync::claim(&project_id)?;
     let url = sync::remote_url(&base, &remote_id)?;
-    let token = required_token(&base)?;
+    let (token_project, token_base, token_remote) =
+        (project_id.clone(), base.clone(), remote_id.clone());
+    let token = blocking(move || {
+        let account = imported_from(&token_project)
+            .filter(|origin| origin.server == token_base && origin.project_id == token_remote)
+            .and_then(|origin| origin.user_id);
+        required_token(&token_base, account.as_deref())
+    })
+    .await?;
     let stale_id = project_id.clone();
     let existing = blocking(move || {
         let current = current_link(&stale_id)?;
@@ -583,9 +719,14 @@ struct SyncTarget {
 
 async fn sync_target(project_id: &str) -> Result<SyncTarget, String> {
     let link_id = project_id.to_string();
-    let link = blocking(move || linked(&link_id)).await?;
+    let (link, token) = blocking(move || {
+        let link = linked(&link_id)?;
+        let account = imported_from(&link_id).and_then(|origin| origin.user_id);
+        let token = required_token(&link.server, account.as_deref())?;
+        Ok((link, token))
+    })
+    .await?;
     let url = sync::remote_url(&link.server, &link.remote_id)?;
-    let token = required_token(&link.server)?;
     let repo = sync::repo_dir(project_id)?;
     let base_repo = repo.clone();
     let base = blocking(move || {
@@ -635,9 +776,12 @@ fn quiet_report(outcome: &str, pushed: bool) -> SyncReport {
     }
 }
 
-fn live_stands_down(project_id: &str) -> Result<(), String> {
-    if crate::collab::live::overleaf::git_sync_waits(project_id)
-        .map_err(|error| error.to_string())?
+async fn live_stands_down(project_id: &str) -> Result<(), String> {
+    let id = project_id.to_owned();
+    if blocking(move || {
+        crate::collab::live::overleaf::git_sync_waits(&id).map_err(|error| error.to_string())
+    })
+    .await?
     {
         return Err(errors::app_error(oleafly_online::error::OnlineError::new(
             oleafly_online::error::OnlineErrorKind::SyncBusy,
@@ -648,7 +792,7 @@ fn live_stands_down(project_id: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, String> {
-    live_stands_down(&project_id)?;
+    live_stands_down(&project_id).await?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let remote = fetch_remote(&target).await?;
@@ -792,7 +936,7 @@ pub async fn overleaf_sync_now<R: Runtime>(
     resolutions: Option<BTreeMap<String, Side>>,
     fetched: Option<bool>,
 ) -> Result<SyncReport, String> {
-    live_stands_down(&project_id)?;
+    live_stands_down(&project_id).await?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let mut progress = Progress {

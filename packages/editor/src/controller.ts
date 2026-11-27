@@ -1,5 +1,5 @@
 import { EditorView } from "@codemirror/view";
-import { EditorSelection, type Extension, type SelectionRange } from "@codemirror/state";
+import { EditorSelection, type Extension, type SelectionRange, type Text } from "@codemirror/state";
 import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import { CodeMirror, getCM } from "@replit/codemirror-vim";
@@ -13,7 +13,7 @@ import {
   type WordRange,
 } from "./word-context";
 
-export type { WordContext } from "./word-context";
+export type { WordContext, WordRange } from "./word-context";
 export {
   findWordOnPages,
   linesFromAnchor,
@@ -278,12 +278,9 @@ function best<T>(items: readonly T[], score: (item: T, index: number) => number)
   return chosen;
 }
 
-export function selectWordNearLine(line: number, word: string, context?: WordContext): boolean {
-  const v = getEditorView();
-  if (!v) return false;
+export function wordRangeNearLine(doc: Text, line: number, word: string, context?: WordContext): WordRange | null {
   const clicked = word.trim().normalize("NFC");
-  if (!clicked) return false;
-  const doc = v.state.doc;
+  if (!clicked) return null;
   const total = doc.lines;
   const target = Math.min(Math.max(1, line), total);
   const isWordChar = (c: string | undefined) => !!c && WORD_CHARACTER.test(c);
@@ -341,9 +338,54 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
 
   const joined = rejoinHyphenated(clicked, context);
   const chosen = (joined && find(joined.word, joined.context)) || find(clicked, context);
-  if (!chosen) return false;
-  revealEditorRange(v, chosen.from, chosen.to);
+  return chosen ? { from: chosen.from, to: chosen.to } : null;
+}
+
+export function selectWordNearLine(line: number, word: string, context?: WordContext): boolean {
+  const v = getEditorView();
+  if (!v) return false;
+  const range = wordRangeNearLine(v.state.doc, line, word, context);
+  if (!range) return false;
+  revealEditorRange(v, range.from, range.to);
   return true;
+}
+
+export interface QuotedText extends WordContext {
+  text: string;
+}
+
+const QUOTED_WORD = /[\p{L}\p{M}\p{N}\u200C\u200D]+/gu;
+const LETTER = /\p{L}/u;
+
+function trimmedLines(doc: Text, first: number, last: number): WordRange {
+  const from = doc.line(first).from;
+  const to = doc.line(last).to;
+  const text = doc.sliceString(from, to);
+  const start = text.length - text.trimStart().length;
+  return { from: from + start, to: Math.max(from + start, to - (text.length - text.trimEnd().length)) };
+}
+
+export function quoteRange(doc: Text, startLine: number, endLine: number, quote: QuotedText): WordRange {
+  const first = Math.min(Math.max(1, Math.min(startLine, endLine)), doc.lines);
+  const last = Math.min(Math.max(first, startLine, endLine), doc.lines);
+  const words = [...quote.text.matchAll(QUOTED_WORD)];
+  const lettered = words.filter((word) => LETTER.test(word[0]));
+  const head = lettered[0] ?? words[0];
+  const tail = lettered.at(-1) ?? words.at(-1);
+  if (head && tail) {
+    const headEnd = head.index + head[0].length;
+    const tailEnd = tail.index + tail[0].length;
+    const from = wordRangeNearLine(doc, first, head[0], {
+      before: `${quote.before} ${quote.text.slice(0, head.index)}`,
+      after: `${quote.text.slice(headEnd)} ${quote.after}`,
+    });
+    const to = wordRangeNearLine(doc, last, tail[0], {
+      before: `${quote.before} ${quote.text.slice(0, tail.index)}`,
+      after: `${quote.text.slice(tailEnd)} ${quote.after}`,
+    });
+    if (from && to && to.to > from.from) return { from: from.from, to: to.to };
+  }
+  return trimmedLines(doc, first, last);
 }
 
 /**

@@ -1897,34 +1897,18 @@
       "disconnectFailed": "Não foi possível desconectar o alphaXiv. Tente de novo."
     },
     "cookies": {
-      "confirmTitle": "Confirmar a importação de cookies",
-      "detecting": "Procurando os perfis de navegador instalados...",
-      "dialogDescription": "Escolha um perfil de navegador instalado. O Oleafly só o lê depois que você revisa e confirma a importação. Os cookies do Chromium são desbloqueados localmente pelo Keychain do macOS. O Oleafly não envia valores de cookie para nenhum serviço do Oleafly.",
-      "dialogTitle": "Importar cookies do navegador",
-      "empty": "Nenhum perfil de navegador compatível foi encontrado.",
-      "errors": {
-        "chooseProfile": "Escolha um perfil de navegador disponível."
-      },
-      "profileGroupLabel": "Perfis de navegador",
-      "profileLegend": "Perfil de navegador",
-      "review": "Revisar a importação",
-      "status": {
-        "available": "Disponível",
-        "comingSoon": "Em breve",
-        "noCookieStore": "Sem repositório de cookies",
-        "notInstalled": "Não instalado"
-      },
-      "tryAgain": "Tentar de novo",
-      "label": "Copiar o login de um navegador",
-      "useBrowserSignIn": "Copiar o login do seu navegador",
-      "signInDescription": "Copie seu login de {{server}} de um navegador deste computador, para não precisar fazer login de novo.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "O Oleafly vai ler os cookies de {{domain}} do perfil {{profile}} do {{browser}}. Eles ficam no Oleafly e só vão para {{domain}}. Você vai confirmar mais uma vez em uma caixa de diálogo do sistema.",
-      "copyAction": "Copiar o login",
-      "copying": "Copiando…",
-      "notSignedIn_one": "{{count}} cookie copiado do {{browser}}, mas ele não fez o seu login. Faça login diretamente.",
-      "notSignedIn_many": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente.",
-      "notSignedIn_other": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente."
+      "dialogDescription": "O Oleafly copia apenas os cookies de {{server}}, faz login com eles e depois apaga as cópias. Suas senhas ficam no navegador.",
+      "dialogTitle": "Importar cookies do seu navegador",
+      "label": "Importar cookies do seu navegador",
+      "useBrowserSignIn": "Escolher um perfil",
+      "signInDescription": "Usa a conta de {{server}} que já está conectada em um perfil de navegador deste computador.",
+      "copyAction": "Importar",
+      "copying": "Importando…",
+      "from": "De",
+      "noCookies": "Ainda sem cookies",
+      "sameAccount": "{{profile}} está conectado como {{account}}, que o Oleafly já usa. Escolha outro perfil ou faça login primeiro com sua outra conta nesse navegador.",
+      "orExisting": "ou use um login que você já tem",
+      "noSavedSignIn": "{{profile}} não tem um login salvo em {{server}}, então os cookies copiados não fizeram você entrar. Se você está conectado ali, talvez o navegador guarde o login só até ser fechado. Use o bloco {{browser}} em vez disso."
     },
     "zotero": {
       "apiKeyHint": "Para obter uma chave: entre em <siteLink>zotero.org</siteLink>, abra a sua <keyLink>página de chaves de API</keyLink> para criar uma chave e copie o seu ID numérico de usuário da mesma página.",
@@ -1987,7 +1971,12 @@
       "signedIn": "Conectado em {{server}}",
       "signOut": "Sair",
       "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
+      "addAccount": "Adicionar outra conta",
+      "addAccountHint": "Escolha onde fazer login. Todos começam sem conta conectada, então qualquer conta serve.",
+      "accountPick": "Conta para importar",
+      "accountPickDescription": "Novas importações e modelos usam esta conta. Os projetos que você já tem mantêm a conta de onde vieram.",
       "gitTitle": "Token Git para sincronização",
+      "gitTitleFor": "Token Git para {{email}}",
       "gitSaved": "Há um token Git salvo. Os projetos que você vincular ficam sincronizados com o Overleaf.",
       "gitMissing": "Nenhum token Git ainda. Crie um em Integração com Git nas configurações da sua conta do Overleaf para sincronizar projetos.",
       "gitOpenSettings": "Abrir configurações da conta do Overleaf",
@@ -1996,14 +1985,9 @@
       "gitSave": "Salvar",
       "gitRemove": "Remover",
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro.",
-      "browserLabel": "Fazer login com o seu navegador",
-      "browserDescription": "Para login com Google, instituição ou chave de acesso. O Oleafly abre {{server}} em uma nova janela do navegador e a fecha assim que você entrar.",
-      "browserAction": "Fazer login",
-      "browserPick": "Navegador para fazer login",
       "browserWaiting": "Termine o login em {{server}} em {{browser}}. Fechar a janela cancela o login.",
-      "browserHint": "Use para login com Google, instituição ou chave de acesso.",
-      "windowLabel": "Fazer login em {{server}}",
-      "windowDescription": "O Oleafly abre uma janela de login e a fecha assim que você entrar. Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e faça login aqui com ele.",
+      "windowLabel": "Entrar dentro do Oleafly",
+      "windowDescription": "A janela se fecha sozinha assim que você entrar. Se a sua chave de acesso não funcionar ali, use a sua senha ou uma confirmação no celular.",
       "windowAction": "Fazer login",
       "windowWaiting": "Termine o login em {{server}} na janela que abriu.",
       "unsent": {
@@ -2021,7 +2005,15 @@
           "always": "Excluir também no Overleaf",
           "never": "Manter no Overleaf"
         }
-      }
+      },
+      "sameAccount": "Você já está conectado como {{account}}. Faça login com outra conta para adicioná-la.",
+      "windowTitle": "Fazer login em {{server}}",
+      "addAccountKept": "Sua conta atual continua conectada.",
+      "noBrowser": "Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e depois escolha aqui.",
+      "tileHere": "Neste app",
+      "tileWindow": "Nova janela",
+      "tileWaiting": "Esperando por você",
+      "signInNote": "Use um navegador para entrar com Google, sua instituição ou uma chave de acesso. Se a sua chave de acesso não funcionar no Oleafly, use ali a sua senha ou uma confirmação no celular. A janela se fecha sozinha assim que você entrar."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2153,6 +2145,20 @@
           "confirm": "Isto baixa o instalador do Cua do cua.ai e o executa no seu terminal. Continuar?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gerenciar logins",
+      "description": "As contas em que o Oleafly está conectado neste computador. Se você remover uma aqui, continua conectado no navegador.",
+      "loading": "Carregando seus logins…",
+      "empty": "Você não está conectado a nenhuma conta.",
+      "inUse": "Em uso",
+      "switch": "Trocar",
+      "switchTo": "Trocar para {{account}}",
+      "removeAccount": "Remover {{account}}",
+      "removeAll": "Remover todas",
+      "importMore": "Importar mais",
+      "loadFailed": "O Oleafly não conseguiu carregar seus logins.",
+      "changeFailed": "O Oleafly não conseguiu alterar este login. Tente de novo."
     }
   },
   "language": {
@@ -2363,6 +2369,7 @@
       "confirm": "Limpar as palavras",
       "descriptionFallback": "Isso remove todos os termos deste dicionário. Eles voltam a ser verificados na hora.",
       "descriptionGlobal": "Isso remove todos os termos do dicionário global. Eles voltam a ser verificados na hora.",
+      "descriptionOverleaf": "Eles também são removidos da sua conta do Overleaf.",
       "descriptionProject": "Isso remove todos os termos de {{project}}. Eles voltam a ser verificados na hora.",
       "descriptionSuppressed": "Isso remove todos os termos das ocorrências dispensadas em {{project}}. Eles voltam a ser verificados na hora.",
       "suppressedConfirm": "Mostrar de novo",
@@ -2381,6 +2388,7 @@
     },
     "global": {
       "emptyDescription": "As palavras que você adiciona aqui são puladas pela revisão de texto em todos os projetos.",
+      "overleafSynced": "Sincronizado com as palavras aprendidas da sua conta do Overleaf enquanto um projeto está ao vivo no Overleaf.",
       "scope": "Vale para todos os projetos"
     },
     "intro": "Adicione palavras ao seu dicionário pessoal de verificação ortográfica. Elas ficam nas configurações locais e são ignoradas em todos os projetos. A comparação é normalizada em Unicode e não diferencia maiúsculas de minúsculas.",
@@ -2907,5 +2915,186 @@
     "filteredCount_many": "{{shown}} de {{count}} entradas",
     "filteredCount_one": "{{shown}} de {{count}} entrada",
     "filteredCount_other": "{{shown}} de {{count}} entradas"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Na lista de sugestões",
+        "description": "Mostra os trechos ao lado dos comandos"
+      },
+      "tab": {
+        "label": "Tab expande um gatilho",
+        "description": "Para trechos configurados com Tab"
+      },
+      "auto": {
+        "label": "Expandir ao digitar",
+        "description": "Para trechos no modo Auto, como Fast math"
+      },
+      "hint": {
+        "label": "Mostrar uma dica ao digitar",
+        "description": "Indica o trecho que um gatilho vai inserir. Tab insere o trecho."
+      }
+    },
+    "library": {
+      "title": "Sua biblioteca de trechos",
+      "collections": "Coleções",
+      "all": "Todos os trechos",
+      "mine": "Suas",
+      "packs": "Pacotes",
+      "builtIn": "Embutidas",
+      "add": "Adicionar pacotes ou importar…",
+      "useCollection": "Usar {{name}}",
+      "search": "Buscar por nome, gatilho ou texto",
+      "language": "Linguagem",
+      "allLanguages": "Todas as linguagens",
+      "expands": "Expansão",
+      "anyExpand": "Qualquer uma",
+      "newSnippet": "Novo trecho",
+      "columns": {
+        "trigger": "Gatilho",
+        "name": "Nome",
+        "languages": "Linguagens",
+        "where": "Contexto",
+        "expands": "Expansão"
+      },
+      "modified": "Modificado",
+      "turnedOff": "Desativado",
+      "restore": "Restaurar",
+      "restoreLabel": "Restaurar {{name}}",
+      "wraps": "envolve",
+      "noTrigger": "nenhum",
+      "noMatches": "Nenhum trecho corresponde.",
+      "shown": "{{shown}} de {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problema",
+      "summary_many": "{{count}} problemas",
+      "summary_other": "{{count}} problemas",
+      "where": "no arquivo {{file}}, linha {{line}}: {{message}}",
+      "slowRegex": "A verificação do gatilho do trecho {{name}} demorou demais, então o trecho foi desativado.",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "addDialog": {
+      "title": "Adicionar trechos",
+      "packsTab": "Pacotes",
+      "importTab": "Importar um arquivo",
+      "count_one": "{{count}} trecho",
+      "count_many": "{{count}} trechos",
+      "count_other": "{{count}} trechos",
+      "source": "Fonte: {{source}}",
+      "licence": "Licença {{licence}}",
+      "packNote": "Os pacotes são atualizados com o app. As alterações que você faz nos trechos de um pacote ficam guardadas à parte.",
+      "packs": {
+        "fastMathLatex": "Expande enquanto você digita em modo matemático: frações, subscritos e potências, letras gregas, operadores e matrizes. Os gatilhos seguem a configuração de Gilles Castel.",
+        "fastMathTypst": "Os mesmos gatilhos, escritos para Typst. Deixa de fora o que o Typst já faz, como a/b para uma fração.",
+        "paperStructure": "Figuras, subfiguras, tabelas booktabs, equações, teoremas, demonstrações e algoritmos."
+      },
+      "useOn": "Usar {{name}}",
+      "importIntro": "Escolha um arquivo de trechos do VS Code (.json ou .code-snippets). Ele vira uma coleção própria, que você pode desativar ou alterar.",
+      "choose": "Escolher um arquivo",
+      "fileLabel": "Arquivo de trechos",
+      "imported_one": "{{count}} trecho importado para a coleção {{collection}}.",
+      "imported_many": "{{count}} trechos importados para a coleção {{collection}}.",
+      "imported_other": "{{count}} trechos importados para a coleção {{collection}}.",
+      "nothing": "Nenhum trecho encontrado no arquivo {{file}}.",
+      "leftOut_one": "{{count}} entrada ficou de fora:",
+      "leftOut_many": "{{count}} entradas ficaram de fora:",
+      "leftOut_other": "{{count}} entradas ficaram de fora:"
+    },
+    "editor": {
+      "newTitle": "Novo trecho",
+      "duplicate": "Duplicar",
+      "delete": "Excluir",
+      "turnOff": "Desativar",
+      "save": "Salvar",
+      "copyName": "{{name}} (cópia)",
+      "name": "Nome",
+      "namePlaceholder": "Figura com legenda e rótulo",
+      "trigger": "Gatilho",
+      "triggerPlaceholder": "fig",
+      "regex": "Expressão regular",
+      "expands": "Expansão",
+      "expandOptions": {
+        "list": "Pela lista",
+        "tab": "Com Tab",
+        "auto": "Ao digitar"
+      },
+      "expandHelp": {
+        "list": "Aparece na lista de sugestões. Escolha o trecho ali para inseri-lo.",
+        "tab": "Digite {{trigger}} e pressione Tab. Ele também aparece na lista de sugestões.",
+        "auto": "Expande assim que você digita {{trigger}}. Desfazer ou Backspace devolve o gatilho."
+      },
+      "languages": "Linguagens",
+      "where": "Contexto",
+      "whereOptions": {
+        "any": "Qualquer lugar",
+        "text": "Texto",
+        "math": "Matemática",
+        "code": "Código"
+      },
+      "mathKinds": {
+        "math": "Ambas",
+        "inline-math": "Em linha",
+        "display-math": "Destacada"
+      },
+      "mathKind": "Tipo de matemática",
+      "whereHelp": {
+        "any": "Em qualquer lugar do arquivo.",
+        "text": "Texto: fora de matemática, comentários e verbatim.",
+        "math": "Matemática: dentro de matemática em linha ou destacada.",
+        "code": "Código: dentro de código Typst ou de blocos de código Markdown."
+      },
+      "firesOnly": "Só dispara",
+      "wholeWord": "como palavra inteira",
+      "lineStart": "no início de uma linha",
+      "collection": "Coleção",
+      "keptSeparately": "Suas alterações ficam guardadas à parte, então as atualizações da coleção {{collection}} continuam chegando.",
+      "body": "Texto inserido",
+      "anyLanguage": "Qualquer linguagem",
+      "addField": "+ Campo",
+      "addChoice": "+ Opção",
+      "choiceText": "primeiro,segundo",
+      "variable": "Variável",
+      "projectField": "Campo do projeto",
+      "variables": {
+        "SELECTION": "Texto selecionado",
+        "CLIPBOARD": "Área de transferência",
+        "DATE": "Data de hoje",
+        "TM_FILENAME": "Nome do arquivo",
+        "PROJECT_NAME": "Nome do projeto"
+      },
+      "projectFields": {
+        "image": "Imagem",
+        "label": "Rótulo",
+        "cite": "Citação",
+        "ref": "Referência",
+        "file": "Arquivo"
+      },
+      "chipsNote": "Os campos aparecem como chips.",
+      "showSyntax": "Mostrar a sintaxe",
+      "missingName": "Dê um nome ao trecho.",
+      "missingBody": "Escreva o texto que o trecho insere.",
+      "sameTrigger": "{{trigger}} também é usado por: {{list}}. A coleção mais próxima prevalece.",
+      "sharedStart": "Começa igual a: {{list}}. Todos aparecem na lista, e Tab escolhe a correspondência exata, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Excluir o trecho {{name}}?",
+        "description": "Isso remove o trecho da coleção {{collection}}.",
+        "action": "Excluir"
+      },
+      "tryIt": {
+        "title": "Testar",
+        "howAuto": "Digite {{trigger}} e ele expande.",
+        "howTab": "Digite {{trigger}} e depois pressione Tab.",
+        "howList": "Digite {{trigger}}, pressione Ctrl+Space e escolha o trecho na lista.",
+        "noTrigger": "Este trecho não tem gatilho. Insira-o pela paleta de comandos com /snippets.",
+        "inText": "no texto",
+        "inMath": "em matemática",
+        "fires": "Dispara aqui: {{language}}, {{place}}.",
+        "notLanguage": "Não dispararia aqui. {{language}} não é uma das linguagens deste trecho.",
+        "notPlace": "Não dispararia {{place}}. A configuração Contexto não permite."
+      }
+    }
   }
 }

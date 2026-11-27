@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, DoorOpen, Link2, MessageSquare, ScrollText, Trash2, UserPlus } from "lucide-react";
+import { Check, Copy, DoorOpen, Link2, MessageSquareQuote, ScrollText, Trash2, UserPlus } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Avatar } from "@/components/ui/avatar";
@@ -350,7 +350,7 @@ function CommentsSetting({
         }
         checked={enabled}
         disabled={saving || serverOff}
-        icon={<MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+        icon={<MessageSquareQuote aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
         onChange={(next) => void save(next)}
       />
       {error ? <InlineAlert>{error}</InlineAlert> : null}

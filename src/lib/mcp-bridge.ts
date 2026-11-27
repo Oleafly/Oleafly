@@ -33,6 +33,7 @@ import { useSettingsStore } from "@/store/settings";
 import { openNotes } from "@/features/open-tool";
 import { libraryProjects, opensInNotes } from "@/lib/library-projects";
 import { createResearchTaskAiTools } from "@/lib/research-tools";
+import { createOverleafAiTools } from "@/lib/overleaf-ai-tools";
 import { primeResearchTasksFlag, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useCompileStore } from "@/store/compile";
 import { supportsFigureTools } from "@/lib/document-engine";
@@ -70,6 +71,7 @@ const MUTATING_TOOLS = new Set([
   "forget_note",
   "run_command",
   "research_task_create",
+  "open_overleaf_live",
   ...NOTE_MCP_MUTATING_TOOLS,
 ]);
 
@@ -474,6 +476,12 @@ export function buildMcpToolRegistry(opts: {
     ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
     ...(createResearchTaskAiTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
+    open_overleaf_live: createOverleafAiTools({
+      confirm: opts.confirm,
+      mutationAllowed: opts.mutationAllowed,
+      endsChatRun: false,
+      approveBeforeLookup: true,
+    }).open_overleaf_live,
     ...(opts.notes
       ? (createNoteMcpTools(appNoteMcpDeps(), { confirm: opts.confirm, mutationAllowed: opts.mutationAllowed }) as Record<
           string,

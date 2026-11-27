@@ -1873,32 +1873,18 @@
       "disconnectFailed": "alphaXiv 연결을 해제하지 못했습니다. 다시 시도하세요."
     },
     "cookies": {
-      "confirmTitle": "Cookie 가져오기 확인",
-      "detecting": "설치된 브라우저 프로필을 찾는 중...",
-      "dialogDescription": "설치된 브라우저 프로필 하나를 고르세요. Oleafly는 사용자가 확인한 뒤에만 프로필을 읽습니다. Chromium Cookie는 macOS 키체인을 통해 이 컴퓨터에서 잠금 해제됩니다. Oleafly는 Cookie 값을 Oleafly 서비스로 보내지 않습니다.",
-      "dialogTitle": "브라우저 Cookie 가져오기",
-      "empty": "지원되는 브라우저 프로필을 찾지 못했습니다.",
-      "errors": {
-        "chooseProfile": "사용할 수 있는 브라우저 프로필을 고르세요."
-      },
-      "profileGroupLabel": "브라우저 프로필",
-      "profileLegend": "브라우저 프로필",
-      "review": "가져오기 검토",
-      "status": {
-        "available": "사용 가능",
-        "comingSoon": "준비 중",
-        "noCookieStore": "Cookie 저장소 없음",
-        "notInstalled": "설치되어 있지 않음"
-      },
-      "tryAgain": "다시 시도",
-      "label": "브라우저 로그인 정보 복사",
-      "useBrowserSignIn": "브라우저의 로그인 정보 복사",
-      "signInDescription": "이 컴퓨터의 브라우저에서 {{server}} 로그인 정보를 복사하면 다시 로그인하지 않아도 됩니다.",
-      "site": "사이트: {{domain}}",
-      "confirmCopy": "Oleafly가 {{browser}}의 {{profile}} 프로필에서 {{domain}}의 Cookie를 읽습니다. Cookie는 Oleafly 안에 보관되며 {{domain}}에만 전송됩니다. 시스템 대화 상자에서 한 번 더 확인합니다.",
-      "copyAction": "로그인 정보 복사",
-      "copying": "복사하는 중...",
-      "notSignedIn_other": "{{browser}}에서 Cookie {{count}}개를 복사했지만 로그인되지 않았습니다. 직접 로그인하세요."
+      "dialogDescription": "Oleafly는 {{server}}의 Cookie만 복사해 로그인한 다음 복사본을 삭제합니다. 비밀번호는 브라우저에 그대로 남습니다.",
+      "dialogTitle": "브라우저에서 Cookie 가져오기",
+      "label": "브라우저에서 Cookie 가져오기",
+      "useBrowserSignIn": "프로필 선택",
+      "signInDescription": "이 컴퓨터의 브라우저 프로필에 이미 로그인되어 있는 {{server}} 계정을 사용합니다.",
+      "copyAction": "가져오기",
+      "copying": "가져오는 중...",
+      "from": "가져올 곳",
+      "noCookies": "아직 Cookie 없음",
+      "sameAccount": "{{profile}}에는 {{account}} 계정이 로그인되어 있으며, Oleafly가 이미 이 계정을 사용하고 있습니다. 다른 프로필을 선택하거나 그 브라우저에서 먼저 다른 계정으로 로그인하세요.",
+      "orExisting": "또는 이미 있는 로그인 사용",
+      "noSavedSignIn": "{{profile}}에 {{server}}의 저장된 로그인이 없어서 복사한 Cookie로 로그인하지 못했습니다. 그곳에 로그인되어 있다면 브라우저가 닫힐 때까지만 로그인을 유지하는 것일 수 있습니다. 대신 {{browser}} 타일을 사용하세요."
     },
     "zotero": {
       "apiKeyHint": "키를 받으려면 <siteLink>zotero.org</siteLink>에서 로그인하고 <keyLink>API 키 페이지</keyLink>를 열어 키를 만든 다음, 같은 페이지에서 숫자로 된 사용자 ID를 복사하세요.",
@@ -1955,7 +1941,12 @@
       "signedIn": "{{server}}에 로그인됨",
       "signOut": "로그아웃",
       "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
+      "addAccount": "다른 계정 추가",
+      "addAccountHint": "로그인할 곳을 선택하세요. 모두 로그인되지 않은 상태로 시작하므로 어떤 계정이든 사용할 수 있습니다.",
+      "accountPick": "가져오기에 사용할 계정",
+      "accountPickDescription": "새로 가져오는 프로젝트와 템플릿은 이 계정을 사용합니다. 이미 있는 프로젝트는 원래 가져온 계정을 그대로 유지합니다.",
       "gitTitle": "동기화용 Git 토큰",
+      "gitTitleFor": "{{email}}의 Git 토큰",
       "gitSaved": "Git 토큰이 저장되어 있습니다. 연결한 프로젝트는 Overleaf와 동기화된 상태로 유지됩니다.",
       "gitMissing": "아직 Git 토큰이 없습니다. 프로젝트를 동기화하려면 Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만드세요.",
       "gitOpenSettings": "Overleaf 계정 설정 열기",
@@ -1964,14 +1955,9 @@
       "gitSave": "저장",
       "gitRemove": "제거",
       "gitFailed": "Oleafly가 Git 토큰을 저장하지 못했습니다. 토큰 전체를 붙여 넣었는지 확인하세요.",
-      "browserLabel": "브라우저로 로그인",
-      "browserDescription": "Google, 소속 기관 또는 패스키 로그인용입니다. Oleafly가 새 브라우저 창에서 {{server}}을(를) 열고, 로그인이 끝나면 창을 닫습니다.",
-      "browserAction": "로그인",
-      "browserPick": "로그인에 사용할 브라우저",
       "browserWaiting": "{{browser}}에서 {{server}} 로그인을 마치세요. 창을 닫으면 취소됩니다.",
-      "browserHint": "Google, 소속 기관 또는 패스키로 로그인할 때 사용하세요.",
-      "windowLabel": "{{server}}에 로그인",
-      "windowDescription": "Oleafly가 로그인 창을 열고, 로그인이 끝나면 닫습니다. Google, 소속 기관 또는 패스키로 로그인하려면 Chrome, Edge, Brave, Chromium 또는 Firefox를 설치한 뒤 여기서 해당 브라우저로 로그인하세요.",
+      "windowLabel": "Oleafly 안에서 로그인",
+      "windowDescription": "로그인이 끝나면 창이 저절로 닫힙니다. 거기서 패스키가 작동하지 않으면 비밀번호나 휴대폰 확인을 사용하세요.",
       "windowAction": "로그인",
       "windowWaiting": "열린 창에서 {{server}} 로그인을 마치세요.",
       "unsent": {
@@ -1989,7 +1975,15 @@
           "always": "Overleaf에서도 삭제",
           "never": "Overleaf에는 유지"
         }
-      }
+      },
+      "sameAccount": "이미 {{account}} 계정으로 로그인되어 있습니다. 다른 계정을 추가하려면 그 계정으로 로그인하세요.",
+      "windowTitle": "{{server}}에 로그인",
+      "addAccountKept": "현재 계정은 로그인된 상태로 유지됩니다.",
+      "noBrowser": "Google, 소속 기관 또는 패스키로 로그인하려면 Chrome, Edge, Brave, Chromium 또는 Firefox를 설치한 뒤 여기서 선택하세요.",
+      "tileHere": "이 앱 안에서",
+      "tileWindow": "새 창",
+      "tileWaiting": "로그인 대기 중",
+      "signInNote": "Google, 소속 기관 또는 패스키로 로그인하려면 브라우저를 사용하세요. Oleafly에서 패스키가 작동하지 않으면 거기서 비밀번호나 휴대폰 확인을 사용하세요. 로그인이 끝나면 창이 저절로 닫힙니다."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2121,6 +2115,20 @@
           "confirm": "cua.ai에서 Cua 설치 프로그램을 내려받아 터미널에서 실행합니다. 계속할까요?"
         }
       }
+    },
+    "signIns": {
+      "title": "로그인 관리",
+      "description": "이 컴퓨터에서 Oleafly가 로그인한 계정입니다. 여기에서 제거해도 브라우저에서는 로그인 상태가 유지됩니다.",
+      "loading": "로그인 정보를 불러오는 중...",
+      "empty": "로그인한 계정이 없습니다.",
+      "inUse": "사용 중",
+      "switch": "전환",
+      "switchTo": "{{account}} 계정으로 전환",
+      "removeAccount": "{{account}} 제거",
+      "removeAll": "모두 제거",
+      "importMore": "더 가져오기",
+      "loadFailed": "Oleafly가 로그인 정보를 불러오지 못했습니다.",
+      "changeFailed": "Oleafly가 이 로그인을 변경하지 못했습니다. 다시 시도하세요."
     }
   },
   "language": {
@@ -2323,6 +2331,7 @@
       "confirm": "단어 지우기",
       "descriptionFallback": "이 사전의 모든 용어를 지웁니다. 지운 용어는 바로 다시 검사 대상이 됩니다.",
       "descriptionGlobal": "전역 사전의 모든 용어를 지웁니다. 지운 용어는 바로 다시 검사 대상이 됩니다.",
+      "descriptionOverleaf": "Overleaf 계정에서도 삭제됩니다.",
       "descriptionProject": "{{project}}의 모든 용어를 지웁니다. 지운 용어는 바로 다시 검사 대상이 됩니다.",
       "descriptionSuppressed": "{{project}}에서 무시한 결과를 모두 지웁니다. 해당 항목은 바로 다시 검사 대상이 됩니다.",
       "suppressedConfirm": "다시 표시",
@@ -2339,6 +2348,7 @@
     },
     "global": {
       "emptyDescription": "여기에 추가한 단어는 모든 프로젝트에서 교정기가 건너뜁니다.",
+      "overleafSynced": "Overleaf에서 프로젝트를 실시간 편집하는 동안 Overleaf 계정의 학습된 단어와 동기화됩니다.",
       "scope": "모든 프로젝트에 적용됩니다"
     },
     "intro": "개인 맞춤법 사전에 단어를 추가하세요. 이 단어는 로컬 설정에 저장되고 모든 프로젝트에서 무시됩니다. 대조는 유니코드 정규화를 거치며 대소문자를 가리지 않습니다.",
@@ -2853,5 +2863,178 @@
     },
     "count_other": "항목 {{count}}개",
     "filteredCount_other": "항목 {{count}}개 중 {{shown}}개"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "자동 완성 목록에 표시",
+        "description": "명령과 함께 스니펫 표시"
+      },
+      "tab": {
+        "label": "Tab으로 트리거 확장",
+        "description": "Tab으로 설정된 스니펫에 적용"
+      },
+      "auto": {
+        "label": "입력하는 대로 확장",
+        "description": "Fast math 같은 자동 스니펫에 적용"
+      },
+      "hint": {
+        "label": "입력 중 힌트 표시",
+        "description": "트리거가 삽입할 스니펫의 이름을 보여 줍니다. Tab을 누르면 삽입됩니다."
+      }
+    },
+    "library": {
+      "title": "내 스니펫 라이브러리",
+      "collections": "컬렉션",
+      "all": "모든 스니펫",
+      "mine": "내 컬렉션",
+      "packs": "팩",
+      "builtIn": "내장",
+      "add": "팩 추가 또는 가져오기…",
+      "useCollection": "{{name}} 사용",
+      "search": "이름, 트리거, 텍스트 검색",
+      "language": "언어",
+      "allLanguages": "모든 언어",
+      "expands": "확장 방식",
+      "anyExpand": "모든 방식",
+      "newSnippet": "새 스니펫",
+      "columns": {
+        "trigger": "트리거",
+        "name": "이름",
+        "languages": "언어",
+        "where": "적용 범위",
+        "expands": "확장 방식"
+      },
+      "modified": "수정됨",
+      "turnedOff": "꺼짐",
+      "restore": "복원",
+      "restoreLabel": "{{name}} 복원",
+      "wraps": "선택 영역 감싸기",
+      "noTrigger": "없음",
+      "noMatches": "일치하는 스니펫이 없습니다.",
+      "shown": "{{total}}개 중 {{shown}}개"
+    },
+    "problems": {
+      "summary_other": "문제 {{count}}개",
+      "where": "{{file}}, {{line}}번째 줄: {{message}}",
+      "slowRegex": "{{name}}의 트리거를 확인하는 데 시간이 너무 오래 걸려 이 스니펫을 껐습니다.",
+      "show": "보기",
+      "hide": "숨기기"
+    },
+    "addDialog": {
+      "title": "스니펫 추가",
+      "packsTab": "팩",
+      "importTab": "파일 가져오기",
+      "count_other": "스니펫 {{count}}개",
+      "source": "출처: {{source}}",
+      "licence": "{{licence}} 라이선스",
+      "packNote": "팩은 앱과 함께 업데이트됩니다. 팩의 스니펫을 바꾼 내용은 따로 보관됩니다.",
+      "packs": {
+        "fastMathLatex": "수식 안에서 입력하는 대로 확장됩니다. 분수, 아래 첨자와 거듭제곱, 그리스 문자, 연산자, 행렬을 다룹니다. 트리거는 Gilles Castel의 설정을 따릅니다.",
+        "fastMathTypst": "같은 트리거를 Typst용으로 만든 것입니다. 분수를 쓰는 a/b처럼 Typst가 이미 해 주는 것은 뺐습니다.",
+        "paperStructure": "그림, 하위 그림, booktabs 표, 수식, 정리, 증명, 알고리즘."
+      },
+      "useOn": "{{name}} 사용",
+      "importIntro": "VS Code 스니펫 파일(.json 또는 .code-snippets)을 고르세요. 별도의 컬렉션이 되며, 끄거나 바꿀 수 있습니다.",
+      "choose": "파일 고르기",
+      "fileLabel": "스니펫 파일",
+      "imported_other": "스니펫 {{count}}개를 {{collection}}에 가져왔습니다.",
+      "nothing": "{{file}}에서 스니펫을 찾지 못했습니다.",
+      "leftOut_other": "항목 {{count}}개를 제외했습니다:"
+    },
+    "editor": {
+      "newTitle": "새 스니펫",
+      "duplicate": "복제",
+      "delete": "삭제",
+      "turnOff": "끄기",
+      "save": "저장",
+      "copyName": "{{name}} 사본",
+      "name": "이름",
+      "namePlaceholder": "캡션과 레이블이 있는 그림",
+      "trigger": "트리거",
+      "triggerPlaceholder": "fig",
+      "regex": "정규식",
+      "expands": "확장 방식",
+      "expandOptions": {
+        "list": "목록에서",
+        "tab": "Tab으로",
+        "auto": "입력하는 대로"
+      },
+      "expandHelp": {
+        "list": "자동 완성 목록에 표시됩니다. 목록에서 고르면 삽입됩니다.",
+        "tab": "{{trigger}}을(를) 입력하고 Tab을 누르세요. 자동 완성 목록에도 표시됩니다.",
+        "auto": "{{trigger}}을(를) 입력하는 즉시 확장됩니다. 실행 취소나 Backspace를 누르면 트리거로 돌아갑니다."
+      },
+      "languages": "언어",
+      "where": "적용 범위",
+      "whereOptions": {
+        "any": "어디서나",
+        "text": "텍스트",
+        "math": "수식",
+        "code": "코드"
+      },
+      "mathKinds": {
+        "math": "둘 다",
+        "inline-math": "인라인",
+        "display-math": "별행"
+      },
+      "mathKind": "수식 종류",
+      "whereHelp": {
+        "any": "파일 어디에서나.",
+        "text": "텍스트: 수식, 주석, verbatim 환경 밖.",
+        "math": "수식: 인라인 수식이나 별행 수식 안.",
+        "code": "코드: Typst 코드나 Markdown 코드 블록 안."
+      },
+      "firesOnly": "다음 경우에만 작동",
+      "wholeWord": "독립된 단어일 때",
+      "lineStart": "줄 맨 앞일 때",
+      "collection": "컬렉션",
+      "keptSeparately": "변경 사항은 따로 보관되므로 {{collection}} 업데이트도 계속 받을 수 있습니다.",
+      "body": "삽입할 텍스트",
+      "anyLanguage": "모든 언어",
+      "addField": "+ 필드",
+      "addChoice": "+ 선택지",
+      "choiceText": "첫째,둘째",
+      "variable": "변수",
+      "projectField": "프로젝트 필드",
+      "variables": {
+        "SELECTION": "선택한 텍스트",
+        "CLIPBOARD": "클립보드",
+        "DATE": "오늘 날짜",
+        "TM_FILENAME": "파일 이름",
+        "PROJECT_NAME": "프로젝트 이름"
+      },
+      "projectFields": {
+        "image": "이미지",
+        "label": "레이블",
+        "cite": "인용",
+        "ref": "참조",
+        "file": "파일"
+      },
+      "chipsNote": "필드는 칩으로 표시됩니다.",
+      "showSyntax": "구문 표시",
+      "missingName": "스니펫 이름을 입력하세요.",
+      "missingBody": "스니펫이 삽입할 텍스트를 입력하세요.",
+      "sameTrigger": "{{list}}도 {{trigger}}을(를) 사용합니다. 가장 가까운 컬렉션이 우선합니다.",
+      "sharedStart": "{{list}}와(과) 앞부분이 같습니다. 모두 목록에 표시되며, Tab은 정확히 일치하는 {{trigger}}을(를) 고릅니다.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}}을(를) 삭제할까요?",
+        "description": "{{collection}}에서 삭제됩니다.",
+        "action": "삭제"
+      },
+      "tryIt": {
+        "title": "사용해 보기",
+        "howAuto": "{{trigger}}을(를) 입력하면 확장됩니다.",
+        "howTab": "{{trigger}}을(를) 입력한 뒤 Tab을 누르세요.",
+        "howList": "{{trigger}}을(를) 입력하고 Ctrl+Space를 누른 뒤 목록에서 고르세요.",
+        "noTrigger": "이 스니펫에는 트리거가 없습니다. 명령 팔레트에서 /snippets로 삽입하세요.",
+        "inText": "텍스트에서",
+        "inMath": "수식에서",
+        "fires": "여기서 작동합니다: {{language}}, {{place}}.",
+        "notLanguage": "{{language}}에서는 작동하지 않습니다. 이 스니펫의 언어가 아닙니다.",
+        "notPlace": "{{place}}는 작동하지 않습니다. 적용 범위 설정에서 허용하지 않습니다."
+      }
+    }
   }
 }

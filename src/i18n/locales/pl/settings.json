@@ -1909,35 +1909,18 @@
       "disconnectFailed": "Nie udało się rozłączyć alphaXiv. Spróbuj ponownie."
     },
     "cookies": {
-      "confirmTitle": "Potwierdź import plików cookie",
-      "detecting": "Szukanie zainstalowanych profili przeglądarek...",
-      "dialogDescription": "Wybierz jeden zainstalowany profil przeglądarki. Oleafly odczyta go dopiero po Twoim przejrzeniu i potwierdzeniu importu. Pliki cookie Chromium są odblokowywane lokalnie przez Pęk kluczy macOS. Oleafly nie wysyła wartości plików cookie do żadnej usługi Oleafly.",
+      "dialogDescription": "Oleafly kopiuje tylko pliki cookie dla {{server}}, loguje się za ich pomocą, a potem usuwa kopie. Twoje hasła zostają w przeglądarce.",
       "dialogTitle": "Importuj pliki cookie z przeglądarki",
-      "empty": "Nie znaleziono obsługiwanych profili przeglądarek.",
-      "errors": {
-        "chooseProfile": "Wybierz dostępny profil przeglądarki."
-      },
-      "profileGroupLabel": "Profile przeglądarek",
-      "profileLegend": "Profil przeglądarki",
-      "review": "Przejrzyj import",
-      "status": {
-        "available": "Dostępny",
-        "comingSoon": "Wkrótce",
-        "noCookieStore": "Brak magazynu plików cookie",
-        "notInstalled": "Niezainstalowana"
-      },
-      "tryAgain": "Spróbuj ponownie",
-      "label": "Skopiuj logowanie z przeglądarki",
-      "useBrowserSignIn": "Skopiuj logowanie z Twojej przeglądarki",
-      "signInDescription": "Skopiuj swoje logowanie do {{server}} z przeglądarki na tym komputerze, aby nie logować się ponownie.",
-      "site": "Strona: {{domain}}",
-      "confirmCopy": "Oleafly odczyta pliki cookie dla {{domain}} z profilu {{profile}} w {{browser}}. Zostaną w Oleafly i będą wysyłane tylko do {{domain}}. Potwierdzisz to jeszcze raz w oknie systemowym.",
-      "copyAction": "Skopiuj logowanie",
-      "copying": "Kopiowanie...",
-      "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_few": "Skopiowano {{count}} pliki cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_many": "Skopiowano {{count}} plików cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
-      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio."
+      "label": "Importuj pliki cookie z przeglądarki",
+      "useBrowserSignIn": "Wybierz profil",
+      "signInDescription": "Używa konta na {{server}}, na które zalogowano się już w profilu przeglądarki na tym komputerze.",
+      "copyAction": "Importuj",
+      "copying": "Importowanie...",
+      "from": "Skąd",
+      "noCookies": "Brak plików cookie",
+      "sameAccount": "W profilu {{profile}} zalogowano się jako {{account}}, a Oleafly już używa tego konta. Wybierz inny profil albo najpierw zaloguj się w tej przeglądarce na drugie konto.",
+      "orExisting": "albo użyj logowania, które już masz",
+      "noSavedSignIn": "Profil {{profile}} nie ma zapisanego logowania do {{server}}, więc skopiowane pliki cookie Cię nie zalogowały. Jeśli jesteś tam zalogowany, przeglądarka może przechowywać logowanie tylko do zamknięcia. Zamiast tego użyj kafelka {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Aby zdobyć klucz: zaloguj się w <siteLink>zotero.org</siteLink>, otwórz swoją <keyLink>stronę klucza API</keyLink>, aby utworzyć klucz, i skopiuj z tej samej strony swój liczbowy identyfikator użytkownika.",
@@ -2003,7 +1986,12 @@
       "signedIn": "Zalogowano na {{server}}",
       "signOut": "Wyloguj się",
       "signOutFailed": "Oleafly nie mógł wylogować się z Overleaf.",
+      "addAccount": "Dodaj kolejne konto",
+      "addAccountHint": "Wybierz, gdzie się zalogować. Wszędzie zaczynasz bez zalogowanego konta, więc zadziała dowolne.",
+      "accountPick": "Konto do importu",
+      "accountPickDescription": "Nowe importy i szablony używają tego konta. Projekty, które już masz, zachowują konto, z którego pochodzą.",
       "gitTitle": "Token Git do synchronizacji",
+      "gitTitleFor": "Token Git dla {{email}}",
       "gitSaved": "Token Git jest zapisany. Połączone projekty pozostają zsynchronizowane z Overleaf.",
       "gitMissing": "Nie ma jeszcze tokenu Git. Aby synchronizować projekty, utwórz go w sekcji Integracja z Git w ustawieniach konta Overleaf.",
       "gitOpenSettings": "Otwórz ustawienia konta Overleaf",
@@ -2012,14 +2000,9 @@
       "gitSave": "Zapisz",
       "gitRemove": "Usuń",
       "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token.",
-      "browserLabel": "Zaloguj się przez przeglądarkę",
-      "browserDescription": "Do logowania przez Google, uczelnię lub klucz dostępu. Oleafly otwiera {{server}} w nowym oknie przeglądarki i zamyka je po zalogowaniu.",
-      "browserAction": "Zaloguj się",
-      "browserPick": "Przeglądarka do logowania",
       "browserWaiting": "Dokończ logowanie do {{server}} w przeglądarce {{browser}}. Zamknięcie okna anuluje logowanie.",
-      "browserHint": "Użyj tego do logowania przez Google, uczelnię lub klucz dostępu.",
-      "windowLabel": "Logowanie do {{server}}",
-      "windowDescription": "Oleafly otwiera okno logowania i zamyka je po zalogowaniu. Aby zalogować się przez Google, uczelnię lub klucz dostępu, zainstaluj Chrome, Edge, Brave, Chromium lub Firefox i zaloguj się w nim tutaj.",
+      "windowLabel": "Zaloguj się w Oleafly",
+      "windowDescription": "Okno zamknie się samo po zalogowaniu. Jeśli klucz dostępu tam nie działa, użyj hasła lub potwierdzenia na telefonie.",
       "windowAction": "Zaloguj się",
       "windowWaiting": "Dokończ logowanie do {{server}} w otwartym oknie.",
       "unsent": {
@@ -2037,7 +2020,15 @@
           "always": "Usuwaj też w Overleaf",
           "never": "Zachowuj w Overleaf"
         }
-      }
+      },
+      "sameAccount": "Już zalogowano jako {{account}}. Aby dodać inne konto, zaloguj się na nie.",
+      "windowTitle": "Logowanie do {{server}}",
+      "addAccountKept": "Twoje obecne konto pozostanie zalogowane.",
+      "noBrowser": "Aby zalogować się przez Google, uczelnię lub klucz dostępu, zainstaluj Chrome, Edge, Brave, Chromium lub Firefox, a potem wybierz go tutaj.",
+      "tileHere": "W tej aplikacji",
+      "tileWindow": "Nowe okno",
+      "tileWaiting": "Czeka na Ciebie",
+      "signInNote": "Użyj przeglądarki, aby zalogować się przez Google, uczelnię lub klucz dostępu. Jeśli klucz dostępu nie działa w Oleafly, użyj tam hasła lub potwierdzenia na telefonie. Okno zamknie się samo po zalogowaniu."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2169,6 +2160,20 @@
           "confirm": "To polecenie pobierze instalator Cua z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?"
         }
       }
+    },
+    "signIns": {
+      "title": "Zarządzaj logowaniami",
+      "description": "Konta, na które Oleafly jest zalogowany na tym komputerze. Usunięcie konta tutaj nie wyloguje Cię w przeglądarce.",
+      "loading": "Wczytywanie Twoich logowań...",
+      "empty": "Nie zalogowano na żadne konto.",
+      "inUse": "W użyciu",
+      "switch": "Przełącz",
+      "switchTo": "Przełącz na {{account}}",
+      "removeAccount": "Usuń {{account}}",
+      "removeAll": "Usuń wszystkie",
+      "importMore": "Importuj więcej",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich logowań.",
+      "changeFailed": "Oleafly nie mógł zmienić tego logowania. Spróbuj ponownie."
     }
   },
   "language": {
@@ -2383,6 +2388,7 @@
       "confirm": "Wyczyść słowa",
       "descriptionFallback": "Spowoduje to usunięcie wszystkich terminów z tego słownika. Zostaną znów sprawdzone od razu.",
       "descriptionGlobal": "Spowoduje to usunięcie wszystkich terminów ze słownika globalnego. Zostaną znów sprawdzone od razu.",
+      "descriptionOverleaf": "Zostaną usunięte także z Twojego konta Overleaf.",
       "descriptionProject": "Spowoduje to usunięcie wszystkich terminów z projektu {{project}}. Zostaną znów sprawdzone od razu.",
       "descriptionSuppressed": "Spowoduje to usunięcie wszystkich terminów z ukrytych uwag w projekcie {{project}}. Zostaną znów sprawdzone od razu.",
       "suppressedConfirm": "Pokaż ponownie",
@@ -2402,6 +2408,7 @@
     },
     "global": {
       "emptyDescription": "Słowa dodane tutaj są pomijane przez korektę we wszystkich projektach.",
+      "overleafSynced": "Synchronizowane z nauczonymi słowami na Twoim koncie Overleaf, gdy projekt jest edytowany na żywo w Overleaf.",
       "scope": "Dotyczy każdego projektu"
     },
     "intro": "Dodawaj słowa do osobistego słownika pisowni. Te słowa są przechowywane w ustawieniach lokalnych i pomijane we wszystkich projektach. Dopasowanie jest znormalizowane w Unicode i nie rozróżnia wielkości liter.",
@@ -2934,5 +2941,190 @@
     "filteredCount_many": "{{shown}} z {{count}} wpisów",
     "filteredCount_one": "{{shown}} z {{count}} wpisu",
     "filteredCount_other": "{{shown}} z {{count}} wpisu"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Na liście autouzupełniania",
+        "description": "Pokazuj fragmenty obok poleceń"
+      },
+      "tab": {
+        "label": "Tab rozwija wyzwalacz",
+        "description": "Dla fragmentów rozwijanych klawiszem Tab"
+      },
+      "auto": {
+        "label": "Rozwijaj podczas pisania",
+        "description": "Dla fragmentów typu Auto, takich jak Fast math"
+      },
+      "hint": {
+        "label": "Pokazuj podpowiedź podczas pisania",
+        "description": "Pokazuje nazwę fragmentu, który zostanie wstawiony przez wyzwalacz. Tab go wstawia."
+      }
+    },
+    "library": {
+      "title": "Twoja biblioteka fragmentów",
+      "collections": "Kolekcje",
+      "all": "Wszystkie fragmenty",
+      "mine": "Twoje",
+      "packs": "Pakiety",
+      "builtIn": "Wbudowane",
+      "add": "Dodaj pakiety lub importuj…",
+      "useCollection": "Używaj kolekcji {{name}}",
+      "search": "Szukaj według nazwy, wyzwalacza lub tekstu",
+      "language": "Język",
+      "allLanguages": "Wszystkie języki",
+      "expands": "Rozwijanie",
+      "anyExpand": "Dowolne",
+      "newSnippet": "Nowy fragment",
+      "columns": {
+        "trigger": "Wyzwalacz",
+        "name": "Nazwa",
+        "languages": "Języki",
+        "where": "Gdzie",
+        "expands": "Rozwijanie"
+      },
+      "modified": "Zmieniony",
+      "turnedOff": "Wyłączony",
+      "restore": "Przywróć",
+      "restoreLabel": "Przywróć: {{name}}",
+      "wraps": "otacza",
+      "noTrigger": "brak",
+      "noMatches": "Brak pasujących fragmentów.",
+      "shown": "{{shown}} z {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_few": "{{count}} problemy",
+      "summary_many": "{{count}} problemów",
+      "summary_other": "{{count}} problemu",
+      "where": "w {{file}}, wiersz {{line}}: {{message}}",
+      "slowRegex": "Sprawdzanie wyzwalacza fragmentu „{{name}}” trwało zbyt długo, więc fragment wyłączono.",
+      "show": "Pokaż",
+      "hide": "Ukryj"
+    },
+    "addDialog": {
+      "title": "Dodaj fragmenty",
+      "packsTab": "Pakiety",
+      "importTab": "Import pliku",
+      "count_one": "{{count}} fragment",
+      "count_few": "{{count}} fragmenty",
+      "count_many": "{{count}} fragmentów",
+      "count_other": "{{count}} fragmentu",
+      "source": "Źródło: {{source}}",
+      "licence": "Licencja {{licence}}",
+      "packNote": "Pakiety aktualizują się razem z aplikacją. Zmiany, które wprowadzisz we fragmentach pakietu, są przechowywane osobno.",
+      "packs": {
+        "fastMathLatex": "Rozwija się podczas pisania we wzorach: ułamki, indeksy dolne i potęgi, litery greckie, operatory i macierze. Wyzwalacze odpowiadają konfiguracji, której używał Gilles Castel.",
+        "fastMathTypst": "Te same wyzwalacze, napisane dla Typst. Pomija to, co Typst robi już sam, na przykład a/b dla ułamka.",
+        "paperStructure": "Rysunki, podrysunki, tabele booktabs, wzory, twierdzenia, dowody i algorytmy."
+      },
+      "useOn": "Używaj pakietu {{name}}",
+      "importIntro": "Wybierz plik fragmentów VS Code (.json lub .code-snippets). Stanie się osobną kolekcją, którą możesz wyłączyć lub zmienić.",
+      "choose": "Wybierz plik",
+      "fileLabel": "Plik fragmentów",
+      "imported_one": "Zaimportowano {{count}} fragment do kolekcji {{collection}}.",
+      "imported_few": "Zaimportowano {{count}} fragmenty do kolekcji {{collection}}.",
+      "imported_many": "Zaimportowano {{count}} fragmentów do kolekcji {{collection}}.",
+      "imported_other": "Zaimportowano {{count}} fragmentu do kolekcji {{collection}}.",
+      "nothing": "W pliku {{file}} nie znaleziono fragmentów.",
+      "leftOut_one": "Pominięto {{count}} wpis:",
+      "leftOut_few": "Pominięto {{count}} wpisy:",
+      "leftOut_many": "Pominięto {{count}} wpisów:",
+      "leftOut_other": "Pominięto {{count}} wpisu:"
+    },
+    "editor": {
+      "newTitle": "Nowy fragment",
+      "duplicate": "Duplikuj",
+      "delete": "Usuń",
+      "turnOff": "Wyłącz",
+      "save": "Zapisz",
+      "copyName": "{{name}} (kopia)",
+      "name": "Nazwa",
+      "namePlaceholder": "Rysunek z podpisem i etykietą",
+      "trigger": "Wyzwalacz",
+      "triggerPlaceholder": "fig",
+      "regex": "Wyrażenie regularne",
+      "expands": "Rozwijanie",
+      "expandOptions": {
+        "list": "Z listy",
+        "tab": "Klawiszem Tab",
+        "auto": "Podczas pisania"
+      },
+      "expandHelp": {
+        "list": "Fragment pojawia się na liście autouzupełniania. Wybierz go tam, aby go wstawić.",
+        "tab": "Wpisz {{trigger}} i naciśnij Tab. Fragment pojawia się też na liście autouzupełniania.",
+        "auto": "Fragment rozwija się, gdy tylko wpiszesz {{trigger}}. Cofnięcie lub Backspace przywraca wyzwalacz."
+      },
+      "languages": "Języki",
+      "where": "Gdzie",
+      "whereOptions": {
+        "any": "Wszędzie",
+        "text": "Tekst",
+        "math": "Wzory",
+        "code": "Kod"
+      },
+      "mathKinds": {
+        "math": "Dowolne",
+        "inline-math": "W wierszu",
+        "display-math": "Wyeksponowane"
+      },
+      "mathKind": "Rodzaj wzorów",
+      "whereHelp": {
+        "any": "W dowolnym miejscu pliku.",
+        "text": "Tekst: poza wzorami, komentarzami i środowiskami verbatim.",
+        "math": "Wzory: wewnątrz wzorów w wierszu lub wyeksponowanych.",
+        "code": "Kod: wewnątrz kodu Typst lub bloków kodu Markdown."
+      },
+      "firesOnly": "Działa tylko",
+      "wholeWord": "jako całe słowo",
+      "lineStart": "na początku wiersza",
+      "collection": "Kolekcja",
+      "keptSeparately": "Twoje zmiany są przechowywane osobno, więc aktualizacje kolekcji {{collection}} nadal będą do Ciebie docierać.",
+      "body": "Wstawiany tekst",
+      "anyLanguage": "Dowolny język",
+      "addField": "+ Pole",
+      "addChoice": "+ Wybór",
+      "choiceText": "pierwszy,drugi",
+      "variable": "Zmienna",
+      "projectField": "Pole projektu",
+      "variables": {
+        "SELECTION": "Zaznaczony tekst",
+        "CLIPBOARD": "Schowek",
+        "DATE": "Dzisiejsza data",
+        "TM_FILENAME": "Nazwa pliku",
+        "PROJECT_NAME": "Nazwa projektu"
+      },
+      "projectFields": {
+        "image": "Obraz",
+        "label": "Etykieta",
+        "cite": "Cytowanie",
+        "ref": "Odwołanie",
+        "file": "Plik"
+      },
+      "chipsNote": "Pola są wyświetlane jako plakietki.",
+      "showSyntax": "Pokaż składnię",
+      "missingName": "Nadaj fragmentowi nazwę.",
+      "missingBody": "Wpisz tekst, który fragment wstawia.",
+      "sameTrigger": "Wyzwalacza {{trigger}} używają też inne fragmenty: {{list}}. Pierwszeństwo ma najbliższa kolekcja.",
+      "sharedStart": "Zaczyna się tak samo jak: {{list}}. Wszystkie są na liście, a Tab wybiera dokładne dopasowanie, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Usunąć „{{name}}”?",
+        "description": "Fragment zostanie usunięty z kolekcji {{collection}}.",
+        "action": "Usuń"
+      },
+      "tryIt": {
+        "title": "Wypróbuj",
+        "howAuto": "Wpisz {{trigger}}, a fragment się rozwinie.",
+        "howTab": "Wpisz {{trigger}}, a potem naciśnij Tab.",
+        "howList": "Wpisz {{trigger}}, naciśnij Ctrl+Space i wybierz fragment z listy.",
+        "noTrigger": "Ten fragment nie ma wyzwalacza. Wstaw go z palety poleceń za pomocą /snippets.",
+        "inText": "w tekście",
+        "inMath": "we wzorach",
+        "fires": "Działa tutaj: {{language}}, {{place}}.",
+        "notLanguage": "Tu nie zadziała: {{language}} nie należy do języków tego fragmentu.",
+        "notPlace": "Nie zadziała {{place}}. Ustawienie „Gdzie” na to nie pozwala."
+      }
+    }
   }
 }

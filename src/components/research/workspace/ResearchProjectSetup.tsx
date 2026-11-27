@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, FolderOpen, FolderTree, Star } from "lucide-react";
 import { FileIcon } from "@/components/files/fileIcon";
@@ -115,22 +115,16 @@ function previewPanel({
             {i18n.t(($) => $.researchTools.setup.previewTitle)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[0.6875rem] text-muted-foreground">
-            {preview
-              ? i18n.t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
-              : "\u00a0"}
-          </span>
-          {previewing ? (
-            <Spinner
-              size="sm"
-              className="text-muted-foreground"
-              aria-label={i18n.t(($) => $.researchTools.setup.buildingPreview)}
-            />
-          ) : null}
-        </div>
+        <span className="text-[0.6875rem] text-muted-foreground">
+          {preview
+            ? i18n.t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
+            : "\u00a0"}
+        </span>
       </div>
-      <div className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
+      <div
+        aria-busy={previewing}
+        className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]"
+      >
         <div className="overflow-auto border-r bg-sidebar p-1.5">
           {previewing && !preview ? (
             <ul className="space-y-1 p-1" aria-hidden="true">
@@ -198,14 +192,22 @@ export function ResearchProjectSetup({
   const [engine, setEngine] = useState<ResearchDocumentEngine>("latex");
   const [starter, setStarter] = useState<ResearchStarter>("article");
   const [previewResult, setPreviewResult] = useState<{ requestKey: string; value: ResearchProjectPreview } | null>(null);
+  const [previewFailure, setPreviewFailure] = useState<{ requestKey: string; message: string } | null>(null);
   const [selectedPreviewPath, setSelectedPreviewPath] = useState<string | null>(null);
-  const [previewing, setPreviewing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [initialTaskReady, setInitialTaskReady] = useState(false);
-  const requestKey = JSON.stringify({ name, engine, starter });
-  const preview = previewResult?.requestKey === requestKey ? previewResult.value : null;
+  const sampleName = t(($) => $.researchTools.setup.namePlaceholder);
+  const named = name.trim() !== "";
+  const request = useMemo<ResearchProjectRequest>(
+    () => ({ name: named ? name : sampleName, engine, starter }),
+    [engine, name, named, sampleName, starter],
+  );
+  const requestKey = JSON.stringify(request);
+  const preview = previewResult?.value ?? null;
+  const previewFailed = previewFailure?.requestKey === requestKey;
+  const previewing = previewResult?.requestKey !== requestKey && !previewFailed;
 
   useEffect(() => {
     if (!open) return;
@@ -213,43 +215,38 @@ export function ResearchProjectSetup({
     setEngine("latex");
     setStarter("article");
     setPreviewResult(null);
+    setPreviewFailure(null);
     setSelectedPreviewPath(null);
     setError(null);
     setCreatedProjectId(null);
     setInitialTaskReady(false);
   }, [open]);
 
+  const showPreview = useCallback((key: string, result: ResearchProjectPreview) => {
+    setPreviewResult({ requestKey: key, value: result });
+    setPreviewFailure(null);
+    setSelectedPreviewPath((selected) =>
+      selected !== null && result.files.some((file) => file.path === selected && file.kind !== "directory")
+        ? selected
+        : result.mainDocument,
+    );
+  }, []);
+
   useEffect(() => {
-    if (!open || !name.trim()) {
-      setPreviewResult(null);
-      setPreviewing(false);
-      setSelectedPreviewPath(null);
-      return;
-    }
+    if (!open) return;
     let current = true;
-    const timer = window.setTimeout(() => {
-      setPreviewing(true);
-      setError(null);
-      const request: ResearchProjectRequest = { name, engine, starter };
-      void previewResearchProject(request)
-        .then((result) => {
-          if (current) {
-            setPreviewResult({ requestKey: JSON.stringify(request), value: result });
-            setSelectedPreviewPath(result.mainDocument);
-          }
-        })
-        .catch((cause) => {
-          if (current) setError(cause instanceof Error ? cause.message : String(cause));
-        })
-        .finally(() => {
-          if (current) setPreviewing(false);
-        });
-    }, 150);
+    const key = JSON.stringify(request);
+    void previewResearchProject(request)
+      .then((result) => {
+        if (current) showPreview(key, result);
+      })
+      .catch((cause) => {
+        if (current) setPreviewFailure({ requestKey: key, message: causeDetail(cause) });
+      });
     return () => {
       current = false;
-      window.clearTimeout(timer);
     };
-  }, [engine, name, open, starter]);
+  }, [open, request, showPreview]);
 
   const reportSetupFailure = async (cause: unknown) => {
     const detail = causeDetail(cause);
@@ -277,16 +274,22 @@ export function ResearchProjectSetup({
     setError(detail);
   };
 
+  const canCreate = named && preview !== null && !previewFailed && !creating;
+  const alert = error ?? (previewFailed ? (previewFailure?.message ?? null) : null);
+
   const create = async () => {
-    if (!preview || previewing || creating) return;
+    if (!canCreate) return;
     setCreating(true);
     setError(null);
     try {
+      const exact =
+        previewResult?.requestKey === requestKey ? previewResult.value : await previewResearchProject(request);
+      showPreview(requestKey, exact);
       await finishResearchProjectSetup({
-        request: { name, engine, starter },
+        request,
         task: {
           title: TASK_TITLES[starter](),
-          prompt: preview.initialTask,
+          prompt: exact.initialTask,
           starter,
         },
         progress: { projectId: createdProjectId, initialTaskReady },
@@ -320,11 +323,7 @@ export function ResearchProjectSetup({
   };
 
   const previewTree = () =>
-    !preview ? (
-      <p className="p-2 text-sm text-muted-foreground">
-        {t(($) => $.researchTools.setup.previewEmpty)}
-      </p>
-    ) : (
+    !preview ? null : (
       <ul
         aria-label={t(($) => $.researchTools.setup.previewFiles)}
         className="space-y-px"
@@ -447,26 +446,20 @@ export function ResearchProjectSetup({
               />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium">{t(($) => $.researchTools.setup.firstTask)}</p>
-                {preview ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{preview.initialTask}</p>
-                ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {previewing
-                      ? t(($) => $.researchTools.setup.firstTaskWorking)
-                      : t(($) => $.researchTools.setup.firstTaskEmpty)}
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {preview ? preview.initialTask : t(($) => $.researchTools.setup.firstTaskWorking)}
+                </p>
               </div>
             </div>
           </div>
           {previewPanel({ preview, previewing, selectedPreviewPath, previewTree, previewPane })}
         </div>
-        {error && <p className="select-text text-sm text-destructive" role="alert">{error}</p>}
+        {alert && <p className="select-text text-sm text-destructive" role="alert">{alert}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={creating} onClick={onClose}>
             {t(($) => $.common.actions.cancel)}
           </Button>
-          <Button disabled={creating || previewing || !preview} onClick={create}>
+          <Button disabled={!canCreate} onClick={create}>
             {creating && <Spinner />}{" "}
             {createdProjectId
               ? t(($) => $.researchTools.setup.retry)

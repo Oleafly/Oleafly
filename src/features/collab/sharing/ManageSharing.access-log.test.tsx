@@ -71,7 +71,7 @@ describe("ManageSharing access log switch", () => {
     renderManage();
     const rows: [string, string][] = [
       [enCollab.manage.link.sharing, "svg.lucide-link-2"],
-      [enCollab.manage.comments.label, "svg.lucide-message-square"],
+      [enCollab.manage.comments.label, "svg.lucide-message-square-quote"],
       [accessLog.label, "svg.lucide-scroll-text"],
     ];
     for (const [label, selector] of rows) {

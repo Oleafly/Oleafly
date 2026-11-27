@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { useCollabEditorGate, useOverleafFilling } from "@/lib/collab-live-bridge";
 import { useCoauthorEdits } from "@/lib/live-file-mirror";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
@@ -74,6 +74,22 @@ beforeEach(() => {
 
 afterEach(() => {
   useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+  useOverleafFilling.setState({ projectId: null });
+});
+
+describe("compiling a project that is still downloading from Overleaf", () => {
+  it("keeps Compile off with the reason until every file is here, and only for that project", () => {
+    useOverleafFilling.setState({ projectId: "p1" });
+    const { rerender } = render(<CompileControls />);
+    expect(screen.getByTestId("compile-button")).toHaveAttribute("aria-disabled", "true");
+    useOverleafFilling.setState({ projectId: "p2" });
+    rerender(<CompileControls />);
+    expect(screen.getByTestId("compile-button")).not.toHaveAttribute("aria-disabled");
+    useOverleafFilling.setState({ projectId: null });
+    rerender(<CompileControls />);
+    expect(screen.getByTestId("compile-button")).not.toHaveAttribute("aria-disabled");
+    expect(copy.filling).toMatch(/still downloading from Overleaf/);
+  });
 });
 
 describe("shared compile settings in the compile menu", () => {

@@ -186,7 +186,7 @@ async function showExportWarnings(warnings: readonly string[], dest: string): Pr
   if (reveal) revealExportedFile(dest);
 }
 
-function exportResultToast(
+export function exportResultToast(
   kind: string,
   dest: string,
   notice?: ExportNotice,

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { LayoutTemplate, X } from "lucide-react";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -113,7 +114,7 @@ export function SaveAsTemplateDialog() {
           disabled={busy}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") void save();
+            if (event.key === "Enter" && !isImeEnter(event)) void save();
           }}
           className="flex-1"
         />

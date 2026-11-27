@@ -23,7 +23,7 @@ oleafly-desktop/
 ├── packages/               @oleafly/* engine packages (consumed as TS source)
 │   ├── latex/  latex-intelligence/  ai-core/  ai-tools/  registry/  preflight/
 │   ├── editor/  wysiwyg/  preview/  diagram/  templates/  search-query/
-│   └── backend-port/  conversion-registry/  i18n-contract/  pdf-to-latex/
+│   └── backend-port/  conversion-registry/  i18n-contract/  pdf-to-latex/  snippets/
 ├── src-tauri/
 │   ├── src/                rust: commands, DocumentEngine, config, git, paths, project, synctex
 │   ├── binaries/           target-suffixed compiler sidecars
@@ -212,6 +212,8 @@ for zip 9, the first zip release with the fixes for its 2026 advisories.
 `oleafly-lint` builds on 1.88 without its `proofread` feature.
 `oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
 cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
+`oleafly-live` needs 1.89 because it builds on `oleafly-online` and the
+collaboration client.
 `oleafly-history` and `oleafly-research` need 1.89 for rusqlite 0.41. It is the
 first release that bundles SQLite 3.54, which fixes RUSTSEC-2026-0459.
 CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and

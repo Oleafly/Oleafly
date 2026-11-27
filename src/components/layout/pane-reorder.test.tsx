@@ -125,6 +125,12 @@ function drag(target: HTMLElement, from: readonly [number, number], ...path: (re
   for (const [x, y] of path) moveTo(x, y);
 }
 
+function boxStyle(element: HTMLElement | null): Record<string, string> {
+  const box = element?.getBoundingClientRect();
+  if (!box) throw new Error("the pane is not on screen");
+  return { left: `${box.left + 4}px`, top: `${box.top + 4}px`, width: `${box.width - 8}px`, height: `${box.height - 8}px` };
+}
+
 function layout(): string {
   return layoutKey(usePaneLayoutStore.getState().layout);
 }
@@ -245,10 +251,14 @@ describe("dropping a pane", () => {
     expect(press(bar, 100, 60)).toBe(false);
     moveTo(720, 260);
     expect(drop()).toHaveAttribute("data-pane-drop", "pdf-right");
-    expect(drop()).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10", "pointer-events-none");
+    expect(drop()).toHaveClass("rounded-md", "border-primary", "bg-primary/15", "pointer-events-none");
     expect(drop()?.style).toMatchObject({ left: "629px", top: "44px", width: "117px", height: "442px" });
     expect(overlay()).toHaveClass("cursor-grabbing");
     expect(bar).toHaveAttribute("data-pane-dragging", "true");
+    const source = document.querySelector<HTMLElement>("[data-pane-drag-source]");
+    expect(source).toHaveAttribute("data-pane-drag-source", "sidebar");
+    expect(source).toHaveClass("border-dashed", "bg-primary/10", "pointer-events-none");
+    expect(source?.style).toMatchObject(boxStyle(document.getElementById("sidebar")));
 
     moveTo(375, 70);
     expect(drop()).toHaveAttribute("data-pane-drop", "editor-top");

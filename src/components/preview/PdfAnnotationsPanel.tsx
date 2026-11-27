@@ -1,35 +1,281 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCheck, Crosshair, MessageSquareText, RotateCcw, Send, Trash2 } from "lucide-react";
-import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { AlertTriangle, ArrowRight, CheckCheck, Crosshair, PencilLine, RotateCcw, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { FloatingSidePanel } from "@/components/ui/floating-side-panel";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Spinner } from "@/components/ui/spinner";
+import { TONES } from "@/components/ui/tones";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CommentBody } from "@/components/ui/comments/comment-body";
 import { CommentComposer } from "@/components/ui/comments/comment-composer";
-import { CommentQuote } from "@/components/ui/comments/comment-quote";
 import { lineSpan } from "@/features/pdf-annotations/model";
-import type { PdfAnnotation, PdfAnnotationStatus } from "@/lib/tauri";
+import { readJson, writeJson } from "@/lib/local-storage";
+import type { PdfAnnotation } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { confirmAction } from "@/store/confirm-dialog";
 import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
-import { AnnotationCommentKit, useAnnotationQuoteLabels } from "./annotation-comment-kit";
+import { AnnotationCommentKit } from "./annotation-comment-kit";
 
-const STATUS_VARIANT: Record<PdfAnnotationStatus, BadgeVariant> = {
-  draft: "muted",
-  sent: "info",
-  addressed: "success",
-  resolved: "success",
-};
+type Group = "placing" | "drafts" | "assistant" | "resolved";
+type Folded = Readonly<Record<string, Readonly<Partial<Record<Group, boolean>>>>>;
 
+const GROUPS: readonly Group[] = ["placing", "drafts", "assistant", "resolved"];
+const FOLDED_KEY = "oleafly.pdfAnnotations.folded";
 const NO_MEMBERS: never[] = [];
+const REMOVED = "break-words rounded-sm bg-diff-delete px-1 line-through decoration-destructive/70";
+const ADDED = "bg-diff-insert hover:bg-diff-insert-strong focus-visible:bg-diff-insert-strong";
+
+function groupOf(item: PdfAnnotation): Group {
+  if (item.status === "resolved") return "resolved";
+  if (item.placement === "needsPlacing") return "placing";
+  return item.status === "draft" ? "drafts" : "assistant";
+}
+
+function readFolded(value: unknown): Folded {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Folded) : {};
+}
+
+function useGroupsOpen(projectId: string | null) {
+  const [folded, setFolded] = useState(() => readJson<Folded>(FOLDED_KEY, {}, readFolded));
+  const key = projectId ?? "";
+  const mine = folded[key] ?? {};
+  const isOpen = (group: Group) => !(mine[group] ?? group === "resolved");
+  const setOpen = (group: Group, open: boolean) => {
+    const next = { ...folded, [key]: { ...mine, [group]: !open } };
+    setFolded(next);
+    writeJson(FOLDED_KEY, next);
+  };
+  return { isOpen, setOpen };
+}
 
 function sourceLabel(annotation: PdfAnnotation): string | null {
   const source = annotation.source;
   return source ? `${source.path}:${lineSpan(source)}` : null;
+}
+
+function AnnotationText({
+  item,
+  added = false,
+  onEdit,
+}: Readonly<{ item: PdfAnnotation; added?: boolean; onEdit: () => void }>) {
+  const { t } = useTranslation(["annotations"]);
+  return (
+    <Tooltip label={t(($) => $.annotations.panel.editComment, { number: item.number })} className={added ? undefined : "flex w-full"}>
+      <button
+        type="button"
+        className={cn(
+          "min-w-0 rounded-sm px-1 py-0.5 text-left",
+          added ? ADDED : "-mx-1 w-[calc(100%+0.5rem)] hover:bg-accent focus-visible:bg-accent",
+          !item.comment && "italic text-muted-foreground",
+        )}
+        onClick={onEdit}
+      >
+        {item.comment ? (
+          <CommentBody body={item.comment} members={NO_MEMBERS} className="mt-0 text-[0.8125rem]" />
+        ) : (
+          t(($) => $.annotations.panel.addComment)
+        )}
+      </button>
+    </Tooltip>
+  );
+}
+
+function AnnotationChange({
+  item,
+  editing,
+  onEdit,
+  onDone,
+}: Readonly<{ item: PdfAnnotation; editing: boolean; onEdit: () => void; onDone: () => void }>) {
+  const { t } = useTranslation(["annotations"]);
+  const quote = item.quote.text;
+  const store = usePdfAnnotationsStore.getState;
+  const editor = editing ? (
+    <AnnotationCommentKit>
+      <CommentComposer
+        label={t(($) => $.annotations.panel.editComment, { number: item.number })}
+        submitLabel={t(($) => $.annotations.composer.save)}
+        initial={item.comment}
+        autoFocus
+        compact
+        onSubmit={async (comment) => {
+          if (!(await store().update([{ id: item.id, comment }]))) throw new Error(store().error ?? "");
+          onDone();
+        }}
+        onCancel={onDone}
+      />
+    </AnnotationCommentKit>
+  ) : null;
+  const added = editing ? null : <AnnotationText item={item} added onEdit={onEdit} />;
+  const plain = editor ?? <AnnotationText item={item} onEdit={onEdit} />;
+  if (item.kind === "replace" && quote) {
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className={REMOVED}>{quote}</span>
+          <ArrowRight aria-hidden className="size-3 shrink-0 text-muted-foreground" />
+          {added}
+        </div>
+        {editor}
+      </>
+    );
+  }
+  if (item.kind === "insert" && quote) {
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="min-w-0 break-words text-muted-foreground">
+            {t(($) => $.annotations.panel.insertAfter, { quote })}
+          </span>
+          {added}
+        </div>
+        {editor}
+      </>
+    );
+  }
+  return (
+    <>
+      {item.kind === "delete" && quote ? <p><span className={REMOVED}>{quote}</span></p> : null}
+      {item.kind === "comment" && quote ? (
+        <p className="line-clamp-2 break-words text-muted-foreground">{t(($) => $.annotations.panel.quoted, { quote })}</p>
+      ) : null}
+      {plain}
+    </>
+  );
+}
+
+function badgeTone(picked: boolean, resolved: boolean): string {
+  if (picked) return "bg-primary text-primary-foreground hover:bg-primary/85";
+  if (resolved) return cn(TONES.emerald.tint, TONES.emerald.text, TONES.emerald.hover);
+  return "bg-primary/20 text-primary hover:bg-primary/30";
+}
+
+function RowActions({ item, shown }: Readonly<{ item: PdfAnnotation; shown: boolean }>) {
+  const { t } = useTranslation(["annotations"]);
+  const store = usePdfAnnotationsStore.getState;
+  const resolved = item.status === "resolved";
+  return (
+    <div className={cn("flex shrink-0 items-center", !shown && "invisible group-focus-within:visible group-hover:visible")}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => void store().update([{ id: item.id, status: resolved ? "draft" : "resolved" }])}
+        aria-label={
+          resolved
+            ? t(($) => $.annotations.panel.reopen, { number: item.number })
+            : t(($) => $.annotations.panel.resolve, { number: item.number })
+        }
+      >
+        {resolved ? <RotateCcw className="size-3.5" /> : <CheckCheck className="size-3.5" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => void store().remove([item.id])}
+        aria-label={t(($) => $.annotations.panel.delete, { number: item.number })}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function PlaceAgain({ placing, onPlaceAgain }: Readonly<{ placing: boolean; onPlaceAgain: () => void }>) {
+  const { t } = useTranslation(["annotations"]);
+  return (
+    <div className="space-y-1.5 pt-0.5">
+      <p className="text-xs text-muted-foreground">
+        {placing ? t(($) => $.annotations.panel.placing) : t(($) => $.annotations.panel.notFound)}
+      </p>
+      <Button variant="outline" size="xs" className="gap-1" onClick={onPlaceAgain}>
+        <Crosshair className="size-3" />
+        {placing ? t(($) => $.annotations.composer.cancel) : t(($) => $.annotations.panel.placeAgain)}
+      </Button>
+    </div>
+  );
+}
+
+function AnnotationRow({
+  item,
+  active,
+  activeRef,
+  picked,
+  placing,
+  editing,
+  onPick,
+  onShow,
+  onPlaceAgain,
+  onEdit,
+  onDone,
+}: Readonly<{
+  item: PdfAnnotation;
+  active: boolean;
+  activeRef: RefObject<HTMLLIElement | null>;
+  picked: boolean;
+  placing: boolean;
+  editing: boolean;
+  onPick: () => void;
+  onShow: () => void;
+  onPlaceAgain: () => void;
+  onEdit: () => void;
+  onDone: () => void;
+}>) {
+  const { t } = useTranslation(["annotations"]);
+  const location = sourceLabel(item);
+  const page = t(($) => $.annotations.panel.page, { page: item.page });
+  const resolved = item.status === "resolved";
+  const include = t(($) => $.annotations.panel.include, { number: item.number });
+  return (
+    <li
+      ref={active ? activeRef : undefined}
+      data-annotation-id={item.id}
+      className={cn(
+        "group flex gap-2.5 px-3 py-2.5 text-[0.8125rem] transition-colors",
+        active ? "bg-primary/10" : "hover:bg-accent/50",
+        resolved && "text-muted-foreground",
+      )}
+    >
+      <Tooltip label={include} side="left" className="h-fit shrink-0">
+        <button
+          type="button"
+          aria-pressed={picked}
+          aria-label={include}
+          onClick={onPick}
+          className={cn(
+            "mt-px flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[0.6875rem] font-medium tabular-nums transition-colors",
+            badgeTone(picked, resolved),
+          )}
+        >
+          {item.number}
+        </button>
+      </Tooltip>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-baseline gap-2 rounded-sm text-left focus-visible:bg-accent"
+            onClick={onShow}
+          >
+            <span className={cn("shrink-0 font-medium", !resolved && "text-foreground")}>
+              {t(($) => $.annotations.kind[item.kind])}
+            </span>
+            {item.status === "addressed" ? (
+              <span className={cn("shrink-0", TONES.emerald.text)}>{t(($) => $.annotations.status.addressed)}</span>
+            ) : null}
+            <span className="ml-auto min-w-0 truncate text-xs text-muted-foreground">
+              {location ? `${location} · ${page}` : page}
+            </span>
+          </button>
+          <RowActions item={item} shown={active} />
+        </div>
+        <AnnotationChange item={item} editing={editing} onEdit={onEdit} onDone={onDone} />
+        {item.placement === "needsPlacing" ? <PlaceAgain placing={placing} onPlaceAgain={onPlaceAgain} /> : null}
+      </div>
+    </li>
+  );
 }
 
 export function PdfAnnotationsPanel({
@@ -50,7 +296,7 @@ export function PdfAnnotationsPanel({
   onSend: (annotations: PdfAnnotation[]) => void;
 }>) {
   const { t } = useTranslation(["annotations"]);
-  const quoteLabels = useAnnotationQuoteLabels();
+  const projectId = usePdfAnnotationsStore((state) => state.projectId);
   const items = usePdfAnnotationsStore((state) => state.items);
   const activeId = usePdfAnnotationsStore((state) => state.activeId);
   const error = usePdfAnnotationsStore((state) => state.error);
@@ -59,20 +305,26 @@ export function PdfAnnotationsPanel({
   const setAside = usePdfAnnotationsStore((state) => state.setAside);
   const [picked, setPicked] = useState<Readonly<Record<string, boolean>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const groups = useGroupsOpen(projectId);
   const activeRef = useRef<HTMLLIElement>(null);
   const isPicked = (item: PdfAnnotation) => picked[item.id] ?? item.status === "draft";
   const included = items.filter(isPicked);
-  const store = () => usePdfAnnotationsStore.getState();
+  const activeItem = items.find((item) => item.id === activeId);
+  const activeFolded = activeItem !== undefined && !groups.isOpen(groupOf(activeItem));
+
+  useEffect(() => {
+    if (activeFolded && activeItem) groups.setOpen(groupOf(activeItem), true);
+  });
 
   useEffect(() => {
     const item = activeRef.current;
     const body = item?.closest<HTMLElement>("[data-side-panel-body]");
-    if (!open || !activeId || !item || !body) return;
+    if (!open || !activeId || activeFolded || !item || !body) return;
     const shown = body.getBoundingClientRect();
     const box = item.getBoundingClientRect();
     if (box.top < shown.top) body.scrollTop -= shown.top - box.top;
     else if (box.bottom > shown.bottom) body.scrollTop += box.bottom - shown.bottom;
-  }, [open, activeId]);
+  }, [open, activeId, activeFolded]);
 
   const clearAll = async () => {
     const confirmed = await confirmAction({
@@ -80,8 +332,72 @@ export function PdfAnnotationsPanel({
       confirmLabel: t(($) => $.annotations.panel.clear),
       destructive: true,
     });
-    if (confirmed) await store().remove(items.map((item) => item.id));
+    if (confirmed) await usePdfAnnotationsStore.getState().remove(items.map((item) => item.id));
   };
+
+  const groupTitle = (group: Group) => {
+    if (group === "placing") return t(($) => $.annotations.status.needsPlacing);
+    if (group === "drafts") return t(($) => $.annotations.panel.groups.drafts);
+    if (group === "assistant") return t(($) => $.annotations.panel.groups.assistant);
+    return t(($) => $.annotations.status.resolved);
+  };
+
+  const sections = GROUPS.map((group) => ({ group, members: items.filter((item) => groupOf(item) === group) })).filter(
+    ({ members }) => members.length > 0,
+  );
+
+  let content: ReactNode;
+  if (!loaded && !error) {
+    content = (
+      <div className="flex justify-center py-4">
+        <Spinner size="sm" />
+      </div>
+    );
+  } else if (items.length === 0) {
+    content = <p className="px-2 py-3 text-xs text-muted-foreground">{t(($) => $.annotations.panel.empty)}</p>;
+  } else {
+    content = (
+      <div className="divide-y divide-border">
+        {sections.map(({ group, members }) => {
+          const placingGroup = group === "placing";
+          return (
+            <CollapsibleSection
+              key={group}
+              id={`${id}-${group}`}
+              variant="group"
+              open={groups.isOpen(group)}
+              onOpenChange={(next) => groups.setOpen(group, next)}
+              leading={placingGroup ? <AlertTriangle aria-hidden className={cn("size-3.5 shrink-0", TONES.amber.icon)} /> : undefined}
+              title={
+                <span className={cn("tabular-nums", placingGroup && TONES.amber.text)}>
+                  {`${groupTitle(group)} · ${members.length}`}
+                </span>
+              }
+            >
+              <ul className="pb-1">
+                {members.map((item) => (
+                  <AnnotationRow
+                    key={item.id}
+                    item={item}
+                    active={item.id === activeId}
+                    activeRef={activeRef}
+                    picked={isPicked(item)}
+                    placing={placingId === item.id}
+                    editing={editingId === item.id}
+                    onPick={() => setPicked((current) => ({ ...current, [item.id]: !isPicked(item) }))}
+                    onShow={() => onShow(item)}
+                    onPlaceAgain={() => onPlaceAgain(placingId === item.id ? null : item)}
+                    onEdit={() => setEditingId(item.id)}
+                    onDone={() => setEditingId(null)}
+                  />
+                ))}
+              </ul>
+            </CollapsibleSection>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <FloatingSidePanel
@@ -90,10 +406,11 @@ export function PdfAnnotationsPanel({
       side="right"
       width="20rem"
       title={t(($) => $.annotations.panel.title)}
-      icon={<MessageSquareText />}
+      icon={<PencilLine />}
       closeLabel={t(($) => $.annotations.panel.close)}
       onClose={onClose}
-      bodyClassName="px-2 pb-2 pt-0"
+      solid
+      bodyClassName="px-0 pb-2 pt-0"
       footer={
         items.length > 0 ? (
           <>
@@ -123,145 +440,7 @@ export function PdfAnnotationsPanel({
           <InlineAlert>{t(($) => $.annotations.panel.setAside)}</InlineAlert>
         </div>
       ) : null}
-      {!loaded && !error ? (
-        <div className="flex justify-center py-4">
-          <Spinner size="sm" />
-        </div>
-      ) : items.length === 0 ? (
-        <p className="px-2 py-3 text-xs text-muted-foreground">{t(($) => $.annotations.panel.empty)}</p>
-      ) : (
-        <ul className="space-y-1">
-          {items.map((item) => {
-            const location = sourceLabel(item);
-            const resolved = item.status === "resolved";
-            const placing = placingId === item.id;
-            return (
-              <li
-                key={item.id}
-                ref={item.id === activeId ? activeRef : undefined}
-                data-annotation-id={item.id}
-                className={cn(
-                  "space-y-1.5 rounded-md border border-transparent p-2 text-xs",
-                  item.id === activeId ? "border-primary/40 bg-primary/10" : "hover:bg-accent/60",
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    className="mt-0.5"
-                    checked={isPicked(item)}
-                    onCheckedChange={(checked) => setPicked((current) => ({ ...current, [item.id]: checked === true }))}
-                    aria-label={t(($) => $.annotations.panel.include, { number: item.number })}
-                  />
-                  <button
-                    type="button"
-                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded text-left focus-visible:bg-accent"
-                    onClick={() => onShow(item)}
-                  >
-                    <span className="flex w-full flex-wrap items-center gap-1.5">
-                      <Badge size="sm">{item.number}</Badge>
-                      <span className="font-medium">{t(($) => $.annotations.kind[item.kind])}</span>
-                      <Badge size="sm" variant={STATUS_VARIANT[item.status]}>
-                        {t(($) => $.annotations.status[item.status])}
-                      </Badge>
-                      {item.placement === "needsPlacing" ? (
-                        <Badge size="sm" variant="outline">
-                          {t(($) => $.annotations.status.needsPlacing)}
-                        </Badge>
-                      ) : null}
-                    </span>
-                    <span className="flex w-full gap-1.5 text-muted-foreground">
-                      <span className="min-w-0 flex-1 break-all">
-                        {location ?? t(($) => $.annotations.panel.noSource)}
-                      </span>
-                      <span className="shrink-0">{t(($) => $.annotations.panel.page, { page: item.page })}</span>
-                    </span>
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0"
-                    onClick={() => void store().update([{ id: item.id, status: resolved ? "draft" : "resolved" }])}
-                    aria-label={
-                      resolved
-                        ? t(($) => $.annotations.panel.reopen, { number: item.number })
-                        : t(($) => $.annotations.panel.resolve, { number: item.number })
-                    }
-                  >
-                    {resolved ? <RotateCcw className="size-3.5" /> : <CheckCheck className="size-3.5" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0"
-                    onClick={() => void store().remove([item.id])}
-                    aria-label={t(($) => $.annotations.panel.delete, { number: item.number })}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-                <div className="space-y-1.5 pl-6">
-                  {item.quote.text ? <CommentQuote quote={item.quote.text} labels={quoteLabels} /> : null}
-                  {editingId === item.id ? (
-                    <AnnotationCommentKit>
-                      <CommentComposer
-                        label={t(($) => $.annotations.panel.editComment, { number: item.number })}
-                        submitLabel={t(($) => $.annotations.composer.save)}
-                        initial={item.comment}
-                        autoFocus
-                        compact
-                        onSubmit={async (comment) => {
-                          if (!(await store().update([{ id: item.id, comment }]))) {
-                            throw new Error(store().error ?? "");
-                          }
-                          setEditingId(null);
-                        }}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    </AnnotationCommentKit>
-                  ) : (
-                    <Tooltip label={t(($) => $.annotations.panel.editComment, { number: item.number })}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "w-full min-w-0 rounded px-1 py-0.5 text-left hover:bg-accent focus-visible:bg-accent",
-                          !item.comment && "text-muted-foreground italic",
-                        )}
-                        onClick={() => setEditingId(item.id)}
-                      >
-                        {item.comment ? (
-                          <CommentBody body={item.comment} members={NO_MEMBERS} className="mt-0 text-xs" />
-                        ) : (
-                          t(($) => $.annotations.panel.addComment)
-                        )}
-                      </button>
-                    </Tooltip>
-                  )}
-                  {item.placement === "needsPlacing" ? (
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground">
-                        {placing
-                          ? t(($) => $.annotations.panel.placing)
-                          : t(($) => $.annotations.panel.notFound)}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="gap-1"
-                        onClick={() => onPlaceAgain(placing ? null : item)}
-                      >
-                        <Crosshair className="size-3" />
-                        {placing
-                          ? t(($) => $.annotations.composer.cancel)
-                          : t(($) => $.annotations.panel.placeAgain)}
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {content}
     </FloatingSidePanel>
   );
 }

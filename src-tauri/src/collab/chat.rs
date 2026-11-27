@@ -1,6 +1,6 @@
 use std::sync::PoisonError;
 
-use oleafly_collab::chat::{ChatMessage, MAX_CHAT_PAGE};
+use oleafly_collab::chat::{ChatMessage, MAX_CHAT_CHARS, MAX_CHAT_PAGE};
 use oleafly_collab::comments::{mentions_in, CommentMember};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::sync::SharedLive;
@@ -10,8 +10,12 @@ use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, Proj
 use serde::Serialize;
 use tauri::Emitter;
 
-use super::commands::{now_ms, CollabCommandError};
-use super::comments::{load_switches, reactions_allowed, CommentSwitches};
+use super::commands::{now_ms, parse_id, ByBackend, CollabCommandError};
+use super::comments::{load_switches, reactions_allowed, server_members, CommentSwitches};
+use super::live::overleaf::chat::OnlineChatMessage;
+use super::live::overleaf::commands::live_now;
+use super::live::overleaf::off_runtime;
+use super::live::overleaf::review::OnlineMember;
 use super::live::LiveHost;
 use super::state::CollabState;
 use super::suggesting::refused;
@@ -31,6 +35,44 @@ pub struct ChatChangedPayload {
 pub struct ChatMentionedPayload {
     pub message_id: ChatMessageId,
     pub author: AccountId,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollabChatStatus {
+    pub available: bool,
+    pub post: bool,
+    pub reactions: bool,
+    pub edit: bool,
+    pub clear: bool,
+    pub math: bool,
+    pub markdown: bool,
+    pub max_length: usize,
+}
+
+pub(crate) fn server_status(switches: CommentSwitches, role: ProjectRole) -> CollabChatStatus {
+    CollabChatStatus {
+        available: true,
+        post: project_role_allows(role, ProjectAction::Chat),
+        reactions: switches.server && switches.reactions,
+        edit: false,
+        clear: role == ProjectRole::Owner,
+        math: false,
+        markdown: true,
+        max_length: MAX_CHAT_CHARS,
+    }
+}
+
+fn chat_id(text: &str) -> Result<ChatMessageId, CollabCommandError> {
+    parse_id(text, "chat message")
+}
+
+fn edit_refused() -> CollabError {
+    refused(
+        403,
+        "chat_edit_off",
+        "the Oleafly Server has no editing of chat messages",
+    )
 }
 
 fn role_refused() -> CollabError {
@@ -169,15 +211,47 @@ fn tell_local(app: &tauri::AppHandle, project_id: &str) {
     );
 }
 
+async fn switches_of(
+    state: &CollabState,
+    project_id: &str,
+) -> Result<CommentSwitches, CollabCommandError> {
+    let (paths, project_id) = (state.paths()?.clone(), project_id.to_owned());
+    off_runtime(move || load_switches(&paths, &project_id))
+        .await
+        .map_err(|error| CollabCommandError::from(CollabError::Io(error)))
+}
+
+#[tauri::command]
+pub async fn collab_chat_status(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+) -> Result<CollabChatStatus, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.chat_status());
+    }
+    let role =
+        super::history::server_role(state.inner(), &project_id).unwrap_or(ProjectRole::Viewer);
+    let switches = switches_of(state.inner(), &project_id).await?;
+    Ok(server_status(switches, role))
+}
+
 #[tauri::command]
 pub async fn collab_chat_list(
     state: tauri::State<'_, CollabState>,
     project_id: String,
-    before: Option<ChatMessageId>,
+    before: Option<String>,
     limit: usize,
-) -> Result<Vec<ChatMessage>, CollabCommandError> {
+) -> Result<ByBackend<Vec<ChatMessage>, Vec<OnlineChatMessage>>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .chat_list(before.as_deref(), limit)
+            .await
+            .map(ByBackend::Online);
+    }
+    let before = before.as_deref().map(chat_id).transpose()?;
     list_chat(state.inner(), &project_id, before, limit)
         .await
+        .map(ByBackend::Server)
         .map_err(CollabCommandError::from)
 }
 
@@ -186,23 +260,42 @@ pub async fn collab_chat_send(
     app: tauri::AppHandle,
     project_id: String,
     body: String,
-    members: Option<Vec<CommentMember>>,
-) -> Result<ChatMessage, CollabCommandError> {
-    let members = members.unwrap_or_default();
+    members: Option<Vec<OnlineMember>>,
+) -> Result<ByBackend<ChatMessage, OnlineChatMessage>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.chat_send(&body).await.map(ByBackend::Online);
+    }
+    let members = server_members(members.unwrap_or_default())?;
     let sent = super::live::comment_live(&project_id, |live, who| {
         send_in(live, who, &body, &members, now_ms())
     })
     .map_err(CollabCommandError::from)?;
     tell_local(&app, &project_id);
-    Ok(sent)
+    Ok(ByBackend::Server(sent))
+}
+
+#[tauri::command]
+pub async fn collab_chat_edit(
+    project_id: String,
+    id: String,
+    body: String,
+) -> Result<OnlineChatMessage, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.chat_edit(&id, &body).await;
+    }
+    Err(CollabCommandError::from(edit_refused()))
 }
 
 #[tauri::command]
 pub async fn collab_chat_delete(
     app: tauri::AppHandle,
     project_id: String,
-    id: ChatMessageId,
+    id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live.chat_delete(&id).await;
+    }
+    let id = chat_id(&id)?;
     super::live::comment_live(&project_id, |live, who| delete_in(live, who, id))
         .map_err(CollabCommandError::from)?;
     tell_local(&app, &project_id);
@@ -214,11 +307,15 @@ pub async fn collab_chat_react(
     app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     project_id: String,
-    message_id: ChatMessageId,
+    message_id: String,
     emoji: String,
     on: bool,
 ) -> Result<(), CollabCommandError> {
-    let switches = load_switches(state.paths()?, &project_id);
+    if let Some(live) = live_now(&project_id) {
+        return Err(live.chat_reactions_refused());
+    }
+    let message_id = chat_id(&message_id)?;
+    let switches = switches_of(state.inner(), &project_id).await?;
     super::live::comment_live(&project_id, |live, who| {
         react_in(live, who, message_id, &emoji, on, switches, now_ms())
     })
@@ -232,6 +329,9 @@ pub async fn collab_chat_clear(
     app: tauri::AppHandle,
     project_id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Err(live.chat_clear_refused());
+    }
     super::live::comment_live(&project_id, |live, _| clear_in(live).map(|_| ()))
         .map_err(CollabCommandError::from)?;
     tell_local(&app, &project_id);
@@ -254,14 +354,18 @@ mod tests {
     #[derive(Default)]
     struct Heard(Mutex<Vec<ChatChangedPayload>>);
 
-    impl LiveHost for Heard {
+    impl oleafly_live::DiskHost for Heard {
         fn status(&self, _: StatusPayload) {}
         fn role(&self, _: RolePayload) {}
-        fn merged(&self, _: MergedPayload) {}
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    impl LiveHost for Heard {
+        fn merged(&self, _: MergedPayload) {}
         fn new_device(&self, _: NewDevicePayload) {}
+
         fn chat_changed(&self, payload: ChatChangedPayload) {
             self.0.lock().unwrap().push(payload);
         }
@@ -421,8 +525,87 @@ mod tests {
             "verified",
             "reactions",
             "mentions",
+            "editedAt",
         ] {
             assert!(wire[0].get(key).is_some(), "{key} in {wire}");
         }
+        let page = owner.lock().unwrap().doc().chat_messages(None, 10);
+        let through: ByBackend<Vec<ChatMessage>, Vec<OnlineChatMessage>> =
+            ByBackend::Server(page.clone());
+        assert_eq!(
+            serde_json::to_string(&through).unwrap(),
+            serde_json::to_string(&page).unwrap()
+        );
+    }
+
+    #[test]
+    fn a_server_chat_status_follows_the_role_and_the_reaction_switches() {
+        let roles = [
+            (ProjectRole::Owner, true, true),
+            (ProjectRole::Editor, true, false),
+            (ProjectRole::Reviewer, true, false),
+            (ProjectRole::Commenter, true, false),
+            (ProjectRole::Viewer, false, false),
+        ];
+        for (role, post, clear) in roles {
+            let status = server_status(ALLOWED, role);
+            assert_eq!(
+                status,
+                CollabChatStatus {
+                    available: true,
+                    post,
+                    reactions: true,
+                    edit: false,
+                    clear,
+                    math: false,
+                    markdown: true,
+                    max_length: MAX_CHAT_CHARS,
+                },
+                "{role:?}"
+            );
+        }
+        let off = CommentSwitches {
+            reactions: false,
+            ..ALLOWED
+        };
+        assert!(!server_status(off, ProjectRole::Owner).reactions);
+        let wire = serde_json::to_value(server_status(ALLOWED, ProjectRole::Editor)).unwrap();
+        let mut keys: Vec<&str> = wire
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            [
+                "available",
+                "clear",
+                "edit",
+                "markdown",
+                "math",
+                "maxLength",
+                "post",
+                "reactions"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_server_arm_refuses_chat_edits_and_unknown_ids() {
+        let refused = tauri::async_runtime::block_on(collab_chat_edit(
+            "not-live".into(),
+            ChatMessageId::new_v7().to_string(),
+            "Edited".into(),
+        ))
+        .unwrap_err();
+        assert_eq!(refused.code, "chat_edit_off");
+        assert_eq!(
+            chat_id("6b04e5f6c0ffee0010000001").unwrap_err().code,
+            "not_found"
+        );
+        let id = ChatMessageId::new_v7();
+        assert_eq!(chat_id(&id.to_string()).unwrap(), id);
     }
 }

@@ -1,40 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "../fixtures";
-import { createBlankProject, openOleaflyMcpSettings } from "../helpers";
-
-async function rpc(url: string, token: string, body: object) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const text = res.status === 202 ? null : await res.text();
-  let json: Record<string, unknown> | null = null;
-  if (text) {
-    try {
-      json = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      json = { _raw: text };
-    }
-  }
-  return { status: res.status, json };
-}
-
-function toolPayload(result: unknown): Record<string, unknown> {
-  const content = (result as { content?: { text?: string }[] } | null)?.content;
-  const text = content?.at(-1)?.text;
-  if (!text) return { _result: result };
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return { _text: text };
-  }
-}
+import { createBlankProject, mcpPost, mcpToolJson, openOleaflyMcpSettings } from "../helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -90,7 +57,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(restarted.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
   await tauriPage.click('[aria-label="Close settings"]');
 
-  const init = await rpc(restarted.url, token, {
+  const init = await mcpPost(restarted, {
     jsonrpc: "2.0",
     id: 1,
     method: "initialize",
@@ -103,7 +70,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect((init.json as { result?: { serverInfo?: { name?: string } } })?.result?.serverInfo?.name).toBe(
     "oleafly",
   );
-  await rpc(restarted.url, token, {
+  await mcpPost(restarted, {
     jsonrpc: "2.0",
     method: "notifications/initialized",
   });
@@ -117,7 +84,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
 
   let names: string[] = [];
   for (let i = 0; i < 20; i++) {
-    const list = await rpc(restarted.url, token, {
+    const list = await mcpPost(restarted, {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/list",
@@ -131,16 +98,16 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     expect(names).toContain(n);
   }
 
-  const read = await rpc(restarted.url, token, {
+  const read = await mcpPost(restarted, {
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
     params: { name: "read_file", arguments: { path: "main.tex" } },
   });
-  const readPayload = toolPayload((read.json as { result?: unknown })?.result);
+  const readPayload = mcpToolJson(read.json);
   expect(readPayload.content).toContain("\\documentclass");
 
-  const writePromise = rpc(restarted.url, token, {
+  const writePromise = mcpPost(restarted, {
     jsonrpc: "2.0",
     id: 4,
     method: "tools/call",
@@ -157,7 +124,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const approved = await tauriPage.evaluate<string>(`window.__mcpDecide("approve")`);
   expect(approved).toMatch(/approve:write_file/);
   const write = await writePromise;
-  const writePayload = toolPayload((write.json as { result?: unknown })?.result);
+  const writePayload = mcpToolJson(write.json);
   expect(writePayload.success, JSON.stringify(writePayload)).toBe(true);
   for (let i = 0; i < 5; i++) {
     const q = await tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`);
@@ -170,7 +137,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     })
     .toEqual([]);
 
-  const delPromise = rpc(restarted.url, token, {
+  const delPromise = mcpPost(restarted, {
     jsonrpc: "2.0",
     id: 5,
     method: "tools/call",
@@ -187,17 +154,17 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const rejected = await tauriPage.evaluate<string>(`window.__mcpDecide("reject")`);
   expect(rejected).toContain("delete_file");
   const del = await delPromise;
-  const delPayload = toolPayload((del.json as { result?: unknown })?.result);
+  const delPayload = mcpToolJson(del.json);
   expect(delPayload.success, JSON.stringify(delPayload)).not.toBe(true);
   expect(delPayload.declined, JSON.stringify(delPayload)).toBe(true);
 
-  const reread = await rpc(restarted.url, token, {
+  const reread = await mcpPost(restarted, {
     jsonrpc: "2.0",
     id: 6,
     method: "tools/call",
     params: { name: "read_file", arguments: { path: "mcp-note.tex" } },
   });
-  const rereadPayload = toolPayload((reread.json as { result?: unknown })?.result);
+  const rereadPayload = mcpToolJson(reread.json);
   expect(rereadPayload.content, JSON.stringify(rereadPayload)).toContain("written over MCP");
 
   await openOleaflyMcpSettings(tauriPage);

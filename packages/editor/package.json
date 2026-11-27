@@ -36,7 +36,9 @@
     "./prose": "./src/prose.ts",
     "./overlay-scrollbar": "./src/overlay-scrollbar.ts",
     "./document-session": "./src/document-session.ts",
-    "./collaboration": "./src/collaboration.ts"
+    "./collaboration": "./src/collaboration.ts",
+    "./message-keys": "./src/message-keys.ts",
+    "./snippets/runtime": "./src/snippets/runtime.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",
@@ -57,6 +59,7 @@
     "@lezer/markdown": "*",
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
+    "@oleafly/snippets": "workspace:*",
     "@replit/codemirror-emacs": "^6.1.0",
     "@replit/codemirror-vim": "^6.4.0",
     "codemirror-lang-latex": "*",

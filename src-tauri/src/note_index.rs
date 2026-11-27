@@ -6,6 +6,8 @@ use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use crate::project::{list_projects_blocking, ProjectInfo, ProjectMeta, NOTE_KIND};
+use oleafly_core::encoding::utf8_prefix;
+use oleafly_core::front_matter::{declares_note, NOTE_DECLARATION_BYTES};
 
 pub(crate) const MAX_NOTE_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -121,8 +123,8 @@ fn listed_as_note(project_id: &str) -> Option<bool> {
 }
 
 pub(crate) fn note_file_written(project_id: &str, bytes: &[u8]) {
-    let declares = crate::project::front_matter_declares_note(&utf8_prefix(
-        &bytes[..bytes.len().min(crate::project::NOTE_DECLARATION_BYTES)],
+    let declares = declares_note(&utf8_prefix(
+        &bytes[..bytes.len().min(NOTE_DECLARATION_BYTES)],
     ));
     if listed_as_note(project_id).is_some_and(|listed| listed != declares) {
         invalidate();
@@ -194,14 +196,6 @@ fn key_of(metadata: &std::fs::Metadata) -> FileKey {
         modified: metadata.modified().ok(),
         size: metadata.len(),
     }
-}
-
-pub(crate) fn utf8_prefix(bytes: &[u8]) -> String {
-    let end = match std::str::from_utf8(bytes) {
-        Err(error) if error.error_len().is_none() => error.valid_up_to(),
-        _ => bytes.len(),
-    };
-    String::from_utf8_lossy(&bytes[..end]).into_owned()
 }
 
 impl Resolutions {
@@ -589,12 +583,5 @@ mod tests {
         remember(&[info("note", NOTE_KIND, false)], base, None);
         note_file_written("note", b"no front matter any more");
         assert!(revision() > base);
-    }
-
-    #[test]
-    fn keeps_a_whole_prefix_of_utf8() {
-        assert_eq!(utf8_prefix("aé".as_bytes()), "aé");
-        assert_eq!(utf8_prefix(&"aé".as_bytes()[..2]), "a");
-        assert_eq!(utf8_prefix(&[b'a', 0xff, b'b']), "a\u{fffd}b");
     }
 }

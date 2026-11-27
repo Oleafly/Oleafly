@@ -232,8 +232,16 @@
     "suggestion_role": "你在這個專案中的角色不允許提出建議。",
     "suggestion_changed": "這個建議周圍的文字已經變更，所以需要擁有者或編輯者來接受或拒絕它。",
     "suggestion_too_long": "一則刪除建議最多只能包含 20,000 個字元。請每次刪除較小的一部分。",
+    "suggestion_gone": "該變更已不存在。可能有人接受、拒絕或編輯了它。",
+    "review_off_server": "這個伺服器無法對追蹤修訂執行這項操作。",
     "chat_role": "你在這個專案中的角色不允許在聊天中進行這項操作。",
+    "chat_edit_off": "這個伺服器無法編輯聊天訊息。",
+    "chat_off_server": "這個 Overleaf 伺服器沒有聊天功能。",
     "history_unavailable": "這個專案的歷史記錄尚未同步到這台電腦。請在同步完成後再試一次。",
+    "history_plan_limit": "這個專案的 Overleaf 方案不會保留舊版本。",
+    "restore_off_server": "這個 Overleaf 伺服器無法還原舊版本。請改為從該版本複製文字。",
+    "linked_off_server": "這個 Overleaf 伺服器不會重新整理連結的檔案。",
+    "linked_refresh_failed": "Overleaf 無法從來源重新整理這個檔案。",
     "account_storage_full": "專案擁有者的帳號在這個伺服器上的儲存空間已用完。請移除一些檔案來騰出空間，或請伺服器的管理員提供更多空間。",
     "too_many_projects": "你分享的專案數量已達到這個伺服器允許的上限。請先停止分享其中一個，再分享其他專案。",
     "too_many_uploads": "你在過去一小時內上傳的次數太多。請稍後再試。",
@@ -241,6 +249,9 @@
     "too_many_pages": "你的公開頁面數量已達到這個伺服器允許的上限。請取消發布其中一個，然後再試一次。",
     "page_too_large": "這篇筆記太大，無法發布。請移除一些圖片，然後再試一次。",
     "page_taken_down": "管理員已將這個頁面下架，在管理員恢復之前，這篇筆記無法再次發布。"
+  },
+  "liveElsewhere": {
+    "cli": "這個專案正在命令列中即時編輯（處理程序 {{pid}}）。請先在那裡停止即時編輯，然後再試。"
   },
   "roles": {
     "admin": "管理員",
@@ -1051,6 +1062,8 @@
     "add": "新增評論",
     "allResolved": "所有評論都已解決。",
     "noResolved": "沒有已解決的評論",
+    "noChanges": "沒有追蹤修訂",
+    "overleafOff": "這個 Overleaf 伺服器沒有評論功能，因此這裡只會顯示追蹤修訂。",
     "emptyTitle": "還沒有評論",
     "emptyHint": "選取文字並選擇「新增評論」，或按 {keys}",
     "readOnlyNote": "你可以閱讀這個專案中的評論。如需回覆或新增回應，請向擁有者申請評論者權限。",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "來自 Oleafly 無法確認身分的人的建議",
     "added": "已新增",
     "deleted": "已刪除",
+    "replaced": "變更前",
+    "replacedWith": "變更後",
     "accept": "接受",
     "reject": "拒絕",
     "withdraw": "撤回",
@@ -1157,6 +1172,7 @@
     "fileActions": "{{file}} 中的建議",
     "pendingCount": "等待審閱的建議：{{number}}",
     "loadFailed": "無法載入這個檔案的建議。",
+    "acceptOffServer": "這個 Overleaf 伺服器無法接受這個檔案中的追蹤修訂。你仍然可以拒絕它們。",
     "rejectAllConfirm": {
       "title": "要拒絕 {{file}} 中的所有建議嗎？",
       "description": "檔案會為本專案中的所有人還原成原本的文字。等待審閱的建議：{{number}}。",
@@ -1175,7 +1191,15 @@
       "suggesting": "建議",
       "editingHint": "編輯：你的編輯會立刻變更文字",
       "suggestingHint": "建議：你的編輯會變成建議，由擁有者或編輯者接受",
-      "reviewerHint": "你是審閱者，所以你的編輯會變成建議，由擁有者或編輯者接受"
+      "reviewerHint": "你是審閱者，所以你的編輯會變成建議，由擁有者或編輯者接受",
+      "locked": {
+        "everyone": "這個專案已為所有人開啟追蹤修訂，因此你的編輯會變成建議",
+        "plan": "這個專案的 Overleaf 方案不包含追蹤修訂功能",
+        "server": "這個 Overleaf 伺服器無法開啟或關閉追蹤修訂"
+      },
+      "others": "為其他人開啟追蹤修訂",
+      "forEveryone": "對所有人",
+      "forGuests": "對透過連結加入的人"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "檢視者可以閱讀聊天內容，但不能傳送訊息。",
     "offline": "這個專案目前沒有連線，所以你無法傳送訊息。",
     "messageActions": "這則訊息的更多操作",
+    "editLabel": "編輯訊息",
     "deleteConfirm": {
       "title": "刪除這則訊息嗎？",
       "description": "它會對本專案中的所有人刪除。"
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly 無法載入聊天。",
     "loadOlder": "顯示較早的訊息"
+  },
+  "people": {
+    "invited": "已邀請",
+    "former": "（已離開專案）"
   },
   "history": {
     "title": "歷史記錄",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "所有檔案的文字會為本專案中的所有人還原到 {{time}} 時的狀態，已刪除的檔案也會一併還原。重新命名過的檔案會保留新名稱，之後新增的圖片和檔案則維持原樣。目前的文字會保留在歷史記錄中，所以你可以再回到那個版本。",
       "confirm": "還原專案"
     },
+    "limited": "較早的變更需要提供完整歷史記錄的 Overleaf 方案。",
+    "unavailable": "你對這個專案的存取權不包含其歷史記錄。",
+    "download": "下載為 ZIP",
+    "downloading": "正在下載…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "所有檔案都會為 Overleaf 上的所有人還原到 {{time}} 時的狀態，之後新增的檔案會被刪除。Overleaf 會在歷史記錄中保留目前的版本，所以你可以再回到那個版本。",
     "compareTitle": "兩個版本之間的變更",
     "compareDescription": "從 {{from}} 到 {{to}}",
     "changedFiles": "變更的檔案：{{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "你現在是評論者。你可以閱讀和評論這個專案，但不能編輯。",
     "reviewerBy": "{{name}} 已將你設為審閱者。你的編輯會變成建議，由擁有者或編輯者接受。",
     "reviewer": "你現在是審閱者。你的編輯會變成建議，由擁有者或編輯者接受。",
-    "reviewing": "你是這個專案的審閱者，因此你的編輯會以建議的形式送出。",
-    "trackingChanges": "這個專案已開啟追蹤修訂，因此你的編輯會以建議的形式送出。",
     "viewOnly": "你可以檢視這個分享的專案，但不能編輯。",
     "askOnOverleaf": "在 Overleaf 上申請存取權",
     "connecting": "這個分享的專案仍在連線，所以暫時無法變更。請稍後再試。",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "你已登出 {{server}}，因此這個專案不再同步。你可以繼續輸入。你的變更會保留在這台電腦上，重新登入後會傳送到 Overleaf。",
+    "signedOutAs": "這個專案屬於 {{server}} 上的 {{email}}。該帳號未登入，因此專案沒有同步。你可以繼續輸入。你的變更會保留在這台電腦上，以 {{email}} 身分登入後會傳送到 Overleaf。",
+    "signInAs": "以 {{email}} 身分登入",
     "accountChangedOne": "你現在登入的是另一個帳號，因此你以 {{email}} 身分所做的變更沒有傳送，已保存為 {{copy}}。",
     "accountChangedMany": "你現在登入的是另一個帳號，因此你以 {{email}} 身分所做的變更沒有傳送，已作為副本保存在對應檔案旁邊：",
     "keptAs": "{{file}} 已保存為 {{copy}}",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "{{file}} 中的部分字元（例如表情符號）已被取代，因為 Overleaf 無法儲存它們。",
     "tryLiveAgain": "重試即時編輯",
     "keepMineAsCopy": "將我的保留為副本",
-    "stoppedActionFailed": "{{file}} 的這項操作沒有成功。請稍等片刻，然後再點一次。"
+    "settingNotSent": {
+      "no_equivalent": "Overleaf 沒有與這個專案的 {{setting}} 對應的選項，因此 Overleaf 上的 {{setting}} 維持不變。",
+      "refused": "Overleaf 拒絕了對 {{setting}} 的變更。",
+      "failed": "Oleafly 無法將對 {{setting}} 的變更傳送到 Overleaf。下次變更時會再試一次。",
+      "conflict": "{{setting}} 在這裡和 Overleaf 上同時被變更。將保留 Overleaf 上的選擇。"
+    },
+    "settingNames": {
+      "main_doc": "主要文件",
+      "compiler": "編譯器",
+      "spelling": "拼字檢查語言",
+      "image": "TeX Live 版本",
+      "bibliography": "主要參考文獻"
+    },
+    "stoppedActionFailed": "{{file}} 的這項操作沒有成功。請稍等片刻，然後再點一次。",
+    "filling": "正在從 Overleaf 開啟專案：{{done}}/{{total}} 個檔案",
+    "fillingFiles": "正在從 Overleaf 開啟專案：正在下載最後幾個檔案",
+    "emptyCopy": "這個專案已不在 Overleaf 上，而且它的檔案沒有任何一個傳到這台電腦上。",
+    "removeEmptyCopy": "移除空的副本",
+    "removeFailed": "Oleafly 無法移除空的副本。"
   },
   "overleafTree": {
     "deleteTitle": "也在 Overleaf 上刪除？",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "也在 Overleaf 上刪除",
     "keep": "保留在 Overleaf 上",
     "notAllowed": "你無法在 Overleaf 上變更這個專案中的檔案，因此你對 {{files}} 的變更會保留在這台電腦上。",
-    "keptAway": "已在此處刪除，但仍在 Overleaf 上：{{files}}"
+    "keptAway": "已在此處刪除，但仍在 Overleaf 上：{{files}}",
+    "linkedKept": "Overleaf 將 {{files}} 連結到某個來源，因此你的變更會保留在這台電腦上。選擇「從來源重新整理」即可取回 Overleaf 上的副本。"
+  },
+  "overleafLinked": {
+    "banner": "{{file}} 在 Overleaf 上連結到 {{source}}。",
+    "bannerNoSource": "{{file}} 在 Overleaf 上連結到某個來源。",
+    "readOnly": "{{file}} 在 Overleaf 上連結到某個來源。要更新它，請選擇「從來源重新整理」。",
+    "treeHint": "已在 Overleaf 上連結到某個來源",
+    "refresh": "從來源重新整理",
+    "refreshing": "重新整理中",
+    "refusedWith": "Overleaf 無法重新整理它：{{message}}"
   }
 }

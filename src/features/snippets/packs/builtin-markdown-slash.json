@@ -1,0 +1,32 @@
+{
+  "$pack": {
+    "name": "Markdown slash menu",
+    "nameKey": "snippets.packs.markdownSlash"
+  },
+  "markdown.slash.table": {
+    "name": "Table",
+    "nameKey": "markdown.snippet.table",
+    "prefix": "/table",
+    "body": [
+      "| ${1:Column 1} | ${2:Column 2} |",
+      "| --- | --- |",
+      "| $3 | $4 |"
+    ],
+    "expand": "list",
+    "languages": ["markdown"],
+    "where": "text"
+  },
+  "markdown.slash.equation": {
+    "name": "Display equation",
+    "nameKey": "markdown.snippet.equation",
+    "prefix": "/equation",
+    "body": [
+      "\\$\\$",
+      "$1",
+      "\\$\\$"
+    ],
+    "expand": "list",
+    "languages": ["markdown"],
+    "where": "text"
+  }
+}

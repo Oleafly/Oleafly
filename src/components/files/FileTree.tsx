@@ -14,6 +14,7 @@ import {
 } from "react";
 import {
   ChevronRight,
+  ClipboardCopy,
   CopyMinus,
   CopyPlus,
   FileLock,
@@ -22,8 +23,11 @@ import {
   FolderPlus,
   FolderClosed,
   Import,
+  Link,
   Link2,
   Pencil,
+  RefreshCw,
+  SquareArrowOutUpRight,
   SquareTerminal,
   Star,
   Trash2,
@@ -79,7 +83,7 @@ import { i18n } from "@/i18n";
 import { confirmAction } from "@/store/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { deleteProjectEntry, projectDeleteQuestion } from "@/lib/project-file-delete";
-import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
+import { useCollabSettingsLocked, useOverleafLinkedFiles } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
@@ -90,6 +94,7 @@ import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/featur
 import {
   CollabTreeClashSlot,
   CollabTreePresenceSlot,
+  refreshOverleafLinked,
   TreeRowClash,
   TreeRowPeers,
   useTreeClashLabels,
@@ -320,6 +325,8 @@ interface TreeCtx {
   git: GitDecorations;
   peers: PeerMarks;
   clashes: ReadonlyMap<string, string>;
+  overleafLinked: ReadonlySet<string>;
+  onRefreshLinked: ((path: string) => void) | null;
   focusSibling: (path: string, step: 1 | -1) => void;
 }
 
@@ -349,6 +356,11 @@ export function FileTree({
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const noMainDocument = useFilesStore(mainDocumentMissing);
   const sharedViewer = useCollabSettingsLocked(projectId);
+  const overleafLinkedFiles = useOverleafLinkedFiles(projectId);
+  const overleafLinked = useMemo(
+    () => new Set(overleafLinkedFiles.map((file) => file.path)),
+    [overleafLinkedFiles],
+  );
   const mainExtensions = engineLoaded && !sharedViewer ? ALL_MAIN_EXTENSIONS : EMPTY_EXTENSIONS;
 
   const loading = useFilesStore((s) => s.loading);
@@ -924,6 +936,9 @@ export function FileTree({
     git,
     peers: peerMarks,
     clashes: clashLabels,
+    overleafLinked,
+    onRefreshLinked:
+      projectId && !sharedViewer ? (path) => refreshOverleafLinked(projectId, path) : null,
     focusSibling: (path, step) => {
       const start = flatIndex.get(path);
       if (start === undefined) return;
@@ -1384,6 +1399,7 @@ function TreeRowKindMenuItems({
 }>) {
   const { t } = useTranslation(["common", "workspace"]);
   if (node.unreadable) return null;
+  const refreshLinked = ctx.overleafLinked.has(node.path) ? ctx.onRefreshLinked : null;
   if (node.isDir) {
     return (
       <>
@@ -1410,8 +1426,13 @@ function TreeRowKindMenuItems({
   return (
     <>
       <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
-        {t(($) => $.common.actions.open)}
+        <SquareArrowOutUpRight className="mr-2 size-4" /> {t(($) => $.common.actions.open)}
       </ContextMenuItem>
+      {refreshLinked ? (
+        <ContextMenuItem onClick={() => refreshLinked(node.path)}>
+          <RefreshCw className="mr-2 size-4" /> {i18n.t(($) => $.collab.overleafLinked.refresh)}
+        </ContextMenuItem>
+      ) : null}
       {!readOnlyLink && (
         <ContextMenuItem
           disabled={!ctx.mainExtensions.some((extension) =>
@@ -1419,7 +1440,7 @@ function TreeRowKindMenuItems({
           )}
           onClick={() => ctx.onSetMain(node.path)}
         >
-          {t(($) => $.workspace.files.setMain)}
+          <Star className="mr-2 size-4" /> {t(($) => $.workspace.files.setMain)}
         </ContextMenuItem>
       )}
       <ContextMenuSeparator />
@@ -1427,10 +1448,10 @@ function TreeRowKindMenuItems({
         disabled={linkLanguageFor(ctx.activePath) === null}
         onClick={() => void import("@/features/file-links").then((links) => links.insertFileLink(node.path))}
       >
-        {t(($) => $.workspace.files.insertLink)}
+        <Link className="mr-2 size-4" /> {t(($) => $.workspace.files.insertLink)}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => copyReference(node.path, "link")}>
-        {t(($) => $.workspace.files.copyLink)}
+        <ClipboardCopy className="mr-2 size-4" /> {t(($) => $.workspace.files.copyLink)}
       </ContextMenuItem>
     </>
   );
@@ -1480,6 +1501,26 @@ function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecora
   return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
 }
 
+function treeRowClass(active: boolean, selected: boolean, dropTarget: boolean): string {
+  return cn(
+    "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
+    active && "bg-sidebar-accent",
+    selected && !active && "bg-sidebar-accent/60",
+    dropTarget && "bg-primary/15",
+  );
+}
+
+function TreeRowLink({ readOnly, overleaf }: Readonly<{ readOnly: boolean; overleaf: boolean }>) {
+  if (!readOnly && !overleaf) return null;
+  return (
+    <Link2
+      aria-hidden
+      data-testid={overleaf ? "tree-overleaf-linked" : undefined}
+      className="size-3 shrink-0 text-muted-foreground"
+    />
+  );
+}
+
 function TreeRow({
   node,
   depth,
@@ -1503,8 +1544,10 @@ function TreeRow({
   const readOnlyLink = node.readOnly && !node.isDir;
   const expandable = node.isDir && !unreadable;
   const partial = expandable && node.partial;
+  const overleafLinked = !node.isDir && ctx.overleafLinked.has(node.path);
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
-  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
+  const linkedHint = overleafLinked ? i18n.t(($) => $.collab.overleafLinked.treeHint) : undefined;
+  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : linkedHint;
   const rowRef = useRef<HTMLDivElement>(null);
 
   const dropDir = node.isDir ? node.path : parentOf(node.path);
@@ -1583,12 +1626,7 @@ function TreeRow({
       aria-selected={isActive || isSelected}
       aria-disabled={unreadable ? true : undefined}
       title={hint}
-      className={cn(
-        "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
-        isActive && "bg-sidebar-accent",
-        isSelected && !isActive && "bg-sidebar-accent/60",
-        isDropTarget && "bg-primary/15"
-      )}
+      className={treeRowClass(isActive, isSelected, isDropTarget)}
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
       onClick={activate}
       onKeyDown={onRowKeyDown}
@@ -1604,9 +1642,7 @@ function TreeRow({
       >
         {node.name}
       </span>
-      {readOnlyLink && (
-        <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
-      )}
+      <TreeRowLink readOnly={readOnlyLink} overleaf={overleafLinked} />
       <span className="ml-auto flex shrink-0 items-center gap-1">
         <TreeRowClash label={ctx.clashes.get(node.path)} />
         <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />

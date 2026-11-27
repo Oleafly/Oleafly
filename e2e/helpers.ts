@@ -1072,6 +1072,80 @@ export async function typeInEditorAtStart(page: Page, text: string) {
   if (!inserted) throw new Error("typeInEditorAtStart: editor input was rejected");
 }
 
+export const COLLAB_PANE = '[data-testid="collab-pane"]';
+
+export async function openCollabPane(page: Page) {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const state = await page.evaluate<string>(`(() => {
+      const tab = document.querySelector('[data-tour="rail-collab"]');
+      if (!tab) {
+        const show = document.querySelector('[aria-label^="Show sidebar"]');
+        if (show) { show.click(); return "revealing"; }
+        return "missing";
+      }
+      if (tab.getAttribute("aria-current") === "page" && document.querySelector(${scriptValue(COLLAB_PANE)})) return "open";
+      if (tab.getAttribute("aria-current") !== "page") tab.click();
+      return "opening";
+    })()`);
+    if (state === "open") return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("the Live collaboration pane never opened");
+}
+
+export async function clickButton(
+  page: Page,
+  scope: string,
+  text: string,
+  timeoutMs = 20_000,
+  { containing = null, press = "click" }: { containing?: string | null; press?: "click" | "enter" } = {},
+) {
+  await waitLong(
+    page,
+    `(() => {
+      const scopes = [...document.querySelectorAll(${scriptValue(scope)})].filter(
+        (node) => ${scriptValue(containing)} === null || node.textContent.includes(${scriptValue(containing)}),
+      );
+      const label = (entry) => {
+        const copy = entry.cloneNode(true);
+        for (const key of copy.querySelectorAll("kbd")) key.remove();
+        return copy.textContent.trim();
+      };
+      const button = scopes.flatMap((node) => [...node.querySelectorAll("button, [role=menuitem]")])
+        .reverse()
+        .find(
+          (entry) =>
+            (label(entry) === ${scriptValue(text)} || entry.getAttribute("aria-label") === ${scriptValue(text)}) &&
+            !entry.disabled &&
+            entry.getAttribute("aria-disabled") !== "true",
+        );
+      if (!button) return false;
+      if (${scriptValue(press)} === "enter") {
+        button.focus();
+        button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+      } else {
+        button.click();
+      }
+      return true;
+    })()`,
+    timeoutMs,
+  );
+}
+
+export async function waitForText(page: Page, selector: string, needles: string[], timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const texts = await page.evaluate<string[]>(
+      `[...document.querySelectorAll(${scriptValue(selector)})].map((node) => node.innerText ?? "")`,
+    );
+    if (texts.some((text) => needles.every((needle) => text.includes(needle)))) return;
+    if (Date.now() > deadline) {
+      throw new Error(`${selector} never showed ${JSON.stringify(needles)}; it shows ${JSON.stringify(texts.join("\n").slice(0, 800))}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
 export async function waitLong(page: Page, expression: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -1146,6 +1220,7 @@ export async function newChat(page: Page) {
 // textareas; use the textarea prototype setter + an input event so React
 // controlled state updates.
 export async function fillTextarea(page: Page, selector: string, text: string) {
+  await waitLong(page, `!!document.querySelector(${scriptValue(selector)})`, 20_000);
   await page.evaluate(
     `(() => {
       const t = document.querySelector(${scriptValue(selector)});
@@ -1388,6 +1463,77 @@ export async function openOleaflyMcpSettings(page: Page) {
   await expect(page.locator('[data-testid="mcp-enable-toggle"]')).toBeVisible({
     timeout: 10_000,
   });
+}
+
+export interface McpConnection {
+  url: string;
+  token: string;
+}
+
+export type McpReply = Record<string, unknown>;
+
+export async function startMcpServer(page: Page, policy = "trust"): Promise<McpConnection> {
+  return page.evaluate<McpConnection>(`(async () => {
+    const { getConfig, mcpConnectionInfo, mcpSetEnabled, setConfig } = await import("/src/lib/tauri.ts");
+    const cfg = await getConfig();
+    await setConfig({ ...cfg, mcp_approval_policy: ${JSON.stringify(policy)}, mcp_read_only: false });
+    await mcpSetEnabled(true);
+    const { refreshMcpRegistry, startMcpBridge } = await import("/src/lib/mcp-bridge.ts");
+    await startMcpBridge();
+    await refreshMcpRegistry();
+    return await mcpConnectionInfo();
+  })()`);
+}
+
+export async function mcpPost(connection: McpConnection, body: object): Promise<{ status: number; json: McpReply | null }> {
+  const response = await fetch(connection.url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      authorization: `Bearer ${connection.token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = response.status === 202 ? "" : await response.text();
+  if (!text) return { status: response.status, json: null };
+  try {
+    return { status: response.status, json: JSON.parse(text) as McpReply };
+  } catch {
+    return { status: response.status, json: { _raw: text } };
+  }
+}
+
+let mcpRequestId = 0;
+
+export async function mcpRequest(connection: McpConnection, method: string, params: McpReply = {}): Promise<McpReply> {
+  mcpRequestId += 1;
+  const { status, json } = await mcpPost(connection, { jsonrpc: "2.0", id: mcpRequestId, method, params });
+  expect(status, `${method} answered ${status}: ${JSON.stringify(json)}`).toBe(200);
+  return json ?? {};
+}
+
+function mcpToolParts(reply: unknown): string[] {
+  const content = (reply as { result?: { content?: { text?: string }[] } } | null)?.result?.content;
+  return (content ?? []).map((part) => part.text ?? "");
+}
+
+export function mcpToolText(reply: unknown): string {
+  return mcpToolParts(reply).join("\n");
+}
+
+export function mcpToolJson(reply: unknown): McpReply {
+  const text = mcpToolParts(reply).at(-1);
+  if (!text) return { _reply: reply };
+  try {
+    return JSON.parse(text) as McpReply;
+  } catch {
+    return { _text: text };
+  }
+}
+
+export async function mcpToolCall(connection: McpConnection, name: string, args: McpReply): Promise<McpReply> {
+  return mcpToolJson(await mcpRequest(connection, "tools/call", { name, arguments: args }));
 }
 
 export async function paletteItems(page: Page): Promise<string[]> {

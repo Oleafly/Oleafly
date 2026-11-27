@@ -15,8 +15,21 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { resetSidebarViewState, writeSidebarView } from "@/store/sidebar-view-state";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
-import { peerHue } from "../live/peer-hue";
-import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
+import { OVERLEAF_OWN_HUE, overleafHue, peerHue } from "../live/peer-hue";
+import {
+  ALICE_ID,
+  BOB,
+  BOB_ID,
+  CAROL,
+  CAROL_ID,
+  fill,
+  OVERLEAF_ALICE_ID,
+  OVERLEAF_BOB_ID,
+  overleafLink,
+  person,
+  projectMember,
+  shareInfo,
+} from "../tests/fixtures";
 import { useAccessLogSwitches } from "./access-log-store";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
@@ -116,6 +129,8 @@ beforeEach(() => {
   useShareDialog.setState({ projectId: null, fromCopy: false });
   useCollabLiveStore.setState({
     projectId: "grant",
+    backend: "server",
+    selfId: null,
     share: shareInfo({ role: "editor", account_id: ALICE_ID }),
     role: "editor",
     status: { state: "online" },
@@ -263,6 +278,28 @@ describe("CollabPane", () => {
     expect(rows.filter((row) => row.textContent?.includes(enCollab.manage.inactive))).toHaveLength(1);
   });
 
+  it("lists invitees with a label under People and counts neither former nor unlisted names", () => {
+    const DAN = person({ account_id: "dan", display_name: "Dan Ode", email: "dan@oleafly.edu" });
+    const IVY = person({ account_id: "ivy", display_name: "ivy@oleafly.edu", email: "ivy@oleafly.edu" });
+    useCollabLiveStore.setState({
+      members: [
+        projectMember(BOB, "owner"),
+        projectMember(person(), "editor"),
+        { ...projectMember(IVY, "editor"), standing: "invited" },
+        { ...projectMember(CAROL, "unknown"), standing: "former" },
+        { ...projectMember(DAN, "unknown"), standing: "unlisted" },
+      ],
+    });
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    const ivy = rows.find((row) => row.textContent?.includes("ivy@oleafly.edu"));
+    expect(ivy).toHaveTextContent(enCollab.people.invited);
+    expect(rows.filter((row) => row.textContent?.includes(enCollab.people.invited))).toHaveLength(1);
+    expect(screen.getByRole("list", { name: pane.people })).not.toHaveTextContent("Carol Diaz");
+    expect(screen.getByRole("list", { name: pane.people })).not.toHaveTextContent("Dan Ode");
+  });
+
   it("lists everyone with access, you first, with role and where they are", () => {
     render(<CollabPane />);
     const people = screen.getByRole("list", { name: pane.people });
@@ -358,10 +395,31 @@ describe("CollabPane", () => {
     const people = screen.getByRole("list", { name: pane.people });
     const rows = within(people).getAllByRole("listitem");
     const bob = rows[1].querySelector('[data-slot="avatar"]');
-    expect(peerHue(BOB_ID, ALICE_ID)).not.toBe(avatarHue(BOB_ID));
-    expect(bob).toHaveStyle({ backgroundColor: `hsl(${peerHue(BOB_ID, ALICE_ID)} 55% 45%)` });
+    expect(peerHue(BOB_ID, ALICE_ID, "server")).not.toBe(avatarHue(BOB_ID));
+    expect(bob).toHaveStyle({ backgroundColor: `hsl(${peerHue(BOB_ID, ALICE_ID, "server")} 55% 45%)` });
     const you = rows[0].querySelector('[data-slot="avatar"]');
     expect(you).toHaveStyle({ backgroundColor: `hsl(${avatarHue(ALICE_ID)} 55% 45%)` });
+  });
+
+  it("paints people in Overleaf's colours on an Overleaf project, with you in its own colour", () => {
+    useCollabLiveStore.setState({
+      share: null,
+      backend: "overleaf",
+      selfId: OVERLEAF_ALICE_ID,
+      peers: {},
+      members: [
+        projectMember({ ...BOB, account_id: OVERLEAF_BOB_ID }, "owner"),
+        projectMember(person({ account_id: OVERLEAF_ALICE_ID }), "editor"),
+      ],
+    });
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
+    expect(rows[0].querySelector('[data-slot="avatar"]')).toHaveStyle({
+      backgroundColor: `hsl(${OVERLEAF_OWN_HUE} 55% 45%)`,
+    });
+    expect(rows[1].querySelector('[data-slot="avatar"]')).toHaveStyle({
+      backgroundColor: `hsl(${overleafHue(OVERLEAF_BOB_ID, OVERLEAF_ALICE_ID)} 55% 45%)`,
+    });
   });
 
   it("shows the activity newest first with relative times and folded counts", () => {
@@ -552,6 +610,17 @@ describe("CollabPane", () => {
     expect(within(peopleToggle).getByText(pane.people)).toBeInTheDocument();
     expect(peopleToggle.querySelector("output")).toHaveTextContent("3");
     expect(activityToggle.querySelector("output")).toHaveTextContent("2");
+  });
+
+  it("adds History on an Overleaf project only once its live session has started", () => {
+    onTestFinished(() => useCollabLiveStore.setState({ overleaf: null }));
+    useCollabLiveStore.setState({ share: null, backend: "overleaf", overleaf: overleafLink(), role: null, selfId: null });
+    render(<CollabPane />);
+    expect(screen.queryByTestId("collab-history")).toBeNull();
+    act(() => useCollabLiveStore.setState({ role: "editor" }));
+    expect(screen.queryByTestId("collab-history")).toBeNull();
+    act(() => useCollabLiveStore.setState({ selfId: OVERLEAF_ALICE_ID }));
+    expect(screen.getByTestId("collab-history")).toBeInTheDocument();
   });
 
   it("adds Recently deleted after Activity, closed until opened", async () => {

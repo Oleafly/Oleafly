@@ -20,7 +20,6 @@ import {
   latexReferenceCitationCompletions,
   setBibKeysProvider,
   setLatexCorpusProvider,
-  slashCompletions,
 } from "./latex";
 import { latexPairChange, latexPairInputHandler } from "./latex-pairs";
 import { setBibStyleProvider } from "./bibliography-styles";
@@ -75,7 +74,6 @@ describe("recovery-oriented LaTeX completion", () => {
       latexReferenceCitationCompletions,
       latexCompletions,
       latexCommandCompletions,
-      slashCompletions,
     ]) {
       expect(completionSource(context)).toBeNull();
     }
@@ -102,7 +100,6 @@ describe("recovery-oriented LaTeX completion", () => {
             unavailableLanguageService,
             unavailableProjectIndex,
             latexCommandCompletions,
-            slashCompletions,
           ],
         }),
       ],
@@ -566,7 +563,6 @@ describe("recovery-oriented LaTeX completion", () => {
     const results = [
       projectSource(context),
       latexCommandCompletions(context),
-      slashCompletions(context),
     ];
     const commandResult = results[1];
     const candidate = option(commandResult, "\\section");

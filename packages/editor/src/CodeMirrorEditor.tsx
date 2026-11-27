@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import {
-  Annotation,
   EditorState,
   Compartment,
   EditorSelection,
@@ -53,18 +52,12 @@ import { focusOnPointerWithoutScroll } from "./focus-without-scroll";
 import type { EditorTranslator } from "./messages";
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
-import {
-  latexCommandCompletions,
-  latexCompletions,
-  slashCompletions,
-} from "./latex";
+import { latexCommandCompletions, latexCompletions } from "./latex";
 import { editorLanguageForPath } from "./languages";
 import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { lazyExtension } from "./lazy-extension";
 import { typstEditing } from "./typst-editing";
-import { typstSlashCompletions } from "./typst-snippets";
-import { markdownSlashCompletions } from "./markdown-snippets";
 import { typstMathPaste } from "./typst-math-paste";
 import { isVendoredTypstPackagePath } from "./typst-syntax";
 import {
@@ -87,13 +80,21 @@ import { bibtexCompletions } from "./bibtex-completions";
 import { createBibtexLinter } from "./bibtex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
+import {
+  snippetAutoExpand,
+  snippetGhostHint,
+  snippetSessionExtension,
+  withSnippetCompletions,
+} from "./snippets/loader";
+import { type SnippetPort, snippetPortFacet } from "./snippets/port";
+import { tabOrderKeymap } from "./tab-order";
 import { backgroundFullParse, editorOverlayScrollbars } from "./scroll-surface";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
-import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
+import { changesToUtf16Edits, documentLoad, localOrigin, remoteChange, sessionLineBreaks } from "./collaboration";
 import {
   capturePathViewState,
   editedPathViewState,
@@ -103,7 +104,7 @@ import {
   remotePathViewState,
   takeSavedPathState,
 } from "./path-view-state";
-import type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
+import { type DocumentSession, type RemoteChange, subscribeEdits, type Utf16Edit } from "./document-session";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
 export type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
@@ -232,8 +233,6 @@ export function minimalReplacement(before: string, after: string) {
   };
 }
 
-const documentLoad = Annotation.define<boolean>();
-
 const lfText = (text: string): string => text.replace(/\r\n?/gu, "\n");
 
 function lfEdits(edits: Utf16Edit[]): Utf16Edit[] {
@@ -296,6 +295,7 @@ class EditorSessions {
   private readonly background = new Map<string, BackgroundSession>();
   private current: DocumentSession | null = null;
   private currentVersion = 0;
+  private sending = false;
   private stopCurrent: (() => void) | null = null;
 
   constructor(states: Map<string, PathViewState>) {
@@ -315,7 +315,7 @@ class EditorSessions {
     if (this.current === session) return;
     this.dropBackgroundOf(session);
     this.current = session;
-    this.stopCurrent = session.subscribe((change) => {
+    const hear = (change: RemoteChange) => {
       this.currentVersion = change.version;
       let applied = true;
       try {
@@ -325,6 +325,9 @@ class EditorSessions {
         applied = false;
       }
       this.keepAligned(view, session, !applied);
+    };
+    this.stopCurrent = subscribeEdits(session, hear, (change) => {
+      if (!this.sending) hear(change);
     });
   }
 
@@ -336,12 +339,19 @@ class EditorSessions {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
         continue;
       }
+      this.sending = true;
       try {
-        session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+        session.applyLocal(
+          lfEdits(changesToUtf16Edits(transaction.changes)),
+          this.currentVersion,
+          localOrigin(transaction),
+        );
       } catch (error) {
         logException(view.state, error, "shared document");
         this.keepAligned(view, session, true);
         return true;
+      } finally {
+        this.sending = false;
       }
       this.currentVersion = session.version();
     }
@@ -402,11 +412,12 @@ class EditorSessions {
     const followMove = () => {
       if (session.path !== key) key = this.follow(key, session.path, entry);
     };
-    const stopChanges = session.subscribe((change) => {
+    const hear = (change: RemoteChange) => {
       followMove();
       const saved = this.states.get(key);
       if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
-    });
+    };
+    const stopChanges = subscribeEdits(session, hear, hear);
     const stopMoves = session.subscribeMove?.(followMove) ?? (() => {});
     const entry: BackgroundSession = {
       session,
@@ -647,36 +658,50 @@ function mathPreviewForPath(path: string | null, enabled: boolean): Extension[] 
   return [];
 }
 
+function overrideSources(sources: CompletionSource[], snippets: SnippetPort | null): CompletionSource[] {
+  return snippets ? withSnippetCompletions(sources) : sources;
+}
+
+function ghostTools(
+  wordGhosts: boolean,
+  sources: CompletionSource[],
+  syntax: CompletionSyntax,
+  snippets: SnippetPort | null,
+): Extension[] {
+  if (snippets) return [ghostCompletion(wordGhosts ? sources : [], syntax, snippetGhostHint())];
+  return wordGhosts ? [ghostCompletion(sources, syntax)] : [];
+}
+
+function snippetTools(snippets: SnippetPort | null): Extension[] {
+  return snippets ? [snippetPortFacet.of(snippets), snippetSessionExtension()] : [];
+}
+
+interface SourceToolOptions {
+  syntax: CompletionSyntax;
+  completionSources: CompletionSource[];
+  ghostSources: CompletionSource[];
+  autocomplete: boolean;
+  ghost: boolean;
+  mathPreview: boolean;
+  snippets: SnippetPort | null;
+}
+
 function latexSourceTools(
-  completionSyntax: CompletionSyntax,
-  completionSources: CompletionSource[],
-  ghostCompletionSources: CompletionSource[],
+  { syntax, completionSources, ghostSources, autocomplete, ghost, snippets }: SourceToolOptions,
   gatedCompletionSources: CompletionSource[],
-  autocompleteWhileTyping: boolean,
-  ghostCompletionEnabled: boolean,
   mathPreviewExtensions: Extension[],
 ): Extension[] {
   const staticLatexSource =
     completionSources.length > 0 ? latexCommandCompletions : latexCompletions;
-  const sources = [
-    ...gatedCompletionSources,
-    staticLatexSource,
-    slashCompletions,
-  ];
-  const ghostSources = [
-    ...ghostCompletionSources,
-    staticLatexSource,
-    slashCompletions,
-  ];
   return [
     latexFolding(),
-    ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, completionSyntax)] : []),
+    ...ghostTools(ghost, [...ghostSources, staticLatexSource], syntax, snippets),
     autocompletion({
-      override: sources,
-      activateOnTyping: autocompleteWhileTyping,
+      override: overrideSources([...gatedCompletionSources, staticLatexSource], snippets),
+      activateOnTyping: autocomplete,
       closeOnBlur: true,
     }),
-    ...(autocompleteWhileTyping ? [openEnvironmentCompletion] : []),
+    ...(autocomplete ? [openEnvironmentCompletion] : []),
     ...mathPreviewExtensions,
     createLatexLinter(),
   ];
@@ -702,44 +727,32 @@ const quartoChunkOptionCompletions: CompletionSource = (context) =>
 const calepinChunkOptionCompletions: CompletionSource = (context) =>
   loadChunkOptions().then((module) => module.calepinChunkOptionCompletions(context));
 
-function sourceToolsForPath(
-  path: string | null,
-  completionSyntax: CompletionSyntax,
-  completionSources: CompletionSource[],
-  ghostCompletionSources: CompletionSource[],
-  autocompleteWhileTyping: boolean,
-  ghostCompletionEnabled: boolean,
-  mathPreview: boolean,
-): Extension[] {
-  const synchronousSources = new Set(ghostCompletionSources);
+function sourceToolsForPath(path: string | null, options: SourceToolOptions): Extension[] {
+  return [...snippetTools(options.snippets), ...languageSourceTools(path, options)];
+}
+
+function languageSourceTools(path: string | null, options: SourceToolOptions): Extension[] {
+  const { syntax, completionSources, ghostSources, autocomplete, ghost, mathPreview, snippets } = options;
+  const synchronousSources = new Set(ghostSources);
   const gatedCompletionSources = completionSources.map((source) =>
-    synchronousSources.has(source) ? gateCompletionSource(source, completionSyntax) : source,
+    synchronousSources.has(source) ? gateCompletionSource(source, syntax) : source,
   );
   const mathPreviewExtensions = mathPreviewForPath(path, mathPreview);
+  const wordGhosts = ghost && ghostSources.length > 0;
 
   if (isLatexSourcePath(path)) {
-    return latexSourceTools(
-      completionSyntax,
-      completionSources,
-      ghostCompletionSources,
-      gatedCompletionSources,
-      autocompleteWhileTyping,
-      ghostCompletionEnabled,
-      mathPreviewExtensions,
-    );
+    return latexSourceTools(options, gatedCompletionSources, mathPreviewExtensions);
   }
 
   if (isBibtexSourcePath(path)) {
     return [
-      ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
-        ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
-        : []),
+      ...ghostTools(wordGhosts, ghostSources, syntax, snippets),
       autocompletion({
-        override: [
-          ...gatedCompletionSources,
-          gateCompletionSource(bibtexCompletions, completionSyntax),
-        ],
-        activateOnTyping: autocompleteWhileTyping,
+        override: overrideSources(
+          [...gatedCompletionSources, gateCompletionSource(bibtexCompletions, syntax)],
+          snippets,
+        ),
+        activateOnTyping: autocomplete,
         closeOnBlur: true,
       }),
       createBibtexLinter(),
@@ -751,12 +764,10 @@ function sourceToolsForPath(
     return [
       ...mathPreviewExtensions,
       typstMathPaste(),
-      ...(ghostCompletionEnabled
-        ? [ghostCompletion([...ghostCompletionSources, typstSlashCompletions], completionSyntax)]
-        : []),
+      ...ghostTools(wordGhosts, ghostSources, syntax, snippets),
       autocompletion({
-        override: [...gatedCompletionSources, typstSlashCompletions, calepinChunkOptionCompletions],
-        activateOnTyping: autocompleteWhileTyping,
+        override: overrideSources([...gatedCompletionSources, calepinChunkOptionCompletions], snippets),
+        activateOnTyping: autocomplete,
         closeOnBlur: true,
       }),
     ];
@@ -764,23 +775,18 @@ function sourceToolsForPath(
 
   const quarto = isQuartoDocumentPath(path);
   if (quarto) preloadChunkOptions();
-  const popupSources = isMarkdownDocumentPath(path)
-    ? [
-        ...gatedCompletionSources,
-        markdownSlashCompletions,
-        ...(quarto ? [quartoChunkOptionCompletions] : []),
-      ]
-    : gatedCompletionSources;
+  const popupSources = overrideSources(
+    quarto ? [...gatedCompletionSources, quartoChunkOptionCompletions] : gatedCompletionSources,
+    snippets,
+  );
   return [
     ...mathPreviewExtensions,
-    ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
-      ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
-      : []),
+    ...ghostTools(wordGhosts, ghostSources, syntax, snippets),
     ...(popupSources.length > 0
       ? [
           autocompletion({
             override: popupSources,
-            activateOnTyping: autocompleteWhileTyping,
+            activateOnTyping: autocomplete,
             closeOnBlur: true,
           }),
         ]
@@ -820,6 +826,7 @@ function editorPrefExtensions(
     highlightCurrentLine,
     cursorHeight,
   }: EditorPrefs,
+  snippets: boolean,
 ): Extension[] {
   const math = autoCloseBrackets && autoCloseMath;
   const scripts = autoCloseBrackets && groupScripts;
@@ -837,6 +844,7 @@ function editorPrefExtensions(
       ]
     : [];
   return [
+    snippets ? snippetAutoExpand() : [],
     autoCloseBrackets ? closeBrackets() : [],
     ...latexPairs,
     ...typstPairs,
@@ -854,6 +862,7 @@ export function CodeMirrorEditor({
   extraCompletionSourcesForPath,
   extraGhostCompletionSourcesForPath,
   extraKeymap,
+  snippets,
 }: Readonly<{
   active?: boolean;
   host: EditorHost;
@@ -864,6 +873,7 @@ export function CodeMirrorEditor({
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
+  snippets?: SnippetPort;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -884,6 +894,8 @@ export function CodeMirrorEditor({
   const suppressSyncRef = useRef(false);
   const synchronizeRef = useRef<() => void>(() => {});
   const sessionsRef = useRef(new EditorSessions(pathStatesRef.current));
+  const snippetsRef = useRef<SnippetPort | null>(snippets ?? null);
+  snippetsRef.current = snippets ?? null;
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
@@ -1036,14 +1048,18 @@ export function CodeMirrorEditor({
         foldGutter({ markerDOM: foldMarkerDOM }),
         foldMarkerTheme,
         editorPrefsCompartment.of(
-          editorPrefExtensions(initialPath, {
-            autoCloseBrackets,
-            autoCloseMath,
-            groupScripts,
-            cursorBlinking,
-            highlightCurrentLine,
-            cursorHeight,
-          }),
+          editorPrefExtensions(
+            initialPath,
+            {
+              autoCloseBrackets,
+              autoCloseMath,
+              groupScripts,
+              cursorBlinking,
+              highlightCurrentLine,
+              cursorHeight,
+            },
+            snippetsRef.current !== null,
+          ),
         ),
         stickyCompartment.of(
           stickyScrollEnabled ? stickyScrollFor(host, initialPath) : [],
@@ -1066,21 +1082,22 @@ export function CodeMirrorEditor({
         historyCompartment.of(history()),
         vscodeSearch(host.t),
         sourceToolsCompartment.of(
-          sourceToolsForPath(
-            initialPath,
-            completionSyntax,
-            initialCompletionSources,
-            initialGhostCompletionSources,
+          sourceToolsForPath(initialPath, {
+            syntax: completionSyntax,
+            completionSources: initialCompletionSources,
+            ghostSources: initialGhostCompletionSources,
             autocomplete,
-            ghostCompletionEnabled,
+            ghost: ghostCompletionEnabled,
             mathPreview,
-          ),
+            snippets: snippetsRef.current,
+          }),
         ),
         editability.of(editabilityExtensions((host.isEditLocked?.() ?? false) || initialSession?.readOnly === true)),
         EditorState.transactionFilter.of((transaction) =>
           transaction.docChanged && (host.isEditLocked?.() || sessionsRef.current.readOnly) ? [] : transaction),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
+        tabOrderKeymap(),
         keymap.of([...completionKeymap]),
         editorKeymapCompartment.of(keymap.of(editorCommandKeymap(editorKeys))),
         keymap.of([
@@ -1282,15 +1299,15 @@ export function CodeMirrorEditor({
     );
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
-        sourceToolsForPath(
-          activePath,
-          completionSyntax,
+        sourceToolsForPath(activePath, {
+          syntax: completionSyntax,
           completionSources,
-          ghostCompletionSources,
+          ghostSources: ghostCompletionSources,
           autocomplete,
-          ghostCompletionEnabled,
+          ghost: ghostCompletionEnabled,
           mathPreview,
-        ),
+          snippets: snippetsRef.current,
+        }),
       ),
       hostToolsCompartmentRef.current!.reconfigure(resolveForPath(extraExtensionsForPath, activePath)),
       spellCompartmentRef.current!.reconfigure(
@@ -1415,17 +1432,21 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        editorPrefExtensions(activePath, {
-          autoCloseBrackets,
-          autoCloseMath,
-          groupScripts,
-          cursorBlinking,
-          highlightCurrentLine,
-          cursorHeight,
-        }),
+        editorPrefExtensions(
+          activePath,
+          {
+            autoCloseBrackets,
+            autoCloseMath,
+            groupScripts,
+            cursorBlinking,
+            highlightCurrentLine,
+            cursorHeight,
+          },
+          snippets !== undefined,
+        ),
       ),
     });
-  }, [activePath, autoCloseBrackets, autoCloseMath, groupScripts, cursorBlinking, highlightCurrentLine, cursorHeight]);
+  }, [activePath, autoCloseBrackets, autoCloseMath, groupScripts, cursorBlinking, highlightCurrentLine, cursorHeight, snippets]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -1434,19 +1455,19 @@ export function CodeMirrorEditor({
     const path = host.getActivePath();
     view.dispatch({
       effects: compartment.reconfigure(
-        sourceToolsForPath(
-          path,
-          completionSyntax,
-          extraCompletionSourcesForPath?.(path) ?? [],
-          extraGhostCompletionSourcesForPath?.(path) ?? [],
+        sourceToolsForPath(path, {
+          syntax: completionSyntax,
+          completionSources: extraCompletionSourcesForPath?.(path) ?? [],
+          ghostSources: extraGhostCompletionSourcesForPath?.(path) ?? [],
           autocomplete,
-          ghostCompletionEnabled,
+          ghost: ghostCompletionEnabled,
           mathPreview,
-        ),
+          snippets: snippetsRef.current,
+        }),
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autocomplete, ghostCompletionEnabled, completionSyntax, mathPreview]);
+  }, [autocomplete, ghostCompletionEnabled, completionSyntax, mathPreview, snippets]);
 
   useEffect(() => {
     const view = viewRef.current;

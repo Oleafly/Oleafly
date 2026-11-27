@@ -1,15 +1,26 @@
+mod chat;
+mod create;
+mod history;
+mod linked;
+mod links;
+mod people;
+mod review;
+mod settings;
+mod spelling;
 #[cfg(test)]
 mod tests;
 
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
+use oleafly_net::MAX_MESSAGE_BYTES;
 use reqwest::header::{ACCEPT, CONTENT_TYPE, RETRY_AFTER};
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde_json::{json, Value};
 
 use super::tree_queue::MAX_UPLOAD_BYTES;
-use crate::client::{read_counted, BodyError, Http};
+use crate::client::{self, boundary, multipart, read_counted, BodyError, Http, SMALL_BODY_BYTES};
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::realtime::events::EntityId;
 use crate::realtime::tree::NodeKind;
@@ -17,14 +28,27 @@ use crate::realtime::ProjectPage;
 use crate::session::SessionHandle;
 
 const CSRF_HEADER: &str = "X-Csrf-Token";
-const GET_RETRIES: u32 = 2;
-const GET_PAUSE: Duration = Duration::from_millis(200);
 const DOWNLOAD_TRIES: u32 = 2;
 const MESSAGE_CHARS: usize = 200;
 
+pub use chat::CHAT_PAGE_LIMIT;
+pub use create::{create_project, CREATE_LIMIT_BYTES, CREATE_ROUTE};
+pub use history::{
+    DocAtVersion, HistoryError, HistoryLabel, HistoryUpdate, Restored, TreeDiffEntry, TreeOp,
+    UpdatesPage, HISTORY_DEADLINE, RESTORE_DEADLINE, ZIP_DEADLINE,
+};
+pub use linked::REFRESH_DEADLINE;
+pub use links::{
+    accept_invite, grant_token, parse_link, preview_token, split_link, ProjectLink, SplitLink,
+    TokenReply, LINK_DEADLINE,
+};
+pub use review::{DeleteAs, ReviewError, TrackChangesUpdate, MAX_COMMENT_UNITS, REVIEW_DEADLINE};
+pub use settings::{SettingsUpdate, COMPILERS};
+pub use spelling::SPELLING_DEADLINE;
+
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum RestError {
-    #[error("the server refused it ({status}): {message}")]
+    #[error("the server refused it ({status}){}", said(message))]
     Refused { status: u16, message: String },
     #[error("you can't change files in this project")]
     NotAllowed,
@@ -36,6 +60,8 @@ pub enum RestError {
     Lost(String),
     #[error("the server could not be reached: {0}")]
     Unreachable(String),
+    #[error("the server failed ({status}){}", said(message))]
+    ServerFailed { status: u16, message: String },
     #[error("the reply could not be read: {0}")]
     Unreadable(String),
     #[error("the download ended before its length")]
@@ -50,6 +76,7 @@ impl RestError {
             self,
             RestError::Lost(_)
                 | RestError::Unreachable(_)
+                | RestError::ServerFailed { .. }
                 | RestError::RateLimited(_)
                 | RestError::Unreadable(_)
                 | RestError::Short
@@ -64,7 +91,7 @@ pub struct Uploaded {
     pub hash: Option<String>,
 }
 
-pub struct TreeRest {
+pub struct ProjectRest {
     http: Http,
     page: Arc<ProjectPage>,
     project_id: String,
@@ -78,11 +105,21 @@ fn entity_type(kind: NodeKind) -> &'static str {
     }
 }
 
-fn sent_error(error: &reqwest::Error) -> RestError {
-    if error.is_connect() {
-        RestError::Unreachable(error.to_string())
+fn said(message: &str) -> String {
+    if message.is_empty() {
+        String::new()
     } else {
-        RestError::Lost(error.to_string())
+        format!(": {message}")
+    }
+}
+
+fn sent_error(error: reqwest::Error) -> RestError {
+    let connect = error.is_connect();
+    let words = error.without_url().to_string();
+    if connect {
+        RestError::Unreachable(words)
+    } else {
+        RestError::Lost(words)
     }
 }
 
@@ -111,6 +148,9 @@ fn short(text: &str) -> String {
 }
 
 fn refusal_message(text: &str) -> String {
+    if text.trim_start().starts_with('<') {
+        return String::new();
+    }
     serde_json::from_str::<Value>(text)
         .ok()
         .and_then(|value| {
@@ -123,8 +163,36 @@ fn refusal_message(text: &str) -> String {
 
 enum Judged {
     Fine(Response),
-    StaleToken,
+    StaleToken(String),
     Failed(RestError),
+}
+
+fn forbidden(message: String) -> RestError {
+    RestError::Refused {
+        status: 403,
+        message: if message.is_empty() {
+            "Forbidden".into()
+        } else {
+            message
+        },
+    }
+}
+
+fn transient(error: &RestError) -> bool {
+    matches!(
+        error,
+        RestError::Lost(_) | RestError::Unreachable(_) | RestError::ServerFailed { .. }
+    )
+}
+
+pub async fn within<T, E>(
+    limit: Duration,
+    timed_out: impl FnOnce(Duration) -> E,
+    call: impl Future<Output = Result<T, E>>,
+) -> Result<T, E> {
+    tokio::time::timeout(limit, call)
+        .await
+        .unwrap_or_else(|_| Err(timed_out(limit)))
 }
 
 async fn judged(response: Response) -> Judged {
@@ -133,17 +201,23 @@ async fn judged(response: Response) -> Judged {
         return Judged::Fine(response);
     }
     let wait = retry_after(&response);
-    let text = response.text().await.unwrap_or_default();
+    let text = client::text_capped(response, SMALL_BODY_BYTES)
+        .await
+        .unwrap_or_default();
     match status {
         StatusCode::UNAUTHORIZED => Judged::Failed(RestError::SignedOut),
         StatusCode::FORBIDDEN if refusal_message(&text) == "restricted" => {
             Judged::Failed(RestError::NotAllowed)
         }
-        StatusCode::FORBIDDEN => Judged::StaleToken,
+        StatusCode::FORBIDDEN => match refusal_message(&text) {
+            message if message.is_empty() || message == "Forbidden" => Judged::StaleToken(message),
+            message => Judged::Failed(forbidden(message)),
+        },
         StatusCode::TOO_MANY_REQUESTS => Judged::Failed(RestError::RateLimited(wait)),
-        status if status.is_server_error() => {
-            Judged::Failed(RestError::Unreachable(format!("HTTP {}", status.as_u16())))
-        }
+        status if status.is_server_error() => Judged::Failed(RestError::ServerFailed {
+            status: status.as_u16(),
+            message: refusal_message(&text),
+        }),
         status => Judged::Failed(RestError::Refused {
             status: status.as_u16(),
             message: refusal_message(&text),
@@ -151,46 +225,35 @@ async fn judged(response: Response) -> Judged {
     }
 }
 
-fn boundary() -> String {
-    format!(
-        "----oleafly{:016x}{:016x}",
-        rand::random::<u64>(),
-        rand::random::<u64>()
-    )
+fn redirected(http: &Http, response: &Response) -> Option<RestError> {
+    if !response.status().is_redirection() {
+        return None;
+    }
+    Some(match http.classify(response) {
+        Err(error) if error.kind == OnlineErrorKind::SessionExpired => RestError::SignedOut,
+        _ => RestError::Refused {
+            status: response.status().as_u16(),
+            message: "redirected".into(),
+        },
+    })
 }
 
-fn multipart(boundary: &str, name: &str, bytes: &[u8]) -> Vec<u8> {
-    let quoted: String = name
-        .chars()
-        .map(|character| match character {
-            '"' => "%22".to_string(),
-            '\r' | '\n' => " ".to_string(),
-            other => other.to_string(),
-        })
-        .collect();
-    let mut body = Vec::with_capacity(bytes.len() + 512);
-    body.extend_from_slice(
-        format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\n{quoted}\r\n"
-        )
-        .as_bytes(),
-    );
-    body.extend_from_slice(
-        format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"qqfile\"; filename=\"{quoted}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
-        )
-        .as_bytes(),
-    );
-    body.extend_from_slice(bytes);
-    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-    body
+async fn answered(http: &Http, response: Response) -> Result<Response, RestError> {
+    if let Some(error) = redirected(http, &response) {
+        return Err(error);
+    }
+    match judged(response).await {
+        Judged::Fine(response) => Ok(response),
+        Judged::StaleToken(message) => Err(forbidden(message)),
+        Judged::Failed(error) => Err(error),
+    }
 }
 
 async fn json_of(response: Response) -> Result<Value, RestError> {
-    response
-        .json::<Value>()
+    let body = client::read_capped(response, MAX_MESSAGE_BYTES)
         .await
-        .map_err(|error| RestError::Unreadable(error.to_string()))
+        .map_err(|error| RestError::Unreadable(error.to_string()))?;
+    serde_json::from_slice(&body).map_err(|error| RestError::Unreadable(error.to_string()))
 }
 
 fn id_in(value: &Value, key: &str) -> Result<EntityId, RestError> {
@@ -201,9 +264,9 @@ fn id_in(value: &Value, key: &str) -> Result<EntityId, RestError> {
         .ok_or_else(|| RestError::Unreadable(format!("no {key} in the reply")))
 }
 
-impl TreeRest {
-    pub fn new(http: Http, page: Arc<ProjectPage>, project_id: &str) -> TreeRest {
-        TreeRest {
+impl ProjectRest {
+    pub fn new(http: Http, page: Arc<ProjectPage>, project_id: &str) -> ProjectRest {
+        ProjectRest {
             http,
             page,
             project_id: project_id.to_string(),
@@ -240,7 +303,7 @@ impl TreeRest {
             .header(ACCEPT, "application/json")
             .send()
             .await
-            .map_err(|error| sent_error(&error))?;
+            .map_err(sent_error)?;
         session.absorb_headers(response.headers());
         Ok(response)
     }
@@ -256,39 +319,46 @@ impl TreeRest {
             let built = request(&session.cookie()).header(CSRF_HEADER, &token);
             match judged(self.send(session, built).await?).await {
                 Judged::Fine(response) => return Ok(response),
-                Judged::StaleToken if !refreshed => {
+                Judged::StaleToken(_) if !refreshed => {
                     refreshed = true;
                     self.reload(session).await?;
                 }
-                Judged::StaleToken => {
-                    return Err(RestError::Refused {
-                        status: 403,
-                        message: "Forbidden".into(),
-                    })
-                }
+                Judged::StaleToken(message) => return Err(forbidden(message)),
                 Judged::Failed(error) => return Err(error),
             }
         }
     }
 
     async fn get(&self, session: &SessionHandle, path: &str) -> Result<Response, RestError> {
-        let mut attempt = 0;
-        loop {
+        self.get_retrying(session, path, transient).await
+    }
+
+    async fn get_retrying(
+        &self,
+        session: &SessionHandle,
+        path: &str,
+        again: impl Fn(&RestError) -> bool,
+    ) -> Result<Response, RestError> {
+        let outcome = client::retried(again, || async {
             let request = self.http.get(path, &session.cookie());
-            let error = match self.send(session, request).await {
-                Ok(response) => match judged(response).await {
-                    Judged::Fine(response) => return Ok(response),
-                    Judged::StaleToken => RestError::NotAllowed,
-                    Judged::Failed(error) => error,
-                },
-                Err(error) => error,
-            };
-            let again = matches!(error, RestError::Lost(_) | RestError::Unreachable(_));
-            if !again || attempt >= GET_RETRIES {
-                return Err(error);
+            match judged(self.send(session, request).await?).await {
+                Judged::Fine(response) => Ok(response),
+                Judged::StaleToken(_) => Err(RestError::NotAllowed),
+                Judged::Failed(error) => Err(error),
             }
-            attempt += 1;
-            tokio::time::sleep(GET_PAUSE * attempt).await;
+        })
+        .await;
+        match outcome {
+            Ok(response) => Ok(response),
+            Err(error) => Err(self.signed_out_or(session, error).await),
+        }
+    }
+
+    async fn signed_out_or(&self, session: &SessionHandle, error: RestError) -> RestError {
+        if error == RestError::NotAllowed && self.http.signed_out(&session.cookie()).await {
+            RestError::SignedOut
+        } else {
+            error
         }
     }
 

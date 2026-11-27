@@ -16,6 +16,7 @@ export type SettingIssue =
   | { kind: "dictionaryLocale" }
   | { kind: "shortcut" }
   | { kind: "editorKey" }
+  | { kind: "snippetFileName" }
   | { kind: "reservedShortcut"; action: ReservedShortcutAction }
   | { kind: "detail"; message: string };
 
@@ -33,9 +34,7 @@ export function fail<T>(issue: SettingIssue, at?: string): Parsed<T> {
   return at === undefined ? { ok: false, issue } : { ok: false, issue, at };
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+export { isRecord } from "@/lib/is-record";
 
 const CONTROL_CHARACTERS = /\p{Cc}/u;
 const NUL_CHARACTER = /\0/u;

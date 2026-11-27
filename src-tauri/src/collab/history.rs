@@ -11,9 +11,13 @@ use oleafly_collab_protocol::ids::{AccountId, VersionId};
 use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, ProjectRole};
 use serde::Serialize;
 
-use super::commands::{now_ms, CollabCommandError};
+use super::commands::{now_ms, ByBackend, CollabCommandError};
+use super::live::overleaf::commands::live_now;
+use super::live::overleaf::history::CollabHistoryStatus;
 use super::state::CollabState;
 use super::suggesting::refused;
+
+type Page = ByBackend<HistoryPage, HistoryPage<String, String>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -401,14 +405,67 @@ pub async fn collab_history_list(
     project_id: String,
     before: Option<String>,
     limit: usize,
-) -> Result<HistoryPage, CollabCommandError> {
+) -> Result<Page, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_list(before.as_deref(), limit, now_ms())
+            .await
+            .map(ByBackend::Online)
+            .map_err(CollabCommandError::from);
+    }
     with_copy(state.inner(), &project_id, move |versions| {
         let doc = versions.doc();
         let page = doc.history(before.as_deref(), limit);
         Ok(page_with_paths(doc, page))
     })
     .await
+    .map(ByBackend::Server)
     .map_err(CollabCommandError::from)
+}
+
+pub(super) fn server_role(state: &CollabState, project_id: &str) -> Option<ProjectRole> {
+    super::live::read_live(project_id, LiveProject::role).or_else(|| {
+        load_binding(state.paths().ok()?, project_id)
+            .ok()
+            .flatten()
+            .map(|binding| binding.role)
+    })
+}
+
+#[tauri::command]
+pub async fn collab_history_status(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+) -> Result<CollabHistoryStatus, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return Ok(live.history_status());
+    }
+    let role = server_role(state.inner(), &project_id);
+    let edits = role.is_some_and(|role| project_role_allows(role, ProjectAction::Edit));
+    Ok(CollabHistoryStatus {
+        available: role.is_some(),
+        name: edits,
+        restore: edits,
+        download: false,
+        limited: false,
+    })
+}
+
+#[tauri::command]
+pub async fn collab_history_zip(
+    app_state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    version_id: String,
+    dest: String,
+) -> Result<u64, CollabCommandError> {
+    let live = live_now(&project_id)
+        .ok_or_else(|| CollabCommandError::from(oleafly_collab::history::history_unavailable()))?;
+    let size = live
+        .history_zip(&version_id, dest.clone())
+        .await
+        .map_err(CollabCommandError::from)?;
+    crate::commands::allow_reveal_export(&dest, &app_state).await;
+    Ok(size)
 }
 
 #[tauri::command]
@@ -418,6 +475,12 @@ pub async fn collab_history_file(
     version_id: String,
     path: String,
 ) -> Result<FileAtVersion, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_file(&version_id, &path)
+            .await
+            .map_err(CollabCommandError::from);
+    }
     with_copy(state.inner(), &project_id, move |versions| {
         file_in(versions, &version_id, &path)
     })
@@ -432,6 +495,12 @@ pub async fn collab_history_changed_files(
     from_version: String,
     to_version: String,
 ) -> Result<Vec<String>, CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_changed(&from_version, &to_version)
+            .await
+            .map_err(CollabCommandError::from);
+    }
     with_copy(state.inner(), &project_id, move |versions| {
         changed_in(versions, &from_version, &to_version)
     })
@@ -447,6 +516,12 @@ pub async fn collab_history_restore(
     version_id: String,
     paths: Option<Vec<String>>,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_restore(&version_id, paths)
+            .await
+            .map_err(CollabCommandError::from);
+    }
     let files = match paths {
         Some(paths) => {
             let version = version_id.clone();
@@ -473,6 +548,12 @@ pub async fn collab_version_name(
     version_id: String,
     name: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_name(&version_id, &name)
+            .await
+            .map_err(CollabCommandError::from);
+    }
     super::live::comment_live(&project_id, |live, who| {
         name_in(live, who, &version_id, &name, now_ms())
     })
@@ -485,6 +566,12 @@ pub async fn collab_version_unname(
     project_id: String,
     version_id: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(live) = live_now(&project_id) {
+        return live
+            .history_unname(&version_id)
+            .await
+            .map_err(CollabCommandError::from);
+    }
     super::live::comment_live(&project_id, |live, _| unname_in(live, &version_id))
         .map(|_| ())
         .map_err(CollabCommandError::from)

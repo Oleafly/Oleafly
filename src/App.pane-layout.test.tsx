@@ -315,10 +315,12 @@ import { togglePreviewPane } from "@/lib/compile-preview";
 import type { LayoutPreset } from "@/store/settings";
 import {
   DEFAULT_PANE_LAYOUT,
+  layoutKey,
   movePane,
   panelIdOf,
   splitsOf,
   usePaneLayoutStore,
+  withLiveSizes,
   type DropTarget,
   type PaneId,
 } from "@/store/pane-layout";
@@ -762,6 +764,111 @@ describe("moved pane layout", () => {
     expect(sizes("sidebar", "editorpdf", "assistant")).toEqual(band);
     expect(sizes("editor", "pdf")).toEqual(documentSizes);
     expect(sizes("content-band", "terminal")).toEqual(terminal);
+  });
+
+  it.each([
+    ["the assistant before the sidebar", "assistant", { kind: "pane", pane: "sidebar", side: "left" }],
+    ["the preview before the editor", "pdf", { kind: "pane", pane: "editor", side: "left" }],
+    ["the terminal above the band", "terminal", { kind: "pane", pane: "sidebar", side: "top" }],
+  ] as const)("reorders %s inside one split without the layout failing", async (_name, pane, target) => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    openTerminal();
+    move(pane, target);
+    await act(async () => {});
+    move(pane, target.side === "left" ? { ...target, side: "right" } : { kind: "edge", side: "bottom" });
+    await act(async () => {});
+    move(pane, target);
+    await act(async () => {});
+    expect(errors.mock.calls.flat().map(String).join("\n").slice(0, 400)).toBe("");
+    expect(screen.queryByText("The panel layout hit a snag. Your project files are safe on disk.")).toBeNull();
+    inPanel("editor-surface", "editor");
+    inPanel("preview-surface", "pdf");
+  });
+
+  it("keeps reporting the sizes on screen after the panes are built again", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    press("h-mid", "ArrowRight");
+    press("h-mid", "ArrowRight");
+    const live = () => {
+      const documentSplit = splitsOf(withLiveSizes(usePaneLayoutStore.getState().layout)).find((node) => node.id === "document");
+      return documentSplit?.sizes.map(Math.round);
+    };
+    const onScreen = sizes("editor", "pdf").map(Math.round);
+    expect(live()).toEqual(onScreen);
+    act(() => usePaneLayoutStore.getState().remount());
+    await act(async () => {});
+    expect(sizes("editor", "pdf").map(Math.round)).toEqual(onScreen);
+    expect(live()).toEqual(onScreen);
+  });
+
+  describe("when the layout fails", () => {
+    let clock = 0;
+    const snag = "The panel layout hit a snag. Your project files are safe on disk.";
+
+    async function failingLayout(failures: number) {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      clock += 60_000;
+      vi.spyOn(Date, "now").mockReturnValue(clock);
+      savedLayout({ showTree: true, assistantOpen: true });
+      await renderApp();
+      const host = screen.getByTestId("editor-surface").parentElement;
+      const append = HTMLElement.prototype.appendChild;
+      let left = failures;
+      vi.spyOn(HTMLElement.prototype, "appendChild").mockImplementation(function <T extends Node>(this: HTMLElement, child: T) {
+        if ((child as Node) === host && left > 0) {
+          left -= 1;
+          throw new Error("Panel constraints not found for index 2");
+        }
+        return append.call(this, child) as T;
+      });
+      const mounts = { ...mocks.surfaceMounts };
+      return { mounts };
+    }
+
+    it("builds the panes again and keeps what is open in them", async () => {
+      const { mounts } = await failingLayout(1);
+      move("terminal", { kind: "edge", side: "top" });
+      await act(async () => {});
+      expect(screen.queryByText(snag)).toBeNull();
+      inPanel("editor-surface", "editor");
+      expect(layoutKey(usePaneLayoutStore.getState().layout)).not.toBe(layoutKey(DEFAULT_PANE_LAYOUT));
+      expect(mocks.surfaceMounts).toEqual(mounts);
+    });
+
+    it("goes back to the default arrangement when building it again fails too", async () => {
+      await failingLayout(2);
+      move("terminal", { kind: "edge", side: "top" });
+      await act(async () => {});
+      expect(screen.queryByText(snag)).toBeNull();
+      inPanel("editor-surface", "editor");
+      expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
+    });
+
+    it("shows the reload message only when the default arrangement fails as well", async () => {
+      const { mounts } = await failingLayout(Number.POSITIVE_INFINITY);
+      move("terminal", { kind: "edge", side: "top" });
+      await act(async () => {});
+      expect(screen.getByText(snag)).toBeInTheDocument();
+      expect(mocks.surfaceMounts).toEqual(mounts);
+    });
+  });
+
+  it("grows the pane on the left of a separator after the panes in its split swap places", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    move("pdf", { kind: "pane", pane: "editor", side: "left" });
+    await act(async () => {});
+    expect(shapeOf(rootGroup())[0]).toEqual({
+      "content-band": ["sidebar", "h-tree", { editorpdf: ["pdf", "h-mid", "editor"] }, "h-assistant", "assistant"],
+    });
+    const before = flexOf("pdf");
+    press("h-mid", "ArrowRight");
+    expect(flexOf("pdf")).toBeGreaterThan(before);
   });
 
   it("moves a pane dropped on another pane's edge or on the window edge", async () => {

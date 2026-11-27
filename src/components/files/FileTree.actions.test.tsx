@@ -1103,6 +1103,7 @@ describe("FileTree row actions", () => {
     openRowMenu("main.tex");
     const menu = await screen.findByRole("menu");
     expect(within(menu).getByText(files.setMain)).toBeInTheDocument();
+    for (const item of within(menu).getAllByRole("menuitem")) expect(item.querySelector("svg")).not.toBeNull();
     fireEvent.click(within(menu).getByText(enCommon.actions.open));
 
     await waitFor(() => expect(useFilesStore.getState().activePath).toBe("main.tex"));

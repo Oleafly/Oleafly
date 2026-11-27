@@ -12,13 +12,13 @@ use super::catch_up::History;
 use super::state::{iso_time, JoinKind, Notice, State};
 use super::{
     Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
-    OverleafSession, Seed, SessionConfig, SessionTuning, SignedIn, UnsentDoc,
+    OverleafSession, Resolution, Seed, Seeded, SessionConfig, SessionTuning, SignedIn, UnsentDoc,
 };
 use crate::client::Http;
-use crate::live::doc::DocFault;
+use crate::live::doc::{DocFault, ReviewOp};
 use crate::live::format::{operation_of, pieces_from_json, FormatState};
 use crate::live::history_ot::RawOp;
-use crate::live::join::parse_join;
+use crate::live::join::{parse_join, JoinFailure, JoinedDoc};
 use crate::live::journal::{journal_dir, DocRecord, Journal, ProjectManifest, SCHEMA};
 use crate::live::{AppliedUpdate, DocId, PublicId};
 use crate::realtime::connection::Carrier;
@@ -79,6 +79,11 @@ struct Seen {
     external: Vec<DocId>,
     replaced: Vec<DocId>,
     flags: Vec<(bool, bool)>,
+    review: Vec<super::ReviewChange>,
+    chat: Vec<super::ChatChange>,
+    filling: Vec<(usize, usize)>,
+    seeded: Vec<(String, Seeded)>,
+    remote_edits: Vec<(DocId, Option<String>)>,
 }
 
 #[derive(Default)]
@@ -208,6 +213,28 @@ impl LivePort for Port {
     fn members_changed(&self) {
         self.seen().members_changed += 1;
     }
+
+    fn review_changed(&self, change: super::ReviewChange) {
+        self.seen().review.push(change);
+    }
+
+    fn chat_changed(&self, change: super::ChatChange) {
+        self.seen().chat.push(change);
+    }
+
+    fn filling(&self, done: usize, total: usize) {
+        self.seen().filling.push((done, total));
+    }
+
+    fn seeded(&self, path: &str, outcome: Seeded) {
+        self.seen().seeded.push((path.to_string(), outcome));
+    }
+
+    fn remote_edit(&self, doc: &DocId, user_id: Option<&str>) {
+        self.seen()
+            .remote_edits
+            .push((doc.clone(), user_id.map(str::to_string)));
+    }
 }
 
 struct Rig {
@@ -257,6 +284,7 @@ impl Rig {
             carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
             tuning,
             seeds: Vec::new(),
+            fill: false,
         }
     }
 
@@ -563,9 +591,13 @@ async fn a_broadcast_for_an_unknown_doc_joins_it_and_applies_buffered_events() {
             live.text(&intro).as_deref() == Some(">Intro one two three")
         })
         .await;
+        let once = match format {
+            MockFormat::ShareJs => 1,
+            MockFormat::HistoryOt => 2,
+        };
         assert_eq!(
             rig.joins_except(&[&bob.public_id]),
-            vec![intro.0.clone()],
+            vec![intro.0.clone(); once],
             "{format:?}"
         );
         assert!(port.seen().stopped.is_empty(), "{format:?}");
@@ -710,7 +742,7 @@ async fn joining_three_hundred_docs_is_paced() {
         .map(|index| (format!("{index:024x}"), format!("c{index:03}.tex")))
         .collect();
     let mut state = watcher(&docs);
-    state.start_history(History::default(), Duration::from_secs(1));
+    state.start_history(History::default(), Duration::from_secs(1), None);
     let start = Instant::now();
     let mut joined = 0;
     for second in 0..300 {
@@ -1026,6 +1058,7 @@ async fn a_journal_from_another_user_is_not_sent() {
                 inflight: None,
                 provisional: false,
                 path: None,
+                queued: Vec::new(),
             }),
         );
         journal.flush().unwrap();
@@ -1518,6 +1551,8 @@ async fn signing_in_again_as_the_same_user_while_live_sends_nothing_twice() {
     })
     .await;
     tab.type_end(&live, " one");
+    assert!(live.settle(WAIT).await);
+    assert_eq!(rig.updates_for(&main).len(), 1);
     let before = rig.connection_of("alice").unwrap();
     let alice = rig.mock.user("alice");
     assert_eq!(live.signed_in(rig.handle_for(&alice)), SignedIn::Resumed);
@@ -1577,6 +1612,7 @@ async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
                 inflight: None,
                 provisional: false,
                 path: None,
+                queued: Vec::new(),
             }),
         );
         journal.flush().unwrap();
@@ -1938,7 +1974,7 @@ fn a_doc_id_that_cannot_name_a_journal_file_is_never_joined_or_journaled() {
         .open("plain.tex", sink, None)
         .expect("the plain doc opens");
     state
-        .editor_change(&evil, opened.rev, insertion(0, 0, "typed"))
+        .editor_change(&evil, opened.rev, insertion(0, 0, "typed"), None)
         .unwrap();
     let joins = state.next_joins(Instant::now(), 8);
     assert_eq!(joins, vec![(plain.clone(), JoinKind::Fresh)]);
@@ -1965,6 +2001,7 @@ fn a_seed_with_characters_the_service_cannot_take_says_so() {
     let mut state = watcher(&[(doc.0.clone(), "a.tex".into())]);
     state.seed(vec![Seed {
         path: "a.tex".into(),
+        doc: None,
         base: None,
         local: "Hi 😀".into(),
     }]);
@@ -1993,6 +2030,27 @@ fn a_call_that_timed_out_gets_more_time_on_the_next_try() {
     assert_eq!(super::driver::patience(base, 99), base * 16);
 }
 
+fn beside<T: Send + 'static>(
+    live: &Arc<OverleafSession>,
+    work: impl FnOnce(&OverleafSession) -> T + Send + 'static,
+) -> (T, Duration) {
+    let worker = {
+        let live = Arc::clone(live);
+        std::thread::spawn(move || work(&live))
+    };
+    let asker = {
+        let live = Arc::clone(live);
+        std::thread::spawn(move || {
+            std::thread::sleep(SLOW_DISK / 4);
+            let asked = Instant::now();
+            live.nodes();
+            asked.elapsed()
+        })
+    };
+    let waited = asker.join().unwrap();
+    (worker.join().unwrap(), waited)
+}
+
 #[tokio::test]
 async fn opening_a_doc_reads_the_disk_without_holding_the_session() {
     let rig = Rig::start(project()).await;
@@ -2002,15 +2060,7 @@ async fn opening_a_doc_reads_the_disk_without_holding_the_session() {
     let notes = rig.id(NOTES);
     assert_eq!(live.text(&notes), None);
     port.slow_disk.store(true, Ordering::SeqCst);
-    let opener = {
-        let live = Arc::clone(&live);
-        std::thread::spawn(move || live.open(NOTES, Arc::new(|_| {})))
-    };
-    tokio::time::sleep(SLOW_DISK / 4).await;
-    let asked = Instant::now();
-    let _ = live.text(&notes);
-    let waited = asked.elapsed();
-    let opened = opener.join().unwrap();
+    let (opened, waited) = beside(&live, |live| live.open(NOTES, Arc::new(|_| {})));
     port.slow_disk.store(false, Ordering::SeqCst);
     assert_eq!(opened.map(|opened| opened.text), Some("Notes".to_string()));
     assert!(waited < SLOW_DISK / 2, "{waited:?}");
@@ -2118,8 +2168,382 @@ fn recorded_sessions_replay_through_the_session_state() {
     assert!(history_ot.0 >= 1, "history-ot {history_ot:?}");
 }
 
+#[tokio::test]
+async fn remote_edit_carries_the_author() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let (main, intro) = (rig.id(MAIN), rig.id(INTRO));
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("alice joins the open doc", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    tab.type_end(&live, "!");
+    eventually("alice's edit is sent", || {
+        rig.mock.doc_text(&main.0) == "Hello!"
+    })
+    .await;
+    let mut bob = rig.mock.peer("bob");
+    bob.join(&main.0);
+    bob.join(&intro.0);
+    bob.type_at(&main.0, 5, " world");
+    bob.type_at(&intro.0, 0, "An ");
+    eventually("the tab follows bob", || tab.text(&live) == "Hello world!").await;
+    eventually("the unopened doc follows bob", || {
+        live.text(&intro).as_deref() == Some("An Intro")
+    })
+    .await;
+    let bob_id = Some(rig.user_id("bob"));
+    eventually("both of bob's edits are told", || {
+        let told = &port.seen().remote_edits;
+        told.contains(&(main.clone(), bob_id.clone()))
+            && told.contains(&(intro.clone(), bob_id.clone()))
+    })
+    .await;
+    assert!(port
+        .seen()
+        .remote_edits
+        .iter()
+        .all(|(_, author)| *author == bob_id));
+    live.stop().await;
+}
+
+#[test]
+fn remote_edits_are_told_once_per_doc_and_author_in_a_delivery() {
+    let port = Port::new(&[]);
+    let main = DocId("aaaaaaaaaaaaaaaaaaaaaaaa".into());
+    let notes = DocId("bbbbbbbbbbbbbbbbbbbbbbbb".into());
+    let bob = Some("u-bob".to_string());
+    let edits = || {
+        vec![
+            Notice::RemoteEdit(main.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), None),
+            Notice::RemoteEdit(notes.clone(), bob.clone()),
+            Notice::RemoteEdit(main.clone(), None),
+        ]
+    };
+    super::state::deliver(port.as_ref(), edits());
+    let once = vec![
+        (main.clone(), bob.clone()),
+        (main.clone(), None),
+        (notes.clone(), bob.clone()),
+    ];
+    assert_eq!(port.seen().remote_edits, once);
+    super::state::deliver(port.as_ref(), edits());
+    assert_eq!(port.seen().remote_edits, [once.clone(), once].concat());
+}
+
+#[test]
+fn a_buffered_edit_is_told_once_when_its_join_lands() {
+    let docs = vec![
+        ("aaaaaaaaaaaaaaaaaaaaaaaa".to_string(), "a.tex".to_string()),
+        ("bbbbbbbbbbbbbbbbbbbbbbbb".to_string(), "b.tex".to_string()),
+    ];
+    let mut state = watcher(&docs);
+    let (a, b) = (DocId(docs[0].0.clone()), DocId(docs[1].0.clone()));
+    let update = |doc: &DocId, v: u64, op: Value, user: &str| {
+        let meta = json!({ "source": format!("P.{user}"), "user_id": user });
+        AppliedUpdate::from_value(&json!({ "v": v, "op": op, "meta": meta }), Some(doc)).unwrap()
+    };
+    let comment = json!([{ "p": 0, "c": "Hi", "t": "cccccccccccccccccccccccc" }]);
+    state.on_applied(update(&a, 0, json!([{ "p": 0, "i": "Hi " }]), "bob"));
+    state.on_applied(update(&a, 1, comment, "carol"));
+    state.on_applied(update(&a, 2, json!([{ "p": 8, "i": "!" }]), "dave"));
+    state.on_applied(update(&b, 0, json!([{ "p": 0, "i": "Lost " }]), "erin"));
+    state.deliver();
+    assert!(state.port.seen().remote_edits.is_empty());
+    let reply = |text: &str, version: u64, kind: &str| {
+        vec![
+            Value::Null,
+            json!([text]),
+            json!(version),
+            json!([]),
+            json!({}),
+            json!(kind),
+        ]
+    };
+    let joined = parse_join(&a, &reply("Hi there", 2, "sharejs-text-ot"));
+    state.joined(&a, JoinKind::Fresh, joined);
+    let refused = parse_join(&b, &reply("b", 0, "sharejs-json"));
+    state.joined(&b, JoinKind::Fresh, refused);
+    state.deliver();
+    state.deliver();
+    assert_eq!(state.text(&a).as_deref(), Some("Hi there!"));
+    assert_eq!(
+        state.port.seen().remote_edits,
+        vec![(a.clone(), Some("bob".into())), (a, Some("dave".into()))]
+    );
+}
+
+fn watched_doc() -> (Watcher, DocId) {
+    let id = "aaaaaaaaaaaaaaaaaaaaaaaa".to_string();
+    let state = watcher(&[(id.clone(), "a.tex".to_string())]);
+    (state, DocId(id))
+}
+
+fn history_ot_join(
+    doc: &DocId,
+    text: &str,
+    version: u64,
+    updates: &[Value],
+) -> Result<JoinedDoc, JoinFailure> {
+    parse_join(
+        doc,
+        &[
+            Value::Null,
+            json!({ "content": text }),
+            json!(version),
+            json!(updates),
+            json!({}),
+            json!("history-ot"),
+        ],
+    )
+}
+
+fn based_on(v: u64, scans: Value, user: &str) -> Value {
+    json!({
+        "v": v,
+        "op": [{ "textOperation": scans }],
+        "meta": { "source": format!("P.{user}"), "user_id": user },
+    })
+}
+
+fn broadcast(state: &mut Watcher, doc: &DocId, update: &Value) {
+    state.on_applied(AppliedUpdate::from_value(update, Some(doc)).unwrap());
+}
+
+fn joins(state: &mut Watcher) -> Vec<(DocId, JoinKind)> {
+    state.next_joins(Instant::now(), 8)
+}
+
+fn editors_of(state: &Watcher) -> Vec<String> {
+    state
+        .port
+        .seen()
+        .remote_edits
+        .iter()
+        .map(|(_, user)| user.clone().unwrap_or_default())
+        .collect()
+}
+
+#[test]
+fn a_history_ot_edit_buffered_by_a_fresh_join_is_caught_up_not_skipped_by_its_base_version() {
+    let (mut state, a) = watched_doc();
+    let late = based_on(1, json!([3, "!"]), "bob");
+    broadcast(&mut state, &a, &late);
+    assert_eq!(joins(&mut state), [(a.clone(), JoinKind::Fresh)]);
+    state.joined(&a, JoinKind::Fresh, history_ot_join(&a, "abc", 2, &[]));
+    assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(2))]);
+    let caught = history_ot_join(&a, "abc!", 3, std::slice::from_ref(&late));
+    state.joined(&a, JoinKind::From(2), caught);
+    state.deliver();
+    assert!(joins(&mut state).is_empty());
+    assert_eq!(state.text(&a).as_deref(), Some("abc!"));
+    assert_eq!(state.doc(&a).unwrap().version(), 3);
+    assert_eq!(editors_of(&state), ["bob"]);
+    broadcast(&mut state, &a, &based_on(3, json!([4, "?"]), "bob"));
+    assert_eq!(state.text(&a).as_deref(), Some("abc!?"));
+}
+
+#[test]
+fn a_history_ot_catch_up_folds_only_the_edits_it_lists() {
+    let (mut state, a) = watched_doc();
+    state.open("a.tex", Arc::new(|_| {}), None);
+    assert_eq!(joins(&mut state), [(a.clone(), JoinKind::Fresh)]);
+    state.joined(&a, JoinKind::Fresh, history_ot_join(&a, "abc", 3, &[]));
+    assert!(joins(&mut state).is_empty());
+    state.update_error(&a, "the updater lost its place");
+    assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(3))]);
+    let listed = based_on(3, json!([3, "!"]), "bob");
+    let delayed = based_on(3, json!(["> ", 4]), "dave");
+    let newer = based_on(3, json!([6, "#"]), "carol");
+    broadcast(&mut state, &a, &listed);
+    broadcast(&mut state, &a, &newer);
+    let reply = history_ot_join(&a, "> abc!", 5, &[listed, delayed.clone()]);
+    state.joined(&a, JoinKind::From(3), reply);
+    assert_eq!(state.text(&a).as_deref(), Some("> abc!#"));
+    assert_eq!(state.doc(&a).unwrap().version(), 6);
+    broadcast(&mut state, &a, &delayed);
+    state.deliver();
+    assert_eq!(state.text(&a).as_deref(), Some("> abc!#"));
+    assert_eq!(state.doc(&a).unwrap().version(), 6);
+    assert!(joins(&mut state).is_empty());
+    assert_eq!(editors_of(&state), ["bob", "carol", "dave"]);
+}
+
+#[test]
+fn our_own_buffered_history_ot_ack_still_lands_after_a_catch_up() {
+    let (mut state, a) = watched_doc();
+    state.open("a.tex", Arc::new(|_| {}), None);
+    joins(&mut state);
+    state.joined(&a, JoinKind::Fresh, history_ot_join(&a, "abc", 3, &[]));
+    assert!(state
+        .local_edit_with(&a, |_| Some(insertion(3, 3, "d")), None)
+        .unwrap());
+    let sent = state.next_sends(Instant::now());
+    assert_eq!(sent[0].v, 3);
+    state.update_error(&a, "the updater lost its place");
+    assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(3))]);
+    let external =
+        json!({ "v": 3, "op": [{ "textOperation": ["# ", 3] }], "meta": { "user_id": "bob" } });
+    broadcast(&mut state, &a, &external);
+    broadcast(&mut state, &a, &json!({ "v": 3 }));
+    let reply = history_ot_join(&a, "# abc", 4, &[external]);
+    state.joined(&a, JoinKind::From(3), reply);
+    assert_eq!(state.text(&a).as_deref(), Some("# abcd"));
+    let known = state.doc(&a).unwrap();
+    assert!(known.is_settled());
+    assert_eq!(known.version(), 5);
+}
+
+#[test]
+fn a_held_history_ot_doc_takes_the_edits_it_missed_once_it_is_resolved() {
+    for choice in [Resolution::Mine, Resolution::Theirs] {
+        let (mut state, a) = watched_doc();
+        let opened = state
+            .open("a.tex", Arc::new(|_| {}), Some("abc".into()))
+            .unwrap();
+        let mut mine = TextOperation::new();
+        mine.retain(1).delete(1).insert("X").retain(1);
+        state.editor_change(&a, opened.rev, mine, None).unwrap();
+        assert_eq!(joins(&mut state), [(a.clone(), JoinKind::Fresh)]);
+        let missed = based_on(1, json!([2, "Z", -1]), "bob");
+        broadcast(&mut state, &a, &missed);
+        state.joined(&a, JoinKind::Fresh, history_ot_join(&a, "aYc", 2, &[]));
+        state.deliver();
+        let seen: Vec<MergeReview> = state
+            .port
+            .seen()
+            .merged
+            .iter()
+            .map(|(_, review)| review.clone())
+            .collect();
+        assert_eq!(
+            seen,
+            [MergeReview::NeedsReview {
+                mine: "aXc".into(),
+                theirs: "aYc".into()
+            }]
+        );
+        let later = based_on(3, json!(["> ", 3]), "carol");
+        broadcast(&mut state, &a, &later);
+        assert!(joins(&mut state).is_empty());
+        state.resolve(&a, choice).unwrap();
+        assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(2))]);
+        let caught = history_ot_join(&a, "> aYZ", 4, &[missed, later]);
+        state.joined(&a, JoinKind::From(2), caught);
+        let expected = match choice {
+            Resolution::Mine => "> aXZ",
+            Resolution::Theirs => "> aYZ",
+        };
+        assert_eq!(state.text(&a).as_deref(), Some(expected), "{choice:?}");
+        assert_eq!(state.doc(&a).unwrap().version(), 4, "{choice:?}");
+    }
+}
+
+#[test]
+fn losing_access_reads_the_disk_only_after_the_session_lets_go() {
+    for (disk, review) in [
+        ("abc!", MergeReview::InFile),
+        (
+            "abc",
+            MergeReview::Kept {
+                text: "abc!".into(),
+            },
+        ),
+    ] {
+        let (mut state, a) = watched_doc();
+        state
+            .port
+            .disk
+            .lock()
+            .unwrap()
+            .insert("a.tex".into(), disk.into());
+        state.open("a.tex", Arc::new(|_| {}), None);
+        joins(&mut state);
+        state.joined(&a, JoinKind::Fresh, sharejs_join(&a, "abc", 1));
+        assert!(state
+            .local_edit_with(&a, |_| Some(insertion(3, 3, "!")), None)
+            .unwrap());
+        state.deliver();
+        state.port.slow_disk.store(true, Ordering::SeqCst);
+        let asked = Instant::now();
+        state.end(LiveEnd::Removed);
+        assert!(asked.elapsed() < SLOW_DISK / 2, "{:?}", asked.elapsed());
+        state.deliver();
+        assert_eq!(state.port.seen().merged, [(a, review)]);
+        assert_eq!(state.port.ended(), Some(LiveEnd::Removed));
+    }
+}
+
+fn sharejs_join(doc: &DocId, text: &str, version: u64) -> Result<JoinedDoc, JoinFailure> {
+    parse_join(
+        doc,
+        &[
+            Value::Null,
+            json!([text]),
+            json!(version),
+            json!([]),
+            json!({}),
+            json!("sharejs-text-ot"),
+        ],
+    )
+}
+
+#[test]
+fn a_comment_queued_before_a_conflict_is_sent_once_it_is_resolved() {
+    for choice in [Resolution::Mine, Resolution::Theirs] {
+        let (mut state, a) = watched_doc();
+        state.open("a.tex", Arc::new(|_| {}), None);
+        joins(&mut state);
+        state.joined(&a, JoinKind::Fresh, sharejs_join(&a, "Hello world", 1));
+        let mut mine = TextOperation::new();
+        mine.retain(6).delete(5).insert("there");
+        assert!(state.local_edit_with(&a, |_| Some(mine), None).unwrap());
+        let thread = "cccccccccccccccccccccccc";
+        let anchor = ReviewOp::Anchor {
+            thread: thread.into(),
+            ranges: vec![(0, 5)],
+            ride: false,
+        };
+        state.queue_doc_review(&a, anchor).unwrap();
+        let reserved = state.reserve_comment(&a, 2, 5, None).unwrap();
+        state.update_error(&a, "the updater lost its place");
+        assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(1))]);
+        state.joined(&a, JoinKind::From(1), Err(JoinFailure::MissingOps));
+        assert_eq!(joins(&mut state), [(a.clone(), JoinKind::Fresh)]);
+        state.joined(&a, JoinKind::Fresh, sharejs_join(&a, "Hello earth", 9));
+        assert!(state.next_sends(Instant::now()).is_empty());
+        let posted = "dddddddddddddddddddddddd";
+        state
+            .finish_comment(&a, reserved, posted, Some(None))
+            .unwrap();
+        state.resolve(&a, choice).unwrap();
+        assert_eq!(joins(&mut state), [(a.clone(), JoinKind::From(9))]);
+        state.joined(&a, JoinKind::From(9), sharejs_join(&a, "Hello earth", 9));
+        for (version, quote, at, thread) in [(9, "Hello", 0, thread), (10, "llo", 2, posted)] {
+            let sent = state.next_sends(Instant::now());
+            assert_eq!(
+                sent[0].op,
+                json!([{ "p": at, "c": quote, "t": thread }]),
+                "{choice:?}"
+            );
+            broadcast(&mut state, &a, &json!({ "v": version }));
+        }
+    }
+}
+
 mod access;
+mod chat;
 mod faults;
+mod fill;
+mod history;
+mod linked;
+mod outside;
 mod presence;
 mod resilience;
+mod review;
 mod tree;

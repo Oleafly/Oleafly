@@ -7,7 +7,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
-import { collabEditorSlot } from "@/components/editor/cm/collab-slot";
+import { collabEditorSlot } from "@/components/editor/cm/editor-slots";
 import { TreeRowPeers, type PeerMarks } from "@/components/collab/CollabSlots";
 import type { CollabPresence, CollabProjectMember } from "@/lib/tauri";
 

@@ -1873,32 +1873,18 @@
       "disconnectFailed": "alphaXiv の接続を解除できませんでした。もう一度お試しください。"
     },
     "cookies": {
-      "confirmTitle": "Cookie の読み込みの確認",
-      "detecting": "インストール済みのブラウザのプロファイルを探しています...",
-      "dialogDescription": "インストール済みのブラウザのプロファイルを 1 つ選んでください。Oleafly は、あなたが内容を確認して読み込みを承認したあとにだけ読み取ります。Chromium 系の cookie は macOS のキーチェーンを使ってローカルで復号します。Oleafly が cookie の値を Oleafly のサービスに送ることはありません。",
-      "dialogTitle": "ブラウザの cookie を読み込む",
-      "empty": "対応しているブラウザのプロファイルは見つかりませんでした。",
-      "errors": {
-        "chooseProfile": "利用できるブラウザのプロファイルを選んでください。"
-      },
-      "profileGroupLabel": "ブラウザのプロファイル",
-      "profileLegend": "ブラウザのプロファイル",
-      "review": "読み込む内容を確認",
-      "status": {
-        "available": "利用できます",
-        "comingSoon": "近日対応",
-        "noCookieStore": "cookie の保存領域がありません",
-        "notInstalled": "未インストール"
-      },
-      "tryAgain": "再試行",
-      "label": "ブラウザのサインイン情報をコピー",
-      "useBrowserSignIn": "ブラウザのサインイン情報をコピーする",
-      "signInDescription": "このコンピュータのブラウザから {{server}} のサインイン情報をコピーすれば、もう一度サインインする必要はありません。",
-      "site": "サイト: {{domain}}",
-      "confirmCopy": "Oleafly は {{browser}} の {{profile}} プロファイルから {{domain}} の Cookie を読み取ります。Cookie は Oleafly 内に保存され、{{domain}} にだけ送られます。このあとシステムのダイアログでもう一度確認します。",
-      "copyAction": "サインイン情報をコピー",
-      "copying": "コピーしています...",
-      "notSignedIn_other": "{{browser}} から {{count}} 個の Cookie をコピーしましたが、サインインできませんでした。直接サインインしてください。"
+      "dialogDescription": "Oleafly は {{server}} の cookie だけをコピーし、それを使ってサインインしたあと、コピーを削除します。パスワードはブラウザに残ります。",
+      "dialogTitle": "ブラウザから cookie を読み込む",
+      "label": "ブラウザから cookie を読み込む",
+      "useBrowserSignIn": "プロファイルを選ぶ",
+      "signInDescription": "このコンピュータのブラウザのプロファイルですでにサインインしている {{server}} のアカウントを使います。",
+      "copyAction": "読み込む",
+      "copying": "読み込んでいます...",
+      "from": "読み込み元",
+      "noCookies": "cookie はまだありません",
+      "sameAccount": "{{profile}} は {{account}} でサインインしていますが、このアカウントは Oleafly ですでに使われています。別のプロファイルを選ぶか、先にそのブラウザで別のアカウントにサインインしてください。",
+      "orExisting": "または、すでにあるサインインを使う",
+      "noSavedSignIn": "{{profile}} には {{server}} の保存済みのサインインがないため、コピーした cookie ではサインインできませんでした。そこでサインインしている場合、ブラウザは閉じるまでしかサインインを保持しないのかもしれません。代わりに {{browser}} のタイルを使ってください。"
     },
     "zotero": {
       "apiKeyHint": "キーの取得方法: <siteLink>zotero.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを作成し、同じページから数字のユーザー ID をコピーします。",
@@ -1955,7 +1941,12 @@
       "signedIn": "{{server}} にサインイン中",
       "signOut": "サインアウト",
       "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。",
+      "addAccount": "別のアカウントを追加",
+      "addAccountHint": "サインインする場所を選んでください。どれもサインインしていない状態で始まるので、どのアカウントでも使えます。",
+      "accountPick": "読み込みに使うアカウント",
+      "accountPickDescription": "新しい読み込みとテンプレートにはこのアカウントが使われます。すでにあるプロジェクトは、取り込んだときのアカウントのままです。",
       "gitTitle": "同期用の Git トークン",
+      "gitTitleFor": "{{email}} の Git トークン",
       "gitSaved": "Git トークンが保存されています。リンクしたプロジェクトは Overleaf と同期されます。",
       "gitMissing": "Git トークンはまだありません。プロジェクトを同期するには、Overleaf のアカウント設定の「Git 連携」でトークンを作成してください。",
       "gitOpenSettings": "Overleaf のアカウント設定を開く",
@@ -1964,14 +1955,9 @@
       "gitSave": "保存",
       "gitRemove": "削除",
       "gitFailed": "Oleafly は Git トークンを保存できませんでした。トークン全体を貼り付けたか確認してください。",
-      "browserLabel": "ブラウザでサインイン",
-      "browserDescription": "Google、所属機関、パスキーでのサインイン用です。Oleafly が新しいブラウザウィンドウで {{server}} を開き、サインインが済むと閉じます。",
-      "browserAction": "サインイン",
-      "browserPick": "サインインに使うブラウザ",
       "browserWaiting": "{{browser}} で {{server}} へのサインインを完了してください。ウィンドウを閉じるとキャンセルされます。",
-      "browserHint": "Google、所属機関、パスキーでのサインインにはこちらを使います。",
-      "windowLabel": "{{server}} にサインイン",
-      "windowDescription": "Oleafly がサインイン用のウィンドウを開き、サインインが済むと閉じます。Google、所属機関、パスキーでサインインするには、Chrome、Edge、Brave、Chromium、Firefox のいずれかをインストールし、ここでそのブラウザからサインインしてください。",
+      "windowLabel": "Oleafly の中でサインイン",
+      "windowDescription": "サインインが済むとウィンドウは自動で閉じます。そこでパスキーが使えない場合は、パスワードやスマートフォンでの確認を使ってください。",
       "windowAction": "サインイン",
       "windowWaiting": "開いたウィンドウで {{server}} へのサインインを完了してください。",
       "unsent": {
@@ -1989,7 +1975,15 @@
           "always": "Overleaf でも削除する",
           "never": "Overleaf には残す"
         }
-      }
+      },
+      "sameAccount": "すでに {{account}} でサインインしています。追加するには別のアカウントでサインインしてください。",
+      "windowTitle": "{{server}} にサインイン",
+      "addAccountKept": "今のアカウントはサインインしたままです。",
+      "noBrowser": "Google、所属機関、パスキーでサインインするには、Chrome、Edge、Brave、Chromium、Firefox のいずれかをインストールして、ここで選んでください。",
+      "tileHere": "このアプリ内",
+      "tileWindow": "新しいウィンドウ",
+      "tileWaiting": "操作を待っています",
+      "signInNote": "Google、所属機関、パスキーでサインインするにはブラウザを使ってください。Oleafly でパスキーが使えない場合は、そこでパスワードやスマートフォンでの確認を使ってください。サインインが済むとウィンドウは自動で閉じます。"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2121,6 +2115,20 @@
           "confirm": "cua.ai から Cua のインストーラをダウンロードし、ターミナルで実行します。続けますか？"
         }
       }
+    },
+    "signIns": {
+      "title": "サインインの管理",
+      "description": "このコンピュータで Oleafly がサインインしているアカウントです。ここで取り除いても、ブラウザではサインインしたままです。",
+      "loading": "サインイン情報を読み込んでいます...",
+      "empty": "どのアカウントにもサインインしていません。",
+      "inUse": "使用中",
+      "switch": "切り替える",
+      "switchTo": "{{account}} に切り替える",
+      "removeAccount": "{{account}} を取り除く",
+      "removeAll": "すべて取り除く",
+      "importMore": "さらに読み込む",
+      "loadFailed": "Oleafly はサインイン情報を読み込めませんでした。",
+      "changeFailed": "Oleafly はこのサインインを変更できませんでした。もう一度お試しください。"
     }
   },
   "language": {
@@ -2323,6 +2331,7 @@
       "confirm": "単語を消去",
       "descriptionFallback": "この辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
       "descriptionGlobal": "全体の辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
+      "descriptionOverleaf": "Overleaf アカウントからも削除されます。",
       "descriptionProject": "{{project}} からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
       "descriptionSuppressed": "{{project}} で非表示にした指摘をすべて解除します。それらはすぐにまたチェックの対象になります。",
       "suppressedConfirm": "また表示する",
@@ -2339,6 +2348,7 @@
     },
     "global": {
       "emptyDescription": "ここに追加した単語は、すべてのプロジェクトで校正の対象から外れます。",
+      "overleafSynced": "Overleaf でプロジェクトをライブ編集している間は、Overleaf アカウントの学習済みの単語と同期されます。",
       "scope": "すべてのプロジェクトに適用されます"
     },
     "intro": "自分用のスペルチェック辞書に単語を追加します。これらの単語はローカルの設定に保存され、プロジェクトをまたいで無視されます。照合は Unicode 正規化のうえ、大文字と小文字を区別せずに行われます。",
@@ -2853,5 +2863,178 @@
     },
     "count_other": "{{count}} 件",
     "filteredCount_other": "{{count}} 件中 {{shown}} 件"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "補完リストに表示",
+        "description": "コマンドと並べてスニペットを表示"
+      },
+      "tab": {
+        "label": "Tab でトリガーを展開",
+        "description": "展開方法が Tab のスニペットに適用"
+      },
+      "auto": {
+        "label": "入力と同時に展開",
+        "description": "Fast math などの自動スニペットに適用"
+      },
+      "hint": {
+        "label": "入力中にヒントを表示",
+        "description": "トリガーで挿入されるスニペットの名前を表示します。Tab で挿入します。"
+      }
+    },
+    "library": {
+      "title": "スニペットライブラリ",
+      "collections": "コレクション",
+      "all": "すべてのスニペット",
+      "mine": "自分のもの",
+      "packs": "パック",
+      "builtIn": "組み込み",
+      "add": "パックを追加、または読み込む…",
+      "useCollection": "{{name}} を使う",
+      "search": "名前、トリガー、テキストで検索",
+      "language": "言語",
+      "allLanguages": "すべての言語",
+      "expands": "展開方法",
+      "anyExpand": "すべての方法",
+      "newSnippet": "新しいスニペット",
+      "columns": {
+        "trigger": "トリガー",
+        "name": "名前",
+        "languages": "言語",
+        "where": "適用範囲",
+        "expands": "展開方法"
+      },
+      "modified": "変更済み",
+      "turnedOff": "オフ",
+      "restore": "復元",
+      "restoreLabel": "{{name}} を復元",
+      "wraps": "選択範囲を囲む",
+      "noTrigger": "なし",
+      "noMatches": "一致するスニペットはありません。",
+      "shown": "{{shown}} / {{total}} 件"
+    },
+    "problems": {
+      "summary_other": "{{count}} 件の問題",
+      "where": "{{file}} の {{line}} 行目: {{message}}",
+      "slowRegex": "{{name}} のトリガーは判定に時間がかかりすぎたため、このスニペットをオフにしました。",
+      "show": "表示",
+      "hide": "隠す"
+    },
+    "addDialog": {
+      "title": "スニペットを追加",
+      "packsTab": "パック",
+      "importTab": "ファイルを読み込む",
+      "count_other": "{{count}} 個のスニペット",
+      "source": "出典: {{source}}",
+      "licence": "{{licence}} ライセンス",
+      "packNote": "パックはアプリと一緒に更新されます。パックのスニペットに加えた変更は別に保存されます。",
+      "packs": {
+        "fastMathLatex": "数式の中で、入力と同時に展開されます。分数、下付き文字とべき乗、ギリシャ文字、演算子、行列が対象です。トリガーは Gilles Castel の設定に倣っています。",
+        "fastMathTypst": "同じトリガーを Typst 向けに書いたものです。分数の a/b のように、Typst が元からできることは含めていません。",
+        "paperStructure": "図、サブ図、booktabs の表、数式、定理、証明、アルゴリズム。"
+      },
+      "useOn": "{{name}} を使う",
+      "importIntro": "VS Code のスニペットファイル（.json または .code-snippets）を選んでください。独立したコレクションになり、オフにしたり変更したりできます。",
+      "choose": "ファイルを選ぶ",
+      "fileLabel": "スニペットファイル",
+      "imported_other": "{{count}} 個のスニペットを {{collection}} に読み込みました。",
+      "nothing": "{{file}} にスニペットが見つかりませんでした。",
+      "leftOut_other": "{{count}} 件の項目を除外しました:"
+    },
+    "editor": {
+      "newTitle": "新しいスニペット",
+      "duplicate": "複製",
+      "delete": "削除",
+      "turnOff": "オフにする",
+      "save": "保存",
+      "copyName": "{{name}} のコピー",
+      "name": "名前",
+      "namePlaceholder": "キャプションとラベル付きの図",
+      "trigger": "トリガー",
+      "triggerPlaceholder": "fig",
+      "regex": "正規表現",
+      "expands": "展開方法",
+      "expandOptions": {
+        "list": "リストから",
+        "tab": "Tab で",
+        "auto": "入力と同時に"
+      },
+      "expandHelp": {
+        "list": "補完リストに表示されます。リストで選ぶと挿入されます。",
+        "tab": "{{trigger}} と入力して Tab を押します。補完リストにも表示されます。",
+        "auto": "{{trigger}} と入力するとすぐに展開されます。元に戻すか Backspace を押すと、トリガーに戻ります。"
+      },
+      "languages": "言語",
+      "where": "適用範囲",
+      "whereOptions": {
+        "any": "どこでも",
+        "text": "テキスト",
+        "math": "数式",
+        "code": "コード"
+      },
+      "mathKinds": {
+        "math": "両方",
+        "inline-math": "行内",
+        "display-math": "ディスプレイ"
+      },
+      "mathKind": "数式の種類",
+      "whereHelp": {
+        "any": "ファイル内のどこでも。",
+        "text": "テキスト: 数式、コメント、verbatim 環境の外。",
+        "math": "数式: 行内数式またはディスプレイ数式の中。",
+        "code": "コード: Typst のコード、または Markdown のコードブロックの中。"
+      },
+      "firesOnly": "次の場合だけ発動",
+      "wholeWord": "独立した単語のとき",
+      "lineStart": "行頭のとき",
+      "collection": "コレクション",
+      "keptSeparately": "変更は別に保存されるため、{{collection}} の更新も引き続き受け取れます。",
+      "body": "挿入するテキスト",
+      "anyLanguage": "どの言語でも",
+      "addField": "+ フィールド",
+      "addChoice": "+ 選択肢",
+      "choiceText": "一つ目,二つ目",
+      "variable": "変数",
+      "projectField": "プロジェクトのフィールド",
+      "variables": {
+        "SELECTION": "選択したテキスト",
+        "CLIPBOARD": "クリップボード",
+        "DATE": "今日の日付",
+        "TM_FILENAME": "ファイル名",
+        "PROJECT_NAME": "プロジェクト名"
+      },
+      "projectFields": {
+        "image": "画像",
+        "label": "ラベル",
+        "cite": "引用",
+        "ref": "参照",
+        "file": "ファイル"
+      },
+      "chipsNote": "フィールドはチップで表示されます。",
+      "showSyntax": "構文を表示",
+      "missingName": "スニペットに名前を付けてください。",
+      "missingBody": "スニペットが挿入するテキストを入力してください。",
+      "sameTrigger": "{{list}} も {{trigger}} を使っています。最も近いコレクションが優先されます。",
+      "sharedStart": "{{list}} と先頭が同じです。すべてリストに表示され、Tab では完全に一致する {{trigger}} が選ばれます。",
+      "clashItem": "{{trigger}}（{{collection}}）",
+      "deleteDialog": {
+        "title": "{{name}} を削除しますか？",
+        "description": "{{collection}} から削除されます。",
+        "action": "削除"
+      },
+      "tryIt": {
+        "title": "試す",
+        "howAuto": "{{trigger}} と入力すると展開されます。",
+        "howTab": "{{trigger}} と入力して、Tab を押します。",
+        "howList": "{{trigger}} と入力し、Ctrl+Space を押してリストから選びます。",
+        "noTrigger": "このスニペットにはトリガーがありません。コマンドパレットで /snippets から挿入してください。",
+        "inText": "テキスト内",
+        "inMath": "数式内",
+        "fires": "ここで発動します: {{language}}、{{place}}。",
+        "notLanguage": "{{language}} では発動しません。このスニペットの言語に含まれていません。",
+        "notPlace": "{{place}}では発動しません。「適用範囲」の設定で許可されていません。"
+      }
+    }
   }
 }

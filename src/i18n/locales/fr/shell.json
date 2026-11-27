@@ -318,6 +318,10 @@
       "keywords": "sans distraction concentration plein écran masquer interface minimal écriture",
       "label": "Activer ou désactiver le mode Zen"
     },
+    "fastMath": {
+      "keywords": "fast math maths rapides extraits snippets développer frappe fraction indice grec",
+      "label": "Activer ou désactiver Fast math"
+    },
     "visualSettings": {
       "keywords": "apparence police type de police taille du texte retrait de paragraphe espacement justifier titres écriture",
       "label": "Réglages du mode Visuel"
@@ -406,6 +410,14 @@
     "addChapterFromProject": {
       "keywords": "thèse chapitre article importer fusionner copier projet",
       "label": "Ajouter un chapitre depuis un autre projet"
+    },
+    "insertSnippet": {
+      "keywords": "extraits snippets modèles déclencheurs parcourir insérer",
+      "label": "Insérer un extrait"
+    },
+    "saveSnippet": {
+      "keywords": "extrait snippet modèle enregistrer sélection réutiliser",
+      "label": "Enregistrer la sélection comme extrait"
     }
   },
   "community": {
@@ -517,7 +529,8 @@
       "open": "Suivre le fichier ouvert",
       "main": "Toujours le document principal",
       "change": "Changer de document principal…"
-    }
+    },
+    "filling": "Le projet est encore en cours de téléchargement depuis Overleaf. Vous pourrez compiler dès que tous les fichiers seront là."
   },
   "datePicker": {
     "placeholder": "Choisir une date"
@@ -766,7 +779,8 @@
       "projects": "rechercher dans vos projets",
       "refs": "ouvrir les références de ce projet",
       "settings": "ouvrir les paramètres",
-      "theme": "changer le thème de couleurs"
+      "theme": "changer le thème de couleurs",
+      "snippets": "parcourir et insérer des extraits"
     },
     "tryCommand": "Essayez une commande",
     "unknownCommand": "Commande inconnue. Tapez / pour voir les commandes disponibles."
@@ -1148,7 +1162,8 @@
       "integrations": "Intégrations",
       "shortcuts": "Raccourcis clavier",
       "research": "Recherche",
-      "logs": "Journaux"
+      "logs": "Journaux",
+      "snippets": "Extraits de code"
     },
     "search": {
       "empty": "Aucun paramètre ne correspond",
@@ -1166,7 +1181,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, Computer Use, applications de bureau, Cua, MCP, citations, comptes, connexions",
         "shortcuts": "raccourcis clavier, raccourcis, touches, clavier",
         "research": "recherche tâches budget notifications veille expériences exécutions research tasks",
-        "logs": "journal, journaux, logs, erreurs, avertissements, plantages, compilations, diagnostic, dépannage, exporter les journaux, app.log, débogage"
+        "logs": "journal, journaux, logs, erreurs, avertissements, plantages, compilations, diagnostic, dépannage, exporter les journaux, app.log, débogage",
+        "snippets": "déclencheurs, modèles, Fast math, développer à la frappe, Tab, liste de complétion, menu slash, raccourcis @, extraits VS Code, snippets, importer, packs"
       },
       "label": "Rechercher dans les paramètres",
       "results_one": "{{count}} section correspond",
@@ -1405,11 +1421,12 @@
     },
     "moreActions": "Autres actions",
     "resetPaneLayout": "Réinitialiser l'agencement des panneaux",
-    "resetPaneLayoutScope": "Tous les projets",
+    "resetPaneLayoutHint": "Remet la barre latérale, l'éditeur, l'aperçu, le terminal et l'assistant à leur place par défaut, dans tous les projets.",
     "savedLayouts": {
       "close": "Fermer",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer la disposition {{name}} ?",
+      "duplicate": "Cette disposition est déjà enregistrée sous le nom {{name}}.",
       "limit": "Vous pouvez conserver jusqu'à {{count}} dispositions. Supprimez-en une pour en enregistrer une autre.",
       "manage": "Gérer les dispositions",
       "name": "Nom de la disposition",
@@ -1417,10 +1434,11 @@
       "renameTitle": "Renommer la disposition",
       "replace": "Remplacer",
       "replaceConfirm": "Une disposition nommée {{name}} existe déjà. La remplacer ?",
+      "replaceWithCurrent": "Remplacer par la disposition actuelle",
       "save": "Enregistrer la disposition actuelle",
       "saveButton": "Enregistrer",
       "saveTitle": "Enregistrer la disposition",
-      "update": "Mettre à jour avec l'actuelle"
+      "savedAs": "Enregistrée sous {{name}}"
     },
     "renameFailed": "Impossible de renommer le projet."
   },
@@ -1737,8 +1755,9 @@
     "resume": "Reprendre l'édition en direct",
     "reconnectNow": "Se reconnecter maintenant",
     "open": "Ouvrir dans Overleaf",
-    "share": "Partager sur Overleaf…",
+    "share": "Partager sur Overleaf",
     "signIn": "Se connecter…",
+    "signInAs": "Se connecter avec le compte {{email}}",
     "reconnectingIn": "Nouvelle tentative dans {{seconds}} s.",
     "notConfirmed": "Pas encore confirmé par Overleaf.",
     "copyDetails": "Copier les détails de connexion",
@@ -1758,5 +1777,72 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Réinitialiser"
+  },
+  "snippets": {
+    "mySnippets": "Mes extraits",
+    "saveAsSnippet": "Enregistrer comme extrait…",
+    "autoNote": "{{trigger}} développé. Annuler ou Backspace le rétablit.",
+    "fastMathTip": "Une fois Fast math activé, // écrit une fraction dans les maths.",
+    "turnOnFastMath": "Activer Fast math",
+    "expands": {
+      "list": "Liste",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notes",
+      "any": "Tous"
+    },
+    "places": {
+      "any": "Partout",
+      "text": "Texte",
+      "math": "Maths",
+      "inline-math": "Maths en ligne",
+      "display-math": "Maths hors ligne",
+      "code": "Code"
+    },
+    "palette": {
+      "placeholder": "Rechercher des extraits par nom, déclencheur ou texte",
+      "insert": "Insérer",
+      "edit": "Modifier",
+      "count": "{{shown}} sur {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Tapez {{trigger}} pour l'obtenir sans ouvrir la palette.",
+      "noMatches": "Aucun extrait ne correspond."
+    },
+    "save": {
+      "title": "Enregistrer comme extrait",
+      "name": "Nom",
+      "namePlaceholder": "Tableau de résultats",
+      "trigger": "Déclencheur",
+      "triggerPlaceholder": "rtab",
+      "expands": "Déclenchement",
+      "found": "détectés dans votre sélection",
+      "fields": "Transformer en champs",
+      "fieldsFound_one": "{{count}} trouvé",
+      "fieldsFound_many": "{{count}} trouvés",
+      "fieldsFound_other": "{{count}} trouvés",
+      "noFields": "Rien ici ne ressemble à un champ. Vous pourrez ajouter des champs plus tard dans les Paramètres.",
+      "followsCaption": "suit la légende",
+      "kinds": {
+        "caption": "légende",
+        "label": "étiquette",
+        "cite": "citation",
+        "path": "chemin du fichier",
+        "column-spec": "format des colonnes",
+        "number": "nombre",
+        "title": "titre",
+        "table-body": "corps du tableau"
+      },
+      "preview": "Aperçu",
+      "saveTo": "Enregistrer dans",
+      "submit": "Enregistrer l'extrait",
+      "saved": "Extrait {{name}} enregistré.",
+      "missingName": "Donnez un nom à l'extrait."
+    }
   }
 }

@@ -14,6 +14,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   gotoLine: vi.fn(),
+  getEditorView: () => null,
 }));
 
 import { SearchOmnibar } from "./SearchOmnibar";

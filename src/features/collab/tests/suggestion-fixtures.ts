@@ -1,14 +1,14 @@
 import type { CollabSuggestion, CollabSuggestionList, CollabSuggestionsChanged } from "@/lib/tauri";
-import { BOB_ID } from "./fixtures";
+import { type LiveSeed, SERVER_SEED } from "./fixtures";
 
 export const SUGGESTED_AT = 1_760_000_000_000;
 
-export function suggestion(id: string, overrides: Partial<CollabSuggestion> = {}): CollabSuggestion {
-  return {
+export function suggestionFixtures(seed: LiveSeed) {
+  const suggestion = (id: string, overrides: Partial<CollabSuggestion> = {}): CollabSuggestion => ({
     id,
-    fileId: "file-intro",
+    fileId: seed.fileId,
     kind: "insert",
-    author: BOB_ID,
+    author: seed.bob.account_id,
     createdAt: SUGGESTED_AT,
     from: 4,
     to: 10,
@@ -16,11 +16,18 @@ export function suggestion(id: string, overrides: Partial<CollabSuggestion> = {}
     threadId: null,
     verified: true,
     ...overrides,
-  };
+  });
+  return { suggestion };
 }
 
-export function suggestionList(suggestions: CollabSuggestion[], rev: number | null = null): CollabSuggestionList {
-  return { rev, suggestions };
+export const { suggestion } = suggestionFixtures(SERVER_SEED);
+
+export function suggestionList(
+  suggestions: CollabSuggestion[],
+  rev: number | null = null,
+  canAccept = true,
+): CollabSuggestionList {
+  return { rev, suggestions, canAccept };
 }
 
 export function suggestionsChanged(overrides: Partial<CollabSuggestionsChanged> = {}): CollabSuggestionsChanged {

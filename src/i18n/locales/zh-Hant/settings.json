@@ -1873,32 +1873,18 @@
       "disconnectFailed": "無法中斷與 alphaXiv 的連線。請再試一次。"
     },
     "cookies": {
-      "confirmTitle": "確認匯入 Cookie",
-      "detecting": "正在尋找已安裝的瀏覽器設定檔…",
-      "dialogDescription": "選擇一個已安裝的瀏覽器設定檔。Oleafly 只會在你審視並確認匯入之後才讀取。Chromium 的 Cookie 會透過 macOS Keychain 在本機解鎖。Oleafly 不會把 Cookie 值傳送到 Oleafly 的服務。",
-      "dialogTitle": "匯入瀏覽器 Cookie",
-      "empty": "找不到支援的瀏覽器設定檔。",
-      "errors": {
-        "chooseProfile": "請選擇一個可用的瀏覽器設定檔。"
-      },
-      "profileGroupLabel": "瀏覽器設定檔",
-      "profileLegend": "瀏覽器設定檔",
-      "review": "審視匯入內容",
-      "status": {
-        "available": "可用",
-        "comingSoon": "即將推出",
-        "noCookieStore": "沒有 Cookie 資料庫",
-        "notInstalled": "未安裝"
-      },
-      "tryAgain": "再試一次",
-      "label": "複製瀏覽器的登入資訊",
-      "useBrowserSignIn": "複製瀏覽器中的登入資訊",
-      "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
-      "site": "網站：{{domain}}",
-      "confirmCopy": "Oleafly 會從 {{browser}} 的 {{profile}} 設定檔讀取 {{domain}} 的 Cookie。它們會留在 Oleafly 中，而且只會傳送到 {{domain}}。你還需要在系統對話框中再確認一次。",
-      "copyAction": "複製登入資訊",
-      "copying": "正在複製…",
-      "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。"
+      "dialogDescription": "Oleafly 只會複製 {{server}} 的 Cookie，用它們登入，然後刪除副本。你的密碼仍留在瀏覽器中。",
+      "dialogTitle": "從瀏覽器匯入 Cookie",
+      "label": "從瀏覽器匯入 Cookie",
+      "useBrowserSignIn": "選擇設定檔",
+      "signInDescription": "使用這台電腦上某個瀏覽器設定檔中已登入的 {{server}} 帳號。",
+      "copyAction": "匯入",
+      "copying": "正在匯入…",
+      "from": "來源",
+      "noCookies": "還沒有 Cookie",
+      "sameAccount": "{{profile}} 登入的是 {{account}}，而 Oleafly 已在使用這個帳號。請選擇其他設定檔，或先在該瀏覽器中登入另一個帳號。",
+      "orExisting": "或使用已有的登入",
+      "noSavedSignIn": "{{profile}} 沒有儲存 {{server}} 的登入，因此複製的 Cookie 無法讓你登入。如果你在那裡已登入，瀏覽器可能只在關閉前保留該登入。請改用 {{browser}} 圖塊。"
     },
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
@@ -1955,7 +1941,12 @@
       "signedIn": "已在 {{server}} 上登入",
       "signOut": "登出",
       "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "addAccount": "新增其他帳號",
+      "addAccountHint": "選擇在哪裡登入。每一種都從未登入的狀態開始，因此任何帳號都可以。",
+      "accountPick": "用於匯入的帳號",
+      "accountPickDescription": "新的匯入和範本會使用這個帳號。你已有的專案會保留其來源帳號。",
       "gitTitle": "用於同步的 Git 權杖",
+      "gitTitleFor": "{{email}} 的 Git 權杖",
       "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
       "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
       "gitOpenSettings": "開啟 Overleaf 帳號設定",
@@ -1964,14 +1955,9 @@
       "gitSave": "儲存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。",
-      "browserLabel": "使用瀏覽器登入",
-      "browserDescription": "適用於 Google、機構或密碼金鑰登入。Oleafly 會在新的瀏覽器視窗中開啟 {{server}}，登入完成後自動關閉。",
-      "browserAction": "登入",
-      "browserPick": "用於登入的瀏覽器",
       "browserWaiting": "請在 {{browser}} 中完成 {{server}} 的登入。關閉視窗會取消登入。",
-      "browserHint": "使用 Google、機構或密碼金鑰登入時，請選擇這個方式。",
-      "windowLabel": "登入 {{server}}",
-      "windowDescription": "Oleafly 會開啟登入視窗，登入完成後自動關閉。若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡透過它登入。",
+      "windowLabel": "在 Oleafly 內登入",
+      "windowDescription": "登入完成後視窗會自動關閉。如果密碼金鑰在那裡無法使用，請使用密碼或手機上的確認提示。",
       "windowAction": "登入",
       "windowWaiting": "請在開啟的視窗中完成 {{server}} 的登入。",
       "unsent": {
@@ -1989,7 +1975,15 @@
           "always": "也在 Overleaf 上刪除",
           "never": "保留在 Overleaf 上"
         }
-      }
+      },
+      "sameAccount": "你已經以 {{account}} 的身分登入。若要新增其他帳號，請用該帳號登入。",
+      "windowTitle": "登入 {{server}}",
+      "addAccountKept": "你目前的帳號會保持登入。",
+      "noBrowser": "若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡選擇它。",
+      "tileHere": "在此應用程式中",
+      "tileWindow": "新視窗",
+      "tileWaiting": "等待你操作",
+      "signInNote": "使用 Google、機構或密碼金鑰登入時，請選擇瀏覽器。如果密碼金鑰在 Oleafly 中無法使用，請在那裡使用密碼或手機上的確認提示。登入完成後視窗會自動關閉。"
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2121,6 +2115,20 @@
           "confirm": "這會從 cua.ai 下載 Cua 安裝程式並在你的終端機中執行。要繼續嗎？"
         }
       }
+    },
+    "signIns": {
+      "title": "管理登入",
+      "description": "Oleafly 在這台電腦上登入的帳號。在這裡移除帳號不會讓你在瀏覽器中登出。",
+      "loading": "正在載入登入資訊…",
+      "empty": "你沒有登入任何帳號。",
+      "inUse": "使用中",
+      "switch": "切換",
+      "switchTo": "切換到 {{account}}",
+      "removeAccount": "移除 {{account}}",
+      "removeAll": "全部移除",
+      "importMore": "匯入更多",
+      "loadFailed": "Oleafly 無法載入登入資訊。",
+      "changeFailed": "Oleafly 無法變更此登入。請再試一次。"
     }
   },
   "language": {
@@ -2323,6 +2331,7 @@
       "confirm": "清除字詞",
       "descriptionFallback": "這會移除這個字典中的所有詞彙。它們會立刻重新接受檢查。",
       "descriptionGlobal": "這會移除全域字典中的所有詞彙。它們會立刻重新接受檢查。",
+      "descriptionOverleaf": "它們也會從你的 Overleaf 帳號中移除。",
       "descriptionProject": "這會移除 {{project}} 中的所有詞彙。它們會立刻重新接受檢查。",
       "descriptionSuppressed": "這會移除 {{project}} 中所有已關閉檢查結果的詞彙。它們會立刻重新接受檢查。",
       "suppressedConfirm": "重新顯示",
@@ -2339,6 +2348,7 @@
     },
     "global": {
       "emptyDescription": "你在這裡加入的字詞，校對工具在每個專案中都會略過。",
+      "overleafSynced": "當有專案在 Overleaf 上即時編輯時，會與你 Overleaf 帳號中已學習的字詞同步。",
       "scope": "套用於每個專案"
     },
     "intro": "把字詞加入你的個人拼字檢查字典。這些字詞會存在本機設定中，並在所有專案中略過。比對會經過 Unicode 正規化，且不分大小寫。",
@@ -2853,5 +2863,178 @@
     },
     "count_other": "{{count}} 筆條目",
     "filteredCount_other": "顯示 {{shown}} / {{count}} 筆條目"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "在補完清單中顯示",
+        "description": "在指令旁顯示程式碼片段"
+      },
+      "tab": {
+        "label": "按 Tab 展開觸發詞",
+        "description": "適用於設為 Tab 的程式碼片段"
+      },
+      "auto": {
+        "label": "輸入時展開",
+        "description": "適用於自動展開的程式碼片段，例如 Fast math"
+      },
+      "hint": {
+        "label": "輸入時顯示提示",
+        "description": "顯示觸發詞將插入的程式碼片段名稱。按 Tab 即可插入。"
+      }
+    },
+    "library": {
+      "title": "你的程式碼片段庫",
+      "collections": "片段集",
+      "all": "所有程式碼片段",
+      "mine": "我的",
+      "packs": "片段包",
+      "builtIn": "內建",
+      "add": "新增片段包或匯入…",
+      "useCollection": "使用 {{name}}",
+      "search": "搜尋名稱、觸發詞或文字",
+      "language": "語言",
+      "allLanguages": "所有語言",
+      "expands": "展開方式",
+      "anyExpand": "任何方式",
+      "newSnippet": "新增程式碼片段",
+      "columns": {
+        "trigger": "觸發詞",
+        "name": "名稱",
+        "languages": "語言",
+        "where": "適用範圍",
+        "expands": "展開方式"
+      },
+      "modified": "已修改",
+      "turnedOff": "已關閉",
+      "restore": "還原",
+      "restoreLabel": "還原 {{name}}",
+      "wraps": "包覆選取範圍",
+      "noTrigger": "無",
+      "noMatches": "沒有相符的程式碼片段。",
+      "shown": "{{shown}} / {{total}} 個"
+    },
+    "problems": {
+      "summary_other": "{{count}} 個問題",
+      "where": "{{file}}，第 {{line}} 行：{{message}}",
+      "slowRegex": "{{name}} 的觸發詞檢查時間過長，已關閉該程式碼片段。",
+      "show": "顯示",
+      "hide": "隱藏"
+    },
+    "addDialog": {
+      "title": "新增程式碼片段",
+      "packsTab": "片段包",
+      "importTab": "匯入檔案",
+      "count_other": "{{count}} 個程式碼片段",
+      "source": "來源：{{source}}",
+      "licence": "{{licence}} 授權",
+      "packNote": "片段包會隨應用程式一起更新。你對片段包中程式碼片段所做的變更會另外保存。",
+      "packs": {
+        "fastMathLatex": "在公式中邊輸入邊展開：分數、下標與次方、希臘字母、運算子與矩陣。觸發詞沿用 Gilles Castel 的設定。",
+        "fastMathTypst": "同樣的觸發詞，為 Typst 撰寫。Typst 本身已能做到的不再收錄，例如用 a/b 寫分數。",
+        "paperStructure": "圖片、子圖、booktabs 表格、公式、定理、證明與演算法。"
+      },
+      "useOn": "使用 {{name}}",
+      "importIntro": "選擇一個 VS Code 程式碼片段檔案（.json 或 .code-snippets）。它會成為獨立的片段集，你可以關閉或修改它。",
+      "choose": "選擇檔案",
+      "fileLabel": "程式碼片段檔案",
+      "imported_other": "已將 {{count}} 個程式碼片段匯入 {{collection}}。",
+      "nothing": "在 {{file}} 中找不到程式碼片段。",
+      "leftOut_other": "有 {{count}} 個項目未匯入："
+    },
+    "editor": {
+      "newTitle": "新增程式碼片段",
+      "duplicate": "建立副本",
+      "delete": "刪除",
+      "turnOff": "關閉",
+      "save": "儲存",
+      "copyName": "{{name}} 副本",
+      "name": "名稱",
+      "namePlaceholder": "附圖說與標籤的圖片",
+      "trigger": "觸發詞",
+      "triggerPlaceholder": "fig",
+      "regex": "規則運算式",
+      "expands": "展開方式",
+      "expandOptions": {
+        "list": "從清單",
+        "tab": "按 Tab",
+        "auto": "輸入時"
+      },
+      "expandHelp": {
+        "list": "它會顯示在補完清單中。在清單中選取即可插入。",
+        "tab": "輸入 {{trigger}} 後按 Tab。它也會顯示在補完清單中。",
+        "auto": "輸入 {{trigger}} 後會立即展開。復原或按 Backspace 可還原觸發詞。"
+      },
+      "languages": "語言",
+      "where": "適用範圍",
+      "whereOptions": {
+        "any": "任何位置",
+        "text": "文字",
+        "math": "公式",
+        "code": "程式碼"
+      },
+      "mathKinds": {
+        "math": "兩者",
+        "inline-math": "行內",
+        "display-math": "行間"
+      },
+      "mathKind": "公式類型",
+      "whereHelp": {
+        "any": "檔案中的任何位置。",
+        "text": "文字：公式、註解與 verbatim 環境以外。",
+        "math": "公式：行內公式或行間公式之內。",
+        "code": "程式碼：Typst 程式碼或 Markdown 程式碼區塊之內。"
+      },
+      "firesOnly": "僅在以下情況觸發",
+      "wholeWord": "為完整單字時",
+      "lineStart": "位於行首時",
+      "collection": "片段集",
+      "keptSeparately": "你的變更會另外保存，因此仍能收到 {{collection}} 的更新。",
+      "body": "插入的文字",
+      "anyLanguage": "任何語言",
+      "addField": "+ 欄位",
+      "addChoice": "+ 選項",
+      "choiceText": "A,B",
+      "variable": "變數",
+      "projectField": "專案欄位",
+      "variables": {
+        "SELECTION": "選取的文字",
+        "CLIPBOARD": "剪貼簿",
+        "DATE": "今天的日期",
+        "TM_FILENAME": "檔名",
+        "PROJECT_NAME": "專案名稱"
+      },
+      "projectFields": {
+        "image": "圖片",
+        "label": "標籤",
+        "cite": "引用",
+        "ref": "參照",
+        "file": "檔案"
+      },
+      "chipsNote": "欄位會以小標籤顯示。",
+      "showSyntax": "顯示語法",
+      "missingName": "請為程式碼片段命名。",
+      "missingBody": "請填寫程式碼片段要插入的文字。",
+      "sameTrigger": "{{list}} 也使用 {{trigger}}。最接近的片段集優先。",
+      "sharedStart": "與 {{list}} 開頭相同。它們都會顯示在清單中，按 Tab 會選取完全相符的 {{trigger}}。",
+      "clashItem": "{{trigger}}（{{collection}}）",
+      "deleteDialog": {
+        "title": "要刪除 {{name}} 嗎？",
+        "description": "這會將它從 {{collection}} 中移除。",
+        "action": "刪除"
+      },
+      "tryIt": {
+        "title": "試試看",
+        "howAuto": "輸入 {{trigger}} 即可展開。",
+        "howTab": "輸入 {{trigger}}，然後按 Tab。",
+        "howList": "輸入 {{trigger}}，按 Ctrl+Space，再從清單中選取。",
+        "noTrigger": "這個程式碼片段沒有觸發詞。請在指令面板中用 /snippets 插入。",
+        "inText": "在文字中",
+        "inMath": "在公式中",
+        "fires": "此處會觸發：{{language}}，{{place}}。",
+        "notLanguage": "在 {{language}} 中不會觸發。它不在這個程式碼片段的語言之列。",
+        "notPlace": "{{place}}不會觸發。「適用範圍」設定不允許。"
+      }
+    }
   }
 }

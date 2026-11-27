@@ -45,7 +45,7 @@ import { PreviewPane } from "@/components/preview/PreviewPane";
 import { useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
 import { PaneReorderProvider } from "@/components/layout/pane-reorder";
 import { PaneTreeGroup, PaneTreeProvider, type PaneTreeConfig } from "@/components/layout/PaneTree";
-import { paneVisibility, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
+import { paneVisibility, recoverPaneLayout, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
@@ -92,6 +92,7 @@ import {
 import { resolveCompileTarget } from "@/lib/tex-root";
 import { useGitStatusStore } from "@/store/git-status";
 import { forwardFromCursor } from "@/features/synctex";
+import { startEditorFollowsPdf } from "@/lib/editor-follows-pdf";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -330,6 +331,28 @@ function SurfaceLoading({ label }: Readonly<{ label: string }>) {
   );
 }
 
+function PanelLayoutError() {
+  const { t } = useTranslation(["workspace"]);
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
+      <p>{t(($) => $.workspace.panelError.message)}</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+      >
+        <RefreshCw className="size-4" />
+        {t(($) => $.workspace.panelError.reload)}
+      </button>
+    </div>
+  );
+}
+
+function PanelLayoutRecovery() {
+  const failed = usePaneLayoutStore((state) => state.failed);
+  return failed ? <PanelLayoutError /> : <div className="min-h-0 min-w-0 flex-1" />;
+}
+
 function closeAssistant() {
   const settings = useSettingsStore.getState();
   if (settings.assistantOpen) settings.setAssistantOpen(false);
@@ -390,6 +413,7 @@ function recompileWanted(event: KeyboardEvent): boolean {
 }
 
 function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void {
+  if (!documentEditorShown()) return;
   // Native menu events have no key event for Vim to intercept. Use its
   // history adapter directly so menu Undo/Redo preserves modal cursor and
   // selection semantics just like the keyboard route.
@@ -453,6 +477,26 @@ function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
   return detached ? "editor" : selected;
 }
 
+function useKeptOnceShown(shown: boolean, projectId: string | null, hiddenIn: ViewMode): boolean {
+  const [keptFor, setKeptFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!shown || projectId === null) return;
+    const settings = useSettingsStore.getState();
+    if (settings.workspaceHidden || shownViewMode(previewDetachedFor(projectId), settings.viewMode) === hiddenIn) return;
+    setKeptFor(projectId);
+  }, [hiddenIn, projectId, shown]);
+  return projectId !== null && (shown || keptFor === projectId);
+}
+
+function previewDetachedFor(projectId: string | null): boolean {
+  return projectId !== null && usePreviewDetachedStore.getState().projectId === projectId;
+}
+
+function documentEditorShown(): boolean {
+  const { viewMode, workspaceHidden } = useSettingsStore.getState();
+  return !workspaceHidden && shownViewMode(previewDetachedFor(useFilesStore.getState().projectId), viewMode) !== "pdf";
+}
+
 function AppContent() {
   const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -490,15 +534,8 @@ function AppContent() {
   const zenProjectId = useZenStore((s) => s.projectId);
   const previewHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const previewShown = !workspaceHidden && viewMode !== "editor";
-  const [previewKeptFor, setPreviewKeptFor] = useState<string | null>(null);
-  useEffect(() => {
-    if (!previewShown || projectId === null) return;
-    const settings = useSettingsStore.getState();
-    if (settings.workspaceHidden || settings.viewMode === "editor") return;
-    setPreviewKeptFor(projectId);
-  }, [previewShown, projectId]);
-  const keepPreview =
-    !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
+  const keepPreview = useKeptOnceShown(previewShown, projectId, "editor") && !detached;
+  const keepEditor = useKeptOnceShown(!workspaceHidden && viewMode !== "pdf", projectId, "pdf");
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
   const sidebarHost = useKeptAliveHost("h-full min-h-0 min-w-0");
@@ -659,6 +696,7 @@ function AppContent() {
   }, [editorColors, activeEditorColorKey]);
 
   useEffect(() => attachVisualAppearance(document.documentElement), []);
+  useEffect(() => startEditorFollowsPdf(), []);
 
   useEffect(() => {
     const apply = (theme: Theme) => {
@@ -850,6 +888,7 @@ function AppContent() {
         runFieldHistory(document, isRedo ? "redo" : "undo");
         return;
       }
+      if (!documentEditorShown()) return;
       // Toolbar and other document chrome still target the source editor. In
       // Vim mode, route that history request through Vim so it restores modal
       // cursor and selection state instead of applying bare CM6 history.
@@ -1008,27 +1047,14 @@ function AppContent() {
         </Contained>
         <div className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <PaneReorderProvider rootRef={paneRootElement} visiblePanes={visiblePanes}>
-          <ErrorBoundary
-            resetKey={projectId}
-            fallback={
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
-                <p>{t(($) => $.workspace.panelError.message)}</p>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                >
-                  <RefreshCw className="size-4" />
-                  {t(($) => $.workspace.panelError.reload)}
-                </button>
-              </div>
-            }
-          >
-            <PaneTreeProvider value={paneTree}>
-              <PaneTreeGroup key={`${projectId}:${paneEpoch}:${paneLayout.id}`} node={paneLayout} root />
-            </PaneTreeProvider>
+          <ErrorBoundary resetKey={projectId} fallback={<PanelLayoutError />}>
+            <ErrorBoundary resetKey={`${projectId}:${paneEpoch}`} onError={recoverPaneLayout} fallback={<PanelLayoutRecovery />}>
+              <PaneTreeProvider value={paneTree}>
+                <PaneTreeGroup key={`${projectId}:${paneEpoch}:${paneLayout.id}`} node={paneLayout} root />
+              </PaneTreeProvider>
+            </ErrorBoundary>
             {shownPanes.sidebar && createPortal(<WorkspaceSidebar />, sidebarHost, `sidebar:${projectId}`)}
-            {shownPanes.editor &&
+            {keepEditor &&
               createPortal(
                 <ErrorBoundary surface="editor" resetKey={projectId}>
                   <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>

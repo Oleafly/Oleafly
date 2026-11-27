@@ -2,7 +2,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   installMissingNotebookTool: vi.fn(async () => {}),
@@ -249,6 +249,10 @@ describe("notebook wiring in the main window", () => {
     };
     return { quarto, calepin: { ...quarto, tool: "calepin", pinnedVersion: "0.0.61" }, runtimes: [] };
   }
+
+  beforeAll(async () => {
+    await import("@/components/preview/NotebookToolMissingOffer");
+  });
 
   beforeEach(() => {
     setShellEscape.mockClear();

@@ -1909,35 +1909,18 @@
       "disconnectFailed": "alphaXiv se nepodařilo odpojit. Zkuste to znovu."
     },
     "cookies": {
-      "confirmTitle": "Potvrzení importu cookies",
-      "detecting": "Hledají se nainstalované profily prohlížečů...",
-      "dialogDescription": "Vyberte jeden nainstalovaný profil prohlížeče. Oleafly jej přečte, až když import zkontrolujete a potvrdíte. Cookies prohlížečů Chromium se odemykají místně přes Klíčenku macOS. Oleafly hodnoty cookies žádné službě Oleafly neposílá.",
-      "dialogTitle": "Import cookies z prohlížeče",
-      "empty": "Nebyly nalezeny žádné podporované profily prohlížečů.",
-      "errors": {
-        "chooseProfile": "Vyberte dostupný profil prohlížeče."
-      },
-      "profileGroupLabel": "Profily prohlížečů",
-      "profileLegend": "Profil prohlížeče",
-      "review": "Zkontrolovat import",
-      "status": {
-        "available": "K dispozici",
-        "comingSoon": "Již brzy",
-        "noCookieStore": "Žádné úložiště cookies",
-        "notInstalled": "Nenainstalováno"
-      },
-      "tryAgain": "Zkusit znovu",
-      "label": "Zkopírovat přihlášení z prohlížeče",
-      "useBrowserSignIn": "Zkopírovat přihlášení z vašeho prohlížeče",
-      "signInDescription": "Zkopírujte své přihlášení k {{server}} z prohlížeče v tomto počítači, abyste se nemuseli přihlašovat znovu.",
-      "site": "Web: {{domain}}",
-      "confirmCopy": "Oleafly přečte soubory cookie pro {{domain}} z profilu {{profile}} v prohlížeči {{browser}}. Zůstanou v Oleafly a odesílají se jen na {{domain}}. Ještě jednou to potvrdíte v systémovém dialogu.",
-      "copyAction": "Zkopírovat přihlášení",
-      "copying": "Kopíruje se…",
-      "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",
-      "notSignedIn_few": "Z prohlížeče {{browser}} byly zkopírovány {{count}} soubory cookie, ale nepřihlásily vás. Přihlaste se přímo.",
-      "notSignedIn_many": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souboru cookie, ale nepřihlásily vás. Přihlaste se přímo.",
-      "notSignedIn_other": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souborů cookie, ale nepřihlásily vás. Přihlaste se přímo."
+      "dialogDescription": "Oleafly zkopíruje jen cookies pro {{server}}, přihlásí se s nimi a kopie pak smaže. Vaše hesla zůstanou v prohlížeči.",
+      "dialogTitle": "Import cookies z vašeho prohlížeče",
+      "label": "Importovat cookies z vašeho prohlížeče",
+      "useBrowserSignIn": "Vybrat profil",
+      "signInDescription": "Použije účet na {{server}}, ke kterému je už přihlášený některý profil prohlížeče v tomto počítači.",
+      "copyAction": "Importovat",
+      "copying": "Importuje se…",
+      "from": "Odkud",
+      "noCookies": "Zatím žádné cookies",
+      "sameAccount": "V profilu {{profile}} je přihlášený účet {{account}}, který Oleafly už používá. Vyberte jiný profil, nebo se v tom prohlížeči nejdřív přihlaste ke svému druhému účtu.",
+      "orExisting": "nebo použijte přihlášení, které už máte",
+      "noSavedSignIn": "Profil {{profile}} nemá pro {{server}} uložené přihlášení, takže vás zkopírované cookies nepřihlásily. Pokud jste tam přihlášeni, prohlížeč možná přihlášení drží jen do svého zavření. Použijte místo toho dlaždici {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",
@@ -2003,7 +1986,12 @@
       "signedIn": "Přihlášeno na {{server}}",
       "signOut": "Odhlásit se",
       "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "addAccount": "Přidat další účet",
+      "addAccountHint": "Vyberte, kde se přihlásíte. Všude začínáte bez přihlášení, takže můžete použít libovolný účet.",
+      "accountPick": "Účet pro import",
+      "accountPickDescription": "Nové importy a šablony používají tento účet. Projekty, které už máte, si ponechají účet, ze kterého pocházejí.",
       "gitTitle": "Token Git pro synchronizaci",
+      "gitTitleFor": "Token Git pro {{email}}",
       "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
       "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
       "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
@@ -2012,14 +2000,9 @@
       "gitSave": "Uložit",
       "gitRemove": "Odebrat",
       "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token.",
-      "browserLabel": "Přihlásit se přes prohlížeč",
-      "browserDescription": "Pro přihlášení přes Google, instituci nebo přístupový klíč. Oleafly otevře {{server}} v novém okně prohlížeče a po přihlášení ho zavře.",
-      "browserAction": "Přihlásit se",
-      "browserPick": "Prohlížeč pro přihlášení",
       "browserWaiting": "Dokončete přihlášení k {{server}} v prohlížeči {{browser}}. Zavřením okna se přihlášení zruší.",
-      "browserHint": "Použijte pro přihlášení přes Google, instituci nebo přístupový klíč.",
-      "windowLabel": "Přihlášení k {{server}}",
-      "windowDescription": "Oleafly otevře přihlašovací okno a po přihlášení ho zavře. Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a přihlaste se v něm tady.",
+      "windowLabel": "Přihlásit se přímo v Oleafly",
+      "windowDescription": "Okno se po přihlášení samo zavře. Pokud v něm nefunguje váš přístupový klíč, použijte heslo nebo výzvu v telefonu.",
       "windowAction": "Přihlásit se",
       "windowWaiting": "Dokončete přihlášení k {{server}} v okně, které se otevřelo.",
       "unsent": {
@@ -2037,7 +2020,15 @@
           "always": "Smazat i v Overleafu",
           "never": "Ponechat v Overleafu"
         }
-      }
+      },
+      "sameAccount": "Už jste přihlášeni jako {{account}}. Pokud chcete přidat jiný účet, přihlaste se jím.",
+      "windowTitle": "Přihlášení k {{server}}",
+      "addAccountKept": "Váš současný účet zůstane přihlášený.",
+      "noBrowser": "Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a pak ho tady vyberte.",
+      "tileHere": "V této aplikaci",
+      "tileWindow": "Nové okno",
+      "tileWaiting": "Čeká se na vás",
+      "signInNote": "Pro přihlášení přes Google, instituci nebo přístupový klíč použijte prohlížeč. Pokud váš přístupový klíč v Oleafly nefunguje, použijte tam heslo nebo výzvu v telefonu. Okno se po přihlášení samo zavře."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2169,6 +2160,20 @@
           "confirm": "Tento příkaz stáhne instalační program Cua z cua.ai a spustí ho ve vašem terminálu. Pokračovat?"
         }
       }
+    },
+    "signIns": {
+      "title": "Správa přihlášení",
+      "description": "Účty, ke kterým je Oleafly na tomto počítači přihlášený. Když tady některý odeberete, v prohlížeči zůstanete přihlášeni.",
+      "loading": "Načítají se vaše přihlášení…",
+      "empty": "Nejste přihlášeni k žádnému účtu.",
+      "inUse": "Používá se",
+      "switch": "Přepnout",
+      "switchTo": "Přepnout na {{account}}",
+      "removeAccount": "Odebrat {{account}}",
+      "removeAll": "Odebrat vše",
+      "importMore": "Importovat další",
+      "loadFailed": "Oleafly nemohl načíst vaše přihlášení.",
+      "changeFailed": "Oleafly nemohl toto přihlášení změnit. Zkuste to znovu."
     }
   },
   "language": {
@@ -2383,6 +2388,7 @@
       "confirm": "Vymazat slova",
       "descriptionFallback": "Tím se z tohoto slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
       "descriptionGlobal": "Tím se z globálního slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
+      "descriptionOverleaf": "Odstraní se i z vašeho účtu Overleaf.",
       "descriptionProject": "Tím se z projektu {{project}} odstraní všechny termíny. Budou se hned zase kontrolovat.",
       "descriptionSuppressed": "Tím se odstraní všechny termíny ze zavřených nálezů v projektu {{project}}. Budou se hned zase kontrolovat.",
       "suppressedConfirm": "Zobrazit znovu",
@@ -2402,6 +2408,7 @@
     },
     "global": {
       "emptyDescription": "Slova, která tu přidáte, korektura přeskočí ve všech projektech.",
+      "overleafSynced": "Synchronizuje se s naučenými slovy ve vašem účtu Overleaf, když je projekt živě otevřený ve službě Overleaf.",
       "scope": "Platí pro každý projekt"
     },
     "intro": "Přidejte slova do svého osobního slovníku pro kontrolu pravopisu. Ukládají se do místního nastavení a ignorují se napříč projekty. Porovnání je normalizované podle Unicode a nerozlišuje velikost písmen.",
@@ -2934,5 +2941,190 @@
     "filteredCount_many": "{{shown}} z {{count}} záznamu",
     "filteredCount_one": "{{shown}} z {{count}} záznamu",
     "filteredCount_other": "{{shown}} z {{count}} záznamů"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "V seznamu doplňování",
+        "description": "Zobrazovat úryvky vedle příkazů"
+      },
+      "tab": {
+        "label": "Tab rozbalí spouštěč",
+        "description": "Pro úryvky rozbalované klávesou Tab"
+      },
+      "auto": {
+        "label": "Rozbalovat při psaní",
+        "description": "Pro úryvky typu Auto, například Fast math"
+      },
+      "hint": {
+        "label": "Zobrazovat nápovědu při psaní",
+        "description": "Ukáže název úryvku, který se po napsání spouštěče vloží. Tab ho vloží."
+      }
+    },
+    "library": {
+      "title": "Vaše knihovna úryvků",
+      "collections": "Kolekce",
+      "all": "Všechny úryvky",
+      "mine": "Vaše",
+      "packs": "Balíčky",
+      "builtIn": "Vestavěné",
+      "add": "Přidat balíčky nebo importovat…",
+      "useCollection": "Používat kolekci {{name}}",
+      "search": "Hledat podle názvu, spouštěče nebo textu",
+      "language": "Jazyk",
+      "allLanguages": "Všechny jazyky",
+      "expands": "Rozbalení",
+      "anyExpand": "Jakékoli",
+      "newSnippet": "Nový úryvek",
+      "columns": {
+        "trigger": "Spouštěč",
+        "name": "Název",
+        "languages": "Jazyky",
+        "where": "Kde",
+        "expands": "Rozbalení"
+      },
+      "modified": "Upraveno",
+      "turnedOff": "Vypnuto",
+      "restore": "Obnovit",
+      "restoreLabel": "Obnovit: {{name}}",
+      "wraps": "obaluje",
+      "noTrigger": "žádný",
+      "noMatches": "Žádné úryvky neodpovídají.",
+      "shown": "{{shown}} z {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problém",
+      "summary_few": "{{count}} problémy",
+      "summary_many": "{{count}} problému",
+      "summary_other": "{{count}} problémů",
+      "where": "v {{file}}, řádek {{line}}: {{message}}",
+      "slowRegex": "Kontrola spouštěče úryvku „{{name}}“ trvala příliš dlouho, a proto byl úryvek vypnut.",
+      "show": "Zobrazit",
+      "hide": "Skrýt"
+    },
+    "addDialog": {
+      "title": "Přidat úryvky",
+      "packsTab": "Balíčky",
+      "importTab": "Import souboru",
+      "count_one": "{{count}} úryvek",
+      "count_few": "{{count}} úryvky",
+      "count_many": "{{count}} úryvku",
+      "count_other": "{{count}} úryvků",
+      "source": "Zdroj: {{source}}",
+      "licence": "Licence {{licence}}",
+      "packNote": "Balíčky se aktualizují spolu s aplikací. Změny, které v úryvcích balíčku uděláte, se ukládají zvlášť.",
+      "packs": {
+        "fastMathLatex": "Rozbaluje se při psaní v matematice: zlomky, indexy a mocniny, řecká písmena, operátory a matice. Spouštěče vycházejí z nastavení, které používal Gilles Castel.",
+        "fastMathTypst": "Stejné spouštěče, napsané pro Typst. Vynechává to, co Typst umí sám, například a/b pro zlomek.",
+        "paperStructure": "Obrázky, podobrázky, tabulky booktabs, rovnice, věty, důkazy a algoritmy."
+      },
+      "useOn": "Používat balíček {{name}}",
+      "importIntro": "Vyberte soubor úryvků VS Code (.json nebo .code-snippets). Stane se samostatnou kolekcí, kterou můžete vypnout nebo upravit.",
+      "choose": "Vybrat soubor",
+      "fileLabel": "Soubor úryvků",
+      "imported_one": "Do kolekce {{collection}} byl importován {{count}} úryvek.",
+      "imported_few": "Do kolekce {{collection}} byly importovány {{count}} úryvky.",
+      "imported_many": "Do kolekce {{collection}} bylo importováno {{count}} úryvku.",
+      "imported_other": "Do kolekce {{collection}} bylo importováno {{count}} úryvků.",
+      "nothing": "V souboru {{file}} nebyly nalezeny žádné úryvky.",
+      "leftOut_one": "Byla vynechána {{count}} položka:",
+      "leftOut_few": "Byly vynechány {{count}} položky:",
+      "leftOut_many": "Bylo vynecháno {{count}} položky:",
+      "leftOut_other": "Bylo vynecháno {{count}} položek:"
+    },
+    "editor": {
+      "newTitle": "Nový úryvek",
+      "duplicate": "Duplikovat",
+      "delete": "Smazat",
+      "turnOff": "Vypnout",
+      "save": "Uložit",
+      "copyName": "{{name}} (kopie)",
+      "name": "Název",
+      "namePlaceholder": "Obrázek s popiskem a návěštím",
+      "trigger": "Spouštěč",
+      "triggerPlaceholder": "fig",
+      "regex": "Regulární výraz",
+      "expands": "Rozbalení",
+      "expandOptions": {
+        "list": "Ze seznamu",
+        "tab": "Klávesou Tab",
+        "auto": "Při psaní"
+      },
+      "expandHelp": {
+        "list": "Úryvek se zobrazí v seznamu doplňování. Vložíte ho tak, že ho tam vyberete.",
+        "tab": "Napište {{trigger}} a stiskněte Tab. Úryvek se zobrazí i v seznamu doplňování.",
+        "auto": "Úryvek se rozbalí hned, jak napíšete {{trigger}}. Zpět nebo Backspace vrátí spouštěč."
+      },
+      "languages": "Jazyky",
+      "where": "Kde",
+      "whereOptions": {
+        "any": "Kdekoli",
+        "text": "Text",
+        "math": "Matematika",
+        "code": "Kód"
+      },
+      "mathKinds": {
+        "math": "Obojí",
+        "inline-math": "V řádku",
+        "display-math": "Na samostatném řádku"
+      },
+      "mathKind": "Druh matematiky",
+      "whereHelp": {
+        "any": "Kdekoli v souboru.",
+        "text": "Text: mimo matematiku, komentáře a prostředí verbatim.",
+        "math": "Matematika: uvnitř matematiky v řádku nebo na samostatném řádku.",
+        "code": "Kód: uvnitř kódu Typst nebo bloků kódu Markdown."
+      },
+      "firesOnly": "Spouští se jen",
+      "wholeWord": "jako celé slovo",
+      "lineStart": "na začátku řádku",
+      "collection": "Kolekce",
+      "keptSeparately": "Vaše změny se ukládají zvlášť, takže aktualizace kolekce {{collection}} k vám budou dál přicházet.",
+      "body": "Vkládaný text",
+      "anyLanguage": "Jakýkoli jazyk",
+      "addField": "+ Pole",
+      "addChoice": "+ Výběr",
+      "choiceText": "první,druhý",
+      "variable": "Proměnná",
+      "projectField": "Pole projektu",
+      "variables": {
+        "SELECTION": "Vybraný text",
+        "CLIPBOARD": "Schránka",
+        "DATE": "Dnešní datum",
+        "TM_FILENAME": "Název souboru",
+        "PROJECT_NAME": "Název projektu"
+      },
+      "projectFields": {
+        "image": "Obrázek",
+        "label": "Návěští",
+        "cite": "Citace",
+        "ref": "Křížový odkaz",
+        "file": "Soubor"
+      },
+      "chipsNote": "Pole se zobrazují jako štítky.",
+      "showSyntax": "Zobrazit syntaxi",
+      "missingName": "Pojmenujte úryvek.",
+      "missingBody": "Napište text, který úryvek vkládá.",
+      "sameTrigger": "Spouštěč {{trigger}} mají i jiné úryvky: {{list}}. Přednost má nejbližší kolekce.",
+      "sharedStart": "Začíná stejně jako: {{list}}. Všechny se zobrazí v seznamu a Tab vybere přesnou shodu, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Smazat „{{name}}“?",
+        "description": "Úryvek se odstraní z kolekce {{collection}}.",
+        "action": "Smazat"
+      },
+      "tryIt": {
+        "title": "Vyzkoušet",
+        "howAuto": "Napište {{trigger}} a úryvek se rozbalí.",
+        "howTab": "Napište {{trigger}} a pak stiskněte Tab.",
+        "howList": "Napište {{trigger}}, stiskněte Ctrl+Space a vyberte úryvek ze seznamu.",
+        "noTrigger": "Tento úryvek nemá spouštěč. Vložte ho z palety příkazů pomocí /snippets.",
+        "inText": "v textu",
+        "inMath": "v matematice",
+        "fires": "Spustí se tady: {{language}}, {{place}}.",
+        "notLanguage": "Tady se nespustí: {{language}} nepatří mezi jazyky tohoto úryvku.",
+        "notPlace": "Nespustí se {{place}}. Nastavení „Kde“ to nedovoluje."
+      }
+    }
   }
 }

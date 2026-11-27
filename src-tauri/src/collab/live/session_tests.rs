@@ -29,13 +29,16 @@ use crate::folder_watch::FolderChange;
 
 struct SilentHost;
 
-impl LiveHost for SilentHost {
+impl oleafly_live::DiskHost for SilentHost {
     fn status(&self, _: StatusPayload) {}
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
+}
+
+impl LiveHost for SilentHost {
+    fn merged(&self, _: MergedPayload) {}
     fn new_device(&self, _: NewDevicePayload) {}
 }
 
@@ -73,16 +76,16 @@ fn starting_live_again_for_a_live_project_answers() {
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
             let active = Arc::new(Active {
-                local: LiveDisk {
-                    project_id: "already-live".to_owned(),
+                local: LiveDisk::assembled(
+                    "already-live",
                     root,
-                    disk_file: dir.path().join("disk.json"),
-                    disk: Mutex::new(disk),
-                    bases: Mutex::new(WrittenTexts::default()),
-                    host: Arc::new(SilentHost),
+                    dir.path().join("disk.json"),
+                    disk,
+                    WrittenTexts::default(),
+                    Arc::new(SilentHost),
                     writer,
-                    upkeep: Default::default(),
-                },
+                ),
+                host: Arc::new(SilentHost),
                 document_dir: dir.path().join("document"),
                 live: shared,
                 handle,
@@ -114,18 +117,23 @@ struct RecordingHost {
     skipped: Mutex<Vec<ChangeSkippedPayload>>,
 }
 
-impl LiveHost for RecordingHost {
+impl oleafly_live::DiskHost for RecordingHost {
     fn status(&self, _: StatusPayload) {}
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, payload: MergedPayload) {
-        guard(&self.merged).push(payload);
-    }
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
+}
+
+impl LiveHost for RecordingHost {
+    fn merged(&self, payload: MergedPayload) {
+        guard(&self.merged).push(payload);
+    }
+
     fn new_device(&self, payload: NewDevicePayload) {
         guard(&self.new_devices).push(payload);
     }
+
     fn change_skipped(&self, payload: ChangeSkippedPayload) {
         guard(&self.skipped).push(payload);
     }
@@ -138,19 +146,24 @@ struct EndingHost {
     ended: Mutex<Vec<(ServerId, SessionEndReason)>>,
 }
 
-impl LiveHost for EndingHost {
+impl oleafly_live::DiskHost for EndingHost {
     fn status(&self, payload: StatusPayload) {
         guard(&self.statuses).push(payload);
     }
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
+}
+
+impl LiveHost for EndingHost {
+    fn merged(&self, _: MergedPayload) {}
     fn new_device(&self, _: NewDevicePayload) {}
+
     fn members(&self, payload: MembersPayload) {
         guard(&self.members).push(payload);
     }
+
     fn session_ended(&self, server: ServerId, reason: SessionEndReason) {
         guard(&self.ended).push((server, reason));
     }
@@ -209,16 +222,16 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(EndingHost::default());
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "ending".to_owned(),
+            local: LiveDisk::assembled(
+                "ending",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             document_dir: dir.path().join("document"),
             live: shared,
             handle,
@@ -300,16 +313,16 @@ fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(EndingHost::default());
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "spent".to_owned(),
+            local: LiveDisk::assembled(
+                "spent",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             document_dir: dir.path().join("document"),
             live: shared,
             handle,
@@ -483,16 +496,16 @@ fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks(
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(RecordingHost::default());
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "reviewed".to_owned(),
+            local: LiveDisk::assembled(
+                "reviewed",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             document_dir: dir.path().join("document"),
             live: shared,
             handle,
@@ -592,16 +605,16 @@ fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(RecordingHost::default());
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "skipping".to_owned(),
+            local: LiveDisk::assembled(
+                "skipping",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             document_dir: dir.path().join("document"),
             live: shared,
             handle,
@@ -667,14 +680,18 @@ fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
 #[derive(Default)]
 struct CommentHost(Mutex<Vec<super::super::comments::CommentsChangedPayload>>);
 
-impl LiveHost for CommentHost {
+impl oleafly_live::DiskHost for CommentHost {
     fn status(&self, _: StatusPayload) {}
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
+}
+
+impl LiveHost for CommentHost {
+    fn merged(&self, _: MergedPayload) {}
     fn new_device(&self, _: NewDevicePayload) {}
+
     fn comments_changed(&self, payload: super::super::comments::CommentsChangedPayload) {
         guard(&self.0).push(payload);
     }
@@ -724,16 +741,16 @@ fn the_pump_announces_comments_that_arrive_from_others() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(CommentHost::default());
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "commented".to_owned(),
+            local: LiveDisk::assembled(
+                "commented",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                host.clone(),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             document_dir: dir.path().join("document"),
             live: shared,
             handle,
@@ -824,16 +841,16 @@ fn blocked_save() -> BlockedSave {
         let (writer, writer_rx) = mpsc::unbounded_channel();
         let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
         let active = Arc::new(Active {
-            local: LiveDisk {
-                project_id: "saving".to_owned(),
+            local: LiveDisk::assembled(
+                "saving",
                 root,
-                disk_file: dir.path().join("disk.json"),
-                disk: Mutex::new(disk),
-                bases: Mutex::new(WrittenTexts::default()),
-                host: Arc::new(SilentHost),
+                dir.path().join("disk.json"),
+                disk,
+                WrittenTexts::default(),
+                Arc::new(SilentHost),
                 writer,
-                upkeep: Default::default(),
-            },
+            ),
+            host: Arc::new(SilentHost),
             document_dir,
             live: shared,
             handle,
@@ -924,6 +941,7 @@ struct Watching {
     unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
     renamed: Mutex<Vec<crate::collab::tree::RenamedPayload>>,
     written: Mutex<Vec<super::payloads::WrittenPayload>>,
+    notes: Mutex<Vec<(String, String)>>,
 }
 
 impl Watching {
@@ -942,24 +960,35 @@ impl Watching {
     }
 }
 
-impl LiveHost for Watching {
+impl oleafly_live::DiskHost for Watching {
     fn status(&self, _: StatusPayload) {}
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
+
     fn folder_changed(&self, change: FolderChange) {
         guard(&self.changes).push(change);
     }
-    fn new_device(&self, _: NewDevicePayload) {}
+
     fn unwritten(&self, payload: super::unwritten::UnwrittenPayload) {
         guard(&self.unwritten).push(payload);
     }
-    fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
-        guard(&self.renamed).push(payload);
-    }
+
     fn written(&self, payload: super::payloads::WrittenPayload) {
         guard(&self.written).push(payload);
+    }
+
+    fn note_written(&self, project_id: &str, text: &str) {
+        guard(&self.notes).push((project_id.to_owned(), text.to_owned()));
+    }
+}
+
+impl LiveHost for Watching {
+    fn merged(&self, _: MergedPayload) {}
+    fn new_device(&self, _: NewDevicePayload) {}
+
+    fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
+        guard(&self.renamed).push(payload);
     }
 }
 
@@ -1007,32 +1036,10 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
 
 #[test]
 fn a_note_a_session_writes_is_checked_under_its_project_id_not_its_folder_name() {
-    let _env_guard = crate::paths::data_dir_env_lock();
-    let (_dir, root, _host, rig) = watched_rig(
+    let (_dir, root, host, rig) = watched_rig(
         "linked-note-7",
         &[("note.md", "---\nkind: note\n---\nPlain\n")],
     );
-    let listed = crate::project::ProjectInfo {
-        id: "linked-note-7".into(),
-        name: "Lab".into(),
-        main_doc: "note.md".into(),
-        engine: "markdown".into(),
-        kind: crate::project::NOTE_KIND.into(),
-        created_at: 0.0,
-        updated_at: 0.0,
-        color: String::new(),
-        has_preview: false,
-        exports: Vec::new(),
-        forked_from: None,
-        recovery_pending: false,
-        location: crate::project_availability::ProjectLocationInfo::Library,
-        last_opened_at: 0.0,
-        shared: None,
-        imported_from: None,
-        related_project: None,
-    };
-    let (revision, mark) = crate::note_index::listing_marks();
-    crate::note_index::remember(&[listed], revision, mark);
     rig.remote("note.md", "Plain, no longer a note\n");
     rig.settle();
 
@@ -1041,7 +1048,13 @@ fn a_note_a_session_writes_is_checked_under_its_project_id_not_its_folder_name()
         std::fs::read_to_string(root.join("note.md")).unwrap(),
         "Plain, no longer a note\n"
     );
-    assert!(crate::note_index::revision() > revision);
+    assert_eq!(
+        *guard(&host.notes),
+        [(
+            "linked-note-7".to_owned(),
+            "Plain, no longer a note\n".to_owned()
+        )]
+    );
 }
 
 #[test]
@@ -1446,14 +1459,18 @@ fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
 #[derive(Default)]
 struct FullHost(Mutex<Vec<super::payloads::ProjectFullPayload>>);
 
-impl LiveHost for FullHost {
+impl oleafly_live::DiskHost for FullHost {
     fn status(&self, _: StatusPayload) {}
     fn role(&self, _: RolePayload) {}
-    fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
+}
+
+impl LiveHost for FullHost {
+    fn merged(&self, _: MergedPayload) {}
     fn new_device(&self, _: NewDevicePayload) {}
+
     fn project_full(&self, payload: super::payloads::ProjectFullPayload) {
         guard(&self.0).push(payload);
     }
@@ -1760,11 +1777,21 @@ fn quitting_while_a_stop_is_still_writing_waits_for_it() {
 
 #[test]
 fn a_sooner_wake_up_is_not_held_back_by_a_later_one() {
+    let dir = tempfile::tempdir().unwrap();
     let (writer, mut woken) = mpsc::unbounded_channel();
+    let disk = LiveDisk::assembled(
+        "alarm",
+        dir.path().to_path_buf(),
+        dir.path().join("disk.json"),
+        crate::collab::disk::DiskState::default(),
+        WrittenTexts::default(),
+        Arc::new(SilentHost),
+        writer,
+    );
     let alarm = super::session::Alarm::default();
     tauri::async_runtime::block_on(async {
-        alarm.ring_in(&writer, Duration::from_secs(60));
-        alarm.ring_in(&writer, Duration::from_millis(50));
+        alarm.ring_in(&disk, Duration::from_secs(60));
+        alarm.ring_in(&disk, Duration::from_millis(50));
         let first = tokio::time::timeout(Duration::from_secs(5), woken.recv()).await;
         assert!(matches!(first, Ok(Some(super::WriterSignal::Kick))));
     });

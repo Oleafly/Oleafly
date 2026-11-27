@@ -2,11 +2,6 @@
 
 import { createElement } from "react";
 import { render } from "@testing-library/react";
-import {
-  completionStatus,
-  currentCompletions,
-  startCompletion,
-} from "@codemirror/autocomplete";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -115,18 +110,6 @@ describe("Typst editing inside the editor component", () => {
     const { view, mounted } = mount("main.tex", "- first");
     press(view, "Enter");
     expect(view.state.doc.toString()).not.toContain("\n- ");
-    mounted.unmount();
-  });
-
-  it("offers the Typst slash snippets in a Typst file", async () => {
-    const { view, mounted } = mount("main.typ", "Intro\n/fig");
-    startCompletion(view);
-    await vi.waitFor(() => {
-      expect(completionStatus(view.state)).toBe("active");
-      expect(currentCompletions(view.state).map((option) => option.label)).toContain(
-        "/figure",
-      );
-    });
     mounted.unmount();
   });
 });

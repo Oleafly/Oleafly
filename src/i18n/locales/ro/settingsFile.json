@@ -55,7 +55,8 @@
     "unknownKey": "nu este o setare cunoscută de Oleafly",
     "dictionaryLocale": "trebuie să fie un cod de dicționar, de exemplu en_US",
     "shortcut": "trebuie să fie o scurtătură, de exemplu Mod-Shift-k, sau \"default\"",
-    "editorKey": "trebuie să fie o tastă, de exemplu Mod-d, \"\" pentru niciuna, sau \"default\""
+    "editorKey": "trebuie să fie o tastă, de exemplu Mod-d, \"\" pentru niciuna, sau \"default\"",
+    "snippetFileName": "trebuie să fie un nume de fișier precum my-snippets.json, format din litere, cifre, spații, puncte, cratime și caractere de subliniere"
   },
   "importFromLocal": "Importă de pe acest dispozitiv",
   "importFromCloud": "Importă din cloud",

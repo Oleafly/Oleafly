@@ -135,6 +135,7 @@ describe("settings document", () => {
       "general",
       "appearance",
       "dictionary",
+      "snippets",
       "data",
       "ai",
       "research",

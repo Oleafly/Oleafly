@@ -76,19 +76,12 @@ describe("access banners on Overleaf", () => {
     expect(openInSystemBrowser).toHaveBeenCalledWith(`${LINK.server}/project/${LINK.remoteId}`);
   });
 
-  it("says a reviewer's edits go in as suggestions", () => {
+  it("leaves reviewing and track changes to the edit mode switch", () => {
     useCollabLiveStore.setState({ role: "reviewer", tracking: true });
-    render(<CollabBanners />);
-    expect(screen.getByRole("status")).toHaveTextContent(copy.reviewing);
-  });
-
-  it("follows track changes turning on and off for an editor", () => {
-    render(<CollabBanners />);
-    expect(screen.queryByRole("status")).toBeNull();
-    act(() => useCollabLiveStore.setState({ tracking: true }));
-    expect(screen.getByRole("status")).toHaveTextContent(copy.trackingChanges);
-    act(() => useCollabLiveStore.setState({ tracking: false }));
-    expect(screen.queryByRole("status")).toBeNull();
+    const { container } = render(<CollabBanners />);
+    expect(container).toBeEmptyDOMElement();
+    act(() => useCollabLiveStore.setState({ role: "editor", tracking: true }));
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("says when the project left the service it was linked to, while live editing goes on", () => {

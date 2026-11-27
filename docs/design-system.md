@@ -107,7 +107,9 @@ An error line under a form or an action is an `InlineAlert` from
 `ui/inline-alert.tsx`: red text on a red tint that screen readers announce as
 an alert. Pass `icon` (a Lucide icon) to show one before the message,
 `bordered` for the framed version dialogs use, and `size="sm"` when it sits
-next to larger text. Don't write those classes by hand.
+next to larger text. `tone="warning"` turns it amber, for problems that do not
+stop anything, such as the problems bar on Settings › Snippets. Don't write
+those classes by hand.
 
 A faint background behind a page comes from one of three patterns, each an
 absolutely placed SVG that ignores the pointer, so its parent needs
@@ -159,12 +161,41 @@ A search palette that opens over the window (the command palette, the
 omnibar, the note switcher) is a `CommandDialogShell` from
 `ui/command-dialog.tsx`. It brings the overlay, the panel, the field and the
 list. `leading` and `trailing` sit beside the field, `placement` and
-`className` move and size the panel, and `footer` goes under the list. Its
-rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
+`className` move and size the panel, and `footer` goes under the list.
+`aside` sits to the right of the list, inside the palette, so it can read the
+highlighted row with cmdk's `useCommandState`. The snippets mode uses it for
+its preview. Its rows take `COMMAND_ITEM` and its groups `COMMAND_GROUP`.
+
+Another program's own icon, such as a browser in a picker, is an `AppIcon`
+from `ui/app-icon.tsx`. It takes the icon as a data URL and shows a plain
+window until it has one. `size="sm"` fits a menu row.
+
+A Lucide icon that is newer than the pinned lucide-react goes in
+`ui/extra-icons.ts`, made with `createLucideIcon` from the upstream SVG so it
+takes the same props and class names as the others. Delete it there once
+lucide-react ships it. Chat uses `MessagesCircle` from there.
+
+A tile that starts something, with an icon, a name and a short hint, is a
+`TileButton` from `ui/tile-button.tsx`, such as a new note's starters or the
+browsers in the sign-in panel. `className` changes how it is arranged.
 
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in
-`ui/dropdown-menu.tsx`.
+`ui/dropdown-menu.tsx`. `DropdownMenuItemText` puts a small grey line under an
+item's label, for what the action applies to or why it is greyed out. A menu
+that opens from the right edge of the window takes `submenuSide="left"`, so its
+submenus open to the left and their chevrons sit on the left and point that way.
+
+Removed and added text use the diff colours, `bg-diff-delete` and
+`bg-diff-insert`, with `-strong` for the change that's selected or hovered.
+The git diff view, Notes suggestions and the PDF Annotations panel share them,
+so a change looks the same everywhere.
+
+A section that folds open is a `CollapsibleSection` from `ui/collapsible-section.tsx`.
+By default it's a bordered card with the chevron at the far end, as in Settings.
+`variant="group"` drops the card for a small grey heading with the chevron in
+front. Use it for groups inside a list, like the Annotations panel's Drafts and
+Resolved.
 
 A formatting toolbar that has to fit its width renders its controls through
 `ToolbarOverflow` from `ui/toolbar-overflow.tsx`. Each `ToolbarControl` has a
@@ -333,6 +364,12 @@ anchor is scrolled out of view. `ariaLabel` names the dialog. `bare` drops
 the card's border, background and padding but keeps its shadow, for content
 that brings its own box, such as a `CommentComposer`.
 
+A `Popover` that floats over busy content can take `glass` for the frosted
+surface the library's Advanced filters and the editor's Outline use. It blurs
+what's behind it and adds a soft sheen. It also sets `data-glass`, so the dark
+theme's solid dialog background leaves it alone. Put solid cards inside it
+when rows need to stand out from the blur.
+
 A caption that lets people jump to any month is a `MonthPicker` from
 `ui/month-picker.tsx`. Its trigger reads like "November 2026" with a small
 chevron, and opens a `Popover` with the year between two arrows and the twelve
@@ -374,11 +411,18 @@ already. A placeholder too long for its field ends in an ellipsis
 (`placeholder-shown:text-ellipsis`) rather than stopping mid-word. German
 labels run long, so this comes up.
 
+A label over a form control is a `Field` from `ui/field.tsx`. Pass the
+control's `id` and the label points at it. Leave `id` out when the field holds
+controls that name themselves, like a segmented control or a row of chips.
+Anything that belongs under the control, like the Regular expression checkbox
+under a snippet's trigger, goes in as a child after it.
+
 A plain filter box at the top of a panel, with a search icon and a clear
 button, is a `SearchField` from `ui/search-field.tsx`. Clearing it puts focus
-back in the field. Pass `clearOnEscape` to let Escape empty it as well. Once
-it's empty, Escape goes on to the panel as usual. The browser's own clear
-button is hidden, so the field never shows two.
+back in the field. Pass `clearOnEscape` to let Escape empty it as well. While
+it has text, Escape only empties it, so a dialog around it stays open. Once
+it's empty, Escape goes on to the panel or the dialog as usual. The browser's
+own clear button is hidden, so the field never shows two.
 
 A floating "find in this view" panel is a `FindBar` from `ui/find-bar.tsx`.
 It brings the field, a match count that screen readers announce, the
@@ -522,9 +566,9 @@ message's header when a thread shows no quote, where it joins the ⋯ pill and
 stays while that message is deleted or being edited. A suggestion's discussion is the same
 `CommentThread` with `embedded` on both clients (`EmbeddedThread` on the
 desktop). Thread cards (and the suggestion cards beside them) use
-`commentCardClass(selected)`: `bg-background` on the grey rail, with hover and
-selection shown as a border colour change (`foreground/25` on hover, so it shows
-in light mode too). Every name and time row is a `CommentByline`. The name gets its own 24px
+`commentCardClass(selected)`: `bg-background` on the grey rail with a hairline
+border. Hover is a border colour change (`foreground/25`, so it shows in light
+mode too), and the selected card is the `accent` tint with no visible border. Every name and time row is a `CommentByline`. The name gets its own 24px
 line. If the time, "· edited" or a "New" badge doesn't fit after it, it moves
 to the next line, so nothing is cut to a fragment and the name never moves. A
 time wider than the whole row wraps at its spaces. A name is cut with an
@@ -555,9 +599,9 @@ so the Tooltip always works. A failed send keeps the text
 and shows "Not sent." with the reason, plus Retry when the host says retrying
 can help. The kit has no strings of its own: the host wraps it in a
 `CommentKitProvider` with its labels, time formats, names, error text,
-confirm dialog and reaction support (`DesktopCommentKit` on the desktop,
-`WebCommentKit` in the web client). An error line under an action is an
-`InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
+error logging (`reportError`), confirm dialog and reaction support
+(`DesktopCommentKit` on the desktop, `WebCommentKit` in the web client). An
+error line under an action is an `InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
 for callers that must close it themselves, as the reaction picker does.
 
 Live states come from the same kit. A `CommentEntry` can carry a `delivery`:

@@ -370,7 +370,8 @@
       "runCommand": "프로젝트 폴더에서 shell 명령을 2분 제한으로 실행합니다.",
       "toggleTheme": "밝은 모드와 어두운 모드를 전환합니다.",
       "listOverleafProjects": "Overleaf 프로젝트 목록을 보여 주며, 필요하면 먼저 로그인합니다.",
-      "importOverleafProjects": "Overleaf 프로젝트를 컴파일러와 주 파일 설정과 함께 라이브러리로 가져옵니다."
+      "importOverleafProjects": "Overleaf 프로젝트를 컴파일러와 주 파일 설정과 함께 라이브러리로 가져옵니다.",
+      "openOverleafLive": "Overleaf 프로젝트를 실시간 편집용으로 엽니다. 아직 라이브러리에 없으면 먼저 가져옵니다."
     },
     "disableAll": "모두 끄기",
     "emptyContext": "이 맥락에서 쓸 수 있는 도구가 없습니다.",
@@ -396,7 +397,8 @@
       "latexOnly": "LaTeX 프로젝트에서만",
       "latexAndTypstOnly": "LaTeX와 Typst 프로젝트에서만",
       "pdfCaptureSetting": "PDF 페이지 캡처 설정이 필요합니다",
-      "chatApproval": "채팅에서 명령을 하나씩 승인합니다"
+      "chatApproval": "채팅에서 명령을 하나씩 승인합니다",
+      "overleafLiveSetting": "실험 기능의 Overleaf와 실시간 편집이 필요합니다"
     },
     "sourceGroups": {
       "figure": "그림",

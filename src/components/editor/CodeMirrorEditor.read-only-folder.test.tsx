@@ -6,7 +6,6 @@ import { Transaction } from "@codemirror/state";
 vi.mock("@oleafly/latex-intelligence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@oleafly/latex-intelligence")>()),
   loadCore: async () => null,
-  loadAtSuggestions: async () => null,
   loadPackageNames: async () => null,
   loadClassNames: async () => null,
 }));

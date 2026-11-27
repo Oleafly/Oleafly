@@ -117,6 +117,9 @@ fn browser_sign_in_answers_only_the_main_window() {
         tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(pane.clone())).unwrap_err(),
     );
     refused(
+        tauri::async_runtime::block_on(super::overleaf_browser_icons(pane.clone())).unwrap_err(),
+    );
+    refused(
         tauri::async_runtime::block_on(super::overleaf_sign_in_with_browser(
             pane.clone(),
             None,
@@ -141,10 +144,15 @@ fn browser_sign_in_answers_only_the_main_window() {
     ))
     .unwrap_err();
     assert!(invalid.contains("\"overleaf.invalid_server\""), "{invalid}");
-    assert!(
+    let browsers =
         tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(main.as_ref().clone()))
-            .is_ok()
-    );
+            .unwrap();
+    let icons =
+        tauri::async_runtime::block_on(super::overleaf_browser_icons(main.as_ref().clone()))
+            .unwrap();
+    assert!(icons.iter().all(|(key, icon)| {
+        browsers.iter().any(|browser| browser.key == *key) && icon.starts_with("data:image/")
+    }));
 }
 
 #[test]
@@ -205,7 +213,7 @@ fn importing_downloads_each_project_and_carries_its_settings() {
         session::save(&base, &Session { cookie: "overleaf_session2=good".into(), user_id: "user-1".into(), email: "ada@uni.edu".into(), saved_by: None }).unwrap();
         let events: Mutex<Vec<ImportEvent>> = Mutex::new(Vec::new());
         let emit = |event: ImportEvent| events.lock().unwrap().push(event);
-        let outcomes = import::import(&base, &["a1".to_string(), "b2".to_string(), "a1".to_string(), "zz".to_string()], &emit)
+        let outcomes = import::import(&base, None, &["a1".to_string(), "b2".to_string(), "a1".to_string(), "zz".to_string()], &emit)
             .await
             .unwrap();
         (base, outcomes, events.into_inner().unwrap())
@@ -244,6 +252,8 @@ fn importing_downloads_each_project_and_carries_its_settings() {
     assert_eq!(meta["importedFrom"]["projectId"], "a1");
     assert_eq!(meta["importedFrom"]["server"], base.as_str());
     assert_eq!(meta["importedFrom"]["texLive"], "2025");
+    assert_eq!(meta["importedFrom"]["userId"], "user-1");
+    assert_eq!(meta["importedFrom"]["email"], "ada@uni.edu");
     assert!(events.iter().any(
         |event| matches!(event, ImportEvent::Downloading { remote_id, .. } if remote_id == "a1")
     ));
@@ -304,7 +314,7 @@ fn importing_keeps_a_project_whose_files_all_sit_in_one_folder_as_it_is_online()
         .await;
         let base = fixture.base.clone();
         session::save(&base, &Session { cookie: "overleaf_session2=good".into(), user_id: "user-1".into(), email: "ada@uni.edu".into(), saved_by: None }).unwrap();
-        import::import(&base, &["a1".to_string()], &|_| {}).await.unwrap()
+        import::import(&base, None, &["a1".to_string()], &|_| {}).await.unwrap()
     });
     let project_id = outcomes[0].project_id.clone().unwrap();
     let dir = crate::paths::projects_root().unwrap().join(&project_id);
@@ -333,7 +343,7 @@ fn listing_through_the_shim_still_says_signed_out_in_the_app_format() {
         }))
         .await;
         let base = fixture.base.clone();
-        let error = import::list(&base).await.err().unwrap();
+        let error = import::list(&base, None).await.err().unwrap();
         assert!(error.contains("\"overleaf.signed_out\""), "{error}");
         session::save(
             &base,
@@ -345,9 +355,9 @@ fn listing_through_the_shim_still_says_signed_out_in_the_app_format() {
             },
         )
         .unwrap();
-        let error = import::list(&base).await.err().unwrap();
+        let error = import::list(&base, None).await.err().unwrap();
         assert!(client::is_expired(&error), "{error}");
-        assert!(session::load(&base).unwrap().is_none());
+        assert!(session::load(&base, None).unwrap().is_none());
     });
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }
@@ -539,6 +549,7 @@ fn a_gallery_link_is_copied_into_the_account_and_saved_as_a_template() {
         .unwrap();
         let result = template::import_template(
             Some(&base),
+            None,
             &format!("{base}{page_path}"),
             "Our lab thesis".into(),
             None,
@@ -604,7 +615,7 @@ fn a_gallery_link_needs_a_sign_in_and_reports_removed_templates_and_expired_sign
         let base = fixture.base.clone();
         let link = format!("{base}{page_path}");
         let signed_out =
-            template::import_template(Some(&base), &link, "x".into(), None, Vec::new()).await;
+            template::import_template(Some(&base), None, &link, "x".into(), None, Vec::new()).await;
         session::save(
             &base,
             &Session {
@@ -621,8 +632,8 @@ fn a_gallery_link_needs_a_sign_in_and_reports_removed_templates_and_expired_sign
         )
         .await;
         let expired =
-            template::import_template(Some(&base), &link, "x".into(), None, Vec::new()).await;
-        let still_signed_in = session::load(&base).unwrap().is_some();
+            template::import_template(Some(&base), None, &link, "x".into(), None, Vec::new()).await;
+        let still_signed_in = session::load(&base, None).unwrap().is_some();
         (signed_out, removed, expired, still_signed_in)
     });
     assert!(signed_out.unwrap_err().contains("overleaf.signed_out"));
@@ -684,11 +695,17 @@ fn an_account_project_is_saved_as_a_template_with_its_main_file_and_compiler() {
             },
         )
         .unwrap();
-        let result =
-            template::save_project_as_template(Some(&base), "a1", "Lab master".into(), Vec::new())
-                .await;
+        let result = template::save_project_as_template(
+            Some(&base),
+            None,
+            "a1",
+            "Lab master".into(),
+            Vec::new(),
+        )
+        .await;
         let missing =
-            template::save_project_as_template(Some(&base), "zz", "Gone".into(), Vec::new()).await;
+            template::save_project_as_template(Some(&base), None, "zz", "Gone".into(), Vec::new())
+                .await;
         (result, missing)
     });
     let id = result.unwrap();
@@ -743,20 +760,6 @@ fn app_cookie_header_keeps_only_cookies_for_the_service_host() {
 }
 
 #[test]
-fn the_copied_cookies_removed_after_sign_in_are_the_ones_sent_to_the_service() {
-    let cookies = vec![
-        app_cookie("session2", "abc", Some(".latex.example"), Some("/"), true),
-        app_cookie("other", "x", Some("evil-latex.example"), Some("/"), false),
-        app_cookie("gclb", "y", Some("www.latex.example"), Some("/"), true),
-    ];
-    assert_eq!(
-        super::copied_cookies(&cookies, "https://www.latex.example"),
-        [0, 2]
-    );
-    assert!(super::copied_cookies(&cookies, "not a server").is_empty());
-}
-
-#[test]
 fn app_cookie_header_refuses_when_nothing_matches() {
     let error = super::app_cookie_header(&[], "https://www.latex.example").unwrap_err();
     assert!(
@@ -785,4 +788,109 @@ fn a_missing_cookie_error_never_carries_cookie_values() {
     )];
     let error = super::app_cookie_header(&cookies, "https://www.latex.example").unwrap_err();
     assert!(!error.contains("secret-cookie-value"), "{error}");
+}
+
+#[test]
+fn a_linked_project_uses_the_git_token_of_its_own_account() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let base = "https://www.overleaf.com";
+    let project_id = crate::project::create_blank_project("Linked".into()).unwrap();
+    let mut meta = crate::project::read_meta(&project_id).unwrap();
+    meta.extra.insert(
+        "importedFrom".to_string(),
+        json!({ "service": "overleaf", "server": base, "projectId": "a1", "userId": "u-bea" }),
+    );
+    crate::project::write_meta(&project_id, &meta).unwrap();
+    session::save_git_token(base, Some("u-ada"), "olp_ada_12345").unwrap();
+    assert!(!super::sync_status(&project_id).unwrap().token_saved);
+    session::save_git_token(base, Some("u-bea"), "olp_bea_12345").unwrap();
+    assert!(super::sync_status(&project_id).unwrap().token_saved);
+    assert_eq!(
+        super::required_token(base, Some("u-bea")).unwrap(),
+        "olp_bea_12345"
+    );
+    session::forget_git_token(base, Some("u-bea")).unwrap();
+    assert!(!super::sync_status(&project_id).unwrap().token_saved);
+    let link = super::overleaf_link_of(&project_id).unwrap().unwrap();
+    assert_eq!(link.user_id.as_deref(), Some("u-bea"));
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
+#[test]
+fn signing_in_for_rest_uses_the_chosen_account_and_forgets_only_it_on_expiry() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let page = dashboard_page(&json!({ "projects": [] }));
+        let fixture = serve(Arc::new(move |request: &Request| {
+            let cookie = request.headers.get("cookie").cloned().unwrap_or_default();
+            if cookie.contains("bea=1") {
+                Reply::ok(page.clone()).header("Set-Cookie", "bea=2; Path=/")
+            } else {
+                Reply::status(302).header("Location", "/login")
+            }
+        }))
+        .await;
+        let base = fixture.base.clone();
+        let account = |cookie: &str, user: &str| Session {
+            cookie: cookie.into(),
+            user_id: user.into(),
+            email: format!("{user}@uni.edu"),
+            saved_by: None,
+        };
+        session::save(&base, &account("bea=1", "u-bea")).unwrap();
+        session::save(&base, &account("ada=1", "u-ada")).unwrap();
+        let signed = session::signed_in(&base, Some("u-bea")).await.unwrap();
+        assert_eq!(signed.session.user_id, "u-bea");
+        assert_eq!(signed.session.cookie, "bea=2");
+        assert_eq!(signed.csrf, "csrf-123");
+        assert_eq!(
+            session::load(&base, Some("u-bea")).unwrap().unwrap().cookie,
+            "bea=2"
+        );
+        let error = session::signed_in(&base, None).await.err().unwrap();
+        assert!(client::is_expired(&error), "{error}");
+        assert!(session::load(&base, Some("u-ada")).unwrap().is_none());
+        assert_eq!(
+            session::load(&base, None).unwrap().unwrap().user_id,
+            "u-bea"
+        );
+        let missing = session::signed_in(&base, Some("u-ada"))
+            .await
+            .err()
+            .unwrap();
+        assert!(missing.contains("\"overleaf.signed_out\""), "{missing}");
+    });
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
+#[test]
+fn a_crash_leftover_import_download_is_swept_at_startup() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let root = crate::paths::projects_root().unwrap();
+    std::fs::create_dir_all(&root).unwrap();
+    let old = root.join(format!("{}-1-0", import::IMPORT_STAGING));
+    let fresh = root.join(format!("{}-1-1", import::IMPORT_STAGING));
+    std::fs::write(&old, b"PK").unwrap();
+    std::fs::write(&fresh, b"PK").unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&old)
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(2 * 60 * 60))
+        .unwrap();
+    super::sweep_import_staging();
+    assert!(!old.exists());
+    assert!(fresh.exists());
+    std::env::remove_var("OLEAFLY_DATA_DIR");
 }

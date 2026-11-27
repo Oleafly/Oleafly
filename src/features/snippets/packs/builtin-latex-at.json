@@ -1,0 +1,659 @@
+{
+  "$pack": {
+    "name": "LaTeX @ shortcuts",
+    "nameKey": "snippets.packs.latexAt",
+    "source": "https://github.com/James-Yu/LaTeX-Workshop",
+    "licence": "MIT"
+  },
+  "at.frac": {
+    "name": "fraction",
+    "nameKey": "snippets.records.fraction",
+    "prefix": "@%",
+    "body": "\\frac{$1}{$2}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.wedge": {
+    "name": "wedge",
+    "prefix": "@&",
+    "body": "\\wedge",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.left-paren": {
+    "name": "left( ... right)",
+    "nameKey": "snippets.records.leftParen",
+    "prefix": "@(",
+    "body": "\\left( ${1:${TM_SELECTED_TEXT}} \\right)",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.times": {
+    "name": "times symbol",
+    "nameKey": "snippets.records.times",
+    "prefix": "@*",
+    "body": "\\times",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.bigcup": {
+    "name": "bigcup",
+    "prefix": "@+",
+    "body": "\\bigcup",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.nonumber": {
+    "name": "nonumber",
+    "prefix": "@,",
+    "body": "\\nonumber",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.bigcap": {
+    "name": "bigcap",
+    "prefix": "@-",
+    "body": "\\bigcap",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.cdot": {
+    "name": "\\cdot",
+    "nameKey": "snippets.records.cdot",
+    "prefix": "@.",
+    "body": "\\cdot",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.frac-2": {
+    "name": "fraction",
+    "nameKey": "snippets.records.fraction",
+    "prefix": "@/",
+    "body": "\\frac{$1}{$2}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.sup-circ": {
+    "name": "superscript circ",
+    "nameKey": "snippets.records.degree",
+    "prefix": "@0",
+    "body": "^\\circ",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.sqrt": {
+    "name": "sqrt command",
+    "nameKey": "snippets.records.sqrt",
+    "prefix": "@2",
+    "body": "\\sqrt{${1:${TM_SELECTED_TEXT}}}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.partial": {
+    "name": "partial derivative symbol",
+    "nameKey": "snippets.records.partial",
+    "prefix": "@6",
+    "body": "\\partial",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.infty": {
+    "name": "infinity symbol",
+    "nameKey": "snippets.records.infinity",
+    "prefix": "@8",
+    "body": "\\infty",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.ddot": {
+    "name": "ddot",
+    "prefix": "@:",
+    "body": "\\ddot{${1:${TM_SELECTED_TEXT}}}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.dot": {
+    "name": "dot",
+    "prefix": "@;",
+    "body": "\\dot{${1:${TM_SELECTED_TEXT}}}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.leq": {
+    "name": "leq symbol",
+    "nameKey": "snippets.records.le",
+    "prefix": "@<",
+    "body": "\\leq",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.equiv": {
+    "name": "equiv symbol",
+    "nameKey": "snippets.records.equiv",
+    "prefix": "@=",
+    "body": "\\equiv",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.geq": {
+    "name": "geq symbol",
+    "nameKey": "snippets.records.ge",
+    "prefix": "@>",
+    "body": "\\geq",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.circ": {
+    "name": "circ",
+    "prefix": "@@",
+    "body": "\\circ",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Delta": {
+    "name": "Delta",
+    "nameKey": "snippets.records.Delta",
+    "prefix": "@D",
+    "body": "\\Delta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Phi": {
+    "name": "Phi",
+    "nameKey": "snippets.records.Phi",
+    "prefix": "@F",
+    "body": "\\Phi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Gamma": {
+    "name": "Gamma",
+    "nameKey": "snippets.records.Gamma",
+    "prefix": "@G",
+    "body": "\\Gamma",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.int": {
+    "name": "integral",
+    "nameKey": "snippets.records.integral",
+    "prefix": "@I",
+    "body": "\\int_{$1}^{$2}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Lambda": {
+    "name": "Lambda",
+    "nameKey": "snippets.records.Lambda",
+    "prefix": "@L",
+    "body": "\\Lambda",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Pi": {
+    "name": "Pi",
+    "nameKey": "snippets.records.Pi",
+    "prefix": "@P",
+    "body": "\\Pi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Theta": {
+    "name": "Theta",
+    "nameKey": "snippets.records.Theta",
+    "prefix": "@Q",
+    "body": "\\Theta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Sigma": {
+    "name": "Sigma",
+    "nameKey": "snippets.records.Sigma",
+    "prefix": "@S",
+    "body": "\\Sigma",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Upsilon": {
+    "name": "Upsilon",
+    "nameKey": "snippets.records.Upsilon",
+    "prefix": "@U",
+    "body": "\\Upsilon",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Omega": {
+    "name": "Omega",
+    "nameKey": "snippets.records.Omega",
+    "prefix": "@W",
+    "body": "\\Omega",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Xi": {
+    "name": "Xi",
+    "nameKey": "snippets.records.Xi",
+    "prefix": "@X",
+    "body": "\\Xi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Psi": {
+    "name": "Psi",
+    "nameKey": "snippets.records.Psi",
+    "prefix": "@Y",
+    "body": "\\Psi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.left-bracket": {
+    "name": "left[ ... right]",
+    "nameKey": "snippets.records.leftBracket",
+    "prefix": "@[",
+    "body": "\\left[ ${1:${TM_SELECTED_TEXT}} \\right]",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.hat": {
+    "name": "hat",
+    "nameKey": "snippets.records.hat",
+    "prefix": "@^",
+    "body": "\\hat{${1:${TM_SELECTED_TEXT}}}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.bar": {
+    "name": "bar",
+    "nameKey": "snippets.records.bar",
+    "prefix": "@_",
+    "body": "\\bar{${1:${TM_SELECTED_TEXT}}}$0",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.alpha": {
+    "name": "alpha",
+    "nameKey": "snippets.records.alpha",
+    "prefix": "@a",
+    "body": "\\alpha",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.beta": {
+    "name": "beta",
+    "nameKey": "snippets.records.beta",
+    "prefix": "@b",
+    "body": "\\beta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.chi": {
+    "name": "chi",
+    "nameKey": "snippets.records.chi",
+    "prefix": "@c",
+    "body": "\\chi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.delta": {
+    "name": "delta",
+    "nameKey": "snippets.records.delta",
+    "prefix": "@d",
+    "body": "\\delta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.epsilon": {
+    "name": "epsilon",
+    "nameKey": "snippets.records.epsilon",
+    "prefix": "@e",
+    "body": "\\epsilon",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.phi": {
+    "name": "phi",
+    "nameKey": "snippets.records.phi",
+    "prefix": "@f",
+    "body": "\\phi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.gamma": {
+    "name": "gamma",
+    "nameKey": "snippets.records.gamma",
+    "prefix": "@g",
+    "body": "\\gamma",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.eta": {
+    "name": "eta",
+    "nameKey": "snippets.records.eta",
+    "prefix": "@h",
+    "body": "\\eta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.iota": {
+    "name": "iota",
+    "nameKey": "snippets.records.iota",
+    "prefix": "@i",
+    "body": "\\iota",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.kappa": {
+    "name": "kappa",
+    "nameKey": "snippets.records.kappa",
+    "prefix": "@k",
+    "body": "\\kappa",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.lambda": {
+    "name": "lambda",
+    "nameKey": "snippets.records.lambda",
+    "prefix": "@l",
+    "body": "\\lambda",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.mu": {
+    "name": "mu",
+    "nameKey": "snippets.records.mu",
+    "prefix": "@m",
+    "body": "\\mu",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.nu": {
+    "name": "nu",
+    "nameKey": "snippets.records.nu",
+    "prefix": "@n",
+    "body": "\\nu",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.omega": {
+    "name": "omega",
+    "nameKey": "snippets.records.omega",
+    "prefix": "@o",
+    "body": "\\omega",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.pi": {
+    "name": "pi",
+    "nameKey": "snippets.records.pi",
+    "prefix": "@p",
+    "body": "\\pi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.theta": {
+    "name": "theta",
+    "nameKey": "snippets.records.theta",
+    "prefix": "@q",
+    "body": "\\theta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.rho": {
+    "name": "rho",
+    "nameKey": "snippets.records.rho",
+    "prefix": "@r",
+    "body": "\\rho",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.sigma": {
+    "name": "sigma",
+    "nameKey": "snippets.records.sigma",
+    "prefix": "@s",
+    "body": "\\sigma",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.tau": {
+    "name": "tau",
+    "nameKey": "snippets.records.tau",
+    "prefix": "@t",
+    "body": "\\tau",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.upsilon": {
+    "name": "upsilon",
+    "nameKey": "snippets.records.upsilon",
+    "prefix": "@u",
+    "body": "\\upsilon",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.varepsilon": {
+    "name": "varepsilon",
+    "nameKey": "snippets.records.varepsilon",
+    "prefix": "@ve",
+    "body": "\\varepsilon",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.varphi": {
+    "name": "varphi",
+    "nameKey": "snippets.records.varphi",
+    "prefix": "@vf",
+    "body": "\\varphi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.varpi": {
+    "name": "varpi",
+    "nameKey": "snippets.records.varpi",
+    "prefix": "@vp",
+    "body": "\\varpi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.vartheta": {
+    "name": "vartheta",
+    "nameKey": "snippets.records.vartheta",
+    "prefix": "@vq",
+    "body": "\\vartheta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.varrho": {
+    "name": "varrho",
+    "nameKey": "snippets.records.varrho",
+    "prefix": "@vr",
+    "body": "\\varrho",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.varsigma": {
+    "name": "varsigma",
+    "nameKey": "snippets.records.varsigma",
+    "prefix": "@vs",
+    "body": "\\varsigma",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.xi": {
+    "name": "xi",
+    "nameKey": "snippets.records.xi",
+    "prefix": "@x",
+    "body": "\\xi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.psi": {
+    "name": "psi",
+    "nameKey": "snippets.records.psi",
+    "prefix": "@y",
+    "body": "\\psi",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.zeta": {
+    "name": "zeta",
+    "nameKey": "snippets.records.zeta",
+    "prefix": "@z",
+    "body": "\\zeta",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.left-brace": {
+    "name": "left{ ... right}",
+    "nameKey": "snippets.records.leftBrace",
+    "prefix": "@{",
+    "body": "\\left\\{ ${1:${TM_SELECTED_TEXT}} \\right\\\\}",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.Big-bar": {
+    "name": "Big |",
+    "prefix": "@|",
+    "body": "\\Big|",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  },
+  "at.left-bar": {
+    "name": "left| ... right|",
+    "prefix": "@|",
+    "body": "\\left| ${1:${TM_SELECTED_TEXT}} \\right|",
+    "expand": "list",
+    "languages": ["latex"],
+    "where": "math",
+    "inWord": true
+  }
+}

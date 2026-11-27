@@ -44,6 +44,7 @@ const SETTINGS_SECTIONS = new Set([
   "general",
   "appearance",
   "dictionary",
+  "snippets",
   "data",
   "ai",
   "research",
@@ -957,6 +958,18 @@ interface SettingsState {
   setEditorAutoCloseEnvironments: (v: boolean) => void;
   editorGhostCompletion: boolean;
   setEditorGhostCompletion: (v: boolean) => void;
+  snippetsInList: boolean;
+  setSnippetsInList: (v: boolean) => void;
+  snippetsTab: boolean;
+  setSnippetsTab: (v: boolean) => void;
+  snippetsAuto: boolean;
+  setSnippetsAuto: (v: boolean) => void;
+  snippetsHint: boolean;
+  setSnippetsHint: (v: boolean) => void;
+  snippetAutoNoteShown: boolean;
+  setSnippetAutoNoteShown: (v: boolean) => void;
+  snippetFastMathTipShown: boolean;
+  setSnippetFastMathTipShown: (v: boolean) => void;
   editorCursorBlinking: EditorCursorBlinking;
   setEditorCursorBlinking: (v: EditorCursorBlinking) => void;
   editorHighlightCurrentLine: boolean;
@@ -1019,7 +1032,8 @@ interface SettingsState {
   checkpointPublishingProjectId: string | null;
   setCheckpointPublishingProjectId: (projectId: string | null) => void;
   searchOpen: boolean;
-  setSearchOpen: (v: boolean) => void;
+  searchInitialQuery: string | null;
+  setSearchOpen: (v: boolean, query?: string) => void;
   settingsOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
   settingsInitialSection: string | null;
@@ -1207,6 +1221,7 @@ interface SettingsState {
   resetAppearancePreferences: () => void;
   resetExperimentationPreferences: () => void;
   resetEnginePreferences: () => void;
+  resetSnippetsPreferences: () => void;
   resetToDefaults: () => void;
 }
 
@@ -1312,6 +1327,12 @@ const PREF_DEFAULTS = {
   editorGroupScripts: true,
   editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
+  snippetsInList: true,
+  snippetsTab: true,
+  snippetsAuto: true,
+  snippetsHint: true,
+  snippetAutoNoteShown: false,
+  snippetFastMathTipShown: false,
   editorCursorBlinking: "blink" as EditorCursorBlinking,
   editorHighlightCurrentLine: true,
   editorStickyScroll: true,
@@ -1504,6 +1525,12 @@ export const SECTION_SETTINGS = {
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
   },
+  snippets: {
+    snippetsInList: "oleafly.snippets.list",
+    snippetsTab: "oleafly.snippets.tab",
+    snippetsAuto: "oleafly.snippets.auto",
+    snippetsHint: "oleafly.snippets.hint",
+  },
   research: {},
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
@@ -1687,6 +1714,36 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorGhostCompletion: (v) => {
     saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
     set({ editorGhostCompletion: v });
+  },
+  snippetsInList: ls("oleafly.snippets.list", "1") !== "0",
+  setSnippetsInList: (v) => {
+    saveLs("oleafly.snippets.list", v ? "1" : "0");
+    set({ snippetsInList: v });
+  },
+  snippetsTab: ls("oleafly.snippets.tab", "1") !== "0",
+  setSnippetsTab: (v) => {
+    saveLs("oleafly.snippets.tab", v ? "1" : "0");
+    set({ snippetsTab: v });
+  },
+  snippetsAuto: ls("oleafly.snippets.auto", "1") !== "0",
+  setSnippetsAuto: (v) => {
+    saveLs("oleafly.snippets.auto", v ? "1" : "0");
+    set({ snippetsAuto: v });
+  },
+  snippetsHint: ls("oleafly.snippets.hint", "1") !== "0",
+  setSnippetsHint: (v) => {
+    saveLs("oleafly.snippets.hint", v ? "1" : "0");
+    set({ snippetsHint: v });
+  },
+  snippetAutoNoteShown: ls("oleafly.snippets.autoNote", "0") === "1",
+  setSnippetAutoNoteShown: (v) => {
+    saveLs("oleafly.snippets.autoNote", v ? "1" : "0");
+    set({ snippetAutoNoteShown: v });
+  },
+  snippetFastMathTipShown: ls("oleafly.snippets.fastMathTip", "0") === "1",
+  setSnippetFastMathTipShown: (v) => {
+    saveLs("oleafly.snippets.fastMathTip", v ? "1" : "0");
+    set({ snippetFastMathTipShown: v });
   },
   zenFullScreen: ls("oleafly.zen.fullScreen", "1") !== "0",
   setZenFullScreen: (v) => {
@@ -1874,8 +1931,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setCheckpointPublishingProjectId: (projectId) =>
     set({ checkpointPublishingProjectId: projectId }),
   searchOpen: false,
-
-  setSearchOpen: (v) => set({ searchOpen: v }),
+  searchInitialQuery: null,
+  setSearchOpen: (v, query) => set({ searchOpen: v, searchInitialQuery: v ? (query ?? null) : null }),
   settingsOpen: false,
   setSettingsOpen: (v) => set(v ? { settingsOpen: true } : { settingsOpen: false, settingsInitialSection: null }),
   settingsInitialSection: null,
@@ -2380,11 +2437,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   resetEnginePreferences: () => {
     set(restoreSection("engine"));
   },
+  resetSnippetsPreferences: () => {
+    set(restoreSection("snippets"));
+  },
   resetToDefaults: () => {
     get().resetGeneralPreferences();
     get().resetAppearancePreferences();
     get().resetExperimentationPreferences();
     get().resetEnginePreferences();
+    get().resetSnippetsPreferences();
     set({ terminalOpen: false });
   },
 }));

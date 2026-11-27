@@ -1178,6 +1178,7 @@
     "elsewhere": "Redigering i sanntid er på i et annet notat",
     "makeLive": "Rediger i sanntid her",
     "viewOnly": "Du kan lese dette notatet, men ikke redigere det.",
+    "suggesting": "Forslag er slått på, så du kan ikke redigere dette notatet her. Slå av forslag for å redigere det.",
     "someone": "Noen",
     "unsentReadOnly": "De siste endringene dine i dette notatet ble ikke sendt, fordi du bare kan se det nå.",
     "unsentRefused": "Oleafly kunne ikke sende de siste endringene dine i dette notatet, så de ble forkastet."

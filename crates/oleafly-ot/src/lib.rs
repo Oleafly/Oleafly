@@ -9,4 +9,4 @@ pub use editor::{
     ChannelError, CharWalk, DocMessage, DocOpened, DocSink, EditorChannel, Pieces, HISTORY_LIMIT,
 };
 pub use merge::{diff, distance, rebase, Rebased};
-pub use ot::{utf16_len, Component, OtError, TextOperation};
+pub use ot::{utf16_len, Bias, Component, OtError, TextOperation};

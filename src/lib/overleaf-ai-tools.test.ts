@@ -66,9 +66,5 @@ describe("overleaf AI tool host", () => {
     expect(await tools.import_overleaf_projects.execute({ ids: ["a"] })).toMatchObject({ success: true });
     expect(store.state.importSelected).toHaveBeenCalledWith(["a"]);
     expect(files.refreshProjects).toHaveBeenCalledOnce();
-
-    store.state.importSelected.mockResolvedValue([{ remoteId: "a", projectId: null, error: "x" }]);
-    await tools.import_overleaf_projects.execute({ ids: ["a"] });
-    expect(files.refreshProjects).toHaveBeenCalledOnce();
   });
 });

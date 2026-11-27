@@ -18,6 +18,7 @@ export interface FloatingSidePanelProps {
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  solid?: boolean;
 }
 
 export function FloatingSidePanel({
@@ -35,6 +36,7 @@ export function FloatingSidePanel({
   children,
   className,
   bodyClassName,
+  solid = false,
 }: Readonly<FloatingSidePanelProps>) {
   const hidden = side === "left" ? "-translate-x-[calc(100%_+_1rem)]" : "translate-x-[calc(100%_+_1rem)]";
   return (
@@ -46,7 +48,8 @@ export function FloatingSidePanel({
       data-state={open ? "open" : "closed"}
       style={{ "--floating-side-panel-width": width } as CSSProperties}
       className={cn(
-        "absolute inset-y-2 z-30 flex w-[min(var(--floating-side-panel-width),calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
+        "absolute inset-y-2 z-30 flex w-[min(var(--floating-side-panel-width),calc(100%-1rem))] flex-col overflow-hidden rounded-lg border text-popover-foreground shadow-xl",
+        solid ? "bg-popover" : "bg-popover/80 backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
         "transition-transform duration-200 ease-out motion-reduce:transition-none",
         side === "left" ? "left-2" : "right-2",
         open ? "translate-x-0" : hidden,

@@ -1,0 +1,3077 @@
+{
+  "probe": "history-routes",
+  "description": "A throwaway project (example template, Bob editor, Carol reviewer, Dave viewer added in the container). Alice edits main.tex, adds, edits and deletes extra.tex, and flushes history. Records /updates paging with min_count and before, /diff (from==to, a range, no pathname, an unknown pathname, a deleted file), /filetree/diff, labels by each role, revert_file and revert-project before and after enabling history ranges support, restore_file of a deleted file and over an existing name, and /version/:v/zip, with Bob's websocket timing every tree event.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-24",
+  "notes": [
+    "a new CE project's overleaf.history: {\"id\":\"6b04ffaecb4fe3a455d4df98\",\"display\":true}",
+    "join features.versioning true; overleaf key in join null",
+    "updates pages (min_count=1): 7-8,6-7,5-6,4-5,3-4,0-3 next none",
+    "versions 0..8; extra.tex existed at v6",
+    "labels: alice adds a label 200, bob adds a label 200, carol adds a label 200, dave adds a label 403, alice adds a label with an unknown key 400, alice adds a label at a version that does not exist 500, bob deletes alice's label 204, carol deletes her own label 204, alice deletes bob's label 204, alice deletes an unknown label 204",
+    "revert_file main.tex (stock CE project): 500 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Something went wrong</title><link rel=\\\"icon\\\" href=\\\"/favicon.ico\\\"><link rel=\\\"stylesheet\\\" href=\\\"/stylesheets/main-style-b0676229a301d730d51a.css\\\"><; bob saw nothing",
+    "revert-project (stock CE project): 500 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Something went wrong</title><link rel=\\\"icon\\\" href=\\\"/favicon.ico\\\"><link rel=\\\"stylesheet\\\" href=\\\"/stylesheets/main-style-b0676229a301d730d51a.css\\\"><; bob saw nothing",
+    "carol (reviewer) revert_file: 403 {\"message\":\"restricted\"}; bob saw nothing",
+    "dave (viewer) restore_file: 403 {\"message\":\"restricted\"}; bob saw nothing",
+    "restore_file of the deleted extra.tex: 200 {\"type\":\"doc\",\"id\":\"6b04ffd6cb4fe3a455d4e019\"}; bob saw reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"extra.tex\",\"_id\":\"6b04ffd6cb4fe3a455d4e019\"},\"upload\",\"6afab5bb1222cc50aa4c16ec\"] at +136ms",
+    "restore_file of main.tex over the existing main.tex: 200 {\"type\":\"doc\",\"id\":\"6b04ffd8cb4fe3a455d4e022\"}; bob saw reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main (Restored on 24th Nov 26 3:09:12).tex\",\"_id\":\"6b04ffd8cb4fe3a455d4e022\"},\"upload\",\"6afab5bb1222cc50aa4c16ec\"] at +92ms",
+    "restore_file of a path not in that version: 500 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Something went wrong</title><link rel=\\\"icon\\\" href=\\\"/favicon.ico\\\"><link rel=\\\"stylesheet\\\" href=\\\"/stylesheets/main-style-b0676229a301d730d51a.css\\\"><; bob saw nothing",
+    "after HistoryRangesSupportMigration: {\"id\":\"6b04ffaecb4fe3a455d4df98\",\"display\":true,\"rangesSupportEnabled\":true,\"lastResyncedAt\":\"2026-11-24T03:09:21.584Z\"}",
+    "revert_file main.tex (ranges support on): 200 {\"type\":\"doc\",\"id\":\"6b04ffe3cb4fe3a455d4e034\"}; bob saw removeEntity[\"6b04ffaecb4fe3a455d4df9d\",{\"kind\":\"file-restore\",\"path\":\"main.tex\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +111ms, new-comment-threads[{}] at +122ms, reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main.tex\",\"_id\":\"6b04ffe3cb4fe3a455d4e034\"},{\"kind\":\"file-restore\",\"path\":\"main.tex\",\"version\":6,\"timestamp\":\"2026-11-24T03 at +161ms, rootDocUpdated[\"6b04ffe3cb4fe3a455d4e034\"] at +167ms",
+    "bob (editor) revert_file sample.bib with ranges support on: 200 {\"type\":\"doc\",\"id\":\"6b04ffe5cb4fe3a455d4e045\"}; bob saw removeEntity[\"6b04ffaecb4fe3a455d4dfa4\",{\"kind\":\"file-restore\",\"path\":\"sample.bib\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +73ms, new-comment-threads[{}] at +79ms, reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"sample.bib\",\"_id\":\"6b04ffe5cb4fe3a455d4e045\"},{\"kind\":\"file-restore\",\"path\":\"sample.bib\",\"version\":6,\"timestamp\":\"2026-11-2 at +105ms",
+    "revert_file of a path not in that version (ranges support on): 500 \"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Something went wrong</title><link rel=\\\"icon\\\" href=\\\"/favicon.ico\\\"><link rel=\\\"stylesheet\\\" href=\\\"/stylesheets/main-style-b0676229a301d730d51a.css\\\"><; bob saw nothing",
+    "revert-project to the version where extra.tex existed (ranges support on): 200 [{\"id\":\"6b04ffeccb4fe3a455d4e057\",\"type\":\"doc\",\"path\":\"main.tex\"},{\"id\":\"6b04ffeccb4fe3a455d4e067\",\"type\":\"doc\",\"path\":\"sample.bib\"},{\"id\":\"6b04ffeccb4fe3a455d4e076\",\"type\":\"file\",\"path\":\"frog.jpg\"},{; bob saw removeEntity[\"6b04ffe3cb4fe3a455d4e034\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +99ms, new-comment-threads[{}] at +109ms, reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main.tex\",\"_id\":\"6b04ffeccb4fe3a455d4e057\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\" at +144ms, rootDocUpdated[\"6b04ffeccb4fe3a455d4e057\"] at +152ms, removeEntity[\"6b04ffe5cb4fe3a455d4e045\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +190ms, new-comment-threads[{}] at +198ms, reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"sample.bib\",\"_id\":\"6b04ffeccb4fe3a455d4e067\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"} at +231ms, removeEntity[\"6b04ffaecb4fe3a455d4dfaa\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +260ms, reciveNewFile[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"frog.jpg\",\"rev\":0,\"linkedFileData\":{},\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\",\"_id\":\"6b04ffeccb4fe3a455d4e076\",\"c at +302ms, removeEntity[\"6b04ffd6cb4fe3a455d4e019\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +348ms, new-comment-threads[{}] at +358ms, reciveNewDoc[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"extra.tex\",\"_id\":\"6b04ffeccb4fe3a455d4e085\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}, at +393ms, removeEntity[\"6b04ffd8cb4fe3a455d4e022\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}] at +448ms",
+    "version before the reverts: 10",
+    "zip v23 as alice: 200 {\"content-type\":\"application/zip\",\"transfer-encoding\":\"chunked\",\"content-disposition\":\"attachment; filename=\\\"history-routes-20261124-030830 (Version 23).zip\\\"\"} 99381 bytes entries main.tex,extra.tex,frog.jpg,sample.bib",
+    "zip v0 as alice: 200 {\"content-type\":\"application/zip\",\"transfer-encoding\":\"chunked\",\"content-disposition\":\"attachment; filename=\\\"history-routes-20261124-030830 (Version 0).zip\\\"\"} 22 bytes entries ",
+    "zip v0 as alice: 200 {\"content-type\":\"application/zip\",\"transfer-encoding\":\"chunked\",\"content-disposition\":\"attachment; filename=\\\"history-routes-20261124-030830 (Version 0).zip\\\"\"} 22 bytes entries ",
+    "zip v1023 as alice: 404 {\"content-type\":\"text/plain; charset=utf-8\",\"content-length\":\"9\"} 9 bytes",
+    "zip v23 as dave: 200 {\"content-type\":\"application/zip\",\"transfer-encoding\":\"chunked\",\"content-disposition\":\"attachment; filename=\\\"history-routes-20261124-030830 (Version 23).zip\\\"\"} 99381 bytes entries main.tex,extra.tex,frog.jpg,sample.bib",
+    "update origins after the reverts: [{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},{\"kind\":\"file-restore\",\"version\":6,\"path\":\"sample.bib\",\"timestamp\":\"2026-11-24T03:08:53.425Z\"},{\"kind\":\"file-restore\",\"version\":6,\"path\":\"main.tex\",\"timestamp\":\"2026-11-24T03:08:53.425Z\"},{\"kind\":\"upload\"},null,null,null,null,null,null]"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new",
+        "body": {
+          "projectName": "history-routes-20261124-030830",
+          "template": "example"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6b04ffaecb4fe3a455d4df98",
+        "owner_ref": "6afab5bb1222cc50aa4c16ec",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6afab5bb1222cc50aa4c16ec"
+        }
+      },
+      "sentAt": 682,
+      "answeredAt": 1063
+    },
+    {
+      "projectHistoryFlags": {
+        "history": {
+          "id": "6b04ffaecb4fe3a455d4df98",
+          "display": true
+        }
+      }
+    },
+    {
+      "label": "flush after the first edit",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 23132,
+      "answeredAt": 23333
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/doc",
+        "user": "alice",
+        "body": {
+          "name": "extra.tex",
+          "parent_folder_id": "6b04ffaecb4fe3a455d4df97"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "53",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "name": "extra.tex",
+        "_id": "6b04ffc5cb4fe3a455d4dfda"
+      },
+      "sentAt": 23333,
+      "answeredAt": 23401
+    },
+    {
+      "label": "flush after extra.tex",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 23706,
+      "answeredAt": 23901
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/doc/6b04ffc5cb4fe3a455d4dfda",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 24983,
+      "answeredAt": 25174
+    },
+    {
+      "label": "flush after deleting extra.tex and the second edit",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 25478,
+      "answeredAt": 25594
+    },
+    {
+      "label": "updates page 1 (min_count=1)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1658",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 27094,
+      "answeredAt": 27164
+    },
+    {
+      "label": "updates min_count=50",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=50",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1658",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 27165,
+      "answeredAt": 27229
+    },
+    {
+      "label": "updates with no min_count",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1658",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 27229,
+      "answeredAt": 27292
+    },
+    {
+      "label": "updates min_count=2",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=2",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1658",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 27292,
+      "answeredAt": 27391
+    },
+    {
+      "label": "updates before=1 (older than everything)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=10&before=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "287",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 0,
+            "toV": 1,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710727
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 27392,
+      "answeredAt": 27641
+    },
+    {
+      "label": "diff from==to on main.tex",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=8&to=8&pathname=main.tex",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "5698",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "u": "\\documentclass{article}\n\n% Language setting\n% Replace `english' with e.g. `spanish' to change the document language\n\\usepackage[english]{babel}\n\n% Set page size and margins\n% Replace `letterpaper' with `a4paper' for UK/EU standard size\n\\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}\n\n% Useful packages\n\\usepackage{amsmath}\n\\usepackage{graphicx}\n\\usepackage[colorlinks=true, allcolors=blue]{hyperref}\n\n\\title{Your Paper}\n\\author{You}\n\n\\begin{document}\n\\maketitle\n\n\\begin{abstract}\nYour abstract.\n\\end{abstract}\n\n\\section{Introduction}\n\nYour introduction goes here! Simply start writing your document and use the Recompile button to view the updated PDF preview. Examples of commonly used commands and features are listed below, to help you get started.\n\nOnce you're familiar with the editor, you can find various project settings in the Overleaf menu, accessed via the button in the very top left of the editor.\n\n\\section{Some examples to get started}\n\n\\subsection{How to create Sections and Subsections}\n\nSimply use the section and subsection commands, as in this example document! With Overleaf, all the formatting and numbering is handled automatically according to the template you've chosen. If you're using Rich Text mode, you can also create new section and subsections via the buttons in the editor toolbar.\n\n\\subsection{How to include Figures}\n\nFirst you have to upload the image file from your computer using the upload link in the file-tree menu. Then use the includegraphics command to include it in your document. Use the figure environment and the caption command to add a number and a caption to your figure. See the code for Figure \\ref{fig:frog} in this section for an example.\n\nNote that your figure will automatically be placed in the most appropriate place for it, given the surrounding text and taking into account other figures or tables that may be close by.\n\n\\begin{figure}\n\\centering\n\\includegraphics[width=0.25\\linewidth]{frog.jpg}\n\\caption{\\label{fig:frog}This frog was uploaded via the file-tree menu.}\n\\end{figure}\n\n\\subsection{How to add Tables}\n\nUse the table and tabular environments for basic tables --- see Table~\\ref{tab:widgets}, for example.\n\n\\begin{table}\n\\centering\n\\begin{tabular}{l|r}\nItem & Quantity \\\\\\hline\nWidgets & 42 \\\\\nGadgets & 13\n\\end{tabular}\n\\caption{\\label{tab:widgets}An example table.}\n\\end{table}\n\n\\subsection{How to add Comments and Track Changes}\n\nComments can be added to your project by highlighting some text and clicking ``Add comment'' in the top right of the editor pane. To view existing comments, click on the Review menu in the toolbar above. To reply to a comment, click on the Reply button in the lower right corner of the comment. You can close the Review pane by clicking its name on the toolbar when you're done reviewing for the time being.\n\nTrack changes are available on all our premium plans, and can be toggled on or off using the option at the top of the Review pane. Track changes allow you to keep track of every change made to the document, along with the person making the change.\n\n\\subsection{How to add Lists}\n\nYou can make lists with automatic numbering \\dots\n\n\\begin{enumerate}\n\\item Like this,\n\\item and like this.\n\\end{enumerate}\n\\dots or bullet points \\dots\n\\begin{itemize}\n\\item Like this,\n\\item and like this.\n\\end{itemize}\n\n\\subsection{How to write Mathematics}\n\n\\LaTeX{} is great at typesetting mathematics. Let $X_1, X_2, \\ldots, X_n$ be a sequence of independent and identically distributed random variables with $\\text{E}[X_i] = \\mu$ and $\\text{Var}[X_i] = \\sigma^2 < \\infty$, and let\n\\[S_n = \\frac{X_1 + X_2 + \\cdots + X_n}{n}\n      = \\frac{1}{n}\\sum_{i}^{n} X_i\\]\ndenote their mean. Then as $n$ approaches infinity, the random variables $\\sqrt{n}(S_n - \\mu)$ converge in distribution to a normal $\\mathcal{N}(0, \\sigma^2)$.\n\n\n\\subsection{How to change the margins and paper size}\n\nUsually the template you're using will have the page margins and paper size set correctly for that use-case. For example, if you're using a journal article template provided by the journal publisher, that template will be formatted according to their requirements. In these cases, it's best not to alter the margins directly.\n\nIf however you're using a more general template, such as this one, and would like to alter the margins, a common way to do so is via the geometry package. You can find the geometry package loaded in the preamble at the top of this example file.\n\n\\subsection{How to change the document language and spell check settings}\n\nOverleaf supports many different languages, including multiple different languages within one document.\n\nTo configure the document language, simply edit the option provided to the babel package in the preamble at the top of this example project.\n\nTo change the spell check language, simply open the Overleaf menu at the top left of the editor window, scroll down to the spell check setting, and adjust accordingly.\n\n\\subsection{How to add Citations and a References List}\n\nYou can simply upload a \\verb|.bib| file containing your BibTeX entries, created with a tool such as JabRef. You can then cite entries from it, like this: \\cite{greenwade93}. Just remember to specify a bibliography style, as well as the filename of the \\verb|.bib|.\n\n\\subsection{Good luck!}\n\nWe hope you find Overleaf useful!\n\n\\bibliographystyle{alpha}\n\\bibliography{sample}\n\n\\end{document}\n\nFirst history edit.\nSecond history edit.\n"
+          }
+        ]
+      },
+      "sentAt": 27642,
+      "answeredAt": 27809
+    },
+    {
+      "label": "diff over the whole range on main.tex",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=0&to=8&pathname=main.tex",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "5878",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "u": "\\documentclass{article}\n\n% Language setting\n% Replace `english' with e.g. `spanish' to change the document language\n\\usepackage[english]{babel}\n\n% Set page size and margins\n% Replace `letterpaper' with `a4paper' for UK/EU standard size\n\\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}\n\n% Useful packages\n\\usepackage{amsmath}\n\\usepackage{graphicx}\n\\usepackage[colorlinks=true, allcolors=blue]{hyperref}\n\n\\title{Your Paper}\n\\author{You}\n\n\\begin{document}\n\\maketitle\n\n\\begin{abstract}\nYour abstract.\n\\end{abstract}\n\n\\section{Introduction}\n\nYour introduction goes here! Simply start writing your document and use the Recompile button to view the updated PDF preview. Examples of commonly used commands and features are listed below, to help you get started.\n\nOnce you're familiar with the editor, you can find various project settings in the Overleaf menu, accessed via the button in the very top left of the editor.\n\n\\section{Some examples to get started}\n\n\\subsection{How to create Sections and Subsections}\n\nSimply use the section and subsection commands, as in this example document! With Overleaf, all the formatting and numbering is handled automatically according to the template you've chosen. If you're using Rich Text mode, you can also create new section and subsections via the buttons in the editor toolbar.\n\n\\subsection{How to include Figures}\n\nFirst you have to upload the image file from your computer using the upload link in the file-tree menu. Then use the includegraphics command to include it in your document. Use the figure environment and the caption command to add a number and a caption to your figure. See the code for Figure \\ref{fig:frog} in this section for an example.\n\nNote that your figure will automatically be placed in the most appropriate place for it, given the surrounding text and taking into account other figures or tables that may be close by.\n\n\\begin{figure}\n\\centering\n\\includegraphics[width=0.25\\linewidth]{frog.jpg}\n\\caption{\\label{fig:frog}This frog was uploaded via the file-tree menu.}\n\\end{figure}\n\n\\subsection{How to add Tables}\n\nUse the table and tabular environments for basic tables --- see Table~\\ref{tab:widgets}, for example.\n\n\\begin{table}\n\\centering\n\\begin{tabular}{l|r}\nItem & Quantity \\\\\\hline\nWidgets & 42 \\\\\nGadgets & 13\n\\end{tabular}\n\\caption{\\label{tab:widgets}An example table.}\n\\end{table}\n\n\\subsection{How to add Comments and Track Changes}\n\nComments can be added to your project by highlighting some text and clicking ``Add comment'' in the top right of the editor pane. To view existing comments, click on the Review menu in the toolbar above. To reply to a comment, click on the Reply button in the lower right corner of the comment. You can close the Review pane by clicking its name on the toolbar when you're done reviewing for the time being.\n\nTrack changes are available on all our premium plans, and can be toggled on or off using the option at the top of the Review pane. Track changes allow you to keep track of every change made to the document, along with the person making the change.\n\n\\subsection{How to add Lists}\n\nYou can make lists with automatic numbering \\dots\n\n\\begin{enumerate}\n\\item Like this,\n\\item and like this.\n\\end{enumerate}\n\\dots or bullet points \\dots\n\\begin{itemize}\n\\item Like this,\n\\item and like this.\n\\end{itemize}\n\n\\subsection{How to write Mathematics}\n\n\\LaTeX{} is great at typesetting mathematics. Let $X_1, X_2, \\ldots, X_n$ be a sequence of independent and identically distributed random variables with $\\text{E}[X_i] = \\mu$ and $\\text{Var}[X_i] = \\sigma^2 < \\infty$, and let\n\\[S_n = \\frac{X_1 + X_2 + \\cdots + X_n}{n}\n      = \\frac{1}{n}\\sum_{i}^{n} X_i\\]\ndenote their mean. Then as $n$ approaches infinity, the random variables $\\sqrt{n}(S_n - \\mu)$ converge in distribution to a normal $\\mathcal{N}(0, \\sigma^2)$.\n\n\n\\subsection{How to change the margins and paper size}\n\nUsually the template you're using will have the page margins and paper size set correctly for that use-case. For example, if you're using a journal article template provided by the journal publisher, that template will be formatted according to their requirements. In these cases, it's best not to alter the margins directly.\n\nIf however you're using a more general template, such as this one, and would like to alter the margins, a common way to do so is via the geometry package. You can find the geometry package loaded in the preamble at the top of this example file.\n\n\\subsection{How to change the document language and spell check settings}\n\nOverleaf supports many different languages, including multiple different languages within one document.\n\nTo configure the document language, simply edit the option provided to the babel package in the preamble at the top of this example project.\n\nTo change the spell check language, simply open the Overleaf menu at the top left of the editor window, scroll down to the spell check setting, and adjust accordingly.\n\n\\subsection{How to add Citations and a References List}\n\nYou can simply upload a \\verb|.bib| file containing your BibTeX entries, created with a tool such as JabRef. You can then cite entries from it, like this: \\cite{greenwade93}. Just remember to specify a bibliography style, as well as the filename of the \\verb|.bib|.\n\n\\subsection{Good luck!}\n\nWe hope you find Overleaf useful!\n\n\\bibliographystyle{alpha}\n\\bibliography{sample}\n\n\\end{document}\n"
+          },
+          {
+            "i": "\nFirst history edit.\nSecond history edit.\n",
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489735201
+            }
+          }
+        ]
+      },
+      "sentAt": 27809,
+      "answeredAt": 27961
+    },
+    {
+      "label": "diff with no pathname",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=0&to=8",
+        "user": "alice"
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 27961,
+      "answeredAt": 28025
+    },
+    {
+      "label": "diff with an unknown pathname",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=0&to=8&pathname=nope.tex",
+        "user": "alice"
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 28026,
+      "answeredAt": 28286
+    },
+    {
+      "label": "diff of extra.tex at the version where it existed",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=6&to=6&pathname=extra.tex",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "37",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "u": "Extra file text.\n"
+          }
+        ]
+      },
+      "sentAt": 28286,
+      "answeredAt": 28410
+    },
+    {
+      "label": "diff of extra.tex after it was deleted",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=8&to=8&pathname=extra.tex",
+        "user": "alice"
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 28410,
+      "answeredAt": 28480
+    },
+    {
+      "label": "diff of a binary (frog.jpg)",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=8&to=8&pathname=frog.jpg",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": {
+          "binary": true
+        }
+      },
+      "sentAt": 28480,
+      "answeredAt": 28566
+    },
+    {
+      "label": "diff from > to",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/diff?from=8&to=0&pathname=main.tex",
+        "user": "alice"
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 28566,
+      "answeredAt": 28650
+    },
+    {
+      "label": "filetree diff over the whole range",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/filetree/diff?from=0&to=8",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "271",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "pathname": "main.tex",
+            "operation": "added",
+            "editable": true
+          },
+          {
+            "pathname": "sample.bib",
+            "operation": "added",
+            "editable": true
+          },
+          {
+            "pathname": "frog.jpg",
+            "operation": "added",
+            "editable": false
+          },
+          {
+            "pathname": "extra.tex",
+            "operation": "removed",
+            "deletedAtV": 6,
+            "editable": true
+          }
+        ]
+      },
+      "sentAt": 28650,
+      "answeredAt": 28745
+    },
+    {
+      "label": "filetree diff from==to",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/filetree/diff?from=8&to=8",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "133",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "pathname": "main.tex",
+            "editable": true
+          },
+          {
+            "pathname": "sample.bib",
+            "editable": true
+          },
+          {
+            "pathname": "frog.jpg",
+            "editable": false
+          }
+        ]
+      },
+      "sentAt": 28745,
+      "answeredAt": 28849
+    },
+    {
+      "label": "dave (viewer) reads updates",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=1",
+        "user": "dave"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1658",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 28849,
+      "answeredAt": 28933
+    },
+    {
+      "label": "labels before",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [],
+      "sentAt": 28933,
+      "answeredAt": 28974
+    },
+    {
+      "label": "alice adds a label",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice",
+        "body": {
+          "comment": "Alice names this version",
+          "version": 8
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "193",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "id": "6b04ffca847e988d6052e6c5",
+        "comment": "Alice names this version",
+        "version": 8,
+        "user_id": "6afab5bb1222cc50aa4c16ec",
+        "created_at": "2026-11-24T03:08:58.951Z",
+        "user_display_name": "Alice Owner"
+      },
+      "sentAt": 28974,
+      "answeredAt": 29064
+    },
+    {
+      "label": "bob adds a label",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "bob",
+        "body": {
+          "comment": "Bob names this version",
+          "version": 8
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "190",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "id": "6b04ffcb847e988d6052e6c6",
+        "comment": "Bob names this version",
+        "version": 8,
+        "user_id": "6afab5bc1222cc50aa4c16f2",
+        "created_at": "2026-11-24T03:08:59.061Z",
+        "user_display_name": "Bob Editor"
+      },
+      "sentAt": 29064,
+      "answeredAt": 29190
+    },
+    {
+      "label": "carol adds a label",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "carol",
+        "body": {
+          "comment": "Carol (reviewer) names this version",
+          "version": 0
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "207",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "id": "6b04ffcb847e988d6052e6c7",
+        "comment": "Carol (reviewer) names this version",
+        "version": 0,
+        "user_id": "6afab5bc1222cc50aa4c16f8",
+        "created_at": "2026-11-24T03:08:59.223Z",
+        "user_display_name": "Carol Reviewer"
+      },
+      "sentAt": 29190,
+      "answeredAt": 29321
+    },
+    {
+      "label": "dave adds a label",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "dave",
+        "body": {
+          "comment": "Dave (viewer) tries to name a version",
+          "version": 8
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 29321,
+      "answeredAt": 29341
+    },
+    {
+      "label": "alice adds a label with an unknown key",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice",
+        "body": {
+          "comment": "strict?",
+          "version": 8,
+          "extra": 1
+        }
+      },
+      "status": 400,
+      "headers": {
+        "content-length": "86",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "error": "Validation error: Unrecognized key: \"extra\" at \"body\"",
+        "statusCode": 400
+      },
+      "sentAt": 29341,
+      "answeredAt": 29363
+    },
+    {
+      "label": "alice adds a label at a version that does not exist",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice",
+        "body": {
+          "comment": "future",
+          "version": 1008
+        }
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 29363,
+      "answeredAt": 29412
+    },
+    {
+      "label": "labels after adding",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "594",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [
+        {
+          "id": "6b04ffca847e988d6052e6c5",
+          "comment": "Alice names this version",
+          "version": 8,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "created_at": "2026-11-24T03:08:58.951Z",
+          "user_display_name": "Alice Owner"
+        },
+        {
+          "id": "6b04ffcb847e988d6052e6c6",
+          "comment": "Bob names this version",
+          "version": 8,
+          "user_id": "6afab5bc1222cc50aa4c16f2",
+          "created_at": "2026-11-24T03:08:59.061Z",
+          "user_display_name": "Bob Editor"
+        },
+        {
+          "id": "6b04ffcb847e988d6052e6c7",
+          "comment": "Carol (reviewer) names this version",
+          "version": 0,
+          "user_id": "6afab5bc1222cc50aa4c16f8",
+          "created_at": "2026-11-24T03:08:59.223Z",
+          "user_display_name": "Carol Reviewer"
+        }
+      ],
+      "sentAt": 29412,
+      "answeredAt": 29446
+    },
+    {
+      "label": "bob deletes alice's label",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels/6b04ffca847e988d6052e6c5",
+        "user": "bob"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 29447,
+      "answeredAt": 29476
+    },
+    {
+      "label": "carol deletes her own label",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels/6b04ffcb847e988d6052e6c7",
+        "user": "carol"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 29476,
+      "answeredAt": 29512
+    },
+    {
+      "label": "alice deletes bob's label",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels/6b04ffcb847e988d6052e6c6",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 29513,
+      "answeredAt": 29541
+    },
+    {
+      "label": "alice deletes an unknown label",
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels/6b04ffcbc0ffee0001000001",
+        "user": "alice"
+      },
+      "status": 204,
+      "headers": {},
+      "body": "",
+      "sentAt": 29541,
+      "answeredAt": 29581
+    },
+    {
+      "label": "labels after deleting",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/labels",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "195",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [
+        {
+          "id": "6b04ffca847e988d6052e6c5",
+          "comment": "Alice names this version",
+          "version": 8,
+          "user_id": "6afab5bb1222cc50aa4c16ec",
+          "created_at": "2026-11-24T03:08:58.951Z",
+          "user_display_name": "Alice Owner"
+        }
+      ],
+      "sentAt": 29581,
+      "answeredAt": 29642
+    },
+    {
+      "label": "updates carry labels",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=1",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "1817",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [
+              {
+                "id": "6b04ffca847e988d6052e6c5",
+                "comment": "Alice names this version",
+                "version": 8,
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "created_at": "2026-11-24T03:08:58.951Z"
+              }
+            ],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 29642,
+      "answeredAt": 29751
+    },
+    {
+      "label": "revert_file main.tex (stock CE project)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "main.tex"
+        }
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 29752,
+      "answeredAt": 29987,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "revert-project (stock CE project)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert-project",
+        "user": "alice",
+        "body": {
+          "version": 6
+        }
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 32488,
+      "answeredAt": 32516,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "carol (reviewer) revert_file",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert_file",
+        "user": "carol",
+        "body": {
+          "version": 6,
+          "pathname": "main.tex"
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 35019,
+      "answeredAt": 35043,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "dave (viewer) restore_file",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/restore_file",
+        "user": "dave",
+        "body": {
+          "version": 6,
+          "pathname": "extra.tex"
+        }
+      },
+      "status": 403,
+      "headers": {
+        "content-length": "24",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      },
+      "sentAt": 37544,
+      "answeredAt": 37566,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "restore_file of the deleted extra.tex",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/restore_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "extra.tex"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "46",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "type": "doc",
+        "id": "6b04ffd6cb4fe3a455d4e019"
+      },
+      "sentAt": 40066,
+      "answeredAt": 40206,
+      "events": {
+        "bob": [
+          {
+            "t": 40202,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "extra.tex",
+                "_id": "6b04ffd6cb4fe3a455d4e019"
+              },
+              "upload",
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "restore_file of main.tex over the existing main.tex",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/restore_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "main.tex"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "46",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "type": "doc",
+        "id": "6b04ffd8cb4fe3a455d4e022"
+      },
+      "sentAt": 42706,
+      "answeredAt": 42798,
+      "events": {
+        "bob": [
+          {
+            "t": 42798,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "main (Restored on 24th Nov 26 3:09:12).tex",
+                "_id": "6b04ffd8cb4fe3a455d4e022"
+              },
+              "upload",
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "restore_file of a path not in that version",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/restore_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "nope.tex"
+        }
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 45299,
+      "answeredAt": 45339,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "rangesSupportMigration": {
+        "id": "6b04ffaecb4fe3a455d4df98",
+        "display": true,
+        "rangesSupportEnabled": true,
+        "lastResyncedAt": "2026-11-24T03:09:21.584Z"
+      }
+    },
+    {
+      "label": "revert_file main.tex (ranges support on)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "main.tex"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "46",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "type": "doc",
+        "id": "6b04ffe3cb4fe3a455d4e034"
+      },
+      "sentAt": 53295,
+      "answeredAt": 53463,
+      "events": {
+        "bob": [
+          {
+            "t": 53406,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffaecb4fe3a455d4df9d",
+              {
+                "kind": "file-restore",
+                "path": "main.tex",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 53417,
+            "name": "new-comment-threads",
+            "args": [
+              {}
+            ]
+          },
+          {
+            "t": 53456,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "main.tex",
+                "_id": "6b04ffe3cb4fe3a455d4e034"
+              },
+              {
+                "kind": "file-restore",
+                "path": "main.tex",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 53462,
+            "name": "rootDocUpdated",
+            "args": [
+              "6b04ffe3cb4fe3a455d4e034"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "bob (editor) revert_file sample.bib with ranges support on",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert_file",
+        "user": "bob",
+        "body": {
+          "version": 6,
+          "pathname": "sample.bib"
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "46",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "type": "doc",
+        "id": "6b04ffe5cb4fe3a455d4e045"
+      },
+      "sentAt": 55964,
+      "answeredAt": 56069,
+      "events": {
+        "bob": [
+          {
+            "t": 56037,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffaecb4fe3a455d4dfa4",
+              {
+                "kind": "file-restore",
+                "path": "sample.bib",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 56043,
+            "name": "new-comment-threads",
+            "args": [
+              {}
+            ]
+          },
+          {
+            "t": 56069,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "sample.bib",
+                "_id": "6b04ffe5cb4fe3a455d4e045"
+              },
+              {
+                "kind": "file-restore",
+                "path": "sample.bib",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              "6afab5bc1222cc50aa4c16f2"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "revert_file of a path not in that version (ranges support on)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert_file",
+        "user": "alice",
+        "body": {
+          "version": 6,
+          "pathname": "nope.tex"
+        }
+      },
+      "status": 500,
+      "headers": {
+        "content-length": "681",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>Something went wrong</title><link rel=\"icon\" href=\"/favicon.ico\"><link rel=\"stylesheet\" href=\"/stylesheets/main-style-b0676229a301d730d51a.css\"></head><body class=\"full-height\"><main class=\"content content-alt full-height\" id=\"main-content\"><div class=\"container full-height\"><div class=\"error-container full-height\"><div class=\"error-details\"><p class=\"er…",
+      "sentAt": 58571,
+      "answeredAt": 58608,
+      "events": {
+        "bob": []
+      }
+    },
+    {
+      "label": "flush before revert-project",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 61110,
+      "answeredAt": 61205
+    },
+    {
+      "label": "revert-project to the version where extra.tex existed (ranges support on)",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/revert-project",
+        "user": "alice",
+        "body": {
+          "version": 6
+        }
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "265",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": [
+        {
+          "id": "6b04ffeccb4fe3a455d4e057",
+          "type": "doc",
+          "path": "main.tex"
+        },
+        {
+          "id": "6b04ffeccb4fe3a455d4e067",
+          "type": "doc",
+          "path": "sample.bib"
+        },
+        {
+          "id": "6b04ffeccb4fe3a455d4e076",
+          "type": "file",
+          "path": "frog.jpg"
+        },
+        {
+          "id": "6b04ffeccb4fe3a455d4e085",
+          "type": "doc",
+          "path": "extra.tex"
+        }
+      ],
+      "sentAt": 62206,
+      "answeredAt": 62655,
+      "events": {
+        "bob": [
+          {
+            "t": 62305,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffe3cb4fe3a455d4e034",
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 62315,
+            "name": "new-comment-threads",
+            "args": [
+              {}
+            ]
+          },
+          {
+            "t": 62350,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "main.tex",
+                "_id": "6b04ffeccb4fe3a455d4e057"
+              },
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 62358,
+            "name": "rootDocUpdated",
+            "args": [
+              "6b04ffeccb4fe3a455d4e057"
+            ]
+          },
+          {
+            "t": 62396,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffe5cb4fe3a455d4e045",
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 62404,
+            "name": "new-comment-threads",
+            "args": [
+              {}
+            ]
+          },
+          {
+            "t": 62437,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "sample.bib",
+                "_id": "6b04ffeccb4fe3a455d4e067"
+              },
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 62466,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffaecb4fe3a455d4dfaa",
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 62508,
+            "name": "reciveNewFile",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "frog.jpg",
+                "rev": 0,
+                "linkedFileData": {},
+                "hash": "5b889ef3cf71c83a4c027c4e4dc3d1a106b27809",
+                "_id": "6b04ffeccb4fe3a455d4e076",
+                "created": "2026-11-24T03:09:32.403Z"
+              },
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              {},
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 62554,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffd6cb4fe3a455d4e019",
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          },
+          {
+            "t": 62564,
+            "name": "new-comment-threads",
+            "args": [
+              {}
+            ]
+          },
+          {
+            "t": 62599,
+            "name": "reciveNewDoc",
+            "args": [
+              "6b04ffaecb4fe3a455d4df97",
+              {
+                "name": "extra.tex",
+                "_id": "6b04ffeccb4fe3a455d4e085"
+              },
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              },
+              "6afab5bb1222cc50aa4c16ec"
+            ]
+          },
+          {
+            "t": 62654,
+            "name": "removeEntity",
+            "args": [
+              "6b04ffd8cb4fe3a455d4e022",
+              {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "flush before the zips",
+      "request": {
+        "method": "POST",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/flush",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "transfer-encoding": "chunked"
+      },
+      "body": "",
+      "sentAt": 65156,
+      "answeredAt": 65184
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/version/23/zip",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "transfer-encoding": "chunked",
+        "content-disposition": "attachment; filename=\"history-routes-20261124-030830 (Version 23).zip\""
+      },
+      "bytes": 99381,
+      "startsWithPK": true,
+      "entries": [
+        {
+          "name": "main.tex",
+          "size": 5459
+        },
+        {
+          "name": "extra.tex",
+          "size": 17
+        },
+        {
+          "name": "frog.jpg",
+          "size": 97080
+        },
+        {
+          "name": "sample.bib",
+          "size": 244
+        }
+      ],
+      "body": null,
+      "sentAt": 66737,
+      "answeredAt": 66790
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/version/0/zip",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "transfer-encoding": "chunked",
+        "content-disposition": "attachment; filename=\"history-routes-20261124-030830 (Version 0).zip\""
+      },
+      "bytes": 22,
+      "startsWithPK": true,
+      "entries": [],
+      "body": null,
+      "sentAt": 66790,
+      "answeredAt": 66813
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/version/0/zip",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "transfer-encoding": "chunked",
+        "content-disposition": "attachment; filename=\"history-routes-20261124-030830 (Version 0).zip\""
+      },
+      "bytes": 22,
+      "startsWithPK": true,
+      "entries": [],
+      "body": null,
+      "sentAt": 66813,
+      "answeredAt": 66836
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/version/1023/zip",
+        "user": "alice"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "9"
+      },
+      "bytes": 9,
+      "startsWithPK": false,
+      "entries": null,
+      "body": "Not Found",
+      "sentAt": 66837,
+      "answeredAt": 66861
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/version/23/zip",
+        "user": "dave"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "transfer-encoding": "chunked",
+        "content-disposition": "attachment; filename=\"history-routes-20261124-030830 (Version 23).zip\""
+      },
+      "bytes": 99381,
+      "startsWithPK": true,
+      "entries": [
+        {
+          "name": "main.tex",
+          "size": 5459
+        },
+        {
+          "name": "extra.tex",
+          "size": 17
+        },
+        {
+          "name": "frog.jpg",
+          "size": 97080
+        },
+        {
+          "name": "sample.bib",
+          "size": 244
+        }
+      ],
+      "body": null,
+      "sentAt": 66861,
+      "answeredAt": 66900
+    },
+    {
+      "label": "filetree diff after the reverts",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/filetree/diff?from=10&to=23",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "366",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "pathname": "main.tex",
+            "operation": "added",
+            "editable": true
+          },
+          {
+            "pathname": "sample.bib",
+            "operation": "added",
+            "editable": true
+          },
+          {
+            "pathname": "frog.jpg",
+            "operation": "added",
+            "editable": false
+          },
+          {
+            "pathname": "extra.tex",
+            "operation": "added",
+            "editable": true
+          },
+          {
+            "pathname": "main (Restored on 24th Nov 26 3:09:12).tex",
+            "operation": "removed",
+            "deletedAtV": 22,
+            "editable": true
+          }
+        ]
+      },
+      "sentAt": 66900,
+      "answeredAt": 66934
+    },
+    {
+      "label": "updates after the reverts",
+      "request": {
+        "method": "GET",
+        "route": "/project/6b04ffaecb4fe3a455d4df98/updates?min_count=3",
+        "user": "alice"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "3790",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 14,
+            "toV": 23,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489772192,
+              "end_ts": 1795489772544,
+              "origin": {
+                "kind": "project-restore",
+                "version": 6,
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "main (Restored on 24th Nov 26 3:09:12).tex"
+                },
+                "atV": 22
+              },
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 21
+              },
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 20
+              },
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 19
+              },
+              {
+                "remove": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 18
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 17
+              },
+              {
+                "remove": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 16
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 15
+              },
+              {
+                "remove": {
+                  "pathname": "main.tex"
+                },
+                "atV": 14
+              }
+            ]
+          },
+          {
+            "fromV": 12,
+            "toV": 14,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Bob",
+                  "last_name": "Editor",
+                  "email": "bob@example.test",
+                  "id": "6afab5bc1222cc50aa4c16f2"
+                }
+              ],
+              "start_ts": 1795489765934,
+              "end_ts": 1795489765981,
+              "origin": {
+                "kind": "file-restore",
+                "version": 6,
+                "path": "sample.bib",
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 13
+              },
+              {
+                "remove": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 12
+              }
+            ]
+          },
+          {
+            "fromV": 10,
+            "toV": 12,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489763276,
+              "end_ts": 1795489763368,
+              "origin": {
+                "kind": "file-restore",
+                "version": 6,
+                "path": "main.tex",
+                "timestamp": "2026-11-24T03:08:53.425Z"
+              }
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 11
+              },
+              {
+                "remove": {
+                  "pathname": "main.tex"
+                },
+                "atV": 10
+              }
+            ]
+          },
+          {
+            "fromV": 8,
+            "toV": 10,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489750112,
+              "end_ts": 1795489752710,
+              "origin": {
+                "kind": "upload"
+              }
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "main (Restored on 24th Nov 26 3:09:12).tex"
+                },
+                "atV": 9
+              },
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 8
+              }
+            ]
+          },
+          {
+            "fromV": 7,
+            "toV": 8,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735201,
+              "end_ts": 1795489735201
+            },
+            "labels": [
+              {
+                "id": "6b04ffca847e988d6052e6c5",
+                "comment": "Alice names this version",
+                "version": 8,
+                "user_id": "6afab5bb1222cc50aa4c16ec",
+                "created_at": "2026-11-24T03:08:58.951Z"
+              }
+            ],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 6,
+            "toV": 7,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489735042,
+              "end_ts": 1795489735042
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 6
+              }
+            ]
+          },
+          {
+            "fromV": 5,
+            "toV": 6,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733425,
+              "end_ts": 1795489733425
+            },
+            "labels": [],
+            "pathnames": [
+              "extra.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 4,
+            "toV": 5,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489733305,
+              "end_ts": 1795489733305
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "extra.tex"
+                },
+                "atV": 4
+              }
+            ]
+          },
+          {
+            "fromV": 3,
+            "toV": 4,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489732850,
+              "end_ts": 1795489732850
+            },
+            "labels": [],
+            "pathnames": [
+              "main.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 0,
+            "toV": 3,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6afab5bb1222cc50aa4c16ec"
+                }
+              ],
+              "start_ts": 1795489710727,
+              "end_ts": 1795489710966
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "frog.jpg"
+                },
+                "atV": 2
+              },
+              {
+                "add": {
+                  "pathname": "sample.bib"
+                },
+                "atV": 1
+              },
+              {
+                "add": {
+                  "pathname": "main.tex"
+                },
+                "atV": 0
+              }
+            ]
+          }
+        ]
+      },
+      "sentAt": 66934,
+      "answeredAt": 66969
+    },
+    {
+      "socket": {
+        "user": "bob",
+        "projectId": "6b04ffaecb4fe3a455d4df98",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 22621,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 22649,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.lzxChvJBeVg9c_v7AACw\",\"project\":{\"_id\":\"6b04ffaecb4fe3a455d4df98\",\"name\":\"history-routes-20261124-030830\",\"rootDoc_id\":\"6b04ffaecb4fe3a455d4df9d\",\"rootFolder\":[{\"_id\":\"6b04ffaecb4fe3a455d4df97\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[{\"_id\":\"6b04ffaecb4fe3a455d4dfaa\",\"name\":\"frog.jpg\",\"linkedFileData\":null,\"created\":\"2026-11-24T03:08:30.930Z\",\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\"}],\"docs\":[{\"_id\":\"6b04ffaecb4fe3a455d4df9d\",\"name\":\"main.tex\"},{\"_id\":\"6b04ffaecb4fe3a455d4dfa4\",\"name\":\"sample.bib\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6afab5bb1222cc50aa4c16ec\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-16T07:50:19.753Z\"},\"members\":[{\"_id\":\"6afab5bc1222cc50aa4c16f2\",\"first_name\":\"Bob\",\"last_name\":\"Editor\",\"email\":\"bob@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-16T07:50:20.391Z\"},{\"_id\":\"6afab5bc1222cc50aa4c16f8\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-16T07:50:20.935Z\"},{\"_id\":\"6afab5bd1222cc50aa4c16fe\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readOnly\",\"signUpDate\":\"2026-11-16T07:50:21.366Z\"}],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":{\"6afab5bc1222cc50aa4c16f8\":true}},\"permissionsLevel\":\"readAndWrite\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 22940,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04ffaecb4fe3a455d4df9d\",\"op\":[{\"p\":5438,\"i\":\"\\nFirst history edit.\\n\"}],\"v\":0,\"meta\":{\"source\":\"P.74RTCL75wMdSb_0RAACx\",\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":1795489732850}}]}"
+          },
+          {
+            "t": 23400,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"extra.tex\",\"_id\":\"6b04ffc5cb4fe3a455d4dfda\"},\"editor\",\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 23511,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04ffc5cb4fe3a455d4dfda\",\"op\":[{\"p\":0,\"i\":\"Extra file text.\\n\"}],\"v\":0,\"meta\":{\"source\":\"P.74RTCL75wMdSb_0RAACx\",\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":1795489733425}}]}"
+          },
+          {
+            "t": 25171,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffc5cb4fe3a455d4dfda\",\"editor\"]}"
+          },
+          {
+            "t": 25287,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"otUpdateApplied\",\"args\":[{\"doc\":\"6b04ffaecb4fe3a455d4df9d\",\"op\":[{\"p\":5459,\"i\":\"Second history edit.\\n\"}],\"v\":1,\"meta\":{\"source\":\"P.74RTCL75wMdSb_0RAACx\",\"user_id\":\"6afab5bb1222cc50aa4c16ec\",\"ts\":1795489735201}}]}"
+          },
+          {
+            "t": 40202,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"extra.tex\",\"_id\":\"6b04ffd6cb4fe3a455d4e019\"},\"upload\",\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 42798,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main (Restored on 24th Nov 26 3:09:12).tex\",\"_id\":\"6b04ffd8cb4fe3a455d4e022\"},\"upload\",\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 47619,
+            "dir": "in",
+            "frame": "2::"
+          },
+          {
+            "t": 47619,
+            "dir": "out",
+            "frame": "2::"
+          },
+          {
+            "t": 53406,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffaecb4fe3a455d4df9d\",{\"kind\":\"file-restore\",\"path\":\"main.tex\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 53417,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-comment-threads\",\"args\":[{}]}"
+          },
+          {
+            "t": 53456,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main.tex\",\"_id\":\"6b04ffe3cb4fe3a455d4e034\"},{\"kind\":\"file-restore\",\"path\":\"main.tex\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 53462,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"rootDocUpdated\",\"args\":[\"6b04ffe3cb4fe3a455d4e034\"]}"
+          },
+          {
+            "t": 56037,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffaecb4fe3a455d4dfa4\",{\"kind\":\"file-restore\",\"path\":\"sample.bib\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 56043,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-comment-threads\",\"args\":[{}]}"
+          },
+          {
+            "t": 56069,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"sample.bib\",\"_id\":\"6b04ffe5cb4fe3a455d4e045\"},{\"kind\":\"file-restore\",\"path\":\"sample.bib\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\"6afab5bc1222cc50aa4c16f2\"]}"
+          },
+          {
+            "t": 62305,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffe3cb4fe3a455d4e034\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 62315,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-comment-threads\",\"args\":[{}]}"
+          },
+          {
+            "t": 62350,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"main.tex\",\"_id\":\"6b04ffeccb4fe3a455d4e057\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 62358,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"rootDocUpdated\",\"args\":[\"6b04ffeccb4fe3a455d4e057\"]}"
+          },
+          {
+            "t": 62396,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffe5cb4fe3a455d4e045\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 62404,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-comment-threads\",\"args\":[{}]}"
+          },
+          {
+            "t": 62437,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"sample.bib\",\"_id\":\"6b04ffeccb4fe3a455d4e067\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 62466,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffaecb4fe3a455d4dfaa\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 62508,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"frog.jpg\",\"rev\":0,\"linkedFileData\":{},\"hash\":\"5b889ef3cf71c83a4c027c4e4dc3d1a106b27809\",\"_id\":\"6b04ffeccb4fe3a455d4e076\",\"created\":\"2026-11-24T03:09:32.403Z\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},{},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 62554,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffd6cb4fe3a455d4e019\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 62564,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"new-comment-threads\",\"args\":[{}]}"
+          },
+          {
+            "t": 62599,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6b04ffaecb4fe3a455d4df97\",{\"name\":\"extra.tex\",\"_id\":\"6b04ffeccb4fe3a455d4e085\"},{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"},\"6afab5bb1222cc50aa4c16ec\"]}"
+          },
+          {
+            "t": 62654,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6b04ffd8cb4fe3a455d4e022\",{\"kind\":\"project-restore\",\"version\":6,\"timestamp\":\"2026-11-24T03:08:53.425Z\"}]}"
+          },
+          {
+            "t": 66969,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6b04ffaecb4fe3a455d4df98"
+      },
+      "status": 200,
+      "headers": {
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "OK",
+      "sentAt": 66970,
+      "answeredAt": 67007
+    }
+  ]
+}

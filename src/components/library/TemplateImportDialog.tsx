@@ -218,8 +218,10 @@ export function TemplateImportDialog({
     } catch (error_) {
       void logError("overleaf status", error_);
     }
+    const imports = useOverleafImportStore.getState();
+    const account = imports.status?.server === found.server ? (imports.status.userId ?? null) : null;
     await run(
-      () => overleafImportTemplate(found.server, found.link, templateName, pngBase64(preview)),
+      () => overleafImportTemplate(found.server, found.link, templateName, pngBase64(preview), account),
       templateName,
     );
   };
@@ -249,8 +251,8 @@ export function TemplateImportDialog({
     const chosen = remote;
     const templateName = name.trim();
     if (!chosen || !templateName) return;
-    const server = useOverleafImportStore.getState().server;
-    void run(() => overleafSaveProjectAsTemplate(server, chosen.id, templateName), templateName);
+    const { server, status } = useOverleafImportStore.getState();
+    void run(() => overleafSaveProjectAsTemplate(server, chosen.id, templateName, status?.userId ?? null), templateName);
   };
 
   const goBack = () => {

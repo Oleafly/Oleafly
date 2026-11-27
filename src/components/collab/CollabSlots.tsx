@@ -1,10 +1,13 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { lazy } from "@/lib/preloadable";
-import { Files, MessageSquare, MessagesSquare, RadioTower } from "lucide-react";
+import { Files, type LucideIcon, MessageSquareQuote, RadioTower } from "lucide-react";
+import { MessagesCircle } from "@/components/ui/extra-icons";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";
 import { i18n } from "@/i18n";
+import { useLiveBackend } from "@/lib/collab-live-bridge";
+import { logError } from "@/lib/log";
 import type { QueryMeta } from "@/lib/query-suggestions";
 import type { ProjectInfo } from "@/lib/tauri";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
@@ -76,6 +79,9 @@ const CollabBanners = lazy(() =>
 );
 const RemovedFileBanner = lazy(() =>
   import("@/features/collab/live/RemovedFileBanner").then((module) => ({ default: module.RemovedFileBanner })),
+);
+const LinkedFileBanner = lazy(() =>
+  import("@/features/collab/live/LinkedFileBanner").then((module) => ({ default: module.LinkedFileBanner })),
 );
 const NoteLivePanel = lazy(() =>
   import("@/features/collab/notes/NoteLivePanel").then((module) => ({ default: module.NoteLivePanel })),
@@ -205,20 +211,30 @@ export function CollabSyncPauseSlot() {
   );
 }
 
+export function refreshOverleafLinked(projectId: string, path: string): void {
+  import("@/features/collab/live/linked-refresh").then(
+    (linked) => linked.refreshLinked(projectId, path),
+    (error: unknown) => logError("load the linked file refresh", error),
+  );
+}
+
 export function CollabRemovedFileSlot() {
+  const linked = useLiveBackend((state) => state.backend === "overleaf" && state.linked.length > 0);
   return (
     <Gate>
       <RemovedFileBanner />
+      {linked ? <LinkedFileBanner /> : null}
     </Gate>
   );
 }
 
 export function CollabActivitySlot() {
   const shared = useCollabRail((state) => state.visible);
+  const overleaf = useLiveBackend((state) => state.backend === "overleaf");
   return (
     <Gate>
       <CollabActivityKeeper />
-      {shared ? (
+      {shared || overleaf ? (
         <Suspense fallback={null}>
           <CommentsKeeper />
           <SuggestionsKeeper />
@@ -243,19 +259,28 @@ export function collabRailLabel(): string {
     : i18n.t(($) => $.collab.pane.title);
 }
 
-export function CollabRailIcon({ className }: Readonly<{ className?: string }>) {
-  const unread = useCollabRail((state) => state.unread);
+function UnreadRailIcon({
+  icon: Icon,
+  unread,
+  dot,
+  className,
+}: Readonly<{ icon: LucideIcon; unread: boolean; dot: string; className?: string }>) {
   return (
     <>
-      <RadioTower aria-hidden className={className} />
+      <Icon aria-hidden className={className} />
       {unread ? (
-        <span data-testid="collab-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
+        <span data-testid={dot} aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
           <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-primary" />
         </span>
       ) : null}
     </>
   );
+}
+
+export function CollabRailIcon({ className }: Readonly<{ className?: string }>) {
+  const unread = useCollabRail((state) => state.unread);
+  return <UnreadRailIcon icon={RadioTower} unread={unread} dot="collab-rail-dot" className={className} />;
 }
 
 export function CommentsPanel() {
@@ -274,17 +299,7 @@ export function commentsRailLabel(): string {
 
 export function CommentsRailIcon({ className }: Readonly<{ className?: string }>) {
   const unread = useCommentsRail((state) => state.unread);
-  return (
-    <>
-      <MessageSquare aria-hidden className={className} />
-      {unread ? (
-        <span data-testid="comments-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
-          <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
-          <span className="relative inline-flex size-2 rounded-full bg-primary" />
-        </span>
-      ) : null}
-    </>
-  );
+  return <UnreadRailIcon icon={MessageSquareQuote} unread={unread} dot="comments-rail-dot" className={className} />;
 }
 
 export function ChatPanel() {
@@ -301,17 +316,7 @@ export function chatRailLabel(): string {
 
 export function ChatRailIcon({ className }: Readonly<{ className?: string }>) {
   const unread = useChatRail((state) => state.unread);
-  return (
-    <>
-      <MessagesSquare aria-hidden className={className} />
-      {unread ? (
-        <span data-testid="chat-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
-          <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
-          <span className="relative inline-flex size-2 rounded-full bg-primary" />
-        </span>
-      ) : null}
-    </>
-  );
+  return <UnreadRailIcon icon={MessagesCircle} unread={unread} dot="chat-rail-dot" className={className} />;
 }
 
 export function SharedWithYouSlot() {

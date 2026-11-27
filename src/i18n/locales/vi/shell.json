@@ -316,6 +316,10 @@
       "keywords": "không xao nhãng tập trung toàn màn hình ẩn giao diện tối giản viết",
       "label": "Bật tắt Chế độ Zen"
     },
+    "fastMath": {
+      "keywords": "fast math đoạn mã mở rộng khi gõ phân số chỉ số dưới hy lạp snippets expand fraction greek",
+      "label": "Bật tắt Fast math"
+    },
     "visualSettings": {
       "keywords": "giao diện phông chữ kiểu chữ cỡ chữ thụt lề đoạn khoảng cách căn đều tiêu đề viết appearance font typeface paragraph indent justify heading",
       "label": "Cài đặt chế độ Trực quan"
@@ -404,6 +408,14 @@
     "addChapterFromProject": {
       "keywords": "luận văn chương bài báo nhập gộp sao chép dự án",
       "label": "Thêm chương từ dự án khác"
+    },
+    "insertSnippet": {
+      "keywords": "đoạn mã mẫu từ kích hoạt duyệt chèn snippets templates triggers",
+      "label": "Chèn đoạn mã"
+    },
+    "saveSnippet": {
+      "keywords": "đoạn mã mẫu lưu vùng chọn dùng lại snippet template",
+      "label": "Lưu vùng chọn thành đoạn mã"
     }
   },
   "community": {
@@ -515,7 +527,8 @@
       "open": "Theo tệp đang mở",
       "main": "Luôn là tài liệu chính",
       "change": "Đổi tài liệu chính…"
-    }
+    },
+    "filling": "Dự án vẫn đang được tải xuống từ Overleaf. Bạn có thể biên dịch khi mọi tệp đã về đây."
   },
   "datePicker": {
     "placeholder": "Chọn ngày"
@@ -762,7 +775,8 @@
       "projects": "tìm dự án của bạn",
       "refs": "mở tài liệu tham khảo của dự án này",
       "settings": "mở cài đặt",
-      "theme": "đổi giao diện màu"
+      "theme": "đổi giao diện màu",
+      "snippets": "duyệt và chèn đoạn mã"
     },
     "tryCommand": "Thử một lệnh",
     "unknownCommand": "Lệnh không rõ. Nhập / để xem các lệnh có sẵn."
@@ -1116,7 +1130,8 @@
       "integrations": "Tích hợp",
       "shortcuts": "Phím tắt",
       "research": "Nghiên cứu",
-      "logs": "Nhật ký"
+      "logs": "Nhật ký",
+      "snippets": "Đoạn mã"
     },
     "search": {
       "empty": "Không có cài đặt nào khớp",
@@ -1134,7 +1149,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, dịch vụ Git, Computer Use, ứng dụng máy tính, Cua, MCP, trích dẫn, tài khoản, kết nối",
         "shortcuts": "phím tắt, tổ hợp phím, phím, bàn phím",
         "research": "tác vụ nghiên cứu, hạn mức, thông báo, giữ máy thức, thử nghiệm, lần chạy",
-        "logs": "nhật ký, log, logs, lỗi, cảnh báo, sự cố, build, chẩn đoán, khắc phục sự cố, xuất nhật ký, app.log, gỡ lỗi, debug"
+        "logs": "nhật ký, log, logs, lỗi, cảnh báo, sự cố, build, chẩn đoán, khắc phục sự cố, xuất nhật ký, app.log, gỡ lỗi, debug",
+        "snippets": "từ kích hoạt, mẫu, Fast math, mở rộng khi gõ, Tab, danh sách gợi ý, menu slash, phím tắt @, đoạn mã VS Code, nhập, gói, snippets"
       },
       "label": "Tìm trong cài đặt",
       "results_other": "{{count}} mục khớp"
@@ -1365,11 +1381,12 @@
     },
     "moreActions": "Thao tác khác",
     "resetPaneLayout": "Đặt lại cách sắp xếp khung",
-    "resetPaneLayoutScope": "Tất cả dự án",
+    "resetPaneLayoutHint": "Đưa thanh bên, trình soạn thảo, bản xem trước, terminal và trợ lý về vị trí mặc định trong mọi dự án.",
     "savedLayouts": {
       "close": "Đóng",
       "delete": "Xoá",
       "deleteConfirm": "Xoá bố cục {{name}}?",
+      "duplicate": "Bố cục này đã được lưu với tên {{name}}.",
       "limit": "Bạn có thể giữ tối đa {{count}} bố cục. Hãy xoá một bố cục để lưu bố cục khác.",
       "manage": "Quản lý bố cục",
       "name": "Tên bố cục",
@@ -1377,10 +1394,11 @@
       "renameTitle": "Đổi tên bố cục",
       "replace": "Thay thế",
       "replaceConfirm": "Đã có bố cục tên {{name}}. Thay thế nó?",
+      "replaceWithCurrent": "Thay bằng bố cục hiện tại",
       "save": "Lưu bố cục hiện tại",
       "saveButton": "Lưu",
       "saveTitle": "Lưu bố cục",
-      "update": "Cập nhật theo hiện tại"
+      "savedAs": "Đã lưu với tên {{name}}"
     },
     "renameFailed": "Không đổi tên được dự án."
   },
@@ -1667,8 +1685,9 @@
     "resume": "Tiếp tục chỉnh sửa trực tiếp",
     "reconnectNow": "Kết nối lại ngay",
     "open": "Mở trong Overleaf",
-    "share": "Chia sẻ trên Overleaf…",
+    "share": "Chia sẻ trên Overleaf",
     "signIn": "Đăng nhập…",
+    "signInAs": "Đăng nhập với tên {{email}}",
     "reconnectingIn": "Thử lại sau {{seconds}} giây.",
     "notConfirmed": "Overleaf chưa xác nhận.",
     "copyDetails": "Sao chép chi tiết kết nối",
@@ -1688,5 +1707,70 @@
   "zoomIndicator": {
     "label": "Thu phóng",
     "reset": "Đặt lại"
+  },
+  "snippets": {
+    "mySnippets": "Đoạn mã của tôi",
+    "saveAsSnippet": "Lưu thành đoạn mã…",
+    "autoNote": "Đã mở rộng {{trigger}}. Hoàn tác hoặc Backspace sẽ trả lại.",
+    "fastMathTip": "Khi bật Fast math, // sẽ viết phân số trong toán.",
+    "turnOnFastMath": "Bật Fast math",
+    "expands": {
+      "list": "Danh sách",
+      "tab": "Tab",
+      "auto": "Tự động"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Ghi chú",
+      "any": "Bất kỳ"
+    },
+    "places": {
+      "any": "Mọi nơi",
+      "text": "Văn bản",
+      "math": "Toán",
+      "inline-math": "Toán trong dòng",
+      "display-math": "Toán hiển thị",
+      "code": "Mã"
+    },
+    "palette": {
+      "placeholder": "Tìm kiếm đoạn mã theo tên, từ kích hoạt hoặc văn bản",
+      "insert": "Chèn",
+      "edit": "Sửa",
+      "count": "{{shown}}/{{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Gõ {{trigger}} để có đoạn mã này mà không cần mở bảng lệnh.",
+      "noMatches": "Không có đoạn mã nào khớp."
+    },
+    "save": {
+      "title": "Lưu thành đoạn mã",
+      "name": "Tên",
+      "namePlaceholder": "Bảng kết quả",
+      "trigger": "Từ kích hoạt",
+      "triggerPlaceholder": "rtab",
+      "expands": "Cách mở rộng",
+      "found": "được nhận diện từ vùng chọn của bạn",
+      "fields": "Biến những mục này thành trường",
+      "fieldsFound_other": "Tìm thấy {{count}}",
+      "noFields": "Không có gì ở đây giống một trường. Bạn có thể thêm trường sau trong Cài đặt.",
+      "followsCaption": "theo chú thích",
+      "kinds": {
+        "caption": "chú thích",
+        "label": "nhãn",
+        "cite": "trích dẫn",
+        "path": "đường dẫn tệp",
+        "column-spec": "đặc tả cột",
+        "number": "số",
+        "title": "tiêu đề",
+        "table-body": "thân bảng"
+      },
+      "preview": "Xem trước",
+      "saveTo": "Lưu vào",
+      "submit": "Lưu đoạn mã",
+      "saved": "Đã lưu {{name}}.",
+      "missingName": "Hãy đặt tên cho đoạn mã."
+    }
   }
 }

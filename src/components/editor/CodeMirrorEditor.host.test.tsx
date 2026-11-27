@@ -48,7 +48,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@oleafly/latex-intelligence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@oleafly/latex-intelligence")>()),
   loadCore: async () => null,
-  loadAtSuggestions: async () => null,
   loadPackageNames: async () => null,
   loadClassNames: async () => null,
 }));
@@ -99,7 +98,7 @@ vi.mock("./visual-reference-kind", () => ({ referenceKindIn: mocks.referenceKind
 
 import { useDictionary } from "@/lib/dictionary";
 import { installCollabEditorPort } from "@/lib/collab-live-bridge";
-import { setCollabEditorExtension } from "./cm/collab-slot";
+import { setCollabEditorExtension } from "./cm/editor-slots";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useFilesStore } from "@/store/files";
 import { useInlineEditStore } from "@/store/inlineEdit";

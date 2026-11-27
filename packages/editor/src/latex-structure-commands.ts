@@ -9,9 +9,9 @@ import {
 import type { EditorView, KeyBinding } from "@codemirror/view";
 import { indentString } from "@codemirror/language";
 import { insertNewlineAndIndent } from "@codemirror/commands";
-import { snippet } from "@codemirror/autocomplete";
 import { getEditorDocumentPath } from "./controller";
 import { inLatexIgnoredRegion, latexMaskedSlice } from "./latex-lexical";
+import { insertTemplate } from "./snippets/template";
 
 const LATEX_PATH = /\.(tex|latex|ltx|sty|cls)$/i;
 
@@ -377,7 +377,7 @@ export function surroundSelectionWithEnvironment(view: EditorView): boolean {
     from === to
       ? "\\begin{${1:env}}\n${2}\n\\end{${1:env}}"
       : `\\begin{\${1:env}}\n${escapeSnippetText(view.state.sliceDoc(from, to))}\n\\end{\${1:env}}`;
-  snippet(template)(view, null, from, to);
+  insertTemplate(view, template, from, to);
   return true;
 }
 

@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppWindow } from "lucide-react";
+import { AppIcon } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,15 +36,6 @@ function AppSubtitle({ app }: Readonly<{ app: InstalledApp }>) {
     );
   }
   return null;
-}
-
-function AppIcon({ url }: Readonly<{ url: string | undefined }>) {
-  if (url) return <img src={url} alt="" draggable={false} className="size-8 shrink-0 object-contain" />;
-  return (
-    <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-      <AppWindow className="size-4" />
-    </span>
-  );
 }
 
 export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: Readonly<AppPickerDialogProps>) {

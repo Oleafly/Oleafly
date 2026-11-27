@@ -32,7 +32,7 @@ test("signs in through an installed browser picked in the import view", async ({
   await tauriPage.click('[data-testid="overleaf-save-server"]');
   await expect(panel).toContainText(server.base.replace("http://", ""), { timeout: 20_000 });
 
-  await expect(tauriPage.locator('[data-testid="browser-sign-in-picker"]')).toContainText("Google Chrome", {
+  await expect(tauriPage.locator('[data-testid="browser-sign-in"]')).toContainText("Google Chrome", {
     timeout: 20_000,
   });
   await tauriPage.click('[data-testid="browser-sign-in"]');

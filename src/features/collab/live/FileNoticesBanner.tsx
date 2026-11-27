@@ -1,6 +1,19 @@
 import type { OverleafStopReason } from "@oleafly/backend-port";
 import { useMemo } from "react";
-import { Cloud, CloudAlert, CloudDownload, CloudUpload, Files, FileWarning, FolderInput, History, Lock, Type } from "lucide-react";
+import {
+  Cloud,
+  CloudAlert,
+  CloudDownload,
+  CloudUpload,
+  Files,
+  FileWarning,
+  FolderInput,
+  History,
+  Link2,
+  Lock,
+  type LucideIcon,
+  Type,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Progress } from "@/components/ui/progress";
@@ -378,26 +391,40 @@ function ReplacedRow({ path }: Readonly<{ path: string }>) {
   );
 }
 
-function NotAllowedRow({ paths }: Readonly<{ paths: readonly string[] }>) {
-  const { t } = useTranslation(["collab"]);
-  const files = formatList(paths.map(basename));
-  return (
-    <WorkspaceBanner tone="warning" data-testid="collab-tree-not-allowed">
-      <Lock aria-hidden className="size-3.5 shrink-0" />
-      <PathMessage paths={paths}>{t(($) => $.collab.overleafTree.notAllowed, { files })}</PathMessage>
-      <DismissButton tone="warning" onDismiss={() => useFileNotices.getState().dismissNotAllowed()} />
-    </WorkspaceBanner>
-  );
-}
+type TreeRow = "notAllowed" | "keptAway" | "linkedKept";
 
-function KeptAwayRow({ paths }: Readonly<{ paths: readonly string[] }>) {
+const TREE_ROWS: Readonly<
+  Record<TreeRow, { tone: "warning" | "primary"; icon: LucideIcon; testId: string; dismiss: () => void }>
+> = {
+  notAllowed: {
+    tone: "warning",
+    icon: Lock,
+    testId: "collab-tree-not-allowed",
+    dismiss: () => useFileNotices.getState().dismissNotAllowed(),
+  },
+  keptAway: {
+    tone: "primary",
+    icon: Cloud,
+    testId: "collab-tree-kept-away",
+    dismiss: () => useFileNotices.getState().dismissKeptAway(),
+  },
+  linkedKept: {
+    tone: "warning",
+    icon: Link2,
+    testId: "collab-tree-linked-kept",
+    dismiss: () => useFileNotices.getState().dismissLinkedKept(),
+  },
+};
+
+function TreePathsRow({ row, paths }: Readonly<{ row: TreeRow; paths: readonly string[] }>) {
   const { t } = useTranslation(["collab"]);
   const files = formatList(paths.map(basename));
+  const { tone, icon: Icon, testId, dismiss } = TREE_ROWS[row];
   return (
-    <WorkspaceBanner tone="primary" data-testid="collab-tree-kept-away">
-      <Cloud aria-hidden className="size-3.5 shrink-0 text-primary" />
-      <PathMessage paths={paths}>{t(($) => $.collab.overleafTree.keptAway, { files })}</PathMessage>
-      <DismissButton tone="primary" onDismiss={() => useFileNotices.getState().dismissKeptAway()} />
+    <WorkspaceBanner tone={tone} data-testid={testId}>
+      <Icon aria-hidden className={cn("size-3.5 shrink-0", tone === "primary" && "text-primary")} />
+      <PathMessage paths={paths}>{t(($) => $.collab.overleafTree[row], { files })}</PathMessage>
+      <DismissButton tone={tone} onDismiss={dismiss} />
     </WorkspaceBanner>
   );
 }
@@ -415,6 +442,7 @@ export function FileNoticesBanner() {
             broughtIn: state.broughtIn,
             notAllowed: state.notAllowed,
             keptAway: state.keptAway,
+            linkedKept: state.linkedKept,
             downloads: state.downloads,
           }
         : {
@@ -424,6 +452,7 @@ export function FileNoticesBanner() {
             broughtIn: null,
             notAllowed: NO_PATHS,
             keptAway: NO_PATHS,
+            linkedKept: NO_PATHS,
             downloads: NO_DOWNLOADS,
           },
     ),
@@ -456,6 +485,7 @@ export function FileNoticesBanner() {
     notices.kept.length === 0 &&
     notices.notAllowed.length === 0 &&
     notices.keptAway.length === 0 &&
+    notices.linkedKept.length === 0 &&
     Object.keys(notices.downloads).length === 0 &&
     overleaf.stopped.length === 0 &&
     overleaf.external.length === 0;
@@ -468,12 +498,13 @@ export function FileNoticesBanner() {
       {failed.length > 0 ? <UploadRow files={failed} kind="failed" /> : null}
       {storageFull.length > 0 ? <UploadRow files={storageFull} kind="account_storage_full" /> : null}
       {tooMany.length > 0 ? <UploadRow files={tooMany} kind="too_many_uploads" /> : null}
-      {notices.notAllowed.length > 0 ? <NotAllowedRow paths={notices.notAllowed} /> : null}
+      {notices.notAllowed.length > 0 ? <TreePathsRow row="notAllowed" paths={notices.notAllowed} /> : null}
+      {notices.linkedKept.length > 0 ? <TreePathsRow row="linkedKept" paths={notices.linkedKept} /> : null}
       {waiting.length > 0 ? <UploadRow files={waiting} kind="waiting" /> : null}
       {Object.entries(notices.downloads).map(([path, progress]) => (
         <DownloadRow key={path} path={path} progress={progress} />
       ))}
-      {notices.keptAway.length > 0 ? <KeptAwayRow paths={notices.keptAway} /> : null}
+      {notices.keptAway.length > 0 ? <TreePathsRow row="keptAway" paths={notices.keptAway} /> : null}
       {tooLarge.map((file) => (
         <TooLargeRow key={file.path} file={file} />
       ))}

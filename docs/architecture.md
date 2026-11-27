@@ -23,6 +23,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-sandbox/` | Isolation for task commands and runs (macOS Seatbelt, Linux bubblewrap, the Windows AppContainer sandbox) and run profiles |
 | `crates/oleafly-secrets/` | The encrypted secret store, the data folder and private-file helpers, shared by the app and the CLI |
 | `crates/oleafly-online/` | Online LaTeX service client: sessions, project lists, folder import, browser cookie reading and Git-bridge sync |
+| `crates/oleafly-live/` | Live editing in the project folder for collaboration server and online LaTeX service projects: the folder mirror, its writes, kept copies and unsent changes. It doesn't depend on Tauri, so the CLI can share it |
 | `crates/oleafly-preflight/` | Preflight checks in Rust, with the same results as the app's panel, for `oleafly check` and research tasks |
 | `crates/oleafly-lint/` | LaTeX, BibTeX, spelling and grammar checks for `oleafly lint` |
 | `crates/oleafly-doctools/` | Document statistics, SyncTeX file reading and Pandoc exports, shared by the app and the CLI |
@@ -39,6 +40,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `packages/conversion-registry/` | Import and export routes behind the conversion matrix |
 | `packages/registry/` | Rail tabs, commands, toolsets, and context providers |
 | `packages/search-query/` | GitHub-style search queries: parsing, matching, suggestions, and edits |
+| `packages/snippets/` | Snippet files, layers, trigger matching and body rendering, with no editor or app imports |
 | `packages/preflight/` | Source, PDF, ATS, accessibility, and reference rules |
 | `packages/diagram/` | Host-independent diagram composer |
 | `packages/templates/` | Template gallery contracts and host integration |
@@ -176,6 +178,10 @@ adding or removing a tool.
   not a dynamic third-party plugin SDK.
 - `@oleafly/search-query` parses and runs GitHub-style search queries over any
   list. The app supplies the qualifiers, labels and icons.
+- `@oleafly/snippets` reads snippet files (VS Code's JSON with optional
+  Oleafly keys), merges the built-in, pack, user and project layers, matches
+  triggers and renders bodies. The editor reads it through a port and the app
+  owns the files.
 - `@oleafly/compile-port` owns the compile contract the desktop and the
   browser app share: compile a target, read what it made, and search its
   SyncTeX. `src/lib/compile-port.ts` puts the desktop's commands behind it,

@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -47,10 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  HomeDock,
-  HOME_DOCK_GLASS_SURFACE,
-} from "@/components/library/HomeDock";
+import { HomeDock } from "@/components/library/HomeDock";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
@@ -163,6 +161,12 @@ const BulkDeleteButton = lazy(() =>
   import("@/components/library/BulkDeleteButton").then((module) => ({ default: module.BulkDeleteButton })),
 );
 
+const PutOnOverleafDialog = lazy(() =>
+  import("@/components/library/overleaf/PutOnOverleafDialog").then((module) => ({
+    default: module.PutOnOverleafDialog,
+  })),
+);
+
 function BulkDeleteSlot({
   projects,
   className,
@@ -267,6 +271,8 @@ export function Library() {
     name: string;
   } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ProjectInfo | null>(null);
+  const [putTarget, setPutTarget] = useState<ProjectInfo | null>(null);
+  const overleafLive = useSettingsStore((s) => s.overleafLive);
   const [unavailableTarget, setUnavailableTarget] = useState<{
     project: ProjectInfo;
     state: UnavailableFolder;
@@ -437,6 +443,9 @@ export function Library() {
     trash: (project) => {
       window.setTimeout(() => setDeleteTarget({ id: project.id, name: project.name }), 0);
     },
+    putOnOverleaf: (project) => {
+      window.setTimeout(() => setPutTarget(project), 0);
+    },
   };
   const cardActions = useMemo<ProjectCardActions>(
     () => ({
@@ -456,8 +465,9 @@ export function Library() {
       saveAsTemplate: (project) => cardHandlers.current?.saveAsTemplate(project),
       trash: (project) => cardHandlers.current?.trash(project),
       share: (project) => useShareDialog.getState().openFor(project.id),
+      putOnOverleaf: overleafLive ? (project) => cardHandlers.current?.putOnOverleaf?.(project) : undefined,
     }),
-    [],
+    [overleafLive],
   );
   const confirmProjectDeletion = async () => {
     const target = deleteTarget;
@@ -1018,10 +1028,8 @@ export function Library() {
             ariaLabel={t(($) => $.library.home.advancedFilters)}
             align="right"
             closeOnClick={false}
-            className={cn(
-              HOME_DOCK_GLASS_SURFACE,
-              "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
-            )}
+            glass
+            className="flex w-96 flex-col gap-3 rounded-2xl p-4"
             triggerClassName={cn(
               HOME_CHROME_SURFACE,
               "size-10 rounded-2xl p-0",
@@ -1268,7 +1276,7 @@ export function Library() {
               data-modal-initial-focus
               value={forkName}
               onChange={(e) => setForkName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat && !isImeEnter(e)) void submitFork(); }}
               placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
@@ -1331,6 +1339,18 @@ export function Library() {
           window.setTimeout(() => setRemoveTarget(project), 0);
         }}
       />
+      {putTarget ? (
+        <Suspense fallback={null}>
+          <PutOnOverleafDialog
+            project={putTarget}
+            onClose={() => setPutTarget(null)}
+            onDone={(projectId) => {
+              setPutTarget(null);
+              void openProject(projectId);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

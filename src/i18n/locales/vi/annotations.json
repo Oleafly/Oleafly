@@ -26,6 +26,10 @@
       "region": "Nhận xét về vùng này…"
     },
     "placeHere": "Đặt vào đây",
+    "coauthors": "Bình luận cho đồng tác giả",
+    "noSource": "Không tìm thấy đoạn này trong các tệp mã nguồn.",
+    "commentFailed": "Không thể mở tệp của bình luận này.",
+    "commentsClosed": "Hiện chưa thể dùng bình luận cho dự án này.",
     "cancel": "Huỷ",
     "save": "Thêm",
     "saving": "Đang lưu",
@@ -39,8 +43,6 @@
     "region": "Vùng"
   },
   "status": {
-    "draft": "Nháp",
-    "sent": "Đã gửi",
     "addressed": "Đã xử lý",
     "resolved": "Đã giải quyết",
     "needsPlacing": "Cần đặt vị trí"
@@ -52,8 +54,13 @@
     "failed": "Không lưu được chú thích. {{error}}",
     "readOnly": "Được lưu bằng Oleafly mới hơn. Hãy cập nhật để chỉnh sửa.",
     "setAside": "Không đọc được tệp chú thích nên đã tạo tệp mới.",
-    "noSource": "Không có vị trí trong mã nguồn",
     "page": "tr. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "sau “{{quote}}”",
+    "groups": {
+      "drafts": "Bản nháp",
+      "assistant": "Đang ở Trợ lý"
+    },
     "notFound": "Không tìm thấy đoạn này trong bản PDF mới.",
     "placing": "Chọn đoạn văn trong PDF, sau đó chọn Đặt vào đây.",
     "placeAgain": "Đặt lại vị trí",

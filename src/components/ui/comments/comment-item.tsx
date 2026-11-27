@@ -132,6 +132,7 @@ function MessageHeader({
     <CommentByline
       name={entry.author.name}
       nameClassName={cn("text-[0.8125rem] font-medium leading-6", !entry.author.verified && "italic text-muted-foreground")}
+      note={entry.author.note}
       at={entry.delivery ? 0 : entry.at}
       editedAt={entry.delivery?.state === "waiting" ? null : entry.editedAt}
       actions={menu}
@@ -383,6 +384,7 @@ function CardBody({
   editor,
   mentioned,
 }: Readonly<{ entry: CommentEntry; editor: ReactNode; mentioned: CommentKit["members"] }>) {
+  const { math, markdown } = useCommentKit();
   const note = entry.delivery ? <DeliveryNote entry={entry} delivery={entry.delivery} /> : null;
   if (editor) {
     return (
@@ -395,7 +397,13 @@ function CardBody({
   if (entry.deleted) return note;
   return (
     <>
-      <CommentBody body={entry.body} members={mentioned} className={entry.delivery ? "text-muted-foreground" : undefined} />
+      <CommentBody
+        body={entry.body}
+        members={mentioned}
+        math={math}
+        markdown={markdown}
+        className={entry.delivery ? "text-muted-foreground" : undefined}
+      />
       {note}
     </>
   );

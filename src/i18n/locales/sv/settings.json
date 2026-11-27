@@ -1885,33 +1885,18 @@
       "disconnectFailed": "Det gick inte att koppla från alphaXiv. Försök igen."
     },
     "cookies": {
-      "confirmTitle": "Bekräfta import av cookies",
-      "detecting": "Letar efter installerade webbläsarprofiler...",
-      "dialogDescription": "Välj en installerad webbläsarprofil. Oleafly läser den först när du har granskat och bekräftat importen. Chromium-cookies låses upp lokalt via macOS nyckelring. Oleafly skickar inga cookievärden till någon Oleafly-tjänst.",
-      "dialogTitle": "Importera webbläsarcookies",
-      "empty": "Inga webbläsarprofiler som stöds hittades.",
-      "errors": {
-        "chooseProfile": "Välj en tillgänglig webbläsarprofil."
-      },
-      "profileGroupLabel": "Webbläsarprofiler",
-      "profileLegend": "Webbläsarprofil",
-      "review": "Granska importen",
-      "status": {
-        "available": "Tillgänglig",
-        "comingSoon": "Kommer snart",
-        "noCookieStore": "Inget cookielager",
-        "notInstalled": "Inte installerad"
-      },
-      "tryAgain": "Försök igen",
-      "label": "Kopiera inloggning från en webbläsare",
-      "useBrowserSignIn": "Kopiera inloggningen från din webbläsare",
-      "signInDescription": "Kopiera din inloggning för {{server}} från en webbläsare på den här datorn, så att du inte behöver logga in igen.",
-      "site": "Webbplats: {{domain}}",
-      "confirmCopy": "Oleafly läser cookies för {{domain}} från profilen {{profile}} i {{browser}}. De stannar i Oleafly och skickas bara till {{domain}}. Du bekräftar en gång till i en systemdialog.",
-      "copyAction": "Kopiera inloggningen",
-      "copying": "Kopierar…",
-      "notSignedIn_one": "Kopierade {{count}} cookie från {{browser}}, men den loggade inte in dig. Logga in i stället.",
-      "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället."
+      "dialogDescription": "Oleafly kopierar bara cookies för {{server}}, loggar in med dem och tar sedan bort kopiorna. Dina lösenord stannar i webbläsaren.",
+      "dialogTitle": "Importera cookies från din webbläsare",
+      "label": "Importera cookies från din webbläsare",
+      "useBrowserSignIn": "Välj en profil",
+      "signInDescription": "Använder kontot på {{server}} som en webbläsarprofil på den här datorn redan är inloggad på.",
+      "copyAction": "Importera",
+      "copying": "Importerar…",
+      "from": "Från",
+      "noCookies": "Inga cookies än",
+      "sameAccount": "{{profile}} är inloggad som {{account}}, som Oleafly redan använder. Välj en annan profil eller logga först in på ditt andra konto i den webbläsaren.",
+      "orExisting": "eller använd en inloggning du redan har",
+      "noSavedSignIn": "{{profile}} har ingen sparad inloggning för {{server}}, så de kopierade cookiesen loggade inte in dig. Om du är inloggad där behåller webbläsaren kanske inloggningen bara tills den stängs. Använd rutan {{browser}} i stället."
     },
     "zotero": {
       "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",
@@ -1971,7 +1956,12 @@
       "signedIn": "Inloggad på {{server}}",
       "signOut": "Logga ut",
       "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
+      "addAccount": "Lägg till ett konto till",
+      "addAccountHint": "Välj var du vill logga in. Alla startar utan inloggning, så vilket konto som helst fungerar.",
+      "accountPick": "Konto för import",
+      "accountPickDescription": "Nya importer och mallar använder det här kontot. Projekt som du redan har behåller kontot de kom från.",
       "gitTitle": "Git-token för synkning",
+      "gitTitleFor": "Git-token för {{email}}",
       "gitSaved": "En Git-token är sparad. Projekt som du länkar hålls synkade med Overleaf.",
       "gitMissing": "Ingen Git-token än. Skapa en under Git-integration i dina kontoinställningar på Overleaf för att synka projekt.",
       "gitOpenSettings": "Öppna kontoinställningarna på Overleaf",
@@ -1980,14 +1970,9 @@
       "gitSave": "Spara",
       "gitRemove": "Ta bort",
       "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token.",
-      "browserLabel": "Logga in med din webbläsare",
-      "browserDescription": "För inloggning med Google, din institution eller en nyckel. Oleafly öppnar {{server}} i ett nytt webbläsarfönster och stänger det när du är inloggad.",
-      "browserAction": "Logga in",
-      "browserPick": "Webbläsare att logga in med",
       "browserWaiting": "Slutför inloggningen på {{server}} i {{browser}}. Om du stänger fönstret avbryts inloggningen.",
-      "browserHint": "Använd det här för inloggning med Google, din institution eller en nyckel.",
-      "windowLabel": "Logga in på {{server}}",
-      "windowDescription": "Oleafly öppnar ett inloggningsfönster och stänger det när du är inloggad. Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och loggar sedan in med den här.",
+      "windowLabel": "Logga in inne i Oleafly",
+      "windowDescription": "Fönstret stängs av sig självt när du är inloggad. Om din nyckel inte fungerar där använder du ditt lösenord eller en uppmaning i telefonen.",
       "windowAction": "Logga in",
       "windowWaiting": "Slutför inloggningen på {{server}} i fönstret som öppnades.",
       "unsent": {
@@ -2005,7 +1990,15 @@
           "always": "Radera även på Overleaf",
           "never": "Behåll på Overleaf"
         }
-      }
+      },
+      "sameAccount": "Du är redan inloggad som {{account}}. Logga in med ett annat konto för att lägga till det.",
+      "windowTitle": "Logga in på {{server}}",
+      "addAccountKept": "Ditt nuvarande konto förblir inloggat.",
+      "noBrowser": "Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och väljer den sedan här.",
+      "tileHere": "I den här appen",
+      "tileWindow": "Nytt fönster",
+      "tileWaiting": "Väntar på dig",
+      "signInNote": "Använd en webbläsare för att logga in med Google, din institution eller en nyckel. Om din nyckel inte fungerar i Oleafly använder du ditt lösenord eller en uppmaning i telefonen där. Fönstret stängs av sig självt när du är inloggad."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2137,6 +2130,20 @@
           "confirm": "Det här laddar ner installationsprogrammet för Cua från cua.ai och kör det i din terminal. Vill du fortsätta?"
         }
       }
+    },
+    "signIns": {
+      "title": "Hantera inloggningar",
+      "description": "Kontona som Oleafly är inloggat på på den här datorn. Om du tar bort ett här förblir du inloggad i webbläsaren.",
+      "loading": "Läser in dina inloggningar…",
+      "empty": "Du är inte inloggad på något konto.",
+      "inUse": "Används",
+      "switch": "Byt",
+      "switchTo": "Byt till {{account}}",
+      "removeAccount": "Ta bort {{account}}",
+      "removeAll": "Ta bort alla",
+      "importMore": "Importera fler",
+      "loadFailed": "Oleafly kunde inte läsa in dina inloggningar.",
+      "changeFailed": "Oleafly kunde inte ändra den här inloggningen. Försök igen."
     }
   },
   "language": {
@@ -2343,6 +2350,7 @@
       "confirm": "Rensa orden",
       "descriptionFallback": "Det här tar bort alla uttryck ur den här ordlistan. De kontrolleras igen direkt.",
       "descriptionGlobal": "Det här tar bort alla uttryck ur den globala ordlistan. De kontrolleras igen direkt.",
+      "descriptionOverleaf": "De tas också bort från ditt Overleaf-konto.",
       "descriptionProject": "Det här tar bort alla uttryck ur {{project}}. De kontrolleras igen direkt.",
       "descriptionSuppressed": "Det här tar bort alla uttryck ur de bortvalda fynden i {{project}}. De kontrolleras igen direkt.",
       "suppressedConfirm": "Visa igen",
@@ -2360,6 +2368,7 @@
     },
     "global": {
       "emptyDescription": "Ord du lägger till här hoppas över av korrekturläsaren i alla projekt.",
+      "overleafSynced": "Synkas med de inlärda orden på ditt Overleaf-konto medan ett projekt är live på Overleaf.",
       "scope": "Gäller alla projekt"
     },
     "intro": "Lägg till ord i din personliga ordlista för stavningskontroll. Orden lagras i lokala inställningar och ignoreras i alla projekt. Matchningen är Unicode-normaliserad och skiljer inte på gemener och versaler.",
@@ -2880,5 +2889,182 @@
     "count_other": "{{count}} poster",
     "filteredCount_one": "{{shown}} av {{count}} post",
     "filteredCount_other": "{{shown}} av {{count}} poster"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "I kompletteringslistan",
+        "description": "Visa kodsnuttar bredvid kommandon"
+      },
+      "tab": {
+        "label": "Tab ersätter en utlösare",
+        "description": "För kodsnuttar som är inställda på Tab"
+      },
+      "auto": {
+        "label": "Infoga medan du skriver",
+        "description": "För automatiska kodsnuttar, som Fast math"
+      },
+      "hint": {
+        "label": "Visa ett tips medan du skriver",
+        "description": "Visar vilken kodsnutt en utlösare infogar. Tab infogar den."
+      }
+    },
+    "library": {
+      "title": "Ditt bibliotek med kodsnuttar",
+      "collections": "Samlingar",
+      "all": "Alla kodsnuttar",
+      "mine": "Dina",
+      "packs": "Paket",
+      "builtIn": "Inbyggda",
+      "add": "Lägg till paket eller importera…",
+      "useCollection": "Använd {{name}}",
+      "search": "Sök namn, utlösare eller text",
+      "language": "Språk",
+      "allLanguages": "Alla språk",
+      "expands": "Aktivering",
+      "anyExpand": "Alla sätt",
+      "newSnippet": "Ny kodsnutt",
+      "columns": {
+        "trigger": "Utlösare",
+        "name": "Namn",
+        "languages": "Språk",
+        "where": "Var",
+        "expands": "Aktivering"
+      },
+      "modified": "Ändrad",
+      "turnedOff": "Avstängd",
+      "restore": "Återställ",
+      "restoreLabel": "Återställ {{name}}",
+      "wraps": "omsluter",
+      "noTrigger": "ingen",
+      "noMatches": "Inga kodsnuttar matchar.",
+      "shown": "{{shown}} av {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problem",
+      "summary_other": "{{count}} problem",
+      "where": "i {{file}}, rad {{line}}: {{message}}",
+      "slowRegex": "Det tog för lång tid att kontrollera utlösaren för {{name}}. Därför stängdes kodsnutten av.",
+      "show": "Visa",
+      "hide": "Dölj"
+    },
+    "addDialog": {
+      "title": "Lägg till kodsnuttar",
+      "packsTab": "Paket",
+      "importTab": "Importera en fil",
+      "count_one": "{{count}} kodsnutt",
+      "count_other": "{{count}} kodsnuttar",
+      "source": "Från {{source}}",
+      "licence": "{{licence}}-licens",
+      "packNote": "Paket uppdateras med appen. Ändringar du gör i ett pakets kodsnuttar sparas separat.",
+      "packs": {
+        "fastMathLatex": "Infogar medan du skriver matematik: bråk, index och potenser, grekiska bokstäver, operatorer och matriser. Utlösarna följer upplägget från Gilles Castel.",
+        "fastMathTypst": "Samma utlösare, skrivna för Typst. Det som Typst redan gör själv, som a/b för ett bråk, är utelämnat.",
+        "paperStructure": "Figurer, delfigurer, booktabs-tabeller, ekvationer, satser, bevis och algoritmer."
+      },
+      "useOn": "Använd {{name}}",
+      "importIntro": "Välj en fil med kodsnuttar från VS Code (.json eller .code-snippets). Den blir en egen samling, som du kan stänga av eller ändra.",
+      "choose": "Välj en fil",
+      "fileLabel": "Fil med kodsnuttar",
+      "imported_one": "Importerade {{count}} kodsnutt till {{collection}}.",
+      "imported_other": "Importerade {{count}} kodsnuttar till {{collection}}.",
+      "nothing": "Inga kodsnuttar hittades i {{file}}.",
+      "leftOut_one": "{{count}} post utelämnades:",
+      "leftOut_other": "{{count}} poster utelämnades:"
+    },
+    "editor": {
+      "newTitle": "Ny kodsnutt",
+      "duplicate": "Duplicera",
+      "delete": "Radera",
+      "turnOff": "Stäng av",
+      "save": "Spara",
+      "copyName": "Kopia av {{name}}",
+      "name": "Namn",
+      "namePlaceholder": "Figur med bildtext och etikett",
+      "trigger": "Utlösare",
+      "triggerPlaceholder": "fig",
+      "regex": "Reguljärt uttryck",
+      "expands": "Aktivering",
+      "expandOptions": {
+        "list": "Från listan",
+        "tab": "Med Tab",
+        "auto": "Medan du skriver"
+      },
+      "expandHelp": {
+        "list": "Den visas i kompletteringslistan. Välj den där för att infoga den.",
+        "tab": "Skriv {{trigger}} och tryck på Tab. Den visas också i kompletteringslistan.",
+        "auto": "Den infogas så fort du skriver {{trigger}}. Ångra eller Backspace ger tillbaka utlösaren."
+      },
+      "languages": "Språk",
+      "where": "Var",
+      "whereOptions": {
+        "any": "Överallt",
+        "text": "Text",
+        "math": "Matematik",
+        "code": "Kod"
+      },
+      "mathKinds": {
+        "math": "Båda",
+        "inline-math": "I löptext",
+        "display-math": "På egen rad"
+      },
+      "mathKind": "Typ av matematik",
+      "whereHelp": {
+        "any": "Var som helst i filen.",
+        "text": "Text: utanför matematik, kommentarer och verbatim.",
+        "math": "Matematik: i matematik i löptext eller på egen rad.",
+        "code": "Kod: i Typst-kod eller kodblock i Markdown."
+      },
+      "firesOnly": "Aktiveras bara",
+      "wholeWord": "som ett helt ord",
+      "lineStart": "i början av en rad",
+      "collection": "Samling",
+      "keptSeparately": "Dina ändringar sparas separat, så uppdateringar av {{collection}} når dig ändå.",
+      "body": "Text som infogas",
+      "anyLanguage": "Alla språk",
+      "addField": "+ Fält",
+      "addChoice": "+ Val",
+      "choiceText": "första,andra",
+      "variable": "Variabel",
+      "projectField": "Projektfält",
+      "variables": {
+        "SELECTION": "Markerad text",
+        "CLIPBOARD": "Urklipp",
+        "DATE": "Dagens datum",
+        "TM_FILENAME": "Filnamn",
+        "PROJECT_NAME": "Projektnamn"
+      },
+      "projectFields": {
+        "image": "Bild",
+        "label": "Etikett",
+        "cite": "Citering",
+        "ref": "Referens",
+        "file": "Fil"
+      },
+      "chipsNote": "Fälten visas som etiketter.",
+      "showSyntax": "Visa syntax",
+      "missingName": "Ge kodsnutten ett namn.",
+      "missingBody": "Skriv texten som kodsnutten infogar.",
+      "sameTrigger": "{{list}} använder också {{trigger}}. Den närmaste samlingen vinner.",
+      "sharedStart": "Börjar likadant som {{list}}. Alla visas i listan, och Tab väljer den exakta träffen, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Vill du radera {{name}}?",
+        "description": "Den tas bort från {{collection}}.",
+        "action": "Radera"
+      },
+      "tryIt": {
+        "title": "Prova",
+        "howAuto": "Skriv {{trigger}} så infogas den.",
+        "howTab": "Skriv {{trigger}} och tryck sedan på Tab.",
+        "howList": "Skriv {{trigger}}, tryck på Ctrl+Space och välj den i listan.",
+        "noTrigger": "Den här kodsnutten har ingen utlösare. Infoga den från kommandopaletten med /snippets.",
+        "inText": "i text",
+        "inMath": "i matematik",
+        "fires": "Aktiveras här: {{language}}, {{place}}.",
+        "notLanguage": "Skulle inte aktiveras i {{language}}. Det är inte ett av kodsnuttens språk.",
+        "notPlace": "Skulle inte aktiveras {{place}}. Inställningen ”Var” tillåter det inte."
+      }
+    }
   }
 }

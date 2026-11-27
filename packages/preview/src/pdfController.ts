@@ -178,6 +178,29 @@ export async function gotoPdfPage(page: number, waitMs = 0): Promise<boolean> {
   }
 }
 
+export function pdfPointAt(
+  clientX: number,
+  clientY: number,
+): { page: number; x: number; y: number; fraction: number } | null {
+  let nearest: { entry: PageEntry; rect: DOMRect } | null = null;
+  let distance = Number.POSITIVE_INFINITY;
+  for (const entry of pages) {
+    const rect = entry.el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const away = Math.max(rect.top - clientY, clientY - rect.bottom, 0);
+    if (away < distance) {
+      distance = away;
+      nearest = { entry, rect };
+    }
+  }
+  if (!nearest) return null;
+  const { entry, rect } = nearest;
+  const x = Math.min(Math.max(clientX, rect.left), rect.right);
+  const y = Math.min(Math.max(clientY, rect.top), rect.bottom);
+  const hit = pageClickToBp(entry.el, entry.pageNo, { clientX: x, clientY: y });
+  return hit && { ...hit, fraction: (y - rect.top) / rect.height };
+}
+
 export function pageClickToBp(
   el: HTMLElement,
   pageNo: number,

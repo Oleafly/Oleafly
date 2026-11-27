@@ -1178,6 +1178,7 @@
     "elsewhere": "Die Live-Bearbeitung ist in einer anderen Notiz aktiv",
     "makeLive": "Hier live bearbeiten",
     "viewOnly": "Sie können diese Notiz lesen, aber nicht bearbeiten.",
+    "suggesting": "Vorschlagen ist eingeschaltet, daher können Sie diese Notiz hier nicht bearbeiten. Schalten Sie Vorschlagen aus, um sie zu bearbeiten.",
     "someone": "Jemand",
     "unsentReadOnly": "Ihre letzten Änderungen an dieser Notiz wurden nicht gesendet, weil Sie sie jetzt nur noch ansehen können.",
     "unsentRefused": "Oleafly konnte Ihre letzten Änderungen an dieser Notiz nicht senden, daher wurden sie verworfen."

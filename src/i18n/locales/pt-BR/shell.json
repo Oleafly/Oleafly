@@ -318,6 +318,10 @@
       "keywords": "sem distrações foco tela cheia ocultar interface mínimo escrita",
       "label": "Alternar o modo Zen"
     },
+    "fastMath": {
+      "keywords": "fast math matemática rápida trechos snippets expandir ao digitar fração subscrito grego",
+      "label": "Alternar Fast math"
+    },
     "visualSettings": {
       "keywords": "aparência fonte tipo de letra texto tamanho recuo parágrafo espaçamento justificar título escrita",
       "label": "Configurações do modo Visual"
@@ -406,6 +410,14 @@
     "addChapterFromProject": {
       "keywords": "tese capítulo artigo importar mesclar copiar projeto",
       "label": "Adicionar capítulo de outro projeto"
+    },
+    "insertSnippet": {
+      "keywords": "trechos snippets modelos gatilhos navegar inserir",
+      "label": "Inserir trecho"
+    },
+    "saveSnippet": {
+      "keywords": "trecho snippet modelo salvar seleção reutilizar",
+      "label": "Salvar a seleção como trecho"
     }
   },
   "community": {
@@ -517,7 +529,8 @@
       "open": "Seguir o arquivo aberto",
       "main": "Sempre o documento principal",
       "change": "Alterar documento principal…"
-    }
+    },
+    "filling": "O projeto ainda está sendo baixado do Overleaf. Você poderá compilar quando todos os arquivos estiverem aqui."
   },
   "datePicker": {
     "placeholder": "Escolha uma data"
@@ -766,7 +779,8 @@
       "projects": "buscar nos seus projetos",
       "refs": "abrir as referências deste projeto",
       "settings": "abrir as configurações",
-      "theme": "trocar o tema de cores"
+      "theme": "trocar o tema de cores",
+      "snippets": "navegar e inserir trechos"
     },
     "tryCommand": "Experimente um comando",
     "unknownCommand": "Comando desconhecido. Digite / para ver os comandos disponíveis."
@@ -1148,7 +1162,8 @@
       "integrations": "Integrações",
       "shortcuts": "Atalhos de teclado",
       "research": "Pesquisa",
-      "logs": "Logs"
+      "logs": "Logs",
+      "snippets": "Trechos de código"
     },
     "search": {
       "empty": "Nenhuma configuração encontrada",
@@ -1166,7 +1181,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hospedagem Git, Computer Use, aplicativos de desktop, Cua, MCP, citações, contas, conexões",
         "shortcuts": "atalhos de teclado, atalhos, teclas, teclado",
         "research": "pesquisa tarefas orçamento notificações manter ativo experimentos execuções research tasks",
-        "logs": "logs, log, erros, avisos, falhas, travamentos, compilações, builds, diagnóstico, solução de problemas, exportar logs, app.log, depuração"
+        "logs": "logs, log, erros, avisos, falhas, travamentos, compilações, builds, diagnóstico, solução de problemas, exportar logs, app.log, depuração",
+        "snippets": "gatilhos, modelos, Fast math, expandir ao digitar, Tab, lista de sugestões, autocompletar, menu de barra, atalhos @, trechos do VS Code, snippets, importar, pacotes"
       },
       "label": "Buscar nas configurações",
       "results_one": "{{count}} seção corresponde",
@@ -1405,11 +1421,12 @@
     },
     "moreActions": "Mais ações",
     "resetPaneLayout": "Redefinir a disposição dos painéis",
-    "resetPaneLayoutScope": "Todos os projetos",
+    "resetPaneLayoutHint": "Volta a barra lateral, o editor, a pré-visualização, o terminal e o assistente para os lugares padrão, em todos os projetos.",
     "savedLayouts": {
       "close": "Fechar",
       "delete": "Excluir",
       "deleteConfirm": "Excluir o layout {{name}}?",
+      "duplicate": "Este layout já está salvo como {{name}}.",
       "limit": "Você pode manter até {{count}} layouts. Exclua um para salvar outro.",
       "manage": "Gerenciar layouts",
       "name": "Nome do layout",
@@ -1417,10 +1434,11 @@
       "renameTitle": "Renomear layout",
       "replace": "Substituir",
       "replaceConfirm": "Já existe um layout chamado {{name}}. Substituí-lo?",
+      "replaceWithCurrent": "Substituir pelo layout atual",
       "save": "Salvar o layout atual",
       "saveButton": "Salvar",
       "saveTitle": "Salvar layout",
-      "update": "Atualizar para o atual"
+      "savedAs": "Salvo como {{name}}"
     },
     "renameFailed": "Não foi possível renomear o projeto."
   },
@@ -1737,8 +1755,9 @@
     "resume": "Retomar a edição ao vivo",
     "reconnectNow": "Reconectar agora",
     "open": "Abrir no Overleaf",
-    "share": "Compartilhar no Overleaf…",
+    "share": "Compartilhar no Overleaf",
     "signIn": "Fazer login…",
+    "signInAs": "Fazer login como {{email}}",
     "reconnectingIn": "Tentando de novo em {{seconds}} s.",
     "notConfirmed": "Ainda não confirmado pelo Overleaf.",
     "copyDetails": "Copiar os detalhes da conexão",
@@ -1758,5 +1777,72 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Redefinir"
+  },
+  "snippets": {
+    "mySnippets": "Meus trechos",
+    "saveAsSnippet": "Salvar como trecho…",
+    "autoNote": "{{trigger}} expandido. Desfazer ou Backspace devolve o gatilho.",
+    "fastMathTip": "Com Fast math ativado, // escreve uma fração em modo matemático.",
+    "turnOnFastMath": "Ativar Fast math",
+    "expands": {
+      "list": "Lista",
+      "tab": "Tab",
+      "auto": "Auto"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notas",
+      "any": "Qualquer"
+    },
+    "places": {
+      "any": "Qualquer lugar",
+      "text": "Texto",
+      "math": "Matemática",
+      "inline-math": "Matemática em linha",
+      "display-math": "Matemática destacada",
+      "code": "Código"
+    },
+    "palette": {
+      "placeholder": "Buscar trechos por nome, gatilho ou texto",
+      "insert": "Inserir",
+      "edit": "Editar",
+      "count": "{{shown}} de {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Digite {{trigger}} para obter isto sem abrir a paleta.",
+      "noMatches": "Nenhum trecho corresponde."
+    },
+    "save": {
+      "title": "Salvar como trecho",
+      "name": "Nome",
+      "namePlaceholder": "Tabela de resultados",
+      "trigger": "Gatilho",
+      "triggerPlaceholder": "rtab",
+      "expands": "Expansão",
+      "found": "detectados na sua seleção",
+      "fields": "Transformar em campos",
+      "fieldsFound_one": "{{count}} encontrado",
+      "fieldsFound_many": "{{count}} encontrados",
+      "fieldsFound_other": "{{count}} encontrados",
+      "noFields": "Nada aqui parece um campo. Você pode adicionar campos depois em Configurações.",
+      "followsCaption": "segue a legenda",
+      "kinds": {
+        "caption": "legenda",
+        "label": "rótulo",
+        "cite": "citação",
+        "path": "caminho do arquivo",
+        "column-spec": "especificação de colunas",
+        "number": "número",
+        "title": "título",
+        "table-body": "corpo da tabela"
+      },
+      "preview": "Prévia",
+      "saveTo": "Salvar em",
+      "submit": "Salvar trecho",
+      "saved": "Trecho {{name}} salvo.",
+      "missingName": "Dê um nome ao trecho."
+    }
   }
 }

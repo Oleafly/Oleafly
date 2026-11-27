@@ -1885,33 +1885,18 @@
       "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
-      "confirmTitle": "Cookie içe aktarmayı onaylayın",
-      "detecting": "Kurulu tarayıcı profilleri aranıyor...",
-      "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
-      "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
-      "empty": "Desteklenen tarayıcı profili bulunamadı.",
-      "errors": {
-        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin."
-      },
-      "profileGroupLabel": "Tarayıcı profilleri",
-      "profileLegend": "Tarayıcı profili",
-      "review": "İçe aktarmayı incele",
-      "status": {
-        "available": "Kullanılabilir",
-        "comingSoon": "Yakında",
-        "noCookieStore": "Cookie deposu yok",
-        "notInstalled": "Kurulu değil"
-      },
-      "tryAgain": "Yeniden deneyin",
-      "label": "Bir tarayıcının oturumunu kopyala",
-      "useBrowserSignIn": "Tarayıcınızdaki oturumu kopyala",
-      "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly, {{domain}} çerezlerini {{browser}} tarayıcısındaki {{profile}} profilinden okuyacak. Çerezler Oleafly içinde kalır ve yalnızca {{domain}} adresine gönderilir. Bir sistem iletişim kutusunda bir kez daha onaylayacaksınız.",
-      "copyAction": "Oturumu kopyala",
-      "copying": "Kopyalanıyor…",
-      "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
-      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın."
+      "dialogDescription": "Oleafly yalnızca {{server}} cookie'lerini kopyalar, bunlarla oturum açar ve ardından kopyaları siler. Parolalarınız tarayıcıda kalır.",
+      "dialogTitle": "Tarayıcınızdaki cookie'leri içe aktarın",
+      "label": "Tarayıcınızdan cookie içe aktarın",
+      "useBrowserSignIn": "Profil seç",
+      "signInDescription": "Bu bilgisayardaki bir tarayıcı profilinde zaten oturumu açık olan {{server}} hesabını kullanır.",
+      "copyAction": "İçe aktar",
+      "copying": "İçe aktarılıyor…",
+      "from": "Kaynak",
+      "noCookies": "Henüz cookie yok",
+      "sameAccount": "{{profile}} profilinde {{account}} hesabıyla oturum açılmış ve Oleafly bu hesabı zaten kullanıyor. Başka bir profil seçin ya da önce o tarayıcıda diğer hesabınızla oturum açın.",
+      "orExisting": "ya da var olan bir oturumu kullanın",
+      "noSavedSignIn": "{{profile}} profilinde {{server}} için kayıtlı bir oturum yok, bu yüzden kopyalanan cookie'ler oturumunuzu açmadı. Orada oturumunuz açıksa tarayıcı oturumu yalnızca kapanana kadar tutuyor olabilir. Bunun yerine {{browser}} kutucuğunu kullanın."
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
@@ -1971,7 +1956,12 @@
       "signedIn": "{{server}} üzerinde oturum açıldı",
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "addAccount": "Başka bir hesap ekle",
+      "addAccountHint": "Nerede oturum açacağınızı seçin. Hepsi oturum açılmamış olarak başlar, bu yüzden her hesap olur.",
+      "accountPick": "İçe aktarma hesabı",
+      "accountPickDescription": "Yeni içe aktarmalar ve şablonlar bu hesabı kullanır. Mevcut projeleriniz geldikleri hesabı korur.",
       "gitTitle": "Eşitleme için Git belirteci",
+      "gitTitleFor": "{{email}} için Git belirteci",
       "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
       "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
       "gitOpenSettings": "Overleaf hesap ayarlarını aç",
@@ -1980,14 +1970,9 @@
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun.",
-      "browserLabel": "Tarayıcınızla oturum açın",
-      "browserDescription": "Google, kurum veya geçiş anahtarıyla oturum açmak için. Oleafly, {{server}} sunucusunu yeni bir tarayıcı penceresinde açar ve giriş yaptığınızda kapatır.",
-      "browserAction": "Oturum aç",
-      "browserPick": "Oturum açılacak tarayıcı",
       "browserWaiting": "{{browser}} tarayıcısında {{server}} sunucusunda oturum açmayı tamamlayın. Pencereyi kapatmak işlemi iptal eder.",
-      "browserHint": "Google, kurum veya geçiş anahtarıyla oturum açmak için bunu kullanın.",
-      "windowLabel": "{{server}} sunucusunda oturum aç",
-      "windowDescription": "Oleafly bir oturum açma penceresi açar ve giriş yaptığınızda kapatır. Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra burada onunla oturum açın.",
+      "windowLabel": "Oleafly içinde oturum aç",
+      "windowDescription": "Oturum açtığınızda pencere kendiliğinden kapanır. Geçiş anahtarınız orada çalışmazsa şifrenizi veya telefonunuzdaki bir onayı kullanın.",
       "windowAction": "Oturum aç",
       "windowWaiting": "{{server}} sunucusunda oturum açmayı açılan pencerede tamamlayın.",
       "unsent": {
@@ -2005,7 +1990,15 @@
           "always": "Overleaf'ten de sil",
           "never": "Overleaf'te tut"
         }
-      }
+      },
+      "sameAccount": "Zaten {{account}} olarak oturum açtınız. Başka bir hesap eklemek için o hesapla oturum açın.",
+      "windowTitle": "{{server}} sunucusunda oturum aç",
+      "addAccountKept": "Geçerli hesabınızın oturumu açık kalır.",
+      "noBrowser": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra onu burada seçin.",
+      "tileHere": "Bu uygulamada",
+      "tileWindow": "Yeni pencere",
+      "tileWaiting": "Sizi bekliyor",
+      "signInNote": "Google, kurumunuz veya geçiş anahtarıyla oturum açmak için bir tarayıcı kullanın. Geçiş anahtarınız Oleafly içinde çalışmazsa orada şifrenizi veya telefonunuzdaki bir onayı kullanın. Oturum açtığınızda pencere kendiliğinden kapanır."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2137,6 +2130,20 @@
           "confirm": "Bu işlem Cua yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?"
         }
       }
+    },
+    "signIns": {
+      "title": "Oturumları yönet",
+      "description": "Oleafly uygulamasının bu bilgisayarda oturum açtığı hesaplar. Burada bir hesabı kaldırmak tarayıcıdaki oturumunuzu kapatmaz.",
+      "loading": "Oturumlarınız yükleniyor…",
+      "empty": "Hiçbir hesapla oturum açmadınız.",
+      "inUse": "Kullanımda",
+      "switch": "Geç",
+      "switchTo": "{{account}} hesabına geç",
+      "removeAccount": "{{account}} hesabını kaldır",
+      "removeAll": "Tümünü kaldır",
+      "importMore": "Daha fazla içe aktar",
+      "loadFailed": "Oleafly oturumlarınızı yükleyemedi.",
+      "changeFailed": "Oleafly bu oturumu değiştiremedi. Yeniden deneyin."
     }
   },
   "language": {
@@ -2343,6 +2350,7 @@
       "confirm": "Sözcükleri temizle",
       "descriptionFallback": "Bu işlem, bu sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionGlobal": "Bu işlem, genel sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionOverleaf": "Overleaf hesabınızdan da kaldırılırlar.",
       "descriptionProject": "Bu işlem, {{project}} projesindeki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
       "descriptionSuppressed": "Bu işlem, {{project}} projesinde kapatılmış bulguların tümünü kaldırır. Hemen yeniden denetlenirler.",
       "suppressedConfirm": "Yeniden göster",
@@ -2360,6 +2368,7 @@
     },
     "global": {
       "emptyDescription": "Buraya eklediğiniz sözcükler her projede redaksiyon tarafından atlanır.",
+      "overleafSynced": "Bir proje Overleaf üzerinde canlı olduğu sürece Overleaf hesabınızdaki öğrenilmiş sözcüklerle eşitlenir.",
       "scope": "Her projede geçerlidir"
     },
     "intro": "Kişisel yazım denetimi sözlüğünüze sözcük ekleyin. Bu sözcükler yerel ayarlarda saklanır ve projeler genelinde yok sayılır. Eşleştirme Unicode normalleştirmesi kullanır ve büyük küçük harfe duyarsızdır.",
@@ -2880,5 +2889,182 @@
     "count_other": "{{count}} kayıt",
     "filteredCount_one": "{{shown}} / {{count}} kayıt",
     "filteredCount_other": "{{shown}} / {{count}} kayıt"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Tamamlama listesinde",
+        "description": "Parçacıkları komutların yanında gösterir"
+      },
+      "tab": {
+        "label": "Tab tetikleyiciyi genişletir",
+        "description": "Tab ile genişleyen parçacıklar için"
+      },
+      "auto": {
+        "label": "Yazarken genişlet",
+        "description": "Fast math gibi Otomatik parçacıklar için"
+      },
+      "hint": {
+        "label": "Yazarken ipucu göster",
+        "description": "Bir tetikleyicinin hangi parçacığı ekleyeceğini gösterir. Tab onu ekler."
+      }
+    },
+    "library": {
+      "title": "Parçacık kitaplığınız",
+      "collections": "Koleksiyonlar",
+      "all": "Tüm parçacıklar",
+      "mine": "Sizinkiler",
+      "packs": "Paketler",
+      "builtIn": "Yerleşik",
+      "add": "Paket ekle veya içe aktar…",
+      "useCollection": "{{name}} koleksiyonunu kullan",
+      "search": "Ada, tetikleyiciye veya metne göre ara",
+      "language": "Dil",
+      "allLanguages": "Tüm diller",
+      "expands": "Genişleme",
+      "anyExpand": "Her şekilde",
+      "newSnippet": "Yeni parçacık",
+      "columns": {
+        "trigger": "Tetikleyici",
+        "name": "Ad",
+        "languages": "Diller",
+        "where": "Konum",
+        "expands": "Genişleme"
+      },
+      "modified": "Değiştirildi",
+      "turnedOff": "Kapalı",
+      "restore": "Geri yükle",
+      "restoreLabel": "{{name}} parçacığını geri yükle",
+      "wraps": "sarar",
+      "noTrigger": "yok",
+      "noMatches": "Eşleşen parçacık yok.",
+      "shown": "{{shown}}/{{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} sorun",
+      "summary_other": "{{count}} sorun",
+      "where": "{{file}}, {{line}}. satır: {{message}}",
+      "slowRegex": "{{name}} parçacığının tetikleyicisini denetlemek çok uzun sürdü, bu yüzden parçacık kapatıldı.",
+      "show": "Göster",
+      "hide": "Gizle"
+    },
+    "addDialog": {
+      "title": "Parçacık ekle",
+      "packsTab": "Paketler",
+      "importTab": "Dosya içe aktar",
+      "count_one": "{{count}} parçacık",
+      "count_other": "{{count}} parçacık",
+      "source": "Kaynak: {{source}}",
+      "licence": "{{licence}} lisansı",
+      "packNote": "Paketler uygulamayla birlikte güncellenir. Bir paketin parçacıklarında yaptığınız değişiklikler ayrı tutulur.",
+      "packs": {
+        "fastMathLatex": "Matematikte siz yazarken genişler: kesirler, alt simgeler ve üsler, Yunan harfleri, operatörler ve matrisler. Tetikleyiciler Gilles Castel'in düzenini izler.",
+        "fastMathTypst": "Aynı tetikleyicilerin Typst için yazılmış hâli. Typst'in zaten yaptıklarını, örneğin kesir için a/b yazımını dışarıda bırakır.",
+        "paperStructure": "Şekiller, alt şekiller, booktabs tabloları, denklemler, teoremler, ispatlar ve algoritmalar."
+      },
+      "useOn": "{{name}} paketini kullan",
+      "importIntro": "Bir VS Code parçacık dosyası seçin (.json veya .code-snippets). Dosya, kapatabileceğiniz veya değiştirebileceğiniz ayrı bir koleksiyon olur.",
+      "choose": "Dosya seç",
+      "fileLabel": "Parçacık dosyası",
+      "imported_one": "{{count}} parçacık {{collection}} koleksiyonuna aktarıldı.",
+      "imported_other": "{{count}} parçacık {{collection}} koleksiyonuna aktarıldı.",
+      "nothing": "{{file}} dosyasında parçacık bulunamadı.",
+      "leftOut_one": "{{count}} girdi dışarıda bırakıldı:",
+      "leftOut_other": "{{count}} girdi dışarıda bırakıldı:"
+    },
+    "editor": {
+      "newTitle": "Yeni parçacık",
+      "duplicate": "Çoğalt",
+      "delete": "Sil",
+      "turnOff": "Kapat",
+      "save": "Kaydet",
+      "copyName": "{{name}} kopyası",
+      "name": "Ad",
+      "namePlaceholder": "Alt yazılı ve etiketli şekil",
+      "trigger": "Tetikleyici",
+      "triggerPlaceholder": "fig",
+      "regex": "Düzenli ifade",
+      "expands": "Genişleme",
+      "expandOptions": {
+        "list": "Listeden",
+        "tab": "Tab ile",
+        "auto": "Yazarken"
+      },
+      "expandHelp": {
+        "list": "Tamamlama listesinde görünür. Eklemek için oradan seçin.",
+        "tab": "{{trigger}} yazıp Tab tuşuna basın. Tamamlama listesinde de görünür.",
+        "auto": "{{trigger}} yazdığınız anda genişler. Geri al veya Backspace tetikleyiciyi geri getirir."
+      },
+      "languages": "Diller",
+      "where": "Konum",
+      "whereOptions": {
+        "any": "Her yerde",
+        "text": "Metin",
+        "math": "Matematik",
+        "code": "Kod"
+      },
+      "mathKinds": {
+        "math": "İkisi de",
+        "inline-math": "Satır içi",
+        "display-math": "Blok"
+      },
+      "mathKind": "Matematik türü",
+      "whereHelp": {
+        "any": "Dosyanın her yerinde.",
+        "text": "Metin: matematik, yorumlar ve verbatim ortamları dışında.",
+        "math": "Matematik: satır içi veya blok matematiğin içinde.",
+        "code": "Kod: Typst kodunun veya Markdown kod bloklarının içinde."
+      },
+      "firesOnly": "Yalnızca şu durumda tetiklenir",
+      "wholeWord": "tam sözcük olarak",
+      "lineStart": "satır başında",
+      "collection": "Koleksiyon",
+      "keptSeparately": "Değişiklikleriniz ayrı tutulur, böylece {{collection}} koleksiyonunun güncellemeleri size ulaşmaya devam eder.",
+      "body": "Eklenecek metin",
+      "anyLanguage": "Herhangi bir dil",
+      "addField": "+ Alan",
+      "addChoice": "+ Seçenek",
+      "choiceText": "birinci,ikinci",
+      "variable": "Değişken",
+      "projectField": "Proje alanı",
+      "variables": {
+        "SELECTION": "Seçili metin",
+        "CLIPBOARD": "Pano",
+        "DATE": "Bugünün tarihi",
+        "TM_FILENAME": "Dosya adı",
+        "PROJECT_NAME": "Proje adı"
+      },
+      "projectFields": {
+        "image": "Görsel",
+        "label": "Etiket",
+        "cite": "Atıf",
+        "ref": "Çapraz başvuru",
+        "file": "Dosya"
+      },
+      "chipsNote": "Alanlar kutucuk olarak görünür.",
+      "showSyntax": "Söz dizimini göster",
+      "missingName": "Parçacığa bir ad verin.",
+      "missingBody": "Parçacığın ekleyeceği metni yazın.",
+      "sameTrigger": "{{trigger}} tetikleyicisini şunlar da kullanıyor: {{list}}. En yakın koleksiyon önceliklidir.",
+      "sharedStart": "Başlangıcı şunlarla aynı: {{list}}. Hepsi listede görünür ve Tab tam eşleşmeyi, yani {{trigger}} tetikleyicisini seçer.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}} silinsin mi?",
+        "description": "Bu işlem onu {{collection}} koleksiyonundan kaldırır.",
+        "action": "Sil"
+      },
+      "tryIt": {
+        "title": "Deneyin",
+        "howAuto": "{{trigger}} yazın, parçacık hemen genişler.",
+        "howTab": "{{trigger}} yazın, sonra Tab tuşuna basın.",
+        "howList": "{{trigger}} yazın, Ctrl+Space tuşlarına basın ve listeden seçin.",
+        "noTrigger": "Bu parçacığın tetikleyicisi yok. Komut paletinden /snippets ile ekleyin.",
+        "inText": "metinde",
+        "inMath": "matematikte",
+        "fires": "Burada tetiklenir: {{language}}, {{place}}.",
+        "notLanguage": "{{language}} dilinde tetiklenmez. Bu dil, parçacığın dillerinden biri değil.",
+        "notPlace": "Bu parçacık {{place}} tetiklenmez. Konum ayarı buna izin vermiyor."
+      }
+    }
   }
 }

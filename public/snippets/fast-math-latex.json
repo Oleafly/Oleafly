@@ -1,0 +1,837 @@
+{
+  "$pack": {
+    "name": "Fast math · LaTeX",
+    "source": "https://github.com/gillescastel/latex-snippets",
+    "licence": "MIT"
+  },
+  "fm.inline-math": {
+    "name": "Inline math",
+    "nameKey": "snippets.records.inlineMath",
+    "prefix": "mk",
+    "body": "\\$$1\\$$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "text"
+  },
+  "fm.display-math": {
+    "name": "Display math",
+    "nameKey": "snippets.records.displayMath",
+    "prefix": "dm",
+    "body": [
+      "\\[",
+      "\t$1",
+      "\\]$0"
+    ],
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "text",
+    "lineStart": true
+  },
+  "fm.fraction": {
+    "name": "Fraction",
+    "nameKey": "snippets.records.fraction",
+    "prefix": "//",
+    "body": "\\frac{$1}{$2}$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.postfix-fraction": {
+    "name": "Fraction of the term before",
+    "nameKey": "snippets.records.postfixFraction",
+    "prefix": "re:(?<![\\\\A-Za-z])(\\d+|[A-Za-z]|\\\\[A-Za-z]+)/",
+    "body": "\\frac{[[0]]}{$1}$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.subscript": {
+    "name": "Subscript",
+    "nameKey": "snippets.records.subscript",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])(\\d)",
+    "body": "[[0]]_[[1]]",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.squared": {
+    "name": "Squared",
+    "nameKey": "snippets.records.squared",
+    "prefix": "sr",
+    "body": "^2",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.cubed": {
+    "name": "Cubed",
+    "nameKey": "snippets.records.cubed",
+    "prefix": "cb",
+    "body": "^3",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.superscript": {
+    "name": "Superscript",
+    "nameKey": "snippets.records.superscript",
+    "prefix": "td",
+    "body": "^{$1}$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.subscript-group": {
+    "name": "Subscript group",
+    "nameKey": "snippets.records.subscriptGroup",
+    "prefix": "__",
+    "body": "_{$1}$0",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.infinity": {
+    "name": "Infinity",
+    "nameKey": "snippets.records.infinity",
+    "prefix": "ooo",
+    "body": "\\infty",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.sum": {
+    "name": "Sum",
+    "nameKey": "snippets.records.sum",
+    "prefix": "sum",
+    "body": "\\sum_{${1:i=1}}^{${2:n}} $0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.prod": {
+    "name": "Product",
+    "nameKey": "snippets.records.prod",
+    "prefix": "prod",
+    "body": "\\prod_{${1:i=1}}^{${2:n}} $0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.lim": {
+    "name": "Limit",
+    "nameKey": "snippets.records.lim",
+    "prefix": "lim",
+    "body": "\\lim_{${1:n} \\to ${2:\\infty}} $0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.dint": {
+    "name": "Definite integral",
+    "nameKey": "snippets.records.dint",
+    "prefix": "dint",
+    "body": "\\int_{${1:a}}^{${2:b}} $3 \\, d${4:x}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.to": {
+    "name": "Arrow",
+    "nameKey": "snippets.records.to",
+    "prefix": "->",
+    "body": "\\to",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.implies": {
+    "name": "Implies",
+    "nameKey": "snippets.records.implies",
+    "prefix": "=>",
+    "body": "\\implies",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.le": {
+    "name": "Less than or equal",
+    "nameKey": "snippets.records.le",
+    "prefix": "<=",
+    "body": "\\le",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.ge": {
+    "name": "Greater than or equal",
+    "nameKey": "snippets.records.ge",
+    "prefix": ">=",
+    "body": "\\ge",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.neq": {
+    "name": "Not equal",
+    "nameKey": "snippets.records.neq",
+    "prefix": "!=",
+    "body": "\\neq",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.sim": {
+    "name": "Similar",
+    "nameKey": "snippets.records.sim",
+    "prefix": "~~",
+    "body": "\\sim",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.times": {
+    "name": "Times",
+    "nameKey": "snippets.records.times",
+    "prefix": "xx",
+    "body": "\\times",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.cdot": {
+    "name": "Centred dot",
+    "nameKey": "snippets.records.cdot",
+    "prefix": "**",
+    "body": "\\cdot",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.pm": {
+    "name": "Plus or minus",
+    "nameKey": "snippets.records.pm",
+    "prefix": "+-",
+    "body": "\\pm",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.exists": {
+    "name": "There exists",
+    "nameKey": "snippets.records.exists",
+    "prefix": "EE",
+    "body": "\\exists",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.forall": {
+    "name": "For all",
+    "nameKey": "snippets.records.forall",
+    "prefix": "AA",
+    "body": "\\forall",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.in": {
+    "name": "Element of",
+    "nameKey": "snippets.records.in",
+    "prefix": "inn",
+    "body": "\\in",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.subset": {
+    "name": "Subset",
+    "nameKey": "snippets.records.subset",
+    "prefix": "cc",
+    "body": "\\subset",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.reals": {
+    "name": "Real numbers",
+    "nameKey": "snippets.records.reals",
+    "prefix": "RR",
+    "body": "\\mathbb{R}",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.naturals": {
+    "name": "Natural numbers",
+    "nameKey": "snippets.records.naturals",
+    "prefix": "NN",
+    "body": "\\mathbb{N}",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.integers": {
+    "name": "Integers",
+    "nameKey": "snippets.records.integers",
+    "prefix": "ZZ",
+    "body": "\\mathbb{Z}",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.rationals": {
+    "name": "Rational numbers",
+    "nameKey": "snippets.records.rationals",
+    "prefix": "QQ",
+    "body": "\\mathbb{Q}",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.complex": {
+    "name": "Complex numbers",
+    "nameKey": "snippets.records.complex",
+    "prefix": "CC",
+    "body": "\\mathbb{C}",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.hat": {
+    "name": "Hat",
+    "nameKey": "snippets.records.hat",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])hat",
+    "body": "\\hat{[[0]]}",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.bar": {
+    "name": "Bar",
+    "nameKey": "snippets.records.bar",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])bar",
+    "body": "\\overline{[[0]]}",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.vec": {
+    "name": "Vector arrow",
+    "nameKey": "snippets.records.vec",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])vec",
+    "body": "\\vec{[[0]]}",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.tilde": {
+    "name": "Tilde",
+    "nameKey": "snippets.records.tilde",
+    "prefix": "re:(?<![\\\\A-Za-z])([A-Za-z])tld",
+    "body": "\\tilde{[[0]]}",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Delta": {
+    "name": "Delta",
+    "nameKey": "snippets.records.Delta",
+    "prefix": "@D",
+    "body": "\\Delta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Phi": {
+    "name": "Phi",
+    "nameKey": "snippets.records.Phi",
+    "prefix": "@F",
+    "body": "\\Phi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Gamma": {
+    "name": "Gamma",
+    "nameKey": "snippets.records.Gamma",
+    "prefix": "@G",
+    "body": "\\Gamma",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Lambda": {
+    "name": "Lambda",
+    "nameKey": "snippets.records.Lambda",
+    "prefix": "@L",
+    "body": "\\Lambda",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Pi": {
+    "name": "Pi",
+    "nameKey": "snippets.records.Pi",
+    "prefix": "@P",
+    "body": "\\Pi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Theta": {
+    "name": "Theta",
+    "nameKey": "snippets.records.Theta",
+    "prefix": "@Q",
+    "body": "\\Theta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Sigma": {
+    "name": "Sigma",
+    "nameKey": "snippets.records.Sigma",
+    "prefix": "@S",
+    "body": "\\Sigma",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Upsilon": {
+    "name": "Upsilon",
+    "nameKey": "snippets.records.Upsilon",
+    "prefix": "@U",
+    "body": "\\Upsilon",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Omega": {
+    "name": "Omega",
+    "nameKey": "snippets.records.Omega",
+    "prefix": "@W",
+    "body": "\\Omega",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Xi": {
+    "name": "Xi",
+    "nameKey": "snippets.records.Xi",
+    "prefix": "@X",
+    "body": "\\Xi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.Psi": {
+    "name": "Psi",
+    "nameKey": "snippets.records.Psi",
+    "prefix": "@Y",
+    "body": "\\Psi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.alpha": {
+    "name": "alpha",
+    "nameKey": "snippets.records.alpha",
+    "prefix": "@a",
+    "body": "\\alpha",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.beta": {
+    "name": "beta",
+    "nameKey": "snippets.records.beta",
+    "prefix": "@b",
+    "body": "\\beta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.chi": {
+    "name": "chi",
+    "nameKey": "snippets.records.chi",
+    "prefix": "@c",
+    "body": "\\chi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.delta": {
+    "name": "delta",
+    "nameKey": "snippets.records.delta",
+    "prefix": "@d",
+    "body": "\\delta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.epsilon": {
+    "name": "epsilon",
+    "nameKey": "snippets.records.epsilon",
+    "prefix": "@e",
+    "body": "\\epsilon",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.phi": {
+    "name": "phi",
+    "nameKey": "snippets.records.phi",
+    "prefix": "@f",
+    "body": "\\phi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.gamma": {
+    "name": "gamma",
+    "nameKey": "snippets.records.gamma",
+    "prefix": "@g",
+    "body": "\\gamma",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.eta": {
+    "name": "eta",
+    "nameKey": "snippets.records.eta",
+    "prefix": "@h",
+    "body": "\\eta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.iota": {
+    "name": "iota",
+    "nameKey": "snippets.records.iota",
+    "prefix": "@i",
+    "body": "\\iota",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.kappa": {
+    "name": "kappa",
+    "nameKey": "snippets.records.kappa",
+    "prefix": "@k",
+    "body": "\\kappa",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.lambda": {
+    "name": "lambda",
+    "nameKey": "snippets.records.lambda",
+    "prefix": "@l",
+    "body": "\\lambda",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.mu": {
+    "name": "mu",
+    "nameKey": "snippets.records.mu",
+    "prefix": "@m",
+    "body": "\\mu",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.nu": {
+    "name": "nu",
+    "nameKey": "snippets.records.nu",
+    "prefix": "@n",
+    "body": "\\nu",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.omega": {
+    "name": "omega",
+    "nameKey": "snippets.records.omega",
+    "prefix": "@o",
+    "body": "\\omega",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.pi": {
+    "name": "pi",
+    "nameKey": "snippets.records.pi",
+    "prefix": "@p",
+    "body": "\\pi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.theta": {
+    "name": "theta",
+    "nameKey": "snippets.records.theta",
+    "prefix": "@q",
+    "body": "\\theta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.rho": {
+    "name": "rho",
+    "nameKey": "snippets.records.rho",
+    "prefix": "@r",
+    "body": "\\rho",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.sigma": {
+    "name": "sigma",
+    "nameKey": "snippets.records.sigma",
+    "prefix": "@s",
+    "body": "\\sigma",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.tau": {
+    "name": "tau",
+    "nameKey": "snippets.records.tau",
+    "prefix": "@t",
+    "body": "\\tau",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.upsilon": {
+    "name": "upsilon",
+    "nameKey": "snippets.records.upsilon",
+    "prefix": "@u",
+    "body": "\\upsilon",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.varepsilon": {
+    "name": "varepsilon",
+    "nameKey": "snippets.records.varepsilon",
+    "prefix": "@ve",
+    "body": "\\varepsilon",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.varphi": {
+    "name": "varphi",
+    "nameKey": "snippets.records.varphi",
+    "prefix": "@vf",
+    "body": "\\varphi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.varpi": {
+    "name": "varpi",
+    "nameKey": "snippets.records.varpi",
+    "prefix": "@vp",
+    "body": "\\varpi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.vartheta": {
+    "name": "vartheta",
+    "nameKey": "snippets.records.vartheta",
+    "prefix": "@vq",
+    "body": "\\vartheta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.varrho": {
+    "name": "varrho",
+    "nameKey": "snippets.records.varrho",
+    "prefix": "@vr",
+    "body": "\\varrho",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.varsigma": {
+    "name": "varsigma",
+    "nameKey": "snippets.records.varsigma",
+    "prefix": "@vs",
+    "body": "\\varsigma",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.xi": {
+    "name": "xi",
+    "nameKey": "snippets.records.xi",
+    "prefix": "@x",
+    "body": "\\xi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.psi": {
+    "name": "psi",
+    "nameKey": "snippets.records.psi",
+    "prefix": "@y",
+    "body": "\\psi",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "at.zeta": {
+    "name": "zeta",
+    "nameKey": "snippets.records.zeta",
+    "prefix": "@z",
+    "body": "\\zeta",
+    "expand": "auto",
+    "inWord": true,
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.bmatrix": {
+    "name": "Matrix in brackets",
+    "nameKey": "snippets.records.bmatrix",
+    "prefix": "bmat",
+    "body": "\\begin{bmatrix} $1 \\end{bmatrix}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.pmatrix": {
+    "name": "Matrix in parentheses",
+    "nameKey": "snippets.records.pmatrix",
+    "prefix": "pmat",
+    "body": "\\begin{pmatrix} $1 \\end{pmatrix}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.cases": {
+    "name": "Cases",
+    "nameKey": "snippets.records.cases",
+    "prefix": "cases",
+    "body": "\\begin{cases} $1 \\end{cases}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.text": {
+    "name": "Text",
+    "nameKey": "snippets.records.text",
+    "prefix": "tt",
+    "body": "\\text{$1}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.sqrt": {
+    "name": "Square root",
+    "nameKey": "snippets.records.sqrt",
+    "prefix": "sq",
+    "body": "\\sqrt{$1}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.norm": {
+    "name": "Norm",
+    "nameKey": "snippets.records.norm",
+    "prefix": "norm",
+    "body": "\\|$1\\|$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.left-paren": {
+    "name": "Parentheses that grow",
+    "nameKey": "snippets.records.leftParen",
+    "prefix": "lr(",
+    "body": "\\left( $1 \\right)$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.left-bracket": {
+    "name": "Brackets that grow",
+    "nameKey": "snippets.records.leftBracket",
+    "prefix": "lr[",
+    "body": "\\left[ $1 \\right]$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  },
+  "fm.left-brace": {
+    "name": "Braces that grow",
+    "nameKey": "snippets.records.leftBrace",
+    "prefix": "lr{",
+    "body": "\\left\\{ $1 \\right\\\\}$0",
+    "expand": "auto",
+    "languages": ["latex"],
+    "where": "math"
+  }
+}

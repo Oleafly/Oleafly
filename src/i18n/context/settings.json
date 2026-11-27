@@ -534,16 +534,10 @@
       "connected": "Shown once alphaXiv's MCP server accepted the key. Each alphaXiv tool call still asks the user first."
     },
     "cookies": {
-      "review": "Button that moves from choosing a profile to the confirmation step.",
-      "status": {
-        "available": "This browser profile can be read right now.",
-        "comingSoon": "Support for this browser is not implemented yet.",
-        "noCookieStore": "The browser is installed but has no readable cookie database.",
-        "notInstalled": "The browser is not installed on this machine."
-      },
-      "tryAgain": "Button that repeats the failed browser detection.",
-      "useBrowserSignIn": "Button. Copies the sign-in cookies for the online LaTeX service from the person's web browser.",
-      "label": "Row heading for copying the online LaTeX service sign-in from a web browser."
+      "useBrowserSignIn": "Button. Opens the list of browsers and their profiles to import cookies from.",
+      "label": "Row heading for importing the online LaTeX service cookies from a web browser.",
+      "noCookies": "Shown next to a browser profile that has saved no cookies yet, so nothing can be imported from it.",
+      "from": "Label before a menu of browsers and their profiles, as in 'import from Brave'."
     },
     "zotero": {
       "connected": "Shown once Zotero accepted the key when Oleafly has no saved account name, for example after an update.",
@@ -588,6 +582,9 @@
       "spaces": {
         "title": "Product name. Keep untranslated."
       }
+    },
+    "signIns": {
+      "inUse": "Badge on the account Oleafly is using now."
     }
   },
   "mcp": {

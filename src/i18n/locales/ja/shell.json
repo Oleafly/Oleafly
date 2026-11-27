@@ -316,6 +316,10 @@
       "keywords": "集中 気が散らない 全画面 インターフェースを隠す ミニマル 執筆",
       "label": "Zen モードを切り替え"
     },
+    "fastMath": {
+      "keywords": "fast math スニペット snippets 展開 入力 自動 分数 下付き文字 ギリシャ文字 数式",
+      "label": "Fast math を切り替え"
+    },
     "visualSettings": {
       "keywords": "外観 フォント 書体 文字サイズ 段落 字下げ 間隔 両端揃え 見出し 執筆",
       "label": "ビジュアルモードの設定"
@@ -404,6 +408,14 @@
     "addChapterFromProject": {
       "keywords": "学位論文 章 論文 インポート 統合 コピー プロジェクト",
       "label": "別のプロジェクトから章を追加"
+    },
+    "insertSnippet": {
+      "keywords": "スニペット snippets テンプレート トリガー 一覧 参照 挿入",
+      "label": "スニペットを挿入"
+    },
+    "saveSnippet": {
+      "keywords": "スニペット snippet テンプレート 保存 選択範囲 再利用",
+      "label": "選択範囲をスニペットとして保存"
     }
   },
   "community": {
@@ -515,7 +527,8 @@
       "open": "開いているファイルに合わせる",
       "main": "常にメイン文書",
       "change": "メイン文書を変更…"
-    }
+    },
+    "filling": "プロジェクトはまだ Overleaf からダウンロード中です。すべてのファイルが揃ったらコンパイルできます。"
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -762,7 +775,8 @@
       "projects": "プロジェクトを検索する",
       "refs": "このプロジェクトの参考文献を開く",
       "settings": "設定を開く",
-      "theme": "配色テーマを切り替える"
+      "theme": "配色テーマを切り替える",
+      "snippets": "スニペットを探して挿入する"
     },
     "tryCommand": "コマンドを試す",
     "unknownCommand": "不明なコマンドです。/ を入力すると使えるコマンドが表示されます。"
@@ -1116,7 +1130,8 @@
       "integrations": "連携",
       "shortcuts": "キーボードショートカット",
       "research": "研究",
-      "logs": "ログ"
+      "logs": "ログ",
+      "snippets": "スニペット"
     },
     "search": {
       "empty": "一致する設定はありません",
@@ -1134,7 +1149,8 @@
         "integrations": "Zotero、GitHub、GitLab、Gitea、Forgejo、Codeberg、Git ホスティング、Computer Use、デスクトップアプリ、Cua、MCP、引用、アカウント、接続",
         "shortcuts": "キー割り当て、キーバインド、ホットキー、キー、キーボード、ショートカット",
         "research": "研究 タスク 予算 通知 スリープ 実験 実行 research tasks",
-        "logs": "ログ、エラー、警告、クラッシュ、ビルド、診断、トラブルシューティング、ログの書き出し、デバッグ、log、logs、app.log"
+        "logs": "ログ、エラー、警告、クラッシュ、ビルド、診断、トラブルシューティング、ログの書き出し、デバッグ、log、logs、app.log",
+        "snippets": "トリガー、テンプレート、Fast math、入力と同時に展開、Tab、補完リスト、スラッシュメニュー、@ ショートカット、VS Code スニペット、読み込み、インポート、パック"
       },
       "label": "設定を検索",
       "results_other": "{{count}} 件のセクションが一致します"
@@ -1365,11 +1381,12 @@
     },
     "moreActions": "その他の操作",
     "resetPaneLayout": "ペインの配置をリセット",
-    "resetPaneLayoutScope": "すべてのプロジェクト",
+    "resetPaneLayoutHint": "サイドバー、エディタ、プレビュー、ターミナル、アシスタントを、すべてのプロジェクトで既定の位置に戻します。",
     "savedLayouts": {
       "close": "閉じる",
       "delete": "削除",
       "deleteConfirm": "レイアウト「{{name}}」を削除しますか？",
+      "duplicate": "このレイアウトはすでに「{{name}}」として保存されています。",
       "limit": "レイアウトは最大 {{count}} 個まで保存できます。別のレイアウトを保存するには、どれかを削除してください。",
       "manage": "レイアウトを管理",
       "name": "レイアウト名",
@@ -1377,10 +1394,11 @@
       "renameTitle": "レイアウトの名前を変更",
       "replace": "置き換える",
       "replaceConfirm": "「{{name}}」という名前のレイアウトはすでにあります。置き換えますか？",
+      "replaceWithCurrent": "現在のレイアウトで置き換える",
       "save": "現在のレイアウトを保存",
       "saveButton": "保存",
       "saveTitle": "レイアウトを保存",
-      "update": "現在の状態に更新"
+      "savedAs": "「{{name}}」として保存済み"
     },
     "renameFailed": "プロジェクトの名前を変更できませんでした。"
   },
@@ -1667,8 +1685,9 @@
     "resume": "ライブ編集を再開",
     "reconnectNow": "今すぐ再接続",
     "open": "Overleaf で開く",
-    "share": "Overleaf で共有…",
+    "share": "Overleaf で共有",
     "signIn": "サインイン…",
+    "signInAs": "{{email}} でサインイン",
     "reconnectingIn": "{{seconds}} 秒後にもう一度試します。",
     "notConfirmed": "Overleaf にまだ確認されていません。",
     "copyDetails": "接続の詳細をコピー",
@@ -1688,5 +1707,70 @@
   "zoomIndicator": {
     "label": "ズーム",
     "reset": "リセット"
+  },
+  "snippets": {
+    "mySnippets": "マイスニペット",
+    "saveAsSnippet": "スニペットとして保存…",
+    "autoNote": "{{trigger}} を展開しました。元に戻すか Backspace を押すと戻せます。",
+    "fastMathTip": "Fast math をオンにすると、数式内で // と入力して分数を書けます。",
+    "turnOnFastMath": "Fast math をオンにする",
+    "expands": {
+      "list": "リスト",
+      "tab": "Tab",
+      "auto": "自動"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "ノート",
+      "any": "すべて"
+    },
+    "places": {
+      "any": "どこでも",
+      "text": "テキスト",
+      "math": "数式",
+      "inline-math": "行内数式",
+      "display-math": "ディスプレイ数式",
+      "code": "コード"
+    },
+    "palette": {
+      "placeholder": "名前、トリガー、テキストでスニペットを検索",
+      "insert": "挿入",
+      "edit": "編集",
+      "count": "{{shown}} / {{total}} 件",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "パレットを開かなくても、{{trigger}} と入力すれば挿入できます。",
+      "noMatches": "一致するスニペットはありません。"
+    },
+    "save": {
+      "title": "スニペットとして保存",
+      "name": "名前",
+      "namePlaceholder": "結果の表",
+      "trigger": "トリガー",
+      "triggerPlaceholder": "rtab",
+      "expands": "展開方法",
+      "found": "選択範囲から検出",
+      "fields": "これらをフィールドにする",
+      "fieldsFound_other": "{{count}} 件検出",
+      "noFields": "フィールドにできそうな部分はありません。フィールドは後から設定で追加できます。",
+      "followsCaption": "キャプションに連動",
+      "kinds": {
+        "caption": "キャプション",
+        "label": "ラベル",
+        "cite": "引用",
+        "path": "ファイルパス",
+        "column-spec": "列の指定",
+        "number": "数値",
+        "title": "見出し",
+        "table-body": "表の本体"
+      },
+      "preview": "プレビュー",
+      "saveTo": "保存先",
+      "submit": "スニペットを保存",
+      "saved": "{{name}} を保存しました。",
+      "missingName": "スニペットに名前を付けてください。"
+    }
   }
 }

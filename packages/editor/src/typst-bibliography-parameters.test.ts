@@ -11,7 +11,6 @@ import {
   typstSupportsMultipleBibliographies,
 } from "./typst-bibliography-parameters";
 import { installEnglishEditorMessages } from "./test-messages";
-import { typstSlashCompletions } from "./typst-snippets";
 import { stubRangeGeometry } from "./test-geometry";
 
 stubRangeGeometry();
@@ -149,33 +148,5 @@ describe("typstBibliographyParameterCompletions", () => {
     const doc = '#bibliography("refs.bib", group: no';
     const result = complete(doc);
     expect(result?.from).toBe(doc.length - 2);
-  });
-});
-
-describe("part bibliography snippet", () => {
-  function slashLabels(doc: string): string[] {
-    const result = typstSlashCompletions(new CompletionContext(EditorState.create({ doc }), doc.length, false));
-    if (result instanceof Promise) throw new Error("expected a synchronous result");
-    return labels(result);
-  }
-
-  it("is offered from Typst 0.15 on", () => {
-    setTypstStyleVersionProvider(() => "0.14.2");
-    expect(slashLabels("/part")).not.toContain("/partbibliography");
-    expect(slashLabels("/part")).toContain("/bibliography");
-    setTypstStyleVersionProvider(() => "0.15.1");
-    expect(slashLabels("/part")).toContain("/partbibliography");
-  });
-
-  it("inserts a bibliography scoped to a labelled part", () => {
-    setTypstStyleVersionProvider(() => "0.15.1");
-    const doc = "/part";
-    const result = typstSlashCompletions(new CompletionContext(EditorState.create({ doc }), doc.length, false));
-    if (result instanceof Promise || !result) throw new Error("expected completions");
-    const option = result.options.find((candidate) => candidate.label === "/partbibliography");
-    expect(option?.detail).toBe("Bibliography for one labelled part");
-    expect(accept(doc, "/partbibliography", typstSlashCompletions)).toBe(
-      '#bibliography(\n  "refs.bib",\n  title: [References],\n  target: selector(cite).within(<part>),\n  group: none,\n)',
-    );
   });
 });

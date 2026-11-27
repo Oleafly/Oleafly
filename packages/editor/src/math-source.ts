@@ -27,6 +27,48 @@ export interface MathScanOptions {
 
 const MAX_SCANNED_EXPRESSIONS = 10_000;
 
+export const DISPLAY_MATH_ENVIRONMENTS: ReadonlySet<string> = new Set([
+  "align",
+  "align*",
+  "alignat",
+  "alignat*",
+  "displaymath",
+  "eqnarray",
+  "eqnarray*",
+  "equation",
+  "equation*",
+  "flalign",
+  "flalign*",
+  "gather",
+  "gather*",
+  "math",
+  "multline",
+  "multline*",
+]);
+
+const ENVIRONMENT_OPENING = /\\begin\{([A-Za-z]+\*?)\}/gu;
+
+export interface MathEnvironment {
+  from: number;
+  to: number;
+  source: string;
+}
+
+export function scanMathEnvironments(text: string): MathEnvironment[] {
+  const found: MathEnvironment[] = [];
+  const opening = new RegExp(ENVIRONMENT_OPENING);
+  for (let match = opening.exec(text); match !== null; match = opening.exec(text)) {
+    if (!DISPLAY_MATH_ENVIRONMENTS.has(match[1]) || isBackslashEscaped(text, match.index)) continue;
+    const closing = String.raw`\end{${match[1]}}`;
+    const end = text.indexOf(closing, match.index + match[0].length);
+    if (end < 0) continue;
+    const to = end + closing.length;
+    found.push({ from: match.index, to, source: text.slice(match.index, to) });
+    opening.lastIndex = to;
+  }
+  return found;
+}
+
 const OPEN_INLINE = String.raw`\(` as MathDelimiter;
 const CLOSE_INLINE = String.raw`\)`;
 const OPEN_DISPLAY = String.raw`\[` as MathDelimiter;

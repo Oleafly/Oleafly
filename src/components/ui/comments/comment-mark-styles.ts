@@ -4,15 +4,18 @@ export function commentMarkStyle(active: boolean) {
     : ["--comment-highlight", "--comment-underline"];
   return {
     backgroundColor: `var(${background})`,
-    backgroundImage: `linear-gradient(to top, var(${underline}) 2px, transparent 2px)`,
-  };
+    borderRadius: "2px",
+    textDecorationLine: "underline",
+    textDecorationColor: `var(${underline})`,
+    textDecorationThickness: "2px",
+    textDecorationSkipInk: "none",
+    textUnderlinePosition: "under",
+    textUnderlineOffset: "0.2em",
+  } as const;
 }
 
 export const COMMENT_RANGE_STYLES = {
-  ".cm-comment-range": {
-    ...commentMarkStyle(false),
-    borderRadius: "2px 2px 0 0",
-  },
+  ".cm-comment-range": commentMarkStyle(false),
   ".cm-comment-range.cm-comment-active, .cm-comment-draft": commentMarkStyle(true),
   ".cm-comment-range.cm-comment-flash": {
     ...commentMarkStyle(true),

@@ -10,6 +10,7 @@ import {
 } from "@oleafly/workspace/tree";
 import { create } from "zustand";
 import { readString, removeKey, writeJson } from "@/lib/local-storage";
+import { logWarning } from "@/lib/log";
 import type { ViewMode } from "@/store/settings";
 
 export type PaneId = "sidebar" | "editor" | "pdf" | "terminal" | "assistant";
@@ -424,6 +425,10 @@ export function reportSplitSizes(splitId: string, sizes: Readonly<Record<string,
   else liveSizes.delete(splitId);
 }
 
+export function forgetSplitSizes(splitId: string, sizes: Readonly<Record<string, number>> | null): void {
+  if (sizes !== null && liveSizes.get(splitId) === sizes) liveSizes.delete(splitId);
+}
+
 export function withLiveSizes(node: PaneSplit): PaneSplit {
   const sized = (current: PaneNode): PaneNode => {
     if (isLeaf(current)) return current;
@@ -443,6 +448,7 @@ export function withLiveSizes(node: PaneSplit): PaneSplit {
 interface PaneLayoutState {
   layout: PaneSplit;
   epoch: number;
+  failed: boolean;
   setLayout: (layout: PaneSplit) => void;
   move: (pane: PaneId, target: DropTarget) => void;
   swap: (a: PaneId, b: PaneId) => void;
@@ -456,6 +462,7 @@ interface PaneLayoutState {
 export const usePaneLayoutStore = create<PaneLayoutState>((set, get) => ({
   layout: parsePaneLayout(readString(PANE_LAYOUT_KEY)),
   epoch: 0,
+  failed: false,
   setLayout: (layout) => {
     const next = canonical(withIds(withAllPanes(layout)));
     if (JSON.stringify(next) === JSON.stringify(get().layout)) return;
@@ -468,7 +475,7 @@ export const usePaneLayoutStore = create<PaneLayoutState>((set, get) => ({
   },
   swap: (a, b) => get().setLayout(swapPanes(get().layout, a, b)),
   reset: () => get().setLayout(DEFAULT_PANE_LAYOUT),
-  remount: () => set((state) => ({ epoch: state.epoch + 1 })),
+  remount: () => set((state) => ({ epoch: state.epoch + 1, failed: false })),
   sidebarOpenedIn: null,
   takeSidebarOpening: (projectId) => {
     if (get().sidebarOpenedIn === projectId) return false;
@@ -477,6 +484,24 @@ export const usePaneLayoutStore = create<PaneLayoutState>((set, get) => ({
   },
   forgetSidebarOpening: () => set({ sidebarOpenedIn: null }),
 }));
+
+const RECOVERY_WINDOW_MS = 10_000;
+let failures: number[] = [];
+
+export function recoverPaneLayout(): void {
+  const now = Date.now();
+  failures = [...failures.filter((at) => now - at < RECOVERY_WINDOW_MS), now];
+  const store = usePaneLayoutStore.getState();
+  if (failures.length > 2) {
+    usePaneLayoutStore.setState({ failed: true });
+    return;
+  }
+  if (failures.length === 2) {
+    void logWarning("pane layout", "rebuilding it did not help, so the default arrangement is back");
+    store.reset();
+  }
+  store.remount();
+}
 
 export function paneLayoutIsDefault(): boolean {
   return isDefaultPaneLayout(usePaneLayoutStore.getState().layout);

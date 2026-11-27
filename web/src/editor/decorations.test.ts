@@ -65,7 +65,7 @@ describe("suggestion decorations", () => {
     });
     expect(mark).toMatchObject({ from: 6, to: 11 });
     expect(mark.spec.class).toBe("cm-suggest-insert");
-    expect((mark.spec.attributes as Record<string, string>).style).toBe(`--suggest-hue: ${peerHue("alice", "me")}`);
+    expect((mark.spec.attributes as Record<string, string>).style).toBe(`--suggest-hue: ${peerHue("alice", "me", "server")}`);
     for (const rules of Object.values(OVERLAY_STYLES)) {
       expect(Object.keys(rules)).not.toContain("outline");
       expect(Object.keys(rules)).not.toContain("boxShadow");

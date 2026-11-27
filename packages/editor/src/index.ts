@@ -30,7 +30,6 @@ export {
   latexCompletions,
   latexCommandCompletions,
   latexReferenceCitationCompletions,
-  slashCompletions,
   setBibKeysProvider,
   setLatexCorpusProvider,
   type LatexCorpusProvider,
@@ -50,6 +49,9 @@ export {
   latexIgnoredRangesField,
   mathContextAt,
 } from "./latex-lexical";
+export type { SnippetPort, SnippetSwitches } from "./snippets/port";
+export { loadedSnippetRuntime, loadSnippetRuntime, snippetFieldSelected } from "./snippets/loader";
+export { insertTemplate as insertSnippetTemplate, templateApply } from "./snippets/template";
 export { latexSnippetLiteral } from "./latex-delimiters";
 export {
   latexPairChange,
@@ -70,11 +72,6 @@ export {
   type TypstContext,
   type TypstEditingOptions,
 } from "./typst-editing";
-export {
-  TYPST_SNIPPETS,
-  typstSlashCompletions,
-  type TypstSnippet,
-} from "./typst-snippets";
 export {
   continueListOnEnter,
   closeEnvironmentAtCursor,

@@ -21,6 +21,7 @@ export interface CommandDialogShellProps extends DialogProps {
   listRef?: Ref<HTMLDivElement>;
   listClassName?: string;
   footer?: ReactNode;
+  aside?: ReactNode;
   children: ReactNode;
 }
 
@@ -35,6 +36,7 @@ export function CommandDialogShell({
   listRef,
   listClassName = "max-h-[min(60vh,360px)]",
   footer,
+  aside,
   children,
   ...dialog
 }: Readonly<CommandDialogShellProps>) {
@@ -57,9 +59,12 @@ export function CommandDialogShell({
           />
           {trailing}
         </div>
-        <Command.List ref={listRef} className={cn("overflow-auto p-1.5", listClassName)}>
-          {children}
-        </Command.List>
+        <div className="flex min-h-0">
+          <Command.List ref={listRef} className={cn("min-w-0 flex-1 overflow-auto p-1.5", listClassName)}>
+            {children}
+          </Command.List>
+          {aside}
+        </div>
         {footer}
       </div>
     </Command.Dialog>

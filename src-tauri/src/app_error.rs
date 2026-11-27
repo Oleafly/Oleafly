@@ -64,6 +64,10 @@ pub(crate) fn code(text: &str) -> Option<String> {
     envelope(text).map(|envelope| envelope.code)
 }
 
+pub(crate) fn parts(text: &str) -> Option<(BTreeMap<String, String>, Option<String>)> {
+    envelope(text).map(|envelope| (envelope.params, envelope.detail))
+}
+
 pub(crate) fn map_values(text: &str, map: impl Fn(&str) -> String) -> String {
     let Some(mut envelope) = envelope(text) else {
         return map(text);

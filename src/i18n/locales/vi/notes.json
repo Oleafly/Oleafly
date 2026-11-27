@@ -1162,6 +1162,7 @@
     "elsewhere": "Chế độ sửa trực tiếp đang bật ở một ghi chú khác",
     "makeLive": "Sửa trực tiếp tại đây",
     "viewOnly": "Bạn có thể đọc nhưng không thể sửa ghi chú này.",
+    "suggesting": "Chế độ đề xuất đang bật nên bạn không thể sửa ghi chú này ở đây. Hãy tắt chế độ đề xuất để sửa.",
     "someone": "Ai đó",
     "unsentReadOnly": "Những thay đổi gần nhất của bạn trong ghi chú này chưa được gửi vì giờ bạn chỉ có quyền xem.",
     "unsentRefused": "Oleafly không thể gửi những thay đổi gần nhất của bạn trong ghi chú này, nên chúng đã bị bỏ."

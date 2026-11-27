@@ -8,7 +8,9 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_ot::{utf16_len, TextOperation};
 
 use super::super::disk::{sha256_hex, DiskState};
-use super::{apply_local_import, apply_to_disk, merged_onto, read_local_changes, WrittenTexts};
+use super::{
+    apply_local_import, apply_to_disk, merged_onto, read_local_changes, DiskTexts, WrittenTexts,
+};
 
 fn project_text(root: &Path, text: &str) -> (LiveProject, DiskState, String) {
     let mut doc = ProjectDoc::create().unwrap();
@@ -55,8 +57,10 @@ fn write_back(root: &Path, live: &LiveProject, disk: &mut DiskState, bases: &mut
         bases,
         plan,
         next,
-        &texts,
-        &crlf,
+        &DiskTexts {
+            texts: &texts,
+            crlf: &crlf,
+        },
         &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();

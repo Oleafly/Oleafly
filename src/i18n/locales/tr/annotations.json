@@ -26,6 +26,10 @@
       "region": "Bu alan hakkında yorum…"
     },
     "placeHere": "Buraya yerleştir",
+    "coauthors": "Ortak yazarlar için yorum",
+    "noSource": "Bu bölüm kaynak dosyalarda bulunamadı.",
+    "commentFailed": "Bu yorumun dosyası açılamadı.",
+    "commentsClosed": "Yorumlar şu anda bu projede kullanılamıyor.",
     "cancel": "İptal",
     "save": "Ekle",
     "saving": "Kaydediliyor",
@@ -39,8 +43,6 @@
     "region": "Alan"
   },
   "status": {
-    "draft": "Taslak",
-    "sent": "Gönderildi",
     "addressed": "Ele alındı",
     "resolved": "Çözüldü",
     "needsPlacing": "Yerleştirilmeli"
@@ -52,8 +54,13 @@
     "failed": "Notlar kaydedilemedi. {{error}}",
     "readOnly": "Daha yeni bir Oleafly ile kaydedildi. Düzenlemek için güncelleyin.",
     "setAside": "Not dosyası okunamadı, bu yüzden yeni bir dosya başlatıldı.",
-    "noSource": "Kaynakta konum yok",
     "page": "s. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "“{{quote}}” sonrasına",
+    "groups": {
+      "drafts": "Taslaklar",
+      "assistant": "Asistanda"
+    },
     "notFound": "Bu bölüm yeni PDF'te bulunamadı.",
     "placing": "PDF'te bölümü seçin, ardından Buraya yerleştir'i seçin.",
     "placeAgain": "Yeniden yerleştir",

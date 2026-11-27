@@ -1873,32 +1873,18 @@
       "disconnectFailed": "Không thể ngắt kết nối alphaXiv. Hãy thử lại."
     },
     "cookies": {
-      "confirmTitle": "Xác nhận nhập cookie",
-      "detecting": "Đang tìm hồ sơ trình duyệt đã cài...",
-      "dialogDescription": "Hãy chọn một hồ sơ trình duyệt đã cài. Oleafly chỉ đọc hồ sơ đó sau khi bạn xem xét và xác nhận nhập. Cookie của Chromium được mở khoá cục bộ qua macOS Keychain. Oleafly không gửi giá trị cookie đến dịch vụ Oleafly.",
-      "dialogTitle": "Nhập cookie trình duyệt",
-      "empty": "Không tìm thấy hồ sơ trình duyệt được hỗ trợ nào.",
-      "errors": {
-        "chooseProfile": "Hãy chọn một hồ sơ trình duyệt khả dụng."
-      },
-      "profileGroupLabel": "Hồ sơ trình duyệt",
-      "profileLegend": "Hồ sơ trình duyệt",
-      "review": "Xem lại bản nhập",
-      "status": {
-        "available": "Khả dụng",
-        "comingSoon": "Sắp ra mắt",
-        "noCookieStore": "Không có kho cookie",
-        "notInstalled": "Chưa cài"
-      },
-      "tryAgain": "Thử lại",
-      "label": "Sao chép đăng nhập từ trình duyệt",
-      "useBrowserSignIn": "Sao chép đăng nhập từ trình duyệt của bạn",
-      "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
-      "site": "Trang: {{domain}}",
-      "confirmCopy": "Oleafly sẽ đọc cookie cho {{domain}} từ hồ sơ {{profile}} trong {{browser}}. Cookie ở lại trong Oleafly và chỉ được gửi đến {{domain}}. Bạn sẽ xác nhận thêm một lần trong hộp thoại hệ thống.",
-      "copyAction": "Sao chép đăng nhập",
-      "copying": "Đang sao chép…",
-      "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp."
+      "dialogDescription": "Oleafly chỉ sao chép cookie của {{server}}, dùng chúng để đăng nhập rồi xóa các bản sao. Mật khẩu của bạn vẫn ở trong trình duyệt.",
+      "dialogTitle": "Nhập cookie từ trình duyệt của bạn",
+      "label": "Nhập cookie từ trình duyệt của bạn",
+      "useBrowserSignIn": "Chọn hồ sơ",
+      "signInDescription": "Dùng tài khoản {{server}} mà một hồ sơ trình duyệt trên máy tính này đã đăng nhập.",
+      "copyAction": "Nhập",
+      "copying": "Đang nhập…",
+      "from": "Từ",
+      "noCookies": "Chưa có cookie",
+      "sameAccount": "{{profile}} đang đăng nhập bằng {{account}}, tài khoản mà Oleafly đã dùng. Hãy chọn hồ sơ khác hoặc đăng nhập tài khoản kia trong trình duyệt đó trước.",
+      "orExisting": "hoặc dùng phiên đăng nhập bạn đã có",
+      "noSavedSignIn": "{{profile}} không có phiên đăng nhập đã lưu cho {{server}} nên cookie đã sao chép không đăng nhập được cho bạn. Nếu bạn đang đăng nhập ở đó, có thể trình duyệt chỉ giữ phiên đăng nhập đến khi đóng. Hãy dùng ô {{browser}} thay thế."
     },
     "zotero": {
       "apiKeyHint": "Để lấy khoá: đăng nhập tại <siteLink>zotero.org</siteLink>, mở <keyLink>trang khoá API</keyLink> của bạn để tạo khoá và sao chép ID người dùng dạng số từ cùng trang đó.",
@@ -1955,7 +1941,12 @@
       "signedIn": "Đã đăng nhập trên {{server}}",
       "signOut": "Đăng xuất",
       "signOutFailed": "Oleafly không thể đăng xuất khỏi Overleaf.",
+      "addAccount": "Thêm tài khoản khác",
+      "addAccountHint": "Chọn nơi đăng nhập. Nơi nào cũng bắt đầu khi chưa đăng nhập nên dùng tài khoản nào cũng được.",
+      "accountPick": "Tài khoản dùng để nhập",
+      "accountPickDescription": "Các lần nhập và mẫu mới dùng tài khoản này. Các dự án bạn đã có vẫn dùng tài khoản ban đầu của chúng.",
       "gitTitle": "Token Git để đồng bộ",
+      "gitTitleFor": "Token Git cho {{email}}",
       "gitSaved": "Đã lưu token Git. Các dự án bạn liên kết vẫn đồng bộ với Overleaf.",
       "gitMissing": "Chưa có token Git. Hãy tạo một token trong phần tích hợp Git trong cài đặt tài khoản Overleaf để đồng bộ dự án.",
       "gitOpenSettings": "Mở cài đặt tài khoản Overleaf",
@@ -1964,14 +1955,9 @@
       "gitSave": "Lưu",
       "gitRemove": "Gỡ",
       "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token.",
-      "browserLabel": "Đăng nhập bằng trình duyệt của bạn",
-      "browserDescription": "Dành cho đăng nhập bằng Google, tổ chức hoặc passkey. Oleafly mở {{server}} trong một cửa sổ trình duyệt mới và đóng nó khi bạn đăng nhập xong.",
-      "browserAction": "Đăng nhập",
-      "browserPick": "Trình duyệt dùng để đăng nhập",
       "browserWaiting": "Hãy hoàn tất đăng nhập {{server}} trong {{browser}}. Đóng cửa sổ sẽ huỷ đăng nhập.",
-      "browserHint": "Dùng cách này để đăng nhập bằng Google, tổ chức hoặc passkey.",
-      "windowLabel": "Đăng nhập {{server}}",
-      "windowDescription": "Oleafly mở một cửa sổ đăng nhập và đóng nó khi bạn đăng nhập xong. Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi đăng nhập bằng trình duyệt đó tại đây.",
+      "windowLabel": "Đăng nhập ngay trong Oleafly",
+      "windowDescription": "Cửa sổ tự đóng khi bạn đăng nhập xong. Nếu passkey không dùng được ở đó, hãy dùng mật khẩu hoặc lời nhắc trên điện thoại.",
       "windowAction": "Đăng nhập",
       "windowWaiting": "Hãy hoàn tất đăng nhập {{server}} trong cửa sổ vừa mở.",
       "unsent": {
@@ -1989,7 +1975,15 @@
           "always": "Xoá cả trên Overleaf",
           "never": "Giữ trên Overleaf"
         }
-      }
+      },
+      "sameAccount": "Bạn đã đăng nhập bằng {{account}}. Hãy đăng nhập bằng tài khoản khác để thêm tài khoản đó.",
+      "windowTitle": "Đăng nhập {{server}}",
+      "addAccountKept": "Tài khoản hiện tại của bạn vẫn được đăng nhập.",
+      "noBrowser": "Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi chọn trình duyệt đó tại đây.",
+      "tileHere": "Trong ứng dụng này",
+      "tileWindow": "Cửa sổ mới",
+      "tileWaiting": "Đang chờ bạn",
+      "signInNote": "Hãy dùng trình duyệt để đăng nhập bằng Google, tổ chức hoặc passkey. Nếu passkey không dùng được trong Oleafly, hãy dùng mật khẩu hoặc lời nhắc trên điện thoại ở đó. Cửa sổ tự đóng khi bạn đăng nhập xong."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2121,6 +2115,20 @@
           "confirm": "Thao tác này tải trình cài đặt Cua từ cua.ai và chạy trong terminal của bạn. Tiếp tục?"
         }
       }
+    },
+    "signIns": {
+      "title": "Quản lý đăng nhập",
+      "description": "Các tài khoản mà Oleafly đang đăng nhập trên máy tính này. Gỡ một tài khoản ở đây không làm bạn đăng xuất trong trình duyệt.",
+      "loading": "Đang tải thông tin đăng nhập của bạn…",
+      "empty": "Bạn chưa đăng nhập tài khoản nào.",
+      "inUse": "Đang dùng",
+      "switch": "Chuyển",
+      "switchTo": "Chuyển sang {{account}}",
+      "removeAccount": "Gỡ {{account}}",
+      "removeAll": "Gỡ tất cả",
+      "importMore": "Nhập thêm",
+      "loadFailed": "Oleafly không thể tải thông tin đăng nhập của bạn.",
+      "changeFailed": "Oleafly không thể thay đổi đăng nhập này. Hãy thử lại."
     }
   },
   "language": {
@@ -2323,6 +2331,7 @@
       "confirm": "Xóa các từ",
       "descriptionFallback": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển này. Chúng sẽ được kiểm tra lại ngay.",
       "descriptionGlobal": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển chung. Chúng sẽ được kiểm tra lại ngay.",
+      "descriptionOverleaf": "Chúng cũng bị xoá khỏi tài khoản Overleaf của bạn.",
       "descriptionProject": "Thao tác này gỡ mọi thuật ngữ khỏi {{project}}. Chúng sẽ được kiểm tra lại ngay.",
       "descriptionSuppressed": "Thao tác này gỡ mọi thuật ngữ khỏi các phát hiện đã bỏ qua trong {{project}}. Chúng sẽ được kiểm tra lại ngay.",
       "suppressedConfirm": "Hiện lại",
@@ -2339,6 +2348,7 @@
     },
     "global": {
       "emptyDescription": "Những từ bạn thêm ở đây được trình hiệu đính bỏ qua trong mọi dự án.",
+      "overleafSynced": "Được đồng bộ với các từ đã học trong tài khoản Overleaf của bạn khi có dự án đang chỉnh sửa trực tiếp trên Overleaf.",
       "scope": "Áp dụng cho mọi dự án"
     },
     "intro": "Thêm từ vào từ điển chính tả cá nhân của bạn. Những từ này được lưu trong cài đặt cục bộ và bị bỏ qua trên mọi dự án. Việc so khớp được chuẩn hoá Unicode và không phân biệt chữ hoa chữ thường.",
@@ -2853,5 +2863,178 @@
     },
     "count_other": "{{count}} mục",
     "filteredCount_other": "{{shown}} / {{count}} mục"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Trong danh sách gợi ý",
+        "description": "Hiện đoạn mã bên cạnh các lệnh"
+      },
+      "tab": {
+        "label": "Tab mở rộng từ kích hoạt",
+        "description": "Cho các đoạn mã đặt là Tab"
+      },
+      "auto": {
+        "label": "Mở rộng khi gõ",
+        "description": "Cho các đoạn mã Tự động, như Fast math"
+      },
+      "hint": {
+        "label": "Hiện lời nhắc khi gõ",
+        "description": "Cho biết đoạn mã mà từ kích hoạt sẽ chèn. Tab sẽ chèn đoạn mã đó."
+      }
+    },
+    "library": {
+      "title": "Thư viện đoạn mã của bạn",
+      "collections": "Bộ sưu tập",
+      "all": "Tất cả đoạn mã",
+      "mine": "Của bạn",
+      "packs": "Gói",
+      "builtIn": "Tích hợp sẵn",
+      "add": "Thêm gói hoặc nhập…",
+      "useCollection": "Dùng {{name}}",
+      "search": "Tìm kiếm theo tên, từ kích hoạt hoặc văn bản",
+      "language": "Ngôn ngữ",
+      "allLanguages": "Mọi ngôn ngữ",
+      "expands": "Cách mở rộng",
+      "anyExpand": "Mọi cách",
+      "newSnippet": "Đoạn mã mới",
+      "columns": {
+        "trigger": "Từ kích hoạt",
+        "name": "Tên",
+        "languages": "Ngôn ngữ",
+        "where": "Vị trí",
+        "expands": "Cách mở rộng"
+      },
+      "modified": "Đã sửa",
+      "turnedOff": "Đã tắt",
+      "restore": "Khôi phục",
+      "restoreLabel": "Khôi phục {{name}}",
+      "wraps": "bao quanh",
+      "noTrigger": "không có",
+      "noMatches": "Không có đoạn mã nào khớp.",
+      "shown": "{{shown}}/{{total}}"
+    },
+    "problems": {
+      "summary_other": "{{count}} vấn đề",
+      "where": "trong {{file}}, dòng {{line}}: {{message}}",
+      "slowRegex": "Kiểm tra từ kích hoạt của {{name}} mất quá lâu nên đoạn mã đã bị tắt.",
+      "show": "Hiện",
+      "hide": "Ẩn"
+    },
+    "addDialog": {
+      "title": "Thêm đoạn mã",
+      "packsTab": "Gói",
+      "importTab": "Nhập tệp",
+      "count_other": "{{count}} đoạn mã",
+      "source": "Từ {{source}}",
+      "licence": "Giấy phép {{licence}}",
+      "packNote": "Các gói được cập nhật cùng ứng dụng. Thay đổi bạn thực hiện với đoạn mã của một gói được giữ riêng.",
+      "packs": {
+        "fastMathLatex": "Mở rộng khi bạn gõ trong toán: phân số, chỉ số dưới và luỹ thừa, chữ cái Hy Lạp, toán tử và ma trận. Các từ kích hoạt theo thiết lập của Gilles Castel.",
+        "fastMathTypst": "Cùng các từ kích hoạt đó, viết cho Typst. Gói bỏ qua những gì Typst đã tự làm, như a/b cho phân số.",
+        "paperStructure": "Hình, hình con, bảng booktabs, phương trình, định lý, chứng minh và thuật toán."
+      },
+      "useOn": "Dùng {{name}}",
+      "importIntro": "Chọn một tệp đoạn mã VS Code (.json hoặc .code-snippets). Tệp sẽ thành một bộ sưu tập riêng mà bạn có thể tắt hoặc thay đổi.",
+      "choose": "Chọn tệp",
+      "fileLabel": "Tệp đoạn mã",
+      "imported_other": "Đã nhập {{count}} đoạn mã vào {{collection}}.",
+      "nothing": "Không tìm thấy đoạn mã nào trong {{file}}.",
+      "leftOut_other": "Đã bỏ qua {{count}} mục:"
+    },
+    "editor": {
+      "newTitle": "Đoạn mã mới",
+      "duplicate": "Nhân đôi",
+      "delete": "Xoá",
+      "turnOff": "Tắt",
+      "save": "Lưu",
+      "copyName": "{{name}} (bản sao)",
+      "name": "Tên",
+      "namePlaceholder": "Hình có chú thích và nhãn",
+      "trigger": "Từ kích hoạt",
+      "triggerPlaceholder": "fig",
+      "regex": "Biểu thức chính quy",
+      "expands": "Cách mở rộng",
+      "expandOptions": {
+        "list": "Từ danh sách",
+        "tab": "Bằng Tab",
+        "auto": "Khi gõ"
+      },
+      "expandHelp": {
+        "list": "Đoạn mã hiện trong danh sách gợi ý. Chọn ở đó để chèn.",
+        "tab": "Gõ {{trigger}} rồi nhấn Tab. Đoạn mã cũng hiện trong danh sách gợi ý.",
+        "auto": "Đoạn mã mở rộng ngay khi bạn gõ {{trigger}}. Hoàn tác hoặc Backspace sẽ trả lại từ kích hoạt."
+      },
+      "languages": "Ngôn ngữ",
+      "where": "Vị trí",
+      "whereOptions": {
+        "any": "Mọi nơi",
+        "text": "Văn bản",
+        "math": "Toán",
+        "code": "Mã"
+      },
+      "mathKinds": {
+        "math": "Cả hai",
+        "inline-math": "Trong dòng",
+        "display-math": "Hiển thị"
+      },
+      "mathKind": "Loại toán",
+      "whereHelp": {
+        "any": "Mọi nơi trong tệp.",
+        "text": "Văn bản: ngoài toán, chú thích và môi trường verbatim.",
+        "math": "Toán: bên trong toán trong dòng hoặc toán hiển thị.",
+        "code": "Mã: bên trong mã Typst hoặc khối mã Markdown."
+      },
+      "firesOnly": "Chỉ kích hoạt",
+      "wholeWord": "khi là một từ trọn vẹn",
+      "lineStart": "ở đầu dòng",
+      "collection": "Bộ sưu tập",
+      "keptSeparately": "Thay đổi của bạn được giữ riêng, nên bạn vẫn nhận được bản cập nhật của {{collection}}.",
+      "body": "Văn bản được chèn",
+      "anyLanguage": "Mọi ngôn ngữ",
+      "addField": "+ Trường",
+      "addChoice": "+ Lựa chọn",
+      "choiceText": "một,hai",
+      "variable": "Biến",
+      "projectField": "Trường dự án",
+      "variables": {
+        "SELECTION": "Văn bản đã chọn",
+        "CLIPBOARD": "Bộ nhớ tạm",
+        "DATE": "Ngày hôm nay",
+        "TM_FILENAME": "Tên tệp",
+        "PROJECT_NAME": "Tên dự án"
+      },
+      "projectFields": {
+        "image": "Hình ảnh",
+        "label": "Nhãn",
+        "cite": "Trích dẫn",
+        "ref": "Tham chiếu",
+        "file": "Tệp"
+      },
+      "chipsNote": "Các trường hiển thị dạng thẻ.",
+      "showSyntax": "Hiện cú pháp",
+      "missingName": "Hãy đặt tên cho đoạn mã.",
+      "missingBody": "Hãy viết văn bản mà đoạn mã sẽ chèn.",
+      "sameTrigger": "{{list}} cũng dùng {{trigger}}. Bộ sưu tập gần nhất được ưu tiên.",
+      "sharedStart": "Có cùng phần đầu với {{list}}. Tất cả đều hiện trong danh sách, và Tab chọn mục khớp chính xác, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Xoá {{name}}?",
+        "description": "Thao tác này sẽ gỡ đoạn mã khỏi {{collection}}.",
+        "action": "Xoá"
+      },
+      "tryIt": {
+        "title": "Thử ngay",
+        "howAuto": "Gõ {{trigger}} là đoạn mã mở rộng.",
+        "howTab": "Gõ {{trigger}}, rồi nhấn Tab.",
+        "howList": "Gõ {{trigger}}, nhấn Ctrl+Space rồi chọn từ danh sách.",
+        "noTrigger": "Đoạn mã này không có từ kích hoạt. Hãy chèn từ bảng lệnh bằng /snippets.",
+        "inText": "trong văn bản",
+        "inMath": "trong toán",
+        "fires": "Kích hoạt ở đây: {{language}}, {{place}}.",
+        "notLanguage": "Sẽ không kích hoạt trong {{language}}. Đây không phải một ngôn ngữ của đoạn mã này.",
+        "notPlace": "Sẽ không kích hoạt {{place}}. Thiết lập Vị trí không cho phép."
+      }
+    }
   }
 }

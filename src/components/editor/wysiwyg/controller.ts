@@ -13,7 +13,7 @@ export interface VisualFigureOptions {
 }
 
 export interface WysiwygInsertions {
-  insertLatex(view: EditorView, source: string, block: boolean, theoremEnvironments: readonly string[]): void;
+  insertLatex(view: EditorView, source: string, block: boolean): void;
 }
 
 let insertions: WysiwygInsertions | null = null;
@@ -33,29 +33,10 @@ let projectNavigation: {
 let projectIntelligenceCurrent = false;
 const projectIntelligenceChanged = createEmitter();
 
-export interface WysiwygDocumentContext {
-  theoremEnvironments: readonly string[];
-  booktabs: boolean;
-}
-
-const EMPTY_DOCUMENT_CONTEXT: WysiwygDocumentContext = {
-  theoremEnvironments: [],
-  booktabs: false,
-};
-let documentContext: WysiwygDocumentContext = EMPTY_DOCUMENT_CONTEXT;
-
 export function setWysiwygEditor(e: Editor | null) {
   if (editor === e) return;
   editor = e;
   editorChanged.emit();
-}
-
-export function setWysiwygDocumentContext(context: WysiwygDocumentContext | null) {
-  documentContext = context ?? EMPTY_DOCUMENT_CONTEXT;
-}
-
-export function getWysiwygDocumentContext(): WysiwygDocumentContext {
-  return documentContext;
 }
 
 export function getWysiwygEditor(): Editor | null {

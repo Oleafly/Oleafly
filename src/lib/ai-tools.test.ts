@@ -50,8 +50,32 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 // pdf-image pulls in pdfjs-dist (needs DOMMatrix), so mock it out of the graph.
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
+const editors = vi.hoisted(() => ({
+  view: null as object | null,
+  visual: false,
+  insertAtCursor: vi.fn(),
+  replaceRange: vi.fn(),
+  flushVisual: vi.fn(),
+  writeSharedText: vi.fn(async (..._args: unknown[]) => false),
+}));
+vi.mock("@/components/editor/cm/controller", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/controller")>()),
+  getEditorView: () => editors.view,
+  insertAtCursor: editors.insertAtCursor,
+  replaceRange: editors.replaceRange,
+}));
+vi.mock("@/components/editor/wysiwyg/controller", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/wysiwyg/controller")>()),
+  isWysiwygActive: () => editors.visual,
+  flushWysiwygPendingEdits: editors.flushVisual,
+}));
+vi.mock("@/lib/shared-document-writes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/shared-document-writes")>()),
+  writeSharedText: editors.writeSharedText,
+}));
+
 import { createFigureTools, createOleaflyTools } from "./ai-tools";
-import { setLastFigurePreview } from "./ai-figure";
+import { setFigureInsertTarget, setLastFigurePreview } from "./ai-figure";
 import { LATEX_ENGINE } from "./document-engine";
 import type { DocumentEngineDescriptor } from "./tauri";
 import { useFolderAccessStore } from "@/store/folder-access";
@@ -82,6 +106,12 @@ beforeEach(() => {
   mocks.filesState.files = {};
   mocks.filesState.activePath = null;
   mocks.compileState.recompile.mockReset();
+  editors.view = null;
+  editors.visual = false;
+  editors.insertAtCursor.mockReset();
+  editors.replaceRange.mockReset();
+  editors.flushVisual.mockReset();
+  editors.writeSharedText.mockReset().mockResolvedValue(false);
 });
 
 describe("ai-tools: destructive edits require approval (U1)", () => {
@@ -673,5 +703,52 @@ describe("ai-tools: Typst figures", () => {
 
     expect(res).toEqual({ error: "Figure tools work only in LaTeX and Typst projects." });
     expect(mocks.api.renderTypstSnippet).not.toHaveBeenCalled();
+  });
+});
+
+describe("ai-tools: inserting while an editor is shown", () => {
+  const DOC = "\\begin{document}\n\\end{document}\n";
+
+  afterEach(() => setFigureInsertTarget(null));
+
+  it("edits in the source editor when it is the one shown, as before", async () => {
+    editors.view = {};
+    const tools = createFigureTools();
+    expect(await tools.insert_figure.execute({ code: "\\draw (0,0);", raw: true })).toMatchObject({ success: true });
+    expect(editors.insertAtCursor).toHaveBeenCalledWith(expect.stringContaining("\\draw (0,0);"));
+    setFigureInsertTarget({ from: 2, to: 5 });
+    await tools.insert_figure.execute({ code: "\\draw (1,1);", raw: true });
+    expect(editors.replaceRange).toHaveBeenCalledWith(2, 5, expect.stringContaining("\\draw (1,1);"));
+    expect(editors.flushVisual).not.toHaveBeenCalled();
+    expect(editors.writeSharedText).not.toHaveBeenCalled();
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("flushes Visual and writes the document once through the live session while Visual is shown", async () => {
+    editors.view = {};
+    editors.visual = true;
+    editors.writeSharedText.mockResolvedValue(true);
+    mocks.filesState.activePath = "main.tex";
+    mocks.filesState.files = { "main.tex": { content: DOC, dirty: false } };
+    const tools = createFigureTools();
+
+    await tools.insert_figure.execute({ code: "\\draw (0,0);", raw: true });
+    expect(editors.writeSharedText).toHaveBeenCalledOnce();
+    const [projectId, path, next, base] = editors.writeSharedText.mock.calls[0];
+    expect([projectId, path, base]).toEqual(["proj", "main.tex", DOC]);
+    expect(next).toMatch(/^\\begin\{document\}\n[\s\S]*\\draw \(0,0\);[\s\S]*\\end\{document\}\n$/);
+    expect(editors.flushVisual.mock.invocationCallOrder[0]).toBeLessThan(
+      editors.writeSharedText.mock.invocationCallOrder[0],
+    );
+
+    setFigureInsertTarget({ from: 0, to: 0 });
+    await tools.insert_figure.execute({ code: "\\draw (1,1);", raw: true });
+    expect(editors.writeSharedText).toHaveBeenCalledTimes(2);
+    expect(editors.writeSharedText.mock.calls[1][2]).toMatch(/^[\s\S]*\\draw \(1,1\);[\s\S]*\\begin\{document\}/);
+    expect(editors.flushVisual).toHaveBeenCalledTimes(2);
+    expect(editors.insertAtCursor).not.toHaveBeenCalled();
+    expect(editors.replaceRange).not.toHaveBeenCalled();
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.filesState.applyExternalWrite).toHaveBeenCalledWith("proj", "main.tex", next, { opener: "assistant" });
   });
 });

@@ -1,0 +1,3 @@
+First paragraph has in it.
+Second paragraph is where the paste a commented phrase goes.
+Third paragraph has a word to delete.

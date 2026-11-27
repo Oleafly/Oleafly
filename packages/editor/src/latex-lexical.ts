@@ -728,8 +728,16 @@ export function mathContextAt(
   state: EditorState,
   pos: number,
 ): LatexMathContext {
-  const from = Math.max(0, pos - MATH_CONTEXT_WINDOW);
-  const stack = openMathTokens(latexMaskedSlice(state, from, pos));
+  return mathContextInRange(state, Math.max(0, pos - MATH_CONTEXT_WINDOW), pos);
+}
+
+export function mathContextInRange(
+  state: EditorState,
+  from: number,
+  pos: number,
+  masked: string = latexMaskedSlice(state, from, pos),
+): LatexMathContext {
+  const stack = openMathTokens(masked);
   const open = stack.at(-1);
   if (!open) return { inMath: false, delimiter: null, from: null, width: 0 };
   return {

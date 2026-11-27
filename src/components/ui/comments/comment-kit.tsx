@@ -57,6 +57,8 @@ export interface CommentReactions {
   more?: (pick: (emoji: string) => void) => ReactNode;
 }
 
+export type CommentErrorReport = (what: string, error: unknown) => void;
+
 export interface CommentKit {
   labels: CommentKitLabels;
   now: number;
@@ -66,6 +68,7 @@ export interface CommentKit {
   self: string | null;
   hue: (accountId: string) => number;
   describeError: (error: unknown) => string;
+  reportError?: CommentErrorReport;
   canRetry?: (error: unknown) => boolean;
   Confirm: ComponentType<CommentConfirmProps>;
   maxLength?: number;
@@ -74,6 +77,8 @@ export interface CommentKit {
   copyText?: (text: string) => Promise<void>;
   reactions?: CommentReactions;
   moderate?: boolean;
+  math?: boolean;
+  markdown?: boolean;
   activity?: (scope: CommentActivityScope, active: boolean) => void;
   presence?: CommentPresenceFeed;
 }
@@ -88,6 +93,10 @@ export function useCommentKit(): CommentKit {
   const kit = useContext(CommentKitContext);
   if (!kit) throw new Error("Comment kit components need a CommentKitProvider");
   return kit;
+}
+
+export function useCommentErrorReport(): CommentErrorReport | undefined {
+  return useContext(CommentKitContext)?.reportError;
 }
 
 export function isoTime(at: number): string {

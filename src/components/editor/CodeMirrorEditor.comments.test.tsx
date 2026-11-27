@@ -6,7 +6,6 @@ import { Facet } from "@codemirror/state";
 vi.mock("@oleafly/latex-intelligence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@oleafly/latex-intelligence")>()),
   loadCore: async () => null,
-  loadAtSuggestions: async () => null,
   loadPackageNames: async () => null,
   loadClassNames: async () => null,
 }));
@@ -18,7 +17,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { getEditorView } from "./cm/controller";
-import { setCommentsEditorExtension } from "./cm/comments-slot";
+import { setCommentsEditorExtension } from "./cm/editor-slots";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 

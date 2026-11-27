@@ -56,3 +56,5 @@ fi
 
 printf '%s\n' "$output" | grep '^seed:' || true
 echo "Overleaf CE is up at http://localhost:${OVERLEAF_CE_PORT}. Sign in as alice@example.test (a site admin) with ALICE_PASSWORD from $env_file."
+echo "Run the live gates against it with: cargo test -p oleafly-online --features ce-e2e --test ce"
+echo "Run the command-line live gates against it with: cargo test -p oleafly-cli --features ce-e2e --test remote_live_ce"

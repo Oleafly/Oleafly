@@ -11,6 +11,9 @@ use crate::error::OnlineError;
 use crate::sync::check_remote_paths_on;
 
 pub const REPLACE_WINDOW: Duration = Duration::from_secs(1);
+pub const RESTORE_WINDOW: Duration = Duration::from_secs(10);
+const MAX_PROVIDER_CHARS: usize = 64;
+const MAX_SOURCE_CHARS: usize = 2048;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NodeKind {
@@ -26,6 +29,48 @@ pub struct OverleafNode {
     pub parent: Option<EntityId>,
     pub kind: NodeKind,
     pub hash: Option<String>,
+    pub linked: Option<LinkedSource>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkedSource {
+    pub provider: String,
+    pub url: Option<String>,
+    pub source_project: Option<String>,
+    pub source_path: Option<String>,
+}
+
+impl LinkedSource {
+    pub fn from_value(value: &Value) -> Option<LinkedSource> {
+        let data = value.as_object()?;
+        let provider = data
+            .get("provider")
+            .and_then(Value::as_str)
+            .filter(|provider| {
+                (1..=MAX_PROVIDER_CHARS).contains(&provider.len())
+                    && provider.chars().all(|character| {
+                        character.is_ascii_alphanumeric() || "_-".contains(character)
+                    })
+            })?
+            .to_string();
+        let field = |key: &str| {
+            data.get(key)
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|text| {
+                    !text.is_empty()
+                        && text.chars().count() <= MAX_SOURCE_CHARS
+                        && !text.chars().any(char::is_control)
+                })
+                .map(str::to_string)
+        };
+        Some(LinkedSource {
+            url: field("url"),
+            source_project: field("source_project_id"),
+            source_path: field("source_entity_path").or_else(|| field("source_output_file_path")),
+            provider,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,6 +103,7 @@ pub enum PathChange {
 #[derive(Clone, Debug)]
 struct Pending {
     at: Instant,
+    window: Duration,
     id: EntityId,
     path: String,
     kind: NodeKind,
@@ -117,6 +163,7 @@ impl OverleafTree {
             parent,
             kind: NodeKind::Folder,
             hash: None,
+            linked: None,
         });
         let entries = |key: &str| {
             folder
@@ -136,6 +183,13 @@ impl OverleafTree {
                     parent: Some(id.clone()),
                     kind,
                     hash: text(entry, "hash"),
+                    linked: (kind == NodeKind::File)
+                        .then(|| {
+                            entry
+                                .get("linkedFileData")
+                                .and_then(LinkedSource::from_value)
+                        })
+                        .flatten(),
                 });
             }
         }
@@ -444,14 +498,14 @@ impl OverleafTree {
     pub fn next_due(&self) -> Option<Instant> {
         self.pending
             .iter()
-            .map(|pending| pending.at + REPLACE_WINDOW)
+            .map(|pending| pending.at + pending.window)
             .min()
     }
 
     pub fn due(&mut self, now: Instant) -> Vec<PathChange> {
         let (due, waiting): (Vec<Pending>, Vec<Pending>) = std::mem::take(&mut self.pending)
             .into_iter()
-            .partition(|pending| now.duration_since(pending.at) >= REPLACE_WINDOW);
+            .partition(|pending| now.duration_since(pending.at) >= pending.window);
         self.pending = waiting;
         due.into_iter().flat_map(Pending::into_removals).collect()
     }
@@ -467,17 +521,25 @@ impl OverleafTree {
         let mut changes = self.due(now);
         changes.extend(match event {
             TreeEvent::NewDoc { folder, id, name } => {
-                self.add(folder, id, name, NodeKind::Doc, None)
+                self.add(folder, id, name, NodeKind::Doc, None, None)
             }
             TreeEvent::NewFile {
                 folder,
                 id,
                 name,
                 hash,
+                linked,
                 ..
-            } => self.add(folder, id, name, NodeKind::File, hash.clone()),
+            } => self.add(
+                folder,
+                id,
+                name,
+                NodeKind::File,
+                hash.clone(),
+                linked.as_deref().cloned(),
+            ),
             TreeEvent::NewFolder { folder, id, name } => {
-                self.add(folder, id, name, NodeKind::Folder, None)
+                self.add(folder, id, name, NodeKind::Folder, None, None)
             }
             TreeEvent::Renamed { id, name } => self.relocate(id, |node| node.name.clone_from(name)),
             TreeEvent::Moved { id, folder } => {
@@ -487,8 +549,13 @@ impl OverleafTree {
                     self.relocate(id, |node| node.parent = Some(folder.clone()))
                 }
             }
-            TreeEvent::Removed { id, .. } => {
-                self.remove(id, now);
+            TreeEvent::Removed { id, restoring } => {
+                let window = if *restoring {
+                    RESTORE_WINDOW
+                } else {
+                    REPLACE_WINDOW
+                };
+                self.remove(id, now, window);
                 Vec::new()
             }
         });
@@ -502,6 +569,7 @@ impl OverleafTree {
         name: &str,
         kind: NodeKind,
         hash: Option<String>,
+        linked: Option<LinkedSource>,
     ) -> Vec<PathChange> {
         if self.nodes.contains_key(id) || !self.is_folder(folder) {
             return Vec::new();
@@ -512,6 +580,7 @@ impl OverleafTree {
             parent: Some(folder.clone()),
             kind,
             hash,
+            linked,
         });
         let Some(path) = self.path_of(id) else {
             return Vec::new();
@@ -562,7 +631,7 @@ impl OverleafTree {
             .collect()
     }
 
-    fn remove(&mut self, id: &EntityId, now: Instant) {
+    fn remove(&mut self, id: &EntityId, now: Instant, window: Duration) {
         if Some(id) == self.root.as_ref() || !self.nodes.contains_key(id) {
             return;
         }
@@ -587,6 +656,7 @@ impl OverleafTree {
         };
         self.pending.push(Pending {
             at: now,
+            window,
             id,
             path,
             kind,

@@ -232,8 +232,16 @@
     "suggestion_role": "このプロジェクトでのあなたの役割では、提案はできません。",
     "suggestion_changed": "この提案の周囲のテキストが変更されたため、所有者または編集者が承認または却下する必要があります。",
     "suggestion_too_long": "削除の提案に含められるのは最大 20,000 文字です。一度に削除する範囲を小さくしてください。",
+    "suggestion_gone": "その変更はもうありません。誰かが承認、却下、または編集した可能性があります。",
+    "review_off_server": "このサーバーでは、変更履歴に対してその操作はできません。",
     "chat_role": "このプロジェクトでのあなたの役割では、チャットでその操作はできません。",
+    "chat_edit_off": "このサーバーではチャットのメッセージを編集できません。",
+    "chat_off_server": "この Overleaf サーバーにはチャットがありません。",
     "history_unavailable": "このプロジェクトの履歴はまだこのコンピューターにありません。同期が終わってから、もう一度お試しください。",
+    "history_plan_limit": "このプロジェクトの Overleaf プランでは、以前のバージョンは保存されません。",
+    "restore_off_server": "この Overleaf サーバーでは以前のバージョンを復元できません。代わりに、そのバージョンからテキストをコピーしてください。",
+    "linked_off_server": "この Overleaf サーバーはリンクされたファイルを更新しません。",
+    "linked_refresh_failed": "Overleaf はこのファイルをソースから更新できませんでした。",
     "account_storage_full": "このサーバーで、プロジェクトの所有者のアカウントの保存領域がいっぱいになりました。ファイルをいくつか削除して空きを作るか、サーバーの管理者に保存領域を増やしてもらってください。",
     "too_many_projects": "共有プロジェクトの数が、このサーバーで許可されている上限にすでに達しています。別のプロジェクトを共有する前に、どれかの共有を停止してください。",
     "too_many_uploads": "この1時間のアップロードが多すぎます。しばらくしてからもう一度お試しください。",
@@ -241,6 +249,9 @@
     "too_many_pages": "このサーバーで許可されている上限まで公開ページがあります。どれか 1 つの公開を停止してから、もう一度お試しください。",
     "page_too_large": "このノートは大きすぎて公開できません。画像をいくつか削除してから、もう一度お試しください。",
     "page_taken_down": "管理者がこのページを取り下げたため、管理者が元に戻すまで、このノートを再び公開することはできません。"
+  },
+  "liveElsewhere": {
+    "cli": "このプロジェクトはコマンドライン（プロセス {{pid}}）でライブ編集中です。そちらでライブ編集を止めてから、もう一度お試しください。"
   },
   "roles": {
     "admin": "管理者",
@@ -1051,6 +1062,8 @@
     "add": "コメントを追加",
     "allResolved": "すべてのコメントが解決済みです。",
     "noResolved": "解決済みのコメントはありません",
+    "noChanges": "変更履歴はありません",
+    "overleafOff": "この Overleaf サーバーにはコメント機能がないため、ここには変更履歴だけが表示されます。",
     "emptyTitle": "まだコメントはありません",
     "emptyHint": "テキストを選択して「コメントを追加」を選ぶか、{keys} を押してください",
     "readOnlyNote": "このプロジェクトのコメントは閲覧できます。返信やリアクションをするには、所有者にコメント投稿者の権限を依頼してください。",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Oleafly が確認できなかった人の提案",
     "added": "追加",
     "deleted": "削除",
+    "replaced": "変更前",
+    "replacedWith": "変更後",
     "accept": "承認",
     "reject": "却下",
     "withdraw": "取り下げ",
@@ -1157,6 +1172,7 @@
     "fileActions": "{{file}} の提案",
     "pendingCount": "レビュー待ちの提案: {{number}} 件",
     "loadFailed": "このファイルの提案を読み込めませんでした。",
+    "acceptOffServer": "この Overleaf サーバーでは、このファイルの変更履歴を承認できません。却下はできます。",
     "rejectAllConfirm": {
       "title": "{{file}} のすべての提案を却下しますか？",
       "description": "このプロジェクトの全員に対して、元のテキストがファイルに戻ります。レビュー待ちの提案: {{number}} 件。",
@@ -1175,7 +1191,15 @@
       "suggesting": "提案",
       "editingHint": "編集: 編集内容がすぐにテキストに反映されます",
       "suggestingHint": "提案: 編集内容は提案になり、所有者または編集者が承認します",
-      "reviewerHint": "あなたはレビュアーのため、編集内容は提案になり、所有者または編集者が承認します"
+      "reviewerHint": "あなたはレビュアーのため、編集内容は提案になり、所有者または編集者が承認します",
+      "locked": {
+        "everyone": "このプロジェクトでは全員に対して変更履歴の追跡がオンになっているため、編集内容は提案になります",
+        "plan": "このプロジェクトの Overleaf プランには変更履歴の追跡が含まれていません",
+        "server": "この Overleaf サーバーでは変更履歴の追跡をオンまたはオフにできません"
+      },
+      "others": "ほかの人の変更履歴を追跡",
+      "forEveryone": "全員に対して",
+      "forGuests": "リンクから参加した人に対して"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "閲覧者はチャットを読めますが、投稿はできません。",
     "offline": "このプロジェクトは現在接続されていないため、投稿できません。",
     "messageActions": "このメッセージのその他の操作",
+    "editLabel": "メッセージを編集",
     "deleteConfirm": {
       "title": "このメッセージを削除しますか？",
       "description": "このプロジェクトの全員に対して削除されます。"
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly はチャットを読み込めませんでした。",
     "loadOlder": "以前のメッセージを表示"
+  },
+  "people": {
+    "invited": "招待済み",
+    "former": "（プロジェクトから退出）"
   },
   "history": {
     "title": "履歴",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "このプロジェクトの全員に対して、すべてのファイルのテキストが {{time}} 時点の状態に戻り、削除したファイルも復元されます。名前を変更したファイルは新しい名前のままで、あとから追加した図やファイルもそのまま残ります。現在のテキストは履歴に残るため、あとで戻すこともできます。",
       "confirm": "プロジェクトを復元"
     },
+    "limited": "以前の変更には、完全な履歴を利用できる Overleaf プランが必要です。",
+    "unavailable": "このプロジェクトでのあなたのアクセス権には、履歴が含まれていません。",
+    "download": "ZIP でダウンロード",
+    "downloading": "ダウンロード中…",
+    "downloadKind": "ZIP",
+    "restoreOverleafProject": "Overleaf 上の全員に対して、すべてのファイルが {{time}} 時点の状態に戻り、それ以降に追加されたファイルは削除されます。Overleaf は現在のバージョンを履歴に残すため、あとで戻すこともできます。",
     "compareTitle": "2 つのバージョン間の変更",
     "compareDescription": "{{from}} から {{to}} まで",
     "changedFiles": "変更されたファイル: {{number}} 件",
@@ -1310,8 +1345,6 @@
     "commenter": "あなたはコメント投稿者になりました。このプロジェクトは閲覧とコメントができますが、編集はできません。",
     "reviewerBy": "{{name}} があなたをレビュアーに変更しました。あなたの編集は提案になり、所有者または編集者が承認します。",
     "reviewer": "あなたはレビュアーになりました。あなたの編集は提案になり、所有者または編集者が承認します。",
-    "reviewing": "あなたはこのプロジェクトのレビュアーなので、編集は提案として送られます。",
-    "trackingChanges": "このプロジェクトでは変更履歴がオンになっているため、編集は提案として送られます。",
     "viewOnly": "この共有プロジェクトは閲覧できますが、編集はできません。",
     "askOnOverleaf": "Overleaf でアクセスを依頼",
     "connecting": "この共有プロジェクトはまだ接続中のため、まだ変更できません。少し待ってからもう一度お試しください。",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "{{server}} からサインアウトしているため、このプロジェクトは同期されていません。入力は続けられます。変更はこのコンピューターに残り、もう一度サインインすると Overleaf に送られます。",
+    "signedOutAs": "このプロジェクトは {{server}} の {{email}} のものです。そのアカウントはサインインしていないため、プロジェクトは同期されていません。入力は続けられます。変更はこのコンピューターに残り、{{email}} でサインインすると Overleaf に送られます。",
+    "signInAs": "{{email}} でサインイン",
     "accountChangedOne": "別のアカウントでサインインしているため、{{email}} で行った変更は送信されませんでした。変更は {{copy}} として残っています。",
     "accountChangedMany": "別のアカウントでサインインしているため、{{email}} で行った変更は送信されませんでした。変更は各ファイルの隣にコピーとして残っています。",
     "keptAs": "{{file}} は {{copy}} として残っています",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "{{file}} の一部の文字（絵文字など）は、Overleaf に保存できないため置き換えられました。",
     "tryLiveAgain": "ライブ編集を再試行",
     "keepMineAsCopy": "自分のをコピーとして残す",
-    "stoppedActionFailed": "{{file}} の操作が完了しませんでした。しばらく待ってから、もう一度クリックしてください。"
+    "settingNotSent": {
+      "no_equivalent": "Overleaf にはこのプロジェクトの {{setting}} に対応するものがないため、Overleaf 上の {{setting}} は変わりません。",
+      "refused": "Overleaf は {{setting}} の変更を受け付けませんでした。",
+      "failed": "Oleafly は {{setting}} の変更を Overleaf に送信できませんでした。次の変更のときにもう一度試します。",
+      "conflict": "{{setting}} がここと Overleaf で同時に変更されました。Overleaf 側の選択が残ります。"
+    },
+    "settingNames": {
+      "main_doc": "メイン文書",
+      "compiler": "コンパイラ",
+      "spelling": "スペルチェックの言語",
+      "image": "TeX Live のバージョン",
+      "bibliography": "メインの参考文献"
+    },
+    "stoppedActionFailed": "{{file}} の操作が完了しませんでした。しばらく待ってから、もう一度クリックしてください。",
+    "filling": "Overleaf からプロジェクトを開いています: ファイル {{total}} 件中 {{done}} 件",
+    "fillingFiles": "Overleaf からプロジェクトを開いています: 残りのファイルをダウンロード中",
+    "emptyCopy": "このプロジェクトはもう Overleaf になく、そのファイルは 1 つもこのコンピューターに届いていません。",
+    "removeEmptyCopy": "空のコピーを削除",
+    "removeFailed": "Oleafly は空のコピーを削除できませんでした。"
   },
   "overleafTree": {
     "deleteTitle": "Overleaf でも削除しますか？",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Overleaf でも削除",
     "keep": "Overleaf に残す",
     "notAllowed": "Overleaf ではこのプロジェクトのファイルを変更できないため、{{files}} への変更はこのコンピューターに残ります。",
-    "keptAway": "ここでは削除済みですが、Overleaf にはまだあります: {{files}}"
+    "keptAway": "ここでは削除済みですが、Overleaf にはまだあります: {{files}}",
+    "linkedKept": "Overleaf では {{files}} がソースにリンクされているため、変更はこのコンピューターに残ります。Overleaf のコピーに戻すには「ソースから更新」を選んでください。"
+  },
+  "overleafLinked": {
+    "banner": "{{file}} は Overleaf 上で {{source}} にリンクされています。",
+    "bannerNoSource": "{{file}} は Overleaf 上でソースにリンクされています。",
+    "readOnly": "{{file}} は Overleaf 上でソースにリンクされています。更新するには「ソースから更新」を選んでください。",
+    "treeHint": "Overleaf 上でソースにリンク済み",
+    "refresh": "ソースから更新",
+    "refreshing": "更新中",
+    "refusedWith": "Overleaf は更新できませんでした: {{message}}"
   }
 }

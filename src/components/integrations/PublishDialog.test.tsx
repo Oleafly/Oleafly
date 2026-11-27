@@ -737,6 +737,7 @@ describe("PublishDialog", () => {
       mocks.forgeListRepos.mockReturnValue(repos.promise);
       const user = userEvent.setup();
       renderDialog();
+      await afterInitialFocus();
 
       await user.click(screen.getByRole("tab", { name: "Link existing" }));
       expect(screen.getByText(enCommon.state.loading)).toBeInTheDocument();
@@ -816,6 +817,7 @@ describe("PublishDialog accounts and addresses", () => {
     useAccounts([gitlabAccount]);
     mocks.forgeListRepos.mockResolvedValue(page([], null, true));
     const view = renderDialog();
+    await afterInitialFocus();
 
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
     await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "thesis");
@@ -828,6 +830,7 @@ describe("PublishDialog accounts and addresses", () => {
     useAccounts([githubAccount]);
     mocks.forgeListRepos.mockResolvedValue(page([createdRepo]));
     renderDialog();
+    await afterInitialFocus();
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
     await screen.findByText("prajwal/research-notes");
     await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "zzz");

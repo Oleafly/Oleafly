@@ -599,6 +599,17 @@ fn role_of(project_id: &str) -> Option<ProjectRole> {
 }
 
 pub fn refuse_viewer(project_id: &str) -> Result<(), String> {
+    if let Some(live) = super::live::overleaf::commands::live_now(project_id) {
+        return if live.refuses_settings() {
+            Err(crate::app_error::AppError::new("project.shared_settings_viewer").into())
+        } else {
+            Ok(())
+        };
+    }
+    refuse_server_viewer(project_id)
+}
+
+pub fn refuse_server_viewer(project_id: &str) -> Result<(), String> {
     if !super::registry::is_shared(project_id) {
         return Ok(());
     }
@@ -613,6 +624,9 @@ pub fn refuse_viewer(project_id: &str) -> Result<(), String> {
 pub fn local_changed(project_id: &str) {
     if let Some(active) = super::live::active_for(project_id) {
         active.follow_settings();
+    }
+    if let Some(live) = super::live::overleaf::commands::live_now(project_id) {
+        live.settings_changed_here();
     }
 }
 

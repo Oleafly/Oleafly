@@ -9,6 +9,12 @@ const session = vi.hoisted(() => ({ openInlineEditWithInstruction: vi.fn(() => t
 const handoff = vi.hoisted(() => ({ handoffToAssistant: vi.fn() }));
 const providerConfig = vi.hoisted(() => ({ current: null as unknown }));
 const usage = vi.hoisted(() => ({ recordSavedInstructionUse: vi.fn(async (_ids: readonly string[]) => {}) }));
+const snippets = vi.hoisted(() => ({ fieldSelected: false }));
+
+vi.mock("@oleafly/editor", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@oleafly/editor")>()),
+  snippetFieldSelected: () => snippets.fieldSelected,
+}));
 
 vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("@/components/editor/cm/inline-ai/openSession", () => session);
@@ -70,6 +76,7 @@ describe("SelectionActionMenu", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    snippets.fieldSelected = false;
     providerConfig.current = null;
     useInlineEditStore.setState({ picked: [] });
     controller.getEditorView.mockReturnValue(editorView());
@@ -97,6 +104,16 @@ describe("SelectionActionMenu", () => {
       window.dispatchEvent(new Event("mouseup"));
     });
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("stays hidden while the selection is a snippet field waiting to be typed over", () => {
+    snippets.fieldSelected = true;
+    expect(showPill()).toBeNull();
+    snippets.fieldSelected = false;
+    act(() => {
+      window.dispatchEvent(new Event("mouseup"));
+    });
+    expect(screen.getByText(actions.askAi)).toBeTruthy();
   });
 
   it("places the pill above the selection, or below it on the editor's first line", () => {

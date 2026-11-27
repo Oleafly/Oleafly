@@ -1178,6 +1178,7 @@
     "elsewhere": "Canlı düzenleme başka bir notta açık",
     "makeLive": "Burada canlı düzenle",
     "viewOnly": "Bu notu okuyabilirsiniz ama düzenleyemezsiniz.",
+    "suggesting": "Öneri modu açık, bu yüzden bu notu burada düzenleyemezsiniz. Düzenlemek için öneri modunu kapatın.",
     "someone": "Biri",
     "unsentReadOnly": "Bu nottaki son değişiklikleriniz gönderilmedi, çünkü artık notu yalnızca görüntüleyebilirsiniz.",
     "unsentRefused": "Oleafly bu nottaki son değişikliklerinizi gönderemedi, bu yüzden değişiklikler atıldı."

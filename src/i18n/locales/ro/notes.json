@@ -1194,6 +1194,7 @@
     "elsewhere": "Editarea în timp real este activă în altă notiță",
     "makeLive": "Editează în timp real aici",
     "viewOnly": "Poți citi această notiță, dar nu o poți edita.",
+    "suggesting": "Modul de sugerare este activat, așa că nu poți edita această notiță aici. Dezactivează modul de sugerare ca s-o editezi.",
     "someone": "Cineva",
     "unsentReadOnly": "Ultimele tale modificări la această notiță nu au fost trimise, pentru că acum o poți doar vizualiza.",
     "unsentRefused": "Oleafly nu a putut trimite ultimele tale modificări la această notiță, așa că s-au pierdut."

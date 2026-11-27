@@ -39,22 +39,22 @@ pub struct CommentAnchor {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentResolution {
-    pub by: AccountId,
+pub struct CommentResolution<Who = AccountId> {
+    pub by: Who,
     pub at: i64,
     pub verified: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentMessage {
-    pub id: CommentId,
-    pub author: AccountId,
+pub struct CommentMessage<Id = CommentId, Who = AccountId> {
+    pub id: Id,
+    pub author: Who,
     pub at: i64,
     pub body: String,
     pub edited_at: Option<i64>,
     pub deleted: bool,
-    pub mentions: Vec<AccountId>,
+    pub mentions: Vec<Who>,
     pub verified: bool,
     #[serde(default)]
     pub reactions: Vec<Reaction>,
@@ -66,21 +66,21 @@ pub struct CommentMessage {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentThread {
-    pub id: CommentId,
+pub struct CommentThread<Id = CommentId, Who = AccountId> {
+    pub id: Id,
     pub file_id: String,
     pub anchor: CommentAnchor,
-    pub created_by: AccountId,
+    pub created_by: Who,
     pub created_at: i64,
-    pub resolved: Option<CommentResolution>,
-    pub messages: Vec<CommentMessage>,
+    pub resolved: Option<CommentResolution<Who>>,
+    pub messages: Vec<CommentMessage<Id, Who>>,
     pub verified: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentMember {
-    pub account_id: AccountId,
+pub struct CommentMember<Who = AccountId> {
+    pub account_id: Who,
     pub display_name: String,
     #[serde(default)]
     pub login: Option<String>,
@@ -412,9 +412,12 @@ fn handle_length(rest: &str, handle: &str) -> Option<usize> {
     }
 }
 
-pub fn mentions_in(body: &str, members: &[CommentMember]) -> Vec<AccountId> {
+pub fn mention_spans<Who: Clone>(
+    body: &str,
+    members: &[CommentMember<Who>],
+) -> Vec<(std::ops::Range<usize>, Who)> {
     let code = code_spans(body);
-    let mut found: Vec<AccountId> = Vec::new();
+    let mut found = Vec::new();
     let mut previous: Option<char> = None;
     for (index, character) in body.char_indices() {
         let at_word_start = previous.is_none_or(|before| !word_character(before) && before != '@');
@@ -429,14 +432,22 @@ pub fn mentions_in(body: &str, members: &[CommentMember]) -> Vec<AccountId> {
                 std::iter::once(member.display_name.trim())
                     .chain(member.login.as_deref().map(str::trim))
                     .filter_map(move |handle| {
-                        handle_length(rest, handle).map(|length| (length, member.account_id))
+                        handle_length(rest, handle).map(|length| (length, member))
                     })
             })
             .max_by_key(|(length, _)| *length);
-        if let Some((_, account)) = best {
-            if !found.contains(&account) {
-                found.push(account);
-            }
+        if let Some((length, member)) = best {
+            found.push((index..index + 1 + length, member.account_id.clone()));
+        }
+    }
+    found
+}
+
+pub fn mentions_in<Who: Clone + PartialEq>(body: &str, members: &[CommentMember<Who>]) -> Vec<Who> {
+    let mut found: Vec<Who> = Vec::new();
+    for (_, account) in mention_spans(body, members) {
+        if !found.contains(&account) {
+            found.push(account);
         }
     }
     found
@@ -1867,6 +1878,33 @@ mod tests {
             mentions_in("\\`@bob\\` is not code", &members),
             vec![bob.account_id]
         );
+    }
+
+    #[test]
+    fn mention_spans_cover_each_handle_with_any_kind_of_id() {
+        let members = vec![
+            CommentMember {
+                account_id: "a1".to_owned(),
+                display_name: "Ana Lima".to_owned(),
+                login: None,
+            },
+            CommentMember {
+                account_id: "b2".to_owned(),
+                display_name: "Bo".to_owned(),
+                login: Some("bo_k".to_owned()),
+            },
+        ];
+        let body = "Größe @Ana Lima, see @bo_k and `@Bo` and @Ana Lima";
+        let spans = mention_spans(body, &members);
+        let found: Vec<(&str, &str)> = spans
+            .iter()
+            .map(|(span, id)| (&body[span.clone()], id.as_str()))
+            .collect();
+        assert_eq!(
+            found,
+            vec![("@Ana Lima", "a1"), ("@bo_k", "b2"), ("@Ana Lima", "a1")]
+        );
+        assert_eq!(mentions_in(body, &members), vec!["a1", "b2"]);
     }
 
     fn reaction(emoji: &str, by: &[AccountId]) -> Reaction {

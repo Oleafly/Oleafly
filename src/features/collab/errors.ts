@@ -57,8 +57,16 @@ export const COLLAB_ERROR_CODES = [
   "suggestion_role",
   "suggestion_changed",
   "suggestion_too_long",
+  "suggestion_gone",
+  "review_off_server",
   "chat_role",
+  "chat_edit_off",
+  "chat_off_server",
   "history_unavailable",
+  "history_plan_limit",
+  "restore_off_server",
+  "linked_off_server",
+  "linked_refresh_failed",
   "account_storage_full",
   "too_many_projects",
   "too_many_uploads",
@@ -74,6 +82,10 @@ export const COLLAB_ERROR_CODES_COMPLETE: [UnlistedCode] extends [never] ? true 
 
 export type CollabErrorContext = "members" | "allowlist" | "domains";
 
+export type CollabErrorParams = Readonly<Record<string, string>>;
+
+export const NO_PARAMS: CollabErrorParams = Object.freeze({});
+
 const CONFLICT_MESSAGES: Readonly<Record<CollabErrorContext, () => string>> = {
   members: () => i18n.t(($) => $.collab.admin.members.lastAdmin),
   allowlist: () => i18n.t(($) => $.collab.admin.allowlist.duplicate),
@@ -86,9 +98,20 @@ export function collabErrorCode(error: unknown): CollabErrorCode {
   return "internal";
 }
 
-export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorContext): string {
+export function collabErrorParams(error: unknown): CollabErrorParams {
+  return (isCollabCommandError(error) && error.params) || NO_PARAMS;
+}
+
+export function collabErrorMessage(
+  code: CollabErrorCode,
+  context?: CollabErrorContext,
+  params: CollabErrorParams = NO_PARAMS,
+): string {
   if (context && (code === "conflict" || (code === "duplicate_entry" && context !== "members"))) {
     return CONFLICT_MESSAGES[context]();
+  }
+  if (code === "live_elsewhere" && params.by === "cli" && params.pid) {
+    return i18n.t(($) => $.collab.liveElsewhere.cli, { pid: params.pid });
   }
   return i18n.t(($) => $.collab.errors[code]);
 }
@@ -96,5 +119,5 @@ export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorC
 export function collabErrorText(error: unknown, context?: CollabErrorContext): string {
   const code = collabErrorCode(error);
   if (code === "invalid" && isCollabCommandError(error) && error.message.trim()) return error.message.trim();
-  return collabErrorMessage(code, context);
+  return collabErrorMessage(code, context, collabErrorParams(error));
 }

@@ -166,7 +166,7 @@ export function WebCommentKit({
       exact: (at) => dateTime(at),
       members,
       self,
-      hue: (accountId) => peerHue(accountId, self),
+      hue: (accountId) => peerHue(accountId, self, "server"),
       describeError: (failure) => t(($) => $.web.errors[failureKey(failure)]),
       canRetry: webRetryable,
       Confirm: ConfirmDialog,

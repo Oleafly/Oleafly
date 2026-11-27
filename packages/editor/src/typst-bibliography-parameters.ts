@@ -1,5 +1,4 @@
 import {
-  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -8,9 +7,10 @@ import { enclosingFrames, typstStyleVersion } from "./bibliography-styles";
 import { createCompletionRequestGuard } from "./completion-request";
 import { guardCompletionForSource } from "./latex";
 import { editorMessage, type EditorMessageKey } from "./messages";
+import { templateApply } from "./snippets/template";
 
 const CONTEXT_LIMIT = 4_000;
-export const MULTIPLE_BIBLIOGRAPHIES_SINCE: readonly [number, number] = [0, 15];
+const MULTIPLE_BIBLIOGRAPHIES_SINCE: readonly [number, number] = [0, 15];
 const NAME_AT_END = /(?:^|[,(])\s*([A-Za-z_][\w-]*|)$/u;
 const VALUE_AT_END = /(?:^|[,(])\s*(target|group)\s*:\s*([\w."-]*)$/u;
 
@@ -102,7 +102,7 @@ function minorVersion(version: string | null): readonly [number, number] | null 
   return match ? [Number(match[1]), Number(match[2])] : null;
 }
 
-export function typstVersionAtLeast(version: string | null, since: readonly [number, number]): boolean {
+function typstVersionAtLeast(version: string | null, since: readonly [number, number]): boolean {
   const minor = minorVersion(version);
   if (!minor) return true;
   return minor[0] > since[0] || (minor[0] === since[0] && minor[1] >= since[1]);
@@ -148,7 +148,7 @@ export function typstBibliographyParameterCompletions(
         label: option.label,
         type: option.type,
         detail: editorMessage(option.detail),
-        apply: option.template.includes("${") ? snippet(option.template) : option.template,
+        apply: option.template.includes("${") ? templateApply(option.template) : option.template,
       } satisfies Completion),
     ),
   };

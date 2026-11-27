@@ -232,8 +232,16 @@
     "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor.",
     "suggestion_changed": "Bu önerinin çevresindeki metin değişti, bu yüzden öneriyi bir sahip ya da düzenleyen kabul etmeli veya reddetmeli.",
     "suggestion_too_long": "Bir silme önerisi en fazla 20.000 karakter uzunluğunda olabilir. Her seferinde daha küçük bir bölümü silin.",
+    "suggestion_gone": "Bu değişiklik artık yok. Biri onu kabul etmiş, reddetmiş ya da düzenlemiş olabilir.",
+    "review_off_server": "Bu sunucu izlenen değişikliklerde bunu yapamıyor.",
     "chat_role": "Bu projedeki rolünüz sohbette bunu yapmaya izin vermiyor.",
+    "chat_edit_off": "Bu sunucu sohbet mesajlarını düzenleyemiyor.",
+    "chat_off_server": "Bu Overleaf sunucusunda sohbet yok.",
     "history_unavailable": "Bu projenin geçmişi henüz bu bilgisayarda yok. Proje eşitlendikten sonra yeniden deneyin.",
+    "history_plan_limit": "Bu projenin Overleaf planı eski sürümleri saklamıyor.",
+    "restore_off_server": "Bu Overleaf sunucusu eski sürümleri geri yükleyemiyor. Bunun yerine metni sürümden kopyalayın.",
+    "linked_off_server": "Bu Overleaf sunucusu bağlı dosyaları yenilemiyor.",
+    "linked_refresh_failed": "Overleaf bu dosyayı kaynağından yenileyemedi.",
     "account_storage_full": "Proje sahibinin hesabının bu sunucudaki depolama alanı doldu. Yer açmak için bazı dosyaları kaldırın veya sunucunun yöneticisinden daha fazla alan isteyin.",
     "too_many_projects": "Bu sunucunun izin verdiği kadar paylaşılan projeniz zaten var. Başka bir projeyi paylaşmadan önce birinin paylaşımını durdurun.",
     "too_many_uploads": "Son bir saatte çok fazla yükleme yaptınız. Daha sonra yeniden deneyin.",
@@ -241,6 +249,9 @@
     "too_many_pages": "Bu sunucunun izin verdiği kadar herkese açık sayfanız var. Birinin yayımını geri çekip yeniden deneyin.",
     "page_too_large": "Bu not yayımlanamayacak kadar büyük. Bazı görselleri kaldırıp yeniden deneyin.",
     "page_taken_down": "Bir yönetici bu sayfayı yayından kaldırdı, bu yüzden sayfa yeniden yayına alınana kadar bu not tekrar yayımlanamaz."
+  },
+  "liveElsewhere": {
+    "cli": "Bu proje komut satırında, {{pid}} numaralı işlemde canlı olarak açık. Canlı düzenlemeyi orada durdurun, sonra yeniden deneyin."
   },
   "roles": {
     "admin": "Yönetici",
@@ -1051,6 +1062,8 @@
     "add": "Yorum ekle",
     "allResolved": "Tüm yorumlar çözüldü.",
     "noResolved": "Çözülmüş yorum yok",
+    "noChanges": "İzlenen değişiklik yok",
+    "overleafOff": "Bu Overleaf sunucusunda yorumlar yok, bu yüzden burada yalnızca izlenen değişiklikler görünür.",
     "emptyTitle": "Henüz yorum yok",
     "emptyHint": "Metin seçip Yorum ekle'yi seçin ya da {keys} tuşlarına basın",
     "readOnlyNote": "Bu projedeki yorumları okuyabilirsiniz. Yanıt vermek veya tepki eklemek için bir proje sahibinden yorumcu erişimi isteyin.",
@@ -1149,6 +1162,8 @@
     "unverifiedCard": "Oleafly'nin doğrulayamadığı birinden öneri",
     "added": "Eklendi",
     "deleted": "Silindi",
+    "replaced": "Değiştirilen",
+    "replacedWith": "Yeni hâli",
     "accept": "Kabul et",
     "reject": "Reddet",
     "withdraw": "Geri çek",
@@ -1157,6 +1172,7 @@
     "fileActions": "{{file}} dosyasındaki öneriler",
     "pendingCount": "Bekleyen öneriler: {{number}}",
     "loadFailed": "Bu dosyanın önerileri yüklenemedi.",
+    "acceptOffServer": "Bu Overleaf sunucusu bu dosyadaki izlenen değişiklikleri kabul edemiyor. Yine de onları reddedebilirsiniz.",
     "rejectAllConfirm": {
       "title": "{{file}} dosyasındaki tüm öneriler reddedilsin mi?",
       "description": "Özgün metin, bu projedeki herkes için dosyaya geri döner. Bekleyen öneriler: {{number}}.",
@@ -1175,7 +1191,15 @@
       "suggesting": "Öneri",
       "editingHint": "Düzenleme: düzenlemeleriniz metni anında değiştirir",
       "suggestingHint": "Öneri: düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür",
-      "reviewerHint": "İnceleyen olduğunuz için düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür"
+      "reviewerHint": "İnceleyen olduğunuz için düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür",
+      "locked": {
+        "everyone": "Bu projede herkes için değişiklik izleme açık, bu yüzden düzenlemeleriniz öneriye dönüşür",
+        "plan": "Bu projenin Overleaf planı değişiklik izlemeyi içermiyor",
+        "server": "Bu Overleaf sunucusu değişiklik izlemeyi açıp kapatamıyor"
+      },
+      "others": "Başkaları için değişiklik izleme",
+      "forEveryone": "Herkes için",
+      "forGuests": "Bağlantıyla katılanlar için"
     }
   },
   "chat": {
@@ -1194,6 +1218,7 @@
     "readOnly": "Görüntüleyenler sohbeti okuyabilir ama sohbete yazamaz.",
     "offline": "Bu proje şu anda bağlı değil, bu yüzden mesaj gönderemezsiniz.",
     "messageActions": "Bu mesaj için diğer işlemler",
+    "editLabel": "Mesajı düzenle",
     "deleteConfirm": {
       "title": "Bu mesaj silinsin mi?",
       "description": "Bu projedeki herkes için silinir."
@@ -1207,6 +1232,10 @@
     },
     "loadFailed": "Oleafly sohbeti yükleyemedi.",
     "loadOlder": "Daha eski mesajları göster"
+  },
+  "people": {
+    "invited": "Davet edildi",
+    "former": "(projeden ayrıldı)"
   },
   "history": {
     "title": "Geçmiş",
@@ -1246,6 +1275,12 @@
       "textAndDeleted": "Her dosyanın metni, bu projedeki herkes için {{time}} itibarıyla olduğu hâline döner ve silinen dosyalar geri gelir. Yeniden adlandırılan dosyalar yeni adlarını korur, sonradan eklenen şekiller ve dosyalar ise olduğu gibi kalır. Şu anki metin geçmişte tutulur, böylece ona geri dönebilirsiniz.",
       "confirm": "Projeyi geri yükle"
     },
+    "limited": "Daha eski değişiklikler için tam geçmiş sunan bir Overleaf planı gerekir.",
+    "unavailable": "Bu projeye erişiminiz projenin geçmişini kapsamıyor.",
+    "download": "ZIP olarak indir",
+    "downloading": "İndiriliyor…",
+    "downloadKind": "ZIP dosyası",
+    "restoreOverleafProject": "Her dosya, Overleaf üzerinde herkes için {{time}} itibarıyla olduğu hâline döner ve o zamandan beri eklenen dosyalar silinir. Overleaf geçerli sürümü geçmişinde saklar, böylece ona geri dönebilirsiniz.",
     "compareTitle": "İki sürüm arasındaki değişiklikler",
     "compareDescription": "{{from}} ile {{to}} arası",
     "changedFiles": "Değişen dosyalar: {{number}}",
@@ -1310,8 +1345,6 @@
     "commenter": "Artık yorumcusunuz. Bu projeyi okuyup yorum yapabilirsiniz ancak düzenleyemezsiniz.",
     "reviewerBy": "{{name}} sizi inceleyen yaptı. Düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür.",
     "reviewer": "Artık inceleyensiniz. Düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür.",
-    "reviewing": "Bu projede inceleyensiniz, bu yüzden düzenlemeleriniz öneri olarak eklenir.",
-    "trackingChanges": "Bu projede değişiklik izleme açık, bu yüzden düzenlemeleriniz öneri olarak eklenir.",
     "viewOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz.",
     "askOnOverleaf": "Overleaf'te erişim iste",
     "connecting": "Bu paylaşılan proje hâlâ bağlanıyor, bu yüzden henüz değiştirilemez. Birazdan yeniden deneyin.",
@@ -1389,6 +1422,8 @@
   },
   "overleafBanners": {
     "signedOut": "{{server}} sunucusundaki oturumunuz kapalı, bu yüzden bu proje eşitlenmiyor. Yazmaya devam edebilirsiniz. Değişiklikleriniz bu bilgisayarda kalır ve yeniden oturum açtığınızda Overleaf'e gider.",
+    "signedOutAs": "Bu proje {{server}} sunucusundaki {{email}} hesabına ait. Bu hesapta oturum açık değil, bu yüzden proje eşitlenmiyor. Yazmaya devam edebilirsiniz. Değişiklikleriniz bu bilgisayarda kalır ve {{email}} olarak oturum açtığınızda Overleaf tarafına gönderilir.",
+    "signInAs": "{{email}} olarak oturum aç",
     "accountChangedOne": "Artık farklı bir hesapla oturum açtınız, bu yüzden {{email}} olarak yaptığınız değişiklikler gönderilmedi. Bunlar {{copy}} olarak saklandı.",
     "accountChangedMany": "Artık farklı bir hesapla oturum açtınız, bu yüzden {{email}} olarak yaptığınız değişiklikler gönderilmedi. Bunlar, dosyalarının yanında kopya olarak saklandı:",
     "keptAs": "{{file}} dosyası {{copy}} olarak saklandı",
@@ -1418,7 +1453,25 @@
     "charactersReplaced": "Overleaf saklayamadığı için {{file}} dosyasındaki emoji gibi bazı karakterler değiştirildi.",
     "tryLiveAgain": "Canlıyı yeniden dene",
     "keepMineAsCopy": "Benimkini kopya olarak tut",
-    "stoppedActionFailed": "{{file}} dosyası için işlem tamamlanmadı. Biraz bekleyin, sonra yeniden tıklayın."
+    "settingNotSent": {
+      "no_equivalent": "Overleaf üzerinde bu projenin {{setting}} ayarına karşılık gelen bir ayar yok, bu yüzden Overleaf üzerindeki {{setting}} ayarı aynı kalır.",
+      "refused": "Overleaf, {{setting}} ayarındaki değişikliği reddetti.",
+      "failed": "Oleafly, {{setting}} ayarındaki değişikliği Overleaf tarafına gönderemedi. Bir sonraki değişiklikte yeniden dener.",
+      "conflict": "{{setting}} ayarı burada ve Overleaf üzerinde aynı anda değişti. Overleaf tarafındaki seçim korunur."
+    },
+    "settingNames": {
+      "main_doc": "ana belge",
+      "compiler": "derleyici",
+      "spelling": "yazım denetimi dili",
+      "image": "TeX Live sürümü",
+      "bibliography": "ana kaynakça"
+    },
+    "stoppedActionFailed": "{{file}} dosyası için işlem tamamlanmadı. Biraz bekleyin, sonra yeniden tıklayın.",
+    "filling": "Proje Overleaf üzerinden açılıyor: {{done}}/{{total}} dosya",
+    "fillingFiles": "Proje Overleaf üzerinden açılıyor: son dosyalar indiriliyor",
+    "emptyCopy": "Bu proje artık Overleaf üzerinde yok ve dosyalarının hiçbiri bu bilgisayara ulaşmadı.",
+    "removeEmptyCopy": "Boş kopyayı kaldır",
+    "removeFailed": "Oleafly boş kopyayı kaldıramadı."
   },
   "overleafTree": {
     "deleteTitle": "Overleaf'ten de silinsin mi?",
@@ -1426,6 +1479,16 @@
     "deleteConfirm": "Overleaf'ten de sil",
     "keep": "Overleaf'te tut",
     "notAllowed": "Bu projedeki dosyaları Overleaf'te değiştiremezsiniz, bu yüzden şu dosyalardaki değişiklikleriniz bu bilgisayarda kalır: {{files}}.",
-    "keptAway": "Burada silindi ama hâlâ Overleaf'te: {{files}}"
+    "keptAway": "Burada silindi ama hâlâ Overleaf'te: {{files}}",
+    "linkedKept": "Overleaf, {{files}} dosyalarını bir kaynağa bağlıyor, bu yüzden değişiklikleriniz bu bilgisayarda kalır. Overleaf kopyasını geri almak için Kaynaktan yenile seçeneğini seçin."
+  },
+  "overleafLinked": {
+    "banner": "{{file}} dosyası Overleaf üzerinde {{source}} kaynağına bağlı.",
+    "bannerNoSource": "{{file}} dosyası Overleaf üzerinde bir kaynağa bağlı.",
+    "readOnly": "{{file}} dosyası Overleaf üzerinde bir kaynağa bağlı. Güncellemek için Kaynaktan yenile seçeneğini seçin.",
+    "treeHint": "Overleaf üzerinde bir kaynağa bağlı",
+    "refresh": "Kaynaktan yenile",
+    "refreshing": "Yenileniyor",
+    "refusedWith": "Overleaf dosyayı yenileyemedi: {{message}}"
   }
 }

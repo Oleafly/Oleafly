@@ -18,6 +18,7 @@ function confirmation() {
 beforeEach(() => {
   localStorage.clear();
   useDictionary.getState().clearAll();
+  useDictionary.setState({ synced: {} });
   useFilesStore.setState({
     projectId: "thesis",
     projects: [
@@ -116,5 +117,20 @@ describe("project ignored words", () => {
     await user.click(screen.getByTestId("dictionary-tab-projects"));
 
     expect(screen.getByText(copy.projects.empty)).toBeInTheDocument();
+  });
+});
+
+describe("the Overleaf learned words line", () => {
+  it("shows only once a dictionary is kept in step with Overleaf and warns before clearing it", async () => {
+    const user = userEvent.setup();
+    useDictionary.getState().ignoreGlobal("Zeta");
+    const { unmount } = render(<ProofreadingDictionarySection />);
+    expect(screen.queryByTestId("dictionary-overleaf-synced")).toBeNull();
+    unmount();
+    useDictionary.getState().setSynced("https://latex.uni.edu\nalice", ["Zeta"]);
+    render(<ProofreadingDictionarySection />);
+    expect(screen.getByTestId("dictionary-overleaf-synced")).toHaveTextContent(copy.global.overleafSynced);
+    await user.click(screen.getByRole("button", { name: enCommon.actions.clear }));
+    expect(confirmation()).toHaveTextContent(`${copy.clear.descriptionGlobal} ${copy.clear.descriptionOverleaf}`);
   });
 });

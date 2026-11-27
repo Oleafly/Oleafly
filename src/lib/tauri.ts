@@ -180,7 +180,6 @@ export interface BrowserCookieSource {
   profile: string | null;
   profileName: string | null;
   status: BrowserCookieSourceStatus;
-  detail: string;
 }
 
 export interface BrowserCookieImportRequest {
@@ -200,6 +199,8 @@ export const reloadViews = () => invoke<void>("reload_views");
 
 export const detectBrowserCookieSources = () =>
   invoke<BrowserCookieSource[]>("detect_browser_cookie_sources");
+
+export const COOKIE_IMPORT_CANCELLED = "Cookie import was cancelled. No cookies were imported.";
 
 export const importBrowserCookies = (request: BrowserCookieImportRequest) =>
   invoke<BrowserCookieImportSummary>("import_browser_cookies", {
@@ -1867,6 +1868,17 @@ export const searchDocs = (query: string) =>
 
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
+
+export interface SnippetFileEntry {
+  name: string;
+  text: string | null;
+  error: string | null;
+  modifiedMs: number;
+}
+
+export const listSnippetFiles = () => invoke<SnippetFileEntry[]>("snippets_list");
+export const writeSnippetFile = (name: string, text: string) =>
+  invoke<void>("snippets_write", { name, text });
 
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>

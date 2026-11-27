@@ -1,0 +1,211 @@
+{
+  "doc": "6b04e4a3cb4fe3a455d4d18a",
+  "format": "sharejs-text-ot",
+  "steps": [
+    {
+      "step": 1,
+      "label": "bob types the base text",
+      "who": "bob",
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [
+            {
+              "doc": "6b04e4a3cb4fe3a455d4d18a",
+              "op": [
+                {
+                  "p": 0,
+                  "i": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n"
+                }
+              ],
+              "v": 0,
+              "hash": "ab18ef9993949f39ce41dc37cc843b94f6757051"
+            }
+          ],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": [
+            {
+              "t": 976,
+              "type": "warning",
+              "text": "Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."
+            },
+            {
+              "t": 1129,
+              "type": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+            },
+            {
+              "t": 1130,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"
+            },
+            {
+              "t": 1130,
+              "type": "error",
+              "text": "FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "label": "dave sends an anchor whose c is not the text at p",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e4a3cb4fe3a455d4d18a",
+        "v": 1,
+        "op": [
+          {
+            "p": 4,
+            "c": "slow",
+            "t": "6b04e4abc0ffee0001000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "error",
+        "error": [
+          "Comment component 'slow' does not match commented text 'quic'",
+          {
+            "project_id": "6afab5be1222cc50aa4c170b",
+            "doc_id": "6b04e4a3cb4fe3a455d4d18a",
+            "error": "Comment component 'slow' does not match commented text 'quic'",
+            "_id": "doc:c84a3935d1d3:e876b9c6-166",
+            "message": "otUpdateError"
+          }
+        ],
+        "disconnected": true
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 1,
+          "updateErrors": [
+            "5:::{\"name\":\"otUpdateError\",\"args\":[\"Comment component 'slow' does not match commented text 'quic'\",{\"project_id\":\"6afab5be1222cc50aa4c170b\",\"doc_id\":\"6b04e4a3cb4fe3a455d4d18a\",\"error\":\"Comment component 'slow' does not match commented text 'quic'\",\"_id\":\"doc:c84a3935d1d3:e876b9c6-166\",\"message\":\"otUpdateError\"}]}"
+          ],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 3,
+      "label": "dave sends an anchor that runs past the end of the doc",
+      "who": "dave",
+      "sent": {
+        "doc": "6b04e4a3cb4fe3a455d4d18a",
+        "v": 1,
+        "op": [
+          {
+            "p": 86,
+            "c": "beyond the end",
+            "t": "6b04e4aec0ffee0002000001"
+          }
+        ]
+      },
+      "result": {
+        "outcome": "error",
+        "error": [
+          "Comment component 'beyond the end' does not match commented text '.\n'",
+          {
+            "project_id": "6afab5be1222cc50aa4c170b",
+            "doc_id": "6b04e4a3cb4fe3a455d4d18a",
+            "error": "Comment component 'beyond the end' does not match commented text '.\n'",
+            "_id": "doc:c84a3935d1d3:e876b9c6-167",
+            "message": "otUpdateError"
+          }
+        ],
+        "disconnected": true
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": true,
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    },
+    {
+      "step": 4,
+      "label": "bob types after the errors",
+      "who": "bob",
+      "edit": {
+        "changes": {
+          "from": 0,
+          "insert": "Still here. "
+        },
+        "userEvent": "input.type"
+      },
+      "changeIds": {
+        "added": [],
+        "removed": []
+      },
+      "server": {
+        "version": 1,
+        "text": "The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+        "ranges": {}
+      },
+      "web": {
+        "bob": {
+          "matchesServer": false,
+          "text": "Still here. The quick brown fox jumps over the lazy dog.\nA second line, with Größe ☕ to comment on.\n",
+          "marks": {
+            "c": 0,
+            "i": 0,
+            "d": 0
+          },
+          "sent": [],
+          "disconnects": 0,
+          "updateErrors": [],
+          "console": []
+        }
+      }
+    }
+  ]
+}

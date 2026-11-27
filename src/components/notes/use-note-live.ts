@@ -7,13 +7,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   claimLiveNote,
+  collabDocumentSession,
   type NoteHandBack,
   type NoteLiveEditor,
   type NoteLiveHandle,
+  onCollabRelive,
   useCollabEditorGate,
   useCollabLiveNote,
   useCollabLiveProject,
   useCollabNoteLivePort,
+  useCollabRichTextLock,
 } from "@/lib/collab-live-bridge";
 import { canEditProjectRole } from "@/lib/collab-roles";
 import { logError } from "@/lib/log";
@@ -25,6 +28,8 @@ import {
   alignSharedNote,
   blockAtOffset,
   blockPosition,
+  type MarkdownDialect,
+  NOTE_DIALECT,
   parseSharedNote,
   sharedNoteSnapshot,
   sharedNoteTransaction,
@@ -81,10 +86,8 @@ function useViewerRole(projectId: string | null): boolean {
 
 export function useNoteReadOnly(noteId: string | null): boolean {
   const viewer = useViewerRole(noteId);
-  const gated = useCollabEditorGate(
-    (gate) => noteId !== null && gate.projectId === noteId && (gate.connecting || gate.locked),
-  );
-  return viewer || gated;
+  const lock = useCollabRichTextLock(noteId);
+  return viewer || lock !== null;
 }
 
 export function makeNoteLive(noteId: string): void {
@@ -134,6 +137,7 @@ export interface NoteLiveEditorState {
   live: boolean;
   readOnly: boolean;
   viewOnly: boolean;
+  suggesting: boolean;
 }
 
 function mainDocOf(noteId: string): string {
@@ -158,6 +162,7 @@ export function createNoteLiveEditor(
   host: () => Pick<NoteLiveHost, "sourceOf" | "adopt">,
   start: string,
   shown: () => boolean = () => true,
+  dialect: MarkdownDialect = NOTE_DIALECT,
 ): NoteLiveAdapter {
   const parsed = new Map<string, SharedNote>();
   const caretListeners = new Set<() => void>();
@@ -165,7 +170,7 @@ export function createNoteLiveEditor(
   const parse = (text: string): SharedNote => {
     const known = parsed.get(text);
     if (known) return known;
-    const note = parseSharedNote(editor.schema, text, latest);
+    const note = parseSharedNote(editor.schema, text, latest, dialect);
     latest = note;
     parsed.set(text, note);
     const kept = parsedNotesKept(text.length);
@@ -418,15 +423,12 @@ export function useNoteLiveEditor(
     livePath !== null && state.session?.projectId === liveId ? state.session : null,
   );
   const session = livePath === null ? noteSession : projectSession;
-  const gate = useCollabEditorGate(
-    useShallow((state) => ({
-      connecting: state.projectId === liveId && state.connecting,
-      locked: state.projectId === liveId && state.locked,
-    })),
-  );
+  const locked = useCollabEditorGate((state) => state.projectId === liveId && state.locked);
+  const lock = useCollabRichTextLock(liveId);
   const viewer = useViewerRole(liveId);
-  const viewOnly = gate.locked || viewer;
-  const readOnly = gate.connecting || viewOnly;
+  const viewOnly = locked || viewer;
+  const readOnly = viewOnly || lock !== null;
+  const suggesting = !viewOnly && lock === "suggest";
 
   const control = useMemo<NoteLiveControl>(
     () => ({
@@ -466,6 +468,7 @@ export function useNoteLiveEditor(
     let handle: NoteLiveHandle | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
     let attempts = 0;
+    let stopWaiting = () => {};
     const begin = async () => {
       await hostRef.current.settle();
       if (disposed || editor.isDestroyed) return;
@@ -478,12 +481,22 @@ export function useNoteLiveEditor(
           remoteHead.push(shared.text);
         },
       };
+      const document = livePath === null ? undefined : collabDocumentSession(livePath);
+      if (document === null) {
+        stopWaiting = onCollabRelive((path) => {
+          if (path !== livePath || disposed) return;
+          stopWaiting();
+          begin().catch(logLiveNoteError);
+        });
+        return;
+      }
       const adapter = createNoteLiveEditor(editor, () => liveHost, baseline.text, () => shownRef.current);
       const bound: NoteLiveHandle = port.bind({
         noteId: liveId,
         noticeId: noteId,
         path: livePath ?? mainDocOf(noteId),
         session,
+        document,
         editor: adapter,
         baseline,
         onOpen: () => {
@@ -512,6 +525,7 @@ export function useNoteLiveEditor(
     begin().catch(logLiveNoteError);
     return () => {
       disposed = true;
+      stopWaiting();
       if (retry !== null) clearTimeout(retry);
       handle?.end();
     };
@@ -532,14 +546,23 @@ export function useNoteLiveEditor(
     if (hasPending(editor, "agent")) showSuggestions(editor, [], "agent");
   }, [editor, viewOnly]);
 
+  useCompositionSettled(editor, () => handleRef.current?.compositionEnd());
+
+  return { state: { live, readOnly, viewOnly, suggesting }, control };
+}
+
+export function useCompositionSettled(editor: Editor | null, settled: () => void): void {
+  const settledRef = useRef(settled);
+  settledRef.current = settled;
   useEffect(() => {
+    if (!editor) return;
     const dom = editor.view.dom;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const ended = () => {
       if (timer !== null) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
-        handleRef.current?.compositionEnd();
+        settledRef.current();
       }, COMPOSITION_SETTLE_MS);
     };
     dom.addEventListener("compositionend", ended);
@@ -548,6 +571,4 @@ export function useNoteLiveEditor(
       if (timer !== null) clearTimeout(timer);
     };
   }, [editor]);
-
-  return { state: { live, readOnly, viewOnly }, control };
 }

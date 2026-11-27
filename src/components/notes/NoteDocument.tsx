@@ -4,13 +4,13 @@ import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { ChevronLeft, ChevronRight, SmilePlus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
-import { useCommentsRail } from "@/components/collab/comments-rail";
-import { noteCommentSurface, requestNoteComments, useCollabLiveNote } from "@/lib/collab-live-bridge";
+import { requestLiveNoteComment, showCommentsTab, useCommentsRail } from "@/components/collab/comments-rail";
+import { noteCommentSurface, onNoteCommentSurfaces, requestNoteComments } from "@/lib/collab-live-bridge";
 import { Button } from "@/components/ui/button";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { Spinner } from "@/components/ui/spinner";
@@ -192,17 +192,15 @@ function sameNoteDoc(left: ProseMirrorNode, right: ProseMirrorNode): boolean {
   return left.eq(right) || serializeNoteMarkdown(left.toJSON()) === serializeNoteMarkdown(right.toJSON());
 }
 
-function NoteCommentButton({ noteId }: Readonly<{ noteId: string }>) {
+function NoteCommentButton({ projectId, path }: Readonly<{ projectId: string; path: string | null }>) {
   const { t } = useTranslation(["notes"]);
   const canCompose = useCommentsRail((rail) => rail.visible && rail.canCompose);
-  const live = useCollabLiveNote((state) => state.noteId === noteId);
+  const live = useSyncExternalStore(onNoteCommentSurfaces, () => noteCommentSurface(projectId, path ?? undefined) !== null);
   if (!canCompose || !live) return null;
   const comment = () => {
-    const surface = noteCommentSurface(noteId);
-    const target = surface?.target();
-    if (!surface || !target) return;
-    useCommentsRail.setState({ request: { path: surface.path, ...target } });
-    requestNoteComments();
+    if (!requestLiveNoteComment(projectId, path ?? undefined)) return;
+    if (path === null) requestNoteComments();
+    else showCommentsTab();
   };
   return (
     <Button variant="ghost" size="xs" onClick={comment}>
@@ -1120,6 +1118,11 @@ function NoteEditor({
               {t(($) => $.notes.live.viewOnly)}
             </p>
           )}
+          {collab.state.suggesting && (
+            <p data-note-suggesting className="-mt-4 mb-6 text-xs text-muted-foreground">
+              {t(($) => $.notes.live.suggesting)}
+            </p>
+          )}
           <div data-note-blank className="wysiwyg-content note-body" style={noteColorStyle(facts.color)}>
             <EditorContent editor={editor} />
           </div>
@@ -1159,7 +1162,7 @@ function NoteEditor({
         </article>
         {bubble && (
           <NoteSelectionMenu editor={editor} anchor={bubble} onHold={(held) => (bubbleHeldRef.current = held)}>
-            <NoteCommentButton noteId={note.id} />
+            <NoteCommentButton projectId={live?.projectId ?? note.id} path={live?.path ?? null} />
             <Button
               variant="ghost"
               size="xs"

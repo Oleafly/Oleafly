@@ -1885,33 +1885,18 @@
       "disconnectFailed": "De verbinding met alphaXiv kon niet worden verbroken. Probeer het opnieuw."
     },
     "cookies": {
-      "confirmTitle": "Cookie-import bevestigen",
-      "detecting": "Zoeken naar geïnstalleerde browserprofielen...",
-      "dialogDescription": "Kies één geïnstalleerd browserprofiel. Oleafly leest het pas nadat je de import hebt bekeken en bevestigd. Chromium-cookies worden lokaal ontgrendeld via de macOS-sleutelhanger. Oleafly stuurt geen cookiewaarden naar een Oleafly-dienst.",
-      "dialogTitle": "Browsercookies importeren",
-      "empty": "Er zijn geen ondersteunde browserprofielen gevonden.",
-      "errors": {
-        "chooseProfile": "Kies een beschikbaar browserprofiel."
-      },
-      "profileGroupLabel": "Browserprofielen",
-      "profileLegend": "Browserprofiel",
-      "review": "Import bekijken",
-      "status": {
-        "available": "Beschikbaar",
-        "comingSoon": "Binnenkort",
-        "noCookieStore": "Geen cookieopslag",
-        "notInstalled": "Niet geïnstalleerd"
-      },
-      "tryAgain": "Opnieuw proberen",
-      "label": "Aanmelding uit een browser kopiëren",
-      "useBrowserSignIn": "De aanmelding uit je browser kopiëren",
-      "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
-      "site": "Site: {{domain}}",
-      "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
-      "copyAction": "Aanmelding kopiëren",
-      "copying": "Kopiëren…",
-      "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",
-      "notSignedIn_other": "{{count}} cookies gekopieerd uit {{browser}}, maar die hebben je niet aangemeld. Meld je rechtstreeks aan."
+      "dialogDescription": "Oleafly kopieert alleen de cookies voor {{server}}, meldt zich daarmee aan en verwijdert daarna de kopieën. Je wachtwoorden blijven in de browser.",
+      "dialogTitle": "Cookies uit je browser importeren",
+      "label": "Cookies uit je browser importeren",
+      "useBrowserSignIn": "Profiel kiezen",
+      "signInDescription": "Gebruikt het account op {{server}} waarmee een browserprofiel op deze computer al is aangemeld.",
+      "copyAction": "Importeren",
+      "copying": "Importeren…",
+      "from": "Uit",
+      "noCookies": "Nog geen cookies",
+      "sameAccount": "{{profile}} is aangemeld als {{account}}, en dat account gebruikt Oleafly al. Kies een ander profiel of meld je in die browser eerst aan met je andere account.",
+      "orExisting": "of gebruik een aanmelding die je al hebt",
+      "noSavedSignIn": "{{profile}} heeft geen opgeslagen aanmelding voor {{server}}, dus de gekopieerde cookies hebben je niet aangemeld. Ben je daar wel aangemeld, dan bewaart de browser de aanmelding misschien alleen tot hij sluit. Gebruik in plaats daarvan de tegel {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
@@ -1971,7 +1956,12 @@
       "signedIn": "Aangemeld op {{server}}",
       "signOut": "Afmelden",
       "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "addAccount": "Nog een account toevoegen",
+      "addAccountHint": "Kies waar je je aanmeldt. Alles begint zonder aanmelding, dus elk account werkt.",
+      "accountPick": "Account voor importeren",
+      "accountPickDescription": "Nieuwe imports en sjablonen gebruiken dit account. Projecten die je al hebt, houden het account waar ze vandaan komen.",
       "gitTitle": "Git-token voor synchronisatie",
+      "gitTitleFor": "Git-token voor {{email}}",
       "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
       "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
       "gitOpenSettings": "Overleaf-accountinstellingen openen",
@@ -1980,14 +1970,9 @@
       "gitSave": "Opslaan",
       "gitRemove": "Weghalen",
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt.",
-      "browserLabel": "Aanmelden met je browser",
-      "browserDescription": "Voor aanmelden met Google, je instelling of een passkey. Oleafly opent {{server}} in een nieuw browservenster en sluit het zodra je bent aangemeld.",
-      "browserAction": "Aanmelden",
-      "browserPick": "Browser om mee aan te melden",
       "browserWaiting": "Rond het aanmelden bij {{server}} af in {{browser}}. Als je het venster sluit, wordt het aanmelden geannuleerd.",
-      "browserHint": "Gebruik dit voor aanmelden met Google, je instelling of een passkey.",
-      "windowLabel": "Aanmelden bij {{server}}",
-      "windowDescription": "Oleafly opent een aanmeldvenster en sluit het zodra je bent aangemeld. Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en meld je hier daarmee aan.",
+      "windowLabel": "Aanmelden in Oleafly",
+      "windowDescription": "Het venster sluit vanzelf zodra je bent aangemeld. Werkt je passkey daar niet, gebruik dan je wachtwoord of een melding op je telefoon.",
       "windowAction": "Aanmelden",
       "windowWaiting": "Rond het aanmelden bij {{server}} af in het venster dat is geopend.",
       "unsent": {
@@ -2005,7 +1990,15 @@
           "always": "Ook op Overleaf verwijderen",
           "never": "Houden op Overleaf"
         }
-      }
+      },
+      "sameAccount": "Je bent al aangemeld als {{account}}. Meld je aan met een ander account om het toe te voegen.",
+      "windowTitle": "Aanmelden bij {{server}}",
+      "addAccountKept": "Je huidige account blijft aangemeld.",
+      "noBrowser": "Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en kies die hier.",
+      "tileHere": "In deze app",
+      "tileWindow": "Nieuw venster",
+      "tileWaiting": "Wacht op je",
+      "signInNote": "Gebruik een browser om je aan te melden met Google, je instelling of een passkey. Werkt je passkey niet in Oleafly, gebruik daar dan je wachtwoord of een melding op je telefoon. Het venster sluit vanzelf zodra je bent aangemeld."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2137,6 +2130,20 @@
           "confirm": "Dit downloadt het installatieprogramma van Cua van cua.ai en voert het uit in je terminal. Doorgaan?"
         }
       }
+    },
+    "signIns": {
+      "title": "Aanmeldingen beheren",
+      "description": "De accounts waarmee Oleafly op deze computer is aangemeld. Als je er hier een weghaalt, blijf je in je browser aangemeld.",
+      "loading": "Je aanmeldingen worden geladen…",
+      "empty": "Je bent met geen enkel account aangemeld.",
+      "inUse": "In gebruik",
+      "switch": "Wisselen",
+      "switchTo": "Wisselen naar {{account}}",
+      "removeAccount": "{{account}} weghalen",
+      "removeAll": "Alles weghalen",
+      "importMore": "Meer importeren",
+      "loadFailed": "Oleafly kon je aanmeldingen niet laden.",
+      "changeFailed": "Oleafly kon deze aanmelding niet wijzigen. Probeer het opnieuw."
     }
   },
   "language": {
@@ -2343,6 +2350,7 @@
       "confirm": "Woorden wissen",
       "descriptionFallback": "Hiermee verdwijnen alle termen uit dit woordenboek. Ze worden meteen weer gecontroleerd.",
       "descriptionGlobal": "Hiermee verdwijnen alle termen uit het algemene woordenboek. Ze worden meteen weer gecontroleerd.",
+      "descriptionOverleaf": "Ze worden ook uit je Overleaf-account verwijderd.",
       "descriptionProject": "Hiermee verdwijnen alle termen uit {{project}}. Ze worden meteen weer gecontroleerd.",
       "descriptionSuppressed": "Hiermee verdwijnen alle termen uit de gesloten bevindingen in {{project}}. Ze worden meteen weer gecontroleerd.",
       "suppressedConfirm": "Weer tonen",
@@ -2360,6 +2368,7 @@
     },
     "global": {
       "emptyDescription": "Woorden die je hier toevoegt slaat de proeflezer in elk project over.",
+      "overleafSynced": "Wordt gesynchroniseerd met de geleerde woorden in je Overleaf-account zolang een project live is op Overleaf.",
       "scope": "Geldt voor elk project"
     },
     "intro": "Voeg woorden toe aan je persoonlijke spellingwoordenboek. Deze woorden staan in je lokale instellingen en worden in alle projecten genegeerd. Het vergelijken is Unicode-genormaliseerd en niet hoofdlettergevoelig.",
@@ -2880,5 +2889,182 @@
     "count_other": "{{count}} vermeldingen",
     "filteredCount_one": "{{shown}} van {{count}} vermelding",
     "filteredCount_other": "{{shown}} van {{count}} vermeldingen"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "In de lijst met aanvullingen",
+        "description": "Toon fragmenten naast opdrachten"
+      },
+      "tab": {
+        "label": "Tab vervangt een trigger",
+        "description": "Voor fragmenten die op Tab staan"
+      },
+      "auto": {
+        "label": "Invoegen tijdens het typen",
+        "description": "Voor automatische fragmenten, zoals Fast math"
+      },
+      "hint": {
+        "label": "Tip tonen tijdens het typen",
+        "description": "Noemt het fragment dat een trigger invoegt. Tab voegt het in."
+      }
+    },
+    "library": {
+      "title": "Je fragmentenbibliotheek",
+      "collections": "Verzamelingen",
+      "all": "Alle fragmenten",
+      "mine": "Eigen",
+      "packs": "Pakketten",
+      "builtIn": "Ingebouwd",
+      "add": "Pakketten toevoegen of importeren…",
+      "useCollection": "{{name}} gebruiken",
+      "search": "Zoek op naam, trigger of tekst",
+      "language": "Taal",
+      "allLanguages": "Alle talen",
+      "expands": "Activering",
+      "anyExpand": "Elke manier",
+      "newSnippet": "Nieuw fragment",
+      "columns": {
+        "trigger": "Trigger",
+        "name": "Naam",
+        "languages": "Talen",
+        "where": "Waar",
+        "expands": "Activering"
+      },
+      "modified": "Gewijzigd",
+      "turnedOff": "Uitgezet",
+      "restore": "Herstellen",
+      "restoreLabel": "{{name}} herstellen",
+      "wraps": "omsluit",
+      "noTrigger": "geen",
+      "noMatches": "Geen fragmenten gevonden.",
+      "shown": "{{shown}} van {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} probleem",
+      "summary_other": "{{count}} problemen",
+      "where": "in {{file}}, regel {{line}}: {{message}}",
+      "slowRegex": "Het controleren van de trigger van {{name}} duurde te lang. Daarom is het fragment uitgezet.",
+      "show": "Tonen",
+      "hide": "Verbergen"
+    },
+    "addDialog": {
+      "title": "Fragmenten toevoegen",
+      "packsTab": "Pakketten",
+      "importTab": "Een bestand importeren",
+      "count_one": "{{count}} fragment",
+      "count_other": "{{count}} fragmenten",
+      "source": "Van {{source}}",
+      "licence": "{{licence}}-licentie",
+      "packNote": "Pakketten worden samen met de app bijgewerkt. Wijzigingen die je in de fragmenten van een pakket maakt, worden apart bewaard.",
+      "packs": {
+        "fastMathLatex": "Voegt tijdens het typen in wiskunde in: breuken, subscripts en machten, Griekse letters, operatoren en matrices. De triggers volgen de opzet van Gilles Castel.",
+        "fastMathTypst": "Dezelfde triggers, geschreven voor Typst. Wat Typst al zelf doet, zoals a/b voor een breuk, is weggelaten.",
+        "paperStructure": "Figuren, subfiguren, booktabs-tabellen, vergelijkingen, stellingen, bewijzen en algoritmen."
+      },
+      "useOn": "{{name}} gebruiken",
+      "importIntro": "Kies een fragmentbestand van VS Code (.json of .code-snippets). Het wordt een eigen verzameling, die je kunt uitzetten of aanpassen.",
+      "choose": "Bestand kiezen",
+      "fileLabel": "Fragmentbestand",
+      "imported_one": "{{count}} fragment geïmporteerd in {{collection}}.",
+      "imported_other": "{{count}} fragmenten geïmporteerd in {{collection}}.",
+      "nothing": "Er zijn geen fragmenten gevonden in {{file}}.",
+      "leftOut_one": "{{count}} item is weggelaten:",
+      "leftOut_other": "{{count}} items zijn weggelaten:"
+    },
+    "editor": {
+      "newTitle": "Nieuw fragment",
+      "duplicate": "Dupliceren",
+      "delete": "Verwijderen",
+      "turnOff": "Uitzetten",
+      "save": "Opslaan",
+      "copyName": "Kopie van {{name}}",
+      "name": "Naam",
+      "namePlaceholder": "Figuur met bijschrift en label",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "fig",
+      "regex": "Reguliere expressie",
+      "expands": "Activering",
+      "expandOptions": {
+        "list": "Uit de lijst",
+        "tab": "Met Tab",
+        "auto": "Tijdens het typen"
+      },
+      "expandHelp": {
+        "list": "Het staat in de lijst met aanvullingen. Kies het daar om het in te voegen.",
+        "tab": "Typ {{trigger}} en druk op Tab. Het staat ook in de lijst met aanvullingen.",
+        "auto": "Het wordt ingevoegd zodra je {{trigger}} typt. Met Ongedaan maken of Backspace krijg je de trigger terug."
+      },
+      "languages": "Talen",
+      "where": "Waar",
+      "whereOptions": {
+        "any": "Overal",
+        "text": "Tekst",
+        "math": "Wiskunde",
+        "code": "Code"
+      },
+      "mathKinds": {
+        "math": "Beide",
+        "inline-math": "In de tekst",
+        "display-math": "Op een eigen regel"
+      },
+      "mathKind": "Soort wiskunde",
+      "whereHelp": {
+        "any": "Overal in het bestand.",
+        "text": "Tekst: buiten wiskunde, commentaar en verbatim.",
+        "math": "Wiskunde: in wiskunde in de tekst of op een eigen regel.",
+        "code": "Code: in Typst-code of Markdown-codeblokken."
+      },
+      "firesOnly": "Alleen activeren",
+      "wholeWord": "als heel woord",
+      "lineStart": "aan het begin van een regel",
+      "collection": "Verzameling",
+      "keptSeparately": "Je wijzigingen worden apart bewaard, zodat updates van {{collection}} je blijven bereiken.",
+      "body": "Tekst die wordt ingevoegd",
+      "anyLanguage": "Elke taal",
+      "addField": "+ Veld",
+      "addChoice": "+ Keuze",
+      "choiceText": "eerste,tweede",
+      "variable": "Variabele",
+      "projectField": "Projectveld",
+      "variables": {
+        "SELECTION": "Geselecteerde tekst",
+        "CLIPBOARD": "Klembord",
+        "DATE": "Datum van vandaag",
+        "TM_FILENAME": "Bestandsnaam",
+        "PROJECT_NAME": "Projectnaam"
+      },
+      "projectFields": {
+        "image": "Afbeelding",
+        "label": "Label",
+        "cite": "Citatie",
+        "ref": "Verwijzing",
+        "file": "Bestand"
+      },
+      "chipsNote": "Velden worden als labels getoond.",
+      "showSyntax": "Syntaxis tonen",
+      "missingName": "Geef het fragment een naam.",
+      "missingBody": "Schrijf de tekst die het fragment invoegt.",
+      "sameTrigger": "{{list}} gebruikt ook {{trigger}}. De dichtstbijzijnde verzameling wint.",
+      "sharedStart": "Begint hetzelfde als {{list}}. Ze staan allemaal in de lijst, en Tab kiest de exacte overeenkomst, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "{{name}} verwijderen?",
+        "description": "Hiermee wordt het uit {{collection}} verwijderd.",
+        "action": "Verwijderen"
+      },
+      "tryIt": {
+        "title": "Uitproberen",
+        "howAuto": "Typ {{trigger}} en het wordt ingevoegd.",
+        "howTab": "Typ {{trigger}} en druk dan op Tab.",
+        "howList": "Typ {{trigger}}, druk op Ctrl+Space en kies het uit de lijst.",
+        "noTrigger": "Dit fragment heeft geen trigger. Voeg het in vanuit het opdrachtenpalet met /snippets.",
+        "inText": "in tekst",
+        "inMath": "in wiskunde",
+        "fires": "Wordt hier geactiveerd: {{language}}, {{place}}.",
+        "notLanguage": "Zou in {{language}} niet worden geactiveerd. Dat is geen van de talen van dit fragment.",
+        "notPlace": "Zou {{place}} niet worden geactiveerd. De instelling “Waar” staat dat niet toe."
+      }
+    }
   }
 }

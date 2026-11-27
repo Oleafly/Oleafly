@@ -94,6 +94,22 @@ const KNOWN: [Known; 5] = [
     },
 ];
 
+impl InstalledBrowser {
+    pub fn icon_names(&self) -> Vec<&'static str> {
+        let Some(known) = KNOWN.iter().find(|known| known.id == self.id) else {
+            return Vec::new();
+        };
+        if self.packaging == Packaging::Flatpak {
+            return vec![known.flatpak];
+        }
+        known
+            .linux_desktop
+            .iter()
+            .filter_map(|entry| entry.strip_suffix(".desktop"))
+            .collect()
+    }
+}
+
 const APP_PATHS: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths";
 const HTTPS_CHOICE: &str =
     r"HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice";

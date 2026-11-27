@@ -48,7 +48,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-vi.mock("@/components/editor/cm/suggestions-slot", () => ({
+vi.mock("@/components/editor/cm/editor-slots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/editor/cm/editor-slots")>()),
   setSuggestionsEditorExtension: () => () => undefined,
 }));
 
@@ -160,7 +161,7 @@ describe("suggestions in other files", () => {
   it("loads another file's suggestions in document order when its section opens", async () => {
     await start();
     act(() => expandSuggestionsFile(METHODS));
-    expect(section()).toEqual({ phase: "loading", suggestions: [], error: null });
+    expect(section()).toEqual({ phase: "loading", suggestions: [], error: null, canAccept: true });
     await settle();
     expect(section()).toMatchObject({ phase: "ready", error: null });
     expect(sectionIds()).toEqual(["m1", "m2"]);
@@ -222,7 +223,7 @@ describe("suggestions in other files", () => {
       [METHODS]: async () => Promise.reject({ code: "not_found", message: "gone" }),
     });
     await opened();
-    expect(section()).toEqual({ phase: "ready", error: null, suggestions: [] });
+    expect(section()).toEqual({ phase: "ready", error: null, suggestions: [], canAccept: true });
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 

@@ -8,6 +8,8 @@ const api = vi.hoisted(() => ({
   overleafSignInWithBrowser: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
+  overleafUseAccount: vi.fn(),
+  overleafOpenLive: vi.fn(),
 }));
 
 vi.mock("@/lib/overleaf", async (importOriginal) => ({
@@ -39,6 +41,18 @@ function project(id: string, extra: Record<string, unknown> = {}) {
 
 const signedIn = { server: SERVER, signedIn: true, email: "ada@uni.edu" };
 const signedOut = { server: SERVER, signedIn: false, email: null };
+const ada = { ...signedIn, userId: "ada" };
+const bob = { ...signedIn, email: "bob@uni.edu", userId: "bob" };
+
+function pending<T>() {
+  let resolve: (value: T) => void = () => {};
+  let reject: (error: unknown) => void = () => {};
+  const promise = new Promise<T>((done, failed) => {
+    resolve = done;
+    reject = failed;
+  });
+  return { promise, resolve, reject };
+}
 
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset();
@@ -112,7 +126,7 @@ describe("overleaf import store", () => {
   });
 
   it("signs in with an installed browser, names it while waiting, then loads the list", async () => {
-    const chrome = { key: "chrome", name: "Google Chrome" };
+    const chrome = { key: "chrome", name: "Google Chrome", product: "Google Chrome", packaging: null };
     let finish: (status: typeof signedIn) => void = () => {};
     api.overleafSignInWithBrowser.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [project("a")] });
@@ -137,7 +151,7 @@ describe("overleaf import store", () => {
     useOverleafImportStore.setState({ phase: "signing-in" });
     expect(await useOverleafImportStore.getState().signIn("t")).toBe(false);
     expect(api.overleafSignIn).not.toHaveBeenCalled();
-    expect(await useOverleafImportStore.getState().signInWithBrowser({ key: "edge", name: "Microsoft Edge" })).toBe(false);
+    expect(await useOverleafImportStore.getState().signInWithBrowser({ key: "edge", name: "Microsoft Edge", product: "Microsoft Edge", packaging: null })).toBe(false);
     expect(api.overleafSignInWithBrowser).not.toHaveBeenCalled();
   });
 
@@ -252,5 +266,129 @@ describe("overleaf import store", () => {
     useOverleafImportStore.setState({ importing: true, selected: ["a"] });
     expect(await useOverleafImportStore.getState().importSelected()).toEqual([]);
     expect(api.overleafImportProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("overleaf import store answers that arrive late", () => {
+  const adasList = { status: ada, projects: [project("a1")], invites: [] };
+  const bobsList = { status: bob, projects: [project("b1")], invites: [] };
+  let adas = pending<typeof adasList>();
+
+  const shown = () => {
+    const { status, projects, phase, server } = useOverleafImportStore.getState();
+    return { user: status?.userId, ids: projects.map((item) => item.id), phase, server };
+  };
+
+  beforeEach(() => {
+    adas = pending();
+    api.overleafListProjects.mockImplementation((_server: string, account: string) =>
+      account === "ada" ? adas.promise : Promise.resolve(bobsList),
+    );
+    api.overleafUseAccount.mockResolvedValue(bob);
+    useOverleafImportStore.setState({ status: ada, phase: "ready" });
+  });
+
+  it.each(["load", "refresh"] as const)("drops an account's list when another account was picked during %s", async (call) => {
+    const listing = useOverleafImportStore.getState()[call]();
+    await useOverleafImportStore.getState().chooseAccount("bob");
+    adas.resolve(adasList);
+    await listing;
+    expect(shown()).toEqual({ user: "bob", ids: ["b1"], phase: "ready", server: SERVER });
+  });
+
+  it("drops an account's expired sign-in when another account was picked", async () => {
+    const loading = useOverleafImportStore.getState().load();
+    await useOverleafImportStore.getState().chooseAccount("bob");
+    adas.reject(expired);
+    await loading;
+    expect(useOverleafImportStore.getState()).toMatchObject({ status: bob, phase: "ready", error: null });
+  });
+
+  it.each(["load", "refresh"] as const)("drops the list of a server left during %s", async (call) => {
+    const listing = useOverleafImportStore.getState()[call]();
+    useOverleafImportStore.getState().setServer("https://latex.uni.edu");
+    adas.resolve(adasList);
+    await listing;
+    expect(shown()).toEqual({ user: undefined, ids: [], phase: "idle", server: "https://latex.uni.edu" });
+  });
+
+  it.each(["refreshStatus", "open"] as const)("keeps the server picked while %s asks the one before", async (call) => {
+    const asked = pending<typeof ada>();
+    api.overleafStatus.mockReturnValueOnce(asked.promise);
+    const asking = useOverleafImportStore.getState()[call]();
+    useOverleafImportStore.getState().setServer("https://latex.uni.edu");
+    asked.resolve(ada);
+    await asking;
+    expect(shown()).toEqual({ user: undefined, ids: [], phase: "idle", server: "https://latex.uni.edu" });
+  });
+
+  it("keeps the server picked while an account was being chosen on the one before", async () => {
+    const choosing = pending<typeof bob>();
+    api.overleafUseAccount.mockReturnValueOnce(choosing.promise);
+    const chosen = useOverleafImportStore.getState().chooseAccount("bob");
+    useOverleafImportStore.getState().setServer("https://latex.uni.edu");
+    choosing.resolve(bob);
+    await expect(chosen).resolves.toBe(false);
+    expect(shown()).toEqual({ user: undefined, ids: [], phase: "idle", server: "https://latex.uni.edu" });
+  });
+
+  it("keeps the account picked while the status was being read", async () => {
+    const asked = pending<typeof ada>();
+    api.overleafStatus.mockReturnValueOnce(asked.promise);
+    const asking = useOverleafImportStore.getState().refreshStatus();
+    await useOverleafImportStore.getState().chooseAccount("bob");
+    asked.resolve(ada);
+    await asking;
+    expect(shown()).toMatchObject({ user: "bob", ids: ["b1"] });
+  });
+
+  it("lists the account signed in elsewhere in place of the one before", async () => {
+    useOverleafImportStore.setState({ projects: [project("a1")], selected: ["a1"] });
+    api.overleafStatus.mockResolvedValue(bob);
+    await useOverleafImportStore.getState().refreshStatus();
+    expect(shown()).toMatchObject({ user: "bob", ids: ["b1"], phase: "ready" });
+    expect(useOverleafImportStore.getState().selected).toEqual([]);
+  });
+
+  it("shows the list of the account picked just before an import of the other account started", async () => {
+    useOverleafImportStore.setState({ projects: [project("a1")], selected: ["a1"] });
+    const choosing = pending<typeof bob>();
+    api.overleafUseAccount.mockReturnValueOnce(choosing.promise);
+    const importing = pending<unknown[]>();
+    api.overleafImportProjects.mockReturnValueOnce(importing.promise);
+    const chosen = useOverleafImportStore.getState().chooseAccount("bob");
+    const imported = useOverleafImportStore.getState().importSelected();
+    choosing.resolve(bob);
+    await chosen;
+    expect(api.overleafImportProjects).toHaveBeenCalledWith(SERVER, ["a1"], expect.any(Function), "ada");
+    expect(shown()).toMatchObject({ user: "bob", ids: ["b1"], phase: "ready" });
+    importing.resolve([{ remoteId: "a1", projectId: null, error: expired }]);
+    await imported;
+    expect(shown()).toMatchObject({ user: "bob", ids: ["b1"], phase: "ready" });
+  });
+
+  it("still says why the sign-in is needed when the status is read again", async () => {
+    useOverleafImportStore.setState({ phase: "signed-out", error: expired });
+    api.overleafStatus.mockResolvedValue(signedOut);
+    await useOverleafImportStore.getState().refreshStatus();
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signed-out", error: expired, status: signedOut });
+    expect(api.overleafListProjects).not.toHaveBeenCalled();
+  });
+
+  it("does not pair a list with the account that took over while it was read", async () => {
+    const loading = useOverleafImportStore.getState().load();
+    adas.resolve({ ...adasList, status: bob });
+    await loading;
+    expect(shown()).toMatchObject({ user: "bob", ids: ["b1"], phase: "ready" });
+  });
+
+  it("stays signed in when a project of the account before fails to open live", async () => {
+    const opening = pending<never>();
+    api.overleafOpenLive.mockReturnValueOnce(opening.promise);
+    const opened = useOverleafImportStore.getState().openLive("a1");
+    await useOverleafImportStore.getState().chooseAccount("bob");
+    opening.reject(expired);
+    await expect(opened).resolves.toBeNull();
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "ready", progress: {} });
   });
 });

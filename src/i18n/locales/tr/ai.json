@@ -380,7 +380,8 @@
       "runCommand": "Proje klasöründe iki dakikalık sınırla bir shell komutu çalıştırır.",
       "toggleTheme": "Açık ve koyu kip arasında geçiş yapar.",
       "listOverleafProjects": "Overleaf projelerinizi listeler, gerekirse önce oturum açar.",
-      "importOverleafProjects": "Overleaf projelerini derleyicileri ve ana dosyalarıyla birlikte kitaplığınıza aktarır."
+      "importOverleafProjects": "Overleaf projelerini derleyicileri ve ana dosyalarıyla birlikte kitaplığınıza aktarır.",
+      "openOverleafLive": "Bir Overleaf projesini canlı düzenleme için açar, proje henüz kitaplığınızda değilse önce içe aktarır."
     },
     "disableAll": "Tümünü kapat",
     "emptyContext": "Bu bağlamda kullanılabilir araç yok.",
@@ -406,7 +407,8 @@
       "latexOnly": "Yalnızca LaTeX projeleri",
       "latexAndTypstOnly": "Yalnızca LaTeX ve Typst projeleri",
       "pdfCaptureSetting": "PDF sayfa yakalama ayarı gerekir",
-      "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır"
+      "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır",
+      "overleafLiveSetting": "Deneysel Özellikler bölümündeki Overleaf ile canlı düzenleme ayarı gerekir"
     },
     "sourceGroups": {
       "figure": "Şekil",

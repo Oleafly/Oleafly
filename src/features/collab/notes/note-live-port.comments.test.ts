@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type NoteLiveEditor, noteCommentSurface } from "@/lib/collab-live-bridge";
+import { RemoteDocumentSession } from "../live/remote-session";
 import { FakeChannel } from "../live/tests/fake-channel";
 import { bindNoteLive, type NoteLiveDeps } from "./note-live-port";
 
@@ -83,5 +84,47 @@ describe("a live note's comment surface", () => {
     expect(surface?.draft()).toBeNull();
     expect(surface?.target()).toBeNull();
     expect(surface?.reveal("t1")).toBe(false);
+  });
+});
+
+describe("a note bound to the editor's live session", () => {
+  async function bindShared(channel: FakeChannel) {
+    const shared = new RemoteDocumentSession("note.md", TEXT, { transport: channel.transport() });
+    await shared.open();
+    const onEnd = vi.fn();
+    const handle = bindNoteLive(
+      {
+        noteId: "n1",
+        path: "note.md",
+        session: { projectId: "n1", role: "editor", accountId: "a1", deviceId: "d1" },
+        document: shared,
+        editor: fakeEditor(),
+        baseline: { text: TEXT, serialized: TEXT },
+        onEnd,
+      },
+      { presence: { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) } },
+    );
+    handles.push(handle);
+    return { shared, onEnd };
+  }
+
+  it("ends the moment the session detaches, without waiting for typing or a file change", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { shared, onEnd } = await bindShared(channel);
+    expect(onEnd).not.toHaveBeenCalled();
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "unknown_op");
+    channel.deliverOne(id);
+    expect(shared.phase).toBe("detached");
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(onEnd).toHaveBeenLastCalledWith(expect.objectContaining({ reason: "dropped" }));
+    expect(noteCommentSurface("n1", "note.md")).toBeNull();
+  });
+
+  it("ends when the editor closes the session it shared", async () => {
+    const { shared, onEnd } = await bindShared(new FakeChannel(TEXT));
+    shared.close();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(onEnd).toHaveBeenLastCalledWith(expect.objectContaining({ reason: "dropped" }));
   });
 });

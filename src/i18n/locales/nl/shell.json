@@ -317,6 +317,10 @@
       "keywords": "afleidingsvrij focus schermvullend verbergen interface minimaal schrijven",
       "label": "Zenmodus aan- of uitzetten"
     },
+    "fastMath": {
+      "keywords": "fast math fragmenten snippets invoegen tijdens typen breuk subscript grieks",
+      "label": "Fast math aan- of uitzetten"
+    },
     "visualSettings": {
       "keywords": "weergave lettertype lettersoort tekstgrootte alinea-inspringing afstand uitvullen koppen schrijven",
       "label": "Instellingen voor de visuele modus"
@@ -405,6 +409,14 @@
     "addChapterFromProject": {
       "keywords": "scriptie hoofdstuk artikel importeren samenvoegen kopiëren project",
       "label": "Een hoofdstuk uit een ander project toevoegen"
+    },
+    "insertSnippet": {
+      "keywords": "fragmenten snippets sjablonen triggers bladeren invoegen",
+      "label": "Fragment invoegen"
+    },
+    "saveSnippet": {
+      "keywords": "fragment snippet sjabloon opslaan selectie hergebruiken",
+      "label": "Selectie opslaan als fragment"
     }
   },
   "community": {
@@ -516,7 +528,8 @@
       "open": "Het geopende bestand volgen",
       "main": "Altijd het hoofddocument",
       "change": "Hoofddocument wijzigen…"
-    }
+    },
+    "filling": "Het project wordt nog gedownload van Overleaf. Je kunt compileren zodra alle bestanden er zijn."
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -764,7 +777,8 @@
       "projects": "je projecten doorzoeken",
       "refs": "de referenties van dit project openen",
       "settings": "de instellingen openen",
-      "theme": "van kleurthema wisselen"
+      "theme": "van kleurthema wisselen",
+      "snippets": "fragmenten bekijken en invoegen"
     },
     "tryCommand": "Probeer een opdracht",
     "unknownCommand": "Onbekende opdracht. Typ / om de beschikbare opdrachten te zien."
@@ -1132,7 +1146,8 @@
       "integrations": "Integraties",
       "shortcuts": "Sneltoetsen",
       "research": "Onderzoek",
-      "logs": "Logboeken"
+      "logs": "Logboeken",
+      "snippets": "Fragmenten"
     },
     "search": {
       "empty": "Geen instellingen gevonden",
@@ -1150,7 +1165,8 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, desktop-apps, Cua, MCP, citaties, accounts, verbindingen",
         "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord",
         "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks",
-        "logs": "log, logs, logboek, logboeken, fouten, waarschuwingen, crashes, builds, diagnostiek, probleemoplossing, logboeken exporteren, app.log, debug"
+        "logs": "log, logs, logboek, logboeken, fouten, waarschuwingen, crashes, builds, diagnostiek, probleemoplossing, logboeken exporteren, app.log, debug",
+        "snippets": "triggers, sjablonen, Fast math, invoegen tijdens het typen, Tab, lijst met aanvullingen, slash-menu, @-snelkoppelingen, fragmenten uit VS Code, snippets, importeren, pakketten"
       },
       "label": "Instellingen doorzoeken",
       "results_one": "{{count}} sectie komt overeen",
@@ -1385,11 +1401,12 @@
     },
     "moreActions": "Meer acties",
     "resetPaneLayout": "Paneelopstelling herstellen",
-    "resetPaneLayoutScope": "Alle projecten",
+    "resetPaneLayoutHint": "Zet de zijbalk, de editor, het voorbeeld, de terminal en de assistent in alle projecten terug op hun standaardplek.",
     "savedLayouts": {
       "close": "Sluiten",
       "delete": "Verwijderen",
       "deleteConfirm": "De indeling “{{name}}” verwijderen?",
+      "duplicate": "Deze indeling is al opgeslagen als “{{name}}”.",
       "limit": "Je kunt maximaal {{count}} indelingen bewaren. Verwijder er een om een andere op te slaan.",
       "manage": "Indelingen beheren",
       "name": "Naam van de indeling",
@@ -1397,10 +1414,11 @@
       "renameTitle": "Indeling hernoemen",
       "replace": "Vervangen",
       "replaceConfirm": "Er bestaat al een indeling met de naam “{{name}}”. Vervangen?",
+      "replaceWithCurrent": "Vervangen door huidige indeling",
       "save": "Huidige indeling opslaan",
       "saveButton": "Opslaan",
       "saveTitle": "Indeling opslaan",
-      "update": "Bijwerken naar huidige"
+      "savedAs": "Opgeslagen als “{{name}}”"
     },
     "renameFailed": "Kon het project niet hernoemen."
   },
@@ -1702,8 +1720,9 @@
     "resume": "Live bewerken hervatten",
     "reconnectNow": "Nu opnieuw verbinden",
     "open": "Openen in Overleaf",
-    "share": "Delen op Overleaf…",
+    "share": "Delen op Overleaf",
     "signIn": "Aanmelden…",
+    "signInAs": "Aanmelden als {{email}}",
     "reconnectingIn": "Opnieuw proberen over {{seconds}} s.",
     "notConfirmed": "Nog niet bevestigd door Overleaf.",
     "copyDetails": "Verbindingsgegevens kopiëren",
@@ -1723,5 +1742,71 @@
   "zoomIndicator": {
     "label": "Zoom",
     "reset": "Herstellen"
+  },
+  "snippets": {
+    "mySnippets": "Mijn fragmenten",
+    "saveAsSnippet": "Opslaan als fragment…",
+    "autoNote": "{{trigger}} is vervangen. Met Ongedaan maken of Backspace krijg je het terug.",
+    "fastMathTip": "Met Fast math aan schrijft // in wiskunde een breuk.",
+    "turnOnFastMath": "Fast math aanzetten",
+    "expands": {
+      "list": "Lijst",
+      "tab": "Tab",
+      "auto": "Automatisch"
+    },
+    "languages": {
+      "latex": "LaTeX",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "bibtex": "BibTeX",
+      "notes": "Notities",
+      "any": "Alle"
+    },
+    "places": {
+      "any": "Overal",
+      "text": "Tekst",
+      "math": "Wiskunde",
+      "inline-math": "Wiskunde in de tekst",
+      "display-math": "Wiskunde op een eigen regel",
+      "code": "Code"
+    },
+    "palette": {
+      "placeholder": "Zoek fragmenten op naam, trigger of tekst",
+      "insert": "Invoegen",
+      "edit": "Bewerken",
+      "count": "{{shown}} van {{total}}",
+      "summary": "{{collection}} · {{where}} · {{expands}}",
+      "learn": "Typ {{trigger}} om dit te krijgen zonder het palet te openen.",
+      "noMatches": "Geen fragmenten gevonden."
+    },
+    "save": {
+      "title": "Opslaan als fragment",
+      "name": "Naam",
+      "namePlaceholder": "Resultatentabel",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "rtab",
+      "expands": "Activering",
+      "found": "herkend in je selectie",
+      "fields": "Hier velden van maken",
+      "fieldsFound_one": "{{count}} gevonden",
+      "fieldsFound_other": "{{count}} gevonden",
+      "noFields": "Niets hier lijkt op een veld. Je kunt later velden toevoegen bij Instellingen.",
+      "followsCaption": "volgt het bijschrift",
+      "kinds": {
+        "caption": "bijschrift",
+        "label": "label",
+        "cite": "citatie",
+        "path": "bestandspad",
+        "column-spec": "kolomspecificatie",
+        "number": "getal",
+        "title": "kop",
+        "table-body": "tabelinhoud"
+      },
+      "preview": "Voorbeeld",
+      "saveTo": "Opslaan in",
+      "submit": "Fragment opslaan",
+      "saved": "{{name}} opgeslagen.",
+      "missingName": "Geef het fragment een naam."
+    }
   }
 }

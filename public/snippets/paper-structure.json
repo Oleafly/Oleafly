@@ -1,0 +1,136 @@
+{
+  "$pack": {
+    "name": "Paper structure",
+    "nameKey": "snippets.packs.paperStructure"
+  },
+  "paper.figure": {
+    "name": "Figure",
+    "nameKey": "snippets.records.figure",
+    "prefix": "fig",
+    "body": {
+      "latex": ["\\begin{figure}[${1|htbp,t,b,H|}]", "\t\\centering", "\t\\includegraphics[width=${2:0.8}\\linewidth]{${3@image}}", "\t\\caption{${4:Caption}}", "\t\\label{fig:${4/slug}}", "\\end{figure}$0"],
+      "typst": ["#figure(", "\timage(\"${3@image}\", width: ${2:80%}),", "\tcaption: [${4:Caption}],", ") <fig:${4/slug}>$0"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.subfigures": {
+    "name": "Two subfigures",
+    "nameKey": "snippets.records.subfigures",
+    "prefix": "figs",
+    "body": {
+      "latex": ["\\begin{figure}[${1|htbp,t,b,H|}]", "\t\\centering", "\t\\begin{subfigure}{0.48\\linewidth}", "\t\t\\centering", "\t\t\\includegraphics[width=\\linewidth]{${2@image}}", "\t\t\\caption{${3:Left}}", "\t\t\\label{fig:${3/slug}}", "\t\\end{subfigure}", "\t\\hfill", "\t\\begin{subfigure}{0.48\\linewidth}", "\t\t\\centering", "\t\t\\includegraphics[width=\\linewidth]{${4@image}}", "\t\t\\caption{${5:Right}}", "\t\t\\label{fig:${5/slug}}", "\t\\end{subfigure}", "\t\\caption{${6:Caption}}", "\t\\label{fig:${6/slug}}", "\\end{figure}$0"],
+      "typst": ["#figure(", "\tgrid(", "\t\tcolumns: 2,", "\t\tgutter: 1em,", "\t\t[#figure(image(\"${2@image}\"), caption: [${3:Left}]) <fig:${3/slug}>],", "\t\t[#figure(image(\"${4@image}\"), caption: [${5:Right}]) <fig:${5/slug}>],", "\t),", "\tcaption: [${6:Caption}],", ") <fig:${6/slug}>$0"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.table": {
+    "name": "Table with rules",
+    "nameKey": "snippets.records.table",
+    "prefix": "tab",
+    "body": {
+      "latex": ["\\begin{table}[${2|htbp,t,b,H|}]", "\t\\centering", "\t\\caption{${1:Caption}}", "\t\\label{tab:${1/slug}}", "\t\\begin{tabular}{${3:lrr}}", "\t\t\\toprule", "\t\t${4:Method} & ${5:Score} & ${6:Time} \\\\\\\\", "\t\t\\midrule", "\t\t$0 \\\\\\\\", "\t\t\\bottomrule", "\t\\end{tabular}", "\\end{table}"],
+      "typst": ["#figure(", "\ttable(", "\t\tcolumns: ${3:3},", "\t\tstroke: none,", "\t\ttable.hline(),", "\t\ttable.header[${4:Method}][${5:Score}][${6:Time}],", "\t\ttable.hline(stroke: 0.5pt),", "\t\t$0", "\t\ttable.hline(),", "\t),", "\tcaption: [${1:Caption}],", ") <tab:${1/slug}>"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.equation": {
+    "name": "Numbered equation",
+    "nameKey": "snippets.records.equation",
+    "prefix": "eq",
+    "body": {
+      "latex": ["\\begin{equation}", "\t$1", "\t\\label{eq:${2:name}}", "\\end{equation}$0"],
+      "typst": "\\$ $1 \\$ <eq:${2:name}>$0"
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.align": {
+    "name": "Aligned equations",
+    "nameKey": "snippets.records.align",
+    "prefix": "ali",
+    "body": {
+      "latex": ["\\begin{align*}", "\t$1", "\\end{align*}$0"],
+      "typst": ["\\$", "\t$1", "\\$$0"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.theorem": {
+    "name": "Theorem",
+    "nameKey": "snippets.records.theorem",
+    "prefix": "thm",
+    "body": {
+      "latex": ["\\begin{theorem}[${1:Name}]\\label{thm:${1/slug}}", "\t$0", "\\end{theorem}"],
+      "typst": ["#theorem(title: [${1:Name}])[", "\t$0", "] <thm:${1/slug}>"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.lemma": {
+    "name": "Lemma",
+    "nameKey": "snippets.records.lemma",
+    "prefix": "lem",
+    "body": {
+      "latex": ["\\begin{lemma}[${1:Name}]\\label{lem:${1/slug}}", "\t$0", "\\end{lemma}"],
+      "typst": ["#lemma(title: [${1:Name}])[", "\t$0", "] <lem:${1/slug}>"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.definition": {
+    "name": "Definition",
+    "nameKey": "snippets.records.definition",
+    "prefix": "defn",
+    "body": {
+      "latex": ["\\begin{definition}[${1:Name}]\\label{def:${1/slug}}", "\t$0", "\\end{definition}"],
+      "typst": ["#definition(title: [${1:Name}])[", "\t$0", "] <def:${1/slug}>"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.proof": {
+    "name": "Proof",
+    "nameKey": "snippets.records.proof",
+    "prefix": "prf",
+    "body": {
+      "latex": ["\\begin{proof}", "\t$0", "\\end{proof}"],
+      "typst": ["#proof[", "\t$0", "]"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  },
+  "paper.algorithm": {
+    "name": "Algorithm",
+    "nameKey": "snippets.records.algorithm",
+    "prefix": "alg",
+    "body": {
+      "latex": ["\\begin{algorithm}[${2|htbp,t,b,H|}]", "\t\\caption{${1:Algorithm}}", "\t\\label{alg:${1/slug}}", "\t\\begin{algorithmic}[1]", "\t\t\\Require ${3:input}", "\t\t\\Ensure ${4:output}", "\t\t\\State $0", "\t\\end{algorithmic}", "\\end{algorithm}"],
+      "typst": ["#figure(", "\tkind: \"algorithm\",", "\tsupplement: [Algorithm],", "\tcaption: [${1:Algorithm}],", ")[", "\t$0", "] <alg:${1/slug}>"]
+    },
+    "expand": "tab",
+    "languages": ["latex", "typst"],
+    "where": "text",
+    "lineStart": true
+  }
+}

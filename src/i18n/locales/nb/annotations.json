@@ -26,6 +26,10 @@
       "region": "Kommenter dette området …"
     },
     "placeHere": "Plasser her",
+    "coauthors": "Kommentar til medforfattere",
+    "noSource": "Dette avsnittet ble ikke funnet i kildefilene.",
+    "commentFailed": "Filen for denne kommentaren kunne ikke åpnes.",
+    "commentsClosed": "Kommentarer er ikke tilgjengelige for dette prosjektet akkurat nå.",
     "cancel": "Avbryt",
     "save": "Legg til",
     "saving": "Lagrer",
@@ -39,8 +43,6 @@
     "region": "Område"
   },
   "status": {
-    "draft": "Utkast",
-    "sent": "Sendt",
     "addressed": "Behandlet",
     "resolved": "Løst",
     "needsPlacing": "Må plasseres"
@@ -52,8 +54,13 @@
     "failed": "Kommentarene kunne ikke lagres. {{error}}",
     "readOnly": "Lagret av en nyere Oleafly. Oppdater for å endre kommentarene.",
     "setAside": "Kommentarfilen kunne ikke leses, så en ny ble startet.",
-    "noSource": "Ingen plassering i kilden",
     "page": "s. {{page}}",
+    "quoted": "«{{quote}}»",
+    "insertAfter": "etter «{{quote}}»",
+    "groups": {
+      "drafts": "Utkast",
+      "assistant": "Hos assistenten"
+    },
     "notFound": "Fant ikke dette avsnittet i den nye PDF-en.",
     "placing": "Merk avsnittet i PDF-en, og velg deretter Plasser her.",
     "placeAgain": "Plasser på nytt",

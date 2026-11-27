@@ -1885,33 +1885,18 @@
       "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
-      "confirmTitle": "Vahvista cookieiden tuonti",
-      "detecting": "Etsitään asennettuja selainprofiileja...",
-      "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
-      "dialogTitle": "Tuo selaimen cookiet",
-      "empty": "Tuettuja selainprofiileja ei löytynyt.",
-      "errors": {
-        "chooseProfile": "Valitse käytettävissä oleva selainprofiili."
-      },
-      "profileGroupLabel": "Selainprofiilit",
-      "profileLegend": "Selainprofiili",
-      "review": "Tarkista tuonti",
-      "status": {
-        "available": "Käytettävissä",
-        "comingSoon": "Tulossa pian",
-        "noCookieStore": "Ei cookie-varastoa",
-        "notInstalled": "Ei asennettu"
-      },
-      "tryAgain": "Yritä uudelleen",
-      "label": "Kopioi selaimen kirjautuminen",
-      "useBrowserSignIn": "Kopioi kirjautuminen selaimestasi",
-      "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
-      "site": "Sivusto: {{domain}}",
-      "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
-      "copyAction": "Kopioi kirjautuminen",
-      "copying": "Kopioidaan…",
-      "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
-      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään."
+      "dialogDescription": "Oleafly kopioi vain palvelun {{server}} cookiet, kirjautuu niillä ja poistaa sitten kopiot. Salasanasi pysyvät selaimessa.",
+      "dialogTitle": "Tuo cookiet selaimestasi",
+      "label": "Tuo cookiet selaimestasi",
+      "useBrowserSignIn": "Valitse profiili",
+      "signInDescription": "Käyttää palvelun {{server}} tiliä, jolla jokin tämän koneen selainprofiili on jo kirjautunut.",
+      "copyAction": "Tuo",
+      "copying": "Tuodaan…",
+      "from": "Mistä",
+      "noCookies": "Ei vielä cookieita",
+      "sameAccount": "Profiilissa {{profile}} on kirjautuneena {{account}}, jota Oleafly jo käyttää. Valitse toinen profiili tai kirjaudu ensin siinä selaimessa toiselle tilillesi.",
+      "orExisting": "tai käytä olemassa olevaa kirjautumista",
+      "noSavedSignIn": "Profiililla {{profile}} ei ole tallennettua kirjautumista palveluun {{server}}, joten kopioidut cookiet eivät kirjanneet sinua sisään. Jos olet kirjautunut siellä, selain ehkä säilyttää kirjautumisen vain siihen asti, kun se suljetaan. Käytä sen sijaan ruutua {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
@@ -1971,7 +1956,12 @@
       "signedIn": "Kirjautunut palvelimelle {{server}}",
       "signOut": "Kirjaudu ulos",
       "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "addAccount": "Lisää toinen tili",
+      "addAccountHint": "Valitse, missä kirjaudut. Kaikki alkavat ilman kirjautumista, joten mikä tahansa tili käy.",
+      "accountPick": "Tuonnissa käytettävä tili",
+      "accountPickDescription": "Uudet tuonnit ja mallipohjat käyttävät tätä tiliä. Jo olemassa olevat projektisi säilyttävät tilin, josta ne tuotiin.",
       "gitTitle": "Git-tokeni synkronointia varten",
+      "gitTitleFor": "Git-tokeni tilille {{email}}",
       "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
       "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
       "gitOpenSettings": "Avaa Overleafin tiliasetukset",
@@ -1980,14 +1970,9 @@
       "gitSave": "Tallenna",
       "gitRemove": "Poista",
       "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin.",
-      "browserLabel": "Kirjaudu selaimellasi",
-      "browserDescription": "Googlen, oppilaitoksen tai pääsyavaimen kirjautumista varten. Oleafly avaa palvelimen {{server}} uuteen selainikkunaan ja sulkee sen, kun olet kirjautunut.",
-      "browserAction": "Kirjaudu",
-      "browserPick": "Selain kirjautumiseen",
       "browserWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} selaimessa {{browser}}. Ikkunan sulkeminen peruu kirjautumisen.",
-      "browserHint": "Käytä tätä Googlen, oppilaitoksen tai pääsyavaimen kirjautumiseen.",
-      "windowLabel": "Kirjaudu palvelimelle {{server}}",
-      "windowDescription": "Oleafly avaa kirjautumisikkunan ja sulkee sen, kun olet kirjautunut. Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja kirjaudu sillä täällä.",
+      "windowLabel": "Kirjaudu Oleafly-sovelluksessa",
+      "windowDescription": "Ikkuna sulkeutuu itsestään, kun olet kirjautunut. Jos pääsyavaimesi ei toimi siellä, käytä salasanaa tai vahvistusta puhelimessa.",
       "windowAction": "Kirjaudu",
       "windowWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} avautuneessa ikkunassa.",
       "unsent": {
@@ -2005,7 +1990,15 @@
           "always": "Poista myös Overleafista",
           "never": "Säilytä Overleafissa"
         }
-      }
+      },
+      "sameAccount": "Olet jo kirjautunut tilillä {{account}}. Lisää toinen tili kirjautumalla sillä.",
+      "windowTitle": "Kirjaudu palvelimelle {{server}}",
+      "addAccountKept": "Nykyinen tilisi pysyy kirjautuneena.",
+      "noBrowser": "Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja valitse se sitten täältä.",
+      "tileHere": "Tässä sovelluksessa",
+      "tileWindow": "Uusi ikkuna",
+      "tileWaiting": "Odottaa sinua",
+      "signInNote": "Käytä selainta, kun kirjaudut Googlella, oppilaitoksesi tilillä tai pääsyavaimella. Jos pääsyavaimesi ei toimi Oleafly-sovelluksessa, käytä siellä salasanaa tai vahvistusta puhelimessa. Ikkuna sulkeutuu itsestään, kun olet kirjautunut."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2137,6 +2130,20 @@
           "confirm": "Tämä lataa Cua-asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?"
         }
       }
+    },
+    "signIns": {
+      "title": "Hallitse kirjautumisia",
+      "description": "Tilit, joilla Oleafly on kirjautunut tällä koneella. Jos poistat tilin täältä, pysyt kirjautuneena selaimessa.",
+      "loading": "Ladataan kirjautumisiasi…",
+      "empty": "Et ole kirjautunut millään tilillä.",
+      "inUse": "Käytössä",
+      "switch": "Vaihda",
+      "switchTo": "Vaihda tiliin {{account}}",
+      "removeAccount": "Poista {{account}}",
+      "removeAll": "Poista kaikki",
+      "importMore": "Tuo lisää",
+      "loadFailed": "Oleafly ei voinut ladata kirjautumisiasi.",
+      "changeFailed": "Oleafly ei voinut muuttaa tätä kirjautumista. Yritä uudelleen."
     }
   },
   "language": {
@@ -2343,6 +2350,7 @@
       "confirm": "Tyhjennä sanat",
       "descriptionFallback": "Tämä poistaa kaikki termit tästä sanakirjasta. Ne tarkistetaan heti uudelleen.",
       "descriptionGlobal": "Tämä poistaa kaikki termit yleisestä sanakirjasta. Ne tarkistetaan heti uudelleen.",
+      "descriptionOverleaf": "Ne poistetaan myös Overleaf-tililtäsi.",
       "descriptionProject": "Tämä poistaa kaikki termit projektista {{project}}. Ne tarkistetaan heti uudelleen.",
       "descriptionSuppressed": "Tämä poistaa kaikki termit projektin {{project}} ohitetuista huomioista. Ne tarkistetaan heti uudelleen.",
       "suppressedConfirm": "Näytä uudelleen",
@@ -2360,6 +2368,7 @@
     },
     "global": {
       "emptyDescription": "Tähän lisätyt sanat ohitetaan kielentarkistuksessa jokaisessa projektissa.",
+      "overleafSynced": "Synkronoidaan Overleaf-tilisi opittujen sanojen kanssa, kun projekti on reaaliaikaisessa muokkauksessa Overleaf-palvelussa.",
       "scope": "Koskee jokaista projektia"
     },
     "intro": "Lisää sanoja henkilökohtaiseen oikolukusanakirjaasi. Nämä sanat tallennetaan paikallisiin asetuksiin ja ohitetaan kaikissa projekteissa. Vertailu on Unicode-normalisoitua eikä erota kirjainkokoa.",
@@ -2880,5 +2889,182 @@
     "count_other": "{{count}} merkintää",
     "filteredCount_one": "{{shown}} / {{count}} merkintä",
     "filteredCount_other": "{{shown}} / {{count}} merkintää"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Täydennysluettelossa",
+        "description": "Näytä katkelmat komentojen rinnalla"
+      },
+      "tab": {
+        "label": "Tab laajentaa laukaisimen",
+        "description": "Katkelmille, joille on valittu Tab"
+      },
+      "auto": {
+        "label": "Laajenna kirjoittaessa",
+        "description": "Automaattisille katkelmille, kuten Fast math -paketeille"
+      },
+      "hint": {
+        "label": "Näytä vihje kirjoittaessa",
+        "description": "Kertoo, minkä katkelman laukaisin lisää. Tab lisää sen."
+      }
+    },
+    "library": {
+      "title": "Katkelmakirjastosi",
+      "collections": "Kokoelmat",
+      "all": "Kaikki katkelmat",
+      "mine": "Omat",
+      "packs": "Paketit",
+      "builtIn": "Sisäänrakennetut",
+      "add": "Lisää paketteja tai tuo…",
+      "useCollection": "Käytä kokoelmaa {{name}}",
+      "search": "Hae nimellä, laukaisimella tai tekstillä",
+      "language": "Kieli",
+      "allLanguages": "Kaikki kielet",
+      "expands": "Laajenee",
+      "anyExpand": "Miten tahansa",
+      "newSnippet": "Uusi katkelma",
+      "columns": {
+        "trigger": "Laukaisin",
+        "name": "Nimi",
+        "languages": "Kielet",
+        "where": "Sijainti",
+        "expands": "Laajenee"
+      },
+      "modified": "Muokattu",
+      "turnedOff": "Pois käytöstä",
+      "restore": "Palauta",
+      "restoreLabel": "Palauta katkelma {{name}}",
+      "wraps": "ympäröi",
+      "noTrigger": "ei mitään",
+      "noMatches": "Ei osuvia katkelmia.",
+      "shown": "{{shown}}/{{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} ongelma",
+      "summary_other": "{{count}} ongelmaa",
+      "where": "{{file}}, rivi {{line}}: {{message}}",
+      "slowRegex": "Katkelman {{name}} laukaisimen tarkistus kesti liian kauan, joten katkelma poistettiin käytöstä.",
+      "show": "Näytä",
+      "hide": "Piilota"
+    },
+    "addDialog": {
+      "title": "Lisää katkelmia",
+      "packsTab": "Paketit",
+      "importTab": "Tuo tiedosto",
+      "count_one": "{{count}} katkelma",
+      "count_other": "{{count}} katkelmaa",
+      "source": "Lähde: {{source}}",
+      "licence": "{{licence}}-lisenssi",
+      "packNote": "Paketit päivittyvät sovelluksen mukana. Pakettien katkelmiin tekemäsi muutokset säilytetään erikseen.",
+      "packs": {
+        "fastMathLatex": "Laajenee kirjoittaessa matematiikassa: murtoluvut, alaindeksit ja potenssit, kreikkalaiset kirjaimet, operaattorit ja matriisit. Laukaisimet noudattavat Gilles Castelin mallia.",
+        "fastMathTypst": "Samat laukaisimet Typst-kielelle kirjoitettuina. Mukana ei ole sitä, minkä Typst tekee jo itse, kuten a/b murtolukuna.",
+        "paperStructure": "Kuvat, alakuvat, booktabs-taulukot, kaavat, lauseet, todistukset ja algoritmit."
+      },
+      "useOn": "Käytä pakettia {{name}}",
+      "importIntro": "Valitse VS Code -katkelmatiedosto (.json tai .code-snippets). Siitä tulee oma kokoelmansa, jonka voit poistaa käytöstä tai jota voit muuttaa.",
+      "choose": "Valitse tiedosto",
+      "fileLabel": "Katkelmatiedosto",
+      "imported_one": "Tuotiin {{count}} katkelma kokoelmaan {{collection}}.",
+      "imported_other": "Tuotiin {{count}} katkelmaa kokoelmaan {{collection}}.",
+      "nothing": "Tiedostosta {{file}} ei löytynyt katkelmia.",
+      "leftOut_one": "{{count}} kohta jätettiin pois:",
+      "leftOut_other": "{{count}} kohtaa jätettiin pois:"
+    },
+    "editor": {
+      "newTitle": "Uusi katkelma",
+      "duplicate": "Monista",
+      "delete": "Poista",
+      "turnOff": "Poista käytöstä",
+      "save": "Tallenna",
+      "copyName": "{{name}} (kopio)",
+      "name": "Nimi",
+      "namePlaceholder": "Kuva, kuvateksti ja nimike",
+      "trigger": "Laukaisin",
+      "triggerPlaceholder": "fig",
+      "regex": "Säännöllinen lauseke",
+      "expands": "Laajenee",
+      "expandOptions": {
+        "list": "Luettelosta",
+        "tab": "Tab-näppäimellä",
+        "auto": "Kirjoittaessa"
+      },
+      "expandHelp": {
+        "list": "Näkyy täydennysluettelossa. Valitse se sieltä, niin se lisätään.",
+        "tab": "Kirjoita {{trigger}} ja paina Tab. Näkyy myös täydennysluettelossa.",
+        "auto": "Laajenee heti, kun kirjoitat {{trigger}}. Kumoa tai Backspace palauttaa laukaisimen."
+      },
+      "languages": "Kielet",
+      "where": "Sijainti",
+      "whereOptions": {
+        "any": "Missä tahansa",
+        "text": "Teksti",
+        "math": "Matematiikka",
+        "code": "Koodi"
+      },
+      "mathKinds": {
+        "math": "Molemmat",
+        "inline-math": "Tekstin sisäinen",
+        "display-math": "Erillinen"
+      },
+      "mathKind": "Matematiikan tyyppi",
+      "whereHelp": {
+        "any": "Missä tahansa tiedostossa.",
+        "text": "Teksti: matematiikan, kommenttien ja verbatim-ympäristöjen ulkopuolella.",
+        "math": "Matematiikka: tekstin sisäisessä tai erillisessä matematiikassa.",
+        "code": "Koodi: Typst-koodissa tai Markdown-koodilohkoissa."
+      },
+      "firesOnly": "Laukeaa vain",
+      "wholeWord": "kokonaisena sanana",
+      "lineStart": "rivin alussa",
+      "collection": "Kokoelma",
+      "keptSeparately": "Muutoksesi säilytetään erikseen, joten saat edelleen kokoelman {{collection}} päivitykset.",
+      "body": "Lisättävä teksti",
+      "anyLanguage": "Mikä tahansa kieli",
+      "addField": "+ Kenttä",
+      "addChoice": "+ Valinta",
+      "choiceText": "ensimmäinen,toinen",
+      "variable": "Muuttuja",
+      "projectField": "Projektin kenttä",
+      "variables": {
+        "SELECTION": "Valittu teksti",
+        "CLIPBOARD": "Leikepöytä",
+        "DATE": "Tämän päivän päivämäärä",
+        "TM_FILENAME": "Tiedostonimi",
+        "PROJECT_NAME": "Projektin nimi"
+      },
+      "projectFields": {
+        "image": "Kuva",
+        "label": "Nimike",
+        "cite": "Viittaus",
+        "ref": "Ristiviittaus",
+        "file": "Tiedosto"
+      },
+      "chipsNote": "Kentät näkyvät tunnisteina.",
+      "showSyntax": "Näytä syntaksi",
+      "missingName": "Anna katkelmalle nimi.",
+      "missingBody": "Kirjoita teksti, jonka katkelma lisää.",
+      "sameTrigger": "Laukaisinta {{trigger}} käyttää myös: {{list}}. Lähin kokoelma on etusijalla.",
+      "sharedStart": "Alkaa samoin kuin {{list}}. Kaikki näkyvät luettelossa, ja Tab valitsee tarkan osuman, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Poistetaanko {{name}}?",
+        "description": "Se poistetaan kokoelmasta {{collection}}.",
+        "action": "Poista"
+      },
+      "tryIt": {
+        "title": "Kokeile",
+        "howAuto": "Kirjoita {{trigger}}, niin se laajenee.",
+        "howTab": "Kirjoita {{trigger}} ja paina sitten Tab.",
+        "howList": "Kirjoita {{trigger}}, paina Ctrl+Space ja valitse se luettelosta.",
+        "noTrigger": "Tällä katkelmalla ei ole laukaisinta. Lisää se komentopaletista komennolla /snippets.",
+        "inText": "tekstissä",
+        "inMath": "matematiikassa",
+        "fires": "Laukeaa tässä: {{language}}, {{place}}.",
+        "notLanguage": "Ei laukeaisi, kun kieli on {{language}}. Kieli ei kuulu tämän katkelman kieliin.",
+        "notPlace": "Ei laukeaisi {{place}}. Sijainti-asetus ei salli sitä."
+      }
+    }
   }
 }

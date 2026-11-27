@@ -657,7 +657,12 @@ fn tool_risk_mirrors_the_shell_approval_table() {
         assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Network, "{tool}");
     }
     assert_eq!(tool_risk("run_command"), oleafly_agent::ToolRisk::Shell);
-    for tool in ["write_file", "delete_file", "a_brand_new_tool"] {
+    for tool in [
+        "write_file",
+        "delete_file",
+        "open_overleaf_live",
+        "a_brand_new_tool",
+    ] {
         assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Write, "{tool}");
     }
 }

@@ -7,7 +7,6 @@ import {
   ArrowUpToLine,
   Asterisk,
   Bold,
-  Bookmark,
   BookPlus,
   CaseLower,
   CaseSensitive,
@@ -61,6 +60,8 @@ import {
   Underline,
   X,
   Zap,
+  Braces,
+  ClipboardPlus,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -69,7 +70,7 @@ import { registerCommand, type AppContext } from "@oleafly/registry";
 import type { Editor, TiptapEditorHTMLElement } from "@tiptap/core";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import type { MarkdownTarget } from "@/components/editor/markdown-model";
-import { collabVisualReadOnly } from "@/lib/collab-live-bridge";
+import { collabRichTextLock } from "@/lib/collab-live-bridge";
 import { noteHistoryAt } from "@/lib/open-note-editors";
 import { projectCovered } from "@/lib/project-covered";
 import { activeFileReadOnly } from "@/lib/read-only-files";
@@ -95,6 +96,8 @@ import {
   uppercaseSelection,
 } from "@oleafly/editor";
 import { handoffToAssistant } from "@/features/assistant-handoff";
+import { toggleFastMath } from "@/features/snippets/fast-math";
+import { canSaveSelection, openSaveSnippet } from "@/features/snippets/save-dialog";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
@@ -173,7 +176,7 @@ import {
 } from "@/store/pane-layout";
 import { SAVED_LAYOUT_LIMIT, useSavedLayoutsStore } from "@/store/saved-layouts";
 import { zoomApp } from "@/lib/app-zoom";
-import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { LAYOUT_PRESET_ICONS, SavedLayoutIcon } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
 import {
   formatWithLanguageService,
@@ -232,7 +235,7 @@ const visualWritable = (editor: Editor) =>
   getWysiwygEditor() === editor &&
   projectEditorShown() &&
   !activeFileReadOnly() &&
-  !collabVisualReadOnly(useFilesStore.getState().projectId);
+  collabRichTextLock(useFilesStore.getState().projectId) === null;
 const runRichTextFormatting = (editor: Editor, writable: (editor: Editor) => boolean, action: EngineFormattingAction) => {
   if (!writable(editor)) return;
   void import("@/components/editor/markdown-model").then(({ visualTarget }) => {
@@ -289,6 +292,9 @@ const ENGLISH_KEYWORDS = {
   closeAllEditorTabs: "close all editor tabs files",
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
+  fastMath: "fast math snippets expand as you type fraction subscript greek latex typst",
+  insertSnippet: "snippets templates triggers browse insert",
+  saveSnippet: "snippet template save selection reuse",
   visualSettings: "visual mode font typeface text size line height paragraph spacing indent justify heading color zen writing",
   togglePreview: "pdf preview show hide split editor only layout view",
   resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
@@ -1225,6 +1231,37 @@ export function registerPaletteCommands() {
     order: 510,
     run: () => useSettingsStore.getState().toggleVim(),
   });
+  sourceEditing({
+    id: "palette.fast-math",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.fastMath.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.fastMath.keywords)} ${ENGLISH_KEYWORDS.fastMath}`,
+    icon: () => <Zap className="size-4" />,
+    order: 512,
+    when: activeIsLatexOrTypstSource,
+    run: () => void toggleFastMath(activeIsTypstSource() ? "typst" : "latex"),
+  });
+  sourceEditing({
+    id: "snippets.insert",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.insertSnippet.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.insertSnippet.keywords)} ${ENGLISH_KEYWORDS.insertSnippet}`,
+    icon: () => <Braces className="size-4" />,
+    order: 405,
+    run: () => useSettingsStore.getState().setSearchOpen(true, "/snippets "),
+  });
+  sourceEditing({
+    id: "snippets.saveSelection",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.saveSnippet.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.saveSnippet.keywords)} ${ENGLISH_KEYWORDS.saveSnippet}`,
+    icon: () => <ClipboardPlus className="size-4" />,
+    order: 496,
+    when: canSaveSelection,
+    run: () => {
+      openSaveSnippet();
+    },
+  });
   palette({
     id: "palette.zen-mode",
     group: () => i18n.t(($) => $.shell.commandGroups.settings),
@@ -1324,7 +1361,15 @@ export function registerPaletteCommands() {
       label: () => i18n.t(($) => $.shell.commands.applySavedLayout.label, { name: saved()?.name ?? "" }),
       keywords: () =>
         `${i18n.t(($) => $.shell.commands.applySavedLayout.keywords)} ${ENGLISH_KEYWORDS.applySavedLayout}`,
-      icon: () => <Bookmark className="size-4" />,
+      icon: () => {
+        const layout = saved();
+        const Fallback = LAYOUT_PRESET_ICONS["editor-preview"];
+        return layout ? (
+          <SavedLayoutIcon tree={layout.tree} flags={layout.flags} className="size-4" />
+        ) : (
+          <Fallback className="size-4" />
+        );
+      },
       order: 516,
       when: (ctx) => !!ctx.projectId && saved() !== undefined,
       run: () => {

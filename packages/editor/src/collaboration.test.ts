@@ -1,6 +1,6 @@
 import { ChangeSet, EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
-import { changesToUtf16Edits, remoteChange } from "./collaboration";
+import { changesToUtf16Edits, localOrigin, remoteChange } from "./collaboration";
 import { LocalDocumentSession } from "./document-session";
 
 describe("changesToUtf16Edits", () => {
@@ -53,5 +53,19 @@ describe("remoteChange", () => {
     const state = EditorState.create({ doc: "a" });
     expect(state.update({ annotations: remoteChange.of(true) }).annotation(remoteChange)).toBe(true);
     expect(state.update({}).annotation(remoteChange)).toBeUndefined();
+  });
+});
+
+describe("localOrigin", () => {
+  it("names undo, redo, cut and paste, and nothing for other edits", () => {
+    const state = EditorState.create({ doc: "hello" });
+    const origin = (userEvent?: string) => localOrigin(state.update({ changes: { from: 0, insert: "x" }, userEvent }));
+    expect(origin("undo")).toBe("undo");
+    expect(origin("redo")).toBe("redo");
+    expect(origin("delete.cut")).toBe("cut");
+    expect(origin("input.paste")).toBe("paste");
+    expect(origin("input.type")).toBeUndefined();
+    expect(origin("delete.backward")).toBeUndefined();
+    expect(origin()).toBeUndefined();
   });
 });

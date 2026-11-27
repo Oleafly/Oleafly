@@ -26,6 +26,10 @@ pub trait CommandModule: clap::Subcommand + std::fmt::Debug + Send + Sized + 'st
     fn handles_interrupt(&self) -> bool {
         false
     }
+
+    fn bounded_exit(&self) -> bool {
+        false
+    }
 }
 
 #[macro_export]
@@ -46,6 +50,12 @@ macro_rules! command_modules {
             pub fn handles_interrupt(&self) -> bool {
                 match self {
                     $( $(#[$attr])* Self::$variant(command) => $crate::commands::CommandModule::handles_interrupt(command), )*
+                }
+            }
+
+            pub fn bounded_exit(&self) -> bool {
+                match self {
+                    $( $(#[$attr])* Self::$variant(command) => $crate::commands::CommandModule::bounded_exit(command), )*
                 }
             }
 

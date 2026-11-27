@@ -1,0 +1,6 @@
+{"t":4901,"type":"warning","text":"Error with Permissions-Policy header: Unrecognized feature: 'attribution-reporting'."}
+{"t":5191,"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)"}
+{"t":5191,"type":"error","text":"FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657"}
+{"t":5191,"type":"error","text":"FetchError: Not Found\n    at http://localhost:8480/js/7688-8fc35a11d94900e29f55.js:1:5657 {extra: Object}"}
+{"t":11792,"type":"error","text":"Failed to load resource: the server responded with a status of 403 (Forbidden)"}
+{"t":21274,"type":"error","text":"Failed to load resource: the server responded with a status of 403 (Forbidden)"}

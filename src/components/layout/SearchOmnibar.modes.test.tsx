@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registry } from "@oleafly/registry";
@@ -10,11 +10,19 @@ const mocks = vi.hoisted(() => ({
   noteSearch: vi.fn(async (_query: string, _limit?: number, _options?: unknown) => [] as unknown[]),
   openNotes: vi.fn(async () => {}),
   gotoLine: vi.fn(),
+  getEditorView: vi.fn((): unknown => ({})),
   toggleTheme: vi.fn(),
   openProject: vi.fn(async () => {}),
   openFile: vi.fn(async () => {}),
   refreshProjects: vi.fn(async () => {}),
   vaultSnapshot: vi.fn(),
+  insertSnippetAtCursor: vi.fn((_id: string) => true),
+  renderSnippetMath: vi.fn((source: string) => {
+    const element = document.createElement("span");
+    element.textContent = `math:${source}`;
+    return element;
+  }),
+  snippetLoad: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/theme", () => ({
@@ -24,7 +32,9 @@ vi.mock("@/lib/theme", () => ({
 }));
 vi.mock("@/lib/tauri", () => ({ textSearch: mocks.textSearch, noteSearch: mocks.noteSearch }));
 vi.mock("@/features/open-tool", () => ({ openNotes: mocks.openNotes }));
-vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
+vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine, getEditorView: mocks.getEditorView }));
+vi.mock("@/features/snippets/insert-at-cursor", () => ({ insertSnippetAtCursor: mocks.insertSnippetAtCursor }));
+vi.mock("@/features/snippets/math-preview", () => ({ renderSnippetMath: mocks.renderSnippetMath }));
 vi.mock("@/components/notes/app-notes", () => ({ vaultSnapshot: mocks.vaultSnapshot }));
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -35,6 +45,9 @@ import { useNotesPrefsStore } from "@/store/notes-prefs";
 import { useSearchModeStore } from "@/store/search-modes";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { buildLibrary, parseSnippetFile } from "@oleafly/snippets";
+import { useSnippetSettingsRequest } from "@/features/snippets/open-settings";
+import { useSnippetStore } from "@/features/snippets/store";
 import { SearchOmnibar } from "./SearchOmnibar";
 
 const omnibar = enShell.omnibar;
@@ -458,3 +471,150 @@ describe("SearchOmnibar modes", () => {
   });
 });
 
+describe("SearchOmnibar snippets", () => {
+  const snippetCopy = enShell.snippets.palette;
+  const initialSnippets = useSnippetStore.getState();
+
+  beforeEach(() => {
+    const files = [
+      parseSnippetFile(
+        JSON.stringify({
+          $pack: { name: "Fast math · LaTeX" },
+          "fm.frac": { name: "Fraction", prefix: "//", body: "\\frac{$1}{$2}$0", languages: ["latex"], where: "math", expand: "auto" },
+          "fm.sub": { name: "Auto subscript", prefix: "re:([A-Za-z])(\\d)", body: "[[0]]_[[1]]", languages: ["latex"], where: "math", expand: "auto" },
+        }),
+        "fast-math-latex",
+        "pack",
+      ),
+      parseSnippetFile(
+        JSON.stringify({
+          $pack: { name: "Fast math · Typst" },
+          "fmt.frac": { name: "Typst fraction", prefix: "ff", body: "($1)/($2)", languages: ["typst"], where: "math", expand: "tab" },
+        }),
+        "fast-math-typst",
+        "pack",
+      ),
+      parseSnippetFile(
+        JSON.stringify({ "user.cfrac": { name: "Continued fraction", prefix: "cfrac", body: "\\cfrac{$1}{$2}", expand: "list" } }),
+        "my-snippets",
+        "user",
+      ),
+    ];
+    useSnippetStore.setState({
+      status: "ready",
+      files,
+      library: buildLibrary({ files, disabledCollections: new Set(), overrides: [], disabledRegex: new Set() }),
+      load: mocks.snippetLoad,
+    });
+    useFilesStore.setState({ activePath: "main.tex" });
+    mocks.getEditorView.mockImplementation(() => ({}));
+  });
+
+  afterEach(() => {
+    useSnippetStore.setState(initialSnippets, true);
+    useSnippetSettingsRequest.setState({ recordId: null });
+    useFilesStore.setState({ activePath: null });
+  });
+
+  function groups(): string[] {
+    return [...document.querySelectorAll("[cmdk-group-heading]")].map((heading) => heading.textContent ?? "");
+  }
+
+  it("is listed among the slash commands", async () => {
+    render(<SearchOmnibar />);
+    await type("/sni");
+    expect(await screen.findByText(omnibar.slash.snippets)).toBeInTheDocument();
+  });
+
+  it("lists snippets by collection with the open file's language first", async () => {
+    useFilesStore.setState({ activePath: "main.typ" });
+    render(<SearchOmnibar />);
+    await type("/snippets");
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    await waitFor(() => expect(groups()).toEqual(["Fast math · Typst", enShell.snippets.mySnippets, "Fast math · LaTeX"]));
+    expect(mocks.snippetLoad).toHaveBeenCalled();
+    expect(screen.getByText("4 of 4")).toBeInTheDocument();
+    expect(screen.getByText(snippetCopy.insert)).toBeInTheDocument();
+  });
+
+  it("finds snippets by what they write and previews the one highlighted", async () => {
+    render(<SearchOmnibar />);
+    await type("/snippets fraction");
+    await waitFor(() => expect(groups()).toEqual(["Fast math · LaTeX", enShell.snippets.mySnippets, "Fast math · Typst"]));
+    const preview = await screen.findByTestId("snippet-preview");
+    expect(preview).toHaveTextContent("Fraction");
+    expect(preview).toHaveTextContent("Fast math · LaTeX · Math · Auto");
+    expect(preview).toHaveTextContent("\\frac{$1}{$2}$0");
+    expect(preview).toHaveTextContent("Type // to get this without opening the palette.");
+    expect(screen.getByTestId("snippet-preview-math")).toHaveTextContent("math:\\frac{\\square}{\\square}");
+    expect(screen.getByText("3 of 4")).toBeInTheDocument();
+  });
+
+  it("matches a collection by its name and leaves the learning line out for a regular expression", async () => {
+    render(<SearchOmnibar />);
+    const user = await type("/snippets math");
+    await waitFor(() => expect(groups()).toEqual(["Fast math · LaTeX", "Fast math · Typst"]));
+    expect(await screen.findByTestId("snippet-preview")).toHaveTextContent("Type //");
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(screen.getByTestId("snippet-preview")).toHaveTextContent("Auto subscript"));
+    expect(screen.getByTestId("snippet-preview")).not.toHaveTextContent("Type");
+  });
+
+  it("inserts the snippet chosen with Enter and closes", async () => {
+    render(<SearchOmnibar />);
+    const user = await type("/snippets cfrac");
+    await screen.findByTestId("snippet-preview");
+    await user.keyboard("{Enter}");
+    expect(mocks.insertSnippetAtCursor).toHaveBeenCalledWith("user.cfrac");
+    expect(useSettingsStore.getState().searchOpen).toBe(false);
+  });
+
+  it("opens the highlighted snippet in Settings", async () => {
+    render(<SearchOmnibar />);
+    const user = await type("/snippets cfrac");
+    await user.click(within(await screen.findByTestId("snippet-preview")).getByRole("button", { name: snippetCopy.edit }));
+    expect(useSettingsStore.getState()).toMatchObject({ searchOpen: false, settingsOpen: true, settingsInitialSection: "snippets" });
+    expect(useSnippetSettingsRequest.getState().recordId).toBe("user.cfrac");
+  });
+
+  it("says when nothing matches", async () => {
+    render(<SearchOmnibar />);
+    await type("/snippets zzzq");
+    expect(await screen.findByText(snippetCopy.noMatches)).toBeInTheDocument();
+    expect(screen.queryByTestId("snippet-preview")).toBeNull();
+  });
+
+  it("opens on the snippets when the Insert snippet command asks for them", async () => {
+    useSettingsStore.getState().setSearchOpen(false);
+    render(<SearchOmnibar />);
+    act(() => useSettingsStore.getState().setSearchOpen(true, "/snippets "));
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    expect(await screen.findByText("Continued fraction")).toBeInTheDocument();
+  });
+
+  it("is offered only while an editor is open to insert into", async () => {
+    mocks.getEditorView.mockImplementation(() => null);
+    render(<SearchOmnibar />);
+    await type("/sni");
+    expect(await screen.findByText(omnibar.unknownCommand)).toBeInTheDocument();
+    expect(screen.queryByText(omnibar.slash.snippets)).toBeNull();
+  });
+
+  it("opens on the snippets again when Insert snippet runs from inside the palette", async () => {
+    registry.commands.push({
+      id: "snippets.insert",
+      surfaces: ["omnibar"],
+      label: () => "Insert snippet",
+      order: 3,
+      run: () => useSettingsStore.getState().setSearchOpen(true, "/snippets "),
+    });
+    useSettingsStore.getState().setSearchOpen(false);
+    render(<SearchOmnibar />);
+    act(() => useSettingsStore.getState().setSearchOpen(true, "/snippets "));
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    const user = await type("Insert snippet");
+    await user.click(await screen.findByText("Insert snippet"));
+    expect(await screen.findByPlaceholderText(snippetCopy.placeholder)).toBeInTheDocument();
+    expect(await screen.findByText("Continued fraction")).toBeInTheDocument();
+  });
+});

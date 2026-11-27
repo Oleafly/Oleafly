@@ -30,10 +30,8 @@ export function latexMathRanges(source: string): InlineRange[] {
   return scanMathExpressions(source, { format: "latex" }).map(({ from, to }) => ({ from, to }));
 }
 
-export function parseLatexSnippet(source: string, theoremEnvironments: readonly string[]): JSONContent[] {
-  return (
-    parseLatexBody(source, { preservedInlineRanges: latexMathRanges(source), theoremEnvironments }).content ?? []
-  );
+export function parseLatexSnippet(source: string): JSONContent[] {
+  return parseLatexBody(source, { preservedInlineRanges: latexMathRanges(source) }).content ?? [];
 }
 
 function isUnderstood(blocks: JSONContent[]): boolean {
@@ -45,14 +43,10 @@ function isUnderstood(blocks: JSONContent[]): boolean {
   return inline.length > 1 || (inline.length === 1 && inline[0].type !== WYSIWYG_NODE_NAMES.rawInline);
 }
 
-export function latexToVisualContent(
-  source: string,
-  block: boolean,
-  theoremEnvironments: readonly string[],
-): JSONContent[] {
+export function latexToVisualContent(source: string, block: boolean): JSONContent[] {
   const math = mathNodeJSON(source.trim());
   if (math) return [math];
-  const blocks = parseLatexSnippet(source, theoremEnvironments);
+  const blocks = parseLatexSnippet(source);
   if (!isUnderstood(blocks)) {
     return [{ type: block ? WYSIWYG_NODE_NAMES.rawBlock : WYSIWYG_NODE_NAMES.rawInline, attrs: { source } }];
   }
@@ -129,13 +123,8 @@ function settleAfterInsert(view: EditorView, content: JSONContent[], from: numbe
   view.focus();
 }
 
-export function insertLatexIntoVisualEditor(
-  view: EditorView,
-  source: string,
-  block: boolean,
-  theoremEnvironments: readonly string[],
-): void {
-  const content = latexToVisualContent(source, block, theoremEnvironments);
+export function insertLatexIntoVisualEditor(view: EditorView, source: string, block: boolean): void {
+  const content = latexToVisualContent(source, block);
   const from = insertVisualContent(view, content);
   settleAfterInsert(view, content, from);
 }

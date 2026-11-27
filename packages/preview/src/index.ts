@@ -20,6 +20,7 @@ export {
   clearPdfView,
   gotoRect,
   pageClickToBp,
+  pdfPointAt,
   setPdfLogger,
   type PdfTextRun,
   type SynctexRect,

@@ -11,10 +11,13 @@ use serde_json::Value;
 use super::catch_up::History;
 use super::{
     Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
-    Resolution, Seed, SignedIn, UnsentDoc,
+    OutsideText, Overlap, Resolution, Seed, Seeded, SignedIn, UnsentDoc,
 };
-use crate::live::doc::{Applied, DocError, DocFault, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
-use crate::live::format::{CodecError, DocFormat, FormatState};
+use crate::live::doc::{
+    Applied, DocError, DocFault, Limit, Origin, OutgoingUpdate, OverleafDoc, Rejoin,
+};
+use crate::live::format::{pieces_from_json, CodecError, DocFormat, FormatState, Piece};
+use crate::live::history_ot::{edits_from_json, Edit};
 use crate::live::join::{JoinFailure, JoinedDoc};
 use crate::live::journal::{plain_doc_id, DocRecord, Journal, ProjectManifest, WRITE_EVERY};
 use crate::live::tree_queue::Queued;
@@ -23,9 +26,15 @@ use crate::realtime::events::{AccessEvent, EntityId, ProjectEvent};
 use crate::realtime::project::{Members, ProjectState, Rejoined, Role};
 use crate::realtime::tree::{NodeKind, PathChange};
 
+mod chat;
+mod fill;
 mod peers;
+mod people;
+mod review;
 mod tree;
 
+pub(super) use chat::{ChatTicket, Paged};
+pub(super) use review::IdsReady;
 pub(super) use tree::{name_of, parent_of, Finished, Job};
 
 const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
@@ -39,12 +48,18 @@ pub(super) enum Notice {
     Flags(bool, bool),
     MembersChanged,
     Texts(Vec<DocId>),
+    RemoteEdit(DocId, Option<String>),
     Tree(Vec<PathChange>),
     Peer(LivePeer),
     PeerLeft(PublicId),
     Stopped(DocId, DocStopReason),
     Project(ProjectEvent),
     Merged(DocId, MergeReview),
+    Unsent {
+        doc: DocId,
+        path: Option<String>,
+        text: String,
+    },
     Journal(Option<String>),
     Pending(DocId, bool),
     AccountChanged(Account),
@@ -60,6 +75,10 @@ pub(super) enum Notice {
     },
     External(DocId),
     Replaced(DocId),
+    Review(super::ReviewChange),
+    Chat(super::ChatChange),
+    Filling(usize, usize),
+    Seeded(String, Seeded),
 }
 
 pub(super) fn deliver_to_editors(notices: Vec<Notice>) -> Vec<Notice> {
@@ -74,6 +93,7 @@ pub(super) fn deliver_to_editors(notices: Vec<Notice>) -> Vec<Notice> {
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
+    let mut edited = BTreeSet::new();
     for notice in notices {
         match notice {
             Notice::State(state) => port.state(state),
@@ -81,12 +101,26 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Flags(restricted, deleted) => port.project_flags(restricted, deleted),
             Notice::MembersChanged => port.members_changed(),
             Notice::Texts(docs) => port.texts_changed(docs),
+            Notice::RemoteEdit(doc, user_id) => {
+                if edited.insert((doc.clone(), user_id.clone())) {
+                    port.remote_edit(&doc, user_id.as_deref());
+                }
+            }
             Notice::Tree(changes) => port.tree_changed(changes),
             Notice::Peer(peer) => port.peer(peer),
             Notice::PeerLeft(id) => port.peer_left(&id),
             Notice::Stopped(doc, reason) => port.doc_stopped(&doc, reason),
             Notice::Project(event) => port.project_event(event),
             Notice::Merged(doc, review) => port.merged(&doc, review),
+            Notice::Unsent { doc, path, text } => {
+                let on_disk = path.and_then(|path| port.disk_text(&path));
+                let review = if on_disk.as_ref() == Some(&text) {
+                    MergeReview::InFile
+                } else {
+                    MergeReview::Kept { text }
+                };
+                port.merged(&doc, review);
+            }
             Notice::Journal(reason) => port.journal_failed(reason),
             Notice::External(doc) => port.external_update(&doc),
             Notice::Replaced(doc) => port.characters_replaced(&doc),
@@ -98,46 +132,23 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Unsteady(doc) => port.doc_unsteady(&doc),
             Notice::Queue(changes) => port.tree_queue(changes),
             Notice::Uploaded { path, tag, hash } => port.uploaded(&path, &tag, hash.as_deref()),
+            Notice::Review(change) => port.review_changed(change),
+            Notice::Chat(change) => port.chat_changed(change),
+            Notice::Filling(done, total) => port.filling(done, total),
+            Notice::Seeded(path, outcome) => port.seeded(&path, outcome),
         }
     }
 }
 
-pub(super) fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as u64)
         .unwrap_or_default()
 }
 
-fn civil(days: u64) -> (u64, u64, u64) {
-    let shifted = days + 719_468;
-    let era = shifted / 146_097;
-    let day_of_era = shifted % 146_097;
-    let year_of_era =
-        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let shifted_month = (5 * day_of_year + 2) / 153;
-    let day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
-    let month = if shifted_month < 10 {
-        shifted_month + 3
-    } else {
-        shifted_month - 9
-    };
-    let year = year_of_era + era * 400 + u64::from(month <= 2);
-    (year, month, day)
-}
-
 pub(super) fn iso_time(ms: u64) -> String {
-    let seconds = ms / 1_000;
-    let (year, month, day) = civil(seconds / 86_400);
-    let in_day = seconds % 86_400;
-    format!(
-        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
-        in_day / 3_600,
-        in_day / 60 % 60,
-        in_day % 60,
-        ms % 1_000
-    )
+    crate::realtime::events::iso_time(i64::try_from(ms).unwrap_or(i64::MAX))
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -162,6 +173,7 @@ struct Slot {
     doc: Option<OverleafDoc>,
     editor: Option<Editor>,
     buffer: Vec<AppliedUpdate>,
+    listed: Vec<(Option<PublicId>, u64)>,
     phase: Phase,
     resume: Option<DocRecord>,
     held: Option<DocRecord>,
@@ -170,6 +182,7 @@ struct Slot {
     shown_pending: bool,
     dirty: bool,
     missed_fresh: bool,
+    reloading: Option<String>,
 }
 
 impl Slot {
@@ -177,6 +190,18 @@ impl Slot {
         self.resume.is_some()
             || (self.phase == Phase::Held && self.held.is_some())
             || self.doc.as_ref().is_some_and(|doc| !doc.is_settled())
+    }
+
+    fn already_listed(&mut self, update: &AppliedUpdate) -> bool {
+        let found = self
+            .listed
+            .iter()
+            .position(|(source, v)| *source == update.source && *v == update.v)
+            .filter(|_| update.op.is_some());
+        if let Some(index) = found {
+            self.listed.swap_remove(index);
+        }
+        found.is_some()
     }
 
     fn waits_for_server(&self) -> bool {
@@ -192,6 +217,12 @@ impl Slot {
         }
         let known = self.doc.as_ref().filter(|known| !known.is_settled())?;
         known.record().ok()
+    }
+
+    fn unsent_edits(&self) -> bool {
+        self.resume.is_some()
+            || (self.phase == Phase::Held && self.held.is_some())
+            || self.doc.as_ref().is_some_and(OverleafDoc::has_unsent_text)
     }
 
     fn unsent_text(&mut self) -> Option<String> {
@@ -255,6 +286,11 @@ pub(super) struct State {
     unreadable: u8,
     after_change: Option<BTreeSet<DocId>>,
     peers: peers::Peers,
+    review: review::ReviewBook,
+    chat: chat::ChatBook,
+    people: people::PeopleBook,
+    filling: Option<fill::Filling>,
+    filled: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -311,6 +347,11 @@ impl State {
             unreadable: 0,
             after_change: None,
             peers: peers::Peers::default(),
+            review: review::ReviewBook::default(),
+            chat: chat::ChatBook::default(),
+            people: people::PeopleBook::default(),
+            filling: None,
+            filled: false,
         };
         state.take_journal(journal.docs());
         state.take_tree_queue(journal.tree_queue());
@@ -364,6 +405,13 @@ impl State {
         self.signed_out
     }
 
+    pub(super) fn account(&self) -> Account {
+        Account {
+            user_id: self.me.clone(),
+            email: self.email.clone(),
+        }
+    }
+
     pub(super) fn signed_in(&mut self, account: Account) -> SignedIn {
         self.signed_out = false;
         if account.user_id == self.me {
@@ -387,7 +435,7 @@ impl State {
 
     fn hand_back_unsendable(&mut self) {
         if !self.project.role.can_review() {
-            self.hand_back(Slot::unconfirmed);
+            self.hand_back(Slot::unsent_edits);
         }
     }
 
@@ -433,14 +481,8 @@ impl State {
             let unsent = slot.unsent_text();
             slot.buffer.clear();
             slot.dirty = true;
-            let on_disk = path.and_then(|path| self.port.disk_text(&path));
             if let Some(text) = unsent {
-                let review = if on_disk.as_ref() == Some(&text) {
-                    MergeReview::InFile
-                } else {
-                    MergeReview::Kept { text }
-                };
-                self.notices.push(Notice::Merged(doc.clone(), review));
+                self.notices.push(Notice::Unsent { doc, path, text });
             }
         }
         self.forget_tree_queue();
@@ -489,10 +531,15 @@ impl State {
         if !self.tracking() {
             return SendMode::Edit;
         }
-        SendMode::Suggest(Tracking {
+        let tracking = Tracking {
             user_id: self.me.clone(),
             ts: iso_time(now_ms()),
-        })
+        };
+        if self.project.role == Role::Reviewer {
+            SendMode::Review(tracking)
+        } else {
+            SendMode::Suggest(tracking)
+        }
     }
 
     fn pending(&self) -> u64 {
@@ -579,6 +626,8 @@ impl State {
                 self.keep_unsent();
             }
             self.forget_peers();
+            self.forget_chat();
+            self.forget_people();
             self.online = false;
             self.ended = Some(end.clone());
             self.notices.push(Notice::State(LiveState::Ended(end)));
@@ -609,56 +658,197 @@ impl State {
 
     pub(super) fn seed(&mut self, seeds: Vec<Seed>) {
         self.seeds.extend(seeds);
-        let waiting = std::mem::take(&mut self.seeds);
-        let unknown_tree = self.project.public_id.0.is_empty();
-        for seed in waiting {
-            match self.doc_at(&seed.path) {
-                Some(doc) => self.seed_doc(&doc, seed),
-                None if unknown_tree => self.seeds.push(seed),
-                None => {}
+        let joined = self.current.is_some();
+        let writable = self.project.role.can_edit();
+        for seed in std::mem::take(&mut self.seeds) {
+            let target = self.seed_target(&seed);
+            if !joined && (target.is_none() || !writable) {
+                self.seeds.push(seed);
+                continue;
             }
+            let outcome = match target {
+                None => Seeded::NoDoc,
+                Some(doc) if writable && self.seed_doc(&doc, seed.base, &seed.local) => {
+                    Seeded::Taken
+                }
+                Some(_) => Seeded::Left,
+            };
+            self.notices.push(Notice::Seeded(seed.path, outcome));
         }
     }
 
-    fn seed_doc(&mut self, doc: &DocId, seed: Seed) {
+    fn seed_target(&self, seed: &Seed) -> Option<DocId> {
+        seed.doc
+            .clone()
+            .filter(|doc| self.is_text_doc(doc))
+            .or_else(|| self.doc_at(&seed.path))
+    }
+
+    fn seed_doc(&mut self, doc: &DocId, base: Option<String>, local: &str) -> bool {
         let slot = self.slots.entry(doc.clone()).or_default();
-        if slot.doc.is_some() || slot.resume.is_some() || slot.phase != Phase::Unjoined {
-            return;
+        if slot.doc.is_some()
+            || slot.resume.is_some()
+            || !matches!(slot.phase, Phase::Unjoined | Phase::Wanted)
+        {
+            return false;
         }
-        let seeded = seed.base.is_none().then(|| seed_hash(&seed.local));
-        let base = seed.base.unwrap_or_default();
-        let mut known = OverleafDoc::provisional(doc.clone(), base.clone());
-        let Ok(correction) = known.local(diff(&base, &seed.local)) else {
-            return;
+        let Some((known, seeded, corrected)) = outside_doc(doc, base, local) else {
+            return false;
         };
         slot.doc = Some(known);
         slot.dirty = true;
-        if seeded.is_some() {
-            self.mark_unbased(doc, seeded);
-        }
-        if correction.is_some() {
+        self.mark_unbased(doc, seeded);
+        if corrected {
             self.replaced(doc);
         }
+        self.show(doc);
         self.want(doc);
+        true
     }
 
     fn mark_unbased(&mut self, doc: &DocId, seeded: Option<String>) {
-        let changed = match seeded {
-            Some(hash) => self.manifest.unbased.insert(doc.0.clone(), hash).is_none(),
-            None => self.manifest.unbased.remove(&doc.0).is_some(),
+        let known = self.manifest.unbased.get(&doc.0).cloned();
+        if known == seeded {
+            return;
+        }
+        match seeded {
+            Some(hash) => self.manifest.unbased.insert(doc.0.clone(), hash),
+            None => self.manifest.unbased.remove(&doc.0),
         };
-        self.manifest_dirty |= changed;
+        self.manifest_dirty = true;
+    }
+
+    pub(super) fn outside_edit(
+        &mut self,
+        doc: &DocId,
+        base: Option<String>,
+        text: &str,
+        overlap: Overlap,
+    ) -> Result<(), LiveError> {
+        if self.ended.is_some() {
+            return Err(LiveError::Ended);
+        }
+        if !self.is_text_doc(doc) {
+            return Err(LiveError::UnknownDoc);
+        }
+        match self.slots.get(doc).map(|slot| slot.phase) {
+            Some(Phase::Stopped) => return Err(LiveError::Stopped),
+            Some(Phase::Held) => return Err(LiveError::NotWritable),
+            _ if self.mode() == SendMode::Hold => return Err(LiveError::NotWritable),
+            _ => {}
+        }
+        let reloading = self.slots.get(doc).and_then(|slot| slot.reloading.clone());
+        if reloading.as_deref() == Some(text) {
+            return Ok(());
+        }
+        let loaded = self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| slot.doc.is_some() || slot.resume.is_some());
+        let Some(current) = self.text(doc).filter(|_| loaded) else {
+            return if self.seed_doc(doc, reloading.or(base), text) {
+                Ok(())
+            } else {
+                Err(LiveError::NotWritable)
+            };
+        };
+        if current == text {
+            return Ok(());
+        }
+        let op = base.as_deref().and_then(|base| {
+            oleafly_ot::rebase(base, text, &current)
+                .filter(|rebased| overlap == Overlap::Weave || !rebased.overlapped)
+                .map(|rebased| rebased.operation)
+        });
+        match op {
+            Some(op) if op.is_noop() => Ok(()),
+            Some(op) => {
+                self.forward(doc, op.clone());
+                self.take_local(doc, op, Some(current), None)
+            }
+            None => self.hold_outside(doc, base, text, current),
+        }
+    }
+
+    fn hold_outside(
+        &mut self,
+        doc: &DocId,
+        base: Option<String>,
+        text: &str,
+        theirs: String,
+    ) -> Result<(), LiveError> {
+        let (mine, seeded, corrected) =
+            outside_doc(doc, base, text).ok_or(LiveError::NotWritable)?;
+        let record = mine.record().map_err(|_| LiveError::NotWritable)?;
+        if self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| slot.doc.is_none() && slot.resume.is_some())
+        {
+            let resumed = self.take_base(doc);
+            self.slots.entry(doc.clone()).or_default().doc = resumed;
+        }
+        let slot = self.slots.entry(doc.clone()).or_default();
+        slot.dirty = true;
+        let unsent = slot
+            .doc
+            .as_ref()
+            .filter(|known| known.has_unsent_text())
+            .map(|known| known.text().to_string());
+        if let Some(text) = unsent {
+            self.notices
+                .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+        }
+        self.mark_unbased(doc, seeded);
+        self.hold(doc, Some(record), mine.text().to_string(), theirs);
+        if corrected {
+            self.replaced(doc);
+        }
+        self.show(doc);
+        Ok(())
+    }
+
+    fn shown(&self, doc: &DocId) -> Option<String> {
+        let editor = self.slots.get(doc)?.editor.as_ref()?;
+        Some(editor.channel.text())
+    }
+
+    fn show(&mut self, doc: &DocId) {
+        if let Some((shown, now)) = self.shown(doc).zip(self.text(doc)) {
+            self.forward(doc, diff(&shown, &now));
+        }
     }
 
     fn hold(&mut self, doc: &DocId, record: Option<DocRecord>, mine: String, theirs: String) {
-        if let Some(slot) = self.slots.get_mut(doc) {
-            slot.phase = Phase::Held;
-            slot.held = record;
-        }
+        let reviewed = self
+            .under_review(doc)
+            .map(|held| held.local_text.clone())
+            .filter(|reviewed| *reviewed != mine);
+        let mine = match reviewed {
+            Some(reviewed) => {
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::Kept { text: mine },
+                ));
+                reviewed
+            }
+            None => {
+                if let Some(slot) = self.slots.get_mut(doc) {
+                    slot.phase = Phase::Held;
+                    slot.held = record;
+                }
+                mine
+            }
+        };
         self.notices.push(Notice::Merged(
             doc.clone(),
             MergeReview::NeedsReview { mine, theirs },
         ));
+    }
+
+    fn under_review(&self, doc: &DocId) -> Option<&DocRecord> {
+        let slot = self.slots.get(doc)?;
+        slot.held.as_ref().filter(|_| slot.phase == Phase::Held)
     }
 
     fn hold_unbased(
@@ -691,6 +881,16 @@ impl State {
         }
         if self.queued.insert(doc.clone()) {
             self.urgent.push_back(doc.clone());
+        }
+    }
+
+    pub(super) fn want_text(&mut self, doc: &DocId) {
+        let joined = self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| slot.phase != Phase::Unjoined);
+        if !joined && self.is_text_doc(doc) {
+            self.want(doc);
         }
     }
 
@@ -836,7 +1036,7 @@ impl State {
 
     pub(super) fn with_text<T>(&self, doc: &DocId, read: impl FnOnce(&str) -> T) -> Option<T> {
         let slot = self.slots.get(doc)?;
-        if let Some(held) = slot.held.as_ref().filter(|_| slot.phase == Phase::Held) {
+        if let Some(held) = self.under_review(doc) {
             return Some(read(&held.local_text));
         }
         if let Some(known) = &slot.doc {
@@ -908,11 +1108,13 @@ impl State {
         doc: &DocId,
         rev: u64,
         op: TextOperation,
+        origin: Option<Origin>,
     ) -> Result<(), LiveError> {
         if self.ended.is_some() {
             return Err(LiveError::Ended);
         }
         let hold = self.mode() == SendMode::Hold;
+        let removed = !self.is_text_doc(doc) && !self.tree_work.deleted_by_me(doc);
         let slot = self.slots.get_mut(doc).ok_or(LiveError::UnknownDoc)?;
         let editor = slot.editor.as_mut().ok_or(LiveError::UnknownDoc)?;
         let before = (slot.doc.is_none() && slot.resume.is_none()).then(|| editor.channel.text());
@@ -945,8 +1147,14 @@ impl State {
                 }
                 Ok(())
             }
+            Phase::Stopped if removed && !applied.is_noop() => {
+                let text = editor.channel.text();
+                self.notices
+                    .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+                Ok(())
+            }
             Phase::Stopped => Ok(()),
-            _ => self.take_local(doc, applied, before),
+            _ => self.take_local(doc, applied, before, origin),
         }
     }
 
@@ -955,6 +1163,7 @@ impl State {
         doc: &DocId,
         op: TextOperation,
         before: Option<String>,
+        origin: Option<Origin>,
     ) -> Result<(), LiveError> {
         if self
             .slots
@@ -968,7 +1177,7 @@ impl State {
         let local = slot.doc.get_or_insert_with(|| {
             OverleafDoc::provisional(doc.clone(), before.unwrap_or_default())
         });
-        match local.local(op) {
+        match local.local_from(op, origin) {
             Ok(correction) => {
                 slot.dirty = true;
                 if let Some(correction) = correction {
@@ -1017,7 +1226,11 @@ impl State {
         if phase == Some(Phase::Held) || self.mode() == SendMode::Hold {
             return Err(LiveError::NotWritable);
         }
-        let before = self.text(doc).or(on_disk).unwrap_or_default();
+        let reloading = self.slots.get(doc).and_then(|slot| slot.reloading.clone());
+        let before = reloading
+            .or_else(|| self.text(doc))
+            .or(on_disk)
+            .unwrap_or_default();
         let Some(op) = edit(&before).filter(|op| !op.is_noop()) else {
             return Ok(false);
         };
@@ -1025,7 +1238,7 @@ impl State {
             return Err(LiveError::Invalid(OtError::LengthMismatch));
         }
         self.forward(doc, op.clone());
-        self.take_local(doc, op, Some(before)).map(|()| true)
+        self.take_local(doc, op, Some(before), None).map(|()| true)
     }
 
     pub(super) fn on_applied(&mut self, update: AppliedUpdate) {
@@ -1052,15 +1265,38 @@ impl State {
             return;
         };
         let held = slot.phase == Phase::Held;
+        let counted = slot
+            .doc
+            .as_ref()
+            .is_some_and(|known| known.format().format() == DocFormat::HistoryOt);
+        if counted && slot.already_listed(update) {
+            if !held {
+                self.tell_foreign(doc, update, DocFormat::HistoryOt);
+            }
+            return;
+        }
+        if counted && held {
+            if update.external {
+                self.notices.push(Notice::External(doc.clone()));
+            }
+            return;
+        }
         let Some(known) = slot.doc.as_mut() else {
             return;
         };
-        match known.applied(update, &own) {
+        let applied = known.applied(update, &own);
+        self.note_review_doc(doc);
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        match applied {
             Ok(Applied::Remote(op)) => {
                 slot.dirty = true;
                 if !held {
                     self.forward(doc, op);
                     self.notices.push(Notice::Texts(vec![doc.clone()]));
+                    self.notices
+                        .push(Notice::RemoteEdit(doc.clone(), update.user_id.clone()));
                 }
                 if update.external {
                     self.notices.push(Notice::External(doc.clone()));
@@ -1128,6 +1364,7 @@ impl State {
     }
 
     fn stop_doc(&mut self, doc: &DocId, reason: DocStopReason) {
+        self.review_dirty(doc);
         let resumed = self.take_base(doc);
         if let Some(slot) = self.slots.get_mut(doc) {
             slot.doc = resumed;
@@ -1145,13 +1382,15 @@ impl State {
     }
 
     fn keep_dropped(&mut self, doc: &DocId) -> bool {
+        let mine = self.tree_work.deleted_by_me(doc);
         let Some(slot) = self.slots.get_mut(doc) else {
             return false;
         };
-        let unsent = slot.unsent_text();
+        let unsent = slot.unsent_text().filter(|_| !mine);
         slot.buffer.clear();
         slot.phase = Phase::Stopped;
         slot.dirty = true;
+        self.review.dirty_doc(doc);
         if let Some(text) = unsent {
             self.notices
                 .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
@@ -1246,7 +1485,10 @@ impl State {
             ..
         } = joined;
         let kind = format.format();
-        let seeded = self.manifest.unbased.get(&doc.0).cloned();
+        let seeded = match self.under_review(doc) {
+            Some(_) => None,
+            None => self.manifest.unbased.get(&doc.0).cloned(),
+        };
         let mut known = match (self.take_base(doc), seeded) {
             (Some(known), Some(seeded)) if seeded == seed_hash(&text) => {
                 self.mark_unbased(doc, None);
@@ -1264,7 +1506,10 @@ impl State {
             known.limit_length(limit);
         }
         self.install(doc, known);
-        self.apply_buffered(doc, kind, version);
+        match kind {
+            DocFormat::ShareJs => self.apply_buffered(doc),
+            DocFormat::HistoryOt => self.catch_up_buffered(doc),
+        }
     }
 
     fn first_join(
@@ -1275,12 +1520,7 @@ impl State {
         format: FormatState,
     ) -> OverleafDoc {
         let known = OverleafDoc::joined(doc.clone(), version, text, format);
-        let shown = self
-            .slots
-            .get(doc)
-            .and_then(|slot| slot.editor.as_ref())
-            .map(|editor| editor.channel.text());
-        if let Some(shown) = shown {
+        if let Some(shown) = self.shown(doc) {
             self.forward(doc, diff(&shown, known.text()));
         }
         known
@@ -1315,6 +1555,7 @@ impl State {
     fn install(&mut self, doc: &DocId, known: OverleafDoc) {
         let slot = self.slots.entry(doc.clone()).or_default();
         slot.missed_fresh = false;
+        slot.reloading = None;
         if slot.phase != Phase::Held {
             slot.phase = Phase::Joined;
         }
@@ -1324,19 +1565,70 @@ impl State {
         slot.doc = Some(known);
         slot.dirty = true;
         self.notices.push(Notice::Texts(vec![doc.clone()]));
+        self.note_review_doc(doc);
+        self.review_dirty(doc);
     }
 
-    fn apply_buffered(&mut self, doc: &DocId, format: DocFormat, version: u64) {
-        let buffered = self
-            .slots
-            .get_mut(doc)
-            .map(|slot| std::mem::take(&mut slot.buffer))
-            .unwrap_or_default();
+    fn apply_buffered(&mut self, doc: &DocId) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        let Some(known) = slot.doc.as_ref() else {
+            return;
+        };
+        let (format, version) = (known.format().format(), known.version());
+        let buffered = std::mem::take(&mut slot.buffer);
+        let mirrored = slot.phase != Phase::Held;
         for update in buffered {
-            if format == DocFormat::HistoryOt && update.v < version {
-                continue;
+            if mirrored && format == DocFormat::ShareJs && update.v < version {
+                self.tell_foreign(doc, &update, format);
             }
             self.apply_remote(doc, &update);
+        }
+    }
+
+    fn catch_up_buffered(&mut self, doc: &DocId) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        let buffered = std::mem::take(&mut slot.buffer);
+        if buffered.is_empty() {
+            return;
+        }
+        if slot.phase != Phase::Held {
+            for update in &buffered {
+                self.tell_foreign(doc, update, DocFormat::HistoryOt);
+            }
+        }
+        self.rejoin(doc, Phase::CatchUp, None);
+    }
+
+    fn tell_foreign(&mut self, doc: &DocId, update: &AppliedUpdate, format: DocFormat) {
+        if self.foreign_edit(update, format) {
+            self.notices
+                .push(Notice::RemoteEdit(doc.clone(), update.user_id.clone()));
+        }
+    }
+
+    fn foreign_edit(&self, update: &AppliedUpdate, format: DocFormat) -> bool {
+        let theirs = update
+            .source
+            .as_ref()
+            .is_none_or(|source| !self.own.contains(source));
+        let Some(op) = update.op.as_ref().filter(|_| theirs && !update.dup) else {
+            return false;
+        };
+        match format {
+            DocFormat::ShareJs => pieces_from_json(op).is_ok_and(|pieces| {
+                pieces
+                    .iter()
+                    .any(|piece| !matches!(piece, Piece::Comment { .. }))
+            }),
+            DocFormat::HistoryOt => edits_from_json(op).is_ok_and(|edits| {
+                edits
+                    .iter()
+                    .any(|edit| matches!(edit, Edit::Text(raw) if !raw.is_noop()))
+            }),
         }
     }
 
@@ -1357,9 +1649,19 @@ impl State {
         for op in remote {
             self.forward(doc, op);
         }
-        let kind = joined.format.format();
-        let version = joined.version;
-        let fits = known.adopt_join(version, &joined.text, joined.format);
+        if known.needs_rejoin() {
+            self.keep_and_rejoin(doc, known);
+            return;
+        }
+        let listed = match joined.format.format() {
+            DocFormat::ShareJs => Vec::new(),
+            DocFormat::HistoryOt => joined
+                .updates
+                .into_iter()
+                .map(|update| (update.source, update.v))
+                .collect(),
+        };
+        let fits = known.adopt_join(joined.version, &joined.text, joined.format);
         if known.is_settled() && !fits {
             self.keep_and_rejoin(doc, known);
             return;
@@ -1368,7 +1670,10 @@ impl State {
             known.limit_length(limit);
         }
         self.install(doc, known);
-        self.apply_buffered(doc, kind, version);
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.listed = listed;
+        }
+        self.apply_buffered(doc);
     }
 
     fn keep_and_rejoin(&mut self, doc: &DocId, known: OverleafDoc) {
@@ -1398,7 +1703,20 @@ impl State {
             let Some(known) = slot.doc.as_mut() else {
                 continue;
             };
-            match known.next_update(&on, &mode, now) {
+            let next = known.next_update(&on, &mode, now);
+            let shown = known.take_shown();
+            if !shown.is_empty() {
+                slot.dirty = true;
+                for op in shown {
+                    self.forward(&doc, op);
+                }
+                self.notices.push(Notice::Texts(vec![doc.clone()]));
+            }
+            self.note_review_doc(&doc);
+            let Some(slot) = self.slots.get_mut(&doc) else {
+                continue;
+            };
+            match next {
                 Ok(Some(update)) => {
                     slot.dirty = true;
                     sends.push(update);
@@ -1473,58 +1791,76 @@ impl State {
         Ok(())
     }
 
-    pub(super) fn retry(&mut self, doc: &DocId) -> Result<(), LiveError> {
-        let mine = self.stopped_text(doc)?;
+    pub(super) fn retry(
+        &mut self,
+        doc: &DocId,
+        outside: Option<OutsideText>,
+    ) -> Result<(), LiveError> {
+        self.stopped_path(doc)?;
+        let known = self.slots.get_mut(doc).and_then(|slot| slot.doc.as_mut());
         let mut corrected = false;
-        if let Some(known) = self.slots.get_mut(doc).and_then(|slot| slot.doc.as_mut()) {
-            let op = diff(known.text(), &mine);
-            if !op.is_noop() {
-                corrected = known
-                    .local(op)
-                    .map_err(|_| LiveError::NotWritable)?
-                    .is_some();
+        let seed = match (known, outside) {
+            (Some(known), Some(OutsideText { base, text: mine })) => {
+                let op = base
+                    .and_then(|base| oleafly_ot::rebase(&base, &mine, known.text()))
+                    .map_or_else(|| diff(known.text(), &mine), |rebased| rebased.operation);
+                if !op.is_noop() {
+                    corrected = known
+                        .local(op)
+                        .map_err(|_| LiveError::NotWritable)?
+                        .is_some();
+                }
+                None
             }
-        }
+            (None, Some(outside)) if !outside.text.is_empty() => Some(outside),
+            _ => None,
+        };
         if corrected {
             self.replaced(doc);
         }
-        self.restart(doc);
+        self.restart(doc, seed);
         Ok(())
     }
 
-    pub(super) fn keep_and_reload(&mut self, doc: &DocId) -> Result<(), LiveError> {
-        let mine = self.stopped_text(doc)?;
+    pub(super) fn keep_and_reload(
+        &mut self,
+        doc: &DocId,
+        on_disk: Option<String>,
+    ) -> Result<(), LiveError> {
+        self.stopped_path(doc)?;
+        let mine = on_disk.or_else(|| self.text(doc)).unwrap_or_default();
         if let Some(slot) = self.slots.get_mut(doc) {
             slot.doc = None;
             slot.resume = None;
             slot.held = None;
+            slot.reloading = Some(mine.clone());
         }
+        self.mark_unbased(doc, None);
         self.notices.push(Notice::Merged(
             doc.clone(),
             MergeReview::Kept { text: mine },
         ));
-        self.restart(doc);
+        self.restart(doc, None);
         Ok(())
     }
 
-    fn stopped_text(&self, doc: &DocId) -> Result<String, LiveError> {
+    pub(super) fn stopped_path(&self, doc: &DocId) -> Result<Option<String>, LiveError> {
         let slot = self.slots.get(doc).ok_or(LiveError::UnknownDoc)?;
         if slot.phase != Phase::Stopped {
             return Err(LiveError::NotWritable);
         }
-        let on_disk = self
-            .path_of(doc)
-            .and_then(|path| self.port.adopt_file_text(&path));
-        let known = slot.doc.as_ref().map(|known| known.text().to_string());
-        Ok(on_disk.or(known).unwrap_or_default())
+        Ok(self.path_of(doc))
     }
 
-    fn restart(&mut self, doc: &DocId) {
+    fn restart(&mut self, doc: &DocId, seed: Option<OutsideText>) {
         if let Some(slot) = self.slots.get_mut(doc) {
             slot.phase = Phase::Unjoined;
             slot.errors = 0;
             slot.buffer.clear();
             slot.dirty = true;
+        }
+        if let Some(OutsideText { base, text }) = seed {
+            self.seed_doc(doc, base, &text);
         }
         self.want(doc);
     }
@@ -1565,6 +1901,8 @@ impl State {
             Err(unsupported) => return self.unreadable(&unsupported),
         }
         self.unreadable = 0;
+        self.review_rejoined();
+        self.chat_rejoined();
         self.connected(public_id, now_ms());
         self.seed(Vec::new());
         self.hand_back_unsendable();
@@ -1639,6 +1977,12 @@ impl State {
                 self.announce_role();
                 false
             }
+            AccessEvent::MembersChanged { invites, .. } => {
+                if *invites {
+                    self.want_invites();
+                }
+                self.project.apply_access(event)
+            }
             _ => self.project.apply_access(event),
         }
     }
@@ -1657,7 +2001,20 @@ impl State {
         }
     }
 
-    pub(super) fn start_history(&mut self, history: History, trickle: Duration) {
+    pub(super) fn report_tick(&mut self) {
+        self.report_review();
+        self.report_chat();
+        self.report_people();
+        self.report_fill();
+    }
+
+    pub(super) fn start_history(
+        &mut self,
+        history: History,
+        trickle: Duration,
+        fill: Option<(usize, Duration)>,
+    ) {
+        self.review_trickle(trickle);
         self.history_target = history.latest;
         match history.changed {
             Some(paths) => {
@@ -1669,8 +2026,11 @@ impl State {
                     self.want(&doc);
                 }
             }
-            None if self.pace.is_none() => self.pace_all(1, trickle),
-            None => {}
+            None => match fill {
+                Some((batch, every)) => self.start_fill(batch, every),
+                None if self.pace.is_none() => self.pace_all(1, trickle),
+                None => {}
+            },
         }
         self.settle_history();
     }
@@ -1707,6 +2067,11 @@ impl State {
         &self.own
     }
 
+    #[cfg(test)]
+    pub(super) fn forget_connection(&mut self) {
+        self.current = None;
+    }
+
     pub(super) fn legacy_from(
         &mut self,
         paths: &BTreeSet<String>,
@@ -1737,8 +2102,11 @@ impl State {
         let waiting = self
             .journal_written
             .is_some_and(|written| now < written + WRITE_EVERY);
-        let backing_off = self.journal_retry.is_some_and(|(at, _)| now < at);
-        forced || !(waiting || backing_off)
+        forced || !(waiting || self.journal_backing_off(now))
+    }
+
+    pub(super) fn journal_backing_off(&self, now: Instant) -> bool {
+        self.journal_retry.is_some_and(|(at, _)| now < at)
     }
 
     pub(super) fn take_journal_batch(
@@ -1801,6 +2169,18 @@ impl State {
             self.notices.push(Notice::Journal(Some(reason)));
         }
     }
+}
+
+fn outside_doc(
+    doc: &DocId,
+    base: Option<String>,
+    text: &str,
+) -> Option<(OverleafDoc, Option<String>, bool)> {
+    let seeded = base.is_none().then(|| seed_hash(text));
+    let base = base.unwrap_or_default();
+    let mut known = OverleafDoc::provisional(doc.clone(), base.clone());
+    let correction = known.local(diff(&base, text)).ok()?;
+    Some((known, seeded, correction.is_some()))
 }
 
 fn seed_hash(text: &str) -> String {

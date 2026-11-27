@@ -26,6 +26,10 @@
       "region": "Commenta quest'area…"
     },
     "placeHere": "Posiziona qui",
+    "coauthors": "Commenta per i coautori",
+    "noSource": "Questo passaggio non è stato trovato nei file sorgente.",
+    "commentFailed": "Impossibile aprire il file di questo commento.",
+    "commentsClosed": "I commenti non sono disponibili per questo progetto al momento.",
     "cancel": "Annulla",
     "save": "Aggiungi",
     "saving": "Salvataggio",
@@ -39,8 +43,6 @@
     "region": "Area"
   },
   "status": {
-    "draft": "Bozza",
-    "sent": "Inviata",
     "addressed": "Gestita",
     "resolved": "Risolta",
     "needsPlacing": "Da posizionare"
@@ -52,8 +54,13 @@
     "failed": "Impossibile salvare le annotazioni. {{error}}",
     "readOnly": "Salvate da un Oleafly più recente. Aggiornalo per modificarle.",
     "setAside": "Il file delle annotazioni non era leggibile, quindi ne è stato creato uno nuovo.",
-    "noSource": "Nessuna posizione nella sorgente",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "dopo “{{quote}}”",
+    "groups": {
+      "drafts": "Bozze",
+      "assistant": "All'assistente"
+    },
     "notFound": "Questo passaggio non è stato trovato nel nuovo PDF.",
     "placing": "Seleziona il passaggio nel PDF, poi scegli Posiziona qui.",
     "placeAgain": "Posiziona di nuovo",

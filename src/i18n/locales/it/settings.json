@@ -1897,34 +1897,18 @@
       "disconnectFailed": "Impossibile disconnettere alphaXiv. Riprova."
     },
     "cookies": {
-      "confirmTitle": "Conferma l'importazione dei cookie",
-      "detecting": "Ricerca dei profili browser installati...",
-      "dialogDescription": "Scegli un profilo di un browser installato. Oleafly lo legge solo dopo che hai controllato e confermato l'importazione. I cookie Chromium vengono sbloccati in locale tramite il portachiavi di macOS. Oleafly non invia i valori dei cookie a nessun servizio Oleafly.",
-      "dialogTitle": "Importa i cookie del browser",
-      "empty": "Non è stato trovato nessun profilo di browser supportato.",
-      "errors": {
-        "chooseProfile": "Scegli un profilo browser disponibile."
-      },
-      "profileGroupLabel": "Profili browser",
-      "profileLegend": "Profilo browser",
-      "review": "Controlla l'importazione",
-      "status": {
-        "available": "Disponibile",
-        "comingSoon": "In arrivo",
-        "noCookieStore": "Nessun archivio di cookie",
-        "notInstalled": "Non installato"
-      },
-      "tryAgain": "Riprova",
-      "label": "Copia l'accesso di un browser",
-      "useBrowserSignIn": "Copia l'accesso dal tuo browser",
-      "signInDescription": "Copia il tuo accesso a {{server}} da un browser di questo computer, così non devi accedere di nuovo.",
-      "site": "Sito: {{domain}}",
-      "confirmCopy": "Oleafly leggerà i cookie di {{domain}} dal profilo {{profile}} di {{browser}}. Restano in Oleafly e vanno solo a {{domain}}. Confermerai ancora una volta in una finestra di dialogo di sistema.",
-      "copyAction": "Copia l'accesso",
-      "copying": "Copia in corso...",
-      "notSignedIn_one": "Copiato {{count}} cookie da {{browser}}, ma non ti ha fatto accedere. Accedi direttamente.",
-      "notSignedIn_many": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente.",
-      "notSignedIn_other": "Copiati {{count}} cookie da {{browser}}, ma non ti hanno fatto accedere. Accedi direttamente."
+      "dialogDescription": "Oleafly copia solo i cookie di {{server}}, li usa per accedere e poi elimina le copie. Le tue password restano nel browser.",
+      "dialogTitle": "Importa i cookie dal tuo browser",
+      "label": "Importa i cookie dal tuo browser",
+      "useBrowserSignIn": "Scegli un profilo",
+      "signInDescription": "Usa l'account {{server}} con cui un profilo del browser di questo computer ha già effettuato l'accesso.",
+      "copyAction": "Importa",
+      "copying": "Importazione in corso...",
+      "from": "Da",
+      "noCookies": "Ancora nessun cookie",
+      "sameAccount": "{{profile}} ha effettuato l'accesso come {{account}}, che Oleafly usa già. Scegli un altro profilo oppure accedi prima con l'altro account in quel browser.",
+      "orExisting": "oppure usa un accesso che hai già",
+      "noSavedSignIn": "{{profile}} non ha un accesso salvato per {{server}}, quindi i cookie copiati non ti hanno fatto accedere. Se lì hai effettuato l'accesso, il browser forse lo conserva solo fino alla chiusura. Usa invece il riquadro {{browser}}."
     },
     "zotero": {
       "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>zotero.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink> per crearne una e copia il tuo ID utente numerico dalla stessa pagina.",
@@ -1987,7 +1971,12 @@
       "signedIn": "Accesso effettuato su {{server}}",
       "signOut": "Esci",
       "signOutFailed": "Oleafly non è riuscito a uscire da Overleaf.",
+      "addAccount": "Aggiungi un altro account",
+      "addAccountHint": "Scegli dove accedere. Ognuno parte senza accessi attivi, quindi va bene qualsiasi account.",
+      "accountPick": "Account per l'importazione",
+      "accountPickDescription": "Le nuove importazioni e i modelli usano questo account. I progetti che hai già mantengono l'account da cui provengono.",
       "gitTitle": "Token Git per la sincronizzazione",
+      "gitTitleFor": "Token Git per {{email}}",
       "gitSaved": "Un token Git è salvato. I progetti che colleghi restano sincronizzati con Overleaf.",
       "gitMissing": "Nessun token Git per ora. Creane uno nella sezione Integrazione Git delle impostazioni del tuo account Overleaf per sincronizzare i progetti.",
       "gitOpenSettings": "Apri le impostazioni dell'account Overleaf",
@@ -1996,14 +1985,9 @@
       "gitSave": "Salva",
       "gitRemove": "Rimuovi",
       "gitFailed": "Oleafly non è riuscito a salvare il token Git. Controlla di aver incollato tutto il token.",
-      "browserLabel": "Accedi con il tuo browser",
-      "browserDescription": "Per l'accesso con Google, con l'istituzione o con una passkey. Oleafly apre {{server}} in una nuova finestra del browser e la chiude quando hai effettuato l'accesso.",
-      "browserAction": "Accedi",
-      "browserPick": "Browser con cui accedere",
       "browserWaiting": "Completa l'accesso a {{server}} in {{browser}}. Chiudere la finestra annulla l'accesso.",
-      "browserHint": "Usalo per l'accesso con Google, con l'istituzione o con una passkey.",
-      "windowLabel": "Accedi a {{server}}",
-      "windowDescription": "Oleafly apre una finestra di accesso e la chiude quando hai effettuato l'accesso. Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi accedi qui con quel browser.",
+      "windowLabel": "Accedi dentro Oleafly",
+      "windowDescription": "La finestra si chiude da sola quando hai effettuato l'accesso. Se la passkey non funziona lì, usa la password o una richiesta sul telefono.",
       "windowAction": "Accedi",
       "windowWaiting": "Completa l'accesso a {{server}} nella finestra che si è aperta.",
       "unsent": {
@@ -2021,7 +2005,15 @@
           "always": "Eliminalo anche su Overleaf",
           "never": "Mantienilo su Overleaf"
         }
-      }
+      },
+      "sameAccount": "Hai già effettuato l'accesso come {{account}}. Accedi con un altro account per aggiungerlo.",
+      "windowTitle": "Accedi a {{server}}",
+      "addAccountKept": "L'account attuale resta connesso.",
+      "noBrowser": "Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi scegli quel browser qui.",
+      "tileHere": "In questa app",
+      "tileWindow": "Nuova finestra",
+      "tileWaiting": "In attesa di te",
+      "signInNote": "Usa un browser per accedere con Google, con la tua istituzione o con una passkey. Se la passkey non funziona in Oleafly, usa lì la password o una richiesta sul telefono. La finestra si chiude da sola quando hai effettuato l'accesso."
     },
     "desktopApps": {
       "tab": "Computer Use",
@@ -2153,6 +2145,20 @@
           "confirm": "Questo scarica il programma di installazione di Cua da cua.ai e lo esegue nel tuo terminale. Continuare?"
         }
       }
+    },
+    "signIns": {
+      "title": "Gestisci gli accessi",
+      "description": "Gli account con cui Oleafly ha effettuato l'accesso su questo computer. Se ne rimuovi uno qui, resti connesso nel browser.",
+      "loading": "Caricamento dei tuoi accessi...",
+      "empty": "Non hai effettuato l'accesso con nessun account.",
+      "inUse": "In uso",
+      "switch": "Passa",
+      "switchTo": "Passa a {{account}}",
+      "removeAccount": "Rimuovi {{account}}",
+      "removeAll": "Rimuovi tutti",
+      "importMore": "Importa altri",
+      "loadFailed": "Oleafly non è riuscito a caricare i tuoi accessi.",
+      "changeFailed": "Oleafly non è riuscito a modificare questo accesso. Riprova."
     }
   },
   "language": {
@@ -2363,6 +2369,7 @@
       "confirm": "Svuota l'elenco",
       "descriptionFallback": "Questo rimuove tutti i termini da questo dizionario. Verranno controllati di nuovo subito.",
       "descriptionGlobal": "Questo rimuove tutti i termini dal dizionario globale. Verranno controllati di nuovo subito.",
+      "descriptionOverleaf": "Vengono rimossi anche dal tuo account Overleaf.",
       "descriptionProject": "Questo rimuove tutti i termini da {{project}}. Verranno controllati di nuovo subito.",
       "descriptionSuppressed": "Questo rimuove tutti i termini dalle segnalazioni ignorate in {{project}}. Verranno controllati di nuovo subito.",
       "suppressedConfirm": "Mostra di nuovo",
@@ -2381,6 +2388,7 @@
     },
     "global": {
       "emptyDescription": "Le parole che aggiungi qui vengono saltate dal correttore in tutti i progetti.",
+      "overleafSynced": "Sincronizzato con le parole apprese del tuo account Overleaf mentre un progetto è in modifica dal vivo su Overleaf.",
       "scope": "Vale per tutti i progetti"
     },
     "intro": "Aggiungi parole al tuo dizionario personale per il controllo ortografico. Queste parole vengono salvate nelle impostazioni locali e ignorate in tutti i progetti. Il confronto normalizza Unicode e non distingue maiuscole e minuscole.",
@@ -2907,5 +2915,186 @@
     "filteredCount_many": "{{shown}} su {{count}} voci",
     "filteredCount_one": "{{shown}} su {{count}} voce",
     "filteredCount_other": "{{shown}} su {{count}} voci"
+  },
+  "snippets": {
+    "switches": {
+      "list": {
+        "label": "Nell'elenco dei completamenti",
+        "description": "Mostra i frammenti accanto ai comandi"
+      },
+      "tab": {
+        "label": "Tab espande un attivatore",
+        "description": "Per i frammenti impostati su Tab"
+      },
+      "auto": {
+        "label": "Espandi mentre scrivi",
+        "description": "Per i frammenti in modalità Auto, come Fast math"
+      },
+      "hint": {
+        "label": "Mostra un suggerimento mentre scrivi",
+        "description": "Indica il frammento che un attivatore inserirà. Tab lo inserisce."
+      }
+    },
+    "library": {
+      "title": "La tua libreria di frammenti",
+      "collections": "Raccolte",
+      "all": "Tutti i frammenti",
+      "mine": "Le tue",
+      "packs": "Pacchetti",
+      "builtIn": "Integrate",
+      "add": "Aggiungi pacchetti o importa…",
+      "useCollection": "Usa {{name}}",
+      "search": "Cerca per nome, attivatore o testo",
+      "language": "Linguaggio",
+      "allLanguages": "Tutti i linguaggi",
+      "expands": "Espansione",
+      "anyExpand": "Qualsiasi",
+      "newSnippet": "Nuovo frammento",
+      "columns": {
+        "trigger": "Attivatore",
+        "name": "Nome",
+        "languages": "Linguaggi",
+        "where": "Contesto",
+        "expands": "Espansione"
+      },
+      "modified": "Modificato",
+      "turnedOff": "Disattivato",
+      "restore": "Ripristina",
+      "restoreLabel": "Ripristina {{name}}",
+      "wraps": "avvolge",
+      "noTrigger": "nessuno",
+      "noMatches": "Nessun frammento corrisponde.",
+      "shown": "{{shown}} di {{total}}"
+    },
+    "problems": {
+      "summary_one": "{{count}} problema",
+      "summary_many": "{{count}} problemi",
+      "summary_other": "{{count}} problemi",
+      "where": "nel file {{file}}, riga {{line}}: {{message}}",
+      "slowRegex": "Il controllo dell'attivatore del frammento {{name}} ha richiesto troppo tempo, quindi il frammento è stato disattivato.",
+      "show": "Mostra",
+      "hide": "Nascondi"
+    },
+    "addDialog": {
+      "title": "Aggiungi frammenti",
+      "packsTab": "Pacchetti",
+      "importTab": "Importa un file",
+      "count_one": "{{count}} frammento",
+      "count_many": "{{count}} frammenti",
+      "count_other": "{{count}} frammenti",
+      "source": "Fonte: {{source}}",
+      "licence": "Licenza {{licence}}",
+      "packNote": "I pacchetti si aggiornano con l'app. Le modifiche che fai ai frammenti di un pacchetto vengono conservate a parte.",
+      "packs": {
+        "fastMathLatex": "Si espande mentre scrivi in matematica: frazioni, pedici e potenze, lettere greche, operatori e matrici. Gli attivatori seguono la configurazione di Gilles Castel.",
+        "fastMathTypst": "Gli stessi attivatori, scritti per Typst. Tralascia ciò che Typst fa già, come a/b per una frazione.",
+        "paperStructure": "Figure, sottofigure, tabelle booktabs, equazioni, teoremi, dimostrazioni e algoritmi."
+      },
+      "useOn": "Usa {{name}}",
+      "importIntro": "Scegli un file di frammenti di VS Code (.json o .code-snippets). Diventa una raccolta a sé, che puoi disattivare o modificare.",
+      "choose": "Scegli un file",
+      "fileLabel": "File di frammenti",
+      "imported_one": "{{count}} frammento importato nella raccolta {{collection}}.",
+      "imported_many": "{{count}} frammenti importati nella raccolta {{collection}}.",
+      "imported_other": "{{count}} frammenti importati nella raccolta {{collection}}.",
+      "nothing": "Nessun frammento trovato nel file {{file}}.",
+      "leftOut_one": "{{count}} voce è stata esclusa:",
+      "leftOut_many": "{{count}} voci sono state escluse:",
+      "leftOut_other": "{{count}} voci sono state escluse:"
+    },
+    "editor": {
+      "newTitle": "Nuovo frammento",
+      "duplicate": "Duplica",
+      "delete": "Elimina",
+      "turnOff": "Disattiva",
+      "save": "Salva",
+      "copyName": "{{name}} (copia)",
+      "name": "Nome",
+      "namePlaceholder": "Figura con didascalia ed etichetta",
+      "trigger": "Attivatore",
+      "triggerPlaceholder": "fig",
+      "regex": "Espressione regolare",
+      "expands": "Espansione",
+      "expandOptions": {
+        "list": "Dall'elenco",
+        "tab": "Con Tab",
+        "auto": "Mentre scrivi"
+      },
+      "expandHelp": {
+        "list": "Compare nell'elenco dei completamenti. Sceglilo lì per inserirlo.",
+        "tab": "Digita {{trigger}} e premi Tab. Compare anche nell'elenco dei completamenti.",
+        "auto": "Si espande appena digiti {{trigger}}. Annulla o Backspace ripristinano l'attivatore."
+      },
+      "languages": "Linguaggi",
+      "where": "Contesto",
+      "whereOptions": {
+        "any": "Ovunque",
+        "text": "Testo",
+        "math": "Matematica",
+        "code": "Codice"
+      },
+      "mathKinds": {
+        "math": "Entrambi",
+        "inline-math": "In linea",
+        "display-math": "In display"
+      },
+      "mathKind": "Tipo di matematica",
+      "whereHelp": {
+        "any": "Ovunque nel file.",
+        "text": "Testo: fuori dalla matematica, dai commenti e dal verbatim.",
+        "math": "Matematica: dentro la matematica in linea o in display.",
+        "code": "Codice: dentro il codice Typst o i blocchi di codice Markdown."
+      },
+      "firesOnly": "Si attiva soltanto",
+      "wholeWord": "come parola intera",
+      "lineStart": "a inizio riga",
+      "collection": "Raccolta",
+      "keptSeparately": "Le tue modifiche vengono conservate a parte, quindi continui a ricevere gli aggiornamenti della raccolta {{collection}}.",
+      "body": "Testo inserito",
+      "anyLanguage": "Qualsiasi linguaggio",
+      "addField": "+ Campo",
+      "addChoice": "+ Scelta",
+      "choiceText": "primo,secondo",
+      "variable": "Variabile",
+      "projectField": "Campo del progetto",
+      "variables": {
+        "SELECTION": "Testo selezionato",
+        "CLIPBOARD": "Appunti",
+        "DATE": "Data di oggi",
+        "TM_FILENAME": "Nome del file",
+        "PROJECT_NAME": "Nome del progetto"
+      },
+      "projectFields": {
+        "image": "Immagine",
+        "label": "Etichetta",
+        "cite": "Citazione",
+        "ref": "Riferimento",
+        "file": "File"
+      },
+      "chipsNote": "I campi appaiono come chip.",
+      "showSyntax": "Mostra la sintassi",
+      "missingName": "Dai un nome al frammento.",
+      "missingBody": "Scrivi il testo che il frammento inserisce.",
+      "sameTrigger": "{{trigger}} è usato anche da: {{list}}. Vince la raccolta più vicina.",
+      "sharedStart": "Ha lo stesso inizio di: {{list}}. Compaiono tutti nell'elenco e Tab sceglie la corrispondenza esatta, {{trigger}}.",
+      "clashItem": "{{trigger}} ({{collection}})",
+      "deleteDialog": {
+        "title": "Vuoi eliminare il frammento {{name}}?",
+        "description": "Verrà rimosso dalla raccolta {{collection}}.",
+        "action": "Elimina"
+      },
+      "tryIt": {
+        "title": "Prova",
+        "howAuto": "Digita {{trigger}} e si espande.",
+        "howTab": "Digita {{trigger}}, poi premi Tab.",
+        "howList": "Digita {{trigger}}, premi Ctrl+Space e sceglilo dall'elenco.",
+        "noTrigger": "Questo frammento non ha un attivatore. Inseriscilo dal riquadro comandi con /snippets.",
+        "inText": "nel testo",
+        "inMath": "in matematica",
+        "fires": "Si attiva qui: {{language}}, {{place}}.",
+        "notLanguage": "Qui non si attiverebbe. {{language}} non è tra i linguaggi di questo frammento.",
+        "notPlace": "Non si attiverebbe {{place}}. L'impostazione Contesto non lo consente."
+      }
+    }
   }
 }

@@ -154,7 +154,7 @@ fn stage(path: &Path, bytes: &[u8], private: bool) -> io::Result<NamedTempFile> 
     let parent = parent_of(path)?;
     let mut temporary = staging_file(parent, path, private)?;
     keep_permissions(path, temporary.path());
-    temporary.write_all(bytes)?;
+    temporary.as_file_mut().write_all(bytes)?;
     temporary.as_file().sync_all()?;
     Ok(temporary)
 }

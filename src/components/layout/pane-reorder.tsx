@@ -44,8 +44,7 @@ const INTERACTIVE = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export const PANE_BAR_CLASS =
-  "data-[pane-grab=true]:cursor-grab data-[pane-dragging=true]:bg-primary/10";
+export const PANE_BAR_CLASS = "data-[pane-grab=true]:cursor-grab";
 
 export interface PaneReorder {
   movable(pane: PaneId): boolean;
@@ -125,7 +124,7 @@ export function PaneReorderProvider({
   children: ReactNode;
 }>) {
   const cleanup = useRef<(() => void) | null>(null);
-  const [drag, setDrag] = useState<{ drop: PaneDrop | null } | null>(null);
+  const [drag, setDrag] = useState<{ pane: PaneId; source: Rect | null; drop: PaneDrop | null } | null>(null);
 
   useEffect(() => () => cleanup.current?.(), []);
 
@@ -143,13 +142,17 @@ export function PaneReorderProvider({
         cleanup.current?.();
         event.preventDefault();
         let latest: PaneDrop | null = null;
+        let source: Rect | null = null;
         cleanup.current = trackPointerDrag(event, {
           start() {
             bar.dataset.paneDragging = "true";
+            const own = root.querySelector(`[data-panel][id="${pane}"]`)?.getBoundingClientRect();
+            source = own && own.width > 0 && own.height > 0 ? inset(own) : null;
+            setDrag({ pane, source, drop: null });
           },
           move(point) {
             latest = dropAt(root, pane, point.clientX, point.clientY);
-            setDrag({ drop: latest });
+            setDrag({ pane, source, drop: latest });
           },
           end(dropped) {
             delete bar.dataset.paneDragging;
@@ -170,10 +173,17 @@ export function PaneReorderProvider({
       {drag &&
         createPortal(
           <div aria-hidden data-pane-reorder="dragging" className="fixed inset-0 z-50 cursor-grabbing select-none">
+            {drag.source && (
+              <div
+                data-pane-drag-source={drag.pane}
+                className="pointer-events-none fixed rounded-md border border-dashed border-primary/50 bg-primary/10"
+                style={drag.source}
+              />
+            )}
             {drop && (
               <div
                 data-pane-drop={drop.target.kind === "edge" ? `edge-${drop.target.side}` : `${drop.target.pane}-${drop.target.side}`}
-                className="pointer-events-none fixed rounded-md border border-primary/60 bg-primary/10 transition-[left,top,width,height] duration-100 motion-reduce:transition-none"
+                className="pointer-events-none fixed rounded-md border border-primary bg-primary/15 transition-[left,top,width,height] duration-100 motion-reduce:transition-none"
                 style={drop.box}
               />
             )}
