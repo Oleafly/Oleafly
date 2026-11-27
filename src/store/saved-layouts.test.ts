@@ -2,12 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { panelLayoutKey } from "@/lib/panel-layout";
 import { useFilesStore } from "@/store/files";
-import { DEFAULT_PANE_LAYOUT, layoutKey, movePane, reportSplitSizes, usePaneLayoutStore } from "@/store/pane-layout";
+import { DEFAULT_PANE_LAYOUT, layoutKey, movePane, reportSplitSizes, usePaneLayoutStore, withLiveSizes } from "@/store/pane-layout";
 import { useSettingsStore } from "@/store/settings";
 import {
   SAVED_LAYOUTS_KEY,
   SAVED_LAYOUT_LIMIT,
   savedLayoutInEffect,
+  savedLayoutShown,
   useSavedLayoutsStore,
   type SavedLayout,
 } from "./saved-layouts";
@@ -25,7 +26,7 @@ function stored(): unknown {
 beforeEach(() => {
   localStorage.clear();
   usePaneLayoutStore.setState({ layout: DEFAULT_PANE_LAYOUT });
-  useSavedLayoutsStore.setState({ layouts: [], naming: null });
+  useSavedLayoutsStore.setState({ layouts: [], activeId: null, naming: null });
   useSettingsStore.setState({ ...FLAGS });
   useFilesStore.setState({ projectId: "p1" });
 });
@@ -40,7 +41,7 @@ describe("saved layouts", () => {
     usePaneLayoutStore.getState().move("assistant", { kind: "pane", pane: "pdf", side: "bottom" });
     reportSplitSizes("horizontal", { sidebar: 35, editorpdf: 65 });
     useSettingsStore.setState({ terminalOpen: true });
-    expect(useSavedLayoutsStore.getState().save("  Writing  ")).toBe(true);
+    expect(useSavedLayoutsStore.getState().save("  Writing  ")).toEqual({ saved: true });
     const [saved] = useSavedLayoutsStore.getState().layouts;
     expect(saved?.name).toBe("Writing");
     expect(saved?.flags).toEqual({ ...FLAGS, terminalOpen: true });
@@ -69,6 +70,7 @@ describe("saved layouts", () => {
   it("renames, replaces under the same name, updates and deletes", () => {
     const store = useSavedLayoutsStore.getState();
     store.save("Writing");
+    useSettingsStore.setState({ terminalOpen: true });
     store.save("Review");
     const [writing, review] = useSavedLayoutsStore.getState().layouts;
     store.rename(writing?.id ?? "", "Drafting");
@@ -94,11 +96,55 @@ describe("saved layouts", () => {
 
   it(`keeps at most ${SAVED_LAYOUT_LIMIT} layouts but still replaces one by name`, () => {
     const store = useSavedLayoutsStore.getState();
-    for (let index = 0; index < SAVED_LAYOUT_LIMIT; index += 1) expect(store.save(`Layout ${index}`)).toBe(true);
-    expect(store.save("One more")).toBe(false);
-    expect(store.save("Layout 3")).toBe(true);
+    const resize = (step: number) => reportSplitSizes("horizontal", { sidebar: 10 + 2 * step, editorpdf: 70 - 2 * step, assistant: 20 });
+    for (let index = 0; index < SAVED_LAYOUT_LIMIT; index += 1) {
+      resize(index);
+      expect(store.save(`Layout ${index}`)).toEqual({ saved: true });
+    }
+    resize(SAVED_LAYOUT_LIMIT);
+    expect(store.save("One more")).toEqual({ saved: false, reason: "limit" });
+    expect(store.save("Layout 3")).toEqual({ saved: true });
     expect(names()).toHaveLength(SAVED_LAYOUT_LIMIT);
-    expect(store.save("   ")).toBe(false);
+    expect(store.save("   ")).toEqual({ saved: false, reason: "unnamed" });
+  });
+
+  it("refuses to save the layout on screen again under another name", () => {
+    const store = useSavedLayoutsStore.getState();
+    reportSplitSizes("horizontal", { sidebar: 20, editorpdf: 52, assistant: 28 });
+    expect(store.save("Bringa")).toEqual({ saved: true });
+    expect(store.save("Poke")).toEqual({ saved: false, reason: "duplicate", name: "Bringa" });
+    expect(store.save("bringa")).toEqual({ saved: true });
+    expect(names()).toEqual(["bringa"]);
+
+    reportSplitSizes("horizontal", { sidebar: 20.5, editorpdf: 51.5, assistant: 28 });
+    expect(store.save("Poke")).toEqual({ saved: false, reason: "duplicate", name: "bringa" });
+    reportSplitSizes("horizontal", { sidebar: 30, editorpdf: 42, assistant: 28 });
+    expect(store.save("Poke")).toEqual({ saved: true });
+    expect(names()).toEqual(["bringa", "Poke"]);
+  });
+
+  it("marks one saved layout as the one on screen, preferring the one last used", () => {
+    const store = useSavedLayoutsStore.getState();
+    reportSplitSizes("horizontal", { sidebar: 20, editorpdf: 52, assistant: 28 });
+    store.save("Narrow tree");
+    reportSplitSizes("horizontal", { sidebar: 40, editorpdf: 32, assistant: 28 });
+    store.save("Wide tree");
+    const [narrow, wide] = useSavedLayoutsStore.getState().layouts as [SavedLayout, SavedLayout];
+    const shown = () => {
+      const { layouts, activeId } = useSavedLayoutsStore.getState();
+      return savedLayoutShown(layouts, activeId, withLiveSizes(usePaneLayoutStore.getState().layout), useSettingsStore.getState())?.name;
+    };
+    expect(shown()).toBe("Wide tree");
+    store.apply(narrow.id);
+    expect(shown()).toBe("Narrow tree");
+    useSavedLayoutsStore.setState({ activeId: null });
+    reportSplitSizes("horizontal", { sidebar: 40, editorpdf: 32, assistant: 28 });
+    expect(shown()).toBe("Wide tree");
+    store.remove(wide.id);
+    expect(useSavedLayoutsStore.getState().activeId).toBeNull();
+    expect(shown()).toBe("Narrow tree");
+    useSettingsStore.setState({ showTree: false });
+    expect(shown()).toBeUndefined();
   });
 
   it("drops bad entries from a stored list and never throws on a broken one", async () => {

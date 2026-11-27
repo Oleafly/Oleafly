@@ -147,6 +147,7 @@ export function OutlineRail<Item extends Leveled>({
         align="center"
         ariaLabel={title}
         contentAriaLabel={title}
+        glass
         className="w-80 p-1"
         triggerClassName="pointer-events-auto h-auto flex-col items-end gap-1.5 px-1.5 py-2"
         onOpenAutoFocus={(event) => {

@@ -1441,11 +1441,12 @@
     },
     "moreActions": "Další akce",
     "resetPaneLayout": "Obnovit uspořádání panelů",
-    "resetPaneLayoutScope": "Všechny projekty",
+    "resetPaneLayoutHint": "Vrátí postranní panel, editor, náhled, terminál a asistenta na výchozí místa ve všech projektech.",
     "savedLayouts": {
       "close": "Zavřít",
       "delete": "Smazat",
       "deleteConfirm": "Smazat rozvržení „{{name}}“?",
+      "duplicate": "Toto rozvržení je už uložené jako „{{name}}“.",
       "limit": "Limit rozvržení: {{count}}. Další uložíte po smazání jednoho.",
       "manage": "Spravovat rozvržení",
       "name": "Název rozvržení",
@@ -1453,10 +1454,11 @@
       "renameTitle": "Přejmenovat rozvržení",
       "replace": "Nahradit",
       "replaceConfirm": "Rozvržení s názvem „{{name}}“ už existuje. Nahradit ho?",
+      "replaceWithCurrent": "Nahradit aktuálním rozvržením",
       "save": "Uložit aktuální rozvržení",
       "saveButton": "Uložit",
       "saveTitle": "Uložit rozvržení",
-      "update": "Aktualizovat podle aktuálního"
+      "savedAs": "Uloženo jako „{{name}}“"
     },
     "renameFailed": "Projekt se nepodařilo přejmenovat."
   },

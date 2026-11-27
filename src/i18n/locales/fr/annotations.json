@@ -43,8 +43,6 @@
     "region": "Zone"
   },
   "status": {
-    "draft": "Brouillon",
-    "sent": "Envoyée",
     "addressed": "Traitée",
     "resolved": "Résolue",
     "needsPlacing": "À placer"
@@ -56,8 +54,13 @@
     "failed": "Impossible d'enregistrer les annotations. {{error}}",
     "readOnly": "Enregistré par un Oleafly plus récent. Mettez-le à jour pour modifier.",
     "setAside": "Le fichier des annotations était illisible, un nouveau a été créé.",
-    "noSource": "Aucun emplacement dans la source",
     "page": "p. {{page}}",
+    "quoted": "« {{quote}} »",
+    "insertAfter": "après « {{quote}} »",
+    "groups": {
+      "drafts": "Brouillons",
+      "assistant": "Chez l'assistant"
+    },
     "notFound": "Ce passage est introuvable dans le nouveau PDF.",
     "placing": "Sélectionnez le passage dans le PDF, puis choisissez Placer ici.",
     "placeAgain": "Placer à nouveau",

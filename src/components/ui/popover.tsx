@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 const POPOVER_MOTION =
   "z-50 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
 const POPOVER_CONTENT = `${POPOVER_MOTION} min-w-42 rounded-md border bg-card p-1 text-card-foreground`;
+const POPOVER_GLASS =
+  "relative overflow-hidden border-white/25 bg-background/70 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.1),inset_0_1px_0_0_rgba(255,255,255,0.3)] backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:border-white/15 dark:bg-background/65 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.08)] dark:before:hidden [&>*]:relative [&>*]:z-[1]";
 const NESTED_POPUP = '[role="listbox"], [data-radix-popper-content-wrapper]';
 const HOVER_OPEN_MS = 250;
 const HOVER_CLOSE_MS = 200;
@@ -35,6 +37,7 @@ interface PopoverProps {
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   openOnHover?: boolean;
+  glass?: boolean;
   onOpenAutoFocus?: (event: Event) => void;
 }
 
@@ -52,6 +55,7 @@ export function Popover({
   onOpenChange: onOpenChangeProp,
   disabled = false,
   openOnHover = false,
+  glass = false,
   onOpenAutoFocus,
 }: Readonly<PopoverProps>) {
   const [openState, setOpen] = useState(false);
@@ -202,7 +206,8 @@ export function Popover({
                 event.preventDefault();
               }
             }}
-            className={cn(POPOVER_CONTENT, className)}
+            data-glass={glass ? "" : undefined}
+            className={cn(POPOVER_CONTENT, glass && POPOVER_GLASS, className)}
           >
             {children}
           </PopoverPrimitive.Content>

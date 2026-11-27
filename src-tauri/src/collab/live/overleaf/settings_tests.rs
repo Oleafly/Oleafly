@@ -222,9 +222,12 @@ async fn agreed(rig: &OverleafRig) {
 }
 
 fn change_meta(project_id: &str, change: impl FnOnce(&mut crate::project::ProjectMeta)) {
-    let mut meta = crate::project::read_meta(project_id).unwrap();
-    change(&mut meta);
-    crate::project::write_meta(project_id, &meta).unwrap();
+    crate::project::with_project_metadata_lock_held(project_id, || {
+        let mut meta = crate::project::read_meta(project_id)?;
+        change(&mut meta);
+        crate::project::write_meta(project_id, &meta)
+    })
+    .unwrap();
     crate::collab::settings::local_changed(project_id);
 }
 

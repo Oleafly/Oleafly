@@ -25,7 +25,7 @@ use tokio::task::JoinHandle;
 
 use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
-use crate::disk::{exists_exact, inside, safe_target, sha256_hex};
+use crate::disk::{exists_exact, safe_target, sha256_hex};
 use crate::live::moves::{RemovedFile, RemovedPayload};
 use crate::live::payloads::{
     AccountChangedPayload, DocPendingPayload, KeptFile, KeptKind, KeptPayload,
@@ -224,31 +224,81 @@ impl MirrorPort {
     }
 
     fn keep(&self, doc: &DocId, text: String) {
+        let session = self.mirror.session.get().and_then(std::sync::Weak::upgrade);
+        let unlisted = session
+            .as_ref()
+            .is_some_and(|session| !session.nodes().iter().any(|node| node.id.0 == doc.0));
+        let latest = session
+            .filter(|_| unlisted)
+            .and_then(|session| session.text(doc));
         let kept = doc.clone();
         self.with_path_else(doc, move |port, path| {
-            match path.or_else(|| port.mirror.last_path(&kept)) {
-                Some(path) => port.chore(move |port| port.keep_at(kept.0, path, &text)),
-                None => port.chore(move |port| {
-                    port.mirror.disk.log(format!(
-                        "Live editing could not keep {} characters of unsent text of document {} in project {}: the service no longer lists it and it had no known path",
-                        text.chars().count(),
-                        kept.0,
-                        port.mirror.disk.project_id
-                    ));
-                }),
-            }
+            let path = path.or_else(|| port.mirror.last_path(&kept));
+            port.chore(move |port| port.keep_text(&kept, path, &text, unlisted, latest));
         });
     }
 
-    fn keep_at(&self, id: String, path: String, text: &str) {
+    fn keep_text(
+        &self,
+        doc: &DocId,
+        path: Option<String>,
+        text: &str,
+        unlisted: bool,
+        latest: Option<String>,
+    ) {
+        if let Some(latest) = latest {
+            if self.rewrite_unlisted_copy(doc, &latest) {
+                return;
+            }
+        }
+        match path {
+            Some(path) => self.keep_at(doc.0.clone(), path, text, unlisted),
+            None => self.mirror.disk.log(format!(
+                "Live editing could not keep {} characters of unsent text of document {} in project {}: the service no longer lists it and it had no known path",
+                text.chars().count(),
+                doc.0,
+                self.mirror.disk.project_id
+            )),
+        }
+    }
+
+    fn rewrite_unlisted_copy(&self, doc: &DocId, latest: &str) -> bool {
+        let Some(copy) = guard(&self.mirror.unlisted_copies).get(&doc.0).cloned() else {
+            return false;
+        };
+        if let Err(error) = self.mirror.disk.write_copy(&copy, latest.as_bytes()) {
+            self.mirror.disk.log(format!(
+                "Live editing could not save the text typed after document {} was removed into {copy} in project {}: {error}",
+                doc.0,
+                self.mirror.disk.project_id
+            ));
+        }
+        true
+    }
+
+    fn keep_at(&self, id: String, path: String, text: &str, unlisted: bool) {
         match self.mirror.disk.keep_copy(&path, text, None) {
-            Ok(copy) => guard(&self.mirror.kept).push(KeptFile {
-                id,
-                path,
-                copy: Some(copy),
-                kind: KeptKind::Unsent,
-                by: None,
-            }),
+            Ok(copy) => {
+                if unlisted {
+                    guard(&self.mirror.unlisted_copies).insert(id.clone(), copy.clone());
+                }
+                let mut kept = guard(&self.mirror.kept);
+                let gone = !guard(&self.mirror.disk.disk).layout.contains_key(&id);
+                let told = gone.then(|| guard(&self.mirror.told).remove(&id)).flatten();
+                match told {
+                    Some(file) => {
+                        drop(kept);
+                        self.tell_again_with_copy(file, copy);
+                    }
+                    None => kept.push(KeptFile {
+                        id,
+                        path,
+                        copy: Some(copy),
+                        kind: KeptKind::Unsent,
+                        by: None,
+                    }),
+                }
+            }
             Err(error) => {
                 self.mirror.disk.log(format!(
                     "Live editing could not keep {} characters of unsent text of {path} (document {id}) in project {}: {error}",
@@ -260,29 +310,13 @@ impl MirrorPort {
     }
 
     fn removed_with_kept(&self, id: String) {
-        if !guard(&self.mirror.kept).iter().any(|file| file.id == id) {
-            return;
-        }
-        let told = guard(&self.mirror.told).remove(&id);
-        let gone = !guard(&self.mirror.disk.disk).layout.contains_key(&id);
-        match told.filter(|_| gone) {
-            Some(file) => self.tell_again_with_copy(file),
-            None => {
-                guard(&self.mirror.removing).insert(id);
-            }
+        let kept = guard(&self.mirror.kept);
+        if kept.iter().any(|file| file.id == id) {
+            guard(&self.mirror.removing).insert(id);
         }
     }
 
-    fn tell_again_with_copy(&self, file: RemovedFile) {
-        let copy = {
-            let mut kept = guard(&self.mirror.kept);
-            let copy = kept
-                .iter()
-                .find(|kept| inside(&kept.path, &file.path))
-                .and_then(|kept| kept.copy.clone());
-            kept.retain(|kept| !inside(&kept.path, &file.path));
-            copy
-        };
+    fn tell_again_with_copy(&self, file: RemovedFile, copy: String) {
         let disk = &self.mirror.disk;
         let layout = guard(&disk.disk).layout.clone();
         disk.tell_removed(
@@ -290,8 +324,8 @@ impl MirrorPort {
             Some(RemovedPayload {
                 project_id: disk.project_id.clone(),
                 files: vec![RemovedFile {
-                    yours: copy.is_some(),
-                    copy,
+                    yours: true,
+                    copy: Some(copy),
                     ..file
                 }],
                 restored: Vec::new(),

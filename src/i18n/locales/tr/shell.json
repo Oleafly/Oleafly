@@ -1401,11 +1401,12 @@
     },
     "moreActions": "Diğer işlemler",
     "resetPaneLayout": "Panel yerleşimini sıfırla",
-    "resetPaneLayoutScope": "Tüm projeler",
+    "resetPaneLayoutHint": "Kenar çubuğunu, düzenleyiciyi, önizlemeyi, terminali ve asistanı tüm projelerde varsayılan yerlerine geri koyar.",
     "savedLayouts": {
       "close": "Kapat",
       "delete": "Sil",
       "deleteConfirm": "{{name}} düzeni silinsin mi?",
+      "duplicate": "Bu düzen zaten {{name}} olarak kaydedilmiş.",
       "limit": "En fazla {{count}} düzen saklayabilirsiniz. Başka bir düzen kaydetmek için birini silin.",
       "manage": "Düzenleri yönet",
       "name": "Düzen adı",
@@ -1413,10 +1414,11 @@
       "renameTitle": "Düzeni yeniden adlandır",
       "replace": "Değiştir",
       "replaceConfirm": "{{name}} adlı bir düzen zaten var. Değiştirilsin mi?",
+      "replaceWithCurrent": "Geçerli düzenle değiştir",
       "save": "Geçerli düzeni kaydet",
       "saveButton": "Kaydet",
       "saveTitle": "Düzeni kaydet",
-      "update": "Geçerliyle güncelle"
+      "savedAs": "{{name}} olarak kaydedildi"
     },
     "renameFailed": "Proje yeniden adlandırılamadı."
   },

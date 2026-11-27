@@ -1381,11 +1381,12 @@
     },
     "moreActions": "更多操作",
     "resetPaneLayout": "重設面板排列",
-    "resetPaneLayoutScope": "所有專案",
+    "resetPaneLayoutHint": "在所有專案中，將側邊欄、編輯器、預覽、終端機和助理放回預設位置。",
     "savedLayouts": {
       "close": "關閉",
       "delete": "刪除",
       "deleteConfirm": "要刪除版面配置 {{name}} 嗎？",
+      "duplicate": "此版面配置已儲存為 {{name}}。",
       "limit": "最多可保留 {{count}} 個版面配置。請先刪除一個，再儲存新的。",
       "manage": "管理版面配置",
       "name": "版面配置名稱",
@@ -1393,10 +1394,11 @@
       "renameTitle": "重新命名版面配置",
       "replace": "取代",
       "replaceConfirm": "已有名為 {{name}} 的版面配置。要取代它嗎？",
+      "replaceWithCurrent": "以目前的版面配置取代",
       "save": "儲存目前的版面配置",
       "saveButton": "儲存",
       "saveTitle": "儲存版面配置",
-      "update": "更新為目前的版面配置"
+      "savedAs": "已儲存為 {{name}}"
     },
     "renameFailed": "無法重新命名專案。"
   },

@@ -38,6 +38,20 @@ describe("Popover", () => {
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
+  it("draws the frosted glass surface when asked, and marks it so dark mode keeps it", () => {
+    render(
+      <Popover trigger="…" ariaLabel="Options" contentAriaLabel="Option list" glass className="p-4">
+        <PopoverItem onClick={vi.fn()}>{"Rename"}</PopoverItem>
+      </Popover>,
+    );
+    open();
+    const panel = screen.getByRole("dialog", { name: "Option list" });
+    expect(panel).toHaveAttribute("data-glass");
+    expect(panel).toHaveClass("backdrop-blur-2xl", "bg-background/70", "p-4");
+    expect(panel).not.toHaveClass("bg-card");
+    expect(panel).toHaveClass("dark:before:hidden");
+  });
+
   it.each([
     [undefined, "start"],
     ["left", "start"],

@@ -1441,11 +1441,12 @@
     },
     "moreActions": "Więcej działań",
     "resetPaneLayout": "Resetuj rozmieszczenie paneli",
-    "resetPaneLayoutScope": "Wszystkie projekty",
+    "resetPaneLayoutHint": "Przywraca panel boczny, edytor, podgląd, terminal i asystenta na domyślne miejsca we wszystkich projektach.",
     "savedLayouts": {
       "close": "Zamknij",
       "delete": "Usuń",
       "deleteConfirm": "Usunąć układ „{{name}}”?",
+      "duplicate": "Ten układ jest już zapisany jako „{{name}}”.",
       "limit": "Limit układów: {{count}}. Usuń jeden, aby zapisać kolejny.",
       "manage": "Zarządzaj układami",
       "name": "Nazwa układu",
@@ -1453,10 +1454,11 @@
       "renameTitle": "Zmień nazwę układu",
       "replace": "Zastąp",
       "replaceConfirm": "Układ o nazwie „{{name}}” już istnieje. Zastąpić go?",
+      "replaceWithCurrent": "Zastąp bieżącym układem",
       "save": "Zapisz bieżący układ",
       "saveButton": "Zapisz",
       "saveTitle": "Zapisz układ",
-      "update": "Zaktualizuj do bieżącego"
+      "savedAs": "Zapisano jako „{{name}}”"
     },
     "renameFailed": "Nie udało się zmienić nazwy projektu."
   },

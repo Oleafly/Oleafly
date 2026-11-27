@@ -15,7 +15,6 @@ const notifyError = vi.fn();
 
 vi.mock("@/components/library/HomeDock", () => ({
   HomeDock: () => null,
-  HOME_DOCK_GLASS_SURFACE: "",
 }));
 vi.mock("@/components/collab/CollabSlots", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/collab/CollabSlots")>()),

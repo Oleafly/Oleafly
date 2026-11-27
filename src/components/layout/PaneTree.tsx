@@ -43,6 +43,7 @@ import {
   panelIdOf,
   panesOf,
   renderedChildren,
+  forgetSplitSizes,
   reportSplitSizes,
   separatorIdAfter,
   storageOrder,
@@ -194,6 +195,7 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
   const groupId = config.projectId ? workspacePanelId(config.projectId, node.id) : undefined;
   const rendered = renderedChildren(node, config.shown);
   const order = useMemo(() => storageOrder(node.children.map(panelIdOf)), [node]);
+  const placement = node.children.map(panelIdOf).join(",");
   const visibleKey = storageOrder(rendered.map(panelIdOf)).join(",");
   const visibleOrder = useMemo(() => (visibleKey ? visibleKey.split(",") : []), [visibleKey]);
   const groupRef = useRef<GroupImperativeHandle>(null);
@@ -242,14 +244,16 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
   const layout = useDismissiblePanelLayout(groupRef, groupId, order, visibleOrder, limits, dismissibles);
   const onKeyDown = useSeparatorKeyboard(groupRef, limits);
   const { onLayoutChange: trackDismissed } = layout;
+  const reported = useRef<Layout | null>(null);
   const onLayoutChange = useCallback(
     (next: Layout) => {
+      reported.current = next;
       reportSplitSizes(node.id, next);
       trackDismissed(next);
     },
     [node.id, trackDismissed],
   );
-  useEffect(() => () => reportSplitSizes(node.id, null), [node.id]);
+  useEffect(() => () => forgetSplitSizes(node.id, reported.current), [node.id]);
   const holdsSidebar = row && rendered.some((child) => isLeaf(child) && child.pane === "sidebar");
   const sidebarWidth = fileSidebarWidth(config.appFontSize);
   const sidebarDefault = share(sidebarWidth, groupPx, 15, 65);
@@ -315,6 +319,7 @@ export function PaneTreeGroup({ node, root = false }: Readonly<{ node: PaneSplit
 
   return (
     <Group
+      key={placement}
       groupRef={groupRef}
       elementRef={elementRef}
       orientation={row ? "horizontal" : "vertical"}

@@ -23,6 +23,20 @@ describe("CollapsibleSection", () => {
     expect(chevron).not.toHaveClass("rotate-90");
   });
 
+  it("puts the chevron first and drops the card in the group variant", () => {
+    render(
+      <CollapsibleSection id="group" title={FIND_AGENTS} variant="group" defaultOpen>
+        <p>{BODY}</p>
+      </CollapsibleSection>,
+    );
+    const toggle = screen.getByTestId("group-toggle");
+    expect(toggle.firstElementChild).toHaveAttribute("data-slot", "collapsible-chevron");
+    expect(toggle.firstElementChild).toHaveClass("rotate-90");
+    expect(screen.getByTestId("group")).not.toHaveClass("border");
+    fireEvent.click(toggle);
+    expect(screen.queryByText(BODY)).toBeNull();
+  });
+
   it("opens from the toggle, turns the chevron and leaves trailing controls to themselves", () => {
     const onOpenChange = vi.fn();
     const onTrailing = vi.fn();

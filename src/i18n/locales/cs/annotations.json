@@ -43,8 +43,6 @@
     "region": "Oblast"
   },
   "status": {
-    "draft": "Koncept",
-    "sent": "Odesláno",
     "addressed": "Zpracováno",
     "resolved": "Vyřešeno",
     "needsPlacing": "Čeká na umístění"
@@ -56,8 +54,13 @@
     "failed": "Anotace se nepodařilo uložit. {{error}}",
     "readOnly": "Uloženo novější verzí Oleafly. Pro úpravy aktualizujte.",
     "setAside": "Soubor s anotacemi nešlo přečíst, a tak byl založen nový.",
-    "noSource": "Bez umístění ve zdroji",
     "page": "s. {{page}}",
+    "quoted": "„{{quote}}“",
+    "insertAfter": "za „{{quote}}“",
+    "groups": {
+      "drafts": "Koncepty",
+      "assistant": "U asistenta"
+    },
     "notFound": "Tato pasáž se v novém PDF nenašla.",
     "placing": "Vyberte pasáž v PDF a pak zvolte Umístit sem.",
     "placeAgain": "Umístit znovu",

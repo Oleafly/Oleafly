@@ -43,8 +43,6 @@
     "region": "Área"
   },
   "status": {
-    "draft": "Rascunho",
-    "sent": "Enviada",
     "addressed": "Atendida",
     "resolved": "Resolvida",
     "needsPlacing": "A posicionar"
@@ -56,8 +54,13 @@
     "failed": "Não foi possível salvar as anotações. {{error}}",
     "readOnly": "Salvas por um Oleafly mais recente. Atualize para editar.",
     "setAside": "Não foi possível ler o arquivo de anotações, então um novo foi iniciado.",
-    "noSource": "Sem local na fonte",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "depois de “{{quote}}”",
+    "groups": {
+      "drafts": "Rascunhos",
+      "assistant": "Com o assistente"
+    },
     "notFound": "Este trecho não foi encontrado no novo PDF.",
     "placing": "Selecione o trecho no PDF e depois escolha Posicionar aqui.",
     "placeAgain": "Posicionar de novo",

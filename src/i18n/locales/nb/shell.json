@@ -1401,11 +1401,12 @@
     },
     "moreActions": "Flere handlinger",
     "resetPaneLayout": "Tilbakestill plasseringen av rutene",
-    "resetPaneLayoutScope": "Alle prosjekter",
+    "resetPaneLayoutHint": "Setter sidepanelet, editoren, forhåndsvisningen, terminalen og assistenten tilbake på standardplassene sine i alle prosjekter.",
     "savedLayouts": {
       "close": "Lukk",
       "delete": "Slett",
       "deleteConfirm": "Slette oppsettet «{{name}}»?",
+      "duplicate": "Dette oppsettet er allerede lagret som «{{name}}».",
       "limit": "Du kan beholde opptil {{count}} oppsett. Slett ett for å lagre et nytt.",
       "manage": "Administrer oppsett",
       "name": "Navn på oppsettet",
@@ -1413,10 +1414,11 @@
       "renameTitle": "Gi oppsettet nytt navn",
       "replace": "Erstatt",
       "replaceConfirm": "Det finnes allerede et oppsett som heter «{{name}}». Erstatte det?",
+      "replaceWithCurrent": "Erstatt med gjeldende oppsett",
       "save": "Lagre gjeldende oppsett",
       "saveButton": "Lagre",
       "saveTitle": "Lagre oppsett",
-      "update": "Oppdater til gjeldende"
+      "savedAs": "Lagret som «{{name}}»"
     },
     "renameFailed": "Kunne ikke gi prosjektet nytt navn."
   },

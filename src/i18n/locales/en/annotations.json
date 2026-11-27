@@ -43,8 +43,6 @@
     "region": "Region"
   },
   "status": {
-    "draft": "Draft",
-    "sent": "Sent",
     "addressed": "Addressed",
     "resolved": "Resolved",
     "needsPlacing": "Needs placing"
@@ -56,8 +54,13 @@
     "failed": "Annotations couldn't be saved. {{error}}",
     "readOnly": "Saved by a newer Oleafly. Update to change these annotations.",
     "setAside": "The annotations file couldn't be read, so a new one was started.",
-    "noSource": "No source location",
     "page": "p. {{page}}",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "after “{{quote}}”",
+    "groups": {
+      "drafts": "Drafts",
+      "assistant": "With the assistant"
+    },
     "notFound": "This passage wasn't found on the new PDF.",
     "placing": "Select the passage on the PDF, then choose Place here.",
     "placeAgain": "Place again",

@@ -1,6 +1,15 @@
 import { Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import type { LayoutPreset } from "@/store/settings";
+import {
+  isLeaf,
+  paneVisibility,
+  renderedChildren,
+  type PaneFlags,
+  type PaneNode,
+  type PaneShown,
+  type PaneSplit,
+} from "@/store/pane-layout";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -84,6 +93,63 @@ export function PreviewOnlyLayoutIcon(props: IconProps) {
   return (
     <LayoutIcon {...props}>
       <Page d="M8 6.5h6l2 2v9h-8z" />
+    </LayoutIcon>
+  );
+}
+
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const FRAME: Box = { x: 3, y: 3, width: 18, height: 18 };
+
+function outline(node: PaneNode, shown: PaneShown, box: Box, lines: string[], assistant: Box[]): void {
+  if (isLeaf(node)) {
+    if (node.pane === "assistant") assistant.push(box);
+    return;
+  }
+  const children = renderedChildren(node, shown);
+  const sizeOf = (child: PaneNode) => node.sizes[node.children.indexOf(child)] ?? 0;
+  const total = children.reduce((sum, child) => sum + sizeOf(child), 0);
+  const row = node.direction === "row";
+  let start = 0;
+  children.forEach((child, index) => {
+    const share = total > 0 ? sizeOf(child) / total : 1 / children.length;
+    const part = row
+      ? { ...box, x: box.x + start * box.width, width: share * box.width }
+      : { ...box, y: box.y + start * box.height, height: share * box.height };
+    if (index > 0) {
+      lines.push(
+        row ? `M${part.x.toFixed(2)} ${box.y}v${box.height}` : `M${box.x} ${part.y.toFixed(2)}h${box.width}`,
+      );
+    }
+    outline(child, shown, part, lines, assistant);
+    start += share;
+  });
+}
+
+export function SavedLayoutIcon({ tree, flags, ...props }: IconProps & { tree: PaneSplit; flags: PaneFlags }) {
+  const lines: string[] = [];
+  const assistant: Box[] = [];
+  outline(tree, paneVisibility(flags), FRAME, lines, assistant);
+  return (
+    <LayoutIcon data-saved-layout-icon="" {...props}>
+      {assistant.map((box) => (
+        <rect
+          key={`${box.x}:${box.y}`}
+          x={box.x}
+          y={box.y}
+          width={box.width}
+          height={box.height}
+          fill="currentColor"
+          stroke="none"
+          opacity={0.28}
+        />
+      ))}
+      {lines.length > 0 && <path d={lines.join("")} />}
     </LayoutIcon>
   );
 }

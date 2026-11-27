@@ -48,10 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  HomeDock,
-  HOME_DOCK_GLASS_SURFACE,
-} from "@/components/library/HomeDock";
+import { HomeDock } from "@/components/library/HomeDock";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
@@ -1031,10 +1028,8 @@ export function Library() {
             ariaLabel={t(($) => $.library.home.advancedFilters)}
             align="right"
             closeOnClick={false}
-            className={cn(
-              HOME_DOCK_GLASS_SURFACE,
-              "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
-            )}
+            glass
+            className="flex w-96 flex-col gap-3 rounded-2xl p-4"
             triggerClassName={cn(
               HOME_CHROME_SURFACE,
               "size-10 rounded-2xl p-0",

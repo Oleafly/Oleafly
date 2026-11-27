@@ -1421,11 +1421,12 @@
     },
     "moreActions": "Autres actions",
     "resetPaneLayout": "Réinitialiser l'agencement des panneaux",
-    "resetPaneLayoutScope": "Tous les projets",
+    "resetPaneLayoutHint": "Remet la barre latérale, l'éditeur, l'aperçu, le terminal et l'assistant à leur place par défaut, dans tous les projets.",
     "savedLayouts": {
       "close": "Fermer",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer la disposition {{name}} ?",
+      "duplicate": "Cette disposition est déjà enregistrée sous le nom {{name}}.",
       "limit": "Vous pouvez conserver jusqu'à {{count}} dispositions. Supprimez-en une pour en enregistrer une autre.",
       "manage": "Gérer les dispositions",
       "name": "Nom de la disposition",
@@ -1433,10 +1434,11 @@
       "renameTitle": "Renommer la disposition",
       "replace": "Remplacer",
       "replaceConfirm": "Une disposition nommée {{name}} existe déjà. La remplacer ?",
+      "replaceWithCurrent": "Remplacer par la disposition actuelle",
       "save": "Enregistrer la disposition actuelle",
       "saveButton": "Enregistrer",
       "saveTitle": "Enregistrer la disposition",
-      "update": "Mettre à jour avec l'actuelle"
+      "savedAs": "Enregistrée sous {{name}}"
     },
     "renameFailed": "Impossible de renommer le projet."
   },

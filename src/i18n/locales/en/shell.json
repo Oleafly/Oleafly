@@ -1401,11 +1401,12 @@
     },
     "moreActions": "More actions",
     "resetPaneLayout": "Reset pane arrangement",
-    "resetPaneLayoutScope": "All projects",
+    "resetPaneLayoutHint": "Puts the sidebar, editor, preview, terminal and assistant back in their default places, in every project.",
     "savedLayouts": {
       "close": "Close",
       "delete": "Delete",
       "deleteConfirm": "Delete the layout {{name}}?",
+      "duplicate": "This layout is already saved as {{name}}.",
       "limit": "You can keep up to {{count}} layouts. Delete one to save another.",
       "manage": "Manage layouts",
       "name": "Layout name",
@@ -1413,10 +1414,11 @@
       "renameTitle": "Rename layout",
       "replace": "Replace",
       "replaceConfirm": "A layout named {{name}} already exists. Replace it?",
+      "replaceWithCurrent": "Replace with current layout",
       "save": "Save current layout",
       "saveButton": "Save",
       "saveTitle": "Save layout",
-      "update": "Update to current"
+      "savedAs": "Saved as {{name}}"
     },
     "renameFailed": "Couldn't rename the project."
   },

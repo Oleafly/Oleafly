@@ -137,6 +137,7 @@ pub(crate) struct Tab {
     pub(crate) file_id: String,
     pub(crate) text: String,
     rev: u64,
+    pub(crate) session: u64,
     pub(crate) inbox: Arc<Mutex<Vec<DocMessage>>>,
 }
 
@@ -447,6 +448,7 @@ impl OverleafRig {
             file_id: opened.file_id,
             text: opened.text,
             rev: opened.rev,
+            session: opened.session,
             inbox,
         }
     }

@@ -108,7 +108,7 @@ function select(label: string, option: string) {
 }
 
 describe("ResearchProjectSetup preview admission", () => {
-  it("waits for the exact latest preview and creates its displayed files and starter task", async () => {
+  it("keeps the last structure on screen while the next is built and creates the exact latest request", async () => {
     const pending: { request: ResearchProjectRequest; result: ReturnType<typeof deferred<ResearchProjectPreview>> }[] = [];
     const creation = deferred<string>();
     native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
@@ -120,35 +120,43 @@ describe("ResearchProjectSetup preview admission", () => {
       if (command === "create_research_project") return creation.promise;
       throw new Error(`Unexpected command: ${command}`);
     });
+    const settle = async (request: ResearchProjectRequest) => {
+      const entry = [...pending].reverse().find((candidate) => JSON.stringify(candidate.request) === JSON.stringify(request));
+      if (!entry) throw new Error(`no preview was asked for ${JSON.stringify(request)}`);
+      await act(async () => entry.result.resolve(preview(entry.request)));
+    };
+    const skeleton = () => document.querySelector(".animate-pulse");
+    const create = () => page().getByRole("button", { name: enResearchTools.setup.create });
     const input = props();
     render(<ResearchProjectSetup {...input} />);
-    await fill(enResearchTools.setup.nameLabel, "Study");
+    const sample = enResearchTools.setup.namePlaceholder;
     await waitFor(() => expect(pending).toHaveLength(1));
-    await act(async () => pending[0].result.resolve(preview(pending[0].request)));
-    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled();
+    expect(skeleton()).not.toBeNull();
+    await settle({ name: sample, engine: "latex", starter: "article" });
+    expect(page().getByText(`Document for ${sample}: article`)).toBeInTheDocument();
+    expect(page().getByText(`Plan ${sample} as article in latex`)).toBeInTheDocument();
+    expect(create()).toBeDisabled();
+
+    await fill(enResearchTools.setup.nameLabel, "Study");
+    expect(skeleton()).toBeNull();
+    expect(page().getByText(`Document for ${sample}: article`)).toBeInTheDocument();
+    expect(page().getByText(enResearchTools.setup.mainDocument.replace("{{path}}", "main.tex"))).toBeInTheDocument();
+    expect(create()).toBeEnabled();
+    await settle({ name: "Study", engine: "latex", starter: "article" });
+    expect(page().getByText("Document for Study: article")).toBeInTheDocument();
 
     select(enResearchTools.setup.engineLabel, "Typst");
-    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeDisabled();
-    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
-    expect(native.invoke).not.toHaveBeenCalledWith("create_research_project", expect.anything());
-    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(skeleton()).toBeNull();
+    expect(page().getByText("Document for Study: article")).toBeInTheDocument();
     select(enResearchTools.setup.starterLabel, enResearchTools.setup.starter.reproducibleAnalysis.label);
     await fill(enResearchTools.setup.nameLabel, "Revised study");
-    await act(async () => pending[1].result.resolve(preview(pending[1].request)));
-    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeDisabled();
-    expect(page().queryByText("Plan Study as article in typst")).not.toBeInTheDocument();
+    expect(create()).toBeEnabled();
+    fireEvent.click(create());
+    expect(native.invoke).not.toHaveBeenCalledWith("create_research_project", expect.anything());
     const request = { name: "Revised study", engine: "typst", starter: "reproducible_analysis" } as const;
-    await waitFor(() => expect(pending.map(({ request: candidate }) => candidate)).toContainEqual(request));
-    const current = pending.find(({ request: candidate }) =>
-      Object.entries(request).every(([key, value]) => candidate[key as keyof ResearchProjectRequest] === value),
-    );
-    expect(current).toBeDefined();
-    await act(async () => current?.result.resolve(preview(request)));
-    expect(page().getByText("Plan Revised study as reproducible_analysis in typst")).toBeInTheDocument();
+    await settle(request);
+    await waitFor(() => expect(native.invoke).toHaveBeenCalledWith("create_research_project", { request }));
     expect(page().getByText("Document for Revised study: reproducible_analysis")).toBeInTheDocument();
-
-    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
-    expect(native.invoke).toHaveBeenCalledWith("create_research_project", { request });
     expect(page().getByLabelText(enResearchTools.setup.nameLabel)).toBeDisabled();
     expect(page().getByLabelText(enResearchTools.setup.engineLabel)).toBeDisabled();
     expect(page().getByLabelText(enResearchTools.setup.starterLabel)).toBeDisabled();
@@ -194,7 +202,7 @@ describe("ResearchProjectSetup preview admission", () => {
     });
   });
 
-  it("does not reuse the old preview when a renamed request fails validation", async () => {
+  it("says why a name is refused, keeps the structure on screen and does not create", async () => {
     native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
       if (command === "preview_research_project") {
         if (args.request.name === "Invalid name") return Promise.reject(new Error("Invalid project name"));
@@ -204,14 +212,18 @@ describe("ResearchProjectSetup preview admission", () => {
     });
     render(<ResearchProjectSetup {...props()} />);
     await fill(enResearchTools.setup.nameLabel, "Valid name");
-    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled());
+    await waitFor(() => expect(page().getByText("Document for Valid name: article")).toBeInTheDocument());
 
     await fill(enResearchTools.setup.nameLabel, "Invalid name");
-    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeDisabled();
     await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("Invalid project name"));
     expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeDisabled();
-    expect(page().queryByText("Plan Valid name as article in latex")).not.toBeInTheDocument();
+    expect(page().getByRole("list", { name: enResearchTools.setup.previewFiles })).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
     expect(native.invoke).not.toHaveBeenCalledWith("create_research_project", expect.anything());
+
+    await fill(enResearchTools.setup.nameLabel, "Fixed name");
+    await waitFor(() => expect(page().queryByRole("alert")).not.toBeInTheDocument());
+    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled();
   });
 
   it("retries a failed starter task against the already created project and its original preview", async () => {
@@ -318,14 +330,18 @@ describe("ResearchProjectSetup preview admission", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     render(<ResearchProjectSetup {...props()} />);
-    expect(page().getByText(enResearchTools.setup.previewEmpty)).toBeInTheDocument();
+    const sampleFiles = await page().findByRole("list", { name: enResearchTools.setup.previewFiles });
+    expect(within(sampleFiles).getByRole("button", { name: "intro.tex" })).toBeInTheDocument();
+    fireEvent.click(within(sampleFiles).getByRole("button", { name: "README" }));
     select(enResearchTools.setup.starterLabel, enResearchTools.setup.starter.thesis.label);
     expect(page().getByText(enResearchTools.setup.starter.thesis.description)).toBeInTheDocument();
     select(enResearchTools.setup.starterLabel, enResearchTools.setup.starter.literatureReview.label);
     expect(page().getByText(enResearchTools.setup.starter.literatureReview.description)).toBeInTheDocument();
     await fill(enResearchTools.setup.nameLabel, "Review");
 
-    const files = await page().findByRole("list", { name: enResearchTools.setup.previewFiles });
+    await waitFor(() => expect(page().getByText("Plan Review as literature_review in latex")).toBeInTheDocument());
+    const files = page().getByRole("list", { name: enResearchTools.setup.previewFiles });
+    expect(within(files).getByRole("button", { name: "README" })).toHaveAttribute("aria-pressed", "true");
     expect(within(files).getByText("chapters")).toBeInTheDocument();
     expect(within(files).queryByRole("button", { name: "chapters" })).not.toBeInTheDocument();
     fireEvent.click(within(files).getByRole("button", { name: "intro.tex" }));

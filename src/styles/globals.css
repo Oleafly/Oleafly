@@ -207,7 +207,7 @@
   --comment-ink: color-mix(in oklab, var(--primary) 70%, var(--foreground));
 }
 
-.dark [role="dialog"]:not([data-bare]),
+.dark [role="dialog"]:not([data-bare]):not([data-glass]),
 .dark [role="alertdialog"] {
   background-color: var(--popover);
 }
@@ -859,6 +859,10 @@
   --color-comment-active: var(--comment-active);
   --color-comment-active-underline: var(--comment-active-underline);
   --color-comment-ink: var(--comment-ink);
+  --color-diff-insert: var(--diff-insert);
+  --color-diff-insert-strong: var(--diff-insert-strong);
+  --color-diff-delete: var(--diff-delete);
+  --color-diff-delete-strong: var(--diff-delete-strong);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);

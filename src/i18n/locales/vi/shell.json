@@ -1381,11 +1381,12 @@
     },
     "moreActions": "Thao tác khác",
     "resetPaneLayout": "Đặt lại cách sắp xếp khung",
-    "resetPaneLayoutScope": "Tất cả dự án",
+    "resetPaneLayoutHint": "Đưa thanh bên, trình soạn thảo, bản xem trước, terminal và trợ lý về vị trí mặc định trong mọi dự án.",
     "savedLayouts": {
       "close": "Đóng",
       "delete": "Xoá",
       "deleteConfirm": "Xoá bố cục {{name}}?",
+      "duplicate": "Bố cục này đã được lưu với tên {{name}}.",
       "limit": "Bạn có thể giữ tối đa {{count}} bố cục. Hãy xoá một bố cục để lưu bố cục khác.",
       "manage": "Quản lý bố cục",
       "name": "Tên bố cục",
@@ -1393,10 +1394,11 @@
       "renameTitle": "Đổi tên bố cục",
       "replace": "Thay thế",
       "replaceConfirm": "Đã có bố cục tên {{name}}. Thay thế nó?",
+      "replaceWithCurrent": "Thay bằng bố cục hiện tại",
       "save": "Lưu bố cục hiện tại",
       "saveButton": "Lưu",
       "saveTitle": "Lưu bố cục",
-      "update": "Cập nhật theo hiện tại"
+      "savedAs": "Đã lưu với tên {{name}}"
     },
     "renameFailed": "Không đổi tên được dự án."
   },

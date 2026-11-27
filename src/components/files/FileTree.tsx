@@ -14,6 +14,7 @@ import {
 } from "react";
 import {
   ChevronRight,
+  ClipboardCopy,
   CopyMinus,
   CopyPlus,
   FileLock,
@@ -22,9 +23,11 @@ import {
   FolderPlus,
   FolderClosed,
   Import,
+  Link,
   Link2,
   Pencil,
   RefreshCw,
+  SquareArrowOutUpRight,
   SquareTerminal,
   Star,
   Trash2,
@@ -1423,7 +1426,7 @@ function TreeRowKindMenuItems({
   return (
     <>
       <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
-        {t(($) => $.common.actions.open)}
+        <SquareArrowOutUpRight className="mr-2 size-4" /> {t(($) => $.common.actions.open)}
       </ContextMenuItem>
       {refreshLinked ? (
         <ContextMenuItem onClick={() => refreshLinked(node.path)}>
@@ -1437,7 +1440,7 @@ function TreeRowKindMenuItems({
           )}
           onClick={() => ctx.onSetMain(node.path)}
         >
-          {t(($) => $.workspace.files.setMain)}
+          <Star className="mr-2 size-4" /> {t(($) => $.workspace.files.setMain)}
         </ContextMenuItem>
       )}
       <ContextMenuSeparator />
@@ -1445,10 +1448,10 @@ function TreeRowKindMenuItems({
         disabled={linkLanguageFor(ctx.activePath) === null}
         onClick={() => void import("@/features/file-links").then((links) => links.insertFileLink(node.path))}
       >
-        {t(($) => $.workspace.files.insertLink)}
+        <Link className="mr-2 size-4" /> {t(($) => $.workspace.files.insertLink)}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => copyReference(node.path, "link")}>
-        {t(($) => $.workspace.files.copyLink)}
+        <ClipboardCopy className="mr-2 size-4" /> {t(($) => $.workspace.files.copyLink)}
       </ContextMenuItem>
     </>
   );

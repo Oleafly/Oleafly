@@ -43,8 +43,6 @@
     "region": "区域"
   },
   "status": {
-    "draft": "草稿",
-    "sent": "已发送",
     "addressed": "已处理",
     "resolved": "已解决",
     "needsPlacing": "待放置"
@@ -56,8 +54,13 @@
     "failed": "无法保存批注。{{error}}",
     "readOnly": "由较新版本的 Oleafly 保存，更新后才能编辑。",
     "setAside": "无法读取批注文件，已新建一个。",
-    "noSource": "没有源码位置",
     "page": "第 {{page}} 页",
+    "quoted": "“{{quote}}”",
+    "insertAfter": "在“{{quote}}”之后",
+    "groups": {
+      "drafts": "草稿",
+      "assistant": "助手处理中"
+    },
     "notFound": "在新的 PDF 中找不到这段内容。",
     "placing": "在 PDF 上选中这段内容，然后选择“放在这里”。",
     "placeAgain": "重新放置",

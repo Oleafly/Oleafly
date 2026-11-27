@@ -1401,11 +1401,12 @@
     },
     "moreActions": "Fler åtgärder",
     "resetPaneLayout": "Återställ panelernas placering",
-    "resetPaneLayoutScope": "Alla projekt",
+    "resetPaneLayoutHint": "Flyttar tillbaka sidofältet, redigeraren, förhandsvisningen, terminalen och assistenten till standardplatserna i alla projekt.",
     "savedLayouts": {
       "close": "Stäng",
       "delete": "Radera",
       "deleteConfirm": "Vill du radera layouten \"{{name}}\"?",
+      "duplicate": "Den här layouten är redan sparad som \"{{name}}\".",
       "limit": "Du kan spara upp till {{count}} layouter. Radera en för att spara en till.",
       "manage": "Hantera layouter",
       "name": "Namn på layouten",
@@ -1413,10 +1414,11 @@
       "renameTitle": "Byt namn på layouten",
       "replace": "Ersätt",
       "replaceConfirm": "Det finns redan en layout med namnet \"{{name}}\". Vill du ersätta den?",
+      "replaceWithCurrent": "Ersätt med aktuell layout",
       "save": "Spara aktuell layout",
       "saveButton": "Spara",
       "saveTitle": "Spara layout",
-      "update": "Uppdatera till aktuell"
+      "savedAs": "Sparad som \"{{name}}\""
     },
     "renameFailed": "Det gick inte att byta namn på projektet."
   },

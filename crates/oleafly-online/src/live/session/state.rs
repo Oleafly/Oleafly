@@ -1114,6 +1114,7 @@ impl State {
             return Err(LiveError::Ended);
         }
         let hold = self.mode() == SendMode::Hold;
+        let removed = !self.is_text_doc(doc) && !self.tree_work.deleted_by_me(doc);
         let slot = self.slots.get_mut(doc).ok_or(LiveError::UnknownDoc)?;
         let editor = slot.editor.as_mut().ok_or(LiveError::UnknownDoc)?;
         let before = (slot.doc.is_none() && slot.resume.is_none()).then(|| editor.channel.text());
@@ -1144,6 +1145,12 @@ impl State {
                     held.local_text = mine;
                     slot.dirty = true;
                 }
+                Ok(())
+            }
+            Phase::Stopped if removed && !applied.is_noop() => {
+                let text = editor.channel.text();
+                self.notices
+                    .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
                 Ok(())
             }
             Phase::Stopped => Ok(()),
@@ -1375,10 +1382,11 @@ impl State {
     }
 
     fn keep_dropped(&mut self, doc: &DocId) -> bool {
+        let mine = self.tree_work.deleted_by_me(doc);
         let Some(slot) = self.slots.get_mut(doc) else {
             return false;
         };
-        let unsent = slot.unsent_text();
+        let unsent = slot.unsent_text().filter(|_| !mine);
         slot.buffer.clear();
         slot.phase = Phase::Stopped;
         slot.dirty = true;

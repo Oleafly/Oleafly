@@ -1421,11 +1421,12 @@
     },
     "moreActions": "Mais ações",
     "resetPaneLayout": "Redefinir a disposição dos painéis",
-    "resetPaneLayoutScope": "Todos os projetos",
+    "resetPaneLayoutHint": "Volta a barra lateral, o editor, a pré-visualização, o terminal e o assistente para os lugares padrão, em todos os projetos.",
     "savedLayouts": {
       "close": "Fechar",
       "delete": "Excluir",
       "deleteConfirm": "Excluir o layout {{name}}?",
+      "duplicate": "Este layout já está salvo como {{name}}.",
       "limit": "Você pode manter até {{count}} layouts. Exclua um para salvar outro.",
       "manage": "Gerenciar layouts",
       "name": "Nome do layout",
@@ -1433,10 +1434,11 @@
       "renameTitle": "Renomear layout",
       "replace": "Substituir",
       "replaceConfirm": "Já existe um layout chamado {{name}}. Substituí-lo?",
+      "replaceWithCurrent": "Substituir pelo layout atual",
       "save": "Salvar o layout atual",
       "saveButton": "Salvar",
       "saveTitle": "Salvar layout",
-      "update": "Atualizar para o atual"
+      "savedAs": "Salvo como {{name}}"
     },
     "renameFailed": "Não foi possível renomear o projeto."
   },

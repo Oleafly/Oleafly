@@ -1381,11 +1381,12 @@
     },
     "moreActions": "更多操作",
     "resetPaneLayout": "重置面板排列",
-    "resetPaneLayoutScope": "所有项目",
+    "resetPaneLayoutHint": "在所有项目中，把侧边栏、编辑器、预览、终端和助手放回默认位置。",
     "savedLayouts": {
       "close": "关闭",
       "delete": "删除",
       "deleteConfirm": "要删除布局 {{name}} 吗？",
+      "duplicate": "此布局已保存为 {{name}}。",
       "limit": "最多可保留 {{count}} 个布局。请先删除一个，再保存新的。",
       "manage": "管理布局",
       "name": "布局名称",
@@ -1393,10 +1394,11 @@
       "renameTitle": "重命名布局",
       "replace": "替换",
       "replaceConfirm": "已有名为 {{name}} 的布局。要替换它吗？",
+      "replaceWithCurrent": "替换为当前布局",
       "save": "保存当前布局",
       "saveButton": "保存",
       "saveTitle": "保存布局",
-      "update": "更新为当前布局"
+      "savedAs": "已保存为 {{name}}"
     },
     "renameFailed": "无法重命名项目。"
   },

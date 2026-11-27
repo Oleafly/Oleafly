@@ -1401,11 +1401,12 @@
     },
     "moreActions": "Weitere Aktionen",
     "resetPaneLayout": "Anordnung der Bereiche zurücksetzen",
-    "resetPaneLayoutScope": "Alle Projekte",
+    "resetPaneLayoutHint": "Setzt Seitenleiste, Editor, Vorschau, Terminal und Assistenten in allen Projekten wieder an ihre Standardplätze.",
     "savedLayouts": {
       "close": "Schließen",
       "delete": "Löschen",
       "deleteConfirm": "Layout „{{name}}“ löschen?",
+      "duplicate": "Dieses Layout ist bereits als „{{name}}“ gespeichert.",
       "limit": "Sie können bis zu {{count}} Layouts behalten. Löschen Sie eines, um ein weiteres zu speichern.",
       "manage": "Layouts verwalten",
       "name": "Name des Layouts",
@@ -1413,10 +1414,11 @@
       "renameTitle": "Layout umbenennen",
       "replace": "Ersetzen",
       "replaceConfirm": "Ein Layout namens „{{name}}“ gibt es bereits. Ersetzen?",
+      "replaceWithCurrent": "Durch aktuelles Layout ersetzen",
       "save": "Aktuelles Layout speichern",
       "saveButton": "Speichern",
       "saveTitle": "Layout speichern",
-      "update": "Mit aktuellem Layout aktualisieren"
+      "savedAs": "Gespeichert als „{{name}}“"
     },
     "renameFailed": "Das Projekt konnte nicht umbenannt werden."
   },

@@ -7,6 +7,7 @@ import {
   gotoRect,
   pageClickToBp,
   pdfPageText,
+  pdfPointAt,
   registerPdfView,
   setPdfLogger,
 } from "./pdfController";
@@ -208,6 +209,35 @@ describe("gotoRect", () => {
       "synctex forward",
       "no page element for page 2 (have pages: none)",
     );
+  });
+});
+
+describe("pdfPointAt", () => {
+  function stackedPages() {
+    const pages = mountPages(3);
+    pages.forEach((page, index) => {
+      page.el.getBoundingClientRect = () => box(10, 20 + index * 310, 200, 300);
+    });
+    registerPdfView({ pages, scale: 1 });
+  }
+
+  it("names the page under a point and how far down that page it is", () => {
+    stackedPages();
+    expect(pdfPointAt(110, 20 + 310 + 75)).toEqual({ page: 2, x: 100, y: 75, fraction: 0.25 });
+  });
+
+  it("takes the nearest page for a point in the gap between pages or beside them", () => {
+    stackedPages();
+    expect(pdfPointAt(110, 20 + 302)).toMatchObject({ page: 1, y: 300, fraction: 1 });
+    expect(pdfPointAt(500, 20 + 310 + 150)).toMatchObject({ page: 2, x: 200, y: 150 });
+  });
+
+  it("finds nothing while no page is on screen", () => {
+    expect(pdfPointAt(10, 10)).toBeNull();
+    const [page] = mountPages(1);
+    page.el.getBoundingClientRect = () => box(0, 0, 0, 0);
+    registerPdfView({ pages: [page], scale: 1 });
+    expect(pdfPointAt(10, 10)).toBeNull();
   });
 });
 

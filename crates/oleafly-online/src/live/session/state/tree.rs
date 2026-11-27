@@ -19,6 +19,8 @@ pub(super) struct TreeWork {
     to_fill: BTreeSet<String>,
     kept: BTreeMap<EntityId, String>,
     reported: Option<Vec<Queued>>,
+    deleting: BTreeMap<EntityId, Vec<DocId>>,
+    deleted: BTreeSet<DocId>,
 }
 
 impl TreeWork {
@@ -36,6 +38,10 @@ impl TreeWork {
 
     pub(super) fn has_waiting(&self) -> bool {
         self.queue.iter().any(Queued::is_waiting)
+    }
+
+    pub(super) fn deleted_by_me(&self, doc: &DocId) -> bool {
+        self.deleted.contains(doc) || self.deleting.values().any(|docs| docs.contains(doc))
     }
 }
 
@@ -197,12 +203,11 @@ impl State {
         }
     }
 
-    fn quiet_stop(&mut self, entity: &EntityId) {
+    fn docs_under(&self, entity: &EntityId) -> Vec<DocId> {
         let Some(top) = self.project.tree.server_path_of(entity) else {
-            return;
+            return Vec::new();
         };
-        let docs: Vec<DocId> = self
-            .slots
+        self.slots
             .keys()
             .filter(|doc| {
                 self.project
@@ -211,23 +216,31 @@ impl State {
                     .is_some_and(|path| inside(&path, &top))
             })
             .cloned()
-            .collect();
-        for doc in docs {
-            let Some(slot) = self.slots.get_mut(&doc) else {
-                continue;
-            };
-            slot.doc = None;
-            slot.resume = None;
-            slot.held = None;
-            slot.buffer.clear();
-            slot.phase = Phase::Stopped;
-            slot.dirty = true;
-            self.notices
-                .push(Notice::Stopped(doc.clone(), DocStopReason::Removed));
+            .collect()
+    }
+
+    fn quiet_stop(&mut self, entity: &EntityId) {
+        for doc in self.docs_under(entity) {
+            self.stop_quietly(&doc);
         }
     }
 
+    fn stop_quietly(&mut self, doc: &DocId) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        slot.doc = None;
+        slot.resume = None;
+        slot.held = None;
+        slot.buffer.clear();
+        slot.phase = Phase::Stopped;
+        slot.dirty = true;
+        self.notices
+            .push(Notice::Stopped(doc.clone(), DocStopReason::Removed));
+    }
+
     pub(super) fn forget_tree_queue(&mut self) {
+        self.tree_work.deleting.clear();
         if !self.tree_work.queue.is_empty() {
             self.tree_work.queue.clear();
             self.report_queue();
@@ -362,6 +375,8 @@ impl State {
             !(queued.is_waiting()
                 && matches!(&queued.change, TreeChange::Move { to, .. } if inside(to, &path)))
         });
+        let docs = self.docs_under(&entity);
+        self.tree_work.deleting.insert(entity.clone(), docs);
         let changes = self.project.tree.hide(&entity);
         self.local_tree_changed(changes);
         self.tree_work.queue.push(Queued {
@@ -412,7 +427,11 @@ impl State {
         self.tree_work.queue = kept;
         for queued in dismissed {
             if let Some(entity) = queued.entity {
-                let changes = self.project.tree.clear_local(&EntityId(entity));
+                let entity = EntityId(entity);
+                if matches!(queued.change, TreeChange::Delete { .. }) {
+                    self.tree_work.deleting.remove(&entity);
+                }
+                let changes = self.project.tree.clear_local(&entity);
                 self.local_tree_changed(changes);
             }
         }
@@ -452,10 +471,20 @@ impl State {
         match finished {
             Finished::Done | Finished::Dropped => {
                 let queued = self.tree_work.queue.remove(at);
+                let entity = queued.entity.map(EntityId);
+                let deleting = entity
+                    .as_ref()
+                    .filter(|_| matches!(queued.change, TreeChange::Delete { .. }))
+                    .and_then(|entity| self.tree_work.deleting.remove(entity));
                 if dropped {
-                    if let Some(entity) = queued.entity {
-                        let changes = self.project.tree.clear_local(&EntityId(entity));
+                    if let Some(entity) = entity {
+                        let changes = self.project.tree.clear_local(&entity);
                         self.local_tree_changed(changes);
+                    }
+                } else {
+                    for doc in deleting.unwrap_or_default() {
+                        self.tree_work.deleted.insert(doc.clone());
+                        self.stop_quietly(&doc);
                     }
                 }
             }
@@ -515,7 +544,6 @@ impl State {
     }
 
     pub(in crate::live::session) fn deleted(&mut self, entity: &EntityId) {
-        self.quiet_stop(entity);
         self.landed(&TreeEvent::Removed {
             id: entity.clone(),
             restoring: false,

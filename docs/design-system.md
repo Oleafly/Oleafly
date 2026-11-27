@@ -181,7 +181,21 @@ browsers in the sign-in panel. `className` changes how it is arranged.
 
 Hand-built menus and overflow lists use `MenuRow` from `ui/menu-row.tsx` for
 an icon and a label. Radix menus have their own items in
-`ui/dropdown-menu.tsx`.
+`ui/dropdown-menu.tsx`. `DropdownMenuItemText` puts a small grey line under an
+item's label, for what the action applies to or why it is greyed out. A menu
+that opens from the right edge of the window takes `submenuSide="left"`, so its
+submenus open to the left and their chevrons sit on the left and point that way.
+
+Removed and added text use the diff colours, `bg-diff-delete` and
+`bg-diff-insert`, with `-strong` for the change that's selected or hovered.
+The git diff view, Notes suggestions and the PDF Annotations panel share them,
+so a change looks the same everywhere.
+
+A section that folds open is a `CollapsibleSection` from `ui/collapsible-section.tsx`.
+By default it's a bordered card with the chevron at the far end, as in Settings.
+`variant="group"` drops the card for a small grey heading with the chevron in
+front. Use it for groups inside a list, like the Annotations panel's Drafts and
+Resolved.
 
 A formatting toolbar that has to fit its width renders its controls through
 `ToolbarOverflow` from `ui/toolbar-overflow.tsx`. Each `ToolbarControl` has a
@@ -349,6 +363,12 @@ and `sideOffset` place the card, and `hideWhenDetached` hides it while the
 anchor is scrolled out of view. `ariaLabel` names the dialog. `bare` drops
 the card's border, background and padding but keeps its shadow, for content
 that brings its own box, such as a `CommentComposer`.
+
+A `Popover` that floats over busy content can take `glass` for the frosted
+surface the library's Advanced filters and the editor's Outline use. It blurs
+what's behind it and adds a soft sheen. It also sets `data-glass`, so the dark
+theme's solid dialog background leaves it alone. Put solid cards inside it
+when rows need to stand out from the blur.
 
 A caption that lets people jump to any month is a `MonthPicker` from
 `ui/month-picker.tsx`. Its trigger reads like "November 2026" with a small
