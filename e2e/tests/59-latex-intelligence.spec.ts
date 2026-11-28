@@ -11,6 +11,18 @@ import {
   type Page,
 } from "../helpers";
 
+async function expectCompileTarget(page: Page, path: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate<string>(
+          `import("/src/lib/tex-root.ts").then(({ resolveCompileTarget }) => resolveCompileTarget().mainDoc)`,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(path);
+}
+
 // Verifies the LaTeX Workshop intelligence adoption end to end: corpus
 // package completion, package-gated commands, and % !TEX root handling.
 
@@ -179,9 +191,7 @@ test("% !TEX root override compiles the declared root", async ({ tauriPage }) =>
     tauriPage,
     "% !TEX root = thesis.tex\n\\documentclass{article}\n\\begin{document}\nSTOREDMAINMARK\n\\end{document}\n",
   );
-  await expect(
-    tauriPage.locator('[aria-label="Explorer file tree"] [data-path="thesis.tex"] [data-testid="compile-target-marker"]'),
-  ).toBeVisible({ timeout: 15_000 });
+  await expectCompileTarget(tauriPage, "thesis.tex");
   await compileAndWait(tauriPage);
   await expectCompiledPdfContains(tauriPage, "ROOTOVERRIDEMARK");
   await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");
@@ -203,9 +213,7 @@ test("a second complete document compiles while it is the open file", async ({ t
   await tauriPage.evaluate(
     `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("letter.tex"))`,
   );
-  await expect(
-    tauriPage.locator('[aria-label="Explorer file tree"] [data-path="letter.tex"] [data-testid="compile-target-marker"]'),
-  ).toBeVisible({ timeout: 15_000 });
+  await expectCompileTarget(tauriPage, "letter.tex");
   await compileAndWait(tauriPage);
   await expectCompiledPdfContains(tauriPage, "OPENLETTERMARK");
   await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");

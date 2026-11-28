@@ -535,6 +535,25 @@ fn live_in_never_creates_the_lock_file() {
     drop(open_live(&data, &folder, HolderKind::App).unwrap());
 }
 
+#[cfg(unix)]
+#[test]
+fn a_released_journal_frees_its_locks_while_a_starting_child_still_holds_copies() {
+    let root = tempfile::tempdir().unwrap();
+    let folder = paper(root.path());
+    let data = root.path().join("data");
+    let journal = open_live(&data, &folder, HolderKind::App).unwrap();
+    let (lock, folder_lock) = journal.locks.as_ref().unwrap();
+    let copies = [
+        lock.try_clone().unwrap(),
+        folder_lock.as_ref().unwrap().try_clone().unwrap(),
+    ];
+    drop(journal);
+    assert_eq!(holder(&data, BASE, PROJECT), None);
+    assert!(!live_in(&folder));
+    drop(open_live(&data, &folder, HolderKind::Cli).unwrap());
+    drop(copies);
+}
+
 #[test]
 fn manifest_of_reads_while_another_process_holds_the_lock() {
     let root = tempfile::tempdir().unwrap();

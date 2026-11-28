@@ -508,10 +508,16 @@ impl Journal {
     }
 
     pub fn release(&mut self) {
+        let Some((lock, folder_lock)) = self.locks.take() else {
+            return;
+        };
+        if let Some(folder_lock) = folder_lock {
+            let _ = oleafly_core::locking::unlock_file(&folder_lock);
+        }
         if std::mem::take(&mut self.owned) {
             let _ = remove(&self.dir.join(OWNER));
         }
-        self.locks = None;
+        let _ = oleafly_core::locking::unlock_file(&lock);
     }
 
     pub fn released(&self) -> bool {

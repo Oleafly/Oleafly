@@ -40,6 +40,10 @@ pub fn lock_file(file: &File, exclusive: bool, budget: Duration) -> io::Result<(
     })
 }
 
+pub fn unlock_file(file: &File) -> io::Result<()> {
+    fs4::FileExt::unlock(file)
+}
+
 pub fn lock_mutex<T>(mutex: &Mutex<T>, budget: Duration) -> io::Result<MutexGuard<'_, T>> {
     retry(budget, || match mutex.try_lock() {
         Ok(guard) => Ok(Some(guard)),

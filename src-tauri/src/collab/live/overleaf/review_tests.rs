@@ -732,6 +732,11 @@ fn what_others_do_reaches_the_comment_change_and_status_events() {
                     })
             })
             .await;
+            eventually(
+                "joining main.tex reaches the comment event as bob's own",
+                || told_comments(&rig, &main, true) > 0,
+            )
+            .await;
             let quiet = told_comments(&rig, &main, true);
             let mut alice = rig.mock.peer("alice");
             alice.join(&main);
