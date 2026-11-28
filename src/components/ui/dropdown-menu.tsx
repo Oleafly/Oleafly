@@ -3,7 +3,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
-import { useInsideModalShell } from "@/components/ui/modal-shell";
+import { useInsideModalShell } from "@/components/ui/modal-shell-context";
 
 type SubmenuSide = "left" | "right";
 

@@ -1,6 +1,7 @@
-import { createContext, useContext, type ReactNode, type RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { InsideModalShell } from "@/components/ui/modal-shell-context";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 export type ModalLayer = "dialog" | "raised" | "nested";
@@ -30,12 +31,6 @@ const PANEL_ANIMATION = "animate-in fade-in zoom-in-95 duration-200 motion-reduc
 
 export const MODAL_PANEL_SURFACE =
   "rounded-xl border bg-background text-foreground shadow-2xl";
-
-const InsideModalShell = createContext(false);
-
-export function useInsideModalShell(): boolean {
-  return useContext(InsideModalShell);
-}
 
 export function modalOverlayClassName(
   layer: ModalLayer = "dialog",
