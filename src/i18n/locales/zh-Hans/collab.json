@@ -564,7 +564,6 @@
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
     "saving": "正在把项目保存到服务器…",
     "failed": "共享未完成，因此没有共享任何内容。",
-    "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。",
     "projectNotesShared": "项目笔记会与此项目中的所有人共享，个人笔记仍然只有你能看到。",
     "personalNotesPrivate": "个人笔记仍然只有你能看到。只有项目笔记文件夹中的笔记会被共享。",
     "unlinkOverleaf": "取消与 Overleaf 的关联",

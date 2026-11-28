@@ -108,6 +108,16 @@ describe("SnippetTryIt", () => {
     expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain(copy.inMath);
   });
 
+  it("moves to math or text when Where changes, and keeps a place picked for the same Where", async () => {
+    const { rerender } = render(<SnippetTryIt record={record({ prefix: "sq", body: "^2", where: "text" })} languages={["latex"]} />);
+    expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain(copy.inText);
+    rerender(<SnippetTryIt record={record({ prefix: "sq", body: "^2", where: "math" })} languages={["latex"]} />);
+    expect(screen.getByTestId("snippet-try-it-fires").textContent).toContain(copy.inMath);
+    await userEvent.click(screen.getByRole("button", { name: copy.inText }));
+    rerender(<SnippetTryIt record={record({ prefix: "sq", body: "^3", where: "math" })} languages={["latex"]} />);
+    expect(screen.getByTestId("snippet-try-it-blocked").textContent).toBe(copy.notPlace.replace("{{place}}", copy.inText));
+  });
+
   it("falls back to the first language when the chosen one is no longer offered", () => {
     const fig = record({ prefix: "fig", body: "x" });
     const { rerender } = render(<SnippetTryIt record={fig} languages={["latex", "typst"]} />);

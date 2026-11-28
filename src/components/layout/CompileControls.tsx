@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ChevronDown,
   Download,
-  FileText,
   Info,
   Play,
   RefreshCw,
@@ -34,7 +33,7 @@ import {
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { effectiveMainDocMissing, useCompileTarget, type CompileTarget } from "@/lib/tex-root";
+import { effectiveMainDocMissing, insideQuartoProject, useCompileTarget, type CompileTarget } from "@/lib/tex-root";
 import { projectEngineLabel } from "@/components/library/project-search";
 import { changeMainDocument } from "@/store/main-document";
 import { useCompileRootStore } from "@/store/compile-root";
@@ -56,7 +55,6 @@ import { useCoauthorsChangedSince } from "@/lib/live-file-mirror";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
-import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
 import {
   installedTypstVersions,
@@ -74,6 +72,7 @@ function texRootTooltip(
     return t(($) => $.shell.compile.texRootFormat, { path, format: projectEngineLabel({ engine: "", main_doc: path }) });
   }
   if (reason === "document") return t(($) => $.shell.compile.texRootDocument, { path });
+  if (reason === "standalone") return t(($) => $.shell.compile.texRootStandalone, { path });
   if (reason === "include") return t(($) => $.shell.compile.texRootInclude, { path, file });
   return t(($) => $.shell.compile.texRootOverride, { path, file });
 }
@@ -84,49 +83,39 @@ function compileBlockedReason(t: TFunction<["shell"]>, noMainDocument: boolean, 
   return null;
 }
 
-function TexRootIndicator() {
+function useCompileTargetNote(t: TFunction<["shell"]>): string | null {
+  const [mainDoc, overriddenBy, reason] = useCompileTarget(
+    (target) => [target.mainDoc, target.overriddenBy, target.reason] as const,
+  );
+  return overriddenBy === null ? null : texRootTooltip(t, reason, mainDoc, overriddenBy);
+}
+
+function BrokenTexRootWarning() {
   const { t } = useTranslation(["shell"]);
-  const [mainDoc, overriddenBy, reason, brokenIn, brokenTarget, brokenReason] = useCompileTarget(
-    (effective) =>
+  const [brokenIn, brokenTarget, brokenReason] = useCompileTarget(
+    (target) =>
       [
-        effective.mainDoc,
-        effective.overriddenBy,
-        effective.reason,
-        effective.brokenRoot?.declaredIn ?? null,
-        effective.brokenRoot?.target ?? null,
-        effective.brokenRoot?.reason ?? null,
+        target.brokenRoot?.declaredIn ?? null,
+        target.brokenRoot?.target ?? null,
+        target.brokenRoot?.reason ?? null,
       ] as const,
   );
-
-  if (brokenIn !== null) {
-    const details = { file: brokenIn, target: brokenTarget };
-    return (
-      <Tooltip
-        label={
-          brokenReason === "not_tex"
-            ? t(($) => $.shell.compile.texRootNotTex, details)
-            : t(($) => $.shell.compile.texRootBroken, details)
-        }
-      >
-        <span
-          data-testid="tex-root-broken"
-          className="flex max-w-40 items-center gap-1 truncate text-xs text-amber-600 dark:text-amber-400"
-        >
-          <AlertTriangle className="size-3.5 shrink-0" />
-          <span className="truncate">{t(($) => $.shell.compile.texRootLabel)}</span>
-        </span>
-      </Tooltip>
-    );
-  }
-  if (overriddenBy === null) return null;
+  if (brokenIn === null) return null;
+  const details = { file: brokenIn, target: brokenTarget };
   return (
-    <Tooltip label={texRootTooltip(t, reason, mainDoc, overriddenBy)}>
+    <Tooltip
+      label={
+        brokenReason === "not_tex"
+          ? t(($) => $.shell.compile.texRootNotTex, details)
+          : t(($) => $.shell.compile.texRootBroken, details)
+      }
+    >
       <span
-        data-testid="tex-root-indicator"
-        className="flex max-w-40 items-center gap-1 truncate text-xs text-muted-foreground"
+        data-testid="tex-root-broken"
+        className="flex max-w-40 items-center gap-1 truncate text-xs text-amber-600 dark:text-amber-400"
       >
-        <FileText className="size-3.5 shrink-0" />
-        <span className="truncate">{t(($) => $.shell.compile.texRootName, { name: basename(mainDoc) })}</span>
+        <AlertTriangle className="size-3.5 shrink-0" />
+        <span className="truncate">{t(($) => $.shell.compile.texRootLabel)}</span>
       </span>
     </Tooltip>
   );
@@ -171,6 +160,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
     (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
   );
   const { t } = useTranslation(["shell"]);
+  const targetNote = useCompileTargetNote(t);
   const noMainDocument = useCompileTarget(effectiveMainDocMissing);
   const followOpenFile = useCompileRootStore((s) => s.followOpenFile);
   const setFollowOpenFile = useCompileRootStore((s) => s.setFollowOpenFile);
@@ -182,6 +172,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
   const coauthorsChanged = useCoauthorsChangedSince(projectId, lastCompiledAt);
   const typstToolchain = useTypstToolchainFor(engine);
+  const wholeProject = useFilesStore((s) => s.engine.id === "quarto" && insideQuartoProject(s.tree, s.mainDoc));
   const typstSelections = useTypstVariantStore((s) => s.selections);
   const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
   const livePreview = useCompileStore((s) => s.livePreview);
@@ -191,11 +182,13 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
     if (selection[0] === "latexmk") await offerTexSetupAfterSwitch();
   };
   return <>
-    <TexRootIndicator />
+    <BrokenTexRootWarning />
     <TypstLivePreviewKeeper />
     {(viewMode === "editor" || detached || successOffer) && <CompileOfferButton placement="toolbar" />}
     <CompileControlsView
       iconOnly={iconOnly}
+      wholeProject={wholeProject}
+      targetNote={targetNote}
       blockedReason={compileBlockedReason(t, noMainDocument, filling)}
       systemTexLocked={systemTexLocked}
       sharedSettingsLocked={sharedSettingsLocked}
@@ -248,12 +241,14 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
     "checkSyntaxBeforeCompile" | "setCheckSyntaxBeforeCompile" | "stopOnFirstError" | "setStopOnFirstError" | "stopCompile"> & {
       compileRevision: number;
       iconOnly?: boolean;
+      targetNote?: string | null;
       blockedReason?: string | null;
       systemTexLocked?: boolean;
       sharedSettingsLocked?: boolean;
       coauthorsChanged?: boolean;
       onTrustForSystemTex?: () => void;
-      recompile: (options?: { fromScratch?: boolean }) => unknown;
+      recompile: (options?: { fromScratch?: boolean; wholeProject?: boolean }) => unknown;
+      wholeProject?: boolean;
       typstToolchain?: TypstToolchainStatus | null;
       setTypstVersion?: (version: string | null) => Promise<unknown>;
       onOptionsOpen?: () => void;
@@ -720,8 +715,8 @@ function TypstVersionMenuGroup({
 
 export function CompileControlsView({
   engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false,
-  blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, coauthorsChanged = false, onTrustForSystemTex,
-  typstToolchain = null, setTypstVersion, onOptionsOpen,
+  targetNote = null, blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, coauthorsChanged = false, onTrustForSystemTex,
+  typstToolchain = null, setTypstVersion, onOptionsOpen, wholeProject = false,
   typstVariant = null, setTypstVariant, setTypstOptions, setCodeExecution, livePreview,
   followOpenFile = true, setFollowOpenFile, onChangeMainDocument,
 }: Readonly<CompileControlsViewProps>) {
@@ -753,9 +748,10 @@ export function CompileControlsView({
     <Tooltip
       label={
         blockedReason ??
-        (coauthorsChanged ? (
+        (coauthorsChanged || targetNote ? (
           <>
-            <span className="block">{t(($) => $.shell.compile.coauthorsChanged)}</span>
+            {coauthorsChanged && <span className="block">{t(($) => $.shell.compile.coauthorsChanged)}</span>}
+            {targetNote && <span className="block">{targetNote}</span>}
             <span className="block">{runTooltip}</span>
           </>
         ) : (
@@ -1097,6 +1093,17 @@ export function CompileControlsView({
         >
           {t(($) => $.shell.compile.fromScratch)}
         </DropdownMenuItem>
+        {wholeProject && (
+          <DropdownMenuItem
+            data-testid="compile-whole-project"
+            disabled={blocked || compiling || !engineLoaded}
+            onSelect={() => {
+              void recompile({ wholeProject: true });
+            }}
+          >
+            {t(($) => $.shell.compile.wholeProject)}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   </ButtonGroup>

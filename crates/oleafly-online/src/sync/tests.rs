@@ -2043,10 +2043,15 @@ fn the_synced_pdf_stays_out_of_the_online_project() {
 fn a_folder_keeps_secrets_and_build_output_here() {
     let here = |rel: &str| {
         kept_local(rel, |sibling| {
-            sibling == "main.tex" || sibling == "figs/plot.typ"
+            sibling == "main.tex" || sibling == "figs/plot.typ" || sibling == "venv/pyvenv.cfg"
         })
     };
     for rel in [
+        ".Renviron",
+        "analysis/.RData",
+        ".Rhistory",
+        "venv/lib/python3.12/site-packages/numpy/__init__.py",
+        "renv/library/R-4.6/knitr/DESCRIPTION",
         ".env",
         ".env.local",
         "sub/.envrc",

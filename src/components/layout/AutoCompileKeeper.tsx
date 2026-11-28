@@ -1,7 +1,13 @@
 import { useEffect, useRef } from "react";
 import { fromCoauthor } from "@/lib/live-file-mirror";
 import { resolveCompileTarget } from "@/lib/tex-root";
-import { stopOutdatedAutomaticCompile, typstLivePreviewWanted, useCompileStore } from "@/store/compile";
+import {
+  automaticCompileStillWanted,
+  stopOutdatedAutomaticCompile,
+  typstLivePreviewWanted,
+  useCompileStore,
+  userStopCount,
+} from "@/store/compile";
 import { useActiveContent, useFilesStore } from "@/store/files";
 
 export const AUTO_COMPILE_DEBOUNCE_MS = 2500;
@@ -47,9 +53,10 @@ export function AutoCompileKeeper() {
     if (activePath && fromCoauthor(projectId, activePath, activeContent)) return;
     cancel();
     const editedAt = Date.now();
+    const stopsAtEdit = userStopCount();
     const attempt = () => {
       pendingRef.current = null;
-      if (livePreviewCompiles()) return;
+      if (livePreviewCompiles() || !automaticCompileStillWanted(editedAt, stopsAtEdit)) return;
       if (useCompileStore.getState().status === "compiling") {
         stopOutdatedAutomaticCompile(editedAt);
         pendingRef.current = setTimeout(attempt, 500);

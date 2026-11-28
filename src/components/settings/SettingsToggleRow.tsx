@@ -57,7 +57,7 @@ export function SettingsToggleRow({
         if (disabled) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onChange(!checked);
+          if (!event.repeat) onChange(!checked);
         }
       }}
       className={cn(

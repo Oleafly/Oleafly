@@ -40,6 +40,7 @@
     "renameAriaLabel": "重新命名檔案",
     "renameFailed": "無法重新命名「{{path}}」。來源路徑維持不變。",
     "setMain": "設為主要文件",
+    "compileTarget": "編譯此檔案，而非主要文件",
     "title": "檔案總管",
     "treeAriaLabel": "檔案總管檔案樹",
     "setMainFailed": "無法將「{{path}}」設為主要文件。",

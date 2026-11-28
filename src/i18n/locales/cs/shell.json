@@ -432,7 +432,7 @@
       "off": "Vypnuto",
       "on": "Zapnuto",
       "title": "Automatická kompilace",
-      "help": "Zkompiluje dokument několik sekund poté, co přestanete psát. Otevřený soubor se nejprve uloží.",
+      "help": "Kompiluje pár sekund poté, co přestanete psát, a nejdřív uloží otevřený soubor. Po zastavení počká na vaši další úpravu. Projekt, který spouští kód, se při otevření kompiluje, jen když je tato volba zapnutá.",
       "typstHelp": "Typst běží na pozadí a aktualizuje PDF chvíli poté, co přestanete psát. Když je tato volba zapnutá, otevřený soubor se ukládá sám.",
       "typstStarting": "Spouští se Typst",
       "typstRestarting": "Typst se restartuje",
@@ -456,6 +456,7 @@
       "title": "Chování při chybách kompilace"
     },
     "fromScratch": "Kompilovat znovu od začátku",
+    "wholeProject": "Vykreslit celý projekt Quarto",
     "mode": {
       "fast": "Rychlý <note>[koncept]</note>",
       "normal": "Normální",
@@ -472,9 +473,8 @@
     },
     "texRootBroken": "% !TEX root v {{file}} odkazuje na chybějící soubor ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "kořen: {{name}}",
     "texRootNotTex": "% !TEX root v {{file}} odkazuje na {{target}}, což není soubor LaTeX",
-    "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})",
+    "texRootOverride": "Kompiluje se {{path}} (nastaveno pomocí % !TEX root v {{file}})",
     "typstVersion": {
       "title": "Verze Typst (tento projekt)",
       "help": "Připněte verzi, aby výstup tohoto projektu zůstal stejný, i když Oleafly aktualizuje Typst. Výchozí volba se řídí verzí zvolenou v Nastavení. Chcete-li instalovat verze nebo vyzkoušet projekt na novější verzi, otevřete Nastavení → Enginy → Typst.",
@@ -515,18 +515,19 @@
     },
     "code": {
       "title": "Kód (tento počítač)",
-      "help": "Quarto a Calepin mohou spouštět kód v jazycích R, Python a Julia, který tento projekt obsahuje. Kód běží s vašimi oprávněními, proto ho povolte jen u projektu, kterému důvěřujete. Volba platí jen pro tento počítač.",
+      "help": "Quarto a Calepin mohou v tomto projektu spouštět kód v jazycích R, Python a Julia. Kód běží s vašimi oprávněními, proto ho povolte jen u projektu, kterému důvěřujete. Volba platí jen pro tento počítač a trvá, dokud ji nevypnete. Vypnutí zastaví běžící kompilaci.",
       "off": "Vypnuto",
       "run": "Spouštět kód v tomto počítači"
     },
     "sharedViewer": "Ve sdíleném projektu mohou tato nastavení měnit jen vlastníci a editoři.",
     "coauthorsChanged": "Změněno spoluautory od vaší poslední kompilace",
-    "texRootDocument": "kořen: {{path}} (má vlastní \\documentclass)",
-    "texRootInclude": "kořen: {{path}} (vkládá {{file}})",
-    "texRootFormat": "kořen: {{path}} (dokument {{format}}, sestavený vlastním enginem)",
+    "texRootDocument": "Kompiluje se {{path}} (má vlastní \\documentclass)",
+    "texRootStandalone": "Kompiluje se {{path}} (samostatný dokument)",
+    "texRootInclude": "Kompiluje se {{path}} (vkládá {{file}})",
+    "texRootFormat": "Kompiluje se {{path}} (dokument {{format}}, sestavený vlastním enginem)",
     "target": {
       "title": "Cíl kompilace",
-      "help": "S volbou Podle otevřeného souboru se soubor s vlastním \\documentclass kompiluje samostatně. Kapitola nebo oddíl kompiluje dokument, který je vkládá. Dokument Markdown, Typst nebo Quarto se v projektu jiného formátu kompiluje samostatně vlastním enginem. Ostatní soubory kompilují hlavní dokument. Komentář % !TEX root má vždy přednost.",
+      "help": "S volbou Sledovat otevřený soubor se samostatný dokument kompiluje sám: soubor LaTeX s vlastním \\documentclass nebo soubor Markdown, Typst či Quarto, který nevkládá žádný jiný dokument. Kapitola nebo oddíl kompiluje dokument, který je vkládá, a soubory projektu s _quarto.yml se kompilují s projektem. Ostatní soubory kompilují hlavní dokument. Komentář % !TEX root má vždy přednost.",
       "open": "Podle otevřeného souboru",
       "main": "Vždy hlavní dokument",
       "change": "Změnit hlavní dokument…"
@@ -672,7 +673,16 @@
     "followed": "{{name}} musí spustit kód a kód se spouští jen pro hlavní dokument. Nastavte {{name}} jako hlavní dokument a pak pro něj povolte kód.",
     "needed": "Tento dokument musí při sestavení spustit svůj kód a kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
     "skipped": "Kód v tomto dokumentu se nespustil, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
-    "storedResults": "PDF zobrazuje výsledky kódu uložené z dřívějšího spuštění, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu."
+    "storedResults": "PDF zobrazuje výsledky kódu uložené z dřívějšího spuštění, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+    "reasons": {
+      "extensions": "Tento projekt má rozšíření Quarto, která mohou spouštět programy, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "environment": "Tento projekt má soubory _environment, které Quarto načítá, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "shortcode": "Tento dokument používá shortcode, který není součástí Quarto, a shortcody mohou spouštět programy, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "filter": "Tento dokument přidává filtr a filtry mohou spouštět programy, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "pdf_engine": "Tento dokument předává volby PDF enginu, který může spouštět programy, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "outside": "Tento dokument čte soubor mimo projekt, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+      "unchecked": "Oleafly nedokázal tento dokument zkontrolovat na kód, proto se sestaví jen s povoleným kódem. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu."
+    }
   },
   "typstCjkFonts": {
     "message": "Tento dokument obsahuje čínský, japonský nebo korejský text, který žádné písmo v tomto počítači nedokáže zobrazit, a proto v PDF chybí.",
@@ -829,7 +839,7 @@
     },
     "noMain": "Zatím tu není hlavní dokument. Vyberte soubor a zvolte Nastavit jako hlavní dokument.",
     "trust": {
-      "banner": "Oleafly v této složce omezil některé funkce. Důvěřovat této složce a zapnout Git, terminál, agenty a shell escape?",
+      "banner": "Oleafly v této složce omezil některé funkce. Důvěřovat této složce a zapnout Git, terminál, agenty, latexmk a Quarto?",
       "trustFolder": "Důvěřovat této složce",
       "trustParent": "Důvěřovat nadřazené složce",
       "trustRepository": "Důvěřovat repozitáři",
@@ -1880,5 +1890,20 @@
       "saved": "Uloženo: {{name}}.",
       "missingName": "Pojmenujte úryvek."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

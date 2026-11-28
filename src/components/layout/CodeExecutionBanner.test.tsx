@@ -122,6 +122,12 @@ describe("CodeExecutionBanner", () => {
     expect(screen.getByTestId("code-execution-banner")).toHaveTextContent(copy.needed);
   });
 
+  it("names what in the project needs code when the refusal was not about code chunks", () => {
+    project(notebookEngine("quarto"), [{ ...coded("notebook.code_needed", "error"), params: { reason: "extensions" } }]);
+    render(<CodeExecutionBanner />);
+    expect(screen.getByTestId("code-execution-banner")).toHaveTextContent(enShell.codeExecution.reasons.extensions);
+  });
+
   it("says Calepin showed stored results", () => {
     project(notebookEngine("calepin"), [coded("notebook.stored_results")]);
     render(<CodeExecutionBanner />);

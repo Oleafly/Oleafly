@@ -493,6 +493,9 @@ records.
 - `src-tauri/src/notebook_toolchain.rs` and
   `src-tauri/resources/notebook-toolchains.json`: Quarto and Calepin
   detection, pinned downloads, and the R, Python and Julia check.
+- `src-tauri/src/notebook_toolchain/runtimes.rs`: the pinned R and Python
+  installers, R and Python package installs, and the Python environment
+  Quarto uses.
 - `src-tauri/src/latex_engine.rs`: optional tagged LaTeX path.
 - `scripts/fetch-tectonic.sh`, `scripts/fetch-typst.sh`, and
   `scripts/fetch-language-servers.mjs`: pinned acquisition.

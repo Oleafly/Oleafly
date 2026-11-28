@@ -564,7 +564,6 @@
     "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
     "saving": "Het project wordt op de server opgeslagen…",
     "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
-    "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert.",
     "projectNotesShared": "De notities van het project worden gedeeld met iedereen in dit project. Persoonlijke notities blijven privé.",
     "personalNotesPrivate": "Persoonlijke notities blijven privé. Alleen notities in de notitiemap van het project worden gedeeld.",
     "unlinkOverleaf": "Ontkoppelen van Overleaf",

@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Vuoi considerare affidabile questa cartella?",
-      "message": "Oleafly attiverà Git, il terminale, gli agenti e gli strumenti LaTeX per {{name}}. Considera affidabili solo le cartelle di cui conosci il contenuto.",
+      "message": "Oleafly attiverà Git, il terminale, gli agenti, latexmk e Quarto per {{name}}. Il codice nella cartella viene eseguito solo dopo che lo consenti. Considera affidabili solo le cartelle di cui conosci il contenuto.",
       "messageParent": "Oleafly considererà affidabile {{name}} e ogni cartella al suo interno, comprese quelle che aprirai in seguito.",
       "messageRepository": "Oleafly eseguirà Git in {{name}} con le impostazioni e gli hook del repository stesso.",
       "confirm": "Considera affidabile"

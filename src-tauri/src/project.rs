@@ -244,7 +244,8 @@ fn untrusted_view(project: &ProjectMeta) -> ProjectMeta {
     restricted
 }
 
-const SHELL_ESCAPE_TRUST_VERSION: u8 = 1;
+const SHELL_ESCAPE_TRUST_VERSION: u8 = 2;
+const LEGACY_SHELL_ESCAPE_TRUST_VERSION: u8 = 1;
 
 #[derive(Serialize, Deserialize)]
 struct ShellEscapeTrustRecord {
@@ -305,7 +306,25 @@ fn windows_directory_identity(directory: &Path) -> Result<(u32, u64), String> {
     Ok((information.dwVolumeSerialNumber, file_index))
 }
 
+fn consent_identity(project_id: &str, directory: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+
+    let binding = crate::trust::current_binding(directory)?;
+    let mut digest = Sha256::new();
+    digest.update(b"oleafly-code-consent-v2\0");
+    digest.update(project_id.as_bytes());
+    digest.update([0]);
+    digest.update(binding.as_bytes());
+    Some(format!("{:x}", digest.finalize()))
+}
+
 fn shell_escape_project_identity(project_id: &str) -> Result<String, String> {
+    let directory = paths::project_dir(project_id)?;
+    consent_identity(project_id, &directory)
+        .ok_or_else(|| "failed to inspect project identity".to_owned())
+}
+
+fn legacy_project_identity(project_id: &str) -> Result<String, String> {
     use sha2::{Digest, Sha256};
 
     let directory = paths::project_dir(project_id)?;
@@ -382,10 +401,28 @@ fn shell_escape_trust_record(project_id: &str) -> Result<Option<ShellEscapeTrust
         Ok(record) => record,
         Err(_) => return Ok(None),
     };
-    let valid = record.version == SHELL_ESCAPE_TRUST_VERSION
-        && record.project_id == project_id
-        && record.project_identity == expected_identity;
-    Ok(valid.then_some(record))
+    if record.project_id != project_id {
+        return Ok(None);
+    }
+    if record.version == SHELL_ESCAPE_TRUST_VERSION {
+        return Ok((record.project_identity == expected_identity).then_some(record));
+    }
+    let carried_over = record.version == LEGACY_SHELL_ESCAPE_TRUST_VERSION
+        && legacy_project_identity(project_id)
+            .is_ok_and(|legacy| legacy == record.project_identity);
+    if !carried_over {
+        return Ok(None);
+    }
+    if let Err(error) = write_shell_escape_trust_for(project_id, record.shared_project.as_deref()) {
+        let _ = append_app_log(format!(
+            "Could not update the code consent record for project {project_id}: {error}"
+        ));
+    }
+    Ok(Some(ShellEscapeTrustRecord {
+        version: SHELL_ESCAPE_TRUST_VERSION,
+        project_identity: expected_identity,
+        ..record
+    }))
 }
 
 pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
@@ -681,6 +718,7 @@ pub struct ProjectInfo {
     pub shared: Option<crate::collab::share::ProjectSharing>,
     pub imported_from: Option<String>,
     pub related_project: Option<String>,
+    pub loose_file: bool,
 }
 
 fn imported_service(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
@@ -850,13 +888,9 @@ pub(crate) fn follow_shared_settings<T>(
 ) -> Result<(T, Option<ProjectMeta>), String> {
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
-        let before = meta.engine.clone();
         let (outcome, changed) = follow(&mut meta)?;
         if !changed {
             return Ok((outcome, None));
-        }
-        if engine_runs_project_code(&before) && meta.engine != before {
-            revoke_shell_escape_trust(project_id)?;
         }
         write_chosen_meta(project_id, &meta, SHARED_SETTING_FIELDS)?;
         Ok((outcome, Some(read_meta(project_id)?)))
@@ -1169,7 +1203,10 @@ fn compile_engine_for(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> O
     }
     let format = oleafly_core::SourceFamily::of(main_doc)?;
     if oleafly_core::SourceFamily::of(&meta.main_doc) == Some(format) {
-        return is_tex_root_override(project_id, meta, main_doc).then(|| meta.engine.clone());
+        if !same_format_root(project_id, meta, main_doc) {
+            return None;
+        }
+        return main_document_engine(project_id, &meta.engine, main_doc).ok();
     }
     if !resolve(project_id, main_doc).is_ok_and(|path| path.is_file()) {
         return None;
@@ -1178,15 +1215,14 @@ fn compile_engine_for(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> O
     Some(detected_notebook_engine(project_id, main_doc, engine))
 }
 
-fn is_tex_root_override(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> bool {
-    let Ok(engine) = crate::document_engine::engine_for(&meta.engine, main_doc) else {
-        return false;
-    };
-    matches!(
-        engine.id(),
-        crate::document_engine::DocumentEngineId::Latex
-            | crate::document_engine::DocumentEngineId::Latexmk
-    ) && resolve(project_id, main_doc).is_ok_and(|path| path.is_file())
+fn same_format_root(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> bool {
+    crate::document_engine::engine_for(&meta.engine, main_doc).is_ok()
+        && resolve(project_id, main_doc).is_ok_and(|path| path.is_file())
+}
+
+fn exports_with_project_engine(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> bool {
+    meta.main_doc == main_doc
+        || compile_engine_for(project_id, meta, main_doc).as_deref() == Some(meta.engine.as_str())
 }
 
 pub(crate) fn ensure_compile_meta_unchanged(
@@ -2262,7 +2298,6 @@ where
                     }
                 }
                 let pre_state = read_meta(&project_id)?;
-                revoke_shell_escape_trust(&project_id)?;
                 let operation = operation(&root);
                 if allow_pending_restore_recovery {
                     let pending = crate::worktree_lock::pending_restore_marker_exists(&project_id);
@@ -2292,7 +2327,7 @@ where
                     }
                 }
                 let (mut value, changed) = match operation {
-                    Ok((value, changed)) => (Ok(value), changed || pre_state.allow_shell_escape),
+                    Ok((value, changed)) => (Ok(value), changed),
                     Err(error) => (Err(error), true),
                 };
                 let project = match reconcile_external_worktree_meta(&project_id, &pre_state) {
@@ -2306,9 +2341,7 @@ where
                                 "{operation_error}. Project metadata reconciliation also failed: {reconcile_error}"
                             ),
                         });
-                        let mut fallback = pre_state;
-                        fallback.allow_shell_escape = false;
-                        fallback
+                        pre_state
                     }
                 };
                 Ok(((value, project), changed))
@@ -2777,7 +2810,6 @@ pub(crate) fn rename_file_blocking(
                 &source_rel,
                 || {
                     rename_path_and_update_meta(
-                        Some(&project_id),
                         &location,
                         &src,
                         &dst,
@@ -2892,7 +2924,6 @@ fn remap_main_document(main_doc: &str, from: &str, to: &str) -> Option<String> {
 }
 
 fn rename_path_and_update_meta(
-    project_id: Option<&str>,
     location: &ProjectLocation,
     src: &Path,
     requested_dst: &Path,
@@ -2927,23 +2958,6 @@ fn rename_path_and_update_meta(
             });
         }
     };
-    let leaves_latexmk = engine_runs_project_code(&meta.engine) && selected_engine != meta.engine;
-    if leaves_latexmk {
-        if let Some(project_id) = project_id {
-            if let Err(error) = revoke_shell_escape_trust(project_id) {
-                let rollback = transaction.rollback();
-                return Err(match rollback {
-                    Ok(()) => format!(
-                        "failed to revoke shell-command consent. The move was rolled back: {error}"
-                    ),
-                    Err(rollback_error) => format!(
-                        "failed to revoke shell-command consent: {error}. Rollback also failed: {rollback_error}"
-                    ),
-                });
-            }
-        }
-        meta.allow_shell_escape = false;
-    }
     if selected_engine != meta.engine && selected_engine != "latexmk" {
         meta.tex_flavor = None;
     }
@@ -3809,18 +3823,14 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
             return Err(format!("main document not found: {main_doc}"));
         }
         let mut meta = read_meta(&project_id)?;
-        let selected_engine = engine_for_main_document(&meta.engine, &main_doc)?;
+        let selected_engine = main_document_engine(&project_id, &meta.engine, &main_doc)?;
         meta.main_doc = main_doc;
         if selected_engine != "latexmk" {
             meta.tex_flavor = None;
         }
-        if !engine_runs_project_code(&selected_engine) || selected_engine != meta.engine {
-            revoke_shell_escape_trust(&project_id)?;
-            meta.allow_shell_escape = false;
-        }
         meta.engine = selected_engine;
         write_chosen_meta(&project_id, &meta, MAIN_DOCUMENT_FIELDS)?;
-        Ok(meta)
+        read_meta(&project_id)
     })
 }
 
@@ -3831,11 +3841,7 @@ pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result
             return Ok(false);
         }
         let effective = read_routed_meta(project_id, &route)?;
-        let engine = detected_notebook_engine(
-            project_id,
-            main_doc,
-            engine_for_main_document(&effective.engine, main_doc)?,
-        );
+        let engine = main_document_engine(project_id, &effective.engine, main_doc)?;
         let stored = linked_listing_meta(project_id);
         if stored
             .as_ref()
@@ -3859,6 +3865,16 @@ pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result
         write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
         Ok(true)
     })
+}
+
+fn main_document_engine(project_id: &str, current: &str, main_doc: &str) -> Result<String, String> {
+    let engine = engine_for_main_document(current, main_doc)?;
+    let typst = if engine == "calepin" {
+        "typst".to_owned()
+    } else {
+        engine
+    };
+    Ok(detected_notebook_engine(project_id, main_doc, typst))
 }
 
 fn detected_notebook_engine(project_id: &str, main_doc: &str, engine: String) -> String {
@@ -3988,15 +4004,10 @@ fn set_project_engine_unlocked(
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
         crate::document_engine::engine_for(&engine, &meta.main_doc)?;
-        let changed = meta.engine != engine;
         meta.engine = engine;
         meta.tex_flavor = flavor;
-        if !engine_runs_project_code(&meta.engine) || changed {
-            revoke_shell_escape_trust(project_id)?;
-            meta.allow_shell_escape = false;
-        }
         write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
-        Ok(meta)
+        read_meta(project_id)
     })
 }
 
@@ -4572,7 +4583,6 @@ fn reconcile_external_worktree_meta(
 ) -> Result<ProjectMeta, String> {
     let root = paths::project_dir(project_id)?;
     let mut meta = read_meta(project_id).unwrap_or_else(|_| previous.clone());
-    meta.allow_shell_escape = false;
     if meta.name.trim().is_empty() {
         meta.name = previous.name.clone();
     }
@@ -4956,6 +4966,7 @@ fn recovery_pending_project_info(
         shared: None,
         imported_from: None,
         related_project: None,
+        loose_file: false,
         id: project_id,
     }
 }
@@ -5112,6 +5123,7 @@ fn linked_project_info(
         related_project: meta
             .as_ref()
             .and_then(|meta| related_project_of(&meta.extra)),
+        loose_file: record.loose_file,
     })
 }
 
@@ -5229,6 +5241,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             shared: crate::collab::share::sharing_of(&id),
             imported_from,
             related_project,
+            loose_file: false,
             id,
             updated_at,
         });
@@ -7319,7 +7332,7 @@ pub async fn export_document(
     let compile_lane = notebook_export_lane(state.inner(), &project_id).await?;
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
-    if meta.main_doc != main_doc && !is_tex_root_override(&project_id, &meta, &main_doc) {
+    if !exports_with_project_engine(&project_id, &meta, &main_doc) {
         return Err(crate::app_error::AppError::new("export.main_document_changed").into());
     }
     validate_conversion_export(&meta, &format, &dest)?;
@@ -7440,6 +7453,59 @@ pub async fn export_document(
     Ok(ExportOutcome { notes, warnings })
 }
 
+#[tauri::command]
+pub async fn render_notebook_pdf(
+    app: tauri::AppHandle,
+    project_id: String,
+    main_doc: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<tauri::ipc::Response, String> {
+    let compile_lane = notebook_export_lane(state.inner(), &project_id).await?;
+    let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let meta = read_meta(&project_id)?;
+    if !exports_with_project_engine(&project_id, &meta, &main_doc) {
+        return Err(crate::app_error::AppError::new("export.main_document_changed").into());
+    }
+    if compile_lane.is_none()
+        || !crate::document_engine::exports_pdf_through_engine(&meta.engine, &meta.main_doc)
+    {
+        return Err(crate::app_error::AppError::new("export.unsupported_format")
+            .param("format", "pdf")
+            .into());
+    }
+    resolve_export_main_document(&project_id, &main_doc)?;
+    let root = crate::project_location::locate(&project_id)
+        .map_err(String::from)?
+        .root;
+    crate::document_engine::require_notebook_trust(&project_id, &meta.engine, &meta.main_doc)?;
+    let effective = crate::trust::restrict_compile_meta(&project_id, meta)?;
+    let scratch = tempfile::Builder::new()
+        .prefix("oleafly-page-")
+        .tempdir()
+        .map_err(|error| {
+            String::from(
+                crate::app_error::AppError::new("notebook.export_save_failed").detail(error),
+            )
+        })?;
+    let destination = scratch.path().join("page.pdf");
+    crate::document_engine::export_notebook(crate::document_engine::NotebookExport {
+        engine: &effective.engine,
+        project_dir: &root,
+        main_document: &main_doc,
+        format: "pdf",
+        destination: &destination,
+        allow_code: effective.allow_shell_escape,
+        cancel: Some(&state.compile_cancel),
+        log: Some(&app),
+    })
+    .await?;
+    drop(worktree);
+    let bytes = tokio::fs::read(&destination).await.map_err(|error| {
+        String::from(crate::app_error::AppError::new("notebook.export_save_failed").detail(error))
+    })?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 #[derive(Serialize, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportOutcome {
@@ -7553,7 +7619,11 @@ fn validate_conversion_export(
     format: &str,
     dest: &str,
 ) -> Result<&'static str, String> {
-    let Some((writer, extension)) = crate::conversion::export_writer(format) else {
+    let engine_pdf = format == "pdf"
+        && crate::document_engine::exports_pdf_through_engine(&meta.engine, &meta.main_doc);
+    let Some((writer, extension)) =
+        crate::conversion::export_writer(format).or_else(|| engine_pdf.then_some(("pdf", "pdf")))
+    else {
         return Err(crate::app_error::AppError::new("export.unsupported_format")
             .param("format", format)
             .into());
@@ -7569,6 +7639,9 @@ fn validate_conversion_export(
                 .param("extension", extension)
                 .into(),
         );
+    }
+    if engine_pdf {
+        return Ok(writer);
     }
     let descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     if !descriptor
@@ -9481,7 +9554,6 @@ mod tests {
         assert_eq!(read_meta(&record.id).unwrap().color, "#224466");
 
         let result = super::rename_path_and_update_meta(
-            Some(&record.id),
             &location,
             &location.root.join("draft.tex"),
             &location.root.join("final.tex"),
@@ -10290,7 +10362,6 @@ mod tests {
         let location = crate::project_location::locate(&project_id).unwrap();
         let meta = read_meta(&project_id).unwrap();
         super::rename_path_and_update_meta(
-            Some(&project_id),
             &location,
             &folder.join("main.tex"),
             &folder.join("thesis.tex"),
@@ -14493,7 +14564,6 @@ mod tests {
         write_meta_at(&root.join("project.json"), &meta).unwrap();
 
         let result = super::rename_path_and_update_meta(
-            None,
             &library(&root),
             &src,
             &dst,
@@ -14532,7 +14602,6 @@ mod tests {
         write_meta_at(&root.join("project.json"), &meta).unwrap();
 
         let result = super::rename_path_and_update_meta(
-            None,
             &library(&root),
             &src,
             &requested,
@@ -14568,7 +14637,6 @@ mod tests {
         write_meta_at(&root.join("project.json"), &meta).unwrap();
 
         super::rename_path_and_update_meta(
-            None,
             &library(&root),
             &src,
             &dst,
@@ -14600,7 +14668,6 @@ mod tests {
         };
 
         let error = super::rename_path_and_update_meta(
-            None,
             &library(&root),
             &src,
             &dst,
@@ -14798,6 +14865,57 @@ mod tests {
             engine_for_main_document("markdown", "main.tex").unwrap(),
             "xetex"
         );
+    }
+
+    #[test]
+    fn a_typst_main_document_picks_calepin_or_typst_from_what_it_imports() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("typst-or-calepin");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "typst-or-calepin";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        std::fs::write(project_dir.join("plain.typ"), "= Plain\n").unwrap();
+        std::fs::write(
+            project_dir.join("notebook.typ"),
+            "#import \"/.calepin/calepin.typ\": *\n= Notebook\n",
+        )
+        .unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Typst".into(),
+                main_doc: "plain.typ".into(),
+                engine: "typst".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            set_main_doc_unlocked(project_id.into(), "notebook.typ".into())
+                .unwrap()
+                .engine,
+            "calepin"
+        );
+        assert_eq!(
+            super::read_compile_meta(project_id, "plain.typ").map(|meta| meta.engine),
+            Ok("calepin".to_owned())
+        );
+        assert_eq!(
+            super::read_compile_root(project_id, "plain.typ")
+                .unwrap()
+                .1
+                .engine,
+            "typst"
+        );
+        assert_eq!(
+            set_main_doc_unlocked(project_id.into(), "plain.typ".into())
+                .unwrap()
+                .engine,
+            "typst"
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -15030,7 +15148,12 @@ mod tests {
         )
         .unwrap();
         assert!(super::read_compile_meta(project_id, "slides.typ").is_ok());
-        assert!(super::read_compile_meta(project_id, "handout.typ").is_err());
+        let handout = super::read_compile_meta(project_id, "handout.typ").unwrap();
+        assert_eq!(
+            (handout.main_doc.as_str(), handout.engine.as_str()),
+            ("slides.typ", "typst")
+        );
+        assert!(super::read_compile_meta(project_id, "missing.typ").is_err());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
@@ -18791,7 +18914,7 @@ mod tests {
         super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
         assert!(super::set_project_shell_escape_unlocked(&project_id, true, None).is_ok());
         assert!(super::set_project_shell_escape_unlocked(&project_id, false, None).is_ok());
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
@@ -18882,7 +19005,7 @@ mod tests {
 
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
-    async fn external_worktree_mutation_is_compile_serialized_and_revokes_trust() {
+    async fn external_worktree_mutation_is_compile_serialized_and_keeps_the_permission() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("external-worktree-trust");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
@@ -18917,7 +19040,7 @@ mod tests {
         changed.value.unwrap();
         assert_eq!(changed.project.engine, "xetex");
         assert!(!changed.project.allow_shell_escape);
-        assert!(!super::shell_escape_trust_path(&project_id)
+        assert!(super::shell_escape_trust_path(&project_id)
             .unwrap()
             .exists());
 
@@ -18954,8 +19077,8 @@ mod tests {
             "simulated conflicting pull".to_string()
         );
         assert!(failed.generation > before_failure);
-        assert!(!failed.project.allow_shell_escape);
-        assert!(!super::shell_escape_trust_path(&project_id)
+        assert!(failed.project.allow_shell_escape);
+        assert!(super::shell_escape_trust_path(&project_id)
             .unwrap()
             .exists());
 
@@ -18974,7 +19097,7 @@ mod tests {
         repaired.value.unwrap();
         assert_eq!(repaired.project.main_doc, "main.tex");
         assert_eq!(repaired.project.engine, "latexmk");
-        assert!(!repaired.project.allow_shell_escape);
+        assert!(repaired.project.allow_shell_escape);
         assert!(serde_json::from_str::<serde_json::Value>(
             &std::fs::read_to_string(
                 crate::paths::project_dir(&project_id)
@@ -19127,7 +19250,7 @@ mod tests {
     }
 
     #[test]
-    fn main_document_rename_away_from_latexmk_revokes_shell_trust() {
+    fn main_document_rename_away_from_latexmk_keeps_the_permission_for_later() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-main-rename");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
@@ -19147,7 +19270,7 @@ mod tests {
         let markdown = read_meta(&project_id).unwrap();
         assert_eq!(markdown.engine, "markdown");
         assert!(!markdown.allow_shell_escape);
-        assert!(!super::shell_escape_trust_path(&project_id)
+        assert!(super::shell_escape_trust_path(&project_id)
             .unwrap()
             .exists());
 
@@ -19160,7 +19283,7 @@ mod tests {
         )
         .unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
@@ -19231,6 +19354,57 @@ mod tests {
             },
         )
         .unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn code_consent_follows_the_folder_through_a_rename() {
+        let folder = tempfile::tempdir().unwrap();
+        let first = folder.path().join("paper");
+        std::fs::create_dir(&first).unwrap();
+        let before = super::consent_identity("p1", &first).unwrap();
+        let moved = folder.path().join("paper-renamed");
+        std::fs::rename(&first, &moved).unwrap();
+        let strong = !crate::fs_identity::identify_directory(&moved)
+            .unwrap()
+            .identity
+            .weak;
+        assert_eq!(
+            super::consent_identity("p1", &moved).as_deref() == Some(before.as_str()),
+            strong
+        );
+        assert_ne!(super::consent_identity("p2", &moved), Some(before));
+    }
+
+    #[test]
+    fn an_older_consent_record_is_carried_over_once_and_a_stale_one_is_dropped() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("shell-trust-upgrade");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_blank_project("Upgrade".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        let path = super::shell_escape_trust_path(&project_id).unwrap();
+        let write_v1 = |identity: String| {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let record = serde_json::json!({
+                "version": 1,
+                "project_id": project_id,
+                "project_identity": identity,
+            });
+            std::fs::write(&path, serde_json::to_vec(&record).unwrap()).unwrap();
+        };
+
+        write_v1(super::legacy_project_identity(&project_id).unwrap());
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+        let upgraded: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(upgraded["version"], 2);
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+
+        write_v1("0".repeat(64));
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");

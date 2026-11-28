@@ -22,6 +22,7 @@ export type CloudSkipReason =
   | "specialFile"
   | "tooLarge"
   | "packageFolder"
+  | "privateFile"
   | "zipLeftovers"
   | "unreadable"
   | "downloadFailed"

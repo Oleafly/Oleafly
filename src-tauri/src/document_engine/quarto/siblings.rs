@@ -361,6 +361,39 @@ fn restore_failure(plan: &Plan, error: std::io::Error) -> String {
     would_overwrite(plan.source())
 }
 
+pub(crate) struct KnitFiles(Vec<PathBuf>);
+
+pub(crate) fn knit_files(input: &Path) -> KnitFiles {
+    let (Some(directory), Some(stem)) = (input.parent(), input.file_stem()) else {
+        return KnitFiles(Vec::new());
+    };
+    let stem = stem.to_string_lossy();
+    KnitFiles(
+        [format!("{stem}.knit.md"), format!("{stem}.rmarkdown")]
+            .into_iter()
+            .map(|name| directory.join(name))
+            .filter(|path| std::fs::symlink_metadata(path).is_err())
+            .collect(),
+    )
+}
+
+impl Drop for KnitFiles {
+    fn drop(&mut self) {
+        for path in &self.0 {
+            if std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file()) {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+}
+
+fn cut_off_after_failure(name: &str) -> bool {
+    TEX_AUX
+        .iter()
+        .filter(|aux| **aux != "log")
+        .any(|aux| name.ends_with(&format!(".{aux}")))
+}
+
 impl SiblingHold {
     pub(crate) fn set_succeeded(&mut self, succeeded: bool) {
         self.succeeded = succeeded;
@@ -381,7 +414,12 @@ impl SiblingHold {
             if self.held.contains(&name) || !path.is_file() {
                 continue;
             }
-            if self.succeeded && self.remove_aux_on_success && name != source {
+            let remove = if self.succeeded {
+                self.remove_aux_on_success && name != source
+            } else {
+                cut_off_after_failure(&name)
+            };
+            if remove {
                 let _ = std::fs::remove_file(&path);
             } else if let Some(hash) = file_hash(&path) {
                 record.insert(record_key(&path), hash);
@@ -450,6 +488,40 @@ mod tests {
 
     fn names(plan: &Plan) -> (String, Vec<String>) {
         (plan.source(), plan.derived())
+    }
+
+    #[test]
+    fn knitr_working_files_go_when_the_render_ends_but_older_ones_stay() {
+        let project = Project::new();
+        let input = project.write("slow.Rmd", "---\ntitle: Slow\n---\n");
+        project.write("slow.knit.md", "the author's own file");
+        let knit = knit_files(&input);
+        project.write("slow.rmarkdown", "knitr copy");
+        project.write("slow.knit.md", "rewritten");
+        drop(knit);
+        assert_eq!(project.read("slow.rmarkdown"), None);
+        assert_eq!(project.read("slow.knit.md").as_deref(), Some("rewritten"));
+        let qmd = project.write("notes.qmd", "# Notes\n");
+        project.write("kept.rmarkdown", "the author's own file");
+        let knit = knit_files(&qmd);
+        project.write("notes.rmarkdown", "knitr copy of a .qmd");
+        drop(knit);
+        assert_eq!(project.read("notes.rmarkdown"), None);
+        assert!(project.read("kept.rmarkdown").is_some());
+    }
+
+    #[test]
+    fn a_failed_or_stopped_render_drops_the_cut_off_aux_files_and_keeps_the_log() {
+        let project = Project::new();
+        let input = project.write("report.qmd", "# Report\n");
+        let hold = project.hold(&input, "pdf", false);
+        project.write("report.aux", "\\relax cut off");
+        project.write("report.toc", "partial");
+        project.write("report.log", "the log");
+        drop(hold);
+        assert_eq!(project.read("report.aux"), None);
+        assert_eq!(project.read("report.toc"), None);
+        assert_eq!(project.read("report.log").as_deref(), Some("the log"));
     }
 
     #[test]

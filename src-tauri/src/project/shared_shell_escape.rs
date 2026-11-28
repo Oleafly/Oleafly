@@ -232,16 +232,17 @@ mod tests {
     }
 
     #[test]
-    fn changing_the_engine_away_from_latexmk_clears_the_confirmation() {
+    fn an_engine_switch_keeps_the_confirmation_for_when_the_engine_runs_code_again() {
         let library = TempLibrary::new();
         latexmk_project(&library, "engine-here");
         let _shared = share("engine-here");
         assert!(turn("engine-here", true, true).0.is_ok());
         assert!(effective("engine-here"));
         crate::project::set_project_engine_unlocked("engine-here", "xetex", None).unwrap();
-        crate::project::set_project_engine_unlocked("engine-here", "latexmk", None).unwrap();
-        assert!(!crate::project::shell_escape_trusted("engine-here").unwrap());
         assert!(!effective("engine-here"));
+        crate::project::set_project_engine_unlocked("engine-here", "latexmk", None).unwrap();
+        assert!(crate::project::shell_escape_trusted("engine-here").unwrap());
+        assert!(effective("engine-here"));
 
         latexmk_project(&library, "engine-remote");
         let _shared = share("engine-remote");
@@ -257,8 +258,8 @@ mod tests {
             Ok(((), true))
         })
         .unwrap();
-        assert!(!crate::project::shell_escape_trusted("engine-remote").unwrap());
-        assert!(!effective("engine-remote"));
+        assert!(crate::project::shell_escape_trusted("engine-remote").unwrap());
+        assert!(effective("engine-remote"));
     }
 
     #[test]
@@ -288,7 +289,7 @@ mod tests {
     }
 
     #[test]
-    fn a_quarto_project_allows_code_only_on_this_computer_and_forgets_it_on_an_engine_switch() {
+    fn a_quarto_project_allows_code_only_on_this_computer_and_keeps_it_across_an_engine_switch() {
         let library = TempLibrary::new();
         library.project("notebook", &[("main.qmd", "# Notes\n")]);
         crate::project::write_meta(
@@ -323,6 +324,11 @@ mod tests {
             Ok(((), true))
         })
         .ok();
-        assert!(!crate::project::shell_escape_trusted("notebook").unwrap());
+        assert!(crate::project::shell_escape_trusted("notebook").unwrap());
+        assert!(
+            !crate::project::read_meta("notebook")
+                .unwrap()
+                .allow_shell_escape
+        );
     }
 }

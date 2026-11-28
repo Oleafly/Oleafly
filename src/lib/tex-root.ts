@@ -1,6 +1,7 @@
 import { useShallow } from "zustand/react/shallow";
 import type { SourceFamily } from "@/lib/folder-detection";
 import { documentFamily, isRepositoryNote, mainDocumentMissing, treeHasFile } from "@/lib/main-document";
+import { basename } from "@/lib/path-utils";
 import { isLibraryProject } from "@/lib/project-location";
 import { resolveProjectPath } from "@/lib/project-intelligence/source";
 import type { LatexUnits } from "@/lib/project-intelligence/types";
@@ -158,15 +159,24 @@ export function resolveEffectiveMainDoc(): EffectiveMainDoc {
   };
 }
 
+type FollowedReason = "format" | "standalone";
+
 export interface CompileTarget extends Omit<EffectiveMainDoc, "reason"> {
-  reason: TexRootReason | "format" | null;
+  reason: TexRootReason | FollowedReason | null;
   format: SourceFamily | null;
 }
 
 const QUARTO_FOLDERS = /(?:^|\/)(?:_extensions|_freeze|_book|_site|_manuscript)\//;
 const PANDOC_TEMPLATE = /\$(?:body|if\(|for\()/;
+const QUARTO_PROJECT_FILES = ["_quarto.yml", "_quarto.yaml"] as const;
 
-let lastFormatRoot: { readonly projectId: string; readonly root: string } | null = null;
+interface FollowedRoot {
+  readonly projectId: string;
+  readonly root: string;
+  readonly reason: FollowedReason;
+}
+
+let lastFormatRoot: FollowedRoot | null = null;
 
 function sameFormat(family: SourceFamily | null, stored: SourceFamily | null): boolean {
   return family === stored || (stored === "quarto" && family === "markdown");
@@ -201,10 +211,43 @@ function formatRoot(files: FilesState, projectId: string, path: string, stored: 
   return isCompleteDocument(text) ? path : keptLatexRoot(projectId, path);
 }
 
-function keptFormatRoot(files: FilesState, projectId: string): string | null {
+export function insideQuartoProject(tree: FilesState["tree"], path: string): boolean {
+  const folders = path.split("/").slice(0, -1);
+  for (let depth = folders.length; depth >= 0; depth--) {
+    const folder = folders.slice(0, depth).join("/");
+    const inFolder = (name: string) => (folder ? `${folder}/${name}` : name);
+    if (QUARTO_PROJECT_FILES.some((name) => treeHasFile(tree, inFolder(name)))) return true;
+  }
+  return false;
+}
+
+function standaloneRoot(files: FilesState, projectId: string, path: string, stored: string): string | null {
+  const family = documentFamily(path);
+  if (path === stored || family === null || family === "latex") return null;
+  if (!sameFormat(family, documentFamily(stored))) return null;
+  if (QUARTO_FOLDERS.test(path) || !treeHasFile(files.tree, path) || isRepositoryNote(path)) return null;
+  const parts = useCompileRootStore.getState().parts;
+  const known = parts?.projectId === projectId ? parts.files : null;
+  if (known?.has(path)) return null;
+  if (family === "typst" ? known === null : basename(path).startsWith("_") || insideQuartoProject(files.tree, path)) {
+    return null;
+  }
+  const text = files.files[path]?.content;
+  if (family === "typst" && (text === undefined || PANDOC_TEMPLATE.test(text))) return null;
+  return path;
+}
+
+function followedRootFor(files: FilesState, projectId: string, path: string, stored: string): FollowedRoot | null {
+  const format = formatRoot(files, projectId, path, stored);
+  if (format !== null) return { projectId, root: format, reason: "format" };
+  const standalone = standaloneRoot(files, projectId, path, stored);
+  return standalone === null ? null : { projectId, root: standalone, reason: "standalone" };
+}
+
+function keptFormatRoot(files: FilesState, projectId: string): FollowedRoot | null {
   const kept = lastFormatRoot;
   if (kept?.projectId !== projectId || !files.openTabs.includes(kept.root)) return null;
-  return treeHasFile(files.tree, kept.root) ? kept.root : null;
+  return treeHasFile(files.tree, kept.root) ? kept : null;
 }
 
 export function resolveCompileTarget(): CompileTarget {
@@ -216,13 +259,14 @@ export function resolveCompileTarget(): CompileTarget {
     lastFormatRoot = null;
     return { ...effective, format: projectId ? formatOf(effective.mainDoc, stored) : null };
   }
-  const root =
+  const followed =
     activePath && documentFamily(activePath) !== null
-      ? formatRoot(files, projectId, activePath, stored)
+      ? followedRootFor(files, projectId, activePath, stored)
       : keptFormatRoot(files, projectId);
-  lastFormatRoot = root === null ? null : { projectId, root };
-  if (root === null) return { ...effective, format: formatOf(effective.mainDoc, stored) };
-  return { mainDoc: root, overriddenBy: root, reason: "format", brokenRoot: null, format: formatOf(root, stored) };
+  lastFormatRoot = followed;
+  if (followed === null) return { ...effective, format: formatOf(effective.mainDoc, stored) };
+  const { root, reason } = followed;
+  return { mainDoc: root, overriddenBy: root, reason, brokenRoot: null, format: formatOf(root, stored) };
 }
 
 export function effectiveMainDocMissing(root: Pick<EffectiveMainDoc, "mainDoc"> = resolveEffectiveMainDoc()): boolean {

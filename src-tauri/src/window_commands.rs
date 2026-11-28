@@ -31,12 +31,14 @@ const UPDATE: &[&str] = &[
 
 const PREVIEW: &[&str] = &[
     "compiled_html_preview_url",
+    "compiled_output_path",
     "grant_test_save_path",
     "open_compiled_html",
     "pdf_sync_note_saved",
     "pdf_sync_set",
     "pdf_sync_status",
     "pick_save_path",
+    "read_compiled_page",
     "read_compiled_pdf",
     "save_file_base64",
     "typst_toolchain_status",

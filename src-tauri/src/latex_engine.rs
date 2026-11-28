@@ -647,19 +647,15 @@ fn lock_file(file: &std::fs::File, exclusive: bool, conflict: &str) -> Result<()
     result.map_err(|error| format!("{conflict}: {error}"))
 }
 
-fn unlock_file(file: &std::fs::File) {
-    let _ = fs4::FileExt::unlock(file);
-}
-
 impl Drop for TinytexProcessLock {
     fn drop(&mut self) {
-        unlock_file(&self.file);
+        let _ = oleafly_core::locking::unlock_file(&self.file);
     }
 }
 
 impl Drop for TexRuntimeLock {
     fn drop(&mut self) {
-        unlock_file(&self.file);
+        let _ = oleafly_core::locking::unlock_file(&self.file);
     }
 }
 

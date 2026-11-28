@@ -40,6 +40,7 @@
     "renameAriaLabel": "重命名文件",
     "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
     "setMain": "设为主文档",
+    "compileTarget": "编译此文件，而不是主文档",
     "title": "资源管理器",
     "treeAriaLabel": "资源管理器文件树",
     "setMainFailed": "无法将“{{path}}”设为主文档。",

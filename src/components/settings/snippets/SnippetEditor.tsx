@@ -1,4 +1,4 @@
-import { useDeferredValue, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorView } from "@codemirror/view";
 import { ChevronDown, Copy, Power, Save, Trash2 } from "lucide-react";
@@ -23,7 +23,7 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToolSegmentedControl } from "@/components/tools/ToolWorkspace";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import {
@@ -38,6 +38,7 @@ import {
 } from "@/features/snippets/draft";
 import { collectionName, isMathPlace, languageLabel, snippetName, userCollections } from "@/features/snippets/records";
 import { useSnippetStore } from "@/features/snippets/store";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { describeError } from "@/lib/app-error";
 import { SnippetBodyEditor } from "./SnippetBodyEditor";
 import { SnippetTryIt } from "./SnippetTryIt";
@@ -54,6 +55,8 @@ function variableText(name: (typeof VARIABLES)[number]): string {
 
 const LANGUAGE_CHOICES: readonly (SnippetLanguage | "any")[] = [...SNIPPET_LANGUAGES, "any"];
 const CLASH_NAMES = 3;
+const TRY_DELAY_MS = 250;
+const ANY_LANGUAGES: readonly SnippetLanguage[] = ["latex", "typst", "markdown"];
 
 type Where = (typeof WHERE)[number];
 
@@ -105,7 +108,9 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
   const activeTab = keys.includes(tab) ? tab : keys[0];
   const recordId = base?.id ?? uniqueRecordId(draft.name, (candidate) => library.all.some((record) => record.id === candidate));
   const result = useMemo(() => draftRecord(draft, base, recordId), [draft, base, recordId]);
-  const tried = useDeferredValue(result.record);
+  const settled = useDebouncedValue(result.record, TRY_DELAY_MS);
+  const [tried, setTried] = useState(result.record);
+  if (settled && settled !== tried) setTried(settled);
   const clashes = useMemo(() => snippetClashes(draft, library, base), [draft, library, base]);
   const collections = useMemo(() => userCollections(disk), [disk]);
   const name = draft.name.trim() || t(($) => $.settings.snippets.editor.newTitle);
@@ -113,6 +118,11 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
   const update = (patch: Partial<SnippetDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const setBody = (key: BodyKey, text: string) =>
     setDraft((current) => ({ ...current, bodies: { ...current.bodies, [key]: text } }));
+
+  const focusBody = (event: Event) => {
+    event.preventDefault();
+    view.current?.focus();
+  };
 
   const insert = (make: (index: number, selected: string) => string) => {
     const current = view.current;
@@ -316,17 +326,19 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
         </Field>
       </div>
 
-      <div className="space-y-2 rounded-xl border bg-card/60 p-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setTab(value as BodyKey)}
+        className="space-y-2 rounded-xl border bg-card/60 p-4"
+      >
         <div className="flex flex-wrap items-center gap-2">
-          <Tabs value={activeTab} onValueChange={(value) => setTab(value as BodyKey)}>
-            <TabsList size="sm" aria-label={t(($) => $.settings.snippets.editor.body)}>
-              {keys.map((key) => (
-                <TabsTrigger key={key} value={key}>
-                  {key === "default" ? t(($) => $.settings.snippets.editor.anyLanguage) : languageLabel(key)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <TabsList size="sm" aria-label={t(($) => $.settings.snippets.editor.body)}>
+            {keys.map((key) => (
+              <TabsTrigger key={key} value={key}>
+                {key === "default" ? t(($) => $.settings.snippets.editor.anyLanguage) : languageLabel(key)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <Button
               type="button"
@@ -348,7 +360,7 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
                   <ChevronDown aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[100]">
+              <DropdownMenuContent align="end" className="z-[100]" onCloseAutoFocus={focusBody}>
                 {VARIABLES.map((variable) => (
                   <DropdownMenuItem key={variable} onSelect={() => insert(() => variableText(variable))}>
                     {t(($) => $.settings.snippets.editor.variables[variable])}
@@ -363,7 +375,7 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
                   <ChevronDown aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[100]">
+              <DropdownMenuContent align="end" className="z-[100]" onCloseAutoFocus={focusBody}>
                 {PROJECT_FIELD_KINDS.map((kind: ProjectFieldKind) => (
                   <DropdownMenuItem key={kind} onSelect={() => insert((index) => `\${${index}@${kind}}`)}>
                     {t(($) => $.settings.snippets.editor.projectFields[kind])}
@@ -373,18 +385,20 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
             </DropdownMenu>
           </div>
         </div>
-        <SnippetBodyEditor
-          value={draft.bodies[activeTab] ?? ""}
-          onChange={(text) => setBody(activeTab, text)}
-          language={activeTab}
-          showSyntax={showSyntax}
-          captures={draft.regex}
-          ariaLabel={t(($) => $.settings.snippets.editor.body)}
-          onView={(next) => {
-            view.current = next;
-          }}
-          testId="snippet-body"
-        />
+        <TabsContent value={activeTab} tabIndex={-1}>
+          <SnippetBodyEditor
+            value={draft.bodies[activeTab] ?? ""}
+            onChange={(text) => setBody(activeTab, text)}
+            language={activeTab}
+            showSyntax={showSyntax}
+            captures={draft.regex}
+            ariaLabel={t(($) => $.settings.snippets.editor.body)}
+            onView={(next) => {
+              view.current = next;
+            }}
+            testId="snippet-body"
+          />
+        </TabsContent>
         <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
           {showSyntax ? null : <span>{t(($) => $.settings.snippets.editor.chipsNote)}</span>}
           <label htmlFor={`${id}-syntax`} className="flex cursor-pointer items-center gap-2">
@@ -392,12 +406,12 @@ export function SnippetEditor({ start, onClose }: Readonly<{ start: SnippetEdito
             <Switch id={`${id}-syntax`} checked={showSyntax} onCheckedChange={setShowSyntax} />
           </label>
         </div>
-      </div>
+      </Tabs>
 
       {tried ? (
         <SnippetTryIt
           record={tried}
-          languages={draft.languages === "any" ? ["latex", "typst", "markdown"] : draft.languages}
+          languages={draft.languages === "any" ? ANY_LANGUAGES : draft.languages}
         />
       ) : null}
 

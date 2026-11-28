@@ -199,6 +199,14 @@ describe("PDF sync bridge", () => {
       outputId: "pdf-v1:1:aa",
     });
 
+    await pdfSyncSet("project", true, null, true);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("pdf_sync_set", {
+      projectId: "project",
+      enabled: true,
+      outputId: null,
+      page: true,
+    });
+
     await pdfSyncNoteSaved("project", "Thesis.pdf");
     expect(mocks.invoke).toHaveBeenLastCalledWith("pdf_sync_note_saved", {
       projectId: "project",

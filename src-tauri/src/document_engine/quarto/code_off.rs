@@ -12,7 +12,8 @@ const MAX_FILES: usize = 64;
 const MAX_DEPTH: usize = 8;
 const ENVIRONMENT_PREFIX: &str = "_environment";
 const PROJECT_FILE_PREFIXES: [&str; 2] = ["_quarto", "_metadata"];
-const QUARTO_PROJECT_FILES: [&str; 2] = ["_quarto.yml", "_quarto.yaml"];
+pub(super) use oleafly_core::QUARTO_PROJECT_FILES;
+const PROJECT_SOURCES: [&str; 5] = ["qmd", "rmd", "rmarkdown", "md", "ipynb"];
 const OPTION_PREFIXES: [&str; 4] = ["#|", "//|", "--|", "%%|"];
 
 const ALLOWED_FILTERS: &[&str] = &["quarto", "citeproc"];
@@ -157,8 +158,79 @@ const SHORTCODES: &[&str] = &[
     "brand",
 ];
 
-pub(super) fn code_needed(project_dir: &Path, input: &Path) -> bool {
-    refusal(project_dir, input).is_err()
+pub(super) fn code_needed(project_dir: &Path, input: &Path) -> Option<&'static str> {
+    refusal(project_dir, input).err().map(reason_code)
+}
+
+fn reason_code(refusal: &str) -> &'static str {
+    match refusal {
+        "the project has Quarto extensions" => "extensions",
+        "the project sets environment variables" => "environment",
+        "the document uses a shortcode that is not built into Quarto" => "shortcode",
+        "the metadata adds a filter" => "filter",
+        "the metadata passes options to the PDF engine"
+        | "the metadata picks a PDF engine Oleafly does not allow with code off" => "pdf_engine",
+        "the document is outside the project"
+        | "a file outside the project is read"
+        | "a file outside the project is included" => "outside",
+        "files are nested too deeply"
+        | "too many files are read"
+        | "the metadata cannot be read"
+        | "the metadata merges files"
+        | "the metadata has a tagged value"
+        | "the metadata has a tagged key"
+        | "a file the document needs is too large to check" => "unchecked",
+        _ => "code",
+    }
+}
+
+pub(super) fn project_code_needed(project_dir: &Path, book: &Path) -> Option<&'static str> {
+    let mut folders = vec![(book.to_path_buf(), 0)];
+    let mut checked = 0;
+    while let Some((folder, depth)) = folders.pop() {
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().starts_with(['.', '_']) {
+                continue;
+            }
+            let Ok(kind) = entry.file_type() else {
+                return Some("unchecked");
+            };
+            let path = entry.path();
+            if kind.is_symlink() && path.is_dir() {
+                return Some("unchecked");
+            }
+            if kind.is_dir() {
+                if depth >= MAX_DEPTH {
+                    return Some("unchecked");
+                }
+                folders.push((path, depth + 1));
+                continue;
+            }
+            let source = path
+                .extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .is_some_and(|extension| {
+                    PROJECT_SOURCES
+                        .iter()
+                        .any(|known| extension.eq_ignore_ascii_case(known))
+                });
+            if !source {
+                continue;
+            }
+            checked += 1;
+            if checked > MAX_FILES {
+                return Some("unchecked");
+            }
+            if let Some(reason) = code_needed(project_dir, &path) {
+                return Some(reason);
+            }
+        }
+    }
+    None
 }
 
 pub(super) fn uses_knitr(project_dir: &Path, input: &Path) -> bool {
@@ -944,6 +1016,37 @@ mod tests {
 
     fn refused(source: &str) -> bool {
         Project::new().refusal(source).is_err()
+    }
+
+    #[test]
+    fn a_refusal_says_why_so_the_app_can_name_it() {
+        let reason = |project: &Project, source: &str| {
+            let input = project.write("main.qmd", source);
+            code_needed(&project.root, &input)
+        };
+        let project = Project::new();
+        assert_eq!(reason(&project, "# Body\n"), None);
+        assert_eq!(reason(&project, "The mean is `r mean(x)`.\n"), Some("code"));
+        assert_eq!(reason(&project, "{{< fa star >}}\n"), Some("shortcode"));
+        assert_eq!(
+            reason(&project, "---\nfilters: [count.lua]\n---\n"),
+            Some("filter")
+        );
+        assert_eq!(
+            reason(&project, "---\npdf-engine-opt: -shell-escape\n---\n"),
+            Some("pdf_engine")
+        );
+        project.write("_environment", "TOKEN=1\n");
+        assert_eq!(reason(&project, "# Body\n"), Some("environment"));
+        let project = Project::new();
+        std::fs::create_dir(project.root.join("_extensions")).unwrap();
+        assert_eq!(reason(&project, "# Body\n"), Some("extensions"));
+        let project = Project::new();
+        project.outside();
+        assert_eq!(
+            reason(&project, "{{< include ../secret.txt >}}\n"),
+            Some("outside")
+        );
     }
 
     #[test]

@@ -564,7 +564,6 @@
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
-    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea.",
     "projectNotesShared": "Projektin muistiinpanot jaetaan kaikille tämän projektin jäsenille. Henkilökohtaiset muistiinpanot pysyvät yksityisinä.",
     "personalNotesPrivate": "Henkilökohtaiset muistiinpanot pysyvät yksityisinä. Vain projektin muistiinpanokansiossa olevat muistiinpanot jaetaan.",
     "unlinkOverleaf": "Poista linkitys Overleafista",

@@ -6,6 +6,7 @@ import {
   exportPdf,
   revealInDir,
   exportProjectImage,
+  renderNotebookPdf,
   uint8ToBase64,
   withEventListener,
   type ExportOutcome,
@@ -29,7 +30,7 @@ import { activeTypstVariant } from "@/store/typst-variant";
 import { noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
 import { askInApp } from "@/store/confirm-dialog";
 
-export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
+export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex" | "pdf";
 
 const EXPORT_TOAST_KEY = "export-result";
 const EXPORT_STOPPED = "notebook.export_stopped";
@@ -112,12 +113,14 @@ async function exportConvertedDocument({
   return { notice: typstContentNotice(outcome) ?? sourceNotice, warnings };
 }
 
-export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
+export async function exportCurrentDocument(
+  format: DocumentExportFormat | "zip",
+  mainDoc = resolveEffectiveMainDoc().mainDoc,
+): Promise<void> {
   if (documentExportInFlight) return;
   const { projectId, projectName, engine } = useFilesStore.getState();
   if (!projectId) return;
   noteUnreviewedSuggestions(projectId, "export");
-  const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = format === "typst" ? "typ" : format;
   const name = exportFileStem(projectName, "document");
   documentExportInFlight = true;
@@ -129,7 +132,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
     });
     if (!destination) return;
     assertProjectOpen(projectId);
-    if (format !== "zip" && !(await ensurePandoc({ notify: true }))) return;
+    if (format !== "zip" && !isNotebookEngine(engine) && !(await ensurePandoc({ notify: true }))) return;
     assertProjectOpen(projectId);
     await useFilesStore.getState().flushForQuit();
     assertProjectOpen(projectId);
@@ -284,6 +287,51 @@ async function renderExportedPage(bytes: Uint8Array, page: number, scale: number
   } catch (error) {
     if (page === 1) throw error;
     return pdfPageToPng(bytes, 1, scale);
+  }
+}
+
+export async function exportCurrentPagePng(scale = 3, mainDoc = resolveEffectiveMainDoc().mainDoc): Promise<void> {
+  const { projectId, projectName } = useFilesStore.getState();
+  if (!projectId || documentExportInFlight) return;
+  noteUnreviewedSuggestions(projectId, "export");
+  documentExportInFlight = true;
+  let progress: number | undefined;
+  try {
+    const dest = await pickSavePath({
+      defaultPath: `${exportFileStem(projectName, "document")}.png`,
+      filters: [{ name: i18n.t(($) => $.core.dialog.filters.pngImage), extensions: ["png"] }],
+    });
+    if (!dest) return;
+    assertProjectOpen(projectId);
+    await useFilesStore.getState().flushForQuit();
+    progress = toast.infoUnique(
+      EXPORT_TOAST_KEY,
+      i18n.t(($) => $.shell.toolbar.exporting, { format: "png" }),
+      { label: i18n.t(($) => $.shell.toolbar.stopExport), onClick: stopExport },
+      true,
+    );
+    const pdf = new Uint8Array(await renderNotebookPdf(projectId, mainDoc));
+    const dataUrl = await renderExportedPage(pdf, 1, scale);
+    assertProjectOpen(projectId);
+    await exportProjectImage(projectId, dest, dataUrl.slice(dataUrl.indexOf(",") + 1));
+    exportResultToast("PNG", dest);
+    progress = undefined;
+  } catch (e) {
+    if (decodeAppError(e)?.code === EXPORT_STOPPED) {
+      toast.info(describeError(e));
+      return;
+    }
+    const detail = errorDetail(e);
+    notifyError(
+      "export page png",
+      e,
+      detail
+        ? i18n.t(($) => $.core.export.pngFailedDetail, { detail })
+        : i18n.t(($) => $.core.export.pngFailed),
+    );
+  } finally {
+    if (progress !== undefined) toast.dismiss(progress);
+    documentExportInFlight = false;
   }
 }
 

@@ -103,7 +103,13 @@
     "useTypst": "使用 Typst {{version}}",
     "installTool": "安裝 {{tool}} {{version}}",
     "installToolSize": "安裝 {{tool}} {{version}}（{{size}}）",
-    "engineSettings": "開啟引擎設定"
+    "installPackage": "安裝 {{name}}",
+    "checkAgain": "再次檢查",
+    "engineSettings": "開啟引擎設定",
+    "saveHtml": "將 HTML 儲存到專案",
+    "downloadPageAsPdf": "將顯示中的頁面下載為 PDF",
+    "copyPath": "複製輸出路徑",
+    "invertPage": "反轉網頁顏色"
   },
   "html": {
     "building": "正在建置網頁",
@@ -131,10 +137,14 @@
     "namePlaceholder": "文件.pdf",
     "imageSaved": "圖片已儲存到專案。",
     "pdfSaved": "PDF 已儲存到專案。",
-    "failed": "無法儲存到專案。"
+    "failed": "無法儲存到專案。",
+    "htmlDescription": "將顯示中的網頁以單一 HTML 檔案儲存到專案樹中。",
+    "htmlPlaceholder": "文件.html",
+    "htmlSaved": "網頁已儲存到專案。"
   },
   "sync": {
     "toggle": "編譯時同步 PDF",
+    "toggleHtml": "編譯時同步 HTML",
     "failed": "無法更新 {{name}}。Oleafly 會在下次編譯時重試。",
     "fastMode": "快速編譯不會更新此 PDF。",
     "localOnly": "此副本僅保存在這部電腦上。"
@@ -152,7 +162,8 @@
   },
   "empty": {
     "compileUnavailable": "目前無法編譯 PDF。",
-    "compileFailed": "編譯失敗。開啟記錄檔分頁即可查看問題所在。"
+    "compileFailed": "編譯失敗。開啟記錄檔分頁即可查看問題所在。",
+    "notCompiled": "{{name}} 尚未編譯。"
   },
   "a11y": {
     "stale": "PDF 已過期，並非目前版本。{{explanation}}",

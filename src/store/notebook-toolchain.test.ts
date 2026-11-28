@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   NotebookInstallProgress,
@@ -9,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   notebookToolchainStatus: vi.fn(),
   installNotebookTool: vi.fn(),
   removeNotebookTool: vi.fn(),
+  installLanguageRuntime: vi.fn(),
+  installRPackages: vi.fn(),
+  installPythonPackages: vi.fn(),
+  recheckNotebookToolchain: vi.fn(),
   errorUnique: vi.fn(),
   logError: vi.fn(),
 }));
@@ -17,6 +22,10 @@ vi.mock("@/lib/notebook-commands", () => ({
   notebookToolchainStatus: mocks.notebookToolchainStatus,
   installNotebookTool: mocks.installNotebookTool,
   removeNotebookTool: mocks.removeNotebookTool,
+  installLanguageRuntime: mocks.installLanguageRuntime,
+  installRPackages: mocks.installRPackages,
+  installPythonPackages: mocks.installPythonPackages,
+  recheckNotebookToolchain: mocks.recheckNotebookToolchain,
 }));
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -27,6 +36,7 @@ import { useSettingsStore } from "@/store/settings";
 import {
   CALEPIN_SETTINGS_TARGET,
   QUARTO_SETTINGS_TARGET,
+  missingRuntimePackages,
   notebookInstallLabel,
   notebookInstallPercent,
   notebookToolBusy,
@@ -85,6 +95,8 @@ beforeEach(() => {
     loadFailed: false,
     installs: {},
     removing: null,
+    runtimeTasks: {},
+    awaitingInstaller: [],
   });
 });
 
@@ -244,5 +256,75 @@ describe("notebook toolchain helpers", () => {
     expect(notebookToolForSettingsTarget(QUARTO_SETTINGS_TARGET)).toBe("quarto");
     expect(notebookToolForSettingsTarget("typst-versions")).toBeNull();
     expect(notebookToolForSettingsTarget(null)).toBeNull();
+  });
+});
+
+describe("installing R, Python and their packages", () => {
+  const withR = (path: string | null): NotebookToolchainStatus => ({
+    ...status(),
+    runtimes: [{ name: "r", path, version: null, installer: path ? null : { version: "4.6.2", downloadBytes: 104_731_180 } }],
+  });
+
+  it("opens the installer, then rechecks when the window comes back until R is found", async () => {
+    mocks.installLanguageRuntime.mockImplementation(async (_runtime: string, onProgress: (p: unknown) => void) => {
+      onProgress({ runtime: "r", phase: "downloading", receivedBytes: 50, totalBytes: 100 });
+      expect(useNotebookToolchainStore.getState().runtimeTasks.r).toMatchObject({ phase: "downloading", receivedBytes: 50 });
+      onProgress({ runtime: "r", phase: "done", receivedBytes: 100, totalBytes: 100 });
+      expect(useNotebookToolchainStore.getState().runtimeTasks.r?.phase).toBe("opening");
+    });
+    mocks.recheckNotebookToolchain.mockResolvedValueOnce(withR(null)).mockResolvedValueOnce(withR("/usr/local/bin/Rscript"));
+    await expect(useNotebookToolchainStore.getState().installRuntime("r")).resolves.toBe(true);
+    expect(useNotebookToolchainStore.getState()).toMatchObject({ runtimeTasks: {}, awaitingInstaller: ["r"] });
+
+    let now = 1_000_000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    window.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(mocks.recheckNotebookToolchain).toHaveBeenCalledTimes(1));
+    expect(useNotebookToolchainStore.getState().awaitingInstaller).toEqual(["r"]);
+    window.dispatchEvent(new Event("focus"));
+    await Promise.resolve();
+    expect(mocks.recheckNotebookToolchain).toHaveBeenCalledTimes(1);
+    now += 6_000;
+    window.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(useNotebookToolchainStore.getState().awaitingInstaller).toEqual([]));
+    now += 6_000;
+    window.dispatchEvent(new Event("focus"));
+    await Promise.resolve();
+    expect(mocks.recheckNotebookToolchain).toHaveBeenCalledTimes(2);
+    clock.mockRestore();
+  });
+
+  it("reports a failed download and clears the task", async () => {
+    mocks.installLanguageRuntime.mockRejectedValue(`${APP_ERROR_PREFIX}{"code":"notebook.download_failed","params":{"tool":"R"}}`);
+    await expect(useNotebookToolchainStore.getState().installRuntime("r")).resolves.toBe(false);
+    expect(mocks.errorUnique).toHaveBeenCalledWith("notebook-toolchain:r", expect.any(String));
+    expect(useNotebookToolchainStore.getState()).toMatchObject({ runtimeTasks: {}, awaitingInstaller: [] });
+  });
+
+  it("installs R packages and Python packages for the open project", async () => {
+    mocks.installRPackages.mockResolvedValue(withR("/usr/local/bin/Rscript"));
+    mocks.installPythonPackages.mockResolvedValue(status());
+    const store = useNotebookToolchainStore.getState();
+    await expect(store.installRuntimePackages("r", ["knitr"])).resolves.toBe(true);
+    expect(mocks.installRPackages).toHaveBeenCalledWith(null, ["knitr"]);
+    await expect(store.installRuntimePackages("python", ["pandas"], "p1")).resolves.toBe(true);
+    expect(mocks.installPythonPackages).toHaveBeenCalledWith("p1", ["pandas"]);
+    await expect(store.installRuntimePackages("python", [])).resolves.toBe(false);
+    expect(useNotebookToolchainStore.getState().runtimeTasks).toEqual({});
+  });
+
+  it("lists the packages that are missing", () => {
+    expect(
+      missingRuntimePackages({
+        name: "r",
+        path: "/usr/bin/Rscript",
+        version: null,
+        packages: [
+          { name: "knitr", installed: true },
+          { name: "rmarkdown", installed: false },
+        ],
+      }),
+    ).toEqual(["rmarkdown"]);
+    expect(missingRuntimePackages(undefined)).toEqual([]);
   });
 });

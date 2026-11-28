@@ -64,6 +64,7 @@ const codeMirrorMocks = vi.hoisted(() => ({
 
 const openCompileMocks = vi.hoisted(() => ({
   automaticCompileAllowed: vi.fn((decision: string) => decision === "auto"),
+  opensWithoutRunningCode: vi.fn(() => false),
   openCompileHydrated: vi.fn(() => false),
   resetOpenCompileMarker: vi.fn<(projectId: string | null, marker: unknown) => unknown>(
     () => null,

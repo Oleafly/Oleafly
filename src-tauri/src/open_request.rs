@@ -234,7 +234,8 @@ impl ValidatedFolder {
 
     fn display_name(&self) -> String {
         self.file
-            .clone()
+            .as_deref()
+            .map(|file| file.rsplit('/').next().unwrap_or(file).to_owned())
             .unwrap_or_else(|| display_name(&self.canonical))
     }
 }
@@ -770,6 +771,35 @@ pub(crate) fn validate(path: &Path) -> Result<ValidatedFolder, Refusal> {
     }
 }
 
+const PROJECT_MARKERS: [&str; 3] = ["latexmkrc", ".latexmkrc", "main.tex"];
+const ROOT_SEARCH_DEPTH: usize = 8;
+
+fn marks_a_project(folder: &Path) -> bool {
+    oleafly_core::QUARTO_PROJECT_FILES
+        .iter()
+        .chain(&PROJECT_MARKERS)
+        .any(|name| folder.join(name).is_file())
+        || std::fs::read_dir(folder)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| name.ends_with(".Rproj"))
+            })
+}
+
+fn project_root_for(folder: &Path) -> &Path {
+    folder
+        .ancestors()
+        .take(ROOT_SEARCH_DEPTH)
+        .take_while(|ancestor| !crate::known_folders::is_broad_folder(ancestor))
+        .find(|ancestor| marks_a_project(ancestor))
+        .unwrap_or(folder)
+}
+
 fn folder_of(path: &Path) -> Result<(PathBuf, Option<String>), OpenFolderError> {
     if !std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file()) {
         return Ok((path.to_path_buf(), None));
@@ -777,12 +807,16 @@ fn folder_of(path: &Path) -> Result<(PathBuf, Option<String>), OpenFolderError> 
     let file = path
         .canonicalize()
         .map_err(|error| OpenFolderError::Failed(error.to_string()))?;
-    let name = file
-        .file_name()
-        .and_then(OsStr::to_str)
-        .ok_or(OpenFolderError::NotUnicode)?;
     let folder = file.parent().ok_or(OpenFolderError::NotAFolder)?;
-    Ok((folder.to_path_buf(), Some(name.to_string())))
+    let root = project_root_for(folder);
+    let relative = file
+        .strip_prefix(root)
+        .map_err(|error| OpenFolderError::Failed(error.to_string()))?
+        .components()
+        .map(|part| part.as_os_str().to_str().ok_or(OpenFolderError::NotUnicode))
+        .collect::<Result<Vec<_>, _>>()?
+        .join("/");
+    Ok((root.to_path_buf(), Some(relative)))
 }
 
 fn refusal(error: OpenFolderError, path: &Path) -> Refusal {
@@ -811,6 +845,9 @@ pub(crate) fn open_validated(
     let path = &folder.canonical;
     let opened = crate::open_folder::register_or_resolve_folder(path, folder.opening())
         .map_err(|error| OpenFailure::Refused(refusal(error, path)))?;
+    if opened.kind == OpenedKind::Linked {
+        note_loose_file(&opened, folder.opening());
+    }
     let project_id = opened.project_id;
     let file = folder.file.as_ref().map(|name| match &opened.reveal {
         Some(inside) => format!("{inside}/{name}"),
@@ -835,6 +872,28 @@ pub(crate) fn open_validated(
         detection,
         file,
     })
+}
+
+fn note_loose_file(opened: &crate::open_folder::OpenedFolder, opening: Opening) {
+    let loose = match opening {
+        Opening::File if opened.outcome == crate::open_folder::FolderOutcome::New => true,
+        Opening::Folder => false,
+        Opening::File => return,
+    };
+    match crate::linked_registry::get(&opened.project_id) {
+        Ok(Some(record)) if record.loose_file != loose => {}
+        _ => return,
+    }
+    let changed = crate::linked_registry::update(&opened.project_id, |record| {
+        record.loose_file = loose;
+        Ok(())
+    });
+    if let Err(error) = changed {
+        let _ = crate::project::append_app_log(format!(
+            "Could not record how {} was opened: {error}",
+            opened.project_id
+        ));
+    }
 }
 
 fn prefer_opened_file(detection: &mut oleafly_core::Detection, file: &str) {

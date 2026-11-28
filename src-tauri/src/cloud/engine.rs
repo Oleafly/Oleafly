@@ -471,6 +471,7 @@ fn skip_code(reason: SkipReason) -> Option<&'static str> {
             None
         }
         SkipReason::Reinstallable => Some("packageFolder"),
+        SkipReason::Private => Some("privateFile"),
         SkipReason::ZipLeftovers => Some("zipLeftovers"),
         SkipReason::Symlink => Some("symlink"),
         SkipReason::SpecialFile => Some("specialFile"),
@@ -522,25 +523,6 @@ enum Seen {
         path: PathBuf,
         metadata: std::fs::Metadata,
     },
-}
-
-/// Folders the cloud leaves out on top of the project's sync policy: a Python
-/// environment, which can hold more files than a project may sync and is
-/// reinstalled from its requirements, and Python's bytecode cache.
-fn cloud_skip(relative: &Path) -> Option<SkipReason> {
-    relative.components().find_map(|component| {
-        let std::path::Component::Normal(part) = component else {
-            return None;
-        };
-        let part = part.to_string_lossy();
-        if part.eq_ignore_ascii_case(".venv") {
-            Some(SkipReason::Reinstallable)
-        } else if part == "__pycache__" {
-            Some(SkipReason::BuildOutput)
-        } else {
-            None
-        }
-    })
 }
 
 type TrackedCache = BTreeMap<PathBuf, ((u64, Option<SystemTime>), BTreeSet<String>)>;
@@ -630,11 +612,6 @@ fn classify_entry(
                     out.tracked.insert(key(&portable));
                 }
             }
-        }
-    }
-    if decision == Decision::Include {
-        if let Some(reason) = cloud_skip(relative) {
-            decision = Decision::Skip(reason);
         }
     }
     match decision {
@@ -1064,7 +1041,6 @@ fn split_remote(
             && valid_hash(&record.hash)
             && record.size <= oleafly_core::exclude::MAX_SYNC_FILE_BYTES
             && record.rev.as_deref().is_none_or(valid_rev)
-            && cloud_skip(Path::new(&record.path)).is_none()
             && match decide_with_siblings(
                 Path::new(&record.path),
                 &EntryInfo::file(record.size),
@@ -3601,14 +3577,6 @@ pub(crate) async fn sync_project<S: CloudStore>(
         if !changes.is_empty() {
             persist(&changes);
         }
-    }
-    let arrived = applied
-        .downloaded
-        .iter()
-        .any(|item_key| item_key != PROJECT_META)
-        || !applied.conflict_copies.is_empty();
-    if let (true, Some(id)) = (arrived, env.lock_id.as_deref()) {
-        let _ = crate::project::revoke_shell_escape_trust(id);
     }
     round.outcome.downloaded = applied.downloaded.len();
     round.outcome.deleted_local = applied.deleted.len();

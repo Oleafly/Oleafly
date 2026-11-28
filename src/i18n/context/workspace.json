@@ -3,6 +3,7 @@
     "newFile": "Context-menu item that creates an empty file",
     "newFolder": "Context-menu item that creates an empty folder",
     "setMain": "Marks this file as the document the compiler builds",
+    "compileTarget": "Tooltip on a small play icon in the file tree. It marks the file Compile builds right now when that is not the starred main document.",
     "setMainFailed": "Error after the user picks Set as main document in the file tree and the project refuses it",
     "unreadable": "Short label at the end of a file tree row the app has no permission to read",
     "listingStopped": "Quiet note under the file tree when a very large opened folder was only partly listed",

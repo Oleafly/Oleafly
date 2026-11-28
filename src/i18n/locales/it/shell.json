@@ -431,7 +431,7 @@
       "off": "Disattivata",
       "on": "Attiva",
       "title": "Compilazione automatica",
-      "help": "Compila qualche secondo dopo che smetti di scrivere. Prima viene salvato il file aperto.",
+      "help": "Compila pochi secondi dopo che smetti di scrivere, salvando prima il file aperto. Dopo Interrompi, aspetta la tua prossima modifica. Un progetto che esegue codice viene compilato all'apertura solo se questa opzione è attiva.",
       "typstHelp": "Typst resta attivo e aggiorna il PDF poco dopo che smetti di scrivere. Il file aperto si salva da solo finché questa opzione è attiva.",
       "typstStarting": "Avvio di Typst",
       "typstRestarting": "Typst si sta riavviando",
@@ -455,6 +455,7 @@
       "title": "Gestione degli errori di compilazione"
     },
     "fromScratch": "Ricompila da zero",
+    "wholeProject": "Esegui il rendering dell'intero progetto Quarto",
     "mode": {
       "fast": "Veloce <note>[bozza]</note>",
       "normal": "Normale",
@@ -471,9 +472,8 @@
     },
     "texRootBroken": "% !TEX root in {{file}} punta a un file inesistente ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root in {{file}} punta a {{target}}, che non è un file LaTeX",
-    "texRootOverride": "root: {{path}} (impostato da % !TEX root in {{file}})",
+    "texRootOverride": "Compila {{path}} (impostato da % !TEX root in {{file}})",
     "typstVersion": {
       "title": "Versione di Typst (questo progetto)",
       "help": "Fissa una versione per mantenere uguale l'output di questo progetto quando Oleafly aggiorna Typst. L'opzione Predefinita segue la versione scelta nelle impostazioni. Per installare versioni o provare questo progetto con una più recente, vai in Impostazioni → Motori → Typst.",
@@ -514,18 +514,19 @@
     },
     "code": {
       "title": "Codice (questo computer)",
-      "help": "Quarto e Calepin possono eseguire il codice R, Python e Julia di questo progetto. Il codice viene eseguito con i tuoi permessi, quindi consentilo solo per un progetto di cui ti fidi. La scelta vale solo per questo computer.",
+      "help": "Quarto e Calepin possono eseguire il codice R, Python e Julia di questo progetto. Il codice gira con i tuoi permessi, quindi consentilo solo per un progetto di cui ti fidi. La scelta vale solo per questo computer e resta finché non la disattivi. Disattivarla interrompe una compilazione in corso.",
       "off": "Disattivato",
       "run": "Esegui il codice su questo computer"
     },
     "sharedViewer": "Solo proprietari ed editor possono modificare queste impostazioni in un progetto condiviso.",
     "coauthorsChanged": "Modificato dai coautori dopo l'ultima compilazione",
-    "texRootDocument": "root: {{path}} (ha un proprio \\documentclass)",
-    "texRootInclude": "root: {{path}} (include {{file}})",
-    "texRootFormat": "root: {{path}} (un documento {{format}}, compilato con il proprio motore)",
+    "texRootDocument": "Compila {{path}} (ha un proprio \\documentclass)",
+    "texRootStandalone": "Compila {{path}} (un documento a sé)",
+    "texRootInclude": "Compila {{path}} (include {{file}})",
+    "texRootFormat": "Compila {{path}} (un documento {{format}}, compilato con il proprio motore)",
     "target": {
       "title": "Destinazione della compilazione",
-      "help": "Con Segui il file aperto, un file con un proprio \\documentclass si compila da solo. Un capitolo o una sezione compila il documento che lo include. Un documento Markdown, Typst o Quarto si compila da solo con il proprio motore quando il progetto è in un altro formato. Gli altri file compilano il documento principale. Un commento % !TEX root ha sempre la precedenza.",
+      "help": "Con Segui il file aperto, un documento a sé viene compilato da solo: un file LaTeX con il proprio \\documentclass, oppure un file Markdown, Typst o Quarto che nessun altro documento include. Un capitolo o una sezione compila il documento che lo include, e i file di un progetto _quarto.yml vengono compilati con il progetto. Gli altri file compilano il documento principale. Un commento % !TEX root vince sempre.",
       "open": "Segui il file aperto",
       "main": "Sempre il documento principale",
       "change": "Cambia documento principale…"
@@ -670,7 +671,16 @@
     "followed": "{{name}} deve eseguire codice, e il codice viene eseguito solo per il documento principale. Imposta {{name}} come documento principale, poi consenti il codice.",
     "needed": "Questo documento deve eseguire il suo codice per essere generato, e il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto.",
     "skipped": "Il codice di questo documento non è stato eseguito perché il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto.",
-    "storedResults": "Il PDF mostra i risultati del codice salvati da un'esecuzione precedente perché il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto."
+    "storedResults": "Il PDF mostra i risultati del codice salvati da un'esecuzione precedente perché il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto.",
+    "reasons": {
+      "extensions": "Questo progetto ha estensioni Quarto, che possono eseguire programmi, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "environment": "Questo progetto ha file _environment che Quarto carica, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "shortcode": "Questo documento usa uno shortcode non incluso in Quarto, e gli shortcode possono eseguire programmi, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "filter": "Questo documento aggiunge un filtro, e i filtri possono eseguire programmi, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "pdf_engine": "Questo documento passa opzioni al motore PDF, che può eseguire programmi, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "outside": "Questo documento legge un file esterno al progetto, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto.",
+      "unchecked": "Oleafly non è riuscito a controllare se questo documento contiene codice, quindi si compila solo con il codice consentito. Consenti il codice solo se ti fidi di ogni file del progetto."
+    }
   },
   "typstCjkFonts": {
     "message": "Questo documento contiene testo cinese, giapponese o coreano che nessun font di questo computer può mostrare, quindi non compare nel PDF.",
@@ -827,7 +837,7 @@
     },
     "noMain": "Nessun documento principale per ora. Scegli un file e poi Imposta come documento principale.",
     "trust": {
-      "banner": "Oleafly ha limitato alcune funzioni in questa cartella. Vuoi considerarla affidabile per attivare Git, il terminale, gli agenti e lo shell escape?",
+      "banner": "Oleafly ha limitato alcune funzioni in questa cartella. Vuoi considerarla affidabile per attivare Git, il terminale, gli agenti, latexmk e Quarto?",
       "trustFolder": "Considera affidabile questa cartella",
       "trustParent": "Considera affidabile la cartella superiore",
       "trustRepository": "Considera affidabile il repository",
@@ -1844,5 +1854,20 @@
       "saved": "Frammento {{name}} salvato.",
       "missingName": "Dai un nome al frammento."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

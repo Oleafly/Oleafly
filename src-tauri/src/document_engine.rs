@@ -20,6 +20,12 @@ mod typst_diagnostics;
 pub(crate) use phitex::program as phitex_program;
 
 pub(crate) use quarto::html_artifact as quarto_html_artifact;
+pub(crate) use quarto::renders_one_page as quarto_renders_one_page;
+
+pub(crate) fn exports_pdf_through_engine(metadata_name: &str, main_document: &str) -> bool {
+    engine_for(metadata_name, main_document)
+        .is_ok_and(|engine| engine.id() == DocumentEngineId::Quarto)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentEngineId {
@@ -1451,7 +1457,7 @@ fn notebook_export_spec(
     allow_code: bool,
 ) -> Result<(EngineCompileSpec, PathBuf), String> {
     let extension = match format {
-        "docx" if engine == DocumentEngineId::Quarto => "docx",
+        "docx" | "pdf" if engine == DocumentEngineId::Quarto => format,
         "html" => "html",
         other => return Err(format!("unsupported export format: {other}")),
     };
@@ -1591,6 +1597,17 @@ pub(crate) async fn export_notebook(export: NotebookExport<'_>) -> Result<(), St
         return Err("the export needs an external program".into());
     };
     let scope = CompileCancelScope::new(export.cancel);
+    let render_started = std::time::SystemTime::now();
+    let siblings = if engine.id() == DocumentEngineId::Quarto {
+        let held = spec.clone();
+        tokio::task::spawn_blocking(move || quarto::hold_siblings(&held))
+            .await
+            .map_err(|error| {
+                format!("failed to set aside the files beside the document: {error}")
+            })??
+    } else {
+        None
+    };
     let mut run = run_notebook_export(program, &spec, &export).await;
     let document_render = run
         .as_ref()
@@ -1603,10 +1620,23 @@ pub(crate) async fn export_notebook(export: NotebookExport<'_>) -> Result<(), St
             run = Err(no_notebook_output("Quarto", error));
         }
     }
+    let rendered = run.as_ref().is_ok_and(|(_, code)| *code == Some(0));
+    release_quarto_siblings(siblings, rendered).await;
     if scope.finish() {
         return Err(crate::app_error::AppError::new("notebook.export_stopped").into());
     }
     let (log, exit_code) = run?;
+    let output = if output.is_file() || engine.id() != DocumentEngineId::Quarto {
+        output
+    } else {
+        output
+            .extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .and_then(|extension| {
+                quarto::newest_with_extension(scratch.path(), extension, render_started)
+            })
+            .unwrap_or(output)
+    };
     if exit_code != Some(0) || !output.is_file() {
         let label = match engine.id() {
             DocumentEngineId::Calepin => "Calepin",
@@ -1676,6 +1706,7 @@ pub struct CompileOptions {
     pub typst: Option<std::sync::Arc<oleafly_core::typst_toolchain::ResolvedTypst>>,
     pub typst_packages: Option<crate::typst_packages::TypstPackageDirs>,
     pub typst_settings: Option<crate::typst_options::TypstCompileSettings>,
+    pub whole_project: bool,
 }
 
 pub struct CompileRequest<'a> {
@@ -3392,14 +3423,22 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     } else {
         None
     };
+    let last_html = LastGoodHtml::set_aside(&spec.artifacts);
     let retained_stale = prepare_compile_artifacts(&request, &spec).await?;
     let sibling_hold = hold_quarto_siblings(&request, &spec).await?;
+    let _knit_files = (request.engine.id() == DocumentEngineId::Quarto)
+        .then(|| quarto::knit_files(spec.input.path()));
     let compile_start = std::time::Instant::now();
     let bbl_before =
         crate::biber_toolchain::bbl_stamp(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM);
     let build_before = oleafly_core::source_places::BuildBefore::take(&spec.artifacts.output_dir);
+    let render_started = std::time::SystemTime::now();
     let (mut stdout_buf, mut exit_code) = execute_compile_spec(&request, &spec).await?;
     phitex::adopt_outputs(&spec);
+    if request.engine.id() == DocumentEngineId::Quarto && exit_code == Some(0) {
+        quarto::collect_project_render(&spec, render_started)
+            .map_err(|error| no_notebook_output("Quarto", error))?;
+    }
     let document_render = (request.engine.id() == DocumentEngineId::Quarto)
         .then(|| quarto::document_render_spec(&spec, &stdout_buf, exit_code))
         .flatten();
@@ -3430,7 +3469,64 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     };
     let result = finish_compile(&request, finish, cancel_scope.finish()).await;
     release_quarto_siblings(sibling_hold, exit_code == Some(0)).await;
+    if let Some(last_html) = last_html {
+        last_html.settle(
+            result
+                .as_ref()
+                .is_ok_and(|compiled| compiled.html_output.is_some()),
+        );
+    }
     result
+}
+
+struct LastGoodHtml {
+    current: PathBuf,
+    aside: PathBuf,
+    settled: bool,
+}
+
+impl LastGoodHtml {
+    fn set_aside(artifacts: &EngineArtifacts) -> Option<Self> {
+        let current = artifacts.html.clone()?;
+        let aside = current.with_extension("html.oleafly-last");
+        if std::fs::symlink_metadata(&current).is_err() {
+            let _ = std::fs::rename(&aside, &current);
+        }
+        let _ = std::fs::remove_file(&aside);
+        std::fs::symlink_metadata(&current)
+            .is_ok_and(|metadata| metadata.is_file())
+            .then(|| std::fs::rename(&current, &aside).ok())
+            .flatten()?;
+        Some(Self {
+            current,
+            aside,
+            settled: false,
+        })
+    }
+
+    fn put_back(&self) {
+        if std::fs::symlink_metadata(&self.current).is_err() {
+            let _ = std::fs::rename(&self.aside, &self.current);
+        }
+        let _ = std::fs::remove_file(&self.aside);
+    }
+
+    fn settle(mut self, built: bool) {
+        self.settled = true;
+        if built {
+            let _ = std::fs::remove_file(&self.aside);
+        } else {
+            self.put_back();
+        }
+    }
+}
+
+impl Drop for LastGoodHtml {
+    fn drop(&mut self) {
+        if !self.settled {
+            self.put_back();
+        }
+    }
 }
 
 const COMPILE_TIMEOUT: std::time::Duration = oleafly_core::compile_limit::COMPILE_TIME_LIMIT;
@@ -5990,6 +6086,39 @@ mod tests {
 
         assert!(retained.is_empty());
         assert!(!biber_control.exists());
+    }
+
+    #[test]
+    fn a_failed_render_puts_the_last_good_page_back() {
+        let folder = tempfile::tempdir().unwrap();
+        let html = folder.path().join("_oleafly_entry.html");
+        let artifacts = EngineArtifacts {
+            output_dir: folder.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+            html: Some(html.clone()),
+        };
+        std::fs::write(&html, "good").unwrap();
+        LastGoodHtml::set_aside(&artifacts).unwrap().settle(false);
+        assert_eq!(std::fs::read_to_string(&html).unwrap(), "good");
+
+        let aside = LastGoodHtml::set_aside(&artifacts).unwrap();
+        assert!(!html.exists());
+        drop(aside);
+        assert_eq!(std::fs::read_to_string(&html).unwrap(), "good");
+
+        let built = LastGoodHtml::set_aside(&artifacts).unwrap();
+        std::fs::write(&html, "new").unwrap();
+        built.settle(true);
+        assert_eq!(std::fs::read_to_string(&html).unwrap(), "new");
+        assert_eq!(std::fs::read_dir(folder.path()).unwrap().count(), 1);
+        std::fs::rename(&html, html.with_extension("html.oleafly-last")).unwrap();
+        let recovered = LastGoodHtml::set_aside(&artifacts).unwrap();
+        recovered.settle(false);
+        assert_eq!(std::fs::read_to_string(&html).unwrap(), "new");
+        std::fs::remove_file(&html).unwrap();
+        assert!(LastGoodHtml::set_aside(&artifacts).is_none());
     }
 
     #[test]

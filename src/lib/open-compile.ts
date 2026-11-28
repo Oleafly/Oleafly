@@ -1,4 +1,12 @@
-import type { MainDecision } from "@/lib/tauri";
+import type { DocumentEngineDescriptor, MainDecision } from "@/lib/tauri";
+import { isNotebookEngine } from "@/lib/notebook-engines";
+
+export function opensWithoutRunningCode(
+  engine: Pick<DocumentEngineDescriptor, "id" | "allow_shell_escape">,
+  autoCompile: boolean,
+): boolean {
+  return !autoCompile && isNotebookEngine(engine) && engine.allow_shell_escape;
+}
 
 export function shouldCompileOnOpen(
   projectId: string | null,

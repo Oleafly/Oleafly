@@ -1065,6 +1065,13 @@
       "hoverPreview": {
         "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",
         "label": "Üzerine gelince PDF'i önizle"
+      },
+      "html": {
+        "title": "Web sayfası önizlemesi",
+        "darkMode": {
+          "label": "Web sayfası koyu modu",
+          "description": "Web sayfası oluşturan Quarto belgeleri içindir. Uygulama temasına uy seçiliyken uygulama koyu olduğunda sayfa da koyulaşır ve resimler kendi renklerini korur. Önizleme araç çubuğundaki renkleri tersine çevirme düğmesi bunu Etkin ya da Devre dışı yapar."
+        }
       }
     },
     "sectionName": "Görünüm",
@@ -1779,7 +1786,17 @@
         "heading": "Diller",
         "tooltip": "Quarto ve Calepin belgelerindeki kod bu programlarla çalışır.",
         "notFound": "Bulunamadı",
-        "note": "Oleafly kodu bu bilgisayarda zaten bulunan R, Python ve Julia ile çalıştırır. Bunları hiçbir zaman kendisi kurmaz."
+        "note": "Oleafly kodu bu bilgisayardaki R, Python ve Julia ile çalıştırır. R ve Python için resmi yükleyicileri indirebilir, knitr, rmarkdown ve Jupyter paketlerini sizin için kurabilir.",
+        "installerNote": "Oleafly resmi yükleyiciyi indirir, denetler ve açar. Kurulum bitince buraya dönüp yeniden denetleyin.",
+        "finishInstaller": "{{name}} kurulumunu tamamlayın, sonra yeniden denetleyin.",
+        "checkAgain": "Yeniden denetle",
+        "packageManager": {
+          "r": "R'yi paket yöneticinizle kurun, örneğin sudo apt install r-base veya sudo dnf install R. Sonra yeniden denetleyin.",
+          "python": "Python 3'ü paket yöneticinizle kurun, örneğin sudo apt install python3 python3-venv. Sonra yeniden denetleyin."
+        },
+        "installYourself": "{{name}} uygulamasını web sitesinden kurun, sonra yeniden denetleyin.",
+        "packagesMissing": "Kurulu değil: {{packages}}",
+        "installPackages": "{{packages}} kur"
       },
       "codeNote": "Bir belgedeki kod, yalnızca Derleme menüsünde o proje için kod çalıştırmaya izin verdikten sonra çalışır.",
       "progress": {
@@ -1787,7 +1804,9 @@
         "downloading": "İndiriliyor %{{percent}}",
         "verifying": "Denetleniyor",
         "extracting": "Arşivden çıkarılıyor",
-        "done": "Tamamlanıyor"
+        "done": "Tamamlanıyor",
+        "opening": "Yükleyici açılıyor",
+        "installing": "Kuruluyor"
       },
       "error": {
         "load": "Quarto, Calepin ve diller aranamadı.",
@@ -2756,11 +2775,14 @@
     },
     "actions": {
       "install": "Kur",
-      "repair": "Onar"
+      "repair": "Onar",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "Kurulamadı. Yeniden deneyin.",
-      "remove": "Kaldırılamadı. Yeniden deneyin."
+      "remove": "Kaldırılamadı. Yeniden deneyin.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Oleafly paketiyle birlikte kuruldu.",
     "quickAction": {
@@ -2793,7 +2815,33 @@
       "outdated": "Güncel değil ya da macOS tarafından engellendi. Geri getirmek için onarın.",
       "elsewhere": "Menü başka bir Oleafly kopyasını açıyor. Bu kopyayı kullanmak için onarın.",
       "moved": "Taşınmış bir Oleafly kopyasını gösteriyor. Bu kopyayı kullanmak için onarın.",
-      "noDefaultFileManager": "Sisteminizde klasörler için varsayılan bir dosya yöneticisi yok, bu yüzden bu kayıt her klasörü Oleafly'de açabilir. Kaldırın."
+      "noDefaultFileManager": "Sisteminizde klasörler için varsayılan bir dosya yöneticisi yok, bu yüzden bu kayıt her klasörü Oleafly'de açabilir. Kaldırın.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

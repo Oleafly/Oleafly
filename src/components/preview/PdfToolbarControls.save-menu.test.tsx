@@ -106,6 +106,36 @@ describe("the PDF save control", () => {
     expect(onSave).toHaveBeenCalledOnce();
   });
 
+  it("saves and syncs a web page as HTML and copies its output path", async () => {
+    const onSave = vi.fn();
+    const onCopyPath = vi.fn();
+    const pdfSync = toggle();
+    render(<PdfToolbarControls {...props({ onSave, onCopyPath, pdfSync, webPage: true, numPages: 0 })} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: copy.actions.copyPath }));
+    expect(onCopyPath).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: copy.actions.saveHtml }));
+    expect(await screen.findByRole("menuitemcheckbox", { name: copy.sync.toggleHtml })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: copy.actions.saveHtml }));
+    expect(onSave).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the PDF-only controls off a web page", () => {
+    render(<PdfToolbarControls {...props({ webPage: true, onPresent: vi.fn() })} />);
+    for (const name of [
+      copy.zoom.in,
+      copy.zoom.out,
+      copy.actions.rotate,
+      copy.actions.readerView,
+      copy.search.open,
+    ]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole("button", { name: copy.actions.invertPage })).toBeEnabled();
+    expect(screen.getByRole("button", { name: copy.actions.fullscreen })).toBeEnabled();
+  });
+
   it("keeps the menu open when the toggle flips", async () => {
     const pdfSync = toggle({ enabled: true, path: "Thesis.pdf" });
     render(<PdfToolbarControls {...props({ pdfSync })} />);

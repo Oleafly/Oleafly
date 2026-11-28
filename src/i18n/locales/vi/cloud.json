@@ -130,6 +130,7 @@
       "specialFile": "Không phải tệp thường",
       "tooLarge": "Quá lớn để đồng bộ",
       "packageFolder": "Gói đã cài có thể cài lại",
+      "privateFile": "Tệp phiên R có thể chứa mật khẩu hoặc khóa",
       "zipLeftovers": "Sót lại từ giải nén",
       "unreadable": "Không đọc được",
       "downloadFailed": "Không tải xuống được",

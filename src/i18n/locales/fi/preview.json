@@ -102,9 +102,15 @@
     "useTypst": "Käytä versiota Typst {{version}}",
     "installTool": "Asenna {{tool}} {{version}}",
     "installToolSize": "Asenna {{tool}} {{version}} ({{size}})",
+    "installPackage": "Asenna {{name}}",
+    "checkAgain": "Tarkista uudelleen",
     "engineSettings": "Avaa moottoriasetukset",
     "useTectonic": "Käytä Tectonicia",
-    "useTectonicForEveryone": "Käytä Tectonicia kaikille"
+    "useTectonicForEveryone": "Käytä Tectonicia kaikille",
+    "saveHtml": "Tallenna HTML projektiin",
+    "downloadPageAsPdf": "Lataa näytössä oleva sivu PDF-tiedostona",
+    "copyPath": "Kopioi tulosteen polku",
+    "invertPage": "Käännä verkkosivun värit"
   },
   "html": {
     "building": "Käännetään verkkosivua",
@@ -132,10 +138,14 @@
     "namePlaceholder": "dokumentti.pdf",
     "imageSaved": "Kuva tallennettiin projektiin.",
     "pdfSaved": "PDF tallennettiin projektiin.",
-    "failed": "Tallennus projektiin ei onnistunut."
+    "failed": "Tallennus projektiin ei onnistunut.",
+    "htmlDescription": "Tallentaa näytössä olevan verkkosivun projektipuuhun yhtenä HTML-tiedostona.",
+    "htmlPlaceholder": "dokumentti.html",
+    "htmlSaved": "Verkkosivu tallennettiin projektiin."
   },
   "sync": {
     "toggle": "Synkronoi PDF käännettäessä",
+    "toggleHtml": "Synkronoi HTML käännettäessä",
     "failed": "Tiedostoa {{name}} ei voitu päivittää. Oleafly yrittää uudelleen seuraavassa käännöksessä.",
     "fastMode": "Nopeat käännökset eivät päivitä tätä PDF-tiedostoa.",
     "localOnly": "Tämä kopio pysyy tällä tietokoneella."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "PDF-kääntäminen ei ole juuri nyt käytettävissä.",
-    "compileFailed": "Kääntäminen epäonnistui. Avaa Lokit-välilehti, niin näet mikä meni vikaan."
+    "compileFailed": "Kääntäminen epäonnistui. Avaa Lokit-välilehti, niin näet mikä meni vikaan.",
+    "notCompiled": "Tiedostoa {{name}} ei ole vielä käännetty."
   },
   "a11y": {
     "stale": "Vanhentunut, ei ajantasainen PDF. {{explanation}}",

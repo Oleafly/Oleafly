@@ -147,7 +147,7 @@ describe("ShareDialog before sharing", () => {
     finish(shareInfo());
     expect(await screen.findByText(fill(manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(await screen.findByRole("textbox", { name: manage.add.label })).toBeInTheDocument();
-    expect(screen.getByTestId("collab-share-trust")).toHaveTextContent(share.trustAgain);
+    expect(screen.queryByTestId("collab-share-trust")).toBeNull();
     expect(refreshProjects).toHaveBeenCalled();
     expect(refreshShare).toHaveBeenCalled();
     expect(unlistenProgress).toHaveBeenCalled();

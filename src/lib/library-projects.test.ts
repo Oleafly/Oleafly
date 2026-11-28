@@ -168,7 +168,13 @@ describe("notes in the library", () => {
   it("leaves notes out of the library only while Notes is on", () => {
     const all = [paper, note];
     expect(libraryProjects(all, true)).toEqual([paper]);
-    expect(libraryProjects(all, false)).toBe(all);
+    expect(libraryProjects(all, false)).toEqual(all);
+  });
+
+  it("leaves out a folder that was linked only to open one file", () => {
+    const readme = { ...paper, id: "readme", loose_file: true };
+    expect(libraryProjects([paper, readme], false)).toEqual([paper]);
+    expect(libraryProjects([paper, readme, note], true)).toEqual([paper]);
   });
 
   it("sends a note to Notes only while Notes is on", () => {

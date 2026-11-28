@@ -139,6 +139,7 @@
       "specialFile": "Ikke en vanlig fil",
       "tooLarge": "For stor til å synkroniseres",
       "packageFolder": "Installerte pakker som du kan installere på nytt",
+      "privateFile": "R-øktfil som kan inneholde passord eller nøkler",
       "zipLeftovers": "Rest etter utpakking",
       "unreadable": "Kunne ikke leses",
       "downloadFailed": "Kunne ikke lastes ned",

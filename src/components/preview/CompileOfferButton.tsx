@@ -22,6 +22,10 @@ const NotebookToolMissingOffer = lazy(() =>
   import("./NotebookToolMissingOffer").then((module) => ({ default: module.NotebookToolMissingOffer })),
 );
 
+const NotebookRuntimeOffer = lazy(() =>
+  import("./NotebookRuntimeOffer").then((module) => ({ default: module.NotebookRuntimeOffer })),
+);
+
 export type CompileOfferPlacement = "preview" | "log" | "toolbar";
 
 const TEST_IDS: Record<CompileOfferPlacement, string> = {
@@ -121,6 +125,18 @@ export function CompileOfferButton({ placement }: Readonly<{ placement: CompileO
       </Suspense>
     );
   }
+  if (projectId && offer?.kind === "notebook-runtime" && offer.projectId === projectId) {
+    return (
+      <Suspense fallback={null}>
+        <NotebookRuntimeOffer
+          compact={placement !== "preview"}
+          testId={TEST_IDS[placement]}
+          projectId={projectId}
+          need={offer.need}
+        />
+      </Suspense>
+    );
+  }
   if (
     projectId &&
     offer?.kind === "tex-missing" &&
@@ -141,6 +157,7 @@ export function CompileOfferButton({ placement }: Readonly<{ placement: CompileO
     offer.kind === "typst-version-missing" ||
     offer.kind === "notebook-tool-missing" ||
     offer.kind === "tex-missing" ||
+    offer.kind === "notebook-runtime" ||
     offer.projectId !== projectId ||
     !offerMatchesEngine(offer, engineId)
   ) {

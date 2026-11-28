@@ -102,9 +102,15 @@
     "useTypst": "Typst {{version}} gebruiken",
     "installTool": "{{tool}} {{version}} installeren",
     "installToolSize": "{{tool}} {{version}} installeren ({{size}})",
+    "installPackage": "{{name}} installeren",
+    "checkAgain": "Opnieuw controleren",
     "engineSettings": "Engine-instellingen openen",
     "useTectonic": "Tectonic gebruiken",
-    "useTectonicForEveryone": "Tectonic gebruiken voor iedereen"
+    "useTectonicForEveryone": "Tectonic gebruiken voor iedereen",
+    "saveHtml": "HTML opslaan in project",
+    "downloadPageAsPdf": "Weergegeven pagina als PDF downloaden",
+    "copyPath": "Uitvoerpad kopiëren",
+    "invertPage": "Kleuren van de webpagina omkeren"
   },
   "html": {
     "building": "De webpagina bouwen",
@@ -132,10 +138,14 @@
     "namePlaceholder": "document.pdf",
     "imageSaved": "Afbeelding opgeslagen in het project.",
     "pdfSaved": "PDF opgeslagen in het project.",
-    "failed": "Opslaan in het project is niet gelukt."
+    "failed": "Opslaan in het project is niet gelukt.",
+    "htmlDescription": "Slaat de weergegeven webpagina op in de projectboom als één HTML-bestand.",
+    "htmlPlaceholder": "document.html",
+    "htmlSaved": "Webpagina opgeslagen in het project."
   },
   "sync": {
     "toggle": "PDF synchroniseren bij compileren",
+    "toggleHtml": "HTML synchroniseren bij compileren",
     "failed": "{{name}} kon niet worden bijgewerkt. Oleafly probeert het opnieuw bij de volgende compilatie.",
     "fastMode": "Snelle compilaties werken deze PDF niet bij.",
     "localOnly": "Deze kopie blijft op deze computer."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "PDF-compilatie is op dit moment niet beschikbaar.",
-    "compileFailed": "Compileren is mislukt. Open het tabblad Logboeken om te zien wat er misging."
+    "compileFailed": "Compileren is mislukt. Open het tabblad Logboeken om te zien wat er misging.",
+    "notCompiled": "{{name}} is nog niet gecompileerd."
   },
   "a11y": {
     "stale": "Verouderde, niet-actuele PDF. {{explanation}}",

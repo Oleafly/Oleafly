@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import type { SnippetLibrary, SnippetOverride, SnippetRecord } from "@oleafly/snippets";
@@ -8,7 +8,15 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { draftFromRecord, newDraft } from "@/features/snippets/draft";
 import { useSnippetSettingsRequest } from "@/features/snippets/open-settings";
 import { snippetLanguageForPath } from "@/features/snippets/language";
-import { collectionName, snippetMatches, snippetName, USER_COLLECTION, userCollections } from "@/features/snippets/records";
+import { setSnippetCollectionEnabled } from "@/features/snippets/fast-math";
+import {
+  collectionName,
+  searchTerms,
+  snippetMatchesTerms,
+  snippetName,
+  USER_COLLECTION,
+  userCollections,
+} from "@/features/snippets/records";
 import { collectionOf, STATE_FILE, snippetsReady, useSnippetStore } from "@/features/snippets/store";
 import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
@@ -27,10 +35,12 @@ const SWITCHES = [
   { key: "snippetsHint", setter: "setSnippetsHint", copy: "hint" },
 ] as const;
 
-function statusOf(record: SnippetRecord, overrides: readonly SnippetOverride[]): SnippetStatus {
-  const override = overrides.find((candidate) => candidate.id === record.id && candidate.collection === record.collection);
-  if (!override) return null;
-  return override.disabled ? "off" : "modified";
+function recordKey(collection: string, id: string): string {
+  return `${collection}\u0000${id}`;
+}
+
+function statusesOf(overrides: readonly SnippetOverride[]): ReadonlyMap<string, SnippetStatus> {
+  return new Map(overrides.map((override) => [recordKey(override.collection, override.id), override.disabled ? "off" : "modified"]));
 }
 
 function fileLabel(collection: string, userFiles: ReadonlySet<string>, names: (collection: string) => string): string {
@@ -114,32 +124,52 @@ export function SnippetsSection() {
       ),
     [library, files, disabled, mine],
   );
-  const rows = useMemo<SnippetRow[]>(
-    () =>
-      library.all
-        .filter(
-          (record) =>
-            (collection === null || record.collection === collection) &&
-            (filters.language === null || record.languages === "any" || record.languages.includes(filters.language)) &&
-            (filters.expand === null || record.expand === filters.expand) &&
-            snippetMatches(record, filters.query),
-        )
-        .map((record) => ({ record, status: statusOf(record, state.overrides) })),
-    [library, collection, filters, state.overrides],
-  );
+  const shownFilters = useDeferredValue(filters);
+  const statuses = useMemo(() => statusesOf(state.overrides), [state.overrides]);
+  const rows = useMemo<SnippetRow[]>(() => {
+    const terms = searchTerms(shownFilters.query);
+    const { language, expand } = shownFilters;
+    return library.all
+      .filter(
+        (record) =>
+          (collection === null || record.collection === collection) &&
+          (language === null || record.languages === "any" || record.languages.includes(language)) &&
+          (expand === null || record.expand === expand) &&
+          snippetMatchesTerms(record, terms),
+      )
+      .map((record) => ({
+        record,
+        status: statuses.get(recordKey(record.collection, record.id)) ?? null,
+        inactive: disabled.has(record.collection),
+      }));
+  }, [library, collection, shownFilters, statuses, disabled]);
   const switchesOn = SWITCHES.some(({ key }) => settings[key]);
   const problems = useMemo(
     () => problemsOf(library, state.disabledRegex, userFiles, (id) => collectionName(id, files)),
     [library, state.disabledRegex, userFiles, files],
   );
 
-  const run = (action: () => Promise<void>) => {
+  const run = useCallback((action: () => Promise<void>) => {
     setError(null);
     action().catch((reason: unknown) => setError(describeError(reason)));
-  };
+  }, []);
 
-  const restore = (record: SnippetRecord) =>
-    run(() => useSnippetStore.getState().setOverride({ id: record.id, collection: record.collection, clear: true }));
+  const restore = useCallback(
+    (record: SnippetRecord) =>
+      run(() => useSnippetStore.getState().setOverride({ id: record.id, collection: record.collection, clear: true })),
+    [run],
+  );
+  const toggleCollection = useCallback(
+    (id: string, enabled: boolean) => run(() => setSnippetCollectionEnabled(id, enabled)),
+    [run],
+  );
+  const edit = useCallback((record: SnippetRecord) => setEditing({ base: record, draft: draftFromRecord(record) }), []);
+  const add = useCallback(() => setAdding(true), []);
+  const startNew = useCallback(() => {
+    const language = snippetLanguageForPath(useFilesStore.getState().activePath);
+    const target = collection !== null && userFiles.has(collection) ? collection : USER_COLLECTION;
+    setEditing({ base: null, draft: newDraft(language, target) });
+  }, [collection, userFiles]);
 
   if (editing) {
     return <SnippetEditor key={editing.base?.id ?? "new"} start={editing} onClose={() => setEditing(null)} />;
@@ -171,8 +201,8 @@ export function SnippetsSection() {
               total={library.all.length}
               selected={collection}
               onSelect={setCollection}
-              onToggle={(id, enabled) => run(() => useSnippetStore.getState().setCollectionEnabled(id, enabled))}
-              onAdd={() => setAdding(true)}
+              onToggle={toggleCollection}
+              onAdd={add}
             />
           </div>
           <SnippetTable
@@ -180,13 +210,9 @@ export function SnippetsSection() {
             total={library.all.length}
             filters={filters}
             onFiltersChange={setFilters}
-            onEdit={(record) => setEditing({ base: record, draft: draftFromRecord(record) })}
+            onEdit={edit}
             onRestore={restore}
-            onNew={() => {
-              const language = snippetLanguageForPath(useFilesStore.getState().activePath);
-              const target = collection !== null && userFiles.has(collection) ? collection : USER_COLLECTION;
-              setEditing({ base: null, draft: newDraft(language, target) });
-            }}
+            onNew={startNew}
           />
         </div>
         {switchesOn ? <SnippetProblems problems={problems} /> : null}

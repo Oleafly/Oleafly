@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   pdfBytes: new Uint8Array([1, 2]) as Uint8Array | null, exportPdf: vi.fn(), exportProjectImage: vi.fn(),
   compileStatus: "success" as string, checkpointCurrent: true, checkpoint: null as { mainDocument: string } | null, pdfPageToPng: vi.fn(),
   pickSavePath: vi.fn(), ensurePandoc: vi.fn(), exportDocument: vi.fn(), downloadProjectZip: vi.fn(),
-  revealInDir: vi.fn(), cancelCompile: vi.fn(async () => true),
+  revealInDir: vi.fn(), cancelCompile: vi.fn(async () => true), renderNotebookPdf: vi.fn(),
   exportLog: [] as ((chunk: string) => void)[],
   notifyError: vi.fn(), infoUnique: vi.fn<typeof toast.infoUnique>(() => 42), successUnique: vi.fn<typeof toast.successUnique>(() => 42), info: vi.fn(), dismiss: vi.fn(), update: vi.fn(),
 }));
@@ -31,6 +31,7 @@ vi.mock("@/lib/tauri", () => ({
   exportPdf: mocks.exportPdf,
   exportProjectImage: mocks.exportProjectImage,
   exportDocument: mocks.exportDocument,
+  renderNotebookPdf: mocks.renderNotebookPdf,
   downloadProjectZip: mocks.downloadProjectZip,
   revealInDir: mocks.revealInDir,
   uint8ToBase64: (bytes: Uint8Array) => `base64:${[...bytes].join(",")}`,
@@ -49,7 +50,7 @@ import { i18n } from "@/i18n";
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { useConfirmDialogStore } from "@/store/confirm-dialog";
 import { usePdfViewStore } from "@/store/pdf-view";
-import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng } from "./export";
+import { exportCurrentDocument, exportCurrentImagePng, exportCurrentPagePng, exportCurrentPdf } from "./export";
 
 const EXPORT_KEY = "export-result";
 
@@ -217,6 +218,78 @@ describe("document exports", () => {
   });
 });
 
+
+describe("web page exports", () => {
+  afterEach(() => {
+    mocks.state.engine.id = "latex";
+  });
+
+  it("exports the page that is shown through its engine without asking for Pandoc", async () => {
+    mocks.state.engine.id = "quarto";
+    mocks.pickSavePath.mockResolvedValueOnce("/tmp/page.pdf");
+    await exportCurrentDocument("pdf", "notes/page.qmd");
+    expect(mocks.ensurePandoc).not.toHaveBeenCalled();
+    expect(mocks.pickSavePath).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultPath: "My_paper.pdf", filters: [{ name: "PDF", extensions: ["pdf"] }] }),
+    );
+    expect(mocks.exportDocument).toHaveBeenCalledWith("paper-a", "notes/page.qmd", "pdf", "/tmp/page.pdf", null);
+    expect(mocks.infoUnique.mock.calls[0]?.[2]?.label).toBe(i18n.t(($) => $.shell.toolbar.stopExport));
+  });
+
+  it("renders the page to PDF and saves its first page as a picture", async () => {
+    mocks.state.engine.id = "quarto";
+    mocks.renderNotebookPdf.mockResolvedValueOnce(new Uint8Array([7, 8]).buffer);
+    mocks.pickSavePath.mockResolvedValueOnce("/tmp/page.png");
+    await exportCurrentPagePng(2, "notes/page.qmd");
+    expect(mocks.state.flushForQuit).toHaveBeenCalledOnce();
+    expect(mocks.renderNotebookPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "notes/page.qmd");
+    expect(mocks.pdfPageToPng).toHaveBeenCalledExactlyOnceWith(new Uint8Array([7, 8]), 1, 2);
+    expect(mocks.exportProjectImage).toHaveBeenCalledExactlyOnceWith("paper-a", "/tmp/page.png", "AQ==");
+    expect(resultCalls()).toEqual([[EXPORT_KEY, savedMessage("PNG", "page.png"), expect.any(Object), true]]);
+    expect(mocks.dismiss).not.toHaveBeenCalled();
+  });
+
+  it("renders the main document when no page is named", async () => {
+    mocks.renderNotebookPdf.mockResolvedValueOnce(new Uint8Array([1]).buffer);
+    mocks.pickSavePath.mockResolvedValueOnce("/tmp/page.png");
+    await exportCurrentPagePng();
+    expect(mocks.renderNotebookPdf).toHaveBeenCalledExactlyOnceWith("paper-a", "chapters/main.tex");
+  });
+
+  it("says once that a stopped page render stopped", async () => {
+    mocks.renderNotebookPdf.mockRejectedValueOnce(
+      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "notebook.export_stopped", params: {}, detail: null })}`,
+    );
+    mocks.pickSavePath.mockResolvedValueOnce("/tmp/page.png");
+    await exportCurrentPagePng();
+    expect(mocks.info).toHaveBeenCalledExactlyOnceWith(enErrors.notebook.export_stopped);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.dismiss).toHaveBeenCalledExactlyOnceWith(42);
+    expect(mocks.exportProjectImage).not.toHaveBeenCalled();
+  });
+
+  it("reports a page render that fails and lets the user try again", async () => {
+    const failure = new Error("typst failed");
+    mocks.renderNotebookPdf.mockRejectedValueOnce(failure);
+    mocks.pickSavePath.mockResolvedValue("/tmp/page.png");
+    await exportCurrentPagePng();
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      "export page png",
+      failure,
+      i18n.t(($) => $.core.export.pngFailedDetail, { detail: "typst failed" }),
+    );
+    mocks.renderNotebookPdf.mockResolvedValueOnce(new Uint8Array([1]).buffer);
+    await exportCurrentPagePng();
+    expect(mocks.exportProjectImage).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing when the save dialog is closed", async () => {
+    mocks.pickSavePath.mockResolvedValueOnce(null);
+    await exportCurrentPagePng();
+    expect(mocks.renderNotebookPdf).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+});
 
 describe("compiled exports", () => {
   it.each([exportCurrentPdf, exportCurrentImagePng])("reports picker failures and permits retry", async (exportFile) => {

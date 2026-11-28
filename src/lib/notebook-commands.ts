@@ -27,10 +27,24 @@ export interface NotebookToolStatus {
 
 export type LanguageRuntimeName = "r" | "python" | "julia";
 
+export type InstallableRuntime = Exclude<LanguageRuntimeName, "julia">;
+
+export interface RuntimeInstaller {
+  version: string;
+  downloadBytes: number;
+}
+
+export interface RuntimePackage {
+  name: string;
+  installed: boolean;
+}
+
 export interface LanguageRuntime {
   name: LanguageRuntimeName;
   path: string | null;
   version: string | null;
+  installer?: RuntimeInstaller | null;
+  packages?: readonly RuntimePackage[];
 }
 
 export interface NotebookToolchainStatus {
@@ -66,6 +80,34 @@ export async function installNotebookTool(
     channel.onmessage = () => {};
   }
 }
+
+export interface RuntimeInstallProgress {
+  runtime: InstallableRuntime;
+  phase: NotebookInstallPhase;
+  receivedBytes: number;
+  totalBytes: number;
+}
+
+export async function installLanguageRuntime(
+  runtime: InstallableRuntime,
+  onProgress: (progress: RuntimeInstallProgress) => void,
+): Promise<void> {
+  const channel = new Channel<RuntimeInstallProgress>();
+  channel.onmessage = onProgress;
+  try {
+    await invoke<void>("install_language_runtime", { runtime, onProgress: channel });
+  } finally {
+    channel.onmessage = () => {};
+  }
+}
+
+export const installRPackages = (projectId: string | null, packages: readonly string[]) =>
+  invoke<NotebookToolchainStatus>("install_r_packages", { projectId, packages });
+
+export const installPythonPackages = (projectId: string | null, packages: readonly string[]) =>
+  invoke<NotebookToolchainStatus>("install_python_packages", { projectId, packages });
+
+export const recheckNotebookToolchain = () => invoke<NotebookToolchainStatus>("recheck_notebook_toolchain");
 
 export const removeNotebookTool = (tool: NotebookTool) =>
   invoke<NotebookToolchainStatus>("remove_notebook_tool", { tool });

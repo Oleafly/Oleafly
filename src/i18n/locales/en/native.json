@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Trust this folder?",
-      "message": "Oleafly will turn on Git, the terminal, agents and LaTeX tools for {{name}}. Only trust folders whose contents you know.",
+      "message": "Oleafly will turn on Git, the terminal, agents, latexmk and Quarto for {{name}}. Code in the folder runs only after you allow it. Only trust folders whose contents you know.",
       "messageParent": "Oleafly will trust {{name}} and every folder inside it, including ones you open later.",
       "messageRepository": "Oleafly will run Git in {{name}} with the repository's own settings and hooks.",
       "confirm": "Trust"

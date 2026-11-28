@@ -2,6 +2,7 @@ import { parseSnippetFile, type SnippetRecord } from "@oleafly/snippets";
 import { setEditorTranslator } from "@oleafly/editor";
 import { testCatalogTranslator } from "@oleafly/i18n-contract/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { i18n } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import {
   collectionName,
@@ -11,9 +12,11 @@ import {
   placeLabel,
   snippetBody,
   snippetFits,
-  snippetMatches,
+  searchTerms,
+  snippetMatchesTerms,
   snippetMathSource,
   snippetName,
+  snippetSearchText,
   snippetSource,
   snippetText,
   USER_COLLECTION,
@@ -76,12 +79,28 @@ describe("snippet records", () => {
   });
 
   it("matches every search word against name, trigger, description and body", () => {
-    expect(snippetMatches(FIGURE, "")).toBe(true);
-    expect(snippetMatches(FIGURE, "FIG caption")).toBe(true);
-    expect(snippetMatches(FIGURE, "#figure")).toBe(true);
-    expect(snippetMatches(FRACTION, "fraction")).toBe(true);
-    expect(snippetMatches(FRACTION, "frac //")).toBe(true);
-    expect(snippetMatches(FRACTION, "figure")).toBe(false);
+    const matches = (record: SnippetRecord, query: string) => snippetMatchesTerms(record, searchTerms(query));
+    expect(searchTerms("  ")).toEqual([]);
+    expect(matches(FIGURE, "")).toBe(true);
+    expect(matches(FIGURE, "FIG caption")).toBe(true);
+    expect(matches(FIGURE, "#figure")).toBe(true);
+    expect(matches(FRACTION, "fraction")).toBe(true);
+    expect(matches(FRACTION, "frac //")).toBe(true);
+    expect(matches(FRACTION, "figure")).toBe(false);
+  });
+
+  it("searches the names shown in the current language", () => {
+    const named = record({ name: "Fraction", nameKey: "latex.snippet.frac", body: "x" });
+    const before = i18n.language;
+    setEditorTranslator(() => (i18n.language === "de" ? "Bruch" : "Fraction"));
+    try {
+      expect(snippetSearchText(named)).toContain("fraction");
+      i18n.language = "de";
+      expect(snippetSearchText(named)).toContain("bruch");
+    } finally {
+      i18n.language = before;
+      setEditorTranslator(testCatalogTranslator("editor"));
+    }
   });
 
   it("names collections", () => {

@@ -7,6 +7,8 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { AUTO_COMPILE_DEBOUNCE_MS, AutoCompileKeeper } from "./AutoCompileKeeper";
 
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => undefined), isTauri: () => false }));
+
 const recompile = vi.fn(async () => undefined);
 
 function setText(content: string) {
@@ -50,6 +52,22 @@ afterEach(() => {
 });
 
 describe("AutoCompileKeeper", () => {
+  it("drops a pending compile when the user stops, and waits for the next edit", async () => {
+    render(<AutoCompileKeeper />);
+    act(() => useCompileStore.setState({ status: "compiling" } as never));
+    type("ab");
+    await wait(AUTO_COMPILE_DEBOUNCE_MS);
+    await act(async () => {
+      await useCompileStore.getState().stopCompile();
+      useCompileStore.setState({ status: "success" } as never);
+    });
+    await wait(5_000);
+    expect(recompile).not.toHaveBeenCalled();
+    type("abc");
+    await wait(AUTO_COMPILE_DEBOUNCE_MS);
+    expect(recompile).toHaveBeenCalledOnce();
+  });
+
   it("compiles once the author stops typing", async () => {
     render(<AutoCompileKeeper />);
     type("ab");

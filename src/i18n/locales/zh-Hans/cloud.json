@@ -130,6 +130,7 @@
       "specialFile": "不是普通文件",
       "tooLarge": "文件过大，无法同步",
       "packageFolder": "可以重新安装的已安装软件包",
+      "privateFile": "可能包含密码或密钥的 R 会话文件",
       "zipLeftovers": "解压后遗留的文件",
       "unreadable": "无法读取",
       "downloadFailed": "无法下载",

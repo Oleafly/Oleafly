@@ -431,7 +431,7 @@
       "off": "Desligada",
       "on": "Ligada",
       "title": "Compilação automática",
-      "help": "Compila alguns segundos depois que você para de digitar. O arquivo aberto é salvo antes.",
+      "help": "Compila alguns segundos depois que você para de digitar, salvando antes o arquivo aberto. Depois de Parar, espera a sua próxima edição. Um projeto que executa código só compila ao abrir quando isto está ligado.",
       "typstHelp": "O Typst continua rodando e atualiza o PDF logo depois que você para de digitar. O arquivo aberto é salvo sozinho enquanto esta opção estiver ligada.",
       "typstStarting": "Iniciando o Typst",
       "typstRestarting": "O Typst está reiniciando",
@@ -455,6 +455,7 @@
       "title": "Tratamento de erros de compilação"
     },
     "fromScratch": "Compilar do zero",
+    "wholeProject": "Renderizar todo o projeto do Quarto",
     "mode": {
       "fast": "Rápido <note>[rascunho]</note>",
       "normal": "Normal",
@@ -471,9 +472,8 @@
     },
     "texRootBroken": "O % !TEX root em {{file}} aponta para um arquivo inexistente ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "raiz: {{name}}",
     "texRootNotTex": "O % !TEX root em {{file}} aponta para {{target}}, que não é um arquivo LaTeX",
-    "texRootOverride": "raiz: {{path}} (definida por % !TEX root em {{file}})",
+    "texRootOverride": "Compila {{path}} (definida por % !TEX root em {{file}})",
     "typstVersion": {
       "title": "Versão do Typst (deste projeto)",
       "help": "Fixe uma versão para manter igual a saída deste projeto quando o Oleafly atualizar o Typst. A opção Padrão segue a versão escolhida em Configurações. Para instalar versões ou testar este projeto em uma mais nova, acesse Configurações → Motores → Typst.",
@@ -514,18 +514,19 @@
     },
     "code": {
       "title": "Código (deste computador)",
-      "help": "O Quarto e o Calepin podem executar o código R, Python e Julia deste projeto. O código roda com as suas permissões, então só permita isso em um projeto em que você confia. A escolha vale só para este computador.",
+      "help": "O Quarto e o Calepin podem executar o código R, Python e Julia deste projeto. O código roda com as suas permissões, então permita apenas em um projeto de confiança. A escolha vale só para este computador e continua até você desligá-la. Desligar interrompe uma compilação em andamento.",
       "off": "Desligado",
       "run": "Executar código neste computador"
     },
     "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado.",
     "coauthorsChanged": "Alterado por coautores desde a sua última compilação",
-    "texRootDocument": "raiz: {{path}} (tem seu próprio \\documentclass)",
-    "texRootInclude": "raiz: {{path}} (inclui {{file}})",
-    "texRootFormat": "raiz: {{path}} (um documento {{format}}, compilado com o próprio mecanismo)",
+    "texRootDocument": "Compila {{path}} (tem seu próprio \\documentclass)",
+    "texRootStandalone": "Compila {{path}} (um documento independente)",
+    "texRootInclude": "Compila {{path}} (inclui {{file}})",
+    "texRootFormat": "Compila {{path}} (um documento {{format}}, compilado com o próprio mecanismo)",
     "target": {
       "title": "Alvo da compilação",
-      "help": "Com Seguir o arquivo aberto, um arquivo com seu próprio \\documentclass é compilado sozinho. Um capítulo ou uma seção compila o documento que o inclui. Um documento Markdown, Typst ou Quarto é compilado sozinho com o próprio motor quando o projeto está em outro formato. Os outros arquivos compilam o documento principal. Um comentário % !TEX root sempre tem prioridade.",
+      "help": "Com Seguir o arquivo aberto, um documento independente compila sozinho: um arquivo LaTeX com o próprio \\documentclass, ou um arquivo Markdown, Typst ou Quarto que nenhum outro documento inclui. Um capítulo ou seção compila o documento que o inclui, e os arquivos de um projeto _quarto.yml compilam com o projeto. Os demais arquivos compilam o documento principal. Um comentário % !TEX root sempre prevalece.",
       "open": "Seguir o arquivo aberto",
       "main": "Sempre o documento principal",
       "change": "Alterar documento principal…"
@@ -670,7 +671,16 @@
     "followed": "{{name}} precisa executar código, e o código só é executado para o documento principal. Torne {{name}} o documento principal e depois permita o código.",
     "needed": "Este documento precisa executar o código dele para ser gerado, e o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto.",
     "skipped": "O código deste documento não foi executado porque o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto.",
-    "storedResults": "O PDF mostra resultados de código salvos de uma execução anterior porque o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto."
+    "storedResults": "O PDF mostra resultados de código salvos de uma execução anterior porque o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto.",
+    "reasons": {
+      "extensions": "Este projeto tem extensões do Quarto, que podem executar programas, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "environment": "Este projeto tem arquivos _environment que o Quarto carrega, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "shortcode": "Este documento usa um shortcode que não vem com o Quarto, e shortcodes podem executar programas, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "filter": "Este documento adiciona um filtro, e filtros podem executar programas, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "pdf_engine": "Este documento passa opções para o mecanismo de PDF, que pode executar programas, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "outside": "Este documento lê um arquivo de fora do projeto, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto.",
+      "unchecked": "O Oleafly não conseguiu verificar se este documento tem código, então só compila com o código permitido. Só permita código se você confiar em todos os arquivos do projeto."
+    }
   },
   "typstCjkFonts": {
     "message": "Este documento tem texto em chinês, japonês ou coreano que nenhuma fonte deste computador consegue mostrar, então ele não aparece no PDF.",
@@ -827,7 +837,7 @@
     },
     "noMain": "Ainda não há documento principal. Escolha um arquivo e selecione Definir como documento principal.",
     "trust": {
-      "banner": "O Oleafly limitou alguns recursos nesta pasta. Confiar nela para ativar o Git, o terminal, os agentes e o shell escape?",
+      "banner": "O Oleafly limitou alguns recursos nesta pasta. Confiar nela para ativar o Git, o terminal, os agentes, o latexmk e o Quarto?",
       "trustFolder": "Confiar nesta pasta",
       "trustParent": "Confiar na pasta superior",
       "trustRepository": "Confiar no repositório",
@@ -1844,5 +1854,20 @@
       "saved": "Trecho {{name}} salvo.",
       "missingName": "Dê um nome ao trecho."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const browser = vi.hoisted(() => ({ openInSystemBrowser: vi.fn() }));
@@ -11,7 +11,13 @@ vi.mock("@/lib/system-browser", async (importOriginal) => ({
 const log = vi.hoisted(() => ({ logError: vi.fn() }));
 vi.mock("@/lib/log", () => log);
 
-import { PREVIEW_LINK_MESSAGE, PreviewFrame } from "./PreviewFrame";
+import {
+  PREVIEW_APPEARANCE_MESSAGE,
+  PREVIEW_LINK_MESSAGE,
+  PREVIEW_LOOK_MESSAGE,
+  PREVIEW_READY_MESSAGE,
+  PreviewFrame,
+} from "./PreviewFrame";
 
 const ORIGIN = "http://127.0.0.1:4100";
 const SRC = `${ORIGIN}/t0k3n/site/index.html?v=1`;
@@ -107,6 +113,33 @@ describe("PreviewFrame", () => {
     await waitFor(() =>
       expect(log.logError).toHaveBeenCalledWith("open a link from an HTML preview", "https://example.com did not open"),
     );
+  });
+
+  it("darkens the page and tells it to keep its pictures in their own colors", () => {
+    const { rerender } = render(<PreviewFrame src={SRC} title={TITLE} inverted />);
+    const frame = screen.getByTitle(TITLE) as HTMLIFrameElement;
+    const sent = vi.spyOn(frame.contentWindow as Window, "postMessage");
+    post(frame, { type: PREVIEW_READY_MESSAGE });
+    expect(sent).toHaveBeenLastCalledWith({ type: PREVIEW_APPEARANCE_MESSAGE, inverted: true }, ORIGIN);
+    expect(frame).toHaveAttribute("data-inverted", "true");
+    rerender(<PreviewFrame src={SRC} title={TITLE} inverted={false} />);
+    expect(sent).toHaveBeenLastCalledWith({ type: PREVIEW_APPEARANCE_MESSAGE, inverted: false }, ORIGIN);
+    expect(frame).not.toHaveAttribute("data-inverted");
+    post(frame, { type: PREVIEW_READY_MESSAGE }, { origin: "http://127.0.0.1:4101" });
+    expect(sent).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a page that is already dark as it is", () => {
+    render(<PreviewFrame src={SRC} title={TITLE} inverted />);
+    const frame = screen.getByTitle(TITLE) as HTMLIFrameElement;
+    const sent = vi.spyOn(frame.contentWindow as Window, "postMessage");
+    act(() => post(frame, { type: PREVIEW_LOOK_MESSAGE, dark: true }));
+    expect(frame).not.toHaveAttribute("data-inverted");
+    expect(sent).toHaveBeenLastCalledWith({ type: PREVIEW_APPEARANCE_MESSAGE, inverted: false }, ORIGIN);
+    act(() => post(frame, { type: PREVIEW_LOOK_MESSAGE, dark: false }));
+    expect(frame).toHaveAttribute("data-inverted", "true");
+    act(() => post(frame, { type: PREVIEW_LOOK_MESSAGE, dark: true }, { origin: "http://127.0.0.1:4101" }));
+    expect(frame).toHaveAttribute("data-inverted", "true");
   });
 
   it("stops listening once it is gone", () => {

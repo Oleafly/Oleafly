@@ -40,6 +40,7 @@
     "renameAriaLabel": "Zmień nazwę pliku",
     "renameFailed": "Nie udało się zmienić nazwy \"{{path}}\". Ścieżka źródłowa pozostała bez zmian.",
     "setMain": "Ustaw jako dokument główny",
+    "compileTarget": "Kompilacja tworzy ten plik, a nie dokument główny",
     "title": "Eksplorator",
     "treeAriaLabel": "Drzewo plików eksploratora",
     "setMainFailed": "Nie udało się ustawić \"{{path}}\" jako dokumentu głównego.",

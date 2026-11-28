@@ -12,9 +12,11 @@ export function isNoteProject(project: Kinded | null | undefined): boolean {
   return project?.kind === NOTE_PROJECT_KIND;
 }
 
-export function libraryProjects<T extends Kinded>(projects: readonly T[], notesOn: boolean): readonly T[] {
-  if (!notesOn) return projects;
-  return projects.filter((project) => !isNoteProject(project));
+export function libraryProjects<T extends Kinded & Pick<ProjectInfo, "loose_file">>(
+  projects: readonly T[],
+  notesOn: boolean,
+): readonly T[] {
+  return projects.filter((project) => !project.loose_file && !(notesOn && isNoteProject(project)));
 }
 
 export function opensInNotes(

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   exportCurrentDocument: vi.fn(async () => {}),
   exportCurrentPdf: vi.fn(async () => {}),
   exportCurrentImagePng: vi.fn(async () => {}),
+  exportCurrentPagePng: vi.fn(async () => {}),
   success: vi.fn(),
   notifyError: vi.fn(),
   logError: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock("@/features/export", () => ({
   exportCurrentDocument: mocks.exportCurrentDocument,
   exportCurrentPdf: mocks.exportCurrentPdf,
   exportCurrentImagePng: mocks.exportCurrentImagePng,
+  exportCurrentPagePng: mocks.exportCurrentPagePng,
 }));
 vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.success, error: vi.fn(), info: vi.fn() },
@@ -436,6 +438,37 @@ describe("TopToolbar export menu", () => {
         "Export as Typst (.typ)",
       ]),
     );
+  });
+
+  it("exports a Quarto web page as PDF and PNG through Quarto with no compiled PDF", async () => {
+    useCompileStore.setState({ pdfBytes: null });
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "quarto",
+        label: "Quarto",
+        source_format: "markdown",
+        main_document: "report.qmd",
+        notebook_output: "html",
+        capabilities: { ...LATEX_ENGINE.capabilities, conversion_exports: ["docx", "html"] },
+      },
+      mainDoc: "report.qmd",
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    renderToolbar();
+    const user = userEvent.setup();
+    const open = async () => {
+      await user.click(screen.getByLabelText(toolbar.export));
+      return screen.findByRole("menuitem", { name: toolbar.exportPdf });
+    };
+    await user.click(await open());
+    expect(screen.queryByText(toolbar.compilePdfFirst)).not.toBeInTheDocument();
+    await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledWith("pdf"));
+    expect(mocks.exportCurrentPdf).not.toHaveBeenCalled();
+    await open();
+    expect(screen.queryByText(toolbar.compilePdfFirst)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: toolbar.exportPagePng }));
+    await waitFor(() => expect(mocks.exportCurrentPagePng).toHaveBeenCalledOnce());
+    expect(mocks.exportCurrentImagePng).not.toHaveBeenCalled();
   });
 
   it("asks for a compile before an export when there is no PDF", async () => {

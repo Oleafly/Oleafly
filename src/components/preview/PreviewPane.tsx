@@ -4,6 +4,7 @@ import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfShowToolbarButton, PdfToolbarControls } from "./PdfToolbarControls";
 import { openHtmlInBrowser } from "./open-compiled-html";
+import { copyOutputPath, savePdfToProject, saveWebPage, webPageName } from "./web-page-output";
 import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
@@ -14,6 +15,7 @@ import {
   INITIAL_PDF_LOAD_STATE,
   INITIAL_PDF_OUTLINE_STATE,
   INITIAL_PDF_SEARCH_STATE,
+  useHtmlDarkMode,
   usePdfReader,
 } from "./use-pdf-reader";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -44,7 +46,9 @@ import {
 import { CompileOfferButton } from "./CompileOfferButton";
 import { notebookOutput, shownHtmlOutput } from "@/lib/notebook-engines";
 import { useFilesStore } from "@/store/files";
-import { effectiveMainDocMissing, useCompileTarget } from "@/lib/tex-root";
+import { effectiveMainDocMissing, insideQuartoProject, useCompileTarget } from "@/lib/tex-root";
+import { exportCurrentDocument } from "@/features/export";
+import { opensWithoutRunningCode } from "@/lib/open-compile";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
@@ -59,7 +63,6 @@ import {
 } from "@/features/synctex";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
-  pdfSyncNoteSaved,
   revealInDir,
   saveFileBase64,
   uint8ToBase64,
@@ -685,6 +688,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     (state) => state.failureReason,
   );
   const htmlOutput = useCompileStore((state) => state.htmlOutput);
+  const autoCompile = useCompileStore((state) => state.autoCompile);
   const projectId = useFilesStore((s) => s.projectId);
   const htmlEngine = useFilesStore((s) => notebookOutput(s.engine) === "html");
   const projectEngine = useFilesStore((s) => s.engine);
@@ -862,19 +866,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     displayedCheckpoint !== null &&
     displayedCheckpointCurrent;
   const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
-  const pdfSync = usePdfSync({
-    projectId,
-    available: isTauri() && !isImage,
-    outputId: currentOutputId(displayedCheckpoint, pdfIsCurrent),
-    fastCompile: compileMode === "fast",
-  });
-  const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
-  const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
-  const pdfReview = useSettingsStore((state) => state.pdfReview);
-  const commentable = useCommentsRail((state) => state.canCompose);
-  const annotationLayerRef = useRef<HTMLDivElement>(null);
-  const [annotationSlot, setAnnotationSlot] = useState<HTMLDivElement | null>(null);
-  const [annotations, setAnnotations] = useState<PdfAnnotationsView | null>(null);
   const displayedBytes = viewerDocument?.bytes ?? null;
   const shownHtml = shownHtmlOutput(htmlOutput, { projectId, mainDoc, engine: projectEngine }, compileTarget);
   const htmlBuiltAt = shownHtml?.builtAt ?? null;
@@ -887,7 +878,33 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         !displayedBytes &&
         status !== "error" &&
         status !== "unavailable"));
+  const pageShown = showHtmlOutput && shownHtml !== null;
+  const savablePage = useFilesStore((s) => pageShown && !insideQuartoProject(s.tree, shownHtml.mainDocument));
+  const htmlDark = useHtmlDarkMode();
+  const pdfSync = usePdfSync({
+    projectId,
+    available: isTauri() && !isImage && (!showHtmlOutput || (savablePage && shownHtml?.mainDocument === mainDoc)),
+    outputId: currentOutputId(displayedCheckpoint, pdfIsCurrent),
+    fastCompile: compileMode === "fast",
+    page: showHtmlOutput,
+  });
+  const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
+  const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
+  const pdfReview = useSettingsStore((state) => state.pdfReview);
+  const commentable = useCommentsRail((state) => state.canCompose);
+  const annotationLayerRef = useRef<HTMLDivElement>(null);
+  const [annotationSlot, setAnnotationSlot] = useState<HTMLDivElement | null>(null);
+  const [annotations, setAnnotations] = useState<PdfAnnotationsView | null>(null);
   const shownBytes = showHtmlOutput ? null : displayedBytes;
+  const targetUnbuilt =
+    projectId !== null &&
+    !noMainDocument &&
+    !showHtmlOutput &&
+    status !== "compiling" &&
+    displayedCheckpoint?.mainDocument !== compileTarget &&
+    (lastAttemptIdentity === null
+      ? opensWithoutRunningCode(projectEngine, autoCompile)
+      : lastAttemptIdentity.mainDocument !== compileTarget);
   const staleAnnouncement = displayedCheckpoint
     ? t(($) => $.preview.stale.explanation)
     : t(($) => $.preview.stale.noIdentity);
@@ -961,38 +978,41 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const refreshTreeQuietly = () =>
     refreshTree().catch((error) => void logError("refresh files after preview save", error));
 
+  const saveShownOutput = async (id: string, bytes: Uint8Array | null): Promise<string | null> => {
+    if (showHtmlOutput) {
+      if (!shownHtml) return null;
+      await saveWebPage(id, shownHtml.mainDocument, webPageName(saveName.trim() || exportBaseName()));
+      return t(($) => $.preview.save.htmlSaved);
+    }
+    if (!bytes) return null;
+    if (!isImage) {
+      await savePdfToProject(id, saveName, exportBaseName(), bytes);
+      return t(($) => $.preview.save.pdfSaved);
+    }
+    const base = saveName.trim().replace(/\.(png|pdf)$/i, "") || "figure";
+    const { pdfPageToPng } = await import("@/lib/pdf-image");
+    const dataUrl = await pdfPageToPng(bytes, 1, 3);
+    await saveFileBase64(id, `${base}.png`, dataUrl.slice(dataUrl.indexOf(",") + 1));
+    return t(($) => $.preview.save.imageSaved);
+  };
+
   const submitSavePdf = async () => {
-    if (!projectId || !displayedBytes || saving) return;
+    if (!projectId || saving) return;
     setSaving(true);
     try {
-      if (isImage) {
-        const base = saveName.trim().replace(/\.(png|pdf)$/i, "") || "figure";
-        const name = `${base}.png`;
-        const { pdfPageToPng } = await import("@/lib/pdf-image");
-        const dataUrl = await pdfPageToPng(displayedBytes, 1, 3);
-        await saveFileBase64(projectId, name, dataUrl.slice(dataUrl.indexOf(",") + 1));
+      const saved = await saveShownOutput(projectId, displayedBytes);
+      if (saved) {
         await refreshTreeQuietly();
         setSaveOpen(false);
         setSaveName("");
-        toast.success(t(($) => $.preview.save.imageSaved));
-      } else {
-        const raw = saveName.trim() || exportBaseName();
-        const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
-        await saveFileBase64(
-          projectId,
-          name,
-          uint8ToBase64(displayedBytes),
-        );
-        if (isTauri()) {
-          void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
-        }
-        await refreshTreeQuietly();
-        setSaveOpen(false);
-        setSaveName("");
-        toast.success(t(($) => $.preview.save.pdfSaved));
+        toast.success(saved);
       }
     } catch (e) {
-      notifyError("save to project", e, decodeAppError(e) ? undefined : t(($) => $.preview.save.failed));
+      notifyError(
+        showHtmlOutput ? "save web page to project" : "save to project",
+        e,
+        decodeAppError(e) ? undefined : t(($) => $.preview.save.failed),
+      );
     } finally {
       setSaving(false);
     }
@@ -1179,6 +1199,19 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     return t(($) => $.preview.actions.downloadPdf);
   };
 
+  const exportShownPage = () => {
+    if (!pageShown || projectEngine.id !== "quarto") return undefined;
+    return () => exportCurrentDocument("pdf", shownHtml.mainDocument);
+  };
+
+  const copyPathFor = () => {
+    if (!projectId || !isTauri()) return undefined;
+    if (pageShown) return () => void copyOutputPath(projectId, shownHtml.mainDocument, true);
+    const shownDocument = displayedCheckpoint?.mainDocument;
+    if (!shownBytes || !shownDocument) return undefined;
+    return () => void copyOutputPath(projectId, shownDocument, false);
+  };
+
   const renderPreviewToolbar = () => (
     <div
       {...paneBar}
@@ -1206,7 +1239,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
       {tab === "pdf" && (
         <PdfToolbarControls
-          isImage={isImage} hasDocument={!!shownBytes} numPages={numPages}
+          isImage={isImage} hasDocument={!!shownBytes || pageShown} numPages={numPages} webPage={showHtmlOutput}
           page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
           pdfRef={pdfRef} layout={layout} setLayout={setLayout}
           outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
@@ -1214,17 +1247,23 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           searchInputRef={searchInputRef} setSearchInput={setSearchInput}
           scale={scale} setScale={setScale} setClampedScale={setClampedScale}
           userZoom={userZoom} fitPreview={fitPreview} exporting={exporting}
-          exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
+          exportDisplayedPreview={showHtmlOutput ? exportShownPage() : exportDisplayedPreview}
+          downloadActionLabel={showHtmlOutput ? undefined : downloadActionLabel}
           pdfSync={pdfSync}
           annotations={annotations?.toolbar ?? null}
-          onSave={() => {
+          onSave={showHtmlOutput && !savablePage ? undefined : () => {
             const base = isImage
               ? trimEdgeCharacter((projectName || "figure").replace(UNSAFE_FILE_NAME_CHARACTERS, "-"), "-") || "figure"
               : exportBaseName();
-            setSaveName(`${base}.${isImage ? "png" : "pdf"}`);
+            let extension = "pdf";
+            if (isImage) extension = "png";
+            if (showHtmlOutput) extension = "html";
+            setSaveName(`${base}.${extension}`);
             setSaveOpen(true);
           }}
-          inverted={inverted} setInverted={setInverted}
+          onCopyPath={copyPathFor()}
+          inverted={showHtmlOutput ? htmlDark.shown : inverted}
+          setInverted={showHtmlOutput ? htmlDark.setShown : setInverted}
           screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
           rotation={rotation} rotationPending={rotationPending}
           onRotate={rotateClockwise}
@@ -1376,28 +1415,45 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       )
   );
 
-  const renderEmptyPreview = () => (
-    <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
-      {noMainDocument || status === "error" || status === "unavailable" ? (
-        <div className="space-y-3 text-center text-muted-foreground">
-          <FileText className="mx-auto size-10 opacity-30" />
-          <p className="max-w-xs text-sm" role={noMainDocument ? undefined : "alert"}>
-            {emptyPreviewMessage()}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {noMainDocument ? null : (
-              <Button size="sm" onClick={() => void recompile()}>
-                {t(($) => $.preview.actions.retryCompile)}
-              </Button>
-            )}
-            <CompileOfferButton placement="preview" />
-          </div>
-        </div>
-      ) : (
-        startupProgress
-      )}
+  const renderUnbuiltTarget = () => (
+    <div className="space-y-3 text-center text-muted-foreground" data-testid="preview-target-unbuilt">
+      <FileText className="mx-auto size-10 opacity-30" />
+      <p className="max-w-xs text-sm">
+        {t(($) => $.preview.empty.notCompiled, { name: basename(compileTarget) })}
+      </p>
+      <Button size="sm" onClick={() => void recompile()}>
+        {t(($) => $.preview.startup.compileNow)}
+      </Button>
     </div>
   );
+
+  const renderFailedPreview = () => (
+    <div className="space-y-3 text-center text-muted-foreground">
+      <FileText className="mx-auto size-10 opacity-30" />
+      <p className="max-w-xs text-sm" role={noMainDocument ? undefined : "alert"}>
+        {emptyPreviewMessage()}
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {noMainDocument ? null : (
+          <Button size="sm" onClick={() => void recompile()}>
+            {t(($) => $.preview.actions.retryCompile)}
+          </Button>
+        )}
+        <CompileOfferButton placement="preview" />
+      </div>
+    </div>
+  );
+
+  const emptyPreviewBody = () => {
+    if (targetUnbuilt) return renderUnbuiltTarget();
+    if (noMainDocument || status === "error" || status === "unavailable") return renderFailedPreview();
+    return startupProgress;
+  };
+
+  const renderEmptyPreview = () => (
+    <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">{emptyPreviewBody()}</div>
+  );
+
 
   const renderHtmlOutput = () => (
     <div className="h-full bg-sidebar">
@@ -1409,6 +1465,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
             builtAt={htmlBuiltAt}
             compiling={status === "compiling"}
             onCompile={() => void recompile()}
+            inverted={htmlDark.shown}
           />
         </Suspense>
       )}
@@ -1510,8 +1567,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         </div>
       </div>
 
-      <SavePreviewDialog saveOpen={saveOpen} closeSave={closeSave} isImage={isImage} pdfIsStale={pdfIsStale}
-        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!displayedBytes} submitSavePdf={submitSavePdf} />
+      <SavePreviewDialog saveOpen={saveOpen} closeSave={closeSave} isImage={isImage} webPage={showHtmlOutput} pdfIsStale={pdfIsStale}
+        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!displayedBytes || pageShown} submitSavePdf={submitSavePdf} />
     </div>
   );
 }

@@ -93,9 +93,8 @@ describe("trust banner", () => {
   it("asks the owner's question and names the parent button without an ellipsis", async () => {
     render(<OpenedFolderBanners />);
     await open();
-    expect(screen.getByTestId("folder-trust-banner")).toHaveTextContent(
-      "Oleafly limited some features in this folder. Trust it to turn on Git, terminal, agents and shell escape?",
-    );
+    expect(screen.getByTestId("folder-trust-banner")).toHaveTextContent(labels.trust.banner);
+    expect(labels.trust.banner.endsWith("?")).toBe(true);
     expect(screen.getByRole("button", { name: "Trust the parent folder" })).toBeInTheDocument();
   });
 

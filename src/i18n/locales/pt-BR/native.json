@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Confiar nesta pasta?",
-      "message": "O Oleafly vai ativar o Git, o terminal, os agentes e as ferramentas de LaTeX para {{name}}. Só confie em pastas cujo conteúdo você conhece.",
+      "message": "O Oleafly vai ativar o Git, o terminal, os agentes, o latexmk e o Quarto para {{name}}. O código da pasta só roda depois que você permitir. Só confie em pastas cujo conteúdo você conhece.",
       "messageParent": "O Oleafly vai confiar em {{name}} e em todas as pastas dentro dela, incluindo as que você abrir depois.",
       "messageRepository": "O Oleafly vai executar o Git em {{name}} com as configurações e os hooks do próprio repositório.",
       "confirm": "Confiar"

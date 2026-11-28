@@ -40,6 +40,7 @@
     "renameAriaLabel": "Nimeä tiedosto uudelleen",
     "renameFailed": "Kohdetta \"{{path}}\" ei voitu nimetä uudelleen. Alkuperäinen polku jäi ennalleen.",
     "setMain": "Aseta päädokumentiksi",
+    "compileTarget": "Kääntäminen rakentaa tämän tiedoston, ei päädokumenttia",
     "title": "Resurssienhallinta",
     "treeAriaLabel": "Resurssienhallinnan tiedostopuu",
     "setMainFailed": "Kohdetta \"{{path}}\" ei voitu asettaa päädokumentiksi.",

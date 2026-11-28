@@ -48,6 +48,42 @@
       <Custom Action="RemoveOleaflyBackgroundVerb" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_BACKGROUND_VERB ~= OLEAFLY_OWN_VERB</Custom>
     </InstallExecuteSequence>
 
-    <ComponentGroup Id="OleaflyExplorerMenu" />
+    <ComponentGroup Id="OleaflyExplorerMenu">
+      <Component Id="OleaflyOpenWith" Directory="INSTALLDIR" Guid="4FE6A558-2913-4B14-999C-26503F2437A2">
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.md\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.md" Type="string" Value="Markdown document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.md\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.md\OpenWithProgids" Name="Oleafly.md" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.markdown\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.markdown" Type="string" Value="Markdown document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.markdown\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.markdown\OpenWithProgids" Name="Oleafly.markdown" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.qmd\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.qmd" Type="string" Value="Quarto document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.qmd\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.qmd\OpenWithProgids" Name="Oleafly.qmd" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.Rmd\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.Rmd" Type="string" Value="R Markdown document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.Rmd\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.Rmd\OpenWithProgids" Name="Oleafly.Rmd" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.tex\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.tex" Type="string" Value="LaTeX document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.tex\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tex\OpenWithProgids" Name="Oleafly.tex" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.typ\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]oleafly.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.typ" Type="string" Value="Typst document" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Oleafly.typ\DefaultIcon" Type="string" Value="[INSTALLDIR]oleafly.exe,0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.typ\OpenWithProgids" Name="Oleafly.typ" Type="string" Value="" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities" Name="ApplicationName" Type="string" Value="Oleafly" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities" Name="ApplicationDescription" Type="string" Value="Write LaTeX, Typst, Markdown and Quarto documents." />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".tex" Type="string" Value="Oleafly.tex" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".typ" Type="string" Value="Oleafly.typ" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".md" Type="string" Value="Oleafly.md" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".markdown" Type="string" Value="Oleafly.markdown" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".qmd" Type="string" Value="Oleafly.qmd" />
+        <RegistryValue Root="HKMU" Key="Software\Oleafly\Capabilities\FileAssociations" Name=".Rmd" Type="string" Value="Oleafly.Rmd" />
+        <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="Oleafly" Type="string" Value="Software\Oleafly\Capabilities" />
+      </Component>
+    </ComponentGroup>
   </Fragment>
 </Wix>

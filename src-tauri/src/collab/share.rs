@@ -398,8 +398,6 @@ pub async fn share_project(
     if !check.too_large.is_empty() {
         return Err(api(413, "too_large", &check.too_large.join(", ")));
     }
-    crate::trust::mark_library_restricted(project_id)
-        .map_err(|error| CollabError::Io(format!("{error:?}")))?;
     let meta = crate::project::read_meta(project_id).map_err(CollabError::Io)?;
     let title: String = if meta.name.trim().is_empty() {
         project_id.to_owned()
@@ -502,12 +500,6 @@ pub async fn share_project(
     save_binding(paths, project_id, &binding)?;
     super::registry::invalidate(project_id);
     forget_pending(paths, project_id);
-    if meta.allow_shell_escape {
-        let mut off = meta;
-        off.allow_shell_escape = false;
-        let _ = crate::project::write_meta(project_id, &off);
-    }
-    let _ = crate::project::revoke_shell_escape_trust(project_id);
     if !followed.moved.is_empty() {
         host.renamed_on_disk(project_id, &followed.moved);
         if let Some(applied) = super::settings::follow_renamed_main(project_id, &followed.moved) {
@@ -1265,7 +1257,7 @@ mod transfer_tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn a_shared_project_needs_this_computer_to_trust_it_again_before_tools_run() {
+    async fn sharing_your_own_project_keeps_it_trusted_on_this_computer() {
         let library = TempLibrary::new();
         paper(&library, "trusted-once");
         assert!(crate::trust::is_trusted("trusted-once"));
@@ -1276,17 +1268,16 @@ mod transfer_tests {
         share_project(&state, &Browser, &|_, _| {}, "trusted-once", server)
             .await
             .unwrap();
-        assert_eq!(
-            crate::trust::project_trust("trusted-once").unwrap(),
-            crate::trust::TrustState::Restricted
-        );
+        assert!(crate::trust::project_trust("trusted-once")
+            .unwrap()
+            .is_trusted());
         for capability in [
             crate::trust::Capability::RunCommand,
             crate::trust::Capability::FullAccess,
             crate::trust::Capability::ExternalAgents,
             crate::trust::Capability::TerminalAutostart,
         ] {
-            assert!(crate::trust::require_trusted("trusted-once", capability).is_err());
+            assert!(crate::trust::require_trusted("trusted-once", capability).is_ok());
         }
     }
 

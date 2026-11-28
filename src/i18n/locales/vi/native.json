@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Tin tưởng thư mục này?",
-      "message": "Oleafly sẽ bật Git, terminal, agent và công cụ LaTeX cho {{name}}. Chỉ tin tưởng những thư mục bạn biết rõ nội dung.",
+      "message": "Oleafly sẽ bật Git, terminal, agent, latexmk và Quarto cho {{name}}. Mã trong thư mục chỉ chạy sau khi bạn cho phép. Chỉ tin tưởng những thư mục bạn biết rõ nội dung.",
       "messageParent": "Oleafly sẽ tin tưởng {{name}} và mọi thư mục bên trong, kể cả những thư mục bạn mở sau này.",
       "messageRepository": "Oleafly sẽ chạy Git trong {{name}} với cài đặt và hook của chính kho lưu trữ.",
       "confirm": "Tin tưởng"

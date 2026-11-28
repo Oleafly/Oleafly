@@ -250,7 +250,12 @@ pub(crate) fn item(layout: &Layout, id: ItemId) -> Option<Item> {
                 .folder_handler_set
                 .then(|| user_item(id, state, MOVED))
         }
-        ItemId::QuickAction | ItemId::ExplorerMenu => None,
+        ItemId::QuickAction
+        | ItemId::ExplorerMenu
+        | ItemId::DefaultLatex
+        | ItemId::DefaultTypst
+        | ItemId::DefaultMarkdown
+        | ItemId::DefaultQuarto => None,
     }
 }
 
@@ -350,9 +355,12 @@ pub(crate) fn set(
             refresh_desktop_database(path.parent());
             Ok(None)
         }
-        ItemId::QuickAction | ItemId::ExplorerMenu => {
-            Err(format!("{id:?} is not available on Linux"))
-        }
+        ItemId::QuickAction
+        | ItemId::ExplorerMenu
+        | ItemId::DefaultLatex
+        | ItemId::DefaultTypst
+        | ItemId::DefaultMarkdown
+        | ItemId::DefaultQuarto => Err(format!("{id:?} is not available on Linux")),
     }
 }
 

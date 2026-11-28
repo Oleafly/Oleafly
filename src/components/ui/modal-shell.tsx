@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { InsideModalShell } from "@/components/ui/modal-shell-context";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 export type ModalLayer = "dialog" | "raised" | "nested";
@@ -106,11 +107,11 @@ export function ModalShell({
   const panel =
     as === "dialog" ? (
       <dialog open ref={dialogRef as RefObject<HTMLDialogElement | null>} {...panelProps}>
-        {children}
+        <InsideModalShell.Provider value>{children}</InsideModalShell.Provider>
       </dialog>
     ) : (
       <div ref={dialogRef as RefObject<HTMLDivElement | null>} role={role} {...panelProps}>
-        {children}
+        <InsideModalShell.Provider value>{children}</InsideModalShell.Provider>
       </div>
     );
 

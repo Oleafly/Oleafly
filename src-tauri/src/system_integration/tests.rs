@@ -132,7 +132,7 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
         .get("CFBundleDocumentTypes")
         .and_then(|value| value.as_array())
         .unwrap();
-    assert_eq!(types.len(), 4);
+    assert_eq!(types.len(), 5);
     let folder = types[0].as_dictionary().unwrap();
     let text = |key: &str| folder.get(key).and_then(|value| value.as_string());
     let content_types: Vec<&str> = folder
@@ -147,7 +147,7 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
     assert_eq!(text("LSHandlerRank"), Some("Alternate"));
     assert_eq!(text("CFBundleTypeName"), Some("Folder"));
     assert!(folder.get("CFBundleTypeExtensions").is_none());
-    let documents: Vec<(&str, Vec<&str>)> = types[1..]
+    let documents: Vec<(&str, &str, Vec<&str>)> = types[1..]
         .iter()
         .map(|entry| {
             let entry = entry.as_dictionary().unwrap();
@@ -158,12 +158,9 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
                     .and_then(|value| value.as_string()),
                 Some("Editor")
             );
-            assert_eq!(
-                entry
-                    .get("LSHandlerRank")
-                    .and_then(|value| value.as_string()),
-                Some("Default")
-            );
+            let rank = entry
+                .get("LSHandlerRank")
+                .and_then(|value| value.as_string());
             let name = entry
                 .get("CFBundleTypeName")
                 .and_then(|value| value.as_string());
@@ -174,22 +171,27 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
                 .iter()
                 .filter_map(|value| value.as_string())
                 .collect();
-            (name.unwrap(), extensions)
+            (name.unwrap(), rank.unwrap(), extensions)
         })
         .collect();
     assert_eq!(
         documents,
         [
-            ("LaTeX document", vec!["tex"]),
-            ("Typst document", vec!["typ"]),
-            ("Markdown document", vec!["md", "markdown"]),
+            ("LaTeX document", "Default", vec!["tex"]),
+            ("Typst document", "Default", vec!["typ"]),
+            ("Markdown document", "Alternate", vec!["md", "markdown"]),
+            ("Quarto document", "Alternate", vec!["qmd", "Rmd"]),
         ]
     );
-    let claimed: Vec<&str> = documents
+    let offered: Vec<&str> = default_apps::ITEMS
         .iter()
-        .flat_map(|(_, extensions)| extensions.iter().copied())
+        .flat_map(|item| default_apps::extensions(*item).iter().copied())
         .collect();
-    assert_eq!(claimed, default_apps::EXTENSIONS);
+    let declared: Vec<&str> = documents
+        .iter()
+        .flat_map(|(_, _, extensions)| extensions.iter().copied())
+        .collect();
+    assert_eq!(offered, declared);
 }
 
 #[test]
@@ -211,25 +213,71 @@ fn no_platform_config_declares_a_folder_type_outside_macos() {
 }
 
 #[test]
-fn both_windows_installers_name_each_document_type_after_the_product_and_its_extension() {
+fn windows_installers_list_oleafly_under_open_with_and_never_take_a_default() {
     let windows = config(include_str!("../../tauri.windows.conf.json"));
-    let tauri = config(include_str!("../../tauri.conf.json"));
-    let associations: Vec<tauri::utils::config::FileAssociation> =
-        serde_json::from_value(windows["bundle"]["fileAssociations"].clone()).unwrap();
-    let declared: Vec<String> = associations
-        .iter()
-        .map(|association| {
-            let [ext] = association.ext.as_slice() else {
-                panic!("one extension per association, got {:?}", association.ext);
-            };
-            let prog_id = format!("{}.{ext}", tauri["productName"].as_str().unwrap());
-            assert_eq!(association.name.as_deref(), Some(prog_id.as_str()));
-            assert!(association.description.is_some(), "{prog_id}");
-            assert!(association.content_types.is_none(), "{prog_id}");
-            ext.to_string()
+    assert!(windows["bundle"]["fileAssociations"].is_null());
+    let hooks = include_str!("../../windows/hooks.nsh");
+    let wix = include_str!("../../windows/explorer-menu.wxs");
+    let types = [
+        (".tex", "Oleafly.tex"),
+        (".typ", "Oleafly.typ"),
+        (".md", "Oleafly.md"),
+        (".markdown", "Oleafly.markdown"),
+        (".qmd", "Oleafly.qmd"),
+        (".Rmd", "Oleafly.Rmd"),
+    ];
+    for (extension, prog_id) in types {
+        assert!(
+            hooks.contains(&format!(
+                "!insertmacro OLEAFLY_OPEN_WITH \"{extension}\" \"{prog_id}\""
+            )),
+            "{extension}"
+        );
+        assert!(
+            hooks.contains(&format!(
+                "!insertmacro OLEAFLY_REMOVE_OPEN_WITH \"{extension}\" \"{prog_id}\""
+            )),
+            "{extension}"
+        );
+        assert!(
+            hooks.contains(&format!(
+                "WriteRegStr SHCTX \"Software\\Oleafly\\Capabilities\\FileAssociations\" \"{extension}\" \"{prog_id}\""
+            )),
+            "{extension}"
+        );
+        assert!(
+            wix.contains(&format!(
+                "Key=\"Software\\Classes\\{extension}\\OpenWithProgids\" Name=\"{prog_id}\""
+            )),
+            "{extension}"
+        );
+    }
+    let released: Vec<&str> = hooks
+        .lines()
+        .filter_map(|line| {
+            line.trim()
+                .strip_prefix("!insertmacro OLEAFLY_RELEASE_DEFAULT ")
         })
         .collect();
-    assert_eq!(declared, default_apps::EXTENSIONS);
+    let (installed, uninstalled) = released.split_at(2);
+    assert_eq!(
+        installed,
+        [
+            "\".md\" \"Oleafly.md\"",
+            "\".markdown\" \"Oleafly.markdown\""
+        ]
+    );
+    let every_type: Vec<String> = types
+        .iter()
+        .map(|(extension, prog_id)| format!("\"{extension}\" \"{prog_id}\""))
+        .collect();
+    assert_eq!(uninstalled, every_type);
+    assert!(!hooks.contains("\"Software\\Classes\\${EXT}\" \"\" \"${PROGID}\""));
+    assert!(
+        hooks.contains("ReadRegStr $R6 SHCTX \"Software\\Classes\\${EXT}\" \"${PROGID}_backup\"")
+    );
+    assert!(hooks.contains("WriteRegStr SHCTX \"Software\\RegisteredApplications\" \"Oleafly\" \"Software\\Oleafly\\Capabilities\""));
+    assert!(wix.contains("Key=\"Software\\RegisteredApplications\" Name=\"Oleafly\""));
 }
 
 #[test]
@@ -867,7 +915,7 @@ fn the_uninstaller_removes_only_this_installs_verbs_and_keeps_them_across_update
             "ReadRegStr $R7 HKCU \"{key}\\command\" \"\"\n    ${{If}} $R7 == \"{nsis_command}\"\n      DeleteRegKey HKCU \"{key}\""
         )), "{key}\n{hooks}");
     }
-    assert_eq!(hooks.matches("DeleteRegKey").count(), 2);
+    assert_eq!(hooks.matches("DeleteRegKey").count(), 4);
     let tauri = config(include_str!("../../tauri.conf.json"));
     assert_eq!(
         tauri["bundle"]["windows"]["nsis"]["installerHooks"],
@@ -1985,90 +2033,130 @@ fn the_menu_icon_size_comes_from_the_png() {
 }
 
 #[test]
-fn claiming_the_file_types_reports_what_happened_once() {
-    let temp = tempfile::tempdir().unwrap();
-    let prefs = temp.path().join("system-integration.json");
-    assert_eq!(
-        claim_default_apps(Ok(prefs.clone()), || Err("busy".into())).as_deref(),
-        Some("Oleafly could not become the default app for its file types: busy")
-    );
-    assert_eq!(
-        claim_default_apps(Ok(prefs.clone()), || Ok(())).as_deref(),
-        Some("Oleafly is now the default app for .tex, .typ and .md files.")
-    );
-    assert_eq!(claim_default_apps(Ok(prefs), || Ok(())), None);
-}
-
-#[test]
-fn oleafly_claims_its_file_types_once_and_tries_again_after_a_failure() {
-    let temp = tempfile::tempdir().unwrap();
-    let prefs = temp.path().join("system-integration.json");
-    assert_eq!(
-        claim_default_apps_once(&prefs, || Err("busy".into())),
-        Err("busy".into())
-    );
-    assert!(!prefs.exists());
-    let mut calls = 0;
-    assert_eq!(
-        claim_default_apps_once(&prefs, || {
-            calls += 1;
-            Ok(())
-        }),
-        Ok(true)
-    );
-    assert_eq!(
-        claim_default_apps_once(&prefs, || {
-            calls += 1;
-            Ok(())
-        }),
-        Ok(false)
-    );
-    assert_eq!(calls, 1);
-    assert_eq!(read_prefs_at(&prefs)[DEFAULT_APPS_PREF], Value::Bool(true));
-}
-
-#[test]
-fn every_linux_launcher_lists_the_document_types_and_typst_has_a_definition() {
-    let types: String = default_apps::MIME_TYPES
+fn every_linux_launcher_lists_the_document_types_and_oleafly_defines_the_new_ones() {
+    let types: String = default_apps::ITEMS
         .iter()
-        .map(|(mime, _)| format!("{mime};"))
+        .flat_map(|item| default_apps::mime_types(*item).iter())
+        .map(|names| format!("{};", names[0]))
         .collect();
     let line = format!("\nMimeType={types}\n");
     assert!(include_str!("../../linux/main.desktop").contains(&line));
     assert!(include_str!("../../linux/appimage.desktop").contains(&line));
     let package = include_str!("../../linux/oleafly.mime.xml");
-    assert!(package.contains("<mime-type type=\"text/vnd.typst\">"));
-    assert!(package.contains("<glob pattern=\"*.typ\"/>"));
+    for (mime, glob) in [
+        ("text/vnd.typst", "*.typ"),
+        ("text/x-quarto", "*.qmd"),
+        ("text/x-r-markdown", "*.rmd"),
+    ] {
+        assert!(
+            package.contains(&format!("<mime-type type=\"{mime}\">")),
+            "{mime}"
+        );
+        assert!(
+            package.contains(&format!("<glob pattern=\"{glob}\"")),
+            "{mime}"
+        );
+    }
     assert!(package.contains("<alias type=\"text/x-typst\"/>"));
 }
 
 #[test]
-fn oleafly_becomes_the_default_only_for_types_nobody_chose() {
+fn making_oleafly_the_default_puts_it_first_and_keeps_the_other_apps() {
+    let chosen = "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/x-markdown=typora.desktop;\nimage/png=org.gnome.eog.desktop;\n\n[Removed Associations]\ntext/plain=vim.desktop;\n";
+    let on = default_apps::linux_with_default(chosen, ItemId::DefaultMarkdown, "O.desktop", true)
+        .unwrap();
     assert_eq!(
-        default_apps::with_defaults("", "Oleafly.desktop").as_deref(),
-        Some(
-            "[Default Applications]\ntext/x-tex=Oleafly.desktop;\ntext/vnd.typst=Oleafly.desktop;\ntext/markdown=Oleafly.desktop;\n"
-        )
+        on,
+        "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/markdown=O.desktop;typora.desktop;\nimage/png=org.gnome.eog.desktop;\n\n[Removed Associations]\ntext/plain=vim.desktop;\n"
     );
-    let chosen = "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/x-markdown=typora.desktop;\nimage/png=org.gnome.eog.desktop;\ntext/x-tex=\n\n[Removed Associations]\ntext/plain=vim.desktop;\n";
+    assert!(default_apps::linux_is_default(
+        &on,
+        ItemId::DefaultMarkdown,
+        "O.desktop"
+    ));
+    assert!(!default_apps::linux_is_default(
+        chosen,
+        ItemId::DefaultMarkdown,
+        "O.desktop"
+    ));
     assert_eq!(
-        default_apps::with_defaults(chosen, "oleafly-desktop.desktop").as_deref(),
-        Some(
-            "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/x-markdown=typora.desktop;\nimage/png=org.gnome.eog.desktop;\ntext/x-tex=\ntext/vnd.typst=oleafly-desktop.desktop;\n\n[Removed Associations]\ntext/plain=vim.desktop;\n"
-        )
+        default_apps::linux_with_default(&on, ItemId::DefaultMarkdown, "O.desktop", true),
+        None
     );
-    let all = "[Default Applications]\napplication/x-tex=a.desktop;\ntext/x-typst=b.desktop;\ntext/markdown=c.desktop;";
-    assert_eq!(default_apps::with_defaults(all, "Oleafly.desktop"), None);
+    let off =
+        default_apps::linux_with_default(&on, ItemId::DefaultMarkdown, "O.desktop", false).unwrap();
+    assert!(off.contains("\ntext/markdown=typora.desktop;\n"));
+    assert!(!default_apps::linux_is_default(
+        &off,
+        ItemId::DefaultMarkdown,
+        "O.desktop"
+    ));
     assert_eq!(
-        default_apps::with_defaults("[Added Associations]\ntext/markdown=c.desktop;\n", "O.desktop")
+        default_apps::linux_with_default("", ItemId::DefaultQuarto, "O.desktop", true).as_deref(),
+        Some("[Default Applications]\ntext/x-quarto=O.desktop;\ntext/x-r-markdown=O.desktop;\n")
+    );
+    assert_eq!(
+        default_apps::linux_with_default("", ItemId::DefaultQuarto, "O.desktop", false),
+        None
+    );
+    let only_ours = "[Default Applications]\ntext/x-tex=O.desktop;\n";
+    assert_eq!(
+        default_apps::linux_with_default(only_ours, ItemId::DefaultLatex, "O.desktop", false)
             .as_deref(),
-        Some("[Added Associations]\ntext/markdown=c.desktop;\n\n[Default Applications]\ntext/x-tex=O.desktop;\ntext/vnd.typst=O.desktop;\ntext/markdown=O.desktop;\n")
+        Some("[Default Applications]\n")
     );
+}
+
+#[test]
+fn the_0_4_13_markdown_claim_is_handed_back_only_when_oleafly_alone_holds_it() {
+    let ours = "[Default Applications]\ntext/x-tex=O.desktop;\ntext/markdown=O.desktop;\n";
+    assert_eq!(
+        default_apps::without_silent_markdown_claim(ours, "O.desktop").as_deref(),
+        Some("[Default Applications]\ntext/x-tex=O.desktop;\n")
+    );
+    let shared = "[Default Applications]\ntext/markdown=O.desktop;typora.desktop;\n";
+    assert_eq!(
+        default_apps::without_silent_markdown_claim(shared, "O.desktop"),
+        None
+    );
+    assert_eq!(
+        default_apps::without_silent_markdown_claim("", "O.desktop"),
+        None
+    );
+}
+
+#[test]
+fn the_markdown_hand_back_runs_once_and_is_recorded_before_it_runs() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefs = temp.path().join("system-integration.json");
+    assert_eq!(
+        undo_silent_markdown_claim_once(&prefs, || panic!("nothing was claimed")),
+        Ok(false)
+    );
+    assert_eq!(
+        read_prefs_at(&prefs)[DEFAULT_APPS_POLICY_PREF],
+        Value::from(DEFAULT_APPS_POLICY)
+    );
+    let claimed = temp.path().join("claimed.json");
+    std::fs::write(&claimed, "{\"default_apps_claimed\": true}").unwrap();
+    assert_eq!(
+        undo_silent_markdown_claim_once(&claimed, || Err("busy".into())),
+        Err("busy".into())
+    );
+    let mut calls = 0;
+    assert_eq!(
+        undo_silent_markdown_claim_once(&claimed, || {
+            calls += 1;
+            Ok(())
+        }),
+        Ok(false)
+    );
+    assert_eq!(calls, 0);
 }
 
 #[cfg(target_os = "linux")]
 #[test]
-fn the_linux_claim_writes_through_a_linked_mimeapps_list_and_creates_a_missing_one() {
+fn the_linux_default_writes_through_a_linked_mimeapps_list_and_creates_a_missing_one() {
     let temp = tempfile::tempdir().unwrap();
     let config = temp.path().join("config");
     let dotfiles = temp.path().join("dotfiles");
@@ -2081,35 +2169,36 @@ fn the_linux_claim_writes_through_a_linked_mimeapps_list_and_creates_a_missing_o
     )
     .unwrap();
     std::os::unix::fs::symlink(&kept, config.join("mimeapps.list")).unwrap();
-    default_apps::claim(&config, "Oleafly.desktop").unwrap();
+    default_apps::linux_set(&config, ItemId::DefaultLatex, "Oleafly.desktop", true).unwrap();
     assert!(std::fs::symlink_metadata(config.join("mimeapps.list"))
         .unwrap()
         .file_type()
         .is_symlink());
     assert_eq!(
         std::fs::read_to_string(&kept).unwrap(),
-        "[Default Applications]\ntext/markdown=typora.desktop;\ntext/x-tex=Oleafly.desktop;\ntext/vnd.typst=Oleafly.desktop;\n"
+        "[Default Applications]\ntext/markdown=typora.desktop;\ntext/x-tex=Oleafly.desktop;\n"
+    );
+    assert!(default_apps::linux_state(&config, ItemId::DefaultLatex, "Oleafly.desktop").unwrap());
+    assert!(
+        !default_apps::linux_state(&config, ItemId::DefaultMarkdown, "Oleafly.desktop").unwrap()
     );
     let fresh = temp.path().join("fresh");
-    default_apps::claim(&fresh, "Oleafly.desktop").unwrap();
-    let written = default_apps::with_defaults("", "Oleafly.desktop").unwrap();
+    default_apps::linux_set(&fresh, ItemId::DefaultTypst, "Oleafly.desktop", true).unwrap();
     assert_eq!(
         std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
-        written
-    );
-    default_apps::claim(&fresh, "Other.desktop").unwrap();
-    assert_eq!(
-        std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
-        written
+        "[Default Applications]\ntext/vnd.typst=Oleafly.desktop;\n"
     );
     let unreadable = temp.path().join("unreadable");
     std::fs::create_dir_all(unreadable.join("mimeapps.list")).unwrap();
-    assert!(default_apps::claim(&unreadable, "Oleafly.desktop").is_err());
+    assert!(
+        default_apps::linux_set(&unreadable, ItemId::DefaultLatex, "Oleafly.desktop", true)
+            .is_err()
+    );
 }
 
 #[cfg(target_os = "linux")]
 #[test]
-fn an_appimage_takes_the_document_types_once_through_its_own_menu_entry() {
+fn an_appimage_launch_never_takes_the_document_types() {
     let temp = tempfile::tempdir().unwrap();
     let launcher = appimage_launcher(temp.path());
     let prefs = temp.path().join("system-integration.json");
@@ -2126,56 +2215,45 @@ fn an_appimage_takes_the_document_types_once_through_its_own_menu_entry() {
     };
     assert_eq!(settle(false), None);
     assert!(launcher.entry_path().is_file());
-    assert!(launcher
-        .data_home
-        .join(launcher::MIME_PACKAGE_PATH)
-        .is_file());
-    assert!(!config.join("mimeapps.list").exists());
-    assert_eq!(
-        settle(true).as_deref(),
-        Some("Oleafly is now the default app for .tex, .typ and .md files.")
-    );
-    assert_eq!(
-        std::fs::read_to_string(config.join("mimeapps.list")).unwrap(),
-        default_apps::with_defaults("", &format!("{LINUX_BINARY}.desktop")).unwrap()
-    );
-    std::fs::remove_file(config.join("mimeapps.list")).unwrap();
     assert_eq!(settle(true), None);
     assert!(!config.join("mimeapps.list").exists());
 }
 
 #[cfg(target_os = "linux")]
 #[test]
-fn a_package_takes_the_document_types_only_for_the_launcher_it_installed() {
+fn a_package_launch_hands_back_the_markdown_files_0_4_13_took_without_asking() {
     let temp = tempfile::tempdir().unwrap();
     let applications = temp.path().join("applications");
+    std::fs::create_dir_all(&applications).unwrap();
+    std::fs::write(applications.join("Oleafly.desktop"), "").unwrap();
     let prefs = temp.path().join("system-integration.json");
+    std::fs::write(&prefs, "{\"default_apps_claimed\": true}").unwrap();
     let config = temp.path().join("config");
-    let settle = |prefs: Result<PathBuf, String>| {
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(
+        config.join("mimeapps.list"),
+        "[Default Applications]\ntext/x-tex=Oleafly.desktop;\ntext/markdown=Oleafly.desktop;\n",
+    )
+    .unwrap();
+    let settle = || {
         settle_launch(
             None,
             Some("Oleafly".to_string()),
             true,
             &applications,
-            prefs,
+            Ok(prefs.clone()),
             Ok(config.clone()),
         )
     };
-    assert_eq!(settle(Ok(prefs.clone())), None);
-    assert!(!config.join("mimeapps.list").exists());
-    std::fs::create_dir_all(&applications).unwrap();
-    std::fs::write(applications.join("Oleafly.desktop"), "").unwrap();
     assert_eq!(
-        settle(Err("no home".to_string())).as_deref(),
-        Some("Oleafly could not become the default app for its file types: no home")
+        settle().as_deref(),
+        Some("Oleafly is no longer the default app for Markdown files.")
     );
     assert_eq!(
-        settle(Ok(prefs.clone())).as_deref(),
-        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+        std::fs::read_to_string(config.join("mimeapps.list")).unwrap(),
+        "[Default Applications]\ntext/x-tex=Oleafly.desktop;\n"
     );
-    assert!(std::fs::read_to_string(config.join("mimeapps.list"))
-        .unwrap()
-        .contains("\ntext/x-tex=Oleafly.desktop;\n"));
+    assert_eq!(settle(), None);
 }
 
 #[cfg(target_os = "linux")]

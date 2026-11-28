@@ -324,7 +324,7 @@ fn mount_token(_path: &Path) -> Option<Vec<u8>> {
     Some(Vec::new())
 }
 
-fn current_binding(path: &Path) -> Option<String> {
+pub(crate) fn current_binding(path: &Path) -> Option<String> {
     let observed = crate::fs_identity::identify_directory(path).ok()?;
     let mount = if observed.identity.weak {
         mount_token(path)?
@@ -1225,6 +1225,7 @@ pub async fn revoke_folder_trust<R: tauri::Runtime>(
     let trust = tauri::async_runtime::spawn_blocking(move || {
         crate::paths::validate_project_id(&revoke_id).map_err(unavailable)?;
         revoke_project(&revoke_id)?;
+        crate::project::revoke_shell_escape_trust(&revoke_id).map_err(unavailable)?;
         describe(&revoke_id)
     })
     .await

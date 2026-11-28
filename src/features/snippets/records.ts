@@ -69,27 +69,27 @@ export function snippetMathSource(record: SnippetRecord, language: SnippetLangua
   return renderBody(markedFields(body, marker), PLAIN_ENV).text.trim();
 }
 
-const searchTexts = new WeakMap<SnippetRecord, string>();
+const searchTexts = new WeakMap<SnippetRecord, { readonly language: string; readonly text: string }>();
 
 export function snippetSearchText(record: SnippetRecord): string {
-  let text = searchTexts.get(record);
-  if (text === undefined) {
-    const bodies = Object.values(record.bodies).map((nodes) => serializeBody(nodes as BodyNode[]));
-    text = [snippetName(record), record.name, record.trigger ?? "", ...record.aliases, record.description ?? "", ...bodies]
-      .join("\n")
-      .toLowerCase();
-    searchTexts.set(record, text);
-  }
+  const cached = searchTexts.get(record);
+  if (cached?.language === i18n.language) return cached.text;
+  const bodies = Object.values(record.bodies).map((nodes) => serializeBody(nodes as BodyNode[]));
+  const text = [snippetName(record), record.name, record.trigger ?? "", ...record.aliases, record.description ?? "", ...bodies]
+    .join("\n")
+    .toLowerCase();
+  searchTexts.set(record, { language: i18n.language, text });
   return text;
 }
 
-export function snippetMatches(record: SnippetRecord, query: string): boolean {
+export function searchTerms(query: string): readonly string[] {
+  return query.toLowerCase().split(/\s+/u).filter(Boolean);
+}
+
+export function snippetMatchesTerms(record: SnippetRecord, terms: readonly string[]): boolean {
+  if (terms.length === 0) return true;
   const text = snippetSearchText(record);
-  return query
-    .toLowerCase()
-    .split(/\s+/u)
-    .filter(Boolean)
-    .every((term) => text.includes(term));
+  return terms.every((term) => text.includes(term));
 }
 
 export function collectionName(collection: string, files: readonly ParsedSnippetFile[]): string {

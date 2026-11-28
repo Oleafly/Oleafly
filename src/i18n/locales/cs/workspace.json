@@ -40,6 +40,7 @@
     "renameAriaLabel": "Přejmenovat soubor",
     "renameFailed": "Nepodařilo se přejmenovat „{{path}}“. Původní cesta zůstala beze změny.",
     "setMain": "Nastavit jako hlavní dokument",
+    "compileTarget": "Kompilace sestaví tento soubor, ne hlavní dokument",
     "title": "Průzkumník",
     "treeAriaLabel": "Strom souborů v průzkumníku",
     "setMainFailed": "„{{path}}“ se nepodařilo nastavit jako hlavní dokument.",

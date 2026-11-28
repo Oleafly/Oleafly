@@ -564,7 +564,6 @@
     "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
     "saving": "Projekt se ukládá na server…",
     "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
-    "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape.",
     "projectNotesShared": "Poznámky projektu se sdílejí se všemi, kdo na tomto projektu pracují. Osobní poznámky zůstávají soukromé.",
     "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu.",
     "unlinkOverleaf": "Odpojit od Overleafu",

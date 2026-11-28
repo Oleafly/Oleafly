@@ -328,7 +328,15 @@
     "notChecked": "Denetlenmedi",
     "dictionaryMissing": "{{name}} indirilmedi, bu yüzden yazım denetlenmiyor. Ayarlar'dan indirin veya başka bir dil seçin.",
     "grammarEnglishOnly": "Dil bilgisi denetimi yalnızca İngilizce belgelerde çalışır.",
-    "spellLanguageNotDownloaded": "{{name}} (indirilmedi)"
+    "spellLanguageNotDownloaded": "{{name}} (indirilmedi)",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "Tablo ekle",

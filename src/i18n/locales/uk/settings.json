@@ -1079,6 +1079,13 @@
       "hoverPreview": {
         "description": "Показувати останню скомпільовану сторінку, коли ви наводите курсор на проєкт у бібліотеці.",
         "label": "Перегляд PDF під час наведення"
+      },
+      "html": {
+        "title": "Перегляд вебсторінок",
+        "darkMode": {
+          "label": "Темний режим вебсторінок",
+          "description": "Для документів Quarto, які збираються у вебсторінку. У режимі «Як тема застосунку» сторінка темнішає, коли застосунок темний, а зображення зберігають свої кольори. Кнопка інвертування кольорів на панелі перегляду перемикає цей параметр на «Увімкнено» або «Вимкнено»."
+        }
       }
     },
     "sectionName": "Зовнішній вигляд",
@@ -1803,7 +1810,17 @@
         "heading": "Мови",
         "tooltip": "Код у документах Quarto і Calepin виконується цими програмами.",
         "notFound": "Не знайдено",
-        "note": "Oleafly запускає код за допомогою R, Python і Julia, які вже є на цьому комп’ютері. Сам він їх ніколи не встановлює."
+        "note": "Oleafly запускає код за допомогою R, Python і Julia на цьому комп’ютері. Він може завантажити офіційні інсталятори R і Python та встановити knitr, rmarkdown і Jupyter за вас.",
+        "installerNote": "Oleafly завантажує офіційний інсталятор, перевіряє його й відкриває. Коли встановлення завершиться, поверніться сюди й перевірте ще раз.",
+        "finishInstaller": "Завершіть встановлення {{name}}, потім перевірте ще раз.",
+        "checkAgain": "Перевірити ще раз",
+        "packageManager": {
+          "r": "Встановіть R через менеджер пакетів, наприклад sudo apt install r-base або sudo dnf install R. Потім перевірте ще раз.",
+          "python": "Встановіть Python 3 через менеджер пакетів, наприклад sudo apt install python3 python3-venv. Потім перевірте ще раз."
+        },
+        "installYourself": "Встановіть {{name}} з його сайту, потім перевірте ще раз.",
+        "packagesMissing": "Не встановлено: {{packages}}",
+        "installPackages": "Встановити {{packages}}"
       },
       "codeNote": "Код у документі запускається лише після того, як ви дозволите запуск коду для цього проєкту в меню компіляції.",
       "progress": {
@@ -1811,7 +1828,9 @@
         "downloading": "Завантаження {{percent}}%",
         "verifying": "Перевірка",
         "extracting": "Розпакування",
-        "done": "Завершення"
+        "done": "Завершення",
+        "opening": "Відкриваємо інсталятор",
+        "installing": "Встановлення"
       },
       "error": {
         "load": "Не вдалося перевірити наявність Quarto, Calepin і мов.",
@@ -2798,11 +2817,14 @@
     },
     "actions": {
       "install": "Встановити",
-      "repair": "Виправити"
+      "repair": "Виправити",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "Не вдалося встановити. Спробуйте ще раз.",
-      "remove": "Не вдалося видалити. Спробуйте ще раз."
+      "remove": "Не вдалося видалити. Спробуйте ще раз.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Встановлено разом із пакетом Oleafly.",
     "quickAction": {
@@ -2835,7 +2857,33 @@
       "outdated": "Вона застаріла або macOS її заблокувала. Виправте, щоб повернути її.",
       "elsewhere": "Меню відкриває іншу копію Oleafly. Виправте, щоб використовувати цю.",
       "moved": "Пункт веде до копії Oleafly, яку було переміщено. Виправте, щоб використовувати цю.",
-      "noDefaultFileManager": "У системі немає типового файлового менеджера для тек, тож цей пункт може відкривати всі теки в Oleafly. Видаліть його."
+      "noDefaultFileManager": "У системі немає типового файлового менеджера для тек, тож цей пункт може відкривати всі теки в Oleafly. Видаліть його.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

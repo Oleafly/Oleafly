@@ -431,7 +431,7 @@
       "off": "Desactivada",
       "on": "Activada",
       "title": "Compilación automática",
-      "help": "Compila unos segundos después de que dejes de escribir. Antes se guarda el archivo abierto.",
+      "help": "Compila unos segundos después de que dejes de escribir y guarda antes el archivo abierto. Tras Detener, espera a tu siguiente cambio. Un proyecto que ejecuta código solo se compila al abrirlo cuando esto está activado.",
       "typstHelp": "Typst sigue en marcha y actualiza el PDF poco después de que dejes de escribir. El archivo abierto se guarda solo mientras esta opción esté activada.",
       "typstStarting": "Iniciando Typst",
       "typstRestarting": "Typst se está reiniciando",
@@ -455,6 +455,7 @@
       "title": "Tratamiento de los errores de compilación"
     },
     "fromScratch": "Recompilar desde cero",
+    "wholeProject": "Renderizar todo el proyecto de Quarto",
     "mode": {
       "fast": "Rápida <note>[borrador]</note>",
       "normal": "Normal",
@@ -471,9 +472,8 @@
     },
     "texRootBroken": "El % !TEX root de {{file}} apunta a un archivo que no existe ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "raíz: {{name}}",
     "texRootNotTex": "El % !TEX root de {{file}} apunta a {{target}}, que no es un archivo LaTeX",
-    "texRootOverride": "raíz: {{path}} (definida por % !TEX root en {{file}})",
+    "texRootOverride": "Compila {{path}} (definida por % !TEX root en {{file}})",
     "typstVersion": {
       "title": "Versión de Typst (este proyecto)",
       "help": "Fija una versión para que el resultado de este proyecto no cambie cuando Oleafly actualice Typst. La opción Predeterminada sigue la versión elegida en Ajustes. Para instalar versiones o probar este proyecto con una más reciente, ve a Ajustes → Motores → Typst.",
@@ -514,18 +514,19 @@
     },
     "code": {
       "title": "Código (este equipo)",
-      "help": "Quarto y Calepin pueden ejecutar el código de R, Python y Julia de este proyecto. El código se ejecuta con tus permisos, así que permítelo solo en un proyecto en el que confíes. La elección solo se aplica a este equipo.",
+      "help": "Quarto y Calepin pueden ejecutar el código R, Python y Julia de este proyecto. El código se ejecuta con tus permisos, así que permítelo solo en un proyecto de confianza. La elección se aplica solo a este equipo y se mantiene hasta que la desactives. Al desactivarla se detiene una compilación en curso.",
       "off": "Desactivado",
       "run": "Ejecutar código en este equipo"
     },
     "sharedViewer": "Solo los propietarios y los editores pueden cambiar estos ajustes en un proyecto compartido.",
     "coauthorsChanged": "Cambiado por coautores desde tu última compilación",
-    "texRootDocument": "raíz: {{path}} (tiene su propio \\documentclass)",
-    "texRootInclude": "raíz: {{path}} (incluye {{file}})",
-    "texRootFormat": "raíz: {{path}} (un documento {{format}}, compilado con su propio motor)",
+    "texRootDocument": "Compila {{path}} (tiene su propio \\documentclass)",
+    "texRootStandalone": "Compila {{path}} (un documento independiente)",
+    "texRootInclude": "Compila {{path}} (incluye {{file}})",
+    "texRootFormat": "Compila {{path}} (un documento {{format}}, compilado con su propio motor)",
     "target": {
       "title": "Destino de compilación",
-      "help": "Con Seguir el archivo abierto, un archivo con su propio \\documentclass se compila por sí solo. Un capítulo o una sección compila el documento que lo incluye. Un documento Markdown, Typst o Quarto se compila por sí solo con su propio motor cuando el proyecto está en otro formato. Los demás archivos compilan el documento principal. Un comentario % !TEX root siempre tiene prioridad.",
+      "help": "Con Seguir el archivo abierto, un documento independiente se compila por sí solo: un archivo LaTeX con su propio \\documentclass, o un archivo Markdown, Typst o Quarto que ningún otro documento incluye. Un capítulo o sección compila el documento que lo incluye, y los archivos de un proyecto _quarto.yml se compilan con el proyecto. Los demás archivos compilan el documento principal. Un comentario % !TEX root siempre manda.",
       "open": "Seguir el archivo abierto",
       "main": "Siempre el documento principal",
       "change": "Cambiar documento principal…"
@@ -670,7 +671,16 @@
     "followed": "{{name}} tiene que ejecutar código, y el código solo se ejecuta para el documento principal. Haz que {{name}} sea el documento principal y luego permite el código.",
     "needed": "Este documento tiene que ejecutar su código para generarse, y el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto.",
     "skipped": "El código de este documento no se ejecutó porque el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto.",
-    "storedResults": "El PDF muestra resultados de código guardados de una ejecución anterior porque el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto."
+    "storedResults": "El PDF muestra resultados de código guardados de una ejecución anterior porque el código está desactivado en este proyecto. Permite el código solo si confías en todos los archivos del proyecto.",
+    "reasons": {
+      "extensions": "Este proyecto tiene extensiones de Quarto, que pueden ejecutar programas, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "environment": "Este proyecto tiene archivos _environment que Quarto carga, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "shortcode": "Este documento usa un shortcode que no viene con Quarto, y los shortcodes pueden ejecutar programas, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "filter": "Este documento añade un filtro, y los filtros pueden ejecutar programas, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "pdf_engine": "Este documento pasa opciones al motor PDF, que puede ejecutar programas, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "outside": "Este documento lee un archivo de fuera del proyecto, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto.",
+      "unchecked": "Oleafly no pudo revisar si este documento tiene código, así que solo se compila con el código permitido. Permite el código solo si confías en todos los archivos del proyecto."
+    }
   },
   "typstCjkFonts": {
     "message": "Este documento tiene texto en chino, japonés o coreano que ninguna fuente de este equipo puede mostrar, así que no aparece en el PDF.",
@@ -827,7 +837,7 @@
     },
     "noMain": "Todavía no hay documento principal. Elige un archivo y selecciona Establecer como documento principal.",
     "trust": {
-      "banner": "Oleafly limitó algunas funciones en esta carpeta. ¿Confiar en ella para activar Git, el terminal, los agentes y el shell escape?",
+      "banner": "Oleafly limitó algunas funciones en esta carpeta. ¿Confiar en ella para activar Git, el terminal, los agentes, latexmk y Quarto?",
       "trustFolder": "Confiar en esta carpeta",
       "trustParent": "Confiar en la carpeta superior",
       "trustRepository": "Confiar en el repositorio",
@@ -1844,5 +1854,20 @@
       "saved": "Se guardó el fragmento {{name}}.",
       "missingName": "Ponle un nombre al fragmento."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

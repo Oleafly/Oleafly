@@ -1,8 +1,15 @@
 import { create } from "zustand";
 import {
+  installLanguageRuntime,
   installNotebookTool,
+  installPythonPackages,
+  installRPackages,
   notebookToolchainStatus,
+  recheckNotebookToolchain,
   removeNotebookTool,
+  type InstallableRuntime,
+  type LanguageRuntime,
+  type LanguageRuntimeName,
   type NotebookInstallPhase,
   type NotebookInstallProgress,
   type NotebookTool,
@@ -42,6 +49,40 @@ export interface NotebookInstallState {
 
 type NotebookInstalls = Readonly<Partial<Record<NotebookTool, NotebookInstallState>>>;
 
+export type RuntimeTask = InstallableRuntime | "r-packages" | "python-packages";
+
+export interface RuntimeTaskState {
+  readonly phase: NotebookInstallPhase | "starting" | "opening" | "installing";
+  readonly receivedBytes: number;
+  readonly totalBytes: number;
+}
+
+type RuntimeTasks = Readonly<Partial<Record<RuntimeTask, RuntimeTaskState>>>;
+
+export const RUNTIME_LABELS: Readonly<Record<LanguageRuntimeName, string>> = {
+  r: "R",
+  python: "Python",
+  julia: "Julia",
+};
+
+export function runtimeIn(
+  status: NotebookToolchainStatus | null,
+  name: LanguageRuntimeName,
+): LanguageRuntime | undefined {
+  return status?.runtimes?.find((runtime) => runtime.name === name);
+}
+
+export function missingRuntimePackages(runtime: LanguageRuntime | undefined): string[] {
+  return (runtime?.packages ?? []).filter((entry) => !entry.installed).map((entry) => entry.name);
+}
+
+export function runtimeTaskLabel(task: RuntimeTaskState): string {
+  const { phase, receivedBytes, totalBytes } = task;
+  if (phase === "opening") return i18n.t(($) => $.settings.engine.notebook.progress.opening);
+  if (phase === "installing") return i18n.t(($) => $.settings.engine.notebook.progress.installing);
+  return notebookInstallLabel({ tool: "quarto", phase, receivedBytes, totalBytes });
+}
+
 interface NotebookToolchainStore {
   status: NotebookToolchainStatus | null;
   loading: boolean;
@@ -52,6 +93,15 @@ interface NotebookToolchainStore {
   ensureLoaded: () => Promise<NotebookToolchainStatus | null>;
   install: (tool: NotebookTool) => Promise<boolean>;
   remove: (tool: NotebookTool) => Promise<boolean>;
+  runtimeTasks: RuntimeTasks;
+  awaitingInstaller: readonly InstallableRuntime[];
+  installRuntime: (runtime: InstallableRuntime) => Promise<boolean>;
+  installRuntimePackages: (
+    runtime: InstallableRuntime,
+    packages: readonly string[],
+    projectId?: string | null,
+  ) => Promise<boolean>;
+  recheck: () => Promise<NotebookToolchainStatus | null>;
 }
 
 const TOOLCHAIN_TOAST_KEY = "notebook-toolchain";
@@ -119,6 +169,27 @@ function withoutInstall(installs: NotebookInstalls, tool: NotebookTool): Noteboo
   return next;
 }
 
+function withoutTask(tasks: RuntimeTasks, task: RuntimeTask): RuntimeTasks {
+  const next = { ...tasks };
+  delete next[task];
+  return next;
+}
+
+function reportRuntimeFailure(task: RuntimeTask, scope: string, error: unknown, message: string): void {
+  void logError(scope, error);
+  toast.errorUnique(
+    `${TOOLCHAIN_TOAST_KEY}:${task}`,
+    i18n.t(($) => $.settings.engine.packages.error.withDetail, {
+      message,
+      detail: describeError(error),
+    }),
+  );
+}
+
+let recheckOnFocus: (() => void) | null = null;
+let lastFocusRecheck = 0;
+const FOCUS_RECHECK_GAP_MS = 5_000;
+
 export const useNotebookToolchainStore = create<NotebookToolchainStore>((set, get) => {
   const applyStatus = (status: NotebookToolchainStatus) => {
     statusGeneration++;
@@ -131,6 +202,8 @@ export const useNotebookToolchainStore = create<NotebookToolchainStore>((set, ge
     loadFailed: false,
     installs: {},
     removing: null,
+    runtimeTasks: {},
+    awaitingInstaller: [],
 
     refresh: () => {
       if (statusRequest) return statusRequest;
@@ -196,6 +269,88 @@ export const useNotebookToolchainStore = create<NotebookToolchainStore>((set, ge
         return false;
       } finally {
         set({ installs: withoutInstall(get().installs, tool) });
+      }
+    },
+
+    recheck: async () => {
+      try {
+        const next = await recheckNotebookToolchain();
+        applyStatus(next);
+        const awaiting = get().awaitingInstaller.filter((runtime) => !runtimeIn(next, runtime)?.path);
+        set({ awaitingInstaller: awaiting });
+        if (awaiting.length === 0 && recheckOnFocus) {
+          window.removeEventListener("focus", recheckOnFocus);
+          recheckOnFocus = null;
+        }
+        return next;
+      } catch (error) {
+        void logError("check the notebook languages again", error);
+        return null;
+      }
+    },
+
+    installRuntime: async (runtime) => {
+      if (get().runtimeTasks[runtime]) return false;
+      const begin: RuntimeTaskState = { phase: "starting", receivedBytes: 0, totalBytes: 0 };
+      set({ runtimeTasks: { ...get().runtimeTasks, [runtime]: begin } });
+      try {
+        await installLanguageRuntime(runtime, (progress) => {
+          if (progress.runtime !== runtime || !get().runtimeTasks[runtime]) return;
+          const phase = progress.phase === "done" ? "opening" : progress.phase;
+          set({
+            runtimeTasks: {
+              ...get().runtimeTasks,
+              [runtime]: { phase, receivedBytes: progress.receivedBytes, totalBytes: progress.totalBytes },
+            },
+          });
+        });
+        if (!get().awaitingInstaller.includes(runtime)) {
+          set({ awaitingInstaller: [...get().awaitingInstaller, runtime] });
+        }
+        if (!recheckOnFocus) {
+          recheckOnFocus = () => {
+            const now = Date.now();
+            if (now - lastFocusRecheck < FOCUS_RECHECK_GAP_MS) return;
+            lastFocusRecheck = now;
+            void get().recheck();
+          };
+          window.addEventListener("focus", recheckOnFocus);
+        }
+        return true;
+      } catch (error) {
+        reportRuntimeFailure(
+          runtime,
+          "download a language installer",
+          error,
+          i18n.t(($) => $.settings.engine.notebook.error.install, { tool: RUNTIME_LABELS[runtime] }),
+        );
+        return false;
+      } finally {
+        set({ runtimeTasks: withoutTask(get().runtimeTasks, runtime) });
+      }
+    },
+
+    installRuntimePackages: async (runtime, packages, projectId = null) => {
+      const task: RuntimeTask = runtime === "r" ? "r-packages" : "python-packages";
+      if (get().runtimeTasks[task] || packages.length === 0) return false;
+      const working: RuntimeTaskState = { phase: "installing", receivedBytes: 0, totalBytes: 0 };
+      set({ runtimeTasks: { ...get().runtimeTasks, [task]: working } });
+      try {
+        applyStatus(
+          runtime === "r" ? await installRPackages(projectId, packages) : await installPythonPackages(projectId, packages),
+        );
+        return true;
+      } catch (error) {
+        reportRuntimeFailure(
+          task,
+          "install packages for a notebook language",
+          error,
+          i18n.t(($) => $.settings.engine.notebook.error.install, { tool: packages.join(", ") }),
+        );
+        void get().refresh();
+        return false;
+      } finally {
+        set({ runtimeTasks: withoutTask(get().runtimeTasks, task) });
       }
     },
 

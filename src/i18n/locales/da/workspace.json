@@ -40,6 +40,7 @@
     "renameAriaLabel": "Omdøb filen",
     "renameFailed": "Kunne ikke omdøbe \"{{path}}\". Den oprindelige sti blev ikke ændret.",
     "setMain": "Vælg som hoveddokument",
+    "compileTarget": "Kompilering bygger denne fil, ikke hoveddokumentet",
     "title": "Filer",
     "treeAriaLabel": "Filtræ i filpanelet",
     "setMainFailed": "Kunne ikke gøre \"{{path}}\" til hoveddokument.",

@@ -40,6 +40,7 @@
     "renameAriaLabel": "Rinomina il file",
     "renameFailed": "Impossibile rinominare \"{{path}}\". Il percorso originale è rimasto invariato.",
     "setMain": "Imposta come documento principale",
+    "compileTarget": "La compilazione genera questo file, non il documento principale",
     "title": "Esplora file",
     "treeAriaLabel": "Albero dei file del progetto",
     "setMainFailed": "Impossibile impostare \"{{path}}\" come documento principale.",

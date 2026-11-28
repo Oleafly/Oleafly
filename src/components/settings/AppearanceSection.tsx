@@ -74,6 +74,7 @@ import { intended, lazy } from "@/lib/preloadable";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
+import { SettingsGroup } from "@/components/settings/AppearanceControls";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
@@ -1432,6 +1433,8 @@ function PdfPreviewTab() {
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
   const hoverPreview = useSettingsStore((state) => state.hoverPreview);
   const setHoverPreview = useSettingsStore((state) => state.setHoverPreview);
+  const htmlDarkMode = useSettingsStore((state) => state.htmlDarkMode);
+  const setHtmlDarkMode = useSettingsStore((state) => state.setHtmlDarkMode);
   useEffect(followPdfDarkModeInOtherWindows, []);
 
   return (
@@ -1465,6 +1468,30 @@ function PdfPreviewTab() {
         checked={hoverPreview}
         onChange={setHoverPreview}
       />
+      <SettingsGroup title={t(($) => $.settings.appearance.preview.html.title)}>
+        <SettingsRow
+          testId="settings-row-html-dark-mode"
+          label={t(($) => $.settings.appearance.preview.html.darkMode.label)}
+          description={t(($) => $.settings.appearance.preview.html.darkMode.description)}
+          control={
+            <Select value={htmlDarkMode} onValueChange={(value) => setHtmlDarkMode(value as PdfDarkMode)}>
+              <SelectTrigger
+                className="w-[180px]"
+                aria-label={t(($) => $.settings.appearance.preview.html.darkMode.label)}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {PDF_DARK_MODES.map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {t(($) => $.settings.appearance.preview.darkMode.modes[mode])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+      </SettingsGroup>
     </div>
   );
 }

@@ -595,6 +595,45 @@ describe("changes from more than one place", () => {
     });
   });
 
+  it("moves a switch at once, even while an earlier change is still being written", async () => {
+    const { useSnippetStore } = await loaded();
+    let finish: () => void = () => undefined;
+    mocks.writeSnippetFile.mockImplementationOnce(
+      (name, text) =>
+        new Promise<void>((resolve) => {
+          finish = () => {
+            put(name, text);
+            resolve();
+          };
+        }),
+    );
+    const disabled = () => useSnippetStore.getState().state.disabledCollections.includes("paper-structure");
+    const off = useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
+    await vi.waitFor(() => expect(mocks.writeSnippetFile).toHaveBeenCalledOnce());
+    expect(disabled()).toBe(true);
+    const on = useSnippetStore.getState().setCollectionEnabled("paper-structure", true);
+    await vi.waitFor(() => expect(disabled()).toBe(false));
+    const offAgain = useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
+    await vi.waitFor(() => expect(disabled()).toBe(true));
+    expect(mocks.writeSnippetFile).toHaveBeenCalledOnce();
+    finish();
+    await Promise.all([off, on, offAgain]);
+    expect(mocks.writeSnippetFile).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(written("_state.json") ?? "{}").disabledCollections).toContain("paper-structure");
+    expect(disabled()).toBe(true);
+  });
+
+  it("keeps the library as it is when a reload finds nothing new", async () => {
+    const { useSnippetStore } = await loaded();
+    await useSnippetStore.getState().setCollectionEnabled("paper-structure", false);
+    const library = useSnippetStore.getState().library;
+    const engine = await import("./store-engine");
+    await engine.load(true);
+    expect(useSnippetStore.getState().library).toBe(library);
+    expect(await useSnippetStore.getState().setCollectionEnabled("paper-structure", false)).toBeUndefined();
+    expect(mocks.writeSnippetFile).toHaveBeenCalledOnce();
+  });
+
   it("goes on with the next change after one fails", async () => {
     const { useSnippetStore } = await loaded();
     mocks.writeSnippetFile.mockRejectedValueOnce(new Error("disk full"));
@@ -699,6 +738,13 @@ describe("settings export and import", () => {
     expect(mocks.writeSnippetFile.mock.calls.map(([name]) => name)).toEqual(["Mine.json", "_state.json"]);
     expect(useSnippetStore.getState().library.byId("mine.fraction")).toBeDefined();
     expect(useSnippetStore.getState().state.disabledCollections).toEqual(["paper-structure"]);
+  });
+
+  it("writes nothing when the imported files match the ones already there", async () => {
+    put("mine.json", json(MINE));
+    const { importSnippetSettingsFiles } = await loaded();
+    await importSnippetSettingsFiles([{ name: "MINE.json", text: json(MINE) }]);
+    expect(mocks.writeSnippetFile).not.toHaveBeenCalled();
   });
 
   it.each([

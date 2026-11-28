@@ -430,7 +430,7 @@
       "off": "Pois",
       "on": "Päällä",
       "title": "Automaattikäännös",
-      "help": "Kääntää muutaman sekunnin kuluttua siitä, kun lopetat kirjoittamisen. Avoin tiedosto tallennetaan ensin.",
+      "help": "Kääntää muutaman sekunnin kuluttua siitä, kun lopetat kirjoittamisen, ja tallentaa avoimen tiedoston ensin. Pysäytyksen jälkeen se odottaa seuraavaa muokkaustasi. Koodia suorittava projekti käännetään avattaessa vain, kun tämä on päällä.",
       "typstHelp": "Typst on käynnissä koko ajan ja päivittää PDF-tiedoston hetki sen jälkeen, kun lopetat kirjoittamisen. Avoin tiedosto tallentuu itsestään, kun tämä on päällä.",
       "typstStarting": "Käynnistetään Typst",
       "typstRestarting": "Typst käynnistyy uudelleen",
@@ -454,6 +454,7 @@
       "title": "Käännösvirheiden käsittely"
     },
     "fromScratch": "Käännä alusta uudelleen",
+    "wholeProject": "Renderöi koko Quarto-projekti",
     "mode": {
       "fast": "Nopea <note>[luonnos]</note>",
       "normal": "Normaali",
@@ -470,9 +471,8 @@
     },
     "texRootBroken": "% !TEX root tiedostossa {{file}} osoittaa puuttuvaan tiedostoon ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "juuri: {{name}}",
     "texRootNotTex": "% !TEX root tiedostossa {{file}} osoittaa kohteeseen {{target}}, joka ei ole LaTeX-tiedosto",
-    "texRootOverride": "juuri: {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})",
+    "texRootOverride": "Kääntää tiedoston {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})",
     "typstVersion": {
       "title": "Typst-versio (tämä projekti)",
       "help": "Kiinnitä versio, niin tämän projektin tuloste pysyy samana, vaikka Oleafly päivittäisi Typst-kääntäjän. Oletus seuraa asetuksissa valittua versiota. Jos haluat asentaa versioita tai testata projektia uudemmalla versiolla, siirry kohtaan Asetukset → Moottorit → Typst.",
@@ -513,18 +513,19 @@
     },
     "code": {
       "title": "Koodi (tämä kone)",
-      "help": "Quarto ja Calepin voivat suorittaa tämän projektin R-, Python- ja Julia-koodin. Koodi suoritetaan sinun oikeuksillasi, joten salli se vain projektille, johon luotat. Valinta koskee vain tätä konetta.",
+      "help": "Quarto ja Calepin voivat suorittaa tämän projektin R-, Python- ja Julia-koodia. Koodi toimii sinun oikeuksillasi, joten salli se vain projektille, johon luotat. Valinta koskee vain tätä tietokonetta ja on voimassa, kunnes otat sen pois. Pois ottaminen pysäyttää käynnissä olevan käännöksen.",
       "off": "Pois",
       "run": "Suorita koodi tällä koneella"
     },
     "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa.",
     "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen",
-    "texRootDocument": "juuri: {{path}} (sillä on oma \\documentclass)",
-    "texRootInclude": "juuri: {{path}} (sisältää tiedoston {{file}})",
-    "texRootFormat": "juuri: {{path}} ({{format}}-dokumentti, käännetty omalla moottorillaan)",
+    "texRootDocument": "Kääntää tiedoston {{path}} (sillä on oma \\documentclass)",
+    "texRootStandalone": "Kääntää tiedoston {{path}} (erillinen dokumentti)",
+    "texRootInclude": "Kääntää tiedoston {{path}} (sisältää tiedoston {{file}})",
+    "texRootFormat": "Kääntää tiedoston {{path}} ({{format}}-dokumentti, käännetty omalla moottorillaan)",
     "target": {
       "title": "Käännöskohde",
-      "help": "Kun Seuraa avointa tiedostoa on valittuna, tiedosto, jolla on oma \\documentclass, käännetään sellaisenaan. Luku tai osio kääntää dokumentin, joka sisältää sen. Markdown-, Typst- tai Quarto-dokumentti käännetään sellaisenaan omalla moottorillaan, kun projekti on toisessa muodossa. Muut tiedostot kääntävät päädokumentin. % !TEX root -kommentti ratkaisee aina.",
+      "help": "Kun Seuraa avointa tiedostoa on valittu, erillinen dokumentti käännetään itsenäisesti: LaTeX-tiedosto, jolla on oma \\documentclass, tai Markdown-, Typst- tai Quarto-tiedosto, jota mikään muu dokumentti ei sisällytä. Luku tai osio kääntää dokumentin, joka sisällyttää sen, ja _quarto.yml-projektin tiedostot käännetään projektin mukana. Muut tiedostot kääntävät päädokumentin. % !TEX root -kommentti voittaa aina.",
       "open": "Seuraa avointa tiedostoa",
       "main": "Aina päädokumentti",
       "change": "Vaihda päädokumentti…"
@@ -668,7 +669,16 @@
     "followed": "{{name}} joutuu suorittamaan koodia, ja koodia suoritetaan vain päädokumentille. Tee {{name}} päädokumentiksi ja salli sitten koodi sille.",
     "needed": "Tämän dokumentin koodi täytyy suorittaa, jotta dokumentti kääntyy, ja koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
     "skipped": "Tämän dokumentin koodia ei suoritettu, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
-    "storedResults": "PDF näyttää aiemmalla suorituskerralla tallennetut koodin tulokset, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon."
+    "storedResults": "PDF näyttää aiemmalla suorituskerralla tallennetut koodin tulokset, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+    "reasons": {
+      "extensions": "Projektissa on Quarto-laajennuksia, jotka voivat suorittaa ohjelmia, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "environment": "Projektissa on _environment-tiedostoja, jotka Quarto lataa, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "shortcode": "Dokumentti käyttää shortcodea, joka ei kuulu Quartoon, ja shortcodet voivat suorittaa ohjelmia, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "filter": "Dokumentti lisää suodattimen, ja suodattimet voivat suorittaa ohjelmia, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "pdf_engine": "Dokumentti välittää asetuksia PDF-moottorille, joka voi suorittaa ohjelmia, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "outside": "Dokumentti lukee tiedoston projektin ulkopuolelta, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+      "unchecked": "Oleafly ei voinut tarkistaa, onko dokumentissa koodia, joten se käännetään vain koodin ollessa sallittu. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon."
+    }
   },
   "typstCjkFonts": {
     "message": "Asiakirjassa on kiinan-, japanin- tai koreankielistä tekstiä, jota mikään tämän tietokoneen fontti ei pysty näyttämään, joten se puuttuu PDF:stä.",
@@ -825,7 +835,7 @@
     },
     "noMain": "Päädokumenttia ei ole vielä. Valitse tiedosto ja sitten Aseta päädokumentiksi.",
     "trust": {
-      "banner": "Oleafly rajoitti joitakin toimintoja tässä kansiossa. Luotetaanko kansioon, jotta Git, pääte, agentit ja shell escape otetaan käyttöön?",
+      "banner": "Oleafly rajoitti joitakin toimintoja tässä kansiossa. Luotetaanko kansioon, jotta Git, pääte, agentit, latexmk ja Quarto otetaan käyttöön?",
       "trustFolder": "Luota tähän kansioon",
       "trustParent": "Luota yläkansioon",
       "trustRepository": "Luota repositorioon",
@@ -1808,5 +1818,20 @@
       "saved": "Tallennettu: {{name}}.",
       "missingName": "Anna katkelmalle nimi."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

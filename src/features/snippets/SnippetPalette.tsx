@@ -14,8 +14,9 @@ import {
   expandLabel,
   isMathPlace,
   placeLabel,
+  searchTerms,
   snippetFits,
-  snippetMatches,
+  snippetMatchesTerms,
   snippetMathSource,
   snippetName,
   snippetSource,
@@ -53,9 +54,11 @@ function useSnippetPalette(term: string, language: SnippetLanguage | null): Snip
   }, []);
   return useMemo(() => {
     const groups = new Map<string, SnippetPaletteGroup>();
+    const terms = searchTerms(term);
+    const lowered = term.toLowerCase();
     for (const record of library.records) {
       const name = collectionName(record.collection, files);
-      if (!snippetMatches(record, term) && !(term && name.toLowerCase().includes(term.toLowerCase()))) continue;
+      if (!snippetMatchesTerms(record, terms) && !(term && name.toLowerCase().includes(lowered))) continue;
       const group = groups.get(record.collection);
       if (group) group.records.push(record);
       else groups.set(record.collection, { collection: record.collection, name, records: [record] });

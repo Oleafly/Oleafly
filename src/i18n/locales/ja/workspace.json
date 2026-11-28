@@ -40,6 +40,7 @@
     "renameAriaLabel": "ファイル名を変更",
     "renameFailed": "「{{path}}」の名前を変更できませんでした。元のパスは変更されていません。",
     "setMain": "メイン文書に設定",
+    "compileTarget": "メイン文書ではなく、このファイルをコンパイルします",
     "title": "エクスプローラー",
     "treeAriaLabel": "エクスプローラーのファイルツリー",
     "setMainFailed": "「{{path}}」をメイン文書にできませんでした。",

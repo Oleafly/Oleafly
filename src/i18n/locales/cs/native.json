@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Důvěřovat této složce?",
-      "message": "Oleafly pro {{name}} zapne Git, terminál, agenty a nástroje LaTeXu. Důvěřujte jen složkám, jejichž obsah znáte.",
+      "message": "Oleafly pro {{name}} zapne Git, terminál, agenty, latexmk a Quarto. Kód ve složce se spustí, až když to povolíte. Důvěřujte jen složkám, jejichž obsah znáte.",
       "messageParent": "Oleafly bude důvěřovat složce {{name}} a všem složkám v ní, včetně těch, které otevřete později.",
       "messageRepository": "Oleafly bude v {{name}} spouštět Git s vlastním nastavením a hooky repozitáře.",
       "confirm": "Důvěřovat"

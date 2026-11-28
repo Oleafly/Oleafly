@@ -1,5 +1,7 @@
 mod parse;
 mod quarto;
+
+pub use quarto::PROJECT_FILES as QUARTO_PROJECT_FILES;
 #[cfg(test)]
 mod tests;
 

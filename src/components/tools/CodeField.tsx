@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, placeholder as cmPlaceholder } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { recompileShortcutBinding } from "@/components/editor/cm/recompile-shortcut";
@@ -37,6 +37,8 @@ export function CodeField({
   onChangeRef.current = onChange;
   const onViewRef = useRef(onView);
   onViewRef.current = onView;
+  const languageSlot = useRef(new Compartment());
+  const appliedLanguage = useRef(language);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recreated only on mount; value updates synced below
   useEffect(() => {
@@ -54,7 +56,7 @@ export function CodeField({
                 keymap.of([recompileShortcutBinding, ...defaultKeymap, ...historyKeymap]),
                 functionKeyTextInput,
               ]),
-          language(),
+          languageSlot.current.of(language()),
           editorTheme(),
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),
           ...(ariaLabel ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })] : []),
@@ -66,6 +68,7 @@ export function CodeField({
       parent: hostRef.current,
     });
     viewRef.current = view;
+    appliedLanguage.current = language;
     onViewRef.current?.(view);
     return () => {
       onViewRef.current?.(null);
@@ -73,6 +76,13 @@ export function CodeField({
       viewRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || appliedLanguage.current === language) return;
+    appliedLanguage.current = language;
+    view.dispatch({ effects: languageSlot.current.reconfigure(language()) });
+  }, [language]);
 
   useEffect(() => {
     const view = viewRef.current;

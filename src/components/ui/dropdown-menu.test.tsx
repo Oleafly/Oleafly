@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -19,6 +19,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { ModalShell } from "./modal-shell";
 
 const STATE_LABEL = "state";
 
@@ -130,5 +131,44 @@ describe("DropdownMenu", () => {
     await user.click(pdf);
 
     expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the rest of a modal shell readable and closes only itself on Escape", async () => {
+    const onClose = vi.fn();
+    render(
+      <ModalShell open onClose={onClose} closeLabel={"Close"}>
+        <p>{"Behind the menu"}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger>{"Language"}</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>{"LaTeX"}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ModalShell>,
+    );
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    await userEvent.click(screen.getByRole("button", { name: "Language" }));
+    expect(await screen.findByRole("menuitem", { name: "LaTeX" })).toBeInTheDocument();
+    expect(screen.getByText("Behind the menu").closest("[aria-hidden='true']")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menuitem")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("still hides the page behind a menu outside a modal shell", async () => {
+    render(
+      <>
+        <p>{"Behind the menu"}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger>{"Language"}</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>{"LaTeX"}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Language" }));
+    expect(await screen.findByRole("menuitem", { name: "LaTeX" })).toBeInTheDocument();
+    expect(screen.getByText("Behind the menu").closest("[aria-hidden='true']")).not.toBeNull();
   });
 });

@@ -429,7 +429,7 @@
       "off": "关闭",
       "on": "开启",
       "title": "自动编译",
-      "help": "停止输入几秒后自动编译。会先保存当前打开的文件。",
+      "help": "停止输入几秒后编译，并先保存打开的文件。停止后，会等到你下一次编辑。会运行代码的项目，只有在开启此项时才会在打开时编译。",
       "typstHelp": "Typst 会持续运行，在你停止输入片刻后更新 PDF。开启期间，打开的文件会自动保存。",
       "typstStarting": "正在启动 Typst",
       "typstRestarting": "Typst 正在重新启动",
@@ -453,6 +453,7 @@
       "title": "编译错误处理"
     },
     "fromScratch": "从头重新编译",
+    "wholeProject": "渲染整个 Quarto 项目",
     "mode": {
       "fast": "快速 <note>[草稿]</note>",
       "normal": "常规",
@@ -469,9 +470,8 @@
     },
     "texRootBroken": "{{file}} 中的 % !TEX root 指向一个不存在的文件（{{target}}）。",
     "texRootLabel": "TEX 根文件",
-    "texRootName": "根文件：{{name}}",
     "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 文件。",
-    "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。",
+    "texRootOverride": "编译 {{path}}（由 {{file}} 中的 % !TEX root 设置）。",
     "typstVersion": {
       "title": "Typst 版本（本项目）",
       "help": "固定版本后，即使 Oleafly 更新了 Typst，此项目的输出也保持不变。“默认”跟随设置中选择的版本。如需安装版本或在更新的版本上测试此项目，请前往设置 → 引擎 → Typst。",
@@ -512,18 +512,19 @@
     },
     "code": {
       "title": "代码（本机）",
-      "help": "Quarto 和 Calepin 可以运行此项目中的 R、Python 和 Julia 代码。代码会以你的权限运行，因此仅对你信任的项目允许。此选择仅适用于这台电脑。",
+      "help": "Quarto 和 Calepin 可以运行此项目中的 R、Python 和 Julia 代码。代码以你的权限运行，所以只对你信任的项目开启。此选择只适用于这台电脑，并会一直保留到你关闭为止。关闭后，正在运行的编译会停止。",
       "off": "关闭",
       "run": "在这台电脑上运行代码"
     },
     "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。",
     "coauthorsChanged": "自上次编译以来合作者有更改",
-    "texRootDocument": "根文件：{{path}}（它有自己的 \\documentclass）",
-    "texRootInclude": "根文件：{{path}}（它包含 {{file}}）",
-    "texRootFormat": "根文件：{{path}}（{{format}} 文档，用自己的引擎编译）",
+    "texRootDocument": "编译 {{path}}（它有自己的 \\documentclass）",
+    "texRootStandalone": "编译 {{path}}（独立文档）",
+    "texRootInclude": "编译 {{path}}（它包含 {{file}}）",
+    "texRootFormat": "编译 {{path}}（{{format}} 文档，用自己的引擎编译）",
     "target": {
       "title": "编译目标",
-      "help": "选择“跟随打开的文件”时，有自己 \\documentclass 的文件会单独编译。章节文件会编译包含它的文档。项目是其他格式时，Markdown、Typst 或 Quarto 文档会用各自的引擎单独编译。其他文件编译主文档。% !TEX root 注释始终优先。",
+      "help": "选择“跟随打开的文件”时，独立文档会单独编译：带有自己 \\documentclass 的 LaTeX 文件，或没有被其他文档包含的 Markdown、Typst 或 Quarto 文件。章节会编译包含它的文档，_quarto.yml 项目中的文件会随项目一起编译。其他文件编译主文档。% !TEX root 注释始终优先。",
       "open": "跟随打开的文件",
       "main": "始终编译主文档",
       "change": "更改主文档…"
@@ -666,7 +667,16 @@
     "followed": "{{name}} 需要运行代码，而代码只会为主文档运行。请先把 {{name}} 设为主文档，再为它允许运行代码。",
     "needed": "此文档需要运行其代码才能构建，但此项目的代码已关闭。仅在你信任项目中每个文件时才允许代码。",
     "skipped": "此项目的代码已关闭，因此此文档中的代码没有运行。仅在你信任项目中每个文件时才允许代码。",
-    "storedResults": "此项目的代码已关闭，因此 PDF 显示的是之前运行时保存的代码结果。仅在你信任项目中每个文件时才允许代码。"
+    "storedResults": "此项目的代码已关闭，因此 PDF 显示的是之前运行时保存的代码结果。仅在你信任项目中每个文件时才允许代码。",
+    "reasons": {
+      "extensions": "此项目包含可以运行程序的 Quarto 扩展，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "environment": "此项目包含 Quarto 会加载的 _environment 文件，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "shortcode": "此文档使用了 Quarto 未内置的 shortcode，而 shortcode 可以运行程序，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "filter": "此文档添加了过滤器，而过滤器可以运行程序，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "pdf_engine": "此文档向 PDF 引擎传递了选项，而 PDF 引擎可以运行程序，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "outside": "此文档读取了项目之外的文件，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。",
+      "unchecked": "Oleafly 无法检查此文档是否包含代码，所以只有允许代码时才能构建。仅在你信任项目中每个文件时才允许代码。"
+    }
   },
   "typstCjkFonts": {
     "message": "此文档包含中文、日文或韩文文本，但这台电脑上没有能显示它们的字体，所以 PDF 中缺少这些文字。",
@@ -823,7 +833,7 @@
     },
     "noMain": "还没有主文档。请选择一个文件，然后选择“设为主文档”。",
     "trust": {
-      "banner": "Oleafly 限制了此文件夹中的部分功能。要信任它并开启 Git、终端、代理和 shell escape 吗？",
+      "banner": "Oleafly 限制了此文件夹中的部分功能。要信任它并开启 Git、终端、代理、latexmk 和 Quarto 吗？",
       "trustFolder": "信任此文件夹",
       "trustParent": "信任上级文件夹",
       "trustRepository": "信任此仓库",
@@ -1772,5 +1782,20 @@
       "saved": "已保存 {{name}}。",
       "missingName": "请为代码片段命名。"
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

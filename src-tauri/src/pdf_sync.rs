@@ -3,7 +3,7 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use oleafly_core::content::ContentHash;
-use oleafly_core::pdf_sync::{free_name, numbered_name, title_stem, PdfSync};
+use oleafly_core::pdf_sync::{free_name, numbered_name, target_extension, title_stem, PdfSync};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tauri::Emitter as _;
@@ -14,10 +14,26 @@ use crate::project_location::ProjectLocation;
 const STATE_FILE: &str = "pdf-sync.json";
 const WRITTEN_EVENT: &str = "pdf-sync:written";
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SyncedOutput {
+    Pdf,
+    Page,
+}
+
+impl SyncedOutput {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Pdf => "pdf",
+            Self::Page => "html",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct CompiledPdf {
     pub(crate) output_id: String,
     pub(crate) sources: Option<String>,
+    pub(crate) kind: SyncedOutput,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -26,12 +42,31 @@ pub(crate) struct CompilePlan {
 }
 
 impl CompilePlan {
-    pub(crate) fn compiled(self, has_pdf: bool, output_id: Option<&str>) -> Option<CompiledPdf> {
+    pub(crate) fn compiled(
+        self,
+        has_pdf: bool,
+        output_id: Option<&str>,
+        page: Option<&str>,
+    ) -> Option<CompiledPdf> {
+        if has_pdf {
+            return Some(CompiledPdf {
+                output_id: output_id?.to_owned(),
+                sources: self.sources,
+                kind: SyncedOutput::Pdf,
+            });
+        }
         Some(CompiledPdf {
-            output_id: output_id.filter(|_| has_pdf)?.to_owned(),
+            output_id: page_fingerprint(Path::new(page?))?,
             sources: self.sources,
+            kind: SyncedOutput::Page,
         })
     }
+}
+
+fn page_fingerprint(page: &Path) -> Option<String> {
+    std::fs::read(page)
+        .ok()
+        .map(|bytes| crate::document_engine::fingerprint_compile_output(&bytes))
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -48,6 +83,22 @@ struct DeviceState {
     failed: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     saved: Option<SavedPdf>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    written: Vec<SavedPdf>,
+}
+
+const WRITTEN_KEPT: usize = 4;
+
+impl DeviceState {
+    fn note_written(&mut self, path: &str, bytes: &[u8]) {
+        self.written.retain(|copy| copy.path != path);
+        self.written.push(SavedPdf {
+            path: path.to_owned(),
+            hash: ContentHash::digest(bytes).to_string(),
+        });
+        let extra = self.written.len().saturating_sub(WRITTEN_KEPT);
+        self.written.drain(..extra);
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -185,26 +236,39 @@ fn names_in(root: &Path) -> HashSet<String> {
         .collect()
 }
 
-fn saved_copy_is_unchanged(device: &DeviceState, root: &Path, name: &str) -> bool {
-    device.saved.as_ref().is_some_and(|saved| {
-        saved.path == name
-            && ContentHash::digest_file(root.join(name))
-                .is_ok_and(|hash| hash.to_string() == saved.hash)
+fn own_copy_is_unchanged(device: &DeviceState, root: &Path, name: &str, shared: bool) -> bool {
+    device
+        .saved
+        .iter()
+        .filter(|_| !shared)
+        .chain(&device.written)
+        .filter(|copy| copy.path == name)
+        .any(|copy| {
+            ContentHash::digest_file(root.join(name))
+                .is_ok_and(|hash| hash.to_string() == copy.hash)
+        })
+}
+
+fn current_target<'a>(sync: &'a PdfSync, title: &str, kind: SyncedOutput) -> Option<&'a str> {
+    sync.target().filter(|path| {
+        sync.stem == title_stem(title) && target_extension(path) == Some(kind.extension())
     })
 }
 
-fn current_target<'a>(sync: &'a PdfSync, title: &str) -> Option<&'a str> {
-    sync.target().filter(|_| sync.stem == title_stem(title))
-}
-
-fn new_target(title: &str, root: &Path, device: &DeviceState, shared: bool) -> (String, String) {
+fn new_target(
+    title: &str,
+    root: &Path,
+    device: &DeviceState,
+    shared: bool,
+    kind: SyncedOutput,
+) -> (String, String) {
     let stem = title_stem(title);
-    let first = numbered_name(&stem, 1);
-    let path = if !shared && saved_copy_is_unchanged(device, root, &first) {
+    let first = numbered_name(&stem, 1, kind.extension());
+    let path = if own_copy_is_unchanged(device, root, &first, shared) {
         first
     } else {
         let taken = names_in(root);
-        free_name(&stem, |name| {
+        free_name(&stem, kind.extension(), |name| {
             taken.contains(&oleafly_core::portable::fold(name))
         })
     };
@@ -217,12 +281,13 @@ fn claim_target(
     root: &Path,
     device: &DeviceState,
     shared: bool,
+    kind: SyncedOutput,
 ) -> Result<String, String> {
     let sync = meta.pdf_sync.clone().unwrap_or_default();
-    if let Some(path) = current_target(&sync, &meta.name) {
+    if let Some(path) = current_target(&sync, &meta.name, kind) {
         return Ok(path.to_owned());
     }
-    let (stem, path) = new_target(&meta.name, root, device, shared);
+    let (stem, path) = new_target(&meta.name, root, device, shared, kind);
     let claimed = path.clone();
     crate::project::update_pdf_sync(project_id, move |sync| {
         sync.stem = stem;
@@ -231,27 +296,40 @@ fn claim_target(
     Ok(path)
 }
 
+fn compiled_output_file(
+    project_id: &str,
+    meta: &ProjectMeta,
+    main_document: &str,
+    kind: SyncedOutput,
+) -> Result<Option<std::path::PathBuf>, String> {
+    match kind {
+        SyncedOutput::Pdf => crate::document_engine::existing_compiled_pdf_path(
+            project_id,
+            &meta.engine,
+            main_document,
+        ),
+        SyncedOutput::Page => Ok(crate::notebook_toolchain::compiled_page(
+            project_id,
+            main_document,
+        )),
+    }
+}
+
 fn compiled_bytes(
     project_id: &str,
     meta: &ProjectMeta,
     main_document: &str,
-    output_id: &str,
+    compiled: &CompiledPdf,
 ) -> Result<Option<Vec<u8>>, String> {
-    let Some(pdf) = crate::document_engine::existing_compiled_pdf_path(
-        project_id,
-        &meta.engine,
-        main_document,
-    )?
-    else {
+    let Some(output) = compiled_output_file(project_id, meta, main_document, compiled.kind)? else {
         return Ok(None);
     };
-    match std::fs::read(&pdf) {
-        Ok(bytes) => Ok(
-            (crate::document_engine::fingerprint_compile_output(&bytes) == output_id)
-                .then_some(bytes),
-        ),
+    match std::fs::read(&output) {
+        Ok(bytes) => Ok((crate::document_engine::fingerprint_compile_output(&bytes)
+            == compiled.output_id)
+            .then_some(bytes)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(format!("could not read the compiled PDF: {error}")),
+        Err(error) => Err(format!("could not read the compiled output: {error}")),
     }
 }
 
@@ -267,7 +345,7 @@ fn nothing_changed(
         && meta
             .pdf_sync
             .as_ref()
-            .and_then(|sync| current_target(sync, &meta.name))
+            .and_then(|sync| current_target(sync, &meta.name, compiled.kind))
             .is_some_and(|path| root.join(path).is_file())
 }
 
@@ -285,11 +363,18 @@ pub(crate) fn sync_compiled(
     if nothing_changed(&meta, &location.root, &device, compiled) {
         return Ok(None);
     }
-    let Some(bytes) = compiled_bytes(project_id, &meta, main_document, &compiled.output_id)? else {
+    let Some(bytes) = compiled_bytes(project_id, &meta, main_document, compiled)? else {
         return Ok(None);
     };
     let shared = crate::collab::registry::is_shared(project_id);
-    let target = claim_target(project_id, &meta, &location.root, &device, shared)?;
+    let target = claim_target(
+        project_id,
+        &meta,
+        &location.root,
+        &device,
+        shared,
+        compiled.kind,
+    )?;
     if shared && !crate::collab::disk::ShareRules::load(&location.root).leaves_out(&target, false) {
         return Ok(None);
     }
@@ -297,6 +382,7 @@ pub(crate) fn sync_compiled(
         Ok(written) => {
             device.sources = compiled.sources.clone();
             device.failed = None;
+            device.note_written(&target, &bytes);
             write_state(&location, &device)?;
             Ok(written.then_some(target))
         }
@@ -358,19 +444,36 @@ fn status(project_id: &str) -> Result<PdfSyncStatus, String> {
     })
 }
 
+fn shown_output(
+    project_id: &str,
+    meta: &ProjectMeta,
+    output_id: Option<String>,
+    page: bool,
+) -> Option<(String, SyncedOutput)> {
+    if !page {
+        return output_id.map(|output_id| (output_id, SyncedOutput::Pdf));
+    }
+    let page = crate::notebook_toolchain::compiled_page(project_id, &meta.main_doc)?;
+    Some((page_fingerprint(&page)?, SyncedOutput::Page))
+}
+
 fn set_enabled(
     project_id: &str,
     enabled: bool,
     output_id: Option<String>,
+    page: bool,
 ) -> Result<Result<Option<String>, String>, String> {
     let meta = crate::project::update_pdf_sync(project_id, |sync| sync.enabled = enabled)?;
-    let Some(output_id) = output_id.filter(|_| enabled) else {
+    let Some((output_id, kind)) =
+        shown_output(project_id, &meta, output_id, page).filter(|_| enabled)
+    else {
         return Ok(Ok(None));
     };
     let location = crate::project_location::locate(project_id)?;
     let compiled = CompiledPdf {
         output_id,
         sources: stamp_for(&meta, &location.root),
+        kind,
     };
     Ok(sync_compiled(project_id, &meta.main_doc, &compiled))
 }
@@ -400,10 +503,12 @@ pub async fn pdf_sync_set(
     project_id: String,
     enabled: bool,
     output_id: Option<String>,
+    page: Option<bool>,
 ) -> Result<PdfSyncStatus, String> {
     let id = project_id.clone();
+    let page = page.unwrap_or(false);
     let outcome =
-        tauri::async_runtime::spawn_blocking(move || set_enabled(&id, enabled, output_id))
+        tauri::async_runtime::spawn_blocking(move || set_enabled(&id, enabled, output_id, page))
             .await
             .map_err(|error| format!("PDF sync task failed: {error}"))??;
     report(&app, &project_id, outcome);
@@ -446,6 +551,7 @@ mod tests {
         CompiledPdf {
             output_id: "pdf-v1:1:aa".to_owned(),
             sources: sources.map(str::to_owned),
+            kind: SyncedOutput::Pdf,
         }
     }
 
@@ -502,25 +608,42 @@ mod tests {
 
     #[test]
     fn a_title_change_retires_the_current_target() {
+        let pdf = SyncedOutput::Pdf;
         let sync = synced("Thesis", "Thesis.pdf");
-        assert_eq!(current_target(&sync, "Thesis"), Some("Thesis.pdf"));
-        assert_eq!(current_target(&sync, "Dissertation"), None);
+        assert_eq!(current_target(&sync, "Thesis", pdf), Some("Thesis.pdf"));
+        assert_eq!(current_target(&sync, "Dissertation", pdf), None);
+        assert_eq!(current_target(&sync, "Thesis", SyncedOutput::Page), None);
         let numbered = synced("Thesis", "Thesis_2.pdf");
-        assert_eq!(current_target(&numbered, "Thesis"), Some("Thesis_2.pdf"));
+        assert_eq!(
+            current_target(&numbered, "Thesis", pdf),
+            Some("Thesis_2.pdf")
+        );
     }
 
     #[test]
     fn a_new_target_never_lands_on_a_file_that_is_already_there() {
         let folder = tempfile::tempdir().unwrap();
         let root = folder.path();
-        let (stem, path) = new_target("Thesis: Final", root, &DeviceState::default(), false);
+        let (stem, path) = new_target(
+            "Thesis: Final",
+            root,
+            &DeviceState::default(),
+            false,
+            SyncedOutput::Pdf,
+        );
         assert_eq!(
             (stem.as_str(), path.as_str()),
             ("Thesis_Final", "Thesis_Final.pdf")
         );
 
         std::fs::write(root.join("THESIS_FINAL.PDF"), "someone else's").unwrap();
-        let (_, path) = new_target("Thesis: Final", root, &DeviceState::default(), false);
+        let (_, path) = new_target(
+            "Thesis: Final",
+            root,
+            &DeviceState::default(),
+            false,
+            SyncedOutput::Pdf,
+        );
         assert_eq!(path, "Thesis_Final_2.pdf");
     }
 
@@ -538,11 +661,31 @@ mod tests {
             }),
             ..DeviceState::default()
         };
-        assert_eq!(new_target("Thesis", root, &saved, false).1, "Thesis.pdf");
-        assert_eq!(new_target("Thesis", root, &saved, true).1, "Thesis_2.pdf");
+        assert_eq!(
+            new_target("Thesis", root, &saved, false, SyncedOutput::Pdf).1,
+            "Thesis.pdf"
+        );
+        assert_eq!(
+            new_target("Thesis", root, &saved, true, SyncedOutput::Pdf).1,
+            "Thesis_2.pdf"
+        );
+
+        let mut synced = DeviceState::default();
+        synced.note_written("Thesis.pdf", b"saved");
+        assert_eq!(
+            new_target("Thesis", root, &synced, true, SyncedOutput::Pdf).1,
+            "Thesis.pdf"
+        );
 
         std::fs::write(root.join("Thesis.pdf"), "edited by hand").unwrap();
-        assert_eq!(new_target("Thesis", root, &saved, false).1, "Thesis_2.pdf");
+        assert_eq!(
+            new_target("Thesis", root, &saved, false, SyncedOutput::Pdf).1,
+            "Thesis_2.pdf"
+        );
+        assert_eq!(
+            new_target("Thesis", root, &synced, true, SyncedOutput::Pdf).1,
+            "Thesis_2.pdf"
+        );
     }
 
     #[test]
@@ -627,6 +770,7 @@ mod tests {
             CompiledPdf {
                 output_id: crate::document_engine::fingerprint_compile_output(bytes),
                 sources: Some(sources.to_owned()),
+                kind: SyncedOutput::Pdf,
             }
         }
 
@@ -745,14 +889,19 @@ mod tests {
         note_saved(project.id, "Thesis.pdf").unwrap();
         let shown = project.built(b"%PDF shown", "ignored");
 
-        let outcome = set_enabled(project.id, true, Some(shown.output_id.clone())).unwrap();
+        let outcome = set_enabled(project.id, true, Some(shown.output_id.clone()), false).unwrap();
         assert_eq!(outcome.unwrap().as_deref(), Some("Thesis.pdf"));
         assert_eq!(project.read("Thesis.pdf"), b"%PDF shown");
         let current = status(project.id).unwrap();
         assert!(current.enabled);
         assert_eq!(current.path.as_deref(), Some("Thesis.pdf"));
 
-        assert_eq!(set_enabled(project.id, false, None).unwrap().unwrap(), None);
+        assert_eq!(
+            set_enabled(project.id, false, None, false)
+                .unwrap()
+                .unwrap(),
+            None
+        );
         assert!(!status(project.id).unwrap().enabled);
         assert_eq!(project.read("Thesis.pdf"), b"%PDF shown");
     }
@@ -798,10 +947,65 @@ mod tests {
             sources: Some("s1".to_owned()),
         };
         assert_eq!(
-            plan.clone().compiled(true, Some("pdf-v1:1:aa")),
+            plan.clone().compiled(true, Some("pdf-v1:1:aa"), None),
             Some(compiled(Some("s1")))
         );
-        assert_eq!(plan.clone().compiled(false, Some("pdf-v1:1:aa")), None);
-        assert_eq!(plan.compiled(true, None), None);
+        assert_eq!(
+            plan.clone().compiled(false, Some("pdf-v1:1:aa"), None),
+            None
+        );
+        assert_eq!(plan.clone().compiled(true, None, None), None);
+        assert_eq!(plan.compiled(false, None, Some("/missing/page.html")), None);
+    }
+
+    #[test]
+    fn a_web_page_syncs_to_its_own_html_file_beside_the_pdf() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let project = Fixture::new("pdf-sync-page", "Report", SYNC_ON);
+        let page = project
+            .build
+            .join(format!("{}.html", crate::paths::ENTRY_STEM));
+        std::fs::write(&page, "<html>one</html>").unwrap();
+        let plan = CompilePlan {
+            sources: Some("s1".to_owned()),
+        };
+        let built = plan
+            .compiled(false, None, Some(page.to_str().unwrap()))
+            .unwrap();
+        assert_eq!(built.kind, SyncedOutput::Page);
+        assert_eq!(
+            project.sync(&built).unwrap().as_deref(),
+            Some("Report.html")
+        );
+        assert_eq!(project.read("Report.html"), b"<html>one</html>");
+
+        let pdf = project.built(b"%PDF", "s2");
+        assert_eq!(project.sync(&pdf).unwrap().as_deref(), Some("Report.pdf"));
+        assert_eq!(project.read("Report.html"), b"<html>one</html>");
+
+        std::fs::write(&page, "<html>two</html>").unwrap();
+        let shown = set_enabled(project.id, true, None, true).unwrap();
+        assert_eq!(shown.unwrap().as_deref(), Some("Report.html"));
+        assert_eq!(project.read("Report.html"), b"<html>two</html>");
+    }
+
+    #[test]
+    fn a_page_of_a_quarto_website_or_book_is_never_synced_alone() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let project = Fixture::new("pdf-sync-site", "Site", SYNC_ON);
+        std::fs::write(
+            project.root.join("_quarto.yml"),
+            "project:\n  type: website\n",
+        )
+        .unwrap();
+        let page = project
+            .build
+            .join(format!("{}.html", crate::paths::ENTRY_STEM));
+        std::fs::write(&page, "<html>site</html>").unwrap();
+        let built = CompilePlan { sources: None }
+            .compiled(false, None, Some(page.to_str().unwrap()))
+            .unwrap();
+        assert_eq!(project.sync(&built).unwrap(), None);
+        assert!(!project.root.join("Site.html").exists());
     }
 }

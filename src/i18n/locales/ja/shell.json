@@ -429,7 +429,7 @@
       "off": "オフ",
       "on": "オン",
       "title": "自動コンパイル",
-      "help": "入力を止めて数秒後にコンパイルします。開いているファイルは先に保存されます。",
+      "help": "入力をやめて数秒後にコンパイルします。開いているファイルは先に保存されます。停止した後は、次に編集するまで待ちます。コードを実行するプロジェクトは、これがオンのときだけ開いたときにコンパイルされます。",
       "typstHelp": "Typst は動作し続け、入力を止めた少し後に PDF を更新します。オンの間、開いているファイルは自動で保存されます。",
       "typstStarting": "Typst を起動しています",
       "typstRestarting": "Typst を再起動しています",
@@ -453,6 +453,7 @@
       "title": "コンパイルエラーの扱い"
     },
     "fromScratch": "最初から再コンパイル",
+    "wholeProject": "Quarto プロジェクト全体をレンダリング",
     "mode": {
       "fast": "高速 <note>[下書き]</note>",
       "normal": "通常",
@@ -469,9 +470,8 @@
     },
     "texRootBroken": "{{file}} の % !TEX root が存在しないファイル（{{target}}）を指しています",
     "texRootLabel": "TEX root",
-    "texRootName": "root: {{name}}",
     "texRootNotTex": "{{file}} の % !TEX root が、LaTeX ファイルではない {{target}} を指しています",
-    "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）",
+    "texRootOverride": "{{path}} をコンパイルします（{{file}} の % !TEX root による指定）",
     "typstVersion": {
       "title": "Typst のバージョン（このプロジェクト）",
       "help": "バージョンを固定すると、Oleafly が Typst を更新しても、このプロジェクトの出力は変わりません。「既定」は設定で選んだバージョンに従います。バージョンをインストールしたり、新しいバージョンでこのプロジェクトを試したりするには、設定 → エンジン → Typst を開いてください。",
@@ -512,18 +512,19 @@
     },
     "code": {
       "title": "コード（このコンピュータ）",
-      "help": "Quarto と Calepin は、このプロジェクト内の R、Python、Julia のコードを実行できます。コードはあなたの権限で実行されるため、信頼できるプロジェクトでのみ許可してください。この選択はこのコンピュータにのみ適用されます。",
+      "help": "Quarto と Calepin は、このプロジェクトの R、Python、Julia コードを実行できます。コードはあなたの権限で動くため、信頼できるプロジェクトでだけ許可してください。この設定はこのコンピュータだけに適用され、オフにするまで続きます。オフにすると、実行中のコンパイルは止まります。",
       "off": "オフ",
       "run": "このコンピュータでコードを実行"
     },
     "sharedViewer": "共有プロジェクトでは、これらの設定を変更できるのは所有者と編集者だけです。",
     "coauthorsChanged": "前回のコンパイル以降に共著者が変更",
-    "texRootDocument": "root: {{path}}（独自の \\documentclass があります）",
-    "texRootInclude": "root: {{path}}（{{file}} を取り込んでいます）",
-    "texRootFormat": "root: {{path}}（{{format}} 文書、専用のエンジンでビルド）",
+    "texRootDocument": "{{path}} をコンパイルします（独自の \\documentclass があります）",
+    "texRootStandalone": "{{path}} をコンパイルします（独立した文書）",
+    "texRootInclude": "{{path}} をコンパイルします（{{file}} を取り込んでいます）",
+    "texRootFormat": "{{path}} をコンパイルします（{{format}} 文書、専用のエンジンでビルド）",
     "target": {
       "title": "コンパイル対象",
-      "help": "「開いているファイルに合わせる」では、独自の \\documentclass を持つファイルはそのファイルだけをコンパイルします。章や節は、それを取り込んでいる文書をコンパイルします。プロジェクトの形式が異なる場合、Markdown、Typst、Quarto の文書はそれぞれのエンジンで単独でコンパイルします。そのほかのファイルはメイン文書をコンパイルします。% !TEX root コメントが常に優先されます。",
+      "help": "「開いているファイルに追従」では、独立した文書はそれ自体をコンパイルします。独自の \\documentclass を持つ LaTeX ファイルや、ほかの文書から取り込まれていない Markdown、Typst、Quarto ファイルです。章や節は、それを取り込む文書をコンパイルします。_quarto.yml プロジェクトのファイルはプロジェクトと一緒にコンパイルされます。その他のファイルはメイン文書をコンパイルします。% !TEX root コメントが常に優先されます。",
       "open": "開いているファイルに合わせる",
       "main": "常にメイン文書",
       "change": "メイン文書を変更…"
@@ -666,7 +667,16 @@
     "followed": "{{name}} はコードを実行する必要がありますが、コードはメイン文書でしか実行されません。{{name}} をメイン文書にしてから、コードを許可してください。",
     "needed": "この文書はビルドのためにコードを実行する必要がありますが、このプロジェクトではコードがオフになっています。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
     "skipped": "このプロジェクトではコードがオフになっているため、この文書のコードは実行されませんでした。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
-    "storedResults": "このプロジェクトではコードがオフになっているため、PDF には以前の実行で保存されたコードの結果が表示されています。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。"
+    "storedResults": "このプロジェクトではコードがオフになっているため、PDF には以前の実行で保存されたコードの結果が表示されています。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+    "reasons": {
+      "extensions": "このプロジェクトにはプログラムを実行できる Quarto 拡張機能があるため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "environment": "このプロジェクトには Quarto が読み込む _environment ファイルがあるため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "shortcode": "この文書は Quarto に組み込まれていないショートコードを使っています。ショートコードはプログラムを実行できるため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "filter": "この文書はフィルタを追加しています。フィルタはプログラムを実行できるため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "pdf_engine": "この文書は PDF エンジンにオプションを渡しています。PDF エンジンはプログラムを実行できるため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "outside": "この文書はプロジェクト外のファイルを読み込むため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。",
+      "unchecked": "Oleafly はこの文書にコードがあるか確認できなかったため、コードを許可したときだけビルドされます。プロジェクト内のすべてのファイルを信頼できる場合にのみ、コードを許可してください。"
+    }
   },
   "typstCjkFonts": {
     "message": "この文書には、このコンピュータのどのフォントでも表示できない中国語・日本語・韓国語のテキストがあるため、PDF には表示されません。",
@@ -823,7 +833,7 @@
     },
     "noMain": "メイン文書はまだありません。ファイルを選び、「メイン文書に設定」を選んでください。",
     "trust": {
-      "banner": "Oleafly はこのフォルダで一部の機能を制限しました。このフォルダを信頼して、Git、ターミナル、エージェント、shell escape を使えるようにしますか？",
+      "banner": "Oleafly はこのフォルダで一部の機能を制限しました。このフォルダを信頼して、Git、ターミナル、エージェント、latexmk、Quarto を使えるようにしますか？",
       "trustFolder": "このフォルダを信頼",
       "trustParent": "親フォルダを信頼",
       "trustRepository": "リポジトリを信頼",
@@ -1772,5 +1782,20 @@
       "saved": "{{name}} を保存しました。",
       "missingName": "スニペットに名前を付けてください。"
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

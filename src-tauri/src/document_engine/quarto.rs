@@ -13,21 +13,56 @@ mod code_off;
 mod siblings;
 
 pub(crate) use oleafly_core::engine_spec::front_matter;
-pub(crate) use siblings::SiblingHold;
+pub(crate) use siblings::{knit_files, SiblingHold};
 
 pub(super) struct QuartoEngine;
 pub(super) static QUARTO_ENGINE: QuartoEngine = QuartoEngine;
 
 pub(crate) const CODE_SKIPPED_CODE: &str = "notebook.code_skipped";
-pub(super) const SETUP_CODES: [&str; 8] = [
+pub(super) const SETUP_CODES: [&str; 9] = [
     "notebook.quarto_needs_tex",
-    "notebook.r_package_missing",
+    R_PACKAGE_CODE,
+    PYTHON_MODULE_CODE,
     "notebook.r_missing",
     "notebook.python_missing",
     JUPYTER_COMMAND_CODE,
     "notebook.chrome_missing",
     "notebook.quarto_no_input",
     "notebook.not_project_input",
+];
+const FORMAT_NOT_SHOWN_CODE: &str = "notebook.format_not_shown";
+const MATH_METHOD_KEY: &str = "html-math-method";
+const R_PACKAGE_CODE: &str = "notebook.r_package_missing";
+const R_DOCUMENT_PACKAGES: [&str; 2] = ["knitr", "rmarkdown"];
+const PYTHON_MODULE_CODE: &str = "notebook.python_module_missing";
+const PYTHON_MODULE_HINT: &str = "This document's Python code needs a module that isn't installed. Install it, then compile again.";
+const JUPYTER_PARTS: [&str; 5] = [
+    "jupyter",
+    "jupyter_core",
+    "nbformat",
+    "nbclient",
+    "ipykernel",
+];
+const PIP_NAMES: [(&str, &str); 19] = [
+    ("Crypto", "pycryptodome"),
+    ("serial", "pyserial"),
+    ("jwt", "PyJWT"),
+    ("fitz", "PyMuPDF"),
+    ("magic", "python-magic"),
+    ("OpenSSL", "pyOpenSSL"),
+    ("telegram", "python-telegram-bot"),
+    ("sklearn", "scikit-learn"),
+    ("skimage", "scikit-image"),
+    ("cv2", "opencv-python"),
+    ("PIL", "pillow"),
+    ("yaml", "pyyaml"),
+    ("bs4", "beautifulsoup4"),
+    ("dateutil", "python-dateutil"),
+    ("Bio", "biopython"),
+    ("docx", "python-docx"),
+    ("dotenv", "python-dotenv"),
+    ("attr", "attrs"),
+    ("google.protobuf", "protobuf"),
 ];
 const JUPYTER_CODE: &str = "notebook.jupyter_missing";
 const JUPYTER_COMMAND_CODE: &str = "notebook.jupyter_missing_command";
@@ -40,6 +75,8 @@ const CHINESE_FONT: &str = "FandolSong-Regular.otf";
 const JULIA_NOT_RUN_CODE: &str = "notebook.julia_not_run";
 const OUTPUT_DIR_REFUSAL: &str = "--output-dir flag can only be used when rendering projects";
 const EMBED_RESOURCES: &str = "embed-resources:true";
+const FIGURE_FORMAT_KEY: &str = "fig-format";
+const FIGURE_DPI_KEY: &str = "fig-dpi";
 const SOURCE_LIMIT: u64 = 4 * 1024 * 1024;
 const YAML_LIMIT: u64 = 256 * 1024;
 const PROJECT_FILES: [&str; 4] = [
@@ -155,6 +192,16 @@ impl DocumentEngine for QuartoEngine {
             allow_code: options.allow_shell_escape,
         };
         let mut spec = plan.spec(artifacts, options.source_date_epoch)?;
+        let project_root = code_off::quarto_project_dir(&placement(&plan.input).document);
+        if let Some(root) = project_root.filter(|_| options.whole_project) {
+            check_whole_project(project_dir, &root, options.allow_shell_escape)?;
+            render_whole_project(&mut spec, &root);
+        } else if let Some(book) = (!plan.output.html)
+            .then(|| book_folder(&plan.input))
+            .flatten()
+        {
+            check_whole_project(project_dir, &book, options.allow_shell_escape)?;
+        }
         siblings::refuse_overwrite(project_dir, &plan.input, out_dir, &format, &source, &yaml)?;
         if siblings::keeps_aux_files(&format, &source, &yaml) {
             spec.args
@@ -175,6 +222,21 @@ impl DocumentEngine for QuartoEngine {
     ) -> Vec<CompileError> {
         let source = read_bounded(spec.input.path(), SOURCE_LIMIT).unwrap_or_default();
         let mut notes: Vec<CompileError> = tex_log_glyph_warning(spec).into_iter().collect();
+        let yaml = project_yaml(
+            spec.environment.path_excluded_root(&spec.working_dir),
+            spec.input.path(),
+        );
+        if let Some(formats) =
+            unshown_formats(&source).filter(|_| quarto_target(&source, &yaml).html)
+        {
+            notes.push(CompileError {
+                message: format!("This document asks for {formats}, which the preview can't show, so the preview is HTML."),
+                kind: "warning".into(),
+                code: Some(FORMAT_NOT_SHOWN_CODE.into()),
+                params: std::collections::BTreeMap::from([("formats".to_owned(), formats)]),
+                ..CompileError::default()
+            });
+        }
         notes.extend(julia_note(&source, options, log).filter(|_| !frozen(spec.input.path())));
         if !options.allow_shell_escape
             && spec.args.iter().any(|arg| arg == "--no-execute")
@@ -215,6 +277,25 @@ pub(super) fn document_render_spec(
     }
     let mut fallback = spec.clone();
     fallback.args.drain(flag..=flag + 1);
+    if flag_value(&fallback.args, "--output").is_none() {
+        let html = spec.artifacts.html.is_some()
+            || format_argument(&spec.args)
+                .and_then(format_is_html)
+                .unwrap_or(false);
+        let extension = if html { "html" } else { "pdf" };
+        let at = fallback
+            .args
+            .iter()
+            .position(|arg| arg == "--to")
+            .map_or(fallback.args.len(), |to| to + 2);
+        fallback.args.splice(
+            at..at,
+            [
+                "--output".to_owned(),
+                format!("{}.{extension}", crate::paths::ENTRY_STEM),
+            ],
+        );
+    }
     if spec.artifacts.html.is_some() && !spec.args.iter().any(|arg| arg == EMBED_RESOURCES) {
         fallback
             .args
@@ -243,6 +324,98 @@ pub(super) fn collect_document_render(spec: &EngineCompileSpec) -> std::io::Resu
     }
     let _ = std::fs::remove_file(&target);
     oleafly_core::atomic::move_file(&rendered, &target)
+}
+
+pub(super) fn newest_with_extension(
+    folder: &Path,
+    extension: &str,
+    since: std::time::SystemTime,
+) -> Option<PathBuf> {
+    let mut stack = vec![(folder.to_path_buf(), 0)];
+    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+    while let Some((directory, depth)) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&directory) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.is_dir() && depth < 3 {
+                stack.push((path, depth + 1));
+                continue;
+            }
+            let matches = metadata.is_file()
+                && path
+                    .extension()
+                    .is_some_and(|found| found.eq_ignore_ascii_case(extension))
+                && path
+                    .file_stem()
+                    .is_none_or(|stem| stem != crate::paths::ENTRY_STEM);
+            let Some(modified) = metadata
+                .modified()
+                .ok()
+                .filter(|modified| *modified >= since)
+            else {
+                continue;
+            };
+            if matches && newest.as_ref().is_none_or(|(known, _)| modified > *known) {
+                newest = Some((modified, path));
+            }
+        }
+    }
+    newest.map(|(_, path)| path)
+}
+
+pub(super) fn collect_project_render(
+    spec: &EngineCompileSpec,
+    since: std::time::SystemTime,
+) -> std::io::Result<()> {
+    if flag_value(&spec.args, "--output").is_some()
+        || flag_value(&spec.args, "--output-dir").is_none()
+    {
+        return Ok(());
+    }
+    let Some(target) = spec
+        .artifacts
+        .html
+        .clone()
+        .or_else(|| spec.artifacts.pdf.clone())
+    else {
+        return Ok(());
+    };
+    let Some(extension) = target
+        .extension()
+        .map(|extension| extension.to_string_lossy().into_owned())
+    else {
+        return Ok(());
+    };
+    let input = spec.input.path();
+    let named = input.file_stem().map(|stem| {
+        spec.artifacts
+            .output_dir
+            .join(placement(input).nested)
+            .join(format!("{}.{extension}", stem.to_string_lossy()))
+    });
+    let fresh = |path: &PathBuf| {
+        std::fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .is_ok_and(|modified| {
+                crate::notebook_toolchain::is_plain_file(path) && modified >= since
+            })
+    };
+    let rendered = named
+        .filter(fresh)
+        .or_else(|| newest_with_extension(&spec.artifacts.output_dir, &extension, since));
+    let Some(rendered) = rendered.filter(|rendered| *rendered != target) else {
+        return Ok(());
+    };
+    if let Some(folder) = target.parent() {
+        std::fs::create_dir_all(folder)?;
+    }
+    let _ = std::fs::remove_file(&target);
+    std::fs::copy(&rendered, &target).map(|_| ())
 }
 
 pub(super) fn hold_siblings(spec: &EngineCompileSpec) -> Result<Option<SiblingHold>, String> {
@@ -466,10 +639,11 @@ impl QuartoRun {
         source_date_epoch: Option<u64>,
     ) -> Result<EngineCompileSpec, String> {
         reject_project_local(&self.quarto, &self.project_dir)?;
-        if !self.allow_code && code_off::code_needed(&self.project_dir, &self.input) {
-            return Err(AppError::new("notebook.code_needed")
-                .param("engine", NotebookTool::Quarto.label())
-                .into());
+        if let Some(reason) = (!self.allow_code)
+            .then(|| code_off::code_needed(&self.project_dir, &self.input))
+            .flatten()
+        {
+            return Err(code_needed_error(reason));
         }
         let extension = self.extension.unwrap_or(self.output.extension());
         let place = placement(&self.input);
@@ -477,10 +651,12 @@ impl QuartoRun {
             .input
             .file_name()
             .map_or_else(|| self.input.clone(), |name| place.document.join(name));
+        let entry = format!("{}.{extension}", crate::paths::ENTRY_STEM);
+        let in_project = self.extension.is_none() && !renders_one_page(&self.input);
         let mut args = quarto_args(
             &input,
             &self.output.format,
-            &format!("{}.{extension}", crate::paths::ENTRY_STEM),
+            (!in_project).then_some(entry.as_str()),
             &real_folder(&self.out_dir, cfg!(windows)),
             self.allow_code,
         );
@@ -489,6 +665,20 @@ impl QuartoRun {
             // Oleafly renders one format, so Quarto's "Other Formats" links
             // would point at files that are never built.
             args.extend(["-M".to_owned(), "format-links:false".to_owned()]);
+            if self.extension.is_none() && !self.picks_math_method() {
+                args.extend(["-M".to_owned(), "html-math-method:mathml".to_owned()]);
+            }
+            if self.extension.is_none() && !in_project {
+                args.extend(["-M".to_owned(), EMBED_RESOURCES.to_owned()]);
+            }
+        }
+        if self.draws_r_figures_without_cairo() {
+            // CRAN's R for macOS draws SVG through cairo, which loads XQuartz
+            // libraries, so Quarto's default SVG figures fail for Typst there.
+            args.extend(["-M".to_owned(), "fig-format:png".to_owned()]);
+            if !self.picks(FIGURE_DPI_KEY) {
+                args.extend(["-M".to_owned(), "fig-dpi:300".to_owned()]);
+            }
         }
         if !self.allow_code && self.previews_without_r() {
             args.extend(["-M".to_owned(), "engine:markdown".to_owned()]);
@@ -525,6 +715,25 @@ impl QuartoRun {
             },
             environment,
         })
+    }
+
+    fn picks_math_method(&self) -> bool {
+        self.picks(MATH_METHOD_KEY)
+    }
+
+    fn picks(&self, key: &str) -> bool {
+        let source = read_bounded(&self.input, SOURCE_LIMIT).unwrap_or_default();
+        front_matter(&source).is_some_and(|yaml| yaml.contains(key))
+            || project_yaml(&self.project_dir, &self.input)
+                .iter()
+                .any(|yaml| yaml.contains(key))
+    }
+
+    fn draws_r_figures_without_cairo(&self) -> bool {
+        cfg!(target_os = "macos")
+            && self.output.format.rsplit('-').next() == Some("typst")
+            && !self.picks(FIGURE_FORMAT_KEY)
+            && code_off::uses_knitr(&self.project_dir, &self.input)
     }
 
     fn previews_without_r(&self) -> bool {
@@ -566,16 +775,22 @@ pub(super) fn export_spec(
     let source = read_bounded(&input, SOURCE_LIMIT).unwrap_or_default();
     let yaml = project_yaml(project_dir, &input);
     let html = format == "html";
+    let pdf = format == "pdf";
+    let format_name = export_format(&source, &yaml, format);
     let run = QuartoRun {
         quarto,
         input: input.clone(),
         out_dir: out_dir.to_owned(),
         project_dir: project_dir.to_owned(),
         output: QuartoTarget {
-            format: export_format(&source, &yaml, format),
+            format: format_name.clone(),
             html,
         },
-        extension: Some(if html { "html" } else { "docx" }),
+        extension: Some(match format {
+            "html" => "html",
+            "pdf" => "pdf",
+            _ => "docx",
+        }),
         allow_code,
     };
     let artifacts = EngineArtifacts {
@@ -589,7 +804,62 @@ pub(super) fn export_spec(
     if html {
         embed_html_output(&mut spec, out_dir, &input);
     }
+    if pdf {
+        siblings::refuse_overwrite(project_dir, &input, out_dir, &format_name, &source, &yaml)?;
+        if siblings::keeps_aux_files(&format_name, &source, &yaml) {
+            spec.args
+                .extend(["-M".to_owned(), siblings::KEEP_AUX_METADATA.to_owned()]);
+        }
+    }
+    if let Some(book) = (!html).then(|| book_folder(&input)).flatten() {
+        check_whole_project(project_dir, &book, allow_code)?;
+        render_whole_project(&mut spec, &book);
+    }
     Ok(spec)
+}
+
+fn code_needed_error(reason: &str) -> String {
+    AppError::new("notebook.code_needed")
+        .param("engine", NotebookTool::Quarto.label())
+        .param("reason", reason)
+        .into()
+}
+
+fn check_whole_project(project_dir: &Path, root: &Path, allow_code: bool) -> Result<(), String> {
+    match (!allow_code)
+        .then(|| code_off::project_code_needed(project_dir, root))
+        .flatten()
+    {
+        Some(reason) => Err(code_needed_error(reason)),
+        None => Ok(()),
+    }
+}
+
+fn book_folder(input: &Path) -> Option<PathBuf> {
+    let folder = code_off::quarto_project_dir(&placement(input).document)?;
+    let text = code_off::QUARTO_PROJECT_FILES
+        .iter()
+        .find_map(|name| read_bounded(&folder.join(name), YAML_LIMIT))?;
+    let field = |mapping: &serde_norway::Mapping, key: &str| {
+        mapping
+            .get(serde_norway::Value::String(key.to_owned()))
+            .cloned()
+    };
+    let project = field(&yaml_mapping(&text)?, "project")?;
+    let kind = field(project.as_mapping()?, "type")?;
+    (kind.as_str() == Some("book")).then_some(folder)
+}
+
+fn render_whole_project(spec: &mut EngineCompileSpec, book: &Path) {
+    if let Some(at) = spec.args.iter().position(|arg| arg == "--output") {
+        spec.args.drain(at..=at + 1);
+    }
+    if let Some(input) = spec.args.get_mut(1) {
+        *input = oleafly_core::plain_path(book)
+            .to_string_lossy()
+            .into_owned();
+    }
+    spec.working_dir = book.to_path_buf();
 }
 
 fn embed_html_output(spec: &mut EngineCompileSpec, out_dir: &Path, input: &Path) {
@@ -600,6 +870,10 @@ fn embed_html_output(spec: &mut EngineCompileSpec, out_dir: &Path, input: &Path)
         "self-contained-math:true".to_owned(),
     ]);
     spec.artifacts.html = Some(html_artifact(out_dir, input));
+}
+
+pub(crate) fn renders_one_page(input: &Path) -> bool {
+    code_off::quarto_project_dir(&placement(input).document).is_none()
 }
 
 pub(super) fn reject_project_local(tool: &Path, project_dir: &Path) -> Result<(), String> {
@@ -616,7 +890,7 @@ pub(super) fn reject_project_local(tool: &Path, project_dir: &Path) -> Result<()
 pub(super) fn quarto_args(
     input: &Path,
     format: &str,
-    output_name: &str,
+    output_name: Option<&str>,
     out_dir: &Path,
     allow_code: bool,
 ) -> Vec<String> {
@@ -627,13 +901,16 @@ pub(super) fn quarto_args(
             .into_owned(),
         "--to".to_owned(),
         format.to_owned(),
-        "--output".to_owned(),
-        output_name.to_owned(),
+    ];
+    if let Some(name) = output_name {
+        args.extend(["--output".to_owned(), name.to_owned()]);
+    }
+    args.extend([
         "--output-dir".to_owned(),
         oleafly_core::plain_path(out_dir)
             .to_string_lossy()
             .into_owned(),
-    ];
+    ]);
     if !allow_code {
         args.push("--no-execute".to_owned());
     }
@@ -787,6 +1064,18 @@ fn first_target(formats: &[String]) -> Option<QuartoTarget> {
     })
 }
 
+fn unshown_formats(source: &str) -> Option<String> {
+    let mapping = front_matter(source).and_then(yaml_mapping)?;
+    let asked = ["format", "output"].iter().find_map(|key| {
+        mapping
+            .get(serde_norway::Value::String((*key).to_owned()))
+            .map(names)
+    })?;
+    let asked: Vec<String> = asked.into_iter().filter(|name| !name.is_empty()).collect();
+    (!asked.is_empty() && first_target(&declared_formats(&mapping)).is_none())
+        .then(|| asked.join(", "))
+}
+
 pub(crate) fn quarto_target(source: &str, project_yaml: &[String]) -> QuartoTarget {
     let declared = front_matter(source)
         .and_then(yaml_mapping)
@@ -809,15 +1098,11 @@ pub(crate) fn quarto_target(source: &str, project_yaml: &[String]) -> QuartoTarg
 }
 
 pub(crate) fn export_format(source: &str, project_yaml: &[String], format: &str) -> String {
+    let target = quarto_target(source, project_yaml);
     match format {
-        "html" => {
-            let target = quarto_target(source, project_yaml);
-            if target.html {
-                target.format
-            } else {
-                "html".to_owned()
-            }
-        }
+        "html" if target.html => target.format,
+        "pdf" if !target.html => target.format,
+        "pdf" => "typst".to_owned(),
         other => other.to_owned(),
     }
 }
@@ -926,10 +1211,17 @@ fn quarto_explanation(message: &str) -> Option<(&'static str, &'static str)> {
     if lower.contains("there is no package called")
         || lower.contains("is not available in this r installation")
     {
-        return Some(("notebook.r_package_missing", "An R package this document needs is missing. Install it in R, for example with install.packages(), then compile again."));
+        return Some((R_PACKAGE_CODE, "An R package this document needs is missing. Install it in R, for example with install.packages(), then compile again."));
     }
-    if lower.contains("jupyter is not available") || lower.contains("no module named 'jupyter") {
+    if lower.contains("jupyter is not available") {
         return Some((JUPYTER_CODE, JUPYTER_HINT));
+    }
+    if let Some(module) = missing_python_module(message) {
+        let top = module.split('.').next().unwrap_or(&module);
+        if JUPYTER_PARTS.contains(&top) {
+            return Some((JUPYTER_CODE, JUPYTER_HINT));
+        }
+        return Some((PYTHON_MODULE_CODE, PYTHON_MODULE_HINT));
     }
     if lower.contains("no valid input files") {
         return Some(("notebook.quarto_no_input", "Quarto could not read the main document. Check that it is a .qmd or .Rmd file inside the project."));
@@ -1081,10 +1373,40 @@ fn python_exception(line: &str) -> bool {
         && (name.ends_with("Error") || name.ends_with("Exception"))
 }
 
+fn quoted_name(rest: &str) -> Option<String> {
+    let rest = rest
+        .trim_start()
+        .trim_start_matches(['\'', '"', '`', '\u{2018}', '\u{201c}']);
+    let name: String = rest
+        .chars()
+        .take_while(|character| character.is_alphanumeric() || matches!(character, '.' | '_' | '-'))
+        .collect();
+    let name = name.trim_end_matches('.').to_owned();
+    (!name.is_empty()).then_some(name)
+}
+
+fn missing_r_package(message: &str) -> Option<String> {
+    let (_, rest) = message.split_once("there is no package called")?;
+    quoted_name(rest)
+}
+
+fn missing_python_module(message: &str) -> Option<String> {
+    let (_, rest) = message.split_once("No module named")?;
+    quoted_name(rest)
+}
+
+fn pip_name(module: &str) -> String {
+    PIP_NAMES
+        .iter()
+        .find(|(name, _)| module == *name || module.starts_with(&format!("{name}.")))
+        .map(|(_, package)| (*package).to_owned())
+        .unwrap_or_else(|| module.split('.').next().unwrap_or(module).to_owned())
+}
+
 fn error(message: impl Into<String>) -> CompileError {
     let message = message.into();
     let explained = quarto_explanation(&message);
-    let found = CompileError {
+    let mut found = CompileError {
         explanation: explained.map(|(_, text)| text.to_owned()),
         code: explained.map(|(code, _)| code.to_owned()),
         message,
@@ -1092,10 +1414,34 @@ fn error(message: impl Into<String>) -> CompileError {
         ..CompileError::default()
     };
     if found.code.as_deref() == Some(JUPYTER_CODE) {
-        with_jupyter_command(found, default_jupyter_install())
-    } else {
-        found
+        return with_jupyter_command(found, default_jupyter_install());
     }
+    if found.code.as_deref() == Some(R_PACKAGE_CODE) {
+        if let Some(package) = missing_r_package(&found.message)
+            .filter(|package| R_DOCUMENT_PACKAGES.contains(&package.as_str()))
+        {
+            found.params.insert("package".to_owned(), package);
+        }
+    }
+    found
+}
+
+fn with_missing_package(mut found: CompileError) -> CompileError {
+    match found.code.as_deref() {
+        Some(R_PACKAGE_CODE) => {
+            if let Some(package) = missing_r_package(&found.message) {
+                found.params.insert("package".to_owned(), package);
+            }
+        }
+        Some(PYTHON_MODULE_CODE) => {
+            if let Some(module) = missing_python_module(&found.message) {
+                found.params.insert("package".to_owned(), pip_name(&module));
+                found.params.insert("module".to_owned(), module);
+            }
+        }
+        _ => {}
+    }
+    found
 }
 
 fn warning(message: impl Into<String>) -> CompileError {
@@ -1177,11 +1523,11 @@ fn knitr_error(
     if message.is_empty() {
         message = "R code failed here.".to_owned();
     }
-    CompileError {
+    with_missing_package(CompileError {
         file: file.and_then(source_file),
         line: Some(start),
         ..error(message)
-    }
+    })
 }
 
 fn cell_error(lines: &[String], index: &mut usize) -> CompileError {
@@ -1207,10 +1553,10 @@ fn cell_error(lines: &[String], index: &mut usize) -> CompileError {
             exception = Some(next.trim().to_owned());
         }
     }
-    CompileError {
+    with_missing_package(CompileError {
         hints: code.into_iter().take(3).collect(),
         ..error(exception.unwrap_or_else(|| "A code cell failed while running.".to_owned()))
-    }
+    })
 }
 
 fn failure_line(line: &str) -> Option<CompileError> {
@@ -1465,11 +1811,71 @@ mod tests {
     }
 
     #[test]
+    fn a_web_page_exports_to_pdf_through_typst_unless_it_declares_a_print_format() {
+        let page = "---\nformat: html\n---\n";
+        assert_eq!(export_format(page, &[], "pdf"), "typst");
+        assert_eq!(export_format("# Notes\n", &[], "pdf"), "typst");
+        assert_eq!(
+            export_format(
+                "---\nformat:\n  typst:\n    papersize: a4\n---\n",
+                &[],
+                "pdf"
+            ),
+            "typst"
+        );
+        assert_eq!(
+            export_format("---\nformat: elsevier-pdf\n---\n", &[], "pdf"),
+            "elsevier-pdf"
+        );
+    }
+
+    #[test]
+    fn a_pdf_export_renders_one_file_into_the_scratch_folder() {
+        let layout = Layout::new(&["paper/main.qmd"]);
+        std::fs::write(
+            layout.root.join("paper/main.qmd"),
+            "---\nformat: html\n---\n",
+        )
+        .unwrap();
+        let quarto = layout.root.parent().unwrap().join("quarto");
+        let run = QuartoRun {
+            quarto,
+            input: layout.root.join("paper/main.qmd"),
+            out_dir: layout.root.join("scratch"),
+            project_dir: layout.root.clone(),
+            output: QuartoTarget {
+                format: export_format("---\nformat: html\n---\n", &[], "pdf"),
+                html: false,
+            },
+            extension: Some("pdf"),
+            allow_code: false,
+        };
+        let spec = run
+            .spec(
+                EngineArtifacts {
+                    output_dir: layout.root.join("scratch"),
+                    pdf: None,
+                    log: None,
+                    synctex: None,
+                    html: None,
+                },
+                None,
+            )
+            .unwrap();
+        assert_eq!(format_argument(&spec.args), Some("typst"));
+        assert_eq!(
+            flag_value(&spec.args, "--output"),
+            Some("_oleafly_entry.pdf")
+        );
+        assert!(!spec.args.iter().any(|arg| arg == EMBED_RESOURCES));
+    }
+
+    #[test]
     fn arguments_render_into_the_build_folder_and_skip_code_when_off() {
         let args = quarto_args(
             Path::new("/work/paper/main.qmd"),
             "pdf",
-            "_oleafly_entry.pdf",
+            Some("_oleafly_entry.pdf"),
             Path::new("/work/build"),
             false,
         );
@@ -1490,12 +1896,23 @@ mod tests {
         let trusted = quarto_args(
             Path::new("/work/main.qmd"),
             "revealjs",
-            "_oleafly_entry.html",
+            Some("_oleafly_entry.html"),
             Path::new("/work/build"),
             true,
         );
         assert!(!trusted.iter().any(|arg| arg == "--no-execute"));
         assert!(trusted.windows(2).any(|pair| pair == ["--to", "revealjs"]));
+        let project = quarto_args(
+            Path::new("/work/book/index.qmd"),
+            "html",
+            None,
+            Path::new("/work/build"),
+            true,
+        );
+        assert!(!project.iter().any(|arg| arg == "--output"));
+        assert!(project
+            .windows(2)
+            .any(|pair| pair == ["--output-dir", "/work/build"]));
     }
 
     #[test]
@@ -1534,9 +1951,9 @@ mod tests {
         let input = directory.path().join("paper").join("main.qmd");
         std::fs::create_dir_all(input.parent().unwrap()).unwrap();
         std::fs::write(&input, "# Paper\n").unwrap();
-        assert!(!code_off::code_needed(directory.path(), &input));
+        assert_eq!(code_off::code_needed(directory.path(), &input), None);
         std::fs::create_dir(directory.path().join("_extensions")).unwrap();
-        assert!(code_off::code_needed(directory.path(), &input));
+        assert!(code_off::code_needed(directory.path(), &input).is_some());
     }
 
     #[test]
@@ -1620,6 +2037,51 @@ mod tests {
         assert_eq!(classic[0].file.as_deref(), Some("report.Rmd"));
         assert_eq!(classic[0].line, Some(7));
         assert!(classic[0].explanation.is_some());
+        assert_eq!(classic[0].params["package"], "missing");
+
+        let curly = parse_quarto_log(
+            "Quitting from analysis.qmd:3-4 [setup]\nError in `library()`:\n! there is no package called \u{2018}data.table\u{2019}\n\nExecution halted\n",
+        );
+        assert_eq!(curly[0].code.as_deref(), Some(R_PACKAGE_CODE));
+        assert_eq!(curly[0].params["package"], "data.table");
+    }
+
+    #[test]
+    fn a_missing_python_module_names_the_package_to_install() {
+        let traceback = |module: &str| {
+            format!(
+                "An error occurred while executing the following cell:\n------------------\nimport {module}\n------------------\n\nModuleNotFoundError                       Traceback (most recent call last)\nCell In[1], line 1\n\nModuleNotFoundError: No module named '{module}'\n"
+            )
+        };
+        let pandas = parse_quarto_log(&traceback("pandas"));
+        assert_eq!(pandas[0].code.as_deref(), Some(PYTHON_MODULE_CODE));
+        assert_eq!(pandas[0].params["module"], "pandas");
+        assert_eq!(pandas[0].params["package"], "pandas");
+        let sklearn = parse_quarto_log(&traceback("sklearn.linear_model"));
+        assert_eq!(sklearn[0].params["package"], "scikit-learn");
+        let kernel = parse_quarto_log(&traceback("ipykernel"));
+        assert_eq!(kernel[0].code.as_deref(), Some(JUPYTER_CODE));
+        let crypto = parse_quarto_log(&traceback("Crypto.Cipher"));
+        assert_eq!(crypto[0].params["package"], "pycryptodome");
+    }
+
+    #[test]
+    fn text_outside_a_failed_cell_never_names_a_package_to_install() {
+        let tex = parse_quarto_log("ERROR: \n! No module named 'reqeusts'\n");
+        assert!(
+            tex.iter()
+                .all(|error| !error.params.contains_key("package")),
+            "{tex:?}"
+        );
+        let r = parse_quarto_log("Error in library(evil): there is no package called 'evil'\n");
+        assert!(
+            r.iter().all(|error| !error.params.contains_key("package")),
+            "{r:?}"
+        );
+        let knitr = parse_quarto_log(
+            "Error in loadNamespace(x) : there is no package called 'rmarkdown'\n",
+        );
+        assert_eq!(knitr[0].params["package"], "rmarkdown");
     }
 
     #[test]
@@ -2131,6 +2593,84 @@ mod tests {
     }
 
     #[test]
+    fn a_quarto_project_keeps_its_own_output_names_and_the_preview_gets_a_copy() {
+        let layout = Layout::new(&["_quarto.yml", "chapters/intro.qmd", "notes.qmd"]);
+        let mut chapter = layout.spec("chapters/intro.qmd", "html", true);
+        assert!(!chapter.args.iter().any(|arg| arg == "--output"));
+        let build = layout.root.join("build");
+        chapter.artifacts.html = Some(html_artifact(
+            &build,
+            &layout.root.join("chapters/intro.qmd"),
+        ));
+        let since = std::time::SystemTime::now() - std::time::Duration::from_secs(5);
+        std::fs::create_dir_all(build.join("chapters")).unwrap();
+        std::fs::write(build.join("chapters/intro.html"), "<p>Intro</p>").unwrap();
+        collect_project_render(&chapter, since).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(build.join("chapters/_oleafly_entry.html")).unwrap(),
+            "<p>Intro</p>"
+        );
+        assert!(build.join("chapters/intro.html").is_file());
+
+        let mut book = layout.spec("notes.qmd", "pdf", false);
+        book.artifacts.pdf = Some(build.join("_oleafly_entry.pdf"));
+        std::fs::write(build.join("Thesis.pdf"), "%PDF book").unwrap();
+        collect_project_render(&book, since).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(build.join("_oleafly_entry.pdf")).unwrap(),
+            "%PDF book"
+        );
+
+        let single = Layout::new(&["paper.qmd"]);
+        let spec = single.spec("paper.qmd", "html", true);
+        assert!(spec
+            .args
+            .windows(2)
+            .any(|pair| pair == ["--output", "_oleafly_entry.html"]));
+    }
+
+    #[test]
+    fn a_format_the_preview_cannot_show_is_named() {
+        assert_eq!(
+            unshown_formats("---\ntitle: Report\noutput: word_document\n---\n").as_deref(),
+            Some("word_document")
+        );
+        assert_eq!(
+            unshown_formats("---\noutput:\n  rticles::elsevier_article: default\n---\n").as_deref(),
+            Some("rticles::elsevier_article")
+        );
+        assert_eq!(
+            unshown_formats("---\nformat: docx\n---\n").as_deref(),
+            Some("docx")
+        );
+        assert_eq!(
+            unshown_formats("---\nformat:\n  docx: default\n  pdf: default\n---\n"),
+            None
+        );
+        assert_eq!(unshown_formats("---\noutput: html_document\n---\n"), None);
+        assert_eq!(unshown_formats("---\ntitle: Plain\n---\n"), None);
+    }
+
+    #[test]
+    fn web_previews_render_math_as_mathml_so_it_needs_no_script_or_network() {
+        let layout = Layout::new(&["main.qmd"]);
+        let mathml = |spec: &EngineCompileSpec| {
+            spec.args
+                .windows(2)
+                .any(|pair| pair == ["-M", "html-math-method:mathml"])
+        };
+        assert!(mathml(&layout.spec("main.qmd", "html", true)));
+        assert!(mathml(&layout.spec("main.qmd", "revealjs", true)));
+        assert!(!mathml(&layout.spec("main.qmd", "typst", false)));
+        std::fs::write(
+            layout.root.join("main.qmd"),
+            "---\nformat:\n  html:\n    html-math-method: katex\n---\n",
+        )
+        .unwrap();
+        assert!(!mathml(&layout.spec("main.qmd", "html", true)));
+    }
+
+    #[test]
     fn html_exports_embed_math_and_follow_the_document_folder() {
         let layout = Layout::new(&["_quarto.yml", "paper/main.qmd"]);
         let out_dir = layout.root.join("build");
@@ -2252,7 +2792,7 @@ mod tests {
             flag_value(&fallback.args, "--output"),
             Some("_oleafly_entry.pdf")
         );
-        assert_eq!(fallback.args.len(), spec.args.len() - 2);
+        assert_eq!(fallback.args.len(), spec.args.len());
         assert_eq!(fallback.working_dir, layout.root.join("paper"));
         assert!(!fallback.args.iter().any(|arg| arg == EMBED_RESOURCES));
     }
@@ -2294,11 +2834,97 @@ mod tests {
     }
 
     #[test]
+    fn a_book_renders_and_exports_as_one_document_from_its_project_folder() {
+        let book = Layout::new(&["_quarto.yml", "index.qmd", "parts/methods.qmd"]);
+        std::fs::write(book.root.join("_quarto.yml"), "project:\n  type: book\n").unwrap();
+        assert_eq!(
+            book_folder(&book.root.join("parts/methods.qmd")),
+            Some(book.root.clone())
+        );
+        let mut spec = book.spec("parts/methods.qmd", "typst", false);
+        spec.args
+            .extend(["--output".to_owned(), "_oleafly_entry.pdf".to_owned()]);
+        render_whole_project(&mut spec, &book.root);
+        assert_eq!(
+            spec.args[1],
+            oleafly_core::plain_path(&book.root).to_string_lossy()
+        );
+        assert_eq!(flag_value(&spec.args, "--output"), None);
+        assert_eq!(spec.working_dir, book.root);
+        assert_eq!(code_off::project_code_needed(&book.root, &book.root), None);
+        std::fs::write(
+            book.root.join("parts/methods.qmd"),
+            "---\nfilters:\n  - shout.lua\n---\n# Methods\n",
+        )
+        .unwrap();
+        assert_eq!(
+            code_off::project_code_needed(&book.root, &book.root),
+            Some("filter")
+        );
+        std::fs::write(book.root.join("parts/methods.qmd"), "# Methods\n").unwrap();
+        std::fs::write(
+            book.root.join("parts/notes.rmarkdown"),
+            "---\nfilters:\n  - shout.lua\n---\n",
+        )
+        .unwrap();
+        assert_eq!(
+            code_off::project_code_needed(&book.root, &book.root),
+            Some("filter")
+        );
+        std::fs::remove_file(book.root.join("parts/notes.rmarkdown")).unwrap();
+        let deep = book.root.join("a/b/c/d/e/f/g/h/i");
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(deep.join("x.qmd"), "# Deep\n").unwrap();
+        assert_eq!(
+            code_off::project_code_needed(&book.root, &book.root),
+            Some("unchecked")
+        );
+        std::fs::remove_dir_all(book.root.join("a")).unwrap();
+        #[cfg(unix)]
+        {
+            let elsewhere = Layout::new(&["outside.qmd"]);
+            std::os::unix::fs::symlink(&elsewhere.root, book.root.join("linked")).unwrap();
+            assert_eq!(
+                code_off::project_code_needed(&book.root, &book.root),
+                Some("unchecked")
+            );
+            std::fs::remove_file(book.root.join("linked")).unwrap();
+        }
+        assert_eq!(code_off::project_code_needed(&book.root, &book.root), None);
+
+        let site = Layout::new(&["_quarto.yml", "index.qmd"]);
+        std::fs::write(site.root.join("_quarto.yml"), "project:\n  type: website\n").unwrap();
+        assert_eq!(book_folder(&site.root.join("index.qmd")), None);
+        assert_eq!(
+            book_folder(&Layout::new(&["notes.qmd"]).root.join("notes.qmd")),
+            None
+        );
+    }
+
+    #[test]
+    fn a_one_page_preview_carries_its_own_styles_and_a_project_page_shares_them() {
+        let single = Layout::new(&["paper/main.qmd"]);
+        let page = single.spec("paper/main.qmd", "html", true);
+        assert!(page
+            .args
+            .windows(2)
+            .any(|pair| pair == ["-M", EMBED_RESOURCES]));
+        let pdf = single.spec("paper/main.qmd", "typst", false);
+        assert!(!pdf.args.iter().any(|arg| arg == EMBED_RESOURCES));
+        let project = Layout::new(&["_quarto.yml", "paper/main.qmd"]);
+        let shared = project.spec("paper/main.qmd", "html", true);
+        assert!(!shared.args.iter().any(|arg| arg == EMBED_RESOURCES));
+        assert!(renders_one_page(&single.root.join("paper/main.qmd")));
+        assert!(!renders_one_page(&project.root.join("paper/main.qmd")));
+    }
+
+    #[test]
     fn the_rendered_file_moves_into_the_build_folder() {
         let layout = Layout::new(&["_quarto.yml", "paper/main.qmd"]);
-        let mut spec = layout.spec("paper/main.qmd", "html", true);
+        let mut project = layout.spec("paper/main.qmd", "html", true);
         let target = layout.html("paper/main.qmd");
-        spec.artifacts.html = Some(target.clone());
+        project.artifacts.html = Some(target.clone());
+        let spec = document_render_spec(&project, REFUSAL_LOG, Some(1)).unwrap();
         let rendered = layout.root.join("paper").join("_oleafly_entry.html");
         std::fs::write(&rendered, "page").unwrap();
         collect_document_render(&spec).unwrap();
@@ -2307,7 +2933,12 @@ mod tests {
         collect_document_render(&spec).unwrap();
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "page");
 
-        let mut docx = layout.spec("paper/main.qmd", "docx", false);
+        let mut docx = document_render_spec(
+            &layout.spec("paper/main.qmd", "docx", false),
+            REFUSAL_LOG,
+            Some(1),
+        )
+        .unwrap();
         let name = "_oleafly_entry.docx";
         docx.args.iter_mut().for_each(|arg| {
             if arg == "_oleafly_entry.pdf" {
@@ -2379,6 +3010,66 @@ mod tests {
             .any(|pair| pair[0] == "--output-dir" && pair[1] == real_out.to_string_lossy()));
     }
 
+    fn real_quarto() -> Option<crate::program_locator::Located> {
+        let found = crate::program_locator::locate_native("quarto");
+        assert!(
+            found.is_some() || std::env::var_os("OLEAFLY_REQUIRE_REAL_QUARTO").is_none(),
+            "OLEAFLY_REQUIRE_REAL_QUARTO is set, but Quarto is not installed"
+        );
+        found
+    }
+
+    #[tokio::test]
+    async fn a_real_web_page_preview_is_one_file_and_exports_to_pdf_through_typst() {
+        let Some(quarto) = real_quarto() else {
+            return;
+        };
+        let layout = Layout::new(&["paper/page.qmd"]);
+        let input = layout.root.join("paper").join("page.qmd");
+        std::fs::write(
+            &input,
+            "---\ntitle: Page\nformat: html\n---\n\n```python\nprint(1)\n```\n\n$x^2$\n",
+        )
+        .unwrap();
+        let spec = real_spec(&quarto.path, &layout.root, input.clone(), "html", true);
+        let (log, code) = run_real(&quarto.path, &spec).await;
+        assert_eq!(code, Some(0), "{log}");
+        let page = std::fs::read_to_string(layout.root.join("build/_oleafly_entry.html")).unwrap();
+        assert!(!page.contains("_files/libs"), "{log}");
+
+        let scratch = layout.root.join("scratch");
+        std::fs::create_dir_all(&scratch).unwrap();
+        let export = QuartoRun {
+            quarto: quarto.path.clone(),
+            input: input.clone(),
+            out_dir: scratch.clone(),
+            project_dir: layout.root.clone(),
+            output: QuartoTarget {
+                format: export_format(&std::fs::read_to_string(&input).unwrap(), &[], "pdf"),
+                html: false,
+            },
+            extension: Some("pdf"),
+            allow_code: false,
+        }
+        .spec(
+            EngineArtifacts {
+                output_dir: scratch.clone(),
+                pdf: None,
+                log: None,
+                synctex: None,
+                html: None,
+            },
+            None,
+        )
+        .unwrap();
+        let hold = hold_siblings(&export).unwrap();
+        let (log, code) = run_real(&quarto.path, &export).await;
+        drop(hold);
+        assert_eq!(code, Some(0), "{log}");
+        assert!(scratch.join("_oleafly_entry.pdf").is_file(), "{log}");
+        assert!(!layout.root.join("paper/page.typ").exists());
+    }
+
     async fn run_real(quarto: &Path, spec: &EngineCompileSpec) -> (String, Option<i32>) {
         super::super::run_supervised_process_with_environment(
             quarto,
@@ -2429,7 +3120,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_real_quarto_run_leaves_the_files_beside_the_document_alone() {
-        let Some(quarto) = crate::program_locator::locate_native("quarto") else {
+        let Some(quarto) = real_quarto() else {
             return;
         };
         let layout = Layout::new(&["paper/report.qmd", "paper/report.pdf"]);
@@ -2452,7 +3143,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_real_latex_run_restores_the_siblings_and_reports_dropped_characters() {
-        let Some(quarto) = crate::program_locator::locate_native("quarto") else {
+        let Some(quarto) = real_quarto() else {
             return;
         };
         if crate::program_locator::locate_native("xelatex").is_none() {
@@ -2489,7 +3180,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_real_working_file_from_an_earlier_compile_is_recognised_and_put_back() {
-        let Some(quarto) = crate::program_locator::locate_native("quarto") else {
+        let Some(quarto) = real_quarto() else {
             return;
         };
         let layout = Layout::new(&["report.qmd"]);
@@ -2525,7 +3216,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_real_quarto_project_under_a_hidden_folder_still_compiles() {
-        let Some(quarto) = crate::program_locator::locate_native("quarto") else {
+        let Some(quarto) = real_quarto() else {
             return;
         };
         let layout = Layout::under(".library/project", &["_quarto.yml", "paper/main.qmd"]);
@@ -2555,7 +3246,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn a_real_quarto_run_through_a_linked_folder_writes_into_the_build_folder() {
-        let Some(quarto) = crate::program_locator::locate_native("quarto") else {
+        let Some(quarto) = real_quarto() else {
             return;
         };
         let layout = Layout::new(&["_quarto.yml", "paper/main.qmd"]);
@@ -2569,9 +3260,12 @@ mod tests {
         let input = alias.join("paper").join("main.qmd");
         std::fs::write(&input, "---\nformat: html\n---\n\nHello.\n").unwrap();
         let expected = html_artifact(&alias.join("build"), &input);
-        let spec = real_spec(&quarto.path, &alias, input, "html", true);
+        let mut spec = real_spec(&quarto.path, &alias, input, "html", true);
+        spec.artifacts.html = Some(expected.clone());
+        let since = std::time::SystemTime::now();
         let (log, code) = run_real(&quarto.path, &spec).await;
         assert_eq!(code, Some(0), "{log}");
+        collect_project_render(&spec, since).unwrap();
         assert!(expected.is_file(), "{log}");
         assert!(
             layout

@@ -6,7 +6,6 @@ use oleafly_online::git::SystemGit;
 use oleafly_online::sync::{
     self as online_sync, claim, diff_project, export_link_backups, link_project, remove_link,
     sync_project, DiffOptions, LinkOutcome, Mode, Side, SyncOptions, SyncOutcome,
-    FILES_MAY_HAVE_CHANGED,
 };
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use serde_json::{json, Value};
@@ -275,16 +274,6 @@ pub(crate) fn link(
         library,
     );
     let linked = matches!(outcome, Ok(LinkOutcome::Linked { .. }));
-    let files_changed = match &outcome {
-        Ok(LinkOutcome::Linked { written }) => !written.is_empty(),
-        Ok(LinkOutcome::NeedsChoice(_)) => false,
-        Err(error) => error.params.contains_key(FILES_MAY_HAVE_CHANGED),
-    };
-    let revoked = if files_changed && !args.dry_run {
-        scope.revoke_shell_escape_trust(&env.data_root)
-    } else {
-        Ok(())
-    };
     let backups = if linked && !args.dry_run && args.prefer == Some(SideArg::Remote) {
         export_link_backups(deps.git.as_ref(), &paths, &backups_folder(scope.root()))
             .map_err(|error| online_error(error, &target.server))
@@ -314,7 +303,6 @@ pub(crate) fn link(
         let _ = remove_link(&paths);
     }
     let outcome = outcome.map_err(|error| online_error(error, &target.server))?;
-    revoked?;
     let backups = backups?;
     match outcome {
         LinkOutcome::NeedsChoice(differing) => Err(CliError::new(
@@ -410,17 +398,7 @@ pub(crate) fn sync(
         &prepared.token,
         &options,
     );
-    let files_changed = match &summary {
-        Ok(summary) => !(summary.written.is_empty() && summary.removed.is_empty()),
-        Err(error) => error.params.contains_key(FILES_MAY_HAVE_CHANGED),
-    };
-    let revoked = if files_changed && !args.dry_run {
-        prepared.scope.revoke_shell_escape_trust(&env.data_root)
-    } else {
-        Ok(())
-    };
     let summary = summary.map_err(|error| online_error(error, &prepared.server))?;
-    revoked?;
     let changed = summary.written.len() + summary.removed.len();
     let line = match summary.outcome {
         SyncOutcome::Conflicts => {
@@ -730,7 +708,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn a_sync_that_changes_a_library_project_takes_its_shell_escape_trust_away() {
+    fn a_sync_that_changes_a_library_project_keeps_its_code_consent() {
         let world = World::linked();
         let project = world.library_project("lib-1", "Hello\n");
         link_library(&world, &project, None);
@@ -740,41 +718,22 @@ pub(crate) mod tests {
             .join("project-worktree-locks/lib-1.lock")
             .exists());
         world.trust("lib-1");
-        world.trust("bystander");
 
         sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
         world.edit_online("Changed online\n");
-        let dry = SyncArgs {
-            dry_run: true,
-            ..SyncArgs::default()
-        };
-        sync(&world.env, &deps(), &project, dry).unwrap();
-        assert!(world.trust_record("lib-1").exists());
-
         sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
         assert_eq!(read(&project.join("main.tex")), "Changed online\n");
-        assert!(!world.trust_record("lib-1").exists());
-        assert!(world.trust_record("bystander").exists());
+        assert!(world.trust_record("lib-1").exists());
     }
 
     #[test]
-    fn a_folder_the_app_does_not_know_has_no_trust_to_take_away() {
-        let world = World::linked();
-        world.trust("paper");
-        world.edit_online("Changed online\n");
-        sync(&world.env, &deps(), &world.project, SyncArgs::default()).unwrap();
-        assert_eq!(read(&world.project.join("main.tex")), "Changed online\n");
-        assert!(world.trust_record("paper").exists());
-    }
-
-    #[test]
-    fn linking_with_the_online_copy_takes_the_trust_away_and_keeps_what_it_replaced() {
+    fn linking_with_the_online_copy_keeps_the_consent_and_what_it_replaced() {
         let world = World::linked();
         let project = world.library_project("lib-2", "My own text\n");
         world.trust("lib-2");
         let report = link_library(&world, &project, Some(SideArg::Remote));
         assert_eq!(read(&project.join("main.tex")), "Hello\n");
-        assert!(!world.trust_record("lib-2").exists());
+        assert!(world.trust_record("lib-2").exists());
         let saved = report.data["backups"].as_array().unwrap();
         assert_eq!(saved.len(), 1);
         assert_eq!(saved[0]["files"], json!(["main.tex"]));

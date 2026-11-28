@@ -430,7 +430,7 @@
       "off": "Kapalı",
       "on": "Açık",
       "title": "Otomatik derleme",
-      "help": "Yazmayı bıraktıktan birkaç saniye sonra derler. Açık dosya önce kaydedilir.",
+      "help": "Yazmayı bıraktıktan birkaç saniye sonra derler ve önce açık dosyayı kaydeder. Durdurduktan sonra bir sonraki düzenlemenizi bekler. Kod çalıştıran bir proje, açılırken yalnızca bu açıkken derlenir.",
       "typstHelp": "Typst çalışmaya devam eder ve yazmayı bıraktığınızda PDF'i kısa süre içinde günceller. Bu açıkken açık dosya kendiliğinden kaydedilir.",
       "typstStarting": "Typst başlatılıyor",
       "typstRestarting": "Typst yeniden başlatılıyor",
@@ -454,6 +454,7 @@
       "title": "Derleme hatası işleme"
     },
     "fromScratch": "Sıfırdan yeniden derle",
+    "wholeProject": "Quarto projesinin tamamını işle",
     "mode": {
       "fast": "Hızlı <note>[taslak]</note>",
       "normal": "Normal",
@@ -470,9 +471,8 @@
     },
     "texRootBroken": "{{file}} içindeki % !TEX root eksik bir dosyayı gösteriyor ({{target}})",
     "texRootLabel": "TEX kökü",
-    "texRootName": "kök: {{name}}",
     "texRootNotTex": "{{file}} içindeki % !TEX root, LaTeX dosyası olmayan {{target}} dosyasını gösteriyor",
-    "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)",
+    "texRootOverride": "{{path}} derleniyor ({{file}} içindeki % !TEX root ile belirlendi)",
     "typstVersion": {
       "title": "Typst sürümü (bu proje)",
       "help": "Bir sürüm sabitleyin, böylece Oleafly Typst güncellemesi yaptığında bu projenin çıktısı aynı kalır. Varsayılan, Ayarlar'da seçilen sürümü izler. Sürüm yüklemek veya bu projeyi daha yeni bir sürümde denemek için Ayarlar → Motorlar → Typst bölümüne gidin.",
@@ -513,18 +513,19 @@
     },
     "code": {
       "title": "Kod (bu bilgisayar)",
-      "help": "Quarto ve Calepin bu projedeki R, Python ve Julia kodunu çalıştırabilir. Kod sizin izinlerinizle çalışır, bu yüzden buna yalnızca güvendiğiniz bir projede izin verin. Bu seçim yalnızca bu bilgisayar için geçerlidir.",
+      "help": "Quarto ve Calepin bu projedeki R, Python ve Julia kodunu çalıştırabilir. Kod sizin izinlerinizle çalışır, bu yüzden yalnızca güvendiğiniz bir projede izin verin. Seçim yalnızca bu bilgisayarda geçerlidir ve siz kapatana kadar kalır. Kapatmak çalışan bir derlemeyi durdurur.",
       "off": "Kapalı",
       "run": "Kodu bu bilgisayarda çalıştır"
     },
     "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir.",
     "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi",
-    "texRootDocument": "kök: {{path}} (kendi \\documentclass komutu var)",
-    "texRootInclude": "kök: {{path}} ({{file}} dosyasını içeriyor)",
-    "texRootFormat": "kök: {{path}} (kendi motoruyla derlenen bir {{format}} belgesi)",
+    "texRootDocument": "{{path}} derleniyor (kendi \\documentclass komutu var)",
+    "texRootStandalone": "{{path}} derleniyor (kendi başına bir belge)",
+    "texRootInclude": "{{path}} derleniyor ({{file}} dosyasını içeriyor)",
+    "texRootFormat": "{{path}} derleniyor (kendi motoruyla derlenen bir {{format}} belgesi)",
     "target": {
       "title": "Derleme hedefi",
-      "help": "Açık dosyayı izle seçiliyken kendi \\documentclass komutu olan bir dosya tek başına derlenir. Bir bölüm, onu içeren belgeyi derler. Proje başka bir biçimdeyse Markdown, Typst veya Quarto belgesi kendi motoruyla tek başına derlenir. Diğer dosyalar ana belgeyi derler. % !TEX root yorumu her zaman önceliklidir.",
+      "help": "Açık dosyayı izle seçiliyken kendi başına bir belge kendi kendine derlenir: kendi \\documentclass komutu olan bir LaTeX dosyası ya da başka hiçbir belgenin içermediği bir Markdown, Typst veya Quarto dosyası. Bir bölüm veya kısım, onu içeren belgeyi derler ve bir _quarto.yml projesinin dosyaları projeyle birlikte derlenir. Diğer dosyalar ana belgeyi derler. % !TEX root yorumu her zaman önceliklidir.",
       "open": "Açık dosyayı izle",
       "main": "Her zaman ana belge",
       "change": "Ana belgeyi değiştir…"
@@ -668,7 +669,16 @@
     "followed": "{{name}} kod çalıştırmalı, ancak kod yalnızca ana belge için çalışır. {{name}} belgesini ana belge yapın, ardından onun için koda izin verin.",
     "needed": "Bu belgenin derlenmesi için kodunun çalışması gerekiyor, ancak bu projede kod kapalı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
     "skipped": "Bu projede kod kapalı olduğu için bu belgedeki kod çalışmadı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
-    "storedResults": "Bu projede kod kapalı olduğu için PDF, önceki bir çalıştırmadan kaydedilmiş kod sonuçlarını gösteriyor. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin."
+    "storedResults": "Bu projede kod kapalı olduğu için PDF, önceki bir çalıştırmadan kaydedilmiş kod sonuçlarını gösteriyor. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+    "reasons": {
+      "extensions": "Bu projede program çalıştırabilen Quarto uzantıları var, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "environment": "Bu projede Quarto'nun yüklediği _environment dosyaları var, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "shortcode": "Bu belge Quarto'da yerleşik olmayan bir shortcode kullanıyor ve shortcode'lar program çalıştırabilir, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "filter": "Bu belge bir filtre ekliyor ve filtreler program çalıştırabilir, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "pdf_engine": "Bu belge PDF motoruna seçenek aktarıyor ve PDF motoru program çalıştırabilir, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "outside": "Bu belge proje dışındaki bir dosyayı okuyor, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+      "unchecked": "Oleafly bu belgede kod olup olmadığını denetleyemedi, bu yüzden yalnızca koda izin verildiğinde derlenir. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin."
+    }
   },
   "typstCjkFonts": {
     "message": "Bu belgede bu bilgisayardaki hiçbir yazı tipinin gösteremediği Çince, Japonca veya Korece metin var, bu yüzden bu metin PDF'te yok.",
@@ -825,7 +835,7 @@
     },
     "noMain": "Henüz ana belge yok. Bir dosya seçip Ana belge olarak ayarla seçeneğini seçin.",
     "trust": {
-      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar ve shell escape özelliklerini açmak için klasöre güvenilsin mi?",
+      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar, latexmk ve Quarto özelliklerini açmak için klasöre güvenilsin mi?",
       "trustFolder": "Bu klasöre güven",
       "trustParent": "Üst klasöre güven",
       "trustRepository": "Depoya güven",
@@ -1808,5 +1818,20 @@
       "saved": "Kaydedildi: {{name}}.",
       "missingName": "Parçacığa bir ad verin."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

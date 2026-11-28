@@ -143,9 +143,11 @@ describe("SnippetEditor", () => {
     setup({ base: RTAB, draft: draftFromRecord(RTAB) });
     expect(screen.getByText(copy.chipsNote)).toBeInTheDocument();
     expect(screen.getByTestId("snippet-body").querySelector("[data-snippet-chip]")).toHaveTextContent("1");
+    const before = body();
     await userEvent.click(screen.getByRole("switch", { name: copy.showSyntax }));
     expect(screen.queryByText(copy.chipsNote)).toBeNull();
     expect(screen.getByTestId("snippet-body").querySelector("[data-snippet-chip]")).toBeNull();
+    expect(body()).toBe(before);
   });
 
   it("gives each chosen language its own body tab", async () => {

@@ -104,9 +104,15 @@
     "useTypst": "Użyj Typst {{version}}",
     "installTool": "Zainstaluj {{tool}} {{version}}",
     "installToolSize": "Zainstaluj {{tool}} {{version}} ({{size}})",
+    "installPackage": "Zainstaluj {{name}}",
+    "checkAgain": "Sprawdź ponownie",
     "engineSettings": "Otwórz ustawienia silnika",
     "useTectonic": "Użyj Tectonic",
-    "useTectonicForEveryone": "Użyj Tectonic dla wszystkich"
+    "useTectonicForEveryone": "Użyj Tectonic dla wszystkich",
+    "saveHtml": "Zapisz HTML w projekcie",
+    "downloadPageAsPdf": "Pobierz wyświetlaną stronę jako PDF",
+    "copyPath": "Kopiuj ścieżkę wyniku",
+    "invertPage": "Odwróć kolory strony internetowej"
   },
   "html": {
     "building": "Kompilowanie strony internetowej",
@@ -134,10 +140,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Obraz zapisany w projekcie.",
     "pdfSaved": "PDF zapisany w projekcie.",
-    "failed": "Nie udało się zapisać w projekcie."
+    "failed": "Nie udało się zapisać w projekcie.",
+    "htmlDescription": "Zapisuje wyświetlaną stronę internetową w drzewie projektu jako jeden plik HTML.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Strona internetowa zapisana w projekcie."
   },
   "sync": {
     "toggle": "Synchronizuj PDF przy kompilacji",
+    "toggleHtml": "Synchronizuj HTML przy kompilacji",
     "failed": "Nie udało się zaktualizować {{name}}. Oleafly spróbuje ponownie przy następnej kompilacji.",
     "fastMode": "Szybkie kompilacje nie aktualizują tego pliku PDF.",
     "localOnly": "Ta kopia pozostaje na tym komputerze."
@@ -155,7 +165,8 @@
   },
   "empty": {
     "compileUnavailable": "Kompilacja PDF jest obecnie niedostępna.",
-    "compileFailed": "Kompilacja nie powiodła się. Otwórz kartę Dzienniki, aby sprawdzić, co poszło nie tak."
+    "compileFailed": "Kompilacja nie powiodła się. Otwórz kartę Dzienniki, aby sprawdzić, co poszło nie tak.",
+    "notCompiled": "Plik {{name}} nie został jeszcze skompilowany."
   },
   "a11y": {
     "stale": "Nieaktualny PDF. {{explanation}}",

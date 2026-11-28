@@ -12,6 +12,10 @@ export async function chooseMainDocument(
   const projectId = files.projectId;
   if (!projectId) return false;
   const wasMissing = mainDocumentMissing(files);
+  if (files.mainDoc !== path) {
+    const { compileIsBusy, useCompileStore } = await import("@/store/compile");
+    if (compileIsBusy()) await useCompileStore.getState().stopCompile();
+  }
   await files.setMainDoc(path);
   if (useFilesStore.getState().projectId !== projectId) return false;
   useSettingsStore.getState().revealEditor();

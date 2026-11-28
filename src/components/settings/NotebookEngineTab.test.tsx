@@ -4,7 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NotebookToolchainStatus, NotebookToolStatus } from "@/lib/notebook-commands";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), linux: { value: false } }));
+
+vi.mock("@/lib/utils", async (load) => ({
+  ...(await load<typeof import("@/lib/utils")>()),
+  get isLinux() {
+    return mocks.linux.value;
+  },
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   isTauri: () => true,
@@ -41,7 +48,16 @@ function toolchain(over: Partial<NotebookToolStatus> = {}): NotebookToolchainSta
 
 beforeEach(() => {
   mocks.invoke.mockReset();
-  useNotebookToolchainStore.setState({ status: null, loading: false, loadFailed: false, installs: {}, removing: null });
+  mocks.linux.value = false;
+  useNotebookToolchainStore.setState({
+    status: null,
+    loading: false,
+    loadFailed: false,
+    installs: {},
+    removing: null,
+    runtimeTasks: {},
+    awaitingInstaller: [],
+  });
 });
 
 describe("NotebookEngineTab", () => {
@@ -73,5 +89,92 @@ describe("NotebookEngineTab", () => {
 
     expect(await screen.findByTestId("quarto-engine-download")).toBeInTheDocument();
     expect(screen.queryByTestId("quarto-engine-superseded")).toBeNull();
+  });
+});
+
+describe("NotebookEngineTab languages", () => {
+  const languages = copy.languages;
+  const withRuntimes = (runtimes: NotebookToolchainStatus["runtimes"]): NotebookToolchainStatus => ({
+    ...toolchain(),
+    runtimes,
+  });
+
+  it("downloads the R installer, then offers to check again once it is open", async () => {
+    const user = userEvent.setup();
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "notebook_toolchain_status") {
+        return withRuntimes([{ name: "r", path: null, version: null, installer: { version: "4.6.2", downloadBytes: 104_731_180 } }]);
+      }
+      if (command === "recheck_notebook_toolchain") {
+        return withRuntimes([
+          { name: "r", path: "/usr/local/bin/Rscript", version: "4.6.2", packages: [{ name: "knitr", installed: true }] },
+        ]);
+      }
+      return null;
+    });
+    render(<NotebookEngineTab tool="quarto" />);
+    const row = await screen.findByTestId("notebook-language-r");
+    expect(row).toHaveTextContent(languages.installerNote);
+    await user.click(within(row).getByTestId("notebook-language-r-install"));
+    expect(mocks.invoke).toHaveBeenCalledWith("install_language_runtime", { runtime: "r", onProgress: expect.anything() });
+    expect(await within(row).findByText(languages.finishInstaller.replace("{{name}}", "R"))).toBeInTheDocument();
+    await user.click(within(row).getByTestId("notebook-language-r-recheck"));
+    expect(mocks.invoke).toHaveBeenCalledWith("recheck_notebook_toolchain");
+    await waitFor(() => expect(within(row).queryByTestId("notebook-language-r-recheck")).toBeNull());
+    expect(row).toHaveTextContent("/usr/local/bin/Rscript");
+  });
+
+  it("tells Linux users which package to install, with a way to check again", async () => {
+    mocks.linux.value = true;
+    mocks.invoke.mockImplementation(async (command: string) =>
+      command === "notebook_toolchain_status" ? withRuntimes([{ name: "python", path: null, version: null }]) : null,
+    );
+    render(<NotebookEngineTab tool="quarto" />);
+    const row = await screen.findByTestId("notebook-language-python");
+    expect(row).toHaveTextContent(languages.packageManager.python);
+    expect(within(row).getByTestId("notebook-language-python-recheck")).toBeInTheDocument();
+  });
+
+  it("installs the R packages Quarto needs when they are missing", async () => {
+    const user = userEvent.setup();
+    const missing = withRuntimes([
+      {
+        name: "r",
+        path: "/usr/bin/Rscript",
+        version: "4.6.2",
+        packages: [
+          { name: "knitr", installed: false },
+          { name: "rmarkdown", installed: false },
+        ],
+      },
+    ]);
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "notebook_toolchain_status") return missing;
+      if (command === "install_r_packages") {
+        return withRuntimes([{ name: "r", path: "/usr/bin/Rscript", version: "4.6.2", packages: [{ name: "knitr", installed: true }] }]);
+      }
+      return null;
+    });
+    render(<NotebookEngineTab tool="quarto" />);
+    const row = await screen.findByTestId("notebook-language-r");
+    expect(row).toHaveTextContent(languages.packagesMissing.replace("{{packages}}", "knitr and rmarkdown"));
+    await user.click(within(row).getByTestId("notebook-language-r-packages"));
+    expect(mocks.invoke).toHaveBeenCalledWith("install_r_packages", { projectId: null, packages: ["knitr", "rmarkdown"] });
+    await waitFor(() => expect(within(row).queryByTestId("notebook-language-r-packages")).toBeNull());
+  });
+
+  it("offers Jupyter for a Python that lacks it", async () => {
+    mocks.invoke.mockImplementation(async (command: string) =>
+      command === "notebook_toolchain_status"
+        ? withRuntimes([
+            { name: "python", path: "/usr/bin/python3", version: "3.12.3", packages: [{ name: "jupyter", installed: false }] },
+          ])
+        : null,
+    );
+    render(<NotebookEngineTab tool="quarto" />);
+    const row = await screen.findByTestId("notebook-language-python");
+    expect(within(row).getByTestId("notebook-language-python-packages")).toHaveTextContent(
+      languages.installPackages.replace("{{packages}}", "Jupyter"),
+    );
   });
 });

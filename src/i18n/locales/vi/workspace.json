@@ -40,6 +40,7 @@
     "renameAriaLabel": "Đổi tên tệp",
     "renameFailed": "Không thể đổi tên \"{{path}}\". Đường dẫn gốc được giữ nguyên.",
     "setMain": "Đặt làm tài liệu chính",
+    "compileTarget": "Biên dịch tệp này thay cho tài liệu chính",
     "title": "Trình thám hiểm",
     "treeAriaLabel": "Cây tệp của trình thám hiểm",
     "setMainFailed": "Không thể đặt \"{{path}}\" làm tài liệu chính.",

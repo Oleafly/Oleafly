@@ -503,6 +503,13 @@ A notice strip above the editor is a `WorkspaceBanner` from
 are `WorkspaceBannerButton`s in the same tone. When a button's action fails,
 a `WorkspaceBannerAlert` under the row says why.
 
+A one-time offer in the bottom corner, such as adding the Finder Quick Action
+or opening document types with Oleafly, is an `OfferCard` from
+`ui/offer-card.tsx`. It takes an icon, a title, a message and a close button,
+and turns the message into an alert when `failed` is set. Its buttons are
+`OfferCardAction`s, `primary` for the offer and `secondary` for "not now".
+Only one offer shows at a time, so a second one waits until the first closes.
+
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
 
@@ -522,7 +529,12 @@ draws its own panel adds the attribute. Don't tint the panel underneath it.
 A `Dialog` is on the same modal stack as `ModalShell`. A dialog opened from
 Settings, or from another dialog, gets Escape, Tab and outside clicks to
 itself, and the one underneath stays open until its turn comes. When a
-`Dialog` closes, focus goes back to the control that opened it. Settings is the
+`Dialog` closes, focus goes back to the control that opened it. A
+`DropdownMenu` inside a `ModalShell` is non-modal unless it passes `modal`.
+A modal menu marks everything outside it `aria-hidden`, and WebKit then
+re-checks the whole dialog for accessibility on every open, close and hover.
+With a large section open and an accessibility client running, the app hangs.
+Escape in an open menu or select closes only the menu. Settings is the
 same size on every section and tab. A section that needs more room arranges
 itself by its own width with a container query. The Notes appearance preview
 does this: it sits beside the options when there is room and above them when

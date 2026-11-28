@@ -103,9 +103,15 @@
     "useTypst": "Usa Typst {{version}}",
     "installTool": "Installa {{tool}} {{version}}",
     "installToolSize": "Installa {{tool}} {{version}} ({{size}})",
+    "installPackage": "Installa {{name}}",
+    "checkAgain": "Controlla di nuovo",
     "engineSettings": "Apri le impostazioni del motore",
     "useTectonic": "Usa Tectonic",
-    "useTectonicForEveryone": "Usa Tectonic per tutti"
+    "useTectonicForEveryone": "Usa Tectonic per tutti",
+    "saveHtml": "Salva l'HTML nel progetto",
+    "downloadPageAsPdf": "Scarica la pagina visualizzata come PDF",
+    "copyPath": "Copia il percorso dell'output",
+    "invertPage": "Inverti i colori della pagina web"
   },
   "html": {
     "building": "Generazione della pagina web",
@@ -133,10 +139,14 @@
     "namePlaceholder": "documento.pdf",
     "imageSaved": "Immagine salvata nel progetto.",
     "pdfSaved": "PDF salvato nel progetto.",
-    "failed": "Non è stato possibile salvare nel progetto."
+    "failed": "Non è stato possibile salvare nel progetto.",
+    "htmlDescription": "Salva la pagina web visualizzata nell'albero del progetto come un unico file HTML.",
+    "htmlPlaceholder": "documento.html",
+    "htmlSaved": "Pagina web salvata nel progetto."
   },
   "sync": {
     "toggle": "Sincronizza PDF alla compilazione",
+    "toggleHtml": "Sincronizza HTML alla compilazione",
     "failed": "Impossibile aggiornare {{name}}. Oleafly riproverà alla prossima compilazione.",
     "fastMode": "Le compilazioni rapide non aggiornano questo PDF.",
     "localOnly": "Questa copia resta su questo computer."
@@ -154,7 +164,8 @@
   },
   "empty": {
     "compileUnavailable": "Al momento la compilazione del PDF non è disponibile.",
-    "compileFailed": "Compilazione non riuscita. Apri la scheda Log per vedere cosa è andato storto."
+    "compileFailed": "Compilazione non riuscita. Apri la scheda Log per vedere cosa è andato storto.",
+    "notCompiled": "{{name}} non è ancora stato compilato."
   },
   "a11y": {
     "stale": "PDF obsoleto, non aggiornato. {{explanation}}",

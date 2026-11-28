@@ -564,7 +564,6 @@
     "uploading": "Đang tải hình và các tệp khác: {{done}} trên {{total}}",
     "saving": "Đang lưu dự án trên máy chủ…",
     "failed": "Chia sẻ chưa hoàn tất nên chưa có gì được chia sẻ.",
-    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó.",
     "projectNotesShared": "Ghi chú của dự án được chia sẻ với mọi người trong dự án này. Ghi chú cá nhân vẫn là riêng tư.",
     "personalNotesPrivate": "Ghi chú cá nhân vẫn là riêng tư. Chỉ những ghi chú trong thư mục ghi chú của dự án mới được chia sẻ.",
     "unlinkOverleaf": "Bỏ liên kết khỏi Overleaf",

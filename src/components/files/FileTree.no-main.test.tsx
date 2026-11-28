@@ -30,6 +30,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: vi.fn(),
 }));
 vi.mock("@/store/compile", () => ({
+  compileIsBusy: () => false,
   useCompileStore: {
     getState: () => ({ status: "idle", recompile: mocks.recompile, reset: mocks.resetCompile }),
   },
@@ -224,5 +225,48 @@ describe("an opened folder with a main document", () => {
     expect(within(await screen.findByRole("menu")).getByText(files.setMain)).toHaveAttribute(
       "data-disabled",
     );
+  });
+});
+
+describe("the compile target in the tree", () => {
+  const letter = "\\documentclass{letter}\n\\begin{document}\n\\end{document}\n";
+  const tree = [
+    { path: "main.tex", is_dir: false },
+    { path: "response.tex", is_dir: false },
+  ];
+
+  it("marks the open file that compiles instead of the starred main document", async () => {
+    openFolder({
+      tree,
+      files: { "response.tex": { content: letter } },
+      openTabs: ["response.tex"],
+      activePath: "response.tex",
+    });
+    render(<FileTree />);
+    const row = (name: string) => screen.getByText(name).closest("[role='treeitem']") as HTMLElement;
+    expect(row("main.tex")).toHaveAttribute("data-main-document", "true");
+    expect(within(row("main.tex")).queryByTestId("compile-target-marker")).toBeNull();
+    const marker = within(row("response.tex")).getByTestId("compile-target-marker");
+    expect(marker).toHaveAccessibleName(files.compileTarget);
+  });
+
+  it("compiles the marked file when its marker is clicked", async () => {
+    openFolder({
+      tree,
+      files: { "response.tex": { content: letter } },
+      openTabs: ["response.tex"],
+      activePath: "response.tex",
+    });
+    render(<FileTree />);
+    mocks.recompile.mockClear();
+    const row = screen.getByText("response.tex").closest("[role='treeitem']") as HTMLElement;
+    fireEvent.click(within(row).getByTestId("compile-target-marker"));
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows no marker while the main document is what compiles", () => {
+    openFolder({ tree, files: { "main.tex": { content: letter } }, openTabs: ["main.tex"], activePath: "main.tex" });
+    render(<FileTree />);
+    expect(screen.queryByTestId("compile-target-marker")).toBeNull();
   });
 });

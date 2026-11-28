@@ -479,6 +479,21 @@ jobs:
           path: ~/.cache/Tectonic
           key: tectonic-pkgs-md-v1-x86_64-unknown-linux-gnu-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
 
+      # The real-Quarto tests in document_engine::quarto pass without doing
+      # anything when Quarto is missing, so this installs the version the app
+      # pins and OLEAFLY_REQUIRE_REAL_QUARTO below makes a missing one fail.
+      - name: Cache the pinned Quarto
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/quarto
+          key: quarto-${{ runner.os }}-x86_64-${{ hashFiles('src-tauri/resources/notebook-toolchains.json', 'scripts/fetch-quarto.sh') }}
+
+      - name: Install the pinned Quarto for the real-Quarto tests
+        timeout-minutes: 5
+        run: |
+          bin="$(bash scripts/fetch-quarto.sh x86_64-unknown-linux-gnu "$RUNNER_TEMP/quarto")"
+          echo "$bin" >> "$GITHUB_PATH"
+
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
@@ -489,6 +504,7 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           LLVM_PROFILE_FILE_NAME: oleafly-%4m.profraw
+          OLEAFLY_REQUIRE_REAL_QUARTO: "1"
         run: |
           mkdir -p coverage/rust
           python3 scripts/run-nextest.py coverage
@@ -504,6 +520,8 @@ jobs:
 
       - name: Test
         if: github.event_name != 'push' && github.event_name != 'pull_request'
+        env:
+          OLEAFLY_REQUIRE_REAL_QUARTO: "1"
         run: python3 scripts/run-nextest.py workspace
 
       - name: Format check

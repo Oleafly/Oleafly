@@ -104,9 +104,15 @@
     "useTypst": "Використати Typst {{version}}",
     "installTool": "Встановити {{tool}} {{version}}",
     "installToolSize": "Встановити {{tool}} {{version}} ({{size}})",
+    "installPackage": "Встановити {{name}}",
+    "checkAgain": "Перевірити ще раз",
     "engineSettings": "Відкрити налаштування рушія",
     "useTectonic": "Використати Tectonic",
-    "useTectonicForEveryone": "Використати Tectonic для всіх"
+    "useTectonicForEveryone": "Використати Tectonic для всіх",
+    "saveHtml": "Зберегти HTML у проєкт",
+    "downloadPageAsPdf": "Завантажити показану сторінку як PDF",
+    "copyPath": "Копіювати шлях до результату",
+    "invertPage": "Інвертувати кольори вебсторінки"
   },
   "html": {
     "building": "Збираємо вебсторінку",
@@ -134,10 +140,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Зображення збережено в проєкт.",
     "pdfSaved": "PDF збережено в проєкт.",
-    "failed": "Не вдалося зберегти в проєкт."
+    "failed": "Не вдалося зберегти в проєкт.",
+    "htmlDescription": "Зберігає показану вебсторінку в дерево проєкту одним файлом HTML.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Вебсторінку збережено в проєкт."
   },
   "sync": {
     "toggle": "Синхронізувати PDF під час компіляції",
+    "toggleHtml": "Синхронізувати HTML під час компіляції",
     "failed": "Не вдалося оновити {{name}}. Oleafly повторить спробу під час наступної компіляції.",
     "fastMode": "Швидка компіляція не оновлює цей PDF.",
     "localOnly": "Ця копія залишається на цьому комп'ютері."
@@ -155,7 +165,8 @@
   },
   "empty": {
     "compileUnavailable": "Компіляція PDF зараз недоступна.",
-    "compileFailed": "Компіляція не вдалася. Відкрийте вкладку «Журнали», щоб побачити, що пішло не так."
+    "compileFailed": "Компіляція не вдалася. Відкрийте вкладку «Журнали», щоб побачити, що пішло не так.",
+    "notCompiled": "Файл {{name}} ще не скомпільовано."
   },
   "a11y": {
     "stale": "Застарілий, неактуальний PDF. {{explanation}}",

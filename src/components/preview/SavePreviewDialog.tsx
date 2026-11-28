@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 
-export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, pdfIsStale, saveName, setSaveName, saving, hasDocument, submitSavePdf }: Readonly<{
+export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, webPage = false, pdfIsStale, saveName, setSaveName, saving, hasDocument, submitSavePdf }: Readonly<{
   saveOpen: boolean;
   closeSave: () => void;
   isImage?: boolean;
+  webPage?: boolean;
   pdfIsStale: boolean;
   saveName: string;
   setSaveName: (value: string) => void;
@@ -16,6 +17,11 @@ export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, pdfIsS
   submitSavePdf: () => void;
 }>) {
   const { t } = useTranslation(["common", "preview"]);
+  let title = t(($) => $.preview.save.title);
+  if (isImage) title = t(($) => $.preview.save.imageTitle);
+  if (webPage) title = t(($) => $.preview.actions.saveHtml);
+  let description = pdfIsStale ? t(($) => $.preview.save.staleDescription) : t(($) => $.preview.save.description);
+  if (webPage) description = t(($) => $.preview.save.htmlDescription);
   return (
     <ModalShell
       open={saveOpen}
@@ -27,9 +33,7 @@ export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, pdfIsS
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 id="save-preview-title" className="text-sm font-semibold">
-          {isImage
-            ? t(($) => $.preview.save.imageTitle)
-            : t(($) => $.preview.save.title)}
+          {title}
         </h2>
         <button
           type="button"
@@ -41,9 +45,7 @@ export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, pdfIsS
         </button>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        {pdfIsStale
-          ? t(($) => $.preview.save.staleDescription)
-          : t(($) => $.preview.save.description)}
+        {description}
       </p>
       <div className="flex items-center gap-2">
         <Input
@@ -52,7 +54,7 @@ export function SavePreviewDialog({ saveOpen, closeSave, isImage = false, pdfIsS
           value={saveName}
           onChange={(e) => setSaveName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !saving) submitSavePdf(); }}
-          placeholder={t(($) => $.preview.save.namePlaceholder)}
+          placeholder={webPage ? t(($) => $.preview.save.htmlPlaceholder) : t(($) => $.preview.save.namePlaceholder)}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <Button

@@ -356,6 +356,7 @@ mod tests {
             shared: None,
             imported_from: None,
             related_project: Some("paper".into()),
+            loose_file: false,
         }
     }
 

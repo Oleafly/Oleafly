@@ -218,6 +218,15 @@ export const getProjectEngine = (projectId: string, root?: string) =>
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
+export const readCompiledPage = (projectId: string, mainDocument: string) =>
+  invoke<ArrayBuffer>("read_compiled_page", { projectId, mainDocument });
+
+export const compiledOutputPath = (projectId: string, mainDocument: string, page: boolean) =>
+  invoke<string>("compiled_output_path", { projectId, mainDocument, page });
+
+export const renderNotebookPdf = (projectId: string, mainDoc: string) =>
+  invoke<ArrayBuffer>("render_notebook_pdf", { projectId, mainDoc });
+
 export function isMissingCompiledPdf(error: unknown): boolean {
   return errorStartsWith(error, "no compiled PDF");
 }
@@ -250,6 +259,7 @@ export const compileProject = (
   fast = false,
   haltOnError = false,
   typstVariant: string | null = null,
+  wholeProject = false,
 ) =>
   invoke<CompileResult>("compile_project", {
     projectId,
@@ -258,6 +268,7 @@ export const compileProject = (
     fast,
     haltOnError,
     typstVariant,
+    ...(wholeProject ? { wholeProject } : {}),
   });
 
 export const checkpointList = (projectId: string) =>
@@ -281,8 +292,8 @@ export const checkpointSave = (projectId: string, text?: string) =>
 export const pdfSyncStatus = (projectId: string) =>
   invoke<PdfSyncStatus>("pdf_sync_status", { projectId });
 
-export const pdfSyncSet = (projectId: string, enabled: boolean, outputId: string | null) =>
-  invoke<PdfSyncStatus>("pdf_sync_set", { projectId, enabled, outputId });
+export const pdfSyncSet = (projectId: string, enabled: boolean, outputId: string | null, page = false) =>
+  invoke<PdfSyncStatus>("pdf_sync_set", { projectId, enabled, outputId, ...(page ? { page } : {}) });
 
 export const pdfSyncNoteSaved = (projectId: string, path: string) =>
   invoke<void>("pdf_sync_note_saved", { projectId, path });
@@ -1597,19 +1608,22 @@ export const debugInjectOpenRequest = (path: string) =>
   invoke<PendingOpenRequest>("debug_inject_open_request", { path });
 export const debugAnswerNextConfirmation = (answer: boolean) =>
   invoke<void>("debug_answer_next_confirmation", { answer });
+export type DefaultAppItemId = "default_latex" | "default_typst" | "default_markdown" | "default_quarto";
 export type SystemIntegrationItemId =
   | "quick_action"
   | "explorer_menu"
   | "dolphin"
   | "nemo"
   | "nautilus"
-  | "folder_open_with";
+  | "folder_open_with"
+  | DefaultAppItemId;
 export type SystemIntegrationState = "installed" | "not_installed" | "needs_attention";
 export type SystemIntegrationAttention =
   | "outdated"
   | "elsewhere"
   | "moved"
-  | "no_default_file_manager";
+  | "no_default_file_manager"
+  | "no_file_type";
 export interface SystemIntegrationItem {
   id: SystemIntegrationItemId;
   state: SystemIntegrationState;
@@ -1627,6 +1641,7 @@ export const systemIntegrationStatus = () =>
 export const setSystemIntegration = (item: SystemIntegrationItemId, enabled: boolean) =>
   invoke<SystemIntegrationItem>("system_integration_set", { item, enabled });
 export const claimQuickActionOffer = () => invoke<boolean>("claim_quick_action_offer");
+export const claimDefaultAppsOffer = () => invoke<DefaultAppItemId[]>("claim_default_apps_offer");
 export interface RecentProjectEntry {
   id: string;
   name: string;

@@ -429,7 +429,7 @@
       "off": "Tắt",
       "on": "Bật",
       "title": "Tự động biên dịch",
-      "help": "Biên dịch vài giây sau khi bạn ngừng gõ. Tệp đang mở được lưu trước.",
+      "help": "Biên dịch vài giây sau khi bạn ngừng gõ, lưu tệp đang mở trước. Sau khi Dừng, sẽ chờ lần chỉnh sửa tiếp theo của bạn. Dự án có chạy mã chỉ được biên dịch khi mở nếu tùy chọn này đang bật.",
       "typstHelp": "Typst tiếp tục chạy và cập nhật PDF một lát sau khi bạn ngừng gõ. Tệp đang mở tự lưu trong khi bật tính năng này.",
       "typstStarting": "Đang khởi động Typst",
       "typstRestarting": "Typst đang khởi động lại",
@@ -453,6 +453,7 @@
       "title": "Xử lý lỗi biên dịch"
     },
     "fromScratch": "Biên dịch lại từ đầu",
+    "wholeProject": "Kết xuất toàn bộ dự án Quarto",
     "mode": {
       "fast": "Nhanh <note>[nháp]</note>",
       "normal": "Bình thường",
@@ -469,9 +470,8 @@
     },
     "texRootBroken": "% !TEX root trong {{file}} trỏ tới một tệp không tồn tại ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root trong {{file}} trỏ tới {{target}}, không phải tệp LaTeX",
-    "texRootOverride": "root: {{path}} (do % !TEX root trong {{file}} đặt)",
+    "texRootOverride": "Biên dịch {{path}} (do % !TEX root trong {{file}} đặt)",
     "typstVersion": {
       "title": "Phiên bản Typst (dự án này)",
       "help": "Ghim một phiên bản để giữ nguyên kết quả của dự án này khi Oleafly cập nhật Typst. Mặc định theo phiên bản đã chọn trong Cài đặt. Để cài phiên bản hoặc thử dự án này trên bản mới hơn, vào Cài đặt → Engine → Typst.",
@@ -512,18 +512,19 @@
     },
     "code": {
       "title": "Mã (máy này)",
-      "help": "Quarto và Calepin có thể chạy mã R, Python và Julia trong dự án này. Mã chạy với quyền của bạn, nên chỉ cho phép với dự án bạn tin cậy. Lựa chọn này chỉ áp dụng trên máy này.",
+      "help": "Quarto và Calepin có thể chạy mã R, Python và Julia trong dự án này. Mã chạy với quyền của bạn, nên chỉ cho phép ở dự án bạn tin tưởng. Lựa chọn chỉ áp dụng cho máy tính này và giữ nguyên cho đến khi bạn tắt. Tắt sẽ dừng lần biên dịch đang chạy.",
       "off": "Tắt",
       "run": "Chạy mã trên máy này"
     },
     "sharedViewer": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các cài đặt này trong dự án chia sẻ.",
     "coauthorsChanged": "Đồng tác giả đã thay đổi kể từ lần biên dịch trước của bạn",
-    "texRootDocument": "root: {{path}} (có \\documentclass riêng)",
-    "texRootInclude": "root: {{path}} (chèn {{file}})",
-    "texRootFormat": "root: {{path}} (tài liệu {{format}}, biên dịch bằng engine riêng)",
+    "texRootDocument": "Biên dịch {{path}} (có \\documentclass riêng)",
+    "texRootStandalone": "Biên dịch {{path}} (một tài liệu độc lập)",
+    "texRootInclude": "Biên dịch {{path}} (chèn {{file}})",
+    "texRootFormat": "Biên dịch {{path}} (tài liệu {{format}}, biên dịch bằng engine riêng)",
     "target": {
       "title": "Đích biên dịch",
-      "help": "Với Theo tệp đang mở, tệp có \\documentclass riêng được biên dịch độc lập. Một chương hoặc mục sẽ biên dịch tài liệu chèn nó. Tài liệu Markdown, Typst hoặc Quarto được biên dịch độc lập bằng engine riêng khi dự án thuộc định dạng khác. Các tệp khác biên dịch tài liệu chính. Chú thích % !TEX root luôn được ưu tiên.",
+      "help": "Với Theo tệp đang mở, một tài liệu độc lập tự biên dịch: tệp LaTeX có \\documentclass riêng, hoặc tệp Markdown, Typst hay Quarto mà không tài liệu nào khác chèn vào. Một chương hay mục sẽ biên dịch tài liệu chèn nó, và các tệp của dự án _quarto.yml được biên dịch cùng dự án. Các tệp khác biên dịch tài liệu chính. Chú thích % !TEX root luôn được ưu tiên.",
       "open": "Theo tệp đang mở",
       "main": "Luôn là tài liệu chính",
       "change": "Đổi tài liệu chính…"
@@ -666,7 +667,16 @@
     "followed": "{{name}} cần chạy mã, nhưng mã chỉ chạy cho tài liệu chính. Hãy đặt {{name}} làm tài liệu chính, rồi cho phép mã cho nó.",
     "needed": "Tài liệu này phải chạy mã để build, và mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
     "skipped": "Mã trong tài liệu này không chạy vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
-    "storedResults": "PDF hiển thị kết quả mã đã lưu từ lần chạy trước vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án."
+    "storedResults": "PDF hiển thị kết quả mã đã lưu từ lần chạy trước vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+    "reasons": {
+      "extensions": "Dự án này có tiện ích mở rộng Quarto có thể chạy chương trình, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "environment": "Dự án này có tệp _environment mà Quarto nạp, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "shortcode": "Tài liệu này dùng một shortcode không có sẵn trong Quarto, và shortcode có thể chạy chương trình, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "filter": "Tài liệu này thêm một bộ lọc, và bộ lọc có thể chạy chương trình, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "pdf_engine": "Tài liệu này truyền tùy chọn cho công cụ PDF, công cụ này có thể chạy chương trình, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "outside": "Tài liệu này đọc một tệp bên ngoài dự án, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+      "unchecked": "Oleafly không kiểm tra được tài liệu này có mã hay không, nên chỉ được dựng khi cho phép mã. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án."
+    }
   },
   "typstCjkFonts": {
     "message": "Tài liệu này có chữ Hán, Nhật hoặc Hàn mà không phông chữ nào trên máy này hiển thị được, nên PDF bỏ qua phần đó.",
@@ -823,7 +833,7 @@
     },
     "noMain": "Chưa có tài liệu chính. Chọn một tệp và chọn Đặt làm tài liệu chính.",
     "trust": {
-      "banner": "Oleafly đã hạn chế một số tính năng trong thư mục này. Tin cậy thư mục để bật Git, terminal, agent và shell escape?",
+      "banner": "Oleafly đã hạn chế một số tính năng trong thư mục này. Tin cậy thư mục để bật Git, terminal, agent, latexmk và Quarto?",
       "trustFolder": "Tin cậy thư mục này",
       "trustParent": "Tin cậy thư mục cha",
       "trustRepository": "Tin cậy kho lưu trữ",
@@ -1772,5 +1782,20 @@
       "saved": "Đã lưu {{name}}.",
       "missingName": "Hãy đặt tên cho đoạn mã."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

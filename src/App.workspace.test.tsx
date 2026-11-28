@@ -81,6 +81,8 @@ vi.mock("@/store/compile", async () => {
     isCompileCheckpointCurrent: () => false,
     stopOutdatedAutomaticCompile: mocks.stopOutdatedAutomaticCompile,
     typstLivePreviewWanted: mocks.typstLivePreviewWanted,
+    userStopCount: () => 0,
+    automaticCompileStillWanted: () => true,
   };
 });
 vi.mock("@/store/project-analysis", async () => {

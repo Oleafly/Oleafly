@@ -1072,6 +1072,13 @@
       "hoverPreview": {
         "description": "Afficher la dernière page compilée au survol d'un projet dans la bibliothèque.",
         "label": "Aperçu du PDF au survol"
+      },
+      "html": {
+        "title": "Aperçu des pages web",
+        "darkMode": {
+          "label": "Mode sombre des pages web",
+          "description": "Pour les documents Quarto qui produisent une page web. Avec Suivre le thème de l'application, la page s'assombrit quand l'application est en mode sombre, et les images gardent leurs couleurs. Le bouton d'inversion des couleurs de la barre d'outils de l'aperçu règle ce choix sur Activé ou Désactivé."
+        }
       }
     },
     "sectionName": "Apparence",
@@ -1791,7 +1798,17 @@
         "heading": "Langages",
         "tooltip": "Le code des documents Quarto et Calepin s'exécute avec ces programmes.",
         "notFound": "Introuvable",
-        "note": "Oleafly exécute le code avec R, Python et Julia déjà installés sur cet ordinateur. Il ne les installe jamais lui-même."
+        "note": "Oleafly exécute le code avec R, Python et Julia sur cet ordinateur. Il peut télécharger pour vous les programmes d'installation officiels de R et de Python, et installer knitr, rmarkdown et Jupyter.",
+        "installerNote": "Oleafly télécharge le programme d'installation officiel, le vérifie et l'ouvre. Une fois l'installation terminée, revenez ici et vérifiez à nouveau.",
+        "finishInstaller": "Terminez l'installation de {{name}}, puis vérifiez à nouveau.",
+        "checkAgain": "Vérifier à nouveau",
+        "packageManager": {
+          "r": "Installez R avec votre gestionnaire de paquets, par exemple sudo apt install r-base ou sudo dnf install R. Puis vérifiez à nouveau.",
+          "python": "Installez Python 3 avec votre gestionnaire de paquets, par exemple sudo apt install python3 python3-venv. Puis vérifiez à nouveau."
+        },
+        "installYourself": "Installez {{name}} depuis son site web, puis vérifiez à nouveau.",
+        "packagesMissing": "Non installé : {{packages}}",
+        "installPackages": "Installer {{packages}}"
       },
       "codeNote": "Le code d'un document ne s'exécute qu'après que vous avez autorisé le code pour ce projet dans le menu de compilation.",
       "progress": {
@@ -1799,7 +1816,9 @@
         "downloading": "Téléchargement {{percent}} %",
         "verifying": "Vérification",
         "extracting": "Décompression",
-        "done": "Finalisation"
+        "done": "Finalisation",
+        "opening": "Ouverture du programme d'installation",
+        "installing": "Installation"
       },
       "error": {
         "load": "Impossible de vérifier la présence de Quarto, de Calepin et des langages.",
@@ -2777,11 +2796,14 @@
     },
     "actions": {
       "install": "Installer",
-      "repair": "Réparer"
+      "repair": "Réparer",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "Impossible de l'installer. Réessayez.",
-      "remove": "Impossible de le supprimer. Réessayez."
+      "remove": "Impossible de le supprimer. Réessayez.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Installé avec le paquet Oleafly.",
     "quickAction": {
@@ -2814,7 +2836,33 @@
       "outdated": "Cette entrée est obsolète ou macOS l'a bloquée. Réparez-la pour la rétablir.",
       "elsewhere": "Le menu ouvre une autre copie d'Oleafly. Réparez-le pour utiliser celle-ci.",
       "moved": "Cette entrée pointe vers une copie d'Oleafly qui a été déplacée. Réparez-la pour utiliser celle-ci.",
-      "noDefaultFileManager": "Votre système n'a pas de gestionnaire de fichiers par défaut pour les dossiers, cette entrée pourrait donc ouvrir tous les dossiers dans Oleafly. Supprimez-la."
+      "noDefaultFileManager": "Votre système n'a pas de gestionnaire de fichiers par défaut pour les dossiers, cette entrée pourrait donc ouvrir tous les dossiers dans Oleafly. Supprimez-la.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

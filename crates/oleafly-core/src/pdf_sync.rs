@@ -10,6 +10,7 @@ const MANIFEST_FIELD: &str = "pdf_sync";
 const MAX_MANIFEST_BYTES: u64 = 4 * 1024 * 1024;
 const FALLBACK_STEM: &str = "document";
 const MAX_STEM_BYTES: usize = 120;
+pub const TARGET_EXTENSIONS: [&str; 2] = ["pdf", "html"];
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PdfSync {
@@ -33,8 +34,15 @@ impl PdfSync {
 
 pub fn is_target_name(path: &str) -> bool {
     !path.contains(['/', '\\'])
-        && path.to_ascii_lowercase().ends_with(".pdf")
+        && target_extension(path).is_some()
         && relative_problem(path).is_none()
+}
+
+pub fn target_extension(path: &str) -> Option<&'static str> {
+    let (_, extension) = path.rsplit_once('.')?;
+    TARGET_EXTENSIONS
+        .into_iter()
+        .find(|known| extension.eq_ignore_ascii_case(known))
 }
 
 pub fn title_stem(title: &str) -> String {
@@ -69,19 +77,19 @@ pub fn title_stem(title: &str) -> String {
     }
 }
 
-pub fn numbered_name(stem: &str, attempt: u32) -> String {
+pub fn numbered_name(stem: &str, attempt: u32, extension: &str) -> String {
     if attempt <= 1 {
-        format!("{stem}.pdf")
+        format!("{stem}.{extension}")
     } else {
-        format!("{stem}_{attempt}.pdf")
+        format!("{stem}_{attempt}.{extension}")
     }
 }
 
-pub fn free_name(stem: &str, taken: impl Fn(&str) -> bool) -> String {
+pub fn free_name(stem: &str, extension: &str, taken: impl Fn(&str) -> bool) -> String {
     (1..=9_999)
-        .map(|attempt| numbered_name(stem, attempt))
+        .map(|attempt| numbered_name(stem, attempt, extension))
         .find(|name| !taken(name))
-        .unwrap_or_else(|| numbered_name(stem, 10_000))
+        .unwrap_or_else(|| numbered_name(stem, 10_000, extension))
 }
 
 pub fn target_in_manifest(manifest: &serde_json::Value) -> Option<String> {
@@ -131,8 +139,10 @@ mod tests {
             ".git",
             "emoji 🎓 title",
         ] {
-            let name = numbered_name(&title_stem(title), 1);
-            assert!(is_target_name(&name), "{title} gave {name}");
+            for extension in TARGET_EXTENSIONS {
+                let name = numbered_name(&title_stem(title), 1, extension);
+                assert!(is_target_name(&name), "{title} gave {name}");
+            }
         }
     }
 
@@ -147,14 +157,18 @@ mod tests {
     fn a_taken_name_moves_on_to_the_next_number() {
         let taken = ["Thesis.pdf", "Thesis_2.pdf"];
         assert_eq!(
-            free_name("Thesis", |name| taken.contains(&name)),
+            free_name("Thesis", "pdf", |name| taken.contains(&name)),
             "Thesis_3.pdf"
         );
-        assert_eq!(free_name("Thesis", |_| false), "Thesis.pdf");
+        assert_eq!(free_name("Thesis", "pdf", |_| false), "Thesis.pdf");
+        assert_eq!(
+            free_name("Thesis", "html", |name| taken.contains(&name)),
+            "Thesis.html"
+        );
     }
 
     #[test]
-    fn only_a_plain_pdf_in_the_project_root_can_be_a_target() {
+    fn only_a_plain_pdf_or_web_page_in_the_project_root_can_be_a_target() {
         for path in [
             "",
             "main.tex",
@@ -164,11 +178,17 @@ mod tests {
             ".git",
             "a:b.pdf",
             "NUL.pdf",
+            "site/index.html",
+            "Thesis.htm",
+            "html",
         ] {
             assert!(!is_target_name(path), "{path}");
         }
         assert!(is_target_name("Thesis.pdf"));
         assert!(is_target_name("Thesis.PDF"));
+        assert!(is_target_name("Report.html"));
+        assert_eq!(target_extension("Report.HTML"), Some("html"));
+        assert_eq!(target_extension("Report.pdf"), Some("pdf"));
     }
 
     #[test]

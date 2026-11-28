@@ -139,6 +139,7 @@
       "specialFile": "Inte en vanlig fil",
       "tooLarge": "För stor för att synkroniseras",
       "packageFolder": "Installerade paket som du kan installera om",
+      "privateFile": "R-sessionsfil som kan innehålla lösenord eller nycklar",
       "zipLeftovers": "Blev kvar efter uppackning",
       "unreadable": "Kunde inte läsas",
       "downloadFailed": "Kunde inte laddas ned",

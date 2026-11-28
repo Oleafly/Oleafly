@@ -14,6 +14,7 @@ import { useFilesStore } from "@/store/files";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { notifyError } from "@/lib/toast";
 import { chooseMainDocument } from "@/store/main-document";
+import { codeNeededText } from "@/lib/compile-error-codes";
 
 type CodeExecutionNeed = "needed" | "skipped" | "storedResults";
 
@@ -43,6 +44,9 @@ export function CodeExecutionBanner() {
     (state) => isNotebookEngine(state.engine) && !state.engine.allow_shell_escape,
   );
   const need = useCompileStore((state) => codeExecutionNeed(state.errors));
+  const reason = useCompileStore(
+    (state) => state.errors.find((error) => error.code === "notebook.code_needed")?.params?.reason,
+  );
   const target = useCompileTarget((root) => (root.format === null ? null : root.mainDoc));
   const compiled = useCompileStore((state) => state.lastAttemptIdentity?.mainDocument ?? null);
   const followed = target !== null && target === compiled ? target : null;
@@ -66,7 +70,7 @@ export function CodeExecutionBanner() {
     if (followed !== null) {
       return t(($) => $.shell.codeExecution.followed, { name: basename(followed) });
     }
-    if (need === "needed") return t(($) => $.shell.codeExecution.needed);
+    if (need === "needed") return codeNeededText(reason);
     if (need === "skipped") return t(($) => $.shell.codeExecution.skipped);
     return t(($) => $.shell.codeExecution.storedResults);
   };

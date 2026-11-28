@@ -564,7 +564,6 @@
     "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
     "saving": "Zapisywanie projektu na serwerze…",
     "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono.",
-    "trustAgain": "Każdy, kogo dodasz do tego projektu, może zmieniać jego pliki, więc Oleafly poprosi Cię na tym komputerze o ponowne zaufanie, zanim uruchomi dla niego agentów, polecenia terminala lub shell escape.",
     "projectNotesShared": "Notatki projektu są udostępniane wszystkim uczestnikom tego projektu. Notatki osobiste pozostają prywatne.",
     "personalNotesPrivate": "Notatki osobiste pozostają prywatne. Udostępniane są tylko notatki z folderu notatek projektu.",
     "unlinkOverleaf": "Odłącz od Overleaf",

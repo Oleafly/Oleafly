@@ -101,9 +101,15 @@
     "useTypst": "Dùng Typst {{version}}",
     "installTool": "Cài đặt {{tool}} {{version}}",
     "installToolSize": "Cài đặt {{tool}} {{version}} ({{size}})",
+    "installPackage": "Cài {{name}}",
+    "checkAgain": "Kiểm tra lại",
     "engineSettings": "Mở cài đặt engine",
     "useTectonic": "Dùng Tectonic",
-    "useTectonicForEveryone": "Dùng Tectonic cho tất cả mọi người"
+    "useTectonicForEveryone": "Dùng Tectonic cho tất cả mọi người",
+    "saveHtml": "Lưu HTML vào dự án",
+    "downloadPageAsPdf": "Tải trang đang hiển thị dưới dạng PDF",
+    "copyPath": "Sao chép đường dẫn kết quả",
+    "invertPage": "Đảo màu trang web"
   },
   "html": {
     "building": "Đang dựng trang web",
@@ -131,10 +137,14 @@
     "namePlaceholder": "document.pdf",
     "imageSaved": "Đã lưu hình ảnh vào dự án.",
     "pdfSaved": "Đã lưu PDF vào dự án.",
-    "failed": "Không thể lưu vào dự án."
+    "failed": "Không thể lưu vào dự án.",
+    "htmlDescription": "Lưu trang web đang hiển thị vào cây dự án dưới dạng một tệp HTML duy nhất.",
+    "htmlPlaceholder": "document.html",
+    "htmlSaved": "Đã lưu trang web vào dự án."
   },
   "sync": {
     "toggle": "Đồng bộ PDF khi biên dịch",
+    "toggleHtml": "Đồng bộ HTML khi biên dịch",
     "failed": "Không thể cập nhật {{name}}. Oleafly sẽ thử lại ở lần biên dịch tiếp theo.",
     "fastMode": "Biên dịch nhanh không cập nhật PDF này.",
     "localOnly": "Bản sao này chỉ lưu trên máy tính này."
@@ -152,7 +162,8 @@
   },
   "empty": {
     "compileUnavailable": "Biên dịch PDF hiện không khả dụng.",
-    "compileFailed": "Biên dịch thất bại. Mở thẻ Nhật ký để xem lỗi."
+    "compileFailed": "Biên dịch thất bại. Mở thẻ Nhật ký để xem lỗi.",
+    "notCompiled": "{{name}} chưa được biên dịch."
   },
   "a11y": {
     "stale": "PDF cũ, không phải bản hiện tại. {{explanation}}",

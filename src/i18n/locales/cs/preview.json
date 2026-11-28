@@ -104,9 +104,15 @@
     "useTypst": "Použít Typst {{version}}",
     "installTool": "Nainstalovat {{tool}} {{version}}",
     "installToolSize": "Nainstalovat {{tool}} {{version}} ({{size}})",
+    "installPackage": "Nainstalovat {{name}}",
+    "checkAgain": "Zkontrolovat znovu",
     "engineSettings": "Otevřít nastavení enginu",
     "useTectonic": "Použít Tectonic",
-    "useTectonicForEveryone": "Použít Tectonic pro všechny"
+    "useTectonicForEveryone": "Použít Tectonic pro všechny",
+    "saveHtml": "Uložit HTML do projektu",
+    "downloadPageAsPdf": "Stáhnout zobrazenou stránku jako PDF",
+    "copyPath": "Kopírovat cestu k výstupu",
+    "invertPage": "Invertovat barvy webové stránky"
   },
   "html": {
     "building": "Sestavuje se webová stránka",
@@ -134,10 +140,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Obrázek byl uložen do projektu.",
     "pdfSaved": "PDF bylo uloženo do projektu.",
-    "failed": "Do projektu se nepodařilo uložit."
+    "failed": "Do projektu se nepodařilo uložit.",
+    "htmlDescription": "Uloží zobrazenou webovou stránku do stromu projektu jako jeden soubor HTML.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Webová stránka byla uložena do projektu."
   },
   "sync": {
     "toggle": "Synchronizovat PDF při kompilaci",
+    "toggleHtml": "Synchronizovat HTML při kompilaci",
     "failed": "{{name}} se nepodařilo aktualizovat. Oleafly to zkusí znovu při další kompilaci.",
     "fastMode": "Rychlé kompilace toto PDF neaktualizují.",
     "localOnly": "Tato kopie zůstane v tomto počítači."
@@ -155,7 +165,8 @@
   },
   "empty": {
     "compileUnavailable": "Kompilace do PDF teď není k dispozici.",
-    "compileFailed": "Kompilace selhala. Otevřete kartu Protokoly a zjistěte, co se pokazilo."
+    "compileFailed": "Kompilace selhala. Otevřete kartu Protokoly a zjistěte, co se pokazilo.",
+    "notCompiled": "Soubor {{name}} zatím nebyl zkompilován."
   },
   "a11y": {
     "stale": "Zastaralé, neaktuální PDF. {{explanation}}",

@@ -139,6 +139,7 @@
       "specialFile": "Ei tavallinen tiedosto",
       "tooLarge": "Liian suuri synkronoitavaksi",
       "packageFolder": "Asennetut paketit, jotka voit asentaa uudelleen",
+      "privateFile": "R-istunnon tiedosto, jossa voi olla salasanoja tai avaimia",
       "zipLeftovers": "Purkamisesta jäänyt tiedosto",
       "unreadable": "Ei voitu lukea",
       "downloadFailed": "Ei voitu ladata",

@@ -564,7 +564,6 @@
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
     "saving": "Se salvează proiectul pe server…",
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
-    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape.",
     "projectNotesShared": "Notițele proiectului sunt partajate cu toți cei din acest proiect. Notițele personale rămân private.",
     "personalNotesPrivate": "Notițele personale rămân private. Se partajează doar notițele din folderul de notițe al proiectului.",
     "unlinkOverleaf": "Dezleagă de Overleaf",

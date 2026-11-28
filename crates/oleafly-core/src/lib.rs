@@ -63,7 +63,7 @@ pub use detect::{
     rank_main_documents, tex_magic_comments, typst_uses_calepin, Candidate, Decision,
     DeclaredFlavorSource, DetectLimits, DetectOptions, Detection, DetectionSource, DocumentKind,
     Reason, SourceFamily, TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH,
-    DETECT_MAX_ENTRIES, DETECT_MAX_SOURCES,
+    DETECT_MAX_ENTRIES, DETECT_MAX_SOURCES, QUARTO_PROJECT_FILES,
 };
 #[cfg(windows)]
 pub use engine_temp::long_path_name;

@@ -431,7 +431,7 @@
       "off": "Oprită",
       "on": "Pornită",
       "title": "Compilare automată",
-      "help": "Compilează la câteva secunde după ce te oprești din scris. Fișierul deschis este salvat întâi.",
+      "help": "Compilează la câteva secunde după ce te oprești din scris și salvează mai întâi fișierul deschis. După Oprește, așteaptă următoarea modificare. Un proiect care rulează cod se compilează la deschidere doar când opțiunea este pornită.",
       "typstHelp": "Typst rămâne pornit și actualizează PDF-ul la scurt timp după ce te oprești din scris. Cât timp opțiunea este activă, fișierul deschis se salvează singur.",
       "typstStarting": "Se pornește Typst",
       "typstRestarting": "Typst repornește",
@@ -455,6 +455,7 @@
       "title": "Tratarea erorilor de compilare"
     },
     "fromScratch": "Recompilează de la zero",
+    "wholeProject": "Randează întregul proiect Quarto",
     "mode": {
       "fast": "Rapid <note>[ciornă]</note>",
       "normal": "Normal",
@@ -471,9 +472,8 @@
     },
     "texRootBroken": "% !TEX root din {{file}} trimite la un fișier inexistent ({{target}})",
     "texRootLabel": "rădăcină TEX",
-    "texRootName": "rădăcină: {{name}}",
     "texRootNotTex": "% !TEX root din {{file}} trimite la {{target}}, care nu este un fișier LaTeX",
-    "texRootOverride": "rădăcină: {{path}} (setată de % !TEX root din {{file}})",
+    "texRootOverride": "Compilează {{path}} (setată de % !TEX root din {{file}})",
     "typstVersion": {
       "title": "Versiunea Typst (acest proiect)",
       "help": "Fixează o versiune ca rezultatul acestui proiect să rămână neschimbat când Oleafly actualizează Typst. Opțiunea Implicită urmează versiunea aleasă în Setări. Ca să instalezi versiuni sau să testezi acest proiect pe una mai nouă, mergi la Setări → Motoare → Typst.",
@@ -514,18 +514,19 @@
     },
     "code": {
       "title": "Cod (acest computer)",
-      "help": "Quarto și Calepin pot rula codul R, Python și Julia din acest proiect. Codul rulează cu permisiunile tale, așa că permite-l doar pentru un proiect în care ai încredere. Alegerea se aplică doar pe acest computer.",
+      "help": "Quarto și Calepin pot rula codul R, Python și Julia din acest proiect. Codul rulează cu permisiunile tale, așa că permite-l doar pentru un proiect în care ai încredere. Alegerea se aplică doar acestui computer și rămâne până o oprești. Oprirea ei întrerupe o compilare în curs.",
       "off": "Oprit",
       "run": "Rulează codul pe acest computer"
     },
     "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat.",
     "coauthorsChanged": "Modificat de coautori de la ultima ta compilare",
-    "texRootDocument": "rădăcină: {{path}} (are propriul \\documentclass)",
-    "texRootInclude": "rădăcină: {{path}} (include {{file}})",
-    "texRootFormat": "rădăcină: {{path}} (un document {{format}}, compilat cu propriul motor)",
+    "texRootDocument": "Compilează {{path}} (are propriul \\documentclass)",
+    "texRootStandalone": "Compilează {{path}} (un document de sine stătător)",
+    "texRootInclude": "Compilează {{path}} (include {{file}})",
+    "texRootFormat": "Compilează {{path}} (un document {{format}}, compilat cu propriul motor)",
     "target": {
       "title": "Ținta compilării",
-      "help": "Cu Urmează fișierul deschis, un fișier cu propriul \\documentclass se compilează singur. Un capitol sau o secțiune compilează documentul care îl include. Un document Markdown, Typst sau Quarto se compilează singur, cu propriul motor, când proiectul are alt format. Celelalte fișiere compilează documentul principal. Un comentariu % !TEX root are întotdeauna prioritate.",
+      "help": "Cu Urmează fișierul deschis, un document de sine stătător se compilează singur: un fișier LaTeX cu propriul \\documentclass sau un fișier Markdown, Typst ori Quarto pe care nu îl include alt document. Un capitol sau o secțiune compilează documentul care îl include, iar fișierele unui proiect _quarto.yml se compilează împreună cu proiectul. Celelalte fișiere compilează documentul principal. Un comentariu % !TEX root are mereu prioritate.",
       "open": "Urmează fișierul deschis",
       "main": "Întotdeauna documentul principal",
       "change": "Schimbă documentul principal…"
@@ -670,7 +671,16 @@
     "followed": "{{name}} trebuie să ruleze cod, iar codul rulează doar pentru documentul principal. Fă din {{name}} documentul principal, apoi permite codul pentru el.",
     "needed": "Acest document trebuie să-și ruleze codul ca să se compileze, iar codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
     "skipped": "Codul din acest document nu a rulat, deoarece codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
-    "storedResults": "PDF-ul arată rezultatele codului salvate de la o rulare anterioară, deoarece codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect."
+    "storedResults": "PDF-ul arată rezultatele codului salvate de la o rulare anterioară, deoarece codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+    "reasons": {
+      "extensions": "Acest proiect are extensii Quarto, care pot rula programe, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "environment": "Acest proiect are fișiere _environment pe care Quarto le încarcă, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "shortcode": "Acest document folosește un shortcode care nu e inclus în Quarto, iar shortcode-urile pot rula programe, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "filter": "Acest document adaugă un filtru, iar filtrele pot rula programe, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "pdf_engine": "Acest document transmite opțiuni motorului PDF, care poate rula programe, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "outside": "Acest document citește un fișier din afara proiectului, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+      "unchecked": "Oleafly nu a putut verifica dacă documentul conține cod, așa că se construiește doar cu codul permis. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect."
+    }
   },
   "typstCjkFonts": {
     "message": "Acest document conține text în chineză, japoneză sau coreeană pe care niciun font de pe acest computer nu îl poate afișa, așa că lipsește din PDF.",
@@ -827,7 +837,7 @@
     },
     "noMain": "Încă nu există un document principal. Alege un fișier și selectează Setează ca document principal.",
     "trust": {
-      "banner": "Oleafly a limitat unele funcții în acest folder. Ai încredere în el ca să pornești Git, terminalul, agenții și shell escape?",
+      "banner": "Oleafly a limitat unele funcții în acest folder. Ai încredere în el ca să pornești Git, terminalul, agenții, latexmk și Quarto?",
       "trustFolder": "Am încredere în acest folder",
       "trustParent": "Am încredere în folderul părinte",
       "trustRepository": "Am încredere în depozit",
@@ -1844,5 +1854,20 @@
       "saved": "Fragmentul {{name}} a fost salvat.",
       "missingName": "Dă-i un nume fragmentului."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

@@ -40,6 +40,7 @@
     "renameAriaLabel": "Renomear arquivo",
     "renameFailed": "Não foi possível renomear \"{{path}}\". O caminho original ficou inalterado.",
     "setMain": "Definir como documento principal",
+    "compileTarget": "Compilar gera este arquivo, não o documento principal",
     "title": "Explorador",
     "treeAriaLabel": "Árvore de arquivos do explorador",
     "setMainFailed": "Não foi possível definir \"{{path}}\" como documento principal.",
