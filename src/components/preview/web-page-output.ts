@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { i18n } from "@/i18n";
 import { writeClipboardText } from "@/lib/clipboard";
 import { logError } from "@/lib/log";
@@ -16,6 +17,12 @@ export async function copyOutputPath(projectId: string, mainDocument: string, pa
 
 export function webPageName(raw: string): string {
   return `${raw.replace(/\.html?$/i, "")}.html`;
+}
+
+export async function savePdfToProject(projectId: string, typed: string, fallback: string, bytes: Uint8Array): Promise<void> {
+  const name = `${(typed.trim() || fallback).replace(/\.pdf$/i, "")}.pdf`;
+  await saveFileBase64(projectId, name, uint8ToBase64(bytes));
+  if (isTauri()) void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
 }
 
 export async function saveWebPage(projectId: string, mainDocument: string, name: string): Promise<void> {

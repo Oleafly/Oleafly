@@ -4,7 +4,7 @@ import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfShowToolbarButton, PdfToolbarControls } from "./PdfToolbarControls";
 import { openHtmlInBrowser } from "./open-compiled-html";
-import { copyOutputPath, saveWebPage, webPageName } from "./web-page-output";
+import { copyOutputPath, savePdfToProject, saveWebPage, webPageName } from "./web-page-output";
 import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
@@ -63,7 +63,6 @@ import {
 } from "@/features/synctex";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
-  pdfSyncNoteSaved,
   revealInDir,
   saveFileBase64,
   uint8ToBase64,
@@ -979,55 +978,41 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const refreshTreeQuietly = () =>
     refreshTree().catch((error) => void logError("refresh files after preview save", error));
 
+  const saveShownOutput = async (id: string, bytes: Uint8Array | null): Promise<string | null> => {
+    if (showHtmlOutput) {
+      if (!shownHtml) return null;
+      await saveWebPage(id, shownHtml.mainDocument, webPageName(saveName.trim() || exportBaseName()));
+      return t(($) => $.preview.save.htmlSaved);
+    }
+    if (!bytes) return null;
+    if (!isImage) {
+      await savePdfToProject(id, saveName, exportBaseName(), bytes);
+      return t(($) => $.preview.save.pdfSaved);
+    }
+    const base = saveName.trim().replace(/\.(png|pdf)$/i, "") || "figure";
+    const { pdfPageToPng } = await import("@/lib/pdf-image");
+    const dataUrl = await pdfPageToPng(bytes, 1, 3);
+    await saveFileBase64(id, `${base}.png`, dataUrl.slice(dataUrl.indexOf(",") + 1));
+    return t(($) => $.preview.save.imageSaved);
+  };
+
   const submitSavePdf = async () => {
     if (!projectId || saving) return;
-    if (showHtmlOutput) {
-      if (!shownHtml) return;
-      setSaving(true);
-      try {
-        await saveWebPage(projectId, shownHtml.mainDocument, webPageName(saveName.trim() || exportBaseName()));
-        await refreshTreeQuietly();
-        setSaveOpen(false);
-        setSaveName("");
-        toast.success(t(($) => $.preview.save.htmlSaved));
-      } catch (e) {
-        notifyError("save web page to project", e, decodeAppError(e) ? undefined : t(($) => $.preview.save.failed));
-      } finally {
-        setSaving(false);
-      }
-      return;
-    }
-    if (!displayedBytes) return;
     setSaving(true);
     try {
-      if (isImage) {
-        const base = saveName.trim().replace(/\.(png|pdf)$/i, "") || "figure";
-        const name = `${base}.png`;
-        const { pdfPageToPng } = await import("@/lib/pdf-image");
-        const dataUrl = await pdfPageToPng(displayedBytes, 1, 3);
-        await saveFileBase64(projectId, name, dataUrl.slice(dataUrl.indexOf(",") + 1));
+      const saved = await saveShownOutput(projectId, displayedBytes);
+      if (saved) {
         await refreshTreeQuietly();
         setSaveOpen(false);
         setSaveName("");
-        toast.success(t(($) => $.preview.save.imageSaved));
-      } else {
-        const raw = saveName.trim() || exportBaseName();
-        const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
-        await saveFileBase64(
-          projectId,
-          name,
-          uint8ToBase64(displayedBytes),
-        );
-        if (isTauri()) {
-          void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
-        }
-        await refreshTreeQuietly();
-        setSaveOpen(false);
-        setSaveName("");
-        toast.success(t(($) => $.preview.save.pdfSaved));
+        toast.success(saved);
       }
     } catch (e) {
-      notifyError("save to project", e, decodeAppError(e) ? undefined : t(($) => $.preview.save.failed));
+      notifyError(
+        showHtmlOutput ? "save web page to project" : "save to project",
+        e,
+        decodeAppError(e) ? undefined : t(($) => $.preview.save.failed),
+      );
     } finally {
       setSaving(false);
     }

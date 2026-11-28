@@ -27,7 +27,7 @@ import { decodeAppError } from "@/lib/app-error";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import { HtmlOutputPanel } from "./HtmlOutputPanel";
 import { openHtmlInBrowser } from "./open-compiled-html";
-import { copyOutputPath, saveWebPage, webPageName } from "./web-page-output";
+import { copyOutputPath, savePdfToProject, saveWebPage, webPageName } from "./web-page-output";
 import {
   useCallback,
   useEffect,
@@ -61,9 +61,7 @@ import {
   type PreviewWindowState,
 } from "@/lib/preview-window";
 import {
-  pdfSyncNoteSaved,
   readCompiledPdf,
-  saveFileBase64,
   uint8ToBase64,
   writeBytesFile,
 } from "@/lib/tauri";
@@ -356,15 +354,8 @@ export function PreviewWindow({
     if (!projectId || (!previewDocument && !page) || saving) return;
     setSaving(true);
     try {
-      if (page) {
-        await saveWebPage(projectId, page.mainDocument, webPageName(saveName.trim() || "document"));
-      } else if (previewDocument) {
-        const name = `${(saveName.trim() || "document").replace(/\.pdf$/i, "")}.pdf`;
-        await saveFileBase64(projectId, name, uint8ToBase64(previewDocument.bytes));
-        if (isTauri()) {
-          void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
-        }
-      }
+      if (page) await saveWebPage(projectId, page.mainDocument, webPageName(saveName.trim() || "document"));
+      else if (previewDocument) await savePdfToProject(projectId, saveName, "document", previewDocument.bytes);
       await command({ action: "refresh-files" });
       setSaveOpen(false);
       toast.success(page ? t(($) => $.preview.save.htmlSaved) : t(($) => $.preview.save.pdfSaved));

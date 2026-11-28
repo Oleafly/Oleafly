@@ -13,7 +13,7 @@
   addEventListener("message", (event) => {
     if (event.source !== parent || event.origin !== appOrigin) return;
     const message = event.data;
-    if (!message || message.type !== "oleafly-preview-appearance") return;
+    if (message?.type !== "oleafly-preview-appearance") return;
     document.documentElement.toggleAttribute("data-oleafly-inverted", message.inverted === true);
   });
   parent.postMessage({ type: "oleafly-preview-ready" }, appOrigin);

@@ -584,7 +584,9 @@ export function importSnippetSettingsFiles(files: readonly SnippetFileText[]): P
     const changed = files.filter((file) => existing.get(file.name.toLowerCase())?.text !== file.text);
     if (changed.length === 0) return;
     await afterWrite(async () => {
-      for (const file of changed) await writeSnippetFile(existing.get(file.name.toLowerCase())?.name ?? file.name, file.text);
+      await Promise.all(
+        changed.map((file) => writeSnippetFile(existing.get(file.name.toLowerCase())?.name ?? file.name, file.text)),
+      );
     });
   });
 }

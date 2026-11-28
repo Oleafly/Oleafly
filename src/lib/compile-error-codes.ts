@@ -15,7 +15,7 @@ const CODE_NEEDED_REASONS = [
 type CodeNeededReason = (typeof CODE_NEEDED_REASONS)[number];
 
 function isCodeNeededReason(reason: string | undefined): reason is CodeNeededReason {
-  return CODE_NEEDED_REASONS.some((known) => known === reason);
+  return (CODE_NEEDED_REASONS as readonly (string | undefined)[]).includes(reason);
 }
 
 export function codeNeededText(reason: string | undefined): string {

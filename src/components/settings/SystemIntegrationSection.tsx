@@ -248,6 +248,8 @@ function IntegrationRow({
   const copy = COPY[item.id];
   const attention = item.attention;
   const defaultApp = isDefaultAppItem(item);
+  const failedChange = failure === "install" ? t(($) => $.settings.systemIntegration.failed.install) : t(($) => $.settings.systemIntegration.failed.remove);
+  const failureText = defaultApp ? t(($) => $.settings.systemIntegration.failed.defaultApp) : failedChange;
   return (
     <SettingsRow
       testId={`system-integration-${item.id}`}
@@ -277,11 +279,7 @@ function IntegrationRow({
           ) : null}
           {failure ? (
             <p role="alert" className="text-xs text-destructive">
-              {defaultApp
-                ? t(($) => $.settings.systemIntegration.failed.defaultApp)
-                : failure === "install"
-                  ? t(($) => $.settings.systemIntegration.failed.install)
-                  : t(($) => $.settings.systemIntegration.failed.remove)}
+              {failureText}
             </p>
           ) : null}
         </>

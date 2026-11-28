@@ -72,7 +72,8 @@ export function SnippetTryIt({
   const language = languages.includes(chosen) ? chosen : (languages[0] ?? "latex");
   const mathDoc = MATH_DOCS[language]?.[mathPlaceOf(record)];
   const [picked, setPicked] = useState<{ readonly where: Place; readonly place: TryPlace } | null>(null);
-  const place: TryPlace = picked?.where === record.place ? picked.place : isMathPlace(record.place) ? "math" : "text";
+  const startPlace: TryPlace = isMathPlace(record.place) ? "math" : "text";
+  const place: TryPlace = picked?.where === record.place ? picked.place : startPlace;
   const setPlace = (next: TryPlace) => setPicked({ where: record.place, place: next });
   const activePlace: TryPlace = mathDoc ? place : "text";
   const latest = useRef(record);

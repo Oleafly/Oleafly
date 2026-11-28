@@ -58,7 +58,10 @@ export function PreviewFrame({
       }
       if (messageType(event.data) === PREVIEW_LOOK_MESSAGE) {
         const dark = (event.data as { dark?: unknown }).dark === true;
-        setDarkPage((page) => (dark ? src : page === src ? null : page));
+        setDarkPage((page) => {
+          if (dark) return src;
+          return page === src ? null : page;
+        });
         return;
       }
       const url = clickedLink(event.data);
