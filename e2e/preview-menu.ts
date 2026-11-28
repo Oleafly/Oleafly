@@ -1,4 +1,5 @@
 import { expect } from "./fixtures";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import type { Page } from "./helpers";
 
 export async function openVisibleMenu(page: Page, triggerSelector: string): Promise<void> {
@@ -103,4 +104,29 @@ export async function openZoomMenu(page: Page): Promise<void> {
   await page.waitForFunction(`Array.from(document.querySelectorAll('[role="menuitem"]')).some(
     item => item.getClientRects().length > 0 && item.textContent?.trim() === '100%'
   )`, 5_000);
+}
+
+export async function activatePreviewControl(
+  tauriPage: TauriPage,
+  label: string,
+) {
+  const direct = tauriPage.locator(
+    `[aria-label=${JSON.stringify(label)}]`,
+  );
+  if (await direct.isVisible()) {
+    await direct.click();
+    return;
+  }
+
+  const moreControls = tauriPage.locator(
+    '[aria-label="More preview controls"]',
+  );
+  await expect(moreControls).toBeVisible();
+  // Radix opens this trigger from keyboard activation consistently across
+  // WebKitGTK; the bridge's synthetic pointer click can be discarded.
+  await moreControls.focus();
+  await moreControls.press("Enter");
+  const menu = tauriPage.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await menu.getByText(label, { exact: true }).click();
 }

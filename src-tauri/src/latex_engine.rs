@@ -231,6 +231,7 @@ fn tex_utility_command(program: &Path, args: &[String]) -> Result<tokio::process
         .no_console()
         .env("PATH", crate::biber_toolchain::tool_path_env(program))
         .env("NoDefaultCurrentDirectoryInExePath", "1")
+        .envs(crate::proc::ENGLISH_MESSAGES)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -48,7 +48,12 @@ pub fn output_contained_with_limit(
     contained_output(command, OutputBounds::total(timeout), limit)
 }
 
-fn contained_output(command: Command, bounds: OutputBounds, limit: usize) -> io::Result<Output> {
+fn contained_output(
+    mut command: Command,
+    bounds: OutputBounds,
+    limit: usize,
+) -> io::Result<Output> {
+    super::clear_appimage_env(&mut command);
     static RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
     let runtime = RUNTIME
         .get_or_init(|| {

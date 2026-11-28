@@ -162,7 +162,13 @@ fn capture_failure(error: oleafly_history::HistoryError) -> AdapterFailure {
 
 fn storage_reason(error: &oleafly_history::HistoryError) -> Option<CheckpointSkipReason> {
     if let oleafly_history::HistoryError::Io(io) = error {
-        if io.kind() == std::io::ErrorKind::PermissionDenied {
+        if matches!(
+            io.kind(),
+            std::io::ErrorKind::PermissionDenied
+                | std::io::ErrorKind::StorageFull
+                | std::io::ErrorKind::QuotaExceeded
+                | std::io::ErrorKind::ReadOnlyFilesystem
+        ) {
             return Some(CheckpointSkipReason::StorageUnavailable);
         }
     }
@@ -1214,6 +1220,28 @@ mod tests {
             .unwrap(),
             serde_json::json!({"status": "published", "snapshot_root": "abc", "created": true})
         );
+    }
+
+    #[test]
+    fn a_full_or_read_only_disk_is_recognized_whatever_language_the_system_reports_in() {
+        for kind in [
+            std::io::ErrorKind::StorageFull,
+            std::io::ErrorKind::QuotaExceeded,
+            std::io::ErrorKind::ReadOnlyFilesystem,
+        ] {
+            let failure = super::history_failure(
+                "the checkpoint could not be published",
+                HistoryError::Io(std::io::Error::new(
+                    kind,
+                    "Auf dem Gerät ist kein Speicherplatz mehr verfügbar",
+                )),
+            );
+            assert_eq!(
+                failure.reason,
+                Some(CheckpointSkipReason::StorageUnavailable),
+                "{kind:?}"
+            );
+        }
     }
 
     #[test]

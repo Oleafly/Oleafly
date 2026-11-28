@@ -111,7 +111,7 @@ pub fn locate_ssh() -> Option<PathBuf> {
     None
 }
 
-fn explain(stderr: &str) -> String {
+fn explain(status: Option<i32>, stderr: &str) -> String {
     let lower = stderr.to_ascii_lowercase();
     if lower.contains("permission denied") || lower.contains("host key verification failed") {
         if lower.contains("host key") {
@@ -122,7 +122,8 @@ fn explain(stderr: &str) -> String {
     if lower.contains("could not resolve") || lower.contains("name or service not known") {
         return "The SSH host could not be found. Check the host name.".into();
     }
-    if lower.contains("command not found") || lower.contains("no such file") {
+    if status == Some(127) || lower.contains("command not found") || lower.contains("no such file")
+    {
         return "Hermes was not found on the remote machine. Check the command path.".into();
     }
     let first = stderr
@@ -149,7 +150,10 @@ pub async fn test_connection(ssh: &Path, remote: &RemoteHermes) -> Result<String
         .map_err(|_| "The SSH connection did not answer within 15 seconds.".to_string())?
         .map_err(|_| "Oleafly couldn't start ssh.".to_string())?;
     if !output.status.success() {
-        return Err(explain(&String::from_utf8_lossy(&output.stderr)));
+        return Err(explain(
+            output.status.code(),
+            &String::from_utf8_lossy(&output.stderr),
+        ));
     }
     let version = String::from_utf8_lossy(&output.stdout)
         .lines()
@@ -174,6 +178,21 @@ mod tests {
             command: "hermes".into(),
             profile: Some("work".into()),
         }
+    }
+
+    #[test]
+    fn a_missing_remote_command_is_recognized_by_its_exit_status() {
+        assert_eq!(
+            explain(Some(127), "bash: Zeile 1: hermes: Befehl nicht gefunden"),
+            "Hermes was not found on the remote machine. Check the command path."
+        );
+        assert_eq!(
+            explain(
+                Some(255),
+                "ssh: Could not resolve hostname lab: Name or service not known"
+            ),
+            "The SSH host could not be found. Check the host name."
+        );
     }
 
     #[test]

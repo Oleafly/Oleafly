@@ -30,13 +30,14 @@ const mocks = vi.hoisted(() => ({
   errorUnique: vi.fn(),
   notifyError: vi.fn(),
   openFileAndGotoLine: vi.fn(async (_file: string | null, _line: number, _column?: number) => {}),
+  inverseFromClick: vi.fn(async (..._args: unknown[]) => true),
   askAiAboutCompileErrors: vi.fn(async () => {}),
   openSettingsAt: vi.fn(),
   setSettingsOpen: vi.fn(),
   activeTourId: null as string | null,
   tauri: true,
 }));
-vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine }));
+vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine, inverseFromClick: mocks.inverseFromClick }));
 vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAiAboutCompileErrors }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt, setSettingsOpen: mocks.setSettingsOpen }) } }));
 vi.mock("@/store/tours", () => ({ useTourStore: { getState: () => ({ activeTourId: mocks.activeTourId }) } }));
@@ -434,6 +435,32 @@ describe("detached compile commands", () => {
       ["chapters/a.tex", 12, 4],
       [null, 3, undefined],
     ]);
+    cleanup();
+  });
+
+  it("runs a click on the detached PDF through the editor's inverse search", async () => {
+    const checkpoint = createCompileSuccessCheckpoint({
+      projectId: "current", mainDocument: "main.tex", projectRevision: 3, requestGeneration: 4,
+      outputKind: "standard", producerId: "main", outputRevision: 7, outputId: "pdf-v1:7:0123456789abcdef", previousCompletedAt: null,
+    });
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "inverse", page: 0, x: 1, y: 2, checkpoint });
+    command({ projectId: "current", action: "inverse", page: 1, x: Number.NaN, y: 2, checkpoint });
+    command({ projectId: "current", action: "inverse", page: 1, x: 1, y: 2, checkpoint: { outputId: "pdf-v1:7:0123456789abcdef" } });
+    command({
+      projectId: "current", action: "inverse", page: 2, x: 30, y: 40,
+      word: "model", wordContext: { before: "the ", after: " of" }, checkpoint,
+    });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
+    expect(mocks.inverseFromClick.mock.calls).toEqual([[2, 30, 40, "model", checkpoint, { before: "the ", after: " of" }]]);
+
+    mocks.inverseFromClick.mockResolvedValueOnce(false);
+    command({ projectId: "current", action: "inverse", page: 1, x: 1, y: 2, word: 7, wordContext: "near", checkpoint });
+    await vi.waitFor(() => expect(mocks.inverseFromClick).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.inverseFromClick.mock.calls[1]).toEqual([1, 1, 2, undefined, checkpoint, undefined]);
+    expect(mocks.setFocus).toHaveBeenCalledOnce();
     cleanup();
   });
 

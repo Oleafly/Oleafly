@@ -14,7 +14,8 @@ import {
 } from "./use-pdf-reader";
 import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
-import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
+import { sendPreviewCommand, type PreviewWorkspaceCommand, type PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
+import { PREVIEW_FORWARD_EVENT, type PreviewForwardJump } from "@/lib/preview-forward";
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { LATEX_ENGINE } from "@/lib/document-engine";
@@ -23,7 +24,6 @@ import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
-import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import { HtmlOutputPanel } from "./HtmlOutputPanel";
 import { openHtmlInBrowser } from "./open-compiled-html";
 import {
@@ -44,9 +44,11 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { i18n, onLocaleApplied } from "@/i18n";
 import { PdfViewer, type PdfLoadState } from "@/components/pdf/PdfViewer";
+import type { PdfViewerProps } from "@oleafly/preview";
 import { Button } from "@/components/ui/button";
 import {
   fingerprintCompileOutput,
+  isCompileSuccessCheckpoint,
   sameCompileOutput,
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
@@ -236,6 +238,16 @@ function PreviewMessage({
 export interface PreviewWindowProps {
   harnessBytes?: Uint8Array;
   disableNativeBridge?: boolean;
+}
+
+function inverseHandler(
+  command: (request: PreviewWorkspaceCommand) => Promise<void>,
+  workspace: PreviewWorkspaceSnapshot | null,
+  checkpoint: CompileSuccessCheckpoint | null | undefined,
+): PdfViewerProps["onInverse"] {
+  if (workspace?.engine.capabilities.supports_synctex !== true || !checkpoint) return undefined;
+  return (page, x, y, word, wordContext) =>
+    void command({ action: "inverse", page, x, y, word, wordContext, checkpoint }).catch(() => {});
 }
 
 export function PreviewWindow({
@@ -471,6 +483,30 @@ export function PreviewWindow({
     });
     return () => { disposed = true; void off.then((unlisten) => unlisten()); };
   }, [projectId, disableNativeBridge, acceptCompileState]);
+
+  useEffect(() => {
+    if (disableNativeBridge) return;
+    const forwardListener = listen<Partial<PreviewForwardJump> | null>(PREVIEW_FORWARD_EVENT, ({ payload }) => {
+      const shown = previewDocumentRef.current?.checkpoint;
+      if (
+        !payload?.hit ||
+        !Number.isInteger(payload.hit.page) ||
+        payload.projectId !== projectIdRef.current ||
+        !shown ||
+        !isCompileSuccessCheckpoint(payload.checkpoint) ||
+        !sameCompileOutput(shown, payload.checkpoint)
+      ) {
+        return;
+      }
+      const { hit, spot = null, typst } = payload;
+      void import("@/features/synctex")
+        .then(({ showForwardTarget }) => showForwardTarget({ hit, spot, typst: typst === true }))
+        .catch((error: unknown) => logError("synctex forward", error));
+    });
+    return () => {
+      void forwardListener.then((unlisten) => unlisten());
+    };
+  }, [disableNativeBridge]);
 
   useEffect(() => {
     if (disableNativeBridge) return;
@@ -844,6 +880,7 @@ export function PreviewWindow({
             onLoadStateChange={handlePdfLoadState}
             onSearchStateChange={setSearchState}
             onOutlineStateChange={setOutlineState}
+            onInverse={inverseHandler(command, disableNativeBridge ? null : workspace, previewDocument?.checkpoint)}
             onPageChange={(current, total) => {
               markPage(current, total);
               if (!disableNativeBridge) void command({ action: "preview-page", page: current }).catch(() => {});

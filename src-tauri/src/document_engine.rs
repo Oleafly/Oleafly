@@ -3079,7 +3079,6 @@ fn seed_tectonic_prefetch_with(tectonic: &Path) {
     command
         .args(oleafly_core::engine_spec::TECTONIC_CACHE_DIR_ARGS)
         .no_console();
-    crate::proc::clear_appimage_env(&mut command);
     let Ok(output) =
         crate::proc::output_contained_with_timeout(command, TECTONIC_CACHE_PROBE_TIMEOUT)
     else {

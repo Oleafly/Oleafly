@@ -166,6 +166,16 @@ describe("MessageList windowing", () => {
     expect(estimateMessageHeight({ role: "assistant", content: "x".repeat(1_000_000) })).toBe(6000);
   });
 
+  it("estimates a message that only ran tools as the one compact row it shows", () => {
+    const step = { name: "read_file main.tex", status: "done" as const };
+    const toolsOnly = estimateMessageHeight({ role: "assistant", content: "", toolCalls: [step] });
+    const withText = estimateMessageHeight({ role: "assistant", content: "Done.", toolCalls: [step] });
+
+    expect(toolsOnly).toBe(24);
+    expect(estimateMessageHeight({ role: "assistant", content: "", toolCalls: [step, step, step] })).toBe(24);
+    expect(withText).toBeGreaterThanOrEqual(64);
+  });
+
   it("mounts only the newest window from a long history", () => {
     const { container } = render(<Harness messages={conversation(200)} chatId="chat-a" nearBottom />);
 
@@ -314,6 +324,31 @@ describe("MessageList windowing", () => {
     });
 
     expect(values.top).toBe(2_100);
+  });
+
+  it("anchors by the height a row shorter than the estimate really measures", () => {
+    const view = render(<Harness messages={conversation(12)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 2_000, height: 500, scrollHeight: 9_000 };
+    geometry(scroll, values);
+    const current = resizeObserver;
+    if (!current) throw new Error("missing resize observer");
+    const row = [...current.elements].find((element) => (element as HTMLElement).dataset.mmIndex === "2") as HTMLElement;
+    const estimate = estimateMessageHeight(conversation(12)[2].msg);
+
+    act(() => {
+      current.callback([
+        { target: row, contentRect: { height: 0 }, borderBoxSize: [{ blockSize: 20 }] },
+      ] as unknown as ResizeObserverEntry[], current as unknown as ResizeObserver);
+    });
+
+    expect(values.top).toBe(2_000 - (estimate - 20));
+  });
+
+  it("turns off the browser's scroll anchoring, which would repeat the list's own", () => {
+    const view = render(<Harness messages={conversation(4)} chatId="chat-a" nearBottom />);
+
+    expect(view.getByTestId("scroll").style.overflowAnchor).toBe("none");
   });
 
   it("ignores resize notices for unknown rows and unchanged heights", () => {

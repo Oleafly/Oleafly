@@ -33,6 +33,7 @@ const MIN_INITIAL_ROWS = 2;
 const INITIAL_HEIGHT_PX = 2_400;
 const OVERSCAN_PX = 800;
 const ROW_GAP = 12;
+const TOOL_ROW_HEIGHT = 24;
 
 const estimates = new WeakMap<ChatMessage, number>();
 
@@ -45,11 +46,14 @@ export function estimateMessageHeight(msg: ChatMessage): number {
 }
 
 function computeMessageHeight(msg: ChatMessage): number {
-  const contentLines = msg.content.split("\n").length + msg.content.length / 90;
   const reasoningChars = (msg.reasoningBlocks ?? []).reduce(
     (sum, block) => sum + block.text.length,
     msg.reasoning?.length ?? 0,
   );
+  if (!msg.content && reasoningChars === 0 && msg.toolCalls?.length && !msg.notices?.length && !msg.turnChanges) {
+    return TOOL_ROW_HEIGHT;
+  }
+  const contentLines = msg.content.split("\n").length + msg.content.length / 90;
   const reasoningLines = reasoningChars / 120;
   const tools = (msg.toolCalls?.length ?? 0) * 48;
   const estimate = 48 + (contentLines + reasoningLines) * 20 + tools;
@@ -282,6 +286,7 @@ export function MessageList({
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
+    element.style.overflowAnchor = "none";
     const onScroll = () => updateWindow(true);
     const scrollToIndex = (event: Event) => {
       const detail = (event as CustomEvent<{ index?: number; behavior?: ScrollBehavior }>).detail;
@@ -317,7 +322,7 @@ export function MessageList({
         const index = Number(row.dataset.mmIndex);
         if (!key || !Number.isInteger(index)) continue;
         const blockSize = entry.borderBoxSize[0]?.blockSize;
-        const height = Math.max(MIN_ESTIMATED_HEIGHT, blockSize ?? entry.contentRect.height);
+        const height = blockSize ?? entry.contentRect.height;
         const message = messagesRef.current[index];
         if (!message) continue;
         const previous = heightsRef.current.get(key) ?? estimateMessageHeight(message.msg);
