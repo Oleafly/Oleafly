@@ -15,7 +15,7 @@ $VerbKeys = @(
 )
 $InstallKey = "Software\Oleafly"
 $SchemeKey = "Software\Classes\oleafly"
-$DocumentTypes = @("tex", "typ", "md", "markdown")
+$DocumentTypes = @("tex", "typ", "md", "markdown", "qmd", "Rmd")
 $AppExe = "oleafly.exe"
 $ForeignExe = "C:\Elsewhere\oleafly.exe"
 $InstallerTimeoutMs = 300000
@@ -94,6 +94,16 @@ function Get-ProgIdKey([string]$ext) {
   return "Software\Classes\$(Get-ProgId $ext)"
 }
 
+function Get-OpenWithKey([string]$ext) {
+  return "Software\Classes\.$ext\OpenWithProgids"
+}
+
+function Remove-OpenWith([Microsoft.Win32.RegistryKey]$root, [string]$ext) {
+  $handle = $root.OpenSubKey((Get-OpenWithKey $ext), $true)
+  if ($null -eq $handle) { return }
+  try { $handle.DeleteValue((Get-ProgId $ext), $false) } finally { $handle.Close() }
+}
+
 function Clear-Leftovers {
   $progIds = @($DocumentTypes | ForEach-Object { Get-ProgIdKey $_ })
   foreach ($key in @($VerbKeys) + @($InstallKey) + @($SchemeKey) + $progIds) {
@@ -101,6 +111,10 @@ function Clear-Leftovers {
   }
   foreach ($key in @($SchemeKey) + $progIds) {
     [Microsoft.Win32.Registry]::LocalMachine.DeleteSubKeyTree($key, $false)
+  }
+  foreach ($ext in $DocumentTypes) {
+    Remove-OpenWith ([Microsoft.Win32.Registry]::CurrentUser) $ext
+    Remove-OpenWith ([Microsoft.Win32.Registry]::LocalMachine) $ext
   }
 }
 
@@ -147,6 +161,12 @@ function Test-SchemeKey([string]$kind, [string]$key) {
   return $true
 }
 
+function Test-SchemeValueNamed([string]$kind, [string]$key, [string]$name) {
+  $handle = (Get-SchemeHive $kind).OpenSubKey($key)
+  if ($null -eq $handle) { return $false }
+  try { return $handle.GetValueNames() -contains $name } finally { $handle.Close() }
+}
+
 function Get-DocumentOwners([string]$kind) {
   $owners = @{}
   foreach ($ext in $DocumentTypes) {
@@ -155,15 +175,19 @@ function Get-DocumentOwners([string]$kind) {
   return $owners
 }
 
-function Test-DocumentTypesRegistered([string]$label, [string]$kind, [string]$exe) {
+function Test-DocumentTypesRegistered([string]$label, [string]$kind, [string]$exe, [hashtable]$before) {
   $hive = Get-SchemeHiveName $kind
   $expected = "`"$exe`" `"%1`""
   foreach ($ext in $DocumentTypes) {
     $progIdKey = Get-ProgIdKey $ext
     $progId = Get-ProgId $ext
-    $owner = Get-SchemeValue $kind "Software\Classes\.$ext" ""
-    if ($owner -ne $progId) {
-      Add-Failure "$label did not set $hive\Software\Classes\.$ext to $progId (it names '$owner')"
+    $openWith = Get-OpenWithKey $ext
+    if (-not (Test-SchemeValueNamed $kind $openWith $progId)) {
+      Add-Failure "$label did not offer $progId in $hive\$openWith"
+    }
+    $owner = [string](Get-SchemeValue $kind "Software\Classes\.$ext" "")
+    if ($owner -cne $before[$ext]) {
+      Add-Failure "$label changed the default app for .$ext from '$($before[$ext])' to '$owner'"
     }
     if (-not (Test-SchemeKey $kind "$progIdKey\shell\open\command")) {
       Add-Failure "$label did not give $hive\$progIdKey an open command"
@@ -184,11 +208,13 @@ function Test-DocumentTypesRemoved([string]$label, [string]$kind, [hashtable]$be
     if (Test-SchemeKey $kind $progIdKey) {
       Add-Failure "$label left $hive\$progIdKey behind after the uninstall"
     }
+    $openWith = Get-OpenWithKey $ext
+    if (Test-SchemeValueNamed $kind $openWith $progId) {
+      Add-Failure "$label left $progId in $hive\$openWith after the uninstall"
+    }
     $owner = [string](Get-SchemeValue $kind "Software\Classes\.$ext" "")
-    if ($owner -eq $progId) {
-      Add-Failure "$label left $hive\Software\Classes\.$ext naming $progId after the uninstall"
-    } elseif ($kind -eq "NSIS" -and $owner -cne $before[$ext]) {
-      Add-Failure "$label did not give .$ext back to '$($before[$ext])' after the uninstall (it names '$owner')"
+    if ($owner -cne $before[$ext]) {
+      Add-Failure "$label did not leave .$ext with '$($before[$ext])' after the uninstall (it names '$owner')"
     }
   }
 }
@@ -311,7 +337,7 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
   }
   Show-Scheme "after the $label install"
   Test-SchemeRegistered $label $kind $exe
-  Test-DocumentTypesRegistered $label $kind $exe
+  Test-DocumentTypesRegistered $label $kind $exe $owners
   if ($own) { Write-Verbs $exe } else { Write-Verbs $ForeignExe }
   Show-Verbs "before the $label uninstall"
   if ($kind -eq "NSIS") {
@@ -390,5 +416,5 @@ if ($Failures.Count -gt 0) {
   foreach ($failure in $Failures) { Write-Host "  $failure" }
   exit 1
 }
-Write-Host "Both installers register oleafly:// links and the .tex, .typ, .md and .markdown file types, remove this install's Explorer verbs, links and file types on uninstall, and keep another copy's verbs."
+Write-Host "Both installers register oleafly:// links, offer Oleafly under Open with for .tex, .typ, .md, .markdown, .qmd and .Rmd without changing their default apps, remove this install's Explorer verbs, links and file types on uninstall, and keep another copy's verbs."
 exit 0
