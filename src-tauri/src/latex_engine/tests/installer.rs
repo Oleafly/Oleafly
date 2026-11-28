@@ -809,6 +809,25 @@ fn a_tex_utility_keeps_no_appimage_library_paths() {
 }
 
 #[test]
+fn a_tex_utility_reports_in_english_so_a_missing_perl_is_recognized() {
+    let command = tex_utility_command(
+        Path::new("/opt/TinyTeX/bin/x86_64-linux/tlmgr"),
+        &["--version".to_string()],
+    )
+    .unwrap();
+    let env: Vec<_> = command.as_std().get_envs().collect();
+    for (name, expected) in [("LANGUAGE", "en"), ("LC_MESSAGES", "C")] {
+        assert!(
+            env.contains(&(
+                std::ffi::OsStr::new(name),
+                Some(std::ffi::OsStr::new(expected))
+            )),
+            "{name}: {env:?}"
+        );
+    }
+}
+
+#[test]
 fn a_stopped_extraction_is_reported_as_a_stop() {
     use std::io::Write as _;
     let dir = tempfile::tempdir().unwrap();

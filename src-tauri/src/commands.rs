@@ -117,10 +117,20 @@ fn project_engine_sync(
 #[tauri::command]
 pub fn updater_self_installable() -> bool {
     if cfg!(target_os = "linux") {
-        std::env::var_os("APPIMAGE").is_some()
+        std::env::var_os("APPIMAGE")
+            .is_some_and(|image| appimage_replaceable(std::path::Path::new(&image)))
     } else {
         true
     }
+}
+
+fn appimage_replaceable(image: &std::path::Path) -> bool {
+    image.parent().is_some_and(|folder| {
+        tempfile::Builder::new()
+            .prefix(".oleafly-update-")
+            .tempdir_in(folder)
+            .is_ok()
+    })
 }
 
 fn assert_revealable(
@@ -1284,6 +1294,25 @@ pub async fn read_build_artifact(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn an_appimage_is_replaced_in_place_only_from_a_folder_that_takes_new_files() {
+        use std::os::unix::fs::PermissionsExt;
+        let folder = tempfile::tempdir().unwrap();
+        let image = folder.path().join("Oleafly.AppImage");
+        std::fs::write(&image, b"\x7fELF").unwrap();
+        assert!(appimage_replaceable(&image));
+        assert!(!appimage_replaceable(
+            &folder.path().join("gone").join("Oleafly.AppImage")
+        ));
+
+        std::fs::set_permissions(folder.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+        let replaceable = appimage_replaceable(&image);
+        let takes_files = std::fs::write(folder.path().join("probe"), b"").is_ok();
+        std::fs::set_permissions(folder.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(replaceable, takes_files);
+    }
 
     #[test]
     fn restricted_projects_report_the_bundled_engine() {

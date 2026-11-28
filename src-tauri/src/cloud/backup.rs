@@ -1003,13 +1003,7 @@ fn place(root: &Path, portable: &str, staged: &Path, exec: bool) -> Result<(), R
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(local_error)?;
     }
-    std::fs::rename(staged, &path)
-        .or_else(|_| {
-            std::fs::copy(staged, &path)
-                .map(|_| ())
-                .and_then(|()| std::fs::remove_file(staged))
-        })
-        .map_err(local_error)?;
+    oleafly_core::atomic::move_file(staged, &path).map_err(local_error)?;
     engine::apply_exec(&path, portable, exec);
     Ok(())
 }

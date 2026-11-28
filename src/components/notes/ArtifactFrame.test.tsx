@@ -127,7 +127,8 @@ async function trust(source = SCRIPTED, kind: "html" | "react" = "html", note = 
 }
 
 async function hashed() {
-  for (let tick = 0; tick < 500 && !screen.queryByRole("checkbox"); tick += 1) {
+  const deadline = Date.now() + 4000;
+  while (!screen.queryByRole("checkbox") && Date.now() < deadline) {
     await act(() => new Promise((resolve) => setImmediate(resolve)));
   }
   expect(screen.getByRole("checkbox")).toBeInTheDocument();

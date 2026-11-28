@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Richard (Dien Giau) Bui ([@diengiau](https://github.com/diengiau)) for #515, "Not Allow to Change Project Type (Engine)".
 - Faisal Albasu ([@albas99](https://github.com/albas99)) for #518, "Remember previous window state on launch".
 - [@ssbodda-powern](https://github.com/ssbodda-powern) for #529, "Editor text renders noticeably thinner and lighter than VS Code on macOS (Font Smoothing & Variable Font Weight)", #534, "Remember cursor/window position when switching views", and #536, "Support for Snippets".
+- [@mofoni](https://github.com/mofoni) for #542, "LLM-Panel glitching out while task is running".
+- [@SungManhin](https://github.com/SungManhin) for #543, "Support source–PDF navigation when the PDF is opened in a separate window".
 
 ### Added
 
@@ -55,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Visual mode and Notes work while a project is live, and so does the Markdown toolbar's comment button.
 - `oleafly remote live` keeps a folder live from the command line: coauthors' edits land in the files, your saves reach the server, and each change prints as an event. Press Ctrl+C to stop. Edits that weren't sent yet are kept and sent once on the next start. It refuses while the app has the same project live, and the app refuses while the command line has it.
 - The assistant can open a project from the server live, after you approve it, and its edits merge with what your coauthors type in the meantime.
+- Click-to-jump between source and PDF works with the PDF in its own window. Click a word in the separate PDF window to open the source at that spot in the main window, and press Cmd+Shift+J (Ctrl+Shift+J on Windows and Linux) or Go to PDF to highlight it in the PDF window. Go to PDF keeps your editor layout instead of docking the PDF back.
 
 ### Changed
 
@@ -79,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The CLI agent panel no longer jumps up and down or leaves an empty band under the steps while an agent works. Agents that run many tools, like Hermes, made the list misjudge where its rows were. It also stays where you are when you scroll back up to read during a run.
+- On Linux, the AppImage starts system tools without its own libraries, so making Oleafly the default app for .tex, .typ and .md, refreshing the app menu and showing a file in the file manager work on Arch and CachyOS.
+- On Linux, an AppImage in a folder you can't write to, such as one under /opt, offers the download link instead of an update that fails with "temp directory is not on the same mount point as the app".
+- With a German or other non-English system language, Oleafly recognizes a missing Perl for TinyTeX, a full or read-only disk when saving checkpoints, a Hermes command that isn't installed on a remote machine, and a missing R package in a Quarto document.
+- When the system trash fails, cloud sync's fallback moves a deleted file to Oleafly's trash across drives instead of skipping the deletion.
 - Moving panes no longer breaks the workspace with "The panel layout hit a snag". Moving a pane next to another one in the same row or column, such as the AI assistant to the left of the files, could leave the panel library out of step with the panes on screen, and it threw an error. If the layout ever fails now, Oleafly builds the panes again, then goes back to the default arrangement, and shows the reload message only if both fail. Open files, chats and terminals stay as they were.
 - While you drag a pane by its title bar, the whole pane is tinted, not only the bar. The place it will land has a stronger tint.
 - Switching from PDF view back to Split or Source view keeps the cursor, the selection and the scroll position in the editor. If you scrolled the PDF to another part of the document while the editor was hidden, the editor opens at that part instead (#534).

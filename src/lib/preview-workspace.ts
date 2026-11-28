@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   compileLogCleared,
   useCompileStore,
@@ -12,11 +13,13 @@ import { useCompileRootStore } from "@/store/compile-root";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import type { TexFlavor } from "@/lib/tauri";
+import { isCompileSuccessCheckpoint, type CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
@@ -59,7 +62,29 @@ export type PreviewWorkspaceCommand =
   | { action: "typst-version"; version: string | null }
   | ({ action: "typst-options" } & Pick<TypstOptionsUpdate, "systemFonts" | "reproducible">)
   | { action: "typst-variant"; variant: string | null }
-  | { action: "source-location"; file: string | null; line: number; column?: number };
+  | { action: "source-location"; file: string | null; line: number; column?: number }
+  | {
+    action: "inverse";
+    page: number;
+    x: number;
+    y: number;
+    word?: string;
+    wordContext?: { before: string; after: string };
+    checkpoint: CompileSuccessCheckpoint;
+  };
+
+function inverseClick({ page, x, y, word, wordContext, checkpoint }: { page?: unknown; x?: unknown; y?: unknown; word?: unknown; wordContext?: unknown; checkpoint?: unknown }) {
+  if (!Number.isInteger(page) || (page as number) < 1 || !Number.isFinite(x) || !Number.isFinite(y) || !isCompileSuccessCheckpoint(checkpoint)) return null;
+  const { before, after } = (wordContext ?? {}) as { before?: unknown; after?: unknown };
+  return {
+    page: page as number,
+    x: x as number,
+    y: y as number,
+    word: typeof word === "string" ? word : undefined,
+    wordContext: typeof before === "string" && typeof after === "string" ? { before, after } : undefined,
+    checkpoint,
+  };
+}
 
 function typstOptionsUpdate(payload: { systemFonts?: unknown; reproducible?: unknown }): TypstOptionsUpdate | null {
   if (typeof payload.systemFonts === "boolean") return { systemFonts: payload.systemFonts };
@@ -166,7 +191,6 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           if (typeof payload.mainDocument !== "string" || payload.mainDocument !== compile.htmlOutput?.mainDocument) {
             break;
           }
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           const { exportCurrentDocument } = await import("@/features/export");
           await exportCurrentDocument("pdf", payload.mainDocument);
@@ -174,14 +198,12 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
         }
         case "pdf-settings": {
           useSettingsStore.getState().openSettingsAt("appearance", "pdf");
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;
         }
         case "settings": {
           if (useTourStore.getState().activeTourId) break;
           useSettingsStore.getState().setSettingsOpen(true);
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;
         }
@@ -190,14 +212,19 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           const { openFileAndGotoLine } = await import("@/features/synctex");
           const column = Number.isInteger(payload.column) && (payload.column ?? 0) >= 1 ? payload.column : undefined;
           await openFileAndGotoLine(payload.file, payload.line, column);
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          await getCurrentWindow().setFocus();
+          break;
+        }
+        case "inverse": {
+          const click = inverseClick(payload);
+          if (!click) break;
+          const { inverseFromClick } = await import("@/features/synctex");
+          if (!(await inverseFromClick(click.page, click.x, click.y, click.word, click.checkpoint, click.wordContext))) break;
           await getCurrentWindow().setFocus();
           break;
         }
         case "ask-ai": {
-          const { askAiAboutCompileErrors } = await import("@/features/ask-ai-compile-errors");
           await askAiAboutCompileErrors();
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;
         }

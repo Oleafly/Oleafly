@@ -323,11 +323,7 @@ pub(super) fn collect_document_render(spec: &EngineCompileSpec) -> std::io::Resu
         std::fs::create_dir_all(folder)?;
     }
     let _ = std::fs::remove_file(&target);
-    if std::fs::rename(&rendered, &target).is_err() {
-        std::fs::copy(&rendered, &target)?;
-        std::fs::remove_file(&rendered)?;
-    }
-    Ok(())
+    oleafly_core::atomic::move_file(&rendered, &target)
 }
 
 pub(super) fn newest_with_extension(
@@ -691,6 +687,9 @@ impl QuartoRun {
             .with_time_limit(oleafly_core::compile_limit::NOTEBOOK_TIME_LIMIT)
             .with_project_root(&self.project_dir)
             .with_variable("NO_COLOR", "1".to_owned());
+        for (name, value) in crate::proc::ENGLISH_MESSAGES {
+            environment = environment.with_variable(name, value.to_owned());
+        }
         for (name, value) in
             crate::notebook_toolchain::quarto_runtime_variables(&self.project_dir, self.allow_code)
         {
@@ -2569,6 +2568,15 @@ mod tests {
             .variables()
             .iter()
             .any(|(name, value)| name == "NO_COLOR" && value == "1"));
+        for (name, expected) in [("LANGUAGE", "en"), ("LC_MESSAGES", "C")] {
+            assert!(
+                spec.environment
+                    .variables()
+                    .iter()
+                    .any(|(variable, value)| variable == name && value == expected),
+                "R reports in the user's language unless {name} is {expected}"
+            );
+        }
     }
 
     #[test]

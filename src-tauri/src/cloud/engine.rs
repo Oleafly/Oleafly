@@ -1337,7 +1337,7 @@ fn trash_file(path: &Path, trash: &Path) -> Result<(), String> {
         .ok_or_else(|| "file has no name".to_string())?;
     let bucket = trash.join(format!("{}-{:08x}", now_ms(), rand::random::<u32>()));
     std::fs::create_dir_all(&bucket).map_err(|error| error.to_string())?;
-    std::fs::rename(path, bucket.join(name)).map_err(|error| error.to_string())
+    oleafly_core::atomic::move_file(path, &bucket.join(name)).map_err(|error| error.to_string())
 }
 
 struct Staged {
