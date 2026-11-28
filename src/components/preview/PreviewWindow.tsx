@@ -250,6 +250,49 @@ function inverseHandler(
     void command({ action: "inverse", page, x, y, word, wordContext, checkpoint }).catch(() => {});
 }
 
+function useShownWebPage(workspace: PreviewWorkspaceSnapshot | null, projectId: string | null) {
+  const dark = useHtmlDarkMode();
+  const output = workspace?.htmlOutput?.projectId === projectId ? workspace.htmlOutput : null;
+  const savable = output !== null && workspace?.pageSavable === true;
+  return {
+    output,
+    dark,
+    savable,
+    syncable: output === null || (savable && output.mainDocument === workspace?.mainDoc),
+  };
+}
+
+type ShownWebPage = ReturnType<typeof useShownWebPage>;
+
+function pageToolbarProps({
+  page,
+  exportShownPage,
+  downloadDisplayedPdf,
+  downloadLabel,
+  inverted,
+  setInverted,
+  startSave,
+}: Readonly<{
+  page: ShownWebPage;
+  exportShownPage: (() => void) | undefined;
+  downloadDisplayedPdf: () => void;
+  downloadLabel: () => string;
+  inverted: boolean;
+  setInverted: (value: boolean) => void;
+  startSave: (extension: "html" | "pdf") => void;
+}>) {
+  if (page.output === null) {
+    return { exportDisplayedPreview: downloadDisplayedPdf, downloadActionLabel: downloadLabel, inverted, setInverted, onSave: () => startSave("pdf") };
+  }
+  return {
+    exportDisplayedPreview: exportShownPage,
+    downloadActionLabel: undefined,
+    inverted: page.dark.shown,
+    setInverted: page.dark.setShown,
+    onSave: page.savable ? () => startSave("html") : undefined,
+  };
+}
+
 export function PreviewWindow({
   harnessBytes,
   disableNativeBridge = false,
@@ -789,17 +832,13 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
-  const htmlBuiltAt =
-    workspace?.htmlOutput && workspace.htmlOutput.projectId === projectId
-      ? workspace.htmlOutput.builtAt
-      : null;
-  const webPage = htmlBuiltAt !== null;
-  const pageMain = workspace?.htmlOutput?.mainDocument ?? null;
-  const pageSavable = webPage && workspace?.pageSavable === true;
-  const htmlDark = useHtmlDarkMode();
+  const shownPage = useShownWebPage(workspace, projectId);
+  const htmlBuiltAt = shownPage.output?.builtAt ?? null;
+  const webPage = shownPage.output !== null;
+  const pageMain = shownPage.output?.mainDocument ?? null;
   const pdfSync = usePdfSync({
     projectId,
-    available: isTauri() && !disableNativeBridge && (!webPage || (pageSavable && pageMain === workspace?.mainDoc)),
+    available: isTauri() && !disableNativeBridge && shownPage.syncable,
     outputId: currentOutputId(previewDocument?.checkpoint, displayedIsCurrent),
     fastCompile: workspace?.compileMode === "fast",
     page: webPage,
@@ -866,7 +905,7 @@ export function PreviewWindow({
           projectId={projectId}
           mainDocument={workspace?.htmlOutput?.mainDocument}
           builtAt={htmlBuiltAt}
-          inverted={htmlDark.shown}
+          inverted={shownPage.dark.shown}
         />
       )}
       {htmlBuiltAt === null && (previewDocument ? (
@@ -1065,16 +1104,21 @@ export function PreviewWindow({
           searchOpen={searchOpen} setSearchOpen={setSearchOpen} searchInputRef={searchInputRef} setSearchInput={setSearchInput}
           scale={scale} setScale={setScale} setClampedScale={setClampedScale} userZoom={userZoom} fitPreview={fitPreview}
           exporting={exporting}
-          exportDisplayedPreview={webPage ? exportShownPage() : downloadDisplayedPdf}
-          downloadActionLabel={webPage ? undefined : () => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
+          {...pageToolbarProps({
+            page: shownPage,
+            exportShownPage: exportShownPage(),
+            downloadDisplayedPdf: () => void downloadDisplayedPdf(),
+            downloadLabel: () =>
+              displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf),
+            inverted,
+            setInverted,
+            startSave: (extension) => {
+              setSaveName(`${exportFileStem(workspace?.projectName, "document")}.${extension}`);
+              setSaveOpen(true);
+            },
+          })}
           pdfSync={pdfSync}
-          onSave={webPage && !pageSavable ? undefined : () => {
-            setSaveName(`${exportFileStem(workspace?.projectName, "document")}.${webPage ? "html" : "pdf"}`);
-            setSaveOpen(true);
-          }}
           onCopyPath={copyPath()}
-          inverted={webPage ? htmlDark.shown : inverted}
-          setInverted={webPage ? htmlDark.setShown : setInverted}
           screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
           rotation={rotation} rotationPending={rotationPending} onRotate={rotateClockwise}
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
